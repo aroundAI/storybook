@@ -30,7 +30,6 @@ import {
 import { estimateVoiceCost } from '../lib/voice-utils';
 import {
   checkAccountBudget,
-  getVoiceIdForCharacter,
   getVoiceSettings,
 } from './voice-queries';
 import { queueVoiceJobs } from './voice-queue-helper';
@@ -103,14 +102,25 @@ async function buildVoiceAssignments(
 
   const missingCharacters = characterIds.filter((id) => !assignments[id]);
 
-  // Fetch voice profiles for characters without user assignments
-  for (const characterAssetId of missingCharacters) {
-    const voiceId = await getVoiceIdForCharacter(client, characterAssetId);
-    if (voiceId) {
-      const settings = await getVoiceSettings(client, characterAssetId);
-      assignments[characterAssetId] = {
-        voiceId,
-        settings,
+  if (missingCharacters.length === 0) {
+    return assignments;
+  }
+
+  // Batch-fetch all voice IDs in a single query
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: charDetails } = await (client as any)
+    .from('character_details')
+    .select('asset_id, elevenlabs_voice_id')
+    .in('asset_id', missingCharacters);
+
+  // getVoiceSettings returns static defaults, so no per-character query needed
+  const defaultSettings = await getVoiceSettings(client, null);
+
+  for (const detail of charDetails ?? []) {
+    if (detail.elevenlabs_voice_id) {
+      assignments[detail.asset_id] = {
+        voiceId: detail.elevenlabs_voice_id,
+        settings: defaultSettings,
       };
     }
   }

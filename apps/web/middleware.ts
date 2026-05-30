@@ -14,7 +14,7 @@ const CSRF_SECRET_COOKIE = 'csrfSecret';
 const NEXT_ACTION_HEADER = 'next-action';
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|images|locales|assets|api/*).*)'],
+  matcher: ['/((?!_next/static|_next/image|images|locales|assets|api/).*)'],
 };
 
 const getUser = (request: NextRequest, response: NextResponse) => {
@@ -294,12 +294,13 @@ function getPatterns() {
   ];
 }
 
+const patterns = getPatterns();
+
 /**
  * Match URL patterns to specific handlers.
  * @param url
  */
 function matchUrlPattern(url: string) {
-  const patterns = getPatterns();
   const input = url.split('?')[0];
 
   for (const pattern of patterns) {

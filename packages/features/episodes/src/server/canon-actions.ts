@@ -7,6 +7,7 @@
 
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
@@ -242,6 +243,8 @@ export const addImmutableEventAction = enhanceAction(
       throw new Error(`Failed to add immutable event: ${error.message}`);
     }
 
+    revalidatePath(`/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`, 'page');
+
     return mapImmutableEvent(event as ImmutableEventRow);
   },
   {
@@ -296,6 +299,8 @@ export const deleteImmutableEventAction = enhanceAction(
       console.error('Error deleting immutable event:', error);
       throw new Error(`Failed to delete immutable event: ${error.message}`);
     }
+
+    revalidatePath(`/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`, 'page');
 
     return { success: true };
   },
@@ -357,6 +362,8 @@ export const updateCharacterStateAction = enhanceAction(
       after_state: data.stateValue as Json,
       change_reason: data.triggerEvent,
     });
+
+    revalidatePath(`/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`, 'page');
 
     return state;
   },
@@ -490,6 +497,8 @@ export const createNarrativeThreadAction = enhanceAction(
       throw new Error(`Failed to create narrative thread: ${error.message}`);
     }
 
+    revalidatePath(`/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`, 'page');
+
     return mapNarrativeThread(thread as NarrativeThreadRow);
   },
   {
@@ -575,6 +584,8 @@ export const updateNarrativeThreadAction = enhanceAction(
       console.error('Error updating narrative thread:', error);
       throw new Error(`Failed to update narrative thread: ${error.message}`);
     }
+
+    revalidatePath(`/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`, 'page');
 
     return mapNarrativeThread(thread as NarrativeThreadRow);
   },
@@ -796,6 +807,8 @@ export const updateCanonSettingsAction = enhanceAction(
       console.error('Error updating canon settings:', error);
       throw new Error(`Failed to update canon settings: ${error.message}`);
     }
+
+    revalidatePath(`/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`, 'page');
 
     return updatedMetadata.canon as CanonSettings;
   },
@@ -1269,6 +1282,8 @@ export const commitCanonChangesAction = enhanceAction(
         );
       }
     }
+
+    revalidatePath(`/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`, 'page');
 
     return {
       eventsCreated:

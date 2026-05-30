@@ -69,6 +69,7 @@ const config = {
   transpilePackages: INTERNAL_PACKAGES,
   // Enable standalone output for AWS Lambda deployment
   output: process.env.DEPLOY_TARGET === 'lambda' ? 'standalone' : undefined,
+  compress: process.env.DEPLOY_TARGET === 'lambda' ? false : true,
   webpack: (config, { isServer, webpack }) => {
     if (isServer) {
       // TODO: Investigate and fix build hanging issue
@@ -89,6 +90,7 @@ const config = {
     return config;
   },
   images: {
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: getRemotePatterns(),
   },
   logging: {
@@ -106,6 +108,8 @@ const config = {
     // Local-first job queue packages
     'node-cron',
     'sharp',
+    'bullmq',
+    'ioredis',
   ],
   // needed for supporting dynamic imports for local content
   outputFileTracingIncludes: {
@@ -135,6 +139,16 @@ const config = {
     mdxRs: true,
     reactCompiler: ENABLE_REACT_COMPILER,
     clientSegmentCache: true,
+    optimizePackageImports: [
+      'lucide-react',
+      '@radix-ui/react-icons',
+      'recharts',
+      'date-fns',
+      'react-hook-form',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-tooltip',
+    ],
   },
   modularizeImports: {
     lodash: {

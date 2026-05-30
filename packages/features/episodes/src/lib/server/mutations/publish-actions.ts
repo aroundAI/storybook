@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
@@ -49,6 +50,8 @@ export const updatePublishedVideoAction = enhanceAction(
       );
     }
 
+    revalidatePath(`/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`, 'page');
+
     return { success: true };
   },
   { schema: PublishVideoSchema },
@@ -84,6 +87,8 @@ export const updateShortsGroupsAction = enhanceAction(
     if (updateError) {
       throw new Error(`Failed to update shorts groups: ${updateError.message}`);
     }
+
+    revalidatePath(`/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`, 'page');
 
     return { success: true };
   },

@@ -2,6 +2,7 @@
 
 import 'server-only';
 
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
@@ -115,21 +116,30 @@ const DisconnectSchema = z.object({
  */
 export const disconnectPlatformAction = enhanceAction(
   async ({ connectionId, platform }) => {
+    let result;
+
     switch (platform) {
       case 'youtube':
-        return disconnectYouTubeAction({ connectionId });
+        result = await disconnectYouTubeAction({ connectionId });
+        break;
       case 'tiktok':
-        return disconnectTikTokAction({ connectionId });
+        result = await disconnectTikTokAction({ connectionId });
+        break;
       case 'instagram':
       case 'facebook':
-        return disconnectMetaAction({ connectionId });
+        result = await disconnectMetaAction({ connectionId });
+        break;
       case 'twitter':
       case 'linkedin':
-        // For platforms without specific disconnect logic, just delete the connection
-        return deleteConnection(connectionId);
+        result = await deleteConnection(connectionId);
+        break;
       default:
         throw new Error(`Unsupported platform: ${platform}`);
     }
+
+    revalidatePath(`/home/[account]/settings`, 'page');
+
+    return result;
   },
   {
     schema: DisconnectSchema,
@@ -152,6 +162,8 @@ export const refreshConnectionAction = enhanceAction(
     if (!result.valid) {
       throw new Error(result.error ?? 'Failed to refresh token');
     }
+
+    revalidatePath(`/home/[account]/settings`, 'page');
 
     return { success: true };
   },
@@ -191,6 +203,8 @@ export const updateConnectionLanguageAction = enhanceAction(
     if (error) {
       throw new Error('Failed to update connection language');
     }
+
+    revalidatePath(`/home/[account]/settings`, 'page');
 
     return { success: true, language };
   },

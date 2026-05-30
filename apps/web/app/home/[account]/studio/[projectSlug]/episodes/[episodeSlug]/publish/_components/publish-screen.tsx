@@ -10,33 +10,9 @@ import {
 } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import {
-  AlertCircle,
-  ArrowDown,
-  ArrowUp,
-  Check,
-  ChevronRight,
-  Clock,
-  ExternalLink,
-  Eye,
-  Facebook,
-  Film,
-  Heart,
-  Instagram,
-  Loader2,
-  MessageCircle,
-  Plus,
-  RefreshCw,
   Share2,
-  Smartphone,
-  Trash2,
-  Upload,
-  Video,
-  X,
-  Youtube,
 } from 'lucide-react';
-import { useDropzone } from 'react-dropzone';
 
 import {
   batchTranslateMetadataAction,
@@ -62,190 +38,47 @@ import {
   parseTags,
 } from '@kit/publishing/lib/constants';
 import {
-  deleteEpisodePublishesAction,
   getConnectedPlatformsAction,
   getEpisodePublishesAction,
   publishToAllAction,
   unpublishAction,
 } from '@kit/publishing/server';
-import { Avatar, AvatarFallback, AvatarImage } from '@kit/ui/avatar';
-import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@kit/ui/dialog';
 import { useLlmJob, useLlmWebSocket } from '@kit/ui/hooks';
-import { Input } from '@kit/ui/input';
-import { Label } from '@kit/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@kit/ui/select';
 import { toast } from '@kit/ui/sonner';
-import { Textarea } from '@kit/ui/textarea';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@kit/ui/tooltip';
 
 import {
   uploadPublishVideo,
   uploadWithPresignedUrl,
 } from '~/lib/presigned-upload';
 
+import { DeleteAllDialog } from './delete-all-dialog';
 import { EpisodeSummaryGenerator } from './episode-summary-generator';
+import { FullVideosSection } from './full-videos-section';
 import { MasterAssetManager } from './master-asset-manager';
+import { PublishProgressDialog } from './publish-progress-dialog';
+import { PublishSettingsSidebar } from './publish-settings-sidebar';
+import { PublishedContentSection } from './published-content-section';
+import type {
+  DeleteItemStatus,
+  DeleteStage,
+  Platform,
+  PlatformConfig,
+  PlatformConnection,
+  PlatformUploadStatus,
+  PublishStage,
+  TranslationResult,
+  VideoType,
+} from './publish-types';
+import { ShortsSection } from './shorts-section';
+import { UnpublishDialog } from './unpublish-dialog';
+import { UploadVideoDialog } from './upload-video-dialog';
 
 interface PublishScreenProps {
   episode: EpisodeWithShots;
   refetchEpisode: () => void;
   accountSlug?: string;
   accountId?: string;
-}
-
-// Platform icons and configurations - with light/dark mode compatible colors
-const PLATFORM_CONFIG: Record<
-  string,
-  { name: string; bgColor: string; textColor: string; shortName: string }
-> = {
-  youtube: {
-    name: 'YouTube',
-    bgColor: 'bg-red-500 dark:bg-red-600',
-    textColor: 'text-white',
-    shortName: 'YT',
-  },
-  facebook: {
-    name: 'Facebook',
-    bgColor: 'bg-blue-600 dark:bg-blue-700',
-    textColor: 'text-white',
-    shortName: 'FB',
-  },
-  instagram: {
-    name: 'Instagram',
-    bgColor: 'bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400',
-    textColor: 'text-white',
-    shortName: 'IG',
-  },
-  tiktok: {
-    name: 'TikTok',
-    bgColor: 'bg-gray-900 dark:bg-gray-800',
-    textColor: 'text-white',
-    shortName: 'TT',
-  },
-};
-
-// Platform icon component - uses lucide-react SVG icons with colored badges
-const PlatformIcon = ({
-  platform,
-  size = 'md',
-}: {
-  platform: string;
-  size?: 'sm' | 'md' | 'lg';
-}) => {
-  const config = PLATFORM_CONFIG[platform];
-  const sizeClasses = {
-    sm: 'h-5 w-5',
-    md: 'h-7 w-7',
-    lg: 'h-8 w-8',
-  };
-  const iconSizeClasses = {
-    sm: 'h-2.5 w-2.5',
-    md: 'h-3.5 w-3.5',
-    lg: 'h-4 w-4',
-  };
-
-  const IconComponent = () => {
-    const iconClass = iconSizeClasses[size];
-    switch (platform) {
-      case 'youtube':
-        return <Youtube className={iconClass} />;
-      case 'facebook':
-        return <Facebook className={iconClass} />;
-      case 'instagram':
-        return <Instagram className={iconClass} />;
-      case 'tiktok':
-        // Lucide doesn't have TikTok icon, use text fallback
-        return <span className="text-[9px] font-bold">TT</span>;
-      default:
-        return (
-          <span className="text-[9px] font-bold">
-            {platform.slice(0, 2).toUpperCase()}
-          </span>
-        );
-    }
-  };
-
-  return (
-    <div
-      className={`flex items-center justify-center rounded-lg ${sizeClasses[size]} ${config?.bgColor || 'bg-gray-500'} ${config?.textColor || 'text-white'}`}
-    >
-      <IconComponent />
-    </div>
-  );
-};
-
-type VideoType = 'full' | 'shorts';
-type Platform = 'youtube' | 'facebook' | 'instagram' | 'tiktok';
-
-// Publishing progress types
-type PublishStage =
-  | 'idle'
-  | 'translating'
-  | 'confirm-translation'
-  | 'uploading'
-  | 'complete'
-  | 'error';
-
-type TranslationResult = {
-  id: string; // Unique ID: 'full-video-hi' or 'group-xxx-hi'
-  contentType: 'full-video' | 'shorts-group';
-  contentName: string; // Display name: 'Full Video' or group name
-  language: string;
-  title: string;
-  description: string;
-  status: 'pending' | 'translating' | 'success' | 'error';
-  error?: string;
-  groupId?: string; // For shorts groups
-};
-
-type PlatformUploadStatus = {
-  platform: string;
-  connectionName: string;
-  language: string;
-  contentType: 'full' | 'short';
-  status: 'pending' | 'uploading' | 'success' | 'error';
-  url?: string;
-  error?: string;
-};
-
-// Delete progress types
-type DeleteStage = 'idle' | 'confirm' | 'deleting' | 'complete' | 'error';
-
-type DeleteItemStatus = {
-  publishId: string;
-  platform: string;
-  channelName: string;
-  status: 'pending' | 'deleting' | 'success' | 'error' | 'skipped';
-  error?: string;
-  note?: string; // For platform limitations like Instagram
-};
-
-export interface PlatformConnection {
-  id: string;
-  platform: Platform;
-  platformAccountName: string;
-  avatarUrl: string | null;
-  tokenValid: boolean;
-  language: string;
 }
 
 export function PublishScreen({
@@ -260,7 +93,6 @@ export function PublishScreen({
   const [selectedLanguage, setSelectedLanguage] =
     useState<SupportedLanguage>('en');
   const [isUploading, setIsUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // Publishing progress state
   const [publishStage, setPublishStage] = useState<PublishStage>('idle');
@@ -272,18 +104,7 @@ export function PublishScreen({
   >([]);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [pendingPlatformConfigs, setPendingPlatformConfigs] = useState<
-    Array<{
-      platform: Platform;
-      connectionId: string;
-      contentType: 'full' | 'short';
-      title: string;
-      description: string;
-      tags: string[];
-      thumbnailUrl?: string | null;
-      language: string;
-      shortsGroupId?: string;
-      platformSpecific: Record<string, unknown>;
-    }>
+    Array<PlatformConfig>
   >([]);
 
   // Delete progress state
@@ -870,27 +691,8 @@ export function PublishScreen({
     );
   };
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      setSelectedFile(file);
-    }
-  }, []);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'video/mp4': ['.mp4'],
-      'video/quicktime': ['.mov'],
-      'video/webm': ['.webm'],
-    },
-    maxFiles: 1,
-    maxSize: 500 * 1024 * 1024,
-  });
-
   const handleOpenUploadDialog = (type: VideoType, groupId?: string) => {
     setUploadType(type);
-    setSelectedFile(null);
 
     if (type === 'shorts' && groupId) {
       setSelectedGroupId(groupId);
@@ -908,14 +710,13 @@ export function PublishScreen({
     setUploadDialogOpen(true);
   };
 
-  const handleUpload = async () => {
-    if (!selectedFile) return;
+  const handleUpload = async (file: File) => {
     setIsUploading(true);
 
     try {
       // Use presigned URL upload to bypass Lambda 6MB limit
       const result = await uploadPublishVideo(
-        selectedFile,
+        file,
         episode.id,
         selectedLanguage,
       );
@@ -934,7 +735,6 @@ export function PublishScreen({
                 `Video uploaded for ${LANG_INFO[selectedLanguage].name}`,
               );
               setUploadDialogOpen(false);
-              setSelectedFile(null);
               refetchEpisode();
             }
           } else {
@@ -961,7 +761,6 @@ export function PublishScreen({
                 `Short uploaded for ${LANG_INFO[selectedLanguage].name}`,
               );
               setUploadDialogOpen(false);
-              setSelectedFile(null);
             }
           }
         } catch (error) {
@@ -1010,19 +809,7 @@ export function PublishScreen({
     setIsScheduling(true);
 
     // Build platform configs with scheduled times
-    const platformConfigs: Array<{
-      platform: Platform;
-      connectionId: string;
-      contentType: 'full' | 'short';
-      shortsGroupId?: string; // For shorts - identifies which shorts group
-      title: string;
-      description: string;
-      tags: string[];
-      thumbnailUrl?: string | null;
-      language: string;
-      scheduledAt: string;
-      platformSpecific: Record<string, unknown>;
-    }> = [];
+    const platformConfigs: Array<PlatformConfig & { scheduledAt: string }> = [];
 
     const baseTitle = metadata.title || episode.title;
     const baseDescription = metadata.description || episode.description || '';
@@ -1237,7 +1024,7 @@ export function PublishScreen({
     baseTitle: string,
     baseDescription: string,
   ) => {
-    const platformConfigs: typeof pendingPlatformConfigs = [];
+    const platformConfigs: PlatformConfig[] = [];
 
     // Build a lookup map for translations
     const translationMap = new Map(
@@ -1512,578 +1299,36 @@ export function PublishScreen({
     setPendingDeletePublish(null);
   };
 
-  // Channel badge component
-  const ChannelBadge = ({
-    conn,
-    size = 'sm',
-  }: {
-    conn: PlatformConnection;
-    size?: 'sm' | 'md';
-  }) => {
-    const config = PLATFORM_CONFIG[conn.platform];
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div
-              className={`flex items-center gap-1.5 rounded-full border px-2 py-1 ${size === 'md' ? 'px-3 py-1.5' : ''} ${conn.tokenValid ? 'bg-card border-gray-200' : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'}`}
-            >
-              <Avatar className={size === 'md' ? 'h-5 w-5' : 'h-4 w-4'}>
-                <AvatarImage src={conn.avatarUrl ?? undefined} />
-                <AvatarFallback
-                  className={`${config?.bgColor} text-[10px] text-white`}
-                >
-                  {config?.shortName}
-                </AvatarFallback>
-              </Avatar>
-              <span
-                className={`font-medium ${size === 'md' ? 'text-sm' : 'text-xs'}`}
-              >
-                {conn.platformAccountName}
-              </span>
-              {!conn.tokenValid && (
-                <AlertCircle className="h-3 w-3 text-red-500" />
-              )}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>
-              {config?.name}: {conn.platformAccountName}
-            </p>
-            {!conn.tokenValid && (
-              <p className="text-red-400">Token expired - needs reconnection</p>
-            )}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
-  };
-
-  // Video card with channel destinations and thumbnail upload
-  const VideoCard = ({
-    type,
-    lang,
-    videoUrl,
-    channels,
-  }: {
-    type: VideoType;
-    lang: SupportedLanguage;
-    videoUrl: string;
-    channels: PlatformConnection[];
-  }) => {
-    const relevantChannels =
-      type === 'full'
-        ? channels.filter((c) => ['youtube', 'facebook'].includes(c.platform))
-        : channels.filter((c) =>
-            ['youtube', 'instagram', 'facebook', 'tiktok'].includes(c.platform),
-          );
-
-    const thumbnailUrl = getThumbnailForLanguage(lang);
-    const thumbnailInputId = `thumbnail-input-${type}-${lang}`;
-
-    return (
-      <div className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        <div className="aspect-video w-full bg-black">
-          <video
-            src={videoUrl}
-            controls
-            className="h-full w-full object-contain"
-          />
-        </div>
-        <div className="p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">{LANG_INFO[lang]?.flag}</span>
-              <span className="text-sm font-medium">
-                {LANG_INFO[lang]?.name}
-              </span>
-              <Check className="h-4 w-4 text-green-500" />
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleRemoveVideo(lang)}
-              disabled={isPending}
-              className="text-red-500 opacity-0 transition-opacity group-hover:opacity-100"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Thumbnail Preview and Upload */}
-          <div className="mb-2 flex items-center gap-2">
-            <input
-              type="file"
-              id={thumbnailInputId}
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void handleThumbnailUpload(lang, file);
-              }}
-            />
-            <label
-              htmlFor={thumbnailInputId}
-              className="group/thumb relative h-10 w-16 flex-shrink-0 cursor-pointer overflow-hidden rounded border border-gray-200 hover:border-indigo-400 dark:border-gray-600 dark:hover:border-indigo-500"
-            >
-              {/* Upload spinner overlay */}
-              {uploadingThumbnails[lang] && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50">
-                  <Loader2 className="h-4 w-4 animate-spin text-white" />
-                </div>
-              )}
-
-              {/* Hover overlay */}
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/0 transition-colors group-hover/thumb:bg-black/20">
-                <Upload className="h-4 w-4 text-white opacity-0 transition-opacity group-hover/thumb:opacity-100" />
-              </div>
-
-              {thumbnailUrl ? (
-                <img
-                  src={thumbnailUrl}
-                  alt={`${LANG_INFO[lang]?.name} thumbnail`}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-gray-100 dark:bg-gray-700">
-                  <Film className="h-4 w-4 text-gray-400" />
-                </div>
-              )}
-            </label>
-
-            <label
-              htmlFor={thumbnailInputId}
-              className="flex cursor-pointer items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs text-gray-600 transition-colors hover:bg-indigo-100 hover:text-indigo-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-indigo-900 dark:hover:text-indigo-400"
-            >
-              <Upload className="h-3 w-3" />
-              {thumbnailUrl ? 'Change' : 'Add'} Thumbnail
-            </label>
-          </div>
-
-          {/* Destination channels */}
-          {relevantChannels.length > 0 ? (
-            <div className="flex flex-wrap gap-1">
-              {relevantChannels.map((conn) => (
-                <ChannelBadge key={conn.id} conn={conn} />
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-amber-600 dark:text-amber-400">
-              No channels connected for {LANG_INFO[lang].name}
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <>
       {/* Publishing Progress Modal */}
-      <Dialog
-        open={publishStage !== 'idle'}
-        onOpenChange={(open) => !open && cancelPublish()}
-      >
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {publishStage === 'translating' && (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
-                  Translating Metadata...
-                </>
-              )}
-              {publishStage === 'confirm-translation' && (
-                <>
-                  <Check className="h-5 w-5 text-green-500" />
-                  Confirm Translations
-                </>
-              )}
-              {publishStage === 'uploading' && (
-                <>
-                  <Upload className="h-5 w-5 animate-pulse text-indigo-500" />
-                  Publishing to Platforms...
-                </>
-              )}
-              {publishStage === 'complete' && (
-                <>
-                  <Check className="h-5 w-5 text-green-500" />
-                  Publishing Complete!
-                </>
-              )}
-              {publishStage === 'error' && (
-                <>
-                  <AlertCircle className="h-5 w-5 text-red-500" />
-                  Publishing Failed
-                </>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {/* Translation Stage */}
-            {(publishStage === 'translating' ||
-              publishStage === 'confirm-translation') && (
-              <div className="space-y-3">
-                <p className="text-sm text-gray-500">
-                  {publishStage === 'translating'
-                    ? 'Translating titles and descriptions for each language...'
-                    : 'Review the translated metadata before publishing:'}
-                </p>
-                <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                  {translationResults.map((t) => (
-                    <div
-                      key={t.id}
-                      className="flex items-start gap-3 rounded-md bg-gray-50 p-2 dark:bg-gray-800"
-                    >
-                      <span className="text-xl">
-                        {LANG_INFO[t.language as SupportedLanguage]?.flag ||
-                          '🌐'}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {t.contentName}
-                          </span>
-                          <Badge variant="outline" className="text-[10px]">
-                            {LANG_INFO[t.language as SupportedLanguage]?.name ||
-                              t.language}
-                          </Badge>
-                          {t.contentType === 'shorts-group' && (
-                            <Badge variant="secondary" className="text-[10px]">
-                              <Smartphone className="mr-0.5 h-2.5 w-2.5" />
-                              Short
-                            </Badge>
-                          )}
-                          {t.status === 'pending' && (
-                            <span className="text-xs text-gray-400">
-                              Pending
-                            </span>
-                          )}
-                          {t.status === 'translating' && (
-                            <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />
-                          )}
-                          {t.status === 'success' && (
-                            <Check className="h-3 w-3 text-green-500" />
-                          )}
-                          {t.status === 'error' && (
-                            <X className="h-3 w-3 text-red-500" />
-                          )}
-                        </div>
-                        {t.status === 'success' && t.title && (
-                          <p className="mt-0.5 truncate text-xs text-gray-600 dark:text-gray-400">
-                            {t.title}
-                          </p>
-                        )}
-                        {t.error && (
-                          <p className="mt-0.5 text-xs text-red-500">
-                            {t.error}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Uploading Stage */}
-            {(publishStage === 'uploading' || publishStage === 'complete') && (
-              <div className="space-y-3">
-                <p className="text-sm text-gray-500">
-                  {publishStage === 'uploading'
-                    ? 'Uploading videos to each platform...'
-                    : 'All uploads completed:'}
-                </p>
-                <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                  {platformStatuses.map((s, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-3 rounded-md bg-gray-50 p-2 dark:bg-gray-800"
-                    >
-                      <PlatformIcon platform={s.platform} size="lg" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {s.connectionName}
-                          </span>
-                          <Badge variant="outline" className="text-[10px]">
-                            {s.contentType === 'short' ? 'Short' : 'Full'}
-                          </Badge>
-                          <span className="text-xs">
-                            {LANG_INFO[s.language as SupportedLanguage]?.flag}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {s.status === 'pending' && (
-                          <Clock className="h-4 w-4 text-gray-400" />
-                        )}
-                        {s.status === 'uploading' && (
-                          <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
-                        )}
-                        {s.status === 'success' && (
-                          <>
-                            <Check className="h-4 w-4 text-green-500" />
-                            {s.url && (
-                              <a
-                                href={s.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-indigo-500 hover:text-indigo-600"
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                              </a>
-                            )}
-                          </>
-                        )}
-                        {s.status === 'error' && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <X className="h-4 w-4 text-red-500" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="max-w-xs">{s.error}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Error Stage */}
-            {publishStage === 'error' && publishError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
-                <p className="text-sm text-red-700 dark:text-red-400">
-                  {publishError}
-                </p>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-2 pt-2">
-              {publishStage === 'confirm-translation' && (
-                <>
-                  <Button variant="outline" onClick={cancelPublish}>
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={confirmAndUpload}
-                    className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white"
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Confirm & Publish
-                  </Button>
-                </>
-              )}
-              {(publishStage === 'complete' || publishStage === 'error') && (
-                <Button onClick={cancelPublish}>
-                  {publishStage === 'complete' ? 'Done' : 'Close'}
-                </Button>
-              )}
-              {(publishStage === 'translating' ||
-                publishStage === 'uploading') && (
-                <Button variant="outline" disabled>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Please wait...
-                </Button>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PublishProgressDialog
+        publishStage={publishStage}
+        translationResults={translationResults}
+        platformStatuses={platformStatuses}
+        publishError={publishError}
+        onCancel={cancelPublish}
+        onConfirmUpload={confirmAndUpload}
+      />
 
       {/* Delete Progress Modal */}
-      <Dialog
-        open={deleteStage !== 'idle'}
-        onOpenChange={(open) => !open && cancelDelete()}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {deleteStage === 'confirm' && (
-                <>
-                  <Trash2 className="h-5 w-5 text-red-500" />
-                  Confirm Unpublish
-                </>
-              )}
-              {deleteStage === 'deleting' && (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin text-red-500" />
-                  Unpublishing...
-                </>
-              )}
-              {deleteStage === 'complete' && (
-                <>
-                  <Check className="h-5 w-5 text-green-500" />
-                  Unpublished
-                </>
-              )}
-              {deleteStage === 'error' && (
-                <>
-                  <AlertCircle className="h-5 w-5 text-red-500" />
-                  Unpublish Failed
-                </>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {/* Item Status */}
-            <div className="space-y-2 rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-              {deleteStatuses.map((s) => (
-                <div
-                  key={s.publishId}
-                  className="flex items-center gap-3 rounded-md bg-gray-50 p-2 dark:bg-gray-800"
-                >
-                  <PlatformIcon platform={s.platform} size="lg" />
-                  <div className="min-w-0 flex-1">
-                    <span className="text-sm font-medium">{s.channelName}</span>
-                    {s.note && (
-                      <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
-                        ⚠️ {s.note}
-                      </p>
-                    )}
-                    {s.error && (
-                      <p className="mt-0.5 text-xs text-red-500">{s.error}</p>
-                    )}
-                  </div>
-                  <div>
-                    {s.status === 'pending' && (
-                      <Clock className="h-4 w-4 text-gray-400" />
-                    )}
-                    {s.status === 'deleting' && (
-                      <Loader2 className="h-4 w-4 animate-spin text-red-500" />
-                    )}
-                    {s.status === 'success' && (
-                      <Check className="h-4 w-4 text-green-500" />
-                    )}
-                    {s.status === 'error' && (
-                      <X className="h-4 w-4 text-red-500" />
-                    )}
-                    {s.status === 'skipped' && (
-                      <span className="text-xs text-gray-400">Skipped</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {deleteStage === 'confirm' && (
-              <p className="text-sm text-gray-500">
-                This will delete the content from the platform and remove it
-                from your records.
-              </p>
-            )}
-
-            {deleteStage === 'error' && deleteError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
-                <p className="text-sm text-red-700 dark:text-red-400">
-                  {deleteError}
-                </p>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-2 pt-2">
-              {deleteStage === 'confirm' && (
-                <>
-                  <Button variant="outline" onClick={cancelDelete}>
-                    Cancel
-                  </Button>
-                  <Button onClick={confirmUnpublish} variant="destructive">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Unpublish
-                  </Button>
-                </>
-              )}
-              {(deleteStage === 'complete' || deleteStage === 'error') && (
-                <Button onClick={cancelDelete}>
-                  {deleteStage === 'complete' ? 'Done' : 'Close'}
-                </Button>
-              )}
-              {deleteStage === 'deleting' && (
-                <Button variant="outline" disabled>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Please wait...
-                </Button>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <UnpublishDialog
+        deleteStage={deleteStage}
+        deleteStatuses={deleteStatuses}
+        deleteError={deleteError}
+        onCancel={cancelDelete}
+        onConfirm={confirmUnpublish}
+      />
 
       {/* Delete All Confirmation Dialog */}
-      <Dialog
+      <DeleteAllDialog
         open={deleteAllDialogOpen}
-        onOpenChange={(open) => !isDeletingAll && setDeleteAllDialogOpen(open)}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-red-500" />
-              Delete All Publish Records
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              This will permanently delete all publish records for this episode.
-              This action cannot be undone.
-            </p>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-500">
-              Note: This only removes records from our system. Videos already
-              published to platforms will need to be deleted manually.
-            </p>
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteAllDialogOpen(false)}
-              disabled={isDeletingAll}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={isDeletingAll}
-              onClick={async () => {
-                setIsDeletingAll(true);
-                try {
-                  const result = await deleteEpisodePublishesAction({
-                    episodeId: episode.id,
-                  });
-                  toast.success(
-                    `Deleted ${result.deletedCount} publish record(s)`,
-                  );
-                  refetchPublishes();
-                  setDeleteAllDialogOpen(false);
-                } catch {
-                  toast.error('Failed to delete publish records');
-                } finally {
-                  setIsDeletingAll(false);
-                }
-              }}
-            >
-              {isDeletingAll ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete All
-                </>
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        onOpenChange={setDeleteAllDialogOpen}
+        episodeId={episode.id}
+        isDeletingAll={isDeletingAll}
+        setIsDeletingAll={setIsDeletingAll}
+        onDeleted={() => refetchPublishes()}
+      />
 
       <div className="flex h-full flex-col overflow-auto bg-gray-50/50 p-6 dark:bg-gray-900/50">
         {/* Header */}
@@ -2131,719 +1376,105 @@ export function PublishScreen({
             />
 
             {/* Full Videos Section */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Film className="h-5 w-5 text-indigo-500" />
-                    Full Videos
-                  </CardTitle>
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <ChevronRight className="h-4 w-4" />
-                    {fullVideoChannels.length > 0 ? (
-                      <div className="flex -space-x-1">
-                        {fullVideoChannels.slice(0, 3).map((c) => (
-                          <Avatar
-                            key={c.id}
-                            className="h-5 w-5 border-2 border-white dark:border-gray-800"
-                          >
-                            <AvatarImage src={c.avatarUrl ?? undefined} />
-                            <AvatarFallback
-                              className={`${PLATFORM_CONFIG[c.platform]?.bgColor} text-[8px] text-white`}
-                            >
-                              {PLATFORM_CONFIG[c.platform]?.shortName}
-                            </AvatarFallback>
-                          </Avatar>
-                        ))}
-                        {fullVideoChannels.length > 3 && (
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-200 text-[9px] font-medium dark:bg-gray-700">
-                            +{fullVideoChannels.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-amber-600">No channels</span>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {uploadedFullLanguages.length === 0 ? (
-                  <button
-                    onClick={() => handleOpenUploadDialog('full')}
-                    className="flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-gray-500 transition-colors hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 dark:border-gray-600 dark:bg-gray-800/50"
-                  >
-                    <Upload className="h-8 w-8" />
-                    <span className="font-medium">
-                      Upload Full Video (16:9)
-                    </span>
-                  </button>
-                ) : (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {uploadedFullLanguages.map((lang) => (
-                      <VideoCard
-                        key={lang}
-                        type="full"
-                        lang={lang}
-                        videoUrl={localizedVideos[lang] ?? ''}
-                        channels={channelsByLanguage[lang] ?? []}
-                      />
-                    ))}
-                    {getAvailableLanguages().length > 0 && (
-                      <button
-                        onClick={() => handleOpenUploadDialog('full')}
-                        className="flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 dark:border-gray-600 dark:bg-gray-800/50 dark:hover:border-indigo-500 dark:hover:bg-gray-700/50 dark:hover:text-indigo-400"
-                      >
-                        <Plus className="h-6 w-6" />
-                        <span className="text-sm font-medium">
-                          Add Language
-                        </span>
-                      </button>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <FullVideosSection
+              uploadedFullLanguages={uploadedFullLanguages}
+              localizedVideos={localizedVideos}
+              channelsByLanguage={channelsByLanguage}
+              fullVideoChannels={fullVideoChannels}
+              isPending={isPending}
+              uploadingThumbnails={uploadingThumbnails}
+              getThumbnailForLanguage={getThumbnailForLanguage}
+              getAvailableLanguages={getAvailableLanguages}
+              onOpenUploadDialog={handleOpenUploadDialog}
+              onRemoveVideo={handleRemoveVideo}
+              onThumbnailUpload={handleThumbnailUpload}
+            />
 
             {/* Shorts Section - Grouped */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Smartphone className="h-5 w-5 text-pink-500" />
-                    Shorts / Reels
-                    <Badge variant="outline" className="ml-2 text-xs">
-                      {shortsGroups.length} group
-                      {shortsGroups.length !== 1 ? 's' : ''}
-                    </Badge>
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={addShortsGroup}
-                      className="border-pink-300 text-pink-600 hover:bg-pink-50"
-                    >
-                      <Plus className="mr-1 h-4 w-4" />
-                      New Group
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {shortsGroups.length === 0 ? (
-                  <button
-                    onClick={addShortsGroup}
-                    className="flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-gray-500 transition-colors hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 dark:border-gray-600 dark:bg-gray-800/50"
-                  >
-                    <Upload className="h-8 w-8" />
-                    <span className="font-medium">
-                      Create First Shorts Group
-                    </span>
-                    <span className="text-sm text-gray-400">
-                      Each group has its own metadata that gets translated
-                    </span>
-                  </button>
-                ) : (
-                  shortsGroups.map((group, groupIndex) => (
-                    <div
-                      key={group.id}
-                      className="border-border overflow-hidden rounded-lg border"
-                    >
-                      {/* Group Header */}
-                      <div className="border-border border-b bg-gradient-to-r from-pink-50 to-purple-50 p-3 dark:from-pink-900/20 dark:to-purple-900/20">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-pink-600 dark:text-pink-400">
-                              Group {groupIndex + 1}
-                            </span>
-                            <Input
-                              value={group.name}
-                              onChange={(e) =>
-                                updateGroupMetadata(group.id, {
-                                  name: e.target.value,
-                                })
-                              }
-                              className="h-7 w-32 border-pink-200 text-xs"
-                              placeholder="Group name"
-                            />
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteGroup(group.id)}
-                            className="h-7 w-7 p-0 text-red-500 hover:bg-red-50 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Group Metadata */}
-                      <div className="space-y-2 bg-gray-50/50 p-3 dark:bg-gray-800/30">
-                        <div>
-                          <label className="text-xs font-medium text-gray-500">
-                            Title
-                          </label>
-                          <Input
-                            value={group.title}
-                            onChange={(e) =>
-                              updateGroupMetadata(group.id, {
-                                title: e.target.value,
-                              })
-                            }
-                            className="h-8 text-sm"
-                            placeholder="Title for this shorts group"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium text-gray-500">
-                            Description
-                          </label>
-                          <textarea
-                            value={group.description}
-                            onChange={(e) =>
-                              updateGroupMetadata(group.id, {
-                                description: e.target.value,
-                              })
-                            }
-                            className="border-border bg-card min-h-[60px] w-full rounded-md border p-2 text-sm"
-                            placeholder="Description for this group (will be translated per language)"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Group Videos */}
-                      <div className="p-3">
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          {Object.entries(group.videos).map(
-                            ([lang, url]) =>
-                              url && (
-                                <div
-                                  key={lang}
-                                  className="border-border group/video relative overflow-hidden rounded-lg border"
-                                >
-                                  <video
-                                    src={url}
-                                    className="aspect-[9/16] w-full bg-black object-cover"
-                                    controls
-                                  />
-                                  <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded bg-black/70 px-2 py-1 text-xs text-white">
-                                    <span>
-                                      {
-                                        LANG_INFO[lang as SupportedLanguage]
-                                          ?.flag
-                                      }
-                                    </span>
-                                    <span>
-                                      {
-                                        LANG_INFO[lang as SupportedLanguage]
-                                          ?.name
-                                      }
-                                    </span>
-                                  </div>
-                                  {/* Delete video button */}
-                                  <button
-                                    onClick={() =>
-                                      deleteVideoFromGroup(group.id, lang)
-                                    }
-                                    className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-white opacity-0 transition-colors group-hover/video:opacity-100 hover:bg-red-600"
-                                    title={`Remove ${LANG_INFO[lang as SupportedLanguage]?.name || lang} video`}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              ),
-                          )}
-                          <button
-                            onClick={() =>
-                              handleOpenUploadDialog('shorts', group.id)
-                            }
-                            className="flex aspect-[9/16] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 dark:border-gray-600 dark:bg-gray-800/50 dark:hover:border-pink-500 dark:hover:bg-gray-700/50 dark:hover:text-pink-400"
-                          >
-                            <Plus className="h-6 w-6" />
-                            <span className="text-sm font-medium">
-                              Add Language
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
+            <ShortsSection
+              shortsGroups={shortsGroups}
+              onAddGroup={addShortsGroup}
+              onUpdateGroupMetadata={updateGroupMetadata}
+              onDeleteGroup={deleteGroup}
+              onDeleteVideoFromGroup={deleteVideoFromGroup}
+              onOpenUploadDialog={handleOpenUploadDialog}
+            />
 
             {/* Published Content Section */}
-            {(sortedPublishes ?? []).length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <Check className="h-5 w-5 text-green-500" />
-                      Published Content
-                    </CardTitle>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          setSortOrder((prev) =>
-                            prev === 'asc' ? 'desc' : 'asc',
-                          )
-                        }
-                        title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}
-                      >
-                        {sortOrder === 'asc' ? (
-                          <ArrowUp className="h-4 w-4" />
-                        ) : (
-                          <ArrowDown className="h-4 w-4" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => refetchPublishes()}
-                        disabled={loadingPublishes || fetchingPublishes}
-                        title="Refresh"
-                      >
-                        <RefreshCw
-                          className={`h-4 w-4 ${fetchingPublishes ? 'animate-spin' : ''}`}
-                        />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-500 hover:bg-red-50 hover:text-red-700"
-                        onClick={() => setDeleteAllDialogOpen(true)}
-                        title="Clear All"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {(sortedPublishes ?? []).map((pub) => {
-                      const _config = PLATFORM_CONFIG[pub.platform];
-                      return (
-                        <div
-                          key={pub.id}
-                          className="bg-card flex items-center justify-between rounded-lg border p-3"
-                        >
-                          <div className="flex items-center gap-3">
-                            <PlatformIcon platform={pub.platform} size="lg" />
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium">
-                                  {pub.channelName}
-                                </span>
-                                <Badge
-                                  variant="outline"
-                                  className={
-                                    pub.status === 'published'
-                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                      : pub.status === 'scheduled'
-                                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                                        : pub.status === 'failed'
-                                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                          : 'bg-gray-100 text-gray-700'
-                                  }
-                                >
-                                  {pub.status === 'published' && (
-                                    <Check className="mr-1 h-3 w-3" />
-                                  )}
-                                  {pub.status === 'scheduled' && (
-                                    <Clock className="mr-1 h-3 w-3" />
-                                  )}
-                                  {pub.status === 'failed' && (
-                                    <AlertCircle className="mr-1 h-3 w-3" />
-                                  )}
-                                  {pub.status}
-                                </Badge>
-                                {pub.contentType === 'short' && (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-pink-600"
-                                  >
-                                    Short
-                                  </Badge>
-                                )}
-                              </div>
-                              {pub.analytics && (
-                                <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
-                                  <span className="flex items-center gap-1">
-                                    <Eye className="h-3 w-3" />
-                                    {pub.analytics.views.toLocaleString()}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <Heart className="h-3 w-3" />
-                                    {pub.analytics.likes.toLocaleString()}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <MessageCircle className="h-3 w-3" />
-                                    {pub.analytics.comments.toLocaleString()}
-                                  </span>
-                                </div>
-                              )}
-                              {pub.error && (
-                                <p className="mt-1 text-xs text-red-500">
-                                  {pub.error}
-                                </p>
-                              )}
-                              {/* Show scheduled time for scheduled posts */}
-                              {pub.status === 'scheduled' &&
-                                pub.scheduledAt && (
-                                  <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
-                                    <Clock className="h-3 w-3" />
-                                    Scheduled for{' '}
-                                    {format(new Date(pub.scheduledAt), 'PPp')}
-                                  </p>
-                                )}
-                              {/* Show published time for published posts */}
-                              {pub.status === 'published' &&
-                                pub.publishedAt && (
-                                  <p className="text-muted-foreground mt-1 text-xs">
-                                    Published{' '}
-                                    {format(new Date(pub.publishedAt), 'PPp')}
-                                  </p>
-                                )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {pub.platformUrl && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  window.open(pub.platformUrl ?? '', '_blank')
-                                }
-                                title="Open on platform"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-500 hover:bg-red-50 hover:text-red-700"
-                              onClick={() =>
-                                initiateUnpublish(
-                                  pub.id,
-                                  pub.platform,
-                                  pub.channelName,
-                                )
-                              }
-                              title="Delete from platform"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            <PublishedContentSection
+              sortedPublishes={sortedPublishes}
+              sortOrder={sortOrder}
+              onToggleSortOrder={() =>
+                setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+              }
+              loadingPublishes={loadingPublishes}
+              fetchingPublishes={fetchingPublishes}
+              onRefresh={() => refetchPublishes()}
+              onDeleteAll={() => setDeleteAllDialogOpen(true)}
+              onUnpublish={initiateUnpublish}
+            />
           </div>
 
           {/* Right: Settings & Connected Channels */}
           <div className="space-y-6">
-            {/* Publish Settings */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Publish Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="title">Title</Label>
-                  <Input
-                    id="title"
-                    value={metadata.title}
-                    onChange={(e) =>
-                      setMetadata({ ...metadata, title: e.target.value })
-                    }
-                    placeholder="Episode title"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={metadata.description}
-                    onChange={(e) =>
-                      setMetadata({ ...metadata, description: e.target.value })
-                    }
-                    placeholder="Episode description"
-                    rows={4}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="tags">Tags</Label>
-                  <Input
-                    id="tags"
-                    value={metadata.tags}
-                    onChange={(e) =>
-                      setMetadata({ ...metadata, tags: e.target.value })
-                    }
-                    placeholder="animation, kids, story"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Comma-separated</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Schedule Release */}
-            <ScheduleReleasePanel
-              fullVideoLanguages={uploadedFullLanguages}
-              shortsGroups={shortsGroups.map((g) => ({
-                id: g.id,
-                name: g.name || `Group ${shortsGroups.indexOf(g) + 1}`,
-                title: g.title,
-                description: g.description,
-                videoLanguages: Object.keys(g.videos).filter(
-                  (lang) => g.videos[lang],
-                ),
-              }))}
-              baseMetadata={{
-                title: metadata.title || episode.title,
-                description: metadata.description || episode.description || '',
-              }}
-              onSchedule={handleScheduleRelease}
-              onPublishNow={handlePublish}
-              onTranslate={handleScheduleTranslate}
-              translatedMetadata={scheduledTranslations}
-              isTranslating={isScheduleTranslating}
-              isPublishing={
-                publishStage === 'uploading' || publishStage === 'translating'
-              }
-              isScheduling={isScheduling}
-            />
-
-            {/* Connected Channels */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Connected Channels</CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => refetchConnections()}
-                    disabled={loadingConnections}
-                  >
-                    <RefreshCw
-                      className={`h-4 w-4 ${loadingConnections ? 'animate-spin' : ''}`}
-                    />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {loadingConnections ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                  </div>
-                ) : (connections?.length ?? 0) === 0 ? (
-                  <div className="py-6 text-center">
-                    <p className="mb-3 text-sm text-gray-500">
-                      No channels connected
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        (window.location.href = `/home/${accountSlug}/settings/platforms`)
-                      }
-                    >
-                      Connect Channels
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {Object.entries(channelsByLanguage).map(
-                      ([lang, channels]) => (
-                        <div key={lang}>
-                          <div className="mb-2 flex items-center gap-2">
-                            <span>
-                              {LANG_INFO[lang as SupportedLanguage]?.flag ??
-                                '🌐'}
-                            </span>
-                            <span className="text-sm font-medium">
-                              {LANG_INFO[lang as SupportedLanguage]?.name ??
-                                lang.toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {channels.map((conn) => (
-                              <ChannelBadge
-                                key={conn.id}
-                                conn={conn}
-                                size="md"
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      ),
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      onClick={() =>
-                        (window.location.href = `/home/${accountSlug}/settings/platforms`)
-                      }
-                    >
-                      Manage Channels
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <PublishSettingsSidebar
+              metadata={metadata}
+              onMetadataChange={setMetadata}
+              channelsByLanguage={channelsByLanguage}
+              loadingConnections={loadingConnections}
+              connectionsCount={connections?.length ?? 0}
+              accountSlug={accountSlug}
+              onRefreshConnections={() => refetchConnections()}
+            >
+              {/* Schedule Release - rendered between Settings and Channels */}
+              <ScheduleReleasePanel
+                fullVideoLanguages={uploadedFullLanguages}
+                shortsGroups={shortsGroups.map((g) => ({
+                  id: g.id,
+                  name: g.name || `Group ${shortsGroups.indexOf(g) + 1}`,
+                  title: g.title,
+                  description: g.description,
+                  videoLanguages: Object.keys(g.videos).filter(
+                    (lang) => g.videos[lang],
+                  ),
+                }))}
+                baseMetadata={{
+                  title: metadata.title || episode.title,
+                  description: metadata.description || episode.description || '',
+                }}
+                onSchedule={handleScheduleRelease}
+                onPublishNow={handlePublish}
+                onTranslate={handleScheduleTranslate}
+                translatedMetadata={scheduledTranslations}
+                isTranslating={isScheduleTranslating}
+                isPublishing={
+                  publishStage === 'uploading' || publishStage === 'translating'
+                }
+                isScheduling={isScheduling}
+              />
+            </PublishSettingsSidebar>
           </div>
         </div>
-
-        {/* Upload Dialog */}
-        <Dialog
-          open={uploadDialogOpen}
-          onOpenChange={(open) => {
-            setUploadDialogOpen(open);
-            if (!open) setSelectedFile(null);
-          }}
-        >
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5" />
-                Upload {uploadType === 'full' ? 'Full Video' : 'Short'}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4 py-4">
-              <div>
-                <Label>Select Language</Label>
-                <Select
-                  value={selectedLanguage}
-                  onValueChange={(val) =>
-                    setSelectedLanguage(val as SupportedLanguage)
-                  }
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(uploadType === 'full'
-                      ? getAvailableLanguages()
-                      : getAvailableLanguagesForGroup(selectedGroupId ?? '')
-                    ).map((lang) => (
-                      <SelectItem key={lang} value={lang}>
-                        <span className="mr-2">{LANG_INFO[lang].flag}</span>
-                        {LANG_INFO[lang].name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Show destination channels for selected language */}
-              <div>
-                <Label>Will publish to:</Label>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {(channelsByLanguage[selectedLanguage] ?? [])
-                    .filter((c) =>
-                      uploadType === 'full'
-                        ? ['youtube', 'facebook'].includes(c.platform)
-                        : [
-                            'youtube',
-                            'instagram',
-                            'facebook',
-                            'tiktok',
-                          ].includes(c.platform),
-                    )
-                    .map((conn) => (
-                      <ChannelBadge key={conn.id} conn={conn} size="md" />
-                    ))}
-                  {(channelsByLanguage[selectedLanguage] ?? []).length ===
-                    0 && (
-                    <p className="text-sm text-amber-600">
-                      No channels connected for{' '}
-                      {LANG_INFO[selectedLanguage].name}.
-                      <a
-                        href={`/home/${accountSlug}/settings/platforms`}
-                        className="ml-1 underline"
-                      >
-                        Connect channels
-                      </a>
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <Label>Video File</Label>
-                <div
-                  {...getRootProps()}
-                  className={`mt-1 cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
-                    isDragActive
-                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                      : 'border-gray-300 hover:border-indigo-400 dark:border-gray-600'
-                  }`}
-                >
-                  <input {...getInputProps()} />
-                  {selectedFile ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <Video className="h-5 w-5 text-indigo-500" />
-                      <span className="font-medium">{selectedFile.name}</span>
-                      <span className="text-sm text-gray-500">
-                        ({(selectedFile.size / 1024 / 1024).toFixed(1)} MB)
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedFile(null);
-                        }}
-                        className="ml-2 text-gray-400 hover:text-red-500"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <Upload className="mx-auto mb-2 h-8 w-8 text-gray-400" />
-                      <p className="text-sm text-gray-500">
-                        Drag & drop, or click to select
-                      </p>
-                      <p className="mt-1 text-xs text-gray-400">
-                        {uploadType === 'full' ? '16:9' : '9:16'} • MP4, MOV,
-                        WebM • Max 500MB
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <Button
-                onClick={handleUpload}
-                disabled={!selectedFile || isUploading || isPending}
-                className="w-full"
-              >
-                {isUploading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload
-                  </>
-                )}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
+
+      {/* Upload Dialog */}
+      <UploadVideoDialog
+        open={uploadDialogOpen}
+        onOpenChange={setUploadDialogOpen}
+        uploadType={uploadType}
+        selectedLanguage={selectedLanguage}
+        onLanguageChange={setSelectedLanguage}
+        availableLanguages={
+          uploadType === 'full'
+            ? getAvailableLanguages()
+            : getAvailableLanguagesForGroup(selectedGroupId ?? '')
+        }
+        channelsForLanguage={channelsByLanguage[selectedLanguage] ?? []}
+        accountSlug={accountSlug}
+        isUploading={isUploading}
+        isPending={isPending}
+        onUpload={handleUpload}
+      />
     </>
   );
 }

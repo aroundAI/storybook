@@ -10,7 +10,7 @@ import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { DEFAULT_VOICE_SETTINGS } from '../lib/constants';
+
 import type {
   AutoAssignVoicesResponse,
   AutoAssignVoicesSchemaType,
@@ -348,38 +348,34 @@ export const bulkAssignVoiceAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
+    // Batch update all characters in a single query
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (client as any)
+      .from('character_details')
+      .update({ elevenlabs_voice_id: data.providerVoiceId })
+      .in('asset_id', data.characterAssetIds);
+
     const results: BulkAssignVoiceResponse['results'] = [];
     let assignedCount = 0;
     let failedCount = 0;
 
-    // Process each character
-    for (const characterAssetId of data.characterAssetIds) {
-      try {
-        await saveVoiceProfileAction({
-          characterAssetId,
-          providerVoiceId: data.providerVoiceId,
-          provider: data.provider,
-          settings: data.settings,
-        });
-
-        results.push({
-          characterAssetId,
-          success: true,
-        });
-        assignedCount++;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error';
+    if (updateError) {
+      logger.error(
+        { ...ctx, error: updateError },
+        'Batch voice assignment failed',
+      );
+      for (const characterAssetId of data.characterAssetIds) {
         results.push({
           characterAssetId,
           success: false,
-          error: errorMessage,
+          error: updateError.message,
         });
         failedCount++;
-        logger.warn(
-          { ...ctx, characterAssetId, error: errorMessage },
-          'Failed to assign voice to character',
-        );
+      }
+    } else {
+      for (const characterAssetId of data.characterAssetIds) {
+        results.push({ characterAssetId, success: true });
+        assignedCount++;
       }
     }
 
@@ -387,6 +383,8 @@ export const bulkAssignVoiceAction = enhanceAction(
       { ...ctx, assignedCount, failedCount },
       'Bulk voice assignment completed',
     );
+
+    revalidatePath('/home/[account]/studio/[projectId]', 'page');
 
     return {
       success: failedCount === 0,
@@ -468,6 +466,9 @@ export const autoAssignVoicesAction = enhanceAction(
     let femaleIndex = 0;
     let neutralIndex = 0;
 
+    // Build voice assignments map for all characters first
+    const voiceMap = new Map<string, { voiceId: string; voiceName: string; reason: string }>();
+
     for (const characterAssetId of data.characterAssetIds) {
       const charDetails = charDetailsMap.get(characterAssetId);
 
@@ -503,29 +504,11 @@ export const autoAssignVoicesAction = enhanceAction(
       }
 
       if (matchedVoice) {
-        try {
-          await saveVoiceProfileAction({
-            characterAssetId,
-            providerVoiceId: matchedVoice.id,
-            provider: 'elevenlabs',
-            settings: DEFAULT_VOICE_SETTINGS,
-          });
-
-          results.push({
-            characterAssetId,
-            assignedVoiceId: matchedVoice.id,
-            assignedVoiceName: matchedVoice.name,
-            reason,
-          });
-          assignedCount++;
-        } catch (error) {
-          results.push({
-            characterAssetId,
-            assignedVoiceId: null,
-            assignedVoiceName: null,
-            reason: `Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          });
-        }
+        voiceMap.set(characterAssetId, {
+          voiceId: matchedVoice.id,
+          voiceName: matchedVoice.name,
+          reason,
+        });
       } else {
         results.push({
           characterAssetId,
@@ -533,6 +516,42 @@ export const autoAssignVoicesAction = enhanceAction(
           assignedVoiceName: null,
           reason: 'No voices available',
         });
+      }
+    }
+
+    // Batch update all matched characters by voice ID to minimize queries
+    const byVoiceId = new Map<string, string[]>();
+    for (const [assetId, mapping] of voiceMap) {
+      const existing = byVoiceId.get(mapping.voiceId) ?? [];
+      existing.push(assetId);
+      byVoiceId.set(mapping.voiceId, existing);
+    }
+
+    for (const [voiceId, assetIds] of byVoiceId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (client as any)
+        .from('character_details')
+        .update({ elevenlabs_voice_id: voiceId })
+        .in('asset_id', assetIds);
+
+      for (const assetId of assetIds) {
+        const mapping = voiceMap.get(assetId)!;
+        if (updateError) {
+          results.push({
+            characterAssetId: assetId,
+            assignedVoiceId: null,
+            assignedVoiceName: null,
+            reason: `Failed to save: ${updateError.message}`,
+          });
+        } else {
+          results.push({
+            characterAssetId: assetId,
+            assignedVoiceId: mapping.voiceId,
+            assignedVoiceName: mapping.voiceName,
+            reason: mapping.reason,
+          });
+          assignedCount++;
+        }
       }
     }
 
