@@ -12,6 +12,7 @@ import { withI18n } from '~/lib/i18n/with-i18n';
 
 import { CollapsibleSeasonSection } from './_components/collapsible-season-section';
 import { CreateEpisodeDialog } from './_components/create-episode-dialog';
+import { CreateEpisodeWizardWrapper } from './_components/create-episode-wizard-wrapper';
 import { EpisodeListItem } from './_components/episode-list-item';
 import { EpisodesZeroState } from './_components/episodes-zero-state';
 import { SeasonGeneratorDialog } from './_components/season-generator-dialog';
@@ -227,6 +228,16 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
               projectId={project.id}
               projectSlug={project.slug ?? project.id}
               account={account}
+            />
+            <CreateEpisodeWizardWrapper
+              projectId={project.id}
+              projectSlug={project.slug ?? project.id}
+              account={account}
+              seasons={(seasons ?? []).map((s) => ({
+                id: s.id,
+                name: s.name ?? `Season ${s.number}`,
+                number: s.number,
+              }))}
             />
           </div>
         </div>

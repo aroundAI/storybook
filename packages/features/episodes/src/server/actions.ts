@@ -11,6 +11,8 @@ import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { z } from 'zod';
+
 import {
   CreateEpisodeSchema,
   DeleteEpisodeSchema,
@@ -20,6 +22,9 @@ import {
   UpdateEpisodeSchema,
   UpdateEpisodeStatusSchema,
 } from '../lib/schemas';
+import {
+  CreateEpisodeWithContextSchema,
+} from '../lib/schemas/create-episode-wizard.schema';
 import { generateEpisodeSlug } from '../lib/slug-utils';
 import {
   InvalidStatusTransitionError,
@@ -162,6 +167,325 @@ export const createEpisodeAction = enhanceAction(
   },
   {
     schema: CreateEpisodeSchema,
+  },
+);
+
+/**
+ * Create an episode with full context from the Enhanced Create Episode Wizard.
+ * Supports attaching facts, creative direction, and optional story auto-generation.
+ */
+export const createEpisodeWithContextAction = enhanceAction(
+  async (data) => {
+    const logger = await getLogger();
+    const ctx = { name: 'episodes.createWithContext', projectId: data.projectId };
+
+    logger.info(ctx, 'Creating episode with context');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      logger.warn(ctx, 'Unauthorized episode creation attempt');
+      throw new Error('Authentication required');
+    }
+
+    // 1. Get project for account_id
+    const { data: project } = await client
+      .from('projects')
+      .select('account_id')
+      .eq('id', data.projectId)
+      .single();
+
+    if (!project) {
+      throw new Error('Project not found or access denied');
+    }
+
+    // 2. Resolve or create season
+    let seasonId = data.seasonId ?? null;
+
+    if (data.newSeasonName && !seasonId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: existingSeasons } = await (client as any)
+        .from('seasons')
+        .select('number')
+        .eq('project_id', data.projectId)
+        .is('deleted_at', null)
+        .order('number', { ascending: false })
+        .limit(1);
+
+      const nextSeasonNumber = (existingSeasons?.[0]?.number ?? 0) + 1;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: newSeason, error: seasonError } = await (client as any)
+        .from('seasons')
+        .insert({
+          project_id: data.projectId,
+          number: nextSeasonNumber,
+          name: data.newSeasonName,
+        })
+        .select('id')
+        .single();
+
+      if (seasonError) {
+        logger.error({ ...ctx, error: seasonError }, 'Failed to create season');
+        throw new Error('Failed to create season');
+      }
+
+      seasonId = newSeason.id;
+      logger.info({ ...ctx, seasonId }, 'Created new season inline');
+    }
+
+    // 3. Auto-assign episode number
+    const MAX_RETRIES = 3;
+    let episode;
+    let lastError;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: existingEpisodes } = await (client as any)
+        .from('episodes')
+        .select('number')
+        .eq('project_id', data.projectId)
+        .is('deleted_at', null)
+        .order('number', { ascending: false })
+        .limit(1);
+
+      const episodeNumber = (existingEpisodes?.[0]?.number ?? 0) + 1;
+      const slug = generateEpisodeSlug(episodeNumber, data.title);
+
+      // Build story_data with creative direction
+      const storyData: Record<string, unknown> = {};
+      if (data.hook) {
+        storyData.premise = data.hook;
+        storyData.logline = data.hook;
+      }
+
+      // Build metadata with creative direction
+      const metadata: Record<string, unknown> = {};
+      if (data.visualTone) metadata.visual_tone = data.visualTone;
+      if (data.toneNotes) metadata.tone_notes = data.toneNotes;
+      if (data.contentStyle) metadata.content_style = data.contentStyle;
+      if (data.targetDuration) metadata.target_duration = data.targetDuration;
+      if (data.factIds?.length) metadata.source_fact_ids = data.factIds;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: insertedEpisode, error } = await (client as any)
+        .from('episodes')
+        .insert({
+          project_id: data.projectId,
+          season_id: seasonId,
+          number: episodeNumber,
+          title: data.title,
+          slug,
+          description: data.description ?? null,
+          status: 'draft',
+          story_data: Object.keys(storyData).length > 0 ? storyData : null,
+          metadata,
+          version: 1,
+          target_duration_seconds: data.targetDuration ?? null,
+        })
+        .select()
+        .single();
+
+      if (!error) {
+        episode = insertedEpisode;
+        break;
+      }
+
+      const isUniqueViolation =
+        error.code === '23505' || error.message?.includes('unique');
+
+      if (isUniqueViolation && attempt < MAX_RETRIES - 1) {
+        logger.warn(
+          { ...ctx, attempt, error },
+          'Episode number conflict, retrying',
+        );
+        continue;
+      }
+
+      lastError = error;
+      break;
+    }
+
+    if (!episode) {
+      logger.error({ ...ctx, error: lastError }, 'Failed to create episode');
+      throw new Error(
+        `Failed to create episode: ${lastError?.message ?? 'Unknown error'}`,
+      );
+    }
+
+    // 4. Link facts via episode_facts junction table
+    if (data.factIds && data.factIds.length > 0) {
+      const factLinkRows = data.factIds.map((factId) => ({
+        episode_id: episode.id,
+        fact_id: factId,
+        linked_by: user.id,
+      }));
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: factLinkError } = await (client as any)
+        .from('episode_facts')
+        .upsert(factLinkRows, { onConflict: 'episode_id,fact_id' });
+
+      if (factLinkError) {
+        logger.warn(
+          { ...ctx, error: factLinkError },
+          'Failed to link facts to episode (non-fatal)',
+        );
+      } else {
+        logger.info(
+          { ...ctx, factCount: data.factIds.length },
+          'Linked facts to episode',
+        );
+      }
+    }
+
+    // 5. Create audit log
+    const networkContext = await extractNetworkContext();
+
+    await createAuditLog({
+      accountId: project.account_id,
+      userId: user.id,
+      action: 'create',
+      objectType: 'episode',
+      objectId: episode.id,
+      objectName: episode.title,
+      after: episode,
+      scopes: [
+        { type: 'account', id: project.account_id },
+        { type: 'project', id: data.projectId },
+        { type: 'episode', id: episode.id },
+      ],
+      ...networkContext,
+    });
+
+    // 6. Optionally queue story generation immediately
+    if (data.autoGenerateStory && data.hook) {
+      try {
+        const { queueLlmJob } = await import('@kit/prompt-engine/server');
+
+        // Create generation job entry
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (client as any)
+          .from('generation_jobs')
+          .insert({
+            reference_type: 'episode',
+            reference_id: episode.id,
+            job_type: 'story',
+            status: 'queued',
+            account_id: project.account_id,
+            project_id: data.projectId,
+            idempotency_key: `story-${episode.id}-${Date.now()}`,
+            input_data: { episodeId: episode.id, title: data.title },
+          });
+
+        await queueLlmJob({
+          jobType: 'story-generation',
+          userId: user.id,
+          payload: {
+            episodeId: episode.id,
+            title: data.title,
+            logline: data.hook,
+            targetDuration: data.targetDuration ?? 300,
+            contentStyle: data.contentStyle ?? 'dialogue-heavy',
+            version: 1,
+            accountId: project.account_id,
+            userId: user.id,
+            projectId: data.projectId,
+          },
+        });
+
+        logger.info({ ...ctx, episodeId: episode.id }, 'Story generation queued');
+      } catch (queueError) {
+        logger.warn(
+          { ...ctx, error: queueError },
+          'Failed to queue story generation (non-fatal)',
+        );
+      }
+    }
+
+    logger.info({ ...ctx, episodeId: episode.id }, 'Episode created with context');
+    revalidatePath('/home/[account]/studio/[projectSlug]/episodes', 'page');
+
+    return {
+      success: true,
+      data: episode as Episode,
+      seasonId,
+      autoGenerateQueued: data.autoGenerateStory === true && !!data.hook,
+    };
+  },
+  {
+    schema: CreateEpisodeWithContextSchema,
+  },
+);
+
+/**
+ * Get verified facts for the Create Episode Wizard's fact picker.
+ * Returns facts grouped by source for easy browsing.
+ */
+export const getProjectFactsForWizardAction = enhanceAction(
+  async (
+    data: { projectId: string },
+  ): Promise<{
+    success: true;
+    data: {
+      facts: Array<{
+        id: string;
+        claim: string;
+        category: string | null;
+        sourceTitle: string | null;
+        sourceCitation: string | null;
+        confidenceScore: number | null;
+      }>;
+      total: number;
+    };
+  }> => {
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: facts, error } = await (client as any)
+      .from('verified_facts')
+      .select(
+        'id, claim, category, source_title, source_citation, confidence_score',
+      )
+      .eq('project_id', data.projectId)
+      .in('verification_status', ['verified', 'pending_review'])
+      .order('category', { ascending: true })
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (error) {
+      throw new Error('Failed to fetch facts');
+    }
+
+    const mappedFacts = (facts ?? []).map(
+      (f: Record<string, unknown>) => ({
+        id: f.id as string,
+        claim: f.claim as string,
+        category: (f.category as string) ?? null,
+        sourceTitle: (f.source_title as string) ?? null,
+        sourceCitation: (f.source_citation as string) ?? null,
+        confidenceScore: (f.confidence_score as number) ?? null,
+      }),
+    );
+
+    return {
+      success: true,
+      data: {
+        facts: mappedFacts,
+        total: mappedFacts.length,
+      },
+    };
+  },
+  {
+    schema: z.object({
+      projectId: z.string().uuid(),
+    }),
   },
 );
 

@@ -341,6 +341,10 @@ export async function executeLLM<T = unknown>(
       provider: provider as LLMProvider,
       model,
       apiKey: await getApiKeyForProvider(provider),
+      vertexai:
+        provider === 'gemini' && process.env.GEMINI_VERTEXAI === 'true',
+      project: process.env.GOOGLE_CLOUD_PROJECT,
+      location: process.env.GOOGLE_CLOUD_LOCATION,
     });
 
     // 4. Execute LLM call (use config from JSON or override)

@@ -17,6 +17,7 @@ import { commitStoryCanon } from '../utils/commit-story-canon';
 import {
   buildEpisodeContext,
   formatCharactersForPrompt,
+  formatFactsForPrompt,
   formatLocationsForPrompt,
   formatPreviousEpisodesForPrompt,
   formatRecurringElementsForPrompt,
@@ -125,9 +126,13 @@ export async function processStoryGeneration(
       ? formatRecurringElementsForPrompt(episodeContext.recurringElements)
       : undefined;
 
+    // Format linked verified facts for fact-driven content
+    const factsContext = formatFactsForPrompt(episodeContext.episodeFacts);
+
     console.log(
       `[Story Generation] Context built: ${episodeContext.characters.length} characters, ${episodeContext.locations.length} locations` +
-        (recurringElementContext ? ', recurring element: yes' : ''),
+        (recurringElementContext ? ', recurring element: yes' : '') +
+        (factsContext ? `, facts: ${episodeContext.episodeFacts.length}` : ''),
     );
 
     // 3. Run the Stage 1 Story Orchestrator
@@ -159,6 +164,7 @@ export async function processStoryGeneration(
         seasonContext,
         previousEpisodesContext,
         visualStyle: episodeContext.visualStyle,
+        verifiedFacts: factsContext || undefined,
         recurringElementsContext: recurringElementContext,
         threadCandidatesContext,
         ideationThemes: data.themes,

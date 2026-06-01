@@ -1,0 +1,34 @@
+{
+    "slug": "fact-extraction",
+    "name": "Fact Extraction",
+    "version": "1.0",
+    "description": "Extracts discrete, verifiable factual claims from content",
+    "variables": {
+        "content": {
+            "type": "string",
+            "required": true
+        },
+        "source_title": {
+            "type": "string",
+            "required": true
+        },
+        "source_citation": {
+            "type": "string",
+            "required": true,
+            "default": ""
+        }
+    },
+    "llm": {
+        "provider": "gemini",
+        "model": "gemini-3.5-flash",
+        "max_tokens": 4000,
+        "temperature": 0.2,
+        "response_format": "json_object"
+    },
+    "system_prompt": "You are a fact extraction specialist. Extract discrete, verifiable factual claims from the provided content. Each fact should be a single, specific, falsifiable statement. Categorize each fact appropriately. Do NOT extract opinions, speculation, or vague generalizations.",
+    "user_prompt": "Extract all factual claims from the following content. Source: {{source_title}}, Citation: {{source_citation}}\n\n---\n{{content}}\n---\n\nExtract each discrete factual claim as a JSON array.",
+    "output": {
+        "type": "array",
+        "schema_for_llm": "[{\"claim\": \"The full factual claim as stated\", \"simplified_claim\": \"A shorter version (max 100 chars)\", \"category\": \"historical|scientific|statistical|biographical|geographical|political|economic|cultural|legal|medical|technological|other\", \"confidence_score\": 0.0-1.0, \"source_citation\": \"Citation if mentioned in text\"}]"
+    }
+}

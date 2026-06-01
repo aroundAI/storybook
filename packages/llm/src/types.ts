@@ -38,11 +38,15 @@ export interface ChatMessage {
 export interface LLMConfig {
   provider: LLMProvider;
   model: string;
-  apiKey: string;
+  apiKey?: string;
   baseUrl?: string; // Optional base URL for custom/local providers
   temperature?: number;
   maxTokens?: number;
   topP?: number;
+  // Gemini-specific: Vertex AI / Cloud Console configuration
+  vertexai?: boolean; // Enable Vertex AI Express mode (Cloud Console API key)
+  project?: string; // GCP project ID (e.g., 'stbook')
+  location?: string; // GCP region (default: 'us-central1')
 }
 
 /**

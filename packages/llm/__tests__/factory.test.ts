@@ -21,10 +21,15 @@ describe('LLM Factory', () => {
     delete process.env.OPENAI_API_KEY;
     delete process.env.ANTHROPIC_API_KEY;
     delete process.env.GOOGLE_API_KEY;
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.DEEPSEEK_API_KEY;
     delete process.env.LOCAL_API_URL;
     delete process.env.LLM_TEMPERATURE;
     delete process.env.LLM_MAX_TOKENS;
     delete process.env.LLM_TOP_P;
+    delete process.env.GEMINI_VERTEXAI;
+    delete process.env.GOOGLE_CLOUD_PROJECT;
+    delete process.env.GOOGLE_CLOUD_LOCATION;
   });
 
   afterEach(() => {
@@ -94,6 +99,21 @@ describe('LLM Factory', () => {
         process.env.GOOGLE_API_KEY = 'AIza-key';
         const config = loadConfigFromEnv();
         expect(config.apiKey).toBe('AIza-key');
+      });
+
+      it('should prefer GEMINI_API_KEY over GOOGLE_API_KEY for gemini', () => {
+        process.env.LLM_PROVIDER = 'gemini';
+        process.env.GEMINI_API_KEY = 'AIza-gemini-key';
+        process.env.GOOGLE_API_KEY = 'AIza-google-key';
+        const config = loadConfigFromEnv();
+        expect(config.apiKey).toBe('AIza-gemini-key');
+      });
+
+      it('should fallback to GOOGLE_API_KEY when GEMINI_API_KEY not set', () => {
+        process.env.LLM_PROVIDER = 'gemini';
+        process.env.GOOGLE_API_KEY = 'AIza-google-only';
+        const config = loadConfigFromEnv();
+        expect(config.apiKey).toBe('AIza-google-only');
       });
 
       it('should set "not-needed" for local provider', () => {
@@ -451,6 +471,76 @@ describe('LLM Factory', () => {
       expect(config.temperature).toBe(0);
       expect(config.maxTokens).toBe(0);
       expect(config.topP).toBe(0);
+    });
+  });
+
+  describe('Vertex AI Express Mode', () => {
+    describe('loadConfigFromEnv', () => {
+      it('should set vertexai=true when GEMINI_VERTEXAI=true', () => {
+        process.env.LLM_PROVIDER = 'gemini';
+        process.env.GEMINI_API_KEY = 'AIza-cloud-key';
+        process.env.GEMINI_VERTEXAI = 'true';
+        const config = loadConfigFromEnv();
+        expect(config.vertexai).toBe(true);
+        expect(config.apiKey).toBe('AIza-cloud-key');
+      });
+
+      it('should set vertexai=false when GEMINI_VERTEXAI not set', () => {
+        process.env.LLM_PROVIDER = 'gemini';
+        process.env.GEMINI_API_KEY = 'AIza-studio-key';
+        const config = loadConfigFromEnv();
+        expect(config.vertexai).toBe(false);
+      });
+
+      it('should not set vertexai for non-gemini providers', () => {
+        process.env.LLM_PROVIDER = 'openai';
+        process.env.OPENAI_API_KEY = 'sk-test';
+        process.env.GEMINI_VERTEXAI = 'true';
+        const config = loadConfigFromEnv();
+        expect(config.vertexai).toBe(false);
+      });
+
+      it('should read GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION', () => {
+        process.env.LLM_PROVIDER = 'gemini';
+        process.env.GEMINI_API_KEY = 'AIza-cloud-key';
+        process.env.GEMINI_VERTEXAI = 'true';
+        process.env.GOOGLE_CLOUD_PROJECT = 'stbook';
+        process.env.GOOGLE_CLOUD_LOCATION = 'us-east1';
+        const config = loadConfigFromEnv();
+        expect(config.project).toBe('stbook');
+        expect(config.location).toBe('us-east1');
+      });
+    });
+
+    describe('createLLMClient with Vertex AI Express', () => {
+      it('should create Gemini client with vertexai=true and apiKey', () => {
+        const client = createLLMClient({
+          provider: 'gemini',
+          model: 'gemini-2.5-flash',
+          apiKey: 'AIza-cloud-key',
+          vertexai: true,
+        });
+        expect(client.getProvider()).toBe('gemini');
+        expect(client.getModel()).toBe('gemini-2.5-flash');
+      });
+
+      it('should still create standard Gemini client without vertexai', () => {
+        const client = createLLMClient({
+          provider: 'gemini',
+          model: 'gemini-1.5-flash',
+          apiKey: 'AIza-studio-key',
+        });
+        expect(client.getProvider()).toBe('gemini');
+        expect(client.getModel()).toBe('gemini-1.5-flash');
+      });
+
+      it('should create Gemini client from env with GEMINI_VERTEXAI=true', () => {
+        process.env.LLM_PROVIDER = 'gemini';
+        process.env.GEMINI_API_KEY = 'AIza-cloud-key';
+        process.env.GEMINI_VERTEXAI = 'true';
+        const client = createLLMClient();
+        expect(client.getProvider()).toBe('gemini');
+      });
     });
   });
 });
