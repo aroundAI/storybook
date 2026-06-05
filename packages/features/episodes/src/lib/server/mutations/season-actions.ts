@@ -253,7 +253,7 @@ export const updateSeasonAction = enhanceAction(
       .from('seasons')
       .select(
         `
-        id, project_id, number, name, description, version,
+        id, project_id, number, name, description,
         created_at, updated_at, deleted_at,
         project:projects(account_id)
       `,
@@ -353,7 +353,7 @@ export const deleteSeasonAction = enhanceAction(
         .from('seasons')
         .select(
           `
-          id, project_id, number, name, description, version,
+          id, project_id, number, name, description,
           created_at, updated_at, deleted_at,
           project:projects(account_id)
         `,
