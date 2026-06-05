@@ -18,10 +18,12 @@ import canonExtraction from '../../../../packages/features/prompt-engine/src/pro
 import batchTranslateMetadata from '../../../../packages/features/prompt-engine/src/prompts/publishing/batch-translate-metadata.json';
 import sceneShot from '../../../../packages/features/prompt-engine/src/prompts/story-generation/scene-shot-generation.json';
 import screenplay from '../../../../packages/features/prompt-engine/src/prompts/story-generation/screenplay-conversion.json';
+import screenplayRefinement from '../../../../packages/features/prompt-engine/src/prompts/story-generation/screenplay-refinement.json';
 import season from '../../../../packages/features/prompt-engine/src/prompts/story-generation/season-generation.json';
 import seasonOutline from '../../../../packages/features/prompt-engine/src/prompts/story-generation/season-outline.json';
 import storyGen from '../../../../packages/features/prompt-engine/src/prompts/story-generation/story-generation.json';
 import storyIdeation from '../../../../packages/features/prompt-engine/src/prompts/story-generation/story-ideation.json';
+import storyRefinement from '../../../../packages/features/prompt-engine/src/prompts/story-generation/story-refinement.json';
 
 export interface PromptTemplate {
   slug?: string;
@@ -73,6 +75,8 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   'story-ideation': storyIdeation as PromptTemplate,
   'story-generation': storyGen as PromptTemplate,
   'screenplay-conversion': screenplay as PromptTemplate,
+  'story-refinement': storyRefinement as PromptTemplate,
+  'screenplay-refinement': screenplayRefinement as PromptTemplate,
 
   'scene-shot-generation': sceneShot as PromptTemplate,
   // Nested slug aliases (story-generation/xyz)
@@ -81,6 +85,8 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   'story-generation/story-ideation': storyIdeation as PromptTemplate,
   'story-generation/story-generation': storyGen as PromptTemplate,
   'story-generation/screenplay-conversion': screenplay as PromptTemplate,
+  'story-generation/story-refinement': storyRefinement as PromptTemplate,
+  'story-generation/screenplay-refinement': screenplayRefinement as PromptTemplate,
 
   'story-generation/scene-shot-generation': sceneShot as PromptTemplate,
   // Analytics

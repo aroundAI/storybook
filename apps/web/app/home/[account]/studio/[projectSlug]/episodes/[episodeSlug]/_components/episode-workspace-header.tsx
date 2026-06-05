@@ -81,7 +81,7 @@ export function EpisodeWorkspaceHeader() {
             episodeId={episode.id}
             episodeTitle={episode.title}
             episodeVersion={episode.version}
-            projectId={projectId}
+            projectSlug={projectSlug}
             account={accountSlug}
           />
         </div>

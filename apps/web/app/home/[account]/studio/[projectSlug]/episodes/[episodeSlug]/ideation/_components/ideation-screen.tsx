@@ -169,7 +169,7 @@ export function IdeationScreen({
 
             <div className="flex items-center gap-3">
               <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                {premiseLength}/500
+                {premiseLength}/2000
               </span>
               <Button
                 type="submit"

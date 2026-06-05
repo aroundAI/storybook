@@ -77,8 +77,22 @@ interface AnalysisResult {
   premise: string;
   tone?: string | null;
   target_audience?: string | null;
-  characters: Array<{ name: string; role: string; description: string }>;
-  locations: Array<{ name: string; setting: string; description: string }>;
+  characters: Array<{
+    name: string;
+    role: string;
+    description: string;
+    physicalDescription?: string;
+    clothingStyle?: string;
+    mannerisms?: string;
+  }>;
+  locations: Array<{
+    name: string;
+    setting: string;
+    description: string;
+    visualDescription?: string;
+    timeOfDay?: string | null;
+    weather?: string | null;
+  }>;
   episodes: Array<{
     number: number;
     title: string;
@@ -477,6 +491,9 @@ export function SeasonGeneratorDialog({
             name: c.name,
             description: c.description,
             role: c.role,
+            physicalDescription: c.physicalDescription,
+            clothingStyle: c.clothingStyle,
+            mannerisms: c.mannerisms,
           }));
 
         const locationsToCreate = analysis.locations
@@ -485,6 +502,9 @@ export function SeasonGeneratorDialog({
             name: l.name,
             description: l.description,
             setting: l.setting,
+            visualDescription: l.visualDescription,
+            timeOfDay: l.timeOfDay,
+            weather: l.weather,
           }));
 
         const charMappingBackend: Record<string, string> = {};
@@ -533,10 +553,13 @@ export function SeasonGeneratorDialog({
             setShowPremise(false);
           }, 500);
         } else {
+          console.error('[SeasonGenerator] Action returned non-success:', result);
           toast.error('Failed to generate season');
         }
-      } catch {
-        toast.error('Failed to generate season');
+      } catch (err) {
+        console.error('[SeasonGenerator] Generation failed:', err);
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        toast.error(`Failed to generate season: ${message}`);
       }
     });
   };

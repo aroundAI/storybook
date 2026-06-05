@@ -8,9 +8,11 @@ import {
   ChevronRight,
   Loader2,
   MapPin,
+  MessageSquare,
   Users,
 } from 'lucide-react';
 
+import { RefinementChat } from '@kit/episodes/components';
 import { generateShotListAction } from '@kit/episodes/server';
 import type {
   EpisodeWithShots,
@@ -48,6 +50,7 @@ export function ScreenplayScreen({
   const [isPending, _startTransition] = useTransition();
   const [activeSceneNumber, setActiveSceneNumber] = useState(1);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<'info' | 'refine'>('info');
   const contentRef = useRef<HTMLDivElement>(null);
 
   const scenes = parseScenes(episode.screenplayData);
@@ -299,10 +302,42 @@ export function ScreenplayScreen({
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Characters & locations
               </p>
+              {/* Tab Navigation */}
+              <div className="mt-3 flex border-b border-white/10">
+                <button
+                  onClick={() => setSidebarTab('info')}
+                  className={cn(
+                    'flex-1 px-3 py-2 text-sm font-medium transition-colors',
+                    sidebarTab === 'info'
+                      ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
+                  )}
+                >
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Users className="h-3.5 w-3.5" />
+                    Info
+                  </div>
+                </button>
+                <button
+                  onClick={() => setSidebarTab('refine')}
+                  className={cn(
+                    'flex-1 px-3 py-2 text-sm font-medium transition-colors',
+                    sidebarTab === 'refine'
+                      ? 'border-b-2 border-amber-500 text-amber-600 dark:text-amber-400'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
+                  )}
+                >
+                  <div className="flex items-center justify-center gap-1.5">
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    Refine
+                  </div>
+                </button>
+              </div>
             </div>
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-4">
+              {sidebarTab === 'info' ? (
               <div className="space-y-4">
                 {/* Screenplay Details */}
                 {metadata && (
@@ -378,6 +413,16 @@ export function ScreenplayScreen({
                   </div>
                 )}
               </div>
+              ) : (
+                <div className="-m-4 h-[calc(100%+2rem)]">
+                  <RefinementChat
+                    mode="screenplay"
+                    episodeId={episode.id}
+                    projectId={episode.projectId}
+                    onRefinementComplete={refetchEpisode}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -36,8 +36,22 @@ interface _AnalysisResult {
   premise: string;
   tone?: string | null;
   target_audience?: string | null;
-  characters: Array<{ name: string; role: string; description: string }>;
-  locations: Array<{ name: string; setting: string; description: string }>;
+  characters: Array<{
+    name: string;
+    role: string;
+    description: string;
+    physicalDescription?: string;
+    clothingStyle?: string;
+    mannerisms?: string;
+  }>;
+  locations: Array<{
+    name: string;
+    setting: string;
+    description: string;
+    visualDescription?: string;
+    timeOfDay?: string | null;
+    weather?: string | null;
+  }>;
   episodes: ExtractedEpisode[];
 }
 
@@ -103,10 +117,18 @@ export const generateSeasonEpisodesAction = enhanceAction(
         project_id: data.projectId,
         type: 'character',
         name: char.name,
-        description: char.role
-          ? `${char.role} - ${char.description}`
-          : char.description,
-        metadata: { personality: char.description },
+        description: char.description || '',
+        metadata: {
+          role: char.role,
+          personality: char.description,
+          physicalAttributes: char.physicalDescription
+            ? { rawDescription: char.physicalDescription }
+            : undefined,
+          clothingStyle: char.clothingStyle
+            ? { rawDescription: char.clothingStyle }
+            : undefined,
+          mannerisms: char.mannerisms,
+        },
       }));
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -137,10 +159,13 @@ export const generateSeasonEpisodesAction = enhanceAction(
         project_id: data.projectId,
         type: 'location',
         name: loc.name,
-        description: loc.setting
-          ? `${loc.setting} - ${loc.description}`
-          : loc.description,
-        metadata: { setting: loc.setting },
+        description: loc.description || '',
+        metadata: {
+          setting: loc.setting,
+          visualDescription: loc.visualDescription,
+          timeOfDay: loc.timeOfDay,
+          weather: loc.weather,
+        },
       }));
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -182,6 +207,7 @@ export const generateSeasonEpisodesAction = enhanceAction(
       .from('seasons')
       .select('number')
       .eq('project_id', data.projectId)
+      .is('deleted_at', null)
       .order('number', { ascending: false })
       .limit(1);
 

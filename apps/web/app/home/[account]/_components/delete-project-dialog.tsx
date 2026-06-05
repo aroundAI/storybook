@@ -45,7 +45,7 @@ export function DeleteProjectDialog({
         if (result.success) {
           toast.success(<Trans i18nKey="projects:deleteSuccess" />);
           setOpen(false);
-          router.push(`/home/${accountSlug}/projects`);
+          router.push(`/home/${accountSlug}/studio`);
         }
       } catch (error) {
         toast.error(

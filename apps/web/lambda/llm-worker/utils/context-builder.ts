@@ -18,6 +18,7 @@ export interface StoryData {
  * Physical attributes for VEO 3.1 character descriptions (15+ attributes)
  */
 export interface VeoPhysicalAttributes {
+  rawDescription?: string;
   age?: number;
   ageRange?: string;
   gender?: string;
@@ -36,6 +37,7 @@ export interface VeoPhysicalAttributes {
  * Clothing style for VEO 3.1 consistency
  */
 export interface VeoClothingStyle {
+  rawDescription?: string;
   defaultOutfit?: string;
   style?: string;
   colors?: string[];
@@ -473,6 +475,7 @@ interface CharacterMetadata {
   physicalAttributes?: VeoPhysicalAttributes;
   clothingStyle?: VeoClothingStyle;
   elementPrompt?: string;
+  mannerisms?: string;
 }
 
 /**
@@ -530,6 +533,7 @@ export async function fetchCharactersByIds(
 interface LocationMetadata {
   setting?: string;
   atmosphere?: string;
+  visualDescription?: string;
   timeOfDay?: string;
   weather?: string;
   lighting?: string;
@@ -657,6 +661,10 @@ export function formatCharactersForPrompt(
       // Include physical attributes if available to reinforce identity
       const attrs = c.physicalAttributes;
       if (attrs) {
+        // Raw description from LLM extraction (rich profile)
+        if (attrs.rawDescription) {
+          lines.push(`  Physical Appearance: ${attrs.rawDescription}`);
+        }
         const physParts: string[] = [];
         if (attrs.gender) physParts.push(`Gender: ${attrs.gender}`);
         if (attrs.age) physParts.push(`Age: ${attrs.age}`);
@@ -664,6 +672,22 @@ export function formatCharactersForPrompt(
         if (physParts.length > 0) {
           lines.push(`  Identity (immutable): ${physParts.join(', ')}`);
         }
+      }
+
+      // Clothing style (raw or structured)
+      const clothing = c.clothingStyle;
+      if (clothing) {
+        if (clothing.rawDescription) {
+          lines.push(`  Clothing Style: ${clothing.rawDescription}`);
+        } else if (clothing.defaultOutfit) {
+          lines.push(`  Clothing: ${clothing.defaultOutfit}`);
+        }
+      }
+
+      // Mannerisms from extraction
+      const metadata = c as Record<string, unknown>;
+      if (metadata.mannerisms && typeof metadata.mannerisms === 'string') {
+        lines.push(`  Mannerisms: ${metadata.mannerisms}`);
       }
 
       return lines.join('\n');
@@ -683,8 +707,18 @@ export function formatLocationsForPrompt(
 
   return `**Locations**:\n${locations
     .map(
-      (l) =>
-        `- **${l.name}** (${l.setting}): ${l.description}${l.atmosphere ? `\n  Atmosphere: ${l.atmosphere}` : ''}`,
+      (l) => {
+        const parts = [`- **${l.name}** (${l.setting}): ${l.description}`];
+        if (l.atmosphere) parts.push(`  Atmosphere: ${l.atmosphere}`);
+        // Rich visual metadata from season extraction
+        const meta = l as Record<string, unknown>;
+        if (meta.visualDescription && typeof meta.visualDescription === 'string') {
+          parts.push(`  Visual: ${meta.visualDescription}`);
+        }
+        if (l.timeOfDay) parts.push(`  Time of Day: ${l.timeOfDay}`);
+        if (l.weather) parts.push(`  Weather: ${l.weather}`);
+        return parts.join('\n');
+      },
     )
     .join('\n')}`;
 }

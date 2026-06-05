@@ -32,8 +32,22 @@ interface AnalysisResult {
   premise: string;
   tone?: string | null;
   target_audience?: string | null;
-  characters: Array<{ name: string; role: string; description: string }>;
-  locations: Array<{ name: string; setting: string; description: string }>;
+  characters: Array<{
+    name: string;
+    role: string;
+    description: string;
+    physicalDescription?: string;
+    clothingStyle?: string;
+    mannerisms?: string;
+  }>;
+  locations: Array<{
+    name: string;
+    setting: string;
+    description: string;
+    visualDescription?: string;
+    timeOfDay?: string | null;
+    weather?: string | null;
+  }>;
   episodes: ExtractedEpisode[];
 }
 

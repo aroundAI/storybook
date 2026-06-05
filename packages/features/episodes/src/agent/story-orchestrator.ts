@@ -72,6 +72,21 @@ export interface StoryOrchestratorResult {
   storyTitle?: string;
   actBreakdown?: { act1: string; act2: string; act3: string };
   storyCharacters?: Array<{ name: string; role: string; arc: string }>;
+  newCharacters?: Array<{
+    name: string;
+    role: string;
+    arc?: string;
+    description: string;
+    physicalDescription: string;
+    clothingStyle?: string;
+    mannerisms?: string;
+  }>;
+  newLocations?: Array<{
+    name: string;
+    setting?: string;
+    description: string;
+    visualDescription?: string;
+  }>;
   themes?: string[];
   tone?: string;
   estimatedSceneCount?: number;
@@ -149,6 +164,21 @@ export async function runStoryOrchestrator(
     title?: string;
     actBreakdown?: { act1: string; act2: string; act3: string };
     characters?: Array<{ name: string; role: string; arc: string }>;
+    newCharacters?: Array<{
+      name: string;
+      role: string;
+      arc?: string;
+      description: string;
+      physicalDescription: string;
+      clothingStyle?: string;
+      mannerisms?: string;
+    }>;
+    newLocations?: Array<{
+      name: string;
+      setting?: string;
+      description: string;
+      visualDescription?: string;
+    }>;
     themes?: string[];
     tone?: string;
     estimatedSceneCount?: number;
@@ -213,6 +243,8 @@ export async function runStoryOrchestrator(
     storyTitle: storyStepData?.title,
     actBreakdown: storyStepData?.actBreakdown,
     storyCharacters: storyStepData?.characters,
+    newCharacters: storyStepData?.newCharacters,
+    newLocations: storyStepData?.newLocations,
     themes: storyStepData?.themes,
     tone: storyStepData?.tone,
     estimatedSceneCount: storyStepData?.estimatedSceneCount,

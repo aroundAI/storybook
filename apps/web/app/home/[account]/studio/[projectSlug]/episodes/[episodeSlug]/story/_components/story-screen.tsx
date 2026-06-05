@@ -8,10 +8,12 @@ import {
   ChevronRight,
   Loader2,
   Maximize2,
+  MessageSquare,
   Minimize2,
   Users,
 } from 'lucide-react';
 
+import { RefinementChat } from '@kit/episodes/components';
 import { convertToScreenplayAction } from '@kit/episodes/server';
 import type { EpisodeWithShots, StoryCharacterArc } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
@@ -49,7 +51,9 @@ export function StoryScreen({
   const [isPending, _startTransition] = useTransition();
   const [isReadingMode, setIsReadingMode] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<'info' | 'canon'>('info');
+  const [sidebarTab, setSidebarTab] = useState<'info' | 'canon' | 'refine'>(
+    'info',
+  );
   const storyData = episode.storyData;
 
   // WebSocket for screenplay-conversion async LLM results
@@ -389,6 +393,20 @@ export function StoryScreen({
                     Canon
                   </div>
                 </button>
+                <button
+                  onClick={() => setSidebarTab('refine')}
+                  className={cn(
+                    'flex-1 px-4 py-3 text-sm font-medium transition-colors',
+                    sidebarTab === 'refine'
+                      ? 'border-b-2 border-amber-500 text-amber-600 dark:text-amber-400'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
+                  )}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Refine
+                  </div>
+                </button>
               </div>
             </div>
 
@@ -541,15 +559,99 @@ export function StoryScreen({
                       </div>
                     </div>
                   )}
+
+                  {/* Continuity (SCORE) */}
+                  {(storyData.episodeSummary ||
+                    (storyData.keyEvents && storyData.keyEvents.length > 0) ||
+                    storyData.sentimentScore != null) && (
+                    <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                      <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                        <BookOpen className="h-4 w-4" />
+                        Continuity
+                      </h3>
+                      <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                        Feeds into the next episode&apos;s context
+                      </p>
+
+                      {/* Episode Summary */}
+                      {storyData.episodeSummary && (
+                        <div className="mb-3">
+                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                            Episode Summary
+                          </span>
+                          <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                            {storyData.episodeSummary}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Sentiment Score */}
+                      {storyData.sentimentScore != null && (
+                        <div className="mb-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                              Sentiment
+                            </span>
+                            <span className="text-xs text-gray-600 dark:text-gray-300">
+                              {Math.round(storyData.sentimentScore * 100)}%
+                              positive
+                            </span>
+                          </div>
+                          <div className="mt-1 h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-red-400 via-yellow-400 to-green-400"
+                              style={{
+                                width: `${storyData.sentimentScore * 100}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Key Events */}
+                      {storyData.keyEvents &&
+                        storyData.keyEvents.length > 0 && (
+                          <div>
+                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                              Key Events
+                            </span>
+                            <ul className="mt-1 space-y-1">
+                              {storyData.keyEvents.map((event, i) => (
+                                <li
+                                  key={i}
+                                  className="flex items-start gap-1.5 text-xs text-gray-600 dark:text-gray-300"
+                                >
+                                  <span className="mt-0.5 text-indigo-400">
+                                    •
+                                  </span>
+                                  {event}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                    </div>
+                  )}
                 </div>
-              ) : canonEnabled && episode.projectId ? (
-                <CanonDashboard
-                  projectId={episode.projectId}
-                  episodeId={episode.id}
-                  episodeNumber={episode.number ?? 1}
-                  season={episode.season?.number ?? 1}
-                  canonEnabled={canonEnabled}
-                />
+              ) : sidebarTab === 'canon' ? (
+                canonEnabled && episode.projectId ? (
+                  <CanonDashboard
+                    projectId={episode.projectId}
+                    episodeId={episode.id}
+                    episodeNumber={episode.number ?? 1}
+                    season={episode.season?.number ?? 1}
+                    canonEnabled={canonEnabled}
+                  />
+                ) : null
+              ) : sidebarTab === 'refine' ? (
+                <div className="-m-4 h-[calc(100%+2rem)]">
+                  <RefinementChat
+                    mode="story"
+                    episodeId={episode.id}
+                    projectId={episode.projectId}
+                    onRefinementComplete={refetchEpisode}
+                  />
+                </div>
               ) : null}
             </div>
           </div>
