@@ -346,117 +346,142 @@ export const deleteSeasonAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Fetch season for audit log
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: season, error: fetchError } = await (client as any)
-      .from('seasons')
-      .select(
-        `
-        id, project_id, number, name, description, version,
-        created_at, updated_at, deleted_at,
-        project:projects(account_id)
-      `,
-      )
-      .eq('id', data.seasonId)
-      .is('deleted_at', null)
-      .single();
-
-    if (fetchError || !season) {
-      throw new Error('Season not found');
-    }
-
-    const now = new Date().toISOString();
-
-    // Soft delete season
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: seasonError } = await (client as any)
-      .from('seasons')
-      .update({ deleted_at: now })
-      .eq('id', data.seasonId)
-      .is('deleted_at', null);
-
-    if (seasonError) {
-      logger.error({ ...ctx, error: seasonError }, 'Failed to delete season');
-      throw new Error('Failed to delete season');
-    }
-
-    // Cascade soft-delete all episodes in this season
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: episodesInSeason } = await (client as any)
-      .from('episodes')
-      .select('id')
-      .eq('season_id', data.seasonId)
-      .is('deleted_at', null);
-
-    const episodeIds = (episodesInSeason ?? []).map(
-      (e: { id: string }) => e.id,
-    );
-
-    if (episodeIds.length > 0) {
-      // Soft-delete shots for all episodes in this season
+    try {
+      // Fetch season for audit log
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: shotsError } = await (client as any)
-        .from('shots')
-        .update({ deleted_at: now })
-        .in('episode_id', episodeIds)
-        .is('deleted_at', null);
+      const { data: season, error: fetchError } = await (client as any)
+        .from('seasons')
+        .select(
+          `
+          id, project_id, number, name, description, version,
+          created_at, updated_at, deleted_at,
+          project:projects(account_id)
+        `,
+        )
+        .eq('id', data.seasonId)
+        .is('deleted_at', null)
+        .single();
 
-      if (shotsError) {
-        logger.error(
-          { ...ctx, error: shotsError },
-          'Failed to delete shots for season episodes',
-        );
+      if (fetchError || !season) {
+        logger.error({ ...ctx, error: fetchError }, 'Season not found');
+        throw new Error('Season not found');
       }
 
-      // Soft-delete all episodes in this season
+      const now = new Date().toISOString();
+
+      // Soft delete season
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: episodesError } = await (client as any)
-        .from('episodes')
+      const { error: seasonError } = await (client as any)
+        .from('seasons')
         .update({ deleted_at: now })
+        .eq('id', data.seasonId)
+        .is('deleted_at', null);
+
+      if (seasonError) {
+        logger.error(
+          { ...ctx, error: seasonError },
+          'Failed to soft-delete season',
+        );
+        throw new Error('Failed to delete season');
+      }
+
+      // Cascade soft-delete all episodes in this season
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: episodesInSeason } = await (client as any)
+        .from('episodes')
+        .select('id')
         .eq('season_id', data.seasonId)
         .is('deleted_at', null);
 
-      if (episodesError) {
-        logger.error(
-          { ...ctx, error: episodesError },
-          'Failed to delete episodes in season',
-        );
-        throw new Error(
-          'Failed to delete episodes in season. Please try again.',
+      const episodeIds = (episodesInSeason ?? []).map(
+        (e: { id: string }) => e.id,
+      );
+
+      if (episodeIds.length > 0) {
+        // Soft-delete shots for all episodes in this season
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: shotsError } = await (client as any)
+          .from('shots')
+          .update({ deleted_at: now })
+          .in('episode_id', episodeIds)
+          .is('deleted_at', null);
+
+        if (shotsError) {
+          logger.error(
+            { ...ctx, error: shotsError },
+            'Failed to delete shots for season episodes',
+          );
+        }
+
+        // Soft-delete all episodes in this season
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: episodesError } = await (client as any)
+          .from('episodes')
+          .update({ deleted_at: now })
+          .eq('season_id', data.seasonId)
+          .is('deleted_at', null);
+
+        if (episodesError) {
+          logger.error(
+            { ...ctx, error: episodesError },
+            'Failed to delete episodes in season',
+          );
+          throw new Error(
+            'Failed to delete episodes in season. Please try again.',
+          );
+        }
+
+        logger.info(
+          { ...ctx, episodeCount: episodeIds.length },
+          'Cascade deleted episodes and shots',
         );
       }
 
-      logger.info(
-        { ...ctx, episodeCount: episodeIds.length },
-        'Cascade deleted episodes and shots',
+      // Create audit log (non-critical — don't let it break the delete)
+      try {
+        const accountId = season.project?.account_id;
+        if (accountId) {
+          const networkContext = await extractNetworkContext();
+
+          await createAuditLog({
+            accountId,
+            userId: user.id,
+            action: 'delete',
+            objectType: 'season',
+            objectId: season.id,
+            objectName: season.name ?? `Season ${season.number}`,
+            before: season,
+            scopes: [
+              { type: 'account', id: accountId },
+              { type: 'project', id: season.project_id },
+            ],
+            ...networkContext,
+          });
+        }
+      } catch (auditError) {
+        logger.error(
+          { ...ctx, error: auditError },
+          'Failed to create audit log for season deletion (non-critical)',
+        );
+      }
+
+      logger.info(ctx, 'Season deleted');
+      revalidatePath('/home/[account]/projects/[id]', 'page');
+
+      return { success: true, seasonId: data.seasonId };
+    } catch (error) {
+      logger.error(
+        {
+          ...ctx,
+          error:
+            error instanceof Error
+              ? { message: error.message, stack: error.stack }
+              : error,
+        },
+        'deleteSeasonAction failed',
       );
+      throw error;
     }
-
-    // Create audit log
-    const accountId = season.project?.account_id;
-    if (accountId) {
-      const networkContext = await extractNetworkContext();
-
-      await createAuditLog({
-        accountId,
-        userId: user.id,
-        action: 'delete',
-        objectType: 'season',
-        objectId: season.id,
-        objectName: season.name ?? `Season ${season.number}`,
-        before: season,
-        scopes: [
-          { type: 'account', id: accountId },
-          { type: 'project', id: season.project_id },
-        ],
-        ...networkContext,
-      });
-    }
-
-    logger.info(ctx, 'Season deleted');
-    revalidatePath('/home/[account]/projects/[id]', 'page');
-
-    return { success: true, seasonId: data.seasonId };
   },
   {
     schema: DeleteSeasonSchema,
