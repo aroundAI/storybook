@@ -380,21 +380,55 @@ export const deleteSeasonAction = enhanceAction(
       throw new Error('Failed to delete season');
     }
 
-    // Set season_id to NULL for all episodes in this season
+    // Cascade soft-delete all episodes in this season
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: episodesError } = await (client as any)
+    const { data: episodesInSeason } = await (client as any)
       .from('episodes')
-      .update({ season_id: null })
+      .select('id')
       .eq('season_id', data.seasonId)
       .is('deleted_at', null);
 
-    if (episodesError) {
-      logger.error(
-        { ...ctx, error: episodesError },
-        'Failed to update episodes season_id',
-      );
-      throw new Error(
-        'Failed to unassign episodes from deleted season. Please try again.',
+    const episodeIds = (episodesInSeason ?? []).map(
+      (e: { id: string }) => e.id,
+    );
+
+    if (episodeIds.length > 0) {
+      // Soft-delete shots for all episodes in this season
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: shotsError } = await (client as any)
+        .from('shots')
+        .update({ deleted_at: now })
+        .in('episode_id', episodeIds)
+        .is('deleted_at', null);
+
+      if (shotsError) {
+        logger.error(
+          { ...ctx, error: shotsError },
+          'Failed to delete shots for season episodes',
+        );
+      }
+
+      // Soft-delete all episodes in this season
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: episodesError } = await (client as any)
+        .from('episodes')
+        .update({ deleted_at: now })
+        .eq('season_id', data.seasonId)
+        .is('deleted_at', null);
+
+      if (episodesError) {
+        logger.error(
+          { ...ctx, error: episodesError },
+          'Failed to delete episodes in season',
+        );
+        throw new Error(
+          'Failed to delete episodes in season. Please try again.',
+        );
+      }
+
+      logger.info(
+        { ...ctx, episodeCount: episodeIds.length },
+        'Cascade deleted episodes and shots',
       );
     }
 

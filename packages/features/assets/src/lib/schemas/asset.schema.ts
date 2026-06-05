@@ -142,6 +142,22 @@ export const GetAssetSchema = z.object({
   assetId: z.string().uuid(),
 });
 
+/**
+ * Check assets in use schema - validates input for checking if assets are referenced
+ */
+export const CheckAssetsInUseSchema = z.object({
+  projectId: z.string().uuid(),
+  assetIds: z.array(z.string().uuid()).min(1).max(100),
+});
+
+/**
+ * Bulk delete assets schema - validates input for deleting multiple assets
+ */
+export const BulkDeleteAssetsSchema = z.object({
+  projectId: z.string().uuid(),
+  assetIds: z.array(z.string().uuid()).min(1).max(100),
+});
+
 // Type-specific creation schemas
 export const CreateCharacterSchema = z.object({
   projectId: z.string().uuid(),
@@ -184,3 +200,5 @@ export type UpdateAssetInput = z.infer<typeof UpdateAssetSchema>;
 export type GetProjectAssetsInput = z.infer<typeof GetProjectAssetsSchema>;
 export type DeleteAssetInput = z.infer<typeof DeleteAssetSchema>;
 export type GetAssetInput = z.infer<typeof GetAssetSchema>;
+export type CheckAssetsInUseInput = z.infer<typeof CheckAssetsInUseSchema>;
+export type BulkDeleteAssetsInput = z.infer<typeof BulkDeleteAssetsSchema>;

@@ -1,11 +1,38 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 
-import { ChevronDown, ChevronUp, FolderOpen, Volume2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+import {
+  ChevronDown,
+  ChevronUp,
+  FolderOpen,
+  MoreVertical,
+  Trash2,
+  Volume2,
+} from 'lucide-react';
+import { toast } from '@kit/ui/sonner';
 
 import type { Episode } from '@kit/episodes/types';
+import { deleteSeasonAction } from '@kit/episodes/server';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@kit/ui/alert-dialog';
 import { Button } from '@kit/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@kit/ui/dropdown-menu';
 
 import { GenerateAllSoundModal } from './generate-all-sound-modal';
 
@@ -51,12 +78,30 @@ export function SeasonHeader({
   isCollapsed = false,
   onToggleCollapse,
 }: SeasonHeaderProps) {
+  const router = useRouter();
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const progressPercent =
     totalEpisodes > 0
       ? Math.round((completedEpisodes / totalEpisodes) * 100)
       : 0;
+
+  function handleDeleteSeason() {
+    startTransition(async () => {
+      try {
+        await deleteSeasonAction({ seasonId });
+
+        toast.success('Season deleted');
+        router.refresh();
+      } catch {
+        toast.error('Failed to delete season');
+      } finally {
+        setShowDeleteDialog(false);
+      }
+    });
+  }
 
   return (
     <>
@@ -103,6 +148,29 @@ export function SeasonHeader({
             </div>
           </div>
 
+          {/* Season actions dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Season & Episodes
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {/* Collapse/Expand toggle */}
           <button
             type="button"
@@ -117,6 +185,30 @@ export function SeasonHeader({
           </button>
         </div>
       </div>
+
+      {/* Delete Season Confirmation */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Season & All Episodes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete Season {seasonNumber} and all{' '}
+              {totalEpisodes} episodes in it. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteSeason}
+              disabled={isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isPending ? 'Deleting…' : 'Delete Season'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Generate All Sound Modal */}
       <GenerateAllSoundModal

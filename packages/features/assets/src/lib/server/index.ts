@@ -23,6 +23,8 @@ export {
   deleteAssetAction,
   checkAssetHashAction,
   getAssetAction,
+  checkAssetsInUseAction,
+  bulkDeleteAssetsAction,
 } from './asset.mutations';
 
 // Re-export character queries (FILM-202)

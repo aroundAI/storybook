@@ -9,7 +9,9 @@ import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
+  BulkDeleteAssetsSchema,
   CheckAssetHashSchema,
+  CheckAssetsInUseSchema,
   CreateAssetSchema,
   DeleteAssetSchema,
   GetAssetSchema,
@@ -371,5 +373,153 @@ export const getAssetAction = enhanceAction(
   },
   {
     schema: GetAssetSchema,
+  },
+);
+
+/**
+ * Check if assets are in use (referenced by dialogue_lines)
+ *
+ * Returns which assets are in use and which are safe to delete.
+ */
+export const checkAssetsInUseAction = enhanceAction(
+  async (data) => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'assets.checkInUse',
+      projectId: data.projectId,
+      count: data.assetIds.length,
+    };
+
+    logger.info(ctx, 'Checking assets in use');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Fetch asset names for the requested IDs
+    const { data: assets, error: assetsError } = await client
+      .from('assets')
+      .select('id, name')
+      .in('id', data.assetIds)
+      .eq('project_id', data.projectId);
+
+    if (assetsError) {
+      logger.error({ ...ctx, error: assetsError }, 'Failed to fetch assets');
+      throw new Error(`Failed to fetch assets: ${assetsError.message}`);
+    }
+
+    const assetMap = new Map(
+      (assets ?? []).map((a) => [a.id, a.name as string]),
+    );
+
+    // Check dialogue_lines references for character_id
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: dialogueRefs, error: dialogueError } = await (client as any)
+      .from('dialogue_lines')
+      .select('character_id')
+      .in('character_id', data.assetIds);
+
+    if (dialogueError) {
+      logger.error(
+        { ...ctx, error: dialogueError },
+        'Failed to check dialogue_lines references',
+      );
+      throw new Error(
+        `Failed to check references: ${dialogueError.message}`,
+      );
+    }
+
+    const inUseIds = new Set<string>(
+      (dialogueRefs ?? []).map(
+        (ref: { character_id: string }) => ref.character_id,
+      ),
+    );
+
+    const inUseAssets = data.assetIds
+      .filter((id) => inUseIds.has(id))
+      .map((id) => ({
+        id,
+        name: assetMap.get(id) ?? 'Unknown',
+        usedBy: ['dialogue_lines'],
+      }));
+
+    const safeToDelete = data.assetIds.filter((id) => !inUseIds.has(id));
+
+    logger.info(
+      { ...ctx, inUse: inUseAssets.length, safe: safeToDelete.length },
+      'Assets in-use check completed',
+    );
+
+    return {
+      success: true,
+      data: { inUseAssets, safeToDelete },
+    };
+  },
+  {
+    schema: CheckAssetsInUseSchema,
+  },
+);
+
+/**
+ * Hard delete multiple assets by ID
+ *
+ * Performs a permanent DELETE. Callers should run checkAssetsInUseAction first.
+ *
+ * @throws {Error} If user lacks project access or deletion fails
+ */
+export const bulkDeleteAssetsAction = enhanceAction(
+  async (data) => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'assets.bulkDelete',
+      projectId: data.projectId,
+      count: data.assetIds.length,
+    };
+
+    logger.info(ctx, 'Bulk deleting assets');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Hard delete scoped to project (RLS also enforces access)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: deleted, error } = await (client as any)
+      .from('assets')
+      .delete()
+      .in('id', data.assetIds)
+      .eq('project_id', data.projectId)
+      .select('id');
+
+    if (error) {
+      console.error(
+        '[bulkDeleteAssetsAction] Failed to delete assets:',
+        error,
+      );
+      logger.error({ ...ctx, error }, 'Failed to bulk delete assets');
+      throw new Error(`Failed to bulk delete assets: ${error.message}`);
+    }
+
+    const deletedCount = deleted?.length ?? 0;
+
+    logger.info({ ...ctx, deletedCount }, 'Assets bulk deleted successfully');
+
+    // Revalidate asset pages
+    revalidatePath('/home/[account]/studio/[projectId]/assets', 'page');
+    revalidatePath('/home/[account]/studio/[projectId]', 'page');
+
+    return {
+      success: true,
+      data: { deletedCount },
+    };
+  },
+  {
+    schema: BulkDeleteAssetsSchema,
   },
 );
