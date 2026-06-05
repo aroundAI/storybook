@@ -554,7 +554,9 @@ export function SeasonGeneratorDialog({
           }, 500);
         } else {
           console.error('[SeasonGenerator] Action returned non-success:', result);
-          toast.error('Failed to generate season');
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const errorMsg = (result as any)?.error || 'Failed to generate season';
+          toast.error(errorMsg);
         }
       } catch (err) {
         console.error('[SeasonGenerator] Generation failed:', err);
