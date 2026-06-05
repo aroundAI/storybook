@@ -113,101 +113,144 @@ export const generateSeasonEpisodesAction = enhanceAction(
         return { success: false as const, error: 'Authentication required' };
       }
 
-      // 1. Create New Characters
+      // 1. Create New Characters (skip any that already exist in the project)
       const createdCharacterIds: Record<string, string> = {};
 
       if (data.charactersToCreate.length > 0) {
-        const assetsToInsert = data.charactersToCreate.map((char) => ({
-          project_id: data.projectId,
-          type: 'character',
-          name: char.name,
-          description: char.description || '',
-          metadata: {
-            role: char.role,
-            personality: char.description,
-            physicalAttributes: char.physicalDescription
-              ? { rawDescription: char.physicalDescription }
-              : undefined,
-            clothingStyle: char.clothingStyle
-              ? { rawDescription: char.clothingStyle }
-              : undefined,
-            mannerisms: char.mannerisms,
-          },
-        }));
-
-        // Use upsert to handle idempotency (previous attempt may have created some assets)
+        // Check which characters already exist (by name) to avoid overwriting user-curated data
+        const charNames = data.charactersToCreate.map((c) => c.name);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: insertedAssets, error: assetError } = await (
-          client as any
-        )
+        const { data: existingChars } = await (client as any)
           .from('assets')
-          .upsert(assetsToInsert, {
-            onConflict: 'project_id,type,name',
-            ignoreDuplicates: false,
-          })
-          .select('id, name');
+          .select('id, name')
+          .eq('project_id', data.projectId)
+          .eq('type', 'character')
+          .in('name', charNames);
 
-        if (assetError) {
-          console.error(
-            '[Season Generate] Character creation failed:',
-            assetError,
-          );
-          return {
-            success: false as const,
-            error: `Failed to create characters: ${assetError.message}`,
-          };
-        }
-
+        // Map existing characters by name for quick lookup
+        const existingCharMap = new Map<string, string>();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        insertedAssets?.forEach((asset: any) => {
-          createdCharacterIds[asset.name] = asset.id;
+        existingChars?.forEach((a: any) => existingCharMap.set(a.name, a.id));
+
+        // Only insert characters that don't already exist
+        const newChars = data.charactersToCreate.filter(
+          (c) => !existingCharMap.has(c.name),
+        );
+
+        // Add existing ones directly to the ID map
+        existingCharMap.forEach((id, name) => {
+          createdCharacterIds[name] = id;
         });
+
+        if (newChars.length > 0) {
+          const assetsToInsert = newChars.map((char) => ({
+            project_id: data.projectId,
+            type: 'character',
+            name: char.name,
+            description: char.description || '',
+            metadata: {
+              role: char.role,
+              personality: char.description,
+              physicalAttributes: char.physicalDescription
+                ? { rawDescription: char.physicalDescription }
+                : undefined,
+              clothingStyle: char.clothingStyle
+                ? { rawDescription: char.clothingStyle }
+                : undefined,
+              mannerisms: char.mannerisms,
+            },
+          }));
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: insertedAssets, error: assetError } = await (
+            client as any
+          )
+            .from('assets')
+            .insert(assetsToInsert)
+            .select('id, name');
+
+          if (assetError) {
+            console.error(
+              '[Season Generate] Character creation failed:',
+              assetError,
+            );
+            return {
+              success: false as const,
+              error: `Failed to create characters: ${assetError.message}`,
+            };
+          }
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          insertedAssets?.forEach((asset: any) => {
+            createdCharacterIds[asset.name] = asset.id;
+          });
+        }
       }
 
       // 2. Create New Locations
       const createdLocationIds: Record<string, string> = {};
 
       if (data.locationsToCreate && data.locationsToCreate.length > 0) {
-        const locationsToInsert = data.locationsToCreate.map((loc) => ({
-          project_id: data.projectId,
-          type: 'location',
-          name: loc.name,
-          description: loc.description || '',
-          metadata: {
-            setting: loc.setting,
-            visualDescription: loc.visualDescription,
-            timeOfDay: loc.timeOfDay,
-            weather: loc.weather,
-          },
-        }));
-
-        // Use upsert to handle idempotency (previous attempt may have created some assets)
+        // Check which locations already exist (by name) to avoid overwriting user-curated data
+        const locNames = data.locationsToCreate.map((l) => l.name);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: insertedLocations, error: locError } = await (
-          client as any
-        )
+        const { data: existingLocs } = await (client as any)
           .from('assets')
-          .upsert(locationsToInsert, {
-            onConflict: 'project_id,type,name',
-            ignoreDuplicates: false,
-          })
-          .select('id, name');
+          .select('id, name')
+          .eq('project_id', data.projectId)
+          .eq('type', 'location')
+          .in('name', locNames);
 
-        if (locError) {
-          console.error(
-            '[Season Generate] Location creation failed:',
-            locError,
-          );
-          return {
-            success: false as const,
-            error: `Failed to create locations: ${locError.message}`,
-          };
-        }
-
+        const existingLocMap = new Map<string, string>();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        insertedLocations?.forEach((asset: any) => {
-          createdLocationIds[asset.name] = asset.id;
+        existingLocs?.forEach((a: any) => existingLocMap.set(a.name, a.id));
+
+        const newLocs = data.locationsToCreate.filter(
+          (l) => !existingLocMap.has(l.name),
+        );
+
+        existingLocMap.forEach((id, name) => {
+          createdLocationIds[name] = id;
         });
+
+        if (newLocs.length > 0) {
+          const locationsToInsert = newLocs.map((loc) => ({
+            project_id: data.projectId,
+            type: 'location',
+            name: loc.name,
+            description: loc.description || '',
+            metadata: {
+              setting: loc.setting,
+              visualDescription: loc.visualDescription,
+              timeOfDay: loc.timeOfDay,
+              weather: loc.weather,
+            },
+          }));
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: insertedLocations, error: locError } = await (
+            client as any
+          )
+            .from('assets')
+            .insert(locationsToInsert)
+            .select('id, name');
+
+          if (locError) {
+            console.error(
+              '[Season Generate] Location creation failed:',
+              locError,
+            );
+            return {
+              success: false as const,
+              error: `Failed to create locations: ${locError.message}`,
+            };
+          }
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          insertedLocations?.forEach((asset: any) => {
+            createdLocationIds[asset.name] = asset.id;
+          });
+        }
       }
 
       // 3. Resolve IDs
