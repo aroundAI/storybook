@@ -381,6 +381,9 @@ export function AssetGallery({
                   characterDetails={character}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  selectionMode={selectionMode}
+                  isSelected={selectedIds.has(character.id)}
+                  onToggleSelect={handleToggleSelect}
                 />
               ))}
             </AssetGrid>
@@ -400,6 +403,9 @@ export function AssetGallery({
                   characterDetails={character}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  selectionMode={selectionMode}
+                  isSelected={selectedIds.has(character.id)}
+                  onToggleSelect={handleToggleSelect}
                 />
               ))}
             </AssetGrid>
