@@ -135,12 +135,16 @@ export const generateSeasonEpisodesAction = enhanceAction(
           },
         }));
 
+        // Use upsert to handle idempotency (previous attempt may have created some assets)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: insertedAssets, error: assetError } = await (
           client as any
         )
           .from('assets')
-          .insert(assetsToInsert)
+          .upsert(assetsToInsert, {
+            onConflict: 'project_id,type,name',
+            ignoreDuplicates: false,
+          })
           .select('id, name');
 
         if (assetError) {
@@ -177,12 +181,16 @@ export const generateSeasonEpisodesAction = enhanceAction(
           },
         }));
 
+        // Use upsert to handle idempotency (previous attempt may have created some assets)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: insertedLocations, error: locError } = await (
           client as any
         )
           .from('assets')
-          .insert(locationsToInsert)
+          .upsert(locationsToInsert, {
+            onConflict: 'project_id,type,name',
+            ignoreDuplicates: false,
+          })
           .select('id, name');
 
         if (locError) {
