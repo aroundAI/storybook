@@ -1,34 +1,69 @@
 {
-    "slug": "fact-extraction",
-    "name": "Fact Extraction",
-    "version": "1.0",
-    "description": "Extracts discrete, verifiable factual claims from content",
-    "variables": {
-        "content": {
-            "type": "string",
-            "required": true
-        },
-        "source_title": {
-            "type": "string",
-            "required": true
-        },
-        "source_citation": {
-            "type": "string",
-            "required": true,
-            "default": ""
-        }
-    },
-    "llm": {
-        "provider": "gemini",
-        "model": "gemini-3.5-flash",
-        "max_tokens": 4000,
-        "temperature": 0.2,
-        "response_format": "json_object"
-    },
-    "system_prompt": "You are a fact extraction specialist. Extract discrete, verifiable factual claims from the provided content. Each fact should be a single, specific, falsifiable statement. Categorize each fact appropriately. Do NOT extract opinions, speculation, or vague generalizations.",
-    "user_prompt": "Extract all factual claims from the following content. Source: {{source_title}}, Citation: {{source_citation}}\n\n---\n{{content}}\n---\n\nExtract each discrete factual claim as a JSON array.",
-    "output": {
-        "type": "array",
-        "schema_for_llm": "[{\"claim\": \"The full factual claim as stated\", \"simplified_claim\": \"A shorter version (max 100 chars)\", \"category\": \"historical|scientific|statistical|biographical|geographical|political|economic|cultural|legal|medical|technological|other\", \"confidence_score\": 0.0-1.0, \"source_citation\": \"Citation if mentioned in text\"}]"
+  "slug": "fact-extraction",
+  "name": "Fact Extraction",
+  "version": 1,
+  "category": "documentary",
+  "description": "Extracts discrete, verifiable factual claims from source material for documentary content.",
+  "exported_at": "2026-05-30T00:00:00.000Z",
+  "llm": {
+    "provider": "gemini",
+    "model": "gemini-3.5-flash",
+    "max_tokens": 8000,
+    "temperature": 0.2,
+    "response_format": {
+      "type": "json_object"
     }
+  },
+  "system_prompts": [
+    {
+      "slug": "role",
+      "name": "Research Librarian Role",
+      "content": "You are a research librarian and fact extractor. Extract discrete, verifiable factual claims from source material. Each fact must be self-contained, objectively verifiable, and specific.",
+      "layer_type": "role",
+      "scope": "template",
+      "order": 1
+    },
+    {
+      "slug": "constraints",
+      "name": "Extraction Rules",
+      "content": "CRITICAL RULES:\n1. Extract ONLY objective, verifiable factual claims.\n2. Do NOT extract opinions, subjective statements, or vague claims.\n3. Do NOT extract speculation, predictions, or hypothetical statements.\n4. Each fact must stand alone — a reader should understand it without additional context.\n5. Include specific numbers, dates, names, and measurements when present in the source.\n6. Extract a maximum of 30 facts per source.\n7. Assign a confidence score based on how clearly the source states the fact (1.0 = directly stated with specifics, 0.5 = implied or partially supported, below 0.5 = weak evidence).\n8. For source_context, quote the relevant passage from the source that supports the claim.",
+      "layer_type": "constraints",
+      "scope": "template",
+      "order": 2
+    },
+    {
+      "slug": "format",
+      "name": "JSON Output Format",
+      "content": "IMPORTANT: Always respond with valid JSON matching the specified output schema. Do not include any text outside the JSON object.",
+      "layer_type": "format",
+      "scope": "template",
+      "order": 3
+    }
+  ],
+  "user_prompt": "Extract all verifiable factual claims from the following source material.\n\n**Source Title**: {{source_title}}\n**Source Citation**: {{source_citation}}\n\n## SOURCE MATERIAL:\n{{content}}\n\n## INSTRUCTIONS:\n1. Read the source material carefully.\n2. Identify each discrete factual claim.\n3. Categorize each fact into one of: historical_event, scientific_finding, statistic, biographical, geographical, technical, cultural, economic, political, other.\n4. Rate your confidence in each fact (0.0 to 1.0) based on how clearly the source states it.\n5. Include the relevant quote from the source that supports the claim.\n6. Skip any opinions, editorials, or subjective assessments.\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"facts\": [\n    {\n      \"claim\": \"A specific, self-contained factual statement\",\n      \"category\": \"historical_event\",\n      \"confidence\": 0.95,\n      \"source_context\": \"The relevant quote from the source material\"\n    }\n  ]\n}\n```",
+  "variables": {
+    "content": {
+      "type": "text",
+      "required": true,
+      "description": "The source material to extract facts from"
+    },
+    "source_title": {
+      "type": "text",
+      "required": true,
+      "description": "Title of the source document"
+    },
+    "source_citation": {
+      "type": "text",
+      "required": false,
+      "description": "Citation or reference for the source"
+    }
+  },
+  "output": {
+    "type": "object",
+    "schema": {
+      "type": "zod",
+      "definition": "z.object({ facts: z.array(z.object({ claim: z.string(), category: z.enum(['historical_event', 'scientific_finding', 'statistic', 'biographical', 'geographical', 'technical', 'cultural', 'economic', 'political', 'other']), confidence: z.number().min(0).max(1), source_context: z.string() })).max(30) })"
+    },
+    "schema_for_llm": "Return JSON: { \"facts\": [{ \"claim\": \"string\", \"category\": \"historical_event|scientific_finding|statistic|biographical|geographical|technical|cultural|economic|political|other\", \"confidence\": number (0.0 to 1.0), \"source_context\": \"string (relevant quote from source)\" }] }"
+  }
 }

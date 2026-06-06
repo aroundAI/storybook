@@ -50,6 +50,9 @@ export const ExtractedEpisodeSchema = z.object({
   // Free-form tags
   tags: z.array(z.string()).optional(),
 
+  // Fact IDs assigned by LLM during factual season generation
+  fact_ids: z.array(z.string()).optional(),
+
   // Legacy support: description field from older roadmaps
   description: z.string().optional(),
 });

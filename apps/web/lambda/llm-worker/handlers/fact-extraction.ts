@@ -1,116 +1,118 @@
 /**
  * Fact Extraction Handler
  *
- * Extracts discrete, verifiable factual claims from content using LLM.
- * WRITES TO DATABASE:
- * - Inserts rows into verified_facts table
- * - Updates fact_extraction_jobs progress (when jobId provided)
+ * Extracts verifiable factual claims from source material using LLM,
+ * then persists each extracted fact into the verified_facts table.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-
-import { executeLLMForLambda } from '../llm-utils';
-
-interface FactData {
-  claim: string;
-  simplified_claim: string;
-  category: string;
-  confidence_score: number;
-  source_citation: string;
-}
 
 interface FactExtractionPayload {
   content: string;
   projectId: string;
   sourceTitle: string;
-  sourceCitation: string;
+  sourceCitation?: string;
   userId: string;
-  jobId?: string;
+}
+
+interface ExtractedFact {
+  claim: string;
+  category: string;
+  confidence: number;
+  source_context: string;
+}
+
+interface FactExtractionLLMOutput {
+  facts: ExtractedFact[];
+}
+
+interface FactExtractionResult {
+  success: boolean;
+  data: {
+    extractedCount: number;
+    facts: Array<{
+      claim: string;
+      category: string;
+      confidence: number;
+    }>;
+  };
 }
 
 export async function processFactExtraction(
   payload: Record<string, unknown>,
   supabase: SupabaseClient,
-): Promise<{ success: boolean; extractedCount: number }> {
+): Promise<FactExtractionResult> {
   const data = payload as FactExtractionPayload;
 
   console.log(
-    `[Fact Extraction] Processing for project ${data.projectId}, source: ${data.sourceTitle}`,
+    `[Fact Extraction] Starting extraction for project ${data.projectId}`,
   );
 
-  const { data: facts } = await executeLLMForLambda<FactData[]>({
-    templateSlug: 'fact-extraction',
+  const { executeLLM } = await import('@kit/prompt-engine/server');
+
+  const result = await executeLLM<FactExtractionLLMOutput>({
+    templateSlug: 'documentary/fact-extraction',
     variables: {
       content: data.content,
       source_title: data.sourceTitle,
-      source_citation: data.sourceCitation,
+      source_citation: data.sourceCitation ?? data.sourceTitle,
     },
+    context: {
+      name: 'fact-extraction',
+      accountId: data.projectId,
+      userId: data.userId,
+    },
+    supabaseClient: supabase,
   });
 
-  const filteredFacts = facts.filter((f) => f.confidence_score >= 0.3);
+  const facts = result?.data?.facts;
 
-  console.log(
-    `[Fact Extraction] Extracted ${facts.length} facts, ${filteredFacts.length} above confidence threshold`,
-  );
-
-  if (filteredFacts.length > 0) {
-    const rows = filteredFacts.map((f) => ({
-      project_id: data.projectId,
-      claim: f.claim,
-      simplified_claim: f.simplified_claim,
-      category: f.category,
-      source_type: 'other' as const,
-      source_citation: f.source_citation,
-      verification_status: 'unverified' as const,
-      confidence_score: f.confidence_score,
-      created_by: data.userId,
-    }));
-
-    const { error: insertError } = await supabase
-      .from('verified_facts')
-      .insert(rows);
-
-    if (insertError) {
-      throw new Error(`Failed to insert facts: ${insertError.message}`);
-    }
-  }
-
-  if (data.jobId) {
-    // Update job progress: increment chunks_completed and set facts count
-    // Use raw SQL for atomic increment
-    const { error: jobError } = await supabase.rpc('exec_sql', {
-      query: `
-        UPDATE fact_extraction_jobs 
-        SET chunks_completed = chunks_completed + 1,
-            facts_extracted = facts_extracted + ${filteredFacts.length},
-            status = CASE 
-              WHEN chunks_completed + 1 >= chunk_count THEN 'completed'
-              ELSE 'processing'
-            END,
-            updated_at = now()
-        WHERE id = '${data.jobId}'
-      `,
-    });
-
-    if (jobError) {
-      // Fallback: simple update without increment
-      console.warn(
-        '[Fact Extraction] RPC failed, using simple update:',
-        jobError.message,
-      );
-
-      await supabase
-        .from('fact_extraction_jobs')
-        .update({
-          status: 'completed',
-          facts_extracted: filteredFacts.length,
-        })
-        .eq('id', data.jobId);
-    }
+  if (!facts || facts.length === 0) {
+    console.log('[Fact Extraction] No facts extracted.');
+    return {
+      success: true,
+      data: {
+        extractedCount: 0,
+        facts: [],
+      },
+    };
   }
 
   console.log(
-    `[Fact Extraction] Complete. Inserted ${filteredFacts.length} facts.`,
+    `[Fact Extraction] Extracted ${facts.length} facts, inserting into verified_facts`,
   );
 
-  return { success: true, extractedCount: filteredFacts.length };
+  const rows = facts.map((fact) => ({
+    project_id: data.projectId,
+    claim: fact.claim,
+    simplified_claim: fact.claim.slice(0, 100),
+    category: fact.category,
+    source_type: 'other' as const,
+    source_citation: data.sourceCitation ?? data.sourceTitle,
+    source_title: data.sourceTitle,
+    confidence_score: fact.confidence,
+    verification_status: 'unverified' as const,
+    created_by: data.userId,
+  }));
+
+  const { error } = await supabase.from('verified_facts').insert(rows);
+
+  if (error) {
+    throw new Error(`Failed to insert facts: ${error.message}`);
+  }
+
+  console.log(
+    `[Fact Extraction] Successfully inserted ${facts.length} facts`,
+  );
+
+  return {
+    success: true,
+    data: {
+      extractedCount: facts.length,
+      facts: facts.map((f) => ({
+        claim: f.claim,
+        category: f.category,
+        confidence: f.confidence,
+      })),
+    },
+  };
 }

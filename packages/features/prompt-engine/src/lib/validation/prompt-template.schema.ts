@@ -16,7 +16,14 @@ export const SystemPromptSchema = z.object({
   content: z.string().min(1, 'System prompt content cannot be empty'),
   layer_type: z.string().min(1, 'System prompt layer_type cannot be empty'),
   scope: z.string().min(1, 'System prompt scope cannot be empty'),
-  order: z.number().int().min(0, 'System prompt order must be >= 0'),
+  order: z.number().min(0, 'System prompt order must be >= 0'),
+  conditional: z
+    .object({
+      variable: z.string().min(1),
+      operator: z.enum(['not_empty', 'equals', 'not_equals']),
+      value: z.any().optional(),
+    })
+    .optional(),
 });
 
 /**

@@ -51,6 +51,7 @@ import {
 } from '@kit/ui/dialog';
 import { Form, FormControl, FormField, FormItem } from '@kit/ui/form';
 import { useLlmJob } from '@kit/ui/hooks';
+import { Input } from '@kit/ui/input';
 import {
   Select,
   SelectContent,
@@ -230,6 +231,7 @@ export function SeasonGeneratorDialog({
 
   // Analysis State
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [seasonName, setSeasonName] = useState('');
   const [premise, setPremise] = useState('');
   const [showPremise, setShowPremise] = useState(false);
   const [showMarkdownPreview, setShowMarkdownPreview] = useState(false);
@@ -519,6 +521,7 @@ export function SeasonGeneratorDialog({
 
         const payload = {
           projectId,
+          seasonName: seasonName.trim() || undefined,
           premise,
           tone: analysis.tone ?? undefined,
           targetAudience: analysis.target_audience ?? undefined,
@@ -551,6 +554,7 @@ export function SeasonGeneratorDialog({
             form.reset();
             setAnalysis(null);
             setShowPremise(false);
+            setSeasonName('');
           }, 500);
         } else {
           console.error(
@@ -612,6 +616,22 @@ export function SeasonGeneratorDialog({
           {/* Step 1: Premise */}
           {step === 'premise' && (
             <div className="mx-auto max-w-4xl space-y-8 p-8">
+              {/* Season Name */}
+              <section className="space-y-2">
+                <label className="text-sm font-semibold text-zinc-900 dark:text-white">
+                  Season Name
+                </label>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Organize episodes by content type
+                </p>
+                <Input
+                  value={seasonName}
+                  onChange={(e) => setSeasonName(e.target.value)}
+                  placeholder="e.g., History Deep Dives, Science Reels, Season 3"
+                  className="max-w-md"
+                />
+              </section>
+
               <section className="space-y-4">
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-white">

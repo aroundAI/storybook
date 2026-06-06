@@ -15,6 +15,7 @@ import {
   formatCharactersForPrompt,
   formatLocationsForPrompt,
   formatRecurringElementsForPrompt,
+  formatVerifiedFactsForPrompt,
 } from '../utils/context-builder';
 
 interface StoryIdeationPayload {
@@ -77,6 +78,12 @@ export async function processStoryIdeation(
     '@kit/episodes/agent/ideation-orchestrator'
   );
 
+  // Format verified facts for factual content types
+  const verifiedFactsContext =
+    episodeContext.verifiedFacts.length > 0
+      ? formatVerifiedFactsForPrompt(episodeContext.verifiedFacts)
+      : undefined;
+
   const orchestratorResult = await runIdeationOrchestrator({
     episodeId: data.episodeId,
     premise: data.premise || episodeContext.premise,
@@ -84,6 +91,8 @@ export async function processStoryIdeation(
     genre: episodeContext.genre ?? 'general',
     targetAudience: episodeContext.targetAudience ?? 'general',
     accountId: data.accountId,
+    contentType: episodeContext.projectType,
+    verifiedFactsContext,
     charactersContext: formatCharactersForPrompt(episodeContext.characters),
     locationsContext: formatLocationsForPrompt(episodeContext.locations),
     seasonContext,

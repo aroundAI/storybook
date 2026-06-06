@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 
 import { Check, Loader2, Search } from 'lucide-react';
+import { z } from 'zod';
 
 import {
-  getProjectFactsForLinkingAction,
-  linkFactToEpisodeAction,
+  getProjectFactsAction,
+  linkFactsToEpisodeAction,
 } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -56,13 +57,37 @@ export function LinkFactsDialog({
   const loadFacts = useCallback(() => {
     startTransition(async () => {
       try {
-        const result = await getProjectFactsForLinkingAction({
+        const result = await getProjectFactsAction({
           projectId,
           search: search.trim() || undefined,
+          limit: 50,
+          offset: 0,
         });
 
-        if (Array.isArray(result)) {
-          setFacts(result as ProjectFact[]);
+        const resultSchema = z.object({
+          facts: z.array(
+            z.object({
+              id: z.string(),
+              claim: z.string(),
+              simplifiedClaim: z.string().nullable(),
+              sourceCitation: z.string().nullable(),
+              verificationStatus: z.string(),
+              category: z.string().nullable(),
+            }),
+          ),
+        });
+        const parsed = resultSchema.safeParse(result);
+        if (parsed.success) {
+          setFacts(
+            parsed.data.facts.map((f) => ({
+              id: f.id,
+              claim: f.claim,
+              simplified_claim: f.simplifiedClaim,
+              source_citation: f.sourceCitation,
+              verification_status: f.verificationStatus,
+              category: f.category,
+            })),
+          );
         }
       } catch {
         // Silent
@@ -107,23 +132,15 @@ export function LinkFactsDialog({
 
     startTransition(async () => {
       try {
-        const results = await Promise.allSettled(
-          Array.from(selectedIds).map((factId) =>
-            linkFactToEpisodeAction({ episodeId, factId }),
-          ),
-        );
+        const result = await linkFactsToEpisodeAction({
+          episodeId,
+          factIds: Array.from(selectedIds),
+        });
 
-        const succeeded = results.filter(
-          (r) => r.status === 'fulfilled',
-        ).length;
-        const failed = results.filter((r) => r.status === 'rejected').length;
-
-        if (failed === 0) {
-          toast.success(`Linked ${succeeded} fact(s) to episode`);
-        } else if (succeeded > 0) {
-          toast.warning(`Linked ${succeeded} fact(s), ${failed} failed`);
+        if (result && 'linkedCount' in result) {
+          toast.success(`Linked ${result.linkedCount} fact(s) to episode`);
         } else {
-          toast.error('Failed to link facts');
+          toast.success(`Linked fact(s) to episode`);
         }
 
         onFactsLinked();

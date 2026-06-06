@@ -16,6 +16,7 @@
  */
 import { runAgent } from '@kit/agent';
 import type { AgentRunResult, Skill } from '@kit/agent';
+import type { ProjectType } from '@kit/film-studio-schemas/project';
 
 import { ideationDirectorSkill } from './skills/ideation-director-skill';
 import { ideationEvaluatorSkill } from './skills/ideation-evaluator-skill';
@@ -27,6 +28,8 @@ export interface IdeationOrchestratorInput {
   genre: string;
   targetAudience: string;
   accountId: string;
+  contentType?: ProjectType;
+  verifiedFactsContext?: string;
   charactersContext: string;
   locationsContext: string;
   seasonContext?: string;
@@ -75,13 +78,22 @@ export async function runIdeationOrchestrator(
     `[Ideation Orchestrator] Starting for episode ${input.episodeId}`,
   );
 
+  const isFactual =
+    input.contentType === 'documentary' ||
+    input.contentType === 'educational';
+
   const skills: Skill[] = [ideationDirectorSkill, ideationEvaluatorSkill];
+
+  let systemPrompt = IDEATION_SYSTEM_PROMPT;
+  if (isFactual) {
+    systemPrompt += FACTUAL_IDEATION_ADDENDUM;
+  }
 
   const result: AgentRunResult<IdeationOrchestratorOutput> =
     await runAgent<IdeationOrchestratorOutput>(
       {
         name: 'ideation-orchestrator',
-        systemPrompt: IDEATION_SYSTEM_PROMPT,
+        systemPrompt,
         tools: [],
         skills,
         maxSteps: 5,
@@ -209,11 +221,16 @@ Return a JSON object with:
 // ---------------------------------------------------------------------------
 
 function buildIdeationPrompt(input: IdeationOrchestratorInput): string {
+  const isFactual =
+    input.contentType === 'documentary' ||
+    input.contentType === 'educational';
+
   return `Generate and evaluate ${input.numberOfIdeas} story ideas for this episode.
 
 **Premise**: ${input.premise}
 **Genre**: ${input.genre}
 **Target Audience**: ${input.targetAudience}
+${input.contentType ? `**Content Type**: ${input.contentType}` : ''}
 
 **Character Context (pass verbatim to Ideation Director):**
 ${input.charactersContext || 'No characters defined.'}
@@ -232,8 +249,33 @@ ${input.recurringElementsContext}
 `
     : ''
 }
+${
+  isFactual && input.verifiedFactsContext
+    ? `
+**VERIFIED FACTS (ideas must incorporate these):**
+${input.verifiedFactsContext}
+
+IMPORTANT: Each idea must present a narrative ANGLE to deliver these facts.
+The protagonist experiences/discovers the facts through immersive action.
+Generate diverse approaches: chronological, mystery-reveal, character-driven, etc.
+`
+    : ''
+}
 
 Begin with Ideation Director. Pass all context verbatim. Evaluate with Ideation Evaluator. Regenerate weak ideas if needed (max 1 cycle). Stop.
 
 Goal: ${input.numberOfIdeas} ideas, each scoring >= 0.5, with maximum diversity.`;
 }
+
+const FACTUAL_IDEATION_ADDENDUM = `
+
+## Documentary/Educational Mode
+
+For factual content, each idea must:
+1. Present a unique NARRATIVE ANGLE to deliver the verified facts
+2. Use the protagonist as a vehicle — they EXPERIENCE the facts, not lecture about them
+3. Example angles: chronological journey, mystery investigation, cause-and-effect chain, day-in-the-life
+4. Every critical fact must appear as a plot event in the story concept
+5. The logline must hint at the factual core while promising an engaging story
+
+Judge idea quality by: (a) how naturally facts integrate into narrative, (b) engagement, (c) visual potential`;

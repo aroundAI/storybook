@@ -250,6 +250,12 @@ async function processJob(job: LlmJobMessage): Promise<unknown> {
       );
       return processScreenplayRefinement(job.payload, supabase);
     }
+    case 'fact-extraction': {
+      const { processFactExtraction } = await import(
+        './handlers/fact-extraction'
+      );
+      return processFactExtraction(job.payload, supabase);
+    }
     default:
       throw new Error(`Unknown job type: ${job.jobType}`);
   }
