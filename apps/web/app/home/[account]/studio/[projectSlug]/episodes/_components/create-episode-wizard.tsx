@@ -18,8 +18,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-import type { ContentStyle } from '@kit/episodes/lib';
 import { DurationSelector } from '@kit/episodes/components';
+import type { ContentStyle } from '@kit/episodes/lib';
 import {
   createEpisodeWithContextAction,
   getProjectFactsForWizardAction,
@@ -261,9 +261,7 @@ export function CreateEpisodeWizard({
           seasonId: isCreatingNewSeason ? undefined : seasonId,
           newSeasonName: isCreatingNewSeason ? newSeasonName : undefined,
           factIds:
-            selectedFactIds.size > 0
-              ? Array.from(selectedFactIds)
-              : undefined,
+            selectedFactIds.size > 0 ? Array.from(selectedFactIds) : undefined,
           hook: hook || undefined,
           targetDuration: targetDuration || undefined,
           contentStyle,
@@ -328,10 +326,8 @@ export function CreateEpisodeWizard({
                     }}
                     className={cn(
                       'flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                      isActive &&
-                        'bg-primary text-primary-foreground',
-                      isCompleted &&
-                        'bg-primary/10 text-primary',
+                      isActive && 'bg-primary text-primary-foreground',
+                      isCompleted && 'bg-primary/10 text-primary',
                       !isActive &&
                         !isCompleted &&
                         'text-muted-foreground hover:text-foreground',
@@ -459,7 +455,7 @@ export function CreateEpisodeWizard({
 
                 {/* Search */}
                 <div className="relative">
-                  <Search className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                  <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                   <Input
                     placeholder="Search facts by claim, category, or source..."
                     value={factSearchQuery}
@@ -499,7 +495,7 @@ export function CreateEpisodeWizard({
                             <button
                               type="button"
                               onClick={() => selectAllInCategory(category)}
-                              className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-xs font-medium uppercase tracking-wider"
+                              className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-xs font-medium tracking-wider uppercase"
                             >
                               <Checkbox
                                 checked={allSelected}
@@ -517,7 +513,7 @@ export function CreateEpisodeWizard({
                                     'flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors',
                                     selectedFactIds.has(fact.id)
                                       ? 'border-primary bg-primary/5'
-                                      : 'border-transparent hover:bg-muted/50',
+                                      : 'hover:bg-muted/50 border-transparent',
                                   )}
                                 >
                                   <Checkbox
@@ -539,10 +535,7 @@ export function CreateEpisodeWizard({
                                       variant="outline"
                                       className="shrink-0 text-xs"
                                     >
-                                      {Math.round(
-                                        fact.confidenceScore * 100,
-                                      )}
-                                      %
+                                      {Math.round(fact.confidenceScore * 100)}%
                                     </Badge>
                                   )}
                                 </button>
@@ -643,7 +636,7 @@ export function CreateEpisodeWizard({
                 <div className="divide-y rounded-lg border">
                   {/* Basics */}
                   <div className="p-4">
-                    <div className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wider">
+                    <div className="text-muted-foreground mb-1 text-xs font-medium tracking-wider uppercase">
                       Basics
                     </div>
                     <p className="font-medium">{title}</p>
@@ -664,7 +657,7 @@ export function CreateEpisodeWizard({
 
                   {/* Facts */}
                   <div className="p-4">
-                    <div className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wider">
+                    <div className="text-muted-foreground mb-1 text-xs font-medium tracking-wider uppercase">
                       Facts & Sources
                     </div>
                     {selectedFactIds.size > 0 ? (
@@ -706,7 +699,7 @@ export function CreateEpisodeWizard({
 
                   {/* Creative Direction */}
                   <div className="p-4">
-                    <div className="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wider">
+                    <div className="text-muted-foreground mb-1 text-xs font-medium tracking-wider uppercase">
                       Creative Direction
                     </div>
                     {hook && (

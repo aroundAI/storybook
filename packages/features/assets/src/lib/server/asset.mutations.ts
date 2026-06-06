@@ -427,9 +427,7 @@ export const checkAssetsInUseAction = enhanceAction(
         { ...ctx, error: dialogueError },
         'Failed to check dialogue_lines references',
       );
-      throw new Error(
-        `Failed to check references: ${dialogueError.message}`,
-      );
+      throw new Error(`Failed to check references: ${dialogueError.message}`);
     }
 
     const inUseIds = new Set<string>(
@@ -498,10 +496,7 @@ export const bulkDeleteAssetsAction = enhanceAction(
       .select('id');
 
     if (error) {
-      console.error(
-        '[bulkDeleteAssetsAction] Failed to delete assets:',
-        error,
-      );
+      console.error('[bulkDeleteAssetsAction] Failed to delete assets:', error);
       logger.error({ ...ctx, error }, 'Failed to bulk delete assets');
       throw new Error(`Failed to bulk delete assets: ${error.message}`);
     }

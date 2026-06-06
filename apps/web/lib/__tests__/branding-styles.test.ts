@@ -334,7 +334,9 @@ describe('Branding Styles', () => {
       const styles = generateLogoStyle(mockConfig);
 
       expect(styles.textShadow).toBe('0 0 10px rgba(59, 130, 246, 0.5)');
-      expect(styles.animation).toContain('glow-pulse-logo 2s ease-in-out infinite');
+      expect(styles.animation).toContain(
+        'glow-pulse-logo 2s ease-in-out infinite',
+      );
     });
 
     it('should combine gradient and glow animations', async () => {
@@ -364,7 +366,9 @@ describe('Branding Styles', () => {
       const styles = generateLogoStyle(mockConfig);
 
       expect(styles.animation).toContain('gradient-shift 3s ease infinite');
-      expect(styles.animation).toContain('glow-pulse-logo 2s ease-in-out infinite');
+      expect(styles.animation).toContain(
+        'glow-pulse-logo 2s ease-in-out infinite',
+      );
     });
 
     it('should apply text stroke', () => {

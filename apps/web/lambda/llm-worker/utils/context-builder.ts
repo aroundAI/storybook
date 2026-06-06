@@ -318,12 +318,14 @@ export async function buildEpisodeContext(
   try {
     const { data: linkedFactRows } = await client
       .from('episode_facts')
-      .select(`
+      .select(
+        `
         fact:verified_facts (
           id, claim, simplified_claim, category,
           source_citation, source_title, confidence_score
         )
-      `)
+      `,
+      )
       .eq('episode_id', episodeId);
 
     if (linkedFactRows && linkedFactRows.length > 0) {
@@ -343,9 +345,7 @@ export async function buildEpisodeContext(
         })
         .filter((f): f is NonNullable<typeof f> => f !== null);
     }
-    console.log(
-      `[buildEpisodeContext] Linked facts: ${episodeFacts.length}`,
-    );
+    console.log(`[buildEpisodeContext] Linked facts: ${episodeFacts.length}`);
   } catch (factError) {
     console.warn(
       '[buildEpisodeContext] Failed to fetch episode facts (non-fatal):',
@@ -377,7 +377,8 @@ export async function buildEpisodeContext(
     genre: projectMetadata.genre ?? 'general',
     targetAudience: projectMetadata.targetAudience ?? 'general',
     visualStyle: projectMetadata.videoStyle ?? 'balanced',
-    visualToneOverride: (metadata as { visual_tone?: string }).visual_tone ?? undefined,
+    visualToneOverride:
+      (metadata as { visual_tone?: string }).visual_tone ?? undefined,
     aestheticStyle: projectMetadata.projectAestheticStyle ?? undefined,
 
     // Recurring story elements (with backward compat for single element)
@@ -706,20 +707,21 @@ export function formatLocationsForPrompt(
   if (locations.length === 0) return '';
 
   return `**Locations**:\n${locations
-    .map(
-      (l) => {
-        const parts = [`- **${l.name}** (${l.setting}): ${l.description}`];
-        if (l.atmosphere) parts.push(`  Atmosphere: ${l.atmosphere}`);
-        // Rich visual metadata from season extraction
-        const meta = l as Record<string, unknown>;
-        if (meta.visualDescription && typeof meta.visualDescription === 'string') {
-          parts.push(`  Visual: ${meta.visualDescription}`);
-        }
-        if (l.timeOfDay) parts.push(`  Time of Day: ${l.timeOfDay}`);
-        if (l.weather) parts.push(`  Weather: ${l.weather}`);
-        return parts.join('\n');
-      },
-    )
+    .map((l) => {
+      const parts = [`- **${l.name}** (${l.setting}): ${l.description}`];
+      if (l.atmosphere) parts.push(`  Atmosphere: ${l.atmosphere}`);
+      // Rich visual metadata from season extraction
+      const meta = l as Record<string, unknown>;
+      if (
+        meta.visualDescription &&
+        typeof meta.visualDescription === 'string'
+      ) {
+        parts.push(`  Visual: ${meta.visualDescription}`);
+      }
+      if (l.timeOfDay) parts.push(`  Time of Day: ${l.timeOfDay}`);
+      if (l.weather) parts.push(`  Weather: ${l.weather}`);
+      return parts.join('\n');
+    })
     .join('\n')}`;
 }
 

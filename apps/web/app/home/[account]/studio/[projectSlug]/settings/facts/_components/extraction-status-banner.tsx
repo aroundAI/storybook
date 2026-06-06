@@ -51,10 +51,7 @@ export function ExtractionStatusBanner({
   }
 
   const totalChunks = jobs.reduce((sum, j) => sum + j.chunk_count, 0);
-  const completedChunks = jobs.reduce(
-    (sum, j) => sum + j.chunks_completed,
-    0,
-  );
+  const completedChunks = jobs.reduce((sum, j) => sum + j.chunks_completed, 0);
   const totalFacts = jobs.reduce((sum, j) => sum + j.facts_extracted, 0);
 
   return (

@@ -202,7 +202,10 @@ function TaggedAssets({
                 className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]"
               >
                 {isLinked && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" title="Linked to library" />
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-emerald-400"
+                    title="Linked to library"
+                  />
                 )}
                 <User className="h-2.5 w-2.5" />
                 {name}
@@ -212,7 +215,8 @@ function TaggedAssets({
         : characterIds.length > 0 && (
             <span className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]">
               <User className="h-2.5 w-2.5" />
-              {characterIds.length} character{characterIds.length !== 1 ? 's' : ''}
+              {characterIds.length} character
+              {characterIds.length !== 1 ? 's' : ''}
             </span>
           )}
       {hasLocationNames
@@ -225,7 +229,10 @@ function TaggedAssets({
                 className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]"
               >
                 {isLinked && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" title="Linked to library" />
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-emerald-400"
+                    title="Linked to library"
+                  />
                 )}
                 <MapPin className="h-2.5 w-2.5" />
                 {name}

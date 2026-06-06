@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 
+import { z } from 'zod';
+
 import type { AssetRow } from '@kit/assets';
 import { mapRowToAsset } from '@kit/assets';
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
@@ -10,8 +12,6 @@ import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-
-import { z } from 'zod';
 
 import {
   CreateEpisodeSchema,
@@ -22,9 +22,7 @@ import {
   UpdateEpisodeSchema,
   UpdateEpisodeStatusSchema,
 } from '../lib/schemas';
-import {
-  CreateEpisodeWithContextSchema,
-} from '../lib/schemas/create-episode-wizard.schema';
+import { CreateEpisodeWithContextSchema } from '../lib/schemas/create-episode-wizard.schema';
 import { generateEpisodeSlug } from '../lib/slug-utils';
 import {
   InvalidStatusTransitionError,
@@ -177,7 +175,10 @@ export const createEpisodeAction = enhanceAction(
 export const createEpisodeWithContextAction = enhanceAction(
   async (data) => {
     const logger = await getLogger();
-    const ctx = { name: 'episodes.createWithContext', projectId: data.projectId };
+    const ctx = {
+      name: 'episodes.createWithContext',
+      projectId: data.projectId,
+    };
 
     logger.info(ctx, 'Creating episode with context');
 
@@ -366,18 +367,16 @@ export const createEpisodeWithContextAction = enhanceAction(
 
         // Create generation job entry
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (client as any)
-          .from('generation_jobs')
-          .insert({
-            reference_type: 'episode',
-            reference_id: episode.id,
-            job_type: 'story',
-            status: 'queued',
-            account_id: project.account_id,
-            project_id: data.projectId,
-            idempotency_key: `story-${episode.id}-${Date.now()}`,
-            input_data: { episodeId: episode.id, title: data.title },
-          });
+        await (client as any).from('generation_jobs').insert({
+          reference_type: 'episode',
+          reference_id: episode.id,
+          job_type: 'story',
+          status: 'queued',
+          account_id: project.account_id,
+          project_id: data.projectId,
+          idempotency_key: `story-${episode.id}-${Date.now()}`,
+          input_data: { episodeId: episode.id, title: data.title },
+        });
 
         await queueLlmJob({
           jobType: 'story-generation',
@@ -395,7 +394,10 @@ export const createEpisodeWithContextAction = enhanceAction(
           },
         });
 
-        logger.info({ ...ctx, episodeId: episode.id }, 'Story generation queued');
+        logger.info(
+          { ...ctx, episodeId: episode.id },
+          'Story generation queued',
+        );
       } catch (queueError) {
         logger.warn(
           { ...ctx, error: queueError },
@@ -404,7 +406,10 @@ export const createEpisodeWithContextAction = enhanceAction(
       }
     }
 
-    logger.info({ ...ctx, episodeId: episode.id }, 'Episode created with context');
+    logger.info(
+      { ...ctx, episodeId: episode.id },
+      'Episode created with context',
+    );
     revalidatePath('/home/[account]/studio/[projectSlug]/episodes', 'page');
 
     return {
@@ -424,9 +429,9 @@ export const createEpisodeWithContextAction = enhanceAction(
  * Returns facts grouped by source for easy browsing.
  */
 export const getProjectFactsForWizardAction = enhanceAction(
-  async (
-    data: { projectId: string },
-  ): Promise<{
+  async (data: {
+    projectId: string;
+  }): Promise<{
     success: true;
     data: {
       facts: Array<{
@@ -463,16 +468,14 @@ export const getProjectFactsForWizardAction = enhanceAction(
       throw new Error('Failed to fetch facts');
     }
 
-    const mappedFacts = (facts ?? []).map(
-      (f: Record<string, unknown>) => ({
-        id: f.id as string,
-        claim: f.claim as string,
-        category: (f.category as string) ?? null,
-        sourceTitle: (f.source_title as string) ?? null,
-        sourceCitation: (f.source_citation as string) ?? null,
-        confidenceScore: (f.confidence_score as number) ?? null,
-      }),
-    );
+    const mappedFacts = (facts ?? []).map((f: Record<string, unknown>) => ({
+      id: f.id as string,
+      claim: f.claim as string,
+      category: (f.category as string) ?? null,
+      sourceTitle: (f.source_title as string) ?? null,
+      sourceCitation: (f.source_citation as string) ?? null,
+      confidenceScore: (f.confidence_score as number) ?? null,
+    }));
 
     return {
       success: true,

@@ -3,7 +3,6 @@
 import { useState } from 'react';
 
 import { Check } from 'lucide-react';
-
 import {
   Edit,
   Film,
@@ -184,7 +183,8 @@ export function AssetCard({
           colors.border,
           colors.bg,
           selectionMode && 'cursor-pointer',
-          isSelected && 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-zinc-900',
+          isSelected &&
+            'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-zinc-900',
         )}
         onClick={selectionMode ? () => onToggleSelect?.(asset) : undefined}
       >

@@ -13,10 +13,9 @@ import {
   Trash2,
   Volume2,
 } from 'lucide-react';
-import { toast } from '@kit/ui/sonner';
 
-import type { Episode } from '@kit/episodes/types';
 import { deleteSeasonAction, updateSeasonAction } from '@kit/episodes/server';
+import type { Episode } from '@kit/episodes/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +33,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
+import { toast } from '@kit/ui/sonner';
 
 import { GenerateAllSoundModal } from './generate-all-sound-modal';
 
@@ -216,9 +216,7 @@ export function SeasonHeader({
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onSelect={() => setIsEditing(true)}
-              >
+              <DropdownMenuItem onSelect={() => setIsEditing(true)}>
                 <Pencil className="mr-2 h-4 w-4" />
                 Rename Season
               </DropdownMenuItem>

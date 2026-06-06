@@ -62,9 +62,7 @@ export function AssetChipBar({
       {visible.map((chip, i) => {
         const Icon = chip.type === 'character' ? User : MapPin;
         const colorClasses =
-          chip.type === 'character'
-            ? 'text-orange-400/80'
-            : 'text-cyan-400/80';
+          chip.type === 'character' ? 'text-orange-400/80' : 'text-cyan-400/80';
 
         return (
           <span

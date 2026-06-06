@@ -297,7 +297,9 @@ export function RefineIdeaModal({
                 <Eye className="h-3 w-3" />
                 Visual Direction
               </Label>
-              <span className="text-xs text-slate-500">{visualLength}/1000</span>
+              <span className="text-xs text-slate-500">
+                {visualLength}/1000
+              </span>
             </div>
             <Textarea
               {...form.register('visualPotential')}

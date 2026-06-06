@@ -7,6 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { executeLLMForLambda } from '../llm-utils';
 import {
   buildEpisodeContext,
   formatCharactersForPrompt,
@@ -17,7 +18,6 @@ import {
   markJobFailed,
   markJobProcessing,
 } from '../utils/job-tracking';
-import { executeLLMForLambda } from '../llm-utils';
 
 interface ScreenplayRefinementPayload {
   episodeId: string;
@@ -80,9 +80,14 @@ export async function processScreenplayRefinement(
       throw new Error(`Episode not found: ${episodeError?.message}`);
     }
 
-    const screenplayData = episode.screenplay_data as Record<string, unknown> | null;
+    const screenplayData = episode.screenplay_data as Record<
+      string,
+      unknown
+    > | null;
     if (!screenplayData?.scenes) {
-      throw new Error('Episode must have a screenplay before it can be refined');
+      throw new Error(
+        'Episode must have a screenplay before it can be refined',
+      );
     }
 
     const storyData = episode.story_data as Record<string, unknown> | null;
@@ -134,10 +139,15 @@ export async function processScreenplayRefinement(
       console.warn(
         '[Screenplay Refinement] Episode was deleted during refinement. Skipping write.',
       );
-      await markJobCompleted(supabase, data.episodeId, 'screenplay-refinement', {
-        skipped: true,
-        reason: 'episode-deleted',
-      });
+      await markJobCompleted(
+        supabase,
+        data.episodeId,
+        'screenplay-refinement',
+        {
+          skipped: true,
+          reason: 'episode-deleted',
+        },
+      );
 
       return {
         success: false,
@@ -164,9 +174,8 @@ export async function processScreenplayRefinement(
 
     // 6. Save previous screenplay_data and update refinement history in metadata
     const currentMetadata = (episode.metadata as Record<string, unknown>) ?? {};
-    const refinementHistory = (
-      (currentMetadata.refinement_history as RefinementHistoryEntry[]) ?? []
-    );
+    const refinementHistory =
+      (currentMetadata.refinement_history as RefinementHistoryEntry[]) ?? [];
 
     refinementHistory.push({
       timestamp: generatedAt,

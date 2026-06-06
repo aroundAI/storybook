@@ -40,3 +40,6 @@ export {
 
 // Refinement Chat (Feature 2: Chat-Based Refinement)
 export { RefinementChat } from './refinement-chat';
+
+// Sidebar Asset List (linked/unlinked indicators + create from sidebar)
+export { SidebarAssetList } from './sidebar-asset-list';

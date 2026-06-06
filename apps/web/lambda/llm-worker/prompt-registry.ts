@@ -86,7 +86,8 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   'story-generation/story-generation': storyGen as PromptTemplate,
   'story-generation/screenplay-conversion': screenplay as PromptTemplate,
   'story-generation/story-refinement': storyRefinement as PromptTemplate,
-  'story-generation/screenplay-refinement': screenplayRefinement as PromptTemplate,
+  'story-generation/screenplay-refinement':
+    screenplayRefinement as PromptTemplate,
 
   'story-generation/scene-shot-generation': sceneShot as PromptTemplate,
   // Analytics

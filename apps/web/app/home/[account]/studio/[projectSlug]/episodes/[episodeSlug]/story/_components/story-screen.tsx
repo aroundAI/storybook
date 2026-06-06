@@ -13,9 +13,9 @@ import {
   Users,
 } from 'lucide-react';
 
-import { RefinementChat } from '@kit/episodes/components';
+import { RefinementChat, SidebarAssetList } from '@kit/episodes/components';
 import { convertToScreenplayAction } from '@kit/episodes/server';
-import type { EpisodeWithShots, StoryCharacterArc } from '@kit/episodes/types';
+import type { EpisodeWithShots } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
@@ -32,14 +32,6 @@ interface StoryScreenProps {
   refetchEpisode: () => void;
   canonEnabled?: boolean;
 }
-
-const ROLE_COLORS: Record<string, string> = {
-  protagonist:
-    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  antagonist: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  supporting:
-    'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-};
 
 export function StoryScreen({
   episode,
@@ -517,48 +509,21 @@ export function StoryScreen({
                     </div>
                   )}
 
-                  {/* Characters */}
-                  {storyData.characters && storyData.characters.length > 0 && (
-                    <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
-                      <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-                        <Users className="h-4 w-4" />
-                        Characters
-                      </h3>
-                      <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                        {storyData.characters.length} character
-                        {storyData.characters.length !== 1 ? 's' : ''} in this
-                        story
-                      </p>
-                      <div className="space-y-3">
-                        {storyData.characters.map(
-                          (character: StoryCharacterArc, index: number) => (
-                            <div
-                              key={index}
-                              className="rounded-lg border border-gray-100 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/50"
-                            >
-                              <div className="mb-2 flex items-start justify-between">
-                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-                                  {character.name}
-                                </h4>
-                                <span
-                                  className={cn(
-                                    'rounded-full px-2 py-0.5 text-xs font-medium capitalize',
-                                    ROLE_COLORS[character.role.toLowerCase()] ??
-                                      'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
-                                  )}
-                                >
-                                  {character.role}
-                                </span>
-                              </div>
-                              <p className="text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-                                {character.arc}
-                              </p>
-                            </div>
-                          ),
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  {/* Characters & Locations — linked/unlinked indicators */}
+                  <SidebarAssetList
+                    characters={(storyData.characters ?? []).map((c) => ({
+                      name: c.name,
+                      role: c.role,
+                      arc: c.arc,
+                    }))}
+                    locations={[]}
+                    projectId={episode.projectId}
+                    episodeId={episode.id}
+                    storyContext={
+                      storyData.fullStory ?? storyData.premise ?? ''
+                    }
+                    onAssetCreated={refetchEpisode}
+                  />
 
                   {/* Continuity (SCORE) */}
                   {(storyData.episodeSummary ||

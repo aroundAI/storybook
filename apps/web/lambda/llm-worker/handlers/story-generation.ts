@@ -88,7 +88,10 @@ async function autoCreateNewAssets(
 
     const { data: inserted } = await supabase
       .from('assets')
-      .upsert(charRows, { onConflict: 'project_id,type,name', ignoreDuplicates: true })
+      .upsert(charRows, {
+        onConflict: 'project_id,type,name',
+        ignoreDuplicates: true,
+      })
       .select('id');
 
     if (inserted) {
@@ -115,7 +118,10 @@ async function autoCreateNewAssets(
 
     const { data: inserted } = await supabase
       .from('assets')
-      .upsert(locRows, { onConflict: 'project_id,type,name', ignoreDuplicates: true })
+      .upsert(locRows, {
+        onConflict: 'project_id,type,name',
+        ignoreDuplicates: true,
+      })
       .select('id');
 
     if (inserted) {
@@ -140,7 +146,9 @@ async function autoCreateNewAssets(
       const existingLocIds = (metadata.location_ids ?? []) as string[];
 
       // Merge without duplicates
-      const allIds = [...new Set([...existingCharIds, ...existingLocIds, ...createdIds])];
+      const allIds = [
+        ...new Set([...existingCharIds, ...existingLocIds, ...createdIds]),
+      ];
 
       await supabase
         .from('episodes')
@@ -148,10 +156,16 @@ async function autoCreateNewAssets(
           metadata: {
             ...metadata,
             character_ids: allIds.filter((id) =>
-              [...existingCharIds, ...createdIds.slice(0, newCharacters.length)].includes(id),
+              [
+                ...existingCharIds,
+                ...createdIds.slice(0, newCharacters.length),
+              ].includes(id),
             ),
             location_ids: allIds.filter((id) =>
-              [...existingLocIds, ...createdIds.slice(newCharacters.length)].includes(id),
+              [
+                ...existingLocIds,
+                ...createdIds.slice(newCharacters.length),
+              ].includes(id),
             ),
           },
         })

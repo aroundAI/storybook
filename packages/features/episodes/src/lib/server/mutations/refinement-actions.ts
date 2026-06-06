@@ -1,10 +1,11 @@
 'use server';
 
+import { z } from 'zod';
+
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { z } from 'zod';
 
 const RefineStorySchema = z.object({
   episodeId: z.string().uuid(),
@@ -78,11 +79,17 @@ export const refineStoryAction = enhanceAction(
         account_id: accountId,
         project_id: episode.project_id,
         idempotency_key: `story-refinement-${data.episodeId}-${Date.now()}`,
-        input_data: { episodeId: data.episodeId, feedback: data.feedback.substring(0, 200) },
+        input_data: {
+          episodeId: data.episodeId,
+          feedback: data.feedback.substring(0, 200),
+        },
       });
 
     if (jobError) {
-      logger.warn({ ...ctx, error: jobError }, 'Failed to create generation job entry');
+      logger.warn(
+        { ...ctx, error: jobError },
+        'Failed to create generation job entry',
+      );
     }
 
     const { queueLlmJob } = await import('@kit/prompt-engine/server');
@@ -110,7 +117,10 @@ export const refineStoryAction = enhanceAction(
 export const refineScreenplayAction = enhanceAction(
   async (data) => {
     const logger = await getLogger();
-    const ctx = { name: 'episodes.refineScreenplay', episodeId: data.episodeId };
+    const ctx = {
+      name: 'episodes.refineScreenplay',
+      episodeId: data.episodeId,
+    };
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
 
@@ -128,7 +138,9 @@ export const refineScreenplayAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: fetchError } = await (client as any)
       .from('episodes')
-      .select('id, project_id, screenplay_data, project:projects(id, account_id)')
+      .select(
+        'id, project_id, screenplay_data, project:projects(id, account_id)',
+      )
       .eq('id', data.episodeId)
       .is('deleted_at', null)
       .single();
@@ -138,7 +150,9 @@ export const refineScreenplayAction = enhanceAction(
     }
 
     if (!episode.screenplay_data?.scenes) {
-      throw new Error('Episode must have a screenplay before it can be refined');
+      throw new Error(
+        'Episode must have a screenplay before it can be refined',
+      );
     }
 
     const accountId = episode.project?.account_id;
@@ -158,11 +172,17 @@ export const refineScreenplayAction = enhanceAction(
         account_id: accountId,
         project_id: episode.project_id,
         idempotency_key: `screenplay-refinement-${data.episodeId}-${Date.now()}`,
-        input_data: { episodeId: data.episodeId, feedback: data.feedback.substring(0, 200) },
+        input_data: {
+          episodeId: data.episodeId,
+          feedback: data.feedback.substring(0, 200),
+        },
       });
 
     if (jobError) {
-      logger.warn({ ...ctx, error: jobError }, 'Failed to create generation job entry');
+      logger.warn(
+        { ...ctx, error: jobError },
+        'Failed to create generation job entry',
+      );
     }
 
     const { queueLlmJob } = await import('@kit/prompt-engine/server');

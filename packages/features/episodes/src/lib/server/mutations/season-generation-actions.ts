@@ -161,7 +161,6 @@ export const generateSeasonEpisodesAction = enhanceAction(
             },
           }));
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { data: insertedAssets, error: assetError } = await (
             client as any
           )
@@ -227,7 +226,6 @@ export const generateSeasonEpisodesAction = enhanceAction(
             },
           }));
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { data: insertedLocations, error: locError } = await (
             client as any
           )
@@ -279,10 +277,8 @@ export const generateSeasonEpisodesAction = enhanceAction(
       const nextSeasonNumber = (existingSeasons?.[0]?.number ?? 0) + 1;
 
       // Create the season
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: insertedSeason, error: seasonError } = await (
-        client as any
-      )
+
+      const { data: insertedSeason, error: seasonError } = await (client as any)
         .from('seasons')
         .insert({
           project_id: data.projectId,
@@ -387,14 +383,8 @@ export const generateSeasonEpisodesAction = enhanceAction(
         };
       }
 
-      revalidatePath(
-        '/home/[account]/studio/[projectSlug]/episodes',
-        'page',
-      );
-      revalidatePath(
-        '/home/[account]/studio/[projectSlug]/assets',
-        'page',
-      );
+      revalidatePath('/home/[account]/studio/[projectSlug]/episodes', 'page');
+      revalidatePath('/home/[account]/studio/[projectSlug]/assets', 'page');
 
       return {
         success: true as const,

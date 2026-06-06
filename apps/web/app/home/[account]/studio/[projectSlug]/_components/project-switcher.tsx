@@ -153,7 +153,9 @@ export function ProjectSwitcher({
                   .map((project) => (
                     <DropdownMenuItem
                       key={project.id}
-                      onClick={() => navigateToProject(project.slug ?? project.id)}
+                      onClick={() =>
+                        navigateToProject(project.slug ?? project.id)
+                      }
                       className="cursor-pointer hover:bg-zinc-100 dark:hover:bg-white/5"
                     >
                       <FolderOpen className="mr-2 h-4 w-4 text-zinc-400" />

@@ -19,7 +19,9 @@ export const CreateEpisodeWithContextSchema = z.object({
   // Creative Direction
   hook: z.string().max(500).optional(),
   targetDuration: z.number().int().min(60).max(7200).optional(),
-  contentStyle: z.enum(['dialogue-heavy', 'action-heavy', 'balanced']).optional(),
+  contentStyle: z
+    .enum(['dialogue-heavy', 'action-heavy', 'balanced'])
+    .optional(),
   visualTone: z.string().max(255).optional(),
   toneNotes: z.string().max(2000).optional(),
 
@@ -27,4 +29,6 @@ export const CreateEpisodeWithContextSchema = z.object({
   autoGenerateStory: z.boolean().optional(),
 });
 
-export type CreateEpisodeWithContextInput = z.infer<typeof CreateEpisodeWithContextSchema>;
+export type CreateEpisodeWithContextInput = z.infer<
+  typeof CreateEpisodeWithContextSchema
+>;

@@ -18,10 +18,10 @@ import {
 } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
-import { ScrollArea } from '@kit/ui/scroll-area';
-import { Textarea } from '@kit/ui/textarea';
 import { useLlmJob } from '@kit/ui/hooks';
+import { ScrollArea } from '@kit/ui/scroll-area';
 import { toast } from '@kit/ui/sonner';
+import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
 
 type RefinementStatus = 'pending' | 'refining' | 'applied' | 'error';
@@ -194,9 +194,7 @@ export function RefinementChat({
       onRefinementComplete?.();
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to undo refinement',
+        error instanceof Error ? error.message : 'Failed to undo refinement',
       );
     } finally {
       setIsUndoing(false);
@@ -255,59 +253,59 @@ export function RefinementChat({
       {/* Messages */}
       <ScrollArea className="flex-1 p-4">
         <div ref={scrollRef}>
-        {messages.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center py-8 text-center">
-            <MessageSquare className="mb-3 h-8 w-8 text-gray-400 dark:text-gray-500" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              No refinements yet
-            </p>
-            <p className="mt-1 max-w-[200px] text-xs text-gray-400 dark:text-gray-500">
-              Type your feedback below to refine the{' '}
-              {mode === 'story' ? 'story' : 'screenplay'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {messages.map((message) => {
-              const statusConfig = STATUS_CONFIG[message.status];
-              return (
-                <div
-                  key={message.id}
-                  className="rounded-xl border border-gray-100 bg-gray-50/50 p-3 dark:border-gray-700/50 dark:bg-gray-800/50"
-                >
-                  {/* Feedback text */}
-                  <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                    {message.feedback}
-                  </p>
-
-                  {/* Footer: timestamp + status */}
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-xs text-gray-400 dark:text-gray-500">
-                      {formatTime(message.timestamp)}
-                    </span>
-                    <Badge
-                      variant="secondary"
-                      className={cn(
-                        'flex items-center gap-1 text-xs',
-                        statusConfig.className,
-                      )}
-                    >
-                      {statusConfig.icon}
-                      {statusConfig.label}
-                    </Badge>
-                  </div>
-
-                  {/* Error message */}
-                  {message.errorMessage && (
-                    <p className="mt-2 text-xs text-red-500 dark:text-red-400">
-                      {message.errorMessage}
+          {messages.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center py-8 text-center">
+              <MessageSquare className="mb-3 h-8 w-8 text-gray-400 dark:text-gray-500" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No refinements yet
+              </p>
+              <p className="mt-1 max-w-[200px] text-xs text-gray-400 dark:text-gray-500">
+                Type your feedback below to refine the{' '}
+                {mode === 'story' ? 'story' : 'screenplay'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {messages.map((message) => {
+                const statusConfig = STATUS_CONFIG[message.status];
+                return (
+                  <div
+                    key={message.id}
+                    className="rounded-xl border border-gray-100 bg-gray-50/50 p-3 dark:border-gray-700/50 dark:bg-gray-800/50"
+                  >
+                    {/* Feedback text */}
+                    <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                      {message.feedback}
                     </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+
+                    {/* Footer: timestamp + status */}
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-xs text-gray-400 dark:text-gray-500">
+                        {formatTime(message.timestamp)}
+                      </span>
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          'flex items-center gap-1 text-xs',
+                          statusConfig.className,
+                        )}
+                      >
+                        {statusConfig.icon}
+                        {statusConfig.label}
+                      </Badge>
+                    </div>
+
+                    {/* Error message */}
+                    {message.errorMessage && (
+                      <p className="mt-2 text-xs text-red-500 dark:text-red-400">
+                        {message.errorMessage}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </ScrollArea>
 
@@ -325,7 +323,7 @@ export function RefinementChat({
                 : `Describe changes to the ${mode}...`
             }
             disabled={isRefining || isSubmitting}
-            className="min-h-[60px] max-h-[120px] resize-none border-gray-200 bg-white text-sm dark:border-gray-700 dark:bg-gray-800"
+            className="max-h-[120px] min-h-[60px] resize-none border-gray-200 bg-white text-sm dark:border-gray-700 dark:bg-gray-800"
             rows={2}
           />
           <Button

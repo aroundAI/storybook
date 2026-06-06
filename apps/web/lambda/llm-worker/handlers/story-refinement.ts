@@ -7,6 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { executeLLMForLambda } from '../llm-utils';
 import {
   buildEpisodeContext,
   formatCharactersForPrompt,
@@ -18,7 +19,6 @@ import {
   markJobFailed,
   markJobProcessing,
 } from '../utils/job-tracking';
-import { executeLLMForLambda } from '../llm-utils';
 
 interface StoryRefinementPayload {
   episodeId: string;
@@ -57,9 +57,7 @@ export async function processStoryRefinement(
 ): Promise<StoryRefinementResult> {
   const data = payload as unknown as StoryRefinementPayload;
 
-  console.log(
-    `[Story Refinement] Processing for episode ${data.episodeId}`,
-  );
+  console.log(`[Story Refinement] Processing for episode ${data.episodeId}`);
 
   await markJobProcessing(supabase, data.episodeId, 'story-refinement');
 
@@ -107,7 +105,11 @@ export async function processStoryRefinement(
     // 3. Call LLM with story-refinement template
     const result = await executeLLMForLambda<{
       story: Record<string, unknown>;
-      newCharacters?: Array<{ name: string; role: string; description: string }>;
+      newCharacters?: Array<{
+        name: string;
+        role: string;
+        description: string;
+      }>;
       newLocations?: Array<{ name: string; description: string }>;
     }>({
       templateSlug: 'story-refinement',
@@ -168,7 +170,8 @@ export async function processStoryRefinement(
       characters: refinedStory.characters ?? storyData.characters,
       themes: refinedStory.themes ?? storyData.themes,
       tone: refinedStory.tone ?? storyData.tone,
-      estimatedSceneCount: refinedStory.estimatedSceneCount ?? storyData.estimatedSceneCount,
+      estimatedSceneCount:
+        refinedStory.estimatedSceneCount ?? storyData.estimatedSceneCount,
       episodeSummary: refinedStory.episodeSummary ?? storyData.episodeSummary,
       sentimentScore: refinedStory.sentimentScore ?? storyData.sentimentScore,
       keyEvents: refinedStory.keyEvents ?? storyData.keyEvents,
@@ -178,9 +181,8 @@ export async function processStoryRefinement(
 
     // 6. Save previous story_data and update refinement history in metadata
     const currentMetadata = (episode.metadata as Record<string, unknown>) ?? {};
-    const refinementHistory = (
-      (currentMetadata.refinement_history as RefinementHistoryEntry[]) ?? []
-    );
+    const refinementHistory =
+      (currentMetadata.refinement_history as RefinementHistoryEntry[]) ?? [];
 
     refinementHistory.push({
       timestamp: generatedAt,

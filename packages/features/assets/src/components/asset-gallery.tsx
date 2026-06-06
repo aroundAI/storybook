@@ -35,11 +35,11 @@ import { toast } from '@kit/ui/sonner';
 import { useAssets } from '../hooks/use-assets';
 import { useCharacterAssets } from '../hooks/use-character-assets';
 import { useCharacterFilters } from '../hooks/use-character-filters';
-import { getCharacterAction } from '../lib/server/character.mutations';
 import {
   bulkDeleteAssetsAction,
   checkAssetsInUseAction,
 } from '../lib/server/asset.mutations';
+import { getCharacterAction } from '../lib/server/character.mutations';
 import type { Asset, CharacterWithDetails } from '../lib/types';
 import { AssetCard } from './asset-card';
 import { AssetFilterToolbar } from './asset-filter-toolbar';
@@ -191,9 +191,7 @@ export function AssetGallery({
 
   const handleSelectAll = useCallback(() => {
     const assets =
-      activeTab === 'character'
-        ? filteredCharacters
-        : filteredLocationAssets;
+      activeTab === 'character' ? filteredCharacters : filteredLocationAssets;
     setSelectedIds(new Set(assets.map((a) => a.id)));
   }, [activeTab, filteredCharacters, filteredLocationAssets]);
 
@@ -258,7 +256,14 @@ export function AssetGallery({
         }
       });
     },
-    [selectedIds, projectId, activeTab, handleExitSelectionMode, router, fetchCharacters],
+    [
+      selectedIds,
+      projectId,
+      activeTab,
+      handleExitSelectionMode,
+      router,
+      fetchCharacters,
+    ],
   );
 
   const handleEdit = useCallback(
@@ -457,11 +462,7 @@ export function AssetGallery({
                 Delete Selected ({selectedIds.size})
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleExitSelectionMode}
-            >
+            <Button variant="ghost" size="sm" onClick={handleExitSelectionMode}>
               <X className="mr-1 h-4 w-4" />
               Cancel
             </Button>
@@ -647,9 +648,7 @@ export function AssetGallery({
                   inUseWarning.safeToDelete.length > 0 && (
                     <p className="text-sm">
                       {inUseWarning.safeToDelete.length} other{' '}
-                      {activeTab === 'character'
-                        ? 'characters'
-                        : 'locations'}{' '}
+                      {activeTab === 'character' ? 'characters' : 'locations'}{' '}
                       can be safely deleted.
                     </p>
                   )}

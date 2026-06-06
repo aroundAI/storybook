@@ -206,8 +206,10 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   for (const ep of episodes ?? []) {
     const meta = ep.metadata as Record<string, unknown> | null;
     if (meta) {
-      for (const id of (meta.character_ids as string[]) ?? []) allAssetIds.add(id);
-      for (const id of (meta.location_ids as string[]) ?? []) allAssetIds.add(id);
+      for (const id of (meta.character_ids as string[]) ?? [])
+        allAssetIds.add(id);
+      for (const id of (meta.location_ids as string[]) ?? [])
+        allAssetIds.add(id);
     }
   }
 

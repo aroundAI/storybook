@@ -146,7 +146,8 @@ export function EpisodeListItem({
               </p>
 
               {/* Character & Location chips */}
-              {(episode.characterNames?.length || episode.locationNames?.length) ? (
+              {episode.characterNames?.length ||
+              episode.locationNames?.length ? (
                 <AssetChipBar
                   characterNames={episode.characterNames ?? []}
                   locationNames={episode.locationNames ?? []}

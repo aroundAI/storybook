@@ -31,10 +31,7 @@ export function CreateEpisodeWizardWrapper({
 
   return (
     <>
-      <Button
-        variant="outline"
-        onClick={() => setWizardOpen(true)}
-      >
+      <Button variant="outline" onClick={() => setWizardOpen(true)}>
         <Sparkles className="mr-2 h-4 w-4" />
         Advanced
       </Button>

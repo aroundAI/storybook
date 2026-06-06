@@ -1,0 +1,66 @@
+{
+  "slug": "story-generation/extract-asset-description",
+  "name": "Extract Asset Description",
+  "version": 2,
+  "category": "story-generation",
+  "description": "Extract a detailed character or location description from story/screenplay text, suitable for AI portrait or environment image generation.",
+  "exported_at": "2025-01-01T00:00:00.000Z",
+  "llm": {
+    "provider": "gemini",
+    "model": "gemini-2.5-flash",
+    "max_tokens": 800,
+    "temperature": 0.4,
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "system_prompts": [
+    {
+      "slug": "role",
+      "name": "Description Extractor Role",
+      "content": "You are a creative writing assistant who extracts rich, vivid descriptions of characters and locations from story and screenplay text. Your descriptions will be used for AI portrait/environment image generation, so include strong visual details. Be specific to the story — avoid generic filler. Always respond with valid JSON.",
+      "layer_type": "role",
+      "scope": "template",
+      "order": 1
+    }
+  ],
+  "user_prompt": "Read this story/screenplay text and write a detailed description for the {{type}} named \"{{name}}\".\n\n{{#if role}}Known role: {{role}}{{/if}}\n{{#if arc}}Character arc: {{arc}}{{/if}}\n\n--- TEXT ---\n{{story_context}}\n--- END ---\n\n{{#if (eq type 'character')}}Write a 4-6 sentence description that includes:\n- Physical appearance: approximate age, ethnicity/skin tone, build, height impression, hair (color, style, length), eye color, any distinguishing features (scars, tattoos, glasses)\n- Clothing and style: what they typically wear in this story, accessories, overall fashion sense\n- Demeanor and expression: how they carry themselves, typical facial expression, body language, energy\n- Their role and significance in this story\n\nBe specific based on what the text states or strongly implies. For details not mentioned, make reasonable inferences based on the story's setting, time period, and context. Do NOT leave physical details vague — commit to specifics.{{/if}}\n\n{{#if (eq type 'location')}}Write a 3-5 sentence description that includes:\n- Physical environment: size, architecture, materials, colors, lighting conditions\n- Atmosphere and mood: sounds, smells, temperature, time of day feel\n- Notable features: landmarks, furniture, natural elements, any unique characteristics\n- How this place functions in the story\n\nBe vivid and specific for use in environment concept art generation.{{/if}}\n\nRespond with JSON:\n```json\n{\n  \"description\": \"string\"\n}\n```",
+  "variables": {
+    "name": {
+      "type": "text",
+      "required": true,
+      "description": "Character or location name"
+    },
+    "type": {
+      "type": "text",
+      "required": true,
+      "description": "'character' or 'location'"
+    },
+    "role": {
+      "type": "text",
+      "required": false,
+      "description": "Character role (protagonist, antagonist, supporting)"
+    },
+    "arc": {
+      "type": "text",
+      "required": false,
+      "description": "Character arc description"
+    },
+    "story_context": {
+      "type": "text",
+      "required": true,
+      "description": "Story or screenplay text for context"
+    }
+  },
+  "output": {
+    "type": "json",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" }
+      },
+      "required": ["description"]
+    }
+  },
+  "tags": ["extraction", "description", "character", "location", "portrait"]
+}

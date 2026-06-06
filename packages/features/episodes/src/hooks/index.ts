@@ -14,3 +14,4 @@ export {
   useActiveGenerationJob,
   type GenerationJobType,
 } from './use-active-generation-job';
+export { useAssetLinkStatus } from './use-asset-link-status';

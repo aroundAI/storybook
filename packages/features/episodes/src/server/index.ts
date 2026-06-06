@@ -58,6 +58,9 @@ export * from './fact-extraction-status-actions';
 // OpenClaw Shot Intelligence (Transition Analysis & Frame Chain)
 export * from './transition-analyzer';
 
+// Asset link actions (sidebar create)
+export * from '../lib/server/mutations/asset-link-actions';
+
 // NOTE: Server-only canon functions must be imported directly:
 // import { buildMemoryContext } from '@kit/episodes/lib/canon/memory-context-builder';
 // NOTE: Context aggregator must be imported directly:

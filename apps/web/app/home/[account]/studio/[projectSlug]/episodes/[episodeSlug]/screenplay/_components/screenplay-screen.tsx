@@ -7,12 +7,11 @@ import {
   Check,
   ChevronRight,
   Loader2,
-  MapPin,
   MessageSquare,
   Users,
 } from 'lucide-react';
 
-import { RefinementChat } from '@kit/episodes/components';
+import { RefinementChat, SidebarAssetList } from '@kit/episodes/components';
 import { generateShotListAction } from '@kit/episodes/server';
 import type {
   EpisodeWithShots,
@@ -39,6 +38,31 @@ function parseScenes(screenplayData: ScreenplayData | null): ScreenplayScene[] {
     return [];
   }
   return screenplayData.scenes;
+}
+
+/**
+ * Builds a text representation of the screenplay for LLM context.
+ * Includes scene headings, action lines, and dialogue — giving the LLM
+ * rich context about side characters and locations that may only appear
+ * in the screenplay (not in the story narrative).
+ */
+function buildScreenplayContext(scenes: ScreenplayScene[]): string {
+  if (scenes.length === 0) return '';
+
+  return scenes
+    .map((scene) => {
+      const parts: string[] = [];
+      parts.push(`SCENE ${scene.number}: ${scene.heading}`);
+      if (scene.description) parts.push(scene.description);
+      if (scene.dialogue?.length) {
+        for (const d of scene.dialogue) {
+          const paren = d.parenthetical ? ` (${d.parenthetical})` : '';
+          parts.push(`${d.character}${paren}: "${d.text}"`);
+        }
+      }
+      return parts.join('\n');
+    })
+    .join('\n\n');
 }
 
 export function ScreenplayScreen({
@@ -338,81 +362,48 @@ export function ScreenplayScreen({
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-4">
               {sidebarTab === 'info' ? (
-              <div className="space-y-4">
-                {/* Screenplay Details */}
-                {metadata && (
-                  <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
-                    <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
-                      Screenplay Details
-                    </h3>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500 dark:text-gray-400">
-                          Scenes
-                        </span>
-                        <span className="font-medium text-gray-900 dark:text-white">
-                          {metadata.totalScenes}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500 dark:text-gray-400">
-                          Est. Duration
-                        </span>
-                        <span className="font-medium text-gray-900 dark:text-white">
-                          ~{Math.round(metadata.estimatedDuration / 60)}m
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Characters */}
-                <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
-                  <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-                    <Users className="h-4 w-4" />
-                    Characters
-                  </h3>
-                  {metadata?.characters && metadata.characters.length > 0 ? (
-                    <div className="space-y-2">
-                      {metadata.characters.map((character, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50/50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/50"
-                        >
-                          <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900" />
-                          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                            {character}
+                <div className="space-y-4">
+                  {/* Screenplay Details */}
+                  {metadata && (
+                    <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                      <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
+                        Screenplay Details
+                      </h3>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400">
+                            Scenes
+                          </span>
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {metadata.totalScenes}
                           </span>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      No characters extracted
-                    </p>
-                  )}
-                </div>
-
-                {/* Locations */}
-                {metadata?.locations && metadata.locations.length > 0 && (
-                  <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
-                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-                      <MapPin className="h-4 w-4" />
-                      Locations
-                    </h3>
-                    <div className="space-y-2">
-                      {metadata.locations.map((location, i) => (
-                        <div
-                          key={i}
-                          className="rounded-lg border border-gray-100 bg-gray-50/50 px-3 py-2 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-300"
-                        >
-                          {location}
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400">
+                            Est. Duration
+                          </span>
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            ~{Math.round(metadata.estimatedDuration / 60)}m
+                          </span>
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+
+                  {/* Characters & Locations — linked/unlinked indicators */}
+                  <SidebarAssetList
+                    characters={(metadata?.characters ?? []).map((name) => ({
+                      name,
+                    }))}
+                    locations={(metadata?.locations ?? []).map((name) => ({
+                      name,
+                    }))}
+                    projectId={episode.projectId}
+                    episodeId={episode.id}
+                    storyContext={buildScreenplayContext(scenes)}
+                    onAssetCreated={refetchEpisode}
+                  />
+                </div>
               ) : (
                 <div className="-m-4 h-[calc(100%+2rem)]">
                   <RefinementChat
