@@ -53,7 +53,23 @@ export class GeminiClient implements LLMClient {
     }
 
     this.config = config;
-    this.client = new GoogleGenAI({ apiKey: config.apiKey });
+
+    if (config.vertexai && config.apiKey) {
+      // Vertex AI Express: Cloud Console API key routed through Vertex AI
+      this.client = new GoogleGenAI({
+        vertexai: true,
+        apiKey: config.apiKey,
+      });
+    } else if (config.apiKey) {
+      // Developer API: AI Studio or unrestricted Cloud Console key
+      this.client = new GoogleGenAI({ apiKey: config.apiKey });
+    } else {
+      throw new LLMError(
+        'Gemini requires an API key. Set GEMINI_API_KEY or GOOGLE_API_KEY.',
+        'gemini',
+        'MISSING_CREDENTIALS',
+      );
+    }
   }
 
   getProvider() {

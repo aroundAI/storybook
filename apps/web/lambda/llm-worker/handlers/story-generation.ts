@@ -17,6 +17,7 @@ import { commitStoryCanon } from '../utils/commit-story-canon';
 import {
   buildEpisodeContext,
   formatCharactersForPrompt,
+  formatFactsForPrompt,
   formatLocationsForPrompt,
   formatPreviousEpisodesForPrompt,
   formatRecurringElementsForPrompt,
@@ -31,6 +32,148 @@ import {
   markJobFailed,
   markJobProcessing,
 } from '../utils/job-tracking';
+
+interface NewCharacter {
+  name: string;
+  role: string;
+  arc?: string;
+  description: string;
+  physicalDescription: string;
+  clothingStyle?: string;
+  mannerisms?: string;
+}
+
+interface NewLocation {
+  name: string;
+  setting?: string;
+  description: string;
+  visualDescription?: string;
+}
+
+/**
+ * Auto-create character and location assets from LLM-invented entities.
+ * Uses upsert semantics (ON CONFLICT DO NOTHING) to avoid duplicates.
+ * Tags newly created asset IDs onto the episode's metadata.
+ */
+async function autoCreateNewAssets(
+  supabase: SupabaseClient,
+  projectId: string,
+  episodeId: string,
+  newCharacters: NewCharacter[],
+  newLocations: NewLocation[],
+): Promise<void> {
+  if (newCharacters.length === 0 && newLocations.length === 0) return;
+
+  const createdIds: string[] = [];
+
+  // Create character assets
+  if (newCharacters.length > 0) {
+    const charRows = newCharacters.map((char) => ({
+      project_id: projectId,
+      type: 'character' as const,
+      name: char.name,
+      description: char.description,
+      metadata: {
+        role: char.role,
+        personality: char.description,
+        physicalAttributes: char.physicalDescription
+          ? { rawDescription: char.physicalDescription }
+          : undefined,
+        clothingStyle: char.clothingStyle
+          ? { rawDescription: char.clothingStyle }
+          : undefined,
+        mannerisms: char.mannerisms,
+        autoCreated: true,
+      },
+    }));
+
+    const { data: inserted } = await supabase
+      .from('assets')
+      .upsert(charRows, {
+        onConflict: 'project_id,type,name',
+        ignoreDuplicates: true,
+      })
+      .select('id');
+
+    if (inserted) {
+      createdIds.push(...inserted.map((r: { id: string }) => r.id));
+      console.log(
+        `[Story Generation] Auto-created ${inserted.length} character assets`,
+      );
+    }
+  }
+
+  // Create location assets
+  if (newLocations.length > 0) {
+    const locRows = newLocations.map((loc) => ({
+      project_id: projectId,
+      type: 'location' as const,
+      name: loc.name,
+      description: loc.description,
+      metadata: {
+        setting: loc.setting,
+        visualDescription: loc.visualDescription,
+        autoCreated: true,
+      },
+    }));
+
+    const { data: inserted } = await supabase
+      .from('assets')
+      .upsert(locRows, {
+        onConflict: 'project_id,type,name',
+        ignoreDuplicates: true,
+      })
+      .select('id');
+
+    if (inserted) {
+      createdIds.push(...inserted.map((r: { id: string }) => r.id));
+      console.log(
+        `[Story Generation] Auto-created ${inserted.length} location assets`,
+      );
+    }
+  }
+
+  // Tag new asset IDs onto episode metadata
+  if (createdIds.length > 0) {
+    const { data: episode } = await supabase
+      .from('episodes')
+      .select('metadata')
+      .eq('id', episodeId)
+      .single();
+
+    if (episode) {
+      const metadata = (episode.metadata ?? {}) as Record<string, unknown>;
+      const existingCharIds = (metadata.character_ids ?? []) as string[];
+      const existingLocIds = (metadata.location_ids ?? []) as string[];
+
+      // Merge without duplicates
+      const allIds = [
+        ...new Set([...existingCharIds, ...existingLocIds, ...createdIds]),
+      ];
+
+      await supabase
+        .from('episodes')
+        .update({
+          metadata: {
+            ...metadata,
+            character_ids: allIds.filter((id) =>
+              [
+                ...existingCharIds,
+                ...createdIds.slice(0, newCharacters.length),
+              ].includes(id),
+            ),
+            location_ids: allIds.filter((id) =>
+              [
+                ...existingLocIds,
+                ...createdIds.slice(newCharacters.length),
+              ].includes(id),
+            ),
+          },
+        })
+        .eq('id', episodeId);
+    }
+  }
+}
 
 interface StoryGenerationPayload {
   episodeId: string;
@@ -126,11 +269,15 @@ export async function processStoryGeneration(
       ? formatRecurringElementsForPrompt(episodeContext.recurringElements)
       : undefined;
 
+    // Format linked verified facts for fact-driven content
+    const factsContext = formatFactsForPrompt(episodeContext.episodeFacts);
+
     console.log(
       `[Story Generation] Context built: ${episodeContext.characters.length} characters, ${episodeContext.locations.length} locations` +
         (recurringElementContext ? ', recurring element: yes' : '') +
         (episodeContext.projectType ? `, type: ${episodeContext.projectType}` : '') +
-        (episodeContext.verifiedFacts.length > 0 ? `, facts: ${episodeContext.verifiedFacts.length}` : ''),
+        (factsContext ? `, episode facts: ${episodeContext.episodeFacts.length}` : '') +
+        (episodeContext.verifiedFacts.length > 0 ? `, verified facts: ${episodeContext.verifiedFacts.length}` : ''),
     );
 
     // Format verified facts for factual content types
@@ -170,6 +317,7 @@ export async function processStoryGeneration(
         seasonContext,
         previousEpisodesContext,
         visualStyle: episodeContext.visualStyle,
+        verifiedFacts: factsContext || undefined,
         recurringElementsContext: recurringElementContext,
         threadCandidatesContext,
         ideationThemes: data.themes,
@@ -357,6 +505,22 @@ export async function processStoryGeneration(
       console.warn(
         '[Story Generation] Canon commit failed (non-fatal):',
         canonError,
+      );
+    }
+
+    // 7. Auto-create assets for LLM-invented characters and locations (non-fatal)
+    try {
+      await autoCreateNewAssets(
+        supabase,
+        data.projectId,
+        data.episodeId,
+        orchestratorResult.newCharacters ?? [],
+        orchestratorResult.newLocations ?? [],
+      );
+    } catch (assetError) {
+      console.warn(
+        '[Story Generation] Auto-create assets failed (non-fatal):',
+        assetError,
       );
     }
 

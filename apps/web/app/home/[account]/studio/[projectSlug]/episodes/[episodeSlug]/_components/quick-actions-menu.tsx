@@ -41,7 +41,7 @@ interface QuickActionsMenuProps {
   episodeId: string;
   episodeTitle: string;
   episodeVersion: number;
-  projectId: string;
+  projectSlug: string;
   account: string;
 }
 
@@ -49,7 +49,7 @@ export function QuickActionsMenu({
   episodeId,
   episodeTitle,
   episodeVersion,
-  projectId,
+  projectSlug,
   account,
 }: QuickActionsMenuProps) {
   const router = useRouter();
@@ -69,7 +69,7 @@ export function QuickActionsMenu({
 
       if (result.success) {
         toast.success('Episode deleted successfully');
-        router.push(`/home/${account}/studio/${projectId}/episodes`);
+        router.push(`/home/${account}/studio/${projectSlug}/episodes`);
       } else {
         toast.error('Failed to delete episode');
       }

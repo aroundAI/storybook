@@ -1,0 +1,124 @@
+{
+  "slug": "story-refinement",
+  "name": "Story Refinement",
+  "version": 1,
+  "category": "story-generation",
+  "description": "Refine an existing story based on user feedback. Preserves everything the user doesn't explicitly ask to change while incorporating their requested modifications.",
+  "exported_at": "2025-01-01T00:00:00.000Z",
+  "llm": {
+    "provider": "gemini",
+    "model": "gemini-3.5-flash",
+    "max_tokens": 16000,
+    "temperature": 0.5,
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "system_prompts": [
+    {
+      "slug": "role",
+      "name": "Story Revision Role",
+      "content": "You are revising an existing story based on user feedback. Preserve everything the user doesn't explicitly ask to change. Your goal is to make targeted improvements while maintaining the story's overall coherence, character consistency, and narrative flow.\n\nCRITICAL RULES:\n1. PRESERVE UNCHANGED ELEMENTS: If the user doesn't mention a character, location, theme, or plot point, keep it exactly as it is.\n2. MAINTAIN CONSISTENCY: Any changes must be consistent with the rest of the story. If you change one element, update all related references.\n3. CHARACTER IDENTITY LOCK: Maintain all character identities exactly as established unless the user explicitly requests changes.\n4. STRUCTURAL INTEGRITY: Keep the three-act structure intact unless the user requests structural changes.\n5. If the feedback introduces new characters or locations not in the provided lists, include them in the newCharacters/newLocations arrays.",
+      "layer_type": "role",
+      "scope": "template",
+      "order": 1
+    },
+    {
+      "slug": "revision-guidelines",
+      "name": "Revision Guidelines",
+      "content": "REVISION GUIDELINES:\n\n1. SCOPE CONTROL: Only modify what the user asks. If they say 'make the ending darker', only change Act 3 and related foreshadowing — don't rewrite the entire story.\n\n2. FEEDBACK INTERPRETATION: Parse the user's feedback carefully. Distinguish between:\n   - Direct requests ('change X to Y')\n   - Preferences ('I'd like more tension')\n   - Questions ('what if the villain was sympathetic?')\n   Treat all as actionable revision directives.\n\n3. QUALITY MAINTENANCE: The revised story must maintain or improve upon the original's quality in terms of pacing, dialogue, imagery, and emotional impact.\n\n4. WORD COUNT: Keep the revised story within a similar word count range as the original (±20%).\n\n5. CONTINUITY: If season context or previous episodes are provided, ensure the revision maintains continuity with established canon.",
+      "layer_type": "constraints",
+      "scope": "template",
+      "order": 2
+    },
+    {
+      "slug": "format",
+      "name": "JSON Output Format",
+      "content": "IMPORTANT: Always respond with valid JSON matching the specified output schema. Do not include any text outside the JSON object.",
+      "layer_type": "format",
+      "scope": "template",
+      "order": 3
+    }
+  ],
+  "user_prompt": "Revise the following story based on the user's feedback.\n\n**CURRENT STORY (JSON)**:\n{{current_story}}\n\n**CHARACTERS**:\n{{characters}}\n\n**LOCATIONS**:\n{{locations}}\n\n{{season_context}}\n\n{{previous_episodes}}\n\n**USER FEEDBACK**:\n{{feedback}}\n\n**INSTRUCTIONS**:\n1. Read the current story carefully\n2. Analyze the user's feedback to identify what needs to change\n3. Make the requested changes while preserving everything else\n4. Ensure the revised story remains coherent and consistent\n5. Update the actBreakdown, characters, themes, and other metadata to reflect any changes\n6. If the feedback introduces characters or locations not in the provided lists, add them to newCharacters/newLocations\n7. Maintain the same output format as the original story\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"story\": {\n    \"title\": \"string\",\n    \"fullText\": \"string (revised story text)\",\n    \"actBreakdown\": {\n      \"act1\": \"string (setup summary)\",\n      \"act2\": \"string (confrontation summary)\",\n      \"act3\": \"string (resolution summary)\"\n    },\n    \"characters\": [\n      {\n        \"name\": \"string\",\n        \"role\": \"string (protagonist/antagonist/supporting)\",\n        \"arc\": \"string (character journey)\"\n      }\n    ],\n    \"themes\": [\"string\"],\n    \"tone\": \"string\",\n    \"estimatedSceneCount\": number,\n    \"episodeSummary\": \"string (2-3 sentence plot summary for continuity)\",\n    \"sentimentScore\": float between 0.0 and 1.0,\n    \"keyEvents\": [\"string\"],\n    \"viralStructure\": {\n      \"openingHook\": \"string\",\n      \"curiosityGap\": \"string\",\n      \"emotionalArc\": [\"string\"],\n      \"setupPayoffPair\": {\n        \"setup\": \"string\",\n        \"payoff\": \"string\"\n      },\n      \"loopBeat\": \"string\",\n      \"memorableScene\": \"string\"\n    }\n  },\n  \"newCharacters\": [\n    {\n      \"name\": \"string\",\n      \"role\": \"string\",\n      \"description\": \"string\"\n    }\n  ],\n  \"newLocations\": [\n    {\n      \"name\": \"string\",\n      \"description\": \"string\"\n    }\n  ]\n}\n```",
+  "variables": {
+    "current_story": {
+      "type": "text",
+      "required": true,
+      "description": "The full current story data as JSON string, including title, fullText, actBreakdown, characters, themes, etc."
+    },
+    "characters": {
+      "type": "text",
+      "required": false,
+      "description": "Tagged characters with descriptions from the project."
+    },
+    "locations": {
+      "type": "text",
+      "required": false,
+      "description": "Tagged locations with descriptions from the project."
+    },
+    "feedback": {
+      "type": "text",
+      "required": true,
+      "description": "The user's feedback describing what changes they want to the story."
+    },
+    "season_context": {
+      "type": "text",
+      "required": false,
+      "description": "Season arc and premise for continuity."
+    },
+    "previous_episodes": {
+      "type": "text",
+      "required": false,
+      "description": "Summaries of previous episodes for continuity."
+    }
+  },
+  "output": {
+    "type": "object",
+    "schema": {
+      "type": "zod",
+      "definition": "z.object({ story: z.object({ title: z.string(), fullText: z.string(), actBreakdown: z.object({ act1: z.string(), act2: z.string(), act3: z.string() }), characters: z.array(z.object({ name: z.string(), role: z.enum(['protagonist', 'antagonist', 'supporting']), arc: z.string() })), themes: z.array(z.string()), tone: z.string(), estimatedSceneCount: z.number(), episodeSummary: z.string(), sentimentScore: z.number().transform(v => v > 1 ? v / 10 : v).pipe(z.number().min(0).max(1)), keyEvents: z.array(z.string()), viralStructure: z.object({ openingHook: z.string(), curiosityGap: z.string(), emotionalArc: z.array(z.string()), setupPayoffPair: z.object({ setup: z.string(), payoff: z.string() }), loopBeat: z.string(), memorableScene: z.string() }).optional() }), newCharacters: z.array(z.object({ name: z.string(), role: z.string(), description: z.string() })).optional(), newLocations: z.array(z.object({ name: z.string(), description: z.string() })).optional() })"
+    },
+    "schema_for_llm": "Return JSON: { \"story\": { \"title\": \"string\", \"fullText\": \"string\", \"actBreakdown\": { \"act1\": \"string\", \"act2\": \"string\", \"act3\": \"string\" }, \"characters\": [{ \"name\": \"string\", \"role\": \"protagonist|antagonist|supporting\", \"arc\": \"string\" }], \"themes\": [\"string\"], \"tone\": \"string\", \"estimatedSceneCount\": number, \"episodeSummary\": \"string\", \"sentimentScore\": float between 0.0 and 1.0, \"keyEvents\": [\"string\"], \"viralStructure\": { \"openingHook\": \"string\", \"curiosityGap\": \"string\", \"emotionalArc\": [\"string\"], \"setupPayoffPair\": { \"setup\": \"string\", \"payoff\": \"string\" }, \"loopBeat\": \"string\", \"memorableScene\": \"string\" } }, \"newCharacters\": [{ \"name\": \"string\", \"role\": \"string\", \"description\": \"string\" }], \"newLocations\": [{ \"name\": \"string\", \"description\": \"string\" }] }",
+    "example_output": {
+      "story": {
+        "title": "The Last Signal",
+        "fullText": "Commander Maya Chen floats in the silence of the observation deck...",
+        "actBreakdown": {
+          "act1": "Maya struggles with isolation on her deep space mission...",
+          "act2": "Maya investigates the signal...",
+          "act3": "Maya transmits the warning..."
+        },
+        "characters": [
+          {
+            "name": "Maya Chen",
+            "role": "protagonist",
+            "arc": "From isolated and routine-bound to empowered and purposeful."
+          }
+        ],
+        "themes": ["isolation", "purpose", "sacrifice"],
+        "tone": "contemplative, suspenseful",
+        "estimatedSceneCount": 8,
+        "episodeSummary": "Commander Maya Chen discovers an anomalous signal...",
+        "sentimentScore": 0.6,
+        "keyEvents": [
+          "Maya discovers anomalous signal",
+          "Maya transmits warning to Earth"
+        ],
+        "viralStructure": {
+          "openingHook": "Maya's monitor screams an alarm",
+          "curiosityGap": "Who sent the signal?",
+          "emotionalArc": ["unsettled curiosity", "rising dread", "awe and purpose"],
+          "setupPayoffPair": {
+            "setup": "Maya mentions a recurring dream about 'a voice calling from nowhere'",
+            "payoff": "The signal turns out to be her own voice"
+          },
+          "loopBeat": "The final shot mirrors the opening",
+          "memorableScene": "Maya plays back the signal and hears her own voice"
+        }
+      },
+      "newCharacters": [],
+      "newLocations": []
+    }
+  }
+}

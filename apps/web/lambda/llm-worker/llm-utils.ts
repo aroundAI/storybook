@@ -120,13 +120,7 @@ export function getApiKeyForProvider(provider: LLMProvider | string): string {
     case 'anthropic':
       return process.env.ANTHROPIC_API_KEY || '';
     case 'gemini':
-      // Prefer GOOGLE_API_KEY over GEMINI_API_KEY
-      if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
-        console.warn(
-          'Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.',
-        );
-      }
-      return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || '';
+      return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
     case 'deepseek':
       return process.env.DEEPSEEK_API_KEY || '';
     case 'local':
@@ -291,6 +285,9 @@ export async function executeLLMForLambda<T = unknown>(config: {
     provider: provider as LLMProvider,
     model,
     apiKey,
+    vertexai: provider === 'gemini' && process.env.GEMINI_VERTEXAI === 'true',
+    project: process.env.GOOGLE_CLOUD_PROJECT,
+    location: process.env.GOOGLE_CLOUD_LOCATION,
   });
 
   // 4. Execute LLM call

@@ -1,0 +1,66 @@
+{
+  "slug": "story-generation/extract-asset-description",
+  "name": "Extract Asset Description",
+  "version": 3,
+  "category": "story-generation",
+  "description": "Extract a detailed character or location description from story/screenplay text, suitable for AI portrait or environment image generation.",
+  "exported_at": "2025-01-01T00:00:00.000Z",
+  "llm": {
+    "provider": "gemini",
+    "model": "gemini-3.5-flash",
+    "max_tokens": 8000,
+    "temperature": 0.7,
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "system_prompts": [
+    {
+      "slug": "role",
+      "name": "Description Extractor Role",
+      "content": "You are a creative writing assistant who extracts rich, vivid descriptions of characters and locations from story and screenplay text. Your descriptions will be used for AI portrait/environment image generation, so include strong visual details. Be specific to the story — avoid generic filler. You MUST respond with a single valid JSON object containing a \"description\" key. Do NOT wrap your response in markdown code fences.",
+      "layer_type": "role",
+      "scope": "template",
+      "order": 1
+    }
+  ],
+  "user_prompt": "Read this story/screenplay text and write a detailed description for the {{type}} named \"{{name}}\". {{extra_context}}\n\n--- TEXT ---\n{{story_context}}\n--- END ---\n\n{{type_instructions}}\n\nRespond with a JSON object: {\"description\": \"your detailed description here\"}",
+  "variables": {
+    "name": {
+      "type": "text",
+      "required": true,
+      "description": "Character or location name"
+    },
+    "type": {
+      "type": "text",
+      "required": true,
+      "description": "'character' or 'location'"
+    },
+    "extra_context": {
+      "type": "text",
+      "required": false,
+      "description": "Extra context like role or arc"
+    },
+    "type_instructions": {
+      "type": "text",
+      "required": true,
+      "description": "Type-specific instructions for character vs location"
+    },
+    "story_context": {
+      "type": "text",
+      "required": true,
+      "description": "Story or screenplay text for context"
+    }
+  },
+  "output": {
+    "type": "object",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" }
+      },
+      "required": ["description"]
+    }
+  },
+  "tags": ["extraction", "description", "character", "location", "portrait"]
+}

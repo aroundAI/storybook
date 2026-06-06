@@ -48,15 +48,15 @@ describe('Story Schemas', () => {
       }
     });
 
-    it('should reject premise longer than 500 characters', () => {
+    it('should reject premise longer than 2000 characters', () => {
       const result = GenerateStoryIdeasSchema.safeParse({
         episodeId: validEpisodeId,
-        premise: 'a'.repeat(501),
+        premise: 'a'.repeat(2001),
       });
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toContain(
-          'at most 500 character',
+          'at most 2000 character',
         );
       }
     });
@@ -200,10 +200,10 @@ describe('Story Schemas', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should reject logline longer than 500 characters', () => {
+    it('should reject logline longer than 1000 characters', () => {
       const result = GenerateFullStorySchema.safeParse({
         ...validInput,
-        logline: 'a'.repeat(501),
+        logline: 'a'.repeat(1001),
       });
       expect(result.success).toBe(false);
     });

@@ -72,6 +72,9 @@ export const GenerateSeasonEpisodesSchema = z.object({
       name: z.string(),
       description: z.string().optional(),
       role: z.string().optional(),
+      physicalDescription: z.string().optional(),
+      clothingStyle: z.string().optional(),
+      mannerisms: z.string().optional(),
     }),
   ),
 
@@ -81,6 +84,9 @@ export const GenerateSeasonEpisodesSchema = z.object({
       name: z.string(),
       description: z.string().optional(),
       setting: z.string().optional(),
+      visualDescription: z.string().optional(),
+      timeOfDay: z.string().nullish(),
+      weather: z.string().nullish(),
     }),
   ),
 

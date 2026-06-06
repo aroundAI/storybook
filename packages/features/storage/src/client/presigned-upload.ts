@@ -111,7 +111,8 @@ export async function uploadProjectCover(
     projectId: string,
 ): Promise<PresignedUploadResult> {
     const ext = file.name.split('.').pop() || 'jpg';
-    const path = `${projectId}/cover.${ext}`;
+    const timestamp = Date.now();
+    const path = `projects/${projectId}/assets/covers/cover-${timestamp}.${ext}`;
 
     return uploadWithPresignedUrl(file, 'project-assets', path);
 }

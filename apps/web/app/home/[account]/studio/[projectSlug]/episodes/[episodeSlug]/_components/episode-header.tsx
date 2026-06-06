@@ -10,13 +10,13 @@ import { TaggedAssets } from './tagged-assets';
 
 interface EpisodeHeaderProps {
   episode: EpisodeWithShots;
-  projectId: string;
+  projectSlug: string;
   account: string;
 }
 
 export function EpisodeHeader({
   episode,
-  projectId,
+  projectSlug,
   account,
 }: EpisodeHeaderProps) {
   const characterIds = (episode.metadata?.character_ids as string[]) ?? [];
@@ -63,7 +63,7 @@ export function EpisodeHeader({
         episodeId={episode.id}
         episodeTitle={episode.title}
         episodeVersion={episode.version}
-        projectId={projectId}
+        projectSlug={projectSlug}
         account={account}
       />
     </div>

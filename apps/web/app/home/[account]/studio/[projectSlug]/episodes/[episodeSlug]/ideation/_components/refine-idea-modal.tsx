@@ -46,9 +46,9 @@ const RefineIdeaSchema = z.object({
   logline: z
     .string()
     .min(10, 'Logline must be at least 10 characters')
-    .max(500),
-  hook: z.string().max(500).optional().default(''),
-  visualPotential: z.string().max(500).optional().default(''),
+    .max(1000),
+  hook: z.string().max(1000).optional().default(''),
+  visualPotential: z.string().max(1000).optional().default(''),
 });
 
 // ============================================================
@@ -248,7 +248,7 @@ export function RefineIdeaModal({
             <div className="flex items-center justify-between">
               <Label className="cinema-ui-label">Logline</Label>
               <span className="text-xs text-slate-500">
-                {loglineLength}/500
+                {loglineLength}/1000
               </span>
             </div>
             <Textarea
@@ -281,7 +281,7 @@ export function RefineIdeaModal({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="cinema-ui-label">Hook</Label>
-              <span className="text-xs text-slate-500">{hookLength}/500</span>
+              <span className="text-xs text-slate-500">{hookLength}/1000</span>
             </div>
             <Textarea
               {...form.register('hook')}
@@ -297,7 +297,9 @@ export function RefineIdeaModal({
                 <Eye className="h-3 w-3" />
                 Visual Direction
               </Label>
-              <span className="text-xs text-slate-500">{visualLength}/500</span>
+              <span className="text-xs text-slate-500">
+                {visualLength}/1000
+              </span>
             </div>
             <Textarea
               {...form.register('visualPotential')}

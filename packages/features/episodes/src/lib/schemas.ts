@@ -277,6 +277,12 @@ export {
   GenerateSeasonEpisodesSchema,
 } from './schemas/season-generation.schema';
 
+// Enhanced Create Episode Wizard
+export {
+  CreateEpisodeWithContextSchema,
+  type CreateEpisodeWithContextInput,
+} from './schemas/create-episode-wizard.schema';
+
 // Timeline Planning Schema
 export const PlanTimelineSchema = z.object({
   episodeId: z.string().uuid(),

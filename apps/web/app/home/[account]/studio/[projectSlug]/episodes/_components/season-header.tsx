@@ -2,18 +2,37 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 
+import { useRouter } from 'next/navigation';
+
 import {
   ChevronDown,
   ChevronUp,
   FolderOpen,
+  MoreVertical,
   Pencil,
+  Trash2,
   Volume2,
 } from 'lucide-react';
 
-import { updateSeasonAction } from '@kit/episodes/server';
+import { deleteSeasonAction, updateSeasonAction } from '@kit/episodes/server';
 import type { Episode } from '@kit/episodes/types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@kit/ui/alert-dialog';
 import { Button } from '@kit/ui/button';
-import { Input } from '@kit/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@kit/ui/dropdown-menu';
 import { toast } from '@kit/ui/sonner';
 
 import { GenerateAllSoundModal } from './generate-all-sound-modal';
@@ -60,67 +79,59 @@ export function SeasonHeader({
   isCollapsed = false,
   onToggleCollapse,
 }: SeasonHeaderProps) {
+  const router = useRouter();
   const [showModal, setShowModal] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(seasonName ?? '');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(seasonName ?? '');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Sync editValue when seasonName prop changes
   useEffect(() => {
-    if (!isEditing) {
-      setEditValue(seasonName ?? '');
-    }
-  }, [seasonName, isEditing]);
-
-  // Auto-focus input when entering edit mode
-  useEffect(() => {
-    if (isEditing) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
     }
   }, [isEditing]);
-
-  const handleSave = () => {
-    const trimmed = editValue.trim();
-
-    // Skip if unchanged
-    if (trimmed === (seasonName ?? '')) {
-      setIsEditing(false);
-      return;
-    }
-
-    startTransition(async () => {
-      try {
-        await updateSeasonAction({
-          seasonId,
-          name: trimmed || `Season ${seasonNumber}`,
-        });
-
-        toast.success('Season name updated');
-        setIsEditing(false);
-      } catch {
-        setEditValue(seasonName ?? '');
-        setIsEditing(false);
-        toast.error('Failed to update season name');
-      }
-    });
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleSave();
-    } else if (e.key === 'Escape') {
-      setEditValue(seasonName ?? '');
-      setIsEditing(false);
-    }
-  };
 
   const progressPercent =
     totalEpisodes > 0
       ? Math.round((completedEpisodes / totalEpisodes) * 100)
       : 0;
+
+  function handleRename() {
+    const trimmed = editName.trim();
+    if (!trimmed || trimmed === (seasonName ?? '')) {
+      setEditName(seasonName ?? '');
+      setIsEditing(false);
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await updateSeasonAction({ seasonId, name: trimmed });
+        toast.success('Season renamed');
+        setIsEditing(false);
+        router.refresh();
+      } catch {
+        toast.error('Failed to rename season');
+      }
+    });
+  }
+
+  function handleDeleteSeason() {
+    startTransition(async () => {
+      try {
+        await deleteSeasonAction({ seasonId });
+
+        toast.success('Season deleted');
+        router.refresh();
+      } catch {
+        toast.error('Failed to delete season');
+      } finally {
+        setShowDeleteDialog(false);
+      }
+    });
+  }
 
   return (
     <>
@@ -131,32 +142,39 @@ export function SeasonHeader({
             <FolderOpen className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-              Season {seasonNumber}
-              {isEditing ? (
-                <Input
-                  ref={inputRef}
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={handleSave}
-                  onKeyDown={handleKeyDown}
-                  disabled={isPending}
-                  className="ml-2 inline-block h-6 w-48 text-xs font-normal"
-                  placeholder={`Season ${seasonNumber}`}
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(true)}
-                  className="group/rename ml-2 inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-blue-100 dark:hover:bg-blue-800/50"
-                >
+            {isEditing ? (
+              <input
+                ref={inputRef}
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRename();
+                  if (e.key === 'Escape') {
+                    setEditName(seasonName ?? '');
+                    setIsEditing(false);
+                  }
+                }}
+                onBlur={handleRename}
+                maxLength={255}
+                disabled={isPending}
+                className="h-7 min-w-[180px] rounded border border-blue-300 bg-white/90 px-2 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-blue-600 dark:bg-gray-800 dark:text-white"
+              />
+            ) : (
+              <h3
+                className="group/name flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-gray-900 dark:text-white"
+                onClick={() => setIsEditing(true)}
+                title="Click to rename"
+              >
+                Season {seasonNumber}
+                {seasonName && (
                   <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
-                    {seasonName || 'Add name...'}
+                    {seasonName}
                   </span>
-                  <Pencil className="h-3 w-3 text-gray-400 opacity-0 transition-opacity group-hover/rename:opacity-100 dark:text-gray-500" />
-                </button>
-              )}
-            </h3>
+                )}
+                <Pencil className="h-3 w-3 text-gray-400 opacity-0 transition-opacity group-hover/name:opacity-100" />
+              </h3>
+            )}
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {totalEpisodes} {totalEpisodes === 1 ? 'episode' : 'episodes'}
             </p>
@@ -185,6 +203,33 @@ export function SeasonHeader({
             </div>
           </div>
 
+          {/* Season actions dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => setIsEditing(true)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Rename Season
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Season & Episodes
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {/* Collapse/Expand toggle */}
           <button
             type="button"
@@ -199,6 +244,30 @@ export function SeasonHeader({
           </button>
         </div>
       </div>
+
+      {/* Delete Season Confirmation */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Season & All Episodes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete Season {seasonNumber} and all{' '}
+              {totalEpisodes} episodes in it. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteSeason}
+              disabled={isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isPending ? 'Deleting…' : 'Delete Season'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Generate All Sound Modal */}
       <GenerateAllSoundModal

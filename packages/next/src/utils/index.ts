@@ -6,9 +6,15 @@ export const zodParseFactory =
     try {
       return schema.parse(data) as unknown;
     } catch (err) {
-      console.error(err);
+      const zodErr =
+        err instanceof z.ZodError
+          ? err.issues
+              .map((i) => `${i.path.join('.')}: ${i.message}`)
+              .join('; ')
+          : String(err);
 
-      // handle error
-      throw new Error(`Invalid data: ${err as string}`);
+      console.error('[ZodParse] Validation failed:', zodErr);
+
+      throw new Error(`Invalid data: ${zodErr}`);
     }
   };

@@ -49,7 +49,7 @@ export function loadConfigFromEnv(): LLMConfig {
         apiKey = process.env.ANTHROPIC_API_KEY;
         break;
       case 'gemini':
-        apiKey = process.env.GOOGLE_API_KEY;
+        apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
         break;
       case 'local':
         // Local provider doesn't need an API key
@@ -61,9 +61,12 @@ export function loadConfigFromEnv(): LLMConfig {
     }
   }
 
-  if (!apiKey) {
+  // Gemini with Vertex AI Express doesn't strictly need a key check here —
+  // but we still require one (Express mode needs an API key, just routed differently).
+  // Only skip the error if vertexai is enabled and no key is truly needed (future ADC).
+  if (!apiKey && provider !== 'local') {
     throw new LLMError(
-      `No API key found for provider: ${provider}. Set LLM_API_KEY or provider-specific key (OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY)`,
+      `No API key found for provider: ${provider}. Set LLM_API_KEY or provider-specific key (OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, GOOGLE_API_KEY)`,
       provider,
       'MISSING_API_KEY',
     );
@@ -74,6 +77,12 @@ export function loadConfigFromEnv(): LLMConfig {
 
   // Get base URL for local provider
   const baseUrl = provider === 'local' ? process.env.LOCAL_API_URL : undefined;
+
+  // Gemini Vertex AI configuration (Cloud Console keys)
+  const vertexai =
+    provider === 'gemini' && process.env.GEMINI_VERTEXAI === 'true';
+  const project = process.env.GOOGLE_CLOUD_PROJECT;
+  const location = process.env.GOOGLE_CLOUD_LOCATION;
 
   // Parse optional parameters
   const temperature = process.env.LLM_TEMPERATURE
@@ -96,6 +105,9 @@ export function loadConfigFromEnv(): LLMConfig {
     temperature,
     maxTokens,
     topP,
+    vertexai,
+    project,
+    location,
   };
 }
 
@@ -154,7 +166,7 @@ export function createLLMClient(config?: LLMConfig): LLMClient {
   // Load config from environment if not provided
   const finalConfig = config ?? loadConfigFromEnv();
 
-  // Validate configuration
+  // Validate configuration — API key required for all providers
   if (!finalConfig.apiKey) {
     throw new LLMError(
       'API key is required',

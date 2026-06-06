@@ -60,6 +60,7 @@ import seasonOutline from '../../prompts/story-generation/season-outline.json';
 // =============================================================================
 import storyGeneration from '../../prompts/story-generation/story-generation.json';
 import storyIdeation from '../../prompts/story-generation/story-ideation.json';
+import extractAssetDescription from '../../prompts/story-generation/extract-asset-description.json';
 import type { PromptTemplate } from '../types';
 
 /**
@@ -77,6 +78,8 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
 
   'scene-shot-generation': sceneShotGeneration as unknown as PromptTemplate,
   'story-ideation': storyIdeation as unknown as PromptTemplate,
+  'story-generation/extract-asset-description':
+    extractAssetDescription as unknown as PromptTemplate,
 
   // Analytics
   'insights-generation': insightsGeneration as unknown as PromptTemplate,

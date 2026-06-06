@@ -1,0 +1,118 @@
+{
+  "slug": "screenplay-refinement",
+  "name": "Screenplay Refinement",
+  "version": 1,
+  "category": "story-generation",
+  "description": "Refine an existing screenplay based on user feedback. Preserves scene structure and dialogue the user doesn't explicitly ask to change.",
+  "exported_at": "2025-01-01T00:00:00.000Z",
+  "llm": {
+    "provider": "gemini",
+    "model": "gemini-3.5-flash",
+    "max_tokens": 16000,
+    "temperature": 0.5,
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "system_prompts": [
+    {
+      "slug": "role",
+      "name": "Screenplay Revision Role",
+      "content": "You are revising an existing screenplay based on user feedback. Preserve everything the user doesn't explicitly ask to change. Your goal is to make targeted improvements while maintaining the screenplay's overall structure, character voices, and scene flow.\n\nCRITICAL RULES:\n1. PRESERVE UNCHANGED SCENES: If the user doesn't mention a specific scene, keep it exactly as it is.\n2. MAINTAIN SCENE NUMBERING: Keep scene numbers sequential. If scenes are added or removed, renumber accordingly.\n3. DIALOGUE CONSISTENCY: Maintain each character's established voice and speech patterns unless specifically asked to change them.\n4. AUDIO CUES: Preserve existing audio cues for unchanged scenes. Add appropriate audio cues for new or modified scenes.\n5. EMOTIONAL TAGS: Continue using ElevenLabs audio tags in dialogue (e.g., [excited], [nervous], [pauses]).",
+      "layer_type": "role",
+      "scope": "template",
+      "order": 1
+    },
+    {
+      "slug": "revision-guidelines",
+      "name": "Screenplay Revision Guidelines",
+      "content": "SCREENPLAY REVISION GUIDELINES:\n\n1. SCOPE CONTROL: Only modify scenes the user asks about. If they say 'make scene 3 more tense', only revise scene 3 and any scenes directly affected by that change.\n\n2. SCENE INTEGRITY: Each scene must maintain:\n   - Valid heading (INT./EXT. LOCATION - TIME)\n   - Description with action lines\n   - Dialogue with character names and optional parentheticals\n   - Emotional peak and hook out\n   - Estimated duration\n\n3. CONTINUITY: Changes in one scene must be reflected in subsequent scenes if they affect the narrative flow.\n\n4. PACING: Maintain appropriate pacing — don't let revisions create scenes that are too long or too short relative to other scenes.\n\n5. METADATA: Update the metadata object to reflect any changes in total scenes, characters, locations, or estimated duration.",
+      "layer_type": "constraints",
+      "scope": "template",
+      "order": 2
+    },
+    {
+      "slug": "format",
+      "name": "JSON Output Format",
+      "content": "IMPORTANT: Always respond with valid JSON matching the specified output schema. Do not include any text outside the JSON object.",
+      "layer_type": "format",
+      "scope": "template",
+      "order": 3
+    }
+  ],
+  "user_prompt": "Revise the following screenplay based on the user's feedback.\n\n**CURRENT SCREENPLAY (JSON)**:\n{{current_screenplay}}\n\n**STORY TEXT** (for reference):\n{{story_text}}\n\n**CHARACTERS**:\n{{characters}}\n\n**LOCATIONS**:\n{{locations}}\n\n**USER FEEDBACK**:\n{{feedback}}\n\n**INSTRUCTIONS**:\n1. Read the current screenplay carefully, scene by scene\n2. Analyze the user's feedback to identify which scenes need changes\n3. Make the requested changes while preserving all other scenes exactly\n4. Ensure scene numbering remains sequential\n5. Update dialogue to reflect any character or plot changes\n6. Maintain ElevenLabs audio tags in dialogue\n7. Update metadata to reflect the revised screenplay\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"screenplay\": {\n    \"scenes\": [\n      {\n        \"number\": 1,\n        \"heading\": \"INT. LOCATION - DAY\",\n        \"location\": \"string\",\n        \"timeOfDay\": \"dawn|morning|midday|afternoon|golden-hour|dusk|night|day\",\n        \"description\": \"string (action lines)\",\n        \"dialogue\": [\n          {\n            \"character\": \"string\",\n            \"text\": \"string\",\n            \"parenthetical\": \"string (optional)\"\n          }\n        ],\n        \"audioCues\": [\n          {\n            \"type\": \"sfx|ambient|music\",\n            \"prompt\": \"string\",\n            \"startOffset\": number,\n            \"duration\": number,\n            \"isLoopable\": boolean\n          }\n        ],\n        \"emotionalPeak\": \"string\",\n        \"hookOut\": \"string\",\n        \"estimatedDuration\": number\n      }\n    ],\n    \"metadata\": {\n      \"totalScenes\": number,\n      \"estimatedDuration\": number,\n      \"totalDialogueLines\": number,\n      \"locations\": [\"string\"],\n      \"characters\": [\"string\"]\n    }\n  }\n}\n```",
+  "variables": {
+    "current_screenplay": {
+      "type": "text",
+      "required": true,
+      "description": "The full current screenplay data as JSON string, including scenes array and metadata."
+    },
+    "story_text": {
+      "type": "text",
+      "required": false,
+      "description": "The full story text for reference during revision."
+    },
+    "characters": {
+      "type": "text",
+      "required": false,
+      "description": "Tagged characters with descriptions from the project."
+    },
+    "locations": {
+      "type": "text",
+      "required": false,
+      "description": "Tagged locations with descriptions from the project."
+    },
+    "feedback": {
+      "type": "text",
+      "required": true,
+      "description": "The user's feedback describing what changes they want to the screenplay."
+    }
+  },
+  "output": {
+    "type": "object",
+    "schema": {
+      "type": "zod",
+      "definition": "z.object({ screenplay: z.object({ scenes: z.array(z.object({ number: z.number(), heading: z.string(), location: z.string(), timeOfDay: z.enum(['dawn', 'morning', 'midday', 'afternoon', 'golden-hour', 'dusk', 'night', 'day']), description: z.string(), dialogue: z.array(z.object({ character: z.string(), text: z.string(), parenthetical: z.string().nullish() })), audioCues: z.array(z.object({ type: z.enum(['sfx', 'ambient', 'music']), prompt: z.string(), startOffset: z.number(), duration: z.number(), isLoopable: z.boolean().optional() })).optional(), emotionalPeak: z.string().optional(), hookOut: z.string().optional(), estimatedDuration: z.number() })), metadata: z.object({ totalScenes: z.number(), estimatedDuration: z.number(), totalDialogueLines: z.number().optional(), locations: z.array(z.string()), characters: z.array(z.string()) }) }) })"
+    },
+    "schema_for_llm": "Return JSON: { \"screenplay\": { \"scenes\": [{ \"number\": 1, \"heading\": \"INT. LOCATION - DAY\", \"location\": \"string\", \"timeOfDay\": \"dawn|morning|midday|afternoon|golden-hour|dusk|night|day\", \"description\": \"string\", \"dialogue\": [{ \"character\": \"string\", \"text\": \"string\", \"parenthetical\": \"optional string\" }], \"audioCues\": [{ \"type\": \"sfx|ambient|music\", \"prompt\": \"string\", \"startOffset\": number, \"duration\": number, \"isLoopable\": boolean }], \"emotionalPeak\": \"string\", \"hookOut\": \"string\", \"estimatedDuration\": number }], \"metadata\": { \"totalScenes\": number, \"estimatedDuration\": number, \"totalDialogueLines\": number, \"locations\": [\"string\"], \"characters\": [\"string\"] } } }",
+    "example_output": {
+      "screenplay": {
+        "scenes": [
+          {
+            "number": 1,
+            "heading": "INT. SPACE STATION - OBSERVATION DECK - DAY",
+            "location": "observation deck",
+            "timeOfDay": "day",
+            "description": "MAYA CHEN (35, composed but weary) floats in the observation deck.",
+            "dialogue": [
+              {
+                "character": "MAYA",
+                "text": "[urgently] Houston, this is Relay One. [pauses] Please respond.",
+                "parenthetical": "into comm"
+              }
+            ],
+            "audioCues": [
+              {
+                "type": "ambient",
+                "prompt": "Quiet hum of space station electronics",
+                "startOffset": 0,
+                "duration": 30,
+                "isLoopable": true
+              }
+            ],
+            "emotionalPeak": "Maya hears her own future voice on the comm",
+            "hookOut": "The transmission cuts out mid-sentence",
+            "estimatedDuration": 45
+          }
+        ],
+        "metadata": {
+          "totalScenes": 8,
+          "estimatedDuration": 300,
+          "totalDialogueLines": 24,
+          "locations": ["observation deck", "control room"],
+          "characters": ["Maya Chen", "Houston Control"]
+        }
+      }
+    }
+  }
+}

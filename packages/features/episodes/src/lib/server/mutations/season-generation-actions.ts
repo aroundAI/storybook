@@ -36,8 +36,22 @@ interface _AnalysisResult {
   premise: string;
   tone?: string | null;
   target_audience?: string | null;
-  characters: Array<{ name: string; role: string; description: string }>;
-  locations: Array<{ name: string; setting: string; description: string }>;
+  characters: Array<{
+    name: string;
+    role: string;
+    description: string;
+    physicalDescription?: string;
+    clothingStyle?: string;
+    mannerisms?: string;
+  }>;
+  locations: Array<{
+    name: string;
+    setting: string;
+    description: string;
+    visualDescription?: string;
+    timeOfDay?: string | null;
+    weather?: string | null;
+  }>;
   episodes: ExtractedEpisode[];
 }
 
@@ -86,268 +100,308 @@ export const analyzeSeasonRoadmapAction = enhanceAction(
  */
 export const generateSeasonEpisodesAction = enhanceAction(
   async (data) => {
-    const logger = await getLogger();
-    const ctx = { name: 'season.generate', projectId: data.projectId };
-    logger.info(ctx, 'Generating season episodes and assets');
+    try {
+      const logger = await getLogger();
+      const ctx = { name: 'season.generate', projectId: data.projectId };
+      logger.info(ctx, 'Generating season episodes and assets');
 
-    const client = getSupabaseServerClient();
-    const { data: user, error: authError } = await requireUser(client);
+      const client = getSupabaseServerClient();
+      const { data: user, error: authError } = await requireUser(client);
 
-    if (authError || !user) throw new Error('Authentication required');
-
-    // 1. Create New Characters
-    const createdCharacterIds: Record<string, string> = {};
-
-    if (data.charactersToCreate.length > 0) {
-      const assetsToInsert = data.charactersToCreate.map((char) => ({
-        project_id: data.projectId,
-        type: 'character',
-        name: char.name,
-        description: char.role
-          ? `${char.role} - ${char.description}`
-          : char.description,
-        metadata: { personality: char.description },
-      }));
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: insertedAssets, error: assetError } = await (client as any)
-        .from('assets')
-        .insert(assetsToInsert)
-        .select('id, name');
-
-      if (assetError) {
-        logger.error(
-          { ...ctx, error: assetError },
-          'Failed to create character assets',
-        );
-        throw new Error('Failed to create characters');
+      if (authError || !user) {
+        console.error('[Season Generate] Auth failed:', authError);
+        return { success: false as const, error: 'Authentication required' };
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      insertedAssets?.forEach((asset: any) => {
-        createdCharacterIds[asset.name] = asset.id;
-      });
-    }
+      // 1. Create New Characters (skip any that already exist in the project)
+      const createdCharacterIds: Record<string, string> = {};
 
-    // 2. Create New Locations
-    const createdLocationIds: Record<string, string> = {};
+      if (data.charactersToCreate.length > 0) {
+        // Check which characters already exist (by name) to avoid overwriting user-curated data
+        const charNames = data.charactersToCreate.map((c) => c.name);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: existingChars } = await (client as any)
+          .from('assets')
+          .select('id, name')
+          .eq('project_id', data.projectId)
+          .eq('type', 'character')
+          .in('name', charNames)
+          .is('deleted_at', null);
 
-    if (data.locationsToCreate && data.locationsToCreate.length > 0) {
-      const locationsToInsert = data.locationsToCreate.map((loc) => ({
-        project_id: data.projectId,
-        type: 'location',
-        name: loc.name,
-        description: loc.setting
-          ? `${loc.setting} - ${loc.description}`
-          : loc.description,
-        metadata: { setting: loc.setting },
-      }));
+        // Map existing characters by name for quick lookup
+        const existingCharMap = new Map<string, string>();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        existingChars?.forEach((a: any) => existingCharMap.set(a.name, a.id));
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: insertedLocations, error: locError } = await (client as any)
-        .from('assets')
-        .insert(locationsToInsert)
-        .select('id, name');
-
-      if (locError) {
-        logger.error(
-          { ...ctx, error: locError },
-          'Failed to create location assets',
+        // Only insert characters that don't already exist
+        const newChars = data.charactersToCreate.filter(
+          (c) => !existingCharMap.has(c.name),
         );
-        throw new Error('Failed to create locations');
-      }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      insertedLocations?.forEach((asset: any) => {
-        createdLocationIds[asset.name] = asset.id;
-      });
-    }
+        // Add existing ones directly to the ID map
+        existingCharMap.forEach((id, name) => {
+          createdCharacterIds[name] = id;
+        });
 
-    // 3. Resolve IDs
-    const finalCharacterMap = {
-      ...data.characterMappings,
-      ...createdCharacterIds,
-    };
-    const finalLocationMap = {
-      ...data.locationMappings,
-      ...createdLocationIds,
-    };
+        if (newChars.length > 0) {
+          const assetsToInsert = newChars.map((char) => ({
+            project_id: data.projectId,
+            type: 'character',
+            name: char.name,
+            description: char.description || '',
+            metadata: {
+              role: char.role,
+              personality: char.description,
+              physicalAttributes: char.physicalDescription
+                ? { rawDescription: char.physicalDescription }
+                : undefined,
+              clothingStyle: char.clothingStyle
+                ? { rawDescription: char.clothingStyle }
+                : undefined,
+              mannerisms: char.mannerisms,
+            },
+          }));
 
-    // 4. Create Season Record
-    let seasonId: string | null = null;
+          const { data: insertedAssets, error: assetError } = await (
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            client as any
+          )
+            .from('assets')
+            .insert(assetsToInsert)
+            .select('id, name');
 
-    // Get the next season number
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existingSeasons } = await (client as any)
-      .from('seasons')
-      .select('number')
-      .eq('project_id', data.projectId)
-      .order('number', { ascending: false })
-      .limit(1);
+          if (assetError) {
+            console.error(
+              '[Season Generate] Character creation failed:',
+              assetError,
+            );
+            return {
+              success: false as const,
+              error: `Failed to create characters: ${assetError.message}`,
+            };
+          }
 
-    const nextSeasonNumber = (existingSeasons?.[0]?.number ?? 0) + 1;
-
-    // Create the season
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: insertedSeason, error: seasonError } = await (client as any)
-      .from('seasons')
-      .insert({
-        project_id: data.projectId,
-        number: nextSeasonNumber,
-        name: data.seasonName || `Season ${nextSeasonNumber}`,
-        description: data.premise || null,
-      })
-      .select()
-      .single();
-
-    if (seasonError) {
-      logger.error({ ...ctx, error: seasonError }, 'Failed to create season');
-      throw new Error('Failed to create season');
-    }
-
-    seasonId = insertedSeason.id;
-    logger.info(
-      { ...ctx, seasonId, seasonNumber: nextSeasonNumber },
-      'Season created',
-    );
-
-    // 5. Create Episodes (linked to season)
-    const episodesToInsert = data.episodes.map((ep) => {
-      // Handle both naming conventions from LLM output
-      const charNames = ep.characterNames || ep.character_names || [];
-      const locNames = ep.locationNames || ep.location_names || [];
-
-      const characterIds =
-        (charNames
-          .map((name) => finalCharacterMap[name])
-          .filter(Boolean) as string[]) ?? [];
-
-      const locationIds =
-        (locNames
-          .map((name) => finalLocationMap[name])
-          .filter(Boolean) as string[]) ?? [];
-
-      // Use synopsis as primary description, fallback to legacy description
-      const description = ep.synopsis || '';
-
-      // Build premise from beats if synopsis is empty
-      const buildPremiseFromBeats = () => {
-        if (ep.beats && ep.beats.length > 0) {
-          return ep.beats.map((b) => `${b.label}: ${b.content}`).join(' | ');
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          insertedAssets?.forEach((asset: any) => {
+            createdCharacterIds[asset.name] = asset.id;
+          });
         }
-        return description;
+      }
+
+      // 2. Create New Locations
+      const createdLocationIds: Record<string, string> = {};
+
+      if (data.locationsToCreate && data.locationsToCreate.length > 0) {
+        // Check which locations already exist (by name) to avoid overwriting user-curated data
+        const locNames = data.locationsToCreate.map((l) => l.name);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: existingLocs } = await (client as any)
+          .from('assets')
+          .select('id, name')
+          .eq('project_id', data.projectId)
+          .eq('type', 'location')
+          .in('name', locNames);
+
+        const existingLocMap = new Map<string, string>();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        existingLocs?.forEach((a: any) => existingLocMap.set(a.name, a.id));
+
+        const newLocs = data.locationsToCreate.filter(
+          (l) => !existingLocMap.has(l.name),
+        );
+
+        existingLocMap.forEach((id, name) => {
+          createdLocationIds[name] = id;
+        });
+
+        if (newLocs.length > 0) {
+          const locationsToInsert = newLocs.map((loc) => ({
+            project_id: data.projectId,
+            type: 'location',
+            name: loc.name,
+            description: loc.description || '',
+            metadata: {
+              setting: loc.setting,
+              visualDescription: loc.visualDescription,
+              timeOfDay: loc.timeOfDay,
+              weather: loc.weather,
+            },
+          }));
+
+          const { data: insertedLocations, error: locError } = await (
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            client as any
+          )
+            .from('assets')
+            .insert(locationsToInsert)
+            .select('id, name');
+
+          if (locError) {
+            console.error(
+              '[Season Generate] Location creation failed:',
+              locError,
+            );
+            return {
+              success: false as const,
+              error: `Failed to create locations: ${locError.message}`,
+            };
+          }
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          insertedLocations?.forEach((asset: any) => {
+            createdLocationIds[asset.name] = asset.id;
+          });
+        }
+      }
+
+      // 3. Resolve IDs
+      const finalCharacterMap = {
+        ...data.characterMappings,
+        ...createdCharacterIds,
       };
+      const finalLocationMap = {
+        ...data.locationMappings,
+        ...createdLocationIds,
+      };
+
+      // 4. Create Season Record
+      let seasonId: string | null = null;
+
+      // Get the next season number
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: existingSeasons } = await (client as any)
+        .from('seasons')
+        .select('number')
+        .eq('project_id', data.projectId)
+        .is('deleted_at', null)
+        .order('number', { ascending: false })
+        .limit(1);
+
+      const nextSeasonNumber = (existingSeasons?.[0]?.number ?? 0) + 1;
+
+      // Create the season
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: insertedSeason, error: seasonError } = await (client as any)
+        .from('seasons')
+        .insert({
+          project_id: data.projectId,
+          number: nextSeasonNumber,
+          name: data.seasonName || `Season ${nextSeasonNumber}`,
+          description: data.premise || null,
+        })
+        .select()
+        .single();
+
+      if (seasonError) {
+        console.error('[Season Generate] Season creation failed:', seasonError);
+        return {
+          success: false as const,
+          error: `Failed to create season: ${seasonError.message}`,
+        };
+      }
+
+      seasonId = insertedSeason.id;
+      logger.info(
+        { ...ctx, seasonId, seasonNumber: nextSeasonNumber },
+        'Season created',
+      );
+
+      // 5. Create Episodes (linked to season)
+      const episodesToInsert = data.episodes.map((ep) => {
+        // Handle both naming conventions from LLM output
+        const charNames = ep.characterNames || ep.character_names || [];
+        const locNames = ep.locationNames || ep.location_names || [];
+
+        const characterIds =
+          (charNames
+            .map((name) => finalCharacterMap[name])
+            .filter(Boolean) as string[]) ?? [];
+
+        const locationIds =
+          (locNames
+            .map((name) => finalLocationMap[name])
+            .filter(Boolean) as string[]) ?? [];
+
+        // Use synopsis as primary description, fallback to legacy description
+        const description = ep.synopsis || '';
+
+        // Build premise from beats if synopsis is empty
+        const buildPremiseFromBeats = () => {
+          if (ep.beats && ep.beats.length > 0) {
+            return ep.beats.map((b) => `${b.label}: ${b.content}`).join(' | ');
+          }
+          return description;
+        };
+
+        return {
+          project_id: data.projectId,
+          season_id: seasonId,
+          number: ep.number,
+          title: ep.title,
+          slug: generateEpisodeSlug(ep.number, ep.title),
+          description,
+          status: 'draft',
+          story_data: {
+            // Synopsis as primary premise
+            premise: ep.synopsis || buildPremiseFromBeats(),
+            // Store flexible beats array (preserves original labels)
+            beats: ep.beats || [],
+            // Store moral if present
+            moral: ep.moral || null,
+            // Store signature line (catchphrase) if present
+            signature_line: ep.signature_line || null,
+            // Store tags for genre/mood
+            tags: ep.tags || [],
+          },
+          metadata: {
+            character_ids: characterIds,
+            location_ids: locationIds,
+            // Store names for immediate display in episode header (before story/screenplay)
+            character_names: charNames,
+            location_names: locNames,
+            season_premise: data.premise,
+            season_tone: data.tone || null,
+            target_audience: data.targetAudience || null,
+          },
+        };
+      });
+
+      if (episodesToInsert.length === 0) {
+        return { success: true as const, count: 0, seasonId };
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: episodeError } = await (client as any)
+        .from('episodes')
+        .insert(episodesToInsert);
+
+      if (episodeError) {
+        console.error(
+          '[Season Generate] Episode creation failed:',
+          episodeError,
+        );
+        return {
+          success: false as const,
+          error: `Failed to create episodes: ${episodeError.message}`,
+        };
+      }
+
+      revalidatePath('/home/[account]/studio/[projectSlug]/episodes', 'page');
+      revalidatePath('/home/[account]/studio/[projectSlug]/assets', 'page');
 
       return {
-        project_id: data.projectId,
-        season_id: seasonId,
-        number: ep.number,
-        title: ep.title,
-        slug: generateEpisodeSlug(ep.number, ep.title),
-        description,
-        status: 'draft',
-        story_data: {
-          // Synopsis as primary premise
-          premise: ep.synopsis || buildPremiseFromBeats(),
-          // Store flexible beats array (preserves original labels)
-          beats: ep.beats || [],
-          // Store moral if present
-          moral: ep.moral || null,
-          // Store signature line (catchphrase) if present
-          signature_line: ep.signature_line || null,
-          // Store tags for genre/mood
-          tags: ep.tags || [],
-        },
-        metadata: {
-          character_ids: characterIds,
-          location_ids: locationIds,
-          // Store names for immediate display in episode header (before story/screenplay)
-          character_names: charNames,
-          location_names: locNames,
-          season_premise: data.premise,
-          season_tone: data.tone || null,
-          target_audience: data.targetAudience || null,
-        },
+        success: true as const,
+        seasonId,
+        count: episodesToInsert.length,
+        createdCharacters: Object.keys(createdCharacterIds).length,
+        createdLocations: Object.keys(createdLocationIds).length,
       };
-    });
-
-    if (episodesToInsert.length === 0) {
-      return { success: true, count: 0, seasonId };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      console.error('[Season Generate] Unexpected error:', message, err);
+      return { success: false as const, error: message };
     }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: createdEpisodes, error: episodeError } = await (client as any)
-      .from('episodes')
-      .insert(episodesToInsert)
-      .select('id, number');
-
-    if (episodeError) {
-      logger.error(
-        { ...ctx, error: episodeError },
-        'Failed to create episodes',
-      );
-      throw new Error('Failed to create episodes');
-    }
-
-    // 6. Auto-link facts to episodes (if LLM assigned fact_ids)
-    const factLinkRows: Array<{
-      episode_id: string;
-      fact_id: string;
-      linked_by: string;
-    }> = [];
-
-    if (createdEpisodes && createdEpisodes.length > 0) {
-      const episodesMap = new Map(data.episodes.map((ep) => [ep.number, ep]));
-
-      for (const createdEp of createdEpisodes) {
-        const sourceEp = episodesMap.get(createdEp.number);
-
-        if (sourceEp?.fact_ids && sourceEp.fact_ids.length > 0) {
-          for (const factId of sourceEp.fact_ids) {
-            if (factId) {
-              factLinkRows.push({
-                episode_id: createdEp.id,
-                fact_id: factId,
-                linked_by: user.id,
-              });
-            }
-          }
-        }
-      }
-    }
-
-    if (factLinkRows.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: factLinkError } = await (client as any)
-        .from('episode_facts')
-        .upsert(factLinkRows, { onConflict: 'episode_id,fact_id' });
-
-      if (factLinkError) {
-        logger.warn(
-          { ...ctx, error: factLinkError },
-          'Failed to auto-link facts to episodes (non-fatal)',
-        );
-      } else {
-        logger.info(
-          { ...ctx, factLinksCreated: factLinkRows.length },
-          'Auto-linked facts to episodes',
-        );
-      }
-    }
-
-    // Audit Log logic (simplified)
-    // ... (Skipping full audit log detail for brevity in this refactor, relying on standard logs)
-
-    revalidatePath('/home/[account]/studio/[projectSlug]/episodes', 'page');
-    revalidatePath('/home/[account]/studio/[projectSlug]/assets', 'page'); // In case we added assets
-
-    return {
-      success: true,
-      seasonId,
-      count: episodesToInsert.length,
-      createdCharacters: Object.keys(createdCharacterIds).length,
-      createdLocations: Object.keys(createdLocationIds).length,
-    };
   },
   { schema: GenerateSeasonEpisodesSchema },
 );

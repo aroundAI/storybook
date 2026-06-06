@@ -11,6 +11,8 @@ node_modules
 # testing
 coverage
 
+AAI-Concepts
+
 # next.js
 .next/
 out/

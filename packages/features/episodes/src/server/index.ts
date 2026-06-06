@@ -11,6 +11,9 @@ export * from '../lib/server/queries/shot-queries';
 // Shot list generation (FILM-307)
 export * from '../lib/server/mutations/shot-list-actions';
 
+// Refinement actions (Feature 2: Chat-Based Refinement)
+export * from '../lib/server/mutations/refinement-actions';
+
 // Season CRUD actions (FILM-302)
 export * from '../lib/server/mutations/season-actions';
 export * from './captions-actions';
@@ -50,9 +53,13 @@ export * from './news-actions';
 
 // Fact Management (Phase 11: FILM-1121)
 export * from './fact-actions';
+export * from './fact-extraction-status-actions';
 
 // OpenClaw Shot Intelligence (Transition Analysis & Frame Chain)
 export * from './transition-analyzer';
+
+// Asset link actions (sidebar create)
+export * from '../lib/server/mutations/asset-link-actions';
 
 // NOTE: Server-only canon functions must be imported directly:
 // import { buildMemoryContext } from '@kit/episodes/lib/canon/memory-context-builder';

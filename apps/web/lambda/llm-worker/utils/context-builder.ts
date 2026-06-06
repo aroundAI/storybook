@@ -20,6 +20,7 @@ export interface StoryData {
  * Physical attributes for VEO 3.1 character descriptions (15+ attributes)
  */
 export interface VeoPhysicalAttributes {
+  rawDescription?: string;
   age?: number;
   ageRange?: string;
   gender?: string;
@@ -38,6 +39,7 @@ export interface VeoPhysicalAttributes {
  * Clothing style for VEO 3.1 consistency
  */
 export interface VeoClothingStyle {
+  rawDescription?: string;
   defaultOutfit?: string;
   style?: string;
   colors?: string[];
@@ -122,6 +124,20 @@ export interface EpisodeContext {
     dialogueHints?: string;
   }>;
 
+  // Linked verified facts for fact-driven / non-fiction content
+  episodeFacts: Array<{
+    id: string;
+    claim: string;
+    simplifiedClaim?: string;
+    category?: string;
+    sourceCitation?: string;
+    sourceTitle?: string;
+    confidenceScore?: number;
+  }>;
+
+  // Per-episode visual tone override (e.g. stop-motion, 2.5D)
+  visualToneOverride?: string;
+
   // Genre-aware pipeline fields
   projectType?: ProjectType;
   verifiedFacts: Array<{
@@ -204,6 +220,7 @@ export async function buildEpisodeContext(
       character_names?: string[];
       location_ids?: string[];
       season_premise?: string;
+      visual_tone?: string;
     }) ?? {};
   const storyData =
     (episode.story_data as {
@@ -313,6 +330,46 @@ export async function buildEpisodeContext(
     );
   }
 
+  // 6. Fetch linked verified facts for this episode
+  let episodeFacts: EpisodeContext['episodeFacts'] = [];
+  try {
+    const { data: linkedFactRows } = await client
+      .from('episode_facts')
+      .select(
+        `
+        fact:verified_facts (
+          id, claim, simplified_claim, category,
+          source_citation, source_title, confidence_score
+        )
+      `,
+      )
+      .eq('episode_id', episodeId);
+
+    if (linkedFactRows && linkedFactRows.length > 0) {
+      episodeFacts = linkedFactRows
+        .map((row: Record<string, unknown>) => {
+          const fact = row.fact as Record<string, unknown> | null;
+          if (!fact) return null;
+          return {
+            id: fact.id as string,
+            claim: fact.claim as string,
+            simplifiedClaim: (fact.simplified_claim as string) ?? undefined,
+            category: (fact.category as string) ?? undefined,
+            sourceCitation: (fact.source_citation as string) ?? undefined,
+            sourceTitle: (fact.source_title as string) ?? undefined,
+            confidenceScore: (fact.confidence_score as number) ?? undefined,
+          };
+        })
+        .filter((f): f is NonNullable<typeof f> => f !== null);
+    }
+    console.log(`[buildEpisodeContext] Linked facts: ${episodeFacts.length}`);
+  } catch (factError) {
+    console.warn(
+      '[buildEpisodeContext] Failed to fetch episode facts (non-fatal):',
+      factError,
+    );
+  }
+
   return {
     premise: storyData.premise ?? episode.description ?? '',
     synopsis: storyData.synopsis,
@@ -332,10 +389,13 @@ export async function buildEpisodeContext(
     seasonTheme: undefined, // TODO: Add theme to season schema
 
     previousEpisodes,
+    episodeFacts,
 
     genre: projectMetadata.genre ?? 'general',
     targetAudience: projectMetadata.targetAudience ?? 'general',
     visualStyle: projectMetadata.videoStyle ?? 'balanced',
+    visualToneOverride:
+      (metadata as { visual_tone?: string }).visual_tone ?? undefined,
     aestheticStyle: projectMetadata.projectAestheticStyle ?? undefined,
 
     // Genre-aware pipeline
@@ -524,6 +584,7 @@ interface CharacterMetadata {
   physicalAttributes?: VeoPhysicalAttributes;
   clothingStyle?: VeoClothingStyle;
   elementPrompt?: string;
+  mannerisms?: string;
 }
 
 /**
@@ -581,6 +642,7 @@ export async function fetchCharactersByIds(
 interface LocationMetadata {
   setting?: string;
   atmosphere?: string;
+  visualDescription?: string;
   timeOfDay?: string;
   weather?: string;
   lighting?: string;
@@ -708,6 +770,10 @@ export function formatCharactersForPrompt(
       // Include physical attributes if available to reinforce identity
       const attrs = c.physicalAttributes;
       if (attrs) {
+        // Raw description from LLM extraction (rich profile)
+        if (attrs.rawDescription) {
+          lines.push(`  Physical Appearance: ${attrs.rawDescription}`);
+        }
         const physParts: string[] = [];
         if (attrs.gender) physParts.push(`Gender: ${attrs.gender}`);
         if (attrs.age) physParts.push(`Age: ${attrs.age}`);
@@ -715,6 +781,22 @@ export function formatCharactersForPrompt(
         if (physParts.length > 0) {
           lines.push(`  Identity (immutable): ${physParts.join(', ')}`);
         }
+      }
+
+      // Clothing style (raw or structured)
+      const clothing = c.clothingStyle;
+      if (clothing) {
+        if (clothing.rawDescription) {
+          lines.push(`  Clothing Style: ${clothing.rawDescription}`);
+        } else if (clothing.defaultOutfit) {
+          lines.push(`  Clothing: ${clothing.defaultOutfit}`);
+        }
+      }
+
+      // Mannerisms from extraction
+      const metadata = c as Record<string, unknown>;
+      if (metadata.mannerisms && typeof metadata.mannerisms === 'string') {
+        lines.push(`  Mannerisms: ${metadata.mannerisms}`);
       }
 
       return lines.join('\n');
@@ -733,10 +815,21 @@ export function formatLocationsForPrompt(
   if (locations.length === 0) return '';
 
   return `**Locations**:\n${locations
-    .map(
-      (l) =>
-        `- **${l.name}** (${l.setting}): ${l.description}${l.atmosphere ? `\n  Atmosphere: ${l.atmosphere}` : ''}`,
-    )
+    .map((l) => {
+      const parts = [`- **${l.name}** (${l.setting}): ${l.description}`];
+      if (l.atmosphere) parts.push(`  Atmosphere: ${l.atmosphere}`);
+      // Rich visual metadata from season extraction
+      const meta = l as Record<string, unknown>;
+      if (
+        meta.visualDescription &&
+        typeof meta.visualDescription === 'string'
+      ) {
+        parts.push(`  Visual: ${meta.visualDescription}`);
+      }
+      if (l.timeOfDay) parts.push(`  Time of Day: ${l.timeOfDay}`);
+      if (l.weather) parts.push(`  Weather: ${l.weather}`);
+      return parts.join('\n');
+    })
     .join('\n')}`;
 }
 
@@ -1643,4 +1736,35 @@ export function formatFilteredLocationsForPrompt(
 
   // Fallback when location not in registry
   return `Location: ${sceneLocation} (not in registry - use scene description)`;
+}
+
+/**
+ * Format linked episode facts into a prompt-injectable string.
+ * Used by story-generation and screenplay-conversion handlers to ensure
+ * fact accuracy in generated content.
+ */
+export function formatFactsForPrompt(
+  facts: EpisodeContext['episodeFacts'],
+): string {
+  if (!facts || facts.length === 0) return '';
+
+  const factLines = facts
+    .map((f, i) => {
+      const source = f.sourceCitation ? ` [Source: ${f.sourceCitation}]` : '';
+      const category = f.category ? ` (${f.category})` : '';
+      return `FACT ${i + 1}${category}: ${f.claim}${source}`;
+    })
+    .join('\n');
+
+  return [
+    '## VERIFIED FACTS — These are REAL, verified facts that MUST be used accurately in the story.',
+    '',
+    factLines,
+    '',
+    'Rules:',
+    '- Use exact numbers and claims from these facts',
+    '- Do NOT paraphrase vaguely ("a lot of pressure" → use the exact figure)',
+    '- Every fact should appear in the story unless irrelevant to the narrative',
+    '- Never fabricate additional scientific claims not in this list',
+  ].join('\n');
 }

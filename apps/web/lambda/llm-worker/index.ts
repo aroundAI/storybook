@@ -238,6 +238,18 @@ async function processJob(job: LlmJobMessage): Promise<unknown> {
       );
       return processAudioFileGeneration(job.payload, supabase);
     }
+    case 'story-refinement': {
+      const { processStoryRefinement } = await import(
+        './handlers/story-refinement'
+      );
+      return processStoryRefinement(job.payload, supabase);
+    }
+    case 'screenplay-refinement': {
+      const { processScreenplayRefinement } = await import(
+        './handlers/screenplay-refinement'
+      );
+      return processScreenplayRefinement(job.payload, supabase);
+    }
     case 'fact-extraction': {
       const { processFactExtraction } = await import(
         './handlers/fact-extraction'

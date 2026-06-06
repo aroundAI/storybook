@@ -1,9 +1,29 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from 'react';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
+import { CheckSquare, Trash2, X } from 'lucide-react';
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@kit/ui/alert-dialog';
+import { Button } from '@kit/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +35,10 @@ import { toast } from '@kit/ui/sonner';
 import { useAssets } from '../hooks/use-assets';
 import { useCharacterAssets } from '../hooks/use-character-assets';
 import { useCharacterFilters } from '../hooks/use-character-filters';
+import {
+  bulkDeleteAssetsAction,
+  checkAssetsInUseAction,
+} from '../lib/server/asset.mutations';
 import { getCharacterAction } from '../lib/server/character.mutations';
 import type { Asset, CharacterWithDetails } from '../lib/types';
 import { AssetCard } from './asset-card';
@@ -64,6 +88,16 @@ export function AssetGallery({
 
   const [locationSearchQuery, setLocationSearchQuery] = useState('');
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+
+  // Bulk selection state
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [inUseWarning, setInUseWarning] = useState<{
+    inUseAssets: Array<{ id: string; name: string; usedBy: string[] }>;
+    safeToDelete: string[];
+  } | null>(null);
+  const [isDeleting, startDeleteTransition] = useTransition();
 
   // Character data (with details — voice, image, role, etc.)
   const {
@@ -140,6 +174,96 @@ export function AssetGallery({
       }
     },
     [activeTab, deleteCharacter, deleteLocationAsset],
+  );
+
+  // Bulk selection handlers
+  const handleToggleSelect = useCallback((asset: Asset) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(asset.id)) {
+        next.delete(asset.id);
+      } else {
+        next.add(asset.id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    const assets =
+      activeTab === 'character' ? filteredCharacters : filteredLocationAssets;
+    setSelectedIds(new Set(assets.map((a) => a.id)));
+  }, [activeTab, filteredCharacters, filteredLocationAssets]);
+
+  const handleDeselectAll = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleExitSelectionMode = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleBulkDeleteClick = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+
+    try {
+      const result = await checkAssetsInUseAction({
+        projectId,
+        assetIds: Array.from(selectedIds),
+      });
+
+      if (result?.data?.inUseAssets && result.data.inUseAssets.length > 0) {
+        setInUseWarning(result.data);
+      } else {
+        setBulkDeleteDialogOpen(true);
+      }
+    } catch {
+      setBulkDeleteDialogOpen(true);
+    }
+  }, [selectedIds, projectId]);
+
+  const handleConfirmBulkDelete = useCallback(
+    (idsToDelete?: string[]) => {
+      const ids = idsToDelete ?? Array.from(selectedIds);
+      if (ids.length === 0) return;
+
+      startDeleteTransition(async () => {
+        try {
+          const result = await bulkDeleteAssetsAction({
+            projectId,
+            assetIds: ids,
+          });
+
+          if (result?.data) {
+            toast.success(
+              `Deleted ${result.data.deletedCount} ${activeTab === 'character' ? 'characters' : 'locations'}`,
+            );
+            handleExitSelectionMode();
+            setBulkDeleteDialogOpen(false);
+            setInUseWarning(null);
+            router.refresh();
+            if (activeTab === 'character') {
+              void fetchCharacters();
+            } else {
+              void fetchLocationAssetsRef.current();
+            }
+          }
+        } catch (err) {
+          toast.error(
+            `Failed to delete: ${err instanceof Error ? err.message : 'Unknown error'}`,
+          );
+        }
+      });
+    },
+    [
+      selectedIds,
+      projectId,
+      activeTab,
+      handleExitSelectionMode,
+      router,
+      fetchCharacters,
+    ],
   );
 
   const handleEdit = useCallback(
@@ -240,6 +364,9 @@ export function AssetGallery({
                   characterDetails={character}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  selectionMode={selectionMode}
+                  isSelected={selectedIds.has(character.id)}
+                  onToggleSelect={handleToggleSelect}
                 />
               ))}
             </AssetGrid>
@@ -259,6 +386,9 @@ export function AssetGallery({
                   characterDetails={character}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  selectionMode={selectionMode}
+                  isSelected={selectedIds.has(character.id)}
+                  onToggleSelect={handleToggleSelect}
                 />
               ))}
             </AssetGrid>
@@ -278,6 +408,9 @@ export function AssetGallery({
                   characterDetails={character}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
+                  selectionMode={selectionMode}
+                  isSelected={selectedIds.has(character.id)}
+                  onToggleSelect={handleToggleSelect}
                 />
               ))}
             </AssetGrid>
@@ -301,26 +434,77 @@ export function AssetGallery({
       {/* Tabs */}
       <AssetTabs activeTab={activeTab} onTabChange={handleTabChange} />
 
-      {/* Search / Filter Bar */}
-      {activeTab === 'character' ? (
-        <AssetFilterToolbar
-          filters={filters}
-          activeFilterCount={activeFilterCount}
-          resultCount={filteredCharacters.length}
-          totalCount={characterTotal}
-          onSearchChange={handleSearchChange}
-          onRoleToggle={toggleRole}
-          onVoiceStatusChange={handleVoiceStatusChange}
-          onImageStatusChange={handleImageStatusChange}
-          onElementPromptStatusChange={handleElementPromptStatusChange}
-          onSortChange={handleSortChange}
-          onClearFilters={clearFilters}
-        />
+      {/* Bulk Selection Toolbar */}
+      {selectionMode ? (
+        <div className="flex items-center justify-between rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium">
+              {selectedIds.size} selected
+            </span>
+            <Button variant="ghost" size="sm" onClick={handleSelectAll}>
+              Select All
+            </Button>
+            {selectedIds.size > 0 && (
+              <Button variant="ghost" size="sm" onClick={handleDeselectAll}>
+                Deselect All
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {selectedIds.size > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDeleteClick}
+                disabled={isDeleting}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Selected ({selectedIds.size})
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={handleExitSelectionMode}>
+              <X className="mr-1 h-4 w-4" />
+              Cancel
+            </Button>
+          </div>
+        </div>
       ) : (
-        <AssetSearchBar
-          value={locationSearchQuery}
-          onChange={setLocationSearchQuery}
-        />
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            {/* Search / Filter Bar */}
+            {activeTab === 'character' ? (
+              <AssetFilterToolbar
+                filters={filters}
+                activeFilterCount={activeFilterCount}
+                resultCount={filteredCharacters.length}
+                totalCount={characterTotal}
+                onSearchChange={handleSearchChange}
+                onRoleToggle={toggleRole}
+                onVoiceStatusChange={handleVoiceStatusChange}
+                onImageStatusChange={handleImageStatusChange}
+                onElementPromptStatusChange={handleElementPromptStatusChange}
+                onSortChange={handleSortChange}
+                onClearFilters={clearFilters}
+              />
+            ) : (
+              <AssetSearchBar
+                value={locationSearchQuery}
+                onChange={setLocationSearchQuery}
+              />
+            )}
+          </div>
+          {currentAssets.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectionMode(true)}
+              className="ml-3 shrink-0"
+            >
+              <CheckSquare className="mr-2 h-4 w-4" />
+              Select
+            </Button>
+          )}
+        </div>
       )}
 
       {/* Grid or Empty State */}
@@ -343,6 +527,9 @@ export function AssetGallery({
                 asset={asset}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                selectionMode={selectionMode}
+                isSelected={selectedIds.has(asset.id)}
+                onToggleSelect={handleToggleSelect}
               />
             ))}
           </AssetGrid>
@@ -398,6 +585,100 @@ export function AssetGallery({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog
+        open={bulkDeleteDialogOpen}
+        onOpenChange={setBulkDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {selectedIds.size}{' '}
+              {activeTab === 'character' ? 'Characters' : 'Locations'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the selected{' '}
+              {activeTab === 'character' ? 'characters' : 'locations'}. This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleConfirmBulkDelete()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : `Delete ${selectedIds.size}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* In-Use Warning Dialog */}
+      <AlertDialog
+        open={!!inUseWarning}
+        onOpenChange={(open) => !open && setInUseWarning(null)}
+      >
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Some assets are in use</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  The following{' '}
+                  {activeTab === 'character' ? 'characters' : 'locations'} are
+                  referenced by dialogue lines or episodes:
+                </p>
+                <ul className="list-disc space-y-1 pl-5 text-sm">
+                  {inUseWarning?.inUseAssets.map((a) => (
+                    <li key={a.id}>
+                      <strong>{a.name}</strong>
+                      {a.usedBy.length > 0 && (
+                        <span className="text-muted-foreground">
+                          {' '}
+                          — {a.usedBy.join(', ')}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {inUseWarning?.safeToDelete &&
+                  inUseWarning.safeToDelete.length > 0 && (
+                    <p className="text-sm">
+                      {inUseWarning.safeToDelete.length} other{' '}
+                      {activeTab === 'character' ? 'characters' : 'locations'}{' '}
+                      can be safely deleted.
+                    </p>
+                  )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            {inUseWarning?.safeToDelete &&
+              inUseWarning.safeToDelete.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    handleConfirmBulkDelete(inUseWarning.safeToDelete)
+                  }
+                  disabled={isDeleting}
+                >
+                  Delete Safe Only ({inUseWarning.safeToDelete.length})
+                </Button>
+              )}
+            <AlertDialogAction
+              onClick={() => handleConfirmBulkDelete()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete All Anyway'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

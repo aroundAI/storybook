@@ -134,30 +134,18 @@ export async function isAssetInUse(assetId: string): Promise<boolean> {
 
   const client = getSupabaseServerClient();
 
-  // Check if asset is referenced by dialogue_lines (character speaking)
+  // Check if asset is referenced by dialogue_lines in ACTIVE (non-deleted) episodes.
+  // dialogue_lines from soft-deleted episodes should not block deletion.
   const { count: dialogueCount } = await client
     .from('dialogue_lines')
-    .select('id', { count: 'exact', head: true })
-    .eq('character_asset_id', assetId);
+    .select('id, episodes!inner(id)', { count: 'exact', head: true })
+    .eq('character_asset_id', assetId)
+    .is('episodes.deleted_at', null);
 
   if (dialogueCount && dialogueCount > 0) {
     logger.info(
       { ...ctx, dialogueCount },
-      'Asset is referenced by dialogue lines',
-    );
-    return true;
-  }
-
-  // Check if asset is referenced by character_details (voice asset)
-  const { count: characterCount } = await client
-    .from('character_details')
-    .select('asset_id', { count: 'exact', head: true })
-    .eq('elevenlabs_voice_id', assetId);
-
-  if (characterCount && characterCount > 0) {
-    logger.info(
-      { ...ctx, characterCount },
-      'Asset is referenced by character details',
+      'Asset is referenced by dialogue lines in active episodes',
     );
     return true;
   }

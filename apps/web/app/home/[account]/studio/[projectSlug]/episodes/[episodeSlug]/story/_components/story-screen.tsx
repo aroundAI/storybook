@@ -8,12 +8,14 @@ import {
   ChevronRight,
   Loader2,
   Maximize2,
+  MessageSquare,
   Minimize2,
   Users,
 } from 'lucide-react';
 
+import { RefinementChat, SidebarAssetList } from '@kit/episodes/components';
 import { convertToScreenplayAction } from '@kit/episodes/server';
-import type { EpisodeWithShots, StoryCharacterArc } from '@kit/episodes/types';
+import type { EpisodeWithShots } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
@@ -31,14 +33,6 @@ interface StoryScreenProps {
   canonEnabled?: boolean;
 }
 
-const ROLE_COLORS: Record<string, string> = {
-  protagonist:
-    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  antagonist: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  supporting:
-    'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-};
-
 export function StoryScreen({
   episode,
   onScreenplayComplete,
@@ -49,7 +43,9 @@ export function StoryScreen({
   const [isPending, _startTransition] = useTransition();
   const [isReadingMode, setIsReadingMode] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<'info' | 'canon'>('info');
+  const [sidebarTab, setSidebarTab] = useState<'info' | 'canon' | 'refine'>(
+    'info',
+  );
   const storyData = episode.storyData;
 
   // WebSocket for screenplay-conversion async LLM results
@@ -389,6 +385,20 @@ export function StoryScreen({
                     Canon
                   </div>
                 </button>
+                <button
+                  onClick={() => setSidebarTab('refine')}
+                  className={cn(
+                    'flex-1 px-4 py-3 text-sm font-medium transition-colors',
+                    sidebarTab === 'refine'
+                      ? 'border-b-2 border-amber-500 text-amber-600 dark:text-amber-400'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
+                  )}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <MessageSquare className="h-4 w-4" />
+                    Refine
+                  </div>
+                </button>
               </div>
             </div>
 
@@ -499,57 +509,114 @@ export function StoryScreen({
                     </div>
                   )}
 
-                  {/* Characters */}
-                  {storyData.characters && storyData.characters.length > 0 && (
+                  {/* Characters & Locations — linked/unlinked indicators */}
+                  <SidebarAssetList
+                    characters={(storyData?.characters ?? []).map((c) => ({
+                      name: c.name,
+                      role: c.role,
+                      arc: c.arc,
+                    }))}
+                    locations={[]}
+                    projectId={episode.projectId}
+                    episodeId={episode.id}
+                    storyContext={
+                      storyData?.fullStory ?? storyData?.premise ?? ''
+                    }
+                    onAssetCreated={refetchEpisode}
+                  />
+
+                  {/* Continuity (SCORE) */}
+                  {(storyData.episodeSummary ||
+                    (storyData.keyEvents && storyData.keyEvents.length > 0) ||
+                    storyData.sentimentScore != null) && (
                     <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
                       <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-                        <Users className="h-4 w-4" />
-                        Characters
+                        <BookOpen className="h-4 w-4" />
+                        Continuity
                       </h3>
                       <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                        {storyData.characters.length} character
-                        {storyData.characters.length !== 1 ? 's' : ''} in this
-                        story
+                        Feeds into the next episode&apos;s context
                       </p>
-                      <div className="space-y-3">
-                        {storyData.characters.map(
-                          (character: StoryCharacterArc, index: number) => (
+
+                      {/* Episode Summary */}
+                      {storyData.episodeSummary && (
+                        <div className="mb-3">
+                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                            Episode Summary
+                          </span>
+                          <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                            {storyData.episodeSummary}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Sentiment Score */}
+                      {storyData.sentimentScore != null && (
+                        <div className="mb-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                              Sentiment
+                            </span>
+                            <span className="text-xs text-gray-600 dark:text-gray-300">
+                              {Math.round(storyData.sentimentScore * 100)}%
+                              positive
+                            </span>
+                          </div>
+                          <div className="mt-1 h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
                             <div
-                              key={index}
-                              className="rounded-lg border border-gray-100 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/50"
-                            >
-                              <div className="mb-2 flex items-start justify-between">
-                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-                                  {character.name}
-                                </h4>
-                                <span
-                                  className={cn(
-                                    'rounded-full px-2 py-0.5 text-xs font-medium capitalize',
-                                    ROLE_COLORS[character.role.toLowerCase()] ??
-                                      'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
-                                  )}
+                              className="h-full rounded-full bg-gradient-to-r from-red-400 via-yellow-400 to-green-400"
+                              style={{
+                                width: `${storyData.sentimentScore * 100}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Key Events */}
+                      {storyData.keyEvents &&
+                        storyData.keyEvents.length > 0 && (
+                          <div>
+                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                              Key Events
+                            </span>
+                            <ul className="mt-1 space-y-1">
+                              {storyData.keyEvents.map((event, i) => (
+                                <li
+                                  key={i}
+                                  className="flex items-start gap-1.5 text-xs text-gray-600 dark:text-gray-300"
                                 >
-                                  {character.role}
-                                </span>
-                              </div>
-                              <p className="text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-                                {character.arc}
-                              </p>
-                            </div>
-                          ),
+                                  <span className="mt-0.5 text-indigo-400">
+                                    •
+                                  </span>
+                                  {event}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         )}
-                      </div>
                     </div>
                   )}
                 </div>
-              ) : canonEnabled && episode.projectId ? (
-                <CanonDashboard
-                  projectId={episode.projectId}
-                  episodeId={episode.id}
-                  episodeNumber={episode.number ?? 1}
-                  season={episode.season?.number ?? 1}
-                  canonEnabled={canonEnabled}
-                />
+              ) : sidebarTab === 'canon' ? (
+                canonEnabled && episode.projectId ? (
+                  <CanonDashboard
+                    projectId={episode.projectId}
+                    episodeId={episode.id}
+                    episodeNumber={episode.number ?? 1}
+                    season={episode.season?.number ?? 1}
+                    canonEnabled={canonEnabled}
+                  />
+                ) : null
+              ) : sidebarTab === 'refine' ? (
+                <div className="-m-4 h-[calc(100%+2rem)]">
+                  <RefinementChat
+                    mode="story"
+                    episodeId={episode.id}
+                    projectId={episode.projectId}
+                    onRefinementComplete={refetchEpisode}
+                  />
+                </div>
               ) : null}
             </div>
           </div>

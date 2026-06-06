@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { Check } from 'lucide-react';
 import {
   Edit,
   Film,
@@ -141,6 +142,9 @@ interface AssetCardProps {
   characterDetails?: CharacterWithDetails;
   onEdit?: (asset: Asset) => void;
   onDelete?: (asset: Asset) => void;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (asset: Asset) => void;
 }
 
 export function AssetCard({
@@ -148,6 +152,9 @@ export function AssetCard({
   characterDetails,
   onEdit,
   onDelete,
+  selectionMode,
+  isSelected,
+  onToggleSelect,
 }: AssetCardProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
@@ -175,7 +182,11 @@ export function AssetCard({
           isLandscape ? 'border-b-4' : 'border-t-4',
           colors.border,
           colors.bg,
+          selectionMode && 'cursor-pointer',
+          isSelected &&
+            'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-zinc-900',
         )}
+        onClick={selectionMode ? () => onToggleSelect?.(asset) : undefined}
       >
         <CardContent className="p-0">
           <div
@@ -225,34 +236,52 @@ export function AssetCard({
                 </div>
               )}
 
-              {/* Actions Menu (Absolute) */}
-              <div className="absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover:opacity-100">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="h-8 w-8 shadow-sm"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                      <span className="sr-only">Open menu</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onEdit?.(asset)}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      onClick={() => setDeleteDialogOpen(true)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              {/* Selection Checkbox (when in selection mode) */}
+              {selectionMode && (
+                <div className="absolute left-2 top-2 z-10">
+                  <div
+                    className={cn(
+                      'flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors',
+                      isSelected
+                        ? 'border-blue-500 bg-blue-500 text-white'
+                        : 'border-zinc-400 bg-white/80 dark:border-zinc-600 dark:bg-zinc-800/80',
+                    )}
+                  >
+                    {isSelected && <Check className="h-4 w-4" />}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions Menu (Absolute) — hidden in selection mode */}
+              {!selectionMode && (
+                <div className="absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover:opacity-100">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-8 w-8 shadow-sm"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                        <span className="sr-only">Open menu</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onEdit?.(asset)}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => setDeleteDialogOpen(true)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
             </div>
 
             {/* Content Body */}

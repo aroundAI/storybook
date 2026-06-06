@@ -374,6 +374,9 @@ export async function runAgent<T = unknown>(
     provider,
     model,
     apiKey: getApiKeyForProvider(provider),
+    vertexai: provider === 'gemini' && process.env.GEMINI_VERTEXAI === 'true',
+    project: process.env.GOOGLE_CLOUD_PROJECT,
+    location: process.env.GOOGLE_CLOUD_LOCATION,
   });
 
   // Start conversation

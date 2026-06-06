@@ -729,6 +729,15 @@ export default $config({
         // LLM configuration
         LLM_PROVIDER: process.env.LLM_PROVIDER || 'gemini',
         LLM_MODEL: process.env.LLM_MODEL || '',
+        ...(process.env.GEMINI_VERTEXAI && {
+          GEMINI_VERTEXAI: process.env.GEMINI_VERTEXAI,
+        }),
+        ...(process.env.GOOGLE_CLOUD_PROJECT && {
+          GOOGLE_CLOUD_PROJECT: process.env.GOOGLE_CLOUD_PROJECT,
+        }),
+        ...(process.env.GOOGLE_CLOUD_LOCATION && {
+          GOOGLE_CLOUD_LOCATION: process.env.GOOGLE_CLOUD_LOCATION,
+        }),
 
         // Security - needed for API key decryption
         ...(process.env.ENCRYPTION_KEY && {
@@ -1119,6 +1128,15 @@ export default $config({
         }),
         ...(process.env.EMBEDDING_MODEL && {
           EMBEDDING_MODEL: process.env.EMBEDDING_MODEL,
+        }),
+        ...(process.env.GEMINI_VERTEXAI && {
+          GEMINI_VERTEXAI: process.env.GEMINI_VERTEXAI,
+        }),
+        ...(process.env.GOOGLE_CLOUD_PROJECT && {
+          GOOGLE_CLOUD_PROJECT: process.env.GOOGLE_CLOUD_PROJECT,
+        }),
+        ...(process.env.GOOGLE_CLOUD_LOCATION && {
+          GOOGLE_CLOUD_LOCATION: process.env.GOOGLE_CLOUD_LOCATION,
         }),
 
         // Security

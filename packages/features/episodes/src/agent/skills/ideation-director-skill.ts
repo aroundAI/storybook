@@ -25,6 +25,30 @@ interface IdeaResult {
 }
 
 /**
+ * Premise Tier System
+ *
+ * Classifies the premise by length and returns tier-specific instructions
+ * telling the LLM how detailed the output loglines should be.
+ *
+ * - Seed (≤250 chars): Short concept — concise loglines (current behavior)
+ * - Developed (251-700 chars): Fleshed-out concept — expanded 2-3 sentence loglines
+ * - Rich (701+ chars): Detailed narrative — full 4-6 sentence loglines preserving specifics
+ */
+function getPremiseDepthInstructions(premise: string): string {
+  const len = premise.length;
+
+  if (len <= 250) {
+    return '';
+  }
+
+  if (len <= 700) {
+    return `LOGLINE DEPTH REQUIREMENT: The premise above contains developed themes and character motivations. Each variation's logline MUST be 2-3 sentences (200-400 characters). Preserve the core thematic argument from the premise while exploring a different narrative angle. Do NOT compress the premise's ideas into a single generic sentence.`;
+  }
+
+  return `LOGLINE DEPTH REQUIREMENT: The premise above is a richly detailed narrative concept. Each variation's logline MUST be 4-6 sentences (500-800 characters). You MUST preserve: (1) The specific details and mechanisms described in the premise (e.g., trade systems, historical specifics, scientific concepts), (2) The thematic argument and "so what" of the story, (3) Character motivations and their relationship to the subject matter. Do NOT compress—reinterpret the SAME depth from a different narrative angle. Each variation should feel as fleshed-out as the original premise, not a summary of it.`;
+}
+
+/**
  * Tool: Generate Ideas
  *
  * Generates story ideas from a premise, genre, and audience context.
@@ -100,6 +124,8 @@ const generateIdeasTool = createTool({
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
+      const depthInstructions = getPremiseDepthInstructions(premise);
+
       const result = await executeLLM<IdeaResult>({
         templateSlug: 'story-ideation',
         variables: {
@@ -114,6 +140,7 @@ const generateIdeasTool = createTool({
           visual_style: visualStyle ?? '',
           style: 'balanced',
           recurring_element: recurringElements ?? '',
+          premise_depth_instructions: depthInstructions,
           ...(weakIndices ? { weak_indices: weakIndices } : {}),
         },
         context: {
