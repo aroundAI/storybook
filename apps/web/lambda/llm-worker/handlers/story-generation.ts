@@ -20,6 +20,7 @@ import {
   formatLocationsForPrompt,
   formatPreviousEpisodesForPrompt,
   formatRecurringElementsForPrompt,
+  formatVerifiedFactsForPrompt,
 } from '../utils/context-builder';
 import {
   type ContentStyle,
@@ -127,8 +128,16 @@ export async function processStoryGeneration(
 
     console.log(
       `[Story Generation] Context built: ${episodeContext.characters.length} characters, ${episodeContext.locations.length} locations` +
-        (recurringElementContext ? ', recurring element: yes' : ''),
+        (recurringElementContext ? ', recurring element: yes' : '') +
+        (episodeContext.projectType ? `, type: ${episodeContext.projectType}` : '') +
+        (episodeContext.verifiedFacts.length > 0 ? `, facts: ${episodeContext.verifiedFacts.length}` : ''),
     );
+
+    // Format verified facts for factual content types
+    const verifiedFactsContext =
+      episodeContext.verifiedFacts.length > 0
+        ? formatVerifiedFactsForPrompt(episodeContext.verifiedFacts)
+        : undefined;
 
     // 3. Run the Stage 1 Story Orchestrator
     const { runStoryOrchestrator } = await import(
@@ -154,6 +163,8 @@ export async function processStoryGeneration(
         projectId: data.projectId,
         episodeNumber: episodeContext.episodeNumber ?? 1,
         accountId: data.accountId,
+        contentType: episodeContext.projectType,
+        verifiedFacts: verifiedFactsContext,
         charactersContext,
         locationsContext,
         seasonContext,
