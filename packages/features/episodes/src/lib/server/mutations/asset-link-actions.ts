@@ -263,15 +263,20 @@ export const batchCreateUnlinkedAction = enhanceAction(
         };
       });
 
-      // 5. Insert new assets
+      // 5. Insert new assets (upsert to handle soft-deleted assets with same name)
+      // The unique constraint covers ALL rows including soft-deleted ones,
+      // so we use upsert to "resurrect" any previously deleted assets.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: created, error: insertError } = await (client as any)
         .from('assets')
-        .insert(assetRows)
+        .upsert(assetRows.map((row) => ({ ...row, deleted_at: null })), {
+          onConflict: 'project_id,type,name',
+          ignoreDuplicates: false,
+        })
         .select('id, name, type');
 
       if (insertError) {
-        console.error('[batchCreate] Insert failed:', insertError);
+        console.error('[batchCreate] Upsert failed:', insertError);
         throw new Error('Failed to create assets');
       }
 

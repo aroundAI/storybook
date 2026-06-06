@@ -53,7 +53,7 @@
     }
   },
   "output": {
-    "type": "json",
+    "type": "object",
     "schema": {
       "type": "object",
       "properties": {

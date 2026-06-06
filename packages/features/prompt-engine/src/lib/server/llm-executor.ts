@@ -135,8 +135,11 @@ function findBalancedJSON(
  */
 function extractJSON<T = unknown>(
   content: string,
-  type: 'array' | 'object',
+  type: 'array' | 'object' | 'json',
 ): T {
+  // Normalize 'json' alias to 'object' (prompt configs may use either)
+  const normalizedType: 'array' | 'object' = type === 'json' ? 'object' : type;
+
   // Remove markdown code fences if present
   let cleaned = content.trim();
   const jsonMatch = cleaned.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
@@ -148,18 +151,18 @@ function extractJSON<T = unknown>(
   cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 
   // Try balanced brace counting first (handles trailing garbage from LLMs)
-  let jsonString = findBalancedJSON(cleaned, type);
+  let jsonString = findBalancedJSON(cleaned, normalizedType);
 
   // Fall back to greedy regex if balanced parsing fails (backward compatibility)
   if (!jsonString) {
-    const pattern = type === 'array' ? /\[[\s\S]*\]/ : /\{[\s\S]*\}/;
+    const pattern = normalizedType === 'array' ? /\[[\s\S]*\]/ : /\{[\s\S]*\}/;
     const match = cleaned.match(pattern);
     if (match) jsonString = match[0].trim();
   }
 
   if (!jsonString) {
     throw new Error(
-      `No ${type} found in LLM response. Response was: ${content.substring(0, 200)}...`,
+      `No ${normalizedType} found in LLM response. Response was: ${content.substring(0, 200)}...`,
     );
   }
 
@@ -171,8 +174,8 @@ function extractJSON<T = unknown>(
 
     // Validate type matches expectation
     const actualType = Array.isArray(parsed) ? 'array' : 'object';
-    if (actualType !== type) {
-      throw new Error(`Expected ${type} but got ${actualType} in LLM response`);
+    if (actualType !== normalizedType) {
+      throw new Error(`Expected ${normalizedType} but got ${actualType} in LLM response`);
     }
 
     return parsed as T;
