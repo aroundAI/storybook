@@ -60,6 +60,8 @@ export function useAssetLinkStatus(
       return;
     }
 
+    let active = true;
+
     setIsLoading(true);
 
     void supabase
@@ -69,6 +71,8 @@ export function useAssetLinkStatus(
       .in('name', names)
       .is('deleted_at', null)
       .then(({ data }) => {
+        if (!active) return;
+
         const map = new Map<string, AssetLinkEntry>();
 
         if (data) {
@@ -85,6 +89,10 @@ export function useAssetLinkStatus(
         setLinkedAssets(map);
         setIsLoading(false);
       });
+
+    return () => {
+      active = false;
+    };
   }, [projectId, namesKey, supabase, fetchCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { linkedAssets, isLoading, refetch };

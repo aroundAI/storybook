@@ -511,7 +511,7 @@ export function StoryScreen({
 
                   {/* Characters & Locations — linked/unlinked indicators */}
                   <SidebarAssetList
-                    characters={(storyData.characters ?? []).map((c) => ({
+                    characters={(storyData?.characters ?? []).map((c) => ({
                       name: c.name,
                       role: c.role,
                       arc: c.arc,
@@ -520,7 +520,7 @@ export function StoryScreen({
                     projectId={episode.projectId}
                     episodeId={episode.id}
                     storyContext={
-                      storyData.fullStory ?? storyData.premise ?? ''
+                      storyData?.fullStory ?? storyData?.premise ?? ''
                     }
                     onAssetCreated={refetchEpisode}
                   />

@@ -81,6 +81,7 @@ export function RefinementChat({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUndoing, setIsUndoing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const jobType =
@@ -123,9 +124,7 @@ export function RefinementChat({
 
   // Auto-scroll to bottom when new messages appear
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSubmit = useCallback(async () => {
@@ -265,46 +264,49 @@ export function RefinementChat({
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {messages.map((message) => {
-                const statusConfig = STATUS_CONFIG[message.status];
-                return (
-                  <div
-                    key={message.id}
-                    className="rounded-xl border border-gray-100 bg-gray-50/50 p-3 dark:border-gray-700/50 dark:bg-gray-800/50"
-                  >
-                    {/* Feedback text */}
-                    <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-                      {message.feedback}
-                    </p>
-
-                    {/* Footer: timestamp + status */}
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="text-xs text-gray-400 dark:text-gray-500">
-                        {formatTime(message.timestamp)}
-                      </span>
-                      <Badge
-                        variant="secondary"
-                        className={cn(
-                          'flex items-center gap-1 text-xs',
-                          statusConfig.className,
-                        )}
-                      >
-                        {statusConfig.icon}
-                        {statusConfig.label}
-                      </Badge>
-                    </div>
-
-                    {/* Error message */}
-                    {message.errorMessage && (
-                      <p className="mt-2 text-xs text-red-500 dark:text-red-400">
-                        {message.errorMessage}
+            <>
+              <div className="space-y-3">
+                {messages.map((message) => {
+                  const statusConfig = STATUS_CONFIG[message.status];
+                  return (
+                    <div
+                      key={message.id}
+                      className="rounded-xl border border-gray-100 bg-gray-50/50 p-3 dark:border-gray-700/50 dark:bg-gray-800/50"
+                    >
+                      {/* Feedback text */}
+                      <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                        {message.feedback}
                       </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+
+                      {/* Footer: timestamp + status */}
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                          {formatTime(message.timestamp)}
+                        </span>
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            'flex items-center gap-1 text-xs',
+                            statusConfig.className,
+                          )}
+                        >
+                          {statusConfig.icon}
+                          {statusConfig.label}
+                        </Badge>
+                      </div>
+
+                      {/* Error message */}
+                      {message.errorMessage && (
+                        <p className="mt-2 text-xs text-red-500 dark:text-red-400">
+                          {message.errorMessage}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div ref={messagesEndRef} />
+            </>
           )}
         </div>
       </ScrollArea>

@@ -125,7 +125,8 @@ export const generateSeasonEpisodesAction = enhanceAction(
           .select('id, name')
           .eq('project_id', data.projectId)
           .eq('type', 'character')
-          .in('name', charNames);
+          .in('name', charNames)
+          .is('deleted_at', null);
 
         // Map existing characters by name for quick lookup
         const existingCharMap = new Map<string, string>();
@@ -162,6 +163,7 @@ export const generateSeasonEpisodesAction = enhanceAction(
           }));
 
           const { data: insertedAssets, error: assetError } = await (
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             client as any
           )
             .from('assets')
@@ -227,6 +229,7 @@ export const generateSeasonEpisodesAction = enhanceAction(
           }));
 
           const { data: insertedLocations, error: locError } = await (
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             client as any
           )
             .from('assets')
@@ -278,6 +281,7 @@ export const generateSeasonEpisodesAction = enhanceAction(
 
       // Create the season
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: insertedSeason, error: seasonError } = await (client as any)
         .from('seasons')
         .insert({

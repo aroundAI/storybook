@@ -285,6 +285,7 @@ function SidebarAssetItem({
 
       {/* Avatar / Icon */}
       {thumbnailUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={thumbnailUrl}
           alt={name}

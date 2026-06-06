@@ -180,14 +180,20 @@ function TaggedAssets({
   useEffect(() => {
     if (allIds.length === 0) return;
 
+    let active = true;
+
     void supabase
       .from('assets')
       .select('id')
       .in('id', allIds)
       .is('deleted_at', null)
       .then(({ data }) => {
-        if (data) setValidIds(new Set(data.map((r) => r.id)));
+        if (active && data) setValidIds(new Set(data.map((r) => r.id)));
       });
+
+    return () => {
+      active = false;
+    };
   }, [allIds, supabase]);
 
   return (

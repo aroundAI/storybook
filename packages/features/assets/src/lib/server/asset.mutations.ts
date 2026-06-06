@@ -96,8 +96,8 @@ export const createAssetAction = enhanceAction(
       logger.info({ ...ctx, assetId: asset.id }, 'Asset created successfully');
 
       // Revalidate asset pages
-      revalidatePath('/home/[account]/studio/[projectId]/assets', 'page');
-      revalidatePath('/home/[account]/studio/[projectId]', 'page');
+      revalidatePath('/home/[account]/studio/[projectSlug]/assets', 'page');
+      revalidatePath('/home/[account]/studio/[projectSlug]', 'page');
 
       return { success: true, data: mapRowToAsset(asset as AssetRow) };
     } catch (error) {
@@ -269,8 +269,8 @@ export const updateAssetAction = enhanceAction(
     logger.info(ctx, 'Asset updated successfully');
 
     // Revalidate asset pages
-    revalidatePath('/home/[account]/studio/[projectId]/assets', 'page');
-    revalidatePath('/home/[account]/studio/[projectId]', 'page');
+    revalidatePath('/home/[account]/studio/[projectSlug]/assets', 'page');
+    revalidatePath('/home/[account]/studio/[projectSlug]', 'page');
 
     return { success: true, data: mapRowToAsset(asset as AssetRow) };
   },
@@ -327,8 +327,8 @@ export const deleteAssetAction = enhanceAction(
     logger.info(ctx, 'Asset deleted successfully');
 
     // Revalidate asset pages
-    revalidatePath('/home/[account]/studio/[projectId]/assets', 'page');
-    revalidatePath('/home/[account]/studio/[projectId]', 'page');
+    revalidatePath('/home/[account]/studio/[projectSlug]/assets', 'page');
+    revalidatePath('/home/[account]/studio/[projectSlug]', 'page');
 
     return {
       success: true,
@@ -419,8 +419,8 @@ export const checkAssetsInUseAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: dialogueRefs, error: dialogueError } = await (client as any)
       .from('dialogue_lines')
-      .select('character_id')
-      .in('character_id', data.assetIds);
+      .select('character_asset_id')
+      .in('character_asset_id', data.assetIds);
 
     if (dialogueError) {
       logger.error(
@@ -432,7 +432,7 @@ export const checkAssetsInUseAction = enhanceAction(
 
     const inUseIds = new Set<string>(
       (dialogueRefs ?? []).map(
-        (ref: { character_id: string }) => ref.character_id,
+        (ref: { character_asset_id: string }) => ref.character_asset_id,
       ),
     );
 
@@ -506,8 +506,8 @@ export const bulkDeleteAssetsAction = enhanceAction(
     logger.info({ ...ctx, deletedCount }, 'Assets bulk deleted successfully');
 
     // Revalidate asset pages
-    revalidatePath('/home/[account]/studio/[projectId]/assets', 'page');
-    revalidatePath('/home/[account]/studio/[projectId]', 'page');
+    revalidatePath('/home/[account]/studio/[projectSlug]/assets', 'page');
+    revalidatePath('/home/[account]/studio/[projectSlug]', 'page');
 
     return {
       success: true,

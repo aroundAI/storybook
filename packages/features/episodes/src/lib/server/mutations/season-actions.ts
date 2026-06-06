@@ -132,7 +132,7 @@ export const createSeasonAction = enhanceAction(
     }
 
     logger.info({ ...ctx, seasonId: season.id }, 'Season created');
-    revalidatePath('/home/[account]/projects/[id]', 'page');
+    revalidatePath('/home/[account]/studio/[projectSlug]', 'page');
 
     return { success: true, data: season as Season };
   },
@@ -316,7 +316,7 @@ export const updateSeasonAction = enhanceAction(
     }
 
     logger.info(ctx, 'Season updated');
-    revalidatePath('/home/[account]/projects/[id]', 'page');
+    revalidatePath('/home/[account]/studio/[projectSlug]', 'page');
 
     return { success: true, data: season as Season };
   },
@@ -466,7 +466,7 @@ export const deleteSeasonAction = enhanceAction(
       }
 
       logger.info(ctx, 'Season deleted');
-      revalidatePath('/home/[account]/projects/[id]', 'page');
+      revalidatePath('/home/[account]/studio/[projectSlug]', 'page');
 
       return { success: true, seasonId: data.seasonId };
     } catch (error) {

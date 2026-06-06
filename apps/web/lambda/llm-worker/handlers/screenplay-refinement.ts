@@ -236,8 +236,8 @@ export async function processScreenplayRefinement(
       const sceneNumber = (scene.number ?? 0) as number;
 
       for (const line of dialogue) {
-        const characterId =
-          characterMap.get(line.character.toLowerCase()) || null;
+        const charName = typeof line.character === 'string' ? line.character.toLowerCase() : '';
+        const characterId = charName ? characterMap.get(charName) || null : null;
         dialogueLines.push({
           episode_id: data.episodeId,
           character_asset_id: characterId,
