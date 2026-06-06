@@ -10,13 +10,13 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 const RefineStorySchema = z.object({
   episodeId: z.string().uuid(),
   projectId: z.string().uuid(),
-  feedback: z.string().min(1).max(5000),
+  feedback: z.string().min(1).max(10000),
 });
 
 const RefineScreenplaySchema = z.object({
   episodeId: z.string().uuid(),
   projectId: z.string().uuid(),
-  feedback: z.string().min(1).max(5000),
+  feedback: z.string().min(1).max(10000),
 });
 
 const UndoRefinementSchema = z.object({
