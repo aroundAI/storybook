@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 
 import { useRouter } from 'next/navigation';
 
@@ -9,13 +9,14 @@ import {
   ChevronUp,
   FolderOpen,
   MoreVertical,
+  Pencil,
   Trash2,
   Volume2,
 } from 'lucide-react';
 import { toast } from '@kit/ui/sonner';
 
 import type { Episode } from '@kit/episodes/types';
-import { deleteSeasonAction } from '@kit/episodes/server';
+import { deleteSeasonAction, updateSeasonAction } from '@kit/episodes/server';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -82,11 +83,40 @@ export function SeasonHeader({
   const [showModal, setShowModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(seasonName ?? '');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
 
   const progressPercent =
     totalEpisodes > 0
       ? Math.round((completedEpisodes / totalEpisodes) * 100)
       : 0;
+
+  function handleRename() {
+    const trimmed = editName.trim();
+    if (!trimmed || trimmed === (seasonName ?? '')) {
+      setEditName(seasonName ?? '');
+      setIsEditing(false);
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await updateSeasonAction({ seasonId, name: trimmed });
+        toast.success('Season renamed');
+        setIsEditing(false);
+        router.refresh();
+      } catch {
+        toast.error('Failed to rename season');
+      }
+    });
+  }
 
   function handleDeleteSeason() {
     startTransition(async () => {
@@ -112,14 +142,39 @@ export function SeasonHeader({
             <FolderOpen className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-              Season {seasonNumber}
-              {seasonName && (
-                <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
-                  {seasonName}
-                </span>
-              )}
-            </h3>
+            {isEditing ? (
+              <input
+                ref={inputRef}
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRename();
+                  if (e.key === 'Escape') {
+                    setEditName(seasonName ?? '');
+                    setIsEditing(false);
+                  }
+                }}
+                onBlur={handleRename}
+                maxLength={255}
+                disabled={isPending}
+                className="h-7 min-w-[180px] rounded border border-blue-300 bg-white/90 px-2 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-blue-600 dark:bg-gray-800 dark:text-white"
+              />
+            ) : (
+              <h3
+                className="group/name flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-gray-900 dark:text-white"
+                onClick={() => setIsEditing(true)}
+                title="Click to rename"
+              >
+                Season {seasonNumber}
+                {seasonName && (
+                  <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
+                    {seasonName}
+                  </span>
+                )}
+                <Pencil className="h-3 w-3 text-gray-400 opacity-0 transition-opacity group-hover/name:opacity-100" />
+              </h3>
+            )}
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {totalEpisodes} {totalEpisodes === 1 ? 'episode' : 'episodes'}
             </p>
@@ -161,6 +216,12 @@ export function SeasonHeader({
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={() => setIsEditing(true)}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Rename Season
+              </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onSelect={() => setShowDeleteDialog(true)}

@@ -7,6 +7,8 @@ import { ChevronRight, Mic, Music, Pencil, Volume2 } from 'lucide-react';
 import type { Episode } from '@kit/episodes/types';
 import { cn } from '@kit/ui/utils';
 
+import { AssetChipBar } from './asset-chip-bar';
+
 const LANG_FLAGS: Record<string, { flag: string }> = {
   en: { flag: '🇺🇸' },
   hi: { flag: '🇮🇳' },
@@ -22,7 +24,12 @@ const LANG_FLAGS: Record<string, { flag: string }> = {
 };
 
 interface EpisodeListItemProps {
-  episode: Episode;
+  episode: Episode & {
+    characterNames?: string[];
+    locationNames?: string[];
+    characterIds?: string[];
+    locationIds?: string[];
+  };
   account: string;
   projectSlug: string;
   availableLanguages?: string[];
@@ -34,6 +41,7 @@ interface EpisodeListItemProps {
     sfxTotal: number;
     sfxCompleted: number;
   };
+  validAssetIds?: string[];
   isFirst?: boolean;
   isLast?: boolean;
 }
@@ -111,6 +119,7 @@ export function EpisodeListItem({
   projectSlug,
   availableLanguages,
   audioStats,
+  validAssetIds,
   isFirst: _isFirst = false,
   isLast: _isLast = false,
 }: EpisodeListItemProps) {
@@ -132,9 +141,20 @@ export function EpisodeListItem({
               <h3 className="mb-1 text-sm font-semibold text-gray-900 dark:text-white">
                 {episode.title}
               </h3>
-              <p className="mb-3 text-xs text-gray-400 dark:text-gray-500">
+              <p className="mb-1 text-xs text-gray-400 dark:text-gray-500">
                 Updated {new Date(episode.updatedAt).toLocaleDateString()}
               </p>
+
+              {/* Character & Location chips */}
+              {(episode.characterNames?.length || episode.locationNames?.length) ? (
+                <AssetChipBar
+                  characterNames={episode.characterNames ?? []}
+                  locationNames={episode.locationNames ?? []}
+                  characterIds={episode.characterIds ?? []}
+                  locationIds={episode.locationIds ?? []}
+                  validAssetIds={validAssetIds ?? []}
+                />
+              ) : null}
 
               {/* Status badges - cinema badges */}
               <div className="flex flex-wrap gap-2 text-[10px]">

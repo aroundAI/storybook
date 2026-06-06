@@ -66,6 +66,7 @@ interface Episode {
   story_data: Record<string, unknown> | null;
   screenplay_data: Record<string, unknown> | null;
   shot_list: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -100,6 +101,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
         `
         id, slug, project_id, season_id, number, title, description,
         status, duration_seconds, thumbnail_url,
+        metadata,
         created_at, updated_at, deleted_at
       `,
       )
@@ -113,6 +115,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
         `
         id, slug, project_id, season_id, number, title, description,
         status, duration_seconds, thumbnail_url,
+        metadata,
         created_at, updated_at, deleted_at
       `,
       )
@@ -198,6 +201,28 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
     }
   }
 
+  // Batch-query valid asset IDs for library-linked markers
+  const allAssetIds = new Set<string>();
+  for (const ep of episodes ?? []) {
+    const meta = ep.metadata as Record<string, unknown> | null;
+    if (meta) {
+      for (const id of (meta.character_ids as string[]) ?? []) allAssetIds.add(id);
+      for (const id of (meta.location_ids as string[]) ?? []) allAssetIds.add(id);
+    }
+  }
+
+  const validAssetIds: string[] = [];
+  if (allAssetIds.size > 0) {
+    const { data: assetRows } = await client
+      .from('assets')
+      .select('id')
+      .in('id', Array.from(allAssetIds))
+      .is('deleted_at', null);
+    if (assetRows) {
+      for (const row of assetRows) validAssetIds.push(row.id);
+    }
+  }
+
   // Group episodes by season
   const episodesBySeason = groupEpisodesBySeason(episodes ?? [], seasons ?? []);
   const hasSeasons = (seasons?.length ?? 0) > 0;
@@ -263,6 +288,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                       analytics={null}
                       languageMap={languageMap}
                       audioStatsMap={audioStatsMap}
+                      validAssetIds={validAssetIds}
                     />
                   ),
                 )}
@@ -288,6 +314,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                             projectSlug={project.slug ?? project.id}
                             availableLanguages={languageMap.get(episode.id)}
                             audioStats={audioStatsMap.get(episode.id)}
+                            validAssetIds={validAssetIds}
                             isFirst={index === 0}
                             isLast={index === unassignedEpisodes.length - 1}
                           />
@@ -309,6 +336,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                       projectSlug={project.slug ?? project.id}
                       availableLanguages={languageMap.get(episode.id)}
                       audioStats={audioStatsMap.get(episode.id)}
+                      validAssetIds={validAssetIds}
                       isFirst={index === 0}
                       isLast={index === episodes.length - 1}
                     />
@@ -351,6 +379,7 @@ function groupEpisodesBySeason(
  * Note: JSON blob fields are not loaded in list query - component derives status from episode.status
  */
 function mapEpisode(episode: Episode) {
+  const meta = episode.metadata as Record<string, unknown> | null;
   return {
     id: episode.id,
     slug: episode.slug,
@@ -362,16 +391,21 @@ function mapEpisode(episode: Episode) {
     status: episode.status as EpisodeStatus,
     durationSeconds: episode.duration_seconds,
     thumbnailUrl: episode.thumbnail_url,
-    finalVideoUrl: null, // Not loaded in list query
-    localizedVideos: null, // Not loaded in list query
-    storyData: null, // Not loaded in list query - use status field
-    screenplayData: null, // Not loaded in list query - use status field
-    shotList: null, // Not loaded in list query - use status field
-    metadata: null, // Not loaded in list query
-    version: 0, // Not loaded in list query
+    finalVideoUrl: null,
+    localizedVideos: null,
+    storyData: null,
+    screenplayData: null,
+    shotList: null,
+    metadata: null,
+    version: 0,
     createdAt: episode.created_at,
     updatedAt: episode.updated_at,
     deletedAt: episode.deleted_at,
+    // Asset display data extracted from metadata
+    characterNames: (meta?.character_names as string[]) ?? [],
+    locationNames: (meta?.location_names as string[]) ?? [],
+    characterIds: (meta?.character_ids as string[]) ?? [],
+    locationIds: (meta?.location_ids as string[]) ?? [],
   };
 }
 
