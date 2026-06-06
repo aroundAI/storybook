@@ -205,16 +205,29 @@ export const batchCreateUnlinkedAction = enhanceAction(
       // 3. Extract descriptions in parallel via LLM
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
+      const CHARACTER_INSTRUCTIONS =
+        'Write a 4-6 sentence description including: Physical appearance (approximate age, ethnicity/skin tone, build, hair color/style, eye color, distinguishing features like scars or tattoos). Clothing and style (what they wear in this story). Demeanor and expression (how they carry themselves, typical body language). Their role and significance. Be specific — commit to physical details based on what the text states or implies from the setting/time period.';
+
+      const LOCATION_INSTRUCTIONS =
+        'Write a 3-5 sentence description including: Physical environment (size, architecture, materials, colors, lighting). Atmosphere and mood (sounds, smells, temperature). Notable features (landmarks, furniture, natural elements). How this place functions in the story. Be vivid and specific for environment concept art generation.';
+
       const descriptionResults = await Promise.allSettled(
         itemsToCreate.map(async (item) => {
           try {
+            const extraParts: string[] = [];
+            if (item.role) extraParts.push(`Known role: ${item.role}`);
+            if (item.arc) extraParts.push(`Character arc: ${item.arc}`);
+
             const result = await executeLLM<{ description: string }>({
               templateSlug: 'story-generation/extract-asset-description',
               variables: {
                 name: item.name,
                 type: item.type,
-                role: item.role ?? '',
-                arc: item.arc ?? '',
+                extra_context: extraParts.join('. '),
+                type_instructions:
+                  item.type === 'character'
+                    ? CHARACTER_INSTRUCTIONS
+                    : LOCATION_INSTRUCTIONS,
                 story_context: data.storyContext.slice(0, 10000),
               },
               context: {
