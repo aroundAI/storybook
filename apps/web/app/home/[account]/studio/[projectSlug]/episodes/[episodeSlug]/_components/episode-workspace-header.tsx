@@ -1,10 +1,14 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { format } from 'date-fns';
 import { ArrowLeft, MapPin, Sparkles, User } from 'lucide-react';
+
+import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 
 import { useEpisodeContext } from './episode-context-provider';
 import { IssueSummaryBadge } from './issue-summary-popover';
@@ -139,8 +143,8 @@ export function EpisodeWorkspaceHeader() {
             <TaggedAssets
               characterNames={characterNames}
               locationNames={locationNames}
-              characterCount={characterIds.length}
-              locationCount={locationIds.length}
+              characterIds={characterIds}
+              locationIds={locationIds}
             />
           )}
         </div>
@@ -152,53 +156,86 @@ export function EpisodeWorkspaceHeader() {
 interface TaggedAssetsProps {
   characterNames: string[];
   locationNames: string[];
-  characterCount: number;
-  locationCount: number;
+  characterIds: string[];
+  locationIds: string[];
 }
 
 function TaggedAssets({
   characterNames,
   locationNames,
-  characterCount,
-  locationCount,
+  characterIds,
+  locationIds,
 }: TaggedAssetsProps) {
+  const supabase = useSupabase();
   const hasCharacterNames = characterNames.length > 0;
   const hasLocationNames = locationNames.length > 0;
 
+  const allIds = useMemo(
+    () => [...characterIds, ...locationIds],
+    [characterIds, locationIds],
+  );
+
+  const [validIds, setValidIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (allIds.length === 0) return;
+
+    void supabase
+      .from('assets')
+      .select('id')
+      .in('id', allIds)
+      .is('deleted_at', null)
+      .then(({ data }) => {
+        if (data) setValidIds(new Set(data.map((r) => r.id)));
+      });
+  }, [allIds, supabase]);
+
   return (
     <div className="flex flex-wrap gap-1.5">
-      {/* Show character names if available, otherwise fall back to count */}
       {hasCharacterNames
-        ? characterNames.map((name, i) => (
-            <span
-              key={i}
-              className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]"
-            >
-              <User className="h-2.5 w-2.5" />
-              {name}
-            </span>
-          ))
-        : characterCount > 0 && (
+        ? characterNames.map((name, i) => {
+            const id = characterIds[i];
+            const isLinked = id ? validIds.has(id) : false;
+            return (
+              <span
+                key={`char-${name}-${i}`}
+                className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]"
+              >
+                {isLinked && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" title="Linked to library" />
+                )}
+                <User className="h-2.5 w-2.5" />
+                {name}
+              </span>
+            );
+          })
+        : characterIds.length > 0 && (
             <span className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]">
               <User className="h-2.5 w-2.5" />
-              {characterCount} character{characterCount !== 1 ? 's' : ''}
+              {characterIds.length} character{characterIds.length !== 1 ? 's' : ''}
             </span>
           )}
-      {/* Show location names if available, otherwise fall back to count */}
       {hasLocationNames
-        ? locationNames.map((name, i) => (
-            <span
-              key={i}
-              className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]"
-            >
-              <MapPin className="h-2.5 w-2.5" />
-              {name}
-            </span>
-          ))
-        : locationCount > 0 && (
+        ? locationNames.map((name, i) => {
+            const id = locationIds[i];
+            const isLinked = id ? validIds.has(id) : false;
+            return (
+              <span
+                key={`loc-${name}-${i}`}
+                className="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]"
+              >
+                {isLinked && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" title="Linked to library" />
+                )}
+                <MapPin className="h-2.5 w-2.5" />
+                {name}
+              </span>
+            );
+          })
+        : locationIds.length > 0 && (
             <span className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]">
               <MapPin className="h-2.5 w-2.5" />
-              {locationCount} location{locationCount !== 1 ? 's' : ''}
+              {locationIds.length} location{locationIds.length !== 1 ? 's' : ''}
             </span>
           )}
     </div>
