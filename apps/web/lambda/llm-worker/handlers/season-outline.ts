@@ -120,6 +120,47 @@ export async function processSeasonOutline(
           .join('\n')
       : 'No locations defined yet.';
 
+  // Fetch verified facts for documentary/educational projects
+  const contentType = projectMetadata.contentType as string | undefined;
+  let verifiedFactsFormatted = '';
+
+  if (
+    contentType === 'documentary' ||
+    contentType === 'educational' ||
+    contentType === 'factual'
+  ) {
+    const { data: factsData, error: factsError } = await supabase
+      .from('verified_facts')
+      .select('id, claim, source_citation, category')
+      .eq('project_id', data.projectId)
+      .limit(100);
+
+    if (factsError) {
+      console.error(
+        '[Season Outline] Failed to fetch verified facts:',
+        factsError,
+      );
+    }
+
+    if (factsData && factsData.length > 0) {
+      const factLines = factsData
+        .map((f) => {
+          const source = f.source_citation
+            ? ` | Source: ${f.source_citation}`
+            : '';
+          const category = f.category ? ` | Category: ${f.category}` : '';
+          return `FACT [${f.id}]: ${f.claim}${source}${category}`;
+        })
+        .join('\n');
+
+      verifiedFactsFormatted = `## VERIFIED FACTS — assign each to an episode\n\n${factLines}\n\nTotal: ${factsData.length} facts. Every fact MUST appear in at least one episode's fact_ids array.`;
+
+      console.log(
+        `[Season Outline] Loaded ${factsData.length} verified facts for factual project`,
+      );
+    }
+  }
+
   // Run the Season Orchestrator
   const { runSeasonOrchestrator } = await import(
     '@kit/episodes/agent/season-orchestrator'
@@ -136,6 +177,7 @@ export async function processSeasonOutline(
     existingCharacters,
     existingLocations,
     recurringElements: recurringElementFormatted,
+    verifiedFacts: verifiedFactsFormatted || undefined,
   });
 
   if (!orchestratorResult.success) {

@@ -3,6 +3,7 @@
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -221,24 +222,68 @@ export const fetchUrlContentAction = enhanceAction(
  * Extract facts from content using LLM.
  * Creates verified_facts entries for each extracted fact.
  *
- * TODO(FILM-NEXT): Replace regex heuristics with LLM-based extraction using
- * the prompt-engine. The current regex approach produces low-quality facts
- * (any sentence with a number or proper noun). Track in Phase 12 backlog.
+ * For content over 500 chars: queues an LLM-based extraction job via SQS.
+ * For short content: uses a quick regex-based heuristic as a fast fallback.
  */
 export const extractFactsFromContentAction = enhanceAction(
   async (data: z.infer<typeof ExtractFactsSchema>) => {
     const supabase = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(supabase);
 
-    // Simple regex-based extraction as a baseline (LLM integration TBD)
-    // Split into sentences and filter for fact-like statements
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Verify user has access to the project (RLS enforced)
+    const { data: project, error: projectError } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('id', data.projectId)
+      .single();
+
+    if (projectError || !project) {
+      throw new Error('Project not found or access denied');
+    }
+
+    // For substantial content, use LLM-based extraction via Lambda
+    if (data.content.length > 500) {
+      const { chunkTextForExtraction } = await import(
+        '../lib/server/pdf-extractor'
+      );
+      const { queueLlmJob } = await import('@kit/prompt-engine/server');
+
+      const chunks = chunkTextForExtraction(data.content);
+
+      for (const chunk of chunks) {
+        await queueLlmJob({
+          jobType: 'fact-extraction',
+          userId: user.id,
+          payload: {
+            content: chunk,
+            projectId: data.projectId,
+            sourceTitle: data.sourceTitle,
+            sourceCitation: data.sourceCitation ?? data.sourceTitle,
+            userId: user.id,
+          },
+        });
+      }
+
+      return {
+        extractedCount: 0,
+        queued: true,
+        chunkCount: chunks.length,
+        message: `Queued ${chunks.length} chunk(s) for LLM-based fact extraction. Facts will appear in your library shortly.`,
+      };
+    }
+
+    // Fast fallback for very short content: regex-based extraction
     const sentences = data.content
       .split(/[.!?]\s+/)
       .filter((s) => s.length > 20 && s.length < 500)
-      .slice(0, 20); // Max 20 facts per extraction
+      .slice(0, 20);
 
     const facts: Array<{ claim: string; citation: string }> = sentences
       .filter((s) => {
-        // Basic heuristics for fact-like sentences
         const hasNumbers = /\d/.test(s);
         const hasProperNouns = /[A-Z][a-z]/.test(s);
         return hasNumbers || hasProperNouns;

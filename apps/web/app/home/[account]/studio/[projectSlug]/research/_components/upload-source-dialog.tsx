@@ -77,6 +77,7 @@ export function UploadSourceDialog({
   // File tab
   const [fileContent, setFileContent] = useState('');
   const [fileName, setFileName] = useState('');
+  const [isServerExtracting, setIsServerExtracting] = useState(false);
 
   // Progress
   const [phase, setPhase] = useState<UploadPhase>('idle');
@@ -92,6 +93,7 @@ export function UploadSourceDialog({
     setFileName('');
     setExtractedCount(null);
     setPhase('idle');
+    setIsServerExtracting(false);
   };
 
   const handleFetchUrl = () => {
@@ -111,7 +113,7 @@ export function UploadSourceDialog({
     });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -120,26 +122,55 @@ export function UploadSourceDialog({
 
     const ext = file.name.split('.').pop()?.toLowerCase();
 
-    // For binary formats (PDF, DOCX), read as text fallback
-    // Full binary parsing would require server-side libraries
+    // For PDF/DOCX, use server-side extraction
     if (ext === 'pdf' || ext === 'docx') {
-      // Read as text — will show raw content but still extracts
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const text = ev.target?.result;
-        if (typeof text === 'string') {
-          // Filter out binary noise, keep readable text
-          const cleaned = text
-            .replace(/[^\x20-\x7E\n\r\t]/g, ' ')
-            .replace(/\s{3,}/g, ' ')
-            .trim();
-          setFileContent(
-            cleaned ||
-              '(Binary content — text extraction limited in browser. Consider pasting text directly.)',
+      setIsServerExtracting(true);
+      setFileContent('Extracting text from document...');
+
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('projectId', projectId);
+
+        const response = await fetch('/api/research/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        let result;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          result = await response.json();
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            result?.error || `Extraction failed with status ${response.status}`,
           );
         }
-      };
-      reader.readAsText(file);
+
+        if (!result) {
+          throw new Error('Invalid response from server');
+        }
+
+        setFileContent(result.data.text);
+        toast.success(
+          `Extracted ${result.data.characterCount.toLocaleString()} characters` +
+            (result.data.pageCount
+              ? ` from ${result.data.pageCount} pages`
+              : ''),
+        );
+      } catch (error) {
+        setFileContent('');
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to extract text from file',
+        );
+      } finally {
+        setIsServerExtracting(false);
+      }
+
       return;
     }
 
@@ -406,16 +437,15 @@ export function UploadSourceDialog({
                     />
                   </label>
                 </div>
-                {fileContent && (
+                {fileContent && !isServerExtracting && (
                   <p className="text-muted-foreground text-xs">
                     Loaded {fileContent.length.toLocaleString()} characters
                   </p>
                 )}
-                {fileName && /\.(pdf|docx)$/i.test(fileName) && (
-                  <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-800/50 dark:bg-amber-900/10 dark:text-amber-300">
-                    ⚠️ PDF/DOCX text extraction is limited in the browser. For
-                    best results, copy-paste the text directly using the
-                    &quot;Paste Text&quot; tab.
+                {isServerExtracting && (
+                  <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Extracting text from document...
                   </div>
                 )}
               </div>

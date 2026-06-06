@@ -47,6 +47,7 @@ export interface SeasonOrchestratorInput {
   existingCharacters: string;
   existingLocations: string;
   recurringElements: string;
+  verifiedFacts?: string;
 }
 
 interface SeasonOrchestratorOutput {
@@ -199,8 +200,16 @@ ${input.recurringElements}
 `
     : ''
 }
+${
+  input.verifiedFacts
+    ? `
+**Verified Facts (distribute across episodes, include fact_ids in each episode output):**
+${input.verifiedFacts}
+`
+    : ''
+}
 
 Begin with Season Outliner. Pass all context verbatim. Evaluate arc quality. Apply one revision if needed. Stop.
 
-Goal: each episode has a distinct conflict, stakes escalate across the season, and character arcs are coherent.`;
+Goal: each episode has a distinct conflict, stakes escalate across the season, and character arcs are coherent.${input.verifiedFacts ? ' Every verified fact MUST be assigned to at least one episode.' : ''}`;
 }
