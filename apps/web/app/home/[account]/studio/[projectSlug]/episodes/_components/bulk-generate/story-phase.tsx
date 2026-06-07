@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   BookOpen,
@@ -121,6 +121,14 @@ function EpisodeStoryCard({
   const [isRefining, setIsRefining] = useState(false);
   const refinePollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  useEffect(() => {
+    return () => {
+      if (refinePollingRef.current) {
+        clearInterval(refinePollingRef.current);
+      }
+    };
+  }, []);
+
   const handleRefine = useCallback(async () => {
     const notes = ep.refinementNotes?.trim();
     if (!notes) return;
@@ -192,12 +200,6 @@ function EpisodeStoryCard({
       });
       setIsRefining(false);
     }
-
-    return () => {
-      if (refinePollingRef.current) {
-        clearInterval(refinePollingRef.current);
-      }
-    };
   }, [ep.episodeId, ep.refinementNotes, dispatch, projectId, seasonId]);
 
   if (ep.storyStatus === 'skipped') {
@@ -318,6 +320,14 @@ export function StoryPhase({
   onBack,
 }: StoryPhaseProps) {
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
+  }, []);
 
   const selectedEpisodes = Array.from(state.episodes.values()).filter(
     (ep) => ep.selected,

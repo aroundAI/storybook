@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import {
   CheckCircle2,
@@ -170,6 +170,14 @@ export function ScreenplayPhase({
   onBack,
 }: ScreenplayPhaseProps) {
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
+  }, []);
 
   const selectedEpisodes = Array.from(state.episodes.values()).filter(
     (ep) => ep.selected,
