@@ -306,7 +306,7 @@ export function ScreenplayPhase({
   return (
     <div className="flex h-full flex-col">
       {/* Content */}
-      <div className="flex-1 space-y-3 p-6">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-6">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium text-white/90">

@@ -17,7 +17,6 @@ import {
 import { batchCreateUnlinkedAction } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
-import { ScrollArea } from '@kit/ui/scroll-area';
 import { cn } from '@kit/ui/utils';
 
 import type { BulkAction, BulkState } from '../bulk-generate-modal';
@@ -221,9 +220,9 @@ export function AssetsPhase({
   }
 
   return (
-    <div className="flex flex-col">
+    <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="border-b border-white/10 px-6 py-4">
+      <div className="shrink-0 border-b border-white/10 px-6 py-4">
         <h3 className="text-sm font-semibold text-white/90">
           Unlinked Assets
         </h3>
@@ -235,7 +234,7 @@ export function AssetsPhase({
         </p>
       </div>
 
-      <ScrollArea className="max-h-[45vh]">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="space-y-6 px-6 py-4">
           {/* Characters section */}
           {uniqueCharacters.length > 0 && (
@@ -305,7 +304,7 @@ export function AssetsPhase({
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Error */}
       {createError && (
@@ -315,7 +314,7 @@ export function AssetsPhase({
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between border-t border-white/10 px-6 py-4">
+      <div className="flex shrink-0 items-center justify-between border-t border-white/10 px-6 py-4">
         <Button
           variant="ghost"
           size="sm"

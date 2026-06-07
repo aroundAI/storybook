@@ -17,7 +17,6 @@ import {
 } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
-import { ScrollArea } from '@kit/ui/scroll-area';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
@@ -171,7 +170,7 @@ export function IdeationPhase({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/5 px-6 py-3">
+      <div className="flex shrink-0 items-center justify-between border-b border-white/5 px-6 py-3">
         <div>
           <h3 className="text-sm font-semibold text-white/90">
             Story Ideation
@@ -202,7 +201,7 @@ export function IdeationPhase({
       </div>
 
       {/* Episode list */}
-      <ScrollArea className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="space-y-3 p-4">
           {episodes.map((ep) => (
             <EpisodeIdeationCard
@@ -212,10 +211,10 @@ export function IdeationPhase({
             />
           ))}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between border-t border-white/5 px-6 py-4">
+      <div className="flex shrink-0 items-center justify-between border-t border-white/5 px-6 py-4">
         <Button variant="ghost" size="sm" onClick={onBack} className="gap-1">
           <ArrowLeft className="h-4 w-4" />
           Back

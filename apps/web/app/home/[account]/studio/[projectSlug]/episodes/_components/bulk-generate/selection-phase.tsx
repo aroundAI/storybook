@@ -7,7 +7,6 @@ import { ArrowRight, Clock, MessageSquare, Swords, Zap } from 'lucide-react';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Checkbox } from '@kit/ui/checkbox';
-import { ScrollArea } from '@kit/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -99,9 +98,9 @@ export function SelectionPhase({ state, dispatch, onNext }: SelectionPhaseProps)
   }, [episodes]);
 
   return (
-    <div className="flex flex-col">
+    <div className="flex h-full flex-col">
       {/* Top toolbar */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-white/10 px-6 py-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-white/10 px-6 py-3">
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -161,17 +160,17 @@ export function SelectionPhase({ state, dispatch, onNext }: SelectionPhaseProps)
         </div>
       </div>
 
-      {/* Episode list */}
-      <ScrollArea className="max-h-[50vh]">
+      {/* Episode list — fills remaining space */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="divide-y divide-white/5">
           {episodes.map((ep) => (
             <EpisodeRow key={ep.episodeId} episode={ep} dispatch={dispatch} />
           ))}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Summary footer */}
-      <div className="flex items-center justify-between border-t border-white/10 px-6 py-4">
+      <div className="flex shrink-0 items-center justify-between border-t border-white/10 px-6 py-4">
         <div className="flex items-center gap-4 text-sm text-white/50">
           <span>
             <span className="font-medium text-white">{stats.selected}</span>{' '}

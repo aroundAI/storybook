@@ -66,7 +66,7 @@ export function DonePhase({ state, onClose }: DonePhaseProps) {
     stats.shotListsCreated;
 
   return (
-    <div className="flex flex-col items-center px-6 py-10">
+    <div className="flex h-full flex-col items-center overflow-y-auto px-6 py-10">
       {/* Success icon */}
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10">
         <CheckCircle2 className="h-10 w-10 text-emerald-400" />

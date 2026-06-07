@@ -17,7 +17,6 @@ import {
 } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
-import { ScrollArea } from '@kit/ui/scroll-area';
 import { cn } from '@kit/ui/utils';
 
 import type {
@@ -211,9 +210,9 @@ export function ShotsPhase({
   ).length;
 
   return (
-    <div className="flex flex-col">
+    <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+      <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-6 py-4">
         <div>
           <h3 className="text-sm font-semibold text-white/90">
             Shot List Generation
@@ -250,13 +249,13 @@ export function ShotsPhase({
       </div>
 
       {/* Episode cards */}
-      <ScrollArea className="max-h-[50vh]">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="divide-y divide-white/5">
           {selectedEpisodes.map((ep) => (
             <EpisodeShotCard key={ep.episodeId} episode={ep} />
           ))}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Summary */}
       {hasStarted && (
@@ -285,7 +284,7 @@ export function ShotsPhase({
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between border-t border-white/10 px-6 py-4">
+      <div className="flex shrink-0 items-center justify-between border-t border-white/10 px-6 py-4">
         <Button
           variant="ghost"
           size="sm"
