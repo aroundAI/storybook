@@ -302,6 +302,7 @@ export function ScreenplayPhase({
       try {
         await convertToScreenplayAction({
           episodeId: ep.episodeId,
+          contentStyle: ep.contentStyle,
         });
       } catch (err) {
         const message =

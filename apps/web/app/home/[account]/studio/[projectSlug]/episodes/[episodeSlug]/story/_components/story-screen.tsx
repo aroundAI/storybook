@@ -103,6 +103,7 @@ export function StoryScreen({
     triggerLlm(async () => {
       const result = await convertToScreenplayAction({
         episodeId: episode.id,
+        contentStyle: storyData?.contentStyle,
       });
       // If local dev (synchronous), process immediately
       if (result.success && result.data) {

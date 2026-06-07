@@ -47,6 +47,7 @@ import linkedinPostGeneration from '../../prompts/publishing/linkedin-post-gener
 // =============================================================================
 // Quality Evaluation Prompts
 // =============================================================================
+import ideaQuality from '../../prompts/quality-evaluation/idea-quality.json';
 import reelScout from '../../prompts/quality-evaluation/reel-scout.json';
 import screenplayQuality from '../../prompts/quality-evaluation/screenplay-quality.json';
 import shotQuality from '../../prompts/quality-evaluation/shot-quality.json';
@@ -101,6 +102,7 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
     screenplayQuality as unknown as PromptTemplate,
   'quality-evaluation/shot-quality': shotQuality as unknown as PromptTemplate,
   'quality-evaluation/story-quality': storyQuality as unknown as PromptTemplate,
+  'quality-evaluation/idea-quality': ideaQuality as unknown as PromptTemplate,
 
   // Canon Roles
   'canon-extraction': canonExtraction as unknown as PromptTemplate,

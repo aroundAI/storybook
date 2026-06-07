@@ -119,6 +119,9 @@ export const generateShotListAction = enhanceAction(
       payload: {
         episodeId: data.episodeId,
         version: episode.version,
+        shotDurationMin: data.shotDurationMin,
+        shotDurationMax: data.shotDurationMax,
+        videoProvider: data.videoProvider,
         accountId,
         userId: user.id,
         projectId: episode.project_id,
