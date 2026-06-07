@@ -304,7 +304,7 @@ function EpisodeStoryCard({
           </div>
           <span className="flex items-center gap-1.5 text-xs text-emerald-400/70">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            Already has story
+            Already has screenplay
           </span>
         </div>
       );
