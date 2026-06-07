@@ -5,7 +5,11 @@ import { notFound } from 'next/navigation';
 
 import { ArrowLeft, Film } from 'lucide-react';
 
-import type { EpisodeStatus } from '@kit/episodes/types';
+import type {
+  EpisodeStatus,
+  ScreenplayData,
+  StoryData,
+} from '@kit/episodes/types';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
@@ -385,7 +389,6 @@ function groupEpisodesBySeason(
 
 /**
  * Map database episode to component props
- * Note: JSON blob fields are not loaded in list query - component derives status from episode.status
  */
 function mapEpisode(episode: Episode) {
   const meta = episode.metadata as Record<string, unknown> | null;
@@ -402,8 +405,9 @@ function mapEpisode(episode: Episode) {
     thumbnailUrl: episode.thumbnail_url,
     finalVideoUrl: null,
     localizedVideos: null,
-    storyData: null,
-    screenplayData: null,
+    storyData: (episode.story_data as StoryData) ?? null,
+    screenplayData:
+      (episode.screenplay_data as unknown as ScreenplayData) ?? null,
     shotList: null,
     metadata: null,
     version: episode.version,
