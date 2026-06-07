@@ -7,20 +7,53 @@ import {
   ArrowRight,
   Check,
   Loader2,
-  Sparkles,
   SkipForward,
+  Sparkles,
 } from 'lucide-react';
 
-import {
-  generateStoryIdeasAction,
-  getBulkEpisodeStatusAction,
-} from '@kit/episodes/server';
+import { generateStoryIdeasAction } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
+import { useBulkLlmJobs } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
-import type { BulkAction, BulkState, EpisodeBulkState } from '../bulk-generate-modal';
+import type {
+  BulkAction,
+  BulkState,
+  EpisodeBulkState,
+} from '../bulk-generate-modal';
+
+// ============================================================================
+// WebSocket result type for story-ideation jobs
+// ============================================================================
+
+interface StoryIdeationWsResult {
+  success: boolean;
+  data: {
+    ideas: Array<{
+      title: string;
+      logline: string;
+      hook?: string;
+      conflict?: string;
+      themes?: string[];
+      visualPotential?: string;
+      qualityScore?: number;
+    }>;
+    metadata: {
+      provider: string;
+      model: string;
+      costCents: number;
+      tokensUsed: number;
+      generatedAt: string;
+      orchestratorSteps?: number;
+    };
+  };
+}
+
+// ============================================================================
+// Props
+// ============================================================================
 
 interface IdeationPhaseProps {
   state: BulkState;
@@ -36,12 +69,14 @@ export function IdeationPhase({
   state,
   dispatch,
   cancelledRef,
-  seasonId,
   onNext,
   onBack,
 }: IdeationPhaseProps) {
   const [hasStarted, setHasStarted] = useState(false);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const processedRef = useRef<Set<string>>(new Set());
+
+  const { jobs, registerEpisodes, markPending, completedCount, totalCount } =
+    useBulkLlmJobs<StoryIdeationWsResult>('story-ideation');
 
   const episodes = Array.from(state.episodes.values())
     .filter((ep) => ep.selected)
@@ -54,8 +89,7 @@ export function IdeationPhase({
     (ep) => ep.ideationStatus === 'generating',
   );
   const doneOrSkipped = episodes.filter(
-    (ep) =>
-      ep.ideationStatus === 'done' || ep.ideationStatus === 'skipped',
+    (ep) => ep.ideationStatus === 'done' || ep.ideationStatus === 'skipped',
   );
 
   const allIdeasReady = episodes.every(
@@ -66,20 +100,76 @@ export function IdeationPhase({
 
   // Auto-skip if all episodes already have stories
   useEffect(() => {
-    if (episodes.length > 0 && episodes.every((ep) => ep.ideationStatus === 'skipped')) {
+    if (
+      episodes.length > 0 &&
+      episodes.every((ep) => ep.ideationStatus === 'skipped')
+    ) {
       toast.info('All episodes already have stories — skipping ideation');
       const timer = setTimeout(() => onNext(), 1500);
       return () => clearTimeout(timer);
     }
   }, [episodes, onNext]);
 
+  // Watch WebSocket job results and dispatch status updates
+  useEffect(() => {
+    for (const [episodeId, entry] of jobs) {
+      if (processedRef.current.has(episodeId)) continue;
+
+      if (entry.status === 'success' && entry.result) {
+        processedRef.current.add(episodeId);
+
+        const ideas = entry.result.data?.ideas ?? [];
+        dispatch({
+          type: 'SET_IDEATION_STATUS',
+          episodeId,
+          status: 'done',
+          ideas: ideas.map((idea) => ({
+            title: idea.title,
+            logline: idea.logline,
+            hook: idea.hook,
+            conflict: idea.conflict,
+            themes: idea.themes,
+            visualPotential: idea.visualPotential,
+          })),
+        });
+      } else if (entry.status === 'error') {
+        processedRef.current.add(episodeId);
+
+        dispatch({
+          type: 'SET_EPISODE_ERROR',
+          episodeId,
+          error: entry.error ?? 'Ideation failed',
+        });
+        dispatch({
+          type: 'SET_IDEATION_STATUS',
+          episodeId,
+          status: 'error',
+        });
+      }
+    }
+  }, [jobs, dispatch]);
+
+  // When all WebSocket jobs complete, stop generating
+  useEffect(() => {
+    if (hasStarted && totalCount > 0 && completedCount === totalCount) {
+      dispatch({ type: 'SET_GENERATING', isGenerating: false });
+    }
+  }, [hasStarted, completedCount, totalCount, dispatch]);
+
   const startIdeation = useCallback(async () => {
     setHasStarted(true);
+    processedRef.current = new Set();
     dispatch({ type: 'SET_GENERATING', isGenerating: true });
 
-    // Fire all ideation jobs in parallel
+    // Register all episodes for WebSocket tracking
+    registerEpisodes(pendingEpisodes.map((ep) => ep.episodeId));
+
+    // Fire all ideation jobs
     for (const ep of pendingEpisodes) {
       if (cancelledRef.current) break;
+
+      markPending(ep.episodeId);
+
       try {
         dispatch({
           type: 'SET_IDEATION_STATUS',
@@ -95,7 +185,8 @@ export function IdeationPhase({
         dispatch({
           type: 'SET_EPISODE_ERROR',
           episodeId: ep.episodeId,
-          error: err instanceof Error ? err.message : 'Failed to start ideation',
+          error:
+            err instanceof Error ? err.message : 'Failed to start ideation',
         });
         dispatch({
           type: 'SET_IDEATION_STATUS',
@@ -104,68 +195,7 @@ export function IdeationPhase({
         });
       }
     }
-  }, [pendingEpisodes, cancelledRef, dispatch]);
-
-  // Poll for results
-  useEffect(() => {
-    if (!hasStarted || generatingEpisodes.length === 0) {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
-      if (hasStarted && generatingEpisodes.length === 0) {
-        dispatch({ type: 'SET_GENERATING', isGenerating: false });
-      }
-      return;
-    }
-
-    const generatingIds = generatingEpisodes.map((ep) => ep.episodeId);
-
-    pollingRef.current = setInterval(async () => {
-      if (cancelledRef.current) {
-        if (pollingRef.current) clearInterval(pollingRef.current);
-        return;
-      }
-
-      try {
-        const result = await getBulkEpisodeStatusAction({
-          seasonId,
-          episodeIds: generatingIds,
-        });
-
-        if (result.success && result.data) {
-          for (const item of result.data) {
-            if (item.hasStory) {
-              // Episode got ideas or full story from the handler
-              dispatch({
-                type: 'SET_IDEATION_STATUS',
-                episodeId: item.id,
-                status: 'done',
-                ideas: [
-                  {
-                    title: `Variation 1`,
-                    logline: item.storyPreview ?? 'Story generated',
-                  },
-                ],
-              });
-              dispatch({
-                type: 'UPDATE_EPISODE_VERSION',
-                episodeId: item.id,
-                version: item.version,
-                status: item.status,
-              });
-            }
-          }
-        }
-      } catch {
-        // Polling error — will retry next interval
-      }
-    }, 5000);
-
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-    };
-  }, [hasStarted, generatingEpisodes, seasonId, cancelledRef, dispatch]);
+  }, [pendingEpisodes, cancelledRef, dispatch, registerEpisodes, markPending]);
 
   return (
     <div className="flex h-full flex-col">
@@ -333,9 +363,7 @@ function EpisodeIdeationCard({
 
       {/* Pending state */}
       {ideationStatus === 'pending' && (
-        <p className="text-xs text-white/30">
-          Waiting to generate ideas...
-        </p>
+        <p className="text-xs text-white/30">Waiting to generate ideas...</p>
       )}
     </div>
   );

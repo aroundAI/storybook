@@ -124,8 +124,7 @@ export function DonePhase({ state, onClose }: DonePhaseProps) {
                 className="flex items-start gap-2 text-xs"
               >
                 <span className="shrink-0 font-medium text-white/60">
-                  Ep {String(ep.episodeNumber).padStart(2, '0')}:{' '}
-                  {ep.title}
+                  Ep {String(ep.episodeNumber).padStart(2, '0')}: {ep.title}
                 </span>
                 <span className="text-red-400/80">{ep.error}</span>
               </div>
@@ -186,12 +185,7 @@ function StatCard({
   const colors = COLOR_MAP[color];
 
   return (
-    <div
-      className={cn(
-        'rounded-xl border border-white/5 p-4',
-        colors.bg,
-      )}
-    >
+    <div className={cn('rounded-xl border border-white/5 p-4', colors.bg)}>
       <div className="flex items-center gap-2">
         <Icon className={cn('h-4 w-4', colors.text)} />
         <span className="text-xs text-white/50">{label}</span>

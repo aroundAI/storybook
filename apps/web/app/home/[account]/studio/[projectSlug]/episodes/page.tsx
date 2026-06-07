@@ -92,9 +92,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   const [seasonsResult, episodesResult, unassignedResult] = await Promise.all([
     client
       .from('seasons')
-      .select(
-        'id, number, name, description, direction_notes',
-      )
+      .select('id, number, name, description, direction_notes')
       .eq('project_id', project.id)
       .order('number', { ascending: true }),
     // Episodes with computed boolean checks instead of fetching full JSON blobs

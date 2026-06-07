@@ -4,6 +4,7 @@ import { useCallback, useReducer, useRef } from 'react';
 
 import { Wand2 } from 'lucide-react';
 
+import type { Episode } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -15,15 +16,13 @@ import {
 import { Progress } from '@kit/ui/progress';
 import { cn } from '@kit/ui/utils';
 
-import type { Episode } from '@kit/episodes/types';
-
-import { SelectionPhase } from './bulk-generate/selection-phase';
-import { IdeationPhase } from './bulk-generate/ideation-phase';
-import { StoryPhase } from './bulk-generate/story-phase';
-import { ScreenplayPhase } from './bulk-generate/screenplay-phase';
 import { AssetsPhase } from './bulk-generate/assets-phase';
-import { ShotsPhase } from './bulk-generate/shots-phase';
 import { DonePhase } from './bulk-generate/done-phase';
+import { IdeationPhase } from './bulk-generate/ideation-phase';
+import { ScreenplayPhase } from './bulk-generate/screenplay-phase';
+import { SelectionPhase } from './bulk-generate/selection-phase';
+import { ShotsPhase } from './bulk-generate/shots-phase';
+import { StoryPhase } from './bulk-generate/story-phase';
 
 // ============================================================================
 // Types
@@ -448,9 +447,7 @@ export function BulkGenerateModal({
                   <div
                     className={cn(
                       'mx-1 h-px w-4',
-                      i <= currentPhaseIndex
-                        ? 'bg-blue-500/60'
-                        : 'bg-white/10',
+                      i <= currentPhaseIndex ? 'bg-blue-500/60' : 'bg-white/10',
                     )}
                   />
                 )}
@@ -535,10 +532,7 @@ export function BulkGenerateModal({
             />
           )}
           {state.phase === 'done' && (
-            <DonePhase
-              state={state}
-              onClose={() => onOpenChange(false)}
-            />
+            <DonePhase state={state} onClose={() => onOpenChange(false)} />
           )}
         </div>
       </DialogContent>

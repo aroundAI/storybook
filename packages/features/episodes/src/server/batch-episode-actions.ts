@@ -54,7 +54,7 @@ export const generateSeasonOutlineAction = enhanceAction(
     }
 
     checkRateLimit(user.id, 'generateSeasonOutline', {
-      maxRequests: 3,
+      maxRequests: 30,
       windowMs: 60_000,
     });
 
@@ -127,7 +127,7 @@ export const batchCreateEpisodesAction = enhanceAction(
     }
 
     checkRateLimit(user.id, 'batchCreateEpisodes', {
-      maxRequests: 5,
+      maxRequests: 30,
       windowMs: 60_000,
     });
 
@@ -277,7 +277,7 @@ export const regenerateEpisodeOutlineAction = enhanceAction(
     }
 
     checkRateLimit(user.id, 'regenerateEpisodeOutline', {
-      maxRequests: 5,
+      maxRequests: 30,
       windowMs: 60_000,
     });
 

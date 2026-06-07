@@ -66,7 +66,7 @@ export const generateStoryIdeasAction = enhanceAction(
     }
 
     checkRateLimit(user.id, 'generateStoryIdeas', {
-      maxRequests: 5,
+      maxRequests: 30,
       windowMs: 60_000,
     });
 
@@ -153,7 +153,7 @@ export const generateFullStoryAction = enhanceAction(
     }
 
     checkRateLimit(user.id, 'generateFullStory', {
-      maxRequests: 3,
+      maxRequests: 30,
       windowMs: 60_000,
     });
 

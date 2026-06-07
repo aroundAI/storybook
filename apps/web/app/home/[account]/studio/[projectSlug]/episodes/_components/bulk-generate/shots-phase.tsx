@@ -11,12 +11,10 @@ import {
   XCircle,
 } from 'lucide-react';
 
-import {
-  generateShotListAction,
-  getBulkEpisodeStatusAction,
-} from '@kit/episodes/server';
+import { generateShotListAction } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
+import { useBulkLlmJobs } from '@kit/ui/hooks';
 import { cn } from '@kit/ui/utils';
 
 import type {
@@ -24,6 +22,23 @@ import type {
   BulkState,
   EpisodeBulkState,
 } from '../bulk-generate-modal';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface ShotGenerationResult {
+  success: boolean;
+  data: {
+    totalShots: number;
+    shotsCreated: number;
+    metadata: {
+      totalDuration: number;
+      shotTypes: { wide: number; medium: number; closeUp: number };
+      scenesProcessed: number;
+    };
+  };
+}
 
 // ============================================================================
 // Props
@@ -47,12 +62,14 @@ export function ShotsPhase({
   state,
   dispatch,
   cancelledRef,
-  seasonId,
   onNext,
   onBack,
 }: ShotsPhaseProps) {
   const [hasStarted, setHasStarted] = useState(false);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const processedRef = useRef<Set<string>>(new Set());
+
+  const { jobs, registerEpisodes, markPending, completedCount, totalCount } =
+    useBulkLlmJobs<ShotGenerationResult>('shot-generation');
 
   const selectedEpisodes = useMemo(
     () =>
@@ -95,78 +112,59 @@ export function ShotsPhase({
     [selectedEpisodes],
   );
 
-  // Cleanup polling on unmount
+  // Watch WebSocket job results and dispatch status updates
   useEffect(() => {
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
-    };
-  }, []);
+    for (const [episodeId, entry] of jobs) {
+      if (processedRef.current.has(episodeId)) continue;
 
-  // Poll for status updates
-  const startPolling = useCallback(() => {
-    if (pollingRef.current) return;
-
-    pollingRef.current = setInterval(async () => {
-      if (cancelledRef.current) {
-        if (pollingRef.current) {
-          clearInterval(pollingRef.current);
-          pollingRef.current = null;
-        }
-        return;
-      }
-
-      try {
-        const episodeIds = selectedEpisodes.map((ep) => ep.episodeId);
-        const result = await getBulkEpisodeStatusAction({
-          seasonId,
-          episodeIds,
+      if (entry.status === 'success') {
+        processedRef.current.add(episodeId);
+        const shotCount =
+          entry.result?.data?.shotsCreated ??
+          entry.result?.data?.totalShots ??
+          0;
+        dispatch({
+          type: 'SET_SHOT_STATUS',
+          episodeId,
+          status: 'done',
+          shotCount,
         });
-
-        if (!result.success) return;
-
-        let allDone = true;
-
-        for (const item of result.data) {
-          const ep = state.episodes.get(item.id);
-          if (!ep || !ep.selected) continue;
-
-          if (ep.shotStatus === 'generating') {
-            if (item.shotCount > 0) {
-              dispatch({
-                type: 'SET_SHOT_STATUS',
-                episodeId: item.id,
-                status: 'done',
-                shotCount: item.shotCount,
-              });
-            } else {
-              allDone = false;
-            }
-          }
-        }
-
-        if (allDone && pollingRef.current) {
-          clearInterval(pollingRef.current);
-          pollingRef.current = null;
-          dispatch({ type: 'SET_GENERATING', isGenerating: false });
-        }
-      } catch {
-        // Silently retry on next interval
+      } else if (entry.status === 'error') {
+        processedRef.current.add(episodeId);
+        dispatch({
+          type: 'SET_EPISODE_ERROR',
+          episodeId,
+          error: entry.error ?? 'Shot generation failed',
+        });
+        dispatch({
+          type: 'SET_SHOT_STATUS',
+          episodeId,
+          status: 'error',
+        });
       }
-    }, 5000);
-  }, [selectedEpisodes, seasonId, state.episodes, dispatch, cancelledRef]);
+    }
+
+    // When all registered jobs are complete, stop generating
+    if (hasStarted && totalCount > 0 && completedCount === totalCount) {
+      dispatch({ type: 'SET_GENERATING', isGenerating: false });
+    }
+  }, [jobs, hasStarted, completedCount, totalCount, dispatch]);
 
   // Generate shot lists
   const handleGenerate = useCallback(async () => {
     if (pendingEpisodes.length === 0) return;
 
     setHasStarted(true);
+    processedRef.current = new Set();
     dispatch({ type: 'SET_GENERATING', isGenerating: true });
+
+    // Register all episodes for WebSocket tracking
+    registerEpisodes(pendingEpisodes.map((ep) => ep.episodeId));
 
     for (const ep of pendingEpisodes) {
       if (cancelledRef.current) break;
+
+      markPending(ep.episodeId);
 
       dispatch({
         type: 'SET_SHOT_STATUS',
@@ -196,10 +194,7 @@ export function ShotsPhase({
         });
       }
     }
-
-    // Start polling for completion
-    startPolling();
-  }, [pendingEpisodes, dispatch, cancelledRef, startPolling]);
+  }, [pendingEpisodes, dispatch, cancelledRef, registerEpisodes, markPending]);
 
   // Stats
   const doneCount = selectedEpisodes.filter(
@@ -262,9 +257,7 @@ export function ShotsPhase({
         <div className="border-t border-white/5 px-6 py-2">
           <div className="flex items-center gap-4 text-xs text-white/40">
             {doneCount > 0 && (
-              <span className="text-emerald-400/70">
-                {doneCount} completed
-              </span>
+              <span className="text-emerald-400/70">{doneCount} completed</span>
             )}
             {generatingEpisodes.length > 0 && (
               <span className="text-blue-400/70">

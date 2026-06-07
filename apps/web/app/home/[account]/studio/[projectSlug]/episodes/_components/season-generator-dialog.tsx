@@ -562,8 +562,10 @@ export function SeasonGeneratorDialog({
             result,
           );
 
-          const errorMsg =
-            String((result as Record<string, unknown>)?.error ?? 'Failed to generate season');
+          const errorMsg = String(
+            (result as Record<string, unknown>)?.error ??
+              'Failed to generate season',
+          );
           toast.error(errorMsg);
         }
       } catch (err) {

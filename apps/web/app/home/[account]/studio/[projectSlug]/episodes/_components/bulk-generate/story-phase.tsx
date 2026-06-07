@@ -3,40 +3,91 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
-  BookOpen,
-  ChevronDown,
-  ChevronRight,
-  CheckCircle2,
-  Loader2,
   AlertCircle,
-  Sparkles,
   ArrowLeft,
   ArrowRight,
+  BookOpen,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
   RefreshCw,
+  Sparkles,
 } from 'lucide-react';
 
-import { Button } from '@kit/ui/button';
+import {
+  generateFullStoryAction,
+  refineStoryAction,
+} from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
+import { Button } from '@kit/ui/button';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@kit/ui/collapsible';
+import { useBulkLlmJobs } from '@kit/ui/hooks';
 import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
 
-import {
-  generateFullStoryAction,
-  getBulkEpisodeStatusAction,
-  refineStoryAction,
-} from '@kit/episodes/server';
-
 import type {
-  BulkState,
   BulkAction,
+  BulkState,
   EpisodeBulkState,
   PhaseItemStatus,
 } from '../bulk-generate-modal';
+
+// ============================================================================
+// Result types for WebSocket messages
+// ============================================================================
+
+interface StoryGenerationWsResult {
+  success: boolean;
+  data: {
+    story: {
+      fullText: string;
+      title: string;
+      actBreakdown: Array<{ act: number; summary: string }>;
+      characters: string[];
+      themes: string[];
+      tone: string;
+      estimatedSceneCount: number;
+      episodeSummary?: string;
+      sentimentScore?: number;
+      keyEvents?: string[];
+    };
+    episode: {
+      id: string;
+      status: string;
+      version: number;
+    };
+    metadata: {
+      provider: string;
+      model: string;
+      costCents: number;
+      tokensUsed: number;
+      generatedAt: string;
+      orchestratorSteps?: number;
+    };
+  };
+}
+
+interface StoryRefinementWsResult {
+  success: boolean;
+  data: {
+    story: Record<string, unknown>;
+    refinementApplied: boolean;
+    episode: {
+      id: string;
+      status: string;
+    };
+    metadata: {
+      provider: string;
+      model: string;
+      generatedAt: string;
+    };
+  };
+}
 
 // ============================================================================
 // Props
@@ -60,41 +111,56 @@ function StatusBadge({ status }: { status: PhaseItemStatus }) {
   switch (status) {
     case 'pending':
       return (
-        <Badge variant="outline" className="text-white/40 border-white/10">
+        <Badge variant="outline" className="border-white/10 text-white/40">
           Pending
         </Badge>
       );
     case 'generating':
       return (
-        <Badge variant="outline" className="text-amber-400 border-amber-500/30 bg-amber-500/10">
+        <Badge
+          variant="outline"
+          className="border-amber-500/30 bg-amber-500/10 text-amber-400"
+        >
           <Loader2 className="mr-1 h-3 w-3 animate-spin" />
           Generating
         </Badge>
       );
     case 'review':
       return (
-        <Badge variant="outline" className="text-blue-400 border-blue-500/30 bg-blue-500/10">
+        <Badge
+          variant="outline"
+          className="border-blue-500/30 bg-blue-500/10 text-blue-400"
+        >
           <BookOpen className="mr-1 h-3 w-3" />
           Review
         </Badge>
       );
     case 'done':
       return (
-        <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
+        <Badge
+          variant="outline"
+          className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+        >
           <CheckCircle2 className="mr-1 h-3 w-3" />
           Done
         </Badge>
       );
     case 'skipped':
       return (
-        <Badge variant="outline" className="text-white/40 border-white/10 bg-white/5">
+        <Badge
+          variant="outline"
+          className="border-white/10 bg-white/5 text-white/40"
+        >
           <CheckCircle2 className="mr-1 h-3 w-3" />
           Skipped
         </Badge>
       );
     case 'error':
       return (
-        <Badge variant="outline" className="text-red-400 border-red-500/30 bg-red-500/10">
+        <Badge
+          variant="outline"
+          className="border-red-500/30 bg-red-500/10 text-red-400"
+        >
           <AlertCircle className="mr-1 h-3 w-3" />
           Error
         </Badge>
@@ -110,30 +176,87 @@ function EpisodeStoryCard({
   ep,
   dispatch,
   projectId,
-  seasonId,
 }: {
   ep: EpisodeBulkState;
   dispatch: React.Dispatch<BulkAction>;
   projectId: string;
-  seasonId: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
-  const refinePollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const processedRefineRef = useRef<Set<string>>(new Set());
 
+  const {
+    jobs: refineJobs,
+    registerEpisodes: registerRefine,
+    markPending: markRefinePending,
+  } = useBulkLlmJobs<StoryRefinementWsResult>('story-refinement');
+
+  // Watch refinement jobs for completion
   useEffect(() => {
-    return () => {
-      if (refinePollingRef.current) {
-        clearInterval(refinePollingRef.current);
+    for (const [episodeId, entry] of refineJobs) {
+      if (processedRefineRef.current.has(episodeId)) continue;
+
+      if (entry.status === 'success' && entry.result) {
+        processedRefineRef.current.add(episodeId);
+
+        const result = entry.result;
+        const storyData = result.data?.story;
+        const preview = storyData?.fullStory
+          ? String(storyData.fullStory).substring(0, 300)
+          : storyData?.fullText
+            ? String(storyData.fullText).substring(0, 300)
+            : JSON.stringify(result.data).substring(0, 300);
+
+        dispatch({
+          type: 'SET_STORY_STATUS',
+          episodeId,
+          status: 'review',
+          preview,
+        });
+
+        if (result.data?.episode) {
+          dispatch({
+            type: 'UPDATE_EPISODE_VERSION',
+            episodeId,
+            version:
+              ((result.data.episode as Record<string, unknown>)
+                .version as number) ?? ep.version,
+            status: result.data.episode.status,
+          });
+        }
+
+        dispatch({
+          type: 'SET_REFINEMENT_NOTES',
+          episodeId,
+          notes: '',
+        });
+
+        setIsRefining(false);
+      } else if (entry.status === 'error') {
+        processedRefineRef.current.add(episodeId);
+
+        dispatch({
+          type: 'SET_EPISODE_ERROR',
+          episodeId,
+          error: entry.error ?? 'Refinement failed',
+        });
+        dispatch({
+          type: 'SET_STORY_STATUS',
+          episodeId,
+          status: 'error',
+        });
+
+        setIsRefining(false);
       }
-    };
-  }, []);
+    }
+  }, [refineJobs, dispatch, ep.version]);
 
   const handleRefine = useCallback(async () => {
     const notes = ep.refinementNotes?.trim();
     if (!notes) return;
 
     setIsRefining(true);
+    processedRefineRef.current.delete(ep.episodeId);
     dispatch({
       type: 'SET_STORY_STATUS',
       episodeId: ep.episodeId,
@@ -141,51 +264,14 @@ function EpisodeStoryCard({
     });
 
     try {
+      registerRefine([ep.episodeId]);
+      markRefinePending(ep.episodeId);
+
       await refineStoryAction({
         episodeId: ep.episodeId,
         projectId,
         feedback: notes,
       });
-
-      // Poll for refinement completion
-      refinePollingRef.current = setInterval(async () => {
-        try {
-          const result = await getBulkEpisodeStatusAction({
-            seasonId,
-            episodeIds: [ep.episodeId],
-          });
-
-          if (result.success && result.data) {
-            const updated = result.data[0];
-            if (updated && updated.hasStory && updated.storyPreview) {
-              dispatch({
-                type: 'SET_STORY_STATUS',
-                episodeId: ep.episodeId,
-                status: 'review',
-                preview: updated.storyPreview,
-              });
-              dispatch({
-                type: 'UPDATE_EPISODE_VERSION',
-                episodeId: ep.episodeId,
-                version: updated.version,
-                status: updated.status,
-              });
-              dispatch({
-                type: 'SET_REFINEMENT_NOTES',
-                episodeId: ep.episodeId,
-                notes: '',
-              });
-              setIsRefining(false);
-              if (refinePollingRef.current) {
-                clearInterval(refinePollingRef.current);
-                refinePollingRef.current = null;
-              }
-            }
-          }
-        } catch {
-          // Continue polling on error
-        }
-      }, 5000);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Refinement failed';
       dispatch({
@@ -200,7 +286,14 @@ function EpisodeStoryCard({
       });
       setIsRefining(false);
     }
-  }, [ep.episodeId, ep.refinementNotes, dispatch, projectId, seasonId]);
+  }, [
+    ep.episodeId,
+    ep.refinementNotes,
+    dispatch,
+    projectId,
+    registerRefine,
+    markRefinePending,
+  ]);
 
   if (ep.storyStatus === 'skipped') {
     return (
@@ -252,7 +345,7 @@ function EpisodeStoryCard({
         ep.storyPreview && (
           <div className="border-t border-white/5 px-4 py-3">
             <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-              <CollapsibleTrigger className="flex w-full items-center gap-2 text-xs font-medium text-white/50 hover:text-white/70 transition-colors">
+              <CollapsibleTrigger className="flex w-full items-center gap-2 text-xs font-medium text-white/50 transition-colors hover:text-white/70">
                 {isOpen ? (
                   <ChevronDown className="h-3.5 w-3.5" />
                 ) : (
@@ -287,9 +380,7 @@ function EpisodeStoryCard({
                 size="sm"
                 variant="outline"
                 onClick={handleRefine}
-                disabled={
-                  isRefining || !ep.refinementNotes?.trim()
-                }
+                disabled={isRefining || !ep.refinementNotes?.trim()}
                 className="gap-1.5 text-xs"
               >
                 {isRefining ? (
@@ -315,19 +406,65 @@ export function StoryPhase({
   dispatch,
   cancelledRef,
   projectId,
-  seasonId,
+  seasonId: _seasonId,
   onNext,
   onBack,
 }: StoryPhaseProps) {
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const processedRef = useRef<Set<string>>(new Set());
 
+  const { jobs, registerEpisodes, markPending, completedCount, totalCount } =
+    useBulkLlmJobs<StoryGenerationWsResult>('story-generation');
+
+  // Watch jobs for completion and dispatch status updates
   useEffect(() => {
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
+    for (const [episodeId, entry] of jobs) {
+      if (processedRef.current.has(episodeId)) continue;
+
+      if (entry.status === 'success' && entry.result) {
+        processedRef.current.add(episodeId);
+
+        const result = entry.result;
+        const storyText = result.data?.story?.fullText ?? '';
+        const preview = storyText.substring(0, 300);
+
+        dispatch({
+          type: 'SET_STORY_STATUS',
+          episodeId,
+          status: 'review',
+          preview,
+        });
+
+        if (result.data?.episode) {
+          dispatch({
+            type: 'UPDATE_EPISODE_VERSION',
+            episodeId,
+            version: result.data.episode.version,
+            status: result.data.episode.status,
+          });
+        }
+      } else if (entry.status === 'error') {
+        processedRef.current.add(episodeId);
+
+        dispatch({
+          type: 'SET_EPISODE_ERROR',
+          episodeId,
+          error: entry.error ?? 'Story generation failed',
+        });
+        dispatch({
+          type: 'SET_STORY_STATUS',
+          episodeId,
+          status: 'error',
+        });
       }
-    };
-  }, []);
+    }
+  }, [jobs, dispatch]);
+
+  // Detect generation completion via WebSocket counts
+  useEffect(() => {
+    if (totalCount > 0 && completedCount === totalCount && state.isGenerating) {
+      dispatch({ type: 'SET_GENERATING', isGenerating: false });
+    }
+  }, [completedCount, totalCount, state.isGenerating, dispatch]);
 
   const selectedEpisodes = Array.from(state.episodes.values()).filter(
     (ep) => ep.selected,
@@ -357,6 +494,9 @@ export function StoryPhase({
     cancelledRef.current = false;
     dispatch({ type: 'SET_GENERATING', isGenerating: true });
 
+    // Register all episodes for WebSocket tracking
+    registerEpisodes(toGenerate.map((ep) => ep.episodeId));
+
     // Kick off generation for each episode
     for (const ep of toGenerate) {
       if (cancelledRef.current) break;
@@ -381,6 +521,8 @@ export function StoryPhase({
         episodeId: ep.episodeId,
         status: 'generating',
       });
+
+      markPending(ep.episodeId);
 
       try {
         await generateFullStoryAction({
@@ -410,69 +552,23 @@ export function StoryPhase({
       }
     }
 
-    // Start polling for completion
-    const episodeIds = toGenerate
-      .filter((ep) => ep.storyStatus !== 'error')
-      .map((ep) => ep.episodeId);
+    // If all failed synchronously (no episodes left generating), stop immediately
+    const anyStillGenerating = toGenerate.some((ep) => {
+      const current = state.episodes.get(ep.episodeId);
+      return current?.storyStatus === 'generating';
+    });
 
-    if (episodeIds.length > 0) {
-      pollingRef.current = setInterval(async () => {
-        if (cancelledRef.current) {
-          if (pollingRef.current) {
-            clearInterval(pollingRef.current);
-            pollingRef.current = null;
-          }
-          dispatch({ type: 'SET_GENERATING', isGenerating: false });
-          return;
-        }
-
-        try {
-          const result = await getBulkEpisodeStatusAction({
-            seasonId,
-            episodeIds,
-          });
-
-          if (result.success && result.data) {
-            let allCompleted = true;
-
-            for (const item of result.data) {
-              const ep = state.episodes.get(item.id);
-              if (!ep || ep.storyStatus !== 'generating') continue;
-
-              if (item.hasStory) {
-                dispatch({
-                  type: 'SET_STORY_STATUS',
-                  episodeId: item.id,
-                  status: 'review',
-                  preview: item.storyPreview,
-                });
-                dispatch({
-                  type: 'UPDATE_EPISODE_VERSION',
-                  episodeId: item.id,
-                  version: item.version,
-                  status: item.status,
-                });
-              } else {
-                allCompleted = false;
-              }
-            }
-
-            if (allCompleted) {
-              if (pollingRef.current) {
-                clearInterval(pollingRef.current);
-                pollingRef.current = null;
-              }
-              dispatch({ type: 'SET_GENERATING', isGenerating: false });
-            }
-          }
-        } catch {
-          // Continue polling on transient errors
-        }
-      }, 5000);
-    } else {
+    if (!anyStillGenerating) {
       dispatch({ type: 'SET_GENERATING', isGenerating: false });
     }
-  }, [selectedEpisodes, cancelledRef, dispatch, seasonId, state.episodes]);
+  }, [
+    selectedEpisodes,
+    cancelledRef,
+    dispatch,
+    state.episodes,
+    registerEpisodes,
+    markPending,
+  ]);
 
   return (
     <div className="flex h-full flex-col">
@@ -517,7 +613,6 @@ export function StoryPhase({
               ep={ep}
               dispatch={dispatch}
               projectId={projectId}
-              seasonId={seasonId}
             />
           ))}
         </div>

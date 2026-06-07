@@ -285,6 +285,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
       await sendToUser(job.userId, {
         type: 'llm-result',
         jobType: job.jobType,
+        episodeId: (job.payload?.episodeId as string) ?? undefined,
         result,
         timestamp: new Date().toISOString(),
       });
@@ -300,6 +301,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
         await sendToUser(job.userId, {
           type: 'llm-error',
           jobType: job.jobType,
+          episodeId: (job.payload?.episodeId as string) ?? undefined,
           error: error instanceof Error ? error.message : 'Unknown error',
           timestamp: new Date().toISOString(),
         });

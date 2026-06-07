@@ -31,9 +31,7 @@ export interface BulkEpisodeStatusItem {
  * Used by the Bulk Generate modal for efficient polling.
  */
 export const getBulkEpisodeStatusAction = enhanceAction(
-  async (
-    data,
-  ): Promise<{ success: true; data: BulkEpisodeStatusItem[] }> => {
+  async (data): Promise<{ success: true; data: BulkEpisodeStatusItem[] }> => {
     const logger = await getLogger();
     const ctx = { name: 'episodes.bulkStatus', seasonId: data.seasonId };
 
@@ -72,8 +70,7 @@ export const getBulkEpisodeStatusAction = enhanceAction(
 
     const shotCountMap: Record<string, number> = {};
     for (const shot of shotCounts ?? []) {
-      shotCountMap[shot.episode_id] =
-        (shotCountMap[shot.episode_id] ?? 0) + 1;
+      shotCountMap[shot.episode_id] = (shotCountMap[shot.episode_id] ?? 0) + 1;
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

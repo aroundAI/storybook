@@ -94,18 +94,20 @@ export function AssetsPhase({
 
     const characters = Array.from(charMap.entries())
       .map(([key, episodeIds]) => ({
-        name: selectedEpisodes
-          .flatMap((ep) => ep.unlinkedCharacters)
-          .find((n) => n.toLowerCase() === key) ?? key,
+        name:
+          selectedEpisodes
+            .flatMap((ep) => ep.unlinkedCharacters)
+            .find((n) => n.toLowerCase() === key) ?? key,
         episodeCount: episodeIds.size,
       }))
       .sort((a, b) => b.episodeCount - a.episodeCount);
 
     const locations = Array.from(locMap.entries())
       .map(([key, episodeIds]) => ({
-        name: selectedEpisodes
-          .flatMap((ep) => ep.unlinkedLocations)
-          .find((n) => n.toLowerCase() === key) ?? key,
+        name:
+          selectedEpisodes
+            .flatMap((ep) => ep.unlinkedLocations)
+            .find((n) => n.toLowerCase() === key) ?? key,
         episodeCount: episodeIds.size,
       }))
       .sort((a, b) => b.episodeCount - a.episodeCount);
@@ -146,8 +148,7 @@ export function AssetsPhase({
       const episodesWithUnlinked = selectedEpisodes.filter(
         (ep) =>
           !ep.assetsCreated &&
-          (ep.unlinkedCharacters.length > 0 ||
-            ep.unlinkedLocations.length > 0),
+          (ep.unlinkedCharacters.length > 0 || ep.unlinkedLocations.length > 0),
       );
 
       for (const ep of episodesWithUnlinked) {
@@ -223,9 +224,7 @@ export function AssetsPhase({
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="shrink-0 border-b border-white/10 px-6 py-4">
-        <h3 className="text-sm font-semibold text-white/90">
-          Unlinked Assets
-        </h3>
+        <h3 className="text-sm font-semibold text-white/90">Unlinked Assets</h3>
         <p className="mt-1 text-xs text-white/50">
           {totalUnlinked} unique asset{totalUnlinked !== 1 ? 's' : ''} found
           across {selectedEpisodes.length} episode
@@ -239,7 +238,7 @@ export function AssetsPhase({
           {/* Characters section */}
           {uniqueCharacters.length > 0 && (
             <div>
-              <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/50">
+              <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-wider text-white/50 uppercase">
                 <Users className="h-3.5 w-3.5" />
                 Characters
                 <Badge className="ml-1 rounded-full border-0 bg-blue-500/20 px-1.5 py-0 text-[10px] text-blue-400">
@@ -273,7 +272,7 @@ export function AssetsPhase({
           {/* Locations section */}
           {uniqueLocations.length > 0 && (
             <div>
-              <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/50">
+              <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-wider text-white/50 uppercase">
                 <MapPin className="h-3.5 w-3.5" />
                 Locations
                 <Badge className="ml-1 rounded-full border-0 bg-cyan-500/20 px-1.5 py-0 text-[10px] text-cyan-400">

@@ -98,7 +98,10 @@ export async function processStoryIdeation(
     verifiedFactsContext,
     charactersContext: formatCharactersForPrompt(episodeContext.characters),
     locationsContext: formatLocationsForPrompt(episodeContext.locations),
-    seasonContext: (seasonContext || directionNotes) ? (seasonContext ?? '') + directionNotes : undefined,
+    seasonContext:
+      seasonContext || directionNotes
+        ? (seasonContext ?? '') + directionNotes
+        : undefined,
     previousEpisodesContext,
     visualStyle: episodeContext.visualStyle,
     recurringElementsContext: formatRecurringElementsForPrompt(

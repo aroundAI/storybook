@@ -16,7 +16,11 @@ import {
 } from '@kit/ui/select';
 import { cn } from '@kit/ui/utils';
 
-import type { BulkAction, BulkState, EpisodeBulkState } from '../bulk-generate-modal';
+import type {
+  BulkAction,
+  BulkState,
+  EpisodeBulkState,
+} from '../bulk-generate-modal';
 import { statusIndex } from '../bulk-generate-modal';
 
 // ============================================================================
@@ -42,14 +46,26 @@ const CONTENT_STYLES = [
 // Status badge config
 // ============================================================================
 
-const STATUS_BADGE_CONFIG: Record<string, { label: string; className: string }> = {
+const STATUS_BADGE_CONFIG: Record<
+  string,
+  { label: string; className: string }
+> = {
   draft: { label: 'Draft', className: 'bg-zinc-700/50 text-zinc-300' },
   story: { label: 'Story', className: 'bg-blue-500/20 text-blue-400' },
-  storyboard: { label: 'Storyboard', className: 'bg-purple-500/20 text-purple-400' },
-  generating: { label: 'Generating', className: 'bg-amber-500/20 text-amber-400' },
+  storyboard: {
+    label: 'Storyboard',
+    className: 'bg-purple-500/20 text-purple-400',
+  },
+  generating: {
+    label: 'Generating',
+    className: 'bg-amber-500/20 text-amber-400',
+  },
   editing: { label: 'Editing', className: 'bg-orange-500/20 text-orange-400' },
   ready: { label: 'Ready', className: 'bg-emerald-500/20 text-emerald-400' },
-  published: { label: 'Published', className: 'bg-emerald-500/20 text-emerald-400' },
+  published: {
+    label: 'Published',
+    className: 'bg-emerald-500/20 text-emerald-400',
+  },
 };
 
 function durationLabel(seconds: number): string {
@@ -71,9 +87,16 @@ interface SelectionPhaseProps {
 // Component
 // ============================================================================
 
-export function SelectionPhase({ state, dispatch, onNext }: SelectionPhaseProps) {
+export function SelectionPhase({
+  state,
+  dispatch,
+  onNext,
+}: SelectionPhaseProps) {
   const episodes = useMemo(
-    () => Array.from(state.episodes.values()).sort((a, b) => a.episodeNumber - b.episodeNumber),
+    () =>
+      Array.from(state.episodes.values()).sort(
+        (a, b) => a.episodeNumber - b.episodeNumber,
+      ),
     [state.episodes],
   );
 
@@ -212,7 +235,8 @@ function EpisodeRow({
   episode: EpisodeBulkState;
   dispatch: React.Dispatch<BulkAction>;
 }) {
-  const badgeConfig = STATUS_BADGE_CONFIG[episode.currentStatus] ?? STATUS_BADGE_CONFIG['draft']!;
+  const badgeConfig =
+    STATUS_BADGE_CONFIG[episode.currentStatus] ?? STATUS_BADGE_CONFIG['draft']!;
 
   return (
     <div

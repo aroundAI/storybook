@@ -41,7 +41,7 @@ export const refineStoryAction = enhanceAction(
     }
 
     checkRateLimit(user.id, 'refineStory', {
-      maxRequests: 5,
+      maxRequests: 30,
       windowMs: 60_000,
     });
 
@@ -130,7 +130,7 @@ export const refineScreenplayAction = enhanceAction(
     }
 
     checkRateLimit(user.id, 'refineScreenplay', {
-      maxRequests: 5,
+      maxRequests: 30,
       windowMs: 60_000,
     });
 

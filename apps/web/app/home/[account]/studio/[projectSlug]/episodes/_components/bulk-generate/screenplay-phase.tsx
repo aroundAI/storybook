@@ -3,31 +3,46 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 import {
-  CheckCircle2,
-  Loader2,
   AlertCircle,
-  Sparkles,
   ArrowLeft,
   ArrowRight,
+  CheckCircle2,
   Film,
+  Loader2,
   MessageSquare,
+  Sparkles,
 } from 'lucide-react';
 
-import { Button } from '@kit/ui/button';
+import { convertToScreenplayAction } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
+import { Button } from '@kit/ui/button';
+import { useBulkLlmJobs } from '@kit/ui/hooks';
 import { cn } from '@kit/ui/utils';
 
-import {
-  convertToScreenplayAction,
-  getBulkEpisodeStatusAction,
-} from '@kit/episodes/server';
-
 import type {
-  BulkState,
   BulkAction,
+  BulkState,
   EpisodeBulkState,
   PhaseItemStatus,
 } from '../bulk-generate-modal';
+
+// ============================================================================
+// WebSocket result type for screenplay-conversion jobs
+// ============================================================================
+
+interface ScreenplayConversionWsResult {
+  data?: {
+    screenplay?: {
+      scenes?: unknown[];
+    };
+    dialogueLinesCreated?: number;
+    episode?: {
+      id: string;
+      status: string;
+      version: number;
+    };
+  };
+}
 
 // ============================================================================
 // Props
@@ -51,34 +66,46 @@ function StatusBadge({ status }: { status: PhaseItemStatus }) {
   switch (status) {
     case 'pending':
       return (
-        <Badge variant="outline" className="text-white/40 border-white/10">
+        <Badge variant="outline" className="border-white/10 text-white/40">
           Pending
         </Badge>
       );
     case 'generating':
       return (
-        <Badge variant="outline" className="text-amber-400 border-amber-500/30 bg-amber-500/10">
+        <Badge
+          variant="outline"
+          className="border-amber-500/30 bg-amber-500/10 text-amber-400"
+        >
           <Loader2 className="mr-1 h-3 w-3 animate-spin" />
           Converting
         </Badge>
       );
     case 'done':
       return (
-        <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
+        <Badge
+          variant="outline"
+          className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+        >
           <CheckCircle2 className="mr-1 h-3 w-3" />
           Done
         </Badge>
       );
     case 'skipped':
       return (
-        <Badge variant="outline" className="text-white/40 border-white/10 bg-white/5">
+        <Badge
+          variant="outline"
+          className="border-white/10 bg-white/5 text-white/40"
+        >
           <CheckCircle2 className="mr-1 h-3 w-3" />
           Skipped
         </Badge>
       );
     case 'error':
       return (
-        <Badge variant="outline" className="text-red-400 border-red-500/30 bg-red-500/10">
+        <Badge
+          variant="outline"
+          className="border-red-500/30 bg-red-500/10 text-red-400"
+        >
           <AlertCircle className="mr-1 h-3 w-3" />
           Error
         </Badge>
@@ -141,11 +168,17 @@ function EpisodeScreenplayCard({ ep }: { ep: EpisodeBulkState }) {
       {/* Done — show scene + dialogue counts */}
       {ep.screenplayStatus === 'done' && (
         <div className="flex items-center gap-3 border-t border-white/5 px-4 py-3">
-          <Badge variant="outline" className="gap-1 text-white/50 border-white/10">
+          <Badge
+            variant="outline"
+            className="gap-1 border-white/10 text-white/50"
+          >
             <Film className="h-3 w-3" />
             {ep.sceneCount ?? 0} scene{(ep.sceneCount ?? 0) !== 1 ? 's' : ''}
           </Badge>
-          <Badge variant="outline" className="gap-1 text-white/50 border-white/10">
+          <Badge
+            variant="outline"
+            className="gap-1 border-white/10 text-white/50"
+          >
             <MessageSquare className="h-3 w-3" />
             {ep.dialogueCount ?? 0} dialogue line
             {(ep.dialogueCount ?? 0) !== 1 ? 's' : ''}
@@ -165,27 +198,73 @@ export function ScreenplayPhase({
   dispatch,
   cancelledRef,
   projectId: _projectId,
-  seasonId,
+  seasonId: _seasonId,
   onNext,
   onBack,
 }: ScreenplayPhaseProps) {
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { jobs, registerEpisodes, markPending, completedCount, totalCount } =
+    useBulkLlmJobs<ScreenplayConversionWsResult>('screenplay-conversion');
 
+  const processedRef = useRef<Set<string>>(new Set());
+
+  // Watch WebSocket job results and dispatch status updates
   useEffect(() => {
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
+    for (const [episodeId, entry] of jobs) {
+      if (processedRef.current.has(episodeId)) continue;
+
+      if (entry.status === 'success') {
+        processedRef.current.add(episodeId);
+
+        const result = entry.result;
+        const sceneCount = result?.data?.screenplay?.scenes?.length ?? 0;
+        const dialogueCount = result?.data?.dialogueLinesCreated ?? 0;
+
+        dispatch({
+          type: 'SET_SCREENPLAY_STATUS',
+          episodeId,
+          status: 'done',
+          sceneCount,
+          dialogueCount,
+        });
+
+        if (result?.data?.episode) {
+          dispatch({
+            type: 'UPDATE_EPISODE_VERSION',
+            episodeId,
+            version: result.data.episode.version,
+            status: result.data.episode.status,
+          });
+        }
+      } else if (entry.status === 'error') {
+        processedRef.current.add(episodeId);
+
+        dispatch({
+          type: 'SET_EPISODE_ERROR',
+          episodeId,
+          error: entry.error ?? 'Screenplay conversion failed',
+        });
+        dispatch({
+          type: 'SET_SCREENPLAY_STATUS',
+          episodeId,
+          status: 'error',
+        });
       }
-    };
-  }, []);
+    }
+  }, [jobs, dispatch]);
+
+  // When all WebSocket jobs complete, stop generating
+  useEffect(() => {
+    if (totalCount > 0 && completedCount === totalCount) {
+      dispatch({ type: 'SET_GENERATING', isGenerating: false });
+    }
+  }, [completedCount, totalCount, dispatch]);
 
   const selectedEpisodes = Array.from(state.episodes.values()).filter(
     (ep) => ep.selected,
   );
 
   const allDone = selectedEpisodes.every(
-    (ep) =>
-      ep.screenplayStatus === 'done' || ep.screenplayStatus === 'skipped',
+    (ep) => ep.screenplayStatus === 'done' || ep.screenplayStatus === 'skipped',
   );
 
   const pendingCount = selectedEpisodes.filter(
@@ -205,9 +284,14 @@ export function ScreenplayPhase({
     cancelledRef.current = false;
     dispatch({ type: 'SET_GENERATING', isGenerating: true });
 
+    // Register all episodes for WebSocket tracking
+    registerEpisodes(toGenerate.map((ep) => ep.episodeId));
+
     // Kick off screenplay conversion for each episode
     for (const ep of toGenerate) {
       if (cancelledRef.current) break;
+
+      markPending(ep.episodeId);
 
       dispatch({
         type: 'SET_SCREENPLAY_STATUS',
@@ -234,74 +318,7 @@ export function ScreenplayPhase({
         });
       }
     }
-
-    // Start polling for completion
-    const episodeIds = toGenerate
-      .filter((ep) => {
-        const current = state.episodes.get(ep.episodeId);
-        return current?.screenplayStatus !== 'error';
-      })
-      .map((ep) => ep.episodeId);
-
-    if (episodeIds.length > 0) {
-      pollingRef.current = setInterval(async () => {
-        if (cancelledRef.current) {
-          if (pollingRef.current) {
-            clearInterval(pollingRef.current);
-            pollingRef.current = null;
-          }
-          dispatch({ type: 'SET_GENERATING', isGenerating: false });
-          return;
-        }
-
-        try {
-          const result = await getBulkEpisodeStatusAction({
-            seasonId,
-            episodeIds,
-          });
-
-          if (result.success && result.data) {
-            let allCompleted = true;
-
-            for (const item of result.data) {
-              const ep = state.episodes.get(item.id);
-              if (!ep || ep.screenplayStatus !== 'generating') continue;
-
-              if (item.hasScreenplay) {
-                dispatch({
-                  type: 'SET_SCREENPLAY_STATUS',
-                  episodeId: item.id,
-                  status: 'done',
-                  sceneCount: item.sceneCount,
-                  dialogueCount: item.dialogueCount,
-                });
-                dispatch({
-                  type: 'UPDATE_EPISODE_VERSION',
-                  episodeId: item.id,
-                  version: item.version,
-                  status: item.status,
-                });
-              } else {
-                allCompleted = false;
-              }
-            }
-
-            if (allCompleted) {
-              if (pollingRef.current) {
-                clearInterval(pollingRef.current);
-                pollingRef.current = null;
-              }
-              dispatch({ type: 'SET_GENERATING', isGenerating: false });
-            }
-          }
-        } catch {
-          // Continue polling on transient errors
-        }
-      }, 5000);
-    } else {
-      dispatch({ type: 'SET_GENERATING', isGenerating: false });
-    }
-  }, [selectedEpisodes, cancelledRef, dispatch, seasonId, state.episodes]);
+  }, [selectedEpisodes, cancelledRef, dispatch, registerEpisodes, markPending]);
 
   return (
     <div className="flex h-full flex-col">

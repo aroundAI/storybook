@@ -41,9 +41,9 @@ const evaluateIdeasTool = createTool({
     'Evaluates story ideas for quality across 4 dimensions: hookStrength, originalityScore, conflictClarity, visualPotential. Each idea gets an overallScore (0-1) and a verdict (strong/average/weak). Returns weakIndices — the indices of ideas that should be regenerated. Strong >= 0.7, Average 0.5-0.69, Weak < 0.5.',
   parameters: z.object({
     ideas: z
-      .string()
+      .union([z.string(), z.array(z.any())])
       .describe(
-        'JSON stringified array of ideas to evaluate. Each idea should have title, logline, hook, conflict, themes, and visualPotential.',
+        'Story ideas to evaluate - JSON string or array. Each idea should have title, logline, hook, conflict, themes, and visualPotential.',
       ),
     genre: z
       .string()
@@ -58,9 +58,9 @@ const evaluateIdeasTool = createTool({
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
       const result = await executeLLM<IdeaEvaluation>({
-        templateSlug: 'quality-evaluation/story-quality',
+        templateSlug: 'quality-evaluation/idea-quality',
         variables: {
-          content: ideas,
+          ideas: typeof ideas === 'string' ? ideas : JSON.stringify(ideas),
           genre,
           target_audience: targetAudience,
         },

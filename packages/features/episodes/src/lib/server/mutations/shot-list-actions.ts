@@ -43,7 +43,7 @@ export const generateShotListAction = enhanceAction(
     }
 
     checkRateLimit(user.id, 'generateShotList', {
-      maxRequests: 3,
+      maxRequests: 30,
       windowMs: 60_000,
     });
 
