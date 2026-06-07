@@ -61,6 +61,9 @@ export * from './transition-analyzer';
 // Asset link actions (sidebar create)
 export * from '../lib/server/mutations/asset-link-actions';
 
+// Bulk episode status polling (Bulk Generate dialog)
+export * from './bulk-episode-status-action';
+
 // NOTE: Server-only canon functions must be imported directly:
 // import { buildMemoryContext } from '@kit/episodes/lib/canon/memory-context-builder';
 // NOTE: Context aggregator must be imported directly:

@@ -100,9 +100,7 @@ export async function processFactExtraction(
     throw new Error(`Failed to insert facts: ${error.message}`);
   }
 
-  console.log(
-    `[Fact Extraction] Successfully inserted ${facts.length} facts`,
-  );
+  console.log(`[Fact Extraction] Successfully inserted ${facts.length} facts`);
 
   return {
     success: true,

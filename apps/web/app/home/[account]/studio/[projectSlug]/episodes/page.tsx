@@ -50,6 +50,7 @@ interface Season {
   number: number;
   name: string | null;
   description: string | null;
+  direction_notes: string | null;
 }
 
 interface Episode {
@@ -91,7 +92,9 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   const [seasonsResult, episodesResult, unassignedResult] = await Promise.all([
     client
       .from('seasons')
-      .select('id, number, name, description')
+      .select(
+        'id, number, name, description, direction_notes',
+      )
       .eq('project_id', project.id)
       .order('number', { ascending: true }),
     // Episodes with computed boolean checks instead of fetching full JSON blobs
@@ -100,7 +103,8 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
       .select(
         `
         id, slug, project_id, season_id, number, title, description,
-        status, duration_seconds, thumbnail_url,
+        status, version, duration_seconds, thumbnail_url,
+        story_data, screenplay_data, target_duration_seconds,
         metadata,
         created_at, updated_at, deleted_at
       `,
@@ -114,7 +118,8 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
       .select(
         `
         id, slug, project_id, season_id, number, title, description,
-        status, duration_seconds, thumbnail_url,
+        status, version, duration_seconds, thumbnail_url,
+        story_data, screenplay_data, target_duration_seconds,
         metadata,
         created_at, updated_at, deleted_at
       `,
@@ -125,7 +130,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
       .order('number', { ascending: true }),
   ]);
 
-  const { data: seasons } = seasonsResult;
+  const seasons = seasonsResult.data as Season[] | null;
   const episodes = episodesResult.data as Episode[] | null;
   const episodesError = episodesResult.error;
   const unassignedEpisodes = (unassignedResult.data as Episode[] | null) ?? [];
@@ -291,6 +296,8 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                       languageMap={languageMap}
                       audioStatsMap={audioStatsMap}
                       validAssetIds={validAssetIds}
+                      seasonDescription={season.description}
+                      directionNotes={season.direction_notes}
                     />
                   ),
                 )}

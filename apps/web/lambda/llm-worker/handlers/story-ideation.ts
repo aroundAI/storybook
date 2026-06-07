@@ -67,6 +67,9 @@ export async function processStoryIdeation(
   const seasonContext = episodeContext.seasonPremise
     ? `This is Episode ${episodeContext.episodeNumber}${episodeContext.seasonNumber ? ` of Season ${episodeContext.seasonNumber}` : ''}. Season Premise: ${episodeContext.seasonPremise}`
     : undefined;
+  const directionNotes = episodeContext.seasonDirectionNotes
+    ? `\n\n## SEASON CREATIVE DIRECTION (apply to this episode):\n${episodeContext.seasonDirectionNotes}`
+    : '';
 
   const previousEpisodesContext =
     episodeContext.previousEpisodes.length > 0
@@ -95,7 +98,7 @@ export async function processStoryIdeation(
     verifiedFactsContext,
     charactersContext: formatCharactersForPrompt(episodeContext.characters),
     locationsContext: formatLocationsForPrompt(episodeContext.locations),
-    seasonContext,
+    seasonContext: seasonContext ? seasonContext + directionNotes : undefined,
     previousEpisodesContext,
     visualStyle: episodeContext.visualStyle,
     recurringElementsContext: formatRecurringElementsForPrompt(

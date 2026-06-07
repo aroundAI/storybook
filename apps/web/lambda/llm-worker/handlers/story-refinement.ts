@@ -97,6 +97,9 @@ export async function processStoryRefinement(
     const seasonContext = episodeContext.seasonPremise
       ? `This is Episode ${episodeContext.episodeNumber}${episodeContext.seasonNumber ? ` of Season ${episodeContext.seasonNumber}` : ''}. Season Premise: ${episodeContext.seasonPremise}`
       : '';
+    const directionNotes = episodeContext.seasonDirectionNotes
+      ? `\n\n## SEASON CREATIVE DIRECTION (apply to this episode):\n${episodeContext.seasonDirectionNotes}`
+      : '';
 
     console.log(
       `[Story Refinement] Context built: ${episodeContext.characters.length} characters, ${episodeContext.locations.length} locations`,
@@ -118,7 +121,7 @@ export async function processStoryRefinement(
         characters: charactersContext || 'No characters defined.',
         locations: locationsContext || 'No locations defined.',
         feedback: data.feedback,
-        season_context: seasonContext,
+        season_context: seasonContext + directionNotes,
         previous_episodes: previousEpisodesContext,
       },
     });

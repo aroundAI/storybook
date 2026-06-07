@@ -79,8 +79,7 @@ export async function runIdeationOrchestrator(
   );
 
   const isFactual =
-    input.contentType === 'documentary' ||
-    input.contentType === 'educational';
+    input.contentType === 'documentary' || input.contentType === 'educational';
 
   const skills: Skill[] = [ideationDirectorSkill, ideationEvaluatorSkill];
 
@@ -222,8 +221,7 @@ Return a JSON object with:
 
 function buildIdeationPrompt(input: IdeationOrchestratorInput): string {
   const isFactual =
-    input.contentType === 'documentary' ||
-    input.contentType === 'educational';
+    input.contentType === 'documentary' || input.contentType === 'educational';
 
   return `Generate and evaluate ${input.numberOfIdeas} story ideas for this episode.
 

@@ -70,6 +70,7 @@ export const createSeasonAction = enhanceAction(
           number: seasonNumber,
           name: data.name,
           description: data.description ?? null,
+          direction_notes: data.directionNotes ?? null,
         })
         .select()
         .single();
@@ -166,7 +167,7 @@ export const getProjectSeasonsAction = enhanceAction(
       .from('seasons')
       .select(
         `
-        id, project_id, number, name, description,
+        id, project_id, number, name, description, direction_notes,
         created_at, updated_at, deleted_at
       `,
       )
@@ -253,7 +254,7 @@ export const updateSeasonAction = enhanceAction(
       .from('seasons')
       .select(
         `
-        id, project_id, number, name, description,
+        id, project_id, number, name, description, direction_notes,
         created_at, updated_at, deleted_at,
         project:projects(account_id)
       `,
@@ -273,6 +274,8 @@ export const updateSeasonAction = enhanceAction(
 
     if (data.name !== undefined) updates.name = data.name;
     if (data.description !== undefined) updates.description = data.description;
+    if (data.directionNotes !== undefined)
+      updates.direction_notes = data.directionNotes;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: season, error: updateError } = await (client as any)

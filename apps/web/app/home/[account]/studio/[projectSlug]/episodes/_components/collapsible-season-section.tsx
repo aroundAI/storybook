@@ -33,6 +33,8 @@ interface CollapsibleSeasonSectionProps {
   languageMap?: Map<string, string[]>;
   audioStatsMap?: Map<string, AudioStats>;
   validAssetIds?: string[];
+  seasonDescription?: string | null;
+  directionNotes?: string | null;
 }
 
 export function CollapsibleSeasonSection({
@@ -47,6 +49,8 @@ export function CollapsibleSeasonSection({
   languageMap,
   audioStatsMap,
   validAssetIds,
+  seasonDescription,
+  directionNotes,
 }: CollapsibleSeasonSectionProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -73,6 +77,8 @@ export function CollapsibleSeasonSection({
         analytics={analytics}
         isCollapsed={isCollapsed}
         onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+        seasonDescription={seasonDescription}
+        directionNotes={directionNotes}
       />
 
       {/* Episode list - collapsible */}

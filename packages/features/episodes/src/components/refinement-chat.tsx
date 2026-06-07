@@ -333,7 +333,9 @@ export function RefinementChat({
           />
           <Button
             onClick={handleSubmit}
-            disabled={!input.trim() || isRefining || isSubmitting || isOverLimit}
+            disabled={
+              !input.trim() || isRefining || isSubmitting || isOverLimit
+            }
             size="icon"
             className="h-[60px] w-10 shrink-0 bg-indigo-600 hover:bg-indigo-700"
           >
@@ -364,7 +366,8 @@ export function RefinementChat({
                     : 'text-gray-400 dark:text-gray-500',
               )}
             >
-              {input.length.toLocaleString()} / {MAX_FEEDBACK_LENGTH.toLocaleString()}
+              {input.length.toLocaleString()} /{' '}
+              {MAX_FEEDBACK_LENGTH.toLocaleString()}
             </p>
           )}
         </div>

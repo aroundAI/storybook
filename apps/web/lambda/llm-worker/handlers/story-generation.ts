@@ -264,6 +264,9 @@ export async function processStoryGeneration(
     const seasonContext = episodeContext.seasonPremise
       ? `This is Episode ${episodeContext.episodeNumber}${episodeContext.seasonNumber ? ` of Season ${episodeContext.seasonNumber}` : ''}. Season Premise: ${episodeContext.seasonPremise}`
       : '';
+    const directionNotes = episodeContext.seasonDirectionNotes
+      ? `\n\n## SEASON CREATIVE DIRECTION (apply to this episode):\n${episodeContext.seasonDirectionNotes}`
+      : '';
     // Recurring elements — supports multiple recurring story elements
     const recurringElementContext = episodeContext.recurringElements
       ? formatRecurringElementsForPrompt(episodeContext.recurringElements)
@@ -275,9 +278,15 @@ export async function processStoryGeneration(
     console.log(
       `[Story Generation] Context built: ${episodeContext.characters.length} characters, ${episodeContext.locations.length} locations` +
         (recurringElementContext ? ', recurring element: yes' : '') +
-        (episodeContext.projectType ? `, type: ${episodeContext.projectType}` : '') +
-        (factsContext ? `, episode facts: ${episodeContext.episodeFacts.length}` : '') +
-        (episodeContext.verifiedFacts.length > 0 ? `, verified facts: ${episodeContext.verifiedFacts.length}` : ''),
+        (episodeContext.projectType
+          ? `, type: ${episodeContext.projectType}`
+          : '') +
+        (factsContext
+          ? `, episode facts: ${episodeContext.episodeFacts.length}`
+          : '') +
+        (episodeContext.verifiedFacts.length > 0
+          ? `, verified facts: ${episodeContext.verifiedFacts.length}`
+          : ''),
     );
 
     // Format verified facts for factual content types
@@ -314,7 +323,7 @@ export async function processStoryGeneration(
         verifiedFacts: verifiedFactsContext,
         charactersContext,
         locationsContext,
-        seasonContext,
+        seasonContext: seasonContext + directionNotes,
         previousEpisodesContext,
         visualStyle: episodeContext.visualStyle,
         verifiedFacts: factsContext || undefined,

@@ -162,13 +162,12 @@ export const generateSeasonEpisodesAction = enhanceAction(
             },
           }));
 
-          const { data: insertedAssets, error: assetError } = await (
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            client as any
-          )
-            .from('assets')
-            .insert(assetsToInsert)
-            .select('id, name');
+          const { data: insertedAssets, error: assetError } =
+            await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (client as any)
+              .from('assets')
+              .insert(assetsToInsert)
+              .select('id, name');
 
           if (assetError) {
             console.error(
@@ -228,13 +227,12 @@ export const generateSeasonEpisodesAction = enhanceAction(
             },
           }));
 
-          const { data: insertedLocations, error: locError } = await (
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            client as any
-          )
-            .from('assets')
-            .insert(locationsToInsert)
-            .select('id, name');
+          const { data: insertedLocations, error: locError } =
+            await // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (client as any)
+              .from('assets')
+              .insert(locationsToInsert)
+              .select('id, name');
 
           if (locError) {
             console.error(

@@ -175,7 +175,9 @@ function extractJSON<T = unknown>(
     // Validate type matches expectation
     const actualType = Array.isArray(parsed) ? 'array' : 'object';
     if (actualType !== normalizedType) {
-      throw new Error(`Expected ${normalizedType} but got ${actualType} in LLM response`);
+      throw new Error(
+        `Expected ${normalizedType} but got ${actualType} in LLM response`,
+      );
     }
 
     return parsed as T;

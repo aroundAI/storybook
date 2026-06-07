@@ -51,6 +51,7 @@ import reelScout from '../../prompts/quality-evaluation/reel-scout.json';
 import screenplayQuality from '../../prompts/quality-evaluation/screenplay-quality.json';
 import shotQuality from '../../prompts/quality-evaluation/shot-quality.json';
 import storyQuality from '../../prompts/quality-evaluation/story-quality.json';
+import extractAssetDescription from '../../prompts/story-generation/extract-asset-description.json';
 import sceneShotGeneration from '../../prompts/story-generation/scene-shot-generation.json';
 import screenplayConversion from '../../prompts/story-generation/screenplay-conversion.json';
 import seasonGeneration from '../../prompts/story-generation/season-generation.json';
@@ -60,7 +61,6 @@ import seasonOutline from '../../prompts/story-generation/season-outline.json';
 // =============================================================================
 import storyGeneration from '../../prompts/story-generation/story-generation.json';
 import storyIdeation from '../../prompts/story-generation/story-ideation.json';
-import extractAssetDescription from '../../prompts/story-generation/extract-asset-description.json';
 import type { PromptTemplate } from '../types';
 
 /**

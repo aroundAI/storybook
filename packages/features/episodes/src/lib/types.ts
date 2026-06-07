@@ -20,6 +20,7 @@ export interface Season {
   number: number;
   name: string | null;
   description: string | null;
+  direction_notes: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

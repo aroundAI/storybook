@@ -563,7 +563,8 @@ export function SeasonGeneratorDialog({
           );
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const errorMsg = (result as any)?.error || 'Failed to generate season';
+          const errorMsg =
+            (result as any)?.error || 'Failed to generate season';
           toast.error(errorMsg);
         }
       } catch (err) {

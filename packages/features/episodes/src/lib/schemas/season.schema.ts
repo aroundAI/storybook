@@ -9,6 +9,7 @@ export const CreateSeasonSchema = z.object({
   number: z.number().int().positive().optional(),
   name: z.string().min(1).max(255),
   description: z.string().max(1000).optional(),
+  directionNotes: z.string().max(5000).optional(),
 });
 
 /**
@@ -26,6 +27,7 @@ export const UpdateSeasonSchema = z.object({
   seasonId: z.string().uuid(),
   name: z.string().min(1).max(255).optional(),
   description: z.string().max(1000).optional(),
+  directionNotes: z.string().max(5000).optional(),
 });
 
 /**

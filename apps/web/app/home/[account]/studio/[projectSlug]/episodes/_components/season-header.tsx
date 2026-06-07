@@ -10,8 +10,10 @@ import {
   FolderOpen,
   MoreVertical,
   Pencil,
+  StickyNote,
   Trash2,
   Volume2,
+  Wand2,
 } from 'lucide-react';
 
 import { deleteSeasonAction, updateSeasonAction } from '@kit/episodes/server';
@@ -35,6 +37,7 @@ import {
 } from '@kit/ui/dropdown-menu';
 import { toast } from '@kit/ui/sonner';
 
+import { BulkGenerateModal } from './bulk-generate-modal';
 import { GenerateAllSoundModal } from './generate-all-sound-modal';
 
 interface SeasonAnalyticsSummary {
@@ -65,6 +68,8 @@ interface SeasonHeaderProps {
   onGenerateSeason?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  seasonDescription?: string | null;
+  directionNotes?: string | null;
 }
 
 export function SeasonHeader({
@@ -78,14 +83,20 @@ export function SeasonHeader({
   audioStatsMap,
   isCollapsed = false,
   onToggleCollapse,
+  seasonDescription,
+  directionNotes,
 }: SeasonHeaderProps) {
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
+  const [showBulkGenerate, setShowBulkGenerate] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(seasonName ?? '');
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [notesValue, setNotesValue] = useState(directionNotes ?? '');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -117,6 +128,21 @@ export function SeasonHeader({
       }
     });
   }
+
+  const handleSaveNotes = async () => {
+    if (notesValue === (directionNotes ?? '')) return;
+    setIsSavingNotes(true);
+    try {
+      await updateSeasonAction({
+        seasonId,
+        directionNotes: notesValue || undefined,
+      });
+    } catch (error) {
+      console.error('Failed to save direction notes:', error);
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
 
   function handleDeleteSeason() {
     startTransition(async () => {
@@ -172,16 +198,35 @@ export function SeasonHeader({
                     {seasonName}
                   </span>
                 )}
+                {directionNotes && (
+                  <StickyNote className="h-3.5 w-3.5 text-amber-400/60" />
+                )}
                 <Pencil className="h-3 w-3 text-gray-400 opacity-0 transition-opacity group-hover/name:opacity-100" />
               </h3>
             )}
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {totalEpisodes} {totalEpisodes === 1 ? 'episode' : 'episodes'}
             </p>
+            {seasonDescription && (
+              <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
+                {seasonDescription}
+              </p>
+            )}
           </div>
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Bulk Generate button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowBulkGenerate(true)}
+            className="gap-2 border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950"
+          >
+            <Wand2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Bulk Generate</span>
+          </Button>
+
           {/* Generate All Sound button */}
           <Button
             variant="outline"
@@ -221,6 +266,14 @@ export function SeasonHeader({
                 Rename Season
               </DropdownMenuItem>
               <DropdownMenuItem
+                onClick={() => setIsEditingNotes(!isEditingNotes)}
+              >
+                <StickyNote className="mr-2 h-4 w-4" />
+                {isEditingNotes
+                  ? 'Hide Direction Notes'
+                  : 'Edit Direction Notes'}
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onSelect={() => setShowDeleteDialog(true)}
               >
@@ -244,6 +297,31 @@ export function SeasonHeader({
           </button>
         </div>
       </div>
+
+      {isEditingNotes && (
+        <div className="mt-2 rounded-lg border border-white/10 bg-black/20 p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <label className="text-sm font-medium text-white/80">
+              Direction Notes
+            </label>
+            <span className="text-xs text-white/40">
+              {notesValue.length} / 5,000
+            </span>
+          </div>
+          <textarea
+            value={notesValue}
+            onChange={(e) => setNotesValue(e.target.value)}
+            onBlur={handleSaveNotes}
+            maxLength={5000}
+            rows={3}
+            placeholder="e.g., Short-form reels. Fast pacing, strong hooks in first 3 seconds. Each episode under 90 seconds..."
+            className="w-full resize-none rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 focus:outline-none"
+          />
+          {isSavingNotes && (
+            <p className="mt-1 text-xs text-white/40">Saving...</p>
+          )}
+        </div>
+      )}
 
       {/* Delete Season Confirmation */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -278,6 +356,16 @@ export function SeasonHeader({
         projectId={projectId}
         episodes={episodes}
         audioStatsMap={audioStatsMap}
+      />
+
+      {/* Bulk Generate Modal */}
+      <BulkGenerateModal
+        open={showBulkGenerate}
+        onOpenChange={setShowBulkGenerate}
+        seasonId={seasonId}
+        seasonNumber={seasonNumber}
+        projectId={projectId}
+        episodes={episodes}
       />
     </>
   );

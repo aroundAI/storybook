@@ -46,6 +46,7 @@ export interface ScreenplayOrchestratorInput {
   tone: string;
   themes: string[];
   keyEvents: string[];
+  directionNotes?: string;
 }
 
 export interface ScreenplayScene {
@@ -241,7 +242,7 @@ function buildScreenplayPrompt(input: ScreenplayOrchestratorInput): string {
 **Target Audience**: ${input.targetAudience}
 **Duration**: ${minutesDuration} minutes (${input.targetDurationSeconds}s)
 **Content Style**: ${input.contentStyle ?? 'dialogue-heavy'}
-${enrichmentBlock}
+${enrichmentBlock}${input.directionNotes ? `\n**Creative Direction Notes (season-level, apply to pacing/dialogue/structure):**\n${input.directionNotes}` : ''}
 **Expected Scene Range**: ${input.sceneCountMin}–${input.sceneCountMax} scenes
 **Dialogue Lines Per Scene**: ${input.dialogueLinesPerSceneMin}–${input.dialogueLinesPerSceneMax}
 

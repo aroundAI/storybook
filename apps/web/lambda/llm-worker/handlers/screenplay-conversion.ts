@@ -117,6 +117,7 @@ export async function processScreenplayConversion(
     } = await import('../utils/context-builder');
 
     const episodeContext = await buildEpisodeContext(data.episodeId, supabase);
+    const directionNotes = episodeContext.seasonDirectionNotes ?? undefined;
     const characters = episodeContext.characters;
     const locations = episodeContext.locations;
 
@@ -226,6 +227,7 @@ export async function processScreenplayConversion(
       tone,
       themes,
       keyEvents,
+      directionNotes,
     });
 
     if (!orchestratorResult.success || orchestratorResult.scenes.length === 0) {

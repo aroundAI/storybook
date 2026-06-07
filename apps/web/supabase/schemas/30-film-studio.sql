@@ -30,6 +30,7 @@ create table if not exists public.seasons (
   number integer not null,
   name varchar(255),
   description text,
+  direction_notes text,
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
   deleted_at timestamp with time zone default null,
@@ -45,6 +46,7 @@ comment on table public.seasons is 'Seasons organize episodes for series-type pr
 comment on column public.seasons.number is 'Sequential season number (1, 2, 3...)';
 comment on column public.seasons.name is 'Display name (e.g., "Season 1: Origins")';
 comment on column public.seasons.deleted_at is 'Soft delete timestamp - NULL means active';
+comment on column public.seasons.direction_notes is 'Creative direction notes that influence story/screenplay generation for all episodes in this season';
 
 -- Indexes for seasons
 create index if not exists idx_seasons_project_number on public.seasons(project_id, number)

@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+
 import { z } from 'zod';
+
 import type { ProjectType } from '@kit/film-studio-schemas/project';
 
 /** StoryData interface for episode story content */
@@ -96,6 +98,7 @@ export interface EpisodeContext {
 
   // Season context
   seasonPremise?: string;
+  seasonDirectionNotes?: string;
   seasonTheme?: string;
 
   // Continuity (previous episodes) - SCORE Framework
@@ -190,7 +193,8 @@ export async function buildEpisodeContext(
         id,
         number,
         name,
-        description
+        description,
+        direction_notes
       )
     `,
     )
@@ -386,6 +390,7 @@ export async function buildEpisodeContext(
     locations,
 
     seasonPremise: seasonContext?.premise,
+    seasonDirectionNotes: episode.season?.direction_notes ?? undefined,
     seasonTheme: undefined, // TODO: Add theme to season schema
 
     previousEpisodes,

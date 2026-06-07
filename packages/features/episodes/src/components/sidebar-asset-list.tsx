@@ -121,14 +121,10 @@ export function SidebarAssetList({
           }
           const linked = (result.data as { linked?: number }).linked ?? 0;
           if (linked > 0) {
-            parts.push(
-              `Linked ${linked} existing`,
-            );
+            parts.push(`Linked ${linked} existing`);
           }
           toast.success(
-            parts.length > 0
-              ? parts.join(', ')
-              : 'All assets are up to date',
+            parts.length > 0 ? parts.join(', ') : 'All assets are up to date',
           );
           refetch();
           onAssetCreated?.();
