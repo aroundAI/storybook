@@ -19,6 +19,8 @@ import { Button } from '@kit/ui/button';
 import { useBulkLlmJobs } from '@kit/ui/hooks';
 import { cn } from '@kit/ui/utils';
 
+import { ExpandableContent } from './expandable-content';
+
 import type {
   BulkAction,
   BulkState,
@@ -33,7 +35,16 @@ import type {
 interface ScreenplayConversionWsResult {
   data?: {
     screenplay?: {
-      scenes?: unknown[];
+      scenes?: Array<{
+        number: number;
+        heading: string;
+        description?: string;
+        dialogue?: Array<{
+          character: string;
+          text: string;
+          parenthetical?: string;
+        }>;
+      }>;
     };
     dialogueLinesCreated?: number;
     episode?: {
@@ -42,6 +53,34 @@ interface ScreenplayConversionWsResult {
       version: number;
     };
   };
+}
+
+function formatScreenplayText(
+  scenes: Array<{
+    number: number;
+    heading: string;
+    description?: string;
+    dialogue?: Array<{
+      character: string;
+      text: string;
+      parenthetical?: string;
+    }>;
+  }>,
+): string {
+  return scenes
+    .map((scene) => {
+      const parts: string[] = [];
+      parts.push(`SCENE ${scene.number}: ${scene.heading}`);
+      if (scene.description) parts.push(scene.description);
+      if (scene.dialogue?.length) {
+        for (const d of scene.dialogue) {
+          const paren = d.parenthetical ? ` (${d.parenthetical})` : '';
+          parts.push(`${d.character}${paren}: "${d.text}"`);
+        }
+      }
+      return parts.join('\n');
+    })
+    .join('\n\n');
 }
 
 // ============================================================================
@@ -120,19 +159,68 @@ function StatusBadge({ status }: { status: PhaseItemStatus }) {
 // ============================================================================
 
 function EpisodeScreenplayCard({ ep }: { ep: EpisodeBulkState }) {
+  // "Already has screenplay" — expandable if next stage (shots) not done
   if (ep.screenplayStatus === 'skipped') {
-    return (
-      <div className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-4 py-3">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-white/70">
-            Ep {ep.episodeNumber}
+    const nextStageDone =
+      ep.shotStatus === 'skipped' || ep.shotStatus === 'done';
+
+    if (nextStageDone) {
+      return (
+        <div className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-white/70">
+              Ep {ep.episodeNumber}
+            </span>
+            <span className="text-sm text-white/50">{ep.title}</span>
+          </div>
+          <span className="flex items-center gap-1.5 text-xs text-emerald-400/70">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Already has screenplay
           </span>
-          <span className="text-sm text-white/50">{ep.title}</span>
         </div>
-        <span className="flex items-center gap-1.5 text-xs text-emerald-400/70">
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          Already has screenplay
-        </span>
+      );
+    }
+
+    // Next stage not done — show expandable card with preview
+    return (
+      <div className="rounded-lg border border-white/10 bg-zinc-900/50">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-white/70">
+              Ep {ep.episodeNumber}
+            </span>
+            <span className="text-sm text-white/90">{ep.title}</span>
+          </div>
+          <span className="flex items-center gap-1.5 text-xs text-emerald-400/70">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Has screenplay
+          </span>
+        </div>
+        <div className="border-t border-white/5 px-4 py-3">
+          <div className="mb-2 flex items-center gap-3">
+            <Badge
+              variant="outline"
+              className="gap-1 border-white/10 text-white/50"
+            >
+              <Film className="h-3 w-3" />
+              {ep.sceneCount ?? 0} scene{(ep.sceneCount ?? 0) !== 1 ? 's' : ''}
+            </Badge>
+            <Badge
+              variant="outline"
+              className="gap-1 border-white/10 text-white/50"
+            >
+              <MessageSquare className="h-3 w-3" />
+              {ep.dialogueCount ?? 0} dialogue line
+              {(ep.dialogueCount ?? 0) !== 1 ? 's' : ''}
+            </Badge>
+          </div>
+          {ep.screenplayPreview && (
+            <ExpandableContent
+              content={ep.screenplayPreview}
+              label="Screenplay"
+            />
+          )}
+        </div>
       </div>
     );
   }
@@ -165,24 +253,32 @@ function EpisodeScreenplayCard({ ep }: { ep: EpisodeBulkState }) {
         </div>
       )}
 
-      {/* Done — show scene + dialogue counts */}
+      {/* Done — show scene + dialogue counts + expandable preview */}
       {ep.screenplayStatus === 'done' && (
-        <div className="flex items-center gap-3 border-t border-white/5 px-4 py-3">
-          <Badge
-            variant="outline"
-            className="gap-1 border-white/10 text-white/50"
-          >
-            <Film className="h-3 w-3" />
-            {ep.sceneCount ?? 0} scene{(ep.sceneCount ?? 0) !== 1 ? 's' : ''}
-          </Badge>
-          <Badge
-            variant="outline"
-            className="gap-1 border-white/10 text-white/50"
-          >
-            <MessageSquare className="h-3 w-3" />
-            {ep.dialogueCount ?? 0} dialogue line
-            {(ep.dialogueCount ?? 0) !== 1 ? 's' : ''}
-          </Badge>
+        <div className="border-t border-white/5 px-4 py-3">
+          <div className="mb-2 flex items-center gap-3">
+            <Badge
+              variant="outline"
+              className="gap-1 border-white/10 text-white/50"
+            >
+              <Film className="h-3 w-3" />
+              {ep.sceneCount ?? 0} scene{(ep.sceneCount ?? 0) !== 1 ? 's' : ''}
+            </Badge>
+            <Badge
+              variant="outline"
+              className="gap-1 border-white/10 text-white/50"
+            >
+              <MessageSquare className="h-3 w-3" />
+              {ep.dialogueCount ?? 0} dialogue line
+              {(ep.dialogueCount ?? 0) !== 1 ? 's' : ''}
+            </Badge>
+          </div>
+          {ep.screenplayPreview && (
+            <ExpandableContent
+              content={ep.screenplayPreview}
+              label="Screenplay"
+            />
+          )}
         </div>
       )}
     </div>
@@ -216,13 +312,29 @@ export function ScreenplayPhase({
         processedRef.current.add(episodeId);
 
         const result = entry.result;
-        const sceneCount = result?.data?.screenplay?.scenes?.length ?? 0;
+        const scenes = result?.data?.screenplay?.scenes ?? [];
+        const sceneCount = scenes.length;
         const dialogueCount = result?.data?.dialogueLinesCreated ?? 0;
+        const preview = scenes.length > 0
+          ? formatScreenplayText(
+              scenes as Array<{
+                number: number;
+                heading: string;
+                description?: string;
+                dialogue?: Array<{
+                  character: string;
+                  text: string;
+                  parenthetical?: string;
+                }>;
+              }>,
+            )
+          : null;
 
         dispatch({
           type: 'SET_SCREENPLAY_STATUS',
           episodeId,
           status: 'done',
+          preview,
           sceneCount,
           dialogueCount,
         });

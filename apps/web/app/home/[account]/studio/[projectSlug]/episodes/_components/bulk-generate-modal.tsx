@@ -70,6 +70,7 @@ export interface EpisodeBulkState {
   refinementNotes?: string;
   // Screenplay
   screenplayStatus: PhaseItemStatus;
+  screenplayPreview?: string | null;
   sceneCount?: number;
   dialogueCount?: number;
   // Assets
@@ -131,6 +132,7 @@ export type BulkAction =
       type: 'SET_SCREENPLAY_STATUS';
       episodeId: string;
       status: PhaseItemStatus;
+      preview?: string | null;
       sceneCount?: number;
       dialogueCount?: number;
     }
@@ -241,6 +243,9 @@ function bulkReducer(state: BulkState, action: BulkAction): BulkState {
     case 'SET_SCREENPLAY_STATUS':
       return updateEpisode(state, action.episodeId, () => ({
         screenplayStatus: action.status,
+        ...(action.preview !== undefined
+          ? { screenplayPreview: action.preview }
+          : {}),
         ...(action.sceneCount !== undefined
           ? { sceneCount: action.sceneCount }
           : {}),
@@ -329,6 +334,37 @@ const STATUS_ORDER = [
   'published',
 ];
 
+/**
+ * Formats screenplay scenes into readable text for the preview.
+ */
+function formatScreenplayPreview(
+  scenes: Array<{
+    number: number;
+    heading: string;
+    description?: string;
+    dialogue?: Array<{
+      character: string;
+      text: string;
+      parenthetical?: string;
+    }>;
+  }>,
+): string {
+  return scenes
+    .map((scene) => {
+      const parts: string[] = [];
+      parts.push(`SCENE ${scene.number}: ${scene.heading}`);
+      if (scene.description) parts.push(scene.description);
+      if (scene.dialogue?.length) {
+        for (const d of scene.dialogue) {
+          const paren = d.parenthetical ? ` (${d.parenthetical})` : '';
+          parts.push(`${d.character}${paren}: "${d.text}"`);
+        }
+      }
+      return parts.join('\n');
+    })
+    .join('\n\n');
+}
+
 export function statusIndex(status: string): number {
   return STATUS_ORDER.indexOf(status);
 }
@@ -369,7 +405,21 @@ export function BulkGenerateModal({
               statusIndex(ep.status) >= 2 ? 'skipped' : 'pending',
             shotStatus: statusIndex(ep.status) >= 3 ? 'skipped' : 'pending',
             storyPreview: ep.storyData?.fullStory
-              ? String(ep.storyData.fullStory).substring(0, 300)
+              ? String(ep.storyData.fullStory)
+              : null,
+            screenplayPreview: ep.screenplayData?.scenes
+              ? formatScreenplayPreview(
+                  ep.screenplayData.scenes as Array<{
+                    number: number;
+                    heading: string;
+                    description?: string;
+                    dialogue?: Array<{
+                      character: string;
+                      text: string;
+                      parenthetical?: string;
+                    }>;
+                  }>,
+                )
               : null,
             sceneCount: ep.screenplayData?.scenes?.length,
             unlinkedCharacters: [],

@@ -8,8 +8,6 @@ import {
   ArrowRight,
   BookOpen,
   CheckCircle2,
-  ChevronDown,
-  ChevronRight,
   Loader2,
   RefreshCw,
   Sparkles,
@@ -21,14 +19,10 @@ import {
 } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@kit/ui/collapsible';
 import { useBulkLlmJobs } from '@kit/ui/hooks';
 import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
+import { ExpandableContent } from './expandable-content';
 
 import type {
   BulkAction,
@@ -181,7 +175,6 @@ function EpisodeStoryCard({
   dispatch: React.Dispatch<BulkAction>;
   projectId: string;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const processedRefineRef = useRef<Set<string>>(new Set());
 
@@ -202,10 +195,10 @@ function EpisodeStoryCard({
         const result = entry.result;
         const storyData = result.data?.story;
         const preview = storyData?.fullStory
-          ? String(storyData.fullStory).substring(0, 300)
+          ? String(storyData.fullStory)
           : storyData?.fullText
-            ? String(storyData.fullText).substring(0, 300)
-            : JSON.stringify(result.data).substring(0, 300);
+            ? String(storyData.fullText)
+            : JSON.stringify(result.data);
 
         dispatch({
           type: 'SET_STORY_STATUS',
@@ -295,19 +288,81 @@ function EpisodeStoryCard({
     markRefinePending,
   ]);
 
+  // "Already has story" — expandable if next stage (screenplay) not done
   if (ep.storyStatus === 'skipped') {
-    return (
-      <div className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-4 py-3">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-white/70">
-            Ep {ep.episodeNumber}
+    const nextStageDone =
+      ep.screenplayStatus === 'skipped' || ep.screenplayStatus === 'done';
+
+    if (nextStageDone) {
+      return (
+        <div className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-white/70">
+              Ep {ep.episodeNumber}
+            </span>
+            <span className="text-sm text-white/50">{ep.title}</span>
+          </div>
+          <span className="flex items-center gap-1.5 text-xs text-emerald-400/70">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Already has story
           </span>
-          <span className="text-sm text-white/50">{ep.title}</span>
         </div>
-        <span className="flex items-center gap-1.5 text-xs text-emerald-400/70">
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          Already has story
-        </span>
+      );
+    }
+
+    // Next stage not done — show expandable card with preview + refinement
+    return (
+      <div className="rounded-lg border border-white/10 bg-zinc-900/50">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-white/70">
+              Ep {ep.episodeNumber}
+            </span>
+            <span className="text-sm text-white/90">{ep.title}</span>
+          </div>
+          <span className="flex items-center gap-1.5 text-xs text-emerald-400/70">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Has story
+          </span>
+        </div>
+        {ep.storyPreview && (
+          <div className="border-t border-white/5 px-4 py-3">
+            <ExpandableContent
+              content={ep.storyPreview}
+              label="Story Preview"
+            />
+            {/* Refinement */}
+            <div className="mt-3 space-y-2">
+              <Textarea
+                value={ep.refinementNotes ?? ''}
+                onChange={(e) =>
+                  dispatch({
+                    type: 'SET_REFINEMENT_NOTES',
+                    episodeId: ep.episodeId,
+                    notes: e.target.value,
+                  })
+                }
+                placeholder="Add refinement notes (e.g. 'Make the ending more dramatic')"
+                className="min-h-[60px] resize-none border-white/10 bg-zinc-950/50 text-sm text-white/80 placeholder:text-white/25"
+                disabled={isRefining}
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleRefine}
+                disabled={isRefining || !ep.refinementNotes?.trim()}
+                className="gap-1.5 text-xs"
+              >
+                {isRefining ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3 w-3" />
+                )}
+                Refine
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -344,22 +399,10 @@ function EpisodeStoryCard({
       {(ep.storyStatus === 'review' || ep.storyStatus === 'done') &&
         ep.storyPreview && (
           <div className="border-t border-white/5 px-4 py-3">
-            <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-              <CollapsibleTrigger className="flex w-full items-center gap-2 text-xs font-medium text-white/50 transition-colors hover:text-white/70">
-                {isOpen ? (
-                  <ChevronDown className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronRight className="h-3.5 w-3.5" />
-                )}
-                Story Preview
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <p className="mt-2 text-sm leading-relaxed text-white/60">
-                  {ep.storyPreview}
-                  {ep.storyPreview.length >= 300 && '…'}
-                </p>
-              </CollapsibleContent>
-            </Collapsible>
+            <ExpandableContent
+              content={ep.storyPreview}
+              label="Story Preview"
+            />
 
             {/* Refinement */}
             <div className="mt-3 space-y-2">
@@ -425,7 +468,7 @@ export function StoryPhase({
 
         const result = entry.result;
         const storyText = result.data?.story?.fullText ?? '';
-        const preview = storyText.substring(0, 300);
+        const preview = storyText;
 
         dispatch({
           type: 'SET_STORY_STATUS',
