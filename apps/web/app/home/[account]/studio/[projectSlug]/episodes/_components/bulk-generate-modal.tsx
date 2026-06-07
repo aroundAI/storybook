@@ -415,7 +415,7 @@ export function BulkGenerateModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
+      <DialogContent className="flex h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
         <DialogHeader className="shrink-0 border-b border-white/10 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
