@@ -62,12 +62,14 @@ interface Episode {
   title: string;
   description: string | null;
   status: string;
+  version: number;
   duration_seconds: number | null;
   thumbnail_url: string | null;
   story_data: Record<string, unknown> | null;
   screenplay_data: Record<string, unknown> | null;
   shot_list: Record<string, unknown> | null;
   metadata: Record<string, unknown> | null;
+  target_duration_seconds: number | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -404,7 +406,7 @@ function mapEpisode(episode: Episode) {
     screenplayData: null,
     shotList: null,
     metadata: null,
-    version: 0,
+    version: episode.version,
     createdAt: episode.created_at,
     updatedAt: episode.updated_at,
     deletedAt: episode.deleted_at,
