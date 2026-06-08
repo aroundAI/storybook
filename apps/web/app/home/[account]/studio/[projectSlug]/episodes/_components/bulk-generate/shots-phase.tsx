@@ -245,7 +245,7 @@ export function ShotsPhase({
         dispatch({ type: 'SET_SHOT_STATUS', episodeId: ep.episodeId, status: 'error' });
       }
     }
-  }, [pendingEpisodes, dispatch, cancelledRef, registerEpisodes, markPending]);
+  }, [pendingEpisodes, dispatch, registerEpisodes, markPending]);
 
   // Retry failed episodes
   const handleRetryFailed = useCallback(() => {

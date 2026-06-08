@@ -68,7 +68,7 @@ interface IdeationPhaseProps {
 export function IdeationPhase({
   state,
   dispatch,
-  cancelledRef,
+  _cancelledRef,
   onNext,
   onBack,
 }: IdeationPhaseProps) {

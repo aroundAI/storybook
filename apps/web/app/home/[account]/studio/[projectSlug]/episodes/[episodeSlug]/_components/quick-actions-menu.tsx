@@ -85,7 +85,7 @@ interface QuickActionsMenuProps {
 export function QuickActionsMenu({
   episodeId,
   episodeTitle,
-  episodeVersion,
+  _episodeVersion,
   episodeStatus,
   projectSlug,
   account,
