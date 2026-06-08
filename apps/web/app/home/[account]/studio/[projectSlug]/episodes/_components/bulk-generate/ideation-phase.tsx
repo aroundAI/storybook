@@ -11,7 +11,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-import { generateStoryIdeasAction } from '@kit/episodes/server';
+import { batchGenerateIdeasAction } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { useBulkLlmJobs } from '@kit/ui/hooks';
@@ -164,38 +164,39 @@ export function IdeationPhase({
     // Register all episodes for WebSocket tracking
     registerEpisodes(pendingEpisodes.map((ep) => ep.episodeId));
 
-    // Fire all ideation jobs
+    // Mark all as generating and register for tracking
     for (const ep of pendingEpisodes) {
-      if (cancelledRef.current) break;
-
       markPending(ep.episodeId);
+      dispatch({
+        type: 'SET_IDEATION_STATUS',
+        episodeId: ep.episodeId,
+        status: 'generating',
+      });
+    }
 
-      try {
-        dispatch({
-          type: 'SET_IDEATION_STATUS',
-          episodeId: ep.episodeId,
-          status: 'generating',
-        });
-        await generateStoryIdeasAction({
+    // Single batch call — SQS + Lambda handle throughput
+    try {
+      const result = await batchGenerateIdeasAction({
+        episodes: pendingEpisodes.map((ep) => ({
           episodeId: ep.episodeId,
           premise: ep.title,
           numberOfIdeas: 3,
-        });
-      } catch (err) {
-        dispatch({
-          type: 'SET_EPISODE_ERROR',
-          episodeId: ep.episodeId,
-          error:
-            err instanceof Error ? err.message : 'Failed to start ideation',
-        });
-        dispatch({
-          type: 'SET_IDEATION_STATUS',
-          episodeId: ep.episodeId,
-          status: 'error',
-        });
+        })),
+      });
+
+      // Mark individually failed episodes
+      for (const { episodeId, error } of result.failed) {
+        dispatch({ type: 'SET_EPISODE_ERROR', episodeId, error });
+        dispatch({ type: 'SET_IDEATION_STATUS', episodeId, status: 'error' });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Batch ideation failed';
+      for (const ep of pendingEpisodes) {
+        dispatch({ type: 'SET_EPISODE_ERROR', episodeId: ep.episodeId, error: message });
+        dispatch({ type: 'SET_IDEATION_STATUS', episodeId: ep.episodeId, status: 'error' });
       }
     }
-  }, [pendingEpisodes, cancelledRef, dispatch, registerEpisodes, markPending]);
+  }, [pendingEpisodes, dispatch, registerEpisodes, markPending]);
 
   return (
     <div className="flex h-full flex-col">

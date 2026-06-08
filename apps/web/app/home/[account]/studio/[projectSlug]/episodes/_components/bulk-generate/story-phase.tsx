@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 import {
-  generateFullStoryAction,
+  batchGenerateStoriesAction,
   refineStoryAction,
 } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
@@ -517,7 +517,8 @@ export function StoryPhase({
     (ep) =>
       ep.storyStatus === 'done' ||
       ep.storyStatus === 'review' ||
-      ep.storyStatus === 'skipped',
+      ep.storyStatus === 'skipped' ||
+      ep.storyStatus === 'error',
   );
 
   const pendingCount = selectedEpisodes.filter(
@@ -528,70 +529,77 @@ export function StoryPhase({
     (ep) => ep.storyStatus === 'generating',
   ).length;
 
+  const failedEpisodes = selectedEpisodes.filter(
+    (ep) => ep.storyStatus === 'error',
+  );
+  const errorCount = failedEpisodes.length;
+
   const handleGenerate = useCallback(async () => {
     const toGenerate = selectedEpisodes.filter(
       (ep) => ep.storyStatus === 'pending',
     );
     if (toGenerate.length === 0) return;
 
-    cancelledRef.current = false;
     dispatch({ type: 'SET_GENERATING', isGenerating: true });
 
     // Register all episodes for WebSocket tracking
     registerEpisodes(toGenerate.map((ep) => ep.episodeId));
 
-    // Kick off generation for each episode
-    for (const ep of toGenerate) {
-      if (cancelledRef.current) break;
+    // Build batch payload, pre-validate ideas
+    const batchPayload: Array<{
+      episodeId: string;
+      version: number;
+      title: string;
+      logline: string;
+      targetDuration?: number;
+      contentStyle?: string;
+      themes?: string[];
+      hook?: string;
+      visualDirection?: string;
+    }> = [];
 
+    for (const ep of toGenerate) {
       const idea = ep.ideas?.[ep.selectedIdeaIndex ?? 0];
       if (!idea) {
-        dispatch({
-          type: 'SET_EPISODE_ERROR',
-          episodeId: ep.episodeId,
-          error: 'No idea selected',
-        });
-        dispatch({
-          type: 'SET_STORY_STATUS',
-          episodeId: ep.episodeId,
-          status: 'error',
-        });
+        dispatch({ type: 'SET_EPISODE_ERROR', episodeId: ep.episodeId, error: 'No idea selected' });
+        dispatch({ type: 'SET_STORY_STATUS', episodeId: ep.episodeId, status: 'error' });
         continue;
       }
 
-      dispatch({
-        type: 'SET_STORY_STATUS',
-        episodeId: ep.episodeId,
-        status: 'generating',
-      });
-
       markPending(ep.episodeId);
+      dispatch({ type: 'SET_STORY_STATUS', episodeId: ep.episodeId, status: 'generating' });
 
-      try {
-        await generateFullStoryAction({
-          episodeId: ep.episodeId,
-          version: ep.version,
-          title: idea.title,
-          logline: idea.logline,
-          targetDuration: ep.duration,
-          contentStyle: ep.contentStyle,
-          themes: idea.themes,
-          hook: idea.hook,
-          visualDirection: idea.visualDirection,
-        });
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'Story generation failed';
-        dispatch({
-          type: 'SET_EPISODE_ERROR',
-          episodeId: ep.episodeId,
-          error: message,
-        });
-        dispatch({
-          type: 'SET_STORY_STATUS',
-          episodeId: ep.episodeId,
-          status: 'error',
-        });
+      batchPayload.push({
+        episodeId: ep.episodeId,
+        version: ep.version,
+        title: idea.title,
+        logline: idea.logline,
+        targetDuration: ep.duration,
+        contentStyle: ep.contentStyle,
+        themes: idea.themes,
+        hook: idea.hook,
+        visualDirection: idea.visualDirection,
+      });
+    }
+
+    if (batchPayload.length === 0) {
+      dispatch({ type: 'SET_GENERATING', isGenerating: false });
+      return;
+    }
+
+    // Single batch call — SQS + Lambda handle throughput
+    try {
+      const result = await batchGenerateStoriesAction({ episodes: batchPayload });
+
+      for (const { episodeId, error } of result.failed) {
+        dispatch({ type: 'SET_EPISODE_ERROR', episodeId, error });
+        dispatch({ type: 'SET_STORY_STATUS', episodeId, status: 'error' });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Batch story generation failed';
+      for (const ep of batchPayload) {
+        dispatch({ type: 'SET_EPISODE_ERROR', episodeId: ep.episodeId, error: message });
+        dispatch({ type: 'SET_STORY_STATUS', episodeId: ep.episodeId, status: 'error' });
       }
     }
 
@@ -606,12 +614,37 @@ export function StoryPhase({
     }
   }, [
     selectedEpisodes,
-    cancelledRef,
     dispatch,
     state.episodes,
     registerEpisodes,
     markPending,
   ]);
+
+  // Retry failed episodes
+  const handleRetryFailed = useCallback(() => {
+    const failedIds = failedEpisodes.map((ep) => ep.episodeId);
+    if (failedIds.length === 0) return;
+
+    for (const id of failedIds) {
+      processedRef.current.delete(id);
+    }
+
+    cancelledRef.current = false;
+    dispatch({ type: 'RETRY_EPISODES', episodeIds: failedIds, phase: 'story' });
+  }, [failedEpisodes, dispatch, cancelledRef]);
+
+  // Auto-trigger generation when episodes are retried
+  useEffect(() => {
+    if (pendingCount > 0 && !state.isGenerating && allDone === false) {
+      // Only auto-trigger if we've already started (i.e. there are done/error episodes)
+      const hasProgress = selectedEpisodes.some(
+        (ep) => ep.storyStatus === 'done' || ep.storyStatus === 'review' || ep.storyStatus === 'error',
+      );
+      if (hasProgress) {
+        handleGenerate();
+      }
+    }
+  }, [pendingCount, state.isGenerating, allDone, selectedEpisodes, handleGenerate]);
 
   return (
     <div className="flex h-full flex-col">
@@ -644,6 +677,18 @@ export function StoryPhase({
                 <Sparkles className="h-3.5 w-3.5" />
               )}
               Generate Stories
+            </Button>
+          )}
+
+          {errorCount > 0 && !state.isGenerating && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRetryFailed}
+              className="gap-1.5 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Retry {errorCount} Failed
             </Button>
           )}
         </div>

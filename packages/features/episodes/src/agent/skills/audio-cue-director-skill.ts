@@ -36,9 +36,10 @@ const generateAudioCuesTool = createTool({
     'Generates audio cues (music, SFX, ambient) from a shot list. Each cue has a type, generative prompt, start shot sequence, offset, and duration. Cues flow across shot boundaries to create a cohesive audio landscape.',
   parameters: z.object({
     shotsJson: z
-      .string()
+      .union([z.string(), z.array(z.any())])
+      .transform((val) => (typeof val === 'string' ? val : JSON.stringify(val)))
       .describe(
-        'JSON array of shot data — each element must have seq, duration, audioDesc, and action fields.',
+        'JSON array of shot data — each element must have seq, duration, audioDesc, and action fields. Can be a JSON string or array.',
       ),
     sceneHeading: z
       .string()

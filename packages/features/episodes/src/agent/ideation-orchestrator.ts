@@ -118,8 +118,9 @@ export async function runIdeationOrchestrator(
     };
   }
 
-  // Extract ideas from the last successful generateIdeas step
-  // (more reliable than LLM synthesis for structured data)
+  // Extract ideas from generateIdeas steps.
+  // When regeneration occurs, the LAST step only contains replacement ideas
+  // for weak indices. We must merge replacements into the original full set.
   type GenerateIdeasResult = {
     ideas?: Array<{
       title: string;
@@ -130,17 +131,62 @@ export async function runIdeationOrchestrator(
       visualPotential: string;
     }>;
     count?: number;
+    wasRegeneration?: boolean;
   };
 
-  const ideasStep = result.steps.findLast(
+  const allIdeasSteps = result.steps.filter(
     (s) =>
       s.type === 'tool_call' &&
       s.toolName === 'generateIdeas' &&
       s.toolResult?.success,
   );
-  const ideasStepData = ideasStep?.toolResult?.data as
+
+  // First step = original full set, last step = possible regeneration
+  const firstStepData = allIdeasSteps[0]?.toolResult?.data as
     | GenerateIdeasResult
     | undefined;
+  const lastStepData =
+    allIdeasSteps.length > 1
+      ? (allIdeasSteps[allIdeasSteps.length - 1]?.toolResult?.data as
+          | GenerateIdeasResult
+          | undefined)
+      : undefined;
+
+  let rawIdeas = firstStepData?.ideas ?? result.data.ideas ?? [];
+
+  // If there was a regeneration step, merge replacements into original set
+  if (lastStepData?.wasRegeneration && lastStepData.ideas?.length) {
+    // Find the evaluateIdeas step that produced weakIndices
+    const evalStepForWeak = result.steps.find(
+      (s) =>
+        s.type === 'tool_call' &&
+        s.toolName === 'evaluateIdeas' &&
+        s.toolResult?.success,
+    );
+    const evalData = evalStepForWeak?.toolResult?.data as
+      | { weakIndices?: number[] }
+      | undefined;
+    const weakIndices = evalData?.weakIndices ?? [];
+
+    if (weakIndices.length > 0 && weakIndices.length === lastStepData.ideas.length) {
+      // Replace only the weak ideas at their original positions
+      const merged = [...rawIdeas];
+      weakIndices.forEach((originalIndex, replacementIndex) => {
+        if (originalIndex < merged.length && lastStepData.ideas![replacementIndex]) {
+          merged[originalIndex] = lastStepData.ideas![replacementIndex]!;
+        }
+      });
+      rawIdeas = merged;
+      console.log(
+        `[Ideation Orchestrator] Merged ${lastStepData.ideas.length} regenerated ideas at indices [${weakIndices.join(', ')}]`,
+      );
+    } else {
+      // Fallback: if weakIndices don't line up, take the larger set
+      if (lastStepData.ideas.length >= rawIdeas.length) {
+        rawIdeas = lastStepData.ideas;
+      }
+    }
+  }
 
   // Extract evaluations to merge quality scores onto ideas
   type EvaluateIdeasResult = {
@@ -148,6 +194,7 @@ export async function runIdeationOrchestrator(
       ideaIndex: number;
       overallScore: number;
     }>;
+    weakIndices?: number[];
   };
 
   const evaluationStep = result.steps.findLast(
@@ -161,7 +208,6 @@ export async function runIdeationOrchestrator(
     | undefined;
 
   // Merge quality scores from evaluator into ideas
-  const rawIdeas = ideasStepData?.ideas ?? result.data.ideas ?? [];
   const ideas = rawIdeas.map((idea, index) => {
     const evaluation = evaluationData?.evaluations?.find(
       (e) => e.ideaIndex === index,

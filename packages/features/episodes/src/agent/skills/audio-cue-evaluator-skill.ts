@@ -30,14 +30,16 @@ const evaluateAudioCuesTool = createTool({
     'Evaluates audio cue quality using rule-based checks: timeline coverage (≥70%), silent gaps (>3s), same-type overlaps, and music density (60-90%). Returns a pass/revise verdict with specific issues.',
   parameters: z.object({
     cuesJson: z
-      .string()
+      .union([z.string(), z.array(z.any())])
+      .transform((val) => (typeof val === 'string' ? val : JSON.stringify(val)))
       .describe(
-        'JSON array of generated audio cues with type, startShotSequence, startOffsetInShot, and durationSeconds.',
+        'JSON array of generated audio cues with type, startShotSequence, startOffsetInShot, and durationSeconds. Can be a JSON string or array.',
       ),
     shotsJson: z
-      .string()
+      .union([z.string(), z.array(z.any())])
+      .transform((val) => (typeof val === 'string' ? val : JSON.stringify(val)))
       .describe(
-        'JSON array of original shot data with seq and duration fields — used to build the absolute timeline.',
+        'JSON array of original shot data with seq and duration fields — used to build the absolute timeline. Can be a JSON string or array.',
       ),
     totalDurationSeconds: z
       .number()

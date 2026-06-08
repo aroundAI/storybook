@@ -10,10 +10,11 @@ import {
   Film,
   Loader2,
   MessageSquare,
+  RefreshCw,
   Sparkles,
 } from 'lucide-react';
 
-import { convertToScreenplayAction } from '@kit/episodes/server';
+import { batchConvertScreenplaysAction } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { useBulkLlmJobs } from '@kit/ui/hooks';
@@ -376,7 +377,10 @@ export function ScreenplayPhase({
   );
 
   const allDone = selectedEpisodes.every(
-    (ep) => ep.screenplayStatus === 'done' || ep.screenplayStatus === 'skipped',
+    (ep) =>
+      ep.screenplayStatus === 'done' ||
+      ep.screenplayStatus === 'skipped' ||
+      ep.screenplayStatus === 'error',
   );
 
   const pendingCount = selectedEpisodes.filter(
@@ -387,51 +391,74 @@ export function ScreenplayPhase({
     (ep) => ep.screenplayStatus === 'generating',
   ).length;
 
+  const failedEpisodes = selectedEpisodes.filter(
+    (ep) => ep.screenplayStatus === 'error',
+  );
+  const errorCount = failedEpisodes.length;
+
   const handleGenerate = useCallback(async () => {
     const toGenerate = selectedEpisodes.filter(
       (ep) => ep.screenplayStatus === 'pending',
     );
     if (toGenerate.length === 0) return;
 
-    cancelledRef.current = false;
     dispatch({ type: 'SET_GENERATING', isGenerating: true });
 
     // Register all episodes for WebSocket tracking
     registerEpisodes(toGenerate.map((ep) => ep.episodeId));
 
-    // Kick off screenplay conversion for each episode
+    // Mark all as generating
     for (const ep of toGenerate) {
-      if (cancelledRef.current) break;
-
       markPending(ep.episodeId);
+      dispatch({ type: 'SET_SCREENPLAY_STATUS', episodeId: ep.episodeId, status: 'generating' });
+    }
 
-      dispatch({
-        type: 'SET_SCREENPLAY_STATUS',
-        episodeId: ep.episodeId,
-        status: 'generating',
-      });
-
-      try {
-        await convertToScreenplayAction({
+    // Single batch call — SQS + Lambda handle throughput
+    try {
+      const result = await batchConvertScreenplaysAction({
+        episodes: toGenerate.map((ep) => ({
           episodeId: ep.episodeId,
           contentStyle: ep.contentStyle,
-        });
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'Screenplay conversion failed';
-        dispatch({
-          type: 'SET_EPISODE_ERROR',
-          episodeId: ep.episodeId,
-          error: message,
-        });
-        dispatch({
-          type: 'SET_SCREENPLAY_STATUS',
-          episodeId: ep.episodeId,
-          status: 'error',
-        });
+        })),
+      });
+
+      for (const { episodeId, error } of result.failed) {
+        dispatch({ type: 'SET_EPISODE_ERROR', episodeId, error });
+        dispatch({ type: 'SET_SCREENPLAY_STATUS', episodeId, status: 'error' });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Batch screenplay conversion failed';
+      for (const ep of toGenerate) {
+        dispatch({ type: 'SET_EPISODE_ERROR', episodeId: ep.episodeId, error: message });
+        dispatch({ type: 'SET_SCREENPLAY_STATUS', episodeId: ep.episodeId, status: 'error' });
       }
     }
-  }, [selectedEpisodes, cancelledRef, dispatch, registerEpisodes, markPending]);
+  }, [selectedEpisodes, dispatch, registerEpisodes, markPending]);
+
+  // Retry failed episodes
+  const handleRetryFailed = useCallback(() => {
+    const failedIds = failedEpisodes.map((ep) => ep.episodeId);
+    if (failedIds.length === 0) return;
+
+    for (const id of failedIds) {
+      processedRef.current.delete(id);
+    }
+
+    cancelledRef.current = false;
+    dispatch({ type: 'RETRY_EPISODES', episodeIds: failedIds, phase: 'screenplay' });
+  }, [failedEpisodes, dispatch, cancelledRef]);
+
+  // Auto-trigger generation when episodes are retried
+  useEffect(() => {
+    if (pendingCount > 0 && !state.isGenerating) {
+      const hasProgress = selectedEpisodes.some(
+        (ep) => ep.screenplayStatus === 'done' || ep.screenplayStatus === 'error',
+      );
+      if (hasProgress) {
+        handleGenerate();
+      }
+    }
+  }, [pendingCount, state.isGenerating, selectedEpisodes, handleGenerate]);
 
   return (
     <div className="flex h-full flex-col">
@@ -464,6 +491,18 @@ export function ScreenplayPhase({
                 <Sparkles className="h-3.5 w-3.5" />
               )}
               Generate Screenplays
+            </Button>
+          )}
+
+          {errorCount > 0 && !state.isGenerating && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRetryFailed}
+              className="gap-1.5 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Retry {errorCount} Failed
             </Button>
           )}
         </div>

@@ -8,10 +8,14 @@ import {
   Camera,
   CheckCircle2,
   Loader2,
+  RefreshCw,
   XCircle,
 } from 'lucide-react';
 
-import { generateShotListAction } from '@kit/episodes/server';
+import {
+  batchGenerateShotsAction,
+  batchGetShotCountsAction,
+} from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { useBulkLlmJobs } from '@kit/ui/hooks';
@@ -66,7 +70,58 @@ export function ShotsPhase({
   onBack,
 }: ShotsPhaseProps) {
   const [hasStarted, setHasStarted] = useState(false);
+  const [shotCountsLoading, setShotCountsLoading] = useState(true);
+  const [shotCountsLoaded, setShotCountsLoaded] = useState(false);
   const processedRef = useRef<Set<string>>(new Set());
+
+  // Fetch actual shot counts from DB on mount to detect existing shots
+  const selectedEpisodeIds = useMemo(
+    () =>
+      Array.from(state.episodes.values())
+        .filter((ep) => ep.selected)
+        .map((ep) => ep.episodeId),
+    [state.episodes],
+  );
+
+  useEffect(() => {
+    if (shotCountsLoaded || selectedEpisodeIds.length === 0) return;
+
+    let cancelled = false;
+
+    async function fetchShotCounts() {
+      try {
+        const result = await batchGetShotCountsAction({
+          episodeIds: selectedEpisodeIds,
+        });
+
+        if (cancelled || !result.success) return;
+
+        for (const { episodeId, shotCount } of result.counts) {
+          if (shotCount > 0) {
+            dispatch({
+              type: 'SET_SHOT_STATUS',
+              episodeId,
+              status: 'skipped',
+              shotCount,
+            });
+          }
+        }
+      } catch {
+        // Non-fatal: episodes will just show as pending
+      } finally {
+        if (!cancelled) {
+          setShotCountsLoaded(true);
+          setShotCountsLoading(false);
+        }
+      }
+    }
+
+    fetchShotCounts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shotCountsLoaded, selectedEpisodeIds, dispatch]);
 
   const { jobs, registerEpisodes, markPending, completedCount, totalCount } =
     useBulkLlmJobs<ShotGenerationResult>('shot-generation');
@@ -100,6 +155,12 @@ export function ShotsPhase({
           ep.shotStatus === 'skipped' ||
           ep.shotStatus === 'error',
       ),
+    [selectedEpisodes],
+  );
+
+  // Failed episodes
+  const failedEpisodes = useMemo(
+    () => selectedEpisodes.filter((ep) => ep.shotStatus === 'error'),
     [selectedEpisodes],
   );
 
@@ -161,40 +222,54 @@ export function ShotsPhase({
     // Register all episodes for WebSocket tracking
     registerEpisodes(pendingEpisodes.map((ep) => ep.episodeId));
 
+    // Mark all as generating
     for (const ep of pendingEpisodes) {
-      if (cancelledRef.current) break;
-
       markPending(ep.episodeId);
+      dispatch({ type: 'SET_SHOT_STATUS', episodeId: ep.episodeId, status: 'generating' });
+    }
 
-      dispatch({
-        type: 'SET_SHOT_STATUS',
-        episodeId: ep.episodeId,
-        status: 'generating',
+    // Single batch call — SQS + Lambda reservedConcurrency handle throughput
+    try {
+      const result = await batchGenerateShotsAction({
+        episodes: pendingEpisodes.map((ep) => ({ episodeId: ep.episodeId })),
       });
 
-      try {
-        await generateShotListAction({
-          episodeId: ep.episodeId,
-          shotDurationMin: 5,
-          shotDurationMax: 8,
-          videoProvider: 'veo-3.1',
-        });
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'Shot generation failed';
-        dispatch({
-          type: 'SET_EPISODE_ERROR',
-          episodeId: ep.episodeId,
-          error: message,
-        });
-        dispatch({
-          type: 'SET_SHOT_STATUS',
-          episodeId: ep.episodeId,
-          status: 'error',
-        });
+      for (const { episodeId, error } of result.failed) {
+        dispatch({ type: 'SET_EPISODE_ERROR', episodeId, error });
+        dispatch({ type: 'SET_SHOT_STATUS', episodeId, status: 'error' });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Batch shot generation failed';
+      for (const ep of pendingEpisodes) {
+        dispatch({ type: 'SET_EPISODE_ERROR', episodeId: ep.episodeId, error: message });
+        dispatch({ type: 'SET_SHOT_STATUS', episodeId: ep.episodeId, status: 'error' });
       }
     }
   }, [pendingEpisodes, dispatch, cancelledRef, registerEpisodes, markPending]);
+
+  // Retry failed episodes
+  const handleRetryFailed = useCallback(() => {
+    const failedIds = failedEpisodes.map((ep) => ep.episodeId);
+    if (failedIds.length === 0) return;
+
+    // Clear processedRef entries so WebSocket watcher picks them up again
+    for (const id of failedIds) {
+      processedRef.current.delete(id);
+    }
+
+    // Reset cancelled state
+    cancelledRef.current = false;
+
+    // Dispatch retry to reset statuses to pending
+    dispatch({ type: 'RETRY_EPISODES', episodeIds: failedIds, phase: 'shots' });
+  }, [failedEpisodes, dispatch, cancelledRef]);
+
+  // Auto-trigger generation when episodes are retried (pending count changes)
+  useEffect(() => {
+    if (hasStarted && pendingEpisodes.length > 0 && !state.isGenerating) {
+      handleGenerate();
+    }
+  }, [hasStarted, pendingEpisodes.length, state.isGenerating, handleGenerate]);
 
   // Stats
   const doneCount = selectedEpisodes.filter(
@@ -213,11 +288,22 @@ export function ShotsPhase({
             Shot List Generation
           </h3>
           <p className="mt-1 text-xs text-white/50">
-            Generate VEO 3.1 optimized shot lists from screenplays
+            {shotCountsLoading
+              ? 'Checking existing shots...'
+              : alreadyHaveShots.length > 0
+                ? `${alreadyHaveShots.length} already have shots · ${pendingEpisodes.length} to generate`
+                : 'Generate VEO 3.1 optimized shot lists from screenplays'}
           </p>
         </div>
 
-        {!hasStarted && pendingEpisodes.length > 0 && (
+        {shotCountsLoading && (
+          <div className="flex items-center gap-2 text-xs text-white/50">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
+            Checking episodes...
+          </div>
+        )}
+
+        {!shotCountsLoading && !hasStarted && pendingEpisodes.length > 0 && (
           <Button
             size="sm"
             onClick={handleGenerate}
@@ -228,18 +314,37 @@ export function ShotsPhase({
           </Button>
         )}
 
+        {!shotCountsLoading && !hasStarted && pendingEpisodes.length === 0 && (
+          <Badge className="border-0 bg-emerald-500/20 text-emerald-400">
+            <CheckCircle2 className="mr-1.5 h-3 w-3" />
+            All episodes have shots
+          </Badge>
+        )}
+
         {hasStarted && !allComplete && (
           <div className="flex items-center gap-2 text-xs text-white/50">
             <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
-            Processing... {doneCount}/{selectedEpisodes.length}
+            Processing... {doneCount}/{pendingEpisodes.length + doneCount}
           </div>
         )}
 
-        {allComplete && (
+        {hasStarted && allComplete && errorCount === 0 && (
           <Badge className="border-0 bg-emerald-500/20 text-emerald-400">
             <CheckCircle2 className="mr-1.5 h-3 w-3" />
             Complete
           </Badge>
+        )}
+
+        {hasStarted && allComplete && errorCount > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRetryFailed}
+            className="gap-1.5 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Retry {errorCount} Failed
+          </Button>
         )}
       </div>
 
@@ -292,7 +397,7 @@ export function ShotsPhase({
         <Button
           size="sm"
           onClick={onNext}
-          disabled={!allComplete && hasStarted}
+          disabled={shotCountsLoading || (!allComplete && hasStarted)}
           className="gap-2 bg-blue-600 text-white hover:bg-blue-500"
         >
           Finish
@@ -349,8 +454,8 @@ function EpisodeShotCard({ episode }: { episode: EpisodeBulkState }) {
             </span>
           )}
           {episode.shotStatus === 'skipped' &&
-            `✓ Already has ${episode.shotCount ?? 0} shots`}
-          {episode.shotStatus === 'pending' && 'Waiting...'}
+            `✓ Already has ${episode.shotCount ?? 0} shots — will skip`}
+          {episode.shotStatus === 'pending' && 'Ready to generate'}
         </p>
       </div>
 

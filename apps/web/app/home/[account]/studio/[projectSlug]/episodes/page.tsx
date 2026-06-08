@@ -18,6 +18,7 @@ import { CollapsibleSeasonSection } from './_components/collapsible-season-secti
 import { CreateEpisodeDialog } from './_components/create-episode-dialog';
 import { CreateEpisodeWizardWrapper } from './_components/create-episode-wizard-wrapper';
 import { EpisodeListItem } from './_components/episode-list-item';
+import { EpisodeListWrapper } from './_components/episode-list-wrapper';
 import { EpisodesZeroState } from './_components/episodes-zero-state';
 import { SeasonGeneratorDialog } from './_components/season-generator-dialog';
 
@@ -86,7 +87,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   // First fetch project by slug
   const { data: project, error: projectError } = await client
     .from('projects')
-    .select('id, name, slug')
+    .select('id, name, slug, account_id')
     .eq('slug', projectSlug)
     .single();
 
@@ -282,6 +283,10 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
       <div className="flex-1 overflow-y-auto">
         {episodes && episodes.length > 0 ? (
           <div className="space-y-6 p-6">
+            <EpisodeListWrapper
+              episodes={(episodes ?? []).map((e) => ({ id: e.id, title: e.title, status: e.status }))}
+              accountId={project.account_id}
+            >
             {/* Render episodes grouped by season */}
             {hasSeasons ? (
               <>
@@ -294,6 +299,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                       seasonName={season.name ?? `Season ${season.number}`}
                       episodes={seasonEpisodes.map(mapEpisode)}
                       account={account}
+                      accountId={project.account_id}
                       projectId={project.id}
                       projectSlug={project.slug ?? project.id}
                       analytics={null}
@@ -357,6 +363,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                 </div>
               </div>
             )}
+            </EpisodeListWrapper>
           </div>
         ) : (
           <EpisodesZeroState

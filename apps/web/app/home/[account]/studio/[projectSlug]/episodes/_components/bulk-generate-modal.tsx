@@ -156,6 +156,11 @@ export type BulkAction =
       version: number;
       status: string;
     }
+  | {
+      type: 'RETRY_EPISODES';
+      episodeIds: string[];
+      phase: 'story' | 'screenplay' | 'shots';
+    }
   | { type: 'CANCEL' }
   | { type: 'RESET' };
 
@@ -278,6 +283,26 @@ function bulkReducer(state: BulkState, action: BulkAction): BulkState {
         version: action.version,
         currentStatus: action.status,
       }));
+    case 'RETRY_EPISODES': {
+      const { episodeIds, phase } = action;
+      const newMap = new Map(state.episodes);
+      for (const id of episodeIds) {
+        const ep = newMap.get(id);
+        if (!ep) continue;
+        switch (phase) {
+          case 'story':
+            newMap.set(id, { ...ep, storyStatus: 'pending' as const, error: undefined });
+            break;
+          case 'screenplay':
+            newMap.set(id, { ...ep, screenplayStatus: 'pending' as const, error: undefined });
+            break;
+          case 'shots':
+            newMap.set(id, { ...ep, shotStatus: 'pending' as const, error: undefined, shotCount: 0 });
+            break;
+        }
+      }
+      return { ...state, episodes: newMap, cancelled: false };
+    }
     case 'CANCEL':
       return { ...state, cancelled: true, isGenerating: false };
     case 'RESET':

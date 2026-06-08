@@ -50,9 +50,10 @@ const evaluateShotQualityTool = createTool({
     genre: z.string().describe('Content genre'),
     totalScenes: z.number().describe('Total number of scenes'),
     shotsJson: z
-      .string()
+      .union([z.string(), z.array(z.any())])
+      .transform((val) => (typeof val === 'string' ? val : JSON.stringify(val)))
       .describe(
-        'The shot list to evaluate — JSON stringified array of shots with VEO 3.1 components',
+        'The shot list to evaluate — JSON stringified array of shots with VEO 3.1 components. Can be a JSON string or array.',
       ),
     contextHint: z
       .string()

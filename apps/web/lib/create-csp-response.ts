@@ -38,11 +38,8 @@ const UPGRADE_INSECURE_REQUESTS = process.env.NODE_ENV === 'production';
  * @description Create a middleware with enhanced headers applied (if applied).
  */
 export async function createCspResponse() {
-  const {
-    createMiddleware,
-    withVercelToolbar,
-    defaults: noseconeConfig,
-  } = await import('@nosecone/next');
+  const { createMiddleware, defaults: noseconeConfig } =
+    await import('@nosecone/next');
 
   /*
    * @name allowedOrigins
@@ -68,9 +65,7 @@ export async function createCspResponse() {
     crossOriginEmbedderPolicy: CROSS_ORIGIN_EMBEDDER_POLICY,
   };
 
-  const middleware = createMiddleware(
-    process.env.VERCEL_ENV === 'preview' ? withVercelToolbar(config) : config,
-  );
+  const middleware = createMiddleware(config);
 
   // create response
   const response = await middleware();

@@ -103,10 +103,11 @@ const generateShotsTool = createTool({
 
       console.log(`[Shot Director] executeLLM imported successfully`);
 
-      // Process scenes in parallel batches of 5
-      // Using Promise.all (fail-fast): if any scene in a batch fails, the batch fails.
-      const CONCURRENCY = 5;
-      const allShots: Array<{
+      // Process scenes in parallel batches
+      // Reduce concurrency for long episodes (>15 scenes) to avoid rate limiting
+      const CONCURRENCY = mergedScenes.length > 15 ? 3 : 5;
+
+      type ShotResult = {
         sceneNumber: number;
         shotNumber: number;
         shotType: string;
@@ -121,7 +122,6 @@ const generateShotsTool = createTool({
           mood?: string;
           lighting?: string;
         };
-        // OpenClaw Shot Intelligence
         transitionType?: string;
         frameStrategy?: string;
         primarySubject?: { type: string; name: string };
@@ -129,7 +129,10 @@ const generateShotsTool = createTool({
         lastFrameDescription?: string | null;
         locationArea?: string | null;
         locationEnvironmentDescription?: string | null;
-      }> = [];
+      };
+
+      const allShots: ShotResult[] = [];
+      let failedScenes = 0;
 
       for (let i = 0; i < mergedScenes.length; i += CONCURRENCY) {
         const batch = mergedScenes.slice(i, i + CONCURRENCY);
@@ -141,8 +144,10 @@ const generateShotsTool = createTool({
             `(scenes ${batch.map((s) => s.number).join(', ')})`,
         );
 
-        const batchResults = await Promise.all(
-          batch.map(async (scene) => {
+        // Use Promise.allSettled for per-scene resilience —
+        // one failed scene should NOT kill the entire batch
+        const batchSettled = await Promise.allSettled(
+          batch.map(async (scene): Promise<ShotResult[]> => {
             const isReelCandidate = reelCandidateScenes.includes(scene.number);
 
             console.log(
@@ -193,7 +198,6 @@ const generateShotsTool = createTool({
                   mood?: string;
                   lighting?: string;
                 };
-                // OpenClaw Shot Intelligence
                 transitionType?: string;
                 frameStrategy?: string;
                 primarySubject?: { type: string; name: string };
@@ -222,24 +226,42 @@ const generateShotsTool = createTool({
               },
             });
 
-            const shotsForScene = result.data.shots.map((shot) => ({
+            // Normalize enum fields: LLM often outputs kebab-case (e.g. "two-shot")
+            // but the Zod schema expects snake_case (e.g. "two_shot")
+            const normalizedShots = result.data.shots.map((shot) => ({
               ...shot,
               sceneNumber: scene.number,
+              frameStrategy: shot.frameStrategy?.replace(/-/g, '_'),
+              transitionType: shot.transitionType?.replace(/-/g, '_'),
             }));
 
             console.log(
-              `[Shot Director] Scene ${scene.number} complete — ${shotsForScene.length} shots generated`,
+              `[Shot Director] Scene ${scene.number} complete — ${normalizedShots.length} shots generated`,
             );
 
-            return shotsForScene;
+            return normalizedShots;
           }),
         );
 
-        allShots.push(...batchResults.flat());
+        // Collect successful results, log failures
+        for (let j = 0; j < batchSettled.length; j++) {
+          const result = batchSettled[j]!;
+          const scene = batch[j]!;
+
+          if (result.status === 'fulfilled') {
+            allShots.push(...result.value);
+          } else {
+            failedScenes++;
+            console.error(
+              `[Shot Director] Scene ${scene.number} FAILED (continuing with remaining scenes): ${result.reason?.message ?? result.reason}`,
+            );
+          }
+        }
 
         console.log(
           `[Shot Director] Batch ${batchNum}/${totalBatches} done. ` +
-            `Running total: ${allShots.length} shots`,
+            `Running total: ${allShots.length} shots` +
+            (failedScenes > 0 ? ` (${failedScenes} scenes failed)` : ''),
         );
       }
 

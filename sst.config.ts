@@ -688,6 +688,7 @@ export default $config({
       timeout: '15 minutes', // 15 minutes for long LLM calls
       memory: '2048 MB', // More memory for LLM processing
       architecture: 'arm64',
+      reservedConcurrency: 3, // Limit concurrent LLM workers to prevent Gemini 429s
       link: [connectionsTable, websocket, llmJobsQueue],
       permissions: [
         {

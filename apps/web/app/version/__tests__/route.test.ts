@@ -33,13 +33,13 @@ describe('version/route', () => {
         expect(text).toBe('cf-hash-123');
       });
 
-      it('should return VERCEL_GIT_COMMIT_SHA when available', async () => {
-        process.env.VERCEL_GIT_COMMIT_SHA = 'vercel-hash-456';
+      it('should return AWS_LAMBDA_FUNCTION_VERSION when available', async () => {
+        process.env.AWS_LAMBDA_FUNCTION_VERSION = 'aws-lambda-v1';
 
         const response = await GET();
         const text = await response.text();
 
-        expect(text).toBe('vercel-hash-456');
+        expect(text).toBe('aws-lambda-v1');
       });
 
       it('should return GIT_HASH when available', async () => {
@@ -51,25 +51,25 @@ describe('version/route', () => {
         expect(text).toBe('git-hash-789');
       });
 
-      it('should prioritize CF_PAGES_COMMIT_SHA over others', async () => {
+      it('should prioritize AWS_LAMBDA_FUNCTION_VERSION over others', async () => {
+        process.env.AWS_LAMBDA_FUNCTION_VERSION = 'aws-hash';
         process.env.CF_PAGES_COMMIT_SHA = 'cf-hash';
-        process.env.VERCEL_GIT_COMMIT_SHA = 'vercel-hash';
+        process.env.GIT_HASH = 'git-hash';
+
+        const response = await GET();
+        const text = await response.text();
+
+        expect(text).toBe('aws-hash');
+      });
+
+      it('should prioritize CF_PAGES_COMMIT_SHA over GIT_HASH', async () => {
+        process.env.CF_PAGES_COMMIT_SHA = 'cf-hash';
         process.env.GIT_HASH = 'git-hash';
 
         const response = await GET();
         const text = await response.text();
 
         expect(text).toBe('cf-hash');
-      });
-
-      it('should prioritize VERCEL_GIT_COMMIT_SHA over GIT_HASH', async () => {
-        process.env.VERCEL_GIT_COMMIT_SHA = 'vercel-hash';
-        process.env.GIT_HASH = 'git-hash';
-
-        const response = await GET();
-        const text = await response.text();
-
-        expect(text).toBe('vercel-hash');
       });
     });
 

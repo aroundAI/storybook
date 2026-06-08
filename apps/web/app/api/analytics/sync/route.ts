@@ -11,7 +11,7 @@ import { getLogger } from '@kit/shared/logger';
  * POST /api/analytics/sync
  *
  * Cron endpoint for syncing analytics from YouTube, TikTok, and Instagram.
- * Should be called hourly by cron scheduler (AWS EventBridge, Vercel Cron, etc.)
+ * Should be called hourly by cron scheduler (AWS EventBridge, etc.)
  *
  * Security:
  * - Protected by CRON_SECRET bearer token

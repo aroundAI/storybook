@@ -445,6 +445,12 @@ export async function executeLLM<T = unknown>(
             '503',
             'overloaded',
             'Resource has been exhausted',
+            // Rate limit errors (429)
+            '429',
+            'Too Many Requests',
+            'RATE_LIMIT_EXCEEDED',
+            'RESOURCE_EXHAUSTED',
+            'quota',
           ],
         },
       );
