@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 
 import { batchCreateUnlinkedAction } from '@kit/episodes/server';
+import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { cn } from '@kit/ui/utils';
@@ -34,6 +35,16 @@ interface AssetsPhaseProps {
 }
 
 // ============================================================================
+// Types
+// ============================================================================
+
+interface UnlinkedItem {
+  name: string;
+  type: 'character' | 'location';
+  episodeIds: Set<string>;
+}
+
+// ============================================================================
 // Component
 // ============================================================================
 
@@ -47,6 +58,12 @@ export function AssetsPhase({
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [unlinkedCharacters, setUnlinkedCharacters] = useState<UnlinkedItem[]>(
+    [],
+  );
+  const [unlinkedLocations, setUnlinkedLocations] = useState<UnlinkedItem[]>(
+    [],
+  );
 
   const selectedEpisodes = useMemo(
     () =>
@@ -56,82 +73,187 @@ export function AssetsPhase({
     [state.episodes],
   );
 
-  // Use episode state populated during prior phases (screenplay sets
-  // unlinkedCharacters/unlinkedLocations). Mark loading complete on mount.
+  // ──────────────────────────────────────────────────────────────────────
+  // Fetch unlinked assets from DB on mount
+  // Reads screenplay_data.metadata.characters and .locations from episodes,
+  // then checks which names don't exist in the assets table.
+  // ──────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    let mounted = true;
+    let active = true;
 
-    // Allow one tick for state to settle, then mark as loaded
-    const timer = setTimeout(() => {
-      if (mounted) {
-        setIsLoading(false);
-      }
-    }, 100);
+    async function fetchUnlinked() {
+      try {
+        const client = getSupabaseBrowserClient();
+        const episodeIds = selectedEpisodes.map((ep) => ep.episodeId);
 
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
-  }, []);
+        if (episodeIds.length === 0) {
+          setIsLoading(false);
+          return;
+        }
 
-  // Aggregate unique characters and locations across episodes
-  const { uniqueCharacters, uniqueLocations, totalUnlinked } = useMemo(() => {
-    const charMap = new Map<string, Set<string>>();
-    const locMap = new Map<string, Set<string>>();
+        // 1. Fetch screenplay_data for all selected episodes
+        const { data: episodes } = await client
+          .from('episodes')
+          .select('id, screenplay_data')
+          .in('id', episodeIds)
+          .is('deleted_at', null);
 
-    for (const ep of selectedEpisodes) {
-      for (const name of ep.unlinkedCharacters) {
-        const key = name.toLowerCase();
-        if (!charMap.has(key)) charMap.set(key, new Set());
-        charMap.get(key)!.add(ep.episodeId);
-      }
-      for (const name of ep.unlinkedLocations) {
-        const key = name.toLowerCase();
-        if (!locMap.has(key)) locMap.set(key, new Set());
-        locMap.get(key)!.add(ep.episodeId);
+        if (!active) return;
+
+        // 2. Extract all character + location names from screenplay metadata
+        const charMap = new Map<string, Set<string>>(); // lowercase name → episodeIds
+        const locMap = new Map<string, Set<string>>();
+        const charOrigName = new Map<string, string>(); // lowercase → original case
+        const locOrigName = new Map<string, string>();
+
+        for (const ep of episodes ?? []) {
+          const spData = ep.screenplay_data as {
+            metadata?: {
+              characters?: string[];
+              locations?: string[];
+            };
+            scenes?: Array<{
+              location?: string;
+              dialogue?: Array<{ character: string }>;
+            }>;
+          } | null;
+
+          if (!spData) continue;
+
+          // Get characters from metadata or extract from scenes
+          const characters =
+            spData.metadata?.characters ??
+            Array.from(
+              new Set(
+                (spData.scenes ?? []).flatMap(
+                  (s) => s.dialogue?.map((d) => d.character) ?? [],
+                ),
+              ),
+            );
+
+          // Get locations from metadata or extract from scenes
+          const locations =
+            spData.metadata?.locations ??
+            Array.from(
+              new Set(
+                (spData.scenes ?? [])
+                  .map((s) => s.location)
+                  .filter(Boolean) as string[],
+              ),
+            );
+
+          for (const name of characters) {
+            const key = name.toLowerCase();
+            if (!charMap.has(key)) {
+              charMap.set(key, new Set());
+              charOrigName.set(key, name);
+            }
+            charMap.get(key)!.add(ep.id);
+          }
+
+          for (const name of locations) {
+            const key = name.toLowerCase();
+            if (!locMap.has(key)) {
+              locMap.set(key, new Set());
+              locOrigName.set(key, name);
+            }
+            locMap.get(key)!.add(ep.id);
+          }
+        }
+
+        // 3. Check which names already exist as assets in the project
+        const allNames = [
+          ...Array.from(charOrigName.values()),
+          ...Array.from(locOrigName.values()),
+        ];
+
+        const linkedNames = new Set<string>();
+
+        if (allNames.length > 0) {
+          // Query in batches of 100 to avoid URL length limits
+          const batchSize = 100;
+          for (let i = 0; i < allNames.length; i += batchSize) {
+            const batch = allNames.slice(i, i + batchSize);
+            const { data: assets } = await client
+              .from('assets')
+              .select('name')
+              .eq('project_id', projectId)
+              .in('name', batch)
+              .is('deleted_at', null);
+
+            if (!active) return;
+
+            for (const asset of assets ?? []) {
+              linkedNames.add(asset.name.toLowerCase());
+            }
+          }
+        }
+
+        // 4. Filter to only unlinked
+        const unlinkedChars: UnlinkedItem[] = [];
+        for (const [key, episodeIds] of charMap) {
+          if (!linkedNames.has(key)) {
+            unlinkedChars.push({
+              name: charOrigName.get(key) ?? key,
+              type: 'character',
+              episodeIds,
+            });
+          }
+        }
+
+        const unlinkedLocs: UnlinkedItem[] = [];
+        for (const [key, episodeIds] of locMap) {
+          if (!linkedNames.has(key)) {
+            unlinkedLocs.push({
+              name: locOrigName.get(key) ?? key,
+              type: 'location',
+              episodeIds,
+            });
+          }
+        }
+
+        // Sort by most referenced first
+        unlinkedChars.sort((a, b) => b.episodeIds.size - a.episodeIds.size);
+        unlinkedLocs.sort((a, b) => b.episodeIds.size - a.episodeIds.size);
+
+        if (!active) return;
+
+        setUnlinkedCharacters(unlinkedChars);
+        setUnlinkedLocations(unlinkedLocs);
+
+        // Also update reducer state for downstream phases
+        for (const ep of selectedEpisodes) {
+          const epCharNames = unlinkedChars
+            .filter((c) => c.episodeIds.has(ep.episodeId))
+            .map((c) => c.name);
+          const epLocNames = unlinkedLocs
+            .filter((l) => l.episodeIds.has(ep.episodeId))
+            .map((l) => l.name);
+
+          dispatch({
+            type: 'SET_ASSETS',
+            episodeId: ep.episodeId,
+            characters: epCharNames,
+            locations: epLocNames,
+          });
+        }
+      } catch (err) {
+        console.error('[AssetsPhase] Failed to fetch unlinked assets:', err);
+      } finally {
+        if (active) setIsLoading(false);
       }
     }
 
-    const characters = Array.from(charMap.entries())
-      .map(([key, episodeIds]) => ({
-        name:
-          selectedEpisodes
-            .flatMap((ep) => ep.unlinkedCharacters)
-            .find((n) => n.toLowerCase() === key) ?? key,
-        episodeCount: episodeIds.size,
-      }))
-      .sort((a, b) => b.episodeCount - a.episodeCount);
+    void fetchUnlinked();
 
-    const locations = Array.from(locMap.entries())
-      .map(([key, episodeIds]) => ({
-        name:
-          selectedEpisodes
-            .flatMap((ep) => ep.unlinkedLocations)
-            .find((n) => n.toLowerCase() === key) ?? key,
-        episodeCount: episodeIds.size,
-      }))
-      .sort((a, b) => b.episodeCount - a.episodeCount);
-
-    return {
-      uniqueCharacters: characters,
-      uniqueLocations: locations,
-      totalUnlinked: characters.length + locations.length,
+    return () => {
+      active = false;
     };
-  }, [selectedEpisodes]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Check if all episodes have assets created
-  const allAssetsCreated = useMemo(
-    () =>
-      selectedEpisodes.every(
-        (ep) =>
-          ep.assetsCreated ||
-          (ep.unlinkedCharacters.length === 0 &&
-            ep.unlinkedLocations.length === 0),
-      ),
-    [selectedEpisodes],
-  );
+  const totalUnlinked = unlinkedCharacters.length + unlinkedLocations.length;
 
-  // Auto-advance if no unlinked items
+  // Auto-advance if no unlinked items (after loading completes)
   useEffect(() => {
     if (!isLoading && totalUnlinked === 0) {
       const timer = setTimeout(onNext, 2000);
@@ -145,45 +267,38 @@ export function AssetsPhase({
     setCreateError(null);
 
     try {
-      const episodesWithUnlinked = selectedEpisodes.filter(
-        (ep) =>
-          !ep.assetsCreated &&
-          (ep.unlinkedCharacters.length > 0 || ep.unlinkedLocations.length > 0),
-      );
+      // Group by first episode that references each unlinked item
+      const firstEpisodeId = selectedEpisodes[0]?.episodeId;
+      if (!firstEpisodeId) return;
 
-      for (const ep of episodesWithUnlinked) {
-        const items = [
-          ...ep.unlinkedCharacters.map((name) => ({
-            name,
-            type: 'character' as const,
-          })),
-          ...ep.unlinkedLocations.map((name) => ({
-            name,
-            type: 'location' as const,
-          })),
-        ];
+      const items = [
+        ...unlinkedCharacters.map((c) => ({
+          name: c.name,
+          type: 'character' as const,
+        })),
+        ...unlinkedLocations.map((l) => ({
+          name: l.name,
+          type: 'location' as const,
+        })),
+      ];
 
-        if (items.length === 0) continue;
+      if (items.length === 0) return;
 
-        try {
-          await batchCreateUnlinkedAction({
-            episodeId: ep.episodeId,
-            projectId,
-            items,
-            storyContext: ep.storyPreview ?? '',
-          });
+      await batchCreateUnlinkedAction({
+        episodeId: firstEpisodeId,
+        projectId,
+        items,
+        storyContext: selectedEpisodes[0]?.storyPreview ?? '',
+      });
 
-          dispatch({ type: 'SET_ASSETS_CREATED', episodeId: ep.episodeId });
-        } catch (err) {
-          const message =
-            err instanceof Error ? err.message : 'Failed to create assets';
-          dispatch({
-            type: 'SET_EPISODE_ERROR',
-            episodeId: ep.episodeId,
-            error: message,
-          });
-        }
+      // Mark all episodes as assets created
+      for (const ep of selectedEpisodes) {
+        dispatch({ type: 'SET_ASSETS_CREATED', episodeId: ep.episodeId });
       }
+
+      // Clear local unlinked state
+      setUnlinkedCharacters([]);
+      setUnlinkedLocations([]);
     } catch (err) {
       setCreateError(
         err instanceof Error ? err.message : 'Failed to create assets',
@@ -191,7 +306,10 @@ export function AssetsPhase({
     } finally {
       setIsCreating(false);
     }
-  }, [selectedEpisodes, projectId, dispatch]);
+  }, [selectedEpisodes, projectId, dispatch, unlinkedCharacters, unlinkedLocations]);
+
+  // Check if all assets have been created
+  const allAssetsCreated = totalUnlinked === 0 && !isLoading;
 
   // Loading state
   if (isLoading) {
@@ -199,7 +317,7 @@ export function AssetsPhase({
       <div className="flex flex-col items-center justify-center py-16">
         <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
         <p className="mt-3 text-sm text-white/50">
-          Checking asset link status...
+          Checking asset link status across {selectedEpisodes.length} episodes...
         </p>
       </div>
     );
@@ -236,17 +354,17 @@ export function AssetsPhase({
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="space-y-6 px-6 py-4">
           {/* Characters section */}
-          {uniqueCharacters.length > 0 && (
+          {unlinkedCharacters.length > 0 && (
             <div>
               <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-wider text-white/50 uppercase">
                 <Users className="h-3.5 w-3.5" />
                 Characters
                 <Badge className="ml-1 rounded-full border-0 bg-blue-500/20 px-1.5 py-0 text-[10px] text-blue-400">
-                  {uniqueCharacters.length}
+                  {unlinkedCharacters.length}
                 </Badge>
               </h4>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {uniqueCharacters.map((char) => (
+                {unlinkedCharacters.map((char) => (
                   <div
                     key={char.name}
                     className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2"
@@ -259,8 +377,8 @@ export function AssetsPhase({
                         {char.name}
                       </p>
                       <p className="text-[10px] text-white/40">
-                        {char.episodeCount} ep
-                        {char.episodeCount !== 1 ? 's' : ''}
+                        {char.episodeIds.size} ep
+                        {char.episodeIds.size !== 1 ? 's' : ''}
                       </p>
                     </div>
                   </div>
@@ -270,17 +388,17 @@ export function AssetsPhase({
           )}
 
           {/* Locations section */}
-          {uniqueLocations.length > 0 && (
+          {unlinkedLocations.length > 0 && (
             <div>
               <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-wider text-white/50 uppercase">
                 <MapPin className="h-3.5 w-3.5" />
                 Locations
                 <Badge className="ml-1 rounded-full border-0 bg-cyan-500/20 px-1.5 py-0 text-[10px] text-cyan-400">
-                  {uniqueLocations.length}
+                  {unlinkedLocations.length}
                 </Badge>
               </h4>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {uniqueLocations.map((loc) => (
+                {unlinkedLocations.map((loc) => (
                   <div
                     key={loc.name}
                     className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2"
@@ -293,8 +411,8 @@ export function AssetsPhase({
                         {loc.name}
                       </p>
                       <p className="text-[10px] text-white/40">
-                        {loc.episodeCount} ep
-                        {loc.episodeCount !== 1 ? 's' : ''}
+                        {loc.episodeIds.size} ep
+                        {loc.episodeIds.size !== 1 ? 's' : ''}
                       </p>
                     </div>
                   </div>
@@ -358,7 +476,7 @@ export function AssetsPhase({
                 ) : (
                   <>
                     <Sparkles className="h-3.5 w-3.5" />
-                    Create All Unlinked Assets
+                    Create All ({totalUnlinked})
                   </>
                 )}
               </Button>
