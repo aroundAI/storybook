@@ -20,6 +20,7 @@ import { CreateEpisodeWizardWrapper } from './_components/create-episode-wizard-
 import { EpisodeListItem } from './_components/episode-list-item';
 import { EpisodeListWrapper } from './_components/episode-list-wrapper';
 import { EpisodesZeroState } from './_components/episodes-zero-state';
+import { ExportContentDialog } from './_components/export-content-dialog';
 import { SeasonGeneratorDialog } from './_components/season-generator-dialog';
 
 interface EpisodesPageProps {
@@ -260,6 +261,17 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
             </h1>
           </div>
           <div className="flex gap-2">
+            {(seasons?.length ?? 0) > 0 && (
+              <ExportContentDialog
+                projectId={project.id}
+                projectName={project.name}
+                seasons={(seasons ?? []).map((s) => ({
+                  id: s.id,
+                  name: s.name,
+                  number: s.number,
+                }))}
+              />
+            )}
             <SeasonGeneratorDialog projectId={project.id} />
             <CreateEpisodeDialog
               projectId={project.id}
