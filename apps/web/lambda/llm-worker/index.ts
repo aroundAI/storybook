@@ -214,6 +214,12 @@ async function processJob(job: LlmJobMessage): Promise<unknown> {
       );
       return processAnalyticsInsights(job.payload, supabase);
     }
+    case 'asset-creation': {
+      const { processAssetCreation } = await import(
+        './handlers/asset-creation'
+      );
+      return processAssetCreation(job.payload, supabase);
+    }
     case 'language-insights': {
       const { processLanguageInsights } = await import(
         './handlers/language-insights'

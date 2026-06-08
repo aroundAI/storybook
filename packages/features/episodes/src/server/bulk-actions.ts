@@ -457,3 +457,113 @@ export const batchGenerateShotsAction = enhanceAction(
   },
   { schema: BatchGenerateShotsSchema },
 );
+
+// ─── Batch Asset Creation ───────────────────────────────────────────────────
+
+const BatchCreateAssetsSchema = z.object({
+  projectId: z.string().uuid(),
+  episodes: z.array(
+    z.object({
+      episodeId: z.string().uuid(),
+    }),
+  ),
+});
+
+/**
+ * Batch-enqueue asset creation for multiple episodes.
+ * Each episode gets its own SQS job that reads screenplay_data,
+ * extracts character/location descriptions via LLM, creates assets,
+ * and links them to the episode.
+ */
+export const batchCreateAssetsAction = enhanceAction(
+  async (data): Promise<BatchQueueResult> => {
+    const logger = await getLogger();
+    const ctx = { name: 'episodes.batchCreateAssets', count: data.episodes.length };
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+    if (authError || !user) throw new Error('Authentication required');
+
+    logger.info(ctx, `Batch queuing ${data.episodes.length} asset creation jobs`);
+
+    const episodeIds = data.episodes.map((ep) => ep.episodeId);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: episodes } = await (client as any)
+      .from('episodes')
+      .select('id, project_id, screenplay_data, project:projects(id, account_id)')
+      .in('id', episodeIds)
+      .is('deleted_at', null);
+
+    const episodeMap = new Map(
+      (episodes ?? []).map((ep: { id: string }) => [ep.id, ep]),
+    );
+
+    const { queueLlmJob } = await import('@kit/prompt-engine/server');
+    const failed: BatchQueueResult['failed'] = [];
+    const jobEntries: Array<Record<string, unknown>> = [];
+    let queued = 0;
+
+    for (const ep of data.episodes) {
+      const episode = episodeMap.get(ep.episodeId) as Record<string, unknown> | undefined;
+
+      if (!episode) {
+        failed.push({ episodeId: ep.episodeId, error: 'Episode not found' });
+        continue;
+      }
+
+      const screenplayData = episode.screenplay_data as { scenes?: unknown[]; metadata?: unknown } | null;
+      if (!screenplayData?.scenes?.length && !screenplayData?.metadata) {
+        failed.push({ episodeId: ep.episodeId, error: 'No screenplay data' });
+        continue;
+      }
+
+      const project = episode.project as { account_id?: string } | undefined;
+      const accountId = project?.account_id ?? 'unknown';
+
+      jobEntries.push({
+        reference_type: 'episode',
+        reference_id: ep.episodeId,
+        job_type: 'asset_creation',
+        status: 'queued',
+        account_id: accountId,
+        project_id: data.projectId,
+        idempotency_key: `assets-${ep.episodeId}-${Date.now()}`,
+        input_data: { episodeId: ep.episodeId, projectId: data.projectId },
+      });
+
+      try {
+        await queueLlmJob({
+          jobType: 'asset-creation',
+          userId: user.id,
+          payload: {
+            episodeId: ep.episodeId,
+            projectId: data.projectId,
+            accountId,
+            userId: user.id,
+          },
+        });
+        queued++;
+      } catch (err) {
+        failed.push({
+          episodeId: ep.episodeId,
+          error: err instanceof Error ? err.message : 'Queue failed',
+        });
+      }
+    }
+
+    if (jobEntries.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: jobError } = await (client as any)
+        .from('generation_jobs')
+        .insert(jobEntries);
+      if (jobError) {
+        logger.warn({ ...ctx, error: jobError }, 'Failed to batch-create generation jobs');
+      }
+    }
+
+    logger.info({ ...ctx, queued, failed: failed.length }, 'Batch asset creation complete');
+    return { success: true, queued, failed };
+  },
+  { schema: BatchCreateAssetsSchema },
+);
