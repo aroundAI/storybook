@@ -13,6 +13,7 @@ import {
 type LlmJobMessage = {
   type: 'llm-result' | 'llm-error';
   jobType: string;
+  episodeId?: string;
   result?: unknown;
   error?: string;
   timestamp?: string;

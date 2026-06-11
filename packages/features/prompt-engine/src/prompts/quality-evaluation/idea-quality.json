@@ -1,0 +1,106 @@
+{
+  "slug": "idea-quality",
+  "name": "Story Idea Quality Gate",
+  "version": 1,
+  "category": "quality-evaluation",
+  "description": "Evaluate raw story concept pitches for hook strength, originality, conflict clarity, and visual potential. Returns per-idea scores (0-10), verdicts (strong/average/weak), and weakIndices for targeted regeneration. Ideas scoring below 5.0 overall should be regenerated.",
+  "exported_at": "2025-01-01T00:00:00.000Z",
+  "llm": {
+    "provider": "gemini",
+    "model": "gemini-3.5-flash",
+    "max_tokens": 2000,
+    "temperature": 0.2,
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "system_prompts": [
+    {
+      "slug": "role",
+      "name": "Creative Director",
+      "content": "You are a creative director evaluating story concept pitches for a video content platform. You assess raw ideas — not finished stories — judging their potential to become compelling, visually striking short-form video content. Be honest and specific. A weak idea regenerated early saves the entire pipeline from wasted effort downstream.",
+      "layer_type": "role",
+      "scope": "template",
+      "order": 1
+    },
+    {
+      "slug": "evaluation-framework",
+      "name": "4-Dimension Idea Framework",
+      "content": "IDEA EVALUATION FRAMEWORK — Score each dimension 0 to 10:\n\n1. HOOK STRENGTH (hookStrength)\n   Does the concept immediately grab attention? Is there an inciting situation, mystery, or emotional jolt that would stop a viewer mid-scroll? 10 = impossible to ignore, 0 = generic premise with no tension.\n\n2. ORIGINALITY SCORE (originalityScore)\n   Is this a fresh angle or a well-trodden trope? Does it combine familiar elements in a surprising way? 10 = genuinely novel concept, 0 = cliché with no twist.\n\n3. CONFLICT CLARITY (conflictClarity)\n   Is the central conflict specific, layered, and immediately understandable from the logline? Does it promise escalation? 10 = razor-sharp conflict with clear stakes, 0 = vague or missing conflict.\n\n4. VISUAL POTENTIAL (visualPotential)\n   Will this idea produce striking, cinematic imagery? Are there clear visual set-pieces, environments, or moments that demand to be seen? 10 = unmistakably visual and cinematic, 0 = talking heads with no visual hook.\n\nOVERALL SCORE: average of the 4 dimension scores (0-10).\n\nVERDICT THRESHOLDS:\n- strong (>= 7.0): Idea is compelling and ready for story development\n- average (5.0–6.9): Has potential but needs refinement or a stronger angle\n- weak (< 5.0): Should be regenerated with a different approach\n\nweak INDICES: Return the 0-based indices of all ideas with verdict 'weak'.",
+      "layer_type": "constraints",
+      "scope": "template",
+      "order": 2
+    },
+    {
+      "slug": "format",
+      "name": "JSON Output Format",
+      "content": "IMPORTANT: Always respond with valid JSON matching the specified output schema. Do not include any text outside the JSON object.",
+      "layer_type": "format",
+      "scope": "template",
+      "order": 3
+    }
+  ],
+  "user_prompt": "Evaluate these story idea pitches using the 4-dimension framework.\n\n**Genre**: {{genre}}\n**Target Audience**: {{target_audience}}\n\n**Ideas to Evaluate**:\n{{ideas}}\n\nFor each idea, score hookStrength, originalityScore, conflictClarity, and visualPotential (0-10). Compute the overallScore as the average. Assign a verdict (strong/average/weak). Be specific in your feedback — reference the idea's title, logline, and hook when explaining scores.\n\nReturn weakIndices as a flat array of 0-based indices for all ideas with verdict 'weak'.\n\n```json\n{\n  \"evaluations\": [\n    {\n      \"ideaIndex\": 0,\n      \"hookStrength\": 8,\n      \"originalityScore\": 7,\n      \"conflictClarity\": 6,\n      \"visualPotential\": 9,\n      \"overallScore\": 7.5,\n      \"verdict\": \"strong\",\n      \"feedback\": \"Specific feedback referencing the idea's strengths and weaknesses\"\n    }\n  ],\n  \"weakIndices\": []\n}\n```",
+  "variables": {
+    "ideas": {
+      "type": "text",
+      "description": "JSON stringified array of story ideas to evaluate. Each idea should have title, logline, hook, conflict, themes, and visualPotential.",
+      "required": true
+    },
+    "genre": {
+      "type": "text",
+      "description": "Content genre for context-appropriate evaluation (e.g. animation, drama, comedy)",
+      "required": false,
+      "default": "general"
+    },
+    "target_audience": {
+      "type": "text",
+      "description": "Target audience for relevance scoring",
+      "required": false,
+      "default": "general audience"
+    }
+  },
+  "output": {
+    "type": "object",
+    "schema": {
+      "type": "zod",
+      "definition": "z.object({ evaluations: z.array(z.object({ ideaIndex: z.number(), hookStrength: z.number().min(0).max(10), originalityScore: z.number().min(0).max(10), conflictClarity: z.number().min(0).max(10), visualPotential: z.number().min(0).max(10), overallScore: z.number().min(0).max(10), verdict: z.enum(['strong', 'average', 'weak']), feedback: z.string() })), weakIndices: z.array(z.number()) })"
+    },
+    "schema_for_llm": "Return JSON: { \"evaluations\": [{ \"ideaIndex\": number, \"hookStrength\": number (0-10), \"originalityScore\": number (0-10), \"conflictClarity\": number (0-10), \"visualPotential\": number (0-10), \"overallScore\": number (0-10), \"verdict\": \"strong|average|weak\", \"feedback\": \"string\" }], \"weakIndices\": [number] }",
+    "example_output": {
+      "evaluations": [
+        {
+          "ideaIndex": 0,
+          "hookStrength": 8,
+          "originalityScore": 7,
+          "conflictClarity": 9,
+          "visualPotential": 8,
+          "overallScore": 8.0,
+          "verdict": "strong",
+          "feedback": "\"The Last Cartographer\" has an immediately compelling hook — a mapmaker who discovers her maps are erasing real places. The conflict is razor-sharp: she must choose between completing her life's work and saving the world it's consuming. Strong visual potential with dissolving landscapes and ink-bleeding environments."
+        },
+        {
+          "ideaIndex": 1,
+          "hookStrength": 4,
+          "originalityScore": 3,
+          "conflictClarity": 5,
+          "visualPotential": 6,
+          "overallScore": 4.5,
+          "verdict": "weak",
+          "feedback": "\"Echoes of Tomorrow\" relies on a generic time-travel premise without a distinguishing twist. The hook — 'a scientist receives a message from the future' — has been done extensively. The conflict (prevent a disaster) is too vague. Visual potential is decent with futuristic lab environments but nothing unexpected."
+        },
+        {
+          "ideaIndex": 2,
+          "hookStrength": 7,
+          "originalityScore": 8,
+          "conflictClarity": 6,
+          "visualPotential": 9,
+          "overallScore": 7.5,
+          "verdict": "strong",
+          "feedback": "\"Bioluminescent\" combines underwater exploration with body horror in a fresh way. The hook — a deep-sea diver whose skin starts glowing after contact with an unknown organism — is viscerally compelling. Conflict could be sharper (what exactly does she lose?), but the visual set-pieces are extraordinary."
+        }
+      ],
+      "weakIndices": [1]
+    }
+  }
+}

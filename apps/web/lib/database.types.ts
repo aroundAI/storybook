@@ -2133,6 +2133,56 @@ export type Database = {
         };
         Relationships: [];
       };
+      fact_extraction_jobs: {
+        Row: {
+          chunk_count: number;
+          chunks_completed: number;
+          created_at: string | null;
+          created_by: string | null;
+          error_message: string | null;
+          facts_extracted: number;
+          id: string;
+          project_id: string;
+          source_title: string;
+          status: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          chunk_count?: number;
+          chunks_completed?: number;
+          created_at?: string | null;
+          created_by?: string | null;
+          error_message?: string | null;
+          facts_extracted?: number;
+          id?: string;
+          project_id: string;
+          source_title: string;
+          status?: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          chunk_count?: number;
+          chunks_completed?: number;
+          created_at?: string | null;
+          created_by?: string | null;
+          error_message?: string | null;
+          facts_extracted?: number;
+          id?: string;
+          project_id?: string;
+          source_title?: string;
+          status?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fact_extraction_jobs_project_id_fkey';
+            columns: ['project_id'];
+            isOneToOne: false;
+            referencedRelation: 'projects';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       generation_jobs: {
         Row: {
           account_id: string;
@@ -3646,6 +3696,7 @@ export type Database = {
           created_at: string;
           deleted_at: string | null;
           description: string | null;
+          direction_notes: string | null;
           id: string;
           name: string | null;
           number: number;
@@ -3656,6 +3707,7 @@ export type Database = {
           created_at?: string;
           deleted_at?: string | null;
           description?: string | null;
+          direction_notes?: string | null;
           id?: string;
           name?: string | null;
           number: number;
@@ -3666,6 +3718,7 @@ export type Database = {
           created_at?: string;
           deleted_at?: string | null;
           description?: string | null;
+          direction_notes?: string | null;
           id?: string;
           name?: string | null;
           number?: number;
@@ -4160,6 +4213,104 @@ export type Database = {
             columns: ['episode_id'];
             isOneToOne: false;
             referencedRelation: 'episodes';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      social_posts: {
+        Row: {
+          account_id: string;
+          created_at: string;
+          created_by: string | null;
+          final_text: string | null;
+          generated_variants: Json | null;
+          hashtags: string[] | null;
+          id: string;
+          metadata: Json | null;
+          platform: string;
+          platform_connection_id: string | null;
+          platform_post_id: string | null;
+          platform_url: string | null;
+          published_at: string | null;
+          raw_notes: string;
+          research_context: Json | null;
+          scheduled_at: string | null;
+          selected_variant_index: number | null;
+          status: string;
+          updated_at: string;
+          visibility: string;
+        };
+        Insert: {
+          account_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          final_text?: string | null;
+          generated_variants?: Json | null;
+          hashtags?: string[] | null;
+          id?: string;
+          metadata?: Json | null;
+          platform?: string;
+          platform_connection_id?: string | null;
+          platform_post_id?: string | null;
+          platform_url?: string | null;
+          published_at?: string | null;
+          raw_notes: string;
+          research_context?: Json | null;
+          scheduled_at?: string | null;
+          selected_variant_index?: number | null;
+          status?: string;
+          updated_at?: string;
+          visibility?: string;
+        };
+        Update: {
+          account_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          final_text?: string | null;
+          generated_variants?: Json | null;
+          hashtags?: string[] | null;
+          id?: string;
+          metadata?: Json | null;
+          platform?: string;
+          platform_connection_id?: string | null;
+          platform_post_id?: string | null;
+          platform_url?: string | null;
+          published_at?: string | null;
+          raw_notes?: string;
+          research_context?: Json | null;
+          scheduled_at?: string | null;
+          selected_variant_index?: number | null;
+          status?: string;
+          updated_at?: string;
+          visibility?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'social_posts_account_id_fkey';
+            columns: ['account_id'];
+            isOneToOne: false;
+            referencedRelation: 'accounts';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'social_posts_account_id_fkey';
+            columns: ['account_id'];
+            isOneToOne: false;
+            referencedRelation: 'user_account_workspace';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'social_posts_account_id_fkey';
+            columns: ['account_id'];
+            isOneToOne: false;
+            referencedRelation: 'user_accounts';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'social_posts_platform_connection_id_fkey';
+            columns: ['platform_connection_id'];
+            isOneToOne: false;
+            referencedRelation: 'platform_connections';
             referencedColumns: ['id'];
           },
         ];
@@ -4865,6 +5016,25 @@ export type Database = {
       };
       get_config: { Args: never; Returns: Json };
       get_current_account_id: { Args: never; Returns: string };
+      get_episode_audio_stats: {
+        Args: { p_episode_ids: string[] };
+        Returns: {
+          dialogue_completed: number;
+          dialogue_total: number;
+          episode_id: string;
+          music_completed: number;
+          music_total: number;
+          sfx_completed: number;
+          sfx_total: number;
+        }[];
+      };
+      get_episode_languages: {
+        Args: { p_episode_ids: string[] };
+        Returns: {
+          episode_id: string;
+          language: string;
+        }[];
+      };
       get_nonce_status: { Args: { p_id: string }; Returns: Json };
       get_project_generation_costs: {
         Args: {
@@ -4976,6 +5146,15 @@ export type Database = {
           new_usage_cents: number;
         }[];
       };
+      increment_batch_progress: {
+        Args: {
+          p_batch_job_id: string;
+          p_cost?: number;
+          p_error?: Json;
+          p_status: string;
+        };
+        Returns: Json;
+      };
       increment_template_usage: {
         Args: { template_id: string };
         Returns: undefined;
@@ -5012,6 +5191,11 @@ export type Database = {
           prompt: string;
           similarity: number;
         }[];
+      };
+      plan_dialogue_timeline: { Args: { p_updates: Json }; Returns: number };
+      remove_episode_from_threads_touched: {
+        Args: { p_episode_id: string; p_project_id: string };
+        Returns: undefined;
       };
       reset_monthly_usage: { Args: never; Returns: number };
       revoke_nonce: {

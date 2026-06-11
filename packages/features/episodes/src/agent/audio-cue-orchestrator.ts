@@ -10,7 +10,7 @@
  *   - Audio Cue Director    (generateAudioCues)    — LLM-based cue generation
  *   - Audio Cue Evaluator   (evaluateAudioCues)    — rule-based quality gate
  *
- * maxSteps: 5 — generate(1) + evaluate(1) + revise(1) + re-evaluate(1) + answer(1)
+ * maxSteps: 8 — generate(1) + evaluate(1) + revise(1) + re-evaluate(1) + answer(1) + 3 buffer for validation retries
  */
 import { runAgent } from '@kit/agent';
 import type { AgentRunResult } from '@kit/agent';
@@ -76,7 +76,7 @@ export async function runAudioCueOrchestrator(
         systemPrompt: AUDIO_CUE_SYSTEM_PROMPT,
         tools: [],
         skills: [audioCueDirectorSkill, audioCueEvaluatorSkill],
-        maxSteps: 5,
+        maxSteps: 8,
         budgetLimits: {
           maxTotalTokens: 40_000,
           maxCostUSD: 0.6,

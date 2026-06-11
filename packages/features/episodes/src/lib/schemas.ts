@@ -126,6 +126,57 @@ export const ResetEpisodeSchema = z.object({
   version: z.number().int().positive(),
 });
 
+/**
+ * Schema for surgical reset to storyboard state.
+ * Keeps story_data, screenplay_data, and dialogue_lines intact.
+ * Clears shots, audio tracks, audio cues, and shot_list.
+ */
+export const ResetToStoryboardSchema = z.object({
+  episodeId: z.string().uuid(),
+  accountId: z.string().uuid(),
+});
+
+/**
+ * Schema for bulk surgical reset to storyboard state.
+ * Same as ResetToStoryboardSchema but for multiple episodes.
+ */
+export const BulkResetToStoryboardSchema = z.object({
+  episodeIds: z.array(z.string().uuid()),
+  accountId: z.string().uuid(),
+});
+
+/**
+ * Schema for flexible reset to a specific pipeline stage.
+ * Unlike ResetEpisodeSchema, does NOT require version (no optimistic locking).
+ * Clears all data produced after the target stage.
+ */
+export const ResetToStageSchema = z.object({
+  episodeId: z.string().uuid(),
+  targetStage: z.enum(['draft', 'story', 'screenplay', 'storyboard']),
+});
+export type ResetToStageInput = z.infer<typeof ResetToStageSchema>;
+
+/**
+ * Schema for bulk flexible reset to a specific pipeline stage.
+ * Applies the same stage-based cleanup to multiple episodes.
+ */
+export const BulkResetToStageSchema = z.object({
+  episodeIds: z.array(z.string().uuid()),
+  accountId: z.string().uuid(),
+  targetStage: z.enum(['draft', 'story', 'screenplay', 'storyboard']),
+});
+export type BulkResetToStageInput = z.infer<typeof BulkResetToStageSchema>;
+
+/**
+ * Schema for batch fetching shot counts for multiple episodes.
+ * Used by the bulk generate modal to detect which episodes already have shots.
+ */
+export const BatchShotCountSchema = z.object({
+  episodeIds: z.array(z.string().uuid()).min(1).max(100),
+});
+export type BatchShotCountInput = z.infer<typeof BatchShotCountSchema>;
+
+
 export const ShotMetadataSchema = z.object({
   characters: z.array(z.string()).optional(),
   locations: z.array(z.string()).optional(),
@@ -195,6 +246,10 @@ export type ListProjectEpisodesInput = z.infer<
 export type UpdateEpisodeInput = z.infer<typeof UpdateEpisodeSchema>;
 export type DeleteEpisodeInput = z.infer<typeof DeleteEpisodeSchema>;
 export type ResetEpisodeInput = z.infer<typeof ResetEpisodeSchema>;
+export type ResetToStoryboardInput = z.infer<typeof ResetToStoryboardSchema>;
+export type BulkResetToStoryboardInput = z.infer<
+  typeof BulkResetToStoryboardSchema
+>;
 export type CreateShotInput = z.infer<typeof CreateShotSchema>;
 export type UpdateShotInput = z.infer<typeof UpdateShotSchema>;
 export type ReorderShotsInput = z.infer<typeof ReorderShotsSchema>;

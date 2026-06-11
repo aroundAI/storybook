@@ -175,7 +175,9 @@ function extractJSON<T = unknown>(
     // Validate type matches expectation
     const actualType = Array.isArray(parsed) ? 'array' : 'object';
     if (actualType !== normalizedType) {
-      throw new Error(`Expected ${normalizedType} but got ${actualType} in LLM response`);
+      throw new Error(
+        `Expected ${normalizedType} but got ${actualType} in LLM response`,
+      );
     }
 
     return parsed as T;
@@ -443,6 +445,12 @@ export async function executeLLM<T = unknown>(
             '503',
             'overloaded',
             'Resource has been exhausted',
+            // Rate limit errors (429)
+            '429',
+            'Too Many Requests',
+            'RATE_LIMIT_EXCEEDED',
+            'RESOURCE_EXHAUSTED',
+            'quota',
           ],
         },
       );

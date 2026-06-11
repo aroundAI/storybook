@@ -63,6 +63,7 @@ export function EpisodeHeader({
         episodeId={episode.id}
         episodeTitle={episode.title}
         episodeVersion={episode.version}
+        episodeStatus={episode.status}
         projectSlug={projectSlug}
         account={account}
       />

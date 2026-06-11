@@ -5,15 +5,7 @@ import { processScheduledPublishes } from '@kit/publishing/jobs';
 /**
  * Cron endpoint to process scheduled publishes
  *
- * This should be called every minute via Vercel Cron or similar scheduler.
- *
- * Add to vercel.json:
- * {
- *   "crons": [{
- *     "path": "/api/cron/publish-scheduled",
- *     "schedule": "* * * * *"
- *   }]
- * }
+ * This should be called every minute via AWS EventBridge or similar scheduler.
  */
 export async function GET(request: Request) {
   // Verify cron secret to prevent unauthorized access

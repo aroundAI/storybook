@@ -3,11 +3,10 @@
  */
 export const dynamic = 'force-static';
 
-// please provide your own implementation
-// if you're not using Vercel or Cloudflare Pages
+// AWS Lambda deployment - known environment variables for git hash detection
 const KNOWN_GIT_ENV_VARS = [
+  'AWS_LAMBDA_FUNCTION_VERSION',
   'CF_PAGES_COMMIT_SHA',
-  'VERCEL_GIT_COMMIT_SHA',
   'GIT_HASH',
 ];
 

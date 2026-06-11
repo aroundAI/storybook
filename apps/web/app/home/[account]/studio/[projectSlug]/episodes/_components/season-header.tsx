@@ -8,13 +8,21 @@ import {
   ChevronDown,
   ChevronUp,
   FolderOpen,
+  Loader2,
   MoreVertical,
   Pencil,
+  RotateCcw,
+  StickyNote,
   Trash2,
   Volume2,
+  Wand2,
 } from 'lucide-react';
 
-import { deleteSeasonAction, updateSeasonAction } from '@kit/episodes/server';
+import {
+  bulkResetToStageAction,
+  deleteSeasonAction,
+  updateSeasonAction,
+} from '@kit/episodes/server';
 import type { Episode } from '@kit/episodes/types';
 import {
   AlertDialog,
@@ -31,10 +39,15 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
 import { toast } from '@kit/ui/sonner';
 
+import { BulkGenerateModal } from './bulk-generate-modal';
 import { GenerateAllSoundModal } from './generate-all-sound-modal';
 
 interface SeasonAnalyticsSummary {
@@ -59,12 +72,15 @@ interface SeasonHeaderProps {
   completedEpisodes: number;
   inProgressEpisodes: number;
   projectId: string;
+  accountId: string;
   episodes: Episode[];
   audioStatsMap?: Map<string, AudioStats>;
   analytics?: SeasonAnalyticsSummary | null;
   onGenerateSeason?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  seasonDescription?: string | null;
+  directionNotes?: string | null;
 }
 
 export function SeasonHeader({
@@ -74,18 +90,28 @@ export function SeasonHeader({
   totalEpisodes,
   completedEpisodes,
   projectId,
+  accountId,
   episodes,
   audioStatsMap,
   isCollapsed = false,
   onToggleCollapse,
+  seasonDescription,
+  directionNotes,
 }: SeasonHeaderProps) {
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
+  const [showBulkGenerate, setShowBulkGenerate] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [resetTargetStage, setResetTargetStage] = useState<'draft' | 'story' | 'screenplay'>('draft');
+  const [isResettingSeason, setIsResettingSeason] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(seasonName ?? '');
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [notesValue, setNotesValue] = useState(directionNotes ?? '');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -118,6 +144,21 @@ export function SeasonHeader({
     });
   }
 
+  const handleSaveNotes = async () => {
+    if (notesValue === (directionNotes ?? '')) return;
+    setIsSavingNotes(true);
+    try {
+      await updateSeasonAction({
+        seasonId,
+        directionNotes: notesValue || undefined,
+      });
+    } catch (error) {
+      console.error('Failed to save direction notes:', error);
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
   function handleDeleteSeason() {
     startTransition(async () => {
       try {
@@ -132,6 +173,52 @@ export function SeasonHeader({
       }
     });
   }
+
+  const resetStageLabels = { draft: 'Draft', story: 'Story', screenplay: 'Screenplay' } as const;
+  const resetStageDescriptions = {
+    draft: 'story, screenplay, shots, audio, and canon data',
+    story: 'screenplay, shots, audio, and canon data',
+    screenplay: 'shots and audio data',
+  } as const;
+
+  async function handleSeasonReset() {
+    setIsResettingSeason(true);
+    setShowResetDialog(false);
+
+    const loadingToastId = toast.loading(
+      `Resetting ${episodes.length} episodes to ${resetStageLabels[resetTargetStage]}...`,
+    );
+
+    try {
+      const episodeIds = episodes.map((e) => e.id);
+      const result = await bulkResetToStageAction({
+        episodeIds,
+        accountId,
+        targetStage: resetTargetStage === 'screenplay' ? 'storyboard' : resetTargetStage,
+      });
+
+      toast.dismiss(loadingToastId);
+
+      if (result.success) {
+        toast.success(
+          `Season ${seasonNumber} reset to ${resetStageLabels[resetTargetStage]} (${result.resetCount} episodes)`,
+        );
+        router.refresh();
+      } else {
+        toast.error(
+          `Reset completed with ${result.errors.length} error(s)`,
+        );
+      }
+    } catch (error) {
+      toast.dismiss(loadingToastId);
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to reset season',
+      );
+    } finally {
+      setIsResettingSeason(false);
+    }
+  }
+
 
   return (
     <>
@@ -172,16 +259,35 @@ export function SeasonHeader({
                     {seasonName}
                   </span>
                 )}
+                {directionNotes && (
+                  <StickyNote className="h-3.5 w-3.5 text-amber-400/60" />
+                )}
                 <Pencil className="h-3 w-3 text-gray-400 opacity-0 transition-opacity group-hover/name:opacity-100" />
               </h3>
             )}
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {totalEpisodes} {totalEpisodes === 1 ? 'episode' : 'episodes'}
             </p>
+            {seasonDescription && (
+              <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
+                {seasonDescription}
+              </p>
+            )}
           </div>
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Bulk Generate button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowBulkGenerate(true)}
+            className="gap-2 border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950"
+          >
+            <Wand2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Bulk Generate</span>
+          </Button>
+
           {/* Generate All Sound button */}
           <Button
             variant="outline"
@@ -221,6 +327,59 @@ export function SeasonHeader({
                 Rename Season
               </DropdownMenuItem>
               <DropdownMenuItem
+                onClick={() => setIsEditingNotes(!isEditingNotes)}
+              >
+                <StickyNote className="mr-2 h-4 w-4" />
+                {isEditingNotes
+                  ? 'Hide Direction Notes'
+                  : 'Edit Direction Notes'}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="text-amber-600 focus:text-amber-600 dark:text-amber-500 dark:focus:text-amber-500">
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Reset Season to...
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setResetTargetStage('story');
+                      setShowResetDialog(true);
+                    }}
+                  >
+                    Reset to Story
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      Clears screenplay, shots, audio
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setResetTargetStage('screenplay');
+                      setShowResetDialog(true);
+                    }}
+                  >
+                    Reset to Screenplay
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      Clears shots, audio
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-amber-600 focus:text-amber-600 dark:text-amber-500 dark:focus:text-amber-500"
+                    onClick={() => {
+                      setResetTargetStage('draft');
+                      setShowResetDialog(true);
+                    }}
+                  >
+                    Reset to Draft
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      Clears everything
+                    </span>
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onSelect={() => setShowDeleteDialog(true)}
               >
@@ -244,6 +403,31 @@ export function SeasonHeader({
           </button>
         </div>
       </div>
+
+      {isEditingNotes && (
+        <div className="mt-2 rounded-lg border border-white/10 bg-black/20 p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <label className="text-sm font-medium text-white/80">
+              Direction Notes
+            </label>
+            <span className="text-xs text-white/40">
+              {notesValue.length} / 5,000
+            </span>
+          </div>
+          <textarea
+            value={notesValue}
+            onChange={(e) => setNotesValue(e.target.value)}
+            onBlur={handleSaveNotes}
+            maxLength={5000}
+            rows={3}
+            placeholder="e.g., Short-form reels. Fast pacing, strong hooks in first 3 seconds. Each episode under 90 seconds..."
+            className="w-full resize-none rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 focus:outline-none"
+          />
+          {isSavingNotes && (
+            <p className="mt-1 text-xs text-white/40">Saving...</p>
+          )}
+        </div>
+      )}
 
       {/* Delete Season Confirmation */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -269,6 +453,47 @@ export function SeasonHeader({
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Reset Season Confirmation */}
+      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Reset Season {seasonNumber} to{' '}
+              {resetStageLabels[resetTargetStage]}?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  This will reset all <strong>{totalEpisodes} episodes</strong>{' '}
+                  in Season {seasonNumber}, clearing their{' '}
+                  {resetStageDescriptions[resetTargetStage]}.
+                </p>
+                <p className="font-medium text-amber-600 dark:text-amber-500">
+                  This cannot be undone. All affected episodes will return to{' '}
+                  {resetStageLabels[resetTargetStage]} status.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isResettingSeason}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSeasonReset}
+              disabled={isResettingSeason}
+              className="bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700"
+            >
+              {isResettingSeason && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              Reset {totalEpisodes} Episodes to{' '}
+              {resetStageLabels[resetTargetStage]}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Generate All Sound Modal */}
       <GenerateAllSoundModal
         open={showModal}
@@ -278,6 +503,16 @@ export function SeasonHeader({
         projectId={projectId}
         episodes={episodes}
         audioStatsMap={audioStatsMap}
+      />
+
+      {/* Bulk Generate Modal */}
+      <BulkGenerateModal
+        open={showBulkGenerate}
+        onOpenChange={setShowBulkGenerate}
+        seasonId={seasonId}
+        seasonNumber={seasonNumber}
+        projectId={projectId}
+        episodes={episodes}
       />
     </>
   );

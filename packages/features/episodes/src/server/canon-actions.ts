@@ -65,6 +65,13 @@ import { DEFAULT_CANON_SETTINGS } from '../lib/canon/types';
  * Server actions for Canon Management System CRUD operations.
  */
 
+/**
+ * Canon Server Actions
+ * Phase 10: FILM-1005
+ *
+ * Server actions for Canon Management System CRUD operations.
+ */
+
 type Json = Database['public']['Tables']['immutable_events']['Row']['metadata'];
 
 // =============================================================================
@@ -1076,7 +1083,7 @@ export const extractCanonChangesAction = enhanceAction(
       } = await client.auth.getUser();
       if (user) {
         checkRateLimit(user.id, 'extractCanonChanges', {
-          maxRequests: 10,
+          maxRequests: 30,
           windowMs: 60_000,
         });
       }

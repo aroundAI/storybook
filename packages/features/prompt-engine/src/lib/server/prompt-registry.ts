@@ -47,10 +47,12 @@ import linkedinPostGeneration from '../../prompts/publishing/linkedin-post-gener
 // =============================================================================
 // Quality Evaluation Prompts
 // =============================================================================
+import ideaQuality from '../../prompts/quality-evaluation/idea-quality.json';
 import reelScout from '../../prompts/quality-evaluation/reel-scout.json';
 import screenplayQuality from '../../prompts/quality-evaluation/screenplay-quality.json';
 import shotQuality from '../../prompts/quality-evaluation/shot-quality.json';
 import storyQuality from '../../prompts/quality-evaluation/story-quality.json';
+import extractAssetDescription from '../../prompts/story-generation/extract-asset-description.json';
 import sceneShotGeneration from '../../prompts/story-generation/scene-shot-generation.json';
 import screenplayConversion from '../../prompts/story-generation/screenplay-conversion.json';
 import seasonGeneration from '../../prompts/story-generation/season-generation.json';
@@ -60,7 +62,6 @@ import seasonOutline from '../../prompts/story-generation/season-outline.json';
 // =============================================================================
 import storyGeneration from '../../prompts/story-generation/story-generation.json';
 import storyIdeation from '../../prompts/story-generation/story-ideation.json';
-import extractAssetDescription from '../../prompts/story-generation/extract-asset-description.json';
 import type { PromptTemplate } from '../types';
 
 /**
@@ -101,6 +102,7 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
     screenplayQuality as unknown as PromptTemplate,
   'quality-evaluation/shot-quality': shotQuality as unknown as PromptTemplate,
   'quality-evaluation/story-quality': storyQuality as unknown as PromptTemplate,
+  'quality-evaluation/idea-quality': ideaQuality as unknown as PromptTemplate,
 
   // Canon Roles
   'canon-extraction': canonExtraction as unknown as PromptTemplate,

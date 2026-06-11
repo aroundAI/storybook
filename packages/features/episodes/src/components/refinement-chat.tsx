@@ -70,6 +70,8 @@ const STATUS_CONFIG: Record<
   },
 };
 
+const MAX_FEEDBACK_LENGTH = 10000;
+
 export function RefinementChat({
   mode,
   episodeId,
@@ -212,6 +214,7 @@ export function RefinementChat({
 
   const isRefining = messages.some((m) => m.status === 'refining');
   const hasAppliedRefinement = messages.some((m) => m.status === 'applied');
+  const isOverLimit = input.length > MAX_FEEDBACK_LENGTH;
 
   const formatTime = (date: Date) =>
     date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -330,7 +333,9 @@ export function RefinementChat({
           />
           <Button
             onClick={handleSubmit}
-            disabled={!input.trim() || isRefining || isSubmitting}
+            disabled={
+              !input.trim() || isRefining || isSubmitting || isOverLimit
+            }
             size="icon"
             className="h-[60px] w-10 shrink-0 bg-indigo-600 hover:bg-indigo-700"
           >
@@ -341,12 +346,31 @@ export function RefinementChat({
             )}
           </Button>
         </div>
-        {isRefining && (
-          <p className="mt-2 flex items-center gap-1.5 text-xs text-blue-500 dark:text-blue-400">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            AI is refining your {mode}...
-          </p>
-        )}
+        <div className="mt-2 flex items-center justify-between">
+          <div>
+            {isRefining && (
+              <p className="flex items-center gap-1.5 text-xs text-blue-500 dark:text-blue-400">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                AI is refining your {mode}...
+              </p>
+            )}
+          </div>
+          {input.length > 0 && (
+            <p
+              className={cn(
+                'text-xs tabular-nums',
+                isOverLimit
+                  ? 'font-medium text-red-500 dark:text-red-400'
+                  : input.length > MAX_FEEDBACK_LENGTH * 0.9
+                    ? 'text-yellow-500 dark:text-yellow-400'
+                    : 'text-gray-400 dark:text-gray-500',
+              )}
+            >
+              {input.length.toLocaleString()} /{' '}
+              {MAX_FEEDBACK_LENGTH.toLocaleString()}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

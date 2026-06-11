@@ -214,6 +214,12 @@ async function processJob(job: LlmJobMessage): Promise<unknown> {
       );
       return processAnalyticsInsights(job.payload, supabase);
     }
+    case 'asset-creation': {
+      const { processAssetCreation } = await import(
+        './handlers/asset-creation'
+      );
+      return processAssetCreation(job.payload, supabase);
+    }
     case 'language-insights': {
       const { processLanguageInsights } = await import(
         './handlers/language-insights'
@@ -285,6 +291,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
       await sendToUser(job.userId, {
         type: 'llm-result',
         jobType: job.jobType,
+        episodeId: (job.payload?.episodeId as string) ?? undefined,
         result,
         timestamp: new Date().toISOString(),
       });
@@ -300,6 +307,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
         await sendToUser(job.userId, {
           type: 'llm-error',
           jobType: job.jobType,
+          episodeId: (job.payload?.episodeId as string) ?? undefined,
           error: error instanceof Error ? error.message : 'Unknown error',
           timestamp: new Date().toISOString(),
         });

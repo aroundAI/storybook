@@ -3,6 +3,7 @@ export * from './continuity-actions';
 export * from './story-actions';
 export * from './screenplay-actions';
 export * from './batch-episode-actions';
+export * from './bulk-actions';
 
 // Shot CRUD actions (FILM-303)
 export * from '../lib/server/mutations/shot-actions';
@@ -60,6 +61,9 @@ export * from './transition-analyzer';
 
 // Asset link actions (sidebar create)
 export * from '../lib/server/mutations/asset-link-actions';
+
+// Bulk episode status polling (Bulk Generate dialog)
+export * from './bulk-episode-status-action';
 
 // NOTE: Server-only canon functions must be imported directly:
 // import { buildMemoryContext } from '@kit/episodes/lib/canon/memory-context-builder';

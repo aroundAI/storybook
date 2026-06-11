@@ -188,9 +188,12 @@ export const batchCreateUnlinkedAction = enhanceAction(
       .in('name', allNames)
       .is('deleted_at', null);
 
-    const existingMap = new Map<string, { id: string; name: string; type: string }>();
+    const existingMap = new Map<
+      string,
+      { id: string; name: string; type: string }
+    >();
 
-    for (const a of (existingAssets ?? [])) {
+    for (const a of existingAssets ?? []) {
       existingMap.set(`${a.type}:${a.name.toLowerCase()}`, a);
     }
 
@@ -238,7 +241,10 @@ export const batchCreateUnlinkedAction = enhanceAction(
 
             return result.data.description;
           } catch (err) {
-            console.error(`[batchCreate] LLM extraction failed for "${item.name}":`, err);
+            console.error(
+              `[batchCreate] LLM extraction failed for "${item.name}":`,
+              err,
+            );
             return '';
           }
         }),
@@ -269,10 +275,13 @@ export const batchCreateUnlinkedAction = enhanceAction(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: created, error: insertError } = await (client as any)
         .from('assets')
-        .upsert(assetRows.map((row) => ({ ...row, deleted_at: null })), {
-          onConflict: 'project_id,type,name',
-          ignoreDuplicates: false,
-        })
+        .upsert(
+          assetRows.map((row) => ({ ...row, deleted_at: null })),
+          {
+            onConflict: 'project_id,type,name',
+            ignoreDuplicates: false,
+          },
+        )
         .select('id, name, type');
 
       if (insertError) {
@@ -288,10 +297,7 @@ export const batchCreateUnlinkedAction = enhanceAction(
     }
 
     // 6. Combine: existing (pre-existing in library) + newly created
-    const allAssets = [
-      ...Array.from(existingMap.values()),
-      ...newAssets,
-    ];
+    const allAssets = [...Array.from(existingMap.values()), ...newAssets];
 
     // 7. Link all to episode metadata
     if (allAssets.length > 0) {

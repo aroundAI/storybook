@@ -210,6 +210,25 @@ export async function processShotGeneration(
       );
     }
 
+    // Validate shot count is reasonable for the number of scenes
+    const expectedMin = scenes.length * 2;
+    const expectedMax = scenes.length * 10;
+    const totalShots = orchestratorResult.shots.length;
+
+    if (totalShots < expectedMin) {
+      console.warn(
+        `[Shot Generation] LOW SHOT COUNT WARNING: Only ${totalShots} shots for ${scenes.length} scenes ` +
+          `(expected at least ${expectedMin}). Some scenes may have failed silently. ` +
+          `Episode: ${data.episodeId}`,
+      );
+    } else if (totalShots > expectedMax) {
+      console.warn(
+        `[Shot Generation] HIGH SHOT COUNT WARNING: ${totalShots} shots for ${scenes.length} scenes ` +
+          `(expected at most ${expectedMax}). May indicate duplicate generation. ` +
+          `Episode: ${data.episodeId}`,
+      );
+    }
+
     const reelCandidateSet = new Set(orchestratorResult.reelCandidateScenes);
 
     // Build lookup: sceneNumber → full Reel Scout analysis (viralScore, hookType, etc.)
@@ -349,7 +368,45 @@ export async function processShotGeneration(
       throw new Error('No shots were generated');
     }
 
-    // 5. INSERT shots
+    // 5. CLEAR existing data then INSERT new shots (idempotent)
+    // Without this, re-running generation stacks duplicate shots.
+    const { error: clearAudioCuesErr } = await supabase
+      .from('audio_cues')
+      .delete()
+      .eq('episode_id', data.episodeId);
+
+    if (clearAudioCuesErr) {
+      console.warn(
+        `[Shot Generation] Failed to clear existing audio cues: ${clearAudioCuesErr.message}`,
+      );
+    }
+
+    const { error: clearAudioTracksErr } = await supabase
+      .from('audio_tracks')
+      .delete()
+      .eq('episode_id', data.episodeId);
+
+    if (clearAudioTracksErr) {
+      console.warn(
+        `[Shot Generation] Failed to clear existing audio tracks: ${clearAudioTracksErr.message}`,
+      );
+    }
+
+    const { error: clearShotsErr } = await supabase
+      .from('shots')
+      .delete()
+      .eq('episode_id', data.episodeId);
+
+    if (clearShotsErr) {
+      console.warn(
+        `[Shot Generation] Failed to clear existing shots: ${clearShotsErr.message}`,
+      );
+    }
+
+    console.log(
+      `[Shot Generation] Cleared existing data for episode ${data.episodeId}. Inserting ${allShots.length} new shots.`,
+    );
+
     const { error: insertError } = await supabase
       .from('shots')
       .insert(allShots);

@@ -11,7 +11,7 @@ import { getLogger } from '@kit/shared/logger';
  * Cron endpoint for proactively refreshing OAuth tokens.
  *
  * This endpoint should be called every 30 minutes by your cron scheduler
- * (e.g., AWS EventBridge, Vercel Cron, or external service like cron-job.org).
+ * (e.g., AWS EventBridge or external service like cron-job.org).
  *
  * Tokens expiring within 1 hour will be refreshed. Failed refreshes will
  * mark connections as inactive and notify users to re-authenticate.

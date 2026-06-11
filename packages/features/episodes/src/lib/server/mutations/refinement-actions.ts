@@ -10,13 +10,13 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 const RefineStorySchema = z.object({
   episodeId: z.string().uuid(),
   projectId: z.string().uuid(),
-  feedback: z.string().min(1).max(5000),
+  feedback: z.string().min(1).max(10000),
 });
 
 const RefineScreenplaySchema = z.object({
   episodeId: z.string().uuid(),
   projectId: z.string().uuid(),
-  feedback: z.string().min(1).max(5000),
+  feedback: z.string().min(1).max(10000),
 });
 
 const UndoRefinementSchema = z.object({
@@ -41,7 +41,7 @@ export const refineStoryAction = enhanceAction(
     }
 
     checkRateLimit(user.id, 'refineStory', {
-      maxRequests: 5,
+      maxRequests: 30,
       windowMs: 60_000,
     });
 
@@ -130,7 +130,7 @@ export const refineScreenplayAction = enhanceAction(
     }
 
     checkRateLimit(user.id, 'refineScreenplay', {
-      maxRequests: 5,
+      maxRequests: 30,
       windowMs: 60_000,
     });
 

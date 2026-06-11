@@ -2133,6 +2133,56 @@ export type Database = {
         };
         Relationships: [];
       };
+      fact_extraction_jobs: {
+        Row: {
+          chunk_count: number;
+          chunks_completed: number;
+          created_at: string | null;
+          created_by: string | null;
+          error_message: string | null;
+          facts_extracted: number;
+          id: string;
+          project_id: string;
+          source_title: string;
+          status: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          chunk_count?: number;
+          chunks_completed?: number;
+          created_at?: string | null;
+          created_by?: string | null;
+          error_message?: string | null;
+          facts_extracted?: number;
+          id?: string;
+          project_id: string;
+          source_title: string;
+          status?: string;
+          updated_at?: string | null;
+        };
+        Update: {
+          chunk_count?: number;
+          chunks_completed?: number;
+          created_at?: string | null;
+          created_by?: string | null;
+          error_message?: string | null;
+          facts_extracted?: number;
+          id?: string;
+          project_id?: string;
+          source_title?: string;
+          status?: string;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'fact_extraction_jobs_project_id_fkey';
+            columns: ['project_id'];
+            isOneToOne: false;
+            referencedRelation: 'projects';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       generation_jobs: {
         Row: {
           account_id: string;
@@ -3646,6 +3696,7 @@ export type Database = {
           created_at: string;
           deleted_at: string | null;
           description: string | null;
+          direction_notes: string | null;
           id: string;
           name: string | null;
           number: number;
@@ -3656,6 +3707,7 @@ export type Database = {
           created_at?: string;
           deleted_at?: string | null;
           description?: string | null;
+          direction_notes?: string | null;
           id?: string;
           name?: string | null;
           number: number;
@@ -3666,6 +3718,7 @@ export type Database = {
           created_at?: string;
           deleted_at?: string | null;
           description?: string | null;
+          direction_notes?: string | null;
           id?: string;
           name?: string | null;
           number?: number;
@@ -5139,6 +5192,7 @@ export type Database = {
           similarity: number;
         }[];
       };
+      plan_dialogue_timeline: { Args: { p_updates: Json }; Returns: number };
       remove_episode_from_threads_touched: {
         Args: { p_episode_id: string; p_project_id: string };
         Returns: undefined;

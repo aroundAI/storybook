@@ -43,7 +43,7 @@ export const generateShotListAction = enhanceAction(
     }
 
     checkRateLimit(user.id, 'generateShotList', {
-      maxRequests: 3,
+      maxRequests: 120,
       windowMs: 60_000,
     });
 
@@ -119,6 +119,9 @@ export const generateShotListAction = enhanceAction(
       payload: {
         episodeId: data.episodeId,
         version: episode.version,
+        shotDurationMin: data.shotDurationMin,
+        shotDurationMax: data.shotDurationMax,
+        videoProvider: data.videoProvider,
         accountId,
         userId: user.id,
         projectId: episode.project_id,

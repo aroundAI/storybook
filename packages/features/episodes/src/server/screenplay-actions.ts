@@ -164,7 +164,7 @@ export const convertToScreenplayAction = enhanceAction(
     }
 
     checkRateLimit(user.id, 'convertToScreenplay', {
-      maxRequests: 3,
+      maxRequests: 120,
       windowMs: 60_000,
     });
 

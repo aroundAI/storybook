@@ -6,7 +6,6 @@ describe('create-csp-response', () => {
   // Mock nosecone module
   const mockMiddleware = vi.fn();
   const mockCreateMiddleware = vi.fn(() => mockMiddleware);
-  const mockWithVercelToolbar = vi.fn((config) => config);
   const mockDefaults = {
     contentSecurityPolicy: {
       directives: {
@@ -38,7 +37,6 @@ describe('create-csp-response', () => {
     // Mock the dynamic import
     vi.doMock('@nosecone/next', () => ({
       createMiddleware: mockCreateMiddleware,
-      withVercelToolbar: mockWithVercelToolbar,
       defaults: mockDefaults,
     }));
   });
@@ -277,38 +275,7 @@ describe('create-csp-response', () => {
       expect(response).toBeUndefined();
     });
 
-    it('should use withVercelToolbar in preview environment', async () => {
-      process.env.VERCEL_ENV = 'preview';
 
-      vi.resetModules();
-      const { createCspResponse } = await import('../create-csp-response');
-
-      await createCspResponse();
-
-      expect(mockWithVercelToolbar).toHaveBeenCalled();
-    });
-
-    it('should not use withVercelToolbar in production', async () => {
-      process.env.VERCEL_ENV = 'production';
-
-      vi.resetModules();
-      const { createCspResponse } = await import('../create-csp-response');
-
-      await createCspResponse();
-
-      expect(mockWithVercelToolbar).not.toHaveBeenCalled();
-    });
-
-    it('should not use withVercelToolbar when VERCEL_ENV is not set', async () => {
-      delete process.env.VERCEL_ENV;
-
-      vi.resetModules();
-      const { createCspResponse } = await import('../create-csp-response');
-
-      await createCspResponse();
-
-      expect(mockWithVercelToolbar).not.toHaveBeenCalled();
-    });
 
     it('should handle http Supabase URL', async () => {
       process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321';

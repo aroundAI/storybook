@@ -5,7 +5,11 @@ import { notFound } from 'next/navigation';
 
 import { ArrowLeft, Film } from 'lucide-react';
 
-import type { EpisodeStatus } from '@kit/episodes/types';
+import type {
+  EpisodeStatus,
+  ScreenplayData,
+  StoryData,
+} from '@kit/episodes/types';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
@@ -14,7 +18,9 @@ import { CollapsibleSeasonSection } from './_components/collapsible-season-secti
 import { CreateEpisodeDialog } from './_components/create-episode-dialog';
 import { CreateEpisodeWizardWrapper } from './_components/create-episode-wizard-wrapper';
 import { EpisodeListItem } from './_components/episode-list-item';
+import { EpisodeListWrapper } from './_components/episode-list-wrapper';
 import { EpisodesZeroState } from './_components/episodes-zero-state';
+import { ExportContentDialog } from './_components/export-content-dialog';
 import { SeasonGeneratorDialog } from './_components/season-generator-dialog';
 
 interface EpisodesPageProps {
@@ -50,6 +56,7 @@ interface Season {
   number: number;
   name: string | null;
   description: string | null;
+  direction_notes: string | null;
 }
 
 interface Episode {
@@ -61,12 +68,14 @@ interface Episode {
   title: string;
   description: string | null;
   status: string;
+  version: number;
   duration_seconds: number | null;
   thumbnail_url: string | null;
   story_data: Record<string, unknown> | null;
   screenplay_data: Record<string, unknown> | null;
   shot_list: Record<string, unknown> | null;
   metadata: Record<string, unknown> | null;
+  target_duration_seconds: number | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -79,7 +88,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   // First fetch project by slug
   const { data: project, error: projectError } = await client
     .from('projects')
-    .select('id, name, slug')
+    .select('id, name, slug, account_id')
     .eq('slug', projectSlug)
     .single();
 
@@ -91,7 +100,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   const [seasonsResult, episodesResult, unassignedResult] = await Promise.all([
     client
       .from('seasons')
-      .select('id, number, name, description')
+      .select('id, number, name, description, direction_notes')
       .eq('project_id', project.id)
       .order('number', { ascending: true }),
     // Episodes with computed boolean checks instead of fetching full JSON blobs
@@ -100,7 +109,8 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
       .select(
         `
         id, slug, project_id, season_id, number, title, description,
-        status, duration_seconds, thumbnail_url,
+        status, version, duration_seconds, thumbnail_url,
+        story_data, screenplay_data, target_duration_seconds,
         metadata,
         created_at, updated_at, deleted_at
       `,
@@ -114,7 +124,8 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
       .select(
         `
         id, slug, project_id, season_id, number, title, description,
-        status, duration_seconds, thumbnail_url,
+        status, version, duration_seconds, thumbnail_url,
+        story_data, screenplay_data, target_duration_seconds,
         metadata,
         created_at, updated_at, deleted_at
       `,
@@ -125,7 +136,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
       .order('number', { ascending: true }),
   ]);
 
-  const { data: seasons } = seasonsResult;
+  const seasons = seasonsResult.data as Season[] | null;
   const episodes = episodesResult.data as Episode[] | null;
   const episodesError = episodesResult.error;
   const unassignedEpisodes = (unassignedResult.data as Episode[] | null) ?? [];
@@ -250,6 +261,17 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
             </h1>
           </div>
           <div className="flex gap-2">
+            {(seasons?.length ?? 0) > 0 && (
+              <ExportContentDialog
+                projectId={project.id}
+                projectName={project.name}
+                seasons={(seasons ?? []).map((s) => ({
+                  id: s.id,
+                  name: s.name,
+                  number: s.number,
+                }))}
+              />
+            )}
             <SeasonGeneratorDialog projectId={project.id} />
             <CreateEpisodeDialog
               projectId={project.id}
@@ -273,6 +295,10 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
       <div className="flex-1 overflow-y-auto">
         {episodes && episodes.length > 0 ? (
           <div className="space-y-6 p-6">
+            <EpisodeListWrapper
+              episodes={(episodes ?? []).map((e) => ({ id: e.id, title: e.title, status: e.status }))}
+              accountId={project.account_id}
+            >
             {/* Render episodes grouped by season */}
             {hasSeasons ? (
               <>
@@ -285,12 +311,15 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                       seasonName={season.name ?? `Season ${season.number}`}
                       episodes={seasonEpisodes.map(mapEpisode)}
                       account={account}
+                      accountId={project.account_id}
                       projectId={project.id}
                       projectSlug={project.slug ?? project.id}
                       analytics={null}
                       languageMap={languageMap}
                       audioStatsMap={audioStatsMap}
                       validAssetIds={validAssetIds}
+                      seasonDescription={season.description}
+                      directionNotes={season.direction_notes}
                     />
                   ),
                 )}
@@ -346,6 +375,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                 </div>
               </div>
             )}
+            </EpisodeListWrapper>
           </div>
         ) : (
           <EpisodesZeroState
@@ -378,7 +408,6 @@ function groupEpisodesBySeason(
 
 /**
  * Map database episode to component props
- * Note: JSON blob fields are not loaded in list query - component derives status from episode.status
  */
 function mapEpisode(episode: Episode) {
   const meta = episode.metadata as Record<string, unknown> | null;
@@ -395,11 +424,12 @@ function mapEpisode(episode: Episode) {
     thumbnailUrl: episode.thumbnail_url,
     finalVideoUrl: null,
     localizedVideos: null,
-    storyData: null,
-    screenplayData: null,
+    storyData: (episode.story_data as StoryData) ?? null,
+    screenplayData:
+      (episode.screenplay_data as unknown as ScreenplayData) ?? null,
     shotList: null,
     metadata: null,
-    version: 0,
+    version: episode.version,
     createdAt: episode.created_at,
     updatedAt: episode.updated_at,
     deletedAt: episode.deleted_at,
