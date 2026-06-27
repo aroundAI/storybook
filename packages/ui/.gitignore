@@ -1,0 +1,6 @@
+.ds-sync/
+ds-bundle/
+.ds-batch-*/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules

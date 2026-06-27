@@ -1,0 +1,446 @@
+{
+  "projectId": "7e7de5be-bb3a-4752-b138-9c7f8571714b",
+  "shape": "package",
+  "pkg": "@kit/ui",
+  "globalName": "KitUi",
+  "cssEntry": ".design-sync/.cache/compiled-theme.css",
+  "runtimeFontPrefixes": [
+    "DM Sans"
+  ],
+  "extraEntries": [
+    "./.design-sync/preview-background.tsx"
+  ],
+  "provider": {
+    "component": "PreviewBackground"
+  },
+  "storyImports": {
+    "shim": [
+      "/packages/ui/src/"
+    ]
+  },
+  "componentSrcMap": {
+    "Sidebar": "src/makerkit/sidebar.tsx",
+    "SidebarContent": "src/makerkit/sidebar.tsx",
+    "SidebarGroup": "src/makerkit/sidebar.tsx",
+    "SidebarNavigation": "src/makerkit/sidebar.tsx",
+    "ShadcnSidebar": "src/shadcn/sidebar.tsx",
+    "ShadcnSidebarContent": "src/shadcn/sidebar.tsx",
+    "ShadcnSidebarGroup": "src/shadcn/sidebar.tsx",
+    "ShadcnSidebarNavigation": "src/shadcn/sidebar.tsx",
+    "DataTable": "src/shadcn/data-table.tsx",
+    "EnhancedDataTable": "src/makerkit/data-table.tsx",
+    "MobileNavigationDropdown": null,
+    "AuthenticityToken": null,
+    "Dropzone": null,
+    "DropzoneContent": null,
+    "DropzoneEmptyState": null,
+    "LazyRender": null,
+    "ImageUploadInput": null,
+    "TopLoadingBarIndicator": null
+  },
+  "dtsPropsFor": {
+    "ShadcnSidebar": "className?: string; children?: unknown; side?: 'left' | 'right'; variant?: 'sidebar' | 'floating' | 'inset' | 'ghost'; collapsible?: 'offcanvas' | 'icon' | 'none';",
+    "ShadcnSidebarContent": "className?: string; children?: unknown;",
+    "ShadcnSidebarGroup": "className?: string; children?: unknown;",
+    "ShadcnSidebarNavigation": "config: { routes: Array<Record<string, unknown>> };"
+  },
+  "libOverrides": {
+    "source-kit.mjs": "src/shadcn/{sidebar,data-table}.tsx and src/makerkit/{sidebar,data-table}.tsx export overlapping names (Sidebar/SidebarContent/SidebarGroup/SidebarNavigation, DataTable); ESM export* drops the ambiguous bindings, so the synth entry aliases the secondary copy of each pair (Shadcn* / EnhancedDataTable)",
+    "dts.mjs": "package ships no .d.ts tree at all (synth-entry mode), so unmodified projectFor() adds zero source files and every component gets the generic prop stub; fork also parses the package's own .tsx source when the .d.ts glob finds nothing"
+  },
+  "overrides": {
+    "DropdownMenuCheckboxItem": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DropdownMenuContent": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DropdownMenuGroup": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DropdownMenuItem": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DropdownMenuLabel": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DropdownMenuPortal": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DropdownMenuRadioGroup": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DropdownMenuRadioItem": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DialogTrigger": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DialogOverlay": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DialogPortal": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DialogTitle": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DropdownMenuSeparator": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DropdownMenuShortcut": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DropdownMenuSub": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DropdownMenuSubContent": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DropdownMenuSubTrigger": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DropdownMenuTrigger": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "PopoverAnchor": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "PopoverContent": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "PopoverTrigger": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "SelectContent": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "SelectGroup": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "SelectItem": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "SelectLabel": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "SelectScrollDownButton": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "SelectScrollUpButton": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "SelectSeparator": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "SheetClose": {
+      "cardMode": "single",
+      "primaryStory": "ConfirmSheet"
+    },
+    "SheetContent": {
+      "cardMode": "single",
+      "primaryStory": "ConfirmSheet"
+    },
+    "SheetDescription": {
+      "cardMode": "single",
+      "primaryStory": "ConfirmSheet"
+    },
+    "SheetFooter": {
+      "cardMode": "single",
+      "primaryStory": "ConfirmSheet"
+    },
+    "SheetHeader": {
+      "cardMode": "single",
+      "primaryStory": "ConfirmSheet"
+    },
+    "SheetOverlay": {
+      "cardMode": "single",
+      "primaryStory": "ConfirmSheet"
+    },
+    "SheetPortal": {
+      "cardMode": "single",
+      "primaryStory": "ConfirmSheet"
+    },
+    "SheetTitle": {
+      "cardMode": "single",
+      "primaryStory": "ConfirmSheet"
+    },
+    "SheetTrigger": {
+      "cardMode": "single",
+      "primaryStory": "ConfirmSheet"
+    },
+    "SidebarDivider": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "SidebarItem": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "SidebarRail": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "SubMenuModeToggle": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "ToggleGroupItem": {
+      "cardMode": "column"
+    },
+    "TooltipContent": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "TooltipProvider": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "TooltipTrigger": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "FileUploader": {
+      "cardMode": "column"
+    },
+    "GlobalLoader": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "Sidebar": {
+      "cardMode": "single",
+      "primaryStory": "Collapsed"
+    },
+    "SidebarContent": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "SidebarGroup": {
+      "cardMode": "single",
+      "primaryStory": "Collapsible"
+    },
+    "SidebarNavigation": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "VersionUpdater": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "FeatureCard": {
+      "cardMode": "column"
+    },
+    "AlertDialog": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "Checkbox": {
+      "cardMode": "column"
+    },
+    "Collapsible": {
+      "cardMode": "column"
+    },
+    "Command": {
+      "cardMode": "column"
+    },
+    "Dialog": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DropdownMenu": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "Popover": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "Progress": {
+      "cardMode": "column"
+    },
+    "Select": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "Separator": {
+      "cardMode": "column"
+    },
+    "Sheet": {
+      "cardMode": "single",
+      "primaryStory": "ConfirmSheet"
+    },
+    "ToggleGroup": {
+      "cardMode": "column"
+    },
+    "Tooltip": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "CookieBanner": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "CollapsibleContent": {
+      "cardMode": "column"
+    },
+    "CollapsibleTrigger": {
+      "cardMode": "column"
+    },
+    "CommandDialog": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "CommandEmpty": {
+      "cardMode": "column"
+    },
+    "CommandGroup": {
+      "cardMode": "column"
+    },
+    "CommandInput": {
+      "cardMode": "column"
+    },
+    "CommandItem": {
+      "cardMode": "column"
+    },
+    "CommandList": {
+      "cardMode": "column"
+    },
+    "CommandSeparator": {
+      "cardMode": "column"
+    },
+    "CommandShortcut": {
+      "cardMode": "column"
+    },
+    "DialogClose": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DialogContent": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DialogDescription": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DialogFooter": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "DialogHeader": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "AlertDialogAction": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "AlertDialogCancel": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "AlertDialogContent": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "AlertDialogDescription": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "AlertDialogFooter": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "AlertDialogHeader": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "AlertDialogOverlay": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "AlertDialogPortal": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "AlertDialogTitle": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "AlertDialogTrigger": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    },
+    "ChartContainer": {
+      "cardMode": "column"
+    },
+    "ChartLegend": {
+      "cardMode": "column"
+    },
+    "ChartLegendContent": {
+      "cardMode": "column"
+    },
+    "ChartStyle": {
+      "cardMode": "column"
+    },
+    "ChartTooltip": {
+      "cardMode": "column"
+    },
+    "ChartTooltipContent": {
+      "cardMode": "column"
+    },
+    "SidebarFooter": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarGroupAction": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarGroupContent": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarGroupLabel": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarHeader": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarInput": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarInset": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarMenu": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarMenuAction": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarMenuBadge": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarMenuButton": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarMenuItem": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarMenuSkeleton": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarMenuSub": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarMenuSubButton": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarMenuSubItem": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarProvider": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarSeparator": { "cardMode": "single", "primaryStory": "Default" },
+    "SidebarTrigger": { "cardMode": "single", "primaryStory": "Default" },
+    "ShadcnSidebar": { "cardMode": "single", "primaryStory": "Default" },
+    "ShadcnSidebarContent": { "cardMode": "single", "primaryStory": "Default" },
+    "ShadcnSidebarGroup": { "cardMode": "single", "primaryStory": "Default" },
+    "ShadcnSidebarNavigation": { "cardMode": "single", "primaryStory": "Default" },
+    "EnhancedDataTable": { "cardMode": "column" },
+    "Stepper": { "cardMode": "column" }
+  }
+}

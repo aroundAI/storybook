@@ -1,0 +1,35 @@
+@import "tailwindcss";
+@import "../../../apps/web/styles/theme.css";
+@import "../../../apps/web/styles/theme.utilities.css";
+@import "../../../apps/web/styles/shadcn-ui.css";
+@import "../../../apps/web/styles/makerkit.css";
+@import "../../../apps/web/styles/studio-dark.css";
+@import "../../../apps/web/styles/markdoc.css";
+
+@plugin "../../../node_modules/.pnpm/tailwindcss-animate@1.0.7_tailwindcss@4.1.13/node_modules/tailwindcss-animate";
+
+@source "../src/**/*.{ts,tsx}";
+
+/* Inlined from apps/web/styles/globals.css's own @layer base block (not a
+   separate file to @import) — sets the default text color on body. Without
+   it, components with no explicit text color (e.g. Button's "outline"
+   variant) render invisible text against the cinema-dark background. */
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border, currentColor);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: theme(--color-muted-foreground);
+  }
+}
