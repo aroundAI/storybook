@@ -3,6 +3,7 @@
   "shape": "package",
   "pkg": "@kit/ui",
   "globalName": "KitUi",
+  "readmeHeader": ".design-sync/conventions.md",
   "cssEntry": ".design-sync/.cache/compiled-theme.css",
   "runtimeFontPrefixes": [
     "DM Sans"
