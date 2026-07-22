@@ -99,7 +99,7 @@ export class YouTubeProvider {
     if (input.playlistIds?.length) {
       await Promise.all(
         input.playlistIds.map((playlistId) =>
-          this.addToPlaylist(videoId, playlistId),
+          this.addToPlaylist(videoId, playlistId, input.playlistPositions?.[playlistId]),
         ),
       );
     }
@@ -134,12 +134,13 @@ export class YouTubeProvider {
   /**
    * Adds a video to a playlist
    */
-  async addToPlaylist(videoId: string, playlistId: string): Promise<void> {
+  async addToPlaylist(videoId: string, playlistId: string, position?: number): Promise<void> {
     await this.youtube.playlistItems.insert({
       part: ['snippet'],
       requestBody: {
         snippet: {
           playlistId,
+          position,
           resourceId: {
             kind: 'youtube#video',
             videoId,

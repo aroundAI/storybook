@@ -19,6 +19,9 @@ export {
   type ScheduleItem,
   type VideoToSchedule,
 } from './schedule-release-panel';
+export { SchedulingCalendar } from './scheduling-calendar';
+export { ManualTaskQueue } from './manual-task-queue';
+export { PlaylistRulesEditor } from './playlist-rules-editor';
 
 // Re-export types
 export type {

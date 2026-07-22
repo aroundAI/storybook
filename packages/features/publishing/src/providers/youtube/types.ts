@@ -20,6 +20,8 @@ export interface YouTubeUploadInput {
   thumbnailPath?: string;
   /** Playlist IDs to add the video to */
   playlistIds?: string[];
+  /** Positions for each playlist (maps playlist ID to position) */
+  playlistPositions?: Record<string, number>;
   /** Whether the video is made for kids */
   madeForKids: boolean;
   /** Default language of the video */
