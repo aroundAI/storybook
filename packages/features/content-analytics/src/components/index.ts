@@ -150,3 +150,6 @@ export {
   BestEpisodesToClipCard,
   BestEpisodesToClipCardSkeleton,
 } from './analytics-enhancement-cards';
+export { ReviewDashboard } from './review-dashboard';
+export { TemplatePerformance } from './template-performance';
+export { SponsorTracker } from './sponsor-tracker';
