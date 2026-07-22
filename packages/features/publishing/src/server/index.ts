@@ -78,3 +78,18 @@ export {
 } from './playlist-rule-actions';
 
 export { runPostPublishHooks } from './post-publish-hooks';
+
+export {
+  createCompilationAction,
+  getCompilationsAction,
+  getCompilationAction,
+  updateCompilationAction,
+  deleteCompilationAction,
+  addSegmentAction,
+  reorderSegmentsAction,
+  removeSegmentAction,
+  updateSegmentAction,
+  assembleCompilationAction,
+  generateChaptersAction,
+  getEpisodeShotsForCompilationAction,
+} from './compilation-actions';

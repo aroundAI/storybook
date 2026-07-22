@@ -45,26 +45,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Security: Validate path pattern to prevent path traversal
-    // Expected pattern:
-    // 1. projects/{projectId}/assets/{type}/{filename}
-    // 2. episodes/{episodeId}/{category}/{filename}
+    // Allowed prefixes (each followed by a UUID):
+    //   projects/{projectId}/...  — project assets, shots, intros, etc.
+    //   episodes/{episodeId}/...  — episode videos, thumbnails, etc.
+    //   shorts/{episodeId}/...    — generated short clips
+    //
+    // After the prefix, zero or more safe directory segments are allowed,
+    // followed by a filename. Directory segments: [a-zA-Z0-9_-]+
+    // Filename (must contain a dot for extension): [a-zA-Z0-9_.-]+
+    //
+    // This rejects path traversal (no ".." since dots only in final segment)
+    // and restricts characters to alphanumeric, dash, underscore, and dot.
 
-    // Regex explanation:
-    // ^projects\/([a-f0-9-]+)\/assets\/ -> Matches projects/{uuid}/assets/
-    // ^episodes\/([a-f0-9-]+)\/ -> Matches episodes/{uuid}/
-    // ^projects\/([a-f0-9-]+)\/shots\/([a-f0-9-]+)\/ -> Matches projects/{uuid}/shots/{uuid}/ (Note: shot ID is present in path but not captured by main regex group 2)
-    // ([a-zA-Z0-9_-]+) -> Matches asset type / category
-    // \/[a-zA-Z0-9-.]+$ -> Matches filename
-
-    // We need to handle three main cases:
-    // 1. Project Assets: projects/{projectId}/assets/{type}/{filename}
-    // 2. Episode Assets: episodes/{episodeId}/{type}/{filename}
-    // 3. Shot Assets: projects/{projectId}/shots/{shotId}/{type}/{filename}
-
-    const pathPattern = new RegExp(
-      `^(?:projects\\/([a-f0-9-]+)\\/(?:assets|shots\\/[a-f0-9-]+)|episodes\\/([a-f0-9-]+))\\/([a-zA-Z0-9_-]+)\\/[a-zA-Z0-9-.]+$`,
-      'i',
-    );
+    const pathPattern =
+      /^(?:projects\/([a-f0-9-]+)|(?:episodes|shorts)\/([a-f0-9-]+))(?:\/[a-zA-Z0-9_-]+)*\/[a-zA-Z0-9_.-]+$/i;
 
     const pathMatch = path.match(pathPattern);
 
@@ -77,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     // Security: Verify user has access to the project
     // pathMatch[1] is projectId (if projects/ path)
-    // pathMatch[2] is episodeId (if episodes/ path)
+    // pathMatch[2] is episodeId (if episodes/ or shorts/ path)
     const projectIdFromPath = pathMatch[1];
     const episodeIdFromPath = pathMatch[2];
 

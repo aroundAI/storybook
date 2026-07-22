@@ -22,6 +22,10 @@ export {
 export { SchedulingCalendar } from './scheduling-calendar';
 export { ManualTaskQueue } from './manual-task-queue';
 export { PlaylistRulesEditor } from './playlist-rules-editor';
+export { CompilationList } from './compilation-list';
+export { CompilationEditor } from './compilation-editor';
+export { EpisodeShotBrowser } from './episode-shot-browser';
+export { ChapterPreview } from './chapter-preview';
 
 // Re-export types
 export type {
