@@ -2,27 +2,6 @@
 
 This file contains instructions for working with UI components, styling, and forms.
 
-## Deployment Considerations
-
-**Lambda/CloudFront Optimization**:
-- UI components are server-rendered in Lambda
-- Static assets served via CloudFront CDN
-- CSS optimized with Tailwind CSS 4
-
-**Bundle Size**:
-- UI components are tree-shakeable
-- Import only what you need: `import { Button } from '@kit/ui/button'`
-- Avoid: `import * from '@kit/ui'` (increases Lambda bundle size)
-
-**Cold Starts**:
-- UI components add minimal overhead (~5-10ms)
-- Use dynamic imports for heavy components:
-  ```typescript
-  const HeavyChart = dynamic(() => import('@kit/ui/chart'), {
-    loading: () => <Spinner />,
-  });
-  ```
-
 ## Core UI Library
 
 Import from `packages/ui/src/`:
@@ -41,7 +20,7 @@ import { Trans } from '@kit/ui/trans';
 ## Styling Guidelines
 
 - Use **Tailwind CSS v4** with semantic classes
-- Prefer Shadcn-ui classes like `bg-background`, `text-muted-foreground`
+- Prefer Shadcn-ui classes like `bg-background`, `text-muted-foreground` — never hardcoded colors (`bg-white`, `text-gray-500`); the semantic ones carry dark mode via CSS variables
 - Use `cn()` utility from `@kit/ui/cn` for class merging
 
 ```tsx
@@ -183,128 +162,4 @@ import { ExclamationTriangleIcon } from '@radix-ui/react-icons';
     <AlertDescription>{error}</AlertDescription>
   </Alert>
 </If>
-```
-
-### Button Patterns
-
-```tsx
-import { Button } from '@kit/ui/button';
-
-// Loading button
-<Button disabled={isPending}>
-  {isPending ? (
-    <>
-      <Spinner className="mr-2 h-4 w-4" />
-      Loading...
-    </>
-  ) : (
-    'Submit'
-  )}
-</Button>
-
-// Variants
-<Button variant="default">Default</Button>
-<Button variant="destructive">Delete</Button>
-<Button variant="outline">Cancel</Button>
-<Button variant="ghost">Ghost</Button>
-```
-
-### Card Layouts
-
-```tsx
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/ui/card';
-
-<Card>
-  <CardHeader>
-    <CardTitle>Card Title</CardTitle>
-    <CardDescription>Card description</CardDescription>
-  </CardHeader>
-  <CardContent>
-    Card content goes here
-  </CardContent>
-</Card>
-```
-
-## Form Components
-
-### Input Fields
-
-```tsx
-import { Input } from '@kit/ui/input';
-import { Label } from '@kit/ui/label';
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@kit/ui/form';
-
-<FormField
-  name="title"
-  control={form.control}
-  render={({ field }) => (
-    <FormItem>
-      <FormLabel>Title</FormLabel>
-      <FormControl>
-        <Input placeholder="Enter title" {...field} />
-      </FormControl>
-      <FormMessage />
-    </FormItem>
-  )}
-/>
-```
-
-### Select Components
-
-```tsx
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
-
-<FormField
-  name="category"
-  control={form.control}
-  render={({ field }) => (
-    <FormItem>
-      <FormLabel>Category</FormLabel>
-      <Select onValueChange={field.onChange} defaultValue={field.value}>
-        <FormControl>
-          <SelectTrigger>
-            <SelectValue placeholder="Select category" />
-          </SelectTrigger>
-        </FormControl>
-        <SelectContent>
-          <SelectItem value="option1">Option 1</SelectItem>
-          <SelectItem value="option2">Option 2</SelectItem>
-        </SelectContent>
-      </Select>
-      <FormMessage />
-    </FormItem>
-  )}
-/>
-```
-
-## Accessibility Guidelines
-
-- Always include proper ARIA labels
-- Use semantic HTML elements
-- Ensure proper keyboard navigation
-
-```tsx
-<button
-  aria-label="Close modal"
-  aria-describedby="modal-description"
-  onClick={onClose}
->
-  <X className="h-4 w-4" />
-</button>
-```
-
-## Dark Mode Support
-
-The UI components automatically support dark mode through CSS variables. Use semantic color classes:
-
-```tsx
-// Good - semantic colors
-<div className="bg-background text-foreground border-border">
-  <p className="text-muted-foreground">Secondary text</p>
-</div>
-
-// Avoid - hardcoded colors
-<div className="bg-white text-black border-gray-200">
-  <p className="text-gray-500">Secondary text</p>
-</div>
 ```
