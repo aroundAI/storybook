@@ -11,8 +11,20 @@
 export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram';
 
 /**
- * Raw metric event inserted into ClickHouse video_metrics table.
- * Each row is an immutable log entry from a platform API sync.
+ * Origin of a metric row. Reporting-API rows are authoritative and replace
+ * Analytics-API rows for the same (video, day) via ReplacingMergeTree.
+ */
+export type MetricSource =
+  | 'analytics_api'
+  | 'reporting_api'
+  | 'snapshot_delta'
+  | 'backfill';
+
+/**
+ * Daily metric row inserted into ClickHouse video_metrics.
+ * One row per (video, platform, day) holding TRUE DAILY values keyed by the
+ * platform data date; re-inserting the same key replaces the row
+ * (ReplacingMergeTree on inserted_at).
  */
 export interface VideoMetric {
   project_id: string;
@@ -27,7 +39,41 @@ export interface VideoMetric {
   watch_time_seconds: number;
   revenue_cents: number;
   subscribers_gained: number;
+  metric_source?: MetricSource;
   extra_metrics: string;
+}
+
+/**
+ * Lifetime cumulative totals snapshot for a video, one retained row per day.
+ * Baseline store for TikTok/Instagram delta derivation, whose APIs only
+ * expose lifetime counters.
+ */
+export interface VideoSnapshot {
+  project_id: string;
+  video_id: string;
+  platform: AnalyticsPlatform;
+  snapshot_date: string;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saves: number;
+  watch_time_seconds: number;
+  subscribers_gained: number;
+}
+
+/**
+ * Latest-snapshot totals returned by queryLatestSnapshots, keyed by video_id.
+ */
+export interface SnapshotTotals {
+  snapshot_date: string;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saves: number;
+  watch_time_seconds: number;
+  subscribers_gained: number;
 }
 
 /**

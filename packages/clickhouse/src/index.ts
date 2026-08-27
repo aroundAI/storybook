@@ -11,10 +11,13 @@ export type {
   DailyDataPoint,
   DailyPlatformBreakdown,
   DailyStats,
+  MetricSource,
   PlatformBreakdown,
   PlatformEngagement,
   QueryFilters,
+  SnapshotTotals,
   VideoMetric,
+  VideoSnapshot,
 } from './types';
 
 export { formatDateStr } from './utils';

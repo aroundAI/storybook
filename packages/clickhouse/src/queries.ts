@@ -13,7 +13,9 @@ import type {
   DailyStats,
   PlatformBreakdown,
   QueryFilters,
+  SnapshotTotals,
   VideoMetric,
+  VideoSnapshot,
 } from './types';
 
 // ==========================================
@@ -36,6 +38,82 @@ export async function insertVideoMetrics(
     values: metrics,
     format: 'JSONEachRow',
   });
+}
+
+/**
+ * Insert lifetime cumulative snapshot rows into video_snapshots.
+ * One retained row per (video, platform, day) — ReplacingMergeTree keeps the
+ * latest fetch.
+ */
+export async function insertVideoSnapshots(
+  snapshots: VideoSnapshot[],
+): Promise<void> {
+  if (snapshots.length === 0 || !isClickHouseEnabled()) return;
+
+  const client = getClickHouseClient();
+
+  await client.insert({
+    table: 'video_snapshots',
+    values: snapshots,
+    format: 'JSONEachRow',
+  });
+}
+
+/**
+ * Fetch the latest lifetime snapshot strictly before the given date for each
+ * video. Used by the sync worker to derive daily deltas for platforms that
+ * only expose cumulative counters (TikTok, Instagram).
+ *
+ * Returns a map keyed by video_id (a publish belongs to a single platform).
+ */
+export async function queryLatestSnapshots(input: {
+  videoIds: string[];
+  beforeDate: string;
+}): Promise<Map<string, SnapshotTotals>> {
+  if (input.videoIds.length === 0 || !isClickHouseEnabled()) return new Map();
+
+  const client = getClickHouseClient();
+
+  const query = `
+    SELECT
+      video_id,
+      toString(argMax(snapshot_date, fetched_at)) as snapshot_date,
+      argMax(views, fetched_at) as views,
+      argMax(likes, fetched_at) as likes,
+      argMax(comments, fetched_at) as comments,
+      argMax(shares, fetched_at) as shares,
+      argMax(saves, fetched_at) as saves,
+      argMax(watch_time_seconds, fetched_at) as watch_time_seconds,
+      argMax(subscribers_gained, fetched_at) as subscribers_gained
+    FROM video_snapshots
+    WHERE video_id IN {videoIds: Array(String)}
+      AND snapshot_date < {beforeDate: Date}
+    GROUP BY video_id
+  `;
+
+  const result = await client.query({
+    query,
+    query_params: { videoIds: input.videoIds, beforeDate: input.beforeDate },
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<SnapshotTotals & { video_id: string }>();
+  const map = new Map<string, SnapshotTotals>();
+
+  for (const row of rows) {
+    map.set(row.video_id, {
+      snapshot_date: row.snapshot_date,
+      views: Number(row.views),
+      likes: Number(row.likes),
+      comments: Number(row.comments),
+      shares: Number(row.shares),
+      saves: Number(row.saves),
+      watch_time_seconds: Number(row.watch_time_seconds),
+      subscribers_gained: Number(row.subscribers_gained),
+    });
+  }
+
+  return map;
 }
 
 // ==========================================

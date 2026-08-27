@@ -14,9 +14,11 @@ export {
 
 export {
   insertVideoMetrics,
+  insertVideoSnapshots,
   queryDailyStats,
   queryDailyTimeSeries,
   queryDailyTimeSeriesByPlatform,
+  queryLatestSnapshots,
   queryPerVideoTotals,
   queryPlatformBreakdown,
   queryTotals,
@@ -30,10 +32,13 @@ export type {
   DailyDataPoint,
   DailyPlatformBreakdown,
   DailyStats,
+  MetricSource,
   PlatformBreakdown,
   PlatformEngagement,
   QueryFilters,
+  SnapshotTotals,
   VideoMetric,
+  VideoSnapshot,
 } from '../types';
 
 export { formatDateStr } from '../utils';
