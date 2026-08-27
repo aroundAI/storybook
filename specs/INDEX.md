@@ -508,8 +508,26 @@ graph TD
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-1301 | [hook-testing-engine](./phase-13-hook-optimization/FILM-1301-hook-testing-engine.md) | Draft | L | FILM-1201, FILM-716 |
+| FILM-1301 | [hook-testing-engine](./phase-13-hook-optimization/FILM-1301-hook-testing-engine.md) | Approved (folded into FILM-1510) | L | FILM-1201, FILM-716 |
 | FILM-1302 | [cultural-audit-workflow](./phase-13-hook-optimization/FILM-1302-cultural-audit-workflow.md) | Draft | M | FILM-1301 |
+
+### Phase 15: Deep Analytics Discipline (11 specs)
+
+See [phase-15-deep-analytics/README.md](./phase-15-deep-analytics/README.md) for the dependency graph and locked decisions.
+
+| Task ID | Name | Status | Effort | Dependencies |
+|---------|------|--------|--------|--------------|
+| FILM-1501 | [clickhouse-v2-data-model](./phase-15-deep-analytics/FILM-1501-clickhouse-v2-data-model.md) | Approved | M | FILM-1201 |
+| FILM-1502 | [sync-ingestion-correctness](./phase-15-deep-analytics/FILM-1502-sync-ingestion-correctness.md) | Approved | M | FILM-1501 |
+| FILM-1503 | [backfill-and-cron-wiring](./phase-15-deep-analytics/FILM-1503-backfill-and-cron-wiring.md) | Approved | M | FILM-1501, FILM-1502 |
+| FILM-1504 | [youtube-reporting-api](./phase-15-deep-analytics/FILM-1504-youtube-reporting-api.md) | Approved | L | FILM-1501 |
+| FILM-1505 | [stranded-metrics-promotion](./phase-15-deep-analytics/FILM-1505-stranded-metrics-promotion.md) | Approved | M | FILM-1502, FILM-1504 |
+| FILM-1506 | [video-dim-deep-dive-queries](./phase-15-deep-analytics/FILM-1506-video-dim-deep-dive-queries.md) | Approved | L | FILM-1502, FILM-1504, FILM-1505 |
+| FILM-1507 | [content-taxonomy](./phase-15-deep-analytics/FILM-1507-content-taxonomy.md) | Approved | M | FILM-1506 |
+| FILM-1508 | [revenue-mix-alerts](./phase-15-deep-analytics/FILM-1508-revenue-mix-alerts.md) | Approved | M | FILM-1506 |
+| FILM-1509 | [experiment-log](./phase-15-deep-analytics/FILM-1509-experiment-log.md) | Approved | M | FILM-1502 |
+| FILM-1510 | [hook-lab](./phase-15-deep-analytics/FILM-1510-hook-lab.md) | Approved | L | FILM-1505, FILM-1506, FILM-1507, FILM-1301 |
+| FILM-1511 | [deep-analytics-ui-reports](./phase-15-deep-analytics/FILM-1511-deep-analytics-ui-reports.md) | Approved | L | FILM-1504, FILM-1505, FILM-1506, FILM-1507, FILM-1508 |
 
 See [phase-11-canon-integration/README.md](./phase-11-canon-integration/README.md) for full specification.
 
@@ -586,9 +604,10 @@ SPIKE-01 through SPIKE-05
 | 10. Canon Mgmt | 7 | 0 | 0 | 0 | 0 | 7 |
 | 11. Canon Integ | 21 | 0 | 0 | 0 | 0 | 21 |
 | 12. Scale | 2 | 0 | 0 | 0 | 0 | 2 |
-| 13. Hook Opt | 2 | 2 | 0 | 0 | 0 | 0 |
+| 13. Hook Opt | 2 | 1 | 0 | 1 | 0 | 0 |
+| 15. Deep Analytics | 11 | 0 | 0 | 11 | 0 | 0 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **162** | **2** | **0** | **0** | **0** | **160** |
+| **TOTAL** | **173** | **1** | **0** | **12** | **0** | **160** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
