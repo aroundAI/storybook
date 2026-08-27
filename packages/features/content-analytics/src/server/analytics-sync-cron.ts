@@ -2,8 +2,17 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { insertVideoMetrics } from '@kit/clickhouse/server';
-import type { VideoMetric } from '@kit/clickhouse/server';
+import {
+  formatDateStr,
+  insertVideoMetrics,
+  insertVideoSnapshots,
+  queryLatestSnapshots,
+} from '@kit/clickhouse/server';
+import type {
+  SnapshotTotals,
+  VideoMetric,
+  VideoSnapshot,
+} from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
@@ -23,6 +32,14 @@ import {
   createYouTubeAnalyticsProvider,
 } from '../providers/youtube';
 import type { YouTubeAnalyticsResult } from '../providers/youtube';
+import {
+  buildYouTubeDailyRows,
+  computeSnapshotDelta,
+  computeYouTubeWindow,
+  latestDataDate,
+  shouldWriteMetricRow,
+  snapshotDeltaMetricDate,
+} from './ingest';
 import { getRateLimiter } from './rate-limiter';
 import { getSyncPriority, shouldSyncNow } from './schedule';
 import type {
@@ -106,6 +123,9 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
     // 2. Group by platform for efficient processing
     const byPlatform = groupByPlatform(publishesToSync);
 
+    // Prefetch delta baselines for cumulative-counter platforms in one query
+    const snapshotBaselines = await fetchSnapshotBaselines(publishesToSync);
+
     // 3. Process each platform with rate limiting
     const syncPromises: Promise<SyncResult>[] = [];
 
@@ -122,7 +142,12 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
         }
 
         syncPromises.push(
-          syncSinglePublish(publish, platform as SyncPlatform, ctx),
+          syncSinglePublish(
+            publish,
+            platform as SyncPlatform,
+            ctx,
+            snapshotBaselines,
+          ),
         );
       }
     }
@@ -295,6 +320,7 @@ async function syncSinglePublish(
   publish: PublishForSync,
   platform: SyncPlatform,
   ctx: { name: string },
+  snapshotBaselines?: Map<string, SnapshotTotals>,
 ): Promise<SyncResult> {
   const logger = await getLogger();
   const client = getSupabaseServerAdminClient();
@@ -330,14 +356,13 @@ async function syncSinglePublish(
     // 3. Fetch analytics from platform
     const analytics = await fetchPlatformAnalytics(
       platform,
-      publish.platform_content_id,
+      publish,
       tokenResult.accessToken!,
-      publish.platform_connection_id,
       client,
     );
 
-    // 4. Normalize analytics data
-    const snapshotDate = new Date().toISOString().split('T')[0]!;
+    // 4. Normalize analytics data (raw payload + revenue extraction)
+    const snapshotDate = formatDateStr(new Date());
 
     const normalizedData: NormalizedAnalytics = normalizeAnalytics(
       publish.id,
@@ -348,30 +373,29 @@ async function syncSinglePublish(
 
     // 5. Insert into ClickHouse (skip if projectId unresolvable — UUID column)
     const projectId = await resolveProjectId(client, publish.episode_id);
+    let ingestedDataDate: string | undefined;
 
     if (!projectId) {
       logger.warn(
         { publishId: publish.id, episodeId: publish.episode_id },
         'Skipping ClickHouse ingestion: could not resolve project_id',
       );
+    } else if (platform === 'youtube') {
+      ingestedDataDate = await ingestYouTubeDaily(
+        projectId,
+        publish,
+        analytics as YouTubeAnalyticsResult,
+        normalizedData,
+      );
     } else {
-      const chMetric: VideoMetric = {
-        project_id: projectId,
-        video_id: publish.id,
+      await ingestCumulativeSnapshot(
+        projectId,
+        publish,
         platform,
-        metric_date: snapshotDate,
-        views: normalizedData.views,
-        likes: normalizedData.likes,
-        comments: normalizedData.comments,
-        shares: normalizedData.shares,
-        saves: normalizedData.saves,
-        watch_time_seconds: normalizedData.watch_time_seconds,
-        revenue_cents: normalizedData.revenue_cents,
-        subscribers_gained: normalizedData.subscribers_gained,
-        extra_metrics: JSON.stringify(normalizedData.raw_data ?? {}),
-      };
-
-      await insertVideoMetrics([chMetric]);
+        normalizedData,
+        snapshotBaselines?.get(publish.id) ?? null,
+        snapshotBaselines !== undefined,
+      );
     }
 
     // 5b. If there's revenue, also upsert to revenue_records table
@@ -392,6 +416,7 @@ async function syncSinglePublish(
       last_error: undefined,
       consecutive_failures: 0,
       requires_reauth: false,
+      ...(ingestedDataDate ? { last_data_date: ingestedDataDate } : {}),
     });
 
     logger.info(
@@ -449,26 +474,30 @@ async function syncSinglePublish(
 }
 
 /**
- * Fetches analytics from the appropriate platform provider
+ * Fetches analytics from the appropriate platform provider.
+ *
+ * YouTube is fetched over [last ingested data date − 3d, now] so recent
+ * restatements are absorbed; the per-day breakdown is what gets stored.
+ * TikTok and Instagram return lifetime cumulative counters regardless of
+ * any date parameters — those are turned into daily deltas at ingest time.
  */
 async function fetchPlatformAnalytics(
   platform: SyncPlatform,
-  contentId: string,
+  publish: PublishForSync,
   accessToken: string,
-  connectionId: string,
   client: Client,
 ): Promise<
   YouTubeAnalyticsResult | TikTokAnalyticsResult | InstagramInsightsResult
 > {
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - 1); // Last 24 hours for daily snapshot
-
   switch (platform) {
     case 'youtube': {
+      const { startDate, endDate } = computeYouTubeWindow({
+        lastDataDate: publish.metadata?.sync?.last_data_date,
+        publishedAt: publish.published_at,
+      });
       const provider = createYouTubeAnalyticsProvider(accessToken);
       return provider.getVideoAnalytics({
-        videoId: contentId,
+        videoId: publish.platform_content_id,
         startDate,
         endDate,
       });
@@ -476,7 +505,7 @@ async function fetchPlatformAnalytics(
     case 'tiktok': {
       const provider = createTikTokAnalyticsProvider(accessToken);
       return provider.getVideoAnalytics({
-        videoId: contentId,
+        videoId: publish.platform_content_id,
         dateRange: 7,
       });
     }
@@ -485,18 +514,132 @@ async function fetchPlatformAnalytics(
       const { data: connection } = await client
         .from('platform_connections')
         .select('platform_account_id')
-        .eq('id', connectionId)
+        .eq('id', publish.platform_connection_id)
         .single();
 
       const provider = createInstagramInsightsProvider(
         accessToken,
         connection?.platform_account_id ?? '',
       );
-      return provider.getMediaInsights({ mediaId: contentId });
+      return provider.getMediaInsights({
+        mediaId: publish.platform_content_id,
+      });
     }
     default:
       throw new Error(`Unsupported platform: ${platform}`);
   }
+}
+
+/**
+ * Prefetch the latest lifetime snapshots for all cumulative-counter
+ * publishes (TikTok, Instagram) in the batch with a single ClickHouse query.
+ */
+async function fetchSnapshotBaselines(
+  publishes: PublishForSync[],
+): Promise<Map<string, SnapshotTotals>> {
+  const cumulativeIds = publishes
+    .filter((p) => p.platform !== 'youtube')
+    .map((p) => p.id);
+
+  if (cumulativeIds.length === 0) {
+    return new Map();
+  }
+
+  return queryLatestSnapshots({
+    videoIds: cumulativeIds,
+    beforeDate: formatDateStr(new Date()),
+  });
+}
+
+/**
+ * Ingest YouTube per-day metrics as true daily rows keyed by the platform
+ * data date. Returns the latest ingested data date (for the restatement
+ * window on the next sync), or undefined when the API returned no rows.
+ */
+async function ingestYouTubeDaily(
+  projectId: string,
+  publish: PublishForSync,
+  analytics: YouTubeAnalyticsResult,
+  normalizedData: NormalizedAnalytics,
+): Promise<string | undefined> {
+  const rows = buildYouTubeDailyRows({
+    projectId,
+    videoId: publish.id,
+    dailyData: analytics.dailyData,
+    extraMetricsJson: JSON.stringify(normalizedData.raw_data ?? {}),
+  });
+
+  await insertVideoMetrics(rows);
+
+  return latestDataDate(analytics.dailyData) ?? undefined;
+}
+
+/**
+ * Ingest a lifetime-cumulative platform sync (TikTok, Instagram):
+ * today's row = current lifetime − latest prior snapshot, clamped ≥ 0.
+ * The row is re-inserted on every sync and replaces itself as the day
+ * accrues. Without a prior baseline, an adopted (>24h old) video only
+ * records its baseline snapshot — a fresh video attributes its lifetime
+ * to the publish date.
+ */
+async function ingestCumulativeSnapshot(
+  projectId: string,
+  publish: PublishForSync,
+  platform: 'tiktok' | 'instagram',
+  normalizedData: NormalizedAnalytics,
+  prefetchedBaseline: SnapshotTotals | null,
+  baselineWasPrefetched: boolean,
+): Promise<void> {
+  const baseline = baselineWasPrefetched
+    ? prefetchedBaseline
+    : ((
+        await queryLatestSnapshots({
+          videoIds: [publish.id],
+          beforeDate: formatDateStr(new Date()),
+        })
+      ).get(publish.id) ?? null);
+
+  const currentTotals = {
+    views: normalizedData.views,
+    likes: normalizedData.likes,
+    comments: normalizedData.comments,
+    shares: normalizedData.shares,
+    saves: normalizedData.saves,
+    watch_time_seconds: normalizedData.watch_time_seconds,
+    subscribers_gained: normalizedData.subscribers_gained,
+  };
+
+  const writeContext = {
+    hasBaseline: baseline !== null,
+    publishedAt: publish.published_at,
+  };
+
+  if (shouldWriteMetricRow(writeContext)) {
+    const delta = computeSnapshotDelta(currentTotals, baseline);
+
+    const metric: VideoMetric = {
+      project_id: projectId,
+      video_id: publish.id,
+      platform,
+      metric_date: snapshotDeltaMetricDate(writeContext),
+      ...delta,
+      revenue_cents: 0,
+      metric_source: 'snapshot_delta',
+      extra_metrics: JSON.stringify(normalizedData.raw_data ?? {}),
+    };
+
+    await insertVideoMetrics([metric]);
+  }
+
+  const snapshot: VideoSnapshot = {
+    project_id: projectId,
+    video_id: publish.id,
+    platform,
+    snapshot_date: formatDateStr(new Date()),
+    ...currentTotals,
+  };
+
+  await insertVideoSnapshots([snapshot]);
 }
 
 /**

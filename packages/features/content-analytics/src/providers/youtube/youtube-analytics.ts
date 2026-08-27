@@ -198,7 +198,7 @@ export class YouTubeAnalyticsProvider {
       startDate,
       endDate,
       metrics:
-        'views,estimatedMinutesWatched,averageViewDuration,subscribersGained',
+        'views,likes,comments,shares,estimatedMinutesWatched,averageViewDuration,subscribersGained',
       dimensions: 'day',
       filters: `video==${videoId}`,
       sort: 'day',
@@ -208,9 +208,12 @@ export class YouTubeAnalyticsProvider {
       (row) => ({
         date: row[0],
         views: row[1] ?? 0,
-        estimatedMinutesWatched: row[2] ?? 0,
-        averageViewDuration: row[3] ?? 0,
-        subscribersGained: row[4] ?? 0,
+        likes: row[2] ?? 0,
+        comments: row[3] ?? 0,
+        shares: row[4] ?? 0,
+        estimatedMinutesWatched: row[5] ?? 0,
+        averageViewDuration: row[6] ?? 0,
+        subscribersGained: row[7] ?? 0,
       }),
     );
   }

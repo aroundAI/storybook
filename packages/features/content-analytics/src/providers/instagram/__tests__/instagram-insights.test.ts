@@ -40,7 +40,7 @@ describe('InstagramInsightsProvider', () => {
         json: () =>
           Promise.resolve({
             data: [
-              { name: 'plays', values: [{ value: 1000 }] },
+              { name: 'views', values: [{ value: 1000 }] },
               { name: 'reach', values: [{ value: 500 }] },
               { name: 'total_interactions', values: [{ value: 150 }] },
               { name: 'likes', values: [{ value: 100 }] },
@@ -113,7 +113,7 @@ describe('InstagramInsightsProvider', () => {
       expect(result.reachBreakdown?.followersPercentage).toBe(60);
     });
 
-    it('should fetch insights for a Video without plays metric', async () => {
+    it('should fetch insights for a Video using the views metric', async () => {
       // Mock media type response
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -127,7 +127,7 @@ describe('InstagramInsightsProvider', () => {
           Promise.resolve({
             data: [
               { name: 'reach', values: [{ value: 500 }] },
-              { name: 'impressions', values: [{ value: 800 }] },
+              { name: 'views', values: [{ value: 800 }] },
               { name: 'total_interactions', values: [{ value: 100 }] },
               { name: 'likes', values: [{ value: 75 }] },
               { name: 'comments', values: [{ value: 15 }] },
@@ -147,7 +147,7 @@ describe('InstagramInsightsProvider', () => {
       });
 
       expect(result.mediaType).toBe('VIDEO');
-      expect(result.totals.plays).toBe(0); // Videos don't have plays
+      expect(result.totals.plays).toBe(800); // views maps into plays
       expect(result.totals.impressions).toBe(800);
       expect(result.reachBreakdown).toBeUndefined(); // No breakdown for Videos
     });

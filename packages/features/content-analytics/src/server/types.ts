@@ -27,6 +27,11 @@ export interface SyncMetadata {
   last_error?: string;
   consecutive_failures?: number;
   requires_reauth?: boolean;
+  /** Latest platform data date ingested (YouTube), YYYY-MM-DD. The next
+   * sync re-fetches from 3 days before this to absorb restatements. */
+  last_data_date?: string;
+  /** Set when the FILM-1503 historical backfill has completed for this publish. */
+  backfill_completed_at?: string;
 }
 
 /**
@@ -132,7 +137,12 @@ export interface RateLimitConfig {
 export interface SyncSchedule {
   frequency: 'hourly' | 'every_6_hours' | 'daily' | 'weekly';
   nextSyncAt: Date;
-  ageCategory: 'first_day' | 'first_week' | 'first_month' | 'after_90_days';
+  ageCategory:
+    | 'first_day'
+    | 'first_week'
+    | 'first_month'
+    | 'first_quarter'
+    | 'after_90_days';
 }
 
 /**
