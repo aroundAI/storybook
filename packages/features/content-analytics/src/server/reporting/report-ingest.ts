@@ -378,6 +378,9 @@ async function ingestReportCsv(
         revenue_cents: 0,
         subscribers_gained: row.subscribersGained,
         metric_source: 'reporting_api',
+        avg_view_duration_seconds: row.avgViewDurationSeconds,
+        avg_view_percentage: row.avgViewPercentage,
+        dislikes: row.dislikes,
         extra_metrics: '{}',
       });
     } else {

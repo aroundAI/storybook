@@ -29,9 +29,18 @@ export {
   queryViewsForVideos,
 } from '../queries';
 
+export {
+  insertRetentionCurves,
+  insertVideoAudience,
+  queryAudienceRows,
+  queryRetentionCurve,
+  queryTrafficSources,
+} from '../queries-detail';
+
 export type {
   AggregatedTotals,
   AnalyticsPlatform,
+  AudienceDimension,
   ChannelDaily,
   DailyDataPoint,
   DailyPlatformBreakdown,
@@ -40,7 +49,9 @@ export type {
   PlatformBreakdown,
   PlatformEngagement,
   QueryFilters,
+  RetentionCurvePoint,
   SnapshotTotals,
+  VideoAudienceRow,
   VideoMetric,
   VideoReachDaily,
   VideoSnapshot,

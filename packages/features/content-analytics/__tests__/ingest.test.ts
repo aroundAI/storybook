@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import type { YouTubeAnalyticsResult } from '../src/providers/youtube/types';
 import {
+  buildAudienceRows,
+  buildRetentionPoints,
   buildYouTubeDailyRows,
   computeSnapshotDelta,
   computeYouTubeWindow,
@@ -182,6 +185,65 @@ describe('buildYouTubeDailyRows', () => {
       watch_time_seconds: 4530,
       extra_metrics: '{"retention":true}',
     });
+  });
+});
+
+describe('buildRetentionPoints / buildAudienceRows', () => {
+  const projectId = '550e8400-e29b-41d4-a716-446655440000';
+
+  const youtubeAnalytics = {
+    videoId: 'yt-1',
+    period: { startDate: '2026-06-01', endDate: '2026-06-14' },
+    totals: {} as YouTubeAnalyticsResult['totals'],
+    dailyData: [],
+    retention: {
+      points: [
+        { elapsedVideoTimeRatio: 0, audienceWatchRatio: 1 },
+        { elapsedVideoTimeRatio: 0.5, audienceWatchRatio: 0.4 },
+      ],
+    },
+    demographics: {
+      ageGroups: [{ ageGroup: 'age18-24', viewPercentage: 40 }],
+      genders: [{ gender: 'female', viewPercentage: 55 }],
+    },
+    geography: [
+      { country: 'US', views: 700, watchTimeMinutes: 100, viewPercentage: 70 },
+    ],
+    subscribedStatus: { subscribed: 300, notSubscribed: 700 },
+  } as unknown as YouTubeAnalyticsResult;
+
+  it('maps retention curve points', () => {
+    const points = buildRetentionPoints({
+      projectId,
+      videoId: 'publish-1',
+      analytics: youtubeAnalytics,
+    });
+
+    expect(points).toHaveLength(2);
+    expect(points[1]).toMatchObject({
+      video_id: 'publish-1',
+      elapsed_ratio: 0.5,
+      audience_watch_ratio: 0.4,
+    });
+  });
+
+  it('maps YouTube audience dimensions including subscribed status', () => {
+    const rows = buildAudienceRows({
+      projectId,
+      videoId: 'publish-1',
+      platform: 'youtube',
+      analytics: youtubeAnalytics,
+    });
+
+    const dimensions = rows.map((r) => `${r.dimension}:${r.key}`);
+    expect(dimensions).toContain('age_group:age18-24');
+    expect(dimensions).toContain('gender:female');
+    expect(dimensions).toContain('country:US');
+    expect(dimensions).toContain('follower_status:subscribed');
+
+    const country = rows.find((r) => r.dimension === 'country')!;
+    expect(country.views).toBe(700);
+    expect(country.percentage).toBe(70);
   });
 });
 

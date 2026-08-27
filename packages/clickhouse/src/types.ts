@@ -40,7 +40,52 @@ export interface VideoMetric {
   revenue_cents: number;
   subscribers_gained: number;
   metric_source?: MetricSource;
+  /** Per-day average view duration in seconds (0 when unknown). */
+  avg_view_duration_seconds?: number;
+  /** Per-day average view percentage 0-100 (0 when unknown). */
+  avg_view_percentage?: number;
+  dislikes?: number;
   extra_metrics: string;
+}
+
+/**
+ * One point of a lifetime audience-retention curve. Latest fetch wins per
+ * (video, elapsed_ratio).
+ */
+export interface RetentionCurvePoint {
+  project_id: string;
+  video_id: string;
+  platform: AnalyticsPlatform;
+  /** Position in the video, 0..1. */
+  elapsed_ratio: number;
+  /** Share of starters still watching at this position. */
+  audience_watch_ratio: number;
+}
+
+/**
+ * Audience breakdown dimensions stored in video_audience.
+ */
+export type AudienceDimension =
+  | 'age_group'
+  | 'gender'
+  | 'country'
+  | 'city'
+  | 'device'
+  | 'os'
+  | 'follower_status';
+
+/**
+ * Latest-wins audience breakdown row. `views` is 0 when the platform only
+ * reports percentages for the dimension.
+ */
+export interface VideoAudienceRow {
+  project_id: string;
+  video_id: string;
+  platform: AnalyticsPlatform;
+  dimension: AudienceDimension;
+  key: string;
+  views: number;
+  percentage: number;
 }
 
 /**

@@ -2,7 +2,11 @@
 
 import 'server-only';
 
-import { queryDailyStats, queryTotalsByVideoIds } from '@kit/clickhouse/server';
+import {
+  queryAudienceRows,
+  queryDailyStats,
+  queryTotalsByVideoIds,
+} from '@kit/clickhouse/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -652,36 +656,55 @@ export async function getGeographyByLanguage(
   const startDateStr = startDate.toISOString().split('T')[0]!;
   const endDateStr = endDate.toISOString().split('T')[0]!;
 
-  // Get totals from ClickHouse
-  const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
-    startDate: startDateStr,
-    endDate: endDateStr,
-  });
+  // Per-video totals weight the per-video country breakdowns
+  const [perVideoTotals, countryRows] = await Promise.all([
+    queryTotalsByVideoIds(publishIds, {
+      startDate: startDateStr,
+      endDate: endDateStr,
+    }),
+    queryAudienceRows({ videoIds: publishIds, dimension: 'country' }),
+  ]);
 
-  // Aggregate views by language (geography data not yet in ClickHouse)
-  const viewsByLanguage = new Map<string, number>();
+  // language → country → weighted views
+  const byLanguage = new Map<string, Map<string, number>>();
 
-  for (const [publishId, stats] of perVideoTotals) {
-    const language = publishLanguageMap.get(publishId) || 'en';
-    viewsByLanguage.set(
-      language,
-      (viewsByLanguage.get(language) || 0) + stats.views,
-    );
+  for (const row of countryRows) {
+    const language = publishLanguageMap.get(row.videoId) || 'en';
+    const videoViews = perVideoTotals.get(row.videoId)?.views || 0;
+    const weight =
+      row.views > 0 ? row.views : (row.percentage / 100) * videoViews;
+
+    if (weight <= 0) continue;
+
+    const countries = byLanguage.get(language) ?? new Map<string, number>();
+    countries.set(row.key, (countries.get(row.key) ?? 0) + weight);
+    byLanguage.set(language, countries);
   }
 
-  // Build results - for now, all views go under "Unknown" country
-  // until extra_metrics ingestion includes geography
+  // Videos with no audience rows still contribute to their language bucket
+  for (const [publishId, stats] of perVideoTotals) {
+    const language = publishLanguageMap.get(publishId) || 'en';
+    if (!byLanguage.has(language) && stats.views > 0) {
+      byLanguage.set(language, new Map([['Unknown', stats.views]]));
+    }
+  }
+
   const results: GeographyByLanguage[] = [];
-  for (const [language, views] of viewsByLanguage) {
+
+  for (const [language, countries] of byLanguage) {
+    const total = Array.from(countries.values()).reduce((s, v) => s + v, 0);
+    if (total <= 0) continue;
+
     results.push({
       language,
-      countries: [
-        {
-          country: 'Unknown',
-          views,
-          percentage: 100,
-        },
-      ],
+      countries: Array.from(countries.entries())
+        .filter(([, views]) => views > 0)
+        .map(([country, views]) => ({
+          country,
+          views: Math.round(views),
+          percentage: Math.round((views / total) * 1000) / 10,
+        }))
+        .sort((a, b) => b.views - a.views),
     });
   }
 

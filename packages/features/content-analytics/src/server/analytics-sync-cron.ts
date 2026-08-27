@@ -4,6 +4,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
   formatDateStr,
+  insertRetentionCurves,
+  insertVideoAudience,
   insertVideoMetrics,
   insertVideoSnapshots,
   queryLatestSnapshots,
@@ -33,6 +35,8 @@ import {
 } from '../providers/youtube';
 import type { YouTubeAnalyticsResult } from '../providers/youtube';
 import {
+  buildAudienceRows,
+  buildRetentionPoints,
   buildYouTubeDailyRows,
   computeSnapshotDelta,
   computeYouTubeWindow,
@@ -392,6 +396,7 @@ async function syncSinglePublish(
         projectId,
         publish,
         platform,
+        analytics as TikTokAnalyticsResult | InstagramInsightsResult,
         normalizedData,
         snapshotBaselines?.get(publish.id) ?? null,
         snapshotBaselines !== undefined,
@@ -571,6 +576,18 @@ async function ingestYouTubeDaily(
 
   await insertVideoMetrics(rows);
 
+  await insertRetentionCurves(
+    buildRetentionPoints({ projectId, videoId: publish.id, analytics }),
+  );
+  await insertVideoAudience(
+    buildAudienceRows({
+      projectId,
+      videoId: publish.id,
+      platform: 'youtube',
+      analytics,
+    }),
+  );
+
   return latestDataDate(analytics.dailyData) ?? undefined;
 }
 
@@ -586,6 +603,7 @@ async function ingestCumulativeSnapshot(
   projectId: string,
   publish: PublishForSync,
   platform: 'tiktok' | 'instagram',
+  analytics: TikTokAnalyticsResult | InstagramInsightsResult,
   normalizedData: NormalizedAnalytics,
   prefetchedBaseline: SnapshotTotals | null,
   baselineWasPrefetched: boolean,
@@ -640,6 +658,10 @@ async function ingestCumulativeSnapshot(
   };
 
   await insertVideoSnapshots([snapshot]);
+
+  await insertVideoAudience(
+    buildAudienceRows({ projectId, videoId: publish.id, platform, analytics }),
+  );
 }
 
 /**

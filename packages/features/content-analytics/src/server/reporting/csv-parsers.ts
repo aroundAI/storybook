@@ -15,10 +15,15 @@ export interface BasicReportRow {
   views: number;
   engagedViews: number;
   likes: number;
+  dislikes: number;
   comments: number;
   shares: number;
   watchTimeSeconds: number;
   subscribersGained: number;
+  /** View-weighted average view duration in seconds. */
+  avgViewDurationSeconds: number;
+  /** View-weighted average view percentage (0-100). */
+  avgViewPercentage: number;
 }
 
 /** Per-video per-day per-source metrics from channel_traffic_source_a3. */
@@ -127,13 +132,19 @@ export function parseChannelBasicReport(csv: string): BasicReportRow[] {
   const viewsIdx = columnIndex(headers, 'views');
   const engagedIdx = columnIndex(headers, 'engaged_views');
   const likesIdx = columnIndex(headers, 'likes');
+  const dislikesIdx = columnIndex(headers, 'dislikes');
   const commentsIdx = columnIndex(headers, 'comments');
   const sharesIdx = columnIndex(headers, 'shares');
   const watchIdx = columnIndex(headers, 'watch_time_minutes');
   const subsGainedIdx = columnIndex(headers, 'subscribers_gained');
   const subsLostIdx = columnIndex(headers, 'subscribers_lost');
+  const avdIdx = columnIndex(headers, 'average_view_duration_seconds');
+  const avpIdx = columnIndex(headers, 'average_view_duration_percentage');
 
-  const byKey = new Map<string, BasicReportRow>();
+  const byKey = new Map<
+    string,
+    BasicReportRow & { avdWeightedSum: number; avpWeightedSum: number }
+  >();
 
   for (const row of rows) {
     const date = normalizeDate(stringAt(row, dateIdx));
@@ -147,25 +158,41 @@ export function parseChannelBasicReport(csv: string): BasicReportRow[] {
       views: 0,
       engagedViews: 0,
       likes: 0,
+      dislikes: 0,
       comments: 0,
       shares: 0,
       watchTimeSeconds: 0,
       subscribersGained: 0,
+      avgViewDurationSeconds: 0,
+      avgViewPercentage: 0,
+      avdWeightedSum: 0,
+      avpWeightedSum: 0,
     };
 
-    existing.views += numberAt(row, viewsIdx);
+    const views = numberAt(row, viewsIdx);
+
+    existing.views += views;
     existing.engagedViews += numberAt(row, engagedIdx);
     existing.likes += numberAt(row, likesIdx);
+    existing.dislikes += numberAt(row, dislikesIdx);
     existing.comments += numberAt(row, commentsIdx);
     existing.shares += numberAt(row, sharesIdx);
     existing.watchTimeSeconds += Math.round(numberAt(row, watchIdx) * 60);
     existing.subscribersGained +=
       numberAt(row, subsGainedIdx) - numberAt(row, subsLostIdx);
+    existing.avdWeightedSum += numberAt(row, avdIdx) * views;
+    existing.avpWeightedSum += numberAt(row, avpIdx) * views;
 
     byKey.set(key, existing);
   }
 
-  return Array.from(byKey.values());
+  return Array.from(byKey.values()).map(
+    ({ avdWeightedSum, avpWeightedSum, ...row }) => ({
+      ...row,
+      avgViewDurationSeconds: row.views > 0 ? avdWeightedSum / row.views : 0,
+      avgViewPercentage: row.views > 0 ? avpWeightedSum / row.views : 0,
+    }),
+  );
 }
 
 /**

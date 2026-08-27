@@ -1,9 +1,20 @@
 import 'server-only';
 
-import type { SnapshotTotals, VideoMetric } from '@kit/clickhouse';
+import type {
+  AnalyticsPlatform,
+  RetentionCurvePoint,
+  SnapshotTotals,
+  VideoAudienceRow,
+  VideoMetric,
+} from '@kit/clickhouse';
 import { formatDateStr } from '@kit/clickhouse';
 
-import type { YouTubeDailyMetrics } from '../providers/youtube/types';
+import type { InstagramInsightsResult } from '../providers/instagram/types';
+import type { TikTokAnalyticsResult } from '../providers/tiktok/types';
+import type {
+  YouTubeAnalyticsResult,
+  YouTubeDailyMetrics,
+} from '../providers/youtube/types';
 
 /**
  * Lifetime cumulative counters as reported by platforms that expose no
@@ -124,8 +135,143 @@ export function buildYouTubeDailyRows(input: {
     revenue_cents: 0,
     subscribers_gained: day.subscribersGained,
     metric_source: input.metricSource ?? ('analytics_api' as const),
+    avg_view_duration_seconds: day.averageViewDuration,
     extra_metrics: day.date === latest ? input.extraMetricsJson : '{}',
   }));
+}
+
+/**
+ * Retention curve points from a YouTube analytics payload (lifetime data;
+ * latest fetch replaces earlier points).
+ */
+export function buildRetentionPoints(input: {
+  projectId: string;
+  videoId: string;
+  analytics: YouTubeAnalyticsResult;
+}): RetentionCurvePoint[] {
+  const points = input.analytics.retention?.points ?? [];
+
+  return points.map((point) => ({
+    project_id: input.projectId,
+    video_id: input.videoId,
+    platform: 'youtube' as const,
+    elapsed_ratio: point.elapsedVideoTimeRatio,
+    audience_watch_ratio: point.audienceWatchRatio,
+  }));
+}
+
+/**
+ * Audience breakdown rows (demographics, geography, devices, OS,
+ * subscribed status) from a platform analytics payload. These are
+ * window/lifetime aggregates — latest fetch wins per key.
+ */
+export function buildAudienceRows(input: {
+  projectId: string;
+  videoId: string;
+  platform: AnalyticsPlatform;
+  analytics:
+    | YouTubeAnalyticsResult
+    | TikTokAnalyticsResult
+    | InstagramInsightsResult;
+}): VideoAudienceRow[] {
+  const base = {
+    project_id: input.projectId,
+    video_id: input.videoId,
+    platform: input.platform,
+  };
+  const rows: VideoAudienceRow[] = [];
+
+  const push = (
+    dimension: VideoAudienceRow['dimension'],
+    key: string,
+    values: { views?: number; percentage?: number },
+  ) => {
+    if (!key) return;
+    rows.push({
+      ...base,
+      dimension,
+      key,
+      views: values.views ?? 0,
+      percentage: values.percentage ?? 0,
+    });
+  };
+
+  if (input.platform === 'youtube') {
+    const data = input.analytics as YouTubeAnalyticsResult;
+
+    for (const group of data.demographics?.ageGroups ?? []) {
+      push('age_group', group.ageGroup, { percentage: group.viewPercentage });
+    }
+    for (const gender of data.demographics?.genders ?? []) {
+      push('gender', gender.gender, { percentage: gender.viewPercentage });
+    }
+    for (const country of data.geography ?? []) {
+      push('country', country.country, {
+        views: country.views,
+        percentage: country.viewPercentage,
+      });
+    }
+    for (const city of data.cityGeography ?? []) {
+      push('city', city.city, { views: city.views });
+    }
+    for (const device of data.deviceBreakdown ?? []) {
+      push('device', device.deviceType, { views: device.views });
+    }
+    for (const os of data.operatingSystem ?? []) {
+      push('os', os.operatingSystem, { views: os.views });
+    }
+    if (data.subscribedStatus) {
+      push('follower_status', 'subscribed', {
+        views: data.subscribedStatus.subscribed,
+      });
+      push('follower_status', 'not_subscribed', {
+        views: data.subscribedStatus.notSubscribed,
+      });
+    }
+
+    return rows;
+  }
+
+  if (input.platform === 'tiktok') {
+    const data = input.analytics as TikTokAnalyticsResult;
+
+    for (const country of data.audience?.countries ?? []) {
+      push('country', country.country, { percentage: country.percentage });
+    }
+    const genders = data.audience?.genderDistribution;
+    if (genders) {
+      push('gender', 'male', { percentage: genders.male });
+      push('gender', 'female', { percentage: genders.female });
+      push('gender', 'other', { percentage: genders.other });
+    }
+    for (const age of data.audience?.ageGroups ?? []) {
+      push('age_group', age.ageGroup, { percentage: age.percentage });
+    }
+
+    return rows;
+  }
+
+  const data = input.analytics as InstagramInsightsResult;
+
+  for (const country of data.audience?.countries ?? []) {
+    push('country', country.country, { views: country.count });
+  }
+  for (const city of data.audience?.cities ?? []) {
+    push('city', city.city, { views: city.count });
+  }
+  for (const genderAge of data.audience?.genderAge ?? []) {
+    push('age_group', genderAge.dimension, { views: genderAge.count });
+  }
+  if (data.reachBreakdown) {
+    push('follower_status', 'subscribed', {
+      views: data.reachBreakdown.followerReach,
+    });
+    push('follower_status', 'not_subscribed', {
+      views: data.reachBreakdown.nonFollowerReach,
+    });
+  }
+
+  return rows;
 }
 
 /**

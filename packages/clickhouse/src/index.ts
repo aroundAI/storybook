@@ -8,6 +8,7 @@
 export type {
   AggregatedTotals,
   AnalyticsPlatform,
+  AudienceDimension,
   ChannelDaily,
   DailyDataPoint,
   DailyPlatformBreakdown,
@@ -16,7 +17,9 @@ export type {
   PlatformBreakdown,
   PlatformEngagement,
   QueryFilters,
+  RetentionCurvePoint,
   SnapshotTotals,
+  VideoAudienceRow,
   VideoMetric,
   VideoReachDaily,
   VideoSnapshot,

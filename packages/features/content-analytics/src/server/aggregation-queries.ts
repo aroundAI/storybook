@@ -7,6 +7,7 @@
 import 'server-only';
 
 import {
+  queryAudienceRows,
   queryDailyTimeSeries,
   queryDailyTimeSeriesByPlatform,
   queryPlatformBreakdown,
@@ -625,8 +626,8 @@ export interface ProjectAudienceData {
 }
 
 /**
- * Get aggregated audience data for a project.
- * Extracts demographics and geography from ClickHouse extra_metrics JSON field.
+ * Get aggregated audience data for a project from the video_audience table,
+ * weighting per-video percentage breakdowns by each video's view totals.
  */
 export async function getProjectAudienceData(
   projectId: string,
@@ -653,35 +654,49 @@ export async function getProjectAudienceData(
     dateFilters.endDate = options.endDate.toISOString().split('T')[0];
   }
 
-  // Get totals per video to use as weights
-  const perVideoTotals = await queryTotalsByVideoIds(publishIds, dateFilters);
+  // Per-video view totals weight the per-video percentage breakdowns
+  const [perVideoTotals, ageRows, genderRows, countryRows] = await Promise.all([
+    queryTotalsByVideoIds(publishIds, dateFilters),
+    queryAudienceRows({ videoIds: publishIds, dimension: 'age_group' }),
+    queryAudienceRows({ videoIds: publishIds, dimension: 'gender' }),
+    queryAudienceRows({ videoIds: publishIds, dimension: 'country' }),
+  ]);
 
-  // Aggregate demographics and geography using views as weight
-  const ageGroups: Record<string, number> = {};
-  const genders: Record<string, number> = {};
-  const geography: Record<string, number> = {};
-  let totalWeight = 0;
+  const weightFor = (videoId: string) =>
+    perVideoTotals.get(videoId)?.views || 1;
 
-  // NOTE: Audience demographic data is not currently stored in ClickHouse
-  // extra_metrics. This function returns the aggregated totals but
-  // demographic breakdowns will be null until extra_metrics ingestion
-  // includes demographics/geography from platform APIs.
-  for (const [, stats] of perVideoTotals) {
-    totalWeight += stats.views || 1;
-  }
+  const aggregate = (
+    rows: Array<{
+      videoId: string;
+      key: string;
+      views: number;
+      percentage: number;
+    }>,
+  ): Record<string, number> => {
+    const totals: Record<string, number> = {};
+    let totalWeight = 0;
 
-  // Normalize to percentages
-  if (totalWeight > 0) {
-    for (const key of Object.keys(ageGroups)) {
-      ageGroups[key] = ageGroups[key]! / totalWeight;
+    for (const row of rows) {
+      // Absolute views when the platform reports them, otherwise the
+      // video's percentage weighted by its view count.
+      const weight =
+        row.views > 0 ? row.views : (row.percentage / 100) * weightFor(row.videoId);
+      totals[row.key] = (totals[row.key] ?? 0) + weight;
+      totalWeight += weight;
     }
-    for (const key of Object.keys(genders)) {
-      genders[key] = genders[key]! / totalWeight;
+
+    if (totalWeight > 0) {
+      for (const key of Object.keys(totals)) {
+        totals[key] = totals[key]! / totalWeight;
+      }
     }
-    for (const key of Object.keys(geography)) {
-      geography[key] = geography[key]! / totalWeight;
-    }
-  }
+
+    return totals;
+  };
+
+  const ageGroups = aggregate(ageRows);
+  const genders = aggregate(genderRows);
+  const geography = aggregate(countryRows);
 
   const hasData =
     Object.keys(ageGroups).length > 0 ||
