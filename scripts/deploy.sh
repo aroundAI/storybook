@@ -367,6 +367,13 @@ echo -e "${YELLOW}🔨 Building Next.js application...${NC}"
 # Increase Node.js memory for build
 export NODE_OPTIONS="--max-old-space-size=4096"
 
+# Supply the commit to the build so it does not have to shell out to git.
+# SST rebuilds the app in its own step, where the git fallback warns.
+if [ -z "${GIT_HASH:-}" ]; then
+    GIT_HASH="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
+fi
+export GIT_HASH
+
 # Temporarily move .env.local out of the way during production build
 # This ensures only shell-exported env vars from deployment/config/${STAGE}.env are used
 if [ -f "apps/web/.env.local" ]; then

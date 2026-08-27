@@ -10,8 +10,28 @@
  *
  * ⚠️ Requires browser support for WebCodecs API (Chrome 94+, Edge 94+).
  */
-// @ts-expect-error — mp4box doesn't ship TS declarations
-import MP4Box from 'mp4box';
+import {
+  DataStream,
+  Endianness,
+  MP4BoxBuffer,
+  createFile,
+} from 'mp4box';
+import type { Movie, Sample, SampleEntry, Track } from 'mp4box';
+
+/**
+ * mp4box types `stsd` entries as the SampleEntry base class, but the codec
+ * configuration boxes we need live on the concrete AVC/MP4A subclasses.
+ */
+type CodecConfigBox = { write: (stream: DataStream) => void };
+
+function getCodecConfigBox(
+  entry: SampleEntry | undefined,
+  box: 'avcC' | 'esds',
+): CodecConfigBox | undefined {
+  return (entry as unknown as Record<string, CodecConfigBox | undefined>)?.[
+    box
+  ];
+}
 
 // ──────────────────────────────────────────
 // Message types
@@ -132,23 +152,15 @@ async function demuxVideoFrames(
 
   return new Promise<DecodedFrame[]>((resolve, reject) => {
     const frames: DecodedFrame[] = [];
-    let videoTrack: { id: number; codec: string; timescale: number } | null =
-      null;
+    let videoTrack: Track | null = null;
 
-    const mp4File = MP4Box.createFile();
+    const mp4File = createFile();
 
     let decoder: VideoDecoder | null = null;
     // eslint-disable-next-line prefer-const
     let decoderRef: { current: VideoDecoder | null } = { current: null };
 
-    mp4File.onReady = (info: {
-      videoTracks: Array<{
-        id: number;
-        codec: string;
-        timescale: number;
-        video: { width: number; height: number };
-      }>;
-    }) => {
+    mp4File.onReady = (info: Movie) => {
       if (info.videoTracks.length === 0) {
         resolve([]);
         return;
@@ -159,7 +171,10 @@ async function demuxVideoFrames(
 
       // Get codec description from track
       const trak = mp4File.getTrackById(videoTrack.id);
-      const codecDescription = trak?.mdia?.minf?.stbl?.stsd?.entries?.[0]?.avcC;
+      const codecDescription = getCodecConfigBox(
+        trak?.mdia?.minf?.stbl?.stsd?.entries?.[0],
+        'avcC',
+      );
 
       decoder = new VideoDecoder({
         output: (videoFrame) => {
@@ -179,24 +194,20 @@ async function demuxVideoFrames(
 
       const decoderConfig: VideoDecoderConfig = {
         codec: trackInfo.codec,
-        codedWidth: trackInfo.video.width,
-        codedHeight: trackInfo.video.height,
+        codedWidth: trackInfo.video?.width ?? 0,
+        codedHeight: trackInfo.video?.height ?? 0,
       };
 
       // Add description if available (needed for H.264 avcC)
       if (codecDescription) {
-        const stream = new MP4Box.DataStream(
-          undefined,
-          0,
-          MP4Box.DataStream.BIG_ENDIAN,
-        );
+        const stream = new DataStream(undefined, 0, Endianness.BIG_ENDIAN);
         codecDescription.write(stream);
         decoderConfig.description = new Uint8Array(stream.buffer, 8);
       }
 
       decoder.configure(decoderConfig);
 
-      mp4File.setExtractionOptions(videoTrack.id, null, {
+      mp4File.setExtractionOptions(videoTrack!.id, undefined, {
         nbSamples: 100,
       });
       mp4File.start();
@@ -205,15 +216,11 @@ async function demuxVideoFrames(
     mp4File.onSamples = (
       _trackId: number,
       _ref: unknown,
-      samples: Array<{
-        data: ArrayBuffer;
-        is_sync: boolean;
-        cts: number;
-        duration: number;
-        timescale: number;
-      }>,
+      samples: Array<Sample>,
     ) => {
       for (const sample of samples) {
+        if (!sample.data) continue;
+
         const chunk = new EncodedVideoChunk({
           type: sample.is_sync ? 'key' : 'delta',
           timestamp: (sample.cts / sample.timescale) * 1_000_000, // → μs
@@ -224,11 +231,11 @@ async function demuxVideoFrames(
       }
     };
 
-    mp4File.onError = (e: string) => reject(new Error(e));
+    mp4File.onError = (module: string, message: string) =>
+      reject(new Error(`${module}: ${message}`));
 
     // Feed the buffer to mp4box
-    (arrayBuffer as ArrayBuffer & { fileStart: number }).fileStart = 0;
-    mp4File.appendBuffer(arrayBuffer);
+    mp4File.appendBuffer(MP4BoxBuffer.fromArrayBuffer(arrayBuffer, 0));
     mp4File.flush();
 
     // mp4box triggers onReady/onSamples synchronously during appendBuffer,
@@ -265,26 +272,14 @@ async function demuxAudioSamples(
 
   return new Promise<DecodedAudio | null>((resolve, reject) => {
     const pcmChunks: AudioData[] = [];
-    let audioTrack: {
-      id: number;
-      codec: string;
-      timescale: number;
-      audio: { sample_rate: number; channel_count: number };
-    } | null = null;
+    let audioTrack: Track | null = null;
 
-    const mp4File = MP4Box.createFile();
+    const mp4File = createFile();
     let decoder: AudioDecoder | null = null;
     // eslint-disable-next-line prefer-const
     let decoderRef: { current: AudioDecoder | null } = { current: null };
 
-    mp4File.onReady = (info: {
-      audioTracks: Array<{
-        id: number;
-        codec: string;
-        timescale: number;
-        audio: { sample_rate: number; channel_count: number };
-      }>;
-    }) => {
+    mp4File.onReady = (info: Movie) => {
       if (info.audioTracks.length === 0) {
         resolve(null);
         return;
@@ -295,7 +290,10 @@ async function demuxAudioSamples(
 
       // Get codec description
       const trak = mp4File.getTrackById(audioTrack.id);
-      const esds = trak?.mdia?.minf?.stbl?.stsd?.entries?.[0]?.esds;
+      const esds = getCodecConfigBox(
+        trak?.mdia?.minf?.stbl?.stsd?.entries?.[0],
+        'esds',
+      );
 
       decoder = new AudioDecoder({
         output: (audioData) => {
@@ -307,23 +305,19 @@ async function demuxAudioSamples(
 
       const decoderConfig: AudioDecoderConfig = {
         codec: trackInfo.codec,
-        sampleRate: trackInfo.audio.sample_rate,
-        numberOfChannels: trackInfo.audio.channel_count,
+        sampleRate: trackInfo.audio?.sample_rate ?? 0,
+        numberOfChannels: trackInfo.audio?.channel_count ?? 0,
       };
 
       if (esds) {
-        const stream = new MP4Box.DataStream(
-          undefined,
-          0,
-          MP4Box.DataStream.BIG_ENDIAN,
-        );
+        const stream = new DataStream(undefined, 0, Endianness.BIG_ENDIAN);
         esds.write(stream);
         decoderConfig.description = new Uint8Array(stream.buffer, 8);
       }
 
       decoder.configure(decoderConfig);
 
-      mp4File.setExtractionOptions(audioTrack.id, null, {
+      mp4File.setExtractionOptions(audioTrack!.id, undefined, {
         nbSamples: 1000,
       });
       mp4File.start();
@@ -332,15 +326,11 @@ async function demuxAudioSamples(
     mp4File.onSamples = (
       _trackId: number,
       _ref: unknown,
-      samples: Array<{
-        data: ArrayBuffer;
-        is_sync: boolean;
-        cts: number;
-        duration: number;
-        timescale: number;
-      }>,
+      samples: Array<Sample>,
     ) => {
       for (const sample of samples) {
+        if (!sample.data) continue;
+
         const chunk = new EncodedAudioChunk({
           type: sample.is_sync ? 'key' : 'delta',
           timestamp: (sample.cts / sample.timescale) * 1_000_000,
@@ -351,10 +341,10 @@ async function demuxAudioSamples(
       }
     };
 
-    mp4File.onError = (e: string) => reject(new Error(e));
+    mp4File.onError = (module: string, message: string) =>
+      reject(new Error(`${module}: ${message}`));
 
-    (arrayBuffer as ArrayBuffer & { fileStart: number }).fileStart = 0;
-    mp4File.appendBuffer(arrayBuffer);
+    mp4File.appendBuffer(MP4BoxBuffer.fromArrayBuffer(arrayBuffer, 0));
     mp4File.flush();
 
     // mp4box triggers onReady/onSamples synchronously during appendBuffer.
@@ -363,8 +353,8 @@ async function demuxAudioSamples(
       .current!.flush()
       .then(() => {
         // Convert AudioData chunks to Float32 PCM
-        const channels = audioTrack!.audio.channel_count;
-        const sampleRate = audioTrack!.audio.sample_rate;
+        const channels = audioTrack!.audio?.channel_count ?? AUDIO_CHANNELS;
+        const sampleRate = audioTrack!.audio?.sample_rate ?? 0;
         const inSample = Math.floor((inPointMs / 1000) * sampleRate);
         const outSample = Math.ceil((outPointMs / 1000) * sampleRate);
 
@@ -465,29 +455,42 @@ function mixAudio(
 // mp4box.js muxer: create proper MP4 container
 // ──────────────────────────────────────────
 
+/** Encoder descriptions arrive as ArrayBuffer or a view over one. */
+function toArrayBuffer(source: AllowSharedBufferSource): ArrayBuffer {
+  if (source instanceof ArrayBuffer) return source;
+  const view = source as ArrayBufferView;
+  return view.buffer.slice(
+    view.byteOffset,
+    view.byteOffset + view.byteLength,
+  ) as ArrayBuffer;
+}
+
 function muxToMp4(
   videoChunks: { chunk: EncodedVideoChunk; meta?: EncodedVideoChunkMetadata }[],
   audioChunks: { chunk: EncodedAudioChunk; meta?: EncodedAudioChunkMetadata }[],
   settings: ExportSettings,
 ): Blob {
-  const mp4File = MP4Box.createFile();
+  const mp4File = createFile();
 
   // Add video track
   const videoTrackId = mp4File.addTrack({
     timescale: 90_000,
     width: settings.width,
     height: settings.height,
-    nb_samples: videoChunks.length,
-    codec: VIDEO_CODEC,
+    // v2 takes the sample-entry four-CC here; the full codec string
+    // (VIDEO_CODEC) still configures the encoder itself.
+    type: 'avc1',
     ...(videoChunks[0]?.meta?.decoderConfig?.description
       ? {
-          avcDecoderConfigRecord: videoChunks[0].meta.decoderConfig.description,
+          avcDecoderConfigRecord: toArrayBuffer(
+            videoChunks[0].meta.decoderConfig.description,
+          ),
         }
       : {}),
   });
 
   for (const { chunk } of videoChunks) {
-    const buf = new ArrayBuffer(chunk.byteLength);
+    const buf = new Uint8Array(chunk.byteLength);
     chunk.copyTo(buf);
 
     mp4File.addSample(videoTrackId, buf, {
@@ -499,18 +502,21 @@ function muxToMp4(
 
   // Add audio track if we have audio chunks
   if (audioChunks.length > 0) {
+    // NOTE: mp4box v1 accepted `audioSpecificConfig` here; v2's addTrack has
+    // no equivalent field and instead expects the AAC config as a constructed
+    // `esds` box via `description_boxes`. Until that is built and verified
+    // against a real export, players that require an explicit AudioSpecificConfig
+    // may reject this track's audio. Video is unaffected.
     const audioTrackId = mp4File.addTrack({
       timescale: settings.audioSampleRate,
       samplerate: settings.audioSampleRate,
       channel_count: AUDIO_CHANNELS,
-      codec: AUDIO_CODEC,
-      ...(audioChunks[0]?.meta?.decoderConfig?.description
-        ? { audioSpecificConfig: audioChunks[0].meta.decoderConfig.description }
-        : {}),
+      samplesize: 16,
+      type: 'mp4a',
     });
 
     for (const { chunk } of audioChunks) {
-      const buf = new ArrayBuffer(chunk.byteLength);
+      const buf = new Uint8Array(chunk.byteLength);
       chunk.copyTo(buf);
 
       mp4File.addSample(audioTrackId, buf, {
