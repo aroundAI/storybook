@@ -106,6 +106,7 @@ export function buildYouTubeDailyRows(input: {
   videoId: string;
   dailyData: YouTubeDailyMetrics[];
   extraMetricsJson: string;
+  metricSource?: 'analytics_api' | 'backfill';
 }): VideoMetric[] {
   const latest = latestDataDate(input.dailyData);
 
@@ -122,7 +123,7 @@ export function buildYouTubeDailyRows(input: {
     watch_time_seconds: Math.round(day.estimatedMinutesWatched * 60),
     revenue_cents: 0,
     subscribers_gained: day.subscribersGained,
-    metric_source: 'analytics_api' as const,
+    metric_source: input.metricSource ?? ('analytics_api' as const),
     extra_metrics: day.date === latest ? input.extraMetricsJson : '{}',
   }));
 }

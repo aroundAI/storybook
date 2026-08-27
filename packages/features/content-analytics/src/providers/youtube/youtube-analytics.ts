@@ -186,6 +186,30 @@ export class YouTubeAnalyticsProvider {
   }
 
   /**
+   * Fetches only the daily metrics breakdown for a date range.
+   * Used by the historical backfill, where the full getVideoAnalytics
+   * payload (retention, demographics, …) would waste API quota.
+   */
+  async getDailyMetrics(
+    videoId: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<YouTubeDailyMetrics[]> {
+    try {
+      return await this.fetchDailyMetrics(
+        videoId,
+        formatDate(startDate),
+        formatDate(endDate),
+      );
+    } catch (error) {
+      if (isScopeMissingError(error)) {
+        throw new YouTubeAnalyticsScopeError();
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Fetches daily metrics breakdown
    */
   private async fetchDailyMetrics(

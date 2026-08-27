@@ -11,6 +11,10 @@ export {
   syncSinglePublishById,
 } from './analytics-sync-cron';
 
+// Historical backfill (FILM-1503)
+export { runYouTubeBackfillBatch } from './backfill/youtube-backfill';
+export type { BackfillBatchResult } from './backfill/youtube-backfill';
+
 // Server actions
 export { getSyncStatusAction, manualSyncAction } from './sync-actions';
 export { generateInsightsAction } from './insights-actions';

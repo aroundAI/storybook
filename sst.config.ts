@@ -1301,6 +1301,36 @@ export default $config({
 
     console.log(`✓ Analytics sync cron configured (hourly)`);
 
+    // Scheduled Reports Cron - Generates and emails due analytics reports
+    // Uses EventBridge to trigger a Lambda that calls the reports API endpoint
+    const scheduledReportsCron = new sst.aws.Cron('StorybookScheduledReportsCron', {
+      job: {
+        handler: 'apps/web/lambda/scheduled-reports/index.handler',
+        timeout: '5 minutes',
+        memory: '512 MB',
+        architecture: 'arm64',
+        link: [web],
+        environment: {
+          API_URL: web.url,
+          CRON_SECRET: process.env.CRON_SECRET || '',
+        },
+        transform: {
+          function: {
+            kmsKeyArn: kmsKey.arn,
+          },
+        },
+        permissions: [
+          {
+            actions: ['kms:Decrypt'],
+            resources: [kmsKey.arn],
+          },
+        ],
+      },
+      schedule: 'rate(1 hour)',
+    });
+
+    console.log(`✓ Scheduled reports cron configured (hourly)`);
+
     // Token Refresh Cron - Refreshes OAuth tokens before they expire
     // Runs every 30 minutes to catch tokens expiring within the hour
     const tokenRefreshCron = new sst.aws.Cron('StorybookTokenRefreshCron', {
