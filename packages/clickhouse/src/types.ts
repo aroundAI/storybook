@@ -63,6 +63,46 @@ export interface VideoSnapshot {
 }
 
 /**
+ * Thumbnail reach row (impressions, CTR, engaged views) per video/day.
+ * Sourced from the YouTube Reporting API reach reports.
+ */
+export interface VideoReachDaily {
+  project_id: string;
+  video_id: string;
+  platform: AnalyticsPlatform;
+  metric_date: string;
+  impressions: number;
+  impressions_ctr: number;
+  engaged_views: number;
+}
+
+/**
+ * Traffic-source row per video/day/source.
+ */
+export interface VideoTrafficSource {
+  project_id: string;
+  video_id: string;
+  platform: AnalyticsPlatform;
+  metric_date: string;
+  source: string;
+  views: number;
+  watch_time_minutes: number;
+}
+
+/**
+ * Channel-level rollup row for videos not published through the platform,
+ * keyed by connection. Keeps channel-wide totals (YPP watch hours) accurate.
+ */
+export interface ChannelDaily {
+  connection_id: string;
+  metric_date: string;
+  views: number;
+  watch_time_seconds: number;
+  impressions: number;
+  engaged_views: number;
+}
+
+/**
  * Latest-snapshot totals returned by queryLatestSnapshots, keyed by video_id.
  */
 export interface SnapshotTotals {

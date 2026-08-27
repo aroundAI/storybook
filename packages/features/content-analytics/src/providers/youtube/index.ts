@@ -27,3 +27,15 @@ export {
   YouTubeAnalyticsProvider,
   YouTubeAnalyticsScopeError,
 } from './youtube-analytics';
+
+// Reporting API (bulk reports) provider
+export {
+  createYouTubeReportingProvider,
+  YouTubeReportingProvider,
+  YOUTUBE_REPORT_TYPES,
+} from './youtube-reporting';
+export type {
+  YouTubeReport,
+  YouTubeReportJob,
+  YouTubeReportTypeId,
+} from './youtube-reporting';

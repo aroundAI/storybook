@@ -13,8 +13,11 @@ export {
 } from '../client';
 
 export {
+  insertChannelDaily,
   insertVideoMetrics,
+  insertVideoReachDaily,
   insertVideoSnapshots,
+  insertVideoTrafficSources,
   queryDailyStats,
   queryDailyTimeSeries,
   queryDailyTimeSeriesByPlatform,
@@ -29,6 +32,7 @@ export {
 export type {
   AggregatedTotals,
   AnalyticsPlatform,
+  ChannelDaily,
   DailyDataPoint,
   DailyPlatformBreakdown,
   DailyStats,
@@ -38,7 +42,9 @@ export type {
   QueryFilters,
   SnapshotTotals,
   VideoMetric,
+  VideoReachDaily,
   VideoSnapshot,
+  VideoTrafficSource,
 } from '../types';
 
 export { formatDateStr } from '../utils';

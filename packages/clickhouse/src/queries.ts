@@ -7,6 +7,7 @@
 import { getClickHouseClient, isClickHouseEnabled } from './client';
 import type {
   AggregatedTotals,
+  ChannelDaily,
   DailyDataPoint,
   DailyPlatformBreakdown,
   DailyPlatformMetricsRow,
@@ -15,7 +16,9 @@ import type {
   QueryFilters,
   SnapshotTotals,
   VideoMetric,
+  VideoReachDaily,
   VideoSnapshot,
+  VideoTrafficSource,
 } from './types';
 
 // ==========================================
@@ -55,6 +58,55 @@ export async function insertVideoSnapshots(
   await client.insert({
     table: 'video_snapshots',
     values: snapshots,
+    format: 'JSONEachRow',
+  });
+}
+
+/**
+ * Insert thumbnail reach rows (impressions/CTR/engaged views) per video/day.
+ */
+export async function insertVideoReachDaily(
+  rows: VideoReachDaily[],
+): Promise<void> {
+  if (rows.length === 0 || !isClickHouseEnabled()) return;
+
+  const client = getClickHouseClient();
+
+  await client.insert({
+    table: 'video_reach_daily',
+    values: rows,
+    format: 'JSONEachRow',
+  });
+}
+
+/**
+ * Insert traffic-source rows per video/day/source.
+ */
+export async function insertVideoTrafficSources(
+  rows: VideoTrafficSource[],
+): Promise<void> {
+  if (rows.length === 0 || !isClickHouseEnabled()) return;
+
+  const client = getClickHouseClient();
+
+  await client.insert({
+    table: 'video_traffic_sources',
+    values: rows,
+    format: 'JSONEachRow',
+  });
+}
+
+/**
+ * Insert channel-level daily rollup rows for unmatched channel videos.
+ */
+export async function insertChannelDaily(rows: ChannelDaily[]): Promise<void> {
+  if (rows.length === 0 || !isClickHouseEnabled()) return;
+
+  const client = getClickHouseClient();
+
+  await client.insert({
+    table: 'channel_daily',
+    values: rows,
     format: 'JSONEachRow',
   });
 }

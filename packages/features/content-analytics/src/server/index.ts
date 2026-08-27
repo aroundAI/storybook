@@ -15,6 +15,10 @@ export {
 export { runYouTubeBackfillBatch } from './backfill/youtube-backfill';
 export type { BackfillBatchResult } from './backfill/youtube-backfill';
 
+// YouTube Reporting API bulk ingest (FILM-1504)
+export { runReportingIngestJob } from './reporting/report-ingest';
+export type { ReportIngestResult } from './reporting/report-ingest';
+
 // Server actions
 export { getSyncStatusAction, manualSyncAction } from './sync-actions';
 export { generateInsightsAction } from './insights-actions';
