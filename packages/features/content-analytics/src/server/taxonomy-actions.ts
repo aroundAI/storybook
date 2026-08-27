@@ -12,17 +12,11 @@ import {
   DeleteTagSchema,
   ListTagsSchema,
   SetPublishTagsSchema,
+  TAGGED_LIBRARY_THRESHOLD,
   TagDimensionSchema,
   UpdateTagSchema,
 } from '../lib/schemas/taxonomy.schema';
 import { upsertVideoDims } from './dim-sync';
-
-/**
- * Videos an account must have tagged before tag-level medians are shown.
- * Below this, per-tag samples are too small to separate signal from the
- * luck that dominates individual video performance.
- */
-export const TAGGED_LIBRARY_THRESHOLD = 30;
 
 export const createTagAction = enhanceAction(
   async (data, user) => {

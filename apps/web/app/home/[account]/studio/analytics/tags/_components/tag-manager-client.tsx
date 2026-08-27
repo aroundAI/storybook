@@ -7,7 +7,7 @@ import { TagManager } from '@kit/content-analytics/components';
 import {
   createTagAction,
   deleteTagAction,
-} from '@kit/content-analytics/server';
+} from '@kit/content-analytics/server/taxonomy-actions';
 
 interface TagManagerClientProps {
   /** Account whose vocabulary is being edited */

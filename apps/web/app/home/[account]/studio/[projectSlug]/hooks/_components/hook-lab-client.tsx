@@ -19,7 +19,7 @@ import {
   getHookTestAction,
   listHookTestsAction,
   refreshHookTestAction,
-} from '@kit/content-analytics/server';
+} from '@kit/content-analytics/server/hook-actions';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,

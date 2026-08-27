@@ -18,7 +18,7 @@ import {
   getExperimentAction,
   listExperimentsAction,
   startExperimentAction,
-} from '@kit/content-analytics/server';
+} from '@kit/content-analytics/server/experiment-actions';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,

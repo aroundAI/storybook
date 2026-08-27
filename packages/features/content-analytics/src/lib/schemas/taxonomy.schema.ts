@@ -1,6 +1,13 @@
 import { z } from 'zod';
 
 /**
+ * Videos an account must have tagged before tag-level medians are shown.
+ * Below this, per-tag samples are too small to separate signal from the
+ * luck that dominates individual video performance.
+ */
+export const TAGGED_LIBRARY_THRESHOLD = 30;
+
+/**
  * Taxonomy dimensions. `hook_type` is shared with the Hook Lab
  * (FILM-1510), which reads its aggregate performance from tag medians.
  */
