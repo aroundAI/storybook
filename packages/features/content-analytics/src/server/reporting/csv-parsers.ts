@@ -260,10 +260,7 @@ export function parseReachReport(csv: string): ReachReportRow[] {
   const ctrIdx = columnIndex(headers, 'video_thumbnail_impressions_ctr');
   const engagedIdx = columnIndex(headers, 'engaged_views');
 
-  const byKey = new Map<
-    string,
-    ReachReportRow & { ctrWeightedSum: number }
-  >();
+  const byKey = new Map<string, ReachReportRow & { ctrWeightedSum: number }>();
 
   for (const row of rows) {
     const date = normalizeDate(stringAt(row, dateIdx));
@@ -292,7 +289,6 @@ export function parseReachReport(csv: string): ReachReportRow[] {
 
   return Array.from(byKey.values()).map(({ ctrWeightedSum, ...row }) => ({
     ...row,
-    impressionsCtr:
-      row.impressions > 0 ? ctrWeightedSum / row.impressions : 0,
+    impressionsCtr: row.impressions > 0 ? ctrWeightedSum / row.impressions : 0,
   }));
 }

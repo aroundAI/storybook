@@ -21,6 +21,7 @@ interface PublishDimRow {
   published_at: string | null;
   episodes: {
     project_id: string | null;
+    duration_seconds: number | null;
     target_duration_seconds: number | null;
     projects: { account_id: string | null } | null;
   } | null;
@@ -34,9 +35,8 @@ interface PublishDimRow {
  * so drift heals via full upsert — ReplacingMergeTree dedups), and from
  * taxonomy actions after tagging (FILM-1507).
  *
- * duration_seconds is seeded from the episode's target duration; consumers
- * needing exact durations (Hook Lab retention interpolation) refine it via
- * the platform's video info API.
+ * duration_seconds uses the episode's actual duration, falling back to its
+ * target duration when the render has not reported one.
  */
 export async function upsertVideoDims(publishIds?: string[]): Promise<number> {
   const logger = await getLogger();
@@ -55,6 +55,7 @@ export async function upsertVideoDims(publishIds?: string[]): Promise<number> {
       published_at,
       episodes!inner(
         project_id,
+        duration_seconds,
         target_duration_seconds,
         projects!inner(account_id)
       )
@@ -100,7 +101,10 @@ export async function upsertVideoDims(publishIds?: string[]): Promise<number> {
       language: row.language ?? 'en',
       title: row.title ?? '',
       published_at: toClickHouseDateTime(row.published_at),
-      duration_seconds: row.episodes?.target_duration_seconds ?? 0,
+      duration_seconds:
+        row.episodes?.duration_seconds ??
+        row.episodes?.target_duration_seconds ??
+        0,
       tags: tagsByPublish.get(row.id) ?? [],
     });
   }

@@ -231,6 +231,91 @@ export type Database = {
           },
         ];
       };
+      content_tags: {
+        Row: {
+          account_id: string;
+          created_at: string;
+          created_by: string | null;
+          dimension: string;
+          id: string;
+          label: string;
+          slug: string;
+        };
+        Insert: {
+          account_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          dimension: string;
+          id?: string;
+          label: string;
+          slug: string;
+        };
+        Update: {
+          account_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          dimension?: string;
+          id?: string;
+          label?: string;
+          slug?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'content_tags_account_id_fkey';
+            columns: ['account_id'];
+            isOneToOne: false;
+            referencedRelation: 'accounts';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'content_tags_account_id_fkey';
+            columns: ['account_id'];
+            isOneToOne: false;
+            referencedRelation: 'user_account_workspace';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'content_tags_account_id_fkey';
+            columns: ['account_id'];
+            isOneToOne: false;
+            referencedRelation: 'user_accounts';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      publish_tags: {
+        Row: {
+          created_at: string;
+          publish_id: string;
+          tag_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          publish_id: string;
+          tag_id: string;
+        };
+        Update: {
+          created_at?: string;
+          publish_id?: string;
+          tag_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'publish_tags_publish_id_fkey';
+            columns: ['publish_id'];
+            isOneToOne: false;
+            referencedRelation: 'publishes';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'publish_tags_tag_id_fkey';
+            columns: ['tag_id'];
+            isOneToOne: false;
+            referencedRelation: 'content_tags';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       act_context_bridges: {
         Row: {
           act_end_time: number;

@@ -33,6 +33,18 @@ export {
   getYppProgressAction,
 } from './deep-dive-actions';
 
+// Content taxonomy actions (FILM-1507)
+export {
+  bulkTagPublishesAction,
+  createTagAction,
+  deleteTagAction,
+  getMedianByTagAction,
+  getPublishTagsAction,
+  listTagsAction,
+  setPublishTagsAction,
+  updateTagAction,
+} from './taxonomy-actions';
+
 // Server actions
 export { getSyncStatusAction, manualSyncAction } from './sync-actions';
 export { generateInsightsAction } from './insights-actions';

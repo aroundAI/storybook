@@ -150,3 +150,13 @@ export {
   BestEpisodesToClipCard,
   BestEpisodesToClipCardSkeleton,
 } from './analytics-enhancement-cards';
+
+// Content taxonomy (FILM-1507)
+export {
+  TagManager,
+  TagMediansCard,
+  TagMediansCardSkeleton,
+  TagPicker,
+  type ContentTag,
+  type TagMedianEntry,
+} from './taxonomy';

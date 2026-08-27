@@ -680,7 +680,9 @@ export async function getProjectAudienceData(
       // Absolute views when the platform reports them, otherwise the
       // video's percentage weighted by its view count.
       const weight =
-        row.views > 0 ? row.views : (row.percentage / 100) * weightFor(row.videoId);
+        row.views > 0
+          ? row.views
+          : (row.percentage / 100) * weightFor(row.videoId);
       totals[row.key] = (totals[row.key] ?? 0) + weight;
       totalWeight += weight;
     }

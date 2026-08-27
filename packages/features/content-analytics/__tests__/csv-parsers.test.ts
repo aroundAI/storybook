@@ -42,9 +42,9 @@ describe('parseChannelBasicReport', () => {
   });
 
   it('returns empty for a header-only report', () => {
-    expect(
-      parseChannelBasicReport('date,channel_id,video_id,views\n'),
-    ).toEqual([]);
+    expect(parseChannelBasicReport('date,channel_id,video_id,views\n')).toEqual(
+      [],
+    );
   });
 
   it('returns empty for an empty file', () => {

@@ -408,10 +408,12 @@ function accumulateChannelDaily(
   map: Map<string, ChannelDaily>,
   connectionId: string,
   date: string,
-  add: Partial<Pick<
-    ChannelDaily,
-    'views' | 'watch_time_seconds' | 'impressions' | 'engaged_views'
-  >>,
+  add: Partial<
+    Pick<
+      ChannelDaily,
+      'views' | 'watch_time_seconds' | 'impressions' | 'engaged_views'
+    >
+  >,
 ): void {
   const existing = map.get(date) ?? {
     connection_id: connectionId,

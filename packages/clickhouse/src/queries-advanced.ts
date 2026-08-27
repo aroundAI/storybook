@@ -171,7 +171,8 @@ export async function queryMedianViewsPerVideo(input: {
 
   const client = getClickHouseClient();
   const { conditions, params } = buildDimConditions(input.scope);
-  const bucketFn = input.bucket === 'quarter' ? 'toStartOfQuarter' : 'toStartOfMonth';
+  const bucketFn =
+    input.bucket === 'quarter' ? 'toStartOfQuarter' : 'toStartOfMonth';
 
   const dateConditions: string[] = ['1 = 1'];
   if (input.startDate) {

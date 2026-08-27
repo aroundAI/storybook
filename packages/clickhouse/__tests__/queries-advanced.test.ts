@@ -148,9 +148,7 @@ describe('queries-advanced', () => {
       });
 
       expect(rows[0]!.share).toBeCloseTo(0.65, 6);
-      expect(lastQuery().query_params.browseSources).toContain(
-        'RELATED_VIDEO',
-      );
+      expect(lastQuery().query_params.browseSources).toContain('RELATED_VIDEO');
     });
 
     it('returns zero share rather than dividing by zero', async () => {
