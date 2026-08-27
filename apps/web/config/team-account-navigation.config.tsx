@@ -2,11 +2,13 @@ import {
   BarChart3,
   CreditCard,
   Film,
+  FlaskConical,
   Globe,
   LayoutDashboard,
   MessageSquareText,
   Settings,
   Share2,
+  Tags,
   Users,
 } from 'lucide-react';
 
@@ -41,6 +43,16 @@ const getRoutes = (account: string) => [
         label: 'common:routes.analytics',
         path: `/home/${account}/studio/analytics`,
         Icon: <BarChart3 className={iconClasses} />,
+      },
+      {
+        label: 'common:routes.contentTags',
+        path: `/home/${account}/studio/analytics/tags`,
+        Icon: <Tags className={iconClasses} />,
+      },
+      {
+        label: 'common:routes.experiments',
+        path: `/home/${account}/studio/analytics/experiments`,
+        Icon: <FlaskConical className={iconClasses} />,
       },
     ],
   },

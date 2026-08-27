@@ -33,6 +33,19 @@ export {
   getYppProgressAction,
 } from './deep-dive-actions';
 
+// Experiment log actions (FILM-1509)
+export {
+  abandonExperimentAction,
+  concludeExperimentAction,
+  createExperimentAction,
+  deleteExperimentAction,
+  getExperimentAction,
+  listExperimentsAction,
+  startExperimentAction,
+  updateExperimentAction,
+} from './experiment-actions';
+export type { ExperimentSnapshot } from './experiment-actions';
+
 // Revenue alerts (FILM-1508)
 export { evaluateRevenueAlerts } from './revenue-alerts';
 

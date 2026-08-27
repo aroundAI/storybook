@@ -179,6 +179,141 @@ export type Database = {
           },
         ];
       };
+      analytics_experiments: {
+        Row: {
+          account_id: string;
+          actual_outcome: string | null;
+          baseline_metrics: Json;
+          change_description: string;
+          created_at: string;
+          created_by: string | null;
+          ended_at: string | null;
+          expected_outcome: string | null;
+          hypothesis: string | null;
+          id: string;
+          outcome_status: string;
+          project_id: string | null;
+          result_metrics: Json;
+          started_at: string | null;
+          status: string;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          account_id: string;
+          actual_outcome?: string | null;
+          baseline_metrics?: Json;
+          change_description: string;
+          created_at?: string;
+          created_by?: string | null;
+          ended_at?: string | null;
+          expected_outcome?: string | null;
+          hypothesis?: string | null;
+          id?: string;
+          outcome_status?: string;
+          project_id?: string | null;
+          result_metrics?: Json;
+          started_at?: string | null;
+          status?: string;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          account_id?: string;
+          actual_outcome?: string | null;
+          baseline_metrics?: Json;
+          change_description?: string;
+          created_at?: string;
+          created_by?: string | null;
+          ended_at?: string | null;
+          expected_outcome?: string | null;
+          hypothesis?: string | null;
+          id?: string;
+          outcome_status?: string;
+          project_id?: string | null;
+          result_metrics?: Json;
+          started_at?: string | null;
+          status?: string;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'analytics_experiments_account_id_fkey';
+            columns: ['account_id'];
+            isOneToOne: false;
+            referencedRelation: 'accounts';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'analytics_experiments_project_id_fkey';
+            columns: ['project_id'];
+            isOneToOne: false;
+            referencedRelation: 'projects';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      experiment_publishes: {
+        Row: {
+          experiment_id: string;
+          publish_id: string;
+        };
+        Insert: {
+          experiment_id: string;
+          publish_id: string;
+        };
+        Update: {
+          experiment_id?: string;
+          publish_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'experiment_publishes_experiment_id_fkey';
+            columns: ['experiment_id'];
+            isOneToOne: false;
+            referencedRelation: 'analytics_experiments';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'experiment_publishes_publish_id_fkey';
+            columns: ['publish_id'];
+            isOneToOne: false;
+            referencedRelation: 'publishes';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      experiment_tags: {
+        Row: {
+          experiment_id: string;
+          tag_id: string;
+        };
+        Insert: {
+          experiment_id: string;
+          tag_id: string;
+        };
+        Update: {
+          experiment_id?: string;
+          tag_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'experiment_tags_experiment_id_fkey';
+            columns: ['experiment_id'];
+            isOneToOne: false;
+            referencedRelation: 'analytics_experiments';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'experiment_tags_tag_id_fkey';
+            columns: ['tag_id'];
+            isOneToOne: false;
+            referencedRelation: 'content_tags';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       analytics_settings: {
         Row: {
           account_id: string;

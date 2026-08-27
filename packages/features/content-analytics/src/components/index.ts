@@ -151,6 +151,17 @@ export {
   BestEpisodesToClipCardSkeleton,
 } from './analytics-enhancement-cards';
 
+// Experiment log (FILM-1509)
+export {
+  ExperimentDetail,
+  ExperimentDetailSkeleton,
+  ExperimentForm,
+  ExperimentList,
+  ExperimentListSkeleton,
+  type ExperimentListEntry,
+  type ExperimentMetricSnapshot,
+} from './experiments';
+
 // Revenue mix (FILM-1508)
 export {
   RevenueMixCard,
