@@ -20,6 +20,7 @@ export type {
   RetentionCurvePoint,
   SnapshotTotals,
   VideoAudienceRow,
+  VideoDim,
   VideoMetric,
   VideoReachDaily,
   VideoSnapshot,

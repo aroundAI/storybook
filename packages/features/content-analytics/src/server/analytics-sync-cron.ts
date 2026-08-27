@@ -127,6 +127,15 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
     // 2. Group by platform for efficient processing
     const byPlatform = groupByPlatform(publishesToSync);
 
+    // Keep the dimension table fresh: batch upsert for this run's
+    // publishes, full reconcile once a day (publishes has no updated_at)
+    const { upsertVideoDims } = await import('./dim-sync');
+    await upsertVideoDims(
+      new Date().getUTCHours() === 2
+        ? undefined
+        : publishesToSync.map((p) => p.id),
+    );
+
     // Prefetch delta baselines for cumulative-counter platforms in one query
     const snapshotBaselines = await fetchSnapshotBaselines(publishesToSync);
 

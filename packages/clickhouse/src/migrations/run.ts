@@ -11,9 +11,10 @@ import { migration as m001 } from './001_create_tables';
 import { migration as m002 } from './002_metrics_v2';
 import { migration as m003 } from './003_reach_and_traffic';
 import { migration as m004 } from './004_extended_metrics';
+import { migration as m005 } from './005_video_dim';
 import type { ClickHouseMigration } from './migration-types';
 
-const MIGRATIONS: ClickHouseMigration[] = [m001, m002, m003, m004];
+const MIGRATIONS: ClickHouseMigration[] = [m001, m002, m003, m004, m005];
 
 const MIGRATION_TABLE = `
 CREATE TABLE IF NOT EXISTS _migrations (

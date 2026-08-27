@@ -179,6 +179,58 @@ export type Database = {
           },
         ];
       };
+      analytics_settings: {
+        Row: {
+          account_id: string;
+          created_at: string;
+          settings: Json;
+          tag_min_sample: number;
+          updated_at: string;
+          ypp_target_subscribers: number;
+          ypp_target_watch_hours: number;
+        };
+        Insert: {
+          account_id: string;
+          created_at?: string;
+          settings?: Json;
+          tag_min_sample?: number;
+          updated_at?: string;
+          ypp_target_subscribers?: number;
+          ypp_target_watch_hours?: number;
+        };
+        Update: {
+          account_id?: string;
+          created_at?: string;
+          settings?: Json;
+          tag_min_sample?: number;
+          updated_at?: string;
+          ypp_target_subscribers?: number;
+          ypp_target_watch_hours?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'analytics_settings_account_id_fkey';
+            columns: ['account_id'];
+            isOneToOne: true;
+            referencedRelation: 'accounts';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'analytics_settings_account_id_fkey';
+            columns: ['account_id'];
+            isOneToOne: true;
+            referencedRelation: 'user_account_workspace';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'analytics_settings_account_id_fkey';
+            columns: ['account_id'];
+            isOneToOne: true;
+            referencedRelation: 'user_accounts';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       act_context_bridges: {
         Row: {
           act_end_time: number;
@@ -4640,6 +4692,50 @@ export type Database = {
             columns: ['project_id'];
             isOneToOne: false;
             referencedRelation: 'projects';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      youtube_report_jobs: {
+        Row: {
+          created_at: string;
+          id: string;
+          last_error: string | null;
+          last_report_created_after: string | null;
+          platform_connection_id: string;
+          report_type_id: string;
+          status: string;
+          updated_at: string;
+          youtube_job_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          last_error?: string | null;
+          last_report_created_after?: string | null;
+          platform_connection_id: string;
+          report_type_id: string;
+          status?: string;
+          updated_at?: string;
+          youtube_job_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          last_error?: string | null;
+          last_report_created_after?: string | null;
+          platform_connection_id?: string;
+          report_type_id?: string;
+          status?: string;
+          updated_at?: string;
+          youtube_job_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'youtube_report_jobs_platform_connection_id_fkey';
+            columns: ['platform_connection_id'];
+            isOneToOne: false;
+            referencedRelation: 'platform_connections';
             referencedColumns: ['id'];
           },
         ];

@@ -148,6 +148,26 @@ export interface ChannelDaily {
 }
 
 /**
+ * Dimension row for a published video, synced from Postgres. Joined FINAL
+ * by the deep-dive queries for age-controlled and segment analytics.
+ */
+export interface VideoDim {
+  video_id: string;
+  project_id: string;
+  account_id: string;
+  episode_id: string;
+  platform: string;
+  content_type: string;
+  language: string;
+  title: string;
+  /** DateTime string, e.g. '2026-06-14 08:30:00'. */
+  published_at: string;
+  duration_seconds: number;
+  /** 'dimension:slug' strings, e.g. 'topic:volcanoes'. */
+  tags: string[];
+}
+
+/**
  * Latest-snapshot totals returned by queryLatestSnapshots, keyed by video_id.
  */
 export interface SnapshotTotals {

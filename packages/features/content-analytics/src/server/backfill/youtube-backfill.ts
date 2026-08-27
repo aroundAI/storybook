@@ -84,6 +84,12 @@ export async function runYouTubeBackfillBatch(options?: {
     return result;
   }
 
+  // Dimension rows must exist before backfilled metrics are queryable
+  if (!dryRun) {
+    const { upsertVideoDims } = await import('../dim-sync');
+    await upsertVideoDims();
+  }
+
   const { ensureValidToken } = await import('@kit/publishing/token-refresh');
 
   for (const publish of pending) {

@@ -19,6 +19,20 @@ export type { BackfillBatchResult } from './backfill/youtube-backfill';
 export { runReportingIngestJob } from './reporting/report-ingest';
 export type { ReportIngestResult } from './reporting/report-ingest';
 
+// Video dimension sync (FILM-1506)
+export { upsertVideoDims } from './dim-sync';
+
+// Deep-dive analytics actions (FILM-1506)
+export {
+  getBackCatalogAction,
+  getCohortCurvesAction,
+  getMedianPerformanceAction,
+  getReturningViewerProxyAction,
+  getRollingViewsAction,
+  getTrafficShareTrendAction,
+  getYppProgressAction,
+} from './deep-dive-actions';
+
 // Server actions
 export { getSyncStatusAction, manualSyncAction } from './sync-actions';
 export { generateInsightsAction } from './insights-actions';

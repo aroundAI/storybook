@@ -37,6 +37,29 @@ export {
   queryTrafficSources,
 } from '../queries-detail';
 
+export {
+  DEFAULT_BROWSE_SUGGESTED_SOURCES,
+  insertVideoDims,
+  queryBackCatalogShare,
+  queryChannelWatchWindow,
+  queryCohortCurves,
+  queryMedianByTag,
+  queryMedianViewsPerVideo,
+  queryRollingViews,
+  queryTrafficShareTrend,
+  queryWatchWindowTotals,
+} from '../queries-advanced';
+export type {
+  BackCatalogBucket,
+  CohortRow,
+  DimScope,
+  MedianBucket,
+  RollingViewsPoint,
+  TagMedianRow,
+  TrafficShareBucket,
+  WatchWindowTotals,
+} from '../queries-advanced';
+
 export type {
   AggregatedTotals,
   AnalyticsPlatform,
@@ -52,6 +75,7 @@ export type {
   RetentionCurvePoint,
   SnapshotTotals,
   VideoAudienceRow,
+  VideoDim,
   VideoMetric,
   VideoReachDaily,
   VideoSnapshot,
