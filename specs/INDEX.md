@@ -508,7 +508,7 @@ graph TD
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-1301 | [hook-testing-engine](./phase-13-hook-optimization/FILM-1301-hook-testing-engine.md) | Approved (folded into FILM-1510) | L | FILM-1201, FILM-716 |
+| FILM-1301 | [hook-testing-engine](./phase-13-hook-optimization/FILM-1301-hook-testing-engine.md) | ✅ DONE (as FILM-1510) | L | FILM-1201, FILM-716 |
 | FILM-1302 | [cultural-audit-workflow](./phase-13-hook-optimization/FILM-1302-cultural-audit-workflow.md) | Draft | M | FILM-1301 |
 
 ### Phase 15: Deep Analytics Discipline (11 specs)
@@ -604,10 +604,10 @@ SPIKE-01 through SPIKE-05
 | 10. Canon Mgmt | 7 | 0 | 0 | 0 | 0 | 7 |
 | 11. Canon Integ | 21 | 0 | 0 | 0 | 0 | 21 |
 | 12. Scale | 2 | 0 | 0 | 0 | 0 | 2 |
-| 13. Hook Opt | 2 | 1 | 0 | 1 | 0 | 0 |
+| 13. Hook Opt | 2 | 1 | 0 | 0 | 0 | 1 |
 | 15. Deep Analytics | 11 | 0 | 0 | 11 | 0 | 0 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **173** | **1** | **0** | **12** | **0** | **160** |
+| **TOTAL** | **173** | **1** | **0** | **11** | **0** | **161** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 

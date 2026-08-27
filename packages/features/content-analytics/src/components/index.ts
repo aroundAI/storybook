@@ -151,6 +151,16 @@ export {
   BestEpisodesToClipCardSkeleton,
 } from './analytics-enhancement-cards';
 
+// Hook Lab (FILM-1510)
+export {
+  HookTestList,
+  HookTestListSkeleton,
+  RetentionComparisonChart,
+  RetentionComparisonChartSkeleton,
+  type HookTestEntry,
+  type VariantRetentionEntry,
+} from './hooks';
+
 // Experiment log (FILM-1509)
 export {
   ExperimentDetail,
