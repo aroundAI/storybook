@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1510
 title: Hook Lab Implementation (FILM-1301 folded in)
-status: Approved
+status: ✅ DONE
 effort: L
 dependencies: FILM-1505, FILM-1506, FILM-1507, FILM-1301
 ---

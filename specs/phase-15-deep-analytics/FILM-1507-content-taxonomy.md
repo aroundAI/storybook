@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1507
 title: Content Taxonomy & Tag-Level Analytics
-status: Approved
+status: ✅ DONE
 effort: M
 dependencies: FILM-1506
 ---

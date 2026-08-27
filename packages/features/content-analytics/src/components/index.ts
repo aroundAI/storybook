@@ -151,6 +151,31 @@ export {
   BestEpisodesToClipCardSkeleton,
 } from './analytics-enhancement-cards';
 
+// Deep-dive analytics cards (FILM-1511)
+export {
+  BackCatalogCard,
+  BackCatalogCardSkeleton,
+  DeepDiveTab,
+  CohortCurvesChart,
+  CohortCurvesChartSkeleton,
+  MedianViewsCard,
+  MedianViewsCardSkeleton,
+  RetentionCurveChart,
+  RetentionCurveChartSkeleton,
+  TrafficShareCard,
+  TrafficShareCardSkeleton,
+  WeeklyDiagnosticsTable,
+  WeeklyDiagnosticsTableSkeleton,
+  YppProgressCard,
+  YppProgressCardSkeleton,
+  type BackCatalogEntry,
+  type CohortEntry,
+  type DiagnosticRow,
+  type MedianBucketEntry,
+  type TrafficShareEntry,
+  type YppProgress,
+} from './deep-dive';
+
 // Hook Lab (FILM-1510)
 export {
   HookTestList,

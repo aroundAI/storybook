@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1503
 title: Historical Backfill & Scheduled-Reports Cron Wiring
-status: Approved
+status: ✅ DONE
 effort: M
 dependencies: FILM-1501, FILM-1502
 ---

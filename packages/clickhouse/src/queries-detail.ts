@@ -124,6 +124,117 @@ export async function queryAudienceRows(input: {
   }));
 }
 
+/** Per-video packaging and quality metrics for a period. */
+export interface VideoQualityMetrics {
+  impressions: number;
+  /** View-weighted click-through rate, 0..1. */
+  impressionsCtr: number;
+  engagedViews: number;
+  /** View-weighted average view duration, seconds. */
+  avgViewDurationSeconds: number;
+  /** View-weighted average view percentage, 0..100. */
+  avgViewPercentage: number;
+}
+
+/**
+ * Packaging and quality metrics per video: thumbnail impressions and CTR
+ * from the Reporting API, plus average view duration from the daily
+ * metrics. These are the weekly-diagnostic numbers (did the packaging
+ * fail, did the intro fail) and the previously-empty report columns.
+ */
+export async function queryQualityMetricsForVideos(input: {
+  videoIds: string[];
+  startDate?: string;
+  endDate?: string;
+}): Promise<Map<string, VideoQualityMetrics>> {
+  const result = new Map<string, VideoQualityMetrics>();
+
+  if (input.videoIds.length === 0 || !isClickHouseEnabled()) return result;
+
+  const client = getClickHouseClient();
+  const params: Record<string, unknown> = { videoIds: input.videoIds };
+  const bounds: string[] = [];
+
+  if (input.startDate) {
+    bounds.push('metric_date >= {startDate: Date}');
+    params.startDate = input.startDate;
+  }
+  if (input.endDate) {
+    bounds.push('metric_date <= {endDate: Date}');
+    params.endDate = input.endDate;
+  }
+
+  const where = bounds.length > 0 ? `AND ${bounds.join(' AND ')}` : '';
+
+  // Reach and daily metrics live in separate tables; join per video so a
+  // video missing reach data still reports its duration metrics.
+  const query = `
+    SELECT
+      video_id,
+      sum(impressions) as impressions,
+      sum(ctr_weighted) as ctr_weighted,
+      sum(engaged_views) as engaged_views,
+      sum(views) as views,
+      sum(avd_weighted) as avd_weighted,
+      sum(avp_weighted) as avp_weighted
+    FROM (
+      SELECT
+        video_id,
+        impressions,
+        impressions_ctr * impressions as ctr_weighted,
+        engaged_views,
+        0 as views, 0 as avd_weighted, 0 as avp_weighted
+      FROM video_reach_daily FINAL
+      WHERE video_id IN {videoIds: Array(String)} ${where}
+
+      UNION ALL
+
+      SELECT
+        video_id,
+        0 as impressions, 0 as ctr_weighted, 0 as engaged_views,
+        views,
+        avg_view_duration_seconds * views as avd_weighted,
+        avg_view_percentage * views as avp_weighted
+      FROM video_daily_stats
+      WHERE video_id IN {videoIds: Array(String)} ${where}
+    )
+    GROUP BY video_id
+  `;
+
+  const response = await client.query({
+    query,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
+
+  const rows = await response.json<{
+    video_id: string;
+    impressions: number;
+    ctr_weighted: number;
+    engaged_views: number;
+    views: number;
+    avd_weighted: number;
+    avp_weighted: number;
+  }>();
+
+  for (const row of rows) {
+    const impressions = Number(row.impressions);
+    const views = Number(row.views);
+
+    result.set(row.video_id, {
+      impressions,
+      impressionsCtr:
+        impressions > 0 ? Number(row.ctr_weighted) / impressions : 0,
+      engagedViews: Number(row.engaged_views),
+      avgViewDurationSeconds:
+        views > 0 ? Number(row.avd_weighted) / views : 0,
+      avgViewPercentage: views > 0 ? Number(row.avp_weighted) / views : 0,
+    });
+  }
+
+  return result;
+}
+
 /**
  * Aggregated traffic sources for a set of videos, optionally date-bounded,
  * grouped by source (and by date when byDate is set).

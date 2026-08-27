@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1506
 title: Video Dimension Table & Deep-Dive Query Layer
-status: Approved
+status: ✅ DONE
 effort: L
 dependencies: FILM-1502, FILM-1504, FILM-1505
 ---

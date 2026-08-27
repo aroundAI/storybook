@@ -32,3 +32,29 @@ FILM-1501+1502 must merge in quick succession with the analytics sync cron disab
 - Headline median = views-to-date by upload month (views-in-period toggleable).
 - Revenue records may be channel-level (`publish_id` nullable, `account_id` alternative).
 - Hook Lab uses generic `video_retention_curves`, not a dedicated retention table.
+
+## Verification status
+
+All 11 specs are **code-complete** and pass `typecheck`, `lint`, and their unit
+tests. Their acceptance-criteria checkboxes remain unchecked because they are
+runtime assertions that need a live database, and the implementation
+environment had neither Docker (for local Supabase/ClickHouse) nor permission
+to touch the linked production project.
+
+Before checking them off, run:
+
+```bash
+pnpm --filter @kit/clickhouse migrate      # applies 002–005 against ClickHouse
+pnpm --filter web supabase migration up    # applies the Phase 15 migrations
+pnpm supabase:web:typegen                  # regenerates database.types.ts
+```
+
+> [!IMPORTANT]
+> `packages/supabase/src/database.types.ts` and `apps/web/lib/database.types.ts`
+> were hand-edited in typegen's exact format for the Phase 15 tables, against
+> the repo convention of never editing generated files, because typegen could
+> not be run. The typegen command above regenerates both and supersedes those
+> edits — run it before trusting the types.
+
+Then follow the FILM-1503 cutover runbook (disable sync cron → migrate → drain
+backfill → re-enable) and spot-check dashboard totals against YouTube Studio.

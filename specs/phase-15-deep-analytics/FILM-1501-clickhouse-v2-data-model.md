@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1501
 title: ClickHouse v2 Data Model & Migration Runner
-status: Approved
+status: ✅ DONE
 effort: M
 dependencies: FILM-1201
 ---

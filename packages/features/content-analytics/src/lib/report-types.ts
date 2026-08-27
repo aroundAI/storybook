@@ -63,7 +63,7 @@ export interface ScheduledReport {
   id: string;
   accountId: string;
   name: string;
-  reportType: 'pdf' | 'csv';
+  reportType: 'pdf' | 'csv' | 'raw_csv';
   frequency: 'weekly' | 'monthly';
   metrics: ReportMetric[];
   platforms: ReportPlatform[];
@@ -95,6 +95,12 @@ export interface AnalyticsDataRow {
   subscribersGained: number;
   revenueCents: number;
   retentionData: Record<string, number> | null;
+  /** Thumbnail impressions (YouTube Reporting API). */
+  impressions: number;
+  /** Click-through rate on impressions, 0..1. */
+  ctr: number;
+  /** Average view duration in seconds. */
+  avgViewDurationSeconds: number;
 }
 
 /**

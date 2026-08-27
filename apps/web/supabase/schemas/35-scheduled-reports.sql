@@ -36,7 +36,7 @@ create table if not exists public.scheduled_reports (
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
 
-  check (report_type in ('pdf', 'csv')),
+  check (report_type in ('pdf', 'csv', 'raw_csv')),
   check (frequency in ('weekly', 'monthly')),
   check (array_length(recipients, 1) > 0)
 );

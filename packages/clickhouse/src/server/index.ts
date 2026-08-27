@@ -33,9 +33,11 @@ export {
   insertRetentionCurves,
   insertVideoAudience,
   queryAudienceRows,
+  queryQualityMetricsForVideos,
   queryRetentionCurve,
   queryTrafficSources,
 } from '../queries-detail';
+export type { VideoQualityMetrics } from '../queries-detail';
 
 export {
   DEFAULT_BROWSE_SUGGESTED_SOURCES,

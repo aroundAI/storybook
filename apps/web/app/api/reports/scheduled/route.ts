@@ -177,6 +177,9 @@ async function processScheduledReport(
       id,
       platform,
       title,
+      content_type,
+      language,
+      published_at,
       episodes!inner (
         title,
         projects!inner (
@@ -200,19 +203,62 @@ async function processScheduledReport(
   }
 
   // 2. Query analytics from ClickHouse
-  const { queryTotalsByVideoIds } = await import('@kit/clickhouse/server');
+  const {
+    queryQualityMetricsForVideos,
+    queryRetentionCurve,
+    queryTotalsByVideoIds,
+  } = await import('@kit/clickhouse/server');
   const { formatDateStr } = await import('@kit/clickhouse');
   const videoIds = publishes.map((p) => p.id);
-  const analyticsMap = await queryTotalsByVideoIds(videoIds, {
-    startDate: formatDateStr(dateRange.start),
-    endDate: formatDateStr(dateRange.end),
-  });
+  const includeRetention = ((report.metrics ?? []) as string[]).includes(
+    'retention',
+  );
+
+  const [analyticsMap, qualityMap] = await Promise.all([
+    queryTotalsByVideoIds(videoIds, {
+      startDate: formatDateStr(dateRange.start),
+      endDate: formatDateStr(dateRange.end),
+    }),
+    queryQualityMetricsForVideos({
+      videoIds,
+      startDate: formatDateStr(dateRange.start),
+      endDate: formatDateStr(dateRange.end),
+    }),
+  ]);
+
+  // Retention curves are lifetime aggregates fetched per video, so only
+  // pull them when the report includes the retention column
+  const retentionMap = new Map<string, Record<string, number>>();
+
+  if (includeRetention) {
+    await Promise.all(
+      videoIds
+        .filter((id) => analyticsMap.has(id))
+        .map(async (videoId) => {
+          const points = await queryRetentionCurve({ videoId });
+
+          if (points.length > 0) {
+            retentionMap.set(
+              videoId,
+              Object.fromEntries(
+                points.map((p) => [
+                  p.elapsedRatio.toFixed(2),
+                  p.audienceWatchRatio,
+                ]),
+              ),
+            );
+          }
+        }),
+    );
+  }
 
   // 3. Merge publish metadata with ClickHouse analytics
   const transformedData: AnalyticsDataRow[] = publishes
     .map((pub): AnalyticsDataRow | null => {
       const totals = analyticsMap.get(pub.id);
       if (!totals) return null;
+
+      const quality = qualityMap.get(pub.id);
 
       const episodes = pub.episodes as unknown as {
         title: string;
@@ -231,9 +277,10 @@ async function processScheduledReport(
         watchTimeSeconds: totals.watch_time_seconds,
         subscribersGained: totals.subscribers_gained,
         revenueCents: totals.revenue_cents,
-        // retentionData was stored in content_analytics (now dropped).
-        // ClickHouse does not track retention curves — intentionally null.
-        retentionData: null satisfies Record<string, number> | null,
+        retentionData: retentionMap.get(pub.id) ?? null,
+        impressions: quality?.impressions ?? 0,
+        ctr: quality?.impressionsCtr ?? 0,
+        avgViewDurationSeconds: quality?.avgViewDurationSeconds ?? 0,
       };
     })
     .filter((row): row is AnalyticsDataRow => row !== null);
@@ -252,7 +299,72 @@ async function processScheduledReport(
 
   const metrics = report.metrics as ReportMetric[];
 
-  if (report.report_type === 'csv') {
+  if (report.report_type === 'raw_csv') {
+    // Full per-video per-day dump, so a multi-year series survives
+    // outside any dashboard's retention window
+    const { generateRawExportCSV, videoAgeInDays } = await import(
+      '@kit/content-analytics/lib/raw-export-generator'
+    );
+    const { queryDailyStats } = await import('@kit/clickhouse/server');
+
+    const dailyRows = await queryDailyStats({
+      videoIds,
+      startDate: formatDateStr(dateRange.start),
+      endDate: formatDateStr(dateRange.end),
+    });
+
+    const metaByPublish = new Map(
+      publishes.map((pub) => [
+        pub.id,
+        {
+          title:
+            pub.title ||
+            (pub.episodes as unknown as { title: string }).title ||
+            '',
+          publishedAt: pub.published_at ?? '',
+          contentType: pub.content_type ?? '',
+          language: pub.language ?? '',
+        },
+      ]),
+    );
+
+    const rawRows = dailyRows.map((row) => {
+      const meta = metaByPublish.get(row.video_id);
+      const quality = qualityMap.get(row.video_id);
+
+      return {
+        date: row.metric_date,
+        videoId: row.video_id,
+        title: meta?.title ?? '',
+        platform: row.platform,
+        contentType: meta?.contentType ?? '',
+        language: meta?.language ?? '',
+        publishedAt: meta?.publishedAt ?? '',
+        videoAgeDays: meta?.publishedAt
+          ? videoAgeInDays(meta.publishedAt, row.metric_date)
+          : 0,
+        views: row.views,
+        likes: row.likes,
+        comments: row.comments,
+        shares: row.shares,
+        saves: row.saves,
+        watchTimeSeconds: row.watch_time_seconds,
+        subscribersGained: row.subscribers_gained,
+        revenueCents: row.revenue_cents,
+        // Reach metrics are period totals, not per-day; only the CTR
+        // rate is meaningful to repeat per row
+        impressions: 0,
+        ctr: quality?.impressionsCtr ?? 0,
+        avgViewDurationSeconds: quality?.avgViewDurationSeconds ?? 0,
+        topTrafficSource: '',
+        tags: '',
+      };
+    });
+
+    buffer = Buffer.from(generateRawExportCSV(rawRows), 'utf-8');
+    filename = `analytics-raw-${dateRange.start.toISOString().split('T')[0]}.csv`;
+    contentType = 'text/csv';
+  } else if (report.report_type === 'csv') {
     const csvContent = generateSummaryCSV(transformedData, metrics, dateRange);
     buffer = Buffer.from(csvContent, 'utf-8');
     filename = `analytics-report-${dateRange.start.toISOString().split('T')[0]}.csv`;

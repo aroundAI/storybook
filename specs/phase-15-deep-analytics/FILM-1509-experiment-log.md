@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1509
 title: Analytics Experiment Log
-status: Approved
+status: ✅ DONE
 effort: M
 dependencies: FILM-1502
 ---

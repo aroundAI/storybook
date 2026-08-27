@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1511
 title: Deep-Dive Dashboards & Reports Completion
-status: Approved
+status: ✅ DONE
 effort: L
 dependencies: FILM-1504, FILM-1505, FILM-1506, FILM-1507, FILM-1508
 ---

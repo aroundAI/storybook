@@ -517,17 +517,17 @@ See [phase-15-deep-analytics/README.md](./phase-15-deep-analytics/README.md) for
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-1501 | [clickhouse-v2-data-model](./phase-15-deep-analytics/FILM-1501-clickhouse-v2-data-model.md) | Approved | M | FILM-1201 |
-| FILM-1502 | [sync-ingestion-correctness](./phase-15-deep-analytics/FILM-1502-sync-ingestion-correctness.md) | Approved | M | FILM-1501 |
-| FILM-1503 | [backfill-and-cron-wiring](./phase-15-deep-analytics/FILM-1503-backfill-and-cron-wiring.md) | Approved | M | FILM-1501, FILM-1502 |
-| FILM-1504 | [youtube-reporting-api](./phase-15-deep-analytics/FILM-1504-youtube-reporting-api.md) | Approved | L | FILM-1501 |
-| FILM-1505 | [stranded-metrics-promotion](./phase-15-deep-analytics/FILM-1505-stranded-metrics-promotion.md) | Approved | M | FILM-1502, FILM-1504 |
-| FILM-1506 | [video-dim-deep-dive-queries](./phase-15-deep-analytics/FILM-1506-video-dim-deep-dive-queries.md) | Approved | L | FILM-1502, FILM-1504, FILM-1505 |
-| FILM-1507 | [content-taxonomy](./phase-15-deep-analytics/FILM-1507-content-taxonomy.md) | Approved | M | FILM-1506 |
-| FILM-1508 | [revenue-mix-alerts](./phase-15-deep-analytics/FILM-1508-revenue-mix-alerts.md) | Approved | M | FILM-1506 |
-| FILM-1509 | [experiment-log](./phase-15-deep-analytics/FILM-1509-experiment-log.md) | Approved | M | FILM-1502 |
-| FILM-1510 | [hook-lab](./phase-15-deep-analytics/FILM-1510-hook-lab.md) | Approved | L | FILM-1505, FILM-1506, FILM-1507, FILM-1301 |
-| FILM-1511 | [deep-analytics-ui-reports](./phase-15-deep-analytics/FILM-1511-deep-analytics-ui-reports.md) | Approved | L | FILM-1504, FILM-1505, FILM-1506, FILM-1507, FILM-1508 |
+| FILM-1501 | [clickhouse-v2-data-model](./phase-15-deep-analytics/FILM-1501-clickhouse-v2-data-model.md) | ✅ DONE | M | FILM-1201 |
+| FILM-1502 | [sync-ingestion-correctness](./phase-15-deep-analytics/FILM-1502-sync-ingestion-correctness.md) | ✅ DONE | M | FILM-1501 |
+| FILM-1503 | [backfill-and-cron-wiring](./phase-15-deep-analytics/FILM-1503-backfill-and-cron-wiring.md) | ✅ DONE | M | FILM-1501, FILM-1502 |
+| FILM-1504 | [youtube-reporting-api](./phase-15-deep-analytics/FILM-1504-youtube-reporting-api.md) | ✅ DONE | L | FILM-1501 |
+| FILM-1505 | [stranded-metrics-promotion](./phase-15-deep-analytics/FILM-1505-stranded-metrics-promotion.md) | ✅ DONE | M | FILM-1502, FILM-1504 |
+| FILM-1506 | [video-dim-deep-dive-queries](./phase-15-deep-analytics/FILM-1506-video-dim-deep-dive-queries.md) | ✅ DONE | L | FILM-1502, FILM-1504, FILM-1505 |
+| FILM-1507 | [content-taxonomy](./phase-15-deep-analytics/FILM-1507-content-taxonomy.md) | ✅ DONE | M | FILM-1506 |
+| FILM-1508 | [revenue-mix-alerts](./phase-15-deep-analytics/FILM-1508-revenue-mix-alerts.md) | ✅ DONE | M | FILM-1506 |
+| FILM-1509 | [experiment-log](./phase-15-deep-analytics/FILM-1509-experiment-log.md) | ✅ DONE | M | FILM-1502 |
+| FILM-1510 | [hook-lab](./phase-15-deep-analytics/FILM-1510-hook-lab.md) | ✅ DONE | L | FILM-1505, FILM-1506, FILM-1507, FILM-1301 |
+| FILM-1511 | [deep-analytics-ui-reports](./phase-15-deep-analytics/FILM-1511-deep-analytics-ui-reports.md) | ✅ DONE | L | FILM-1504, FILM-1505, FILM-1506, FILM-1507, FILM-1508 |
 
 See [phase-11-canon-integration/README.md](./phase-11-canon-integration/README.md) for full specification.
 
@@ -605,9 +605,9 @@ SPIKE-01 through SPIKE-05
 | 11. Canon Integ | 21 | 0 | 0 | 0 | 0 | 21 |
 | 12. Scale | 2 | 0 | 0 | 0 | 0 | 2 |
 | 13. Hook Opt | 2 | 1 | 0 | 0 | 0 | 1 |
-| 15. Deep Analytics | 11 | 0 | 0 | 11 | 0 | 0 |
+| 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 11 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **173** | **1** | **0** | **11** | **0** | **161** |
+| **TOTAL** | **173** | **1** | **0** | **0** | **0** | **172** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 

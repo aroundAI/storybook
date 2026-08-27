@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1508
 title: Revenue Mix Categories & Alerts
-status: Approved
+status: ✅ DONE
 effort: M
 dependencies: FILM-1506
 ---

@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1505
 title: Promote Stranded Metrics to Queryable Schema
-status: Approved
+status: ✅ DONE
 effort: M
 dependencies: FILM-1502, FILM-1504
 ---

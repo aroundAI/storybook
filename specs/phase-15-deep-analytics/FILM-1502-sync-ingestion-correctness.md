@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1502
 title: Sync Worker Ingestion Correctness
-status: Approved
+status: ✅ DONE
 effort: M
 dependencies: FILM-1501
 ---

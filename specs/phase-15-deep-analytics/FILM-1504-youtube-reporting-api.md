@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1504
 title: YouTube Reporting API (Bulk Reports) Integration
-status: Approved
+status: ✅ DONE
 effort: L
 dependencies: FILM-1501
 ---
