@@ -33,6 +33,9 @@ export {
   getYppProgressAction,
 } from './deep-dive-actions';
 
+// Revenue alerts (FILM-1508)
+export { evaluateRevenueAlerts } from './revenue-alerts';
+
 // Content taxonomy actions (FILM-1507)
 export {
   bulkTagPublishesAction,

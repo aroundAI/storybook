@@ -22,15 +22,41 @@ export type GetRevenueSummaryInput = z.infer<typeof GetRevenueSummarySchema>;
 /**
  * Schema for adding manual revenue entry
  */
-export const AddManualRevenueSchema = z.object({
-  publishId: z.string().uuid(),
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
-  revenueCents: z.number().int().min(0),
-  currency: z.string().length(3).optional().default('USD'),
-  notes: z.string().max(1000).optional(),
-});
+/**
+ * Revenue categories. Watching `ads` fall as a share of the total is the
+ * monetization health signal, so every record carries one.
+ */
+export const RevenueCategorySchema = z.enum([
+  'ads',
+  'premium',
+  'sponsorship',
+  'product',
+  'affiliate',
+  'other',
+]);
+
+export type RevenueCategory = z.infer<typeof RevenueCategorySchema>;
+
+/**
+ * Manual revenue entry. Sponsorship and product income is often
+ * channel-level, so a record attaches to either a publish or an account.
+ */
+export const AddManualRevenueSchema = z
+  .object({
+    publishId: z.string().uuid().optional(),
+    accountId: z.string().uuid().optional(),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
+    revenueCents: z.number().int().min(0),
+    currency: z.string().length(3).optional().default('USD'),
+    category: RevenueCategorySchema.default('sponsorship'),
+    notes: z.string().max(1000).optional(),
+  })
+  .refine((data) => data.publishId ?? data.accountId, {
+    message: 'Provide either a publish or an account',
+    path: ['publishId'],
+  });
 
 export type AddManualRevenueInput = z.infer<typeof AddManualRevenueSchema>;
 
@@ -114,12 +140,19 @@ export type SyncRevenueFromPlatformInput = z.infer<
 /**
  * Schema for deleting manual revenue entry
  */
-export const DeleteManualRevenueSchema = z.object({
-  publishId: z.string().uuid(),
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
-});
+export const DeleteManualRevenueSchema = z
+  .object({
+    publishId: z.string().uuid().optional(),
+    accountId: z.string().uuid().optional(),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
+    category: RevenueCategorySchema.optional(),
+  })
+  .refine((data) => data.publishId ?? data.accountId, {
+    message: 'Provide either a publish or an account',
+    path: ['publishId'],
+  });
 
 export type DeleteManualRevenueInput = z.infer<
   typeof DeleteManualRevenueSchema

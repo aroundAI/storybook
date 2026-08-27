@@ -3593,45 +3593,72 @@ export type Database = {
       };
       revenue_records: {
         Row: {
+          account_id: string | null;
           breakdown: Json | null;
+          category: string;
           created_at: string;
           currency: string | null;
           id: string;
           metadata: Json | null;
           platform: string;
-          publish_id: string;
+          publish_id: string | null;
           record_date: string;
           revenue_cents: number;
           source: string;
           updated_at: string;
         };
         Insert: {
+          account_id?: string | null;
           breakdown?: Json | null;
+          category?: string;
           created_at?: string;
           currency?: string | null;
           id?: string;
           metadata?: Json | null;
           platform: string;
-          publish_id: string;
+          publish_id?: string | null;
           record_date: string;
           revenue_cents?: number;
           source?: string;
           updated_at?: string;
         };
         Update: {
+          account_id?: string | null;
           breakdown?: Json | null;
+          category?: string;
           created_at?: string;
           currency?: string | null;
           id?: string;
           metadata?: Json | null;
           platform?: string;
-          publish_id?: string;
+          publish_id?: string | null;
           record_date?: string;
           revenue_cents?: number;
           source?: string;
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: 'revenue_records_account_id_fkey';
+            columns: ['account_id'];
+            isOneToOne: false;
+            referencedRelation: 'accounts';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'revenue_records_account_id_fkey';
+            columns: ['account_id'];
+            isOneToOne: false;
+            referencedRelation: 'user_account_workspace';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'revenue_records_account_id_fkey';
+            columns: ['account_id'];
+            isOneToOne: false;
+            referencedRelation: 'user_accounts';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'revenue_records_publish_id_fkey';
             columns: ['publish_id'];

@@ -45,6 +45,7 @@ export const getRevenueSummaryAction = enhanceAction(
         revenue_cents,
         currency,
         source,
+        category,
         breakdown,
         publishes!inner (
           id,
@@ -67,10 +68,11 @@ export const getRevenueSummaryAction = enhanceAction(
 
     if (error) throw error;
 
-    // Calculate totals and group by platform/content in single pass
+    // Calculate totals and group by platform/content/category in single pass
     let totalRevenueCents = 0;
     const byPlatform: Record<string, number> = {};
     const byContent: Record<string, number> = {};
+    const byType: Record<string, number> = {};
     const publishIds: string[] = [];
 
     for (const r of records ?? []) {
@@ -81,14 +83,20 @@ export const getRevenueSummaryAction = enhanceAction(
       const platform = r.platform || 'unknown';
       byPlatform[platform] = (byPlatform[platform] || 0) + revenueCents;
 
+      // Group by revenue category (the mix: ads vs sponsorship vs product)
+      const category = r.category || 'ads';
+      byType[category] = (byType[category] || 0) + revenueCents;
+
       // Group by content (episode)
       const episodeId = r.publishes?.episode_id;
       if (episodeId) {
         byContent[episodeId] = (byContent[episodeId] || 0) + revenueCents;
       }
 
-      // Collect publish IDs for view lookup
-      publishIds.push(r.publish_id);
+      // Collect publish IDs for view lookup (channel-level rows have none)
+      if (r.publish_id) {
+        publishIds.push(r.publish_id);
+      }
     }
 
     // Get view data for RPM calculation from ClickHouse
@@ -158,7 +166,7 @@ export const getRevenueSummaryAction = enhanceAction(
       period: { start: startDate, end: endDate },
       byPlatform,
       byContent,
-      byType: {},
+      byType,
       rpm,
       averageDailyRevenueCents,
       trend: trendPercent > 5 ? 'up' : trendPercent < -5 ? 'down' : 'stable',
@@ -178,45 +186,67 @@ export const getRevenueSummaryAction = enhanceAction(
 export const addManualRevenueAction = enhanceAction(
   async function (data): Promise<RevenueRecord> {
     const client = getSupabaseServerClient();
-    const { publishId, date, revenueCents, currency, notes } = data;
+    const { publishId, accountId, date, revenueCents, currency, category, notes } =
+      data;
 
-    // Get platform from publish
-    const { data: publish, error: publishError } = await client
-      .from('publishes')
-      .select('platform')
-      .eq('id', publishId)
-      .single();
+    // Channel-level revenue (sponsorships, product sales) has no publish
+    let platform = 'manual';
 
-    if (publishError || !publish) {
-      throw new Error('Publish not found or access denied');
+    if (publishId) {
+      const { data: publish, error: publishError } = await client
+        .from('publishes')
+        .select('platform')
+        .eq('id', publishId)
+        .single();
+
+      if (publishError || !publish) {
+        throw new Error('Publish not found or access denied');
+      }
+
+      platform = publish.platform;
     }
 
-    const { data: record, error } = await client
+    // The unique index is on coalesce(publish_id, account_id) and cannot be
+    // named as an onConflict target, so replace any existing row explicitly.
+    const existingQuery = client
       .from('revenue_records')
-      .upsert(
-        {
-          publish_id: publishId,
-          platform: publish.platform,
-          record_date: date,
-          revenue_cents: revenueCents,
-          currency: currency || 'USD',
-          source: 'manual',
-          metadata: notes ? { notes } : {},
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'publish_id,record_date',
-        },
-      )
-      .select()
-      .single();
+      .select('id')
+      .eq('record_date', date)
+      .eq('category', category);
+
+    const { data: existing } = await (publishId
+      ? existingQuery.eq('publish_id', publishId)
+      : existingQuery.eq('account_id', accountId!)
+    ).maybeSingle();
+
+    const values = {
+      publish_id: publishId ?? null,
+      account_id: accountId ?? null,
+      platform,
+      record_date: date,
+      revenue_cents: revenueCents,
+      currency: currency || 'USD',
+      source: 'manual' as const,
+      category,
+      metadata: notes ? { notes } : {},
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: record, error } = existing
+      ? await client
+          .from('revenue_records')
+          .update(values)
+          .eq('id', existing.id)
+          .select()
+          .single()
+      : await client.from('revenue_records').insert(values).select().single();
 
     if (error) throw error;
     if (!record) throw new Error('Failed to create revenue record');
 
     return {
       id: record.id,
-      publishId: record.publish_id,
+      publishId: record.publish_id ?? '',
       platform: record.platform as
         | 'youtube'
         | 'tiktok'
@@ -247,14 +277,23 @@ export const addManualRevenueAction = enhanceAction(
 export const deleteManualRevenueAction = enhanceAction(
   async function (data): Promise<{ success: boolean }> {
     const client = getSupabaseServerClient();
-    const { publishId, date } = data;
+    const { publishId, accountId, date, category } = data;
 
-    const { error } = await client
+    let query = client
       .from('revenue_records')
       .delete()
-      .eq('publish_id', publishId)
       .eq('record_date', date)
       .eq('source', 'manual');
+
+    query = publishId
+      ? query.eq('publish_id', publishId)
+      : query.eq('account_id', accountId!);
+
+    if (category) {
+      query = query.eq('category', category);
+    }
+
+    const { error } = await query;
 
     if (error) throw error;
 
@@ -484,7 +523,10 @@ export const getTopContentByRevenueAction = enhanceAction(
     >();
 
     records?.forEach((r) => {
+      // Channel-level revenue has no publish to attribute to
       const publishId = r.publish_id;
+      if (!publishId) return;
+
       const existing = publishMap.get(publishId);
       if (existing) {
         existing.revenueCents += r.revenue_cents || 0;
@@ -699,14 +741,21 @@ export const syncRevenueFromPlatformAction = enhanceAction(
       };
     }
 
-    // Note: Actual YouTube API call would go here
-    // For now, we return success without making the API call
-    // The analytics-sync-cron already fetches revenue data during regular syncs
+    // Run the same sync path the cron uses, which fetches analytics and
+    // writes the categorized revenue rows
+    const { syncSinglePublishById } = await import('./analytics-sync-cron');
+    const result = await syncSinglePublishById(publishId);
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error ?? 'Revenue sync failed',
+      };
+    }
 
     return {
       success: true,
-      message:
-        'Revenue sync initiated. Data will be updated during next sync cycle.',
+      message: 'Revenue synced from the platform.',
     };
   },
   {

@@ -201,6 +201,9 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
       }
     }
 
+    // 6. Evaluate revenue alert rules for the accounts touched this run
+    await evaluateRevenueAlertsForBatch(client, publishesToSync);
+
     result.durationMs = Date.now() - startTime;
     logger.info({ ...ctx, ...result }, 'Sync job completed');
 
@@ -412,16 +415,9 @@ async function syncSinglePublish(
       );
     }
 
-    // 5b. If there's revenue, also upsert to revenue_records table
-    if (normalizedData.revenue_cents > 0) {
-      await upsertRevenueRecord(client, {
-        publish_id: normalizedData.publish_id,
-        platform,
-        record_date: normalizedData.snapshot_date,
-        revenue_cents: normalizedData.revenue_cents,
-        source: 'api',
-      });
-    }
+    // 5b. Revenue lands in Postgres split by category so the revenue mix
+    // (ads vs Premium vs sponsorship) is measurable
+    await upsertRevenueRecords(client, platform, normalizedData);
 
     // 6. Update publish metadata
     await updatePublishSyncMetadata(client, publish.id, {
@@ -541,6 +537,37 @@ async function fetchPlatformAnalytics(
     }
     default:
       throw new Error(`Unsupported platform: ${platform}`);
+  }
+}
+
+/**
+ * Runs the revenue alert rules once per account represented in the batch.
+ */
+async function evaluateRevenueAlertsForBatch(
+  client: Client,
+  publishes: PublishForSync[],
+): Promise<void> {
+  if (publishes.length === 0) return;
+
+  const { data } = await client
+    .from('episodes')
+    .select('projects!inner(account_id)')
+    .in(
+      'id',
+      publishes.map((p) => p.episode_id),
+    );
+
+  const accountIds = new Set<string>();
+
+  for (const row of data ?? []) {
+    const project = row.projects as unknown as { account_id?: string } | null;
+    if (project?.account_id) accountIds.add(project.account_id);
+  }
+
+  const { evaluateRevenueAlerts } = await import('./revenue-alerts');
+
+  for (const accountId of accountIds) {
+    await evaluateRevenueAlerts(client, accountId);
   }
 }
 
@@ -922,48 +949,71 @@ export async function syncSinglePublishById(
 }
 
 /**
- * Revenue record data for upsert
+ * Writes the day's revenue split by category (FILM-1508).
+ *
+ * YouTube reports ad revenue and YouTube Premium revenue separately, and
+ * the mix between them — plus manually-entered sponsorship and product
+ * income — is the monetization health signal. Each category is its own
+ * row; the unique index covers (publish/account, date, category).
+ *
+ * Any revenue the platform reports but does not attribute to a category
+ * falls into 'other' so totals still reconcile.
  */
-interface RevenueRecordData {
-  publish_id: string;
-  platform: string;
-  record_date: string;
-  revenue_cents: number;
-  source: 'api' | 'manual';
-  breakdown?: Record<string, unknown>;
-}
-
-/**
- * Upserts revenue record (insert or update if same day)
- * FILM-810: Store revenue data separately for detailed analytics
- */
-async function upsertRevenueRecord(
+async function upsertRevenueRecords(
   client: Client,
-  data: RevenueRecordData,
+  platform: SyncPlatform,
+  data: NormalizedAnalytics,
 ): Promise<void> {
-  const { error } = await client.from('revenue_records').upsert(
-    {
-      publish_id: data.publish_id,
-      platform: data.platform,
-      record_date: data.record_date,
-      revenue_cents: data.revenue_cents,
-      currency: 'USD',
-      source: data.source,
-      breakdown: data.breakdown ?? {},
-      updated_at: new Date().toISOString(),
-    },
-    {
-      onConflict: 'publish_id,record_date',
-      ignoreDuplicates: false,
-    },
-  );
+  const uncategorized =
+    data.revenue_cents - data.ad_revenue_cents - data.red_revenue_cents;
 
-  if (error) {
-    // Log but don't fail the sync - revenue_records is supplementary
-    const logger = await getLogger();
-    logger.warn(
-      { error: error.message, publishId: data.publish_id },
-      'Failed to upsert revenue record',
-    );
+  const byCategory: Array<{ category: string; revenue_cents: number }> = [
+    { category: 'ads', revenue_cents: data.ad_revenue_cents },
+    { category: 'premium', revenue_cents: data.red_revenue_cents },
+    { category: 'other', revenue_cents: Math.max(0, uncategorized) },
+  ].filter((row) => row.revenue_cents > 0);
+
+  if (byCategory.length === 0) return;
+
+  const logger = await getLogger();
+
+  for (const row of byCategory) {
+    const { data: existing } = await client
+      .from('revenue_records')
+      .select('id')
+      .eq('publish_id', data.publish_id)
+      .eq('record_date', data.snapshot_date)
+      .eq('category', row.category)
+      .maybeSingle();
+
+    const values = {
+      publish_id: data.publish_id,
+      platform,
+      record_date: data.snapshot_date,
+      revenue_cents: row.revenue_cents,
+      currency: 'USD',
+      source: 'api' as const,
+      category: row.category,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error } = existing
+      ? await client
+          .from('revenue_records')
+          .update(values)
+          .eq('id', existing.id)
+      : await client.from('revenue_records').insert(values);
+
+    if (error) {
+      // Log but don't fail the sync - revenue_records is supplementary
+      logger.warn(
+        {
+          error: error.message,
+          publishId: data.publish_id,
+          category: row.category,
+        },
+        'Failed to upsert revenue record',
+      );
+    }
   }
 }
