@@ -11,10 +11,20 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Client = SupabaseClient<any, any, any>;
 
+/**
+ * ClickHouse UUID columns are non-nullable, so publishes with no connection
+ * (legacy rows, manual uploads) get a zero UUID rather than being dropped
+ * from the dimension entirely. It reads as "unattributed" in a channel
+ * filter instead of silently vanishing from every metric.
+ */
+export const UNATTRIBUTED_CONNECTION_ID =
+  '00000000-0000-0000-0000-000000000000';
+
 interface PublishDimRow {
   id: string;
   episode_id: string;
   platform: string;
+  platform_connection_id: string | null;
   content_type: string | null;
   language: string | null;
   title: string | null;
@@ -49,6 +59,7 @@ export async function upsertVideoDims(publishIds?: string[]): Promise<number> {
       id,
       episode_id,
       platform,
+      platform_connection_id,
       content_type,
       language,
       title,
@@ -96,6 +107,7 @@ export async function upsertVideoDims(publishIds?: string[]): Promise<number> {
       project_id: projectId,
       account_id: accountId,
       episode_id: row.episode_id,
+      connection_id: row.platform_connection_id ?? UNATTRIBUTED_CONNECTION_ID,
       platform: row.platform,
       content_type: row.content_type ?? 'full',
       language: row.language ?? 'en',

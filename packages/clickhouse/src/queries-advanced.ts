@@ -13,6 +13,12 @@ import type { VideoDim } from './types';
 export interface DimScope {
   projectId?: string;
   accountId?: string;
+  /**
+   * Narrows to one channel (platform_connections.id). A project spans
+   * several channels, so this is a filter within a scope rather than a
+   * scope of its own — assertDimScope still requires project or account.
+   */
+  connectionId?: string;
   platform?: string;
   contentType?: string;
   language?: string;
@@ -106,6 +112,10 @@ function buildDimConditions(scope: DimScope): {
     conditions.push('account_id = {scopeAccountId: UUID}');
     params.scopeAccountId = scope.accountId;
   }
+  if (scope.connectionId) {
+    conditions.push('connection_id = {scopeConnectionId: UUID}');
+    params.scopeConnectionId = scope.connectionId;
+  }
   if (scope.platform) {
     conditions.push('platform = {scopePlatform: String}');
     params.scopePlatform = scope.platform;
@@ -122,13 +132,23 @@ function buildDimConditions(scope: DimScope): {
   return { conditions: conditions.join(' AND '), params };
 }
 
-/** Subquery selecting the latest dim row per video in scope. */
-function dimSubquery(conditions: string): string {
+/**
+ * Subquery selecting the latest dim row per video in scope.
+ *
+ * `extra` projects additional dimension columns with the same argMax-by-
+ * updated_at rule, so callers needing channel, language or title do not
+ * each hand-roll their own dim query.
+ */
+function dimSubquery(conditions: string, extra: string[] = []): string {
+  const extraSelects = extra
+    .map((column) => `,\n      argMax(${column}, updated_at) as ${column}`)
+    .join('');
+
   return `
     SELECT
       video_id,
       argMax(published_at, updated_at) as published_at,
-      argMax(tags, updated_at) as tags
+      argMax(tags, updated_at) as tags${extraSelects}
     FROM video_dim
     WHERE ${conditions}
     GROUP BY video_id

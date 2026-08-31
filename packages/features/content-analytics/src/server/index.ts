@@ -19,6 +19,11 @@ export type { BackfillBatchResult } from './backfill/youtube-backfill';
 export { runReportingIngestJob } from './reporting/report-ingest';
 export type { ReportIngestResult } from './reporting/report-ingest';
 
+// Channel dimension (FILM-1602)
+export { listAccountChannels, listProjectChannels } from './channels';
+export type { ChannelRef } from './channels';
+export { UNATTRIBUTED_CONNECTION_ID } from './dim-sync';
+
 // Video dimension sync (FILM-1506)
 export { upsertVideoDims } from './dim-sync';
 
