@@ -276,7 +276,9 @@ function CreateScheduleDialog({
   const [error, setError] = useState<string | null>(null);
 
   const [name, setName] = useState('');
-  const [reportType, setReportType] = useState<'pdf' | 'csv'>('pdf');
+  const [reportType, setReportType] = useState<'pdf' | 'csv' | 'raw_csv'>(
+    'pdf',
+  );
   const [frequency, setFrequency] = useState<'weekly' | 'monthly'>('weekly');
   const [selectedMetrics, setSelectedMetrics] = useState<ReportMetric[]>([
     'views',
@@ -364,14 +366,17 @@ function CreateScheduleDialog({
             <Label>Format</Label>
             <Select
               value={reportType}
-              onValueChange={(v) => setReportType(v as 'pdf' | 'csv')}
+              onValueChange={(v) =>
+                setReportType(v as 'pdf' | 'csv' | 'raw_csv')
+              }
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="pdf">PDF</SelectItem>
-                <SelectItem value="csv">CSV</SelectItem>
+                <SelectItem value="csv">CSV summary</SelectItem>
+                <SelectItem value="raw_csv">Raw data export</SelectItem>
               </SelectContent>
             </Select>
           </div>

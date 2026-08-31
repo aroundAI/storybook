@@ -11,6 +11,70 @@ export {
   syncSinglePublishById,
 } from './analytics-sync-cron';
 
+// Historical backfill (FILM-1503)
+export { runYouTubeBackfillBatch } from './backfill/youtube-backfill';
+export type { BackfillBatchResult } from './backfill/youtube-backfill';
+
+// YouTube Reporting API bulk ingest (FILM-1504)
+export { runReportingIngestJob } from './reporting/report-ingest';
+export type { ReportIngestResult } from './reporting/report-ingest';
+
+// Video dimension sync (FILM-1506)
+export { upsertVideoDims } from './dim-sync';
+
+// Deep-dive analytics actions (FILM-1506)
+export {
+  getBackCatalogAction,
+  getCohortCurvesAction,
+  getMedianPerformanceAction,
+  getReturningViewerProxyAction,
+  getRollingViewsAction,
+  getTrafficShareTrendAction,
+  getYppProgressAction,
+} from './deep-dive-actions';
+
+// Hook Lab (FILM-1510)
+export {
+  addHookVariantAction,
+  createHookTestAction,
+  getHookTestAction,
+  listHookTestsAction,
+  refreshHookTestAction,
+} from './hook-actions';
+export {
+  computeVariantRetention,
+  refreshTestRetention,
+} from './hook-retention';
+export type { VariantRetention } from './hook-retention';
+
+// Experiment log actions (FILM-1509)
+export {
+  abandonExperimentAction,
+  concludeExperimentAction,
+  createExperimentAction,
+  deleteExperimentAction,
+  getExperimentAction,
+  listExperimentsAction,
+  startExperimentAction,
+  updateExperimentAction,
+} from './experiment-actions';
+export type { ExperimentSnapshot } from './experiment-actions';
+
+// Revenue alerts (FILM-1508)
+export { evaluateRevenueAlerts } from './revenue-alerts';
+
+// Content taxonomy actions (FILM-1507)
+export {
+  bulkTagPublishesAction,
+  createTagAction,
+  deleteTagAction,
+  getMedianByTagAction,
+  getPublishTagsAction,
+  listTagsAction,
+  setPublishTagsAction,
+  updateTagAction,
+} from './taxonomy-actions';
+
 // Server actions
 export { getSyncStatusAction, manualSyncAction } from './sync-actions';
 export { generateInsightsAction } from './insights-actions';

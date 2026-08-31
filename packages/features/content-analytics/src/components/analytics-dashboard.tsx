@@ -19,6 +19,8 @@ import { Progress } from '@kit/ui/progress';
 import { Skeleton } from '@kit/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
+import { DeepDiveTab } from './deep-dive/deep-dive-tab';
+
 import { formatNumber } from '../lib/format';
 import {
   getContentListAction,
@@ -372,6 +374,7 @@ export function AnalyticsDashboard({
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
           <TabsTrigger value="audience">Audience</TabsTrigger>
+          <TabsTrigger value="deep-dive">Deep Dive</TabsTrigger>
           <TabsTrigger value="language">Language</TabsTrigger>
           <TabsTrigger value="insights">AI Insights</TabsTrigger>
         </TabsList>
@@ -428,6 +431,10 @@ export function AnalyticsDashboard({
             data={audienceData ?? undefined}
             isLoading={isAudienceLoading}
           />
+        </TabsContent>
+
+        <TabsContent value="deep-dive" className="mt-6">
+          <DeepDiveTab projectId={projectId} />
         </TabsContent>
 
         <TabsContent value="insights" className="mt-6">

@@ -11,29 +11,46 @@
 
 create table if not exists public.revenue_records (
   id uuid primary key default extensions.uuid_generate_v4(),
-  publish_id uuid not null references public.publishes(id) on delete cascade,
+  publish_id uuid references public.publishes(id) on delete cascade,
+  account_id uuid references public.accounts(id) on delete cascade,
   platform varchar(50) not null,
   record_date date not null,
   revenue_cents integer not null default 0,
   currency varchar(3) default 'USD',
   source varchar(20) not null default 'api', -- 'api' or 'manual'
+  category varchar(30) not null default 'ads',
   breakdown jsonb default '{}',
   metadata jsonb default '{}',
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
-  unique(publish_id, record_date),
   check (platform in ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin', 'manual')),
-  check (source in ('api', 'manual'))
+  check (source in ('api', 'manual')),
+  constraint revenue_records_category_check
+    check (category in ('ads', 'premium', 'sponsorship', 'product', 'affiliate', 'other')),
+  constraint revenue_records_scope_check
+    check (publish_id is not null or account_id is not null)
 );
 
-comment on table public.revenue_records is 'Daily revenue records per publish with breakdown by source type';
+comment on table public.revenue_records is 'Daily revenue records per publish (or per account for channel-level revenue), split by category';
 comment on column public.revenue_records.source is 'Source of revenue data: api (fetched from platform) or manual (user entered)';
+comment on column public.revenue_records.category is 'Revenue category: ads, premium, sponsorship, product, affiliate, other';
+comment on column public.revenue_records.account_id is 'Set instead of publish_id for channel-level revenue (sponsorships, product sales)';
 comment on column public.revenue_records.breakdown is 'JSONB with detailed revenue breakdown (adRevenueCents, membershipRevenueCents, etc.)';
+
+-- Uniqueness includes category: YouTube writes separate ads and premium
+-- rows for the same publish and day
+create unique index if not exists idx_revenue_records_unique_scope
+  on public.revenue_records (
+    coalesce(publish_id, account_id), record_date, category
+  );
 
 -- Indexes for revenue queries
 create index if not exists idx_revenue_records_publish_date on public.revenue_records(publish_id, record_date desc);
+create index if not exists idx_revenue_records_account_date on public.revenue_records(account_id, record_date desc)
+  where account_id is not null;
 create index if not exists idx_revenue_records_platform_date on public.revenue_records(platform, record_date desc);
 create index if not exists idx_revenue_records_source on public.revenue_records(source);
+create index if not exists idx_revenue_records_category on public.revenue_records(category);
 create index if not exists idx_revenue_records_date_range on public.revenue_records(record_date desc) where revenue_cents > 0;
 
 -- Updated timestamp trigger
@@ -124,7 +141,11 @@ grant select, insert, update, delete on table public.revenue_alerts to authentic
 
 create policy "revenue_records_read" on public.revenue_records for select
   to authenticated using (
-    exists (
+    (
+      account_id is not null
+      and public.has_account_access(account_id)
+    )
+    or exists (
       select 1 from public.publishes pub
       join public.episodes e on e.id = pub.episode_id
       join public.projects p on p.id = e.project_id
@@ -144,7 +165,11 @@ create policy "revenue_records_read" on public.revenue_records for select
 
 create policy "revenue_records_create" on public.revenue_records for insert
   to authenticated with check (
-    exists (
+    (
+      account_id is not null
+      and public.has_account_access(account_id)
+    )
+    or exists (
       select 1 from public.publishes pub
       join public.episodes e on e.id = pub.episode_id
       join public.project_members pm on pm.project_id = e.project_id
@@ -156,7 +181,11 @@ create policy "revenue_records_create" on public.revenue_records for insert
 
 create policy "revenue_records_update" on public.revenue_records for update
   to authenticated using (
-    exists (
+    (
+      account_id is not null
+      and public.has_account_access(account_id)
+    )
+    or exists (
       select 1 from public.publishes pub
       join public.episodes e on e.id = pub.episode_id
       join public.project_members pm on pm.project_id = e.project_id
@@ -168,7 +197,11 @@ create policy "revenue_records_update" on public.revenue_records for update
 
 create policy "revenue_records_delete" on public.revenue_records for delete
   to authenticated using (
-    exists (
+    (
+      account_id is not null
+      and public.has_account_access(account_id)
+    )
+    or exists (
       select 1 from public.publishes pub
       join public.episodes e on e.id = pub.episode_id
       join public.project_members pm on pm.project_id = e.project_id

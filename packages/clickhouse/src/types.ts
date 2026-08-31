@@ -11,8 +11,20 @@
 export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram';
 
 /**
- * Raw metric event inserted into ClickHouse video_metrics table.
- * Each row is an immutable log entry from a platform API sync.
+ * Origin of a metric row. Reporting-API rows are authoritative and replace
+ * Analytics-API rows for the same (video, day) via ReplacingMergeTree.
+ */
+export type MetricSource =
+  | 'analytics_api'
+  | 'reporting_api'
+  | 'snapshot_delta'
+  | 'backfill';
+
+/**
+ * Daily metric row inserted into ClickHouse video_metrics.
+ * One row per (video, platform, day) holding TRUE DAILY values keyed by the
+ * platform data date; re-inserting the same key replaces the row
+ * (ReplacingMergeTree on inserted_at).
  */
 export interface VideoMetric {
   project_id: string;
@@ -27,7 +39,150 @@ export interface VideoMetric {
   watch_time_seconds: number;
   revenue_cents: number;
   subscribers_gained: number;
+  /** Gross losses. Net movement is gained - lost. */
+  subscribers_lost?: number;
+  metric_source?: MetricSource;
+  /** Per-day average view duration in seconds (0 when unknown). */
+  avg_view_duration_seconds?: number;
+  /** Per-day average view percentage 0-100 (0 when unknown). */
+  avg_view_percentage?: number;
+  dislikes?: number;
   extra_metrics: string;
+}
+
+/**
+ * One point of a lifetime audience-retention curve. Latest fetch wins per
+ * (video, elapsed_ratio).
+ */
+export interface RetentionCurvePoint {
+  project_id: string;
+  video_id: string;
+  platform: AnalyticsPlatform;
+  /** Position in the video, 0..1. */
+  elapsed_ratio: number;
+  /** Share of starters still watching at this position. */
+  audience_watch_ratio: number;
+}
+
+/**
+ * Audience breakdown dimensions stored in video_audience.
+ */
+export type AudienceDimension =
+  | 'age_group'
+  | 'gender'
+  | 'country'
+  | 'city'
+  | 'device'
+  | 'os'
+  | 'follower_status';
+
+/**
+ * Latest-wins audience breakdown row. `views` is 0 when the platform only
+ * reports percentages for the dimension.
+ */
+export interface VideoAudienceRow {
+  project_id: string;
+  video_id: string;
+  platform: AnalyticsPlatform;
+  dimension: AudienceDimension;
+  key: string;
+  views: number;
+  percentage: number;
+}
+
+/**
+ * Lifetime cumulative totals snapshot for a video, one retained row per day.
+ * Baseline store for TikTok/Instagram delta derivation, whose APIs only
+ * expose lifetime counters.
+ */
+export interface VideoSnapshot {
+  project_id: string;
+  video_id: string;
+  platform: AnalyticsPlatform;
+  snapshot_date: string;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saves: number;
+  watch_time_seconds: number;
+  subscribers_gained: number;
+}
+
+/**
+ * Thumbnail reach row (impressions, CTR, engaged views) per video/day.
+ * Sourced from the YouTube Reporting API reach reports.
+ */
+export interface VideoReachDaily {
+  project_id: string;
+  video_id: string;
+  platform: AnalyticsPlatform;
+  metric_date: string;
+  impressions: number;
+  impressions_ctr: number;
+  engaged_views: number;
+}
+
+/**
+ * Traffic-source row per video/day/source.
+ */
+export interface VideoTrafficSource {
+  project_id: string;
+  video_id: string;
+  platform: AnalyticsPlatform;
+  metric_date: string;
+  source: string;
+  views: number;
+  watch_time_minutes: number;
+}
+
+/**
+ * Channel-level rollup row for videos not published through the platform,
+ * keyed by connection. Keeps channel-wide totals (YPP watch hours) accurate.
+ */
+export interface ChannelDaily {
+  connection_id: string;
+  metric_date: string;
+  views: number;
+  watch_time_seconds: number;
+  impressions: number;
+  engaged_views: number;
+  subscribers_gained?: number;
+  subscribers_lost?: number;
+}
+
+/**
+ * Dimension row for a published video, synced from Postgres. Joined FINAL
+ * by the deep-dive queries for age-controlled and segment analytics.
+ */
+export interface VideoDim {
+  video_id: string;
+  project_id: string;
+  account_id: string;
+  episode_id: string;
+  platform: string;
+  content_type: string;
+  language: string;
+  title: string;
+  /** DateTime string, e.g. '2026-06-14 08:30:00'. */
+  published_at: string;
+  duration_seconds: number;
+  /** 'dimension:slug' strings, e.g. 'topic:volcanoes'. */
+  tags: string[];
+}
+
+/**
+ * Latest-snapshot totals returned by queryLatestSnapshots, keyed by video_id.
+ */
+export interface SnapshotTotals {
+  snapshot_date: string;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saves: number;
+  watch_time_seconds: number;
+  subscribers_gained: number;
 }
 
 /**

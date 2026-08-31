@@ -28,52 +28,145 @@ import type {
  * Get revenue summary for an account within a date range.
  * Aggregates revenue by platform, content, and calculates trends.
  */
+/**
+ * One revenue row as seen by an account, from either scope.
+ * `publish_id`/`episode_id` are null for channel-level rows.
+ */
+interface AccountRevenueRow {
+  id: string;
+  publish_id: string | null;
+  platform: string;
+  record_date: string;
+  revenue_cents: number;
+  currency: string | null;
+  source: string;
+  category: string;
+  episode_id: string | null;
+}
+
+/**
+ * Every revenue row an account can see in a window, across BOTH scopes.
+ *
+ * Revenue attaches to either a publish or an account (channel-level
+ * sponsorship and product income). A single `publishes!inner` join silently
+ * drops the channel-level half, so the two scopes are queried separately and
+ * merged here — PostgREST cannot express an OR across an embedded resource.
+ */
+async function fetchAccountRevenueRows(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  accountId: string,
+  from: string,
+  to: string,
+  options?: { toExclusive?: boolean },
+): Promise<AccountRevenueRow[]> {
+  const COLUMNS = `
+    id,
+    publish_id,
+    platform,
+    record_date,
+    revenue_cents,
+    currency,
+    source,
+    category
+  `;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const applyRange = (query: any) => {
+    const bounded = query.gte('record_date', from);
+    return options?.toExclusive
+      ? bounded.lt('record_date', to)
+      : bounded.lte('record_date', to);
+  };
+
+  const [channelScoped, publishScoped] = await Promise.all([
+    applyRange(
+      client
+        .from('revenue_records')
+        .select(COLUMNS)
+        .is('publish_id', null)
+        .eq('account_id', accountId),
+    ),
+    applyRange(
+      client
+        .from('revenue_records')
+        .select(
+          `${COLUMNS},
+          publishes!inner (
+            id,
+            episode_id,
+            episodes!inner (
+              id,
+              project_id,
+              projects!inner ( account_id )
+            )
+          )`,
+        )
+        .eq('publishes.episodes.projects.account_id', accountId),
+    ),
+  ]);
+
+  if (channelScoped.error) throw channelScoped.error;
+  if (publishScoped.error) throw publishScoped.error;
+
+  const rows: AccountRevenueRow[] = [];
+
+  for (const row of channelScoped.data ?? []) {
+    rows.push({ ...(row as AccountRevenueRow), episode_id: null });
+  }
+
+  for (const row of publishScoped.data ?? []) {
+    const publish = (row as { publishes?: { episode_id?: string | null } })
+      .publishes;
+    rows.push({
+      ...(row as AccountRevenueRow),
+      episode_id: publish?.episode_id ?? null,
+    });
+  }
+
+  return rows;
+}
+
+/**
+ * All published publish ids for an account. Used as the RPM denominator so
+ * views from content that earned nothing still count — otherwise RPM is
+ * computed only over revenue-bearing videos and reads far too high.
+ */
+async function fetchAccountPublishIds(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  accountId: string,
+): Promise<string[]> {
+  const { data } = await client
+    .from('publishes')
+    .select('id, episodes!inner(projects!inner(account_id))')
+    .eq('status', 'published')
+    .eq('episodes.projects.account_id', accountId);
+
+  return ((data ?? []) as Array<{ id: string }>).map((row) => row.id);
+}
+
 export const getRevenueSummaryAction = enhanceAction(
   async function (data): Promise<RevenueSummary> {
     const client = getSupabaseServerClient();
     const { accountId, startDate, endDate } = data;
 
-    // Get all revenue records in date range for the account
-    const { data: records, error } = await client
-      .from('revenue_records')
-      .select(
-        `
-        id,
-        publish_id,
-        platform,
-        record_date,
-        revenue_cents,
-        currency,
-        source,
-        breakdown,
-        publishes!inner (
-          id,
-          episode_id,
-          platform,
-          episodes!inner (
-            id,
-            title,
-            project_id,
-            projects!inner (
-              account_id
-            )
-          )
-        )
-      `,
-      )
-      .gte('record_date', startDate)
-      .lte('record_date', endDate)
-      .eq('publishes.episodes.projects.account_id', accountId);
+    // Both publish-scoped and channel-scoped revenue
+    const records = await fetchAccountRevenueRows(
+      client,
+      accountId,
+      startDate,
+      endDate,
+    );
 
-    if (error) throw error;
-
-    // Calculate totals and group by platform/content in single pass
+    // Calculate totals and group by platform/content/category in single pass
     let totalRevenueCents = 0;
     const byPlatform: Record<string, number> = {};
     const byContent: Record<string, number> = {};
+    const byType: Record<string, number> = {};
     const publishIds: string[] = [];
 
-    for (const r of records ?? []) {
+    for (const r of records) {
       const revenueCents = r.revenue_cents || 0;
       totalRevenueCents += revenueCents;
 
@@ -81,31 +174,54 @@ export const getRevenueSummaryAction = enhanceAction(
       const platform = r.platform || 'unknown';
       byPlatform[platform] = (byPlatform[platform] || 0) + revenueCents;
 
-      // Group by content (episode)
-      const episodeId = r.publishes?.episode_id;
-      if (episodeId) {
-        byContent[episodeId] = (byContent[episodeId] || 0) + revenueCents;
+      // Group by revenue category (the mix: ads vs sponsorship vs product)
+      const category = r.category || 'ads';
+      byType[category] = (byType[category] || 0) + revenueCents;
+
+      // Group by content (episode) — channel-level rows have no episode
+      if (r.episode_id) {
+        byContent[r.episode_id] =
+          (byContent[r.episode_id] || 0) + revenueCents;
       }
 
-      // Collect publish IDs for view lookup
-      publishIds.push(r.publish_id);
+      if (r.publish_id) {
+        publishIds.push(r.publish_id);
+      }
     }
 
-    // Get view data for RPM calculation from ClickHouse
+    // RPM denominator is every published video's views in the window, not
+    // only the ones that earned — otherwise RPM is inflated by excluding
+    // content that produced views but no revenue row.
+    const denominatorPublishIds = await fetchAccountPublishIds(
+      client,
+      accountId,
+    );
+
     let totalViews = 0;
 
-    if (publishIds.length > 0) {
-      const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
-        startDate,
-        endDate,
-      });
+    if (denominatorPublishIds.length > 0) {
+      const perVideoTotals = await queryTotalsByVideoIds(
+        denominatorPublishIds,
+        { startDate, endDate },
+      );
 
       for (const [, stats] of perVideoTotals) {
         totalViews += stats.views;
       }
     }
 
-    const rpm = totalViews > 0 ? (totalRevenueCents / totalViews) * 1000 : 0;
+    // Revenue mix: ads + Premium are platform payouts; everything else is
+    // income the channel built itself. A falling ads share is the health
+    // signal, so both halves are returned rather than derived downstream.
+    const adsRevenueCents = (byType.ads ?? 0) + (byType.premium ?? 0);
+    const nonAdRevenueCents = totalRevenueCents - adsRevenueCents;
+
+    /** Cents per 1000 views. Display sites divide by 100 for dollars. */
+    const allInRpmCents =
+      totalViews > 0 ? (totalRevenueCents / totalViews) * 1000 : 0;
+    const adsRpmCents =
+      totalViews > 0 ? (adsRevenueCents / totalViews) * 1000 : 0;
+    const rpm = allInRpmCents;
 
     // Calculate day count and average
     const startDateObj = new Date(startDate);
@@ -122,27 +238,17 @@ export const getRevenueSummaryAction = enhanceAction(
     const previousStartDate = new Date(startDateObj);
     previousStartDate.setDate(previousStartDate.getDate() - dayCount);
 
-    const { data: previousRecords } = await client
-      .from('revenue_records')
-      .select(
-        `
-        revenue_cents,
-        publishes!inner (
-          episodes!inner (
-            projects!inner (
-              account_id
-            )
-          )
-        )
-      `,
-      )
-      .gte('record_date', previousStartDate.toISOString().split('T')[0])
-      .lt('record_date', startDate)
-      .eq('publishes.episodes.projects.account_id', accountId);
+    const previousRecords = await fetchAccountRevenueRows(
+      client,
+      accountId,
+      previousStartDate.toISOString().split('T')[0]!,
+      startDate,
+      { toExclusive: true },
+    );
 
     // Single-pass sum for previous period
     let previousTotal = 0;
-    for (const r of previousRecords ?? []) {
+    for (const r of previousRecords) {
       previousTotal += r.revenue_cents || 0;
     }
     const trendPercent =
@@ -158,8 +264,21 @@ export const getRevenueSummaryAction = enhanceAction(
       period: { start: startDate, end: endDate },
       byPlatform,
       byContent,
-      byType: {},
+      byType,
       rpm,
+      totalViews,
+      adsRevenueCents,
+      nonAdRevenueCents,
+      adsSharePercent:
+        totalRevenueCents > 0
+          ? (adsRevenueCents / totalRevenueCents) * 100
+          : 0,
+      nonAdSharePercent:
+        totalRevenueCents > 0
+          ? (nonAdRevenueCents / totalRevenueCents) * 100
+          : 0,
+      adsRpmCents,
+      allInRpmCents,
       averageDailyRevenueCents,
       trend: trendPercent > 5 ? 'up' : trendPercent < -5 ? 'down' : 'stable',
       trendPercent,
@@ -178,45 +297,67 @@ export const getRevenueSummaryAction = enhanceAction(
 export const addManualRevenueAction = enhanceAction(
   async function (data): Promise<RevenueRecord> {
     const client = getSupabaseServerClient();
-    const { publishId, date, revenueCents, currency, notes } = data;
+    const { publishId, accountId, date, revenueCents, currency, category, notes } =
+      data;
 
-    // Get platform from publish
-    const { data: publish, error: publishError } = await client
-      .from('publishes')
-      .select('platform')
-      .eq('id', publishId)
-      .single();
+    // Channel-level revenue (sponsorships, product sales) has no publish
+    let platform = 'manual';
 
-    if (publishError || !publish) {
-      throw new Error('Publish not found or access denied');
+    if (publishId) {
+      const { data: publish, error: publishError } = await client
+        .from('publishes')
+        .select('platform')
+        .eq('id', publishId)
+        .single();
+
+      if (publishError || !publish) {
+        throw new Error('Publish not found or access denied');
+      }
+
+      platform = publish.platform;
     }
 
-    const { data: record, error } = await client
+    // The unique index is on coalesce(publish_id, account_id) and cannot be
+    // named as an onConflict target, so replace any existing row explicitly.
+    const existingQuery = client
       .from('revenue_records')
-      .upsert(
-        {
-          publish_id: publishId,
-          platform: publish.platform,
-          record_date: date,
-          revenue_cents: revenueCents,
-          currency: currency || 'USD',
-          source: 'manual',
-          metadata: notes ? { notes } : {},
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'publish_id,record_date',
-        },
-      )
-      .select()
-      .single();
+      .select('id')
+      .eq('record_date', date)
+      .eq('category', category);
+
+    const { data: existing } = await (publishId
+      ? existingQuery.eq('publish_id', publishId)
+      : existingQuery.eq('account_id', accountId!)
+    ).maybeSingle();
+
+    const values = {
+      publish_id: publishId ?? null,
+      account_id: accountId ?? null,
+      platform,
+      record_date: date,
+      revenue_cents: revenueCents,
+      currency: currency || 'USD',
+      source: 'manual' as const,
+      category,
+      metadata: notes ? { notes } : {},
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: record, error } = existing
+      ? await client
+          .from('revenue_records')
+          .update(values)
+          .eq('id', existing.id)
+          .select()
+          .single()
+      : await client.from('revenue_records').insert(values).select().single();
 
     if (error) throw error;
     if (!record) throw new Error('Failed to create revenue record');
 
     return {
       id: record.id,
-      publishId: record.publish_id,
+      publishId: record.publish_id ?? '',
       platform: record.platform as
         | 'youtube'
         | 'tiktok'
@@ -247,14 +388,23 @@ export const addManualRevenueAction = enhanceAction(
 export const deleteManualRevenueAction = enhanceAction(
   async function (data): Promise<{ success: boolean }> {
     const client = getSupabaseServerClient();
-    const { publishId, date } = data;
+    const { publishId, accountId, date, category } = data;
 
-    const { error } = await client
+    let query = client
       .from('revenue_records')
       .delete()
-      .eq('publish_id', publishId)
       .eq('record_date', date)
       .eq('source', 'manual');
+
+    query = publishId
+      ? query.eq('publish_id', publishId)
+      : query.eq('account_id', accountId!);
+
+    if (category) {
+      query = query.eq('category', category);
+    }
+
+    const { error } = await query;
 
     if (error) throw error;
 
@@ -279,23 +429,12 @@ export const getRevenueProjectionAction = enhanceAction(
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const { data: recentRecords } = await client
-      .from('revenue_records')
-      .select(
-        `
-        revenue_cents,
-        record_date,
-        publishes!inner (
-          episodes!inner (
-            projects!inner (
-              account_id
-            )
-          )
-        )
-      `,
-      )
-      .gte('record_date', thirtyDaysAgo.toISOString().split('T')[0])
-      .eq('publishes.episodes.projects.account_id', accountId);
+    const recentRecords = await fetchAccountRevenueRows(
+      client,
+      accountId,
+      thirtyDaysAgo.toISOString().split('T')[0]!,
+      new Date().toISOString().split('T')[0]!,
+    );
 
     // Single-pass aggregation for total, unique dates, and trend calculation
     let totalRecent = 0;
@@ -380,32 +519,13 @@ export const getRevenueTimeSeriesAction = enhanceAction(
     const client = getSupabaseServerClient();
     const { accountId, startDate, endDate } = data;
 
-    const { data: records, error } = await client
-      .from('revenue_records')
-      .select(
-        `
-        record_date,
-        revenue_cents,
-        platform,
-        publishes!inner (
-          episodes!inner (
-            projects!inner (
-              account_id
-            )
-          )
-        )
-      `,
-      )
-      .gte('record_date', startDate)
-      .lte('record_date', endDate)
-      .eq('publishes.episodes.projects.account_id', accountId)
-      .order('record_date', { ascending: true });
-
-    if (error) throw error;
+    const records = (
+      await fetchAccountRevenueRows(client, accountId, startDate, endDate)
+    ).sort((a, b) => a.record_date.localeCompare(b.record_date));
 
     // Aggregate by date
     const dateMap = new Map<string, number>();
-    records?.forEach((r) => {
+    records.forEach((r) => {
       const existing = dateMap.get(r.record_date) ?? 0;
       dateMap.set(r.record_date, existing + (r.revenue_cents || 0));
     });
@@ -484,7 +604,10 @@ export const getTopContentByRevenueAction = enhanceAction(
     >();
 
     records?.forEach((r) => {
+      // Channel-level revenue has no publish to attribute to
       const publishId = r.publish_id;
+      if (!publishId) return;
+
       const existing = publishMap.get(publishId);
       if (existing) {
         existing.revenueCents += r.revenue_cents || 0;
@@ -699,14 +822,21 @@ export const syncRevenueFromPlatformAction = enhanceAction(
       };
     }
 
-    // Note: Actual YouTube API call would go here
-    // For now, we return success without making the API call
-    // The analytics-sync-cron already fetches revenue data during regular syncs
+    // Run the same sync path the cron uses, which fetches analytics and
+    // writes the categorized revenue rows
+    const { syncSinglePublishById } = await import('./analytics-sync-cron');
+    const result = await syncSinglePublishById(publishId);
+
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error ?? 'Revenue sync failed',
+      };
+    }
 
     return {
       success: true,
-      message:
-        'Revenue sync initiated. Data will be updated during next sync cycle.',
+      message: 'Revenue synced from the platform.',
     };
   },
   {

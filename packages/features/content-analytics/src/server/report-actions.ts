@@ -13,7 +13,11 @@ import {
   subMonths,
 } from 'date-fns';
 
-import { queryTotalsByVideoIds } from '@kit/clickhouse/server';
+import {
+  queryQualityMetricsForVideos,
+  queryRetentionCurve,
+  queryTotalsByVideoIds,
+} from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -112,6 +116,7 @@ async function fetchAnalyticsData(
   dateRange: { start: Date; end: Date },
   platforms: string[],
   projectIds?: string[],
+  includeRetention = false,
 ): Promise<AnalyticsDataRow[]> {
   const client = getSupabaseServerClient();
 
@@ -157,16 +162,50 @@ async function fetchAnalyticsData(
   const endDateStr = dateRange.end.toISOString().split('T')[0]!;
 
   // Get metrics from ClickHouse
-  const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
-    startDate: startDateStr,
-    endDate: endDateStr,
-  });
+  const [perVideoTotals, qualityMetrics] = await Promise.all([
+    queryTotalsByVideoIds(publishIds, {
+      startDate: startDateStr,
+      endDate: endDateStr,
+    }),
+    queryQualityMetricsForVideos({
+      videoIds: publishIds,
+      startDate: startDateStr,
+      endDate: endDateStr,
+    }),
+  ]);
+
+  // Retention curves are lifetime aggregates fetched per video, so only
+  // pull them when the report actually includes the retention column
+  const retentionByPublish = new Map<string, Record<string, number>>();
+
+  if (includeRetention) {
+    const withMetrics = publishIds.filter((id) => perVideoTotals.has(id));
+
+    await Promise.all(
+      withMetrics.map(async (publishId) => {
+        const points = await queryRetentionCurve({ videoId: publishId });
+
+        if (points.length > 0) {
+          retentionByPublish.set(
+            publishId,
+            Object.fromEntries(
+              points.map((p) => [
+                p.elapsedRatio.toFixed(2),
+                p.audienceWatchRatio,
+              ]),
+            ),
+          );
+        }
+      }),
+    );
+  }
 
   // Merge metadata with metrics
   return data
     .filter((row) => perVideoTotals.has(row.id))
     .map((row) => {
       const stats = perVideoTotals.get(row.id)!;
+      const quality = qualityMetrics.get(row.id);
       const episodes = row.episodes as unknown as {
         title: string;
         seasons: { projects: { name: string } };
@@ -184,9 +223,10 @@ async function fetchAnalyticsData(
         watchTimeSeconds: stats.watch_time_seconds,
         subscribersGained: stats.subscribers_gained,
         revenueCents: stats.revenue_cents,
-        // retentionData was stored in content_analytics (now dropped).
-        // ClickHouse does not track retention curves — intentionally null.
-        retentionData: null,
+        retentionData: retentionByPublish.get(row.id) ?? null,
+        impressions: quality?.impressions ?? 0,
+        ctr: quality?.impressionsCtr ?? 0,
+        avgViewDurationSeconds: quality?.avgViewDurationSeconds ?? 0,
       };
     });
 }
@@ -291,6 +331,7 @@ export const generateReportAction = enhanceAction(
       dateRange,
       config.platforms,
       config.projectIds,
+      config.metrics.includes('retention'),
     );
 
     if (analyticsData.length === 0) {

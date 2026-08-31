@@ -28,8 +28,15 @@ const METRIC_COLUMNS: Record<
     header: 'Retention Data',
     getValue: (r) => (r.retentionData ? JSON.stringify(r.retentionData) : ''),
   },
-  ctr: { header: 'CTR', getValue: () => '' },
-  avgViewDuration: { header: 'Avg View Duration', getValue: () => '' },
+  ctr: {
+    header: 'CTR',
+    getValue: (r) => (r.ctr > 0 ? `${(r.ctr * 100).toFixed(2)}%` : ''),
+  },
+  avgViewDuration: {
+    header: 'Avg View Duration (s)',
+    getValue: (r) =>
+      r.avgViewDurationSeconds > 0 ? r.avgViewDurationSeconds.toFixed(1) : '',
+  },
 };
 
 /**

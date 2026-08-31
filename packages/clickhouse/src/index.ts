@@ -8,13 +8,23 @@
 export type {
   AggregatedTotals,
   AnalyticsPlatform,
+  AudienceDimension,
+  ChannelDaily,
   DailyDataPoint,
   DailyPlatformBreakdown,
   DailyStats,
+  MetricSource,
   PlatformBreakdown,
   PlatformEngagement,
   QueryFilters,
+  RetentionCurvePoint,
+  SnapshotTotals,
+  VideoAudienceRow,
+  VideoDim,
   VideoMetric,
+  VideoReachDaily,
+  VideoSnapshot,
+  VideoTrafficSource,
 } from './types';
 
 export { formatDateStr } from './utils';

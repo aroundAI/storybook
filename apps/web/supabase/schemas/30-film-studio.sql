@@ -554,6 +554,9 @@ create index if not exists idx_publishes_scheduled_at on public.publishes(schedu
   where scheduled_at is not null and status = 'scheduled';
 create index if not exists idx_publishes_platform_content_id on public.publishes(platform, platform_content_id)
   where platform_content_id is not null;
+create index if not exists idx_publishes_published_at on public.publishes(published_at desc)
+  where status = 'published';
+create index if not exists idx_publishes_status on public.publishes(status);
 
 -- ==================================
 -- Section: Content Analytics (FILM-101l) — REMOVED

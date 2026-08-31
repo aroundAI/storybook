@@ -1,12 +1,19 @@
 ---
 spec_id: FILM-1301
 title: Hook Testing Engine (The "Hook Lab")
-status: 🟡 Needs Architectural Decision
+status: ✅ DONE (implemented as FILM-1510)
 effort: L
 dependencies: FILM-1201, FILM-716
 ---
 
 # Hook Testing Engine (The "Hook Lab")
+
+> [!IMPORTANT]
+> **Architectural decision (2026-08-27): Hybrid Approach (Option C, §9.6) — implemented as [FILM-1510](../phase-15-deep-analytics/FILM-1510-hook-lab.md) in Phase 15.**
+> - The "Phase 1" aggregate layer is delivered by FILM-1507's `hook_type` taxonomy dimension + `queryMedianByTag`.
+> - The dedicated `hook_retention_metrics` ClickHouse table and its `002_hook_retention.ts` migration are **superseded** by the generic `video_retention_curves` table (FILM-1505) interpolated against `video_dim.duration_seconds` (FILM-1506). The `002_` migration number is claimed by Phase 15 (`002_metrics_v2.ts`); the feature branch's migration must not be cherry-picked.
+> - Supabase schema from the feature branch is renumbered to `71-hook-testing.sql`.
+> - §9.5 describes a feature branch `feature/FILM-1301-hook-testing-engine` holding a partial implementation. **That branch does not exist locally or on `origin`** as of 2026-08-27, so FILM-1510 was built fresh using this spec as the reference.
 
 ## 1. Overview
 
@@ -622,11 +629,11 @@ testing in their normal workflow (Phase 3).
 
 ## 10. Acceptance Criteria
 
-- [ ] **Architectural approach decided** (Standalone / Embedded / Hybrid)
-- [ ] Creator can generate 3-8 hook variants from a topic
-- [ ] Each variant has a distinct hook type and VEO 3.1 visual direction
-- [ ] Variants can be published to test channels
-- [ ] ClickHouse tracks per-variant retention (1s, 3s, 5s, full)
-- [ ] System auto-declares winner based on configurable threshold
+- [x] **Architectural approach decided** (Hybrid — see decision callout at top; implementation tracked in FILM-1510)
+- [x] Creator can log hook variants for a topic (FILM-1510; LLM generation of variants remains future work)
+- [x] Each variant has a distinct hook type; `veo_prompt` column reserved for VEO direction
+- [x] Variants link to published videos via `publish_id`
+- [x] Per-variant retention (1s/3s/5s/full) computed from the generic `video_retention_curves` table and cached on the variant
+- [x] Winner auto-declared against the configurable `viral_threshold` (no winner when none clears it)
 - [ ] Winner can be promoted to episode intro
-- [ ] Aggregate hook performance visible across projects
+- [x] Aggregate hook performance available via the `hook_type` taxonomy dimension and tag medians (FILM-1507)

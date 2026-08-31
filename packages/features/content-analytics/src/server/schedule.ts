@@ -9,6 +9,7 @@ import type { SyncSchedule } from './types';
  * - First 24 hours: hourly (content is fresh, metrics change rapidly)
  * - Days 2-7: every 6 hours (still growing)
  * - Days 8-30: daily (stabilizing)
+ * - Days 31-90: daily (back-catalog contribution still building)
  * - After 90 days: weekly (stable, minimal changes)
  */
 export function getSyncSchedule(publishedAt: Date): SyncSchedule {
@@ -41,7 +42,14 @@ export function getSyncSchedule(publishedAt: Date): SyncSchedule {
     };
   }
 
-  // After 30 days (spec says 90 for weekly, but we use 30 as cutoff for "first_month")
+  if (ageDays < 90) {
+    return {
+      frequency: 'daily',
+      nextSyncAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+      ageCategory: 'first_quarter',
+    };
+  }
+
   return {
     frequency: 'weekly',
     nextSyncAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
@@ -93,10 +101,12 @@ export function getSyncPriority(publishedAt: Date): number {
       return 1;
     case 'first_month':
       return 2;
-    case 'after_90_days':
+    case 'first_quarter':
       return 3;
-    default:
+    case 'after_90_days':
       return 4;
+    default:
+      return 5;
   }
 }
 

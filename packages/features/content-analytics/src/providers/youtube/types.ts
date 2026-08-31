@@ -83,6 +83,9 @@ export interface YouTubeTotals {
 export interface YouTubeDailyMetrics {
   date: string;
   views: number;
+  likes: number;
+  comments: number;
+  shares: number;
   estimatedMinutesWatched: number;
   averageViewDuration: number;
   subscribersGained: number;

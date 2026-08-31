@@ -71,6 +71,40 @@ const config = {
   output: process.env.DEPLOY_TARGET === 'lambda' ? 'standalone' : undefined,
   compress: process.env.DEPLOY_TARGET === 'lambda' ? false : true,
   webpack: (config, { isServer, webpack }) => {
+    // Warnings from third-party packages we do not control and cannot fix
+    // at source. Each is benign in this deployment; keeping the build output
+    // clean means a genuine new warning is actually noticeable.
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings ?? []),
+      // OpenTelemetry (via Sentry) resolves instrumentation modules with a
+      // computed require, which webpack cannot statically analyse. The
+      // packages are hoisted in .npmrc so resolution works at runtime.
+      {
+        module: /@opentelemetry\/instrumentation/,
+        message: /Critical dependency: the request of a dependency is an expression/,
+      },
+      // supabase-js reads process.version(s) for its runtime check. The
+      // middleware only ever uses the browser client path, so the Edge
+      // runtime never reaches that code.
+      {
+        module: /@supabase\/(realtime-js|supabase-js)/,
+        message: /A Node\.js API is used \(process\.versions?/,
+      },
+    ];
+
+    // Webpack's filesystem cache logs a perf hint when it serialises its own
+    // large build manifests. It says nothing about our code and cannot be
+    // fixed from here; the cache is kept because the deploy builds twice and
+    // the second build reuses it. Infrastructure logs are dropped to errors
+    // in production only — compilation warnings use a different channel and
+    // still surface.
+    if (process.env.NODE_ENV === 'production') {
+      config.infrastructureLogging = {
+        ...config.infrastructureLogging,
+        level: 'error',
+      };
+    }
+
     if (isServer) {
       // Module concatenation re-enabled on Node.js 25+ (was disabled for Node.js 24 build hangs)
       // If build hangs recur, set config.optimization.concatenateModules = false;

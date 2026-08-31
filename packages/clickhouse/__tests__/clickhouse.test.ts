@@ -120,6 +120,98 @@ describe('@kit/clickhouse', () => {
       });
     });
 
+    describe('insertVideoSnapshots', () => {
+      it('should insert snapshots in JSONEachRow format', async () => {
+        const { insertVideoSnapshots } = await import('../src/queries');
+
+        const snapshots = [
+          {
+            project_id: '550e8400-e29b-41d4-a716-446655440000',
+            video_id: 'vid-1',
+            platform: 'tiktok' as const,
+            snapshot_date: '2026-01-15',
+            views: 10000,
+            likes: 500,
+            comments: 100,
+            shares: 50,
+            saves: 20,
+            watch_time_seconds: 36000,
+            subscribers_gained: 30,
+          },
+        ];
+
+        await insertVideoSnapshots(snapshots);
+
+        expect(mockClickHouseClient.insert).toHaveBeenCalledWith({
+          table: 'video_snapshots',
+          values: snapshots,
+          format: 'JSONEachRow',
+        });
+      });
+
+      it('should skip insert when array is empty', async () => {
+        const { insertVideoSnapshots } = await import('../src/queries');
+        await insertVideoSnapshots([]);
+        expect(mockClickHouseClient.insert).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('queryLatestSnapshots', () => {
+      it('should return a Map of video_id to latest snapshot totals', async () => {
+        mockQueryResult.json.mockResolvedValue([
+          {
+            video_id: 'vid-1',
+            snapshot_date: '2026-01-14',
+            views: '10000',
+            likes: '500',
+            comments: '100',
+            shares: '50',
+            saves: '20',
+            watch_time_seconds: '36000',
+            subscribers_gained: '30',
+          },
+        ]);
+
+        const { queryLatestSnapshots } = await import('../src/queries');
+        const result = await queryLatestSnapshots({
+          videoIds: ['vid-1'],
+          beforeDate: '2026-01-15',
+        });
+
+        expect(result.get('vid-1')).toEqual({
+          snapshot_date: '2026-01-14',
+          views: 10000,
+          likes: 500,
+          comments: 100,
+          shares: 50,
+          saves: 20,
+          watch_time_seconds: 36000,
+          subscribers_gained: 30,
+        });
+
+        const call = mockClickHouseClient.query.mock.calls[0]![0] as {
+          query: string;
+          query_params: Record<string, unknown>;
+        };
+        expect(call.query).toContain('argMax');
+        expect(call.query).toContain('snapshot_date < {beforeDate: Date}');
+        expect(call.query_params).toEqual({
+          videoIds: ['vid-1'],
+          beforeDate: '2026-01-15',
+        });
+      });
+
+      it('should return empty Map for empty video IDs', async () => {
+        const { queryLatestSnapshots } = await import('../src/queries');
+        const result = await queryLatestSnapshots({
+          videoIds: [],
+          beforeDate: '2026-01-15',
+        });
+        expect(result.size).toBe(0);
+        expect(mockClickHouseClient.query).not.toHaveBeenCalled();
+      });
+    });
+
     describe('queryTotals', () => {
       it('should return aggregated totals', async () => {
         mockQueryResult.json.mockResolvedValue([

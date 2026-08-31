@@ -81,7 +81,9 @@
     "analytics": "Analytics",
     "publicProfile": "Public Profile",
     "socialPosts": "Social Posts",
-    "socialPostDetail": "Post Detail"
+    "socialPostDetail": "Post Detail",
+    "contentTags": "Content Tags",
+    "experiments": "Experiment Log"
   },
   "roles": {
     "owner": {

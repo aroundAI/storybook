@@ -10,7 +10,7 @@ import type {
   InstagramReachBreakdown,
 } from './types';
 
-const GRAPH_API_BASE = 'https://graph.facebook.com/v18.0';
+const GRAPH_API_BASE = 'https://graph.facebook.com/v23.0';
 
 /**
  * Error thrown when the Instagram connection is missing the insights scope.
@@ -98,12 +98,12 @@ export class InstagramInsightsProvider {
 
       const mediaType = mediaInfo.media_type ?? 'VIDEO';
 
-      // Define metrics based on media type
-      // Reels have "plays", Videos have "impressions"
+      // Meta deprecated `plays` and `impressions` (2025-04-21, Graph v22)
+      // in favor of the universal `views` metric across all media types.
       const metricsForType =
         mediaType === 'REELS'
           ? [
-              'plays',
+              'views',
               'reach',
               'total_interactions',
               'likes',
@@ -112,8 +112,8 @@ export class InstagramInsightsProvider {
               'shares',
             ]
           : [
+              'views',
               'reach',
-              'impressions',
               'total_interactions',
               'likes',
               'comments',
@@ -133,9 +133,9 @@ export class InstagramInsightsProvider {
         mediaId,
         mediaType,
         totals: {
-          plays: metrics.plays ?? 0,
+          plays: metrics.views ?? 0,
           reach: metrics.reach ?? 0,
-          impressions: metrics.impressions ?? metrics.reach ?? 0, // Fallback for Reels
+          impressions: metrics.views ?? metrics.reach ?? 0,
           totalInteractions: metrics.total_interactions ?? 0,
           likes: metrics.likes ?? 0,
           comments: metrics.comments ?? 0,

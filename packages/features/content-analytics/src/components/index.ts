@@ -150,3 +150,65 @@ export {
   BestEpisodesToClipCard,
   BestEpisodesToClipCardSkeleton,
 } from './analytics-enhancement-cards';
+
+// Deep-dive analytics cards (FILM-1511)
+export {
+  BackCatalogCard,
+  BackCatalogCardSkeleton,
+  DeepDiveTab,
+  CohortCurvesChart,
+  CohortCurvesChartSkeleton,
+  MedianViewsCard,
+  MedianViewsCardSkeleton,
+  RetentionCurveChart,
+  RetentionCurveChartSkeleton,
+  TrafficShareCard,
+  TrafficShareCardSkeleton,
+  WeeklyDiagnosticsTable,
+  WeeklyDiagnosticsTableSkeleton,
+  YppProgressCard,
+  YppProgressCardSkeleton,
+  type BackCatalogEntry,
+  type CohortEntry,
+  type DiagnosticRow,
+  type MedianBucketEntry,
+  type TrafficShareEntry,
+  type YppProgress,
+} from './deep-dive';
+
+// Hook Lab (FILM-1510)
+export {
+  HookTestList,
+  HookTestListSkeleton,
+  RetentionComparisonChart,
+  RetentionComparisonChartSkeleton,
+  type HookTestEntry,
+  type VariantRetentionEntry,
+} from './hooks';
+
+// Experiment log (FILM-1509)
+export {
+  ExperimentDetail,
+  ExperimentDetailSkeleton,
+  ExperimentForm,
+  ExperimentList,
+  ExperimentListSkeleton,
+  type ExperimentListEntry,
+  type ExperimentMetricSnapshot,
+} from './experiments';
+
+// Revenue mix (FILM-1508)
+export {
+  RevenueMixCard,
+  RevenueMixCardSkeleton,
+} from './revenue-mix-card';
+
+// Content taxonomy (FILM-1507)
+export {
+  TagManager,
+  TagMediansCard,
+  TagMediansCardSkeleton,
+  TagPicker,
+  type ContentTag,
+  type TagMedianEntry,
+} from './taxonomy';

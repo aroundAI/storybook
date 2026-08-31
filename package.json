@@ -34,6 +34,7 @@
     "supabase:web:start": "pnpm --filter web supabase:start",
     "supabase:web:stop": "pnpm --filter web supabase:stop",
     "supabase:web:typegen": "pnpm --filter web supabase:typegen",
+    "supabase:web:typegen:prod": "pnpm --filter web supabase:typegen:prod",
     "supabase:web:reset": "pnpm --filter web supabase:reset",
     "supabase:web:test": "pnpm --filter web supabase:test",
     "stripe:listen": "pnpm --filter '@kit/stripe' start",
@@ -54,7 +55,9 @@
   "pnpm": {
     "overrides": {
       "react-is": "19.0.0",
-      "require-in-the-middle": "7.5.2"
+      "require-in-the-middle": "7.5.2",
+      "caniuse-lite": "1.0.30001810",
+      "baseline-browser-mapping": "2.11.19"
     }
   },
   "devDependencies": {

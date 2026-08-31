@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { CalendarIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 
 import { Button } from '@kit/ui/button';
 import { Calendar } from '@kit/ui/calendar';
@@ -67,6 +68,7 @@ export function ManualRevenueForm({
       date: '',
       revenueCents: 0,
       currency: 'USD',
+      category: 'sponsorship' as const,
       notes: '',
     },
   });
@@ -80,13 +82,7 @@ export function ManualRevenueForm({
     }
   }, [selectedDate, form]);
 
-  async function onSubmit(data: {
-    publishId: string;
-    date: string;
-    revenueCents: number;
-    currency: string;
-    notes?: string;
-  }) {
+  async function onSubmit(data: z.infer<typeof AddManualRevenueSchema>) {
     try {
       await addManualRevenueAction({
         ...data,
@@ -260,6 +256,36 @@ export function ManualRevenueForm({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="sponsorship">Sponsorship</SelectItem>
+                      <SelectItem value="product">Product sales</SelectItem>
+                      <SelectItem value="affiliate">Affiliate</SelectItem>
+                      <SelectItem value="ads">Ads</SelectItem>
+                      <SelectItem value="premium">Premium</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Tracked so the revenue mix — ads falling as a share of the
+                    total — stays measurable.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}

@@ -81,7 +81,7 @@ export const GenerateReportSchema = z.object({
 export const CreateScheduledReportSchema = z.object({
   accountId: z.string().uuid(),
   name: z.string().min(1, 'Name is required').max(255),
-  reportType: z.enum(['pdf', 'csv']),
+  reportType: z.enum(['pdf', 'csv', 'raw_csv']),
   frequency: z.enum(['weekly', 'monthly']),
   metrics: z.array(ReportMetricSchema).min(1, 'Select at least one metric'),
   platforms: z
@@ -100,7 +100,7 @@ export const CreateScheduledReportSchema = z.object({
 export const UpdateScheduledReportSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1).max(255).optional(),
-  reportType: z.enum(['pdf', 'csv']).optional(),
+  reportType: z.enum(['pdf', 'csv', 'raw_csv']).optional(),
   frequency: z.enum(['weekly', 'monthly']).optional(),
   metrics: z.array(ReportMetricSchema).min(1).optional(),
   platforms: z.array(ReportPlatformSchema).min(1).optional(),
