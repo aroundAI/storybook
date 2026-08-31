@@ -197,7 +197,11 @@ create policy "revenue_records_update" on public.revenue_records for update
 
 create policy "revenue_records_delete" on public.revenue_records for delete
   to authenticated using (
-    exists (
+    (
+      account_id is not null
+      and public.has_account_access(account_id)
+    )
+    or exists (
       select 1 from public.publishes pub
       join public.episodes e on e.id = pub.episode_id
       join public.project_members pm on pm.project_id = e.project_id

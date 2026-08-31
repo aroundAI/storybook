@@ -377,6 +377,7 @@ async function ingestReportCsv(
         watch_time_seconds: row.watchTimeSeconds,
         revenue_cents: 0,
         subscribers_gained: row.subscribersGained,
+        subscribers_lost: row.subscribersLost,
         metric_source: 'reporting_api',
         avg_view_duration_seconds: row.avgViewDurationSeconds,
         avg_view_percentage: row.avgViewPercentage,

@@ -249,19 +249,23 @@ export const getMedianByTagAction = enhanceAction(
   async ({ accountId, projectId, dimension }) => {
     const client = getSupabaseServerClient();
 
-    const [{ data: settings }, { count: taggedCount }] = await Promise.all([
+    // Counts DISTINCT tagged videos. A row count over publish_tags counts
+    // assignments, so one video carrying four tags would advance the gate
+    // by four.
+    const [{ data: settings }, { data: taggedCount }] = await Promise.all([
       client
         .from('analytics_settings')
         .select('tag_min_sample')
         .eq('account_id', accountId)
         .maybeSingle(),
-      client
-        .from('publish_tags')
-        .select('publish_id, content_tags!inner(account_id)', {
-          count: 'exact',
-          head: true,
-        })
-        .eq('content_tags.account_id', accountId),
+      // Cast until the migration is applied and typegen picks the function
+      // up; the generated Database type has no entry for it yet.
+      (
+        client.rpc as unknown as (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => Promise<{ data: number | null }>
+      )('count_tagged_publishes', { target_account_id: accountId }),
     ]);
 
     if ((taggedCount ?? 0) < TAGGED_LIBRARY_THRESHOLD) {

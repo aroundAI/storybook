@@ -237,17 +237,21 @@ export async function queryQualityMetricsForVideos(input: {
 
 /**
  * Aggregated traffic sources for a set of videos, optionally date-bounded,
- * grouped by source (and by date when byDate is set).
+ * grouped by source — and additionally by date (`byDate`) and/or by video
+ * (`byVideo`). Without `byVideo` the rows are summed across the whole video
+ * set, so a per-video answer requires it.
  */
 export async function queryTrafficSources(input: {
   videoIds: string[];
   startDate?: string;
   endDate?: string;
   byDate?: boolean;
+  byVideo?: boolean;
 }): Promise<
   Array<{
     source: string;
     date?: string;
+    videoId?: string;
     views: number;
     watchTimeMinutes: number;
   }>
@@ -269,17 +273,20 @@ export async function queryTrafficSources(input: {
 
   const dateSelect = input.byDate ? 'toString(metric_date) as date,' : '';
   const dateGroup = input.byDate ? ', metric_date' : '';
+  const videoSelect = input.byVideo ? 'video_id,' : '';
+  const videoGroup = input.byVideo ? ', video_id' : '';
 
   const result = await client.query({
     query: `
       SELECT
         ${dateSelect}
+        ${videoSelect}
         source,
         sum(views) as views,
         sum(watch_time_minutes) as watch_time_minutes
       FROM video_traffic_sources FINAL
       WHERE ${conditions.join(' AND ')}
-      GROUP BY source${dateGroup}
+      GROUP BY source${dateGroup}${videoGroup}
       ORDER BY views DESC
     `,
     query_params: params,
@@ -289,6 +296,7 @@ export async function queryTrafficSources(input: {
   const rows = await result.json<{
     source: string;
     date?: string;
+    video_id?: string;
     views: number;
     watch_time_minutes: number;
   }>();
@@ -296,6 +304,7 @@ export async function queryTrafficSources(input: {
   return rows.map((row) => ({
     source: row.source,
     ...(row.date ? { date: row.date } : {}),
+    ...(row.video_id ? { videoId: row.video_id } : {}),
     views: Number(row.views),
     watchTimeMinutes: Number(row.watch_time_minutes),
   }));

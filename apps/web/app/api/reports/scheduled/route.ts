@@ -207,6 +207,7 @@ async function processScheduledReport(
     queryQualityMetricsForVideos,
     queryRetentionCurve,
     queryTotalsByVideoIds,
+    queryTrafficSources,
   } = await import('@kit/clickhouse/server');
   const { formatDateStr } = await import('@kit/clickhouse');
   const videoIds = publishes.map((p) => p.id);
@@ -328,6 +329,49 @@ async function processScheduledReport(
       ]),
     );
 
+    // Highest-view traffic source per video per day
+    const trafficRows = await queryTrafficSources({
+      videoIds,
+      startDate: formatDateStr(dateRange.start),
+      endDate: formatDateStr(dateRange.end),
+      byDate: true,
+      byVideo: true,
+    });
+
+    const topSourceByVideoDate = new Map<string, string>();
+    const topViewsByVideoDate = new Map<string, number>();
+
+    for (const t of trafficRows) {
+      if (!t.date || !t.videoId) continue;
+      const key = `${t.videoId}:${t.date}`;
+      const current = topViewsByVideoDate.get(key) ?? -1;
+      if (t.views > current) {
+        topViewsByVideoDate.set(key, t.views);
+        topSourceByVideoDate.set(key, t.source);
+      }
+    }
+
+    // Taxonomy tags as 'dimension:slug', matching video_dim.tags
+    const { data: tagRows } = await adminClient
+      .from('publish_tags')
+      .select('publish_id, content_tags!inner(dimension, slug)')
+      .in('publish_id', videoIds);
+
+    const tagsByPublish = new Map<string, string[]>();
+
+    for (const tagRow of tagRows ?? []) {
+      const tag = tagRow.content_tags as unknown as {
+        dimension: string;
+        slug: string;
+      } | null;
+      if (!tag) continue;
+      const key = tagRow.publish_id as string;
+      tagsByPublish.set(key, [
+        ...(tagsByPublish.get(key) ?? []),
+        `${tag.dimension}:${tag.slug}`,
+      ]);
+    }
+
     const rawRows = dailyRows.map((row) => {
       const meta = metaByPublish.get(row.video_id);
       const quality = qualityMap.get(row.video_id);
@@ -351,13 +395,16 @@ async function processScheduledReport(
         watchTimeSeconds: row.watch_time_seconds,
         subscribersGained: row.subscribers_gained,
         revenueCents: row.revenue_cents,
-        // Reach metrics are period totals, not per-day; only the CTR
-        // rate is meaningful to repeat per row
-        impressions: 0,
+        // Reach is a period total rather than a per-day figure, so it is
+        // reported once per video on its own row set; CTR and AVD are the
+        // view-weighted period rates.
+        impressions: quality?.impressions ?? 0,
         ctr: quality?.impressionsCtr ?? 0,
         avgViewDurationSeconds: quality?.avgViewDurationSeconds ?? 0,
-        topTrafficSource: '',
-        tags: '',
+        topTrafficSource: topSourceByVideoDate.get(
+          `${row.video_id}:${row.metric_date}`,
+        ) ?? '',
+        tags: tagsByPublish.get(row.video_id)?.join('|') ?? '',
       };
     });
 

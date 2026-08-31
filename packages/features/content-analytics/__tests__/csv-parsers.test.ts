@@ -32,8 +32,11 @@ describe('parseChannelBasicReport', () => {
     expect(vidADay1.engagedViews).toBe(320);
     // (50.5 + 120 + 10) minutes = 10830 seconds
     expect(vidADay1.watchTimeSeconds).toBe(10830);
-    // gained (2+1+0) − lost (0+1+0)
-    expect(vidADay1.subscribersGained).toBe(2);
+    // Gross halves are kept separate: the column named "gained" must not
+    // silently hold a net figure.
+    expect(vidADay1.subscribersGained).toBe(3); // 2+1+0
+    expect(vidADay1.subscribersLost).toBe(1); // 0+1+0
+    expect(vidADay1.subscribersGained - vidADay1.subscribersLost).toBe(2);
   });
 
   it('normalizes YYYYMMDD dates', () => {
@@ -64,6 +67,8 @@ describe('parseChannelBasicReport', () => {
       views: 42,
       likes: 0,
       watchTimeSeconds: 0,
+      subscribersGained: 0,
+      subscribersLost: 0,
     });
   });
 });

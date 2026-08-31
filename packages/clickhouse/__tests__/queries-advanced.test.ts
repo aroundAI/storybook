@@ -192,6 +192,72 @@ describe('queries-advanced', () => {
     });
   });
 
+  describe('FILM-1601 correctness fixes', () => {
+    it('counts cohort videos from the dimension side, not metric rows', async () => {
+      const { queryCohortCurves } = await import('../src/queries-advanced');
+
+      await queryCohortCurves({ scope: { projectId: PROJECT } });
+
+      const { query } = lastQuery();
+      // Counting distinct video_id on the metrics side drops published
+      // videos that have no ingested days, inflating views-per-video.
+      expect(query).toContain('count(DISTINCT d.video_id)');
+      expect(query).not.toContain('count(DISTINCT m.video_id)');
+      expect(query).toContain('LEFT JOIN video_daily_stats');
+    });
+
+    it('bounds cohort_views_to_date by upload date, not metric date', async () => {
+      const { queryMedianViewsPerVideo } = await import(
+        '../src/queries-advanced'
+      );
+
+      await queryMedianViewsPerVideo({
+        scope: { projectId: PROJECT },
+        bucket: 'month',
+        mode: 'cohort_views_to_date',
+        startDate: '2026-01-01',
+        endDate: '2026-06-30',
+      });
+
+      const { query } = lastQuery();
+      // Each selected upload contributes its full views-to-date; bounding
+      // the metric days instead silently truncates older buckets.
+      expect(query).toContain('d.published_at >= {startDate: Date}');
+      expect(query).toContain('d.published_at <= {endDate: Date}');
+      expect(query).not.toContain('AND metric_date >= {startDate: Date}');
+    });
+
+    it('still bounds views_in_period by metric date', async () => {
+      const { queryMedianViewsPerVideo } = await import(
+        '../src/queries-advanced'
+      );
+
+      await queryMedianViewsPerVideo({
+        scope: { projectId: PROJECT },
+        bucket: 'month',
+        mode: 'views_in_period',
+        startDate: '2026-01-01',
+      });
+
+      expect(lastQuery().query).toContain('metric_date >= {startDate: Date}');
+    });
+
+    it('derives net subscribers from the gross columns', async () => {
+      const { queryWatchWindowTotals } = await import(
+        '../src/queries-advanced'
+      );
+
+      await queryWatchWindowTotals({
+        scope: { accountId: PROJECT },
+        windowDays: 365,
+      });
+
+      expect(lastQuery().query).toContain(
+        'sum(subscribers_gained) - sum(subscribers_lost)',
+      );
+    });
+  });
+
   describe('queryCohortCurves', () => {
     it('returns per-checkpoint cumulative views per cohort', async () => {
       mockQueryResult.json.mockResolvedValue([

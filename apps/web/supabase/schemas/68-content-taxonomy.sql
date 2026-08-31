@@ -97,3 +97,25 @@ create policy "publish_tags_delete" on public.publish_tags for delete
         and public.has_account_access(pr.account_id)
     )
   );
+
+-- ==================================
+-- Tagged-library size
+-- ==================================
+-- Counts DISTINCT tagged publishes. A plain count of publish_tags counts
+-- assignments, so eight videos with four tags each would clear a gate meant
+-- to require thirty videos.
+
+create or replace function public.count_tagged_publishes(target_account_id uuid)
+returns integer
+language sql
+security invoker
+stable
+set search_path = ''
+as $$
+  select count(distinct pt.publish_id)::int
+  from public.publish_tags pt
+  join public.content_tags ct on ct.id = pt.tag_id
+  where ct.account_id = target_account_id;
+$$;
+
+grant execute on function public.count_tagged_publishes(uuid) to authenticated;

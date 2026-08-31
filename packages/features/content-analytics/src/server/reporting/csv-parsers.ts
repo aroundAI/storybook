@@ -19,7 +19,10 @@ export interface BasicReportRow {
   comments: number;
   shares: number;
   watchTimeSeconds: number;
+  /** Gross gains. Net movement is subscribersGained - subscribersLost. */
   subscribersGained: number;
+  /** Gross losses, kept separate so the column name stays honest. */
+  subscribersLost: number;
   /** View-weighted average view duration in seconds. */
   avgViewDurationSeconds: number;
   /** View-weighted average view percentage (0-100). */
@@ -163,6 +166,7 @@ export function parseChannelBasicReport(csv: string): BasicReportRow[] {
       shares: 0,
       watchTimeSeconds: 0,
       subscribersGained: 0,
+      subscribersLost: 0,
       avgViewDurationSeconds: 0,
       avgViewPercentage: 0,
       avdWeightedSum: 0,
@@ -178,8 +182,8 @@ export function parseChannelBasicReport(csv: string): BasicReportRow[] {
     existing.comments += numberAt(row, commentsIdx);
     existing.shares += numberAt(row, sharesIdx);
     existing.watchTimeSeconds += Math.round(numberAt(row, watchIdx) * 60);
-    existing.subscribersGained +=
-      numberAt(row, subsGainedIdx) - numberAt(row, subsLostIdx);
+    existing.subscribersGained += numberAt(row, subsGainedIdx);
+    existing.subscribersLost += numberAt(row, subsLostIdx);
     existing.avdWeightedSum += numberAt(row, avdIdx) * views;
     existing.avpWeightedSum += numberAt(row, avpIdx) * views;
 

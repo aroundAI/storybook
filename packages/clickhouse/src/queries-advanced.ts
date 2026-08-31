@@ -174,13 +174,21 @@ export async function queryMedianViewsPerVideo(input: {
   const bucketFn =
     input.bucket === 'quarter' ? 'toStartOfQuarter' : 'toStartOfMonth';
 
-  const dateConditions: string[] = ['1 = 1'];
+  // In views_in_period the range bounds which METRIC DAYS are summed.
+  // In cohort_views_to_date it bounds which UPLOADS are included — each
+  // selected video contributes its full views-to-date, otherwise older
+  // buckets are silently truncated to the window and read far too low.
+  const metricDateConditions: string[] = ['1 = 1'];
+  const publishedConditions: string[] = ['1 = 1'];
+
   if (input.startDate) {
-    dateConditions.push('metric_date >= {startDate: Date}');
+    metricDateConditions.push('metric_date >= {startDate: Date}');
+    publishedConditions.push('d.published_at >= {startDate: Date}');
     params.startDate = input.startDate;
   }
   if (input.endDate) {
-    dateConditions.push('metric_date <= {endDate: Date}');
+    metricDateConditions.push('metric_date <= {endDate: Date}');
+    publishedConditions.push('d.published_at <= {endDate: Date}');
     params.endDate = input.endDate;
   }
 
@@ -194,14 +202,14 @@ export async function queryMedianViewsPerVideo(input: {
           quantileExact(0.25)(v.total_views) as p25_views,
           quantileExact(0.75)(v.total_views) as p75_views,
           avg(v.total_views) as mean_views
-        FROM (
+        FROM (${dimSubquery(conditions)}) d
+        LEFT JOIN (
           SELECT video_id, sum(views) as total_views
           FROM video_daily_stats
           WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions)}))
-            AND ${dateConditions.join(' AND ')}
           GROUP BY video_id
-        ) v
-        INNER JOIN (${dimSubquery(conditions)}) d ON v.video_id = d.video_id
+        ) v ON v.video_id = d.video_id
+        WHERE ${publishedConditions.join(' AND ')}
         GROUP BY bucket
         ORDER BY bucket ASC
       `
@@ -220,7 +228,7 @@ export async function queryMedianViewsPerVideo(input: {
             sum(views) as video_views
           FROM video_daily_stats
           WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions)}))
-            AND ${dateConditions.join(' AND ')}
+            AND ${metricDateConditions.join(' AND ')}
           GROUP BY bucket, video_id
         )
         GROUP BY bucket
@@ -465,10 +473,10 @@ export async function queryCohortCurves(input: {
   const query = `
     SELECT
       toString(toStartOfQuarter(d.published_at)) as cohort,
-      count(DISTINCT m.video_id) as video_count,
+      count(DISTINCT d.video_id) as video_count,
       ${checkpointSelects}
-    FROM video_daily_stats m
-    INNER JOIN (${dimSubquery(conditions)}) d ON m.video_id = d.video_id
+    FROM (${dimSubquery(conditions)}) d
+    LEFT JOIN video_daily_stats m ON m.video_id = d.video_id
     GROUP BY cohort
     ORDER BY cohort ASC
   `;
@@ -513,7 +521,7 @@ export async function queryWatchWindowTotals(input: {
   const query = `
     SELECT
       sum(watch_time_seconds) as watch_time_seconds,
-      sum(subscribers_gained) as net_subscribers
+      sum(subscribers_gained) - sum(subscribers_lost) as net_subscribers
     FROM video_daily_stats
     WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions)}))
       AND metric_date >= today() - {windowDays: UInt32}

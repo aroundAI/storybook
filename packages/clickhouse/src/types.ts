@@ -39,6 +39,8 @@ export interface VideoMetric {
   watch_time_seconds: number;
   revenue_cents: number;
   subscribers_gained: number;
+  /** Gross losses. Net movement is gained - lost. */
+  subscribers_lost?: number;
   metric_source?: MetricSource;
   /** Per-day average view duration in seconds (0 when unknown). */
   avg_view_duration_seconds?: number;
@@ -145,6 +147,8 @@ export interface ChannelDaily {
   watch_time_seconds: number;
   impressions: number;
   engaged_views: number;
+  subscribers_gained?: number;
+  subscribers_lost?: number;
 }
 
 /**

@@ -52,7 +52,20 @@ export interface RevenueSummary {
   byPlatform: Record<string, number>;
   byContent: Record<string, number>;
   byType: Record<string, number>;
-  rpm: number; // Revenue per mille (1000 views)
+  /** Cents per 1000 views, all revenue categories. Alias of allInRpmCents. */
+  rpm: number;
+  /** Views for every published video in the window, revenue-bearing or not. */
+  totalViews: number;
+  /** Platform payouts: ads + Premium. */
+  adsRevenueCents: number;
+  /** Everything the channel built itself: sponsorship, product, licensing… */
+  nonAdRevenueCents: number;
+  adsSharePercent: number;
+  nonAdSharePercent: number;
+  /** Cents per 1000 views from ads + Premium only. */
+  adsRpmCents: number;
+  /** Cents per 1000 views across every category. */
+  allInRpmCents: number;
   averageDailyRevenueCents: number;
   trend: 'up' | 'down' | 'stable';
   trendPercent: number;
