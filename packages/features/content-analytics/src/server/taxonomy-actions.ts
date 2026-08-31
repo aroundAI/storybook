@@ -258,14 +258,7 @@ export const getMedianByTagAction = enhanceAction(
         .select('tag_min_sample')
         .eq('account_id', accountId)
         .maybeSingle(),
-      // Cast until the migration is applied and typegen picks the function
-      // up; the generated Database type has no entry for it yet.
-      (
-        client.rpc as unknown as (
-          fn: string,
-          args: Record<string, unknown>,
-        ) => Promise<{ data: number | null }>
-      )('count_tagged_publishes', { target_account_id: accountId }),
+      client.rpc('count_tagged_publishes', { target_account_id: accountId }),
     ]);
 
     if ((taggedCount ?? 0) < TAGGED_LIBRARY_THRESHOLD) {

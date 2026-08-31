@@ -33,7 +33,8 @@
     "supabase:typegen": "pnpm run supabase:typegen:packages && pnpm run supabase:typegen:app",
     "supabase:typegen:packages": "supabase gen types typescript --local > ../../packages/supabase/src/database.types.ts",
     "supabase:typegen:app": "supabase gen types typescript --local > ./lib/database.types.ts",
-    "supabase:db:dump:local": "supabase db dump --local --data-only"
+    "supabase:db:dump:local": "supabase db dump --local --data-only",
+    "supabase:typegen:prod": "set -a && . ../../deployment/config/production.env && set +a && supabase gen types typescript --linked > ../../packages/supabase/src/database.types.ts && cp ../../packages/supabase/src/database.types.ts ./lib/database.types.ts"
   },
   "dependencies": {
     "@aws-sdk/client-ssm": "^3.911.0",

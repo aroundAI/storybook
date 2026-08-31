@@ -5589,6 +5589,10 @@ export type Database = {
         }
         Returns: Json
       }
+      count_tagged_publishes: {
+        Args: { target_account_id: string }
+        Returns: number
+      }
       create_character_with_details: {
         Args: {
           p_description: string
