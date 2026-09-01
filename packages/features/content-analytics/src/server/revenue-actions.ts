@@ -24,7 +24,7 @@ import type {
   RevenueSummary,
   TopRevenueContent,
 } from '../lib/types/revenue';
-import { fetchAccountRevenueRows } from './revenue-queries';
+import { forEachAccountRevenueRow } from './revenue-queries';
 
 /**
  * All published publish ids for an account. Used as the RPM denominator so
@@ -59,41 +59,42 @@ export const getRevenueSummaryAction = enhanceAction(
     const { accountId, startDate, endDate } = data;
 
     // Both publish-scoped and channel-scoped revenue
-    const records = await fetchAccountRevenueRows(
-      client,
-      accountId,
-      startDate,
-      endDate,
-    );
-
-    // Calculate totals and group by platform/content/category in single pass
+    // Calculate totals and group by platform/content/category in single
+    // pass, streamed so the window never has to be held in memory.
     let totalRevenueCents = 0;
     const byPlatform: Record<string, number> = {};
     const byContent: Record<string, number> = {};
     const byType: Record<string, number> = {};
     const publishIds: string[] = [];
 
-    for (const r of records) {
-      const revenueCents = r.revenue_cents || 0;
-      totalRevenueCents += revenueCents;
+    await forEachAccountRevenueRow(
+      client,
+      accountId,
+      startDate,
+      endDate,
+      (r) => {
+        const revenueCents = r.revenue_cents || 0;
+        totalRevenueCents += revenueCents;
 
-      // Group by platform
-      const platform = r.platform || 'unknown';
-      byPlatform[platform] = (byPlatform[platform] || 0) + revenueCents;
+        // Group by platform
+        const platform = r.platform || 'unknown';
+        byPlatform[platform] = (byPlatform[platform] || 0) + revenueCents;
 
-      // Group by revenue category (the mix: ads vs sponsorship vs product)
-      const category = r.category || 'ads';
-      byType[category] = (byType[category] || 0) + revenueCents;
+        // Group by revenue category (the mix: ads vs sponsorship vs product)
+        const category = r.category || 'ads';
+        byType[category] = (byType[category] || 0) + revenueCents;
 
-      // Group by content (episode) — channel-level rows have no episode
-      if (r.episode_id) {
-        byContent[r.episode_id] = (byContent[r.episode_id] || 0) + revenueCents;
-      }
+        // Group by content (episode) — channel-level rows have no episode
+        if (r.episode_id) {
+          byContent[r.episode_id] =
+            (byContent[r.episode_id] || 0) + revenueCents;
+        }
 
-      if (r.publish_id) {
-        publishIds.push(r.publish_id);
-      }
-    }
+        if (r.publish_id) {
+          publishIds.push(r.publish_id);
+        }
+      },
+    );
 
     // RPM denominator is every published video's views in the window, not
     // only the ones that earned — otherwise RPM is inflated by excluding
@@ -144,19 +145,19 @@ export const getRevenueSummaryAction = enhanceAction(
     const previousStartDate = new Date(startDateObj);
     previousStartDate.setDate(previousStartDate.getDate() - dayCount);
 
-    const previousRecords = await fetchAccountRevenueRows(
+    // Single-pass sum for previous period, streamed.
+    let previousTotal = 0;
+
+    await forEachAccountRevenueRow(
       client,
       accountId,
       previousStartDate.toISOString().split('T')[0]!,
       startDate,
+      (r) => {
+        previousTotal += r.revenue_cents || 0;
+      },
       { toExclusive: true },
     );
-
-    // Single-pass sum for previous period
-    let previousTotal = 0;
-    for (const r of previousRecords) {
-      previousTotal += r.revenue_cents || 0;
-    }
     const trendPercent =
       previousTotal > 0
         ? ((totalRevenueCents - previousTotal) / previousTotal) * 100
@@ -341,31 +342,31 @@ export const getRevenueProjectionAction = enhanceAction(
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const recentRecords = await fetchAccountRevenueRows(
-      client,
-      accountId,
-      thirtyDaysAgo.toISOString().split('T')[0]!,
-      new Date().toISOString().split('T')[0]!,
-    );
-
-    // Single-pass aggregation for total, unique dates, and trend calculation
+    // Single-pass aggregation for total, unique dates, and trend
+    // calculation, streamed.
     let totalRecent = 0;
     let firstHalfRevenue = 0;
     const uniqueDates = new Set<string>();
     const fifteenDaysAgo = new Date();
     fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
 
-    for (const r of recentRecords ?? []) {
-      const revenueCents = r.revenue_cents || 0;
-      totalRecent += revenueCents;
-      uniqueDates.add(r.record_date);
+    await forEachAccountRevenueRow(
+      client,
+      accountId,
+      thirtyDaysAgo.toISOString().split('T')[0]!,
+      new Date().toISOString().split('T')[0]!,
+      (r) => {
+        const revenueCents = r.revenue_cents || 0;
+        totalRecent += revenueCents;
+        uniqueDates.add(r.record_date);
 
-      // Check if in first half for trend
-      const date = new Date(r.record_date);
-      if (date < fifteenDaysAgo) {
-        firstHalfRevenue += revenueCents;
-      }
-    }
+        // Check if in first half for trend
+        const date = new Date(r.record_date);
+        if (date < fifteenDaysAgo) {
+          firstHalfRevenue += revenueCents;
+        }
+      },
+    );
 
     const daysWithData = uniqueDates.size;
 
@@ -431,16 +432,21 @@ export const getRevenueTimeSeriesAction = enhanceAction(
     const client = getSupabaseServerClient();
     const { accountId, startDate, endDate } = data;
 
-    const records = (
-      await fetchAccountRevenueRows(client, accountId, startDate, endDate)
-    ).sort((a, b) => a.record_date.localeCompare(b.record_date));
-
-    // Aggregate by date
+    // Aggregate by date, streamed. The rows were sorted before folding,
+    // which a map fold does not need — the series is built from the date
+    // range below, in order, regardless of arrival order.
     const dateMap = new Map<string, number>();
-    records.forEach((r) => {
-      const existing = dateMap.get(r.record_date) ?? 0;
-      dateMap.set(r.record_date, existing + (r.revenue_cents || 0));
-    });
+
+    await forEachAccountRevenueRow(
+      client,
+      accountId,
+      startDate,
+      endDate,
+      (r) => {
+        const existing = dateMap.get(r.record_date) ?? 0;
+        dateMap.set(r.record_date, existing + (r.revenue_cents || 0));
+      },
+    );
 
     // Fill in missing dates with 0
     const result: RevenueDataPoint[] = [];

@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { fetchAllRows } from '@kit/shared/pagination';
+import { forEachPage } from '@kit/shared/pagination';
 
 /**
  * Shared revenue reads.
@@ -38,14 +38,15 @@ export interface AccountRevenueRow {
  * half. The two scopes are therefore queried separately and merged here;
  * PostgREST cannot express an OR across an embedded resource.
  */
-export async function fetchAccountRevenueRows(
+export async function forEachAccountRevenueRow(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   accountId: string,
   from: string,
   to: string,
+  onRow: (row: AccountRevenueRow) => void,
   options?: { toExclusive?: boolean },
-): Promise<AccountRevenueRow[]> {
+): Promise<void> {
   const COLUMNS = `
     id,
     publish_id,
@@ -68,8 +69,21 @@ export async function fetchAccountRevenueRows(
   // Both halves are paged. They truncate independently, so a short read
   // does not merely understate revenue — the current and previous windows
   // lose different amounts, which can flip the reported trend direction.
-  const [channelScoped, publishScoped] = await Promise.all([
-    fetchAllRows<AccountRevenueRow>(
+  //
+  // Rows are handed to the caller a page at a time rather than collected.
+  // revenue_records holds a row per publish per day per category, so a
+  // yearly window on a busy account reaches six figures: materializing that
+  // to fold it once costs the memory and trips the pagination guard, which
+  // would turn a rendering-but-understated summary into a hard failure.
+  //
+  // TODO(FILM-1614): fold this into SQL. The consumers do grouped folds —
+  // by platform, category, episode and date — so this wants an RPC
+  // returning pre-grouped sums, not a single SUM(). That collapses six
+  // figures of rows to a few hundred and puts the scope predicate in one
+  // place instead of two client-side query shapes. Deferred here because it
+  // needs a migration and regenerated types.
+  await Promise.all([
+    forEachPage<AccountRevenueRow>(
       // Named pageFrom/pageTo so they cannot shadow the `from`/`to` date
       // bounds of the enclosing function. If they did and any date filter
       // were written inline here, integer page offsets would be passed as
@@ -84,9 +98,14 @@ export async function fetchAccountRevenueRows(
         )
           .order('id')
           .range(pageFrom, pageTo),
+      (batch) => {
+        for (const row of batch) {
+          onRow({ ...(row as AccountRevenueRow), episode_id: null });
+        }
+      },
       'channel-scoped revenue',
     ),
-    fetchAllRows<AccountRevenueRow & { publishes?: { episode_id?: string } }>(
+    forEachPage<AccountRevenueRow & { publishes?: { episode_id?: string } }>(
       (pageFrom, pageTo) =>
         applyRange(
           client
@@ -107,24 +126,46 @@ export async function fetchAccountRevenueRows(
         )
           .order('id')
           .range(pageFrom, pageTo),
+      (batch) => {
+        for (const row of batch) {
+          const publish = (
+            row as { publishes?: { episode_id?: string | null } }
+          ).publishes;
+          onRow({
+            ...(row as AccountRevenueRow),
+            episode_id: publish?.episode_id ?? null,
+          });
+        }
+      },
       'publish-scoped revenue',
     ),
   ]);
+}
 
+/**
+ * Collects every row into an array.
+ *
+ * Prefer `forEachAccountRevenueRow` for aggregation — this materializes the
+ * whole window, which is what the streaming variant exists to avoid.
+ */
+export async function fetchAccountRevenueRows(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  accountId: string,
+  from: string,
+  to: string,
+  options?: { toExclusive?: boolean },
+): Promise<AccountRevenueRow[]> {
   const rows: AccountRevenueRow[] = [];
 
-  for (const row of channelScoped) {
-    rows.push({ ...(row as AccountRevenueRow), episode_id: null });
-  }
-
-  for (const row of publishScoped) {
-    const publish = (row as { publishes?: { episode_id?: string | null } })
-      .publishes;
-    rows.push({
-      ...(row as AccountRevenueRow),
-      episode_id: publish?.episode_id ?? null,
-    });
-  }
+  await forEachAccountRevenueRow(
+    client,
+    accountId,
+    from,
+    to,
+    (row) => rows.push(row),
+    options,
+  );
 
   return rows;
 }

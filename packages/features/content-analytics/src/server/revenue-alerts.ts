@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { getLogger } from '@kit/shared/logger';
 
-import { fetchAccountRevenueRows } from './revenue-queries';
+import { forEachAccountRevenueRow } from './revenue-queries';
 
 // Use generic SupabaseClient type to avoid strict type checking issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,21 +58,16 @@ export async function evaluateRevenueAlerts(
     // `.eq('account_id', ...)` either — that column is NULL on per-video
     // rows, which would drop most revenue instead — hence the shared helper
     // that unions the channel- and publish-scoped halves.
-    const records = await fetchAccountRevenueRows(
-      client,
-      accountId,
-      since,
-      today,
-    );
-
+    // Streamed, not collected: only the per-date fold is needed, so the
+    // rows never have to exist all at once.
     const byDate = new Map<string, number>();
 
-    for (const row of records) {
+    await forEachAccountRevenueRow(client, accountId, since, today, (row) => {
       byDate.set(
         row.record_date,
         (byDate.get(row.record_date) ?? 0) + (row.revenue_cents ?? 0),
       );
-    }
+    });
 
     const alerts: AlertInsert[] = [];
 

@@ -29,6 +29,17 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 const RETENTION_CONCURRENCY = 20;
 
 /**
+ * Ceiling on how many videos a report fetches retention curves for.
+ *
+ * Each curve is its own ClickHouse round trip. Bounding the concurrency
+ * caps how many run at once but not how many run in total, so a report over
+ * tens of thousands of videos would still serialize thousands of waves
+ * inside one Lambda invocation. Retention is an optional enrichment column,
+ * so it degrades: the cap is logged rather than silently applied.
+ */
+const MAX_RETENTION_VIDEOS = 500;
+
+/**
  * Cron endpoint for processing scheduled reports.
  *
  * Should be called hourly by cron scheduler.
@@ -254,7 +265,19 @@ async function processScheduledReport(
     // bounding it — an account with tens of thousands of publishes would
     // otherwise open that many simultaneous connections from one Lambda.
     // A batched `queryRetentionCurves(videoIds)` would be better still.
-    const withMetrics = videoIds.filter((id) => analyticsMap.has(id));
+    const eligible = videoIds.filter((id) => analyticsMap.has(id));
+    const withMetrics = eligible.slice(0, MAX_RETENTION_VIDEOS);
+
+    if (eligible.length > withMetrics.length) {
+      logger.warn(
+        {
+          ...ctx,
+          eligible: eligible.length,
+          fetched: withMetrics.length,
+        },
+        'Retention curves capped; report will omit them for the remainder',
+      );
+    }
 
     for (const batch of chunkIds(withMetrics, RETENTION_CONCURRENCY)) {
       await Promise.all(

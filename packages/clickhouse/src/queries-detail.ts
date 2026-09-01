@@ -2,6 +2,12 @@
  * Detail queries for the extended-metrics tables (FILM-1505):
  * retention curves, audience breakdowns, and traffic sources.
  */
+import {
+  concatByChunk,
+  fitsOneChunk,
+  mergeMapsByChunk,
+  sumByChunk,
+} from './chunked';
 import { getClickHouseClient, isClickHouseEnabled } from './client';
 import type {
   AudienceDimension,
@@ -83,7 +89,7 @@ export async function queryRetentionCurve(input: {
  * Callers aggregate across videos, typically weighting percentages by
  * each video's view totals.
  */
-export async function queryAudienceRows(input: {
+async function queryAudienceRowsSingle(input: {
   videoIds: string[];
   dimension: AudienceDimension;
 }): Promise<
@@ -142,7 +148,74 @@ export interface VideoQualityMetrics {
  * metrics. These are the weekly-diagnostic numbers (did the packaging
  * fail, did the intro fail) and the previously-empty report columns.
  */
+/**
+ * Per-video quality metrics. The ratios here (CTR, average view duration)
+ * are view-weighted within one video, and a video sits in exactly one
+ * chunk, so merging the maps by assignment leaves them exact.
+ */
 export async function queryQualityMetricsForVideos(input: {
+  videoIds: string[];
+  startDate?: string;
+  endDate?: string;
+}): Promise<Map<string, VideoQualityMetrics>> {
+  if (fitsOneChunk(input.videoIds)) {
+    return queryQualityMetricsForVideosSingle(input);
+  }
+
+  return mergeMapsByChunk(input.videoIds, (chunk) =>
+    queryQualityMetricsForVideosSingle({ ...input, videoIds: chunk }),
+  );
+}
+
+/**
+ * Audience rows. Each row carries its `videoId` and its percentage is
+ * relative to that video, so chunks are disjoint and simply concatenate —
+ * summing would be wrong here.
+ */
+export async function queryAudienceRows(input: {
+  videoIds: string[];
+  dimension: AudienceDimension;
+}): Promise<
+  Array<{ videoId: string; key: string; views: number; percentage: number }>
+> {
+  if (fitsOneChunk(input.videoIds)) return queryAudienceRowsSingle(input);
+
+  return concatByChunk(input.videoIds, (chunk) =>
+    queryAudienceRowsSingle({ ...input, videoIds: chunk }),
+  );
+}
+
+/**
+ * Traffic sources. Grouped by source — and optionally by date and video —
+ * so rows for the same group appear in several chunks and must be summed.
+ * The fold key includes whichever optional dimensions are present, which
+ * keeps per-video mode disjoint and pooled mode correctly additive.
+ */
+export async function queryTrafficSources(input: {
+  videoIds: string[];
+  startDate?: string;
+  endDate?: string;
+  byDate?: boolean;
+  byVideo?: boolean;
+}): Promise<
+  Array<{
+    source: string;
+    date?: string;
+    videoId?: string;
+    views: number;
+    watchTimeMinutes: number;
+  }>
+> {
+  if (fitsOneChunk(input.videoIds)) return queryTrafficSourcesSingle(input);
+
+  return sumByChunk(
+    input.videoIds,
+    (chunk) => queryTrafficSourcesSingle({ ...input, videoIds: chunk }),
+    (row) => `${row.source}|${row.date ?? ''}|${row.videoId ?? ''}`,
+  );
+}
+
+async function queryQualityMetricsForVideosSingle(input: {
   videoIds: string[];
   startDate?: string;
   endDate?: string;
@@ -226,8 +299,7 @@ export async function queryQualityMetricsForVideos(input: {
       impressionsCtr:
         impressions > 0 ? Number(row.ctr_weighted) / impressions : 0,
       engagedViews: Number(row.engaged_views),
-      avgViewDurationSeconds:
-        views > 0 ? Number(row.avd_weighted) / views : 0,
+      avgViewDurationSeconds: views > 0 ? Number(row.avd_weighted) / views : 0,
       avgViewPercentage: views > 0 ? Number(row.avp_weighted) / views : 0,
     });
   }
@@ -241,7 +313,7 @@ export async function queryQualityMetricsForVideos(input: {
  * (`byVideo`). Without `byVideo` the rows are summed across the whole video
  * set, so a per-video answer requires it.
  */
-export async function queryTrafficSources(input: {
+async function queryTrafficSourcesSingle(input: {
   videoIds: string[];
   startDate?: string;
   endDate?: string;

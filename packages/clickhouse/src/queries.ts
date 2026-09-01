@@ -4,6 +4,13 @@
  * Typed query functions for inserting and querying analytics data.
  * All queries target the video_metrics / video_daily_stats tables.
  */
+import {
+  concatByChunk,
+  fitsOneChunk,
+  mergeMapsByChunk,
+  sumByChunk,
+  sumTotalsByChunk,
+} from './chunked';
 import { getClickHouseClient, isClickHouseEnabled } from './client';
 import type {
   AggregatedTotals,
@@ -118,7 +125,7 @@ export async function insertChannelDaily(rows: ChannelDaily[]): Promise<void> {
  *
  * Returns a map keyed by video_id (a publish belongs to a single platform).
  */
-export async function queryLatestSnapshots(input: {
+async function queryLatestSnapshotsSingle(input: {
   videoIds: string[];
   beforeDate: string;
 }): Promise<Map<string, SnapshotTotals>> {
@@ -235,7 +242,92 @@ function buildWhereClause(filters: QueryFilters): {
  * Query aggregated totals from video_daily_stats.
  * Returns summed views, likes, comments, shares, etc.
  */
+/** Zero totals, also the identity when summing chunked partials. */
+const EMPTY_TOTALS: AggregatedTotals = {
+  views: 0,
+  likes: 0,
+  comments: 0,
+  shares: 0,
+  saves: 0,
+  watch_time_seconds: 0,
+  revenue_cents: 0,
+  subscribers_gained: 0,
+};
+
+/**
+ * Account/project totals.
+ *
+ * A `videoIds` list longer than one request is split and the partials
+ * summed — every field here is a sum, so that is exact. See `chunked.ts`
+ * for why the id list cannot simply be passed through.
+ */
 export async function queryTotals(
+  filters:
+    | (QueryFilters & { projectId: string })
+    | (QueryFilters & { videoIds: string[] }),
+): Promise<AggregatedTotals> {
+  const videoIds = (filters as QueryFilters).videoIds;
+
+  if (!videoIds || fitsOneChunk(videoIds)) return queryTotalsSingle(filters);
+
+  return sumTotalsByChunk(
+    videoIds,
+    (chunk) => queryTotalsSingle({ ...filters, videoIds: chunk }),
+    EMPTY_TOTALS,
+  );
+}
+
+/** Daily series, folded on date when the id list spans several requests. */
+export async function queryDailyTimeSeries(
+  filters: QueryFilters,
+): Promise<DailyDataPoint[]> {
+  const videoIds = filters.videoIds;
+
+  if (!videoIds || fitsOneChunk(videoIds)) {
+    return queryDailyTimeSeriesSingle(filters);
+  }
+
+  const merged = await sumByChunk(
+    videoIds,
+    (chunk) => queryDailyTimeSeriesSingle({ ...filters, videoIds: chunk }),
+    (row) => row.date,
+  );
+
+  return merged.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Platform breakdown, folded on platform across chunks. */
+export async function queryPlatformBreakdown(
+  filters: QueryFilters,
+): Promise<PlatformBreakdown[]> {
+  const videoIds = filters.videoIds;
+
+  if (!videoIds || fitsOneChunk(videoIds)) {
+    return queryPlatformBreakdownSingle(filters);
+  }
+
+  return sumByChunk(
+    videoIds,
+    (chunk) => queryPlatformBreakdownSingle({ ...filters, videoIds: chunk }),
+    (row) => row.platform,
+  );
+}
+
+/**
+ * Per-video totals. Keyed by video, so chunks are disjoint and the maps
+ * merge by assignment.
+ */
+export async function queryPerVideoTotals(
+  filters: QueryFilters & { videoIds: string[] },
+): Promise<Map<string, AggregatedTotals>> {
+  if (fitsOneChunk(filters.videoIds)) return queryPerVideoTotalsSingle(filters);
+
+  return mergeMapsByChunk(filters.videoIds, (chunk) =>
+    queryPerVideoTotalsSingle({ ...filters, videoIds: chunk }),
+  );
+}
+
+async function queryTotalsSingle(
   filters:
     | (QueryFilters & { projectId: string })
     | (QueryFilters & { videoIds: string[] }),
@@ -309,7 +401,7 @@ export async function queryTotals(
  * Query daily time series data from video_daily_stats.
  * Groups by date and returns sorted daily data points.
  */
-export async function queryDailyTimeSeries(
+async function queryDailyTimeSeriesSingle(
   filters: QueryFilters,
 ): Promise<DailyDataPoint[]> {
   if (!isClickHouseEnabled()) return [];
@@ -357,7 +449,7 @@ export async function queryDailyTimeSeries(
  * Query platform breakdown from video_daily_stats.
  * Groups metrics by platform.
  */
-export async function queryPlatformBreakdown(
+async function queryPlatformBreakdownSingle(
   filters: QueryFilters,
 ): Promise<PlatformBreakdown[]> {
   if (!isClickHouseEnabled()) return [];
@@ -403,7 +495,7 @@ export async function queryPlatformBreakdown(
  * Query per-video totals from video_daily_stats.
  * Returns totals grouped by video_id for a set of video IDs.
  */
-export async function queryPerVideoTotals(
+async function queryPerVideoTotalsSingle(
   filters: QueryFilters & { videoIds: string[] },
 ): Promise<Map<string, AggregatedTotals>> {
   if (!isClickHouseEnabled()) return new Map();
@@ -456,7 +548,90 @@ export async function queryPerVideoTotals(
  * Query raw daily stats rows (not aggregated).
  * Useful for detailed per-video per-day data.
  */
+/**
+ * Raw per-video per-day rows. Each row names its video, so chunks are
+ * disjoint and concatenate.
+ */
 export async function queryDailyStats(
+  filters: QueryFilters,
+): Promise<DailyStats[]> {
+  const videoIds = filters.videoIds;
+
+  if (!videoIds || fitsOneChunk(videoIds))
+    return queryDailyStatsSingle(filters);
+
+  return concatByChunk(videoIds, (chunk) =>
+    queryDailyStatsSingle({ ...filters, videoIds: chunk }),
+  );
+}
+
+/** Latest snapshot per video — keyed by video, so maps merge by assignment. */
+export async function queryLatestSnapshots(input: {
+  videoIds: string[];
+  beforeDate: string;
+}): Promise<Map<string, SnapshotTotals>> {
+  if (fitsOneChunk(input.videoIds)) return queryLatestSnapshotsSingle(input);
+
+  return mergeMapsByChunk(input.videoIds, (chunk) =>
+    queryLatestSnapshotsSingle({ ...input, videoIds: chunk }),
+  );
+}
+
+/**
+ * Daily series with a nested per-platform breakdown.
+ *
+ * This one needs its own merge: the generic fold sums top-level numbers but
+ * would keep the first chunk's `byPlatform` object untouched, silently
+ * dropping the other chunks' platform figures.
+ */
+export async function queryDailyTimeSeriesByPlatform(
+  filters: QueryFilters,
+): Promise<DailyPlatformBreakdown[]> {
+  const videoIds = filters.videoIds;
+
+  if (!videoIds || fitsOneChunk(videoIds)) {
+    return queryDailyTimeSeriesByPlatformSingle(filters);
+  }
+
+  const rows = await concatByChunk(videoIds, (chunk) =>
+    queryDailyTimeSeriesByPlatformSingle({ ...filters, videoIds: chunk }),
+  );
+
+  const byDate = new Map<string, DailyPlatformBreakdown>();
+
+  for (const row of rows) {
+    const existing = byDate.get(row.date);
+
+    if (!existing) {
+      byDate.set(row.date, { ...row, byPlatform: { ...row.byPlatform } });
+      continue;
+    }
+
+    existing.views += row.views;
+    existing.likes += row.likes;
+    existing.comments += row.comments;
+    existing.shares += row.shares;
+
+    for (const [platform, engagement] of Object.entries(row.byPlatform)) {
+      const current = existing.byPlatform[platform];
+
+      existing.byPlatform[platform] = current
+        ? {
+            views: current.views + engagement.views,
+            likes: current.likes + engagement.likes,
+            comments: current.comments + engagement.comments,
+            shares: current.shares + engagement.shares,
+          }
+        : { ...engagement };
+    }
+  }
+
+  return Array.from(byDate.values()).sort((a, b) =>
+    a.date.localeCompare(b.date),
+  );
+}
+
+async function queryDailyStatsSingle(
   filters: QueryFilters,
 ): Promise<DailyStats[]> {
   if (!isClickHouseEnabled()) return [];
@@ -544,7 +719,7 @@ export async function queryViewsForVideos(
  * Query daily time series with per-platform breakdown.
  * Returns both aggregate daily totals and per-platform splits.
  */
-export async function queryDailyTimeSeriesByPlatform(
+async function queryDailyTimeSeriesByPlatformSingle(
   filters: QueryFilters,
 ): Promise<DailyPlatformBreakdown[]> {
   if (!isClickHouseEnabled()) return [];

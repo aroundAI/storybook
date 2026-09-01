@@ -49,6 +49,13 @@ const SIGNED_URL_EXPIRY_SECONDS = 3600;
 const RETENTION_CONCURRENCY = 20;
 
 /**
+ * Ceiling on how many videos a report fetches retention curves for.
+ * Bounding concurrency caps how many run at once but not how many run in
+ * total; retention is optional enrichment, so it degrades past this.
+ */
+const MAX_RETENTION_VIDEOS = 500;
+
+/**
  * Calculate date range from preset
  */
 function calculateDateRange(preset: DatePreset): { start: Date; end: Date } {
@@ -206,7 +213,9 @@ async function fetchAnalyticsData(
     // Bounded fan-out: one ClickHouse round trip per video, and publishIds
     // is no longer implicitly capped now that the publish read is paged.
     // `perVideoTotals.has(id)` narrows this set without bounding it.
-    const withMetrics = publishIds.filter((id) => perVideoTotals.has(id));
+    const withMetrics = publishIds
+      .filter((id) => perVideoTotals.has(id))
+      .slice(0, MAX_RETENTION_VIDEOS);
 
     for (const batch of chunkIds(withMetrics, RETENTION_CONCURRENCY)) {
       await Promise.all(

@@ -1,3 +1,4 @@
+import { getLogger } from '@kit/shared/logger';
 import { fetchAllRows } from '@kit/shared/pagination';
 import { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -91,20 +92,54 @@ export async function getPublicProjects(
   accountId: string,
 ): Promise<PublicProject[]> {
   const client = getSupabaseServerClient();
-  const { data, error } = await client
-    .from('projects')
-    .select(
-      `
+
+  // Paged, like its sibling getPublicEpisodes: an unpaged read stops at the
+  // server's row cap with HTTP 200 and no error, so a company past that
+  // would silently lose the rest of its public listing.
+  //
+  // `created_at` leads so the newest-first display order is preserved, but
+  // it is not unique — `id` is the tiebreak that makes the page boundaries
+  // deterministic. Without it, ties can skip and duplicate rows.
+  //
+  // Failures are logged and degrade to an empty list rather than throwing:
+  // the only caller renders this inside a public company page with a bare
+  // await, so a throw would 500 the whole page instead of dropping one
+  // section. (getSitemapData throws instead, because its route was given an
+  // explicit degrade path.)
+  try {
+    const data = await fetchAllRows(
+      (from, to) =>
+        client
+          .from('projects')
+          .select(
+            `
       *,
       account:accounts!inner(id, name, slug)
     `,
-    )
-    .eq('account_id', accountId)
-    .eq('visibility', 'public')
-    .order('created_at', { ascending: false });
+          )
+          .eq('account_id', accountId)
+          .eq('visibility', 'public')
+          .order('created_at', { ascending: false })
+          .order('id')
+          .range(from, to),
+      'public projects',
+    );
 
-  if (error) return [];
-  return data as unknown as PublicProject[];
+    return data as unknown as PublicProject[];
+  } catch (error) {
+    const logger = await getLogger();
+
+    logger.error(
+      {
+        name: 'public-projects',
+        accountId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      'Failed to load public projects',
+    );
+
+    return [];
+  }
 }
 
 /**
@@ -199,7 +234,21 @@ export async function getPublicEpisodes(
     );
 
     return data as unknown as PublicEpisode[];
-  } catch {
+  } catch (error) {
+    // Logged rather than swallowed, and degraded rather than thrown, for
+    // the same reason as getPublicProjects above: the caller is a public
+    // page render.
+    const logger = await getLogger();
+
+    logger.error(
+      {
+        name: 'public-episodes',
+        projectId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      'Failed to load public episodes',
+    );
+
     return [];
   }
 }

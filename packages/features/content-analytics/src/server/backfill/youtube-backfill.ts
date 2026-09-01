@@ -4,7 +4,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { insertVideoMetrics } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
-import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import { createYouTubeAnalyticsProvider } from '../../providers/youtube';
@@ -77,13 +76,16 @@ export async function runYouTubeBackfillBatch(options?: {
     errors: [],
   };
 
-  const pending = await fetchPendingPublishes(client);
-  result.remaining = pending.length;
+  // Count first, then read only the batch this run will process. The count
+  // is what `remaining` reports; the read is the work set.
+  result.remaining = await countPendingPublishes(client);
 
-  if (pending.length === 0) {
+  if (result.remaining === 0) {
     logger.info(ctx, 'YouTube backfill complete — nothing pending');
     return result;
   }
+
+  const pending = await fetchPendingPublishes(client, maxVideos);
 
   // Dimension rows must exist before backfilled metrics are queryable
   if (!dryRun) {
@@ -188,42 +190,75 @@ export async function runYouTubeBackfillBatch(options?: {
   return result;
 }
 
+const PENDING_COLUMNS =
+  'id, episode_id, platform_connection_id, platform_content_id, published_at, metadata';
+
+/**
+ * The predicate defining "pending backfill", shared by the count and the
+ * read so the progress figure can never drift from the work set.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function pendingFilters(query: any) {
+  return query
+    .eq('status', 'published')
+    .eq('platform', 'youtube')
+    .not('platform_content_id', 'is', null)
+    .not('platform_connection_id', 'is', null)
+    .is('metadata->sync->>backfill_completed_at', null);
+}
+
+/**
+ * How many publishes are still awaiting backfill.
+ *
+ * An exact head count is not subject to the row cap, so this needs no
+ * pagination — and it is the only thing the full backlog was ever read for.
+ */
+async function countPendingPublishes(client: Client): Promise<number> {
+  const { count, error } = await pendingFilters(
+    client.from('publishes').select('id', { count: 'exact', head: true }),
+  );
+
+  if (error) {
+    throw new Error(`Pending backfill count failed: ${error.message}`);
+  }
+
+  return count ?? 0;
+}
+
 /**
  * Published YouTube videos that have not completed backfill, oldest first
  * so the back-catalog series completes from the beginning.
+ *
+ * Bounded by `limit`, which is the batch size the caller will actually
+ * process — previously this drained the entire backlog to hand back a list
+ * the caller broke out of after 50 rows, so everything past the batch was
+ * fetched, deserialized and discarded. Past the pagination guard it would
+ * have thrown on every invocation and stalled the backfill for good.
+ *
+ * `.limit()` is safe here, unlike the reads this sweep replaced, precisely
+ * because the batch size is far below the server's 1,000-row cap: the cap
+ * cannot silently truncate a request for 50 rows.
+ *
+ * Deliberately not wrapped in a try/catch — returning [] on failure is
+ * indistinguishable from an empty backlog, and the caller treats that as
+ * "nothing pending" and does no work.
  */
 async function fetchPendingPublishes(
   client: Client,
+  limit: number,
 ): Promise<BackfillPublish[]> {
-  // Paged. Oldest-first ordering means a truncated read still processed
-  // real pending work, so nothing was lost — but `remaining` is reported
-  // from this list, so the backfill looked far closer to finished than it
-  // was, and would have flat-lined at 1,000 outstanding forever.
-  //
-  // Deliberately not wrapped in a try/catch. Returning [] on failure is
-  // indistinguishable from an empty backlog to the caller, which logs
-  // "nothing pending" and returns having done no work — so an overflow or a
-  // transient error would stall the backfill permanently while reporting
-  // success. Let it propagate; runYouTubeBackfillBatch already reports it.
-  const data = await fetchAllRows<BackfillPublish>(
-    (from, to) =>
-      client
-        .from('publishes')
-        .select(
-          'id, episode_id, platform_connection_id, platform_content_id, published_at, metadata',
-        )
-        .eq('status', 'published')
-        .eq('platform', 'youtube')
-        .not('platform_content_id', 'is', null)
-        .not('platform_connection_id', 'is', null)
-        .is('metadata->sync->>backfill_completed_at', null)
-        .order('published_at', { ascending: true })
-        .order('id')
-        .range(from, to),
-    'pending backfill publishes',
-  );
+  const { data, error } = await pendingFilters(
+    client.from('publishes').select(PENDING_COLUMNS),
+  )
+    .order('published_at', { ascending: true })
+    .order('id')
+    .limit(limit);
 
-  return data.filter((row) => row.published_at) as BackfillPublish[];
+  if (error) {
+    throw new Error(`Pending backfill read failed: ${error.message}`);
+  }
+
+  return ((data ?? []) as BackfillPublish[]).filter((row) => row.published_at);
 }
 
 function buildDateChunks(

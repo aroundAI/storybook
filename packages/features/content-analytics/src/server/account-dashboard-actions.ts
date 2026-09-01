@@ -11,7 +11,7 @@ import {
 } from '@kit/clickhouse/server';
 import type { AggregatedTotals } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
-import { chunkIds, fetchAllByIds } from '@kit/shared/pagination';
+import { chunkIds, fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { AnalyticsTotals, DailyMetric } from '../types';
@@ -71,14 +71,23 @@ export async function getAccountDashboardData(
     previousEndDate.getTime() - periodDays * 24 * 60 * 60 * 1000,
   );
 
-  // Get all projects for this account
-  const { data: projects } = await client
-    .from('projects')
-    .select('id, name')
-    .eq('account_id', accountId)
-    .is('deleted_at', null);
+  // Get all projects for this account. Paged: this is the input every
+  // downstream read is scoped by, so truncating it here would leave the
+  // dashboard exhaustively paging over an incomplete project set and
+  // reporting confidently wrong totals rather than obviously short ones.
+  const projects = await fetchAllRows<{ id: string; name: string }>(
+    (from, to) =>
+      client
+        .from('projects')
+        .select('id, name')
+        .eq('account_id', accountId)
+        .is('deleted_at', null)
+        .order('id')
+        .range(from, to),
+    'dashboard projects',
+  );
 
-  if (!projects || projects.length === 0) {
+  if (projects.length === 0) {
     return getEmptyDashboardData();
   }
 

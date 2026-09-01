@@ -103,6 +103,13 @@ const IN_CHUNK_SIZE = 200;
  * Each chunk is drained with `fetchAllRows`, because a chunk of N ids can
  * still match far more than N rows on a one-to-many table (`publish_tags`
  * being the case that motivated this).
+ *
+ * Ids are deduplicated first. A single `.in(...)` absorbs duplicates, but
+ * chunking does not: the same id landing in two chunks runs two queries
+ * whose results are both concatenated, so a repeated id would return its
+ * rows twice and inflate anything folded from them. Deduplicating here
+ * keeps this a drop-in replacement for the single `.in(...)` it stands in
+ * for, and covers every caller rather than each one remembering.
  */
 export async function fetchAllByIds<T>(
   ids: string[],
@@ -113,12 +120,14 @@ export async function fetchAllByIds<T>(
   ) => PromiseLike<PageResult<T>>,
   label = 'query',
 ): Promise<T[]> {
-  if (ids.length === 0) return [];
+  const unique = Array.from(new Set(ids));
+
+  if (unique.length === 0) return [];
 
   const rows: T[] = [];
 
-  for (let index = 0; index < ids.length; index += IN_CHUNK_SIZE) {
-    const chunk = ids.slice(index, index + IN_CHUNK_SIZE);
+  for (let index = 0; index < unique.length; index += IN_CHUNK_SIZE) {
+    const chunk = unique.slice(index, index + IN_CHUNK_SIZE);
 
     rows.push(
       ...(await fetchAllRows<T>(
