@@ -4,6 +4,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { getLogger } from '@kit/shared/logger';
 
+import { fetchAccountRevenueRows } from './revenue-queries';
+
 // Use generic SupabaseClient type to avoid strict type checking issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Client = SupabaseClient<any, any, any>;
@@ -15,9 +17,7 @@ const SPIKE_MULTIPLIER = 3;
 const TRAILING_DAYS = 28;
 
 /** Monthly revenue milestones, in cents. */
-const MONTHLY_MILESTONES_CENTS = [
-  10_000, 50_000, 100_000, 500_000, 1_000_000,
-];
+const MONTHLY_MILESTONES_CENTS = [10_000, 50_000, 100_000, 500_000, 1_000_000];
 
 export interface RevenueAlertResult {
   created: number;
@@ -46,20 +46,24 @@ export async function evaluateRevenueAlerts(
   const ctx = { name: 'revenue-alerts', accountId };
 
   try {
-    const since = new Date(
-      Date.now() - TRAILING_DAYS * 24 * 60 * 60 * 1000,
-    )
+    const since = new Date(Date.now() - TRAILING_DAYS * 24 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10);
 
-    const { data: records, error } = await client
-      .from('revenue_records')
-      .select('record_date, revenue_cents')
-      .gte('record_date', since);
+    const today = new Date().toISOString().slice(0, 10);
 
-    if (error || !records) {
-      return { created: 0 };
-    }
+    // Scoped to the account explicitly. This runs on the admin client, which
+    // bypasses RLS, so an unscoped read would aggregate every tenant's
+    // revenue into this account's alerts. Scoping cannot be a plain
+    // `.eq('account_id', ...)` either — that column is NULL on per-video
+    // rows, which would drop most revenue instead — hence the shared helper
+    // that unions the channel- and publish-scoped halves.
+    const records = await fetchAccountRevenueRows(
+      client,
+      accountId,
+      since,
+      today,
+    );
 
     const byDate = new Map<string, number>();
 
@@ -72,7 +76,6 @@ export async function evaluateRevenueAlerts(
 
     const alerts: AlertInsert[] = [];
 
-    const today = new Date().toISOString().slice(0, 10);
     const todayCents = byDate.get(today) ?? 0;
 
     const priorDays = Array.from(byDate.entries()).filter(
