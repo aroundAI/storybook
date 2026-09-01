@@ -17,6 +17,7 @@ const mockClickHouseClient = {
 };
 
 const PROJECT = '550e8400-e29b-41d4-a716-446655440000';
+const CHANNEL = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 
 function lastQuery(): { query: string; query_params: Record<string, unknown> } {
   const calls = mockClickHouseClient.query.mock.calls;
@@ -189,6 +190,63 @@ describe('queries-advanced', () => {
       const { query, query_params } = lastQuery();
       expect(query).toContain("dateDiff('day', d.published_at");
       expect(query_params.ageDays).toBe(90);
+    });
+  });
+
+  describe('channel dimension (FILM-1602)', () => {
+    it('filters by connection_id when a channel is scoped', async () => {
+      const { queryMedianViewsPerVideo } = await import(
+        '../src/queries-advanced'
+      );
+
+      await queryMedianViewsPerVideo({
+        scope: { projectId: PROJECT, connectionId: CHANNEL },
+        bucket: 'month',
+        mode: 'cohort_views_to_date',
+      });
+
+      const { query, query_params } = lastQuery();
+      expect(query).toContain('connection_id = {scopeConnectionId: UUID}');
+      expect(query_params.scopeConnectionId).toBe(CHANNEL);
+      // The channel narrows an existing scope rather than replacing it
+      expect(query_params.scopeProjectId).toBe(PROJECT);
+    });
+
+    it('omits the channel condition when none is given', async () => {
+      const { queryMedianViewsPerVideo } = await import(
+        '../src/queries-advanced'
+      );
+
+      await queryMedianViewsPerVideo({
+        scope: { projectId: PROJECT },
+        bucket: 'month',
+        mode: 'cohort_views_to_date',
+      });
+
+      expect(lastQuery().query).not.toContain('connection_id');
+    });
+
+    it('still requires a project or account, not a channel alone', async () => {
+      const { queryCohortCurves } = await import('../src/queries-advanced');
+
+      await expect(
+        queryCohortCurves({ scope: { connectionId: CHANNEL } }),
+      ).rejects.toThrow(/requires projectId or accountId/);
+    });
+
+    it('scopes channel watch time to the given connections only', async () => {
+      const { queryChannelWatchWindow } = await import(
+        '../src/queries-advanced'
+      );
+
+      await queryChannelWatchWindow({
+        connectionIds: [CHANNEL],
+        windowDays: 365,
+      });
+
+      const { query, query_params } = lastQuery();
+      expect(query).toContain('connection_id IN {connectionIds:');
+      expect(query_params.connectionIds).toEqual([CHANNEL]);
     });
   });
 

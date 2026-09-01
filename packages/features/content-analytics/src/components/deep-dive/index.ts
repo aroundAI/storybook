@@ -28,7 +28,7 @@ export {
   YppProgressCard,
   YppProgressCardSkeleton,
 } from './ypp-progress-card';
-export type { YppProgress } from './ypp-progress-card';
+export type { YppChannelProgress } from './ypp-progress-card';
 
 export {
   RetentionCurveChart,

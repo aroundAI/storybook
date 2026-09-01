@@ -160,6 +160,12 @@ export interface VideoDim {
   project_id: string;
   account_id: string;
   episode_id: string;
+  /**
+   * The channel this video was published to (platform_connections.id).
+   * A project spans several channels, so this is the grouping key for
+   * per-channel analysis. UNATTRIBUTED_CONNECTION_ID when unknown.
+   */
+  connection_id: string;
   platform: string;
   content_type: string;
   language: string;

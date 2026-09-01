@@ -17,6 +17,7 @@ import {
   UpdateTagSchema,
 } from '../lib/schemas/taxonomy.schema';
 import { upsertVideoDims } from './dim-sync';
+import { fetchAllRows } from './lib/paginate';
 
 export const createTagAction = enhanceAction(
   async (data, user) => {
@@ -69,10 +70,19 @@ export const deleteTagAction = enhanceAction(
   async ({ tagId }) => {
     const client = getSupabaseServerClient();
 
-    const { data: assignments } = await client
-      .from('publish_tags')
-      .select('publish_id')
-      .eq('tag_id', tagId);
+    // Paged before the delete. Any assignment missed here keeps advertising
+    // the tag in video_dim forever — the row is gone from Postgres, so no
+    // later pass can rediscover which publishes need re-syncing.
+    const assignments = await fetchAllRows<{ publish_id: string }>(
+      (from, to) =>
+        client
+          .from('publish_tags')
+          .select('publish_id')
+          .eq('tag_id', tagId)
+          .order('publish_id')
+          .range(from, to),
+      'publish_tags by tag',
+    );
 
     const { error } = await client
       .from('content_tags')
@@ -83,7 +93,7 @@ export const deleteTagAction = enhanceAction(
       throw new Error(`Failed to delete tag: ${error.message}`);
     }
 
-    const publishIds = (assignments ?? []).map((row) => row.publish_id);
+    const publishIds = assignments.map((row) => row.publish_id);
 
     if (publishIds.length > 0) {
       await upsertVideoDims(publishIds);
@@ -178,12 +188,10 @@ export const bulkTagPublishesAction = enhanceAction(
       tagIds.map((tagId) => ({ publish_id: publishId, tag_id: tagId })),
     );
 
-    const { error } = await client
-      .from('publish_tags')
-      .upsert(rows, {
-        onConflict: 'publish_id,tag_id',
-        ignoreDuplicates: true,
-      });
+    const { error } = await client.from('publish_tags').upsert(rows, {
+      onConflict: 'publish_id,tag_id',
+      ignoreDuplicates: true,
+    });
 
     if (error) {
       throw new Error(`Failed to assign tags: ${error.message}`);

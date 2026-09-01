@@ -3,8 +3,16 @@
 import { Progress } from '@kit/ui/progress';
 import { Skeleton } from '@kit/ui/skeleton';
 
-/** Result shape from getYppProgressAction. */
-export interface YppProgress {
+/**
+ * One channel's progress — a single element of the array
+ * `getYppProgressAction` returns, not the whole result.
+ *
+ * YPP is a per-channel gate, so the action never pools channels and this
+ * card renders one channel at a time; the caller maps over the array.
+ */
+export interface YppChannelProgress {
+  connectionId: string;
+  channelName: string;
   watchHours: number;
   targetWatchHours: number;
   watchHoursProgress: number;
@@ -15,14 +23,14 @@ export interface YppProgress {
 }
 
 interface YppProgressCardProps {
-  /** Progress toward the monetization gate */
-  progress: YppProgress;
+  /** One channel's progress toward the monetization gate */
+  progress: YppChannelProgress;
   /** Loading state */
   isLoading?: boolean;
 }
 
 /**
- * Progress toward the YouTube Partner Program gate.
+ * Progress toward the YouTube Partner Program gate, for one channel.
  *
  * Watch hours here are channel-wide (they include videos not published
  * through this platform), because the gate itself is channel-wide —

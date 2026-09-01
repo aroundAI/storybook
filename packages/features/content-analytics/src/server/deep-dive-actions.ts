@@ -16,6 +16,7 @@ import { enhanceAction } from '@kit/next/actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { formatDate } from '../lib/utils';
+import { listAccountChannels } from './channels';
 
 /**
  * Scope shared by the deep-dive actions: project- or account-level, with
@@ -25,6 +26,7 @@ const ScopeSchema = z
   .object({
     projectId: z.string().uuid().optional(),
     accountId: z.string().uuid().optional(),
+    connectionId: z.string().uuid().optional(),
     platform: z.enum(['youtube', 'tiktok', 'instagram']).optional(),
     contentType: z.string().max(50).optional(),
     language: z.string().max(10).optional(),
@@ -43,27 +45,50 @@ type Scope = z.infer<typeof ScopeSchema>;
 async function assertScopeAccess(scope: Scope): Promise<void> {
   const client = getSupabaseServerClient();
 
+  let scopeAccountId = scope.accountId;
+
   if (scope.projectId) {
     const { data } = await client
       .from('projects')
-      .select('id')
+      .select('id, account_id')
       .eq('id', scope.projectId)
       .maybeSingle();
 
     if (!data) {
       throw new Error('Project not found or access denied');
     }
-    return;
+
+    scopeAccountId = data.account_id ?? scope.accountId;
+  } else {
+    const { data } = await client
+      .from('accounts')
+      .select('id')
+      .eq('id', scope.accountId!)
+      .maybeSingle();
+
+    if (!data) {
+      throw new Error('Account not found or access denied');
+    }
   }
 
-  const { data } = await client
-    .from('accounts')
-    .select('id')
-    .eq('id', scope.accountId!)
+  if (!scope.connectionId) return;
+
+  // A channel filter narrows a scope that has already been proven to belong
+  // to the caller — `buildDimConditions` ANDs it onto the verified project
+  // or account — so this check is not what keeps data private. It is here so
+  // that a channel outside the scope fails loudly, instead of silently
+  // matching no rows and rendering as "no data".
+  const { data: connection } = await client
+    .from('platform_connections')
+    .select('id, account_id')
+    .eq('id', scope.connectionId)
     .maybeSingle();
 
-  if (!data) {
-    throw new Error('Account not found or access denied');
+  if (
+    !connection ||
+    (scopeAccountId && connection.account_id !== scopeAccountId)
+  ) {
+    throw new Error('Channel not found or not part of this scope');
   }
 }
 
@@ -71,6 +96,7 @@ function toDimScope(scope: Scope): DimScope {
   return {
     projectId: scope.projectId,
     accountId: scope.accountId,
+    connectionId: scope.connectionId,
     platform: scope.platform,
     contentType: scope.contentType,
     language: scope.language,
@@ -243,62 +269,98 @@ export const getCohortCurvesAction = enhanceAction(
 );
 
 /**
- * Watch-hours and subscriber progress toward the YPP gate over the
- * trailing 365 days. Channel-accurate: includes channel_daily watch time
- * from videos not published through the platform.
+ * Watch-hours and subscriber progress toward the YPP gate, per channel.
+ *
+ * YPP is a per-channel gate, so this returns one row per channel and never
+ * a pooled total — summing two channels' watch hours against one 4,000-hour
+ * target would say a threshold is met when neither channel has met it.
+ *
+ * A channel's watch time is its videos published through this platform
+ * (video_metrics, filtered by connection) plus channel_daily, which holds
+ * exactly the residual for videos that never matched a publish. The two are
+ * complementary halves, so adding them double-counts nothing.
  */
 export const getYppProgressAction = enhanceAction(
-  async ({ accountId }) => {
-    await assertScopeAccess({ accountId });
+  async ({ accountId, connectionId, windowDays }) => {
+    await assertScopeAccess({ accountId, connectionId });
 
     const client = getSupabaseServerClient();
 
-    const [{ data: settings }, { data: connections }] = await Promise.all([
+    const [{ data: settings }, channels] = await Promise.all([
       client
         .from('analytics_settings')
         .select('ypp_target_watch_hours, ypp_target_subscribers')
         .eq('account_id', accountId)
         .maybeSingle(),
-      client
-        .from('platform_connections')
-        .select('id')
-        .eq('account_id', accountId)
-        .eq('platform', 'youtube')
-        .eq('is_active', true),
+      listAccountChannels(accountId, client, {
+        platform: 'youtube',
+        activeOnly: true,
+      }),
     ]);
 
     const targetWatchHours = settings?.ypp_target_watch_hours ?? 4000;
     const targetSubscribers = settings?.ypp_target_subscribers ?? 1000;
 
-    const [videoTotals, channelTotals] = await Promise.all([
-      queryWatchWindowTotals({
-        scope: { accountId, platform: 'youtube' },
-        windowDays: 365,
-      }),
-      queryChannelWatchWindow({
-        connectionIds: (connections ?? []).map((c) => c.id),
-        windowDays: 365,
-      }),
-    ]);
+    const selected = connectionId
+      ? channels.filter((channel) => channel.connectionId === connectionId)
+      : channels;
 
-    const watchHours =
-      (videoTotals.watchTimeSeconds + channelTotals.watchTimeSeconds) / 3600;
+    // assertScopeAccess proves the channel belongs to this account, but this
+    // list is additionally filtered to active YouTube channels — YPP applies
+    // to neither a disconnected channel nor a TikTok one. Say so rather than
+    // returning an empty array that reads as "no progress yet".
+    if (connectionId && selected.length === 0) {
+      throw new Error(
+        'Channel is not an active YouTube connection, so it has no YPP progress',
+      );
+    }
 
-    return {
-      watchHours: Math.round(watchHours * 10) / 10,
-      targetWatchHours,
-      watchHoursProgress: Math.min(1, watchHours / targetWatchHours),
-      netSubscribers: videoTotals.netSubscribers,
-      targetSubscribers,
-      subscriberProgress: Math.min(
-        1,
-        Math.max(0, videoTotals.netSubscribers) / targetSubscribers,
-      ),
-      windowDays: 365,
-    };
+    return Promise.all(
+      selected.map(async (channel) => {
+        const [videoTotals, channelTotals] = await Promise.all([
+          queryWatchWindowTotals({
+            scope: {
+              accountId,
+              connectionId: channel.connectionId,
+              platform: 'youtube',
+            },
+            windowDays,
+          }),
+          queryChannelWatchWindow({
+            connectionIds: [channel.connectionId],
+            windowDays,
+          }),
+        ]);
+
+        const watchHours =
+          (videoTotals.watchTimeSeconds + channelTotals.watchTimeSeconds) /
+          3600;
+
+        return {
+          connectionId: channel.connectionId,
+          channelName: channel.name,
+          watchHours: Math.round(watchHours * 10) / 10,
+          targetWatchHours,
+          watchHoursProgress: Math.min(1, watchHours / targetWatchHours),
+          // Net movement, not an absolute count — the absolute figure needs
+          // the channel snapshot introduced in FILM-1607.
+          netSubscribers: videoTotals.netSubscribers,
+          targetSubscribers,
+          subscriberProgress: Math.min(
+            1,
+            Math.max(0, videoTotals.netSubscribers) / targetSubscribers,
+          ),
+          windowDays,
+        };
+      }),
+    );
   },
   {
-    schema: z.object({ accountId: z.string().uuid() }),
+    schema: z.object({
+      accountId: z.string().uuid(),
+      connectionId: z.string().uuid().optional(),
+      windowDays: z.number().int().min(90).max(400).default(365),
+    }),
     auth: true,
   },
 );
@@ -320,22 +382,30 @@ export const getReturningViewerProxyAction = enhanceAction(
 
     const client = getClient();
 
-    let publishQuery = client
-      .from('publishes')
-      .select('id, episodes!inner(project_id, projects!inner(account_id))')
-      .eq('status', 'published');
+    const { fetchAllRows } = await import('./lib/paginate');
 
-    if (scope.projectId) {
-      publishQuery = publishQuery.eq('episodes.project_id', scope.projectId);
-    } else {
-      publishQuery = publishQuery.eq(
-        'episodes.projects.account_id',
-        scope.accountId!,
-      );
-    }
+    // Paged: this list is a denominator, not a display list. Truncating it
+    // biases both halves of the subscribed share, so the headline "owned vs
+    // rented audience" ratio would be computed over an arbitrary subset.
+    const publishes = await fetchAllRows<{ id: string }>((from, to) => {
+      let publishQuery = client
+        .from('publishes')
+        .select('id, episodes!inner(project_id, projects!inner(account_id))')
+        .eq('status', 'published');
 
-    const { data: publishes } = await publishQuery;
-    const publishIds = (publishes ?? []).map((p) => p.id);
+      if (scope.projectId) {
+        publishQuery = publishQuery.eq('episodes.project_id', scope.projectId);
+      } else {
+        publishQuery = publishQuery.eq(
+          'episodes.projects.account_id',
+          scope.accountId!,
+        );
+      }
+
+      return publishQuery.order('id').range(from, to);
+    }, 'returning-viewer publishes');
+
+    const publishIds = publishes.map((p) => p.id);
 
     const rows = await queryAudienceRows({
       videoIds: publishIds,

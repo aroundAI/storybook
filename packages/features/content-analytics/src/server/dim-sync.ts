@@ -7,14 +7,26 @@ import type { VideoDim } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import { chunkIds, fetchAllByIds, forEachPage } from './lib/paginate';
+
 // Use generic SupabaseClient type to avoid strict type checking issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Client = SupabaseClient<any, any, any>;
+
+/**
+ * ClickHouse UUID columns are non-nullable, so publishes with no connection
+ * (legacy rows, manual uploads) get a zero UUID rather than being dropped
+ * from the dimension entirely. It reads as "unattributed" in a channel
+ * filter instead of silently vanishing from every metric.
+ */
+export const UNATTRIBUTED_CONNECTION_ID =
+  '00000000-0000-0000-0000-000000000000';
 
 interface PublishDimRow {
   id: string;
   episode_id: string;
   platform: string;
+  platform_connection_id: string | null;
   content_type: string | null;
   language: string | null;
   title: string | null;
@@ -27,6 +39,23 @@ interface PublishDimRow {
   } | null;
 }
 
+const PUBLISH_DIM_COLUMNS = `
+  id,
+  episode_id,
+  platform,
+  platform_connection_id,
+  content_type,
+  language,
+  title,
+  published_at,
+  episodes!inner(
+    project_id,
+    duration_seconds,
+    target_duration_seconds,
+    projects!inner(account_id)
+  )
+`;
+
 /**
  * Syncs the ClickHouse video_dim dimension table from Postgres.
  *
@@ -35,6 +64,15 @@ interface PublishDimRow {
  * so drift heals via full upsert — ReplacingMergeTree dedups), and from
  * taxonomy actions after tagging (FILM-1507).
  *
+ * Every read here is paged. An unbounded select stops at PostgREST's
+ * `max_rows`, and a publish past that boundary would never receive a
+ * dimension row — leaving it absent from every ClickHouse aggregate, with
+ * each following reconcile reading the same truncated slice and so never
+ * repairing it. Ordering by `id` keeps the pages disjoint.
+ *
+ * Rows are pushed to ClickHouse per page rather than accumulated, so a
+ * full reconcile costs the same memory whatever the library size.
+ *
  * duration_seconds uses the episode's actual duration, falling back to its
  * target duration when the render has not reported one.
  */
@@ -42,50 +80,74 @@ export async function upsertVideoDims(publishIds?: string[]): Promise<number> {
   const logger = await getLogger();
   const client: Client = getSupabaseServerAdminClient();
 
-  let query = client
-    .from('publishes')
-    .select(
-      `
-      id,
-      episode_id,
-      platform,
-      content_type,
-      language,
-      title,
-      published_at,
-      episodes!inner(
-        project_id,
-        duration_seconds,
-        target_duration_seconds,
-        projects!inner(account_id)
-      )
-    `,
-    )
-    .eq('status', 'published')
-    .not('published_at', 'is', null);
+  const publishedQuery = () =>
+    client
+      .from('publishes')
+      .select(PUBLISH_DIM_COLUMNS)
+      .eq('status', 'published')
+      .not('published_at', 'is', null)
+      .order('id');
 
-  if (publishIds && publishIds.length > 0) {
-    query = query.in('id', publishIds);
-  }
+  let synced = 0;
 
-  const { data, error } = await query;
+  const syncBatch = async (batch: unknown[]) => {
+    const rows = await buildVideoDims(client, batch as PublishDimRow[]);
 
-  if (error) {
+    if (rows.length === 0) return;
+
+    await insertVideoDims(rows);
+    synced += rows.length;
+  };
+
+  try {
+    if (publishIds && publishIds.length > 0) {
+      for (const chunk of chunkIds(publishIds)) {
+        await forEachPage(
+          (from, to) => publishedQuery().in('id', chunk).range(from, to),
+          syncBatch,
+          'publishes (scoped)',
+        );
+      }
+    } else {
+      await forEachPage(
+        (from, to) => publishedQuery().range(from, to),
+        syncBatch,
+        'publishes (reconcile)',
+      );
+    }
+  } catch (error) {
     logger.error(
-      { name: 'video-dim-sync', error: error.message },
+      {
+        name: 'video-dim-sync',
+        error: error instanceof Error ? error.message : String(error),
+        synced,
+      },
       'Failed to load publishes for dim sync',
     );
-    return 0;
+    return synced;
   }
 
+  logger.info(
+    { name: 'video-dim-sync', count: synced, scoped: !!publishIds },
+    'Video dims upserted',
+  );
+
+  return synced;
+}
+
+/** Maps one page of publishes to dimension rows, resolving their tags. */
+async function buildVideoDims(
+  client: Client,
+  batch: PublishDimRow[],
+): Promise<VideoDim[]> {
   const tagsByPublish = await fetchPublishTags(
     client,
-    (data ?? []).map((row) => row.id),
+    batch.map((row) => row.id),
   );
 
   const rows: VideoDim[] = [];
 
-  for (const row of (data ?? []) as unknown as PublishDimRow[]) {
+  for (const row of batch) {
     const projectId = row.episodes?.project_id;
     const accountId = row.episodes?.projects?.account_id;
 
@@ -96,6 +158,7 @@ export async function upsertVideoDims(publishIds?: string[]): Promise<number> {
       project_id: projectId,
       account_id: accountId,
       episode_id: row.episode_id,
+      connection_id: row.platform_connection_id ?? UNATTRIBUTED_CONNECTION_ID,
       platform: row.platform,
       content_type: row.content_type ?? 'full',
       language: row.language ?? 'en',
@@ -109,19 +172,17 @@ export async function upsertVideoDims(publishIds?: string[]): Promise<number> {
     });
   }
 
-  await insertVideoDims(rows);
-
-  logger.info(
-    { name: 'video-dim-sync', count: rows.length, scoped: !!publishIds },
-    'Video dims upserted',
-  );
-
-  return rows.length;
+  return rows;
 }
 
 /**
  * Taxonomy tags per publish as 'dimension:slug' strings. The tables land
  * in FILM-1507 — until then (or on query failure) publishes carry no tags.
+ *
+ * Paged and chunked: publish_tags holds one row per assignment, so a page
+ * of publishes carrying several tags each exceeds the row cap long before
+ * the publish count does, and a partial map would write `video_dim.tags`
+ * with tags silently missing.
  */
 async function fetchPublishTags(
   client: Client,
@@ -131,12 +192,24 @@ async function fetchPublishTags(
 
   if (publishIds.length === 0) return map;
 
-  const { data, error } = await client
-    .from('publish_tags')
-    .select('publish_id, content_tags!inner(dimension, slug)')
-    .in('publish_id', publishIds);
+  let data: unknown[];
 
-  if (error || !data) return map;
+  try {
+    data = await fetchAllByIds(
+      publishIds,
+      (chunk, from, to) =>
+        client
+          .from('publish_tags')
+          .select('publish_id, content_tags!inner(dimension, slug)')
+          .in('publish_id', chunk)
+          .order('publish_id')
+          .order('tag_id')
+          .range(from, to),
+      'publish_tags',
+    );
+  } catch {
+    return map;
+  }
 
   for (const row of data as unknown as Array<{
     publish_id: string;

@@ -13,6 +13,12 @@ import type { VideoDim } from './types';
 export interface DimScope {
   projectId?: string;
   accountId?: string;
+  /**
+   * Narrows to one channel (platform_connections.id). A project spans
+   * several channels, so this is a filter within a scope rather than a
+   * scope of its own — assertDimScope still requires project or account.
+   */
+  connectionId?: string;
   platform?: string;
   contentType?: string;
   language?: string;
@@ -106,6 +112,10 @@ function buildDimConditions(scope: DimScope): {
     conditions.push('account_id = {scopeAccountId: UUID}');
     params.scopeAccountId = scope.accountId;
   }
+  if (scope.connectionId) {
+    conditions.push('connection_id = {scopeConnectionId: UUID}');
+    params.scopeConnectionId = scope.connectionId;
+  }
   if (scope.platform) {
     conditions.push('platform = {scopePlatform: String}');
     params.scopePlatform = scope.platform;
@@ -122,7 +132,15 @@ function buildDimConditions(scope: DimScope): {
   return { conditions: conditions.join(' AND '), params };
 }
 
-/** Subquery selecting the latest dim row per video in scope. */
+/**
+ * Subquery selecting the latest dim row per video in scope.
+ *
+ * Projects a fixed column set. FILM-1603 needs channel, language and title
+ * here; add them explicitly then. An earlier `extra: string[]` parameter
+ * that interpolated caller-supplied column names was removed unused — a
+ * raw identifier splice into SQL is worth adding deliberately, with
+ * escaping, rather than inheriting.
+ */
 function dimSubquery(conditions: string): string {
   return `
     SELECT
