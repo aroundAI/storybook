@@ -22,8 +22,11 @@ import type {
 import { getMailer } from '@kit/mailers';
 import { enhanceRouteHandler } from '@kit/next/routes';
 import { getLogger } from '@kit/shared/logger';
-import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
+import { chunkIds, fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+
+/** Retention curves fetched in parallel per batch. */
+const RETENTION_CONCURRENCY = 20;
 
 /**
  * Cron endpoint for processing scheduled reports.
@@ -245,10 +248,17 @@ async function processScheduledReport(
   const retentionMap = new Map<string, Record<string, number>>();
 
   if (includeRetention) {
-    await Promise.all(
-      videoIds
-        .filter((id) => analyticsMap.has(id))
-        .map(async (videoId) => {
+    // One ClickHouse round trip per video, so the fan-out is bounded. The
+    // publish list is paged now and no longer implicitly capped at 1,000 by
+    // the server, and `analyticsMap.has(id)` narrows this set without
+    // bounding it — an account with tens of thousands of publishes would
+    // otherwise open that many simultaneous connections from one Lambda.
+    // A batched `queryRetentionCurves(videoIds)` would be better still.
+    const withMetrics = videoIds.filter((id) => analyticsMap.has(id));
+
+    for (const batch of chunkIds(withMetrics, RETENTION_CONCURRENCY)) {
+      await Promise.all(
+        batch.map(async (videoId) => {
           const points = await queryRetentionCurve({ videoId });
 
           if (points.length > 0) {
@@ -263,7 +273,8 @@ async function processScheduledReport(
             );
           }
         }),
-    );
+      );
+    }
   }
 
   // 3. Merge publish metadata with ClickHouse analytics

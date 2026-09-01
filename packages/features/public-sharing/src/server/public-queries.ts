@@ -275,13 +275,24 @@ export async function getSitemapData() {
   // PostgREST's own `max_rows` is 1000, so the larger two could never be
   // honoured and the sitemap quietly stopped at a thousand URLs — the kind
   // of truncation that costs indexing without producing any error.
+  //
+  // Every page orders by `id`. `public_slug` and `accounts.slug` are both
+  // nullable (and `slug` is required to be NULL on personal accounts), so
+  // ordering by them leaves rows tied on NULL in arbitrary per-request
+  // order — and `.range()` boundaries over an unstable sort skip and
+  // duplicate rows, which would drop and repeat sitemap URLs on every
+  // generation. `id` is the primary key: unique and non-null.
+  //
+  // The NULL-slug rows are also filtered out in SQL rather than in the
+  // route, so a page carries only rows that can actually produce a URL.
   const accounts = await fetchAllRows(
     (from, to) =>
       client
         .from('accounts')
         .select('slug, updated_at')
         .eq('public_profile->>is_public', 'true')
-        .order('slug')
+        .not('slug', 'is', null)
+        .order('id')
         .range(from, to),
     'sitemap accounts',
   );
@@ -299,12 +310,22 @@ export async function getSitemapData() {
       `,
         )
         .eq('visibility', 'public')
-        .order('public_slug')
+        .not('public_slug', 'is', null)
+        .order('id')
         .range(from, to),
     'sitemap projects',
   );
 
   // 3. Public Episodes
+  //
+  // The parent project must be public. `episodes.visibility` defaults to
+  // 'inherit' and `projects.visibility` defaults to 'private', so matching
+  // on the episode alone selects essentially the whole episodes table —
+  // including episodes under private projects, which were then emitted into
+  // the public sitemap whenever both slugs happened to be set. The URL
+  // embeds the project slug (`/@account/project/e/episode`), so an episode
+  // is only publicly reachable when its project is public; requiring that
+  // here is what makes the read bounded as well as correct.
   const episodes = await fetchAllRows(
     (from, to) =>
       client
@@ -320,7 +341,9 @@ export async function getSitemapData() {
       `,
         )
         .in('visibility', ['public', 'inherit'])
-        .order('public_slug')
+        .eq('project.visibility', 'public')
+        .not('public_slug', 'is', null)
+        .order('id')
         .range(from, to),
     'sitemap episodes',
   );

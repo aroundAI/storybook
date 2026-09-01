@@ -14,63 +14,71 @@ type Call = [string, ...unknown[]];
 function createClient(results: Array<{ data: unknown[]; error: unknown }>) {
   // One entry per logical query, reused across that query's pages.
   const queries: Array<{ calls: Call[] }> = [];
-  const builders = new Map<number, { calls: Call[] }>();
-  let nextIndex = 0;
+
+  // Keyed by the projection string, which differs between the two halves —
+  // the publish-scoped select carries the embedded `publishes!inner` block.
+  //
+  // A global call counter cannot work here: the halves run concurrently and
+  // finish after different numbers of pages, so once the shorter one stops,
+  // a round-robin mapping hands the longer one the other query's result and
+  // builder. Its filters would then be recorded against the wrong query,
+  // and the account-scoping assertions below would be checking a builder
+  // holding some other query's predicates.
+  const byProjection = new Map<
+    string,
+    { calls: Call[]; resultIndex: number }
+  >();
 
   return {
     queries,
     from() {
-      // fetchAllRows re-invokes the callback per page, so a query keeps its
-      // identity (and its recorded filters) across pages.
-      const index = nextIndex % results.length;
-      const result = results[index] ?? { data: [], error: null };
+      return {
+        select(projection: string) {
+          let state = byProjection.get(projection);
 
-      const existing = builders.get(index);
-      const calls: Call[] = existing?.calls ?? [];
+          if (!state) {
+            state = { calls: [], resultIndex: byProjection.size };
+            byProjection.set(projection, state);
+            queries.push(state);
+          }
 
-      let range: [number, number] = [0, Number.MAX_SAFE_INTEGER];
+          const result = results[state.resultIndex] ?? {
+            data: [],
+            error: null,
+          };
+          const calls = state.calls;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const builder: any = {
-        calls,
-        then(resolve: (value: unknown) => unknown) {
-          const page = result.error
-            ? { data: null, error: result.error }
-            : {
-                data: result.data.slice(range[0], range[1] + 1),
-                error: null,
-              };
-          return Promise.resolve(page).then(resolve);
+          let range: [number, number] = [0, Number.MAX_SAFE_INTEGER];
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const builder: any = {
+            calls,
+            then(resolve: (value: unknown) => unknown) {
+              const page = result.error
+                ? { data: null, error: result.error }
+                : {
+                    data: result.data.slice(range[0], range[1] + 1),
+                    error: null,
+                  };
+              return Promise.resolve(page).then(resolve);
+            },
+          };
+
+          for (const method of ['is', 'eq', 'gte', 'lte', 'lt', 'order']) {
+            builder[method] = (...args: unknown[]) => {
+              calls.push([method, ...args]);
+              return builder;
+            };
+          }
+
+          builder.range = (rangeFrom: number, rangeTo: number) => {
+            range = [rangeFrom, rangeTo];
+            return builder;
+          };
+
+          return builder;
         },
       };
-
-      for (const method of [
-        'select',
-        'is',
-        'eq',
-        'gte',
-        'lte',
-        'lt',
-        'order',
-      ]) {
-        builder[method] = (...args: unknown[]) => {
-          calls.push([method, ...args]);
-          return builder;
-        };
-      }
-
-      builder.range = (from: number, to: number) => {
-        range = [from, to];
-        return builder;
-      };
-
-      if (!existing) {
-        builders.set(index, builder);
-        queries.push(builder);
-      }
-
-      nextIndex++;
-      return builder;
     },
   };
 }
@@ -215,6 +223,52 @@ describe('fetchAccountRevenueRows', () => {
 
     expect(rows).toHaveLength(600);
     expect(rows.reduce((sum, r) => sum + r.revenue_cents, 0)).toBe(60_000);
+  });
+
+  it('keeps each half’s filters separate when both page past one page', async () => {
+    // The halves finish after different numbers of pages, so this is the
+    // case where a mock keyed on a global call counter starts handing one
+    // query the other's builder — quietly invalidating the scoping
+    // assertions above. Both halves carry data here, and the channel half
+    // outlives the publish half.
+    const channelRows = Array.from({ length: 1200 }, (_, index) => ({
+      id: `c${index}`,
+      publish_id: null,
+      revenue_cents: 10,
+    }));
+    const publishRows = Array.from({ length: 20 }, (_, index) => ({
+      id: `p${index}`,
+      publish_id: `pub${index}`,
+      revenue_cents: 5,
+      publishes: { episode_id: `ep${index}` },
+    }));
+
+    const client = createClient([
+      { data: channelRows, error: null },
+      { data: publishRows, error: null },
+    ]);
+
+    const rows = await fetchAccountRevenueRows(
+      client,
+      ACCOUNT,
+      '2026-01-01',
+      '2026-01-31',
+    );
+
+    expect(rows).toHaveLength(1220);
+
+    const [channelScoped, publishScoped] = client.queries;
+
+    // The channel half must not have picked up the publish half's join
+    // predicate, or vice versa, however many pages each ran for.
+    expect(filtersOf(channelScoped!.calls)).toContain('is publish_id null');
+    expect(filtersOf(channelScoped!.calls)).not.toContain(
+      `eq publishes.episodes.projects.account_id ${ACCOUNT}`,
+    );
+    expect(filtersOf(publishScoped!.calls)).toContain(
+      `eq publishes.episodes.projects.account_id ${ACCOUNT}`,
+    );
+    expect(filtersOf(publishScoped!.calls)).not.toContain('is publish_id null');
   });
 
   it('throws when either half fails rather than reporting partial revenue', async () => {

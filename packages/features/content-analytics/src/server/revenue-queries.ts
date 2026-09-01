@@ -70,7 +70,11 @@ export async function fetchAccountRevenueRows(
   // lose different amounts, which can flip the reported trend direction.
   const [channelScoped, publishScoped] = await Promise.all([
     fetchAllRows<AccountRevenueRow>(
-      (from, to) =>
+      // Named pageFrom/pageTo so they cannot shadow the `from`/`to` date
+      // bounds of the enclosing function. If they did and any date filter
+      // were written inline here, integer page offsets would be passed as
+      // record_date values — wrong revenue, no error.
+      (pageFrom, pageTo) =>
         applyRange(
           client
             .from('revenue_records')
@@ -79,11 +83,11 @@ export async function fetchAccountRevenueRows(
             .eq('account_id', accountId),
         )
           .order('id')
-          .range(from, to),
+          .range(pageFrom, pageTo),
       'channel-scoped revenue',
     ),
     fetchAllRows<AccountRevenueRow & { publishes?: { episode_id?: string } }>(
-      (from, to) =>
+      (pageFrom, pageTo) =>
         applyRange(
           client
             .from('revenue_records')
@@ -102,7 +106,7 @@ export async function fetchAccountRevenueRows(
             .eq('publishes.episodes.projects.account_id', accountId),
         )
           .order('id')
-          .range(from, to),
+          .range(pageFrom, pageTo),
       'publish-scoped revenue',
     ),
   ]);

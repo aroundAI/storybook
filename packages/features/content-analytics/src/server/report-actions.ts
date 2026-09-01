@@ -19,7 +19,7 @@ import {
   queryTotalsByVideoIds,
 } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
-import { fetchAllRows } from '@kit/shared/pagination';
+import { chunkIds, fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { generateSummaryCSV } from '../lib/csv-generator';
@@ -44,6 +44,9 @@ import {
 
 const REPORTS_BUCKET = 'reports';
 const SIGNED_URL_EXPIRY_SECONDS = 3600;
+
+/** Retention curves fetched in parallel per batch. */
+const RETENTION_CONCURRENCY = 20;
 
 /**
  * Calculate date range from preset
@@ -121,19 +124,7 @@ async function fetchAnalyticsData(
 ): Promise<AnalyticsDataRow[]> {
   const client = getSupabaseServerClient();
 
-  // Get publishes with metadata from Supabase. Paged: these ids are the
-  // report's content set, so truncation silently drops rows from the
-  // delivered report and from every total derived from it.
-  const data = await fetchAllRows<{
-    id: string;
-    platform: string;
-    title: string | null;
-    episodes: unknown;
-  }>((from, to) => {
-    let query = client
-      .from('publishes')
-      .select(
-        `
+  const PUBLISH_COLUMNS = `
       id,
       platform,
       title,
@@ -147,17 +138,44 @@ async function fetchAnalyticsData(
           )
         )
       )
-    `,
-      )
+    `;
+
+  interface ReportPublishRow {
+    id: string;
+    platform: string;
+    title: string | null;
+    episodes: unknown;
+  }
+
+  const basePublishQuery = () =>
+    client
+      .from('publishes')
+      .select(PUBLISH_COLUMNS)
       .in('platform', platforms)
       .eq('episodes.seasons.projects.account_id', accountId);
 
-    if (projectIds && projectIds.length > 0) {
-      query = query.in('episodes.seasons.projects.id', projectIds);
-    }
-
-    return query.order('id').range(from, to);
-  }, 'report publishes');
+  // Paged: these ids are the report's content set, so truncation silently
+  // drops rows from the delivered report and from every total derived from
+  // it. `projectIds` is caller-supplied with no schema cap, and a filter
+  // list is serialized into the request URI — so it is chunked too, and
+  // chunking matters more here because the list would otherwise be
+  // re-serialized on every page. Chunk results are concatenated, so the id
+  // ordering is per-chunk; the caller only uses these as a set.
+  const data =
+    projectIds && projectIds.length > 0
+      ? await fetchAllByIds<ReportPublishRow>(
+          projectIds,
+          (chunk, from, to) =>
+            basePublishQuery()
+              .in('episodes.seasons.projects.id', chunk)
+              .order('id')
+              .range(from, to),
+          'report publishes (by project)',
+        )
+      : await fetchAllRows<ReportPublishRow>(
+          (from, to) => basePublishQuery().order('id').range(from, to),
+          'report publishes',
+        );
 
   if (data.length === 0) {
     return [];
@@ -185,25 +203,30 @@ async function fetchAnalyticsData(
   const retentionByPublish = new Map<string, Record<string, number>>();
 
   if (includeRetention) {
+    // Bounded fan-out: one ClickHouse round trip per video, and publishIds
+    // is no longer implicitly capped now that the publish read is paged.
+    // `perVideoTotals.has(id)` narrows this set without bounding it.
     const withMetrics = publishIds.filter((id) => perVideoTotals.has(id));
 
-    await Promise.all(
-      withMetrics.map(async (publishId) => {
-        const points = await queryRetentionCurve({ videoId: publishId });
+    for (const batch of chunkIds(withMetrics, RETENTION_CONCURRENCY)) {
+      await Promise.all(
+        batch.map(async (publishId) => {
+          const points = await queryRetentionCurve({ videoId: publishId });
 
-        if (points.length > 0) {
-          retentionByPublish.set(
-            publishId,
-            Object.fromEntries(
-              points.map((p) => [
-                p.elapsedRatio.toFixed(2),
-                p.audienceWatchRatio,
-              ]),
-            ),
-          );
-        }
-      }),
-    );
+          if (points.length > 0) {
+            retentionByPublish.set(
+              publishId,
+              Object.fromEntries(
+                points.map((p) => [
+                  p.elapsedRatio.toFixed(2),
+                  p.audienceWatchRatio,
+                ]),
+              ),
+            );
+          }
+        }),
+      );
+    }
   }
 
   // Merge metadata with metrics
