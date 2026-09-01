@@ -754,6 +754,38 @@ const form = useForm({
 });
 ```
 
+## Reading More Than 1000 Rows ⚠️
+
+`apps/web/supabase/config.toml` sets `max_rows = 1000`, and **production enforces it for the service-role/admin client too**. PostgREST applies the cap by returning a **short body with HTTP 200 and `error: null`**, so a truncated read is indistinguishable from a complete one — there is no exception to catch and no flag to check.
+
+```typescript
+// ❌ WRONG - silently returns at most 1000 rows, no error
+const { data } = await client.from('publishes').select('id').eq('status', 'published');
+
+// ❌ ALSO WRONG - the server cap still applies; this can never return 5000
+const { data } = await client.from('episodes').select('id').limit(5000);
+
+// ✅ CORRECT - page until the result is exhausted
+import { fetchAllRows } from '@kit/shared/pagination';
+
+const rows = await fetchAllRows<{ id: string }>(
+  (from, to) =>
+    client
+      .from('publishes')
+      .select('id')
+      .eq('status', 'published')
+      .order('id')          // REQUIRED: a unique, deterministic order
+      .range(from, to),
+  'publishes',
+);
+```
+
+**Always page a read whose correctness depends on seeing every row** — id lists feeding an aggregate, denominators, distinct-set derivations, anything written to ClickHouse. A display list that merely looks short is lower stakes, but paging it costs nothing.
+
+- **`.order()` on a unique column is mandatory.** Range pagination over an unordered query can skip or repeat rows, because Postgres may return them in a different order per request.
+- **`.in(...)` lists need `fetchAllByIds`, not just pagination.** A long filter list is serialized into the request URI and fails with a 414 — a separate ceiling that bites at a different threshold. This matters most on one-to-many tables (`publish_tags` has a row per assignment, so it truncates long before the publish count does).
+- **`{ count: 'exact', head: true }` is not row-capped** — an exact count is safe unpaged, but chunk its `.in(...)` list and sum the results.
+
 ## Import Guidelines - ALWAYS Check These
 
 **UI Components**: Always check `@kit/ui` first before external packages:

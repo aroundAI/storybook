@@ -13,6 +13,7 @@ import {
 } from '@kit/clickhouse/server';
 import type { DimScope } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
+import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { formatDate } from '../lib/utils';
@@ -381,8 +382,6 @@ export const getReturningViewerProxyAction = enhanceAction(
     );
 
     const client = getClient();
-
-    const { fetchAllRows } = await import('./lib/paginate');
 
     // Paged: this list is a denominator, not a display list. Truncating it
     // biases both halves of the subscribed share, so the headline "owned vs

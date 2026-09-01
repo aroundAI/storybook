@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { insertVideoMetrics } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
+import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import { createYouTubeAnalyticsProvider } from '../../providers/youtube';
@@ -194,19 +195,31 @@ export async function runYouTubeBackfillBatch(options?: {
 async function fetchPendingPublishes(
   client: Client,
 ): Promise<BackfillPublish[]> {
-  const { data, error } = await client
-    .from('publishes')
-    .select(
-      'id, episode_id, platform_connection_id, platform_content_id, published_at, metadata',
-    )
-    .eq('status', 'published')
-    .eq('platform', 'youtube')
-    .not('platform_content_id', 'is', null)
-    .not('platform_connection_id', 'is', null)
-    .is('metadata->sync->>backfill_completed_at', null)
-    .order('published_at', { ascending: true });
+  // Paged. Oldest-first ordering means a truncated read still processed
+  // real pending work, so nothing was lost — but `remaining` is reported
+  // from this list, so the backfill looked far closer to finished than it
+  // was, and would have flat-lined at 1,000 outstanding forever.
+  let data: BackfillPublish[];
 
-  if (error || !data) {
+  try {
+    data = await fetchAllRows<BackfillPublish>(
+      (from, to) =>
+        client
+          .from('publishes')
+          .select(
+            'id, episode_id, platform_connection_id, platform_content_id, published_at, metadata',
+          )
+          .eq('status', 'published')
+          .eq('platform', 'youtube')
+          .not('platform_content_id', 'is', null)
+          .not('platform_connection_id', 'is', null)
+          .is('metadata->sync->>backfill_completed_at', null)
+          .order('published_at', { ascending: true })
+          .order('id')
+          .range(from, to),
+      'pending backfill publishes',
+    );
+  } catch {
     return [];
   }
 

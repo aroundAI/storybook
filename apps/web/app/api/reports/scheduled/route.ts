@@ -22,6 +22,7 @@ import type {
 import { getMailer } from '@kit/mailers';
 import { enhanceRouteHandler } from '@kit/next/routes';
 import { getLogger } from '@kit/shared/logger';
+import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 /**
@@ -169,11 +170,23 @@ async function processScheduledReport(
           end: endOfMonth(subMonths(new Date(), 1)),
         };
 
-  // 1. Fetch publish metadata from Supabase
-  const { data: publishes, error: pubError } = await adminClient
-    .from('publishes')
-    .select(
-      `
+  // 1. Fetch publish metadata from Supabase. Paged: this is the content set
+  // of an emailed report, so truncation silently ships an incomplete report
+  // that nobody reading it can tell is incomplete.
+  const publishes = await fetchAllRows<{
+    id: string;
+    platform: string;
+    title: string | null;
+    content_type: string | null;
+    language: string | null;
+    published_at: string | null;
+    episodes: unknown;
+  }>(
+    (from, to) =>
+      adminClient
+        .from('publishes')
+        .select(
+          `
       id,
       platform,
       title,
@@ -189,15 +202,15 @@ async function processScheduledReport(
         )
       )
     `,
-    )
-    .in('platform', report.platforms as string[])
-    .eq('episodes.projects.account_id', report.account_id as string);
+        )
+        .in('platform', report.platforms as string[])
+        .eq('episodes.projects.account_id', report.account_id as string)
+        .order('id')
+        .range(from, to),
+    'scheduled report publishes',
+  );
 
-  if (pubError) {
-    throw new Error(`Failed to fetch publishes: ${pubError.message}`);
-  }
-
-  if (!publishes || publishes.length === 0) {
+  if (publishes.length === 0) {
     logger.info(ctx, 'No data found for scheduled report, skipping email');
     return;
   }
@@ -351,15 +364,29 @@ async function processScheduledReport(
       }
     }
 
-    // Taxonomy tags as 'dimension:slug', matching video_dim.tags
-    const { data: tagRows } = await adminClient
-      .from('publish_tags')
-      .select('publish_id, content_tags!inner(dimension, slug)')
-      .in('publish_id', videoIds);
+    // Taxonomy tags as 'dimension:slug', matching video_dim.tags.
+    // Chunked and paged: publish_tags holds one row per assignment, so it
+    // truncates well before the publish count does and the export would
+    // ship blank tag columns for videos that are in fact tagged.
+    const tagRows = await fetchAllByIds<{
+      publish_id: string;
+      content_tags: unknown;
+    }>(
+      videoIds,
+      (chunk, from, to) =>
+        adminClient
+          .from('publish_tags')
+          .select('publish_id, content_tags!inner(dimension, slug)')
+          .in('publish_id', chunk)
+          .order('publish_id')
+          .order('tag_id')
+          .range(from, to),
+      'scheduled report tags',
+    );
 
     const tagsByPublish = new Map<string, string[]>();
 
-    for (const tagRow of tagRows ?? []) {
+    for (const tagRow of tagRows) {
       const tag = tagRow.content_tags as unknown as {
         dimension: string;
         slug: string;
@@ -401,9 +428,8 @@ async function processScheduledReport(
         impressions: quality?.impressions ?? 0,
         ctr: quality?.impressionsCtr ?? 0,
         avgViewDurationSeconds: quality?.avgViewDurationSeconds ?? 0,
-        topTrafficSource: topSourceByVideoDate.get(
-          `${row.video_id}:${row.metric_date}`,
-        ) ?? '',
+        topTrafficSource:
+          topSourceByVideoDate.get(`${row.video_id}:${row.metric_date}`) ?? '',
         tags: tagsByPublish.get(row.video_id)?.join('|') ?? '',
       };
     });

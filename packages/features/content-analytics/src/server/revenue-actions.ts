@@ -4,6 +4,7 @@ import 'server-only';
 
 import { queryTotalsByVideoIds } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
+import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
@@ -35,13 +36,21 @@ async function fetchAccountPublishIds(
   client: any,
   accountId: string,
 ): Promise<string[]> {
-  const { data } = await client
-    .from('publishes')
-    .select('id, episodes!inner(projects!inner(account_id))')
-    .eq('status', 'published')
-    .eq('episodes.projects.account_id', accountId);
+  // Paged. This is the denominator itself, so a short read inflates every
+  // RPM figure — the precise defect this function was added to remove.
+  const rows = await fetchAllRows<{ id: string }>(
+    (from, to) =>
+      client
+        .from('publishes')
+        .select('id, episodes!inner(projects!inner(account_id))')
+        .eq('status', 'published')
+        .eq('episodes.projects.account_id', accountId)
+        .order('id')
+        .range(from, to),
+    'account publish ids',
+  );
 
-  return ((data ?? []) as Array<{ id: string }>).map((row) => row.id);
+  return rows.map((row) => row.id);
 }
 
 export const getRevenueSummaryAction = enhanceAction(
@@ -463,11 +472,25 @@ export const getTopContentByRevenueAction = enhanceAction(
     const client = getSupabaseServerClient();
     const { accountId, startDate, endDate, limit } = data;
 
-    // Get revenue records grouped by publish
-    const { data: records, error } = await client
-      .from('revenue_records')
-      .select(
-        `
+    // Paged. `limit` is applied after aggregation, so truncation here would
+    // not just shorten the list: a publish earning across many dates loses
+    // some of them, understating its total and reordering the ranking.
+    const records = await fetchAllRows<{
+      publish_id: string | null;
+      revenue_cents: number | null;
+      platform: string | null;
+      publishes?: {
+        episode_id?: string | null;
+        platform?: string | null;
+        thumbnail_url?: string | null;
+        episodes?: { title?: string | null } | null;
+      } | null;
+    }>(
+      (from, to) =>
+        client
+          .from('revenue_records')
+          .select(
+            `
         publish_id,
         revenue_cents,
         platform,
@@ -486,12 +509,14 @@ export const getTopContentByRevenueAction = enhanceAction(
           )
         )
       `,
-      )
-      .gte('record_date', startDate)
-      .lte('record_date', endDate)
-      .eq('publishes.episodes.projects.account_id', accountId);
-
-    if (error) throw error;
+          )
+          .gte('record_date', startDate)
+          .lte('record_date', endDate)
+          .eq('publishes.episodes.projects.account_id', accountId)
+          .order('id')
+          .range(from, to),
+      'top content by revenue',
+    );
 
     // Aggregate by publish
     const publishMap = new Map<

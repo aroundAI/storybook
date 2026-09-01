@@ -1,5 +1,3 @@
-import 'server-only';
-
 /**
  * Exhaustive reads against PostgREST.
  *
@@ -9,6 +7,10 @@ import 'server-only';
  * returning a short body with HTTP 200 and no error, so an unbounded
  * `.select()` looks identical to a complete result. Any read whose
  * correctness depends on seeing every row has to page through explicitly.
+ *
+ * Pure plumbing over a caller-supplied query, so it carries no `server-only`
+ * marker and no Supabase dependency — which is what lets it live here and be
+ * used by any package that talks to PostgREST.
  */
 
 /** Rows requested per page. Deliberately below the server cap. */

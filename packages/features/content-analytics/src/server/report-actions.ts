@@ -19,6 +19,7 @@ import {
   queryTotalsByVideoIds,
 } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
+import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { generateSummaryCSV } from '../lib/csv-generator';
@@ -120,11 +121,19 @@ async function fetchAnalyticsData(
 ): Promise<AnalyticsDataRow[]> {
   const client = getSupabaseServerClient();
 
-  // Get publishes with metadata from Supabase
-  let query = client
-    .from('publishes')
-    .select(
-      `
+  // Get publishes with metadata from Supabase. Paged: these ids are the
+  // report's content set, so truncation silently drops rows from the
+  // delivered report and from every total derived from it.
+  const data = await fetchAllRows<{
+    id: string;
+    platform: string;
+    title: string | null;
+    episodes: unknown;
+  }>((from, to) => {
+    let query = client
+      .from('publishes')
+      .select(
+        `
       id,
       platform,
       title,
@@ -139,21 +148,18 @@ async function fetchAnalyticsData(
         )
       )
     `,
-    )
-    .in('platform', platforms)
-    .eq('episodes.seasons.projects.account_id', accountId);
+      )
+      .in('platform', platforms)
+      .eq('episodes.seasons.projects.account_id', accountId);
 
-  if (projectIds && projectIds.length > 0) {
-    query = query.in('episodes.seasons.projects.id', projectIds);
-  }
+    if (projectIds && projectIds.length > 0) {
+      query = query.in('episodes.seasons.projects.id', projectIds);
+    }
 
-  const { data, error } = await query;
+    return query.order('id').range(from, to);
+  }, 'report publishes');
 
-  if (error) {
-    throw new Error(`Failed to fetch publish metadata: ${error.message}`);
-  }
-
-  if (!data || data.length === 0) {
+  if (data.length === 0) {
     return [];
   }
 

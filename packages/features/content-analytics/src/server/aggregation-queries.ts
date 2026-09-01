@@ -14,6 +14,7 @@ import {
   queryTotalsByVideoIds,
 } from '@kit/clickhouse/server';
 import type { AggregatedTotals } from '@kit/clickhouse/server';
+import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -288,14 +289,24 @@ export async function getSeasonAnalytics(
     return null;
   }
 
-  const { data: episodes } = await client
-    .from('episodes')
-    .select('id, title, number')
-    .eq('season_id', seasonId)
-    .is('deleted_at', null)
-    .order('number');
+  const episodes = await fetchAllRows<{
+    id: string;
+    title: string;
+    number: number;
+  }>(
+    (from, to) =>
+      client
+        .from('episodes')
+        .select('id, title, number')
+        .eq('season_id', seasonId)
+        .is('deleted_at', null)
+        .order('number')
+        .order('id')
+        .range(from, to),
+    'season episodes',
+  );
 
-  if (!episodes || episodes.length === 0) {
+  if (episodes.length === 0) {
     return {
       seasonId,
       seasonNumber: season.number,
@@ -316,13 +327,26 @@ export async function getSeasonAnalytics(
 
   const episodeIds = episodes.map((e) => e.id);
 
-  // Batch: get all publishes for all episodes in one query
-  const { data: allPublishes } = await client
-    .from('publishes')
-    .select('id, platform, episode_id')
-    .in('episode_id', episodeIds);
+  // Batch: get all publishes for all episodes. Paged — these feed the
+  // season totals, which getProjectAnalytics then sums into project totals,
+  // so a short read here propagates upward as understated figures.
+  const allPublishes = await fetchAllByIds<{
+    id: string;
+    platform: string;
+    episode_id: string;
+  }>(
+    episodeIds,
+    (chunk, from, to) =>
+      client
+        .from('publishes')
+        .select('id, platform, episode_id')
+        .in('episode_id', chunk)
+        .order('id')
+        .range(from, to),
+    'season publishes',
+  );
 
-  if (!allPublishes || allPublishes.length === 0) {
+  if (allPublishes.length === 0) {
     return {
       seasonId,
       seasonNumber: season.number,
@@ -480,12 +504,22 @@ export async function getProjectAnalytics(
     return null;
   }
 
-  const { data: seasons } = await client
-    .from('seasons')
-    .select('id, number, name')
-    .eq('project_id', projectId)
-    .is('deleted_at', null)
-    .order('number');
+  const seasons = await fetchAllRows<{
+    id: string;
+    number: number;
+    name: string | null;
+  }>(
+    (from, to) =>
+      client
+        .from('seasons')
+        .select('id, number, name')
+        .eq('project_id', projectId)
+        .is('deleted_at', null)
+        .order('number')
+        .order('id')
+        .range(from, to),
+    'project seasons',
+  );
 
   const seasonAnalyticsList: ProjectAnalytics['seasons'] = [];
   let totalViews = 0;
@@ -635,13 +669,21 @@ export async function getProjectAudienceData(
 ): Promise<ProjectAudienceData | null> {
   const client = getSupabaseServerClient();
 
-  // Get all publishes for this project
-  const { data: allPublishes } = await client
-    .from('publishes')
-    .select('id, episodes!inner(season_id, seasons!inner(project_id))')
-    .eq('episodes.seasons.project_id', projectId);
+  // Get all publishes for this project. Paged: audience percentages are
+  // view-weighted by the per-video totals these ids fetch, so truncation
+  // skews the demographic and geographic splits, not just the totals.
+  const allPublishes = await fetchAllRows<{ id: string }>(
+    (from, to) =>
+      client
+        .from('publishes')
+        .select('id, episodes!inner(season_id, seasons!inner(project_id))')
+        .eq('episodes.seasons.project_id', projectId)
+        .order('id')
+        .range(from, to),
+    'project audience publishes',
+  );
 
-  if (!allPublishes || allPublishes.length === 0) {
+  if (allPublishes.length === 0) {
     return null;
   }
 
@@ -755,11 +797,20 @@ export async function getContentList(
 ): Promise<ContentListItem[]> {
   const client = getSupabaseServerClient();
 
-  // Get all publishes for this project through episodes -> seasons
-  let query = client
-    .from('publishes')
-    .select(
-      `
+  // Get all publishes for this project through episodes -> seasons.
+  // Paged: the account dashboard reduces this list to a top-N, so a short
+  // read silently changes which content is presented as the best.
+  const publishes = await fetchAllRows<{
+    id: string;
+    platform: string;
+    title: string | null;
+    published_at: string | null;
+    episodes: unknown;
+  }>((from, to) => {
+    let query = client
+      .from('publishes')
+      .select(
+        `
       id,
       platform,
       title,
@@ -773,25 +824,27 @@ export async function getContentList(
         )
       )
     `,
-    )
-    .eq('episodes.seasons.project_id', projectId)
-    .not('published_at', 'is', null);
+      )
+      .eq('episodes.seasons.project_id', projectId)
+      .not('published_at', 'is', null);
 
-  if (options?.platforms && options.platforms.length > 0) {
-    query = query.in('platform', options.platforms);
-  }
-  if (options?.startDate) {
-    query = query.gte('published_at', options.startDate.toISOString());
-  }
-  if (options?.endDate) {
-    query = query.lte('published_at', options.endDate.toISOString());
-  }
+    if (options?.platforms && options.platforms.length > 0) {
+      query = query.in('platform', options.platforms);
+    }
+    if (options?.startDate) {
+      query = query.gte('published_at', options.startDate.toISOString());
+    }
+    if (options?.endDate) {
+      query = query.lte('published_at', options.endDate.toISOString());
+    }
 
-  const { data: publishes, error } = await query.order('published_at', {
-    ascending: false,
-  });
+    return query
+      .order('published_at', { ascending: false })
+      .order('id')
+      .range(from, to);
+  }, 'project content list');
 
-  if (error || !publishes || publishes.length === 0) {
+  if (publishes.length === 0) {
     return [];
   }
 

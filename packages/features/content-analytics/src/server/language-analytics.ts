@@ -7,6 +7,7 @@ import {
   queryDailyStats,
   queryTotalsByVideoIds,
 } from '@kit/clickhouse/server';
+import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -77,35 +78,61 @@ async function resolveProjectPublishes(
 ) {
   const client = getSupabaseServerClient();
 
-  const { data: seasons } = await client
-    .from('seasons')
-    .select('id')
-    .eq('project_id', projectId)
-    .is('deleted_at', null);
+  // Every stage is paged. These stack — seasons feed episodes feed publishes
+  // — so a truncation at any level silently shrinks the set the language
+  // shares are computed over. A whole language can disappear from the
+  // breakdown if all of its publishes fall past a cut, which reads as
+  // "we don't publish in that language" rather than as missing data.
+  const seasons = await fetchAllRows<{ id: string }>(
+    (from, to) =>
+      client
+        .from('seasons')
+        .select('id')
+        .eq('project_id', projectId)
+        .is('deleted_at', null)
+        .order('id')
+        .range(from, to),
+    'project seasons',
+  );
 
-  if (!seasons || seasons.length === 0) return null;
+  if (seasons.length === 0) return null;
 
   const seasonIds = seasons.map((s) => s.id);
 
-  const { data: episodes } = await client
-    .from('episodes')
-    .select('id, title')
-    .in('season_id', seasonIds)
-    .is('deleted_at', null);
+  const episodes = await fetchAllByIds<{ id: string; title: string }>(
+    seasonIds,
+    (chunk, from, to) =>
+      client
+        .from('episodes')
+        .select('id, title')
+        .in('season_id', chunk)
+        .is('deleted_at', null)
+        .order('id')
+        .range(from, to),
+    'season episodes',
+  );
 
-  if (!episodes || episodes.length === 0) return null;
+  if (episodes.length === 0) return null;
 
   const episodeIds = episodes.map((e) => e.id);
 
   const selectCols = extraSelect
     ? `id, platform_connection_id, ${extraSelect}`
     : 'id, platform_connection_id';
-  const { data: rawPublishes } = await client
-    .from('publishes')
-    .select(selectCols)
-    .in('episode_id', episodeIds);
 
-  if (!rawPublishes || rawPublishes.length === 0) return null;
+  const rawPublishes = await fetchAllByIds(
+    episodeIds,
+    (chunk, from, to) =>
+      client
+        .from('publishes')
+        .select(selectCols)
+        .in('episode_id', chunk)
+        .order('id')
+        .range(from, to),
+    'episode publishes',
+  );
+
+  if (rawPublishes.length === 0) return null;
 
   // Cast to proper shape — Supabase returns GenericStringError for dynamic selects
   const publishes = rawPublishes as unknown as Array<{
@@ -121,12 +148,19 @@ async function resolveProjectPublishes(
   const languageByConnection = new Map<string, string>();
 
   if (connectionIds.length > 0) {
-    const { data: connections } = await client
-      .from('platform_connections')
-      .select('id, language')
-      .in('id', connectionIds as string[]);
+    const connections = await fetchAllByIds(
+      connectionIds as string[],
+      (chunk, from, to) =>
+        client
+          .from('platform_connections')
+          .select('id, language')
+          .in('id', chunk)
+          .order('id')
+          .range(from, to),
+      'connection languages',
+    );
 
-    for (const conn of connections || []) {
+    for (const conn of connections) {
       const c = conn as unknown as { id: string; language?: string };
       languageByConnection.set(c.id, c.language || 'en');
     }
@@ -520,24 +554,38 @@ export async function getShortsSourcePerformance(
     options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
   const limit = options?.limit || 10;
 
-  // Get project structure
-  const { data: seasons } = await client
-    .from('seasons')
-    .select('id')
-    .eq('project_id', projectId)
-    .is('deleted_at', null);
+  // Get project structure. Paged for the same reason as
+  // resolveProjectPublishes: the stages stack, so truncation compounds.
+  const seasons = await fetchAllRows<{ id: string }>(
+    (from, to) =>
+      client
+        .from('seasons')
+        .select('id')
+        .eq('project_id', projectId)
+        .is('deleted_at', null)
+        .order('id')
+        .range(from, to),
+    'shorts seasons',
+  );
 
-  if (!seasons || seasons.length === 0) return [];
+  if (seasons.length === 0) return [];
 
   const seasonIds = seasons.map((s) => s.id);
 
-  const { data: episodes } = await client
-    .from('episodes')
-    .select('id, title')
-    .in('season_id', seasonIds)
-    .is('deleted_at', null);
+  const episodes = await fetchAllByIds<{ id: string; title: string }>(
+    seasonIds,
+    (chunk, from, to) =>
+      client
+        .from('episodes')
+        .select('id, title')
+        .in('season_id', chunk)
+        .is('deleted_at', null)
+        .order('id')
+        .range(from, to),
+    'shorts episodes',
+  );
 
-  if (!episodes || episodes.length === 0) return [];
+  if (episodes.length === 0) return [];
 
   const episodeIds = episodes.map((e) => e.id);
   const episodeTitleMap = new Map<string, string>();
@@ -546,15 +594,29 @@ export async function getShortsSourcePerformance(
   }
 
   // Get shorts publishes
-  const { data: publishes } = await client
-    .from('publishes')
-    .select(
-      'id, title, platform, platform_connection_id, episode_id, content_type',
-    )
-    .in('episode_id', episodeIds)
-    .eq('content_type', 'short');
+  const publishes = await fetchAllByIds<{
+    id: string;
+    title: string | null;
+    platform: string;
+    platform_connection_id: string | null;
+    episode_id: string;
+    content_type: string | null;
+  }>(
+    episodeIds,
+    (chunk, from, to) =>
+      client
+        .from('publishes')
+        .select(
+          'id, title, platform, platform_connection_id, episode_id, content_type',
+        )
+        .in('episode_id', chunk)
+        .eq('content_type', 'short')
+        .order('id')
+        .range(from, to),
+    'shorts publishes',
+  );
 
-  if (!publishes || publishes.length === 0) return [];
+  if (publishes.length === 0) return [];
 
   const publishIds = publishes.map((p) => p.id);
 
@@ -565,12 +627,19 @@ export async function getShortsSourcePerformance(
   const languageByConnection = new Map<string, string>();
 
   if (connectionIds.length > 0) {
-    const { data: connections } = await client
-      .from('platform_connections')
-      .select('id, language')
-      .in('id', connectionIds as string[]);
+    const connections = await fetchAllByIds(
+      connectionIds as string[],
+      (chunk, from, to) =>
+        client
+          .from('platform_connections')
+          .select('id, language')
+          .in('id', chunk)
+          .order('id')
+          .range(from, to),
+      'connection languages',
+    );
 
-    for (const conn of connections || []) {
+    for (const conn of connections) {
       const c = conn as unknown as { id: string; language?: string };
       languageByConnection.set(c.id, c.language || 'en');
     }

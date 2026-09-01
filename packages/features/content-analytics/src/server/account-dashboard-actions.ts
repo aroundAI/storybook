@@ -11,6 +11,7 @@ import {
 } from '@kit/clickhouse/server';
 import type { AggregatedTotals } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
+import { chunkIds, fetchAllByIds } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { AnalyticsTotals, DailyMetric } from '../types';
@@ -83,21 +84,29 @@ export async function getAccountDashboardData(
 
   const projectIds = projects.map((p) => p.id);
 
-  // Get all publishes for these projects (metadata from Supabase)
-  const { data: allPublishes } = await client
-    .from('publishes')
-    .select(
-      `
+  // Get all publishes for these projects (metadata from Supabase).
+  // Paged and chunked: these ids feed the dashboard's aggregate totals.
+  const allPublishes = await fetchAllByIds<PublishRow>(
+    projectIds,
+    (chunk, from, to) =>
+      client
+        .from('publishes')
+        .select(
+          `
       id, platform, title, published_at,
       episodes!inner (
         id, title, thumbnail_url,
         seasons!inner (project_id)
       )
     `,
-    )
-    .in('episodes.seasons.project_id', projectIds);
+        )
+        .in('episodes.seasons.project_id', chunk)
+        .order('id')
+        .range(from, to),
+    'dashboard publishes',
+  );
 
-  if (!allPublishes || allPublishes.length === 0) {
+  if (allPublishes.length === 0) {
     return {
       ...getEmptyDashboardData(),
       projectCount: projects.length,
@@ -305,29 +314,45 @@ async function getProductionStatus(
 ): Promise<AccountDashboardData['productionStatus']> {
   const client = getSupabaseServerClient();
 
-  const { data: seasons } = await client
-    .from('seasons')
-    .select('id')
-    .in('project_id', projectIds)
-    .is('deleted_at', null);
+  // Paged: the counters below are computed in JS over these rows, so a
+  // truncated read reports a smaller production pipeline than exists.
+  const seasons = await fetchAllByIds<{ id: string }>(
+    projectIds,
+    (chunk, from, to) =>
+      client
+        .from('seasons')
+        .select('id')
+        .in('project_id', chunk)
+        .is('deleted_at', null)
+        .order('id')
+        .range(from, to),
+    'production seasons',
+  );
 
-  if (!seasons || seasons.length === 0) {
+  if (seasons.length === 0) {
     return { inProgress: 0, finalized: 0, published: 0, scheduled: 0 };
   }
 
   const seasonIds = seasons.map((s) => s.id);
 
-  const { data: episodes } = await client
-    .from('episodes')
-    .select('id, status')
-    .in('season_id', seasonIds)
-    .is('deleted_at', null);
+  const episodes = await fetchAllByIds<{ id: string; status: string }>(
+    seasonIds,
+    (chunk, from, to) =>
+      client
+        .from('episodes')
+        .select('id, status')
+        .in('season_id', chunk)
+        .is('deleted_at', null)
+        .order('id')
+        .range(from, to),
+    'production episodes',
+  );
 
   let inProgress = 0;
   let finalized = 0;
   let published = 0;
 
-  for (const ep of episodes || []) {
+  for (const ep of episodes) {
     const status = ep.status;
     if (status === 'draft' || status === 'generating' || status === 'editing') {
       inProgress++;
@@ -338,17 +363,20 @@ async function getProductionStatus(
     }
   }
 
-  const episodeIds = (episodes || []).map((e) => e.id);
+  const episodeIds = episodes.map((e) => e.id);
   let scheduledCount = 0;
 
-  if (episodeIds.length > 0) {
+  // An exact head count is not row-capped, so this needs no pagination —
+  // but the id list is now unbounded, and a long `.in(...)` is serialized
+  // into the URI. Chunk it and sum; the chunks are disjoint by episode.
+  for (const chunk of chunkIds(episodeIds)) {
     const { count } = await client
       .from('publishes')
       .select('id', { count: 'exact', head: true })
-      .in('episode_id', episodeIds)
+      .in('episode_id', chunk)
       .gt('scheduled_for', new Date().toISOString())
       .is('published_at', null);
-    scheduledCount = count || 0;
+    scheduledCount += count || 0;
   }
 
   return {

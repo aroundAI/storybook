@@ -16,6 +16,7 @@ import type {
   VideoSnapshot,
 } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
+import { fetchAllByIds } from '@kit/shared/pagination';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import {
@@ -549,17 +550,23 @@ async function evaluateRevenueAlertsForBatch(
 ): Promise<void> {
   if (publishes.length === 0) return;
 
-  const { data } = await client
-    .from('episodes')
-    .select('projects!inner(account_id)')
-    .in(
-      'id',
-      publishes.map((p) => p.episode_id),
-    );
+  // Chunked: this derives the distinct set of accounts whose revenue alerts
+  // get evaluated, so a dropped row means an account is silently skipped.
+  const data = await fetchAllByIds<{ projects: unknown }>(
+    publishes.map((p) => p.episode_id),
+    (chunk, from, to) =>
+      client
+        .from('episodes')
+        .select('projects!inner(account_id)')
+        .in('id', chunk)
+        .order('id')
+        .range(from, to),
+    'alert account ids',
+  );
 
   const accountIds = new Set<string>();
 
-  for (const row of data ?? []) {
+  for (const row of data) {
     const project = row.projects as unknown as { account_id?: string } | null;
     if (project?.account_id) accountIds.add(project.account_id);
   }

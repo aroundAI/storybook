@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { fetchAllRows } from '@kit/shared/pagination';
+
 /**
  * Shared revenue reads.
  *
@@ -63,19 +65,30 @@ export async function fetchAccountRevenueRows(
       : bounded.lte('record_date', to);
   };
 
+  // Both halves are paged. They truncate independently, so a short read
+  // does not merely understate revenue — the current and previous windows
+  // lose different amounts, which can flip the reported trend direction.
   const [channelScoped, publishScoped] = await Promise.all([
-    applyRange(
-      client
-        .from('revenue_records')
-        .select(COLUMNS)
-        .is('publish_id', null)
-        .eq('account_id', accountId),
+    fetchAllRows<AccountRevenueRow>(
+      (from, to) =>
+        applyRange(
+          client
+            .from('revenue_records')
+            .select(COLUMNS)
+            .is('publish_id', null)
+            .eq('account_id', accountId),
+        )
+          .order('id')
+          .range(from, to),
+      'channel-scoped revenue',
     ),
-    applyRange(
-      client
-        .from('revenue_records')
-        .select(
-          `${COLUMNS},
+    fetchAllRows<AccountRevenueRow & { publishes?: { episode_id?: string } }>(
+      (from, to) =>
+        applyRange(
+          client
+            .from('revenue_records')
+            .select(
+              `${COLUMNS},
           publishes!inner (
             id,
             episode_id,
@@ -85,21 +98,22 @@ export async function fetchAccountRevenueRows(
               projects!inner ( account_id )
             )
           )`,
+            )
+            .eq('publishes.episodes.projects.account_id', accountId),
         )
-        .eq('publishes.episodes.projects.account_id', accountId),
+          .order('id')
+          .range(from, to),
+      'publish-scoped revenue',
     ),
   ]);
 
-  if (channelScoped.error) throw channelScoped.error;
-  if (publishScoped.error) throw publishScoped.error;
-
   const rows: AccountRevenueRow[] = [];
 
-  for (const row of channelScoped.data ?? []) {
+  for (const row of channelScoped) {
     rows.push({ ...(row as AccountRevenueRow), episode_id: null });
   }
 
-  for (const row of publishScoped.data ?? []) {
+  for (const row of publishScoped) {
     const publish = (row as { publishes?: { episode_id?: string | null } })
       .publishes;
     rows.push({

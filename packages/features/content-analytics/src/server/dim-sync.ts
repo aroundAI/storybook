@@ -5,9 +5,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { insertVideoDims } from '@kit/clickhouse/server';
 import type { VideoDim } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
+import { chunkIds, fetchAllByIds, forEachPage } from '@kit/shared/pagination';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-
-import { chunkIds, fetchAllByIds, forEachPage } from './lib/paginate';
 
 // Use generic SupabaseClient type to avoid strict type checking issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

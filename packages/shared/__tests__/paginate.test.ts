@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  chunkIds,
-  fetchAllByIds,
-  fetchAllRows,
-} from '../src/server/lib/paginate';
+import { chunkIds, fetchAllByIds, fetchAllRows } from '../src/pagination';
 
 /**
  * A fake table that honours a server-side row cap, the way PostgREST does:

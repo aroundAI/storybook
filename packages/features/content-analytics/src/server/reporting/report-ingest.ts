@@ -15,6 +15,7 @@ import type {
   VideoTrafficSource,
 } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
+import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import {
@@ -92,15 +93,23 @@ export async function runReportingIngestJob(): Promise<ReportIngestResult> {
     durationMs: 0,
   };
 
-  const { data: connections } = await client
-    .from('platform_connections')
-    .select('id, account_id')
-    .eq('platform', 'youtube')
-    .eq('is_active', true);
+  // Paged: this is the driver loop for all report ingestion, so a channel
+  // past the cap would silently never be collected from at all.
+  const connections = await fetchAllRows<ConnectionRow>(
+    (from, to) =>
+      client
+        .from('platform_connections')
+        .select('id, account_id')
+        .eq('platform', 'youtube')
+        .eq('is_active', true)
+        .order('id')
+        .range(from, to),
+    'active youtube connections',
+  );
 
   const { ensureValidToken } = await import('@kit/publishing/token-refresh');
 
-  for (const connection of (connections ?? []) as ConnectionRow[]) {
+  for (const connection of connections) {
     result.connectionsProcessed++;
 
     try {
@@ -435,7 +444,18 @@ function accumulateChannelDaily(
 
 /**
  * Maps YouTube video ids to platform publishes for this connection.
- * Batched: one query per report file.
+ *
+ * Chunked and paged, and the strictest case in the codebase for it. The id
+ * list comes from a whole report CSV, so its length is set by the channel's
+ * library rather than by anything here: a large channel exceeds both the
+ * row cap and the URI-length limit on a single `.in()`.
+ *
+ * Failing to resolve a video does not drop it — callers reclassify an
+ * unmatched id as channel-level residual and add it to `channel_daily`.
+ * `getYppProgressAction` then sums `channel_daily` with per-video metrics
+ * on the stated premise that the two are disjoint complements. A truncated
+ * lookup silently moves real per-video rows into the residual, double
+ * counting them and inflating YPP watch hours.
  */
 async function resolvePublishRefs(
   client: Client,
@@ -447,14 +467,25 @@ async function resolvePublishRefs(
 
   if (uniqueIds.length === 0) return refs;
 
-  const { data } = await client
-    .from('publishes')
-    .select('id, platform_content_id, episodes!inner(project_id)')
-    .eq('platform', 'youtube')
-    .eq('platform_connection_id', connectionId)
-    .in('platform_content_id', uniqueIds);
+  const rows = await fetchAllByIds<{
+    id: string;
+    platform_content_id: string | null;
+    episodes: unknown;
+  }>(
+    uniqueIds,
+    (chunk, from, to) =>
+      client
+        .from('publishes')
+        .select('id, platform_content_id, episodes!inner(project_id)')
+        .eq('platform', 'youtube')
+        .eq('platform_connection_id', connectionId)
+        .in('platform_content_id', chunk)
+        .order('id')
+        .range(from, to),
+    'publishes by platform_content_id',
+  );
 
-  for (const row of data ?? []) {
+  for (const row of rows) {
     const episode = row.episodes as unknown as { project_id: string | null };
     if (!row.platform_content_id || !episode?.project_id) continue;
     refs.set(row.platform_content_id, {

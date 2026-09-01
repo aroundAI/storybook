@@ -1,3 +1,4 @@
+import { fetchAllRows } from '@kit/shared/pagination';
 import { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -164,10 +165,15 @@ export async function getPublicEpisodes(
 ): Promise<PublicEpisode[]> {
   const client = getSupabaseServerClient();
 
-  const { data, error } = await client
-    .from('episodes')
-    .select(
-      `
+  // Paged: this is the public episode list for a project, so truncation
+  // would drop episodes off a public page with no error anywhere.
+  try {
+    const data = await fetchAllRows(
+      (from, to) =>
+        client
+          .from('episodes')
+          .select(
+            `
       *,
       project:projects!inner(
         id,
@@ -177,19 +183,25 @@ export async function getPublicEpisodes(
         account:accounts!inner(id, name, slug)
       )
     `,
-    )
-    .eq('project_id', projectId)
-    // Allow 'public' AND 'inherit' (exclude 'unlisted' and 'private')
-    .in('visibility', ['public', 'inherit'])
-    // Ensure episode has a slug (to prevent /e/null URLs)
-    .not('slug', 'is', null)
-    // Only show RELEASED episodes (those with content in localized_videos)
-    .not('localized_videos', 'is', null)
-    .neq('localized_videos', '{}')
-    .order('number', { ascending: true });
+          )
+          .eq('project_id', projectId)
+          // Allow 'public' AND 'inherit' (exclude 'unlisted' and 'private')
+          .in('visibility', ['public', 'inherit'])
+          // Ensure episode has a slug (to prevent /e/null URLs)
+          .not('slug', 'is', null)
+          // Only show RELEASED episodes (those with content in localized_videos)
+          .not('localized_videos', 'is', null)
+          .neq('localized_videos', '{}')
+          .order('number', { ascending: true })
+          .order('id')
+          .range(from, to),
+      'public episodes',
+    );
 
-  if (error) return [];
-  return data as unknown as PublicEpisode[];
+    return data as unknown as PublicEpisode[];
+  } catch {
+    return [];
+  }
 }
 
 export type LanguagePlatformUrls = {
@@ -259,41 +271,59 @@ export async function getEpisodePlatformUrls(
 export async function getSitemapData() {
   const client = getSupabaseServerClient();
 
-  // 1. Public Accounts (Companies)
-  const { data: accounts } = await client
-    .from('accounts')
-    .select('slug, updated_at')
-    .eq('public_profile->>is_public', 'true')
-    .limit(1000);
+  // Paged rather than capped. These were `.limit(1000/2000/5000)`, but
+  // PostgREST's own `max_rows` is 1000, so the larger two could never be
+  // honoured and the sitemap quietly stopped at a thousand URLs — the kind
+  // of truncation that costs indexing without producing any error.
+  const accounts = await fetchAllRows(
+    (from, to) =>
+      client
+        .from('accounts')
+        .select('slug, updated_at')
+        .eq('public_profile->>is_public', 'true')
+        .order('slug')
+        .range(from, to),
+    'sitemap accounts',
+  );
 
   // 2. Public Projects
-  const { data: projects } = await client
-    .from('projects')
-    .select(
-      `
-        public_slug, 
+  const projects = await fetchAllRows(
+    (from, to) =>
+      client
+        .from('projects')
+        .select(
+          `
+        public_slug,
         updated_at,
         account:accounts!inner(slug)
       `,
-    )
-    .eq('visibility', 'public')
-    .limit(2000);
+        )
+        .eq('visibility', 'public')
+        .order('public_slug')
+        .range(from, to),
+    'sitemap projects',
+  );
 
   // 3. Public Episodes
-  const { data: episodes } = await client
-    .from('episodes')
-    .select(
-      `
-        public_slug, 
+  const episodes = await fetchAllRows(
+    (from, to) =>
+      client
+        .from('episodes')
+        .select(
+          `
+        public_slug,
         updated_at,
         project:projects!inner(
           public_slug,
           account:accounts!inner(slug)
         )
       `,
-    )
-    .in('visibility', ['public', 'inherit'])
-    .limit(5000);
+        )
+        .in('visibility', ['public', 'inherit'])
+        .order('public_slug')
+        .range(from, to),
+    'sitemap episodes',
+  );
 
   return {
     accounts: accounts || [],
