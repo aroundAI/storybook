@@ -135,20 +135,18 @@ function buildDimConditions(scope: DimScope): {
 /**
  * Subquery selecting the latest dim row per video in scope.
  *
- * `extra` projects additional dimension columns with the same argMax-by-
- * updated_at rule, so callers needing channel, language or title do not
- * each hand-roll their own dim query.
+ * Projects a fixed column set. FILM-1603 needs channel, language and title
+ * here; add them explicitly then. An earlier `extra: string[]` parameter
+ * that interpolated caller-supplied column names was removed unused — a
+ * raw identifier splice into SQL is worth adding deliberately, with
+ * escaping, rather than inheriting.
  */
-function dimSubquery(conditions: string, extra: string[] = []): string {
-  const extraSelects = extra
-    .map((column) => `,\n      argMax(${column}, updated_at) as ${column}`)
-    .join('');
-
+function dimSubquery(conditions: string): string {
   return `
     SELECT
       video_id,
       argMax(published_at, updated_at) as published_at,
-      argMax(tags, updated_at) as tags${extraSelects}
+      argMax(tags, updated_at) as tags
     FROM video_dim
     WHERE ${conditions}
     GROUP BY video_id

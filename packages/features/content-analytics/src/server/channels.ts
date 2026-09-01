@@ -4,6 +4,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { fetchAllByIds, fetchAllRows } from './lib/paginate';
+
 // Use generic SupabaseClient type to avoid strict type checking issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Client = SupabaseClient<any, any, any>;
@@ -48,32 +50,52 @@ export async function listProjectChannels(
   projectId: string,
   client: Client = getSupabaseServerClient(),
 ): Promise<ChannelRef[]> {
-  const { data } = await client
-    .from('publishes')
-    .select(
-      `platform_connection_id,
-       episodes!inner(project_id),
-       platform_connections!inner(
-         id, platform, platform_account_name, is_active, metadata
-       )`,
-    )
-    .eq('status', 'published')
-    .eq('episodes.project_id', projectId)
-    .not('platform_connection_id', 'is', null);
-
-  const byId = new Map<string, ChannelRef>();
-
-  for (const row of data ?? []) {
-    const connection = (
-      row as unknown as { platform_connections?: ConnectionRow }
-    ).platform_connections;
-    if (!connection) continue;
-    byId.set(connection.id, toChannelRef(connection));
-  }
-
-  return Array.from(byId.values()).sort((a, b) =>
-    a.name.localeCompare(b.name),
+  // Two steps rather than one embedded join. The join returns one row per
+  // publish, so a project with more publishes than PostgREST's `max_rows`
+  // could lose a channel whose only publishes fall past the cut — and the
+  // truncation arrives as a short 200, not an error. Collecting the ids
+  // first keeps the second query proportional to the channel count, and
+  // drops the cast the embedded shape forced.
+  const publishRows = await fetchAllRows<{
+    platform_connection_id: string | null;
+  }>(
+    (from, to) =>
+      client
+        .from('publishes')
+        .select('platform_connection_id, episodes!inner(project_id)')
+        .eq('status', 'published')
+        .eq('episodes.project_id', projectId)
+        .not('platform_connection_id', 'is', null)
+        .order('platform_connection_id')
+        .range(from, to),
+    'project channels',
   );
+
+  const connectionIds = Array.from(
+    new Set(
+      publishRows
+        .map((row) => row.platform_connection_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
+
+  if (connectionIds.length === 0) return [];
+
+  const connections = await fetchAllByIds<ConnectionRow>(
+    connectionIds,
+    (chunk, from, to) =>
+      client
+        .from('platform_connections')
+        .select('id, platform, platform_account_name, is_active, metadata')
+        .in('id', chunk)
+        .order('id')
+        .range(from, to),
+    'platform_connections',
+  );
+
+  return connections
+    .map(toChannelRef)
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
@@ -86,21 +108,23 @@ export async function listAccountChannels(
   client: Client = getSupabaseServerClient(),
   options?: { platform?: string; activeOnly?: boolean },
 ): Promise<ChannelRef[]> {
-  let query = client
-    .from('platform_connections')
-    .select('id, platform, platform_account_name, is_active, metadata')
-    .eq('account_id', accountId);
+  const connections = await fetchAllRows<ConnectionRow>((from, to) => {
+    let query = client
+      .from('platform_connections')
+      .select('id, platform, platform_account_name, is_active, metadata')
+      .eq('account_id', accountId);
 
-  if (options?.platform) {
-    query = query.eq('platform', options.platform);
-  }
-  if (options?.activeOnly) {
-    query = query.eq('is_active', true);
-  }
+    if (options?.platform) {
+      query = query.eq('platform', options.platform);
+    }
+    if (options?.activeOnly) {
+      query = query.eq('is_active', true);
+    }
 
-  const { data } = await query;
+    return query.order('id').range(from, to);
+  }, 'account channels');
 
-  return ((data ?? []) as ConnectionRow[])
+  return connections
     .map(toChannelRef)
     .sort((a, b) => a.name.localeCompare(b.name));
 }

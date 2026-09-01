@@ -173,7 +173,7 @@ export {
   type DiagnosticRow,
   type MedianBucketEntry,
   type TrafficShareEntry,
-  type YppProgress,
+  type YppChannelProgress,
 } from './deep-dive';
 
 // Hook Lab (FILM-1510)
