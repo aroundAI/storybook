@@ -1,0 +1,86 @@
+---
+spec_id: FILM-1612
+title: PostgREST Row-Cap Pagination Sweep
+status: 🔍 IN REVIEW
+effort: L
+dependencies: FILM-1602
+---
+
+# PostgREST Row-Cap Pagination Sweep
+
+## 1. Overview
+
+`apps/web/supabase/config.toml` sets `max_rows = 1000`, and **production enforces it for the service-role client too**. PostgREST applies the cap by returning a **short body with HTTP 200 and `error: null`**, so an unbounded `.select()` is indistinguishable from a complete result — there is no exception to catch and no flag to check.
+
+Confirmed empirically against production with the service-role key:
+
+| table | rows | returned |
+|---|---|---|
+| `episodes` | 127 | 127 |
+| `shots` | 3,305 | **1,000** |
+
+Before this spec, `grep` for `max-rows` across the repo returned zero hits: the cap was nowhere documented, and every analytics read that needed all rows was silently capped.
+
+Found while verifying the FILM-1602 code review, which surfaced two instances; this spec sweeps the rest. In review as PR #235.
+
+## 2. Shared Helper
+
+`packages/shared/src/pagination/index.ts`, exported as `@kit/shared/pagination`. It is pure plumbing over a caller-supplied query — no Supabase import and no I/O of its own — so it needs no `server-only` marker and no new dependency, which is what lets `public-sharing` use it too.
+
+| Export | Purpose |
+|--------|---------|
+| `forEachPage(page, handle, label)` | Drains a query, handing each page to a callback. Progress is measured by rows **actually returned** rather than by page size, so the loop stays correct if the server cap is below the page size or changes later. `MAX_ROWS` turns a runaway into a loud failure. |
+| `fetchAllRows(page, label)` | Collects every page into one array, built on `forEachPage`. |
+| `fetchAllByIds(ids, page, label)` | Splits an `.in(...)` list into ≤200-id chunks and drains each. This is a **separate ceiling** from the row cap: a long filter list is serialized into the request URI and fails with a 414 rather than truncating. |
+| `chunkIds(ids, size)` | Chunking for callers that batch writes or counts. |
+
+Callers **must** supply a deterministic `.order()` on a unique column. Range pagination over an unordered query can skip or repeat rows, because Postgres is free to return them in a different order for each request.
+
+## 3. Sites Fixed
+
+| Site | Consequence of truncation |
+|------|---------------------------|
+| `report-ingest.ts` `resolvePublishRefs` | **Worst.** The id list comes from a whole report CSV, so its length is set by the channel's library. An unmatched video is not dropped — it is reclassified as channel-level residual, and `getYppProgressAction` sums `channel_daily` with per-video metrics on the premise that the two are disjoint. Truncation moved real per-video rows into the residual and **inflated YPP watch hours**. |
+| `revenue-actions.ts` `fetchAccountPublishIds` | The RPM denominator added in FILM-1601 *specifically* to stop RPM being inflated — unbounded, it re-created that defect past 1,000 publishes. |
+| `revenue-queries.ts` `fetchAccountRevenueRows` | Both halves truncate independently, so the current and previous windows lost different amounts and the **trend direction could flip**. |
+| `revenue-actions.ts` `getTopContentByRevenueAction` | `limit` applies *after* aggregation, so truncation understated surviving publishes and reordered the ranking. |
+| `language-analytics.ts` | Seasons → episodes → publishes, three stacked reads. A whole language can vanish from the breakdown, reading as "we don't publish in that language" rather than as missing data. |
+| `aggregation-queries.ts` | Season/project rollups, and the **view-weighted** audience splits — truncation skews demographics and geography, not just totals. |
+| `account-dashboard-actions.ts` | Dashboard totals and production-status counters computed in JS over a truncated list. |
+| `report-actions.ts`, `api/reports/scheduled/route.ts` | The content set of an emailed report, plus its `publish_tags` lookup — one row per assignment, so it truncates long before the publish count does and ships blank tag columns. |
+| `report-ingest.ts` connection loop | The driver loop for all ingestion: a channel past the cap would never be collected from at all. |
+| `dim-sync.ts`, `channels.ts`, `taxonomy-actions.ts`, `deep-dive-actions.ts` | Fixed earlier under FILM-1602's review remediation. |
+| `public-queries.ts` sitemap | `.limit(2000)` / `.limit(5000)` could never be honoured against a 1000-row cap, so the sitemap silently stopped at a thousand URLs. |
+| `youtube-backfill.ts` `fetchPendingPublishes` | Oldest-first ordering meant no work was lost, but `remaining` was reported from this list and flat-lined at 1,000 outstanding. |
+
+### Left unpaged, deliberately
+
+- `aggregation-queries.ts` publishes for a **single episode** — bounded by platforms × languages.
+- `.limit(1000)` in the documentary fact-checker and researcher sits exactly at the cap and is outside this sweep's area.
+
+## 4. Documentation
+
+`CLAUDE.md` gains a **Reading More Than 1000 Rows** section covering the cap, the mandatory unique `.order()`, the separate URI-length ceiling on `.in(...)`, and that `{ count: 'exact', head: true }` is not row-capped but still needs its id list chunked.
+
+## 5. Acceptance Criteria
+
+- [x] `@kit/shared/pagination` exports `forEachPage` / `fetchAllRows` / `fetchAllByIds` / `chunkIds`
+- [x] Progress is measured by rows returned, so a server cap below the page size does not truncate
+- [x] A runaway read fails loudly rather than paging forever
+- [x] Every read whose correctness depends on seeing all rows is paged, with a unique `.order()`
+- [x] `.in(...)` lists on one-to-many tables are chunked
+- [x] The dim reconcile inserts per page rather than buffering the whole library
+- [x] The cap is documented in `CLAUDE.md`
+
+## 6. Verification
+
+```bash
+pnpm --filter @kit/shared test              # 77 passing, incl. 13 pagination tests
+pnpm --filter @kit/content-analytics test
+pnpm --filter @kit/clickhouse test
+pnpm typecheck && pnpm lint
+```
+
+Helper tests cover exact-multiple termination, a short final page, an empty result, a **server cap smaller than the page size**, contiguous ranges with no gap or overlap, error propagation, and the runaway guard. The revenue tests add a 600-row case proving the read pages past one page.
+
+Against production, `shots` (3,305 rows) is a live fixture: a paginated read must return 3,305 where an unbounded one returns 1,000.
