@@ -1,5 +1,3 @@
-import 'server-only';
-
 /**
  * Exhaustive reads against PostgREST.
  *
@@ -9,6 +7,10 @@ import 'server-only';
  * returning a short body with HTTP 200 and no error, so an unbounded
  * `.select()` looks identical to a complete result. Any read whose
  * correctness depends on seeing every row has to page through explicitly.
+ *
+ * Pure plumbing over a caller-supplied query, so it carries no `server-only`
+ * marker and no Supabase dependency — which is what lets it live here and be
+ * used by any package that talks to PostgREST.
  */
 
 /** Rows requested per page. Deliberately below the server cap. */
@@ -101,6 +103,13 @@ const IN_CHUNK_SIZE = 200;
  * Each chunk is drained with `fetchAllRows`, because a chunk of N ids can
  * still match far more than N rows on a one-to-many table (`publish_tags`
  * being the case that motivated this).
+ *
+ * Ids are deduplicated first. A single `.in(...)` absorbs duplicates, but
+ * chunking does not: the same id landing in two chunks runs two queries
+ * whose results are both concatenated, so a repeated id would return its
+ * rows twice and inflate anything folded from them. Deduplicating here
+ * keeps this a drop-in replacement for the single `.in(...)` it stands in
+ * for, and covers every caller rather than each one remembering.
  */
 export async function fetchAllByIds<T>(
   ids: string[],
@@ -111,12 +120,14 @@ export async function fetchAllByIds<T>(
   ) => PromiseLike<PageResult<T>>,
   label = 'query',
 ): Promise<T[]> {
-  if (ids.length === 0) return [];
+  const unique = Array.from(new Set(ids));
+
+  if (unique.length === 0) return [];
 
   const rows: T[] = [];
 
-  for (let index = 0; index < ids.length; index += IN_CHUNK_SIZE) {
-    const chunk = ids.slice(index, index + IN_CHUNK_SIZE);
+  for (let index = 0; index < unique.length; index += IN_CHUNK_SIZE) {
+    const chunk = unique.slice(index, index + IN_CHUNK_SIZE);
 
     rows.push(
       ...(await fetchAllRows<T>(

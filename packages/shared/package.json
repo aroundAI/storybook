@@ -18,7 +18,8 @@
     "./hooks": "./src/hooks/index.ts",
     "./events": "./src/events/index.tsx",
     "./registry": "./src/registry/index.ts",
-    "./crypto": "./src/crypto/index.ts"
+    "./crypto": "./src/crypto/index.ts",
+    "./pagination": "./src/pagination/index.ts"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",

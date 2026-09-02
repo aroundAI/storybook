@@ -2,9 +2,8 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-
-import { fetchAllByIds, fetchAllRows } from './lib/paginate';
 
 // Use generic SupabaseClient type to avoid strict type checking issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

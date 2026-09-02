@@ -7,33 +7,78 @@ type Call = [string, ...unknown[]];
 /**
  * A chainable stand-in for the PostgREST builder that records every filter
  * applied, so the tests can assert on scoping rather than on returned rows.
+ *
+ * It honours `.range()` by slicing, which both keeps the pagination loop
+ * terminating and lets the tests confirm the reads really are paged.
  */
 function createClient(results: Array<{ data: unknown[]; error: unknown }>) {
+  // One entry per logical query, reused across that query's pages.
   const queries: Array<{ calls: Call[] }> = [];
+
+  // Keyed by the projection string, which differs between the two halves —
+  // the publish-scoped select carries the embedded `publishes!inner` block.
+  //
+  // A global call counter cannot work here: the halves run concurrently and
+  // finish after different numbers of pages, so once the shorter one stops,
+  // a round-robin mapping hands the longer one the other query's result and
+  // builder. Its filters would then be recorded against the wrong query,
+  // and the account-scoping assertions below would be checking a builder
+  // holding some other query's predicates.
+  const byProjection = new Map<
+    string,
+    { calls: Call[]; resultIndex: number }
+  >();
 
   return {
     queries,
     from() {
-      const calls: Call[] = [];
-      const result = results[queries.length] ?? { data: [], error: null };
+      return {
+        select(projection: string) {
+          let state = byProjection.get(projection);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const builder: any = {
-        calls,
-        then(resolve: (value: unknown) => unknown) {
-          return Promise.resolve(result).then(resolve);
+          if (!state) {
+            state = { calls: [], resultIndex: byProjection.size };
+            byProjection.set(projection, state);
+            queries.push(state);
+          }
+
+          const result = results[state.resultIndex] ?? {
+            data: [],
+            error: null,
+          };
+          const calls = state.calls;
+
+          let range: [number, number] = [0, Number.MAX_SAFE_INTEGER];
+
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const builder: any = {
+            calls,
+            then(resolve: (value: unknown) => unknown) {
+              const page = result.error
+                ? { data: null, error: result.error }
+                : {
+                    data: result.data.slice(range[0], range[1] + 1),
+                    error: null,
+                  };
+              return Promise.resolve(page).then(resolve);
+            },
+          };
+
+          for (const method of ['is', 'eq', 'gte', 'lte', 'lt', 'order']) {
+            builder[method] = (...args: unknown[]) => {
+              calls.push([method, ...args]);
+              return builder;
+            };
+          }
+
+          builder.range = (rangeFrom: number, rangeTo: number) => {
+            range = [rangeFrom, rangeTo];
+            return builder;
+          };
+
+          return builder;
         },
       };
-
-      for (const method of ['select', 'is', 'eq', 'gte', 'lte', 'lt']) {
-        builder[method] = (...args: unknown[]) => {
-          calls.push([method, ...args]);
-          return builder;
-        };
-      }
-
-      queries.push(builder);
-      return builder;
     },
   };
 }
@@ -155,6 +200,77 @@ describe('fetchAccountRevenueRows', () => {
     expect(rows[1]).toMatchObject({ id: 'r2', episode_id: 'ep-1' });
   });
 
+  it('returns every row when a half exceeds one page', async () => {
+    // 600 rows is past the 500-row page size and would previously have been
+    // cut short by the server cap with no error, understating revenue.
+    const many = Array.from({ length: 600 }, (_, index) => ({
+      id: `r${index}`,
+      publish_id: null,
+      revenue_cents: 100,
+    }));
+
+    const client = createClient([
+      { data: many, error: null },
+      { data: [], error: null },
+    ]);
+
+    const rows = await fetchAccountRevenueRows(
+      client,
+      ACCOUNT,
+      '2026-01-01',
+      '2026-01-31',
+    );
+
+    expect(rows).toHaveLength(600);
+    expect(rows.reduce((sum, r) => sum + r.revenue_cents, 0)).toBe(60_000);
+  });
+
+  it('keeps each half’s filters separate when both page past one page', async () => {
+    // The halves finish after different numbers of pages, so this is the
+    // case where a mock keyed on a global call counter starts handing one
+    // query the other's builder — quietly invalidating the scoping
+    // assertions above. Both halves carry data here, and the channel half
+    // outlives the publish half.
+    const channelRows = Array.from({ length: 1200 }, (_, index) => ({
+      id: `c${index}`,
+      publish_id: null,
+      revenue_cents: 10,
+    }));
+    const publishRows = Array.from({ length: 20 }, (_, index) => ({
+      id: `p${index}`,
+      publish_id: `pub${index}`,
+      revenue_cents: 5,
+      publishes: { episode_id: `ep${index}` },
+    }));
+
+    const client = createClient([
+      { data: channelRows, error: null },
+      { data: publishRows, error: null },
+    ]);
+
+    const rows = await fetchAccountRevenueRows(
+      client,
+      ACCOUNT,
+      '2026-01-01',
+      '2026-01-31',
+    );
+
+    expect(rows).toHaveLength(1220);
+
+    const [channelScoped, publishScoped] = client.queries;
+
+    // The channel half must not have picked up the publish half's join
+    // predicate, or vice versa, however many pages each ran for.
+    expect(filtersOf(channelScoped!.calls)).toContain('is publish_id null');
+    expect(filtersOf(channelScoped!.calls)).not.toContain(
+      `eq publishes.episodes.projects.account_id ${ACCOUNT}`,
+    );
+    expect(filtersOf(publishScoped!.calls)).toContain(
+      `eq publishes.episodes.projects.account_id ${ACCOUNT}`,
+    );
+    expect(filtersOf(publishScoped!.calls)).not.toContain('is publish_id null');
+  });
+
   it('throws when either half fails rather than reporting partial revenue', async () => {
     const channelFailed = createClient([
       { data: [], error: { message: 'boom' } },
@@ -167,7 +283,9 @@ describe('fetchAccountRevenueRows', () => {
         '2026-01-01',
         '2026-01-31',
       ),
-    ).rejects.toMatchObject({ message: 'boom' });
+      // The label identifies which half failed, so a partial-revenue bug
+      // cannot hide behind a bare message.
+    ).rejects.toThrow(/channel-scoped revenue.*boom/);
 
     const publishFailed = createClient([
       { data: [], error: null },
@@ -180,6 +298,6 @@ describe('fetchAccountRevenueRows', () => {
         '2026-01-01',
         '2026-01-31',
       ),
-    ).rejects.toMatchObject({ message: 'bang' });
+    ).rejects.toThrow(/publish-scoped revenue.*bang/);
   });
 });

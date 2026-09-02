@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { queryMedianByTag } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
+import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
@@ -17,7 +18,6 @@ import {
   UpdateTagSchema,
 } from '../lib/schemas/taxonomy.schema';
 import { upsertVideoDims } from './dim-sync';
-import { fetchAllRows } from './lib/paginate';
 
 export const createTagAction = enhanceAction(
   async (data, user) => {
@@ -212,21 +212,32 @@ export const getPublishTagsAction = enhanceAction(
   async ({ publishIds }) => {
     const client = getSupabaseServerClient();
 
-    const { data, error } = await client
-      .from('publish_tags')
-      .select('publish_id, content_tags!inner(id, dimension, slug, label)')
-      .in('publish_id', publishIds);
-
-    if (error) {
-      throw new Error(`Failed to load publish tags: ${error.message}`);
-    }
+    // Chunked and paged. publishIds is capped at 500 by the schema, but
+    // publish_tags is one row per assignment — 500 publishes with a handful
+    // of tags each exceeds the row cap, and the picker would show videos as
+    // untagged when they are not.
+    const data = await fetchAllByIds<{
+      publish_id: string;
+      content_tags: unknown;
+    }>(
+      publishIds,
+      (chunk, from, to) =>
+        client
+          .from('publish_tags')
+          .select('publish_id, content_tags!inner(id, dimension, slug, label)')
+          .in('publish_id', chunk)
+          .order('publish_id')
+          .order('tag_id')
+          .range(from, to),
+      'publish tags',
+    );
 
     const byPublish: Record<
       string,
       Array<{ id: string; dimension: string; slug: string; label: string }>
     > = {};
 
-    for (const row of data ?? []) {
+    for (const row of data) {
       const tag = row.content_tags as unknown as {
         id: string;
         dimension: string;

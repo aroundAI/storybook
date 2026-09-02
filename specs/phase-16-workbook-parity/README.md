@@ -1,0 +1,56 @@
+# Phase 16: Workbook Parity
+
+Closes the gap between Phase 15's analytics discipline and the *YouTube Channel Metrics Tracker* workbook. A gap-check found roughly two-thirds of the workbook covered, with the misses clustered on the columns the workbook itself calls "the numbers that actually matter", plus eight correctness defects — one introduced by Phase 15.
+
+## Specs & Dependency Order
+
+```
+FILM-1601 (correctness bugs + revenue delete RLS)
+     │
+     ├─→ FILM-1602 (channel dimension + per-channel YPP)
+     │        │
+     │        └─→ FILM-1612 (PostgREST row-cap pagination sweep)
+     │
+     └─→ FILM-1613 (revenue alert account scoping)
+```
+
+| Spec | Delivered in |
+|------|--------------|
+| FILM-1601 | PR #232 (folded into the Phase 15 PR) |
+| FILM-1602 | PR #233, including its code-review remediation |
+| FILM-1613 | PR #234 |
+| FILM-1612 | PR #235 |
+
+## Locked decisions
+
+- **A project spans multiple channels** — different platforms, and separate per-language channels where multi-language audio is unavailable. Channel is a *dimension inside a project*, and YPP must be **per-channel**: pooling channels against one 4,000-hour target reports a threshold as met when neither channel has met it.
+- **Video Log is project-level with a channel filter**, delivered as both an in-app table and CSV export columns.
+- **Unknown YPP applicant status defaults to new applicant (8,000h)** — better to over-state the bar than under-state it.
+- **Day boundary `< N`** everywhere (days 0–29 = "@30d"), so the codebase carries one convention rather than two.
+- **`CHANNEL_PAGE` stays its own traffic bucket**, not folded into Browse+Suggested — matches Studio, and folding it would silently move the 60% milestone.
+- **Segment RPM is pooled** (Σrevenue / Σviews), not a mean of per-video RPMs, which tiny-view videos dominate.
+
+## Verified corrections to earlier assumptions
+
+- `platform_connections.subscriber_count` **is not a column** — it lives in `metadata` jsonb, written once at OAuth/channel-select and never refreshed.
+- `channel_daily` is the **residual** of videos that failed to match a publish. A channel total is `Σ video_metrics for its publishes + channel_daily`; the two compose exactly once `connection_id` is on `video_dim` (FILM-1602) and publish resolution is complete (FILM-1612). They can be UNIONed, never joined per-video.
+- Supabase enforces `max_rows = 1000` on **every** read including the service-role client, silently (FILM-1612).
+
+## Not yet specified
+
+The remaining workbook-parity scope is planned but **deliberately unspecified** — no spec file exists for it yet, and it should get one before implementation:
+
+per-video views-at-age and the Video Log · cohort medians and growth · traffic source breakdown · segment performance · absolute subscriber snapshots · YPP targets and settings UI · revenue mix completion · experiment log and per-video notes · wiring up the four orphaned components.
+
+## Known limits — do not promise these
+
+- **New vs returning viewers.** Studio-only on both APIs. The subscribed-vs-not proxy is the ceiling; keep it labelled a proxy.
+- **Historical absolute subscriber counts.** The Data API gives only current, the Reporting API only gained/lost. Any series starts the day snapshots ship.
+- **Views @30d for videos whose first 30 days predate ingest.** Reporting jobs backfill only ~30 days from job creation, so for anything published before jobs existed for that channel the early-life rows cannot be obtained. This affects every historical video and is the most important caveat in the workbook.
+- **Exact YPP watch hours as YouTube computes them** — their figure adjusts for deleted/private/ineligible content no API exposes. Ours is a close approximation. The Shorts alternate path (10M views/90d) is not implemented.
+- **A literal "Browse" traffic source** — no such code exists; it is approximated, so the percentage will not match Studio exactly.
+- **Licensing/IP revenue** and **per-video revenue on TikTok/Instagram** — no API anywhere; manual entry permanently.
+
+## Blocked on infrastructure
+
+ClickHouse is still unprovisioned in production (`CLICKHOUSE_ENABLED=false`). Every gate lives inside `@kit/clickhouse`: reads return empty and writes no-op, so nothing errors — the UI simply shows zeros. None of this phase produces data until an instance exists and the FILM-1503 cutover runs.

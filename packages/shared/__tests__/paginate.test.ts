@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  chunkIds,
-  fetchAllByIds,
-  fetchAllRows,
-} from '../src/server/lib/paginate';
+import { chunkIds, fetchAllByIds, fetchAllRows } from '../src/pagination';
 
 /**
  * A fake table that honours a server-side row cap, the way PostgREST does:
@@ -138,6 +134,30 @@ describe('fetchAllByIds', () => {
 
     expect(chunks.map((chunk) => chunk.length)).toEqual([200, 200, 50]);
     expect(chunks.flat()).toEqual(ids);
+  });
+
+  it('deduplicates ids that would otherwise straddle two chunks', async () => {
+    // A single `.in(...)` absorbs a repeated id; chunking does not, so the
+    // duplicate would run in two chunks and its rows be concatenated twice.
+    const ids = Array.from({ length: 300 }, (_, index) => `id-${index}`);
+    ids.push('id-0'); // repeat of a first-chunk id, lands in the second
+
+    const chunks: string[][] = [];
+
+    const rows = await fetchAllByIds(ids, (chunk, from) => {
+      if (from === 0) chunks.push(chunk);
+
+      // One row for the duplicated id, on the first page of its chunk only.
+      const matches = chunk.includes('id-0') && from === 0;
+
+      return Promise.resolve({
+        data: matches ? [{ id: 'row-for-id-0' }] : [],
+        error: null,
+      });
+    });
+
+    expect(chunks.flat().filter((id) => id === 'id-0')).toHaveLength(1);
+    expect(rows).toHaveLength(1);
   });
 
   it('paginates within a chunk, since one id can match many rows', async () => {

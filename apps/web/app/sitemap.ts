@@ -73,8 +73,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Dynamic documentation pages
   const docPages = await getDocumentationUrls(baseUrl);
 
-  // Public Sharing Pages
-  const { accounts, projects, episodes } = await getSitemapData();
+  // Public Sharing Pages.
+  //
+  // These reads are paged and can throw — on a transient PostgREST error, or
+  // on the pagination helper's own overflow guard. A sitemap that omits the
+  // shared pages is far better than one that 500s and omits everything, so
+  // failures degrade to the static URLs above.
+  let accounts: Awaited<ReturnType<typeof getSitemapData>>['accounts'] = [];
+  let projects: Awaited<ReturnType<typeof getSitemapData>>['projects'] = [];
+  let episodes: Awaited<ReturnType<typeof getSitemapData>>['episodes'] = [];
+
+  try {
+    ({ accounts, projects, episodes } = await getSitemapData());
+  } catch (error) {
+    const logger = await getLogger();
+
+    logger.error(
+      {
+        name: 'sitemap',
+        error: error instanceof Error ? error.message : String(error),
+      },
+      'Sitemap data failed; serving static URLs only',
+    );
+  }
+
   const sharingPages: MetadataRoute.Sitemap = [];
 
   // Companies

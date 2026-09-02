@@ -1,3 +1,5 @@
+import { getLogger } from '@kit/shared/logger';
+import { fetchAllRows } from '@kit/shared/pagination';
 import { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -90,20 +92,54 @@ export async function getPublicProjects(
   accountId: string,
 ): Promise<PublicProject[]> {
   const client = getSupabaseServerClient();
-  const { data, error } = await client
-    .from('projects')
-    .select(
-      `
+
+  // Paged, like its sibling getPublicEpisodes: an unpaged read stops at the
+  // server's row cap with HTTP 200 and no error, so a company past that
+  // would silently lose the rest of its public listing.
+  //
+  // `created_at` leads so the newest-first display order is preserved, but
+  // it is not unique — `id` is the tiebreak that makes the page boundaries
+  // deterministic. Without it, ties can skip and duplicate rows.
+  //
+  // Failures are logged and degrade to an empty list rather than throwing:
+  // the only caller renders this inside a public company page with a bare
+  // await, so a throw would 500 the whole page instead of dropping one
+  // section. (getSitemapData throws instead, because its route was given an
+  // explicit degrade path.)
+  try {
+    const data = await fetchAllRows(
+      (from, to) =>
+        client
+          .from('projects')
+          .select(
+            `
       *,
       account:accounts!inner(id, name, slug)
     `,
-    )
-    .eq('account_id', accountId)
-    .eq('visibility', 'public')
-    .order('created_at', { ascending: false });
+          )
+          .eq('account_id', accountId)
+          .eq('visibility', 'public')
+          .order('created_at', { ascending: false })
+          .order('id')
+          .range(from, to),
+      'public projects',
+    );
 
-  if (error) return [];
-  return data as unknown as PublicProject[];
+    return data as unknown as PublicProject[];
+  } catch (error) {
+    const logger = await getLogger();
+
+    logger.error(
+      {
+        name: 'public-projects',
+        accountId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      'Failed to load public projects',
+    );
+
+    return [];
+  }
 }
 
 /**
@@ -164,10 +200,15 @@ export async function getPublicEpisodes(
 ): Promise<PublicEpisode[]> {
   const client = getSupabaseServerClient();
 
-  const { data, error } = await client
-    .from('episodes')
-    .select(
-      `
+  // Paged: this is the public episode list for a project, so truncation
+  // would drop episodes off a public page with no error anywhere.
+  try {
+    const data = await fetchAllRows(
+      (from, to) =>
+        client
+          .from('episodes')
+          .select(
+            `
       *,
       project:projects!inner(
         id,
@@ -177,19 +218,39 @@ export async function getPublicEpisodes(
         account:accounts!inner(id, name, slug)
       )
     `,
-    )
-    .eq('project_id', projectId)
-    // Allow 'public' AND 'inherit' (exclude 'unlisted' and 'private')
-    .in('visibility', ['public', 'inherit'])
-    // Ensure episode has a slug (to prevent /e/null URLs)
-    .not('slug', 'is', null)
-    // Only show RELEASED episodes (those with content in localized_videos)
-    .not('localized_videos', 'is', null)
-    .neq('localized_videos', '{}')
-    .order('number', { ascending: true });
+          )
+          .eq('project_id', projectId)
+          // Allow 'public' AND 'inherit' (exclude 'unlisted' and 'private')
+          .in('visibility', ['public', 'inherit'])
+          // Ensure episode has a slug (to prevent /e/null URLs)
+          .not('slug', 'is', null)
+          // Only show RELEASED episodes (those with content in localized_videos)
+          .not('localized_videos', 'is', null)
+          .neq('localized_videos', '{}')
+          .order('number', { ascending: true })
+          .order('id')
+          .range(from, to),
+      'public episodes',
+    );
 
-  if (error) return [];
-  return data as unknown as PublicEpisode[];
+    return data as unknown as PublicEpisode[];
+  } catch (error) {
+    // Logged rather than swallowed, and degraded rather than thrown, for
+    // the same reason as getPublicProjects above: the caller is a public
+    // page render.
+    const logger = await getLogger();
+
+    logger.error(
+      {
+        name: 'public-episodes',
+        projectId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      'Failed to load public episodes',
+    );
+
+    return [];
+  }
 }
 
 export type LanguagePlatformUrls = {
@@ -259,41 +320,82 @@ export async function getEpisodePlatformUrls(
 export async function getSitemapData() {
   const client = getSupabaseServerClient();
 
-  // 1. Public Accounts (Companies)
-  const { data: accounts } = await client
-    .from('accounts')
-    .select('slug, updated_at')
-    .eq('public_profile->>is_public', 'true')
-    .limit(1000);
+  // Paged rather than capped. These were `.limit(1000/2000/5000)`, but
+  // PostgREST's own `max_rows` is 1000, so the larger two could never be
+  // honoured and the sitemap quietly stopped at a thousand URLs — the kind
+  // of truncation that costs indexing without producing any error.
+  //
+  // Every page orders by `id`. `public_slug` and `accounts.slug` are both
+  // nullable (and `slug` is required to be NULL on personal accounts), so
+  // ordering by them leaves rows tied on NULL in arbitrary per-request
+  // order — and `.range()` boundaries over an unstable sort skip and
+  // duplicate rows, which would drop and repeat sitemap URLs on every
+  // generation. `id` is the primary key: unique and non-null.
+  //
+  // The NULL-slug rows are also filtered out in SQL rather than in the
+  // route, so a page carries only rows that can actually produce a URL.
+  const accounts = await fetchAllRows(
+    (from, to) =>
+      client
+        .from('accounts')
+        .select('slug, updated_at')
+        .eq('public_profile->>is_public', 'true')
+        .not('slug', 'is', null)
+        .order('id')
+        .range(from, to),
+    'sitemap accounts',
+  );
 
   // 2. Public Projects
-  const { data: projects } = await client
-    .from('projects')
-    .select(
-      `
-        public_slug, 
+  const projects = await fetchAllRows(
+    (from, to) =>
+      client
+        .from('projects')
+        .select(
+          `
+        public_slug,
         updated_at,
         account:accounts!inner(slug)
       `,
-    )
-    .eq('visibility', 'public')
-    .limit(2000);
+        )
+        .eq('visibility', 'public')
+        .not('public_slug', 'is', null)
+        .order('id')
+        .range(from, to),
+    'sitemap projects',
+  );
 
   // 3. Public Episodes
-  const { data: episodes } = await client
-    .from('episodes')
-    .select(
-      `
-        public_slug, 
+  //
+  // The parent project must be public. `episodes.visibility` defaults to
+  // 'inherit' and `projects.visibility` defaults to 'private', so matching
+  // on the episode alone selects essentially the whole episodes table —
+  // including episodes under private projects, which were then emitted into
+  // the public sitemap whenever both slugs happened to be set. The URL
+  // embeds the project slug (`/@account/project/e/episode`), so an episode
+  // is only publicly reachable when its project is public; requiring that
+  // here is what makes the read bounded as well as correct.
+  const episodes = await fetchAllRows(
+    (from, to) =>
+      client
+        .from('episodes')
+        .select(
+          `
+        public_slug,
         updated_at,
         project:projects!inner(
           public_slug,
           account:accounts!inner(slug)
         )
       `,
-    )
-    .in('visibility', ['public', 'inherit'])
-    .limit(5000);
+        )
+        .in('visibility', ['public', 'inherit'])
+        .eq('project.visibility', 'public')
+        .not('public_slug', 'is', null)
+        .order('id')
+        .range(from, to),
+    'sitemap episodes',
+  );
 
   return {
     accounts: accounts || [],
