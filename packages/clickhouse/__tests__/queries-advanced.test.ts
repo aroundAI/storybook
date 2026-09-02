@@ -248,7 +248,7 @@ describe('queries-advanced', () => {
 
       const { query } = lastQuery();
       expect(query).not.toContain('DROP TABLE');
-      expect(query).toContain('ORDER BY d.published_at DESC');
+      expect(query).toContain('ORDER BY published_at DESC');
     });
 
     it('binds the published-date filters as parameters', async () => {
@@ -298,11 +298,58 @@ describe('queries-advanced', () => {
       expect(row!.viewsAtAge[30]).toBe(10);
     });
 
+    it('counts metric days in a way an unmatched join cannot fake', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({ scope: { projectId: PROJECT } });
+
+      // join_use_nulls defaults to 0 and is not overridden, so an unmatched
+      // LEFT JOIN row is filled with each column's *default* — '' and
+      // 1970-01-01, not NULL. count() counts non-NULLs, so it would return
+      // 1 for a video with no rows at all and "nothing ingested" would be
+      // unreachable. countIf against the filler date is genuinely zero.
+      const { query } = lastQuery();
+      expect(query).toContain('countIf(m.metric_date > toDate(0))');
+      expect(query).not.toContain('count(m.video_id)');
+    });
+
+    it('orders by SELECT aliases so the sort key is a grouping key', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({ scope: { projectId: PROJECT } });
+
+      // `published_at` is selected as toString(d.published_at) and GROUP BY
+      // resolves the bare name to that alias. Ordering by the raw
+      // d.published_at would be neither grouped nor aggregated, which
+      // ClickHouse rejects — and this is the default order, so it would
+      // have broken every call.
+      const { query } = lastQuery();
+      expect(query).toContain('ORDER BY published_at DESC');
+      expect(query).not.toContain('ORDER BY d.published_at');
+    });
+
+    it('breaks ordering ties on video_id so pages cannot overlap', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        orderBy: 'lifetime_views',
+      });
+
+      // Every zero-view video ties on lifetime_views, and ties have no
+      // stable order across separate queries — so without a unique
+      // tiebreaker a reader paging the log sees one video twice and misses
+      // another. Same discipline fetchAllRows enforces for PostgREST.
+      expect(lastQuery().query).toContain(
+        'ORDER BY lifetime_views DESC, video_id ASC',
+      );
+    });
+
     it('distinguishes "nothing ingested" from "no views"', async () => {
       const queryVideoViewsAtAge = await load();
 
-      // A LEFT JOIN with no match still yields a row whose aggregates read
-      // as zero, so metric_days is what separates the two cases.
+      // metric_days is what separates the two cases; countIf makes zero
+      // reachable for a video with no matching rows.
       mockQueryResult.json.mockResolvedValue([
         {
           video_id: 'v2',

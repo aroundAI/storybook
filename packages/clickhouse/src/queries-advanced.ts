@@ -701,11 +701,19 @@ export interface VideoAgeRow {
  * A whitelist, not caller-supplied text: `orderBy` reaches SQL by
  * interpolation because ClickHouse cannot bind an identifier as a
  * parameter, so it must never carry anything but one of these keys.
+ *
+ * These are the SELECT *aliases*, deliberately, not the underlying columns.
+ * `published_at` is selected as `toString(d.published_at)`, and a bare
+ * identifier in GROUP BY resolves to the alias — so the grouping key is the
+ * string. Ordering by the raw `d.published_at` would then be neither
+ * grouped nor aggregated and ClickHouse rejects the query outright. Sorting
+ * the string is equivalent anyway: 'YYYY-MM-DD HH:MM:SS' orders
+ * lexicographically exactly as it does chronologically.
  */
 const VIDEO_AGE_ORDER_COLUMNS = {
-  published_at: 'd.published_at',
+  published_at: 'published_at',
   lifetime_views: 'lifetime_views',
-  title: 'd.title',
+  title: 'title',
 } as const;
 
 export type VideoAgeOrderBy = keyof typeof VIDEO_AGE_ORDER_COLUMNS;
@@ -827,13 +835,13 @@ async function queryVideoViewsAtAgeSingle(input: {
       ${checkpointSelects},
       sum(m.views) as lifetime_views,
       toString(min(m.metric_date)) as first_metric_date,
-      count(m.video_id) as metric_days
+      countIf(m.metric_date > toDate(0)) as metric_days
     FROM (${dimSubquery(dimConditions.join(' AND '))}) d
     LEFT JOIN video_daily_stats m ON m.video_id = d.video_id
     GROUP BY
       video_id, title, published_at, connection_id,
       platform, content_type, language
-    ORDER BY ${orderColumn} ${orderDirection}
+    ORDER BY ${orderColumn} ${orderDirection}, video_id ASC
     LIMIT ${limit} OFFSET ${offset}
   `;
 
