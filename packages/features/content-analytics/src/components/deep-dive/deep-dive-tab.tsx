@@ -18,10 +18,7 @@ import {
   CohortCurvesChartSkeleton,
 } from './cohort-curves-chart';
 import type { CohortEntry } from './cohort-curves-chart';
-import {
-  MedianViewsCard,
-  MedianViewsCardSkeleton,
-} from './median-views-card';
+import { MedianViewsCard, MedianViewsCardSkeleton } from './median-views-card';
 import {
   TrafficShareCard,
   TrafficShareCardSkeleton,
@@ -59,8 +56,7 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
 
   const trafficQuery = useQuery({
     queryKey: ['deep-dive-traffic', projectId],
-    queryFn: () =>
-      getTrafficShareTrendAction({ scope, bucket: 'week' }),
+    queryFn: () => getTrafficShareTrendAction({ scope, bucket: 'week' }),
   });
 
   const backCatalogQuery = useQuery({
@@ -71,7 +67,11 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
   const cohortQuery = useQuery({
     queryKey: ['deep-dive-cohorts', projectId],
     queryFn: () =>
-      getCohortCurvesAction({ scope, checkpoints: [30, 90, 180, 365] }),
+      getCohortCurvesAction({
+        scope,
+        checkpoints: [30, 90, 180, 365],
+        bucket: 'quarter',
+      }),
   });
 
   return (
@@ -114,10 +114,7 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
         {medianQuery.isLoading ? (
           <MedianViewsCardSkeleton />
         ) : (
-          <MedianViewsCard
-            buckets={medianQuery.data ?? []}
-            mode={medianMode}
-          />
+          <MedianViewsCard buckets={medianQuery.data ?? []} mode={medianMode} />
         )}
       </AnalyticsCard>
 

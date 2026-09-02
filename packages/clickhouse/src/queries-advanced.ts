@@ -55,11 +55,30 @@ export interface BackCatalogBucket {
   share: number;
 }
 
-export interface CohortRow {
+/** ClickHouse DateTime literal, UTC — matches how dims are written. */
+function formatClickHouseDateTime(value: Date): string {
+  return value.toISOString().slice(0, 19).replace('T', ' ');
+}
+
+/** One checkpoint's distribution within a cohort. */
+export interface CohortCheckpointStats {
+  medianViews: number;
+  p25Views: number;
+  p75Views: number;
+  meanViews: number;
+  /**
+   * Videos old enough to have actually reached this checkpoint, and so the
+   * only ones the figures above are computed over. Travels with the number
+   * because a median resting on two videos is one video's luck.
+   */
+  matureVideoCount: number;
+}
+
+export interface CohortMedianRow {
   cohort: string;
+  /** Videos uploaded in the cohort, regardless of age. */
   videoCount: number;
-  /** Cumulative views per checkpoint age (days), summed across the cohort. */
-  viewsAtCheckpoint: Record<number, number>;
+  checkpoints: Record<number, CohortCheckpointStats>;
 }
 
 export interface WatchWindowTotals {
@@ -470,14 +489,39 @@ export async function queryBackCatalogShare(input: {
 }
 
 /**
- * Per-quarter upload cohorts with cumulative views at fixed ages —
- * the age-controlled growth measurement raw monthly totals cannot give.
- * Sums are cohort totals; callers normalize by videoCount.
+ * Upload cohorts with the distribution of per-video views at fixed ages.
+ *
+ * The point of this view is to control for how long each video has been
+ * live: a later cohort beating an earlier one *at the same age* is real
+ * improvement, which raw monthly totals can never show.
+ *
+ * Two-level aggregation. The inner query reduces to one row per video with
+ * its age-bounded sums; the outer takes quantiles across the cohort. That
+ * is what makes a median possible at all — a cohort-level SUM divided by
+ * video count is a mean, and a mean on this view is hostage to one video
+ * going viral, which is exactly the noise the view exists to filter.
+ *
+ * Maturity is judged per video, not per cohort. `age_days >= N` admits a
+ * video to the "@Nd" figure only once *it* is N days old. Judging it from
+ * the cohort's start instead — a quarter spans ~90 days — lets a video
+ * published yesterday contribute a near-zero to its cohort's 30-day median,
+ * and distorts the newest cohort most, which is the one a reader most wants
+ * to judge.
+ *
+ * `quantileExact`, not `quantile`: cohorts are small, and an approximate
+ * quantile would return a different number run to run.
+ *
+ * The join is LEFT so a video with no ingested rows counts as a zero rather
+ * than vanishing — dropping it would inflate the median by silently
+ * removing the worst performers.
  */
-export async function queryCohortCurves(input: {
+export async function queryCohortMedians(input: {
   scope: DimScope;
   checkpoints?: number[];
-}): Promise<CohortRow[]> {
+  bucket?: 'month' | 'quarter';
+  /** Fixes "how old is this video"; bound so a call is reproducible. */
+  asOf?: string;
+}): Promise<CohortMedianRow[]> {
   if (!isClickHouseEnabled()) return [];
   assertDimScope(input.scope);
 
@@ -488,24 +532,44 @@ export async function queryCohortCurves(input: {
   const client = getClickHouseClient();
   const { conditions, params } = buildDimConditions(input.scope);
 
-  // `< days`, not `<= days`: days 0..N-1 count toward "@Nd". This was `<=`
-  // and is shifted by one here so the codebase carries a single boundary
-  // convention — FILM-1603 adds a second age-bounded query, and two
-  // conventions differing by a day would be indistinguishable in the UI.
-  const checkpointSelects = checkpoints
+  const bucketFn =
+    input.bucket === 'month' ? 'toStartOfMonth' : 'toStartOfQuarter';
+
+  params.asOf = input.asOf ?? formatClickHouseDateTime(new Date());
+
+  // `days` is floored to an integer above, so it is safe to interpolate.
+  const perVideoSelects = checkpoints
     .map(
       (days) =>
-        `sumIf(m.views, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as views_at_${days}`,
+        `sumIf(m.views, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_${days}`,
     )
-    .join(',\n      ');
+    .join(',\n        ');
+
+  const cohortSelects = checkpoints
+    .map(
+      (days) => `
+      quantileExactIf(0.5)(v_${days}, age_days >= ${days}) as median_${days},
+      quantileExactIf(0.25)(v_${days}, age_days >= ${days}) as p25_${days},
+      quantileExactIf(0.75)(v_${days}, age_days >= ${days}) as p75_${days},
+      avgIf(v_${days}, age_days >= ${days}) as mean_${days},
+      countIf(age_days >= ${days}) as mature_count_${days}`,
+    )
+    .join(',');
 
   const query = `
     SELECT
-      toString(toStartOfQuarter(d.published_at)) as cohort,
-      count(DISTINCT d.video_id) as video_count,
-      ${checkpointSelects}
-    FROM (${dimSubquery(conditions)}) d
-    LEFT JOIN video_daily_stats m ON m.video_id = d.video_id
+      toString(${bucketFn}(published_at)) as cohort,
+      count() as video_count,${cohortSelects}
+    FROM (
+      SELECT
+        d.video_id as video_id,
+        d.published_at as published_at,
+        dateDiff('day', d.published_at, {asOf: DateTime}) as age_days,
+        ${perVideoSelects}
+      FROM (${dimSubquery(conditions)}) d
+      LEFT JOIN video_daily_stats m ON m.video_id = d.video_id
+      GROUP BY video_id, published_at
+    ) per_video
     GROUP BY cohort
     ORDER BY cohort ASC
   `;
@@ -519,14 +583,22 @@ export async function queryCohortCurves(input: {
   const rows = await result.json<Record<string, unknown>>();
 
   return rows.map((row) => {
-    const viewsAtCheckpoint: Record<number, number> = {};
+    const stats: Record<number, CohortCheckpointStats> = {};
+
     for (const days of checkpoints) {
-      viewsAtCheckpoint[days] = Number(row[`views_at_${days}`] ?? 0);
+      stats[days] = {
+        medianViews: Math.round(Number(row[`median_${days}`] ?? 0)),
+        p25Views: Math.round(Number(row[`p25_${days}`] ?? 0)),
+        p75Views: Math.round(Number(row[`p75_${days}`] ?? 0)),
+        meanViews: Math.round(Number(row[`mean_${days}`] ?? 0)),
+        matureVideoCount: Number(row[`mature_count_${days}`] ?? 0),
+      };
     }
+
     return {
       cohort: String(row.cohort),
-      videoCount: Number(row.video_count),
-      viewsAtCheckpoint,
+      videoCount: Number(row.video_count ?? 0),
+      checkpoints: stats,
     };
   });
 }

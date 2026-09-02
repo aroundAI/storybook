@@ -1,19 +1,34 @@
 'use client';
 
 import { Skeleton } from '@kit/ui/skeleton';
+import { cn } from '@kit/ui/utils';
+
+/** Why a growth figure is absent, when it is. */
+export type GrowthSuppressionReason =
+  | 'no_prior_cohort'
+  | 'insufficient_sample'
+  | 'no_prior_baseline';
 
 /** One cohort from getCohortCurvesAction. */
 export interface CohortEntry {
   cohort: string;
   videoCount: number;
-  cohortAgeDays: number;
   checkpoints: Array<{
     ageDays: number;
-    totalViews: number;
-    viewsPerVideo: number;
+    medianViews: number;
+    p25Views: number;
+    p75Views: number;
+    meanViews: number;
+    /** Videos old enough to have reached this checkpoint. */
+    matureVideoCount: number;
     mature: boolean;
+    growth: number | null;
+    growthSuppressedBecause: GrowthSuppressionReason | null;
   }>;
 }
+
+/** Below this, a median is shown but marked as thin evidence. */
+const LOW_SAMPLE = 5;
 
 interface CohortCurvesChartProps {
   /** Cohorts in chronological order */
@@ -53,9 +68,7 @@ export function CohortCurvesChart({
 
   if (cohorts.length === 0) {
     return (
-      <p className={'text-muted-foreground text-sm'}>
-        No upload cohorts yet.
-      </p>
+      <p className={'text-muted-foreground text-sm'}>No upload cohorts yet.</p>
     );
   }
 
@@ -63,7 +76,7 @@ export function CohortCurvesChart({
 
   const maxViews = Math.max(
     ...cohorts.flatMap((c) =>
-      c.checkpoints.filter((p) => p.mature).map((p) => p.viewsPerVideo),
+      c.checkpoints.filter((p) => p.mature).map((p) => p.medianViews),
     ),
     1,
   );
@@ -94,28 +107,60 @@ export function CohortCurvesChart({
                   </span>
                 </td>
 
-                {cohort.checkpoints.map((point) => (
-                  <td key={point.ageDays} className={'px-2 py-2 text-right'}>
-                    {point.mature ? (
-                      <span className={'inline-flex flex-col items-end gap-1'}>
-                        <span>{formatViews(point.viewsPerVideo)}</span>
+                {cohort.checkpoints.map((point) => {
+                  const thin = point.matureVideoCount < LOW_SAMPLE;
+
+                  return (
+                    <td key={point.ageDays} className={'px-2 py-2 text-right'}>
+                      {point.mature ? (
                         <span
-                          className={'bg-primary/70 h-1 rounded-full'}
-                          style={{
-                            width: `${Math.max(
-                              4,
-                              (point.viewsPerVideo / maxViews) * 48,
-                            )}px`,
-                          }}
-                        />
-                      </span>
-                    ) : (
-                      <span className={'text-muted-foreground text-xs'}>
-                        —
-                      </span>
-                    )}
-                  </td>
-                ))}
+                          className={cn(
+                            'inline-flex flex-col items-end gap-1',
+                            // Dimmed, not hidden: a median resting on a
+                            // couple of videos is still information, just
+                            // not evidence.
+                            thin && 'opacity-50',
+                          )}
+                          title={
+                            thin
+                              ? `${point.matureVideoCount} of ${cohort.videoCount} videos have reached ${point.ageDays}d`
+                              : `${point.matureVideoCount} videos · p25 ${formatViews(point.p25Views)} · p75 ${formatViews(point.p75Views)}`
+                          }
+                        >
+                          <span>{formatViews(point.medianViews)}</span>
+
+                          <span
+                            className={'bg-primary/70 h-1 rounded-full'}
+                            style={{
+                              width: `${Math.max(
+                                4,
+                                (point.medianViews / maxViews) * 48,
+                              )}px`,
+                            }}
+                          />
+
+                          {point.growth !== null ? (
+                            <span
+                              className={cn(
+                                'text-xs',
+                                point.growth >= 0
+                                  ? 'text-emerald-600 dark:text-emerald-400'
+                                  : 'text-muted-foreground',
+                              )}
+                            >
+                              {point.growth >= 0 ? '+' : ''}
+                              {Math.round(point.growth * 100)}%
+                            </span>
+                          ) : null}
+                        </span>
+                      ) : (
+                        <span className={'text-muted-foreground text-xs'}>
+                          —
+                        </span>
+                      )}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
@@ -123,9 +168,11 @@ export function CohortCurvesChart({
       </div>
 
       <p className={'text-muted-foreground text-xs'}>
-        Views per video at each age. Compare cohorts down a column — same
-        age, different upload quarter. Dashes mark cohorts too young to have
-        reached that checkpoint.
+        Median views per video at each age, with growth against the previous
+        cohort. Compare down a column — same age, different upload period.
+        Dashes mark cohorts too young to have reached that checkpoint; dimmed
+        figures rest on fewer than {LOW_SAMPLE} videos, and growth is withheld
+        entirely below that.
       </p>
     </div>
   );

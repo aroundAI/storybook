@@ -60,18 +60,18 @@ describe('queries-advanced', () => {
 
   describe('scope guard', () => {
     it('rejects unscoped queries to prevent full table scans', async () => {
-      const { queryCohortCurves } = await import('../src/queries-advanced');
+      const { queryCohortMedians } = await import('../src/queries-advanced');
 
-      await expect(queryCohortCurves({ scope: {} })).rejects.toThrow(
+      await expect(queryCohortMedians({ scope: {} })).rejects.toThrow(
         /requires projectId or accountId/,
       );
     });
 
     it('accepts an account-scoped query', async () => {
-      const { queryCohortCurves } = await import('../src/queries-advanced');
+      const { queryCohortMedians } = await import('../src/queries-advanced');
 
       await expect(
-        queryCohortCurves({ scope: { accountId: PROJECT } }),
+        queryCohortMedians({ scope: { accountId: PROJECT } }),
       ).resolves.toEqual([]);
     });
   });
@@ -486,10 +486,10 @@ describe('queries-advanced', () => {
     });
 
     it('still requires a project or account, not a channel alone', async () => {
-      const { queryCohortCurves } = await import('../src/queries-advanced');
+      const { queryCohortMedians } = await import('../src/queries-advanced');
 
       await expect(
-        queryCohortCurves({ scope: { connectionId: CHANNEL } }),
+        queryCohortMedians({ scope: { connectionId: CHANNEL } }),
       ).rejects.toThrow(/requires projectId or accountId/);
     });
 
@@ -511,14 +511,20 @@ describe('queries-advanced', () => {
 
   describe('FILM-1601 correctness fixes', () => {
     it('counts cohort videos from the dimension side, not metric rows', async () => {
-      const { queryCohortCurves } = await import('../src/queries-advanced');
+      const { queryCohortMedians } = await import('../src/queries-advanced');
 
-      await queryCohortCurves({ scope: { projectId: PROJECT } });
+      await queryCohortMedians({ scope: { projectId: PROJECT } });
 
       const { query } = lastQuery();
       // Counting distinct video_id on the metrics side drops published
       // videos that have no ingested days, inflating views-per-video.
-      expect(query).toContain('count(DISTINCT d.video_id)');
+      //
+      // FILM-1604 restructured this into a per-video subquery, so the
+      // guarantee now holds by construction rather than by DISTINCT: the
+      // inner GROUP BY yields exactly one row per dimension video, and the
+      // outer count() counts those rows.
+      expect(query).toContain('GROUP BY video_id, published_at');
+      expect(query).toContain('count() as video_count');
       expect(query).not.toContain('count(DISTINCT m.video_id)');
       expect(query).toContain('LEFT JOIN video_daily_stats');
     });
@@ -575,31 +581,125 @@ describe('queries-advanced', () => {
     });
   });
 
-  describe('queryCohortCurves', () => {
-    it('returns per-checkpoint cumulative views per cohort', async () => {
+  describe('queryCohortMedians (FILM-1604)', () => {
+    const load = async () =>
+      (await import('../src/queries-advanced')).queryCohortMedians;
+
+    it('returns the distribution per checkpoint, with its mature count', async () => {
       mockQueryResult.json.mockResolvedValue([
         {
           cohort: '2026-01-01',
-          video_count: '4',
-          views_at_30: '4000',
-          views_at_90: '9000',
+          video_count: '9',
+          median_30: '1200',
+          p25_30: '800',
+          p75_30: '3000',
+          mean_30: '2400.4',
+          mature_count_30: '9',
+          median_90: '2600',
+          p25_90: '1500',
+          p75_90: '5000',
+          mean_90: '3100',
+          mature_count_90: '4',
         },
       ]);
 
-      const { queryCohortCurves } = await import('../src/queries-advanced');
-
-      const rows = await queryCohortCurves({
+      const rows = await (
+        await load()
+      )({
         scope: { projectId: PROJECT },
         checkpoints: [30, 90],
       });
 
-      expect(rows[0]).toEqual({
-        cohort: '2026-01-01',
-        videoCount: 4,
-        viewsAtCheckpoint: { 30: 4000, 90: 9000 },
+      expect(rows[0]!.cohort).toBe('2026-01-01');
+      expect(rows[0]!.videoCount).toBe(9);
+      expect(rows[0]!.checkpoints[30]).toEqual({
+        medianViews: 1200,
+        p25Views: 800,
+        p75Views: 3000,
+        meanViews: 2400,
+        matureVideoCount: 9,
+      });
+      // Fewer videos have reached 90 days than 30 — the count travels with
+      // the figure precisely so a reader can see that.
+      expect(rows[0]!.checkpoints[90]!.matureVideoCount).toBe(4);
+    });
+
+    it('filters each checkpoint by the video own age, not the cohort start', async () => {
+      await (
+        await load()
+      )({
+        scope: { projectId: PROJECT },
+        checkpoints: [30],
       });
 
-      expect(lastQuery().query).toContain('toStartOfQuarter(d.published_at)');
+      // This is the correctness win of the phase: a quarter spans ~90 days,
+      // so judging maturity from the cohort's start lets a video published
+      // yesterday drag down its cohort's 30-day figure.
+      const { query } = lastQuery();
+      expect(query).toContain(
+        'quantileExactIf(0.5)(v_30, age_days >= 30) as median_30',
+      );
+      expect(query).toContain('countIf(age_days >= 30) as mature_count_30');
+    });
+
+    it('aggregates per video first, so the median is over videos', async () => {
+      await (
+        await load()
+      )({ scope: { projectId: PROJECT } });
+
+      // A cohort-level SUM divided by video count is a mean; a median needs
+      // one row per video to take the quantile over.
+      const { query } = lastQuery();
+      expect(query).toContain('GROUP BY video_id, published_at');
+      expect(query).toContain(') per_video');
+    });
+
+    it('uses exact quantiles, not approximate ones', async () => {
+      await (
+        await load()
+      )({ scope: { projectId: PROJECT } });
+
+      // Cohorts are small; an approximate quantile would return a different
+      // number run to run.
+      expect(lastQuery().query).toContain('quantileExactIf');
+      expect(lastQuery().query).not.toContain('quantileIf(');
+    });
+
+    it('LEFT JOINs so a video with no metrics counts as a zero', async () => {
+      await (
+        await load()
+      )({ scope: { projectId: PROJECT } });
+
+      // Dropping it would inflate the median by removing the worst
+      // performers.
+      expect(lastQuery().query).toContain('LEFT JOIN video_daily_stats');
+    });
+
+    it('buckets by quarter by default and by month on request', async () => {
+      await (
+        await load()
+      )({ scope: { projectId: PROJECT } });
+      expect(lastQuery().query).toContain('toStartOfQuarter(published_at)');
+
+      await (
+        await load()
+      )({ scope: { projectId: PROJECT }, bucket: 'month' });
+      expect(lastQuery().query).toContain('toStartOfMonth(published_at)');
+    });
+
+    it('binds asOf so a call is reproducible', async () => {
+      await (
+        await load()
+      )({
+        scope: { projectId: PROJECT },
+        asOf: '2026-06-01 00:00:00',
+      });
+
+      const { query, query_params } = lastQuery();
+      expect(query).toContain(
+        "dateDiff('day', d.published_at, {asOf: DateTime})",
+      );
+      expect(query_params.asOf).toBe('2026-06-01 00:00:00');
     });
   });
 

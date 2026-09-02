@@ -44,7 +44,7 @@ export {
   insertVideoDims,
   queryBackCatalogShare,
   queryChannelWatchWindow,
-  queryCohortCurves,
+  queryCohortMedians,
   queryMedianByTag,
   queryMedianViewsPerVideo,
   queryRollingViews,
@@ -54,7 +54,8 @@ export {
 } from '../queries-advanced';
 export type {
   BackCatalogBucket,
-  CohortRow,
+  CohortCheckpointStats,
+  CohortMedianRow,
   DimScope,
   MedianBucket,
   RollingViewsPoint,
@@ -70,6 +71,16 @@ export {
   computeIngestLagDays,
   computeMaturity,
 } from '../lib/video-age';
+
+export {
+  MIN_MATURE_VIDEOS,
+  computeCheckpointGrowth,
+  computeCohortGrowth,
+} from '../lib/cohort-growth';
+export type {
+  CohortGrowth,
+  GrowthSuppressionReason,
+} from '../lib/cohort-growth';
 
 export type {
   AggregatedTotals,
