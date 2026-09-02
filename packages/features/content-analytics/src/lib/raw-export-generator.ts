@@ -31,6 +31,28 @@ export interface RawExportRow {
   topTrafficSource: string;
   /** Taxonomy tags as 'dimension:slug', pipe-separated. */
   tags: string;
+  /** Channel this video was published to. */
+  channelName: string;
+  /**
+   * Views accumulated in days 0..N-1 of the video's life.
+   *
+   * A per-video constant repeated on each of that video's daily rows —
+   * which is what keeps monthly exports concatenable without a join, the
+   * property the file header promises.
+   *
+   * Empty when the checkpoint has not elapsed yet: an unreached "@90d" is
+   * not zero, it is not yet knowable, and a zero in the cell would be read
+   * as a real measurement.
+   */
+  viewsAt30: number | null;
+  viewsAt90: number | null;
+  viewsAt180: number | null;
+  viewsAt365: number | null;
+}
+
+/** Blank for an unreached checkpoint, so it cannot be read as zero. */
+function checkpointCell(value: number | null): string {
+  return value === null ? '' : String(value);
 }
 
 const COLUMNS: Array<{
@@ -43,6 +65,7 @@ const COLUMNS: Array<{
   { header: 'Platform', getValue: (r) => r.platform },
   { header: 'Content Type', getValue: (r) => r.contentType },
   { header: 'Language', getValue: (r) => r.language },
+  { header: 'Channel', getValue: (r) => r.channelName },
   { header: 'Published At', getValue: (r) => r.publishedAt },
   { header: 'Video Age (days)', getValue: (r) => String(r.videoAgeDays) },
   { header: 'Views', getValue: (r) => String(r.views) },
@@ -73,10 +96,12 @@ const COLUMNS: Array<{
   {
     header: 'Avg View Duration (s)',
     getValue: (r) =>
-      r.avgViewDurationSeconds > 0
-        ? r.avgViewDurationSeconds.toFixed(1)
-        : '',
+      r.avgViewDurationSeconds > 0 ? r.avgViewDurationSeconds.toFixed(1) : '',
   },
+  { header: 'Views @30d', getValue: (r) => checkpointCell(r.viewsAt30) },
+  { header: 'Views @90d', getValue: (r) => checkpointCell(r.viewsAt90) },
+  { header: 'Views @180d', getValue: (r) => checkpointCell(r.viewsAt180) },
+  { header: 'Views @365d', getValue: (r) => checkpointCell(r.viewsAt365) },
   { header: 'Top Traffic Source', getValue: (r) => r.topTrafficSource },
   { header: 'Tags', getValue: (r) => r.tags },
 ];
@@ -105,7 +130,10 @@ export function generateRawExportCSV(rows: RawExportRow[]): string {
 }
 
 /** Days between a publish date and a metric date, floored at zero. */
-export function videoAgeInDays(publishedAt: string, metricDate: string): number {
+export function videoAgeInDays(
+  publishedAt: string,
+  metricDate: string,
+): number {
   const published = new Date(publishedAt).getTime();
   const metric = new Date(metricDate).getTime();
 

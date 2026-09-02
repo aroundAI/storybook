@@ -193,6 +193,152 @@ describe('queries-advanced', () => {
     });
   });
 
+  describe('queryVideoViewsAtAge (FILM-1603)', () => {
+    const load = async () =>
+      (await import('../src/queries-advanced')).queryVideoViewsAtAge;
+
+    it('bounds each checkpoint with < N, not <= N', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        checkpoints: [30],
+      });
+
+      // Days 0..29 count toward @30d. The off-by-one is invisible in the
+      // UI, so it is pinned here rather than left to inspection.
+      expect(lastQuery().query).toContain(
+        "dateDiff('day', d.published_at, toDateTime(m.metric_date)) < 30",
+      );
+      expect(lastQuery().query).not.toContain('<= 30)');
+    });
+
+    it('LEFT JOINs so videos with no metrics stay in the log', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({ scope: { projectId: PROJECT } });
+
+      // An inner join would drop zero-view videos and shorten every
+      // denominator derived from this list — the FILM-1601 defect.
+      expect(lastQuery().query).toContain('LEFT JOIN video_daily_stats');
+    });
+
+    it('always paginates, and clamps an oversized limit', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({ scope: { projectId: PROJECT } });
+      expect(lastQuery().query).toContain('LIMIT 200 OFFSET 0');
+
+      await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        limit: 99999,
+      });
+      expect(lastQuery().query).toContain('LIMIT 1000');
+    });
+
+    it('rejects an unknown orderBy instead of interpolating it', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        // A caller-supplied identifier reaches SQL by interpolation, since
+        // ClickHouse cannot bind one as a parameter — so it is whitelisted.
+        orderBy: 'published_at; DROP TABLE video_dim' as never,
+      });
+
+      const { query } = lastQuery();
+      expect(query).not.toContain('DROP TABLE');
+      expect(query).toContain('ORDER BY d.published_at DESC');
+    });
+
+    it('binds the published-date filters as parameters', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        publishedFrom: '2026-01-01 00:00:00',
+        publishedTo: '2026-06-01 00:00:00',
+      });
+
+      const { query, query_params } = lastQuery();
+      expect(query).toContain('published_at >= {publishedFrom: DateTime}');
+      expect(query_params.publishedFrom).toBe('2026-01-01 00:00:00');
+      expect(query_params.publishedTo).toBe('2026-06-01 00:00:00');
+    });
+
+    it('marks an immature checkpoint and reports ingest lag', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      mockQueryResult.json.mockResolvedValue([
+        {
+          video_id: 'v1',
+          title: 'A video',
+          published_at: '2026-05-15 00:00:00',
+          connection_id: CHANNEL,
+          platform: 'youtube',
+          content_type: 'full',
+          language: 'en',
+          views_at_30: 10,
+          views_at_90: 10,
+          lifetime_views: 10,
+          first_metric_date: '2026-05-16',
+          metric_days: 3,
+        },
+      ]);
+
+      const [row] = await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        checkpoints: [30, 90],
+        now: new Date('2026-06-20T00:00:00Z'),
+      });
+
+      // 36 days old: @30d has elapsed, @90d has not.
+      expect(row!.matureAt).toEqual({ 30: true, 90: false });
+      expect(row!.ingestLagDays).toBe(1);
+      expect(row!.viewsAtAge[30]).toBe(10);
+    });
+
+    it('distinguishes "nothing ingested" from "no views"', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      // A LEFT JOIN with no match still yields a row whose aggregates read
+      // as zero, so metric_days is what separates the two cases.
+      mockQueryResult.json.mockResolvedValue([
+        {
+          video_id: 'v2',
+          title: 'Never ingested',
+          published_at: '2026-01-01 00:00:00',
+          connection_id: CHANNEL,
+          platform: 'youtube',
+          content_type: 'full',
+          language: 'en',
+          views_at_30: 0,
+          lifetime_views: 0,
+          first_metric_date: '1970-01-01',
+          metric_days: 0,
+        },
+      ]);
+
+      const [row] = await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        checkpoints: [30],
+        now: new Date('2026-06-20T00:00:00Z'),
+      });
+
+      expect(row!.firstMetricDate).toBeNull();
+      expect(row!.ingestLagDays).toBeNull();
+      expect(row!.lifetimeViews).toBe(0);
+    });
+
+    it('requires a project or account scope', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await expect(
+        queryVideoViewsAtAge({ scope: { connectionId: CHANNEL } }),
+      ).rejects.toThrow(/requires projectId or accountId/);
+    });
+  });
+
   describe('channel dimension (FILM-1602)', () => {
     it('filters by connection_id when a channel is scoped', async () => {
       const { queryMedianViewsPerVideo } = await import(
@@ -223,7 +369,12 @@ describe('queries-advanced', () => {
         mode: 'cohort_views_to_date',
       });
 
-      expect(lastQuery().query).not.toContain('connection_id');
+      // Asserts the absence of the *filter*, not of the identifier: the dim
+      // subquery projects connection_id as a column for every query since
+      // FILM-1603, so a bare substring check would pass vacuously.
+      const { query, query_params } = lastQuery();
+      expect(query).not.toContain('connection_id = {scopeConnectionId: UUID}');
+      expect(query_params.scopeConnectionId).toBeUndefined();
     });
 
     it('still requires a project or account, not a channel alone', async () => {
