@@ -447,7 +447,12 @@ async function processScheduledReport(
         videoIds,
         checkpoints: [30, 90, 180, 365],
       }),
-      listAccountChannels(report.account_id as string),
+      // adminClient, like every other read here: this is a CRON endpoint
+      // authorized by CRON_SECRET with no user session, so the default
+      // cookie-scoped client would be RLS-filtered to nothing — and an
+      // RLS-filtered select is a successful empty 200, so every Channel
+      // cell would silently come out blank.
+      listAccountChannels(report.account_id as string, adminClient),
     ]);
 
     const ageByVideo = new Map(ageRows.map((row) => [row.videoId, row]));
