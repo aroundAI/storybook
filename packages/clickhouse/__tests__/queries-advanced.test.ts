@@ -27,6 +27,22 @@ function lastQuery(): { query: string; query_params: Record<string, unknown> } {
   };
 }
 
+function makeAgeRow(videoId: string, publishedAt: string) {
+  return {
+    video_id: videoId,
+    title: videoId,
+    published_at: publishedAt,
+    connection_id: CHANNEL,
+    platform: 'youtube',
+    content_type: 'full',
+    language: 'en',
+    views_at_30: 1,
+    lifetime_views: 1,
+    first_metric_date: '2026-01-02',
+    metric_days: 1,
+  };
+}
+
 describe('queries-advanced', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -392,6 +408,34 @@ describe('queries-advanced', () => {
       expect(row!.firstMetricDate).toBeNull();
       expect(row!.ingestLagDays).toBeNull();
       expect(row!.lifetimeViews).toBe(0);
+    });
+
+    it('re-sorts globally when the id list spans several chunks', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      // Each chunk is ordered by the server independently, so concatenating
+      // them leaves the array sorted only within each block. Two chunks
+      // whose ranges interleave would come back out of order.
+      const ids = Array.from({ length: 1500 }, (_, i) => `v${i}`);
+
+      let call = 0;
+      mockQueryResult.json.mockImplementation(() => {
+        call += 1;
+        return Promise.resolve(
+          call === 1
+            ? [makeAgeRow('a', '2026-01-01 00:00:00')]
+            : [makeAgeRow('b', '2026-06-01 00:00:00')],
+        );
+      });
+
+      const rows = await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        videoIds: ids,
+        checkpoints: [30],
+      });
+
+      // Newest first: the second chunk's row must sort ahead of the first's.
+      expect(rows.map((r) => r.videoId)).toEqual(['b', 'a']);
     });
 
     it('requires a project or account scope', async () => {

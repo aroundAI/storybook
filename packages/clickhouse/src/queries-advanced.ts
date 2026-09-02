@@ -739,18 +739,17 @@ export type VideoAgeOrderBy = keyof typeof VIDEO_AGE_ORDER_COLUMNS;
  * The join is deliberately LEFT. A published video with no ingested metric
  * rows must appear with zeros rather than drop out of the log — an inner
  * join would silently shorten the denominator, which is exactly the defect
- * FILM-1601 fixed in the cohort query.
+ * FILM-1601 fixed in the cohort query. Do not "optimize" it to an INNER.
  *
  * Always paginated: the join scans the scope's full history, so an
  * unbounded read here would be the most expensive query in the package.
- */
-/**
- * Per-video views at fixed ages — the workbook's Sheet 1 row.
  *
  * When `videoIds` is supplied the caller has already fixed the set (the raw
  * CSV export does this), so the list is chunked to stay inside the request
- * URI limit and each chunk is read whole rather than paginated. Without it,
- * the read is a page of the scope.
+ * URI limit and each chunk is read whole rather than paginated. Chunks are
+ * ordered independently by the server, so the merged result is re-sorted
+ * here — otherwise `orderBy` would silently apply only within each
+ * 1,000-video block.
  */
 export async function queryVideoViewsAtAge(input: {
   scope: DimScope;
@@ -768,13 +767,48 @@ export async function queryVideoViewsAtAge(input: {
 
   if (input.videoIds.length === 0) return [];
 
-  return concatByChunk(input.videoIds, (chunk) =>
+  const rows = await concatByChunk(input.videoIds, (chunk) =>
     queryVideoViewsAtAgeSingle({
       ...input,
       videoIds: chunk,
       limit: chunk.length,
       offset: 0,
     }),
+  );
+
+  return sortVideoAgeRows(
+    rows,
+    input.orderBy ?? 'published_at',
+    input.orderDirection ?? 'desc',
+  );
+}
+
+/**
+ * Re-establishes a total order over rows merged from separate requests.
+ *
+ * Mirrors the SQL ORDER BY, including its `video_id` tiebreak, so a chunked
+ * read and a single-request read return the same sequence.
+ */
+function sortVideoAgeRows(
+  rows: VideoAgeRow[],
+  orderBy: VideoAgeOrderBy,
+  orderDirection: 'asc' | 'desc',
+): VideoAgeRow[] {
+  const direction = orderDirection === 'asc' ? 1 : -1;
+
+  const compare = (a: VideoAgeRow, b: VideoAgeRow): number => {
+    if (orderBy === 'lifetime_views') {
+      return (a.lifetimeViews - b.lifetimeViews) * direction;
+    }
+
+    const left = orderBy === 'title' ? a.title : a.publishedAt;
+    const right = orderBy === 'title' ? b.title : b.publishedAt;
+
+    return left.localeCompare(right) * direction;
+  };
+
+  return [...rows].sort(
+    (a, b) => compare(a, b) || a.videoId.localeCompare(b.videoId),
   );
 }
 
