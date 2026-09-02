@@ -28,6 +28,12 @@ const row: RawExportRow = {
   avgViewDurationSeconds: 185.4,
   topTrafficSource: 'RELATED_VIDEO',
   tags: 'topic:volcanoes|format:explainer',
+  channelName: 'StoryBook',
+  viewsAt30: 900,
+  // 44 days old: @90d and beyond have not elapsed yet.
+  viewsAt90: null,
+  viewsAt180: null,
+  viewsAt365: null,
 };
 
 describe('generateRawExportCSV', () => {
@@ -80,5 +86,33 @@ describe('videoAgeInDays', () => {
 
   it('returns zero for unparseable dates', () => {
     expect(videoAgeInDays('not-a-date', '2026-06-14')).toBe(0);
+  });
+
+  it('carries the channel and views-at-age columns', () => {
+    const csv = generateRawExportCSV([row]);
+    const [header, line] = csv.split('\n');
+
+    expect(header).toContain('Channel');
+    expect(header).toContain('Views @30d');
+    expect(line).toContain('StoryBook');
+    expect(line).toContain('900');
+  });
+
+  it('leaves an unreached checkpoint blank rather than zero', () => {
+    // A 44-day-old video has no @90d figure. Zero would be read as a
+    // measurement — "this video earned nothing" — rather than as "not yet".
+    const headers = generateRawExportCSV([row]).split('\n')[0]!.split(',');
+    const cells = generateRawExportCSV([row]).split('\n')[1]!.split(',');
+
+    expect(cells[headers.indexOf('Views @90d')]).toBe('');
+    expect(cells[headers.indexOf('Views @30d')]).toBe('900');
+  });
+
+  it('emits zero for a reached checkpoint that genuinely earned nothing', () => {
+    const flopped = { ...row, viewsAt30: 0 };
+    const headers = generateRawExportCSV([flopped]).split('\n')[0]!.split(',');
+    const cells = generateRawExportCSV([flopped]).split('\n')[1]!.split(',');
+
+    expect(cells[headers.indexOf('Views @30d')]).toBe('0');
   });
 });

@@ -433,6 +433,40 @@ async function processScheduledReport(
       ]);
     }
 
+    // Views-at-age are per-video lifetime figures, so they cannot be
+    // derived from `dailyRows` — those cover only the report window, and a
+    // video published a year ago has none of its first 30 days in it.
+    const { queryVideoViewsAtAge } = await import('@kit/clickhouse/server');
+    const { listAccountChannels } = await import(
+      '@kit/content-analytics/server'
+    );
+
+    const [ageRows, channels] = await Promise.all([
+      queryVideoViewsAtAge({
+        scope: { accountId: report.account_id as string },
+        videoIds,
+        checkpoints: [30, 90, 180, 365],
+      }),
+      // adminClient, like every other read here: this is a CRON endpoint
+      // authorized by CRON_SECRET with no user session, so the default
+      // cookie-scoped client would be RLS-filtered to nothing — and an
+      // RLS-filtered select is a successful empty 200, so every Channel
+      // cell would silently come out blank.
+      listAccountChannels(report.account_id as string, adminClient),
+    ]);
+
+    const ageByVideo = new Map(ageRows.map((row) => [row.videoId, row]));
+    const channelNameById = new Map(
+      channels.map((channel) => [channel.connectionId, channel.name]),
+    );
+
+    /** Blank unless the checkpoint has actually elapsed for this video. */
+    const checkpoint = (videoId: string, days: number): number | null => {
+      const age = ageByVideo.get(videoId);
+      if (!age || !age.matureAt[days]) return null;
+      return age.viewsAtAge[days] ?? null;
+    };
+
     const rawRows = dailyRows.map((row) => {
       const meta = metaByPublish.get(row.video_id);
       const quality = qualityMap.get(row.video_id);
@@ -465,6 +499,14 @@ async function processScheduledReport(
         topTrafficSource:
           topSourceByVideoDate.get(`${row.video_id}:${row.metric_date}`) ?? '',
         tags: tagsByPublish.get(row.video_id)?.join('|') ?? '',
+        channelName:
+          channelNameById.get(
+            ageByVideo.get(row.video_id)?.connectionId ?? '',
+          ) ?? '',
+        viewsAt30: checkpoint(row.video_id, 30),
+        viewsAt90: checkpoint(row.video_id, 90),
+        viewsAt180: checkpoint(row.video_id, 180),
+        viewsAt365: checkpoint(row.video_id, 365),
       };
     });
 

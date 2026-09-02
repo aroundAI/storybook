@@ -27,6 +27,22 @@ function lastQuery(): { query: string; query_params: Record<string, unknown> } {
   };
 }
 
+function makeAgeRow(videoId: string, publishedAt: string) {
+  return {
+    video_id: videoId,
+    title: videoId,
+    published_at: publishedAt,
+    connection_id: CHANNEL,
+    platform: 'youtube',
+    content_type: 'full',
+    language: 'en',
+    views_at_30: 1,
+    lifetime_views: 1,
+    first_metric_date: '2026-01-02',
+    metric_days: 1,
+  };
+}
+
 describe('queries-advanced', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -193,6 +209,244 @@ describe('queries-advanced', () => {
     });
   });
 
+  describe('queryVideoViewsAtAge (FILM-1603)', () => {
+    const load = async () =>
+      (await import('../src/queries-advanced')).queryVideoViewsAtAge;
+
+    it('bounds each checkpoint with < N, not <= N', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        checkpoints: [30],
+      });
+
+      // Days 0..29 count toward @30d. The off-by-one is invisible in the
+      // UI, so it is pinned here rather than left to inspection.
+      expect(lastQuery().query).toContain(
+        "dateDiff('day', d.published_at, toDateTime(m.metric_date)) < 30",
+      );
+      expect(lastQuery().query).not.toContain('<= 30)');
+    });
+
+    it('LEFT JOINs so videos with no metrics stay in the log', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({ scope: { projectId: PROJECT } });
+
+      // An inner join would drop zero-view videos and shorten every
+      // denominator derived from this list — the FILM-1601 defect.
+      expect(lastQuery().query).toContain('LEFT JOIN video_daily_stats');
+    });
+
+    it('always paginates, and clamps an oversized limit', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({ scope: { projectId: PROJECT } });
+      expect(lastQuery().query).toContain('LIMIT 200 OFFSET 0');
+
+      await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        limit: 99999,
+      });
+      expect(lastQuery().query).toContain('LIMIT 1000');
+    });
+
+    it('rejects an unknown orderBy instead of interpolating it', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        // A caller-supplied identifier reaches SQL by interpolation, since
+        // ClickHouse cannot bind one as a parameter — so it is whitelisted.
+        orderBy: 'published_at; DROP TABLE video_dim' as never,
+      });
+
+      const { query } = lastQuery();
+      expect(query).not.toContain('DROP TABLE');
+      expect(query).toContain('ORDER BY published_at DESC');
+    });
+
+    it('binds the published-date filters as parameters', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        publishedFrom: '2026-01-01 00:00:00',
+        publishedTo: '2026-06-01 00:00:00',
+      });
+
+      const { query, query_params } = lastQuery();
+      expect(query).toContain('published_at >= {publishedFrom: DateTime}');
+      expect(query_params.publishedFrom).toBe('2026-01-01 00:00:00');
+      expect(query_params.publishedTo).toBe('2026-06-01 00:00:00');
+    });
+
+    it('widens a bare date to cover the whole day', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        publishedFrom: '2026-01-01',
+        publishedTo: '2026-06-01',
+      });
+
+      // The parameter is declared DateTime, so a bare date would lean on
+      // coercion — and an unwidened upper bound would cut off everything
+      // published after midnight on its own last day.
+      const { query_params } = lastQuery();
+      expect(query_params.publishedFrom).toBe('2026-01-01 00:00:00');
+      expect(query_params.publishedTo).toBe('2026-06-01 23:59:59');
+    });
+
+    it('marks an immature checkpoint and reports ingest lag', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      mockQueryResult.json.mockResolvedValue([
+        {
+          video_id: 'v1',
+          title: 'A video',
+          published_at: '2026-05-15 00:00:00',
+          connection_id: CHANNEL,
+          platform: 'youtube',
+          content_type: 'full',
+          language: 'en',
+          views_at_30: 10,
+          views_at_90: 10,
+          lifetime_views: 10,
+          first_metric_date: '2026-05-16',
+          metric_days: 3,
+        },
+      ]);
+
+      const [row] = await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        checkpoints: [30, 90],
+        now: new Date('2026-06-20T00:00:00Z'),
+      });
+
+      // 36 days old: @30d has elapsed, @90d has not.
+      expect(row!.matureAt).toEqual({ 30: true, 90: false });
+      expect(row!.ingestLagDays).toBe(1);
+      expect(row!.viewsAtAge[30]).toBe(10);
+    });
+
+    it('counts metric days in a way an unmatched join cannot fake', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({ scope: { projectId: PROJECT } });
+
+      // join_use_nulls defaults to 0 and is not overridden, so an unmatched
+      // LEFT JOIN row is filled with each column's *default* — '' and
+      // 1970-01-01, not NULL. count() counts non-NULLs, so it would return
+      // 1 for a video with no rows at all and "nothing ingested" would be
+      // unreachable. countIf against the filler date is genuinely zero.
+      const { query } = lastQuery();
+      expect(query).toContain('countIf(m.metric_date > toDate(0))');
+      expect(query).not.toContain('count(m.video_id)');
+    });
+
+    it('orders by SELECT aliases so the sort key is a grouping key', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({ scope: { projectId: PROJECT } });
+
+      // `published_at` is selected as toString(d.published_at) and GROUP BY
+      // resolves the bare name to that alias. Ordering by the raw
+      // d.published_at would be neither grouped nor aggregated, which
+      // ClickHouse rejects — and this is the default order, so it would
+      // have broken every call.
+      const { query } = lastQuery();
+      expect(query).toContain('ORDER BY published_at DESC');
+      expect(query).not.toContain('ORDER BY d.published_at');
+    });
+
+    it('breaks ordering ties on video_id so pages cannot overlap', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        orderBy: 'lifetime_views',
+      });
+
+      // Every zero-view video ties on lifetime_views, and ties have no
+      // stable order across separate queries — so without a unique
+      // tiebreaker a reader paging the log sees one video twice and misses
+      // another. Same discipline fetchAllRows enforces for PostgREST.
+      expect(lastQuery().query).toContain(
+        'ORDER BY lifetime_views DESC, video_id ASC',
+      );
+    });
+
+    it('distinguishes "nothing ingested" from "no views"', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      // metric_days is what separates the two cases; countIf makes zero
+      // reachable for a video with no matching rows.
+      mockQueryResult.json.mockResolvedValue([
+        {
+          video_id: 'v2',
+          title: 'Never ingested',
+          published_at: '2026-01-01 00:00:00',
+          connection_id: CHANNEL,
+          platform: 'youtube',
+          content_type: 'full',
+          language: 'en',
+          views_at_30: 0,
+          lifetime_views: 0,
+          first_metric_date: '1970-01-01',
+          metric_days: 0,
+        },
+      ]);
+
+      const [row] = await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        checkpoints: [30],
+        now: new Date('2026-06-20T00:00:00Z'),
+      });
+
+      expect(row!.firstMetricDate).toBeNull();
+      expect(row!.ingestLagDays).toBeNull();
+      expect(row!.lifetimeViews).toBe(0);
+    });
+
+    it('re-sorts globally when the id list spans several chunks', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      // Each chunk is ordered by the server independently, so concatenating
+      // them leaves the array sorted only within each block. Two chunks
+      // whose ranges interleave would come back out of order.
+      const ids = Array.from({ length: 1500 }, (_, i) => `v${i}`);
+
+      let call = 0;
+      mockQueryResult.json.mockImplementation(() => {
+        call += 1;
+        return Promise.resolve(
+          call === 1
+            ? [makeAgeRow('a', '2026-01-01 00:00:00')]
+            : [makeAgeRow('b', '2026-06-01 00:00:00')],
+        );
+      });
+
+      const rows = await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        videoIds: ids,
+        checkpoints: [30],
+      });
+
+      // Newest first: the second chunk's row must sort ahead of the first's.
+      expect(rows.map((r) => r.videoId)).toEqual(['b', 'a']);
+    });
+
+    it('requires a project or account scope', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await expect(
+        queryVideoViewsAtAge({ scope: { connectionId: CHANNEL } }),
+      ).rejects.toThrow(/requires projectId or accountId/);
+    });
+  });
+
   describe('channel dimension (FILM-1602)', () => {
     it('filters by connection_id when a channel is scoped', async () => {
       const { queryMedianViewsPerVideo } = await import(
@@ -223,7 +477,12 @@ describe('queries-advanced', () => {
         mode: 'cohort_views_to_date',
       });
 
-      expect(lastQuery().query).not.toContain('connection_id');
+      // Asserts the absence of the *filter*, not of the identifier: the dim
+      // subquery projects connection_id as a column for every query since
+      // FILM-1603, so a bare substring check would pass vacuously.
+      const { query, query_params } = lastQuery();
+      expect(query).not.toContain('connection_id = {scopeConnectionId: UUID}');
+      expect(query_params.scopeConnectionId).toBeUndefined();
     });
 
     it('still requires a project or account, not a channel alone', async () => {

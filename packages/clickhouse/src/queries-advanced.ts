@@ -7,7 +7,9 @@
  * share, back-catalog share), and age-controlled comparisons (cohorts)
  * live here — the playbook's discipline that plain sums cannot express.
  */
+import { concatByChunk } from './chunked';
 import { getClickHouseClient, isClickHouseEnabled } from './client';
+import { computeIngestLagDays, computeMaturity } from './lib/video-age';
 import type { VideoDim } from './types';
 
 export interface DimScope {
@@ -146,7 +148,12 @@ function dimSubquery(conditions: string): string {
     SELECT
       video_id,
       argMax(published_at, updated_at) as published_at,
-      argMax(tags, updated_at) as tags
+      argMax(tags, updated_at) as tags,
+      argMax(title, updated_at) as title,
+      argMax(connection_id, updated_at) as connection_id,
+      argMax(platform, updated_at) as platform,
+      argMax(content_type, updated_at) as content_type,
+      argMax(language, updated_at) as language
     FROM video_dim
     WHERE ${conditions}
     GROUP BY video_id
@@ -481,10 +488,14 @@ export async function queryCohortCurves(input: {
   const client = getClickHouseClient();
   const { conditions, params } = buildDimConditions(input.scope);
 
+  // `< days`, not `<= days`: days 0..N-1 count toward "@Nd". This was `<=`
+  // and is shifted by one here so the codebase carries a single boundary
+  // convention — FILM-1603 adds a second age-bounded query, and two
+  // conventions differing by a day would be indistinguishable in the UI.
   const checkpointSelects = checkpoints
     .map(
       (days) =>
-        `sumIf(m.views, dateDiff('day', d.published_at, toDateTime(m.metric_date)) <= ${days}) as views_at_${days}`,
+        `sumIf(m.views, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as views_at_${days}`,
     )
     .join(',\n      ');
 
@@ -662,4 +673,263 @@ export async function queryMedianByTag(input: {
     meanViews: Number(row.mean_views),
     medianWatchTimeSeconds: Number(row.median_watch),
   }));
+}
+
+/** True for a bare 'YYYY-MM-DD', which needs widening to a DateTime bound. */
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+function toDayStart(value: string): string {
+  return DATE_ONLY.test(value) ? `${value} 00:00:00` : value;
+}
+
+function toDayEnd(value: string): string {
+  return DATE_ONLY.test(value) ? `${value} 23:59:59` : value;
+}
+
+/** One video's row in the Video Log. */
+export interface VideoAgeRow {
+  videoId: string;
+  title: string;
+  publishedAt: string;
+  connectionId: string;
+  platform: string;
+  contentType: string;
+  language: string;
+  /** Views accumulated in days 0..N-1, per requested checkpoint. */
+  viewsAtAge: Record<number, number>;
+  /** Whether each checkpoint has actually elapsed for this video. */
+  matureAt: Record<number, boolean>;
+  lifetimeViews: number;
+  /** Earliest ingested metric day, or null when nothing was ingested. */
+  firstMetricDate: string | null;
+  /** Days between publication and the first ingested metric day. */
+  ingestLagDays: number | null;
+}
+
+/**
+ * Columns the Video Log may sort by.
+ *
+ * A whitelist, not caller-supplied text: `orderBy` reaches SQL by
+ * interpolation because ClickHouse cannot bind an identifier as a
+ * parameter, so it must never carry anything but one of these keys.
+ *
+ * These are the SELECT *aliases*, deliberately, not the underlying columns.
+ * `published_at` is selected as `toString(d.published_at)`, and a bare
+ * identifier in GROUP BY resolves to the alias — so the grouping key is the
+ * string. Ordering by the raw `d.published_at` would then be neither
+ * grouped nor aggregated and ClickHouse rejects the query outright. Sorting
+ * the string is equivalent anyway: 'YYYY-MM-DD HH:MM:SS' orders
+ * lexicographically exactly as it does chronologically.
+ */
+const VIDEO_AGE_ORDER_COLUMNS = {
+  published_at: 'published_at',
+  lifetime_views: 'lifetime_views',
+  title: 'title',
+} as const;
+
+export type VideoAgeOrderBy = keyof typeof VIDEO_AGE_ORDER_COLUMNS;
+
+/**
+ * Per-video views at fixed ages — the workbook's Sheet 1 row.
+ *
+ * Every other deep-dive query aggregates across videos or across time; this
+ * one holds both fixed, which is what makes videos of different ages
+ * comparable at all.
+ *
+ * The join is deliberately LEFT. A published video with no ingested metric
+ * rows must appear with zeros rather than drop out of the log — an inner
+ * join would silently shorten the denominator, which is exactly the defect
+ * FILM-1601 fixed in the cohort query. Do not "optimize" it to an INNER.
+ *
+ * Always paginated: the join scans the scope's full history, so an
+ * unbounded read here would be the most expensive query in the package.
+ *
+ * When `videoIds` is supplied the caller has already fixed the set (the raw
+ * CSV export does this), so the list is chunked to stay inside the request
+ * URI limit and each chunk is read whole rather than paginated. Chunks are
+ * ordered independently by the server, so the merged result is re-sorted
+ * here — otherwise `orderBy` would silently apply only within each
+ * 1,000-video block.
+ */
+export async function queryVideoViewsAtAge(input: {
+  scope: DimScope;
+  checkpoints?: number[];
+  videoIds?: string[];
+  publishedFrom?: string;
+  publishedTo?: string;
+  limit?: number;
+  offset?: number;
+  orderBy?: VideoAgeOrderBy;
+  orderDirection?: 'asc' | 'desc';
+  now?: Date;
+}): Promise<VideoAgeRow[]> {
+  if (!input.videoIds) return queryVideoViewsAtAgeSingle(input);
+
+  if (input.videoIds.length === 0) return [];
+
+  const rows = await concatByChunk(input.videoIds, (chunk) =>
+    queryVideoViewsAtAgeSingle({
+      ...input,
+      videoIds: chunk,
+      limit: chunk.length,
+      offset: 0,
+    }),
+  );
+
+  return sortVideoAgeRows(
+    rows,
+    input.orderBy ?? 'published_at',
+    input.orderDirection ?? 'desc',
+  );
+}
+
+/**
+ * Re-establishes a total order over rows merged from separate requests.
+ *
+ * Mirrors the SQL ORDER BY, including its `video_id` tiebreak, so a chunked
+ * read and a single-request read return the same sequence.
+ */
+function sortVideoAgeRows(
+  rows: VideoAgeRow[],
+  orderBy: VideoAgeOrderBy,
+  orderDirection: 'asc' | 'desc',
+): VideoAgeRow[] {
+  const direction = orderDirection === 'asc' ? 1 : -1;
+
+  const compare = (a: VideoAgeRow, b: VideoAgeRow): number => {
+    if (orderBy === 'lifetime_views') {
+      return (a.lifetimeViews - b.lifetimeViews) * direction;
+    }
+
+    const left = orderBy === 'title' ? a.title : a.publishedAt;
+    const right = orderBy === 'title' ? b.title : b.publishedAt;
+
+    return left.localeCompare(right) * direction;
+  };
+
+  return [...rows].sort(
+    (a, b) => compare(a, b) || a.videoId.localeCompare(b.videoId),
+  );
+}
+
+async function queryVideoViewsAtAgeSingle(input: {
+  scope: DimScope;
+  checkpoints?: number[];
+  videoIds?: string[];
+  publishedFrom?: string;
+  publishedTo?: string;
+  limit?: number;
+  offset?: number;
+  orderBy?: VideoAgeOrderBy;
+  orderDirection?: 'asc' | 'desc';
+  /** Injectable for tests; maturity is relative to "now". */
+  now?: Date;
+}): Promise<VideoAgeRow[]> {
+  if (!isClickHouseEnabled()) return [];
+  assertDimScope(input.scope);
+
+  const checkpoints = (input.checkpoints ?? [30, 90, 180, 365]).map((c) =>
+    Math.max(1, Math.floor(c)),
+  );
+
+  const limit = Math.min(1000, Math.max(1, Math.floor(input.limit ?? 200)));
+  const offset = Math.max(0, Math.floor(input.offset ?? 0));
+
+  const orderColumn =
+    VIDEO_AGE_ORDER_COLUMNS[input.orderBy ?? 'published_at'] ??
+    VIDEO_AGE_ORDER_COLUMNS.published_at;
+  const orderDirection = input.orderDirection === 'asc' ? 'ASC' : 'DESC';
+
+  const client = getClickHouseClient();
+  const { conditions, params } = buildDimConditions(input.scope);
+
+  const dimConditions = [conditions];
+
+  // Accept a bare date and widen it to cover the whole day, so the bound
+  // matches the declared DateTime parameter type rather than relying on
+  // lenient coercion — and so `publishedTo` includes that day's uploads
+  // instead of cutting them off at midnight.
+  if (input.publishedFrom) {
+    dimConditions.push('published_at >= {publishedFrom: DateTime}');
+    params.publishedFrom = toDayStart(input.publishedFrom);
+  }
+
+  if (input.publishedTo) {
+    dimConditions.push('published_at <= {publishedTo: DateTime}');
+    params.publishedTo = toDayEnd(input.publishedTo);
+  }
+
+  if (input.videoIds) {
+    dimConditions.push('video_id IN {videoIds: Array(String)}');
+    params.videoIds = input.videoIds;
+  }
+
+  // `days` is floored to an integer above, so it is safe to interpolate.
+  const checkpointSelects = checkpoints
+    .map(
+      (days) =>
+        `sumIf(m.views, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as views_at_${days}`,
+    )
+    .join(',\n      ');
+
+  const query = `
+    SELECT
+      d.video_id as video_id,
+      d.title as title,
+      toString(d.published_at) as published_at,
+      toString(d.connection_id) as connection_id,
+      d.platform as platform,
+      d.content_type as content_type,
+      d.language as language,
+      ${checkpointSelects},
+      sum(m.views) as lifetime_views,
+      toString(min(m.metric_date)) as first_metric_date,
+      countIf(m.metric_date > toDate(0)) as metric_days
+    FROM (${dimSubquery(dimConditions.join(' AND '))}) d
+    LEFT JOIN video_daily_stats m ON m.video_id = d.video_id
+    GROUP BY
+      video_id, title, published_at, connection_id,
+      platform, content_type, language
+    ORDER BY ${orderColumn} ${orderDirection}, video_id ASC
+    LIMIT ${limit} OFFSET ${offset}
+  `;
+
+  const result = await client.query({
+    query,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<Record<string, unknown>>();
+  const now = input.now ?? new Date();
+
+  return rows.map((row) => {
+    const publishedAt = String(row.published_at);
+
+    const viewsAtAge: Record<number, number> = {};
+    for (const days of checkpoints) {
+      viewsAtAge[days] = Number(row[`views_at_${days}`] ?? 0);
+    }
+
+    // A LEFT JOIN with no match still produces one row, whose aggregates
+    // read as zero — so "no metric days" is what distinguishes a video
+    // with nothing ingested from one that genuinely earned no views.
+    const hasMetrics = Number(row.metric_days ?? 0) > 0;
+    const firstMetricDate = hasMetrics ? String(row.first_metric_date) : null;
+
+    return {
+      videoId: String(row.video_id),
+      title: String(row.title ?? ''),
+      publishedAt,
+      connectionId: String(row.connection_id ?? ''),
+      platform: String(row.platform ?? ''),
+      contentType: String(row.content_type ?? ''),
+      language: String(row.language ?? ''),
+      viewsAtAge,
+      matureAt: computeMaturity(publishedAt, checkpoints, now),
+      lifetimeViews: Number(row.lifetime_views ?? 0),
+      firstMetricDate,
+      ingestLagDays: computeIngestLagDays(publishedAt, firstMetricDate),
+    };
+  });
 }

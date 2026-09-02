@@ -49,6 +49,7 @@ export {
   queryMedianViewsPerVideo,
   queryRollingViews,
   queryTrafficShareTrend,
+  queryVideoViewsAtAge,
   queryWatchWindowTotals,
 } from '../queries-advanced';
 export type {
@@ -59,8 +60,16 @@ export type {
   RollingViewsPoint,
   TagMedianRow,
   TrafficShareBucket,
+  VideoAgeOrderBy,
+  VideoAgeRow,
   WatchWindowTotals,
 } from '../queries-advanced';
+
+export {
+  checkpointPredatesIngest,
+  computeIngestLagDays,
+  computeMaturity,
+} from '../lib/video-age';
 
 export type {
   AggregatedTotals,

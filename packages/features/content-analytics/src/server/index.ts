@@ -178,3 +178,6 @@ export {
   getScheduledReportsAction,
   updateScheduledReportAction,
 } from './report-actions';
+
+export { getVideoLogAction } from './video-log-actions';
+export type { VideoLogRow } from './video-log-actions';
