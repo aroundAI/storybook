@@ -7,6 +7,39 @@
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+/** A bare 'YYYY-MM-DD', which V8 already parses as UTC midnight. */
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Trailing 'Z' or '+HH:MM' — a value that already states its offset. */
+const HAS_ZONE = /([Zz]|[+-]\d{2}:?\d{2})$/;
+
+/**
+ * Parses a ClickHouse timestamp as UTC.
+ *
+ * The two values compared here arrive in different formats and neither
+ * carries a zone: `published_at` as toString(DateTime) —
+ * 'YYYY-MM-DD HH:MM:SS', which V8 parses as *local* — and
+ * `first_metric_date` as toString(Date) — 'YYYY-MM-DD', which V8 parses as
+ * *UTC*. Both denote UTC instants, so parsing them differently skews the
+ * difference by the host offset, and `daysBetween`'s floor turns that into
+ * an off-by-one at exactly the boundaries this module exists to get right:
+ * whether a checkpoint has elapsed, and whether a figure is suppressed.
+ *
+ * Lambda runs UTC, so production was unaffected — which is what makes this
+ * the kind of bug that only ever reproduces on someone's laptop.
+ */
+function parseUtc(value: string | Date): Date {
+  if (value instanceof Date) return value;
+
+  const raw = value.trim();
+
+  if (DATE_ONLY.test(raw)) return new Date(`${raw}T00:00:00Z`);
+
+  const iso = raw.replace(' ', 'T');
+
+  return new Date(HAS_ZONE.test(iso) ? iso : `${iso}Z`);
+}
+
 /** Whole days between two instants, floored, negative when b precedes a. */
 export function daysBetween(from: Date, to: Date): number {
   return Math.floor((to.getTime() - from.getTime()) / MS_PER_DAY);
@@ -27,7 +60,7 @@ export function computeMaturity(
   checkpoints: number[],
   now: Date = new Date(),
 ): Record<number, boolean> {
-  const published = new Date(publishedAt);
+  const published = parseUtc(publishedAt);
   const mature: Record<number, boolean> = {};
 
   if (Number.isNaN(published.getTime())) {
@@ -61,8 +94,8 @@ export function computeIngestLagDays(
 ): number | null {
   if (!firstMetricDate) return null;
 
-  const published = new Date(publishedAt);
-  const first = new Date(firstMetricDate);
+  const published = parseUtc(publishedAt);
+  const first = parseUtc(firstMetricDate);
 
   if (Number.isNaN(published.getTime()) || Number.isNaN(first.getTime())) {
     return null;

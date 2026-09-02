@@ -134,3 +134,31 @@ describe('checkpointPredatesIngest', () => {
     expect(checkpointPredatesIngest(null, 30)).toBe(false);
   });
 });
+
+describe('timezone independence', () => {
+  // The two values arrive in different formats and neither carries a zone:
+  // published_at as toString(DateTime) -> 'YYYY-MM-DD HH:MM:SS', which V8
+  // parses as LOCAL, and first_metric_date as toString(Date) ->
+  // 'YYYY-MM-DD', which V8 parses as UTC. Mixing them skews the difference
+  // by the host offset, and Math.floor turns that into an off-by-one at
+  // exactly the boundaries this module exists to get right.
+  it('measures ingest lag in UTC regardless of host timezone', () => {
+    expect(computeIngestLagDays('2026-05-15 00:00:00', '2026-05-16')).toBe(1);
+  });
+
+  it('does not let the host offset move a maturity boundary', () => {
+    // Published exactly 30 days before `now`, in the query's own format.
+    expect(
+      computeMaturity('2026-05-15 00:00:00', [30], new Date('2026-06-14T00:00:00Z'))[30],
+    ).toBe(true);
+
+    // One day short must still be short.
+    expect(
+      computeMaturity('2026-05-16 00:00:00', [30], new Date('2026-06-14T00:00:00Z'))[30],
+    ).toBe(false);
+  });
+
+  it('accepts an explicit zone without double-applying it', () => {
+    expect(computeIngestLagDays('2026-05-15T00:00:00Z', '2026-05-16')).toBe(1);
+  });
+});
