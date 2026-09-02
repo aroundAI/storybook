@@ -266,6 +266,23 @@ describe('queries-advanced', () => {
       expect(query_params.publishedTo).toBe('2026-06-01 00:00:00');
     });
 
+    it('widens a bare date to cover the whole day', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        publishedFrom: '2026-01-01',
+        publishedTo: '2026-06-01',
+      });
+
+      // The parameter is declared DateTime, so a bare date would lean on
+      // coercion — and an unwidened upper bound would cut off everything
+      // published after midnight on its own last day.
+      const { query_params } = lastQuery();
+      expect(query_params.publishedFrom).toBe('2026-01-01 00:00:00');
+      expect(query_params.publishedTo).toBe('2026-06-01 23:59:59');
+    });
+
     it('marks an immature checkpoint and reports ingest lag', async () => {
       const queryVideoViewsAtAge = await load();
 

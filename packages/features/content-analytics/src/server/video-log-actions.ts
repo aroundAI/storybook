@@ -27,8 +27,17 @@ const VideoLogSchema = z.object({
     .array(z.number().int().min(1).max(730))
     .max(6)
     .default(DEFAULT_CHECKPOINTS),
-  publishedFrom: z.string().optional(),
-  publishedTo: z.string().optional(),
+  // Date-only, pinned: the underlying query binds these as DateTime while
+  // the quality query binds Date, and a bare z.string() let either format
+  // through to whichever bind could not take it.
+  publishedFrom: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  publishedTo: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   limit: z.number().int().min(1).max(500).default(200),
   offset: z.number().int().min(0).default(0),
   orderBy: z
@@ -122,11 +131,14 @@ export const getVideoLogAction = enhanceAction(
     // that made FILM-1612 necessary — but revenue is one row per publish
     // per day per category, so it is still chunked and paged.
     const [quality, channels, revenueByPublish] = await Promise.all([
-      queryQualityMetricsForVideos({
-        videoIds,
-        startDate: input.publishedFrom,
-        endDate: input.publishedTo,
-      }),
+      // Lifetime, deliberately unbounded by the publish-date filter.
+      // publishedFrom/To select *which videos* appear; passing them here
+      // would have bounded *which metric days* count, so a row would carry
+      // lifetime views next to CTR and view duration measured over only the
+      // slice of the window that video happened to overlap — two different
+      // windows in one row, with nothing saying so. A bounded quality
+      // window would need its own explicitly named inputs.
+      queryQualityMetricsForVideos({ videoIds }),
       input.projectId
         ? listProjectChannels(input.projectId, client)
         : listAccountChannels(input.accountId!, client),

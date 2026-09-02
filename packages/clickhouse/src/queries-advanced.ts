@@ -675,6 +675,17 @@ export async function queryMedianByTag(input: {
   }));
 }
 
+/** True for a bare 'YYYY-MM-DD', which needs widening to a DateTime bound. */
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+function toDayStart(value: string): string {
+  return DATE_ONLY.test(value) ? `${value} 00:00:00` : value;
+}
+
+function toDayEnd(value: string): string {
+  return DATE_ONLY.test(value) ? `${value} 23:59:59` : value;
+}
+
 /** One video's row in the Video Log. */
 export interface VideoAgeRow {
   videoId: string;
@@ -800,14 +811,18 @@ async function queryVideoViewsAtAgeSingle(input: {
 
   const dimConditions = [conditions];
 
+  // Accept a bare date and widen it to cover the whole day, so the bound
+  // matches the declared DateTime parameter type rather than relying on
+  // lenient coercion — and so `publishedTo` includes that day's uploads
+  // instead of cutting them off at midnight.
   if (input.publishedFrom) {
     dimConditions.push('published_at >= {publishedFrom: DateTime}');
-    params.publishedFrom = input.publishedFrom;
+    params.publishedFrom = toDayStart(input.publishedFrom);
   }
 
   if (input.publishedTo) {
     dimConditions.push('published_at <= {publishedTo: DateTime}');
-    params.publishedTo = input.publishedTo;
+    params.publishedTo = toDayEnd(input.publishedTo);
   }
 
   if (input.videoIds) {
