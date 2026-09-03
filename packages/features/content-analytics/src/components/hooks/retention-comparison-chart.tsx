@@ -82,10 +82,16 @@ export function RetentionComparisonChart({
               </div>
 
               <div
-                className={'bg-muted relative h-2.5 w-full overflow-hidden rounded-full'}
+                className={
+                  'bg-muted relative h-2.5 w-full overflow-hidden rounded-full'
+                }
               >
                 <div
-                  className={clears ? 'bg-primary h-full' : 'bg-muted-foreground/50 h-full'}
+                  className={
+                    clears
+                      ? 'bg-primary h-full'
+                      : 'bg-muted-foreground/50 h-full'
+                  }
                   style={{ width: `${Math.min(100, (value ?? 0) * 100)}%` }}
                 />
                 <div

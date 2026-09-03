@@ -1,6 +1,11 @@
 import { Clapperboard, FolderKanban, Home } from 'lucide-react';
 
-import { Sidebar, SidebarContent, SidebarGroup, SidebarItem } from '@kit/ui/sidebar';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarItem,
+} from '@kit/ui/sidebar';
 
 export function Default() {
   return (

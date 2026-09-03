@@ -103,7 +103,9 @@ export function SeasonHeader({
   const [showBulkGenerate, setShowBulkGenerate] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
-  const [resetTargetStage, setResetTargetStage] = useState<'draft' | 'story' | 'screenplay'>('draft');
+  const [resetTargetStage, setResetTargetStage] = useState<
+    'draft' | 'story' | 'screenplay'
+  >('draft');
   const [isResettingSeason, setIsResettingSeason] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [isEditing, setIsEditing] = useState(false);
@@ -174,7 +176,11 @@ export function SeasonHeader({
     });
   }
 
-  const resetStageLabels = { draft: 'Draft', story: 'Story', screenplay: 'Screenplay' } as const;
+  const resetStageLabels = {
+    draft: 'Draft',
+    story: 'Story',
+    screenplay: 'Screenplay',
+  } as const;
   const resetStageDescriptions = {
     draft: 'story, screenplay, shots, audio, and canon data',
     story: 'screenplay, shots, audio, and canon data',
@@ -194,7 +200,8 @@ export function SeasonHeader({
       const result = await bulkResetToStageAction({
         episodeIds,
         accountId,
-        targetStage: resetTargetStage === 'screenplay' ? 'storyboard' : resetTargetStage,
+        targetStage:
+          resetTargetStage === 'screenplay' ? 'storyboard' : resetTargetStage,
       });
 
       toast.dismiss(loadingToastId);
@@ -205,9 +212,7 @@ export function SeasonHeader({
         );
         router.refresh();
       } else {
-        toast.error(
-          `Reset completed with ${result.errors.length} error(s)`,
-        );
+        toast.error(`Reset completed with ${result.errors.length} error(s)`);
       }
     } catch (error) {
       toast.dismiss(loadingToastId);
@@ -218,7 +223,6 @@ export function SeasonHeader({
       setIsResettingSeason(false);
     }
   }
-
 
   return (
     <>
@@ -348,7 +352,7 @@ export function SeasonHeader({
                     }}
                   >
                     Reset to Story
-                    <span className="ml-auto text-xs text-muted-foreground">
+                    <span className="text-muted-foreground ml-auto text-xs">
                       Clears screenplay, shots, audio
                     </span>
                   </DropdownMenuItem>
@@ -359,7 +363,7 @@ export function SeasonHeader({
                     }}
                   >
                     Reset to Screenplay
-                    <span className="ml-auto text-xs text-muted-foreground">
+                    <span className="text-muted-foreground ml-auto text-xs">
                       Clears shots, audio
                     </span>
                   </DropdownMenuItem>
@@ -372,7 +376,7 @@ export function SeasonHeader({
                     }}
                   >
                     Reset to Draft
-                    <span className="ml-auto text-xs text-muted-foreground">
+                    <span className="text-muted-foreground ml-auto text-xs">
                       Clears everything
                     </span>
                   </DropdownMenuItem>

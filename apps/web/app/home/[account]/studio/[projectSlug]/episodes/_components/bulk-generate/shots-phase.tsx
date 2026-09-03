@@ -225,7 +225,11 @@ export function ShotsPhase({
     // Mark all as generating
     for (const ep of pendingEpisodes) {
       markPending(ep.episodeId);
-      dispatch({ type: 'SET_SHOT_STATUS', episodeId: ep.episodeId, status: 'generating' });
+      dispatch({
+        type: 'SET_SHOT_STATUS',
+        episodeId: ep.episodeId,
+        status: 'generating',
+      });
     }
 
     // Single batch call — SQS + Lambda reservedConcurrency handle throughput
@@ -239,10 +243,19 @@ export function ShotsPhase({
         dispatch({ type: 'SET_SHOT_STATUS', episodeId, status: 'error' });
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Batch shot generation failed';
+      const message =
+        err instanceof Error ? err.message : 'Batch shot generation failed';
       for (const ep of pendingEpisodes) {
-        dispatch({ type: 'SET_EPISODE_ERROR', episodeId: ep.episodeId, error: message });
-        dispatch({ type: 'SET_SHOT_STATUS', episodeId: ep.episodeId, status: 'error' });
+        dispatch({
+          type: 'SET_EPISODE_ERROR',
+          episodeId: ep.episodeId,
+          error: message,
+        });
+        dispatch({
+          type: 'SET_SHOT_STATUS',
+          episodeId: ep.episodeId,
+          status: 'error',
+        });
       }
     }
   }, [pendingEpisodes, dispatch, registerEpisodes, markPending]);

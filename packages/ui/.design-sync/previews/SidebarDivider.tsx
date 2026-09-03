@@ -1,6 +1,11 @@
 import { Clapperboard, CreditCard, Home } from 'lucide-react';
 
-import { Sidebar, SidebarContent, SidebarDivider, SidebarItem } from '@kit/ui/sidebar';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarDivider,
+  SidebarItem,
+} from '@kit/ui/sidebar';
 
 export function Default() {
   return (
@@ -19,7 +24,10 @@ export function Default() {
 
           <SidebarDivider />
 
-          <SidebarItem path="/home/billing" Icon={<CreditCard className="w-4" />}>
+          <SidebarItem
+            path="/home/billing"
+            Icon={<CreditCard className="w-4" />}
+          >
             Billing
           </SidebarItem>
         </SidebarContent>

@@ -1,9 +1,6 @@
 export { DeepDiveTab } from './deep-dive-tab';
 
-export {
-  MedianViewsCard,
-  MedianViewsCardSkeleton,
-} from './median-views-card';
+export { MedianViewsCard, MedianViewsCardSkeleton } from './median-views-card';
 export type { MedianBucketEntry } from './median-views-card';
 
 export {
@@ -12,10 +9,7 @@ export {
 } from './traffic-share-card';
 export type { TrafficShareEntry } from './traffic-share-card';
 
-export {
-  BackCatalogCard,
-  BackCatalogCardSkeleton,
-} from './back-catalog-card';
+export { BackCatalogCard, BackCatalogCardSkeleton } from './back-catalog-card';
 export type { BackCatalogEntry } from './back-catalog-card';
 
 export {
@@ -24,10 +18,7 @@ export {
 } from './cohort-curves-chart';
 export type { CohortEntry } from './cohort-curves-chart';
 
-export {
-  YppProgressCard,
-  YppProgressCardSkeleton,
-} from './ypp-progress-card';
+export { YppProgressCard, YppProgressCardSkeleton } from './ypp-progress-card';
 export type { YppChannelProgress } from './ypp-progress-card';
 
 export {

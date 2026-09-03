@@ -13,12 +13,9 @@ export function Default() {
     <Popover defaultOpen>
       <PopoverAnchor asChild>
         <div className="flex items-center gap-2">
-          <Badge
-            variant="outline"
-            className="border-amber-300 text-amber-600"
-          >
-            <AlertTriangle className="mr-1 h-3 w-3 text-amber-500" />
-            3 issues detected
+          <Badge variant="outline" className="border-amber-300 text-amber-600">
+            <AlertTriangle className="mr-1 h-3 w-3 text-amber-500" />3 issues
+            detected
           </Badge>
           <PopoverTrigger asChild>
             <button
@@ -32,8 +29,8 @@ export function Default() {
       </PopoverAnchor>
       <PopoverContent align="start" side="bottom" className="w-[320px]">
         <p className="text-muted-foreground text-xs">
-          The anchor pins the popover to the badge instead of the trigger
-          link, so the panel stays aligned with the status indicator.
+          The anchor pins the popover to the badge instead of the trigger link,
+          so the panel stays aligned with the status indicator.
         </p>
       </PopoverContent>
     </Popover>

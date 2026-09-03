@@ -15,7 +15,9 @@ export function CanonStrictness() {
     <div className="w-full max-w-sm space-y-2">
       <div className="flex items-center justify-between">
         <Label>Canon strictness</Label>
-        <span className="text-muted-foreground text-sm tabular-nums">4 / 5</span>
+        <span className="text-muted-foreground text-sm tabular-nums">
+          4 / 5
+        </span>
       </div>
       <Slider min={1} max={5} step={1} defaultValue={[4]} />
       <p className="text-muted-foreground text-xs">

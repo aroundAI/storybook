@@ -386,7 +386,8 @@ export function AssetsPhase({
   const pendingCount = Array.from(jobs.values()).filter(
     (j) => j.status === 'pending',
   ).length;
-  const isAllDone = hasStarted && completedCount >= totalCount && totalCount > 0;
+  const isAllDone =
+    hasStarted && completedCount >= totalCount && totalCount > 0;
 
   // Loading state
   if (isLoading) {
@@ -629,7 +630,11 @@ function EpisodeAssetRow({
   job,
 }: {
   episode: EpisodeBulkState;
-  job?: { status: string; result?: AssetCreationResult | null; error?: string | null };
+  job?: {
+    status: string;
+    result?: AssetCreationResult | null;
+    error?: string | null;
+  };
 }) {
   const status = job?.status ?? 'idle';
 
@@ -666,8 +671,10 @@ function EpisodeAssetRow({
         </p>
         {status === 'success' && job?.result && (
           <p className="mt-0.5 text-[10px] text-emerald-400/70">
-            {job.result?.data.created} created · {job.result?.data.linked} linked
-            {job.result?.data.characters && job.result.data.characters.length > 0 &&
+            {job.result?.data.created} created · {job.result?.data.linked}{' '}
+            linked
+            {job.result?.data.characters &&
+              job.result.data.characters.length > 0 &&
               ` · ${job.result.data.characters.join(', ')}`}
           </p>
         )}

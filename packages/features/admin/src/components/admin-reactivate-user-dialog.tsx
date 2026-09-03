@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 
 import { isRedirectError } from 'next/dist/client/components/redirect-error';
+import { useRouter } from 'next/navigation';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -61,6 +62,7 @@ export function AdminReactivateUserDialog(
 function ReactivateUserForm(props: { userId: string }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<boolean>(false);
+  const router = useRouter();
 
   const form = useForm({
     resolver: zodResolver(ReactivateUserSchema),
@@ -79,6 +81,11 @@ function ReactivateUserForm(props: { userId: string }) {
           startTransition(async () => {
             try {
               await reactivateUserAction(data);
+
+              // The action's revalidatePath() was not reaching this already
+              // rendered page, so the "Banned" badge survived a successful
+              // reactivation until the admin reloaded by hand.
+              router.refresh();
             } catch (error) {
               setError(!isRedirectError(error));
             }

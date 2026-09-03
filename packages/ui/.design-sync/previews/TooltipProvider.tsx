@@ -40,8 +40,8 @@ export function Warning() {
         </TooltipTrigger>
         <TooltipContent side="right">
           <p className="text-sm">
-            Episode 5 contradicts Mara&apos;s established eye color from
-            Episode 1.
+            Episode 5 contradicts Mara&apos;s established eye color from Episode
+            1.
           </p>
         </TooltipContent>
       </Tooltip>

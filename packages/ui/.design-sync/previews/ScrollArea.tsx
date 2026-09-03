@@ -18,7 +18,7 @@ export function Default() {
         {threads.map((thread) => (
           <div
             key={thread.name}
-            className="flex items-center justify-between rounded-md px-2 py-2 hover:bg-accent"
+            className="hover:bg-accent flex items-center justify-between rounded-md px-2 py-2"
           >
             <div>
               <p className="text-sm font-medium">{thread.name}</p>

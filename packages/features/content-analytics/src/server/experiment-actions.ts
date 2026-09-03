@@ -162,8 +162,7 @@ export const updateExperimentAction = enhanceAction(
 
     const updates: Record<string, unknown> = {};
     if (fields.title !== undefined) updates.title = fields.title;
-    if (fields.hypothesis !== undefined)
-      updates.hypothesis = fields.hypothesis;
+    if (fields.hypothesis !== undefined) updates.hypothesis = fields.hypothesis;
     if (fields.changeDescription !== undefined)
       updates.change_description = fields.changeDescription;
     if (fields.expectedOutcome !== undefined)

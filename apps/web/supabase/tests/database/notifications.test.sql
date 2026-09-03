@@ -35,24 +35,24 @@ select row_eq(
 );
 
 -- user can read their team notifications
-select makerkit.set_identifier('primary_owner', 'test@makerkit.dev');
-select makerkit.set_identifier('owner', 'owner@makerkit.dev');
-select makerkit.set_identifier('member', 'member@makerkit.dev');
-select makerkit.set_identifier('custom', 'custom@makerkit.dev');
+select makerkit.set_identifier('primary_owner', 'test@storybook.dev');
+select makerkit.set_identifier('owner', 'owner@storybook.dev');
+select makerkit.set_identifier('member', 'member@storybook.dev');
+select makerkit.set_identifier('custom', 'custom@storybook.dev');
 
 set local role service_role;
 
 -- service role can insert into notifications
 select lives_ok(
-    $$ insert into public.notifications(account_id, body) values (makerkit.get_account_id_by_slug('makerkit'), 'test'); $$,
+    $$ insert into public.notifications(account_id, body) values (makerkit.get_account_id_by_slug('storybook'), 'test'); $$,
     'service role can insert into notifications'
 );
 
 select makerkit.authenticate_as('member');
 
 select row_eq(
-    $$ select account_id, body from public.notifications where account_id = makerkit.get_account_id_by_slug('makerkit'); $$,
-    row (makerkit.get_account_id_by_slug('makerkit'), 'test'::varchar),
+    $$ select account_id, body from public.notifications where account_id = makerkit.get_account_id_by_slug('storybook'); $$,
+    row (makerkit.get_account_id_by_slug('storybook'), 'test'::varchar),
     'user can read their team notifications'
 );
 
@@ -68,7 +68,7 @@ select is_empty(
 
 -- foreigner cannot read other teams notifications
 select is_empty(
-    $$ select account_id, body from public.notifications where account_id = makerkit.get_account_id_by_slug('makerkit'); $$,
+    $$ select account_id, body from public.notifications where account_id = makerkit.get_account_id_by_slug('storybook'); $$,
     'foreigner cannot read other teams notifications'
 );
 

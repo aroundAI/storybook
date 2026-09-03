@@ -122,15 +122,22 @@ jobs:
 
   test:
     name: ⚫️ Test
-    timeout-minutes: 20
+    # Getting to the first spec costs most of a 20-minute budget on its own:
+    # a pnpm install of the monorepo, Playwright's browsers, Supabase's
+    # images and a Next production build. The suite itself then runs on one
+    # worker with up to three retries. 20 minutes cancelled Playwright
+    # mid-run after every earlier step had passed.
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     if: ${{ vars.ENABLE_E2E_JOB == 'true' }}
     env:
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_DB_WEBHOOK_SECRET: ${{ secrets.SUPABASE_DB_WEBHOOK_SECRET }}
-      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-      ENABLE_BILLING_TESTS: ${{ vars.ENABLE_BILLING_TESTS }}
+      # No Stripe. The billing specs are skipped (see ENABLE_BILLING_TESTS
+      # below), so the repo needs no payment credentials to run this job.
+      #
+      # These are set explicitly rather than read from apps/e2e/.env, which
+      # playwright.config.ts does not load — it reads .env.local.
+      ENABLE_BILLING_TESTS: 'false'
+      ENABLE_TEAM_ACCOUNT_TESTS: 'true'
       DO_NOT_TRACK: 1
       TURBO_SCM_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
 
@@ -138,6 +145,20 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 2
+
+      # This job needs more disk than a runner has spare: Supabase's images,
+      # Playwright's browsers, a pnpm install of the whole monorepo and a
+      # Next production build. Without this the runner fills its volume
+      # mid-build and dies — "No space left on device" from the runner
+      # process itself, which means no step conclusion and no uploaded logs,
+      # so the failure is invisible in the UI. Dropping toolchains this job
+      # never uses buys back over 20GB.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android \
+            /usr/local/share/boost /usr/local/share/powershell \
+            /usr/local/.ghcup "$AGENT_TOOLSDIRECTORY"
+          df -h /
 
       - uses: pnpm/action-setup@v4
 
@@ -172,23 +193,57 @@ jobs:
       - name: Supabase Server
         run: pnpm run supabase:web:start -- -x studio,migra,deno-relay,pgadmin-schema-diff,imgproxy,logflare
 
-      - name: Stripe CLI
-        run: |
-          docker run --add-host=host.docker.internal:host-gateway --rm -it --name=stripe -d stripe/stripe-cli:latest listen --forward-to http://host.docker.internal:3000/api/billing/webhook --skip-verify --api-key "$STRIPE_SECRET_KEY" --log-level debug &
+      # No credential export step. apps/web/.env.test already carries the
+      # local URL and the CLI's fixed public development keys — the same
+      # values `supabase status` prints — and Next loads it for both the
+      # build and the server. An earlier version of this job piped
+      # `supabase status -o env` into $GITHUB_ENV, which resolved to empty
+      # strings and then *overrode* .env.test with them. Reading .env.test
+      # directly also means CI and a local run use the identical mechanism.
 
+      # next build peaks over Node's default heap on a GitHub runner and
+      # dies with "Ineffective mark-compacts near heap limit" at ~2GB.
+      #
+      # 4096 rather than something larger: NODE_OPTIONS is inherited by
+      # every worker next build forks (one per CPU), so the ceiling is
+      # per-process, not for the build as a whole. An earlier attempt at
+      # 8192 took the whole runner down — the job died mid-step with no
+      # conclusion and never uploaded its logs, which is what a kernel
+      # OOM-kill of the runner looks like.
       - name: Run Next.js Production Build (test env)
-        run: pnpm --filter web build:test
+        run: |
+          pnpm --filter web build:test
+          df -h /
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Run Next.js Server
         run: pnpm --filter web start:test &
 
-      - name: Run Playwright tests
+      - name: Wait for the server
         run: |
-          echo "Running Playwright tests. Billing tests enabled: $ENABLE_BILLING_TESTS"
-          pnpm run test
+          for attempt in $(seq 1 60); do
+            if curl -sf http://localhost:3000/healthcheck > /dev/null; then
+              echo "server ready after ${attempt} attempt(s)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Next.js did not become ready in 120s"
+          exit 1
 
+      # Before Playwright, not after: the pgTAP suite asserts against the
+      # seeded database, and the e2e specs sign up users and create teams in
+      # it. Running them in this order keeps pgTAP's fixtures the only thing
+      # it has to reason about.
       - name: Run Supabase tests
         run: pnpm --filter web supabase:test
+
+      # Only the e2e package. `pnpm run test` is `turbo test`, which runs
+      # every package's suite — the Unit Tests job already does that, and
+      # re-running it here makes this job fail for reasons unrelated to e2e.
+      - name: Run Playwright tests
+        run: pnpm --filter web-e2e test
 
       - uses: actions/upload-artifact@v4
         if: always()

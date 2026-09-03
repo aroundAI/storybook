@@ -5,21 +5,21 @@ select no_plan();
 
 -- test
 
-select makerkit.set_identifier('test', 'test@makerkit.dev');
-select makerkit.set_identifier('member', 'member@makerkit.dev');
-select makerkit.set_identifier('custom', 'custom@makerkit.dev');
-select makerkit.set_identifier('owner', 'owner@makerkit.dev');
+select makerkit.set_identifier('test', 'test@storybook.dev');
+select makerkit.set_identifier('member', 'member@storybook.dev');
+select makerkit.set_identifier('custom', 'custom@storybook.dev');
+select makerkit.set_identifier('owner', 'owner@storybook.dev');
 
 select makerkit.authenticate_as('test');
 
 select lives_ok(
-    $$ insert into public.invitations (email, invited_by, account_id, role, invite_token) values ('invite1@makerkit.dev', auth.uid(),  makerkit.get_account_id_by_slug('makerkit'), 'member', gen_random_uuid()); $$,
+    $$ insert into public.invitations (email, invited_by, account_id, role, invite_token) values ('invite1@storybook.dev', auth.uid(),  makerkit.get_account_id_by_slug('storybook'), 'member', gen_random_uuid()); $$,
 'owner should be able to create invitations'
 );
 
 -- check two invitations to the same email/account are not allowed
 select throws_ok(
-    $$ insert into public.invitations (email, invited_by, account_id, role, invite_token) values ('invite1@makerkit.dev', auth.uid(), makerkit.get_account_id_by_slug('makerkit'), 'member', gen_random_uuid()) $$,
+    $$ insert into public.invitations (email, invited_by, account_id, role, invite_token) values ('invite1@storybook.dev', auth.uid(), makerkit.get_account_id_by_slug('storybook'), 'member', gen_random_uuid()) $$,
     'duplicate key value violates unique constraint "invitations_email_account_id_key"'
 );
 
@@ -27,19 +27,19 @@ select makerkit.authenticate_as('member');
 
 -- check a member cannot invite members with higher roles
 select throws_ok(
-    $$ insert into public.invitations (email, invited_by, account_id, role, invite_token) values ('invite2@makerkit.dev', auth.uid(), makerkit.get_account_id_by_slug('makerkit'), 'owner', gen_random_uuid()) $$,
+    $$ insert into public.invitations (email, invited_by, account_id, role, invite_token) values ('invite2@storybook.dev', auth.uid(), makerkit.get_account_id_by_slug('storybook'), 'owner', gen_random_uuid()) $$,
     'new row violates row-level security policy for table "invitations"'
 );
 
 -- check a member can invite members with the same or lower roles
 select lives_ok(
-    $$ insert into public.invitations (email, invited_by, account_id, role, invite_token) values ('invite2@makerkit.dev', auth.uid(), makerkit.get_account_id_by_slug('makerkit'), 'member', gen_random_uuid()) $$,
+    $$ insert into public.invitations (email, invited_by, account_id, role, invite_token) values ('invite2@storybook.dev', auth.uid(), makerkit.get_account_id_by_slug('storybook'), 'member', gen_random_uuid()) $$,
     'member should be able to create invitations for members or lower roles'
 );
 
 -- test invite exists
 select isnt_empty(
-    $$ select * from public.invitations where account_id = makerkit.get_account_id_by_slug('makerkit') $$,
+    $$ select * from public.invitations where account_id = makerkit.get_account_id_by_slug('storybook') $$,
     'invitations should be listed'
 );
 
@@ -47,7 +47,7 @@ select makerkit.authenticate_as('owner');
 
 -- check the owner can invite members with lower roles
 select lives_ok(
-    $$ insert into public.invitations (email, invited_by, account_id, role, invite_token) values ('invite3@makerkit.dev', auth.uid(), makerkit.get_account_id_by_slug('makerkit'), 'member', gen_random_uuid()) $$,
+    $$ insert into public.invitations (email, invited_by, account_id, role, invite_token) values ('invite3@storybook.dev', auth.uid(), makerkit.get_account_id_by_slug('storybook'), 'member', gen_random_uuid()) $$,
     'owner should be able to create invitations'
 );
 
@@ -56,7 +56,7 @@ select makerkit.authenticate_as('custom');
 
 -- it will fail because the custom role does not have the invites.manage permission
 select throws_ok(
-    $$ insert into public.invitations (email, invited_by, account_id, role, invite_token) values ('invite3@makerkit.dev', auth.uid(), makerkit.get_account_id_by_slug('makerkit'), 'custom-role', gen_random_uuid()) $$,
+    $$ insert into public.invitations (email, invited_by, account_id, role, invite_token) values ('invite3@storybook.dev', auth.uid(), makerkit.get_account_id_by_slug('storybook'), 'custom-role', gen_random_uuid()) $$,
     'new row violates row-level security policy for table "invitations"'
 );
 
@@ -69,17 +69,17 @@ insert into public.role_permissions (role, permission) values ('custom-role', 'i
 select makerkit.authenticate_as('custom');
 
 select lives_ok(
-    $$ insert into public.invitations (email, invited_by, account_id, role, invite_token) values ('invite4@makerkit.dev', auth.uid(), makerkit.get_account_id_by_slug('makerkit'), 'custom-role', gen_random_uuid()) $$,
+    $$ insert into public.invitations (email, invited_by, account_id, role, invite_token) values ('invite4@storybook.dev', auth.uid(), makerkit.get_account_id_by_slug('storybook'), 'custom-role', gen_random_uuid()) $$,
     'custom role should be able to create invitations'
 );
 
 select lives_ok(
-    $$ SELECT public.add_invitations_to_account('makerkit', ARRAY[ROW('example@makerkit.dev', 'custom-role')::public.invitation]); $$,
+    $$ SELECT public.add_invitations_to_account('storybook', ARRAY[ROW('example@storybook.dev', 'custom-role')::public.invitation]); $$,
     'custom role should be able to create invitations using the function public.add_invitations_to_account'
 );
 
 select throws_ok(
-    $$ SELECT public.add_invitations_to_account('makerkit', ARRAY[ROW('example2@makerkit.dev', 'owner')::public.invitation]); $$,
+    $$ SELECT public.add_invitations_to_account('storybook', ARRAY[ROW('example2@storybook.dev', 'owner')::public.invitation]); $$,
     'new row violates row-level security policy for table "invitations"',
     'cannot invite members with higher roles'
 );
@@ -92,17 +92,17 @@ select makerkit.authenticate_as('user');
 
 -- it will fail because the user is not a member of the account
 select throws_ok(
-    $$ insert into public.invitations (email, invited_by, account_id, role, invite_token) values ('invite4@makerkit.dev', auth.uid(), makerkit.get_account_id_by_slug('makerkit'), 'member', gen_random_uuid()) $$,
+    $$ insert into public.invitations (email, invited_by, account_id, role, invite_token) values ('invite4@storybook.dev', auth.uid(), makerkit.get_account_id_by_slug('storybook'), 'member', gen_random_uuid()) $$,
     'new row violates row-level security policy for table "invitations"'
 );
 
 select throws_ok(
-    $$ SELECT public.add_invitations_to_account('makerkit', ARRAY[ROW('example@example.com', 'member')::public.invitation]); $$,
+    $$ SELECT public.add_invitations_to_account('storybook', ARRAY[ROW('example@example.com', 'member')::public.invitation]); $$,
     'new row violates row-level security policy for table "invitations"'
 );
 
 select is_empty($$
-    select * from public.invitations where account_id = makerkit.get_account_id_by_slug('makerkit') $$,
+    select * from public.invitations where account_id = makerkit.get_account_id_by_slug('storybook') $$,
     'no invitations should be listed'
 );
 

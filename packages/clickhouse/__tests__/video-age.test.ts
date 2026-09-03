@@ -149,12 +149,20 @@ describe('timezone independence', () => {
   it('does not let the host offset move a maturity boundary', () => {
     // Published exactly 30 days before `now`, in the query's own format.
     expect(
-      computeMaturity('2026-05-15 00:00:00', [30], new Date('2026-06-14T00:00:00Z'))[30],
+      computeMaturity(
+        '2026-05-15 00:00:00',
+        [30],
+        new Date('2026-06-14T00:00:00Z'),
+      )[30],
     ).toBe(true);
 
     // One day short must still be short.
     expect(
-      computeMaturity('2026-05-16 00:00:00', [30], new Date('2026-06-14T00:00:00Z'))[30],
+      computeMaturity(
+        '2026-05-16 00:00:00',
+        [30],
+        new Date('2026-06-14T00:00:00Z'),
+      )[30],
     ).toBe(false);
   });
 

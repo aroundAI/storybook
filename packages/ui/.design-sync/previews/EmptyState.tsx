@@ -33,8 +33,8 @@ export function NoEpisodes() {
       <EmptyState>
         <EmptyStateHeading>No episodes yet</EmptyStateHeading>
         <EmptyStateText>
-          Start the ideation pipeline to generate your first episode concept
-          for this season.
+          Start the ideation pipeline to generate your first episode concept for
+          this season.
         </EmptyStateText>
         <EmptyStateButton>Start ideation</EmptyStateButton>
       </EmptyState>

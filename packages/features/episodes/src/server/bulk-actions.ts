@@ -73,7 +73,10 @@ const BatchGenerateShotsSchema = z.object({
 export const batchGenerateIdeasAction = enhanceAction(
   async (data): Promise<BatchQueueResult> => {
     const logger = await getLogger();
-    const ctx = { name: 'episodes.batchGenerateIdeas', count: data.episodes.length };
+    const ctx = {
+      name: 'episodes.batchGenerateIdeas',
+      count: data.episodes.length,
+    };
 
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
@@ -124,7 +127,10 @@ export const batchGenerateIdeasAction = enhanceAction(
       }
     }
 
-    logger.info({ ...ctx, queued, failed: failed.length }, 'Batch ideation complete');
+    logger.info(
+      { ...ctx, queued, failed: failed.length },
+      'Batch ideation complete',
+    );
     return { success: true, queued, failed };
   },
   { schema: BatchGenerateIdeasSchema },
@@ -139,13 +145,19 @@ export const batchGenerateIdeasAction = enhanceAction(
 export const batchGenerateStoriesAction = enhanceAction(
   async (data): Promise<BatchQueueResult> => {
     const logger = await getLogger();
-    const ctx = { name: 'episodes.batchGenerateStories', count: data.episodes.length };
+    const ctx = {
+      name: 'episodes.batchGenerateStories',
+      count: data.episodes.length,
+    };
 
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
     if (authError || !user) throw new Error('Authentication required');
 
-    logger.info(ctx, `Batch queuing ${data.episodes.length} story generation jobs`);
+    logger.info(
+      ctx,
+      `Batch queuing ${data.episodes.length} story generation jobs`,
+    );
 
     const episodeIds = data.episodes.map((ep) => ep.episodeId);
 
@@ -153,7 +165,9 @@ export const batchGenerateStoriesAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episodes } = await (client as any)
       .from('episodes')
-      .select('id, project_id, status, version, project:projects(id, account_id)')
+      .select(
+        'id, project_id, status, version, project:projects(id, account_id)',
+      )
       .in('id', episodeIds)
       .is('deleted_at', null);
 
@@ -167,7 +181,9 @@ export const batchGenerateStoriesAction = enhanceAction(
     let queued = 0;
 
     for (const ep of data.episodes) {
-      const episode = episodeMap.get(ep.episodeId) as Record<string, unknown> | undefined;
+      const episode = episodeMap.get(ep.episodeId) as
+        | Record<string, unknown>
+        | undefined;
 
       if (!episode) {
         failed.push({ episodeId: ep.episodeId, error: 'Episode not found' });
@@ -235,11 +251,17 @@ export const batchGenerateStoriesAction = enhanceAction(
         .from('generation_jobs')
         .insert(jobEntries);
       if (jobError) {
-        logger.warn({ ...ctx, error: jobError }, 'Failed to batch-create generation jobs');
+        logger.warn(
+          { ...ctx, error: jobError },
+          'Failed to batch-create generation jobs',
+        );
       }
     }
 
-    logger.info({ ...ctx, queued, failed: failed.length }, 'Batch story generation complete');
+    logger.info(
+      { ...ctx, queued, failed: failed.length },
+      'Batch story generation complete',
+    );
     return { success: true, queued, failed };
   },
   { schema: BatchGenerateStoriesSchema },
@@ -253,7 +275,10 @@ export const batchGenerateStoriesAction = enhanceAction(
 export const batchConvertScreenplaysAction = enhanceAction(
   async (data): Promise<BatchQueueResult> => {
     const logger = await getLogger();
-    const ctx = { name: 'episodes.batchConvertScreenplays', count: data.episodes.length };
+    const ctx = {
+      name: 'episodes.batchConvertScreenplays',
+      count: data.episodes.length,
+    };
 
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
@@ -266,7 +291,9 @@ export const batchConvertScreenplaysAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episodes } = await (client as any)
       .from('episodes')
-      .select('id, project_id, status, version, story_data, project:projects(id, account_id)')
+      .select(
+        'id, project_id, status, version, story_data, project:projects(id, account_id)',
+      )
       .in('id', episodeIds)
       .is('deleted_at', null);
 
@@ -280,7 +307,9 @@ export const batchConvertScreenplaysAction = enhanceAction(
     let queued = 0;
 
     for (const ep of data.episodes) {
-      const episode = episodeMap.get(ep.episodeId) as Record<string, unknown> | undefined;
+      const episode = episodeMap.get(ep.episodeId) as
+        | Record<string, unknown>
+        | undefined;
 
       if (!episode) {
         failed.push({ episodeId: ep.episodeId, error: 'Episode not found' });
@@ -348,11 +377,17 @@ export const batchConvertScreenplaysAction = enhanceAction(
         .from('generation_jobs')
         .insert(jobEntries);
       if (jobError) {
-        logger.warn({ ...ctx, error: jobError }, 'Failed to batch-create generation jobs');
+        logger.warn(
+          { ...ctx, error: jobError },
+          'Failed to batch-create generation jobs',
+        );
       }
     }
 
-    logger.info({ ...ctx, queued, failed: failed.length }, 'Batch screenplay conversion complete');
+    logger.info(
+      { ...ctx, queued, failed: failed.length },
+      'Batch screenplay conversion complete',
+    );
     return { success: true, queued, failed };
   },
   { schema: BatchConvertScreenplaysSchema },
@@ -367,20 +402,28 @@ export const batchConvertScreenplaysAction = enhanceAction(
 export const batchGenerateShotsAction = enhanceAction(
   async (data): Promise<BatchQueueResult> => {
     const logger = await getLogger();
-    const ctx = { name: 'episodes.batchGenerateShots', count: data.episodes.length };
+    const ctx = {
+      name: 'episodes.batchGenerateShots',
+      count: data.episodes.length,
+    };
 
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
     if (authError || !user) throw new Error('Authentication required');
 
-    logger.info(ctx, `Batch queuing ${data.episodes.length} shot generation jobs`);
+    logger.info(
+      ctx,
+      `Batch queuing ${data.episodes.length} shot generation jobs`,
+    );
 
     const episodeIds = data.episodes.map((ep) => ep.episodeId);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episodes } = await (client as any)
       .from('episodes')
-      .select('id, project_id, version, screenplay_data, project:projects(id, account_id)')
+      .select(
+        'id, project_id, version, screenplay_data, project:projects(id, account_id)',
+      )
       .in('id', episodeIds)
       .is('deleted_at', null);
 
@@ -394,14 +437,18 @@ export const batchGenerateShotsAction = enhanceAction(
     let queued = 0;
 
     for (const ep of data.episodes) {
-      const episode = episodeMap.get(ep.episodeId) as Record<string, unknown> | undefined;
+      const episode = episodeMap.get(ep.episodeId) as
+        | Record<string, unknown>
+        | undefined;
 
       if (!episode) {
         failed.push({ episodeId: ep.episodeId, error: 'Episode not found' });
         continue;
       }
 
-      const screenplayData = episode.screenplay_data as { scenes?: unknown[] } | null;
+      const screenplayData = episode.screenplay_data as {
+        scenes?: unknown[];
+      } | null;
       if (!screenplayData?.scenes?.length) {
         failed.push({ episodeId: ep.episodeId, error: 'No screenplay scenes' });
         continue;
@@ -448,11 +495,17 @@ export const batchGenerateShotsAction = enhanceAction(
         .from('generation_jobs')
         .insert(jobEntries);
       if (jobError) {
-        logger.warn({ ...ctx, error: jobError }, 'Failed to batch-create generation jobs');
+        logger.warn(
+          { ...ctx, error: jobError },
+          'Failed to batch-create generation jobs',
+        );
       }
     }
 
-    logger.info({ ...ctx, queued, failed: failed.length }, 'Batch shot generation complete');
+    logger.info(
+      { ...ctx, queued, failed: failed.length },
+      'Batch shot generation complete',
+    );
     return { success: true, queued, failed };
   },
   { schema: BatchGenerateShotsSchema },
@@ -478,20 +531,28 @@ const BatchCreateAssetsSchema = z.object({
 export const batchCreateAssetsAction = enhanceAction(
   async (data): Promise<BatchQueueResult> => {
     const logger = await getLogger();
-    const ctx = { name: 'episodes.batchCreateAssets', count: data.episodes.length };
+    const ctx = {
+      name: 'episodes.batchCreateAssets',
+      count: data.episodes.length,
+    };
 
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
     if (authError || !user) throw new Error('Authentication required');
 
-    logger.info(ctx, `Batch queuing ${data.episodes.length} asset creation jobs`);
+    logger.info(
+      ctx,
+      `Batch queuing ${data.episodes.length} asset creation jobs`,
+    );
 
     const episodeIds = data.episodes.map((ep) => ep.episodeId);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episodes } = await (client as any)
       .from('episodes')
-      .select('id, project_id, screenplay_data, project:projects(id, account_id)')
+      .select(
+        'id, project_id, screenplay_data, project:projects(id, account_id)',
+      )
       .in('id', episodeIds)
       .is('deleted_at', null);
 
@@ -505,14 +566,19 @@ export const batchCreateAssetsAction = enhanceAction(
     let queued = 0;
 
     for (const ep of data.episodes) {
-      const episode = episodeMap.get(ep.episodeId) as Record<string, unknown> | undefined;
+      const episode = episodeMap.get(ep.episodeId) as
+        | Record<string, unknown>
+        | undefined;
 
       if (!episode) {
         failed.push({ episodeId: ep.episodeId, error: 'Episode not found' });
         continue;
       }
 
-      const screenplayData = episode.screenplay_data as { scenes?: unknown[]; metadata?: unknown } | null;
+      const screenplayData = episode.screenplay_data as {
+        scenes?: unknown[];
+        metadata?: unknown;
+      } | null;
       if (!screenplayData?.scenes?.length && !screenplayData?.metadata) {
         failed.push({ episodeId: ep.episodeId, error: 'No screenplay data' });
         continue;
@@ -558,11 +624,17 @@ export const batchCreateAssetsAction = enhanceAction(
         .from('generation_jobs')
         .insert(jobEntries);
       if (jobError) {
-        logger.warn({ ...ctx, error: jobError }, 'Failed to batch-create generation jobs');
+        logger.warn(
+          { ...ctx, error: jobError },
+          'Failed to batch-create generation jobs',
+        );
       }
     }
 
-    logger.info({ ...ctx, queued, failed: failed.length }, 'Batch asset creation complete');
+    logger.info(
+      { ...ctx, queued, failed: failed.length },
+      'Batch asset creation complete',
+    );
     return { success: true, queued, failed };
   },
   { schema: BatchCreateAssetsSchema },

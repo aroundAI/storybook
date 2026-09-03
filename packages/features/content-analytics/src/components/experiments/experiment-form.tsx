@@ -78,7 +78,9 @@ export function ExperimentForm({
       onSuccess?.();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : 'Could not save the experiment',
+        error instanceof Error
+          ? error.message
+          : 'Could not save the experiment',
       );
     }
   });
@@ -116,7 +118,9 @@ export function ExperimentForm({
               <FormControl>
                 <Textarea
                   rows={3}
-                  placeholder={'Cut the intro from 20s to 5s on the next six uploads'}
+                  placeholder={
+                    'Cut the intro from 20s to 5s on the next six uploads'
+                  }
                   {...field}
                 />
               </FormControl>
@@ -134,7 +138,9 @@ export function ExperimentForm({
               <FormControl>
                 <Textarea
                   rows={2}
-                  placeholder={'The 0:45 retention cliff is caused by intro length'}
+                  placeholder={
+                    'The 0:45 retention cliff is caused by intro length'
+                  }
                   {...field}
                 />
               </FormControl>
@@ -152,20 +158,26 @@ export function ExperimentForm({
               <FormControl>
                 <Textarea
                   rows={2}
-                  placeholder={'Retention at 0:45 improves by 10 points; views unchanged'}
+                  placeholder={
+                    'Retention at 0:45 improves by 10 points; views unchanged'
+                  }
                   {...field}
                 />
               </FormControl>
               <FormDescription>
-                Recorded before the result is known, so hindsight cannot
-                rewrite it.
+                Recorded before the result is known, so hindsight cannot rewrite
+                it.
               </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <Button type={'submit'} disabled={isSubmitting} className={'self-start'}>
+        <Button
+          type={'submit'}
+          disabled={isSubmitting}
+          className={'self-start'}
+        >
           {isSubmitting ? (
             <Loader2 className={'mr-2 h-4 w-4 animate-spin'} />
           ) : null}

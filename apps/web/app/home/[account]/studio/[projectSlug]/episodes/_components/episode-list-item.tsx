@@ -144,7 +144,8 @@ export function EpisodeListItem({
     <div
       className={cn(
         'cursor-pointer rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-white/[0.12] hover:bg-white/[0.05] hover:shadow-lg',
-        isSelected && 'ring-2 ring-indigo-500/50 border-indigo-500/30 bg-indigo-500/[0.05]',
+        isSelected &&
+          'border-indigo-500/30 bg-indigo-500/[0.05] ring-2 ring-indigo-500/50',
       )}
     >
       <div className="flex items-start justify-between">
@@ -157,8 +158,7 @@ export function EpisodeListItem({
           </p>
 
           {/* Character & Location chips */}
-          {episode.characterNames?.length ||
-          episode.locationNames?.length ? (
+          {episode.characterNames?.length || episode.locationNames?.length ? (
             <AssetChipBar
               characterNames={episode.characterNames ?? []}
               locationNames={episode.locationNames ?? []}
@@ -216,15 +216,13 @@ export function EpisodeListItem({
                   <span
                     className={cn(
                       'flex items-center gap-1 tabular-nums',
-                      audioStats.dialogueCompleted ===
-                        audioStats.dialogueTotal
+                      audioStats.dialogueCompleted === audioStats.dialogueTotal
                         ? 'text-green-400'
                         : 'text-slate-500',
                     )}
                   >
                     <Mic className="h-3 w-3" />
-                    {audioStats.dialogueCompleted}/
-                    {audioStats.dialogueTotal}
+                    {audioStats.dialogueCompleted}/{audioStats.dialogueTotal}
                   </span>
                 )}
                 {audioStats.musicTotal > 0 && (

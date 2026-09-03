@@ -296,85 +296,89 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
         {episodes && episodes.length > 0 ? (
           <div className="space-y-6 p-6">
             <EpisodeListWrapper
-              episodes={(episodes ?? []).map((e) => ({ id: e.id, title: e.title, status: e.status }))}
+              episodes={(episodes ?? []).map((e) => ({
+                id: e.id,
+                title: e.title,
+                status: e.status,
+              }))}
               accountId={project.account_id}
             >
-            {/* Render episodes grouped by season */}
-            {hasSeasons ? (
-              <>
-                {episodesBySeason.map(
-                  ({ season, episodes: seasonEpisodes }) => (
-                    <CollapsibleSeasonSection
-                      key={season.id}
-                      seasonId={season.id}
-                      seasonNumber={season.number}
-                      seasonName={season.name ?? `Season ${season.number}`}
-                      episodes={seasonEpisodes.map(mapEpisode)}
-                      account={account}
-                      accountId={project.account_id}
-                      projectId={project.id}
-                      projectSlug={project.slug ?? project.id}
-                      analytics={null}
-                      languageMap={languageMap}
-                      audioStatsMap={audioStatsMap}
-                      validAssetIds={validAssetIds}
-                      seasonDescription={season.description}
-                      directionNotes={season.direction_notes}
-                    />
-                  ),
-                )}
+              {/* Render episodes grouped by season */}
+              {hasSeasons ? (
+                <>
+                  {episodesBySeason.map(
+                    ({ season, episodes: seasonEpisodes }) => (
+                      <CollapsibleSeasonSection
+                        key={season.id}
+                        seasonId={season.id}
+                        seasonNumber={season.number}
+                        seasonName={season.name ?? `Season ${season.number}`}
+                        episodes={seasonEpisodes.map(mapEpisode)}
+                        account={account}
+                        accountId={project.account_id}
+                        projectId={project.id}
+                        projectSlug={project.slug ?? project.id}
+                        analytics={null}
+                        languageMap={languageMap}
+                        audioStatsMap={audioStatsMap}
+                        validAssetIds={validAssetIds}
+                        seasonDescription={season.description}
+                        directionNotes={season.direction_notes}
+                      />
+                    ),
+                  )}
 
-                {/* Unassigned episodes (not in any season) */}
-                {unassignedEpisodes.length > 0 && (
-                  <div>
-                    <div className="mb-6">
-                      <h2 className="text-muted-foreground text-lg font-semibold">
-                        Standalone Episodes
-                      </h2>
-                      <p className="text-muted-foreground text-sm">
-                        Episodes not assigned to any season
-                      </p>
-                    </div>
-                    <div className="cinema-panel p-6">
-                      <div className="relative space-y-0">
-                        {unassignedEpisodes.map((episode, index) => (
-                          <EpisodeListItem
-                            key={episode.id}
-                            episode={mapEpisode(episode)}
-                            account={account}
-                            projectSlug={project.slug ?? project.id}
-                            availableLanguages={languageMap.get(episode.id)}
-                            audioStats={audioStatsMap.get(episode.id)}
-                            validAssetIds={validAssetIds}
-                            isFirst={index === 0}
-                            isLast={index === unassignedEpisodes.length - 1}
-                          />
-                        ))}
+                  {/* Unassigned episodes (not in any season) */}
+                  {unassignedEpisodes.length > 0 && (
+                    <div>
+                      <div className="mb-6">
+                        <h2 className="text-muted-foreground text-lg font-semibold">
+                          Standalone Episodes
+                        </h2>
+                        <p className="text-muted-foreground text-sm">
+                          Episodes not assigned to any season
+                        </p>
+                      </div>
+                      <div className="cinema-panel p-6">
+                        <div className="relative space-y-0">
+                          {unassignedEpisodes.map((episode, index) => (
+                            <EpisodeListItem
+                              key={episode.id}
+                              episode={mapEpisode(episode)}
+                              account={account}
+                              projectSlug={project.slug ?? project.id}
+                              availableLanguages={languageMap.get(episode.id)}
+                              audioStats={audioStatsMap.get(episode.id)}
+                              validAssetIds={validAssetIds}
+                              isFirst={index === 0}
+                              isLast={index === unassignedEpisodes.length - 1}
+                            />
+                          ))}
+                        </div>
                       </div>
                     </div>
+                  )}
+                </>
+              ) : (
+                /* No seasons - flat list of episodes */
+                <div className="cinema-panel p-6">
+                  <div className="relative space-y-0">
+                    {episodes.map((episode, index) => (
+                      <EpisodeListItem
+                        key={episode.id}
+                        episode={mapEpisode(episode)}
+                        account={account}
+                        projectSlug={project.slug ?? project.id}
+                        availableLanguages={languageMap.get(episode.id)}
+                        audioStats={audioStatsMap.get(episode.id)}
+                        validAssetIds={validAssetIds}
+                        isFirst={index === 0}
+                        isLast={index === episodes.length - 1}
+                      />
+                    ))}
                   </div>
-                )}
-              </>
-            ) : (
-              /* No seasons - flat list of episodes */
-              <div className="cinema-panel p-6">
-                <div className="relative space-y-0">
-                  {episodes.map((episode, index) => (
-                    <EpisodeListItem
-                      key={episode.id}
-                      episode={mapEpisode(episode)}
-                      account={account}
-                      projectSlug={project.slug ?? project.id}
-                      availableLanguages={languageMap.get(episode.id)}
-                      audioStats={audioStatsMap.get(episode.id)}
-                      validAssetIds={validAssetIds}
-                      isFirst={index === 0}
-                      isLast={index === episodes.length - 1}
-                    />
-                  ))}
                 </div>
-              </div>
-            )}
+              )}
             </EpisodeListWrapper>
           </div>
         ) : (

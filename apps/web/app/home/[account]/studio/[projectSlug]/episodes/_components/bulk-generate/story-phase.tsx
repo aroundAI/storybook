@@ -22,7 +22,6 @@ import { Button } from '@kit/ui/button';
 import { useBulkLlmJobs } from '@kit/ui/hooks';
 import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
-import { ExpandableContent } from './expandable-content';
 
 import type {
   BulkAction,
@@ -30,6 +29,7 @@ import type {
   EpisodeBulkState,
   PhaseItemStatus,
 } from '../bulk-generate-modal';
+import { ExpandableContent } from './expandable-content';
 
 // ============================================================================
 // Result types for WebSocket messages
@@ -561,13 +561,25 @@ export function StoryPhase({
     for (const ep of toGenerate) {
       const idea = ep.ideas?.[ep.selectedIdeaIndex ?? 0];
       if (!idea) {
-        dispatch({ type: 'SET_EPISODE_ERROR', episodeId: ep.episodeId, error: 'No idea selected' });
-        dispatch({ type: 'SET_STORY_STATUS', episodeId: ep.episodeId, status: 'error' });
+        dispatch({
+          type: 'SET_EPISODE_ERROR',
+          episodeId: ep.episodeId,
+          error: 'No idea selected',
+        });
+        dispatch({
+          type: 'SET_STORY_STATUS',
+          episodeId: ep.episodeId,
+          status: 'error',
+        });
         continue;
       }
 
       markPending(ep.episodeId);
-      dispatch({ type: 'SET_STORY_STATUS', episodeId: ep.episodeId, status: 'generating' });
+      dispatch({
+        type: 'SET_STORY_STATUS',
+        episodeId: ep.episodeId,
+        status: 'generating',
+      });
 
       batchPayload.push({
         episodeId: ep.episodeId,
@@ -589,17 +601,28 @@ export function StoryPhase({
 
     // Single batch call — SQS + Lambda handle throughput
     try {
-      const result = await batchGenerateStoriesAction({ episodes: batchPayload });
+      const result = await batchGenerateStoriesAction({
+        episodes: batchPayload,
+      });
 
       for (const { episodeId, error } of result.failed) {
         dispatch({ type: 'SET_EPISODE_ERROR', episodeId, error });
         dispatch({ type: 'SET_STORY_STATUS', episodeId, status: 'error' });
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Batch story generation failed';
+      const message =
+        err instanceof Error ? err.message : 'Batch story generation failed';
       for (const ep of batchPayload) {
-        dispatch({ type: 'SET_EPISODE_ERROR', episodeId: ep.episodeId, error: message });
-        dispatch({ type: 'SET_STORY_STATUS', episodeId: ep.episodeId, status: 'error' });
+        dispatch({
+          type: 'SET_EPISODE_ERROR',
+          episodeId: ep.episodeId,
+          error: message,
+        });
+        dispatch({
+          type: 'SET_STORY_STATUS',
+          episodeId: ep.episodeId,
+          status: 'error',
+        });
       }
     }
 
@@ -638,13 +661,22 @@ export function StoryPhase({
     if (pendingCount > 0 && !state.isGenerating && allDone === false) {
       // Only auto-trigger if we've already started (i.e. there are done/error episodes)
       const hasProgress = selectedEpisodes.some(
-        (ep) => ep.storyStatus === 'done' || ep.storyStatus === 'review' || ep.storyStatus === 'error',
+        (ep) =>
+          ep.storyStatus === 'done' ||
+          ep.storyStatus === 'review' ||
+          ep.storyStatus === 'error',
       );
       if (hasProgress) {
         handleGenerate();
       }
     }
-  }, [pendingCount, state.isGenerating, allDone, selectedEpisodes, handleGenerate]);
+  }, [
+    pendingCount,
+    state.isGenerating,
+    allDone,
+    selectedEpisodes,
+    handleGenerate,
+  ]);
 
   return (
     <div className="flex h-full flex-col">

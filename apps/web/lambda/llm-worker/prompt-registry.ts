@@ -16,8 +16,8 @@ import dialogueTranslation from '../../../../packages/features/prompt-engine/src
 import canonExtraction from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/canon-extraction.json';
 // Publishing Prompts
 import batchTranslateMetadata from '../../../../packages/features/prompt-engine/src/prompts/publishing/batch-translate-metadata.json';
-import sceneShot from '../../../../packages/features/prompt-engine/src/prompts/story-generation/scene-shot-generation.json';
 import extractAssetDescription from '../../../../packages/features/prompt-engine/src/prompts/story-generation/extract-asset-description.json';
+import sceneShot from '../../../../packages/features/prompt-engine/src/prompts/story-generation/scene-shot-generation.json';
 import screenplay from '../../../../packages/features/prompt-engine/src/prompts/story-generation/screenplay-conversion.json';
 import screenplayRefinement from '../../../../packages/features/prompt-engine/src/prompts/story-generation/screenplay-refinement.json';
 import season from '../../../../packages/features/prompt-engine/src/prompts/story-generation/season-generation.json';
@@ -90,7 +90,8 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   'story-generation/screenplay-refinement':
     screenplayRefinement as PromptTemplate,
   'extract-asset-description': extractAssetDescription as PromptTemplate,
-  'story-generation/extract-asset-description': extractAssetDescription as PromptTemplate,
+  'story-generation/extract-asset-description':
+    extractAssetDescription as PromptTemplate,
 
   'story-generation/scene-shot-generation': sceneShot as PromptTemplate,
   // Analytics

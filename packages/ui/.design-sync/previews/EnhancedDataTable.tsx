@@ -96,7 +96,10 @@ const data: EpisodeRow[] = [
   },
 ];
 
-const statusVariant: Record<EpisodeRow['status'], 'default' | 'secondary' | 'outline'> = {
+const statusVariant: Record<
+  EpisodeRow['status'],
+  'default' | 'secondary' | 'outline'
+> = {
   published: 'default',
   in_production: 'secondary',
   draft: 'outline',

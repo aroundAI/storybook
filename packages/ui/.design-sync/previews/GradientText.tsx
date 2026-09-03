@@ -13,7 +13,7 @@ export function Default() {
 
 export function InParagraph() {
   return (
-    <p className="max-w-md text-lg text-muted-foreground">
+    <p className="text-muted-foreground max-w-md text-lg">
       Generate{' '}
       <GradientText className="bg-gradient-to-r from-violet-500 to-purple-500 font-semibold">
         screenplays, shot lists, and voiceovers

@@ -57,7 +57,10 @@ export function MedianViewsCard({
     );
   }
 
-  const max = Math.max(...buckets.map((b) => Math.max(b.p75Views, b.meanViews)), 1);
+  const max = Math.max(
+    ...buckets.map((b) => Math.max(b.p75Views, b.meanViews)),
+    1,
+  );
   const latest = buckets[buckets.length - 1]!;
   const previous = buckets.length > 1 ? buckets[buckets.length - 2] : null;
   const change =
@@ -99,7 +102,7 @@ export function MedianViewsCard({
               }}
             >
               <div
-                className={'bg-primary absolute right-0 left-0 h-0.5'}
+                className={'bg-primary absolute left-0 right-0 h-0.5'}
                 style={{
                   bottom: `${
                     bucket.p75Views > bucket.p25Views

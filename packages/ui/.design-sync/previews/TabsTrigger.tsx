@@ -58,8 +58,8 @@ export function Platforms() {
         <TabsTrigger value="instagram">Instagram</TabsTrigger>
       </TabsList>
       <TabsContent value="youtube" className="text-sm">
-        Connected as <span className="font-medium">Lumen Pictures</span> —
-        last published 2 hours ago.
+        Connected as <span className="font-medium">Lumen Pictures</span> — last
+        published 2 hours ago.
       </TabsContent>
       <TabsContent value="tiktok" className="text-sm">
         Not connected. Link an account to publish shorts automatically.

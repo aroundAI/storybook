@@ -61,6 +61,12 @@ describe('ElevenLabsProvider', () => {
   describe('generateVoice', () => {
     const mockAudioData = new ArrayBuffer(1024);
 
+    // The provider used to fall back to this model when none was given.
+    // requireModelId() removed that default on purpose — the model drives
+    // both quality and per-character price, so it has to be a deliberate
+    // choice rather than whatever the library happened to pick.
+    const modelId = 'eleven_monolingual_v1';
+
     it('should generate voice audio with valid input', async () => {
       fetchMock.mockResolvedValueOnce(
         createMockResponse({
@@ -72,6 +78,7 @@ describe('ElevenLabsProvider', () => {
       const resultPromise = provider.generateVoice({
         text: 'Hello world',
         voiceId: 'voice-123',
+        modelId,
       });
 
       // Fast-forward timers for AbortSignal
@@ -96,6 +103,7 @@ describe('ElevenLabsProvider', () => {
       const resultPromise = provider.generateVoice({
         text: 'Hello',
         voiceId: 'voice-123',
+        modelId,
         settings: {
           stability: 0.8,
           similarityBoost: 0.9,
@@ -127,6 +135,7 @@ describe('ElevenLabsProvider', () => {
       const resultPromise = provider.generateVoice({
         text: 'Hello',
         voiceId: 'voice-123',
+        modelId,
       });
 
       await vi.runAllTimersAsync();
@@ -154,6 +163,7 @@ describe('ElevenLabsProvider', () => {
       const resultPromise = provider.generateVoice({
         text: 'Hello',
         voiceId: 'voice-123',
+        modelId,
       });
 
       await vi.runAllTimersAsync();
@@ -175,6 +185,7 @@ describe('ElevenLabsProvider', () => {
       const resultPromise = provider.generateVoice({
         text: 'Hello',
         voiceId: 'voice-123',
+        modelId,
       });
 
       await vi.runAllTimersAsync();
@@ -184,6 +195,15 @@ describe('ElevenLabsProvider', () => {
       expect(fetchCall[0]).toBe(
         `${ELEVENLABS.BASE_URL}/text-to-speech/voice-123`,
       );
+    });
+
+    it('should reject a request with no modelId', async () => {
+      await expect(
+        provider.generateVoice({
+          text: 'Hello',
+          voiceId: 'voice-123',
+        }),
+      ).rejects.toThrow('modelId is required');
     });
 
     it('should reject empty text', async () => {
@@ -216,6 +236,7 @@ describe('ElevenLabsProvider', () => {
       const resultPromise = provider.generateVoice({
         text: 'Hello',
         voiceId: 'voice-123',
+        modelId,
       });
 
       // Immediately await without running timers since the response is already resolved

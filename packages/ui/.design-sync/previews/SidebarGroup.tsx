@@ -1,6 +1,17 @@
-import { Clapperboard, CreditCard, FolderKanban, Home, User } from 'lucide-react';
+import {
+  Clapperboard,
+  CreditCard,
+  FolderKanban,
+  Home,
+  User,
+} from 'lucide-react';
 
-import { Sidebar, SidebarContent, SidebarGroup, SidebarItem } from '@kit/ui/sidebar';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarItem,
+} from '@kit/ui/sidebar';
 
 export function Default() {
   return (
@@ -48,7 +59,10 @@ export function Collapsible() {
       <Sidebar className="!fixed !h-full !w-full">
         <SidebarContent>
           <SidebarGroup label="Advanced" collapsible collapsed={false}>
-            <SidebarItem path="/home/api-keys" Icon={<CreditCard className="w-4" />}>
+            <SidebarItem
+              path="/home/api-keys"
+              Icon={<CreditCard className="w-4" />}
+            >
               API Keys
             </SidebarItem>
           </SidebarGroup>

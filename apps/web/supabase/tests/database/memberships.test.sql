@@ -3,10 +3,10 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 
 select no_plan();
 
-select makerkit.set_identifier('primary_owner', 'test@makerkit.dev');
-select makerkit.set_identifier('owner', 'owner@makerkit.dev');
-select makerkit.set_identifier('member', 'member@makerkit.dev');
-select makerkit.set_identifier('custom', 'custom@makerkit.dev');
+select makerkit.set_identifier('primary_owner', 'test@storybook.dev');
+select makerkit.set_identifier('owner', 'owner@storybook.dev');
+select makerkit.set_identifier('member', 'member@storybook.dev');
+select makerkit.set_identifier('custom', 'custom@storybook.dev');
 
 -- another user not in the team
 select tests.create_supabase_user('test', 'test@supabase.com');
@@ -18,7 +18,7 @@ select makerkit.authenticate_as('owner');
 -- Primary owner
 select is(
   (select public.is_team_member(
-    makerkit.get_account_id_by_slug('makerkit'),
+    makerkit.get_account_id_by_slug('storybook'),
     tests.get_supabase_uid('member')
   )),
   true,
@@ -30,7 +30,7 @@ select makerkit.authenticate_as('member');
 -- Member
 select is(
   (select public.is_team_member(
-    makerkit.get_account_id_by_slug('makerkit'),
+    makerkit.get_account_id_by_slug('storybook'),
     tests.get_supabase_uid('owner')
   )),
   true,
@@ -39,14 +39,14 @@ select is(
 
 select is(
   (select public.has_role_on_account(
-    makerkit.get_account_id_by_slug('makerkit')
+    makerkit.get_account_id_by_slug('storybook')
   )),
   true,
   'The member can check if they have a role on the account'
 );
 
 select isnt_empty(
-  $$ select * from public.get_account_members('makerkit') $$,
+  $$ select * from public.get_account_members('storybook') $$,
   'The member can query the team account memberships using the get_account_members function'
 );
 
@@ -56,7 +56,7 @@ select makerkit.authenticate_as('test');
 -- Cannot query the team account memberships
 select is(
   (select public.is_team_member(
-    makerkit.get_account_id_by_slug('makerkit'),
+    makerkit.get_account_id_by_slug('storybook'),
     tests.get_supabase_uid('owner')
   )),
   false,
@@ -66,24 +66,24 @@ select is(
 -- Does not have a role on the account
 select is(
   (select public.has_role_on_account(
-    makerkit.get_account_id_by_slug('makerkit')
+    makerkit.get_account_id_by_slug('storybook')
   )),
   false,
   'The foreigner does not have a role on the account'
 );
 
 select is_empty(
-  $$ select * from public.accounts_memberships where account_id = makerkit.get_account_id_by_slug('makerkit') $$,
+  $$ select * from public.accounts_memberships where account_id = makerkit.get_account_id_by_slug('storybook') $$,
   'The foreigner cannot query the team account memberships'
 );
 
 select is_empty(
-  $$ select * from public.accounts where id = makerkit.get_account_id_by_slug('makerkit') $$,
+  $$ select * from public.accounts where id = makerkit.get_account_id_by_slug('storybook') $$,
   'The foreigner cannot query the team account'
 );
 
 select is_empty(
-  $$ select * from public.get_account_members('makerkit') $$,
+  $$ select * from public.get_account_members('storybook') $$,
   'The foreigner cannot query the team members'
 );
 

@@ -198,10 +198,7 @@ export {
 } from './experiments';
 
 // Revenue mix (FILM-1508)
-export {
-  RevenueMixCard,
-  RevenueMixCardSkeleton,
-} from './revenue-mix-card';
+export { RevenueMixCard, RevenueMixCardSkeleton } from './revenue-mix-card';
 
 // Content taxonomy (FILM-1507)
 export {

@@ -42,10 +42,7 @@ async function HookLabPage({ params }: PageProps) {
         </p>
       </div>
 
-      <HookLabClient
-        accountId={project.account_id}
-        projectId={project.id}
-      />
+      <HookLabClient accountId={project.account_id} projectId={project.id} />
     </div>
   );
 }
