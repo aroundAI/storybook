@@ -174,21 +174,21 @@ jobs:
       - name: Supabase Server
         run: pnpm run supabase:web:start -- -x studio,migra,deno-relay,pgadmin-schema-diff,imgproxy,logflare
 
-      # The local stack's keys are the CLI's fixed public development keys,
-      # so they come from `supabase status` rather than repo secrets — the
-      # same approach the Supabase DB job uses.
-      - name: Export local Supabase credentials
-        working-directory: apps/web
-        run: |
-          eval "$(supabase status -o env | sed 's/^/export /')"
-          {
-            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
-            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
-            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
-          } >> "$GITHUB_ENV"
+      # No credential export step. apps/web/.env.test already carries the
+      # local URL and the CLI's fixed public development keys — the same
+      # values `supabase status` prints — and Next loads it for both the
+      # build and the server. An earlier version of this job piped
+      # `supabase status -o env` into $GITHUB_ENV, which resolved to empty
+      # strings and then *overrode* .env.test with them. Reading .env.test
+      # directly also means CI and a local run use the identical mechanism.
 
+      # next build peaks over Node's default heap on a GitHub runner and
+      # dies with "Ineffective mark-compacts near heap limit". The runner
+      # has 16GB; give the build enough of it to finish.
       - name: Run Next.js Production Build (test env)
         run: pnpm --filter web build:test
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
 
       - name: Run Next.js Server
         run: pnpm --filter web start:test &
