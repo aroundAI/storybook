@@ -75,11 +75,10 @@ jobs:
           CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
         ports:
           - 8123:8123
-        options: >-
-          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
+        # No container health check: the alpine image ships neither wget nor
+        # curl, so any HTTP probe inside it fails and the container is
+        # reported unhealthy before it has done anything wrong. The runner
+        # has curl, so readiness is waited for from a step instead.
 
     steps:
       - uses: actions/checkout@v4
@@ -93,6 +92,18 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Wait for ClickHouse
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl -sf "http://localhost:8123/ping" > /dev/null; then
+              echo "ClickHouse ready after ${attempt} attempt(s)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "ClickHouse did not become ready in 120s"
+          exit 1
 
       - name: Apply ClickHouse migrations
         run: pnpm --filter @kit/clickhouse migrate
