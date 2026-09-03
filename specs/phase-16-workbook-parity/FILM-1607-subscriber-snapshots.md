@@ -18,19 +18,30 @@ migration `006`), which describe movement and nothing else. Deltas give the
 shape of a curve but never its height: without an anchor the series can be
 drawn only relative to an unknown starting point.
 
-There is exactly one absolute figure in the system, and it is inert:
+Two absolute figures exist, both in `platform_connections.metadata`, both
+captured once at connect time and never refreshed:
 
 ```
-apps/web/app/api/platforms/youtube/save-channel/route.ts:108
-apps/web/app/api/platforms/callback/youtube/route.ts:230
-  metadata: { subscriber_count: … }
+apps/web/app/api/platforms/youtube/save-channel/route.ts:108   subscriber_count
+apps/web/app/api/platforms/callback/youtube/route.ts:230       subscriber_count
+apps/web/app/api/platforms/callback/meta/route.ts:253          followers_count
 ```
 
-Both write `subscriber_count` into `platform_connections.metadata` at
-connect time. Nothing anywhere reads it, and nothing ever refreshes it — a
-grep for the field across `packages/` and `apps/web/` returns those two
-writes and no reads. It is a value captured once, at a date nobody records,
-and then left to rot.
+`subscriber_count` is read nowhere at all — a grep across `packages/` and
+`apps/web/` returns those two writes and no reads.
+
+`followers_count` is worse than unread: it is read under **the wrong
+name**. `connection-actions.ts:89` and `:320` both look up
+`metadata.follower_count` — *singular* — and surface it as `followerCount`,
+which flows through `publish-hub.tsx:75` to the badge at
+`platform-selector.tsx:249-251`. Nothing in the repo writes the singular
+form outside test fixtures, so that badge resolves `undefined` for every
+real connection and its `!= null && > 0` guard silently hides it. This is a
+live pre-existing defect, not something this spec introduces; see §7 for
+how it is handled.
+
+Both fields are values captured once, at a date nobody records, then left
+to rot.
 
 This spec makes the level a first-class, dated series.
 
@@ -57,9 +68,14 @@ to write it.
   a delta-derived figure disagree for the same date, the snapshot is
   authoritative. Deltas interpolate *between* anchors; they never override
   one.
-- **The snapshot date is the platform's reporting date, not the run date.**
-  A job that runs at 02:00 UTC records the figure for the day it describes,
-  so a shifted or retried schedule does not shift the series.
+- **The snapshot date is the UTC date of the run.** No platform returns a
+  reporting date alongside a current follower count — §4's three sources
+  are all undated present-tense values — so there is no reporting date to
+  prefer and the date can only come from the run clock. Take it in UTC, and
+  schedule the job well clear of midnight (02:00 UTC) so an ordinary retry
+  cannot straddle the boundary and land two rows on two dates for what is
+  one reading. An earlier draft of this spec required "the platform's
+  reporting date, not the run date", which no source in §4 can satisfy.
 
 ## 3. Schema
 
@@ -83,9 +99,15 @@ ORDER BY (connection_id, snapshot_date)
 ```
 
 `ReplacingMergeTree` ordered by `(connection_id, snapshot_date)` gives the
-one-per-day idempotence above for free, and matches `channel_daily` and
-`video_metrics` so the table needs no special handling in the migration
-runner.
+one-per-day idempotence above **at read time, via `FINAL`** — not for free.
+ClickHouse collapses duplicates only when it merges parts, on its own
+schedule, so a `SELECT` issued straight after a second insert for the same
+day returns two rows. Every reader of a `ReplacingMergeTree` in this
+package already compensates the same way — `video_reach_daily FINAL`
+(`queries-detail.ts:260`), `video_traffic_sources FINAL` (`:359`,
+`queries-advanced.ts:422`), `channel_daily FINAL` (`:726`), and
+`video_metrics FINAL` in the `video_daily_stats` view — and
+`querySubscriberSeries` must do likewise.
 
 `is_rounded` is stored rather than inferred, because whether a figure is
 rounded is a property of the platform and tier at capture time, and a
@@ -114,13 +136,14 @@ gets exact anchors and needs no reconstruction.
 
 | File | Change |
 |------|--------|
-| `packages/clickhouse/src/migrations/008_channel_subscribers.ts` | New table per §3. Additive; no backfill, and none is possible. |
-| `packages/clickhouse/src/queries-advanced.ts` | `querySubscriberSeries({ scope, from, to })` → one row per connection per day, `subscriberCount`, `isRounded`, and `source: 'snapshot' \| 'interpolated'`. |
+| `packages/clickhouse/src/migrations/008_channel_subscribers.ts` **and `run.ts`** | New table per §3. `run.ts` does not scan the directory — it carries a hand-maintained import list and `MIGRATIONS` array — so add `import { migration as m008 } from './008_channel_subscribers'` and append `m008`. A file added without both edits is silently never applied: `migrate` reports success and the table does not exist. Slot `008` is free. Additive; no backfill, and none is possible. |
+| `packages/clickhouse/src/queries-advanced.ts` | `querySubscriberSeries({ scope, from, to })` → one row per connection per day, `subscriberCount`, `isRounded`, and `source: 'snapshot' \| 'interpolated'`. Reads `FROM channel_subscribers FINAL` per §3. |
 | `packages/clickhouse/src/lib/subscriber-series.ts` | Pure: `reconstructSeries(anchors, deltas, range)` applies gained/lost between anchors and re-levels at each one. No I/O, so it is unit-tested without an instance — the same split as `video-age.ts` in FILM-1603. |
 | `packages/features/content-analytics/src/server/subscriber-snapshot.ts` | `captureSubscriberSnapshots()`: for each active connection, fetch current count via the existing provider method, insert one row. Per-connection failures are logged and skipped, never fatal to the batch. |
-| `apps/web/app/api/cron/subscriber-snapshot/route.ts` | `enhanceRouteHandler`, invoked daily. |
-| `sst.config.ts` | `sst.aws.Cron` entry. FILM-1503 records that a route without one never runs in deployed infra; this spec does not repeat that mistake. |
-| `apps/web/app/api/platforms/**/route.ts` | Stop writing the dead `metadata.subscriber_count` at connect, or write it through the same path so there is one definition of the level. |
+| `apps/web/app/api/cron/subscriber-snapshot/route.ts` | `enhanceRouteHandler` with **`{ auth: false }` plus an explicit `authHeader !== \`Bearer ${process.env.CRON_SECRET}\`` check returning 401**, matching `api/cron/refresh-tokens`. `enhanceRouteHandler` defaults to `auth: true` (`packages/next/src/routes/index.ts:98`), which would make `requireUser` fail for a session-less cron caller and return a redirect — the capture would silently never run, and §1 explains why a missed day is unrecoverable. `{ auth: false }` alone would leave the endpoint anonymously callable. |
+| `apps/web/lambda/subscriber-snapshot/index.ts` | Thin EventBridge handler mirroring `apps/web/lambda/token-refresh/index.ts`: reads `API_URL` and `CRON_SECRET`, calls `GET /api/cron/subscriber-snapshot` with `Authorization: Bearer ${CRON_SECRET}`, returns the JSON result. Every `sst.aws.Cron` in this repo points `job.handler` at a file under `apps/web/lambda/`, so the Cron entry below cannot be written without it. |
+| `sst.config.ts` | `sst.aws.Cron` with `job.handler: 'apps/web/lambda/subscriber-snapshot/index.handler'`, a daily `schedule`, and the `API_URL` / `CRON_SECRET` environment — the shape of `analyticsSyncCron` (`sst.config.ts:1276`). FILM-1503 records that a route without a Cron entry never runs in deployed infra; this spec does not repeat that mistake. |
+| `apps/web/app/api/platforms/**/route.ts` | Stop writing both dead metadata levels at connect — `subscriber_count` (YouTube, two routes) and `followers_count` (Instagram, `callback/meta/route.ts:253`) — so the series in §3 is the single definition of the level. |
 
 ## 6. Bounding
 
@@ -140,13 +163,25 @@ fits in one PostgREST response.
   already carries that and is unaffected.
 - **Presenting the series.** The card and its wiring belong with the other
   UI work in FILM-1611.
+- **Repairing the Publish Hub follower badge**, which reads
+  `metadata.follower_count` while the only writer sets `followers_count`
+  (§1). It is tempting to fold this in, since re-pointing that badge at the
+  new series is what "one definition of the level" means. It is excluded
+  deliberately: the series does not exist until ClickHouse is provisioned
+  and this cron has run for a day, so making a broken badge depend on it
+  keeps it broken for longer than fixing the field name does. Fix the name
+  in its own change now; re-point it at `querySubscriberSeries` in
+  FILM-1611 when there is a series to point at.
 - **Alerting on subscriber movement.** Revenue alerts exist (FILM-1613);
   extending that machinery is a separate decision.
 
 ## 8. Acceptance Criteria
 
-- [ ] `channel_subscribers` is created by a migration and the runner applies it cleanly from scratch
-- [ ] A second capture on the same day replaces the first rather than adding a row
+- [ ] `channel_subscribers` is created by a migration, registered in `run.ts`'s `MIGRATIONS` array, and applied cleanly from scratch
+- [ ] A second capture on the same day collapses to one row when read with `FINAL`
+- [ ] `querySubscriberSeries` reads `FROM channel_subscribers FINAL`
+- [ ] The cron route returns 401 without a valid `Bearer ${CRON_SECRET}` header, and succeeds with one
+- [ ] `apps/web/lambda/subscriber-snapshot/index.ts` exists and the `sst.aws.Cron` entry resolves to its handler
 - [ ] `is_rounded` is 1 for YouTube channels above 1,000 subscribers and 0 for TikTok and Instagram
 - [ ] `captureSubscriberSnapshots` skips a failing connection and still records the others
 - [ ] The connection list is paged, not read unbounded
@@ -154,8 +189,7 @@ fits in one PostgREST response.
 - [ ] `reconstructSeries` marks each returned day `snapshot` or `interpolated`
 - [ ] A day with an anchor never reports an interpolated value
 - [ ] `querySubscriberSeries` returns per-connection rows and never sums across channels
-- [ ] The cron has an `sst.aws.Cron` entry, verified in the synthesised stack
-- [ ] `metadata.subscriber_count` is no longer written as a dead field
+- [ ] Neither `metadata.subscriber_count` nor `metadata.followers_count` is written as a dead field at connect
 
 ## 9. Verification
 
@@ -171,6 +205,12 @@ assertion that a same-day re-insert collapses to one row, so the
 `ReplacingMergeTree` behaviour this spec depends on is proven against a
 real server rather than assumed. That job (`🗄️ ClickHouse SQL`) exists as
 of PR #237.
+
+That assertion must read with `FINAL`, or issue `OPTIMIZE TABLE
+channel_subscribers FINAL` before asserting. Merges happen on ClickHouse's
+schedule, so an assertion that simply counts rows after a second insert
+passes or fails according to timing — a flaky test dressed as a
+correctness proof, which is the opposite of what this job is for.
 
 Note that a green suite does **not** demonstrate the series is being
 collected — nothing is collected until ClickHouse is provisioned and the

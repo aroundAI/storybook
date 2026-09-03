@@ -9,11 +9,11 @@ FILM-1601 (correctness bugs + revenue delete RLS)
      │
      ├─→ FILM-1602 (channel dimension + per-channel YPP)
      │        │
-     │        ├─→ FILM-1612 (PostgREST row-cap pagination sweep)
-     │        │
-     │        └─→ FILM-1603 (per-video views-at-age + Video Log)
+     │        └─→ FILM-1612 (PostgREST row-cap pagination sweep)
      │                 │
-     │                 └─→ FILM-1604 (cohort medians + growth)
+     │                 └─→ FILM-1603 (per-video views-at-age + Video Log)
+     │                          │
+     │                          └─→ FILM-1604 (cohort medians + growth)
      │
      └─→ FILM-1613 (revenue alert account scoping)
 ```
@@ -51,11 +51,14 @@ FILM-1605 traffic source breakdown · FILM-1606 segment performance ·
 targets and settings UI · FILM-1609 revenue mix completion · FILM-1610
 experiment log and per-video notes · FILM-1611 the Video Log UI.
 
-This list previously ended with "wiring up the four orphaned components",
-which is no longer true: all seven `deep-dive/` components are rendered.
-What FILM-1611 actually covers is the `VideoLogTable` component and its
-tab, which do not exist yet — FILM-1603 built the query and the action and
-deferred the UI.
+This list previously ended with "wiring up the four orphaned components".
+Three are still orphaned today: `RetentionCurveChart`,
+`WeeklyDiagnosticsTable` and `YppProgressCard` are exported from
+`deep-dive/index.ts` and rendered nowhere — `deep-dive-tab.tsx` mounts only
+`MedianViewsCard`, `TrafficShareCard`, `BackCatalogCard` and
+`CohortCurvesChart`. FILM-1611 covers those three, plus the `VideoLogTable`
+component and its tab, which do not exist at all yet: FILM-1603 built the
+query and the action and deferred the UI.
 
 Three items have left this list: per-video views-at-age and the Video Log
 (FILM-1603) and cohort medians and growth (FILM-1604), both shipped; and
