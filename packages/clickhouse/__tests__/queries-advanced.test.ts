@@ -143,7 +143,11 @@ describe('queries-advanced', () => {
       });
 
       const { query, query_params } = lastQuery();
-      expect(query_params.windowPreceding).toBe(89);
+      // Interpolated rather than bound: ClickHouse 24.x rejects a
+      // parameter in a window frame, which only showed up when the suite
+      // started executing SQL against a real server.
+      expect(query).toContain('ROWS BETWEEN 89 PRECEDING AND CURRENT ROW');
+      expect(query_params.windowPreceding).toBeUndefined();
       expect(query).toContain('WITH FILL');
       expect(query).toContain('ROWS BETWEEN');
     });

@@ -48,7 +48,11 @@
     "sst:logs": "sst logs",
     "deploy": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh",
     "deploy:staging": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh staging",
-    "deploy:production": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh production"
+    "deploy:production": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh production",
+    "env:local:up": "./scripts/local-env.sh up",
+    "env:local:verify": "./scripts/local-env.sh verify",
+    "env:local:status": "./scripts/local-env.sh status",
+    "env:local:down": "./scripts/local-env.sh down"
   },
   "prettier": "@kit/prettier-config",
   "packageManager": "pnpm@10.14.0",

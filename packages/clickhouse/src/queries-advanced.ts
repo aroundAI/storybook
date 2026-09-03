@@ -337,7 +337,12 @@ export async function queryRollingViews(input: {
   const { conditions, params } = buildDimConditions(input.scope);
   params.startDate = input.startDate;
   params.endDate = input.endDate;
-  params.windowPreceding = Math.max(0, Math.floor(input.windowDays) - 1);
+  // Interpolated, not bound. A window frame bound is part of the query's
+  // structure rather than a value, and ClickHouse 24.x rejects a parameter
+  // there — "Query parameter `windowPreceding` was not set" — while 25+
+  // accepts it. Floored to a non-negative integer just above, so there is
+  // nothing to inject.
+  const windowPreceding = Math.max(0, Math.floor(input.windowDays) - 1);
 
   const query = `
     SELECT
@@ -345,7 +350,7 @@ export async function queryRollingViews(input: {
       views,
       sum(views) OVER (
         ORDER BY date
-        ROWS BETWEEN {windowPreceding: UInt32} PRECEDING AND CURRENT ROW
+        ROWS BETWEEN ${windowPreceding} PRECEDING AND CURRENT ROW
       ) as rolling_views
     FROM (
       SELECT metric_date as date, sum(views) as views
