@@ -65,8 +65,8 @@ it is named "analytics UI" rather than after any one of them:
 2. the `VideoLogTable` component and its tab, which do not exist at all yet
    — FILM-1603 built the query and the action and deferred the UI,
 3. the subscriber-series card, deferred here by FILM-1607 §7,
-4. re-pointing the Publish Hub follower badge at `querySubscriberSeries`,
-   also deferred by FILM-1607 §7.
+4. re-pointing the Publish Hub follower badge at
+   `getSubscriberSeriesAction`, also deferred by FILM-1607 §7.
 
 Anyone sizing FILM-1611 from its name alone will undercount it, which is
 why they are listed.
