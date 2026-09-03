@@ -6,11 +6,18 @@
  */
 
 -- Account Image
--- Temporarily commented out due to schema issue - needs investigation
--- insert into
---   storage.buckets (id, name, public)
--- values
---   ('account_image', 'account_image', true);
+--
+-- Restored. This was commented out as "needs investigation", but the RLS
+-- policy below still references the bucket, storage.test.sql inserts into
+-- it, and presigned-upload.ts defaults to it — so its absence was a live
+-- gap rather than a deliberate removal. The insert applies cleanly against
+-- the current schema; whatever the original problem was, it does not
+-- reproduce.
+insert into
+  storage.buckets (id, name, public)
+values
+  ('account_image', 'account_image', true)
+on conflict (id) do nothing;
 
 -- Function: get the storage filename as a UUID.
 -- Useful if you want to name files with UUIDs related to an account

@@ -3,16 +3,16 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 
 select no_plan();
 
-select makerkit.set_identifier('primary_owner', 'test@makerkit.dev');
-select makerkit.set_identifier('owner', 'owner@makerkit.dev');
-select makerkit.set_identifier('member', 'member@makerkit.dev');
-select makerkit.set_identifier('custom', 'custom@makerkit.dev');
+select makerkit.set_identifier('primary_owner', 'test@storybook.dev');
+select makerkit.set_identifier('owner', 'owner@storybook.dev');
+select makerkit.set_identifier('member', 'member@storybook.dev');
+select makerkit.set_identifier('custom', 'custom@storybook.dev');
 
 INSERT INTO public.billing_customers(account_id, provider, customer_id)
-VALUES (makerkit.get_account_id_by_slug('makerkit'), 'stripe', 'cus_test');
+VALUES (makerkit.get_account_id_by_slug('storybook'), 'stripe', 'cus_test');
 
 -- Call the upsert_order function
-SELECT public.upsert_order(makerkit.get_account_id_by_slug('makerkit'), 'cus_test', 'order_test', 'pending', 'stripe', 100, 'usd', '[
+SELECT public.upsert_order(makerkit.get_account_id_by_slug('storybook'), 'cus_test', 'order_test', 'pending', 'stripe', 100, 'usd', '[
     {"id":"order_item_1", "product_id": "prod_test", "variant_id": "var_test", "price_amount": 100, "quantity": 1},
     {"id":"order_item_2", "product_id": "prod_test", "variant_id": "var_test_2", "price_amount": 100, "quantity": 1},
     {"id":"order_item_3", "product_id": "prod_test", "variant_id": "var_test_3", "price_amount": 100, "quantity": 1},
@@ -34,7 +34,7 @@ SELECT row_eq(
 );
 
 -- Call the upsert_order function again to update the order
-SELECT public.upsert_order(makerkit.get_account_id_by_slug('makerkit'), 'cus_test', 'order_test', 'succeeded', 'stripe', 100, 'usd', '[
+SELECT public.upsert_order(makerkit.get_account_id_by_slug('storybook'), 'cus_test', 'order_test', 'succeeded', 'stripe', 100, 'usd', '[
     {"id":"order_item_1", "product_id": "prod_test", "variant_id": "var_test", "price_amount": 100, "quantity": 1},
     {"id":"order_item_2", "product_id": "prod_test_2", "variant_id": "var_test_4", "price_amount": 200, "quantity": 10}
 ]');
