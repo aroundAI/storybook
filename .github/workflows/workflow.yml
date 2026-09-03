@@ -55,7 +55,7 @@ jobs:
       CLICKHOUSE_ENABLED: 'true'
       CLICKHOUSE_HOST: http://localhost:8123
       CLICKHOUSE_USER: default
-      CLICKHOUSE_PASSWORD: ''
+      CLICKHOUSE_PASSWORD: verify
       CLICKHOUSE_DB: default
 
     # The unit suite mocks the ClickHouse client and never executes SQL, so
@@ -66,6 +66,13 @@ jobs:
     services:
       clickhouse:
         image: clickhouse/clickhouse-server:24.8-alpine
+        # Both must be set on the *container*: its entrypoint disables
+        # network access for `default` when they are absent, so the health
+        # check never passes and the job fails before running anything.
+        env:
+          CLICKHOUSE_USER: default
+          CLICKHOUSE_PASSWORD: verify
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
         ports:
           - 8123:8123
         options: >-
