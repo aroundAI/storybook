@@ -141,6 +141,20 @@ jobs:
         with:
           fetch-depth: 2
 
+      # This job needs more disk than a runner has spare: Supabase's images,
+      # Playwright's browsers, a pnpm install of the whole monorepo and a
+      # Next production build. Without this the runner fills its volume
+      # mid-build and dies — "No space left on device" from the runner
+      # process itself, which means no step conclusion and no uploaded logs,
+      # so the failure is invisible in the UI. Dropping toolchains this job
+      # never uses buys back over 20GB.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android \
+            /usr/local/share/boost /usr/local/share/powershell \
+            /usr/local/.ghcup "$AGENT_TOOLSDIRECTORY"
+          df -h /
+
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
@@ -192,7 +206,9 @@ jobs:
       # conclusion and never uploaded its logs, which is what a kernel
       # OOM-kill of the runner looks like.
       - name: Run Next.js Production Build (test env)
-        run: pnpm --filter web build:test
+        run: |
+          pnpm --filter web build:test
+          df -h /
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
