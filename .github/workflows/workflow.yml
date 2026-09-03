@@ -46,6 +46,53 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
+  clickhouse-sql:
+    name: 🗄️ ClickHouse SQL
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    env:
+      DO_NOT_TRACK: 1
+      CLICKHOUSE_ENABLED: 'true'
+      CLICKHOUSE_HOST: http://localhost:8123
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ''
+      CLICKHOUSE_DB: default
+
+    # The unit suite mocks the ClickHouse client and never executes SQL, so
+    # a query the server rejects outright passes it. That is not
+    # theoretical: an alias shadowing a filter column reached main behind
+    # 120 green tests and broke every deep-dive query. This job runs the
+    # real migrations and the real queries against a real ClickHouse.
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:24.8-alpine
+        ports:
+          - 8123:8123
+        options: >-
+          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Apply ClickHouse migrations
+        run: pnpm --filter @kit/clickhouse migrate
+
+      - name: Execute every query and insert
+        run: pnpm --filter @kit/clickhouse verify
+
   unit-test:
     name: 🧪 Unit Tests
     timeout-minutes: 15
