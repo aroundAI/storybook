@@ -44,13 +44,29 @@ FILM-1601 (correctness bugs + revenue delete RLS)
 
 ## Not yet specified
 
-The remaining workbook-parity scope is planned but **deliberately unspecified** — no spec file exists for it yet, and it should get one before implementation:
+The remaining workbook-parity scope is planned but **deliberately unspecified** — no spec file exists for it yet, and it should get one before implementation. The backlog order below is the spec-id order:
 
-traffic source breakdown · segment performance · absolute subscriber snapshots · YPP targets and settings UI · revenue mix completion · experiment log and per-video notes · wiring up the four orphaned components.
+FILM-1605 traffic source breakdown · FILM-1606 segment performance ·
+~~FILM-1607 absolute subscriber snapshots~~ (specified) · FILM-1608 YPP
+targets and settings UI · FILM-1609 revenue mix completion · FILM-1610
+experiment log and per-video notes · FILM-1611 the Video Log UI.
 
-Two items left this list by being specified and shipped: per-video
-views-at-age and the Video Log (FILM-1603), and cohort medians and growth
-(FILM-1604).
+This list previously ended with "wiring up the four orphaned components",
+which is no longer true: all seven `deep-dive/` components are rendered.
+What FILM-1611 actually covers is the `VideoLogTable` component and its
+tab, which do not exist yet — FILM-1603 built the query and the action and
+deferred the UI.
+
+Three items have left this list: per-video views-at-age and the Video Log
+(FILM-1603) and cohort medians and growth (FILM-1604), both shipped; and
+absolute subscriber snapshots (FILM-1607), now specified and awaiting
+implementation.
+
+**Take FILM-1607 before the FILM-1503 cutover.** Every other item computes
+from data already being collected, so building it later costs only time.
+Subscriber history can be obtained from no API on any platform — the series
+begins the day snapshots first run, and every day before that is
+permanently absent.
 
 ## Known limits — do not promise these
 
