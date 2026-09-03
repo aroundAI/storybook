@@ -183,12 +183,18 @@ jobs:
       # directly also means CI and a local run use the identical mechanism.
 
       # next build peaks over Node's default heap on a GitHub runner and
-      # dies with "Ineffective mark-compacts near heap limit". The runner
-      # has 16GB; give the build enough of it to finish.
+      # dies with "Ineffective mark-compacts near heap limit" at ~2GB.
+      #
+      # 4096 rather than something larger: NODE_OPTIONS is inherited by
+      # every worker next build forks (one per CPU), so the ceiling is
+      # per-process, not for the build as a whole. An earlier attempt at
+      # 8192 took the whole runner down — the job died mid-step with no
+      # conclusion and never uploaded its logs, which is what a kernel
+      # OOM-kill of the runner looks like.
       - name: Run Next.js Production Build (test env)
         run: pnpm --filter web build:test
         env:
-          NODE_OPTIONS: --max-old-space-size=8192
+          NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Run Next.js Server
         run: pnpm --filter web start:test &
