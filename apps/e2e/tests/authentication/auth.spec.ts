@@ -58,7 +58,7 @@ test.describe('Auth flow', () => {
     await page.goto('/home/settings');
 
     await auth.signIn({
-      email: 'test@makerkit.dev',
+      email: 'test@storybook.dev',
       password: 'testingpassword',
     });
 
@@ -79,7 +79,7 @@ test.describe('Protected routes', () => {
     await page.goto('/home/settings');
 
     await auth.signIn({
-      email: 'test@makerkit.dev',
+      email: 'test@storybook.dev',
       password: 'testingpassword',
     });
 
