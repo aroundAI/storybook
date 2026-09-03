@@ -532,6 +532,25 @@ describe('queries-advanced', () => {
     });
   });
 
+  describe('dim scope filtering', () => {
+    it('filters inside a subquery so aliases cannot shadow filter columns', async () => {
+      const { queryCohortMedians } = await import('../src/queries-advanced');
+
+      await queryCohortMedians({
+        scope: { projectId: PROJECT, platform: 'youtube' },
+      });
+
+      // Every projected column is aliased to its own name, and several are
+      // also filter columns. A WHERE alongside the argMax resolves the bare
+      // name to the *aggregate*, and ClickHouse rejects the whole query:
+      // "Aggregate function argMax(...) is found in WHERE". Verified
+      // against a real ClickHouse — the mocked suite cannot catch it.
+      const { query } = lastQuery();
+      expect(query).toContain('FROM (SELECT * FROM video_dim WHERE');
+      expect(query).not.toMatch(/argMax[\s\S]*?\n\s*FROM video_dim\n\s*WHERE/);
+    });
+  });
+
   describe('FILM-1601 correctness fixes', () => {
     it('counts cohort videos from the dimension side, not metric rows', async () => {
       const { queryCohortMedians } = await import('../src/queries-advanced');

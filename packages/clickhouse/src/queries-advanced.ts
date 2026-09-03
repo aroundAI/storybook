@@ -164,11 +164,19 @@ function buildDimConditions(scope: DimScope): {
 /**
  * Subquery selecting the latest dim row per video in scope.
  *
- * Projects a fixed column set. FILM-1603 needs channel, language and title
- * here; add them explicitly then. An earlier `extra: string[]` parameter
- * that interpolated caller-supplied column names was removed unused — a
- * raw identifier splice into SQL is worth adding deliberately, with
- * escaping, rather than inheriting.
+ * Projects a fixed column set. An earlier `extra: string[]` parameter that
+ * interpolated caller-supplied column names was removed unused — a raw
+ * identifier splice into SQL is worth adding deliberately, with escaping,
+ * rather than inheriting.
+ *
+ * The scope filter runs in an inner subquery, before any aliasing. Every
+ * projected column here is aliased to its own name, and several of them
+ * (project_id, platform, content_type, language, connection_id) are also
+ * filter columns — so a WHERE alongside the argMax resolves the bare name
+ * to the *aggregate* and ClickHouse rejects the query outright:
+ * "Aggregate function argMax(...) is found in WHERE". Filtering first makes
+ * the shadowing impossible rather than relying on each condition to
+ * qualify its column.
  */
 function dimSubquery(conditions: string): string {
   return `
@@ -182,8 +190,7 @@ function dimSubquery(conditions: string): string {
       argMax(platform, updated_at) as platform,
       argMax(content_type, updated_at) as content_type,
       argMax(language, updated_at) as language
-    FROM video_dim
-    WHERE ${conditions}
+    FROM (SELECT * FROM video_dim WHERE ${conditions})
     GROUP BY video_id
   `;
 }
