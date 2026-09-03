@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+// Both live in lib/insights-utils, not in the action module — that one
+// carries 'use server', where only async functions may be exported, so a
+// synchronous helper could never have lived there.
 import {
   calculateChanges,
   parseInsightsResponse,
-} from '../src/server/insights-actions';
+} from '../src/lib/insights-utils';
 import type { AnalyticsTotals } from '../src/types';
 
 describe('calculateChanges', () => {
