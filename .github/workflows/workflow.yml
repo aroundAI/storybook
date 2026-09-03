@@ -122,7 +122,12 @@ jobs:
 
   test:
     name: ⚫️ Test
-    timeout-minutes: 20
+    # Getting to the first spec costs most of a 20-minute budget on its own:
+    # a pnpm install of the monorepo, Playwright's browsers, Supabase's
+    # images and a Next production build. The suite itself then runs on one
+    # worker with up to three retries. 20 minutes cancelled Playwright
+    # mid-run after every earlier step had passed.
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     if: ${{ vars.ENABLE_E2E_JOB == 'true' }}
     env:
