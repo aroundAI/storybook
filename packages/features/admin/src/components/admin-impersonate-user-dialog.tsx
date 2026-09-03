@@ -174,8 +174,15 @@ function useSetSession(tokens: { accessToken: string; refreshToken: string }) {
     queryKey: ['impersonate-user', tokens.accessToken, tokens.refreshToken],
     gcTime: 0,
     queryFn: async () => {
-      await supabase.auth.signOut();
-
+      // Deliberately no signOut() first. This dialog runs on
+      // /admin/accounts/[id], and useAuthChangeListener sends any signed-out
+      // visitor on a private path (/admin among them) straight to '/'. That
+      // redirect fired the moment signOut() resolved and won the race against
+      // the navigation below, so impersonation dropped the admin on the
+      // marketing page instead of the impersonated user's dashboard.
+      //
+      // setSession replaces the stored session outright, so signing out first
+      // bought nothing to begin with.
       await supabase.auth.setSession({
         refresh_token: tokens.refreshToken,
         access_token: tokens.accessToken,
