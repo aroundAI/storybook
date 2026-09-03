@@ -162,6 +162,7 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
         ) : (
           <CohortCurvesChart
             cohorts={(cohortQuery.data ?? []) as CohortEntry[]}
+            bucket={'quarter'}
           />
         )}
       </AnalyticsCard>

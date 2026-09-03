@@ -229,6 +229,19 @@ describe('queries-advanced', () => {
       expect(lastQuery().query).not.toContain('<= 30)');
     });
 
+    it('de-duplicates checkpoints so the generated aliases stay unique', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        checkpoints: [90, 30, 30],
+      });
+
+      const { query } = lastQuery();
+      expect(query.match(/as views_at_30\b/g)).toHaveLength(1);
+      expect(query.match(/as views_at_90\b/g)).toHaveLength(1);
+    });
+
     it('LEFT JOINs so videos with no metrics stay in the log', async () => {
       const queryVideoViewsAtAge = await load();
 
@@ -237,6 +250,16 @@ describe('queries-advanced', () => {
       // An inner join would drop zero-view videos and shorten every
       // denominator derived from this list — the FILM-1601 defect.
       expect(lastQuery().query).toContain('LEFT JOIN video_daily_stats');
+    });
+
+    it('scopes the metrics join by project as well as video', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({ scope: { projectId: PROJECT } });
+
+      expect(lastQuery().query).toContain(
+        'ON m.video_id = d.video_id AND m.project_id = d.project_id',
+      );
     });
 
     it('always paginates, and clamps an oversized limit', async () => {
@@ -595,11 +618,13 @@ describe('queries-advanced', () => {
           p75_30: '3000',
           mean_30: '2400.4',
           mature_count_30: '9',
+          predates_ingest_count_30: '0',
           median_90: '2600',
           p25_90: '1500',
           p75_90: '5000',
           mean_90: '3100',
           mature_count_90: '4',
+          predates_ingest_count_90: '3',
         },
       ]);
 
@@ -618,10 +643,31 @@ describe('queries-advanced', () => {
         p75Views: 3000,
         meanViews: 2400,
         matureVideoCount: 9,
+        predatesIngestCount: 0,
       });
       // Fewer videos have reached 90 days than 30 — the count travels with
       // the figure precisely so a reader can see that.
       expect(rows[0]!.checkpoints[90]!.matureVideoCount).toBe(4);
+      // Three more are old enough but predate ingest, so they are excluded
+      // from the figures and reported separately rather than counted as
+      // zeroes that would drag the median down.
+      expect(rows[0]!.checkpoints[90]!.predatesIngestCount).toBe(3);
+    });
+
+    it('de-duplicates checkpoints so the generated aliases stay unique', async () => {
+      // The action's schema permits [30, 30]; a repeated alias makes
+      // ClickHouse reject the whole query, so this 500s on valid input.
+      await (
+        await load()
+      )({
+        scope: { projectId: PROJECT },
+        checkpoints: [30, 30, 90],
+      });
+
+      const { query } = lastQuery();
+      expect(query.match(/as median_30\b/g)).toHaveLength(1);
+      expect(query.match(/as v_30\b/g)).toHaveLength(1);
+      expect(query.match(/as median_90\b/g)).toHaveLength(1);
     });
 
     it('filters each checkpoint by the video own age, not the cohort start', async () => {
@@ -637,9 +683,72 @@ describe('queries-advanced', () => {
       // yesterday drag down its cohort's 30-day figure.
       const { query } = lastQuery();
       expect(query).toContain(
-        'quantileExactIf(0.5)(v_30, age_days >= 30) as median_30',
+        'quantileExactIf(0.5)(v_30, age_days >= 30 AND ingest_lag_days < 30) as median_30',
       );
-      expect(query).toContain('countIf(age_days >= 30) as mature_count_30');
+      expect(query).toContain(
+        'countIf(age_days >= 30 AND ingest_lag_days < 30) as mature_count_30',
+      );
+    });
+
+    it('excludes a checkpoint whose window closed before ingest began', async () => {
+      await (
+        await load()
+      )({
+        scope: { projectId: PROJECT },
+        checkpoints: [30],
+      });
+
+      const { query } = lastQuery();
+
+      // Such a video's sum is unknowable, not low — the Reporting API
+      // backfills only ~30 days from job creation, so the rows do not
+      // exist and never will. Counted as zero it drags the median down,
+      // and because it still satisfies age_days >= N it also inflates the
+      // mature count, so the growth gate stops firing on exactly the
+      // cohorts it exists to protect. Excluded from both.
+      expect(query).toContain('ingest_lag_days < 30');
+      expect(query).toContain(
+        'countIf(age_days >= 30 AND ingest_lag_days >= 30) as predates_ingest_count_30',
+      );
+    });
+
+    it('derives the ingest floor per channel, not per video', async () => {
+      await (
+        await load()
+      )({ scope: { projectId: PROJECT } });
+
+      const { query } = lastQuery();
+
+      // A video with no rows on a well-ingested channel is a real zero and
+      // must keep counting as one, so the floor comes from the channel.
+      expect(query).toContain('GROUP BY d.connection_id');
+      expect(query).toContain(
+        'LEFT JOIN ingest i ON i.connection_id = d.connection_id',
+      );
+    });
+
+    it('still LEFT JOINs, so a zero-view video on an ingested channel counts', async () => {
+      await (
+        await load()
+      )({ scope: { projectId: PROJECT } });
+
+      // The original decision survives the exclusion: dropping genuine
+      // zeroes would inflate the median by removing the worst performers.
+      expect(lastQuery().query).toContain('LEFT JOIN video_daily_stats');
+    });
+
+    it('scopes the metrics join by project as well as video', async () => {
+      await (
+        await load()
+      )({ scope: { projectId: PROJECT } });
+
+      // video_id is the platform's id, not a per-tenant key, and
+      // video_daily_stats spans every tenant — so the same YouTube video
+      // tracked under two projects would have both projects' rows summed
+      // into it.
+      expect(lastQuery().query).toContain(
+        'ON m.video_id = d.video_id AND m.project_id = d.project_id',
+      );
     });
 
     it('aggregates per video first, so the median is over videos', async () => {

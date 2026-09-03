@@ -206,6 +206,7 @@ export const getCohortCurvesAction = enhanceAction(
           p75Views: stats?.p75Views ?? 0,
           meanViews: stats?.meanViews ?? 0,
           matureVideoCount: stats?.matureVideoCount ?? 0,
+          predatesIngestCount: stats?.predatesIngestCount ?? 0,
           // No mature videos means the cohort has not reached this age at
           // all — distinct from "reached it and scored zero".
           mature: (stats?.matureVideoCount ?? 0) > 0,

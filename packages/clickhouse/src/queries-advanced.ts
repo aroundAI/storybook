@@ -67,11 +67,19 @@ export interface CohortCheckpointStats {
   p75Views: number;
   meanViews: number;
   /**
-   * Videos old enough to have actually reached this checkpoint, and so the
-   * only ones the figures above are computed over. Travels with the number
-   * because a median resting on two videos is one video's luck.
+   * Videos old enough to have actually reached this checkpoint *and* whose
+   * window is covered by ingest — the only ones the figures above are
+   * computed over. Travels with the number because a median resting on two
+   * videos is one video's luck.
    */
   matureVideoCount: number;
+  /**
+   * Videos old enough for this checkpoint but whose window closed before
+   * their channel's metrics were ever ingested. Excluded from the figures:
+   * their sum is unknowable, not low. Surfaced so a thin sample can be
+   * explained rather than just looking thin.
+   */
+  predatesIngestCount: number;
 }
 
 export interface CohortMedianRow {
@@ -166,6 +174,7 @@ function dimSubquery(conditions: string): string {
   return `
     SELECT
       video_id,
+      argMax(project_id, updated_at) as project_id,
       argMax(published_at, updated_at) as published_at,
       argMax(tags, updated_at) as tags,
       argMax(title, updated_at) as title,
@@ -525,9 +534,18 @@ export async function queryCohortMedians(input: {
   if (!isClickHouseEnabled()) return [];
   assertDimScope(input.scope);
 
-  const checkpoints = (input.checkpoints ?? [30, 90, 180, 365]).map((c) =>
-    Math.max(1, Math.floor(c)),
-  );
+  // De-duplicated after flooring: a repeated checkpoint would emit the same
+  // SQL alias twice and ClickHouse rejects that outright, so `[30, 30]` —
+  // which the caller's schema permits — would 500. Flooring first means
+  // 30.4 and 30.9 collapse rather than colliding. Sorting keeps the
+  // generated SQL stable for a given set.
+  const checkpoints = Array.from(
+    new Set(
+      (input.checkpoints ?? [30, 90, 180, 365]).map((c) =>
+        Math.max(1, Math.floor(c)),
+      ),
+    ),
+  ).sort((a, b) => a - b);
 
   const client = getClickHouseClient();
   const { conditions, params } = buildDimConditions(input.scope);
@@ -545,18 +563,38 @@ export async function queryCohortMedians(input: {
     )
     .join(',\n        ');
 
+  // A checkpoint whose whole window closed before its channel's ingest
+  // began is missing, not zero. Counting it as zero drags the median down,
+  // and — because such a video still satisfies `age_days >= N` — it also
+  // inflates the mature count, so the growth gate stops firing on exactly
+  // the cohorts it exists to protect. Excluded from both, and counted
+  // separately so the UI can say why a sample is thin.
   const cohortSelects = checkpoints
-    .map(
-      (days) => `
-      quantileExactIf(0.5)(v_${days}, age_days >= ${days}) as median_${days},
-      quantileExactIf(0.25)(v_${days}, age_days >= ${days}) as p25_${days},
-      quantileExactIf(0.75)(v_${days}, age_days >= ${days}) as p75_${days},
-      avgIf(v_${days}, age_days >= ${days}) as mean_${days},
-      countIf(age_days >= ${days}) as mature_count_${days}`,
-    )
+    .map((days) => {
+      const eligible = `age_days >= ${days} AND ingest_lag_days < ${days}`;
+
+      return `
+      quantileExactIf(0.5)(v_${days}, ${eligible}) as median_${days},
+      quantileExactIf(0.25)(v_${days}, ${eligible}) as p25_${days},
+      quantileExactIf(0.75)(v_${days}, ${eligible}) as p75_${days},
+      avgIf(v_${days}, ${eligible}) as mean_${days},
+      countIf(${eligible}) as mature_count_${days},
+      countIf(age_days >= ${days} AND ingest_lag_days >= ${days}) as predates_ingest_count_${days}`;
+    })
     .join(',');
 
+  // Ingest start is a property of the CHANNEL, not the video: a video with
+  // no rows on a well-ingested channel is a real zero and must keep
+  // counting as one. One row per connection, so the join cannot multiply.
   const query = `
+    WITH dim AS (${dimSubquery(conditions)}),
+    ingest AS (
+      SELECT d.connection_id as connection_id, min(m.metric_date) as ingest_start
+      FROM dim d
+      INNER JOIN video_daily_stats m
+        ON m.video_id = d.video_id AND m.project_id = d.project_id
+      GROUP BY d.connection_id
+    )
     SELECT
       toString(${bucketFn}(published_at)) as cohort,
       count() as video_count,${cohortSelects}
@@ -565,9 +603,16 @@ export async function queryCohortMedians(input: {
         d.video_id as video_id,
         d.published_at as published_at,
         dateDiff('day', d.published_at, {asOf: DateTime}) as age_days,
+        if(
+          any(i.ingest_start) > toDate(0),
+          greatest(0, dateDiff('day', d.published_at, toDateTime(any(i.ingest_start)))),
+          toInt32(100000)
+        ) as ingest_lag_days,
         ${perVideoSelects}
-      FROM (${dimSubquery(conditions)}) d
-      LEFT JOIN video_daily_stats m ON m.video_id = d.video_id
+      FROM dim d
+      LEFT JOIN video_daily_stats m
+        ON m.video_id = d.video_id AND m.project_id = d.project_id
+      LEFT JOIN ingest i ON i.connection_id = d.connection_id
       GROUP BY video_id, published_at
     ) per_video
     GROUP BY cohort
@@ -592,6 +637,7 @@ export async function queryCohortMedians(input: {
         p75Views: Math.round(Number(row[`p75_${days}`] ?? 0)),
         meanViews: Math.round(Number(row[`mean_${days}`] ?? 0)),
         matureVideoCount: Number(row[`mature_count_${days}`] ?? 0),
+        predatesIngestCount: Number(row[`predates_ingest_count_${days}`] ?? 0),
       };
     }
 
@@ -900,9 +946,18 @@ async function queryVideoViewsAtAgeSingle(input: {
   if (!isClickHouseEnabled()) return [];
   assertDimScope(input.scope);
 
-  const checkpoints = (input.checkpoints ?? [30, 90, 180, 365]).map((c) =>
-    Math.max(1, Math.floor(c)),
-  );
+  // De-duplicated after flooring: a repeated checkpoint would emit the same
+  // SQL alias twice and ClickHouse rejects that outright, so `[30, 30]` —
+  // which the caller's schema permits — would 500. Flooring first means
+  // 30.4 and 30.9 collapse rather than colliding. Sorting keeps the
+  // generated SQL stable for a given set.
+  const checkpoints = Array.from(
+    new Set(
+      (input.checkpoints ?? [30, 90, 180, 365]).map((c) =>
+        Math.max(1, Math.floor(c)),
+      ),
+    ),
+  ).sort((a, b) => a - b);
 
   const limit = Math.min(1000, Math.max(1, Math.floor(input.limit ?? 200)));
   const offset = Math.max(0, Math.floor(input.offset ?? 0));
@@ -958,7 +1013,8 @@ async function queryVideoViewsAtAgeSingle(input: {
       toString(min(m.metric_date)) as first_metric_date,
       countIf(m.metric_date > toDate(0)) as metric_days
     FROM (${dimSubquery(dimConditions.join(' AND '))}) d
-    LEFT JOIN video_daily_stats m ON m.video_id = d.video_id
+    LEFT JOIN video_daily_stats m
+      ON m.video_id = d.video_id AND m.project_id = d.project_id
     GROUP BY
       video_id, title, published_at, connection_id,
       platform, content_type, language

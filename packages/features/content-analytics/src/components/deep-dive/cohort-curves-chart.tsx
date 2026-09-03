@@ -1,13 +1,11 @@
 'use client';
 
+import { MIN_MATURE_VIDEOS } from '@kit/clickhouse';
+import type { GrowthSuppressionReason } from '@kit/clickhouse';
 import { Skeleton } from '@kit/ui/skeleton';
 import { cn } from '@kit/ui/utils';
 
-/** Why a growth figure is absent, when it is. */
-export type GrowthSuppressionReason =
-  | 'no_prior_cohort'
-  | 'insufficient_sample'
-  | 'no_prior_baseline';
+import { formatCohort } from '../../lib/cohort-label';
 
 /** One cohort from getCohortCurvesAction. */
 export interface CohortEntry {
@@ -19,20 +17,46 @@ export interface CohortEntry {
     p25Views: number;
     p75Views: number;
     meanViews: number;
-    /** Videos old enough to have reached this checkpoint. */
+    /** Videos old enough to have reached this checkpoint, and ingested. */
     matureVideoCount: number;
+    /** Old enough, but published before their channel's ingest began. */
+    predatesIngestCount: number;
     mature: boolean;
     growth: number | null;
     growthSuppressedBecause: GrowthSuppressionReason | null;
   }>;
 }
 
-/** Below this, a median is shown but marked as thin evidence. */
-const LOW_SAMPLE = 5;
+/**
+ * What a suppressed growth figure shows instead of a number.
+ *
+ * Blank would read as "no change". Each reason is a different statement —
+ * "nothing to compare against" is not "not enough videos yet" — and the
+ * enum exists to draw exactly that distinction, so it has to reach the
+ * screen.
+ */
+const SUPPRESSION_LABEL: Record<GrowthSuppressionReason, string> = {
+  no_prior_cohort: 'first',
+  insufficient_sample: 'low n',
+  no_prior_baseline: 'no base',
+};
+
+const SUPPRESSION_TITLE: Record<GrowthSuppressionReason, string> = {
+  no_prior_cohort: 'No earlier cohort to compare against',
+  insufficient_sample: `Fewer than ${MIN_MATURE_VIDEOS} mature videos on one side of the comparison`,
+  no_prior_baseline:
+    'The previous cohort median is zero, so a ratio is undefined',
+};
 
 interface CohortCurvesChartProps {
   /** Cohorts in chronological order */
   cohorts: CohortEntry[];
+  /**
+   * Must match the bucket the cohorts were queried with — the action
+   * accepts 'month' too, and labelling those as quarters would render
+   * Jan/Feb/Mar 2026 as three identical "Q1 2026" rows.
+   */
+  bucket?: 'month' | 'quarter';
   /** Loading state */
   isLoading?: boolean;
 }
@@ -41,12 +65,6 @@ function formatViews(value: number): string {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
   return String(Math.round(value));
-}
-
-function formatCohort(cohort: string): string {
-  const date = new Date(cohort);
-  if (Number.isNaN(date.getTime())) return cohort;
-  return `Q${Math.floor(date.getMonth() / 3) + 1} ${date.getFullYear()}`;
 }
 
 /**
@@ -60,6 +78,7 @@ function formatCohort(cohort: string): string {
  */
 export function CohortCurvesChart({
   cohorts,
+  bucket = 'quarter',
   isLoading = false,
 }: CohortCurvesChartProps) {
   if (isLoading) {
@@ -74,11 +93,33 @@ export function CohortCurvesChart({
 
   const checkpointAges = cohorts[0]!.checkpoints.map((c) => c.ageDays);
 
-  const maxViews = Math.max(
-    ...cohorts.flatMap((c) =>
-      c.checkpoints.filter((p) => p.mature).map((p) => p.medianViews),
-    ),
-    1,
+  // Scaled per column, not globally. Bars are compared *down* a column —
+  // same age, different upload period — and a 365d median is naturally an
+  // order of magnitude above a 30d one, so a shared ruler crushes the early
+  // columns flat against the 4px floor.
+  //
+  // Thin points are excluded from the ruler for the same reason they are
+  // dimmed: one video's luck should not set the scale everything else is
+  // measured against. A cohort is `mature` at a checkpoint once a single
+  // video has reached it, so without this a brand-new quarter holding one
+  // viral video would flatten every other bar in the table.
+  const maxViewsByAge = new Map(
+    checkpointAges.map((age) => [
+      age,
+      Math.max(
+        ...cohorts.flatMap((cohort) =>
+          cohort.checkpoints
+            .filter(
+              (point) =>
+                point.ageDays === age &&
+                point.mature &&
+                point.matureVideoCount >= MIN_MATURE_VIDEOS,
+            )
+            .map((point) => point.medianViews),
+        ),
+        1,
+      ),
+    ]),
   );
 
   return (
@@ -100,7 +141,7 @@ export function CohortCurvesChart({
               <tr key={cohort.cohort} className={'border-t'}>
                 <td className={'py-2 pr-3'}>
                   <span className={'font-medium'}>
-                    {formatCohort(cohort.cohort)}
+                    {formatCohort(cohort.cohort, bucket)}
                   </span>
                   <span className={'text-muted-foreground ml-2 text-xs'}>
                     {cohort.videoCount} videos
@@ -108,7 +149,7 @@ export function CohortCurvesChart({
                 </td>
 
                 {cohort.checkpoints.map((point) => {
-                  const thin = point.matureVideoCount < LOW_SAMPLE;
+                  const thin = point.matureVideoCount < MIN_MATURE_VIDEOS;
 
                   return (
                     <td key={point.ageDays} className={'px-2 py-2 text-right'}>
@@ -121,20 +162,36 @@ export function CohortCurvesChart({
                             // not evidence.
                             thin && 'opacity-50',
                           )}
-                          title={
+                          title={[
                             thin
                               ? `${point.matureVideoCount} of ${cohort.videoCount} videos have reached ${point.ageDays}d`
-                              : `${point.matureVideoCount} videos · p25 ${formatViews(point.p25Views)} · p75 ${formatViews(point.p75Views)}`
-                          }
+                              : `${point.matureVideoCount} videos · p25 ${formatViews(point.p25Views)} · p75 ${formatViews(point.p75Views)}`,
+                            // Explains a thin sample that is thin because
+                            // the data cannot exist, not because the
+                            // cohort is young.
+                            point.predatesIngestCount > 0
+                              ? `${point.predatesIngestCount} published before analytics ingest began and are excluded`
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
                         >
                           <span>{formatViews(point.medianViews)}</span>
 
                           <span
                             className={'bg-primary/70 h-1 rounded-full'}
                             style={{
-                              width: `${Math.max(
-                                4,
-                                (point.medianViews / maxViews) * 48,
+                              // Clamped: a point excluded from the ruler
+                              // can exceed it, and an unclamped bar would
+                              // overflow the cell.
+                              width: `${Math.min(
+                                48,
+                                Math.max(
+                                  4,
+                                  (point.medianViews /
+                                    (maxViewsByAge.get(point.ageDays) ?? 1)) *
+                                    48,
+                                ),
                               )}px`,
                             }}
                           />
@@ -150,6 +207,15 @@ export function CohortCurvesChart({
                             >
                               {point.growth >= 0 ? '+' : ''}
                               {Math.round(point.growth * 100)}%
+                            </span>
+                          ) : point.growthSuppressedBecause ? (
+                            <span
+                              className={'text-muted-foreground/70 text-xs'}
+                              title={
+                                SUPPRESSION_TITLE[point.growthSuppressedBecause]
+                              }
+                            >
+                              {SUPPRESSION_LABEL[point.growthSuppressedBecause]}
                             </span>
                           ) : null}
                         </span>
@@ -171,8 +237,8 @@ export function CohortCurvesChart({
         Median views per video at each age, with growth against the previous
         cohort. Compare down a column — same age, different upload period.
         Dashes mark cohorts too young to have reached that checkpoint; dimmed
-        figures rest on fewer than {LOW_SAMPLE} videos, and growth is withheld
-        entirely below that.
+        figures rest on fewer than {MIN_MATURE_VIDEOS} videos, and growth is
+        withheld below that with the reason shown in its place.
       </p>
     </div>
   );
