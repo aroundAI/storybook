@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1607
 title: Absolute Subscriber Snapshots
-status: 📝 SPEC
+status: Draft
 effort: M
 dependencies: FILM-1602
 ---
