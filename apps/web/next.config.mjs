@@ -81,7 +81,8 @@ const config = {
       // packages are hoisted in .npmrc so resolution works at runtime.
       {
         module: /@opentelemetry\/instrumentation/,
-        message: /Critical dependency: the request of a dependency is an expression/,
+        message:
+          /Critical dependency: the request of a dependency is an expression/,
       },
       // supabase-js reads process.version(s) for its runtime check. The
       // middleware only ever uses the browser client path, so the Edge

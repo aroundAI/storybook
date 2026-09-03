@@ -78,9 +78,7 @@ export function DisabledStates() {
       </div>
       <div className="flex items-center gap-2">
         <Checkbox disabled checked />
-        <span className="text-muted-foreground text-sm">
-          Already published
-        </span>
+        <span className="text-muted-foreground text-sm">Already published</span>
       </div>
     </div>
   );

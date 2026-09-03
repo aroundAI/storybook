@@ -103,6 +103,8 @@ describe('detectRetentionCliff', () => {
   });
 
   it('returns null for a curve with fewer than two points', () => {
-    expect(detectRetentionCliff([{ elapsedRatio: 0, audienceWatchRatio: 1 }])).toBeNull();
+    expect(
+      detectRetentionCliff([{ elapsedRatio: 0, audienceWatchRatio: 1 }]),
+    ).toBeNull();
   });
 });

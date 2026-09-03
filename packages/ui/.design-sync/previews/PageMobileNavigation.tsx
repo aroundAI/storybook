@@ -1,6 +1,11 @@
 import { Home, Mic2, Settings, Sparkles } from 'lucide-react';
 
-import { Page, PageBody, PageMobileNavigation, PageNavigation } from '@kit/ui/page';
+import {
+  Page,
+  PageBody,
+  PageMobileNavigation,
+  PageNavigation,
+} from '@kit/ui/page';
 import { SidebarProvider } from '@kit/ui/shadcn-sidebar';
 
 // The default (sidebar) Page style reads PageNavigation as its desktop

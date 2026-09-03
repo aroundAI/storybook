@@ -190,10 +190,19 @@ export function IdeationPhase({
         dispatch({ type: 'SET_IDEATION_STATUS', episodeId, status: 'error' });
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Batch ideation failed';
+      const message =
+        err instanceof Error ? err.message : 'Batch ideation failed';
       for (const ep of pendingEpisodes) {
-        dispatch({ type: 'SET_EPISODE_ERROR', episodeId: ep.episodeId, error: message });
-        dispatch({ type: 'SET_IDEATION_STATUS', episodeId: ep.episodeId, status: 'error' });
+        dispatch({
+          type: 'SET_EPISODE_ERROR',
+          episodeId: ep.episodeId,
+          error: message,
+        });
+        dispatch({
+          type: 'SET_IDEATION_STATUS',
+          episodeId: ep.episodeId,
+          status: 'error',
+        });
       }
     }
   }, [pendingEpisodes, dispatch, registerEpisodes, markPending]);

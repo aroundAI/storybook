@@ -17,13 +17,22 @@ function Logo() {
 function Nav() {
   return (
     <nav className="hidden items-center gap-x-6 text-sm font-medium md:flex">
-      <Link href="/pricing" className="text-muted-foreground hover:text-foreground">
+      <Link
+        href="/pricing"
+        className="text-muted-foreground hover:text-foreground"
+      >
         Pricing
       </Link>
-      <Link href="/docs" className="text-muted-foreground hover:text-foreground">
+      <Link
+        href="/docs"
+        className="text-muted-foreground hover:text-foreground"
+      >
         Docs
       </Link>
-      <Link href="/contact" className="text-muted-foreground hover:text-foreground">
+      <Link
+        href="/contact"
+        className="text-muted-foreground hover:text-foreground"
+      >
         Contact
       </Link>
     </nav>

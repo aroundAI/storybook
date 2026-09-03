@@ -10,5 +10,7 @@ export function Default() {
 }
 
 export function ShortTitle() {
-  return <HeroTitle className="text-5xl">Your Virtual Writer&apos;s Room</HeroTitle>;
+  return (
+    <HeroTitle className="text-5xl">Your Virtual Writer&apos;s Room</HeroTitle>
+  );
 }

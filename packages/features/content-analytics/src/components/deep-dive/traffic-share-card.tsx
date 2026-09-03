@@ -68,7 +68,9 @@ export function TrafficShareCard({
         ))}
 
         <div
-          className={'border-foreground/40 absolute right-0 left-0 border-t border-dashed'}
+          className={
+            'border-foreground/40 absolute left-0 right-0 border-t border-dashed'
+          }
           style={{ bottom: `${RECOMMENDED_CHANNEL_THRESHOLD * 100}%` }}
         />
       </div>

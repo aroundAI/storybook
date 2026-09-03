@@ -51,7 +51,12 @@ export function Default() {
 
 export function SingleCollapsible() {
   return (
-    <Accordion type="single" collapsible defaultValue="season-1" className="w-full max-w-md">
+    <Accordion
+      type="single"
+      collapsible
+      defaultValue="season-1"
+      className="w-full max-w-md"
+    >
       <AccordionItem value="season-1">
         <AccordionTrigger>Season 1 — Origins</AccordionTrigger>
         <AccordionContent>

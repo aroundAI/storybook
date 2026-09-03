@@ -121,7 +121,9 @@ export const listHookTestsAction = enhanceAction(
 
     let query = client
       .from('hook_tests')
-      .select('id, name, topic, hypothesis, status, viral_threshold, created_at')
+      .select(
+        'id, name, topic, hypothesis, status, viral_threshold, created_at',
+      )
       .eq('account_id', accountId)
       .order('created_at', { ascending: false });
 

@@ -168,11 +168,17 @@ export async function runIdeationOrchestrator(
       | undefined;
     const weakIndices = evalData?.weakIndices ?? [];
 
-    if (weakIndices.length > 0 && weakIndices.length === lastStepData.ideas.length) {
+    if (
+      weakIndices.length > 0 &&
+      weakIndices.length === lastStepData.ideas.length
+    ) {
       // Replace only the weak ideas at their original positions
       const merged = [...rawIdeas];
       weakIndices.forEach((originalIndex, replacementIndex) => {
-        if (originalIndex < merged.length && lastStepData.ideas![replacementIndex]) {
+        if (
+          originalIndex < merged.length &&
+          lastStepData.ideas![replacementIndex]
+        ) {
           merged[originalIndex] = lastStepData.ideas![replacementIndex]!;
         }
       });

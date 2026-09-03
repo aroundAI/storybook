@@ -1,6 +1,12 @@
 'use client';
 
-import { createContext, useCallback, useMemo, useState, useTransition } from 'react';
+import {
+  createContext,
+  useCallback,
+  useMemo,
+  useState,
+  useTransition,
+} from 'react';
 
 import { useRouter } from 'next/navigation';
 
@@ -138,10 +144,7 @@ export function EpisodeListWrapper({
   }, [confirmDialog.stage, selectedIds, accountId, router, exitSelectionMode]);
 
   const selectedEpisodeTitles = useMemo(
-    () =>
-      episodes
-        .filter((e) => selectedIds.has(e.id))
-        .map((e) => e.title),
+    () => episodes.filter((e) => selectedIds.has(e.id)).map((e) => e.title),
     [episodes, selectedIds],
   );
 

@@ -129,7 +129,9 @@ export function WeeklyDiagnosticsTable({
                     <span className={'flex flex-col gap-1'}>
                       {lowCtr ? (
                         <span
-                          className={'flex items-center gap-1 text-xs text-amber-600'}
+                          className={
+                            'flex items-center gap-1 text-xs text-amber-600'
+                          }
                         >
                           <AlertTriangle className={'h-3 w-3'} />
                           Packaging
@@ -137,7 +139,9 @@ export function WeeklyDiagnosticsTable({
                       ) : null}
                       {row.cliff ? (
                         <span
-                          className={'flex items-center gap-1 text-xs text-red-600'}
+                          className={
+                            'flex items-center gap-1 text-xs text-red-600'
+                          }
                         >
                           <AlertTriangle className={'h-3 w-3'} />
                           Intro cliff
@@ -160,8 +164,8 @@ export function WeeklyDiagnosticsTable({
       <p className={'text-muted-foreground text-xs'}>
         Diagnostic only. Flags point at a specific video&apos;s packaging or
         intro — they are not a reason to change the channel&apos;s strategy.
-        Impressions and CTR need the YouTube bulk report ingest and appear
-        about two days after publishing.
+        Impressions and CTR need the YouTube bulk report ingest and appear about
+        two days after publishing.
       </p>
     </div>
   );

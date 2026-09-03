@@ -275,8 +275,6 @@ describe('create-csp-response', () => {
       expect(response).toBeUndefined();
     });
 
-
-
     it('should handle http Supabase URL', async () => {
       process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321';
 

@@ -107,11 +107,7 @@ export async function processAssetCreation(
   const characterNames: string[] =
     screenplayData.metadata?.characters ??
     Array.from(
-      new Set(
-        scenes.flatMap(
-          (s) => s.dialogue?.map((d) => d.character) ?? [],
-        ),
-      ),
+      new Set(scenes.flatMap((s) => s.dialogue?.map((d) => d.character) ?? [])),
     );
 
   // 3. Extract location names (metadata first, fallback to scene locations)
@@ -130,7 +126,9 @@ export async function processAssetCreation(
   );
 
   if (characterNames.length === 0 && locationNames.length === 0) {
-    console.log('[Asset Creation] No characters or locations found — returning early');
+    console.log(
+      '[Asset Creation] No characters or locations found — returning early',
+    );
 
     return {
       success: true,

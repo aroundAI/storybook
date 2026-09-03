@@ -1354,7 +1354,10 @@ export const resetEpisodeAction = enhanceAction(
 export const resetToStoryboardAction = enhanceAction(
   async (data) => {
     const logger = await getLogger();
-    const ctx = { name: 'episodes.resetToStoryboard', episodeId: data.episodeId };
+    const ctx = {
+      name: 'episodes.resetToStoryboard',
+      episodeId: data.episodeId,
+    };
 
     logger.info(ctx, '[Reset to Storyboard] Starting surgical reset');
 
@@ -1666,10 +1669,7 @@ export const bulkResetToStoryboardAction = enhanceAction(
       '[Reset to Storyboard] Bulk reset complete',
     );
 
-    revalidatePath(
-      '/home/[account]/studio/[projectSlug]/episodes',
-      'page',
-    );
+    revalidatePath('/home/[account]/studio/[projectSlug]/episodes', 'page');
 
     return {
       success: errors.length === 0,
@@ -1681,7 +1681,6 @@ export const bulkResetToStoryboardAction = enhanceAction(
     schema: BulkResetToStoryboardSchema,
   },
 );
-
 
 /**
  * Flexible reset: rewind an episode to any pipeline stage.
@@ -2282,10 +2281,7 @@ export const bulkResetToStageAction = enhanceAction(
       '[Reset to Stage] Bulk reset complete',
     );
 
-    revalidatePath(
-      '/home/[account]/studio/[projectSlug]/episodes',
-      'page',
-    );
+    revalidatePath('/home/[account]/studio/[projectSlug]/episodes', 'page');
 
     return {
       success: rpcErrors.length === 0,
@@ -2297,7 +2293,6 @@ export const bulkResetToStageAction = enhanceAction(
     schema: BulkResetToStageSchema,
   },
 );
-
 
 /**
  * Batch fetch shot counts for multiple episodes.

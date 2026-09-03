@@ -48,7 +48,8 @@ export function RetentionCurveChart({
       .map(
         (point, index) =>
           `${index === 0 ? 'M' : 'L'} ${(point.elapsedRatio * 100).toFixed(2)} ${(
-            100 - point.audienceWatchRatio * 100
+            100 -
+            point.audienceWatchRatio * 100
           ).toFixed(2)}`,
       )
       .join(' ');

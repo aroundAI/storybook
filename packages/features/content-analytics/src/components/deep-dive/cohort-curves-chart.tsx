@@ -53,9 +53,7 @@ export function CohortCurvesChart({
 
   if (cohorts.length === 0) {
     return (
-      <p className={'text-muted-foreground text-sm'}>
-        No upload cohorts yet.
-      </p>
+      <p className={'text-muted-foreground text-sm'}>No upload cohorts yet.</p>
     );
   }
 
@@ -110,9 +108,7 @@ export function CohortCurvesChart({
                         />
                       </span>
                     ) : (
-                      <span className={'text-muted-foreground text-xs'}>
-                        —
-                      </span>
+                      <span className={'text-muted-foreground text-xs'}>—</span>
                     )}
                   </td>
                 ))}
@@ -123,9 +119,9 @@ export function CohortCurvesChart({
       </div>
 
       <p className={'text-muted-foreground text-xs'}>
-        Views per video at each age. Compare cohorts down a column — same
-        age, different upload quarter. Dashes mark cohorts too young to have
-        reached that checkpoint.
+        Views per video at each age. Compare cohorts down a column — same age,
+        different upload quarter. Dashes mark cohorts too young to have reached
+        that checkpoint.
       </p>
     </div>
   );

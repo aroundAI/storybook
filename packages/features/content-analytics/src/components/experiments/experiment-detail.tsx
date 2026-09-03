@@ -102,7 +102,9 @@ export function ExperimentDetail({
           ) : null}
         </div>
         <p className={'text-muted-foreground text-xs'}>
-          {experiment.started_at ? `Started ${experiment.started_at}` : 'Not started'}
+          {experiment.started_at
+            ? `Started ${experiment.started_at}`
+            : 'Not started'}
           {experiment.ended_at ? ` · Ended ${experiment.ended_at}` : ''}
         </p>
       </div>
@@ -144,8 +146,8 @@ export function ExperimentDetail({
       {before && after ? (
         <section className={'flex flex-col gap-2'}>
           <h3 className={'text-sm font-medium'}>
-            Measured change across {experiment.result_metrics?.publishCount ?? 0}{' '}
-            videos
+            Measured change across{' '}
+            {experiment.result_metrics?.publishCount ?? 0} videos
           </h3>
           <div className={'flex flex-col gap-1.5 rounded-lg border p-3'}>
             {METRICS.map((metric) => (

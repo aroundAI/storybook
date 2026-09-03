@@ -6,11 +6,7 @@ import {
   User,
 } from 'lucide-react';
 
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarItem,
-} from '@kit/ui/sidebar';
+import { Sidebar, SidebarContent, SidebarItem } from '@kit/ui/sidebar';
 import { SidebarGroup } from '@kit/ui/sidebar';
 
 // `Sidebar` (makerkit) is the deprecated, pre-shadcn sidebar primitive: it
@@ -19,7 +15,7 @@ import { SidebarGroup } from '@kit/ui/sidebar';
 export function Default() {
   return (
     <div className="relative h-[420px] w-full max-w-md overflow-hidden rounded-lg border">
-      <Sidebar className="!fixed !h-full !w-full !lg:w-[17rem]">
+      <Sidebar className="!lg:w-[17rem] !fixed !h-full !w-full">
         <SidebarContent>
           <SidebarGroup label="Application" collapsible={false}>
             <SidebarItem path="/home" Icon={<Home className="w-4" />} end>
@@ -40,10 +36,7 @@ export function Default() {
           </SidebarGroup>
 
           <SidebarGroup label="Settings" collapsible={false}>
-            <SidebarItem
-              path="/home/settings"
-              Icon={<User className="w-4" />}
-            >
+            <SidebarItem path="/home/settings" Icon={<User className="w-4" />}>
               Profile
             </SidebarItem>
             <SidebarItem

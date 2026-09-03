@@ -45,9 +45,7 @@ export function Default() {
               <div className="bg-muted flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium">
                 S
               </div>
-              <span className="text-muted-foreground">
-                shaurya@example.com
-              </span>
+              <span className="text-muted-foreground">shaurya@example.com</span>
             </div>
           </SidebarFooter>
         </Sidebar>

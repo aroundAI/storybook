@@ -10,7 +10,13 @@ import {
 
 const customers = [
   { name: 'Acme Studios', plan: 'Pro', mrr: '$129', logins: 42, active: true },
-  { name: 'Lumen Pictures', plan: 'Team', mrr: '$349', logins: 18, active: true },
+  {
+    name: 'Lumen Pictures',
+    plan: 'Team',
+    mrr: '$349',
+    logins: 18,
+    active: true,
+  },
   { name: 'Nightowl Media', plan: 'Free', mrr: '$0', logins: 3, active: false },
 ];
 
