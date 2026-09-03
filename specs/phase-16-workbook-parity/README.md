@@ -9,7 +9,11 @@ FILM-1601 (correctness bugs + revenue delete RLS)
      │
      ├─→ FILM-1602 (channel dimension + per-channel YPP)
      │        │
-     │        └─→ FILM-1612 (PostgREST row-cap pagination sweep)
+     │        ├─→ FILM-1612 (PostgREST row-cap pagination sweep)
+     │        │
+     │        └─→ FILM-1603 (per-video views-at-age + Video Log)
+     │                 │
+     │                 └─→ FILM-1604 (cohort medians + growth)
      │
      └─→ FILM-1613 (revenue alert account scoping)
 ```
@@ -20,6 +24,8 @@ FILM-1601 (correctness bugs + revenue delete RLS)
 | FILM-1602 | PR #233, including its code-review remediation |
 | FILM-1613 | PR #234 |
 | FILM-1612 | PR #235 |
+| FILM-1603 | PR #236 |
+| FILM-1604 | PR #237 |
 
 ## Locked decisions
 
@@ -40,7 +46,11 @@ FILM-1601 (correctness bugs + revenue delete RLS)
 
 The remaining workbook-parity scope is planned but **deliberately unspecified** — no spec file exists for it yet, and it should get one before implementation:
 
-per-video views-at-age and the Video Log · cohort medians and growth · traffic source breakdown · segment performance · absolute subscriber snapshots · YPP targets and settings UI · revenue mix completion · experiment log and per-video notes · wiring up the four orphaned components.
+traffic source breakdown · segment performance · absolute subscriber snapshots · YPP targets and settings UI · revenue mix completion · experiment log and per-video notes · wiring up the four orphaned components.
+
+Two items left this list by being specified and shipped: per-video
+views-at-age and the Video Log (FILM-1603), and cohort medians and growth
+(FILM-1604).
 
 ## Known limits — do not promise these
 
