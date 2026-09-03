@@ -19,8 +19,6 @@ import { Progress } from '@kit/ui/progress';
 import { Skeleton } from '@kit/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
-import { DeepDiveTab } from './deep-dive/deep-dive-tab';
-
 import { formatNumber } from '../lib/format';
 import {
   getContentListAction,
@@ -44,6 +42,7 @@ import { AudienceGrid } from './audience';
 import { ContentGrid } from './content';
 import type { DateRangeValue } from './date-range-picker';
 import { DateRangePicker } from './date-range-picker';
+import { DeepDiveTab } from './deep-dive/deep-dive-tab';
 import { ExportReports } from './export-reports';
 import {
   LanguageAnalyticsDashboard,

@@ -43,8 +43,8 @@ export function HookTestList({
         <Zap className={'text-muted-foreground h-8 w-8'} />
         <p className={'text-sm font-medium'}>No hook tests yet</p>
         <p className={'text-muted-foreground max-w-md text-sm'}>
-          Test several openings for the same topic and compare how many
-          viewers are still watching at three seconds.
+          Test several openings for the same topic and compare how many viewers
+          are still watching at three seconds.
         </p>
       </div>
     );

@@ -39,7 +39,9 @@ export function WithEllipsis() {
     <Breadcrumb>
       <BreadcrumbList>
         <BreadcrumbItem>
-          <BreadcrumbLink href="/home/acme-studios">Acme Studios</BreadcrumbLink>
+          <BreadcrumbLink href="/home/acme-studios">
+            Acme Studios
+          </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator />
         <BreadcrumbItem>

@@ -171,7 +171,9 @@ export function ExportContentDialog({
   seasons,
 }: ExportContentDialogProps) {
   const [open, setOpen] = useState(false);
-  const [selectedSeasons, setSelectedSeasons] = useState<Set<string>>(new Set());
+  const [selectedSeasons, setSelectedSeasons] = useState<Set<string>>(
+    new Set(),
+  );
   const [exportScope, setExportScope] = useState<ExportScope>('both');
   const [isExporting, setIsExporting] = useState(false);
 
@@ -329,9 +331,7 @@ export function ExportContentDialog({
       );
       setOpen(false);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : 'Export failed',
-      );
+      toast.error(err instanceof Error ? err.message : 'Export failed');
     } finally {
       setIsExporting(false);
     }
@@ -424,9 +424,7 @@ export function ExportContentDialog({
 
           {/* Export Scope */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium text-gray-300">
-              Include
-            </Label>
+            <Label className="text-sm font-medium text-gray-300">Include</Label>
             <div className="flex gap-2">
               {(
                 [

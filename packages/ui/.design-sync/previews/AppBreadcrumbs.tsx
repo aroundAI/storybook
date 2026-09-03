@@ -48,7 +48,7 @@ export function DeepPath() {
         studio: 'Studio',
         'midnight-frequency': 'Midnight Frequency',
         episodes: 'Episodes',
-        's01e04': 'S01E04',
+        s01e04: 'S01E04',
         'visual-studio': 'Visual Studio',
       }}
     />,

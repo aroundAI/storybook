@@ -1,4 +1,10 @@
-import { Clapperboard, CreditCard, FolderKanban, Home, User } from 'lucide-react';
+import {
+  Clapperboard,
+  CreditCard,
+  FolderKanban,
+  Home,
+  User,
+} from 'lucide-react';
 
 import { Sidebar, SidebarContent, SidebarNavigation } from '@kit/ui/sidebar';
 

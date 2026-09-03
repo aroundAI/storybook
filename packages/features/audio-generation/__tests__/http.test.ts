@@ -127,6 +127,7 @@ describe('HTTP Utilities', () => {
     it('should handle API error responses', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
+        status: 404,
         statusText: 'Not Found',
         json: () => Promise.resolve({ message: 'Resource not found' }),
       });
@@ -137,14 +138,18 @@ describe('HTTP Utilities', () => {
         { maxRetries: 1 },
       );
 
+      // The status belongs in the message: fetchWithRetry decides whether an
+      // error is retryable by matching `API error (4xx)` against it, so a mock
+      // without a status was not exercising that branch at all.
       await expect(fetchPromise).rejects.toThrow(
-        'API error: Resource not found',
+        'API error (404): Resource not found',
       );
     });
 
     it('should use statusText when error message is not available', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
+        status: 500,
         statusText: 'Internal Server Error',
         json: () => Promise.reject(new Error('Parse error')),
       });
@@ -156,8 +161,30 @@ describe('HTTP Utilities', () => {
       );
 
       await expect(fetchPromise).rejects.toThrow(
-        'API error: Internal Server Error',
+        'API error (500): Internal Server Error',
       );
+    });
+
+    it('should not retry a 4xx response', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 422,
+        statusText: 'Unprocessable Entity',
+        json: () => Promise.resolve({ detail: 'Bad voice id' }),
+      });
+
+      global.fetch = fetchMock;
+
+      await expect(
+        fetchWithRetry(
+          'https://api.example.com/test',
+          { method: 'GET' },
+          { maxRetries: 3, baseDelay: 1, maxDelay: 5 },
+        ),
+      ).rejects.toThrow('API error (422): Bad voice id');
+
+      // Client errors are permanent — retrying just burns quota.
+      expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
     it('should use custom config values', async () => {

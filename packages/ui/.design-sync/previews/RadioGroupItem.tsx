@@ -1,4 +1,8 @@
-import { RadioGroup, RadioGroupItem, RadioGroupItemLabel } from '@kit/ui/radio-group';
+import {
+  RadioGroup,
+  RadioGroupItem,
+  RadioGroupItemLabel,
+} from '@kit/ui/radio-group';
 
 export function Default() {
   return (

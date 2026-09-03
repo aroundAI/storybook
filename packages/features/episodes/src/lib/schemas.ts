@@ -176,7 +176,6 @@ export const BatchShotCountSchema = z.object({
 });
 export type BatchShotCountInput = z.infer<typeof BatchShotCountSchema>;
 
-
 export const ShotMetadataSchema = z.object({
   characters: z.array(z.string()).optional(),
   locations: z.array(z.string()).optional(),

@@ -75,13 +75,17 @@ export async function getAccountDashboardData(
   // downstream read is scoped by, so truncating it here would leave the
   // dashboard exhaustively paging over an incomplete project set and
   // reporting confidently wrong totals rather than obviously short ones.
+  // `projects` has no `deleted_at` — it tracks lifecycle in `status`
+  // ('active' | 'archived' | 'deleted'). Filtering on a column that does not
+  // exist made PostgREST reject the request, so the dashboard 500'd for every
+  // account.
   const projects = await fetchAllRows<{ id: string; name: string }>(
     (from, to) =>
       client
         .from('projects')
         .select('id, name')
         .eq('account_id', accountId)
-        .is('deleted_at', null)
+        .neq('status', 'deleted')
         .order('id')
         .range(from, to),
     'dashboard projects',

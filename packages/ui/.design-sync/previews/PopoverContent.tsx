@@ -30,7 +30,10 @@ export function Default() {
               3 Warnings
             </Badge>
           </div>
-          <button type="button" className="text-muted-foreground hover:text-foreground">
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground"
+          >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
         </div>

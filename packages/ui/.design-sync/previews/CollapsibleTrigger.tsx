@@ -21,16 +21,14 @@ export function Default() {
             <p className="mb-0.5 font-semibold text-green-400">
               ✓ Why this works
             </p>
-            <p className="text-green-200/90 leading-relaxed">
+            <p className="leading-relaxed text-green-200/90">
               The wide reveal of the lighthouse beam syncs perfectly with the
               music drop at 0:08 — strong hook for a 15s reel.
             </p>
           </div>
           <div className="rounded-md bg-amber-500/10 p-2">
-            <p className="mb-0.5 font-semibold text-amber-400">
-              ⚡ Key moment
-            </p>
-            <p className="text-amber-200/90 leading-relaxed">
+            <p className="mb-0.5 font-semibold text-amber-400">⚡ Key moment</p>
+            <p className="leading-relaxed text-amber-200/90">
               Mara&apos;s close-up reaction at 0:11.
             </p>
           </div>
@@ -45,7 +43,9 @@ export function SettingsSection() {
     <Collapsible defaultOpen className="w-[420px] rounded-lg border">
       <CollapsibleTrigger asChild>
         <button className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-white/5">
-          <span className="text-sm font-medium">Advanced generation settings</span>
+          <span className="text-sm font-medium">
+            Advanced generation settings
+          </span>
           <ChevronDown className="h-4 w-4 text-gray-400" />
         </button>
       </CollapsibleTrigger>

@@ -38,7 +38,12 @@ type MessagesResponse = {
  * Mailbox class for interacting with the Mailpit mailbox API.
  */
 export class Mailbox {
-  static URL = 'http://127.0.0.1:54324';
+  // Mailpit's HTTP API, which is `[inbucket].port` in supabase/config.toml —
+  // not `smtp_port` (that is EMAIL_PORT, what the app sends through). This
+  // project moved the Supabase ports off their defaults, so 54324 reached
+  // nothing and every test that clicks a link in an email hung at the
+  // "check your email" step.
+  static URL = process.env.MAILBOX_URL ?? 'http://127.0.0.1:55324';
 
   constructor(private readonly page: Page) {}
 

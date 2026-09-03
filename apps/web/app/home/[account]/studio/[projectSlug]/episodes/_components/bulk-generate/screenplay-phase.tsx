@@ -20,14 +20,13 @@ import { Button } from '@kit/ui/button';
 import { useBulkLlmJobs } from '@kit/ui/hooks';
 import { cn } from '@kit/ui/utils';
 
-import { ExpandableContent } from './expandable-content';
-
 import type {
   BulkAction,
   BulkState,
   EpisodeBulkState,
   PhaseItemStatus,
 } from '../bulk-generate-modal';
+import { ExpandableContent } from './expandable-content';
 
 // ============================================================================
 // WebSocket result type for screenplay-conversion jobs
@@ -316,20 +315,21 @@ export function ScreenplayPhase({
         const scenes = result?.data?.screenplay?.scenes ?? [];
         const sceneCount = scenes.length;
         const dialogueCount = result?.data?.dialogueLinesCreated ?? 0;
-        const preview = scenes.length > 0
-          ? formatScreenplayText(
-              scenes as Array<{
-                number: number;
-                heading: string;
-                description?: string;
-                dialogue?: Array<{
-                  character: string;
-                  text: string;
-                  parenthetical?: string;
-                }>;
-              }>,
-            )
-          : null;
+        const preview =
+          scenes.length > 0
+            ? formatScreenplayText(
+                scenes as Array<{
+                  number: number;
+                  heading: string;
+                  description?: string;
+                  dialogue?: Array<{
+                    character: string;
+                    text: string;
+                    parenthetical?: string;
+                  }>;
+                }>,
+              )
+            : null;
 
         dispatch({
           type: 'SET_SCREENPLAY_STATUS',
@@ -410,7 +410,11 @@ export function ScreenplayPhase({
     // Mark all as generating
     for (const ep of toGenerate) {
       markPending(ep.episodeId);
-      dispatch({ type: 'SET_SCREENPLAY_STATUS', episodeId: ep.episodeId, status: 'generating' });
+      dispatch({
+        type: 'SET_SCREENPLAY_STATUS',
+        episodeId: ep.episodeId,
+        status: 'generating',
+      });
     }
 
     // Single batch call — SQS + Lambda handle throughput
@@ -427,10 +431,21 @@ export function ScreenplayPhase({
         dispatch({ type: 'SET_SCREENPLAY_STATUS', episodeId, status: 'error' });
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Batch screenplay conversion failed';
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Batch screenplay conversion failed';
       for (const ep of toGenerate) {
-        dispatch({ type: 'SET_EPISODE_ERROR', episodeId: ep.episodeId, error: message });
-        dispatch({ type: 'SET_SCREENPLAY_STATUS', episodeId: ep.episodeId, status: 'error' });
+        dispatch({
+          type: 'SET_EPISODE_ERROR',
+          episodeId: ep.episodeId,
+          error: message,
+        });
+        dispatch({
+          type: 'SET_SCREENPLAY_STATUS',
+          episodeId: ep.episodeId,
+          status: 'error',
+        });
       }
     }
   }, [selectedEpisodes, dispatch, registerEpisodes, markPending]);
@@ -445,14 +460,19 @@ export function ScreenplayPhase({
     }
 
     cancelledRef.current = false;
-    dispatch({ type: 'RETRY_EPISODES', episodeIds: failedIds, phase: 'screenplay' });
+    dispatch({
+      type: 'RETRY_EPISODES',
+      episodeIds: failedIds,
+      phase: 'screenplay',
+    });
   }, [failedEpisodes, dispatch, cancelledRef]);
 
   // Auto-trigger generation when episodes are retried
   useEffect(() => {
     if (pendingCount > 0 && !state.isGenerating) {
       const hasProgress = selectedEpisodes.some(
-        (ep) => ep.screenplayStatus === 'done' || ep.screenplayStatus === 'error',
+        (ep) =>
+          ep.screenplayStatus === 'done' || ep.screenplayStatus === 'error',
       );
       if (hasProgress) {
         handleGenerate();

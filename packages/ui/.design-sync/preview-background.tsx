@@ -1,10 +1,11 @@
 import { Component, type ReactNode } from 'react';
 
+import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime';
+import { PathnameContext } from 'next/dist/shared/lib/hooks-client-context.shared-runtime';
+
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { AppRouterContext } from 'next/dist/shared/lib/app-router-context.shared-runtime';
-import { PathnameContext } from 'next/dist/shared/lib/hooks-client-context.shared-runtime';
 
 // Without this, a component that throws during render is swallowed by React
 // 18+ (logged to console, tree unmounts) — every preview cell becomes a

@@ -121,6 +121,12 @@ describe('YouTubeAnalyticsProvider', () => {
         subscribersGained: 20,
         subscribersLost: 5,
         estimatedRevenue: 1250, // 12.5 * 100 = 1250 cents
+        // The ads/Premium split added in FILM-1601. Zero here because this
+        // fixture's response carries neither column — which is the case
+        // that matters: a channel without monetization must report 0
+        // rather than leaving the fields absent.
+        estimatedAdRevenue: 0,
+        estimatedRedPartnerRevenue: 0,
       });
     });
 

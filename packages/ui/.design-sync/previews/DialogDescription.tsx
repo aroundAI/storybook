@@ -25,8 +25,7 @@ export function Default() {
           </DialogTitle>
           <DialogDescription>
             This will remove &quot;S2E04 — The Lighthouse Keeper&apos;s
-            Secret&quot; from YouTube and TikTok and clear its publish
-            history.
+            Secret&quot; from YouTube and TikTok and clear its publish history.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

@@ -98,10 +98,15 @@ export async function indexEpisode(
         return;
     }
 
-    const { getSupabaseServerClient } = await import(
-        '@kit/supabase/server-client'
+    // Admin client, not the cookie-scoped one. Every caller here is a
+    // background worker with no user session — indexing runs from the
+    // llm-worker Lambda — so the request-scoped client has no identity to
+    // act as. It previously worked only because these tables had RLS
+    // disabled; now that they do not, it needs the service role.
+    const { getSupabaseServerAdminClient } = await import(
+        '@kit/supabase/server-admin-client'
     );
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseServerAdminClient();
 
     try {
         // Generate embeddings for premise and story summary
@@ -155,10 +160,15 @@ export async function searchSimilarEpisodes(params: {
         return [];
     }
 
-    const { getSupabaseServerClient } = await import(
-        '@kit/supabase/server-client'
+    // Admin client, not the cookie-scoped one. Every caller here is a
+    // background worker with no user session — indexing runs from the
+    // llm-worker Lambda — so the request-scoped client has no identity to
+    // act as. It previously worked only because these tables had RLS
+    // disabled; now that they do not, it needs the service role.
+    const { getSupabaseServerAdminClient } = await import(
+        '@kit/supabase/server-admin-client'
     );
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseServerAdminClient();
 
     try {
         const queryEmbedding = await generateQueryEmbedding(params.query);
@@ -205,10 +215,15 @@ export async function searchRelevantCharacters(params: {
         return [];
     }
 
-    const { getSupabaseServerClient } = await import(
-        '@kit/supabase/server-client'
+    // Admin client, not the cookie-scoped one. Every caller here is a
+    // background worker with no user session — indexing runs from the
+    // llm-worker Lambda — so the request-scoped client has no identity to
+    // act as. It previously worked only because these tables had RLS
+    // disabled; now that they do not, it needs the service role.
+    const { getSupabaseServerAdminClient } = await import(
+        '@kit/supabase/server-admin-client'
     );
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseServerAdminClient();
 
     try {
         const queryEmbedding = await generateQueryEmbedding(params.query);

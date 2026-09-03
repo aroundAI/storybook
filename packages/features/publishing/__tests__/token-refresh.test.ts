@@ -17,8 +17,10 @@ import {
 // Mock server-only
 vi.mock('server-only', () => ({}));
 
-// Mock the crypto module
-vi.mock('../src/lib/crypto', () => ({
+// Mock the crypto module. This lived at `../src/lib/crypto` until that file
+// was deleted as dead code in 96c9e20e; token-refresh.ts now imports from
+// `@kit/shared/crypto`, so mocking the old path silently mocked nothing.
+vi.mock('@kit/shared/crypto', () => ({
   encrypt: vi.fn((value: string) => Promise.resolve(`encrypted:${value}`)),
   decrypt: vi.fn((value: string) =>
     Promise.resolve(value.replace('encrypted:', '')),
@@ -36,8 +38,11 @@ const mockSupabase = {
   single: vi.fn(() => Promise.resolve({ data: null, error: null })),
 };
 
-vi.mock('@kit/supabase/server-client', () => ({
-  getSupabaseServerClient: () => mockSupabase,
+// token-refresh.ts runs from background workers with no user session, so it
+// uses the admin client. Mocking `server-client` left the real admin client to
+// be constructed, which threw on the unset NEXT_PUBLIC_SUPABASE_* env vars.
+vi.mock('@kit/supabase/server-admin-client', () => ({
+  getSupabaseServerAdminClient: () => mockSupabase,
 }));
 
 describe('Token Refresh', () => {

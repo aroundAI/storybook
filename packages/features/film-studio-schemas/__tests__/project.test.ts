@@ -12,12 +12,16 @@ import {
 describe('Project Schemas', () => {
   describe('ProjectTypeSchema', () => {
     it('should accept valid project types', () => {
+      // The full enum, so adding a type without updating this test shows up
+      // here rather than only in the reject case.
       const validTypes = [
         'short-film',
         'series',
+        'movie',
         'documentary',
         'ad',
         'educational',
+        'news',
       ];
       validTypes.forEach((type) => {
         expect(ProjectTypeSchema.safeParse(type).success).toBe(true);
@@ -25,7 +29,11 @@ describe('Project Schemas', () => {
     });
 
     it('should reject invalid project types', () => {
-      expect(ProjectTypeSchema.safeParse('movie').success).toBe(false);
+      // 'movie' used to be the example here; it became a real project type
+      // in #220, so it is asserted as valid above instead. Kept a value
+      // that is genuinely outside the enum so the test still tests
+      // something.
+      expect(ProjectTypeSchema.safeParse('podcast').success).toBe(false);
       expect(ProjectTypeSchema.safeParse('').success).toBe(false);
     });
   });

@@ -1,4 +1,10 @@
-import { Clapperboard, FolderOpen, LayoutDashboard, Music, Users } from 'lucide-react';
+import {
+  Clapperboard,
+  FolderOpen,
+  LayoutDashboard,
+  Music,
+  Users,
+} from 'lucide-react';
 
 import {
   Sidebar,

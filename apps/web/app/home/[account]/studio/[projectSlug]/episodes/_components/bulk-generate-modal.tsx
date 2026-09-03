@@ -291,13 +291,26 @@ function bulkReducer(state: BulkState, action: BulkAction): BulkState {
         if (!ep) continue;
         switch (phase) {
           case 'story':
-            newMap.set(id, { ...ep, storyStatus: 'pending' as const, error: undefined });
+            newMap.set(id, {
+              ...ep,
+              storyStatus: 'pending' as const,
+              error: undefined,
+            });
             break;
           case 'screenplay':
-            newMap.set(id, { ...ep, screenplayStatus: 'pending' as const, error: undefined });
+            newMap.set(id, {
+              ...ep,
+              screenplayStatus: 'pending' as const,
+              error: undefined,
+            });
             break;
           case 'shots':
-            newMap.set(id, { ...ep, shotStatus: 'pending' as const, error: undefined, shotCount: 0 });
+            newMap.set(id, {
+              ...ep,
+              shotStatus: 'pending' as const,
+              error: undefined,
+              shotCount: 0,
+            });
             break;
         }
       }

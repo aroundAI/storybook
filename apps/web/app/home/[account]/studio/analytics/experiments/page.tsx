@@ -42,8 +42,8 @@ async function ExperimentsPage({ params }: PageProps) {
         <Heading level={2}>Experiment log</Heading>
         <p className={'text-muted-foreground text-sm'}>
           Analytics tell you what the numbers did, not what you changed. Log
-          each deliberate change with its expected result — metric baselines
-          are captured automatically so the comparison is honest.
+          each deliberate change with its expected result — metric baselines are
+          captured automatically so the comparison is honest.
         </p>
       </div>
 

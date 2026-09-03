@@ -184,13 +184,17 @@ describe('Audio Track Queries', () => {
       expect(module).toHaveProperty('deleteAudioTrackAction');
     });
 
+    // The schemas cannot come from audio-track-queries: it is a `'use server'`
+    // module, where every export becomes a callable server endpoint and only
+    // async functions may be exported. They live in the schema module, which
+    // is also what lets a client form and the action share one definition.
     it('should export GetAudioTracksSchema', async () => {
-      const module = await import('../../server/audio-track-queries');
+      const module = await import('../../lib/schemas/audio-track.schema');
       expect(module).toHaveProperty('GetAudioTracksSchema');
     });
 
     it('should export DeleteAudioTrackSchema', async () => {
-      const module = await import('../../server/audio-track-queries');
+      const module = await import('../../lib/schemas/audio-track.schema');
       expect(module).toHaveProperty('DeleteAudioTrackSchema');
     });
   });

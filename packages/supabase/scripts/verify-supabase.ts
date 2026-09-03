@@ -13,10 +13,7 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
-import {
-  fetchAllByIds,
-  fetchAllRows,
-} from '../../shared/src/pagination';
+import { fetchAllByIds, fetchAllRows } from '../../shared/src/pagination';
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -73,10 +70,7 @@ async function main() {
   const accountId = account.id as string;
 
   await step('seed rows past the row cap', async () => {
-    await admin
-      .from('content_tags')
-      .delete()
-      .like('slug', `${SEED_PREFIX}%`);
+    await admin.from('content_tags').delete().like('slug', `${SEED_PREFIX}%`);
 
     // Chunked: the insert payload is a body rather than a URI, but a single
     // 1200-row insert is still worth splitting.

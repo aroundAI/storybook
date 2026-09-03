@@ -7,7 +7,7 @@
   "scripts": {
     "analyze": "ANALYZE=true pnpm run build",
     "build": "next build",
-    "build:test": "NODE_ENV=test next build --turbopack",
+    "build:test": "NODE_ENV=test next build",
     "clean": "git clean -xdf .next .turbo node_modules",
     "dev": "next dev --turbo | pino-pretty -c",
     "dev:localprod": "next dev --turbo --env-file .env.localprod | pino-pretty -c",

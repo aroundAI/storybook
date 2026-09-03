@@ -10,12 +10,7 @@
  *
  * ⚠️ Requires browser support for WebCodecs API (Chrome 94+, Edge 94+).
  */
-import {
-  DataStream,
-  Endianness,
-  MP4BoxBuffer,
-  createFile,
-} from 'mp4box';
+import { DataStream, Endianness, MP4BoxBuffer, createFile } from 'mp4box';
 import type { Movie, Sample, SampleEntry, Track } from 'mp4box';
 
 /**

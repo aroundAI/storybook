@@ -355,7 +355,12 @@ async function queries() {
     queryTrafficSources({ videoIds: ids, ...range }),
   );
   await step('queryTrafficSources (byDate+byVideo)', () =>
-    queryTrafficSources({ videoIds: ids, ...range, byDate: true, byVideo: true }),
+    queryTrafficSources({
+      videoIds: ids,
+      ...range,
+      byDate: true,
+      byVideo: true,
+    }),
   );
   await step('queryRetentionCurve', () =>
     queryRetentionCurve({ videoId: NORMAL }),
@@ -363,19 +368,37 @@ async function queries() {
 
   // Scoped deep-dive queries — the shapes that broke on the alias bug.
   await step('queryMedianViewsPerVideo (cohort)', () =>
-    queryMedianViewsPerVideo({ scope, bucket: 'month', mode: 'cohort_views_to_date' }),
+    queryMedianViewsPerVideo({
+      scope,
+      bucket: 'month',
+      mode: 'cohort_views_to_date',
+    }),
   );
   await step('queryMedianViewsPerVideo (period)', () =>
-    queryMedianViewsPerVideo({ scope, bucket: 'quarter', mode: 'views_in_period' }),
+    queryMedianViewsPerVideo({
+      scope,
+      bucket: 'quarter',
+      mode: 'views_in_period',
+    }),
   );
   await step('queryRollingViews', () =>
-    queryRollingViews({ scope, windowDays: 90, startDate: '2026-01-01', endDate: '2026-03-31' }),
+    queryRollingViews({
+      scope,
+      windowDays: 90,
+      startDate: '2026-01-01',
+      endDate: '2026-03-31',
+    }),
   );
   await step('queryTrafficShareTrend', () =>
     queryTrafficShareTrend({ scope, bucket: 'week' }),
   );
   await step('queryBackCatalogShare', () =>
-    queryBackCatalogShare({ scope, ageDays: 90, startDate: '2026-01-01', endDate: '2026-03-31' }),
+    queryBackCatalogShare({
+      scope,
+      ageDays: 90,
+      startDate: '2026-01-01',
+      endDate: '2026-03-31',
+    }),
   );
   await step('queryCohortMedians', () => queryCohortMedians({ scope }));
   await step('queryCohortMedians (month)', () =>
@@ -386,7 +409,10 @@ async function queries() {
   );
   await step('queryVideoViewsAtAge', () => queryVideoViewsAtAge({ scope }));
   await step('queryWatchWindowTotals', () =>
-    queryWatchWindowTotals({ scope: { accountId: ACCOUNT, platform: 'youtube' }, windowDays: 365 }),
+    queryWatchWindowTotals({
+      scope: { accountId: ACCOUNT, platform: 'youtube' },
+      windowDays: 365,
+    }),
   );
   await step('queryChannelWatchWindow', () =>
     queryChannelWatchWindow({ connectionIds: [CHANNEL], windowDays: 365 }),
@@ -452,7 +478,9 @@ async function assertions() {
 
     if (!zero) throw new Error('zero-view video missing from the log');
     if (zero.firstMetricDate !== null) {
-      throw new Error(`expected null firstMetricDate, got ${zero.firstMetricDate}`);
+      throw new Error(
+        `expected null firstMetricDate, got ${zero.firstMetricDate}`,
+      );
     }
     if (zero.ingestLagDays !== null) {
       throw new Error(`expected null ingestLagDays, got ${zero.ingestLagDays}`);
@@ -460,22 +488,30 @@ async function assertions() {
     return 'firstMetricDate=null, ingestLagDays=null';
   });
 
-  await step('assert: pre-ingest videos are excluded from a checkpoint', async () => {
-    const rows = await queryCohortMedians({ scope, asOf: '2026-06-01 00:00:00' });
-    const old = rows.find((r) => r.cohort.startsWith('2024'));
+  await step(
+    'assert: pre-ingest videos are excluded from a checkpoint',
+    async () => {
+      const rows = await queryCohortMedians({
+        scope,
+        asOf: '2026-06-01 00:00:00',
+      });
+      const old = rows.find((r) => r.cohort.startsWith('2024'));
 
-    if (!old) throw new Error('2024 cohort missing');
+      if (!old) throw new Error('2024 cohort missing');
 
-    const at30 = old.checkpoints[30]!;
+      const at30 = old.checkpoints[30]!;
 
-    if (at30.matureVideoCount !== 0) {
-      throw new Error(`expected 0 mature, got ${at30.matureVideoCount}`);
-    }
-    if (at30.predatesIngestCount !== 1) {
-      throw new Error(`expected 1 pre-ingest, got ${at30.predatesIngestCount}`);
-    }
-    return `mature=0 predatesIngest=1`;
-  });
+      if (at30.matureVideoCount !== 0) {
+        throw new Error(`expected 0 mature, got ${at30.matureVideoCount}`);
+      }
+      if (at30.predatesIngestCount !== 1) {
+        throw new Error(
+          `expected 1 pre-ingest, got ${at30.predatesIngestCount}`,
+        );
+      }
+      return `mature=0 predatesIngest=1`;
+    },
+  );
 
   await step('assert: latest snapshot resolves', async () => {
     const snaps = await queryLatestSnapshots({
@@ -490,7 +526,11 @@ async function assertions() {
   });
 
   await step('assert: every orderBy returns the full page', async () => {
-    for (const orderBy of ['published_at', 'lifetime_views', 'title'] as const) {
+    for (const orderBy of [
+      'published_at',
+      'lifetime_views',
+      'title',
+    ] as const) {
       const rows = await queryVideoViewsAtAge({ scope, orderBy });
       if (rows.length !== 3) {
         throw new Error(`${orderBy}: expected 3 rows, got ${rows.length}`);
@@ -515,9 +555,7 @@ async function main() {
   const failed = results.filter((r) => !r.ok);
 
   for (const r of results) {
-    console.log(
-      `${r.ok ? 'PASS' : 'FAIL'}  ${r.name.padEnd(38)} ${r.detail}`,
-    );
+    console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name.padEnd(38)} ${r.detail}`);
   }
 
   console.log(

@@ -22,7 +22,9 @@ export function Default() {
       <DropdownMenuContent align="start" forceMount>
         <DropdownMenuLabel>Visible columns</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuCheckboxItem checked>Episode title</DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem checked>
+          Episode title
+        </DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem checked>Status</DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem checked>Duration</DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem>Created by</DropdownMenuCheckboxItem>

@@ -3,10 +3,10 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 
 select no_plan();
 
-select makerkit.set_identifier('primary_owner', 'test@makerkit.dev');
-select makerkit.set_identifier('owner', 'owner@makerkit.dev');
-select makerkit.set_identifier('member', 'member@makerkit.dev');
-select makerkit.set_identifier('custom', 'custom@makerkit.dev');
+select makerkit.set_identifier('primary_owner', 'test@storybook.dev');
+select makerkit.set_identifier('owner', 'owner@storybook.dev');
+select makerkit.set_identifier('member', 'member@storybook.dev');
+select makerkit.set_identifier('custom', 'custom@storybook.dev');
 
 select makerkit.authenticate_as('member');
 

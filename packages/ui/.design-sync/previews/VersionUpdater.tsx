@@ -24,8 +24,8 @@ export function Default() {
             <span>New version available</span>
           </AlertDialogTitle>
           <AlertDialogDescription>
-            A new version of Storybook Studio has been deployed. Reload to
-            get the latest features and fixes.
+            A new version of Storybook Studio has been deployed. Reload to get
+            the latest features and fixes.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

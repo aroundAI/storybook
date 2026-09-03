@@ -63,14 +63,8 @@ const stageDeleteDescriptions: Record<ResetStage, string[]> = {
     'Audio & dialogue timeline',
     'Canon data (narrative arcs, character states, events)',
   ],
-  screenplay: [
-    'Shot list & all individual shots',
-    'Audio & dialogue timeline',
-  ],
-  storyboard: [
-    'Shot list & all individual shots',
-    'Audio & dialogue timeline',
-  ],
+  screenplay: ['Shot list & all individual shots', 'Audio & dialogue timeline'],
+  storyboard: ['Shot list & all individual shots', 'Audio & dialogue timeline'],
 };
 
 interface QuickActionsMenuProps {
@@ -206,7 +200,7 @@ export function QuickActionsMenu({
                 }
               >
                 Reset to Story
-                <span className="ml-auto text-xs text-muted-foreground">
+                <span className="text-muted-foreground ml-auto text-xs">
                   Clears screenplay, shots, audio
                 </span>
               </DropdownMenuItem>
@@ -229,7 +223,7 @@ export function QuickActionsMenu({
                 }
               >
                 Reset to Screenplay
-                <span className="ml-auto text-xs text-muted-foreground">
+                <span className="text-muted-foreground ml-auto text-xs">
                   Clears shots, audio
                 </span>
               </DropdownMenuItem>
@@ -245,7 +239,7 @@ export function QuickActionsMenu({
                 }
               >
                 Reset to Draft
-                <span className="ml-auto text-xs text-muted-foreground">
+                <span className="text-muted-foreground ml-auto text-xs">
                   Clears everything
                 </span>
               </DropdownMenuItem>
