@@ -111,6 +111,57 @@ jobs:
       - name: Execute every query and insert
         run: pnpm --filter @kit/clickhouse verify
 
+  supabase-db:
+    name: 🐘 Supabase DB
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    env:
+      DO_NOT_TRACK: 1
+
+    # The pagination helpers are unit-tested against a fake pager, which
+    # proves the loop terminates but not the thing that motivated them:
+    # PostgREST truncates every response at db-max-rows with HTTP 200 and a
+    # null error, service-role included. That is a property of the server,
+    # so only a real one can show it — and show that the fix clears it.
+    #
+    # This also runs the migrations from scratch, so schema drift and SQL
+    # that only fails on a real Postgres surface here rather than on deploy.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Start Supabase (applies every migration)
+        working-directory: apps/web
+        run: supabase start
+
+      - name: Verify pagination and RLS against a real PostgREST
+        working-directory: apps/web
+        run: |
+          eval "$(supabase status -o env | sed 's/^/export /')"
+          export NEXT_PUBLIC_SUPABASE_URL="$API_URL"
+          export NEXT_PUBLIC_SUPABASE_ANON_KEY="$ANON_KEY"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          cd "$GITHUB_WORKSPACE"
+          pnpm --filter @kit/supabase verify
+
+      - name: Stop Supabase
+        if: always()
+        working-directory: apps/web
+        run: supabase stop
+
   unit-test:
     name: 🧪 Unit Tests
     timeout-minutes: 15
