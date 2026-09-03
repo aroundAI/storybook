@@ -11,9 +11,11 @@ FILM-1601 (correctness bugs + revenue delete RLS)
      │        │
      │        └─→ FILM-1612 (PostgREST row-cap pagination sweep)
      │                 │
-     │                 └─→ FILM-1603 (per-video views-at-age + Video Log)
-     │                          │
-     │                          └─→ FILM-1604 (cohort medians + growth)
+     │                 ├─→ FILM-1603 (per-video views-at-age + Video Log)
+     │                 │        │
+     │                 │        └─→ FILM-1604 (cohort medians + growth)
+     │                 │
+     │                 └─→ FILM-1607 (absolute subscriber snapshots) — not yet built
      │
      └─→ FILM-1613 (revenue alert account scoping)
 ```
