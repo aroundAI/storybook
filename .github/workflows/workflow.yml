@@ -205,14 +205,18 @@ jobs:
           echo "Next.js did not become ready in 120s"
           exit 1
 
+      # Before Playwright, not after: the pgTAP suite asserts against the
+      # seeded database, and the e2e specs sign up users and create teams in
+      # it. Running them in this order keeps pgTAP's fixtures the only thing
+      # it has to reason about.
+      - name: Run Supabase tests
+        run: pnpm --filter web supabase:test
+
       # Only the e2e package. `pnpm run test` is `turbo test`, which runs
       # every package's suite — the Unit Tests job already does that, and
       # re-running it here makes this job fail for reasons unrelated to e2e.
       - name: Run Playwright tests
         run: pnpm --filter web-e2e test
-
-      - name: Run Supabase tests
-        run: pnpm --filter web supabase:test
 
       - uses: actions/upload-artifact@v4
         if: always()

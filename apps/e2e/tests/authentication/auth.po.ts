@@ -61,6 +61,14 @@ export class AuthPageObject {
 
     await this.page.fill('[data-input-otp]', otp);
     await this.page.click('[data-test="submit-mfa-button"]');
+
+    // Callers wrap this in `toPass()` to retry across the 30s TOTP window, so
+    // it has to fail when the code is rejected. Without this the helper always
+    // "passed" on the first attempt and the test carried on from the
+    // verification screen it had never left.
+    await expect(
+      this.page.locator('[data-test="submit-mfa-button"]'),
+    ).toBeHidden();
   }
 
   async visitConfirmEmailLink(

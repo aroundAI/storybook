@@ -252,7 +252,7 @@ describe('Agent Runner', () => {
       );
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Token limit exceeded');
+      expect(result.error).toContain('Budget would be exceeded');
     });
   });
 

@@ -135,7 +135,14 @@ describe('Voice Clone Actions', () => {
             return {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
-              single: vi.fn().mockResolvedValue({ data: null, error: null }),
+              // Must return a row. getElevenLabsApiKey() used to fall back to
+              // a platform-wide env key when the account had none; that
+              // fallback was removed, so a null row now throws before the
+              // action reaches the behaviour under test.
+              single: vi.fn().mockResolvedValue({
+                data: { encrypted_key: 'stored-key' },
+                error: null,
+              }),
             };
           }
           return {};
@@ -274,6 +281,7 @@ describe('Voice Clone Actions', () => {
             return {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
+              // This test is the one that wants no key on the account.
               single: vi.fn().mockResolvedValue({ data: null, error: null }),
             };
           }
@@ -321,7 +329,14 @@ describe('Voice Clone Actions', () => {
             return {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
-              single: vi.fn().mockResolvedValue({ data: null, error: null }),
+              // Must return a row. getElevenLabsApiKey() used to fall back to
+              // a platform-wide env key when the account had none; that
+              // fallback was removed, so a null row now throws before the
+              // action reaches the behaviour under test.
+              single: vi.fn().mockResolvedValue({
+                data: { encrypted_key: 'stored-key' },
+                error: null,
+              }),
             };
           }
           return {};
@@ -379,7 +394,14 @@ describe('Voice Clone Actions', () => {
             return {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
-              single: vi.fn().mockResolvedValue({ data: null, error: null }),
+              // Must return a row. getElevenLabsApiKey() used to fall back to
+              // a platform-wide env key when the account had none; that
+              // fallback was removed, so a null row now throws before the
+              // action reaches the behaviour under test.
+              single: vi.fn().mockResolvedValue({
+                data: { encrypted_key: 'stored-key' },
+                error: null,
+              }),
             };
           }
           return {};
@@ -430,7 +452,14 @@ describe('Voice Clone Actions', () => {
             return {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
-              single: vi.fn().mockResolvedValue({ data: null, error: null }),
+              // Must return a row. getElevenLabsApiKey() used to fall back to
+              // a platform-wide env key when the account had none; that
+              // fallback was removed, so a null row now throws before the
+              // action reaches the behaviour under test.
+              single: vi.fn().mockResolvedValue({
+                data: { encrypted_key: 'stored-key' },
+                error: null,
+              }),
             };
           }
           return {};
@@ -525,7 +554,14 @@ describe('Voice Clone Actions', () => {
             return {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
-              single: vi.fn().mockResolvedValue({ data: null, error: null }),
+              // Must return a row. getElevenLabsApiKey() used to fall back to
+              // a platform-wide env key when the account had none; that
+              // fallback was removed, so a null row now throws before the
+              // action reaches the behaviour under test.
+              single: vi.fn().mockResolvedValue({
+                data: { encrypted_key: 'stored-key' },
+                error: null,
+              }),
             };
           }
           return {};
@@ -570,7 +606,14 @@ describe('Voice Clone Actions', () => {
             return {
               select: vi.fn().mockReturnThis(),
               eq: vi.fn().mockReturnThis(),
-              single: vi.fn().mockResolvedValue({ data: null, error: null }),
+              // Must return a row. getElevenLabsApiKey() used to fall back to
+              // a platform-wide env key when the account had none; that
+              // fallback was removed, so a null row now throws before the
+              // action reaches the behaviour under test.
+              single: vi.fn().mockResolvedValue({
+                data: { encrypted_key: 'stored-key' },
+                error: null,
+              }),
             };
           }
           return {};
