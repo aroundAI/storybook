@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1603
 title: Per-Video Views-at-Age & Video Log
-status: 🔍 IN REVIEW
+status: ✅ DONE
 effort: L
 dependencies: FILM-1602, FILM-1612
 ---

@@ -144,9 +144,11 @@ async function queryLatestSnapshotsSingle(input: {
       argMax(saves, fetched_at) as saves,
       argMax(watch_time_seconds, fetched_at) as watch_time_seconds,
       argMax(subscribers_gained, fetched_at) as subscribers_gained
-    FROM video_snapshots
-    WHERE video_id IN {videoIds: Array(String)}
-      AND snapshot_date < {beforeDate: Date}
+    FROM (
+      SELECT * FROM video_snapshots
+      WHERE video_id IN {videoIds: Array(String)}
+        AND snapshot_date < {beforeDate: Date}
+    )
     GROUP BY video_id
   `;
 
@@ -653,8 +655,7 @@ async function queryDailyStatsSingle(
       sum(watch_time_seconds) as watch_time_seconds,
       sum(revenue_cents) as revenue_cents,
       sum(subscribers_gained) as subscribers_gained
-    FROM video_daily_stats
-    ${clause}
+    FROM (SELECT * FROM video_daily_stats ${clause})
     GROUP BY project_id, video_id, platform, metric_date
     ORDER BY metric_date DESC
   `;

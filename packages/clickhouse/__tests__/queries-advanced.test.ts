@@ -60,18 +60,18 @@ describe('queries-advanced', () => {
 
   describe('scope guard', () => {
     it('rejects unscoped queries to prevent full table scans', async () => {
-      const { queryCohortCurves } = await import('../src/queries-advanced');
+      const { queryCohortMedians } = await import('../src/queries-advanced');
 
-      await expect(queryCohortCurves({ scope: {} })).rejects.toThrow(
+      await expect(queryCohortMedians({ scope: {} })).rejects.toThrow(
         /requires projectId or accountId/,
       );
     });
 
     it('accepts an account-scoped query', async () => {
-      const { queryCohortCurves } = await import('../src/queries-advanced');
+      const { queryCohortMedians } = await import('../src/queries-advanced');
 
       await expect(
-        queryCohortCurves({ scope: { accountId: PROJECT } }),
+        queryCohortMedians({ scope: { accountId: PROJECT } }),
       ).resolves.toEqual([]);
     });
   });
@@ -143,7 +143,11 @@ describe('queries-advanced', () => {
       });
 
       const { query, query_params } = lastQuery();
-      expect(query_params.windowPreceding).toBe(89);
+      // Interpolated rather than bound: ClickHouse 24.x rejects a
+      // parameter in a window frame, which only showed up when the suite
+      // started executing SQL against a real server.
+      expect(query).toContain('ROWS BETWEEN 89 PRECEDING AND CURRENT ROW');
+      expect(query_params.windowPreceding).toBeUndefined();
       expect(query).toContain('WITH FILL');
       expect(query).toContain('ROWS BETWEEN');
     });
@@ -229,6 +233,19 @@ describe('queries-advanced', () => {
       expect(lastQuery().query).not.toContain('<= 30)');
     });
 
+    it('de-duplicates checkpoints so the generated aliases stay unique', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        checkpoints: [90, 30, 30],
+      });
+
+      const { query } = lastQuery();
+      expect(query.match(/as views_at_30\b/g)).toHaveLength(1);
+      expect(query.match(/as views_at_90\b/g)).toHaveLength(1);
+    });
+
     it('LEFT JOINs so videos with no metrics stay in the log', async () => {
       const queryVideoViewsAtAge = await load();
 
@@ -237,6 +254,16 @@ describe('queries-advanced', () => {
       // An inner join would drop zero-view videos and shorten every
       // denominator derived from this list — the FILM-1601 defect.
       expect(lastQuery().query).toContain('LEFT JOIN video_daily_stats');
+    });
+
+    it('scopes the metrics join by project as well as video', async () => {
+      const queryVideoViewsAtAge = await load();
+
+      await queryVideoViewsAtAge({ scope: { projectId: PROJECT } });
+
+      expect(lastQuery().query).toContain(
+        'ON m.video_id = d.video_id AND m.project_id = d.project_id',
+      );
     });
 
     it('always paginates, and clamps an oversized limit', async () => {
@@ -486,10 +513,10 @@ describe('queries-advanced', () => {
     });
 
     it('still requires a project or account, not a channel alone', async () => {
-      const { queryCohortCurves } = await import('../src/queries-advanced');
+      const { queryCohortMedians } = await import('../src/queries-advanced');
 
       await expect(
-        queryCohortCurves({ scope: { connectionId: CHANNEL } }),
+        queryCohortMedians({ scope: { connectionId: CHANNEL } }),
       ).rejects.toThrow(/requires projectId or accountId/);
     });
 
@@ -509,16 +536,41 @@ describe('queries-advanced', () => {
     });
   });
 
+  describe('dim scope filtering', () => {
+    it('filters inside a subquery so aliases cannot shadow filter columns', async () => {
+      const { queryCohortMedians } = await import('../src/queries-advanced');
+
+      await queryCohortMedians({
+        scope: { projectId: PROJECT, platform: 'youtube' },
+      });
+
+      // Every projected column is aliased to its own name, and several are
+      // also filter columns. A WHERE alongside the argMax resolves the bare
+      // name to the *aggregate*, and ClickHouse rejects the whole query:
+      // "Aggregate function argMax(...) is found in WHERE". Verified
+      // against a real ClickHouse — the mocked suite cannot catch it.
+      const { query } = lastQuery();
+      expect(query).toContain('FROM (SELECT * FROM video_dim WHERE');
+      expect(query).not.toMatch(/argMax[\s\S]*?\n\s*FROM video_dim\n\s*WHERE/);
+    });
+  });
+
   describe('FILM-1601 correctness fixes', () => {
     it('counts cohort videos from the dimension side, not metric rows', async () => {
-      const { queryCohortCurves } = await import('../src/queries-advanced');
+      const { queryCohortMedians } = await import('../src/queries-advanced');
 
-      await queryCohortCurves({ scope: { projectId: PROJECT } });
+      await queryCohortMedians({ scope: { projectId: PROJECT } });
 
       const { query } = lastQuery();
       // Counting distinct video_id on the metrics side drops published
       // videos that have no ingested days, inflating views-per-video.
-      expect(query).toContain('count(DISTINCT d.video_id)');
+      //
+      // FILM-1604 restructured this into a per-video subquery, so the
+      // guarantee now holds by construction rather than by DISTINCT: the
+      // inner GROUP BY yields exactly one row per dimension video, and the
+      // outer count() counts those rows.
+      expect(query).toContain('GROUP BY video_id, published_at');
+      expect(query).toContain('count() as video_count');
       expect(query).not.toContain('count(DISTINCT m.video_id)');
       expect(query).toContain('LEFT JOIN video_daily_stats');
     });
@@ -575,31 +627,211 @@ describe('queries-advanced', () => {
     });
   });
 
-  describe('queryCohortCurves', () => {
-    it('returns per-checkpoint cumulative views per cohort', async () => {
+  describe('queryCohortMedians (FILM-1604)', () => {
+    const load = async () =>
+      (await import('../src/queries-advanced')).queryCohortMedians;
+
+    it('returns the distribution per checkpoint, with its mature count', async () => {
       mockQueryResult.json.mockResolvedValue([
         {
           cohort: '2026-01-01',
-          video_count: '4',
-          views_at_30: '4000',
-          views_at_90: '9000',
+          video_count: '9',
+          median_30: '1200',
+          p25_30: '800',
+          p75_30: '3000',
+          mean_30: '2400.4',
+          mature_count_30: '9',
+          predates_ingest_count_30: '0',
+          median_90: '2600',
+          p25_90: '1500',
+          p75_90: '5000',
+          mean_90: '3100',
+          mature_count_90: '4',
+          predates_ingest_count_90: '3',
         },
       ]);
 
-      const { queryCohortCurves } = await import('../src/queries-advanced');
-
-      const rows = await queryCohortCurves({
+      const rows = await (
+        await load()
+      )({
         scope: { projectId: PROJECT },
         checkpoints: [30, 90],
       });
 
-      expect(rows[0]).toEqual({
-        cohort: '2026-01-01',
-        videoCount: 4,
-        viewsAtCheckpoint: { 30: 4000, 90: 9000 },
+      expect(rows[0]!.cohort).toBe('2026-01-01');
+      expect(rows[0]!.videoCount).toBe(9);
+      expect(rows[0]!.checkpoints[30]).toEqual({
+        medianViews: 1200,
+        p25Views: 800,
+        p75Views: 3000,
+        meanViews: 2400,
+        matureVideoCount: 9,
+        predatesIngestCount: 0,
+      });
+      // Fewer videos have reached 90 days than 30 — the count travels with
+      // the figure precisely so a reader can see that.
+      expect(rows[0]!.checkpoints[90]!.matureVideoCount).toBe(4);
+      // Three more are old enough but predate ingest, so they are excluded
+      // from the figures and reported separately rather than counted as
+      // zeroes that would drag the median down.
+      expect(rows[0]!.checkpoints[90]!.predatesIngestCount).toBe(3);
+    });
+
+    it('de-duplicates checkpoints so the generated aliases stay unique', async () => {
+      // The action's schema permits [30, 30]; a repeated alias makes
+      // ClickHouse reject the whole query, so this 500s on valid input.
+      await (
+        await load()
+      )({
+        scope: { projectId: PROJECT },
+        checkpoints: [30, 30, 90],
       });
 
-      expect(lastQuery().query).toContain('toStartOfQuarter(d.published_at)');
+      const { query } = lastQuery();
+      expect(query.match(/as median_30\b/g)).toHaveLength(1);
+      expect(query.match(/as v_30\b/g)).toHaveLength(1);
+      expect(query.match(/as median_90\b/g)).toHaveLength(1);
+    });
+
+    it('filters each checkpoint by the video own age, not the cohort start', async () => {
+      await (
+        await load()
+      )({
+        scope: { projectId: PROJECT },
+        checkpoints: [30],
+      });
+
+      // This is the correctness win of the phase: a quarter spans ~90 days,
+      // so judging maturity from the cohort's start lets a video published
+      // yesterday drag down its cohort's 30-day figure.
+      const { query } = lastQuery();
+      expect(query).toContain(
+        'quantileExactIf(0.5)(v_30, age_days >= 30 AND ingest_lag_days < 30) as median_30',
+      );
+      expect(query).toContain(
+        'countIf(age_days >= 30 AND ingest_lag_days < 30) as mature_count_30',
+      );
+    });
+
+    it('excludes a checkpoint whose window closed before ingest began', async () => {
+      await (
+        await load()
+      )({
+        scope: { projectId: PROJECT },
+        checkpoints: [30],
+      });
+
+      const { query } = lastQuery();
+
+      // Such a video's sum is unknowable, not low — the Reporting API
+      // backfills only ~30 days from job creation, so the rows do not
+      // exist and never will. Counted as zero it drags the median down,
+      // and because it still satisfies age_days >= N it also inflates the
+      // mature count, so the growth gate stops firing on exactly the
+      // cohorts it exists to protect. Excluded from both.
+      expect(query).toContain('ingest_lag_days < 30');
+      expect(query).toContain(
+        'countIf(age_days >= 30 AND ingest_lag_days >= 30) as predates_ingest_count_30',
+      );
+    });
+
+    it('derives the ingest floor per channel, not per video', async () => {
+      await (
+        await load()
+      )({ scope: { projectId: PROJECT } });
+
+      const { query } = lastQuery();
+
+      // A video with no rows on a well-ingested channel is a real zero and
+      // must keep counting as one, so the floor comes from the channel.
+      expect(query).toContain('GROUP BY d.connection_id');
+      expect(query).toContain(
+        'LEFT JOIN ingest i ON i.connection_id = d.connection_id',
+      );
+    });
+
+    it('still LEFT JOINs, so a zero-view video on an ingested channel counts', async () => {
+      await (
+        await load()
+      )({ scope: { projectId: PROJECT } });
+
+      // The original decision survives the exclusion: dropping genuine
+      // zeroes would inflate the median by removing the worst performers.
+      expect(lastQuery().query).toContain('LEFT JOIN video_daily_stats');
+    });
+
+    it('scopes the metrics join by project as well as video', async () => {
+      await (
+        await load()
+      )({ scope: { projectId: PROJECT } });
+
+      // video_id is the platform's id, not a per-tenant key, and
+      // video_daily_stats spans every tenant — so the same YouTube video
+      // tracked under two projects would have both projects' rows summed
+      // into it.
+      expect(lastQuery().query).toContain(
+        'ON m.video_id = d.video_id AND m.project_id = d.project_id',
+      );
+    });
+
+    it('aggregates per video first, so the median is over videos', async () => {
+      await (
+        await load()
+      )({ scope: { projectId: PROJECT } });
+
+      // A cohort-level SUM divided by video count is a mean; a median needs
+      // one row per video to take the quantile over.
+      const { query } = lastQuery();
+      expect(query).toContain('GROUP BY video_id, published_at');
+      expect(query).toContain(') per_video');
+    });
+
+    it('uses exact quantiles, not approximate ones', async () => {
+      await (
+        await load()
+      )({ scope: { projectId: PROJECT } });
+
+      // Cohorts are small; an approximate quantile would return a different
+      // number run to run.
+      expect(lastQuery().query).toContain('quantileExactIf');
+      expect(lastQuery().query).not.toContain('quantileIf(');
+    });
+
+    it('LEFT JOINs so a video with no metrics counts as a zero', async () => {
+      await (
+        await load()
+      )({ scope: { projectId: PROJECT } });
+
+      // Dropping it would inflate the median by removing the worst
+      // performers.
+      expect(lastQuery().query).toContain('LEFT JOIN video_daily_stats');
+    });
+
+    it('buckets by quarter by default and by month on request', async () => {
+      await (
+        await load()
+      )({ scope: { projectId: PROJECT } });
+      expect(lastQuery().query).toContain('toStartOfQuarter(published_at)');
+
+      await (
+        await load()
+      )({ scope: { projectId: PROJECT }, bucket: 'month' });
+      expect(lastQuery().query).toContain('toStartOfMonth(published_at)');
+    });
+
+    it('binds asOf so a call is reproducible', async () => {
+      await (
+        await load()
+      )({
+        scope: { projectId: PROJECT },
+        asOf: '2026-06-01 00:00:00',
+      });
+
+      const { query, query_params } = lastQuery();
+      expect(query).toContain(
+        "dateDiff('day', d.published_at, {asOf: DateTime})",
+      );
+      expect(query_params.asOf).toBe('2026-06-01 00:00:00');
     });
   });
 

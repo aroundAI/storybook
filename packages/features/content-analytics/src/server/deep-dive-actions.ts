@@ -5,12 +5,13 @@ import { z } from 'zod';
 import {
   queryBackCatalogShare,
   queryChannelWatchWindow,
-  queryCohortCurves,
+  queryCohortMedians,
   queryMedianViewsPerVideo,
   queryRollingViews,
   queryTrafficShareTrend,
   queryWatchWindowTotals,
 } from '@kit/clickhouse/server';
+import { computeCohortGrowth } from '@kit/clickhouse/server';
 import type { DimScope } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
 import { fetchAllRows } from '@kit/shared/pagination';
@@ -168,40 +169,52 @@ export const getBackCatalogAction = enhanceAction(
 );
 
 /**
- * Quarterly upload cohorts, per-video normalized cumulative views at fixed
- * ages, with a maturity flag per checkpoint (a cohort younger than a
- * checkpoint has not finished accruing it).
+ * Upload cohorts with the distribution of per-video views at fixed ages,
+ * plus growth against the previous cohort.
+ *
+ * Medians, not means: this is the view whose purpose is controlling for
+ * luck, and a mean lets one viral video move the whole cohort's line.
+ *
+ * Maturity is per video per checkpoint, resolved in the query. The previous
+ * implementation derived one age from the cohort's *start*, so a cohort
+ * containing a video published yesterday was still flagged mature at 30
+ * days and that video's near-zero dragged the figure down.
  */
 export const getCohortCurvesAction = enhanceAction(
-  async ({ scope, checkpoints }) => {
+  async ({ scope, checkpoints, bucket }) => {
     await assertScopeAccess(scope);
 
-    const rows = await queryCohortCurves({
+    const rows = await queryCohortMedians({
       scope: toDimScope(scope),
       checkpoints,
+      bucket,
     });
 
-    const now = Date.now();
+    const growth = computeCohortGrowth(rows, checkpoints);
 
-    return rows.map((row) => {
-      const cohortStart = new Date(row.cohort).getTime();
-      const cohortAgeDays = Math.floor((now - cohortStart) / 86_400_000);
+    return rows.map((row, index) => ({
+      cohort: row.cohort,
+      videoCount: row.videoCount,
+      checkpoints: checkpoints.map((ageDays) => {
+        const stats = row.checkpoints[ageDays];
+        const change = growth[index]?.[ageDays];
 
-      return {
-        cohort: row.cohort,
-        videoCount: row.videoCount,
-        cohortAgeDays,
-        checkpoints: Object.entries(row.viewsAtCheckpoint).map(
-          ([days, views]) => ({
-            ageDays: Number(days),
-            totalViews: views,
-            viewsPerVideo:
-              row.videoCount > 0 ? Math.round(views / row.videoCount) : 0,
-            mature: cohortAgeDays >= Number(days),
-          }),
-        ),
-      };
-    });
+        return {
+          ageDays,
+          medianViews: stats?.medianViews ?? 0,
+          p25Views: stats?.p25Views ?? 0,
+          p75Views: stats?.p75Views ?? 0,
+          meanViews: stats?.meanViews ?? 0,
+          matureVideoCount: stats?.matureVideoCount ?? 0,
+          predatesIngestCount: stats?.predatesIngestCount ?? 0,
+          // No mature videos means the cohort has not reached this age at
+          // all — distinct from "reached it and scored zero".
+          mature: (stats?.matureVideoCount ?? 0) > 0,
+          growth: change?.growth ?? null,
+          growthSuppressedBecause: change?.reason ?? null,
+        };
+      }),
+    }));
   },
   {
     schema: z.object({
@@ -210,6 +223,7 @@ export const getCohortCurvesAction = enhanceAction(
         .array(z.number().int().min(1).max(730))
         .max(8)
         .default([30, 90, 180, 365]),
+      bucket: z.enum(['month', 'quarter']).default('quarter'),
     }),
     auth: true,
   },

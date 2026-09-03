@@ -67,7 +67,11 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
   const cohortQuery = useQuery({
     queryKey: ['deep-dive-cohorts', projectId],
     queryFn: () =>
-      getCohortCurvesAction({ scope, checkpoints: [30, 90, 180, 365] }),
+      getCohortCurvesAction({
+        scope,
+        checkpoints: [30, 90, 180, 365],
+        bucket: 'quarter',
+      }),
   });
 
   return (
@@ -158,6 +162,7 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
         ) : (
           <CohortCurvesChart
             cohorts={(cohortQuery.data ?? []) as CohortEntry[]}
+            bucket={'quarter'}
           />
         )}
       </AnalyticsCard>

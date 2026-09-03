@@ -55,11 +55,38 @@ export interface BackCatalogBucket {
   share: number;
 }
 
-export interface CohortRow {
+/** ClickHouse DateTime literal, UTC — matches how dims are written. */
+function formatClickHouseDateTime(value: Date): string {
+  return value.toISOString().slice(0, 19).replace('T', ' ');
+}
+
+/** One checkpoint's distribution within a cohort. */
+export interface CohortCheckpointStats {
+  medianViews: number;
+  p25Views: number;
+  p75Views: number;
+  meanViews: number;
+  /**
+   * Videos old enough to have actually reached this checkpoint *and* whose
+   * window is covered by ingest — the only ones the figures above are
+   * computed over. Travels with the number because a median resting on two
+   * videos is one video's luck.
+   */
+  matureVideoCount: number;
+  /**
+   * Videos old enough for this checkpoint but whose window closed before
+   * their channel's metrics were ever ingested. Excluded from the figures:
+   * their sum is unknowable, not low. Surfaced so a thin sample can be
+   * explained rather than just looking thin.
+   */
+  predatesIngestCount: number;
+}
+
+export interface CohortMedianRow {
   cohort: string;
+  /** Videos uploaded in the cohort, regardless of age. */
   videoCount: number;
-  /** Cumulative views per checkpoint age (days), summed across the cohort. */
-  viewsAtCheckpoint: Record<number, number>;
+  checkpoints: Record<number, CohortCheckpointStats>;
 }
 
 export interface WatchWindowTotals {
@@ -137,16 +164,25 @@ function buildDimConditions(scope: DimScope): {
 /**
  * Subquery selecting the latest dim row per video in scope.
  *
- * Projects a fixed column set. FILM-1603 needs channel, language and title
- * here; add them explicitly then. An earlier `extra: string[]` parameter
- * that interpolated caller-supplied column names was removed unused — a
- * raw identifier splice into SQL is worth adding deliberately, with
- * escaping, rather than inheriting.
+ * Projects a fixed column set. An earlier `extra: string[]` parameter that
+ * interpolated caller-supplied column names was removed unused — a raw
+ * identifier splice into SQL is worth adding deliberately, with escaping,
+ * rather than inheriting.
+ *
+ * The scope filter runs in an inner subquery, before any aliasing. Every
+ * projected column here is aliased to its own name, and several of them
+ * (project_id, platform, content_type, language, connection_id) are also
+ * filter columns — so a WHERE alongside the argMax resolves the bare name
+ * to the *aggregate* and ClickHouse rejects the query outright:
+ * "Aggregate function argMax(...) is found in WHERE". Filtering first makes
+ * the shadowing impossible rather than relying on each condition to
+ * qualify its column.
  */
 function dimSubquery(conditions: string): string {
   return `
     SELECT
       video_id,
+      argMax(project_id, updated_at) as project_id,
       argMax(published_at, updated_at) as published_at,
       argMax(tags, updated_at) as tags,
       argMax(title, updated_at) as title,
@@ -154,8 +190,7 @@ function dimSubquery(conditions: string): string {
       argMax(platform, updated_at) as platform,
       argMax(content_type, updated_at) as content_type,
       argMax(language, updated_at) as language
-    FROM video_dim
-    WHERE ${conditions}
+    FROM (SELECT * FROM video_dim WHERE ${conditions})
     GROUP BY video_id
   `;
 }
@@ -302,7 +337,12 @@ export async function queryRollingViews(input: {
   const { conditions, params } = buildDimConditions(input.scope);
   params.startDate = input.startDate;
   params.endDate = input.endDate;
-  params.windowPreceding = Math.max(0, Math.floor(input.windowDays) - 1);
+  // Interpolated, not bound. A window frame bound is part of the query's
+  // structure rather than a value, and ClickHouse 24.x rejects a parameter
+  // there — "Query parameter `windowPreceding` was not set" — while 25+
+  // accepts it. Floored to a non-negative integer just above, so there is
+  // nothing to inject.
+  const windowPreceding = Math.max(0, Math.floor(input.windowDays) - 1);
 
   const query = `
     SELECT
@@ -310,7 +350,7 @@ export async function queryRollingViews(input: {
       views,
       sum(views) OVER (
         ORDER BY date
-        ROWS BETWEEN {windowPreceding: UInt32} PRECEDING AND CURRENT ROW
+        ROWS BETWEEN ${windowPreceding} PRECEDING AND CURRENT ROW
       ) as rolling_views
     FROM (
       SELECT metric_date as date, sum(views) as views
@@ -470,42 +510,123 @@ export async function queryBackCatalogShare(input: {
 }
 
 /**
- * Per-quarter upload cohorts with cumulative views at fixed ages —
- * the age-controlled growth measurement raw monthly totals cannot give.
- * Sums are cohort totals; callers normalize by videoCount.
+ * Upload cohorts with the distribution of per-video views at fixed ages.
+ *
+ * The point of this view is to control for how long each video has been
+ * live: a later cohort beating an earlier one *at the same age* is real
+ * improvement, which raw monthly totals can never show.
+ *
+ * Two-level aggregation. The inner query reduces to one row per video with
+ * its age-bounded sums; the outer takes quantiles across the cohort. That
+ * is what makes a median possible at all — a cohort-level SUM divided by
+ * video count is a mean, and a mean on this view is hostage to one video
+ * going viral, which is exactly the noise the view exists to filter.
+ *
+ * Maturity is judged per video, not per cohort. `age_days >= N` admits a
+ * video to the "@Nd" figure only once *it* is N days old. Judging it from
+ * the cohort's start instead — a quarter spans ~90 days — lets a video
+ * published yesterday contribute a near-zero to its cohort's 30-day median,
+ * and distorts the newest cohort most, which is the one a reader most wants
+ * to judge.
+ *
+ * `quantileExact`, not `quantile`: cohorts are small, and an approximate
+ * quantile would return a different number run to run.
+ *
+ * The join is LEFT so a video with no ingested rows counts as a zero rather
+ * than vanishing — dropping it would inflate the median by silently
+ * removing the worst performers.
  */
-export async function queryCohortCurves(input: {
+export async function queryCohortMedians(input: {
   scope: DimScope;
   checkpoints?: number[];
-}): Promise<CohortRow[]> {
+  bucket?: 'month' | 'quarter';
+  /** Fixes "how old is this video"; bound so a call is reproducible. */
+  asOf?: string;
+}): Promise<CohortMedianRow[]> {
   if (!isClickHouseEnabled()) return [];
   assertDimScope(input.scope);
 
-  const checkpoints = (input.checkpoints ?? [30, 90, 180, 365]).map((c) =>
-    Math.max(1, Math.floor(c)),
-  );
+  // De-duplicated after flooring: a repeated checkpoint would emit the same
+  // SQL alias twice and ClickHouse rejects that outright, so `[30, 30]` —
+  // which the caller's schema permits — would 500. Flooring first means
+  // 30.4 and 30.9 collapse rather than colliding. Sorting keeps the
+  // generated SQL stable for a given set.
+  const checkpoints = Array.from(
+    new Set(
+      (input.checkpoints ?? [30, 90, 180, 365]).map((c) =>
+        Math.max(1, Math.floor(c)),
+      ),
+    ),
+  ).sort((a, b) => a - b);
 
   const client = getClickHouseClient();
   const { conditions, params } = buildDimConditions(input.scope);
 
-  // `< days`, not `<= days`: days 0..N-1 count toward "@Nd". This was `<=`
-  // and is shifted by one here so the codebase carries a single boundary
-  // convention — FILM-1603 adds a second age-bounded query, and two
-  // conventions differing by a day would be indistinguishable in the UI.
-  const checkpointSelects = checkpoints
+  const bucketFn =
+    input.bucket === 'month' ? 'toStartOfMonth' : 'toStartOfQuarter';
+
+  params.asOf = input.asOf ?? formatClickHouseDateTime(new Date());
+
+  // `days` is floored to an integer above, so it is safe to interpolate.
+  const perVideoSelects = checkpoints
     .map(
       (days) =>
-        `sumIf(m.views, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as views_at_${days}`,
+        `sumIf(m.views, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_${days}`,
     )
-    .join(',\n      ');
+    .join(',\n        ');
 
+  // A checkpoint whose whole window closed before its channel's ingest
+  // began is missing, not zero. Counting it as zero drags the median down,
+  // and — because such a video still satisfies `age_days >= N` — it also
+  // inflates the mature count, so the growth gate stops firing on exactly
+  // the cohorts it exists to protect. Excluded from both, and counted
+  // separately so the UI can say why a sample is thin.
+  const cohortSelects = checkpoints
+    .map((days) => {
+      const eligible = `age_days >= ${days} AND ingest_lag_days < ${days}`;
+
+      return `
+      quantileExactIf(0.5)(v_${days}, ${eligible}) as median_${days},
+      quantileExactIf(0.25)(v_${days}, ${eligible}) as p25_${days},
+      quantileExactIf(0.75)(v_${days}, ${eligible}) as p75_${days},
+      avgIf(v_${days}, ${eligible}) as mean_${days},
+      countIf(${eligible}) as mature_count_${days},
+      countIf(age_days >= ${days} AND ingest_lag_days >= ${days}) as predates_ingest_count_${days}`;
+    })
+    .join(',');
+
+  // Ingest start is a property of the CHANNEL, not the video: a video with
+  // no rows on a well-ingested channel is a real zero and must keep
+  // counting as one. One row per connection, so the join cannot multiply.
   const query = `
+    WITH dim AS (${dimSubquery(conditions)}),
+    ingest AS (
+      SELECT d.connection_id as connection_id, min(m.metric_date) as ingest_start
+      FROM dim d
+      INNER JOIN video_daily_stats m
+        ON m.video_id = d.video_id AND m.project_id = d.project_id
+      GROUP BY d.connection_id
+    )
     SELECT
-      toString(toStartOfQuarter(d.published_at)) as cohort,
-      count(DISTINCT d.video_id) as video_count,
-      ${checkpointSelects}
-    FROM (${dimSubquery(conditions)}) d
-    LEFT JOIN video_daily_stats m ON m.video_id = d.video_id
+      toString(${bucketFn}(published_at)) as cohort,
+      count() as video_count,${cohortSelects}
+    FROM (
+      SELECT
+        d.video_id as video_id,
+        d.published_at as published_at,
+        dateDiff('day', d.published_at, {asOf: DateTime}) as age_days,
+        if(
+          any(i.ingest_start) > toDate(0),
+          greatest(0, dateDiff('day', d.published_at, toDateTime(any(i.ingest_start)))),
+          toInt32(100000)
+        ) as ingest_lag_days,
+        ${perVideoSelects}
+      FROM dim d
+      LEFT JOIN video_daily_stats m
+        ON m.video_id = d.video_id AND m.project_id = d.project_id
+      LEFT JOIN ingest i ON i.connection_id = d.connection_id
+      GROUP BY video_id, published_at
+    ) per_video
     GROUP BY cohort
     ORDER BY cohort ASC
   `;
@@ -519,14 +640,23 @@ export async function queryCohortCurves(input: {
   const rows = await result.json<Record<string, unknown>>();
 
   return rows.map((row) => {
-    const viewsAtCheckpoint: Record<number, number> = {};
+    const stats: Record<number, CohortCheckpointStats> = {};
+
     for (const days of checkpoints) {
-      viewsAtCheckpoint[days] = Number(row[`views_at_${days}`] ?? 0);
+      stats[days] = {
+        medianViews: Math.round(Number(row[`median_${days}`] ?? 0)),
+        p25Views: Math.round(Number(row[`p25_${days}`] ?? 0)),
+        p75Views: Math.round(Number(row[`p75_${days}`] ?? 0)),
+        meanViews: Math.round(Number(row[`mean_${days}`] ?? 0)),
+        matureVideoCount: Number(row[`mature_count_${days}`] ?? 0),
+        predatesIngestCount: Number(row[`predates_ingest_count_${days}`] ?? 0),
+      };
     }
+
     return {
       cohort: String(row.cohort),
-      videoCount: Number(row.video_count),
-      viewsAtCheckpoint,
+      videoCount: Number(row.video_count ?? 0),
+      checkpoints: stats,
     };
   });
 }
@@ -828,9 +958,18 @@ async function queryVideoViewsAtAgeSingle(input: {
   if (!isClickHouseEnabled()) return [];
   assertDimScope(input.scope);
 
-  const checkpoints = (input.checkpoints ?? [30, 90, 180, 365]).map((c) =>
-    Math.max(1, Math.floor(c)),
-  );
+  // De-duplicated after flooring: a repeated checkpoint would emit the same
+  // SQL alias twice and ClickHouse rejects that outright, so `[30, 30]` —
+  // which the caller's schema permits — would 500. Flooring first means
+  // 30.4 and 30.9 collapse rather than colliding. Sorting keeps the
+  // generated SQL stable for a given set.
+  const checkpoints = Array.from(
+    new Set(
+      (input.checkpoints ?? [30, 90, 180, 365]).map((c) =>
+        Math.max(1, Math.floor(c)),
+      ),
+    ),
+  ).sort((a, b) => a - b);
 
   const limit = Math.min(1000, Math.max(1, Math.floor(input.limit ?? 200)));
   const offset = Math.max(0, Math.floor(input.offset ?? 0));
@@ -886,7 +1025,8 @@ async function queryVideoViewsAtAgeSingle(input: {
       toString(min(m.metric_date)) as first_metric_date,
       countIf(m.metric_date > toDate(0)) as metric_days
     FROM (${dimSubquery(dimConditions.join(' AND '))}) d
-    LEFT JOIN video_daily_stats m ON m.video_id = d.video_id
+    LEFT JOIN video_daily_stats m
+      ON m.video_id = d.video_id AND m.project_id = d.project_id
     GROUP BY
       video_id, title, published_at, connection_id,
       platform, content_type, language
