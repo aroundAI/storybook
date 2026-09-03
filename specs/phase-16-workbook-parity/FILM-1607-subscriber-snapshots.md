@@ -143,7 +143,7 @@ gets exact anchors and needs no reconstruction.
 | `apps/web/app/api/cron/subscriber-snapshot/route.ts` | `enhanceRouteHandler` with **`{ auth: false }` plus an explicit `authHeader !== \`Bearer ${process.env.CRON_SECRET}\`` check returning 401**, matching `api/cron/refresh-tokens`. `enhanceRouteHandler` defaults to `auth: true` (`packages/next/src/routes/index.ts:98`), which would make `requireUser` fail for a session-less cron caller and return a redirect — the capture would silently never run, and §1 explains why a missed day is unrecoverable. `{ auth: false }` alone would leave the endpoint anonymously callable. |
 | `apps/web/lambda/subscriber-snapshot/index.ts` | Thin EventBridge handler mirroring `apps/web/lambda/token-refresh/index.ts`: reads `API_URL` and `CRON_SECRET`, calls `GET /api/cron/subscriber-snapshot` with `Authorization: Bearer ${CRON_SECRET}`, returns the JSON result. Every `sst.aws.Cron` in this repo points `job.handler` at a file under `apps/web/lambda/`, so the Cron entry below cannot be written without it. |
 | `sst.config.ts` | `sst.aws.Cron` with `job.handler: 'apps/web/lambda/subscriber-snapshot/index.handler'`, a daily `schedule`, and the `API_URL` / `CRON_SECRET` environment — the shape of `analyticsSyncCron` (`sst.config.ts:1276`). FILM-1503 records that a route without a Cron entry never runs in deployed infra; this spec does not repeat that mistake. |
-| `apps/web/app/api/platforms/**/route.ts` | Stop writing both dead metadata levels at connect — `subscriber_count` (YouTube, two routes) and `followers_count` (Instagram, `callback/meta/route.ts:253`) — so the series in §3 is the single definition of the level. |
+| `apps/web/app/api/platforms/youtube/**/route.ts` | Stop writing `metadata.subscriber_count` at connect (two routes), so the series in §3 is the single definition of the YouTube level. **`metadata.followers_count` stays** — see §7; retiring it here would re-break the badge §7 asks to repair. |
 
 ## 6. Bounding
 
@@ -172,6 +172,13 @@ fits in one PostgREST response.
   keeps it broken for longer than fixing the field name does. Fix the name
   in its own change now; re-point it at `querySubscriberSeries` in
   FILM-1611 when there is a series to point at.
+
+  **`metadata.followers_count` therefore keeps being written at connect
+  until FILM-1611 lands.** Unlike `subscriber_count`, which has no reader at
+  all, `followers_count` is one character away from being live — retiring it
+  as part of this spec would restore the exact defect this bullet asks you
+  to fix, and leave the badge dark from that change until FILM-1611, which
+  is itself unspecified.
 - **Alerting on subscriber movement.** Revenue alerts exist (FILM-1613);
   extending that machinery is a separate decision.
 
@@ -189,7 +196,8 @@ fits in one PostgREST response.
 - [ ] `reconstructSeries` marks each returned day `snapshot` or `interpolated`
 - [ ] A day with an anchor never reports an interpolated value
 - [ ] `querySubscriberSeries` returns per-connection rows and never sums across channels
-- [ ] Neither `metadata.subscriber_count` nor `metadata.followers_count` is written as a dead field at connect
+- [ ] `metadata.subscriber_count` is no longer written at connect
+- [ ] `metadata.followers_count` is still written at connect, and the badge that reads it still resolves
 
 ## 9. Verification
 
