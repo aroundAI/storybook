@@ -51,16 +51,25 @@ The remaining workbook-parity scope is planned but **deliberately unspecified** 
 FILM-1605 traffic source breakdown · FILM-1606 segment performance ·
 ~~FILM-1607 absolute subscriber snapshots~~ (specified) · FILM-1608 YPP
 targets and settings UI · FILM-1609 revenue mix completion · FILM-1610
-experiment log and per-video notes · FILM-1611 the Video Log UI.
+experiment log and per-video notes · FILM-1611 analytics UI.
 
 This list previously ended with "wiring up the four orphaned components".
 Three are still orphaned today: `RetentionCurveChart`,
 `WeeklyDiagnosticsTable` and `YppProgressCard` are exported from
 `deep-dive/index.ts` and rendered nowhere — `deep-dive-tab.tsx` mounts only
 `MedianViewsCard`, `TrafficShareCard`, `BackCatalogCard` and
-`CohortCurvesChart`. FILM-1611 covers those three, plus the `VideoLogTable`
-component and its tab, which do not exist at all yet: FILM-1603 built the
-query and the action and deferred the UI.
+`CohortCurvesChart`. FILM-1611 has since accumulated four deliverables, so
+it is named "analytics UI" rather than after any one of them:
+
+1. wiring those three orphaned components,
+2. the `VideoLogTable` component and its tab, which do not exist at all yet
+   — FILM-1603 built the query and the action and deferred the UI,
+3. the subscriber-series card, deferred here by FILM-1607 §7,
+4. re-pointing the Publish Hub follower badge at `querySubscriberSeries`,
+   also deferred by FILM-1607 §7.
+
+Anyone sizing FILM-1611 from its name alone will undercount it, which is
+why they are listed.
 
 Three items have left this list: per-video views-at-age and the Video Log
 (FILM-1603) and cohort medians and growth (FILM-1604), both shipped; and

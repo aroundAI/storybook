@@ -64,10 +64,25 @@ to write it.
 - **One snapshot per connection per day, last write wins.** The capture is
   idempotent so a retried or double-scheduled run cannot create two
   conflicting levels for a day.
-- **Anchor plus deltas, and the anchor wins.** Where a stored snapshot and
-  a delta-derived figure disagree for the same date, the snapshot is
-  authoritative. Deltas interpolate *between* anchors; they never override
-  one.
+- **An exact anchor wins; a rounded anchor only constrains.** Where an
+  **exact** snapshot (`is_rounded = 0`) disagrees with a delta-derived
+  figure for the same date, the snapshot is authoritative and sets the
+  level outright.
+
+  A **rounded** anchor (`is_rounded = 1`) is not a point — it is the band
+  of true values that round to it. Treating it as a point is what an
+  earlier draft of this bullet said, and it destroys the feature: §4
+  establishes that YouTube rounds to three significant figures above 1,000,
+  so a 1.23M-subscriber channel returns exactly `1230000` every day for
+  weeks and then steps by 10,000. Re-levelling to that each day discards
+  the exact `subscribersGained/Lost` deltas and renders a flat staircase —
+  precisely the curve the anchor-plus-delta model exists to avoid.
+
+  The rule for a rounded anchor is therefore: if the delta-derived level
+  for that date already falls inside the band, keep the delta-derived value
+  — it is the finer measurement. Only when it falls outside does the anchor
+  bite, clamping to the nearest edge of the band, because the deltas have
+  then drifted further than the platform's own figure permits.
 - **An unavailable count is not a zero — skip the day, write no row.**
   YouTube omits `statistics.subscriberCount` entirely for a channel with
   `hiddenSubscriberCount`, and omits it for any response where `statistics`
@@ -160,8 +175,8 @@ The YouTube rounding is the reason `is_rounded` exists and the reason the
 anchor-plus-delta model is worth building rather than storing the snapshot
 alone. Between two anchors the exact `subscribersGained/Lost` series is
 available, so a daily curve can be reconstructed at full resolution and
-re-levelled whenever an anchor moves. A channel under 1,000 subscribers
-gets exact anchors and needs no reconstruction.
+corrected against each anchor under the band rule in §2. A channel under
+1,000 subscribers gets exact anchors and needs no reconstruction.
 
 ## 5. Implementation Map
 
@@ -170,13 +185,14 @@ gets exact anchors and needs no reconstruction.
 | `packages/clickhouse/src/migrations/008_channel_subscribers.ts` **and `run.ts`** | New table per §3. `run.ts` does not scan the directory — it carries a hand-maintained import list and `MIGRATIONS` array — so add `import { migration as m008 } from './008_channel_subscribers'` and append `m008`. A file added without both edits is silently never applied: `migrate` reports success and the table does not exist. Slot `008` is free. Additive; no backfill, and none is possible. |
 | `packages/clickhouse/src/queries-advanced.ts` | `querySubscriberSeries({ scope, from, to })` → one row per connection per day, `subscriberCount`, `isRounded`, and `source: 'snapshot' \| 'interpolated'`. Reads `FROM channel_subscribers FINAL` per §3. |
 | `packages/clickhouse/src/lib/subscriber-series.ts` | Pure: `reconstructSeries(anchors, deltas, range)` applies gained/lost between anchors and re-levels at each one. No I/O, so it is unit-tested without an instance — the same split as `video-age.ts` in FILM-1603. |
-| `packages/features/content-analytics/src/server/subscriber-snapshot.ts` | `captureSubscriberSnapshots()`: for each active connection **whose platform appears in §4** — `youtube`, `tiktok`, `instagram` — fetch the current count and insert one row. `platform_connections.platform` also permits `facebook`, `twitter` and `linkedin` (`schemas/32-platform-connections.sql:23`), all three created by callback routes today and none with a subscriber source; scoping the query excludes them rather than throwing on each one daily and forever, which would be indistinguishable in the logs from a real outage. A connection whose count cannot be read is skipped without writing a row, per §2. Per-connection failures are logged and skipped, never fatal to the batch. |
+| `packages/features/content-analytics/src/server/subscriber-snapshot.ts` | `captureSubscriberSnapshots()`: for each active connection **whose platform appears in §4** — `youtube`, `tiktok`, `instagram` — fetch the current count and insert one row, setting `is_rounded` from the platform per §4 — 1 for YouTube, 0 for TikTok and Instagram. `platform_connections.platform` also permits `facebook`, `twitter` and `linkedin` (`schemas/32-platform-connections.sql:23`), all three created by callback routes today and none with a subscriber source; scoping the query excludes them rather than throwing on each one daily and forever, which would be indistinguishable in the logs from a real outage. A connection whose count cannot be read is skipped without writing a row, per §2. Per-connection failures are logged and skipped, never fatal to the batch. |
 | `packages/features/content-analytics/src/providers/instagram/instagram-insights.ts` | Extract `getFollowerCount()` — the `?fields=followers_count` request at line 313 on its own. It is currently one leg of a `Promise.all` inside `getAccountInsights`, whose `impressions,reach,profile_views,website_clicks` request is checked first and throws before the follower count is read, so an account that cannot call `/insights` at all loses a snapshot it could have had. `getAccountInsights` calls the new method so the request is not duplicated. |
 | `packages/clickhouse/src/queries-advanced.ts` | `querySubscriberDeltas({ scope, from, to })` → per-connection daily `subscribers_gained`/`subscribers_lost`, feeding `reconstructSeries`. See §2 for why this cannot be `channel_daily` alone. |
 | `apps/web/app/api/cron/subscriber-snapshot/route.ts` | `enhanceRouteHandler` with **`{ auth: false }` plus an explicit `authHeader !== \`Bearer ${process.env.CRON_SECRET}\`` check returning 401**, matching `api/cron/refresh-tokens`. `enhanceRouteHandler` defaults to `auth: true` (`packages/next/src/routes/index.ts:98`), which would make `requireUser` fail for a session-less cron caller and return a redirect — the capture would silently never run, and §1 explains why a missed day is unrecoverable. `{ auth: false }` alone would leave the endpoint anonymously callable. |
 | `apps/web/lambda/subscriber-snapshot/index.ts` | Thin EventBridge handler mirroring `apps/web/lambda/token-refresh/index.ts`: reads `API_URL` and `CRON_SECRET`, calls `GET /api/cron/subscriber-snapshot` with `Authorization: Bearer ${CRON_SECRET}`, returns the JSON result. Every `sst.aws.Cron` in this repo points `job.handler` at a file under `apps/web/lambda/`, so the Cron entry below cannot be written without it. |
 | `sst.config.ts` | `sst.aws.Cron` with `job.handler: 'apps/web/lambda/subscriber-snapshot/index.handler'`, a daily `schedule`, and the `API_URL` / `CRON_SECRET` environment — the shape of `analyticsSyncCron` (`sst.config.ts:1276`). FILM-1503 records that a route without a Cron entry never runs in deployed infra; this spec does not repeat that mistake. |
-| `apps/web/app/api/platforms/youtube/**/route.ts` | Stop writing `metadata.subscriber_count` at connect (two routes), so the series in §3 is the single definition of the YouTube level. **`metadata.followers_count` stays** — see §7; retiring it here would re-break the badge §7 asks to repair. |
+| `apps/web/app/api/platforms/youtube/save-channel/route.ts:108` **and** `apps/web/app/api/platforms/callback/youtube/route.ts:230` | Stop writing `metadata.subscriber_count` at connect, so the series in §3 is the single definition of the YouTube level. Both paths are named because they do not share a parent: the callback route sits under `platforms/callback/youtube/`, not `platforms/youtube/`, and a glob written for the latter silently misses it. **`metadata.followers_count` stays** — see §7; retiring it here would re-break the badge §7 asks to repair. |
+| `packages/features/publishing/src/providers/youtube/youtube-provider.ts:170` and `types.ts:48` | Distinguish absent from zero, per §2. `parseInt(channel.statistics?.subscriberCount ?? '0', 10)` collapses a hidden or missing count into `0`; the field must become nullable (`subscriberCount: number \| null` on `YouTubeChannel`) so the capture can skip the day instead of anchoring the curve to zero forever. |
 
 ## 6. Bounding
 
@@ -229,12 +245,14 @@ fits in one PostgREST response.
 - [ ] An Instagram snapshot succeeds for an account whose `/insights` call would fail
 - [ ] `reconstructSeries` is fed deltas composed from `video_metrics` joined to `video_dim` plus `channel_daily`, not `channel_daily` alone
 - [ ] The connection list is paged, not read unbounded
-- [ ] `reconstructSeries` re-levels at every anchor and interpolates with exact deltas between them
+- [ ] `reconstructSeries` re-levels outright at an exact anchor and interpolates with exact deltas between anchors
+- [ ] A rounded anchor leaves the delta-derived level untouched when it already falls inside the rounding band, and clamps to the nearest edge only when it falls outside
+- [ ] A channel whose rounded anchor is unchanged for many consecutive days still produces a daily-varying curve, not a staircase
 - [ ] `reconstructSeries` marks each returned day `snapshot` or `interpolated`
 - [ ] A day with an anchor never reports an interpolated value
 - [ ] `querySubscriberSeries` returns per-connection rows and never sums across channels
 - [ ] `metadata.subscriber_count` is no longer written at connect
-- [ ] `metadata.followers_count` is still written at connect, and the badge that reads it still resolves
+- [ ] `metadata.followers_count` is still written at connect, unchanged by this spec
 
 ## 9. Verification
 

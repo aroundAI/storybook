@@ -545,7 +545,7 @@ See [phase-16-workbook-parity/README.md](./phase-16-workbook-parity/README.md) f
 | FILM-1612 | [postgrest-pagination](./phase-16-workbook-parity/FILM-1612-postgrest-pagination.md) | ✅ DONE | L | FILM-1602 |
 | FILM-1613 | [revenue-alert-account-scoping](./phase-16-workbook-parity/FILM-1613-revenue-alert-account-scoping.md) | ✅ DONE | S | FILM-1508, FILM-1601 |
 
-The remaining workbook-parity scope (traffic source breakdown, segment performance, YPP targets, revenue mix completion, experiment log, orphan wiring) is **not yet specified** — see the phase README.
+The remaining workbook-parity scope (FILM-1605 traffic source breakdown, FILM-1606 segment performance, FILM-1608 YPP targets, FILM-1609 revenue mix completion, FILM-1610 experiment log and per-video notes, FILM-1611 analytics UI) is **not yet specified** — see the phase README, which is authoritative for what each covers.
 
 ### Spikes (5 specs)
 
