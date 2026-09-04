@@ -70,7 +70,7 @@ to write it.
   level outright.
 
   A **rounded** anchor (`rounding_step > 0`) is not a point — it is the
-  band `[count - step/2, count + step/2)` of true values that round to it. Treating it as a point is what an
+  band of true values that round to it (see below for its bounds). Treating it as a point is what an
   earlier draft of this bullet said, and it destroys the feature: §4
   establishes that YouTube rounds to three significant figures above 1,000,
   so a 1.23M-subscriber channel returns exactly `1230000` every day for
@@ -83,6 +83,23 @@ to write it.
   — it is the finer measurement. Only when it falls outside does the anchor
   bite, clamping to the nearest edge of the band, because the deltas have
   then drifted further than the platform's own figure permits.
+
+  **A clamp re-bases the forward walk.** Day D+1 continues from the clamped
+  value, not from the unclamped running total. Otherwise a channel whose
+  deltas have drifted past the band clamps again on every subsequent day,
+  the drift is never absorbed, and the output is a sawtooth — which would
+  fail the "daily-varying curve" criterion by a different route than the
+  staircase this rule was written to prevent.
+
+  **The band is `[count, count + step)`, not centred.** YouTube's public
+  count rounds *down* to three significant figures, so `1230000` means "at
+  least 1,230,000, less than 1,240,000" — a centred band would exclude a
+  true 1,238,000 and clamp it down to 1,235,000, injecting a 3,000-
+  subscriber error on a day the anchor actually agreed. Confirm the
+  direction empirically against a known channel before implementing; if a
+  platform is found to round to nearest, its band is
+  `[count - step/2, count + step/2)` and the derivation belongs beside
+  `rounding_step` at capture, not in the reader.
 - **An unavailable count is not a zero — skip the day, write no row.**
   Because the rule above makes an anchor authoritative, a spurious `0` does
   not merely add one bad point: it re-levels the whole reconstructed curve
@@ -116,8 +133,15 @@ to write it.
   the phase README's composition rule, the delta series is
   `Σ video_metrics + channel_daily`, UNIONed and never joined per video.
   `video_metrics` has no `connection_id` — migration `007` put it on
-  `video_dim` — so the per-connection figure needs `video_metrics` joined
-  to `video_dim FINAL`, UNIONed with `channel_daily FINAL`.
+  `video_dim` — so the per-connection figure needs `video_metrics FINAL`
+  joined to `video_dim FINAL`, UNIONed with `channel_daily FINAL`. **All
+  three carry `FINAL`, `video_metrics` included.** It is
+  `ReplacingMergeTree(inserted_at)` (`002_metrics_v2.ts:41`) and the hourly
+  sync re-ingests the same `(video_id, metric_date)`, so an unmerged part
+  duplicates the row and `sum(subscribers_gained)` double-counts. The
+  resulting drift is upward and lands *between* anchors — the one region
+  the reconstruction exists to fill. §3 already cites `video_metrics FINAL`
+  in the `video_daily_stats` view as the precedent for exactly this.
 - **The snapshot date is the UTC date of the run.** No platform returns a
   reporting date alongside a current follower count — §4's three sources
   are all undated present-tense values — so there is no reporting date to
@@ -141,7 +165,7 @@ CREATE TABLE IF NOT EXISTS channel_subscribers (
   snapshot_date Date,
   subscriber_count UInt64,
   rounding_step UInt32,        -- 0 when exact; otherwise the platform's granularity
-  inserted_at DateTime DEFAULT now()
+  inserted_at DateTime64(3) DEFAULT now64(3)
 )
 ENGINE = ReplacingMergeTree(inserted_at)
 PARTITION BY toYYYYMM(snapshot_date)
@@ -159,6 +183,15 @@ package already compensates the same way — `video_reach_daily FINAL`
 `video_metrics FINAL` in the `video_daily_stats` view — and
 `querySubscriberAnchors` must do likewise.
 
+`inserted_at` is `DateTime64(3)`, unlike the second-resolution `DateTime`
+on the tables above, because here it is the `ReplacingMergeTree` version
+and §2 promises "last write wins". Two inserts for the same
+`(connection_id, snapshot_date)` inside one second would carry equal
+versions, and ClickHouse's choice of survivor between equal versions is
+undefined — so at second resolution that promise is not actually kept, and
+the acceptance criterion below ("collapses to one row") would pass either
+way without testing it.
+
 `rounding_step` is a granularity, not a boolean, and it is stored rather
 than inferred. An earlier draft stored `is_rounded UInt8`, which is enough
 to *label* a number approximate but not enough to *use* it: §2's band rule
@@ -168,8 +201,8 @@ magnitude — so two implementers reading identical rows produce different
 curves, disagreeing on whether `1230000` admits ±500 or ±5,000.
 
 Storing the step fixes the band arithmetic in one place, at capture, where
-the platform and the magnitude are both known: the band is
-`[count - step/2, count + step/2)`, and `step = 0` means exact. It also
+the platform and the magnitude are both known; the band bounds follow from
+it per §2, and `step = 0` means exact. It also
 subsumes the boolean — `rounding_step > 0` is `is_rounded` — so there is
 one column and one definition rather than two that can disagree.
 
@@ -203,23 +236,25 @@ corrected against each anchor under the band rule in §2. A channel under
 |------|--------|
 | `packages/clickhouse/src/migrations/008_channel_subscribers.ts` **and `run.ts`** | New table per §3. `run.ts` does not scan the directory — it carries a hand-maintained import list and `MIGRATIONS` array — so add `import { migration as m008 } from './008_channel_subscribers'` and append `m008`. A file added without both edits is silently never applied: `migrate` reports success and the table does not exist. Slot `008` is free. Additive; no backfill, and none is possible. |
 | `packages/clickhouse/src/queries-advanced.ts` | `querySubscriberAnchors({ connectionIds, from, to })` → the stored rows: one per connection per day, `subscriberCount`, `roundingStep`. Reads `FROM channel_subscribers FINAL` per §3. **Not a `DimScope`**: `assertDimScope` (`queries-advanced.ts:118`) requires `projectId` or `accountId` and `buildDimConditions` emits `project_id`/`account_id` predicates, but `channel_subscribers` has only `connection_id`. Passing a scope would either throw or, worse, filter on nothing and return every tenant's rows. The repo's precedent for a connection-keyed table is `queryChannelWatchWindow` (`:714`), which takes `connectionIds: string[]` resolved in Postgres; follow it. |
-| `packages/clickhouse/src/lib/subscriber-series.ts` | Pure: `reconstructSeries(anchors, deltas, range)` applies gained/lost between anchors and corrects against each one under §2's band rule. Each returned day carries `source`, which needs **four** states, not two: `snapshot` (an exact anchor set it), `interpolated` (no anchor; deltas alone), `constrained` (a rounded anchor existed and the delta-derived value already sat inside its band, so the deltas stand), and `clamped` (a rounded anchor existed and the value was pinned to the nearer band edge). A two-state enum cannot describe a band-satisfied day without either misreporting it as the snapshot's value or denying an anchor was present. No I/O, so it is unit-tested without an instance — the same split as `video-age.ts` in FILM-1603. |
-| `packages/features/content-analytics/src/server/subscriber-snapshot.ts` | `captureSubscriberSnapshots()`: for each active connection **whose platform appears in §4** — `youtube`, `tiktok`, `instagram` — fetch the current count and insert one row, setting `rounding_step` at capture: `0` for TikTok and Instagram, `0` for a YouTube channel under 1,000 (§4 — the API is exact below that), and otherwise YouTube's three-significant-figure granularity for the returned magnitude (`1,000` at six digits, `10,000` at seven, and so on). `platform_connections.platform` also permits `facebook`, `twitter` and `linkedin` (`schemas/32-platform-connections.sql:23`), all three created by callback routes today and none with a subscriber source; scoping the query excludes them rather than throwing on each one daily and forever, which would be indistinguishable in the logs from a real outage. A connection whose count cannot be read is skipped without writing a row, per §2. Per-connection failures are logged and skipped, never fatal to the batch. Tokens come from `access_token_encrypted` via the same decrypt path the analytics sync uses; a connection whose token has expired is refreshed if `refresh-tokens` has not already done so, and skipped if refresh fails — an expired token must not become an indefinite silent gap. **The batch returns its attempted and written counts, and a run that writes zero rows, or materially fewer than the active-connection count, is an alert rather than a log line** — see §2's note on permanence and the failure modes in §7. |
+| `packages/clickhouse/src/lib/subscriber-series.ts` | Pure: `reconstructSeries(anchors, deltas, range)` applies gained/lost between anchors and corrects against each one under §2's band rule. Each returned day carries `source`, which needs **four** states, not two: `snapshot` (an exact anchor set it), `interpolated` (no anchor; deltas alone), `constrained` (a rounded anchor existed and the delta-derived value already sat inside its band, so the deltas stand), and `clamped` (a rounded anchor existed and the value was pinned to the nearer band edge). A two-state enum cannot describe a band-satisfied day without either misreporting it as the snapshot's value or denying an anchor was present. **Days in `range` that precede the first anchor are omitted from the result, not returned as `interpolated`** — deltas alone give an offset, never a level (§1), so there is no value to report. This is the common case immediately after cutover: a "last 90 days" request a week in has 83 such days. No I/O, so it is unit-tested without an instance — the same split as `video-age.ts` in FILM-1603. |
+| `packages/features/content-analytics/src/server/subscriber-snapshot.ts` | `captureSubscriberSnapshots()`: for each active connection **whose platform appears in §4** — `youtube`, `tiktok`, `instagram` — fetch the current count and insert one row, setting `rounding_step` at capture: `0` for TikTok and Instagram, and, for YouTube, the three-significant-figure granularity of the returned magnitude — stated in full rather than by example, since §3 exists so no one has to rederive it: `0` under 1,000 (the API is exact there, §4), `10` for 1,000–9,999, `100` for 10,000–99,999, `1,000` for 100,000–999,999, `10,000` for 1,000,000–9,999,999, and ×10 per decade above. `platform_connections.platform` also permits `facebook`, `twitter` and `linkedin` (`schemas/32-platform-connections.sql:23`), all three created by callback routes today and none with a subscriber source; scoping the query excludes them rather than throwing on each one daily and forever, which would be indistinguishable in the logs from a real outage. A connection whose count cannot be read is skipped without writing a row, per §2. Per-connection failures are logged and skipped, never fatal to the batch. Tokens come from `access_token_encrypted` via the same decrypt path the analytics sync uses, and Instagram additionally needs `platform_connections.platform_account_id` — `createInstagramInsightsProvider(accessToken, instagramAccountId)` takes both, and the id is what `callback/meta/route.ts:241` stores; a connection whose token has expired is refreshed if `refresh-tokens` has not already done so, and skipped if refresh fails — an expired token must not become an indefinite silent gap. **The batch returns its attempted and written counts, and a run that writes zero rows, or materially fewer than the active-connection count, is an alert rather than a log line** — see §2's note on permanence and the failure modes in §7. |
 | `packages/features/content-analytics/src/providers/instagram/instagram-insights.ts` | Extract `getFollowerCount()` — the `?fields=followers_count` request at line 313 on its own. It is currently one leg of a `Promise.all` inside `getAccountInsights`, whose `impressions,reach,profile_views,website_clicks` request is checked first and throws before the follower count is read, so an account that cannot call `/insights` at all loses a snapshot it could have had. `getAccountInsights` calls the new method so the request is not duplicated. |
 | `packages/clickhouse/src/queries-advanced.ts` | `querySubscriberDeltas({ connectionIds, from, to })` → per-connection daily `subscribers_gained`/`subscribers_lost`. See §2 for why this cannot be `channel_daily` alone. Also `connectionIds`, not a scope, and for a sharper reason: its `video_metrics × video_dim` leg *could* be account-scoped while its `channel_daily` leg cannot, so a `DimScope` would silently scope one side of the UNION and not the other. |
-| `packages/features/content-analytics/src/server/subscriber-series-actions.ts` | `getSubscriberSeriesAction({ accountSlug, from, to })`: resolves the account's connection ids in Postgres, calls `querySubscriberAnchors` and `querySubscriberDeltas` with them, and composes both through `reconstructSeries` into the filled daily series. **This is the only thing that returns a complete curve** — the two queries return raw anchors and raw deltas, and `reconstructSeries` is pure. Without this row nothing in the map joins the three, and FILM-1611 would go looking for a filled series and find none. |
+| `packages/features/content-analytics/src/server/subscriber-series-actions.ts` | `getSubscriberSeriesAction({ accountSlug, from, to })`: **`await assertScopeAccess(scope)` first**, exactly as `deep-dive-actions.ts` does before every query (`:61`, `:91`, `:121`, `:147`), then resolve the account's connection ids in Postgres, call `querySubscriberAnchors` and `querySubscriberDeltas` with them, and compose both through `reconstructSeries` into the filled daily series. The guard is not optional here: the two queries take `connectionIds` and carry no tenant predicate of their own — as this map says two rows above, they would otherwise "return every tenant's rows" — so this action is the only thing standing between a caller-supplied slug and another account's subscriber curve. FILM-1613 already shipped in this phase for that bug class. **This is the only thing that returns a complete curve** — the two queries return raw anchors and raw deltas, and `reconstructSeries` is pure. Without this row nothing in the map joins the three, and FILM-1611 would go looking for a filled series and find none. |
 | `apps/web/app/api/cron/subscriber-snapshot/route.ts` | `enhanceRouteHandler` with **`{ auth: false }` plus an explicit `authHeader !== \`Bearer ${process.env.CRON_SECRET}\`` check returning 401**, matching `api/cron/refresh-tokens`. `enhanceRouteHandler` defaults to `auth: true` (`packages/next/src/routes/index.ts:98`), which would make `requireUser` fail for a session-less cron caller and return a redirect — the capture would silently never run, and §1 explains why a missed day is unrecoverable. `{ auth: false }` alone would leave the endpoint anonymously callable. |
 | `apps/web/lambda/subscriber-snapshot/index.ts` | Thin EventBridge handler mirroring `apps/web/lambda/token-refresh/index.ts`: reads `API_URL` and `CRON_SECRET`, calls `GET /api/cron/subscriber-snapshot` with `Authorization: Bearer ${CRON_SECRET}`, returns the JSON result. Every `sst.aws.Cron` in this repo points `job.handler` at a file under `apps/web/lambda/`, so the Cron entry below cannot be written without it. |
 | `sst.config.ts` | `sst.aws.Cron` with `job.handler: 'apps/web/lambda/subscriber-snapshot/index.handler'` and the `API_URL` / `CRON_SECRET` environment — the shape of `analyticsSyncCron` (`sst.config.ts:1276`). **`schedule: 'cron(0 2 * * ? *)'`, not `rate(1 day)`.** Every existing cron in this file uses `rate(…)`, which fires relative to deploy time and shifts on every redeploy; a copied `rate(1 day)` can settle minutes from midnight UTC and reintroduce the split §2 sets 02:00 to avoid. FILM-1503 records that a route without a Cron entry never runs in deployed infra; this spec does not repeat that mistake. |
 | `apps/web/app/api/platforms/youtube/save-channel/route.ts:108` **and** `apps/web/app/api/platforms/callback/youtube/route.ts:230` | Stop writing `metadata.subscriber_count` at connect, so the series in §3 is the single definition of the YouTube level. Both paths are named because they do not share a parent: the callback route sits under `platforms/callback/youtube/`, not `platforms/youtube/`, and a glob written for the latter silently misses it. **`metadata.followers_count` stays** — see §7; retiring it here would re-break the badge §7 asks to repair. |
 | `packages/features/publishing/src/providers/youtube/youtube-provider.ts:170` and `types.ts:48` | Distinguish absent from zero, per §2. `parseInt(channel.statistics?.subscriberCount ?? '0', 10)` collapses a hidden or missing count into `0`; the field must become nullable (`subscriberCount: number \| null` on `YouTubeChannel`) so the capture can skip the day instead of anchoring the curve to zero forever. |
-| `packages/features/content-analytics/src/providers/tiktok/tiktok-analytics.ts:254` and `.../instagram/instagram-insights.ts:359` | The same `?? 0` collapse, and per §2 the more dangerous one, since these anchors are stored exact. Both must return `null` for an absent count. Existing callers that want a number keep their own `?? 0` at the call site, where a zero is a display default rather than an authoritative anchor. |
+| `packages/features/content-analytics/src/providers/tiktok/tiktok-analytics.ts:254` and `types.ts:116`; `.../instagram/instagram-insights.ts:359` and `types.ts:98` | The same `?? 0` collapse, and per §2 the more dangerous one, since these anchors are stored exact. Both must return `null` for an absent count, which means widening `TikTokAccountAnalytics.followers` and `InstagramAccountInsights.followerCount` from `number` — changing only the two `?? 0` expressions fails `pnpm typecheck`, and existing tests assert the numeric contract (`instagram-insights.test.ts:253`, `:270`). Callers that want a number keep their own `?? 0` at the call site, where a zero is a display default rather than an authoritative anchor. |
 
 ## 6. Bounding
 
 One row per connection per day: an account with 20 channels and three years
 of history reaches ~22,000 rows, which is nothing. The read is bounded by
-`from`/`to` and by scope; no pagination is required.
+`from`/`to` and by `connectionIds`; no pagination is required. Not "by
+scope" — §5 establishes that neither query takes a `DimScope` and that
+passing one would throw or filter on nothing.
 
 The capture loop is bounded by the connection count, and each connection
 costs a single API call — well inside every quota in play. It must page the
@@ -268,12 +303,14 @@ fits in one PostgREST response.
 - [ ] A YouTube channel with a hidden subscriber count is skipped, not recorded as `0`
 - [ ] Connections on platforms with no §4 source (`facebook`, `twitter`, `linkedin`) are excluded by the query, not attempted and failed
 - [ ] An Instagram snapshot succeeds for an account whose `/insights` call would fail
-- [ ] `reconstructSeries` is fed deltas composed from `video_metrics` joined to `video_dim` plus `channel_daily`, not `channel_daily` alone
+- [ ] `reconstructSeries` is fed deltas composed from `video_metrics FINAL` joined to `video_dim FINAL` plus `channel_daily FINAL`, not `channel_daily` alone, and every leg carries `FINAL`
 - [ ] The connection list is paged, not read unbounded
 - [ ] `reconstructSeries` re-levels outright at an exact anchor and interpolates with exact deltas between anchors
 - [ ] A rounded anchor leaves the delta-derived level untouched when it already falls inside the rounding band, and clamps to the nearest edge only when it falls outside
 - [ ] A channel whose rounded anchor is unchanged for many consecutive days still produces a daily-varying curve, not a staircase
-- [ ] `reconstructSeries` marks each returned day `snapshot` or `interpolated`
+- [ ] A clamped day re-bases the forward walk, so sustained drift is absorbed once rather than clamping every subsequent day into a sawtooth
+- [ ] Days preceding the first anchor are omitted from the result, not returned as `interpolated`
+- [ ] `getSubscriberSeriesAction` calls `assertScopeAccess` before any query, and a caller passing another account's slug is refused
 - [ ] A day with an exact anchor reports `snapshot`; a day with a rounded anchor reports `constrained` or `clamped`, never `interpolated`
 - [ ] `querySubscriberAnchors` returns per-connection rows and never sums across channels
 - [ ] `metadata.subscriber_count` is no longer written at connect
