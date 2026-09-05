@@ -11,8 +11,20 @@ export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
 
-  // In production, verify the secret
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  // Fail closed. The previous `if (cronSecret && …)` skipped the check
+  // entirely when the variable was unset, so any environment without a
+  // CRON_SECRET served OAuth token refresh for every connection to
+  // anonymous callers. Production does set it, but staging and preview
+  // deployments are not guaranteed to.
+  if (!cronSecret) {
+    console.error('[Cron] CRON_SECRET not configured');
+    return NextResponse.json(
+      { error: 'Server configuration error' },
+      { status: 500 },
+    );
+  }
+
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

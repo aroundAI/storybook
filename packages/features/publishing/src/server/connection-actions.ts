@@ -86,7 +86,7 @@ export const getConnectionsAction = enhanceAction(
           avatarUrl: profileImageUrl, // Alias for avatarUrl
           followerCount:
             conn.metadata && typeof conn.metadata === 'object'
-              ? ((conn.metadata as Record<string, unknown>).follower_count as
+              ? ((conn.metadata as Record<string, unknown>).followers_count as
                   | number
                   | undefined)
               : 0,
@@ -317,7 +317,7 @@ export const getConnectedPlatformsAction = enhanceAction(
         isActive: conn.is_active ?? true,
         tokenValid: conn.is_active && isTokenValid(conn.token_expires_at),
         tokenExpiresAt: conn.token_expires_at ?? null,
-        followerCount: (metadata?.follower_count as number) ?? null,
+        followerCount: (metadata?.followers_count as number) ?? null,
         scopes: conn.scopes ?? null,
         language: connWithMetadata.language ?? 'en', // Target language for this channel
         // Unified fields for Settings Page compatibility
