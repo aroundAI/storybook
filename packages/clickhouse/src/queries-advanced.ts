@@ -1073,3 +1073,203 @@ async function queryVideoViewsAtAgeSingle(input: {
     };
   });
 }
+
+/**
+ * Stored subscriber anchors for a set of channels (FILM-1607).
+ *
+ * `connectionIds`, not a `DimScope`: `channel_subscribers` has only
+ * `connection_id`, so `buildDimConditions`' `project_id`/`account_id`
+ * predicates have nothing to bind to and `assertDimScope` would reject or —
+ * worse — the query would filter on nothing and return every tenant's rows.
+ * `queryChannelWatchWindow` above is the precedent; ids are resolved in
+ * Postgres by the caller, which is also where the tenant check lives.
+ *
+ * `from` is expected to already reach back to the latest anchor at or before
+ * the caller's window, so a window opening inside a capture gap can still be
+ * levelled. `reconstructSeries` needs that anchor to exist in this result.
+ */
+export async function querySubscriberAnchors(input: {
+  connectionIds: string[];
+  from: string;
+  to: string;
+}): Promise<
+  Array<{
+    connectionId: string;
+    snapshotDate: string;
+    subscriberCount: number;
+    roundingStep: number;
+  }>
+> {
+  if (input.connectionIds.length === 0 || !isClickHouseEnabled()) {
+    return [];
+  }
+
+  const client = getClickHouseClient();
+
+  const result = await client.query({
+    query: `
+      SELECT
+        toString(connection_id)   as connection_id,
+        toString(snapshot_date)   as snapshot_date,
+        subscriber_count,
+        rounding_step
+      FROM (
+        SELECT * FROM channel_subscribers FINAL
+        WHERE connection_id IN {connectionIds: Array(String)}
+          AND snapshot_date >= {from: Date}
+          AND snapshot_date <= {to: Date}
+      )
+      ORDER BY connection_id, snapshot_date
+    `,
+    query_params: {
+      connectionIds: input.connectionIds,
+      from: input.from,
+      to: input.to,
+    },
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<{
+    connection_id: string;
+    snapshot_date: string;
+    subscriber_count: number;
+    rounding_step: number;
+  }>();
+
+  return rows.map((row) => ({
+    connectionId: row.connection_id,
+    snapshotDate: row.snapshot_date,
+    subscriberCount: Number(row.subscriber_count),
+    roundingStep: Number(row.rounding_step),
+  }));
+}
+
+/**
+ * Per-connection daily subscriber movement (FILM-1607).
+ *
+ * The composed channel total, not `channel_daily` alone. `channel_daily` is
+ * the residual of videos that failed to match a publish, so on its own it
+ * sees only the unmatched slice — and the error is invisible, because anchors
+ * re-level the curve at each snapshot and it looks right everywhere except
+ * between them, which is the only region the reconstruction exists to fill.
+ *
+ * Every leg carries FINAL, `video_metrics` included: it is a
+ * ReplacingMergeTree and the hourly sync re-ingests the same
+ * (video_id, metric_date), so an unmerged part would double-count.
+ *
+ * Each leg nets to Int64 before the UNION. `video_metrics.subscribers_gained`
+ * is Int32 and `channel_daily`'s is UInt32, so summing the gross columns
+ * yields Int64 against UInt64 — a pair ClickHouse has no least supertype for,
+ * which fails the whole query with NO_COMMON_TYPE rather than degrading.
+ */
+export async function querySubscriberDeltas(input: {
+  connectionIds: string[];
+  from: string;
+  to: string;
+}): Promise<
+  Array<{ connectionId: string; metricDate: string; net: number }>
+> {
+  if (input.connectionIds.length === 0 || !isClickHouseEnabled()) {
+    return [];
+  }
+
+  const client = getClickHouseClient();
+
+  const result = await client.query({
+    query: `
+      SELECT
+        connection_id,
+        metric_date,
+        sum(net) as net
+      FROM (
+        SELECT
+          toString(connection_id) as connection_id,
+          toString(metric_date)   as metric_date,
+          toInt64(sum(gained) - sum(lost)) as net
+        FROM (
+          SELECT
+            d.connection_id      as connection_id,
+            m.metric_date        as metric_date,
+            m.subscribers_gained as gained,
+            m.subscribers_lost   as lost
+          FROM video_metrics AS m FINAL
+          INNER JOIN (
+            SELECT video_id, connection_id FROM video_dim FINAL
+          ) AS d ON d.video_id = m.video_id
+          WHERE d.connection_id IN {connectionIds: Array(String)}
+            AND m.metric_date >= {from: Date}
+            AND m.metric_date <= {to: Date}
+        )
+        GROUP BY connection_id, metric_date
+
+        UNION ALL
+
+        SELECT
+          toString(connection_id) as connection_id,
+          toString(metric_date)   as metric_date,
+          toInt64(sum(gained) - sum(lost)) as net
+        FROM (
+          SELECT
+            connection_id,
+            metric_date,
+            subscribers_gained as gained,
+            subscribers_lost   as lost
+          FROM channel_daily FINAL
+          WHERE connection_id IN {connectionIds: Array(String)}
+            AND metric_date >= {from: Date}
+            AND metric_date <= {to: Date}
+        )
+        GROUP BY connection_id, metric_date
+      )
+      GROUP BY connection_id, metric_date
+      ORDER BY connection_id, metric_date
+    `,
+    query_params: {
+      connectionIds: input.connectionIds,
+      from: input.from,
+      to: input.to,
+    },
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<{
+    connection_id: string;
+    metric_date: string;
+    net: number;
+  }>();
+
+  return rows.map((row) => ({
+    connectionId: row.connection_id,
+    metricDate: row.metric_date,
+    net: Number(row.net),
+  }));
+}
+
+/**
+ * One subscriber anchor. Idempotent per (connection_id, snapshot_date) via
+ * ReplacingMergeTree, whose version is the millisecond-resolution
+ * `inserted_at` — see migration 008 for why second resolution is not enough.
+ */
+export async function insertSubscriberSnapshot(row: {
+  connectionId: string;
+  snapshotDate: string;
+  subscriberCount: number;
+  roundingStep: number;
+}): Promise<void> {
+  if (!isClickHouseEnabled()) return;
+
+  const client = getClickHouseClient();
+
+  await client.insert({
+    table: 'channel_subscribers',
+    values: [
+      {
+        connection_id: row.connectionId,
+        snapshot_date: row.snapshotDate,
+        subscriber_count: row.subscriberCount,
+        rounding_step: row.roundingStep,
+      },
+    ],
+    format: 'JSONEachRow',
+  });
+}

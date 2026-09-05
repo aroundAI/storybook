@@ -80,11 +80,19 @@ Three items have left this list: per-video views-at-age and the Video Log
 absolute subscriber snapshots (FILM-1607), now specified and awaiting
 implementation.
 
-**Take FILM-1607 before the FILM-1503 cutover.** Every other item computes
-from data already being collected, so building it later costs only time.
-Subscriber history can be obtained from no API on any platform — the series
-begins the day snapshots first run, and every day before that is
-permanently absent.
+**Take FILM-1607 before the FILM-1503 cutover.** No API returns a
+historical absolute count, but that does not make earlier days
+unrecoverable: one anchor plus the exact net series levels the past as
+readily as the future, so the first snapshot retroactively levels every day
+for which a delta exists. What bounds recovery is delta collection —
+nothing is written while `CLICKHOUSE_ENABLED=false`, and the FILM-1503
+backfill carries no subscriber columns — so days before the cutover are
+permanently absent and days after it are reconstructible.
+
+Shipping first is therefore still the right sequencing, because it makes
+the reconstructible window empty rather than merely recoverable; but
+shipping late is a degradation, not a permanent loss. See FILM-1607 §1,
+which an earlier version of this paragraph contradicted.
 
 ## Known limits — do not promise these
 

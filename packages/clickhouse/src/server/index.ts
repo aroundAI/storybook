@@ -73,6 +73,20 @@ export {
 } from '../lib/video-age';
 
 export {
+  insertSubscriberSnapshot,
+  querySubscriberAnchors,
+  querySubscriberDeltas,
+} from '../queries-advanced';
+
+export { reconstructSeries } from '../lib/subscriber-series';
+export type {
+  SubscriberAnchor,
+  SubscriberDelta,
+  SubscriberPoint,
+  SubscriberSource,
+} from '../lib/subscriber-series';
+
+export {
   MIN_MATURE_VIDEOS,
   computeCheckpointGrowth,
   computeCohortGrowth,
