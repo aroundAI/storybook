@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1607
 title: Absolute Subscriber Snapshots
-status: Draft
+status: 🔍 IN REVIEW
 effort: M
 dependencies: FILM-1602, FILM-1612
 ---
@@ -388,44 +388,44 @@ fits in one PostgREST response.
 
 ## 8. Acceptance Criteria
 
-- [ ] `channel_subscribers` is created by a migration, registered in `run.ts`'s `MIGRATIONS` array, and applied cleanly from scratch
-- [ ] A second capture on the same day collapses to one row when read with `FINAL`
-- [ ] `querySubscriberAnchors` reads `FROM channel_subscribers FINAL`
-- [ ] The cron route returns 401 without a valid `Bearer ${CRON_SECRET}` header, and succeeds with one
-- [ ] `apps/web/lambda/subscriber-snapshot/index.ts` exists and the `sst.aws.Cron` entry resolves to its handler
-- [ ] `rounding_step` is 0 for TikTok, Instagram, and YouTube channels under 1,000, and the three-significant-figure granularity for larger YouTube channels
-- [ ] A TikTok or Instagram response with the follower field absent is skipped, not written as an exact `0` anchor
-- [ ] The cron schedule is a fixed `cron(0 2 * * ? *)`, not a drifting `rate()`
-- [ ] A run raises an alert when `attempted − skipped_by_design − written` is non-zero, and stays silent for an account whose only shortfall is a platform outside §4 or a permanently hidden-count channel
-- [ ] A connection with an expired token is refreshed or skipped, and never silently omitted on every subsequent run
-- [ ] `captureSubscriberSnapshots` skips a failing connection and still records the others
-- [ ] A YouTube channel with a hidden subscriber count is skipped, not recorded as `0`
-- [ ] Each connection's snapshot is fetched by its own `platform_account_id`; two channels on one Google account get two different counts, not `items[0]`'s twice
-- [ ] A window opening inside a capture gap still renders its early days, using the latest anchor at or before `from` **and** the deltas strictly after that anchor's date — `net(A+1 … from)`, exclusive of `A`, whose own movement the anchor already embodies under `level(D) = level(D-1) + net(D)`
-- [ ] A hidden-count channel increments `skipped_by_design` and stays silent; a missing `statistics` block, 5xx or revoked scope does not, and alerts
-- [ ] `reconstructSeries` is called once per connection, never handed multi-connection rows
-- [ ] `querySubscriberDeltas` nets and casts within each UNION leg, so the query runs rather than failing `NO_COMMON_TYPE`
-- [ ] `reconstructSeries` applies `net(D)` to day `D`, not to `D-1`
-- [ ] Connections on platforms with no §4 source (`facebook`, `twitter`, `linkedin`) are excluded by the query, not attempted and failed
-- [ ] An Instagram snapshot succeeds for an account whose `/insights` call would fail
-- [ ] `reconstructSeries` is fed deltas composed from `video_metrics FINAL` joined to `video_dim FINAL` plus `channel_daily FINAL`, not `channel_daily` alone, and every leg carries `FINAL`
-- [ ] The connection list is paged, not read unbounded
-- [ ] `reconstructSeries` re-levels outright at an exact anchor and interpolates with exact deltas between anchors
-- [ ] A rounded anchor leaves the delta-derived level untouched when it already falls inside the rounding band, and clamps to the nearest edge only when it falls outside
-- [ ] A channel whose rounded anchor is unchanged for many consecutive days still produces a daily-varying curve, not a staircase
-- [ ] A clamped day re-bases the forward walk, so sustained drift is absorbed once rather than clamping every subsequent day into a sawtooth
-- [ ] An upward clamp lands on the largest value the band admits — one below its exclusive upper bound — never on the bound itself, whichever rounding direction §2 settles on
-- [ ] A series whose first anchor is rounded seeds at `count` and reports that day `clamped`
-- [ ] `getSubscriberSeriesAction` takes an `accountId` uuid scope, not a slug, and passes it to `assertScopeAccess` unchanged
-- [ ] The action returns one series per connection and never sums across channels
-- [ ] The shortfall alert is measured against eligible-and-attempted connections, and does not fire while `CLICKHOUSE_ENABLED` is false
-- [ ] Days preceding the first anchor are reconstructed backwards wherever a delta exists, and only pre-delta days are omitted
-- [ ] The rounded-seed level bias is disclosed wherever the number is shown, not just the calendar and fast-growth caveats
-- [ ] `getSubscriberSeriesAction` calls `assertScopeAccess` before any query, and a caller passing another account's slug is refused
-- [ ] A day with an exact anchor reports `snapshot`; a day with a rounded anchor reports `constrained` or `clamped`, never `interpolated`
-- [ ] `querySubscriberAnchors` returns per-connection rows and never sums across channels
-- [ ] `metadata.subscriber_count` is no longer written at connect
-- [ ] `metadata.followers_count` is still written at connect, unchanged by this spec
+- [x] `channel_subscribers` is created by a migration, registered in `run.ts`'s `MIGRATIONS` array, and applied cleanly from scratch
+- [x] A second capture on the same day collapses to one row when read with `FINAL`
+- [x] `querySubscriberAnchors` reads `FROM channel_subscribers FINAL`
+- [x] The cron route returns 401 without a valid `Bearer ${CRON_SECRET}` header, and succeeds with one
+- [x] `apps/web/lambda/subscriber-snapshot/index.ts` exists and the `sst.aws.Cron` entry resolves to its handler
+- [x] `rounding_step` is 0 for TikTok, Instagram, and YouTube channels under 1,000, and the three-significant-figure granularity for larger YouTube channels
+- [x] A TikTok or Instagram response with the follower field absent is skipped, not written as an exact `0` anchor
+- [x] The cron schedule is a fixed `cron(0 2 * * ? *)`, not a drifting `rate()`
+- [x] A run raises an alert when `attempted − skipped_by_design − written` is non-zero, and stays silent for an account whose only shortfall is a platform outside §4 or a permanently hidden-count channel
+- [x] A connection with an expired token is refreshed or skipped, and never silently omitted on every subsequent run
+- [x] `captureSubscriberSnapshots` skips a failing connection and still records the others
+- [x] A YouTube channel with a hidden subscriber count is skipped, not recorded as `0`
+- [x] Each connection's snapshot is fetched by its own `platform_account_id`; two channels on one Google account get two different counts, not `items[0]`'s twice
+- [x] A window opening inside a capture gap still renders its early days, using the latest anchor at or before `from` **and** the deltas strictly after that anchor's date — `net(A+1 … from)`, exclusive of `A`, whose own movement the anchor already embodies under `level(D) = level(D-1) + net(D)`
+- [x] A hidden-count channel increments `skipped_by_design` and stays silent; a missing `statistics` block, 5xx or revoked scope does not, and alerts
+- [x] `reconstructSeries` is called once per connection, never handed multi-connection rows
+- [x] `querySubscriberDeltas` nets and casts within each UNION leg, so the query runs rather than failing `NO_COMMON_TYPE`
+- [x] `reconstructSeries` applies `net(D)` to day `D`, not to `D-1`
+- [x] Connections on platforms with no §4 source (`facebook`, `twitter`, `linkedin`) are excluded by the query, not attempted and failed
+- [x] An Instagram snapshot succeeds for an account whose `/insights` call would fail
+- [x] `reconstructSeries` is fed deltas composed from `video_metrics FINAL` joined to `video_dim FINAL` plus `channel_daily FINAL`, not `channel_daily` alone, and every leg carries `FINAL`
+- [x] The connection list is paged, not read unbounded
+- [x] `reconstructSeries` re-levels outright at an exact anchor and interpolates with exact deltas between anchors
+- [x] A rounded anchor leaves the delta-derived level untouched when it already falls inside the rounding band, and clamps to the nearest edge only when it falls outside
+- [x] A channel whose rounded anchor is unchanged for many consecutive days still produces a daily-varying curve, not a staircase
+- [x] A clamped day re-bases the forward walk, so sustained drift is absorbed once rather than clamping every subsequent day into a sawtooth
+- [x] An upward clamp lands on the largest value the band admits — one below its exclusive upper bound — never on the bound itself, whichever rounding direction §2 settles on
+- [x] A series whose first anchor is rounded seeds at `count` and reports that day `clamped`
+- [x] `getSubscriberSeriesAction` takes an `accountId` uuid scope, not a slug, and passes it to `assertScopeAccess` unchanged
+- [x] The action returns one series per connection and never sums across channels
+- [x] The shortfall alert is measured against eligible-and-attempted connections, and does not fire while `CLICKHOUSE_ENABLED` is false
+- [x] Days preceding the first anchor are reconstructed backwards wherever a delta exists, and only pre-delta days are omitted
+- [ ] The rounded-seed level bias is disclosed wherever the number is shown, not just the calendar and fast-growth caveats — **deferred to FILM-1611**, which owns every surface that shows the number; §7 already defers presentation there
+- [x] `getSubscriberSeriesAction` calls `assertScopeAccess` before any query, and a caller passing another account's slug is refused
+- [x] A day with an exact anchor reports `snapshot`; a day with a rounded anchor reports `constrained` or `clamped`, never `interpolated`
+- [x] `querySubscriberAnchors` returns per-connection rows and never sums across channels
+- [x] `metadata.subscriber_count` is no longer written at connect
+- [x] `metadata.followers_count` is still written at connect, unchanged by this spec
 
 ## 9. Verification
 
