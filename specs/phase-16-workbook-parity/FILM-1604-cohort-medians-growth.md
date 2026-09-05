@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1604
 title: Cohort Medians & Growth
-status: 🔍 IN REVIEW
+status: ✅ DONE
 effort: M
 dependencies: FILM-1603
 ---

@@ -10,6 +10,12 @@ FILM-1601 (correctness bugs + revenue delete RLS)
      ├─→ FILM-1602 (channel dimension + per-channel YPP)
      │        │
      │        └─→ FILM-1612 (PostgREST row-cap pagination sweep)
+     │                 │
+     │                 ├─→ FILM-1603 (per-video views-at-age + Video Log)
+     │                 │        │
+     │                 │        └─→ FILM-1604 (cohort medians + growth)
+     │                 │
+     │                 └─→ FILM-1607 (absolute subscriber snapshots) — not yet built
      │
      └─→ FILM-1613 (revenue alert account scoping)
 ```
@@ -20,6 +26,8 @@ FILM-1601 (correctness bugs + revenue delete RLS)
 | FILM-1602 | PR #233, including its code-review remediation |
 | FILM-1613 | PR #234 |
 | FILM-1612 | PR #235 |
+| FILM-1603 | PR #236 |
+| FILM-1604 | PR #237 |
 
 ## Locked decisions
 
@@ -38,9 +46,45 @@ FILM-1601 (correctness bugs + revenue delete RLS)
 
 ## Not yet specified
 
-The remaining workbook-parity scope is planned but **deliberately unspecified** — no spec file exists for it yet, and it should get one before implementation:
+The remaining workbook-parity scope is planned but **deliberately unspecified** — no spec file exists for it yet, and it should get one before implementation. The backlog order below is the spec-id order:
 
-per-video views-at-age and the Video Log · cohort medians and growth · traffic source breakdown · segment performance · absolute subscriber snapshots · YPP targets and settings UI · revenue mix completion · experiment log and per-video notes · wiring up the four orphaned components.
+FILM-1605 traffic source breakdown · FILM-1606 segment performance ·
+FILM-1608 YPP targets and settings UI · FILM-1609 revenue mix completion ·
+FILM-1610 experiment log and per-video notes · FILM-1611 analytics UI.
+
+**FILM-1607 (absolute subscriber snapshots) is no longer in this list** —
+it has a spec and is awaiting implementation, so it belongs with the
+specified work below rather than struck through under a heading that says
+no spec file exists.
+
+This list previously ended with "wiring up the four orphaned components".
+Three are still orphaned today: `RetentionCurveChart`,
+`WeeklyDiagnosticsTable` and `YppProgressCard` are exported from
+`deep-dive/index.ts` and rendered nowhere — `deep-dive-tab.tsx` mounts only
+`MedianViewsCard`, `TrafficShareCard`, `BackCatalogCard` and
+`CohortCurvesChart`. FILM-1611 has since accumulated four deliverables, so
+it is named "analytics UI" rather than after any one of them:
+
+1. wiring those three orphaned components,
+2. the `VideoLogTable` component and its tab, which do not exist at all yet
+   — FILM-1603 built the query and the action and deferred the UI,
+3. the subscriber-series card, deferred here by FILM-1607 §7,
+4. re-pointing the Publish Hub follower badge at
+   `getSubscriberSeriesAction`, also deferred by FILM-1607 §7.
+
+Anyone sizing FILM-1611 from its name alone will undercount it, which is
+why they are listed.
+
+Three items have left this list: per-video views-at-age and the Video Log
+(FILM-1603) and cohort medians and growth (FILM-1604), both shipped; and
+absolute subscriber snapshots (FILM-1607), now specified and awaiting
+implementation.
+
+**Take FILM-1607 before the FILM-1503 cutover.** Every other item computes
+from data already being collected, so building it later costs only time.
+Subscriber history can be obtained from no API on any platform — the series
+begins the day snapshots first run, and every day before that is
+permanently absent.
 
 ## Known limits — do not promise these
 

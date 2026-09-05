@@ -531,7 +531,7 @@ See [phase-15-deep-analytics/README.md](./phase-15-deep-analytics/README.md) for
 
 See [phase-11-canon-integration/README.md](./phase-11-canon-integration/README.md) for full specification.
 
-### Phase 16: Workbook Parity (6 specs)
+### Phase 16: Workbook Parity (7 specs)
 
 See [phase-16-workbook-parity/README.md](./phase-16-workbook-parity/README.md) for the dependency graph, locked decisions and known limits.
 
@@ -540,11 +540,12 @@ See [phase-16-workbook-parity/README.md](./phase-16-workbook-parity/README.md) f
 | FILM-1601 | [analytics-correctness-bugs](./phase-16-workbook-parity/FILM-1601-analytics-correctness-bugs.md) | ✅ DONE | M | FILM-1506, FILM-1508 |
 | FILM-1602 | [channel-dimension-ypp](./phase-16-workbook-parity/FILM-1602-channel-dimension-ypp.md) | ✅ DONE | L | FILM-1601, FILM-1506 |
 | FILM-1603 | [views-at-age-video-log](./phase-16-workbook-parity/FILM-1603-views-at-age-video-log.md) | ✅ DONE | L | FILM-1602, FILM-1612 |
-| FILM-1604 | [cohort-medians-growth](./phase-16-workbook-parity/FILM-1604-cohort-medians-growth.md) | 🔍 IN REVIEW | M | FILM-1603 |
+| FILM-1604 | [cohort-medians-growth](./phase-16-workbook-parity/FILM-1604-cohort-medians-growth.md) | ✅ DONE | M | FILM-1603 |
+| FILM-1607 | [subscriber-snapshots](./phase-16-workbook-parity/FILM-1607-subscriber-snapshots.md) | Draft | M | FILM-1602, FILM-1612 |
 | FILM-1612 | [postgrest-pagination](./phase-16-workbook-parity/FILM-1612-postgrest-pagination.md) | ✅ DONE | L | FILM-1602 |
 | FILM-1613 | [revenue-alert-account-scoping](./phase-16-workbook-parity/FILM-1613-revenue-alert-account-scoping.md) | ✅ DONE | S | FILM-1508, FILM-1601 |
 
-The remaining workbook-parity scope (traffic source breakdown, segment performance, subscriber snapshots, YPP targets, revenue mix completion, experiment log, orphan wiring) is **not yet specified** — see the phase README.
+The remaining workbook-parity scope (FILM-1605 traffic source breakdown, FILM-1606 segment performance, FILM-1608 YPP targets, FILM-1609 revenue mix completion, FILM-1610 experiment log and per-video notes, FILM-1611 analytics UI) is **not yet specified** — see the phase README, which is authoritative for what each covers.
 
 ### Spikes (5 specs)
 
@@ -621,9 +622,9 @@ SPIKE-01 through SPIKE-05
 | 12. Scale | 2 | 0 | 0 | 0 | 0 | 2 |
 | 13. Hook Opt | 2 | 1 | 0 | 0 | 0 | 1 |
 | 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 11 |
-| 16. Workbook Parity | 6 | 0 | 1 | 0 | 0 | 5 |
+| 16. Workbook Parity | 7 | 1 | 0 | 0 | 0 | 6 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **179** | **1** | **1** | **0** | **0** | **177** |
+| **TOTAL** | **180** | **2** | **0** | **0** | **0** | **178** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
