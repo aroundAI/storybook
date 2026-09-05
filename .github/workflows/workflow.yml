@@ -352,6 +352,31 @@ jobs:
       # seeded database, and the e2e specs sign up users and create teams in
       # it. Running them in this order keeps pgTAP's fixtures the only thing
       # it has to reason about.
+      # DIAGNOSTIC ONLY. Read-only, and deliberately does not invoke db test —
+      # doing so registers the helpers and would mask the very thing being
+      # measured. Question: under the pinned 2.40.7, is
+      # basejump-supabase_test_helpers already available before the suite
+      # runs? If yes, the old image ships it and the dbdev network install is
+      # irrelevant here. If no, the install works under this image and not the
+      # newer one.
+      - name: Is basejump available before the suite runs?
+        if: always()
+        run: |
+          echo "--- postgres image ---"
+          docker inspect supabase_db_storybook --format '{{.Config.Image}}'
+          echo "--- basejump / dbdev in pg_available_extensions ---"
+          docker exec supabase_db_storybook psql -U postgres -d postgres -t -A -c \
+            "select coalesce(string_agg(name||'@'||coalesce(default_version,'-'), ', '), 'NONE')
+             from pg_available_extensions
+             where name like '%basejump%' or name like '%dbdev%';"
+          echo "--- control file on disk? ---"
+          docker exec supabase_db_storybook sh -c \
+            'ls /usr/lib/postgresql/share/extension/ 2>/dev/null | grep -i basejump || \
+             find / -name "*basejump*" -maxdepth 8 2>/dev/null | head -5 || echo "no basejump control file"'
+          echo "--- pg_tle version ---"
+          docker exec supabase_db_storybook psql -U postgres -d postgres -t -A -c \
+            "select 'pg_tle='||coalesce(default_version,'absent') from pg_available_extensions where name='pg_tle';"
+
       - name: Run Supabase tests
         run: pnpm --filter web supabase:test
 
