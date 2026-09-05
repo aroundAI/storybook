@@ -143,6 +143,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      # Cheap, and needs no production access: the types file is a
+      # fingerprint of whichever database it was last generated against, so a
+      # table it declares that no migration creates means those two have
+      # diverged. That is exactly how manual_tasks, compilations and
+      # compilation_segments sat in production for six weeks with no
+      # migration on main — see #240.
+      - name: Check for schema drift
+        working-directory: apps/web
+        run: pnpm run check:schema-drift
+
       - name: Start Supabase (applies every migration)
         working-directory: apps/web
         run: supabase start
