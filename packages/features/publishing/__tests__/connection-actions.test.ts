@@ -86,7 +86,7 @@ describe('Connection Actions', () => {
         scopes: ['upload', 'read'],
         metadata: {
           avatar_url: 'https://example.com/avatar.jpg',
-          follower_count: 1000,
+          followers_count: 1000,
         },
       };
 
