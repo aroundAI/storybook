@@ -303,11 +303,34 @@ jobs:
         if: steps.cache-playwright-browsers.outputs.cache-hit != 'true'
         run: pnpm exec ./apps/e2e/node_modules/.bin/playwright install --with-deps
 
+      # `version: latest`, matching the Supabase DB job. Without it the action
+      # installs its own default, which is old enough to reject this repo's
+      # `major_version = 17` with "Failed reading config". Nothing in this job
+      # calls the PATH binary any more, but leaving a stale one lying around
+      # is a trap for whoever adds the next step.
       - name: Supabase CLI
         uses: supabase/setup-cli@v1
+        with:
+          version: latest
 
+      # `pnpm exec`, so this runs the CLI pinned in apps/web/package.json —
+      # the same binary contributors get locally — rather than whatever is on
+      # PATH.
+      #
+      # Not `pnpm run supabase:web:start -- -x …`: that threaded the flags
+      # through two pnpm layers and emitted `supabase start -- -x …`, where
+      # the `--` makes them positional. 2.40.7 tolerated it; 2.116.0 rejects
+      # it with "Unexpected positional arguments".
+      #
+      # The exclusion list also had to shrink: `migra`, `deno-relay` and
+      # `pgadmin-schema-diff` are not services this CLI knows. It accepts
+      # gotrue, realtime, storage-api, imgproxy, kong, mailpit, postgrest,
+      # postgres-meta, studio, edge-runtime, logflare, vector and supavisor.
+      # Only the UI and log plumbing are dropped — mailpit stays, because the
+      # e2e specs read confirmation emails out of it.
       - name: Supabase Server
-        run: pnpm run supabase:web:start -- -x studio,migra,deno-relay,pgadmin-schema-diff,imgproxy,logflare
+        working-directory: apps/web
+        run: pnpm exec supabase start -x studio,imgproxy,logflare,vector
 
       # No credential export step. apps/web/.env.test already carries the
       # local URL and the CLI's fixed public development keys — the same
