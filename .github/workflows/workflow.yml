@@ -395,10 +395,17 @@ jobs:
           docker network ls
           echo "=== db reachable from the runner? ==="
           docker exec supabase_db_storybook psql -U postgres -d postgres -c 'select 1' || true
-          echo "=== db test with --debug ==="
-          pnpm exec supabase db test --debug 2>&1 | tail -60 || true
-          echo "=== db container log tail ==="
-          docker logs --tail 40 supabase_db_storybook 2>&1 || true
+          echo "=== can the db container reach api.database.dev? ==="
+          docker exec supabase_db_storybook sh -c \
+            'curl -s -o /dev/null -w "curl: %{http_code}\n" --max-time 15 https://api.database.dev/rest/v1/ || echo "curl unavailable/blocked"' || true
+          echo "=== pg_tle + http available in this image? ==="
+          docker exec supabase_db_storybook psql -U postgres -d postgres -t -A -c \
+            "select name||'='||default_version from pg_available_extensions where name in ('pg_tle','http');" || true
+          echo "=== db test, FIRST 80 lines (the dbdev bootstrap) ==="
+          pnpm exec supabase db test 2>&1 | head -80 || true
+          echo "=== db log: dbdev / http / pg_tle only ==="
+          docker logs --tail 400 supabase_db_storybook 2>&1 \
+            | grep -iE "dbdev|pg_tle|http|ERROR" | head -30 || true
 
       - name: Run Supabase tests
         run: pnpm --filter web supabase:test
