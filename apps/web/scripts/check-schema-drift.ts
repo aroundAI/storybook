@@ -40,7 +40,7 @@ function tablesInTypes(): string[] {
 
   const block = source.slice(tablesAt, end);
 
-  return [...block.matchAll(/^      ([a-z_][a-z0-9_]*): \{$/gm)]
+  return [...block.matchAll(/^ {6}([a-z_][a-z0-9_]*): \{$/gm)]
     .map((m) => m[1]!)
     .filter((name) => !NOT_OURS.has(name));
 }
