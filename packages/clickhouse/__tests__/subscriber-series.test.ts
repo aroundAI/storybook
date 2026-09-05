@@ -88,7 +88,10 @@ describe('reconstructSeries', () => {
 
     it('reports a band-satisfied day as constrained, not snapshot or interpolated', () => {
       const series = reconstructSeries(
-        [rounded('2026-03-01', 1230000, 10000), rounded('2026-03-02', 1230000, 10000)],
+        [
+          rounded('2026-03-01', 1230000, 10000),
+          rounded('2026-03-02', 1230000, 10000),
+        ],
         [net('2026-03-02', 400)],
         { from: '2026-03-01', to: '2026-03-02' },
       );
@@ -101,7 +104,10 @@ describe('reconstructSeries', () => {
       // 1240000 is the first level this anchor rules out — the platform would
       // have reported it as the next step up.
       const series = reconstructSeries(
-        [rounded('2026-03-01', 1230000, 10000), rounded('2026-03-02', 1230000, 10000)],
+        [
+          rounded('2026-03-01', 1230000, 10000),
+          rounded('2026-03-02', 1230000, 10000),
+        ],
         [net('2026-03-02', 50000)],
         { from: '2026-03-01', to: '2026-03-02' },
       );

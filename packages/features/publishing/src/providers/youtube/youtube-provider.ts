@@ -5,6 +5,8 @@ import { createReadStream, promises as fsPromises } from 'fs';
 import { OAuth2Client } from 'google-auth-library';
 import { Readable } from 'stream';
 
+import type { SubscriberCountResult } from '@kit/shared/subscribers';
+
 import type {
   YouTubeCategory,
   YouTubeChannel,
@@ -167,8 +169,56 @@ export class YouTubeProvider {
       id: channel.id,
       title: channel.snippet?.title ?? '',
       thumbnailUrl: channel.snippet?.thumbnails?.default?.url ?? '',
-      subscriberCount: parseInt(channel.statistics?.subscriberCount ?? '0', 10),
+      subscriberCount:
+        channel.statistics?.subscriberCount === undefined ||
+        channel.statistics.subscriberCount === null
+          ? null
+          : parseInt(channel.statistics.subscriberCount, 10),
     };
+  }
+
+  /**
+   * Current subscriber count for one specific channel (FILM-1607).
+   *
+   * Deliberately not `getChannel()`. That call is `mine: true` and returns
+   * `items[0]`, but one Google account can own several channels — the OAuth
+   * callback fetches all of them, brand channels included, and creates a
+   * `platform_connections` row per selected channel. A per-connection capture
+   * built on it would write the first channel's count under every one of that
+   * account's connections, and since a sub-1,000 count is stored as an *exact*
+   * anchor, the others' curves would be pinned to a level that is not theirs.
+   *
+   * `hidden` is distinguished from `unavailable` because the first is a
+   * creator setting that will recur every night forever and must never alert,
+   * while the second is an outage that must.
+   */
+  async getSubscriberCount(channelId: string): Promise<SubscriberCountResult> {
+    const response = await this.youtube.channels.list({
+      part: ['statistics'],
+      id: [channelId],
+    });
+
+    const channel = response.data.items?.[0];
+
+    if (!channel) {
+      return { ok: false, reason: 'unavailable' };
+    }
+
+    if (channel.statistics?.hiddenSubscriberCount === true) {
+      return { ok: false, reason: 'hidden' };
+    }
+
+    const raw = channel.statistics?.subscriberCount;
+
+    if (raw === undefined || raw === null) {
+      return { ok: false, reason: 'unavailable' };
+    }
+
+    const count = parseInt(raw, 10);
+
+    return Number.isFinite(count)
+      ? { ok: true, count }
+      : { ok: false, reason: 'unavailable' };
   }
 
   /**

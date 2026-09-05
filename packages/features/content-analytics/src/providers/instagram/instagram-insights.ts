@@ -1,5 +1,7 @@
 import 'server-only';
 
+import type { SubscriberCountResult } from '@kit/shared/subscribers';
+
 import type {
   InstagramAccountInsights,
   InstagramAudienceData,
@@ -290,6 +292,38 @@ export class InstagramInsightsProvider {
   /**
    * Gets account overview metrics for a time period
    */
+  /**
+   * Current follower count on its own (FILM-1607).
+   *
+   * Extracted because the existing request is one leg of a `Promise.all`
+   * inside `getAccountInsights`, whose `/insights` call is checked first and
+   * throws before the follower count is read — and a non-business account
+   * cannot call `/insights` at all. Reading the count therefore failed for
+   * reasons that have nothing to do with the count.
+   *
+   * Instagram has no documented "hidden" state, so an absent field is
+   * `unavailable` and does count toward the capture's shortfall alert.
+   */
+  async getFollowerCount(): Promise<SubscriberCountResult> {
+    try {
+      const response = await fetch(
+        `${GRAPH_API_BASE}/${this.instagramAccountId}?fields=followers_count&access_token=${this.accessToken}`,
+      );
+
+      if (!response.ok) {
+        return { ok: false, reason: 'unavailable' };
+      }
+
+      const data = (await response.json()) as { followers_count?: number };
+
+      return typeof data.followers_count === 'number'
+        ? { ok: true, count: data.followers_count }
+        : { ok: false, reason: 'unavailable' };
+    } catch {
+      return { ok: false, reason: 'unavailable' };
+    }
+  }
+
   async getAccountInsights(
     period: InstagramInsightsPeriod = 'week',
   ): Promise<InstagramAccountInsights> {

@@ -16,6 +16,7 @@
 import {
   insertChannelDaily,
   insertRetentionCurves,
+  insertSubscriberSnapshot,
   insertVideoAudience,
   insertVideoDims,
   insertVideoMetrics,
@@ -25,7 +26,6 @@ import {
   isClickHouseEnabled,
   queryAudienceRows,
   queryBackCatalogShare,
-  insertSubscriberSnapshot,
   queryChannelWatchWindow,
   queryCohortMedians,
   queryDailyStats,
@@ -39,12 +39,12 @@ import {
   queryQualityMetricsForVideos,
   queryRetentionCurve,
   queryRollingViews,
+  querySubscriberAnchors,
+  querySubscriberDeltas,
   queryTotals,
   queryTotalsByVideoIds,
   queryTrafficShareTrend,
   queryTrafficSources,
-  querySubscriberAnchors,
-  querySubscriberDeltas,
   queryVideoViewsAtAge,
   queryViewsForVideos,
   queryWatchWindowTotals,
@@ -456,46 +456,43 @@ async function queries() {
 async function assertions() {
   const scope = { projectId: PROJECT };
 
-  await step(
-    'assert: a same-day re-insert collapses to one row',
-    async () => {
-      // ReplacingMergeTree collapses on merge, at ClickHouse's discretion, so
-      // this reads with FINAL. Counting rows without it passes or fails on
-      // timing — a flaky test dressed as a correctness proof.
-      const day = '2029-01-01';
+  await step('assert: a same-day re-insert collapses to one row', async () => {
+    // ReplacingMergeTree collapses on merge, at ClickHouse's discretion, so
+    // this reads with FINAL. Counting rows without it passes or fails on
+    // timing — a flaky test dressed as a correctness proof.
+    const day = '2029-01-01';
 
-      await insertSubscriberSnapshot({
-        connectionId: CHANNEL,
-        snapshotDate: day,
-        subscriberCount: 1000,
-        roundingStep: 0,
-      });
-      await insertSubscriberSnapshot({
-        connectionId: CHANNEL,
-        snapshotDate: day,
-        subscriberCount: 2000,
-        roundingStep: 0,
-      });
+    await insertSubscriberSnapshot({
+      connectionId: CHANNEL,
+      snapshotDate: day,
+      subscriberCount: 1000,
+      roundingStep: 0,
+    });
+    await insertSubscriberSnapshot({
+      connectionId: CHANNEL,
+      snapshotDate: day,
+      subscriberCount: 2000,
+      roundingStep: 0,
+    });
 
-      const rows = await querySubscriberAnchors({
-        connectionIds: [CHANNEL],
-        from: day,
-        to: day,
-      });
+    const rows = await querySubscriberAnchors({
+      connectionIds: [CHANNEL],
+      from: day,
+      to: day,
+    });
 
-      if (rows.length !== 1) {
-        throw new Error(`expected 1 row after re-insert, got ${rows.length}`);
-      }
+    if (rows.length !== 1) {
+      throw new Error(`expected 1 row after re-insert, got ${rows.length}`);
+    }
 
-      if (rows[0]!.subscriberCount !== 2000) {
-        throw new Error(
-          `expected the later write to win, got ${rows[0]!.subscriberCount}`,
-        );
-      }
+    if (rows[0]!.subscriberCount !== 2000) {
+      throw new Error(
+        `expected the later write to win, got ${rows[0]!.subscriberCount}`,
+      );
+    }
 
-      return `one row, count=${rows[0]!.subscriberCount}`;
-    },
-  );
+    return `one row, count=${rows[0]!.subscriberCount}`;
+  });
 
   await step('assert: dim-joined reads are scoped by project', async () => {
     // The fixture seeds a row with the same video_id under a second

@@ -181,3 +181,8 @@ export {
 
 export { getVideoLogAction } from './video-log-actions';
 export type { VideoLogRow } from './video-log-actions';
+
+export { captureSubscriberSnapshots } from './subscriber-snapshot';
+export type { SubscriberCaptureResult } from './subscriber-snapshot';
+export { getSubscriberSeriesAction } from './subscriber-series-actions';
+export type { ConnectionSubscriberSeries } from './subscriber-series-actions';

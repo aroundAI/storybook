@@ -227,7 +227,9 @@ export async function GET(request: NextRequest) {
         scopes: [...YOUTUBE_OAUTH_CONFIG.scopes],
         metadata: {
           thumbnail_url: channel.thumbnailUrl,
-          subscriber_count: channel.subscriberCount,
+          // No subscriber_count. It was written here and read nowhere — a
+          // level captured once, at a date nobody recorded, then left to
+          // rot. FILM-1607 stores the dated series in ClickHouse instead.
         },
         is_active: true,
         updated_at: new Date().toISOString(),

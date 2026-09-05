@@ -1166,9 +1166,7 @@ export async function querySubscriberDeltas(input: {
   connectionIds: string[];
   from: string;
   to: string;
-}): Promise<
-  Array<{ connectionId: string; metricDate: string; net: number }>
-> {
+}): Promise<Array<{ connectionId: string; metricDate: string; net: number }>> {
   if (input.connectionIds.length === 0 || !isClickHouseEnabled()) {
     return [];
   }

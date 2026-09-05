@@ -152,7 +152,11 @@ export function reconstructSeries(
   // absorbed once rather than clamping every subsequent day into a sawtooth.
   let level = points.get(first.snapshotDate)!.level;
 
-  for (let d = addDays(first.snapshotDate, 1); d <= range.to; d = addDays(d, 1)) {
+  for (
+    let d = addDays(first.snapshotDate, 1);
+    d <= range.to;
+    d = addDays(d, 1)
+  ) {
     const walked = level + (netByDate.get(d) ?? 0);
     const resolved = applyAnchor(d, walked);
 
@@ -163,7 +167,11 @@ export function reconstructSeries(
   // Backward from the seed, for days the anchors postdate.
   level = points.get(first.snapshotDate)!.level;
 
-  for (let d = addDays(first.snapshotDate, -1); d >= range.from; d = addDays(d, -1)) {
+  for (
+    let d = addDays(first.snapshotDate, -1);
+    d >= range.from;
+    d = addDays(d, -1)
+  ) {
     const net = netByDate.get(addDays(d, 1));
 
     if (net === undefined) {

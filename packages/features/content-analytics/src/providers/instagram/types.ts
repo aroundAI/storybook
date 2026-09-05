@@ -95,7 +95,8 @@ export interface InstagramAccountInsights {
   reach: number;
   profileViews: number;
   websiteClicks: number;
-  followerCount: number;
+  /** null when the API omitted it; not zero. See FILM-1607 §2. */
+  followerCount: number | null;
 }
 
 /**

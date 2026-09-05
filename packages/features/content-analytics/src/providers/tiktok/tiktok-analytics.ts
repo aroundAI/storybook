@@ -1,5 +1,7 @@
 import 'server-only';
 
+import type { SubscriberCountResult } from '@kit/shared/subscribers';
+
 import type {
   TikTokAccountAnalytics,
   TikTokAnalyticsInput,
@@ -224,6 +226,42 @@ export class TikTokAnalyticsProvider {
    * Note: dateRange is included for API compatibility but not currently
    * used as TikTok's basic API doesn't support historical account data.
    */
+  /**
+   * Current follower count on its own (FILM-1607).
+   *
+   * Absent is not zero. `?? 0` would write an *exact* zero anchor — TikTok
+   * reports precisely, so `rounding_step` is 0 — and an exact anchor is
+   * authoritative, so one malformed 200 would re-level the whole
+   * reconstructed curve to zero from that day on.
+   *
+   * TikTok has no documented "hidden" state, so an absent field is
+   * `unavailable` and does count toward the capture's shortfall alert.
+   */
+  async getFollowerCount(): Promise<SubscriberCountResult> {
+    try {
+      const response = await fetch(
+        `${TIKTOK_API_BASE}/user/info/?fields=follower_count`,
+        { headers: { Authorization: `Bearer ${this.accessToken}` } },
+      );
+
+      if (!response.ok) {
+        return { ok: false, reason: 'unavailable' };
+      }
+
+      const data = (await response.json()) as TikTokApiResponse<{
+        user: { follower_count?: number };
+      }>;
+
+      const count = data.data?.user?.follower_count;
+
+      return typeof count === 'number'
+        ? { ok: true, count }
+        : { ok: false, reason: 'unavailable' };
+    } catch {
+      return { ok: false, reason: 'unavailable' };
+    }
+  }
+
   async getAccountAnalytics(
     _dateRange: 7 | 28 = 7,
   ): Promise<TikTokAccountAnalytics> {
@@ -251,7 +289,7 @@ export class TikTokAnalyticsProvider {
       }
 
       return {
-        followers: data.data?.user?.follower_count ?? 0,
+        followers: data.data?.user?.follower_count ?? null,
         followersGained: 0, // Would need historical data
         profileViews: 0, // Not available in basic API
         videoViews: 0, // Would sum all videos

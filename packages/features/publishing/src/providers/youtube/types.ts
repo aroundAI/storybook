@@ -44,8 +44,8 @@ export interface YouTubeChannel {
   title: string;
   /** Channel thumbnail URL */
   thumbnailUrl: string;
-  /** Number of subscribers */
-  subscriberCount: number;
+  /** Number of subscribers; null when the API omitted it (hidden or absent). */
+  subscriberCount: number | null;
 }
 
 export interface YouTubePlaylist {

@@ -355,7 +355,11 @@ describe('TikTokAnalyticsProvider', () => {
 
       const result = await provider.getAccountAnalytics();
 
-      expect(result.followers).toBe(0);
+      // null, not 0. A malformed 200 used to become an exact zero, and
+      // FILM-1607 stores TikTok counts as exact anchors — which are
+      // authoritative — so a false zero would re-level the whole
+      // reconstructed subscriber curve from that day on.
+      expect(result.followers).toBeNull();
     });
   });
 
