@@ -337,7 +337,7 @@ jobs:
       # because the app talks to them.
       - name: Supabase Server
         working-directory: apps/web
-        run: pnpm exec supabase start
+        run: pnpm exec supabase start -x studio,imgproxy,logflare,vector,supavisor,postgres-meta
 
       # No credential export step. apps/web/.env.test already carries the
       # local URL and the CLI's fixed public development keys — the same
