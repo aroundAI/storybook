@@ -326,11 +326,18 @@ jobs:
       # `pgadmin-schema-diff` are not services this CLI knows. It accepts
       # gotrue, realtime, storage-api, imgproxy, kong, mailpit, postgrest,
       # postgres-meta, studio, edge-runtime, logflare, vector and supavisor.
-      # Only the UI and log plumbing are dropped — mailpit stays, because the
-      # e2e specs read confirmation emails out of it.
+      # The list is longer than it looks like it needs to be. 2.98.2 starts
+      # more services by default than 2.40.7 did, and this job already holds a
+      # Next production server alongside the stack — pgTAP died mid-run with
+      # "failed to disable pgTAP: unexpected EOF" and most files exiting 2,
+      # which is the database going away rather than tests failing. Dropping
+      # the UI, log plumbing, the pooler and postgres-meta keeps it inside the
+      # runner. mailpit stays, because the e2e specs read confirmation emails
+      # out of it; kong, postgrest, gotrue, storage-api and realtime stay
+      # because the app talks to them.
       - name: Supabase Server
         working-directory: apps/web
-        run: pnpm exec supabase start -x studio,imgproxy,logflare,vector
+        run: pnpm exec supabase start -x studio,imgproxy,logflare,vector,supavisor,postgres-meta
 
       # No credential export step. apps/web/.env.test already carries the
       # local URL and the CLI's fixed public development keys — the same
