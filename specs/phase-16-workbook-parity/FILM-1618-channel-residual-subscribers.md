@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1618
 title: Channel-Residual Subscriber Movement
-status: DRAFT
+status: ✅ DONE
 effort: S
 dependencies: FILM-1601, FILM-1607
 ---
@@ -101,9 +101,14 @@ processed are gone unless their report is still inside that window and the
 job's watermark is rewound — which is a manual, per-connection operation
 and not part of this spec.
 
-This bounds how long it is worth waiting: every day this ships later is
-another day of permanently short deltas in a series FILM-1607 already
-shipped. The fix is four lines; the data it protects is not recoverable.
+This bounds how long it is worth waiting — though only from the cutover,
+not from today. `insertChannelDaily` no-ops while `CLICKHOUSE_ENABLED=false`
+(`client.ts:98`), so nothing is being lost right now. **The loss starts the
+day ClickHouse is enabled in production**, and from then on every day
+before this ships is another day of permanently short deltas in a series
+FILM-1607 has already shipped. The fix is a handful of lines; the data it
+protects is not recoverable. Land it before the cutover and the cost is
+zero.
 
 ## 6. Out of Scope
 
@@ -118,14 +123,14 @@ shipped. The fix is four lines; the data it protects is not recoverable.
 
 ## 7. Acceptance Criteria
 
-- [ ] `accumulateChannelDaily` accepts and accumulates `subscribers_gained` and `subscribers_lost`
-- [ ] The unmatched branch of `channel_basic_a3` passes both figures
-- [ ] The reach branch still passes no subscriber figures
-- [ ] `channel_combined_a3` still contributes nothing to `channel_daily`
-- [ ] `subscribers_gained` and `subscribers_lost` are required fields on `ChannelDaily`
-- [ ] A unit test asserts that two unmatched rows on the same date sum both subscriber fields
-- [ ] A unit test asserts a reach-report row contributes zero to both
-- [ ] Migration 006's docstring claim is true after this change
+- [x] `accumulateChannelDaily` accepts and accumulates `subscribers_gained` and `subscribers_lost`
+- [x] The unmatched branch of `channel_basic_a3` passes both figures
+- [x] The reach branch still passes no subscriber figures
+- [x] `channel_combined_a3` still contributes nothing to `channel_daily`
+- [x] `subscribers_gained` and `subscribers_lost` are required fields on `ChannelDaily`
+- [x] A unit test asserts that two unmatched rows on the same date sum both subscriber fields
+- [x] A unit test asserts a reach-report row contributes zero to both
+- [x] Migration 006's docstring claim is true after this change
 
 ## 8. Verification
 

@@ -147,8 +147,17 @@ export interface ChannelDaily {
   watch_time_seconds: number;
   impressions: number;
   engaged_views: number;
-  subscribers_gained?: number;
-  subscribers_lost?: number;
+  /**
+   * Required, not optional (FILM-1618). Both columns are `UInt32 DEFAULT 0`
+   * and inserts go out as JSONEachRow, so an omitted field is silently
+   * filled with a zero the server never complains about. They were
+   * optional here, the only accumulator could not carry them, and both
+   * columns were therefore zero in every environment from migration 006
+   * until FILM-1618 — with nothing to catch it at any layer. Making them
+   * required means a new construction site has to name them.
+   */
+  subscribers_gained: number;
+  subscribers_lost: number;
 }
 
 /**

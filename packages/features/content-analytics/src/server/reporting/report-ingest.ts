@@ -395,10 +395,17 @@ async function ingestReportCsv(
       });
     } else {
       unmatched++;
+      // Subscriber movement here belongs to a video that matched no
+      // publish. It is the whole reason migration 006 added these two
+      // columns to channel_daily, and until FILM-1618 it was parsed and
+      // then dropped one call later — leaving the channel_daily leg of
+      // querySubscriberDeltas contributing zero, always.
       accumulateChannelDaily(channelRows, connection.id, row.date, {
         views: row.views,
         watch_time_seconds: row.watchTimeSeconds,
         engaged_views: row.engagedViews,
+        subscribers_gained: row.subscribersGained,
+        subscribers_lost: row.subscribersLost,
       });
     }
   }
@@ -414,16 +421,19 @@ async function ingestReportCsv(
   return { matched: 0, unmatched: 0 };
 }
 
-function accumulateChannelDaily(
+/**
+ * Accumulates one channel-residual row per date.
+ *
+ * Exported for testing: it is the pure core of this module, and it is where
+ * FILM-1618 lived. `add` omits a field for reports that do not carry it —
+ * reach reports have no subscriber columns — so every field is defaulted
+ * rather than assumed present.
+ */
+export function accumulateChannelDaily(
   map: Map<string, ChannelDaily>,
   connectionId: string,
   date: string,
-  add: Partial<
-    Pick<
-      ChannelDaily,
-      'views' | 'watch_time_seconds' | 'impressions' | 'engaged_views'
-    >
-  >,
+  add: Partial<Omit<ChannelDaily, 'connection_id' | 'metric_date'>>,
 ): void {
   const existing = map.get(date) ?? {
     connection_id: connectionId,
@@ -432,12 +442,16 @@ function accumulateChannelDaily(
     watch_time_seconds: 0,
     impressions: 0,
     engaged_views: 0,
+    subscribers_gained: 0,
+    subscribers_lost: 0,
   };
 
   existing.views += add.views ?? 0;
   existing.watch_time_seconds += add.watch_time_seconds ?? 0;
   existing.impressions += add.impressions ?? 0;
   existing.engaged_views += add.engaged_views ?? 0;
+  existing.subscribers_gained += add.subscribers_gained ?? 0;
+  existing.subscribers_lost += add.subscribers_lost ?? 0;
 
   map.set(date, existing);
 }
