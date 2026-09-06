@@ -3,6 +3,12 @@ import { z } from 'zod';
 
 import { AgentParseError } from '../src/runner';
 import { createTool, toolError, toolSuccess } from '../src/tool';
+import type { AgentRunContext } from '../src/types';
+
+/** Tools receive the run context as their second parameter. */
+const RUN_CONTEXT: AgentRunContext = {
+  accountId: '11111111-1111-1111-1111-111111111111',
+};
 
 // We test parseAgentResponse by importing it — but it's not exported.
 // Instead we test it indirectly through the public API.
@@ -34,7 +40,7 @@ describe('Tool Helper', () => {
         execute: async ({ a, b }) => toolSuccess(a + b),
       });
 
-      const result = await tool.execute({ a: 3, b: 4 });
+      const result = await tool.execute({ a: 3, b: 4 }, RUN_CONTEXT);
       expect(result.success).toBe(true);
       expect(result.data).toBe(7);
     });

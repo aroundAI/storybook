@@ -3,6 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCreateTeamAccountService } from '../src/server/services/create-team-account.service';
 
 // Mock logger
+/**
+ * These mocks resolve to `{ data, error }` where either side can be null.
+ * Inferring the type from a happy-path default pins `data` to one shape and
+ * `error` to `null`, making every failure case in the file a type error.
+ */
+interface QueryResult {
+  data: unknown;
+  error: unknown;
+}
+
 const mockLogger = {
   info: vi.fn(),
   error: vi.fn(),
@@ -16,11 +26,12 @@ vi.mock('@kit/shared/logger', () => ({
 
 // Create mock Supabase client
 const createMockClient = () => ({
-  rpc: vi.fn(() =>
-    Promise.resolve({
-      data: { id: 'acc-123', name: 'Test Team', slug: 'test-team' },
-      error: null,
-    }),
+  rpc: vi.fn(
+    (): Promise<QueryResult> =>
+      Promise.resolve({
+        data: { id: 'acc-123', name: 'Test Team', slug: 'test-team' },
+        error: null,
+      }),
   ),
   from: vi.fn(),
 });
@@ -86,6 +97,7 @@ describe('CreateTeamAccountService', () => {
           name: 'New Team',
           slug: 'new-team',
           created_at: '2024-01-01',
+          updated_at: '2024-01-01',
         },
         error: null,
       });
@@ -102,6 +114,7 @@ describe('CreateTeamAccountService', () => {
         name: 'New Team',
         slug: 'new-team',
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
       });
     });
 

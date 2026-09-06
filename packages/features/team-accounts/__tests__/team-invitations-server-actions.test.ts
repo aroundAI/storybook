@@ -87,8 +87,11 @@ vi.mock('@kit/shared/logger', () => ({
 const mockSendInvitations = vi.fn(() => Promise.resolve());
 const mockDeleteInvitation = vi.fn(() => Promise.resolve());
 const mockUpdateInvitation = vi.fn(() => Promise.resolve());
-const mockAcceptInvitationToTeam = vi.fn(() =>
-  Promise.resolve('123e4567-e89b-12d3-a456-426614174000'),
+// Resolves to the account id, or null when the invitation yields none —
+// inferring from the happy path pinned it to a non-null string.
+const mockAcceptInvitationToTeam = vi.fn(
+  (): Promise<string | null> =>
+    Promise.resolve('123e4567-e89b-12d3-a456-426614174000'),
 );
 const mockRenewInvitation = vi.fn(() => Promise.resolve());
 
@@ -110,6 +113,19 @@ vi.mock('../src/server/services/account-per-seat-billing.service', () => ({
     increaseSeats: mockIncreaseSeats,
   })),
 }));
+
+/**
+ * This suite mocks `enhanceAction` to forward every argument, which is how
+ * it injects the user the real wrapper resolves from the session. The
+ * exported actions carry the real wrapper's type, which takes only `data`,
+ * so calling them with a user needs that wider view stated explicitly.
+ */
+function withUser<A extends (...args: never[]) => unknown>(action: A) {
+  return action as unknown as (
+    data: Parameters<A>[0],
+    user?: { id: string },
+  ) => Promise<unknown>;
+}
 
 describe('team-invitations-server-actions', () => {
   beforeEach(() => {
@@ -378,9 +394,9 @@ describe('team-invitations-server-actions', () => {
 
         const user = { id: '987fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(acceptInvitationAction(formData, user)).rejects.toThrow(
-          'NEXT_REDIRECT;/home/test-team',
-        );
+        await expect(
+          withUser(acceptInvitationAction)(formData, user),
+        ).rejects.toThrow('NEXT_REDIRECT;/home/test-team');
 
         expect(mockAcceptInvitationToTeam).toHaveBeenCalledWith(
           mockAdminClient,
@@ -398,9 +414,9 @@ describe('team-invitations-server-actions', () => {
 
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(acceptInvitationAction(formData, user)).rejects.toThrow(
-          'NEXT_REDIRECT',
-        );
+        await expect(
+          withUser(acceptInvitationAction)(formData, user),
+        ).rejects.toThrow('NEXT_REDIRECT');
 
         expect(mockIncreaseSeats).toHaveBeenCalledWith(
           '123e4567-e89b-12d3-a456-426614174000',
@@ -414,9 +430,9 @@ describe('team-invitations-server-actions', () => {
 
         const user = { id: '787fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(acceptInvitationAction(formData, user)).rejects.toThrow(
-          'NEXT_REDIRECT;/home/custom-path',
-        );
+        await expect(
+          withUser(acceptInvitationAction)(formData, user),
+        ).rejects.toThrow('NEXT_REDIRECT;/home/custom-path');
 
         expect(mockRedirect).toHaveBeenCalledWith('/home/custom-path');
       });
@@ -428,9 +444,9 @@ describe('team-invitations-server-actions', () => {
 
         const user = { id: '687fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(acceptInvitationAction(formData, user)).rejects.toThrow(
-          'NEXT_REDIRECT',
-        );
+        await expect(
+          withUser(acceptInvitationAction)(formData, user),
+        ).rejects.toThrow('NEXT_REDIRECT');
 
         expect(mockAcceptInvitationToTeam).toHaveBeenCalledWith(
           mockAdminClient,
@@ -447,7 +463,9 @@ describe('team-invitations-server-actions', () => {
 
         const user = { id: '587fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(acceptInvitationAction(formData, user)).rejects.toThrow();
+        await expect(
+          withUser(acceptInvitationAction)(formData, user),
+        ).rejects.toThrow();
       });
 
       it('should reject empty next path', async () => {
@@ -457,7 +475,9 @@ describe('team-invitations-server-actions', () => {
 
         const user = { id: '487fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(acceptInvitationAction(formData, user)).rejects.toThrow();
+        await expect(
+          withUser(acceptInvitationAction)(formData, user),
+        ).rejects.toThrow();
       });
 
       it('should reject missing invite token', async () => {
@@ -466,7 +486,9 @@ describe('team-invitations-server-actions', () => {
 
         const user = { id: '387fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(acceptInvitationAction(formData, user)).rejects.toThrow();
+        await expect(
+          withUser(acceptInvitationAction)(formData, user),
+        ).rejects.toThrow();
       });
 
       it('should reject missing next path', async () => {
@@ -475,7 +497,9 @@ describe('team-invitations-server-actions', () => {
 
         const user = { id: '287fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(acceptInvitationAction(formData, user)).rejects.toThrow();
+        await expect(
+          withUser(acceptInvitationAction)(formData, user),
+        ).rejects.toThrow();
       });
     });
 
@@ -489,9 +513,9 @@ describe('team-invitations-server-actions', () => {
 
         const user = { id: '187fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(acceptInvitationAction(formData, user)).rejects.toThrow(
-          'Failed to accept invitation',
-        );
+        await expect(
+          withUser(acceptInvitationAction)(formData, user),
+        ).rejects.toThrow('Failed to accept invitation');
       });
 
       it('should propagate service errors', async () => {
@@ -505,9 +529,9 @@ describe('team-invitations-server-actions', () => {
 
         const user = { id: '087fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(acceptInvitationAction(formData, user)).rejects.toThrow(
-          'Invalid invitation token',
-        );
+        await expect(
+          withUser(acceptInvitationAction)(formData, user),
+        ).rejects.toThrow('Invalid invitation token');
       });
 
       it('should handle billing service errors', async () => {
@@ -521,9 +545,9 @@ describe('team-invitations-server-actions', () => {
 
         const user = { id: 'f87fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(acceptInvitationAction(formData, user)).rejects.toThrow(
-          'Billing service error',
-        );
+        await expect(
+          withUser(acceptInvitationAction)(formData, user),
+        ).rejects.toThrow('Billing service error');
       });
     });
 
@@ -534,7 +558,7 @@ describe('team-invitations-server-actions', () => {
         formData.append('nextPath', '/home/team');
 
         await expect(
-          acceptInvitationAction(formData, null as any),
+          withUser(acceptInvitationAction)(formData, null as any),
         ).rejects.toThrow();
       });
     });
@@ -635,9 +659,9 @@ describe('team-invitations-server-actions', () => {
 
       const user = { id: 'e87fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-      await expect(acceptInvitationAction(formData, user)).rejects.toThrow(
-        'NEXT_REDIRECT',
-      );
+      await expect(
+        withUser(acceptInvitationAction)(formData, user),
+      ).rejects.toThrow('NEXT_REDIRECT');
 
       expect(mockAcceptInvitationToTeam).toHaveBeenCalled();
       expect(mockIncreaseSeats).toHaveBeenCalled();

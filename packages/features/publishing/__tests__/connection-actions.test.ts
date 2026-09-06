@@ -38,13 +38,26 @@ vi.mock('../src/lib/token-refresh', () => ({
   ),
 }));
 
+/**
+ * PostgREST query builders are thenable: `order()` both continues the chain
+ * and resolves to a result. Declaring the terminal methods as the resolved
+ * shape is what lets a test call `mockResolvedValueOnce` on them — typed as
+ * returning the chain object, every such call was a type error.
+ */
+interface QueryResult {
+  data: unknown;
+  error: { message: string } | null;
+}
+
 // Mock Supabase client
 const mockSupabaseClient = {
   from: vi.fn(() => mockSupabaseClient),
   select: vi.fn(() => mockSupabaseClient),
   eq: vi.fn(() => mockSupabaseClient),
-  order: vi.fn(() => mockSupabaseClient),
-  single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+  order: vi.fn(() => mockSupabaseClient as unknown as Promise<QueryResult>),
+  single: vi.fn(
+    (): Promise<QueryResult> => Promise.resolve({ data: null, error: null }),
+  ),
 };
 
 vi.mock('@kit/supabase/server-client', () => ({
@@ -169,6 +182,7 @@ describe('Connection Actions', () => {
       const connection: PlatformConnection = {
         id: 'test-id',
         platform: 'youtube' as Platform,
+        language: 'en',
         platformAccountName: 'Test Channel',
         isActive: true,
         tokenValid: true,
@@ -185,6 +199,7 @@ describe('Connection Actions', () => {
       const connection: PlatformConnection = {
         id: 'test-id',
         platform: 'instagram' as Platform,
+        language: 'en',
         platformAccountId: 'ig-123',
         platformAccountName: 'Test Instagram',
         avatarUrl: 'https://example.com/avatar.png',
@@ -206,6 +221,7 @@ describe('Connection Actions', () => {
       const connection: PlatformConnection = {
         id: 'test-id',
         platform: 'linkedin' as Platform,
+        language: 'en',
         platformAccountId: null,
         platformAccountName: 'Test LinkedIn',
         avatarUrl: null,

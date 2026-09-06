@@ -35,15 +35,26 @@ const mockSelect = vi.fn().mockReturnThis();
 const mockUpdate = vi.fn().mockReturnThis();
 const mockEq = vi.fn().mockReturnThis();
 const mockMatch = vi.fn().mockReturnThis();
-const mockSingle = vi.fn(() =>
-  Promise.resolve({
-    data: {
-      id: '123e4567-e89b-12d3-a456-426614174000',
-      name: 'Updated Team',
-      slug: 'updated-team',
-    },
-    error: null,
-  }),
+/**
+ * PostgREST resolves to `{ data, error }` where either side can be null.
+ * Inferring the type from a happy-path default pins `data` to one shape and
+ * `error` to `null`, making every failure case in the file a type error.
+ */
+interface QueryResult {
+  data: unknown;
+  error: unknown;
+}
+
+const mockSingle = vi.fn(
+  (): Promise<QueryResult> =>
+    Promise.resolve({
+      data: {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        name: 'Updated Team',
+        slug: 'updated-team',
+      },
+      error: null,
+    }),
 );
 
 const mockClient = {
@@ -85,6 +96,19 @@ vi.mock('@kit/audit-logs/server', () => ({
 
 const mockCreateAuditLog = vi.mocked(createAuditLog);
 const mockExtractNetworkContext = vi.mocked(extractNetworkContext);
+
+/**
+ * This suite mocks `enhanceAction` to forward every argument, which is how
+ * it injects the user the real wrapper resolves from the session. The
+ * exported actions carry the real wrapper's type, which takes only `data`,
+ * so calling them with a user needs that wider view stated explicitly.
+ */
+function withUser<A extends (...args: never[]) => unknown>(action: A) {
+  return action as unknown as (
+    data: Parameters<A>[0],
+    user?: { id: string },
+  ) => Promise<unknown>;
+}
 
 describe('updateTeamAccountName', () => {
   beforeEach(() => {
@@ -129,9 +153,9 @@ describe('updateTeamAccountName', () => {
           error: null,
         });
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow(
-        'NEXT_REDIRECT;/home/new-team-name/settings',
-      );
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow('NEXT_REDIRECT;/home/new-team-name/settings');
 
       expect(mockUpdate).toHaveBeenCalledWith({
         name: 'New Team Name',
@@ -165,9 +189,9 @@ describe('updateTeamAccountName', () => {
           error: null,
         });
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow(
-        'NEXT_REDIRECT;/home/awesome-team/members',
-      );
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow('NEXT_REDIRECT;/home/awesome-team/members');
 
       expect(mockRedirect).toHaveBeenCalledWith('/home/awesome-team/members');
     });
@@ -196,9 +220,9 @@ describe('updateTeamAccountName', () => {
         .mockResolvedValueOnce({ data: beforeAccount, error: null })
         .mockResolvedValueOnce({ data: afterAccount, error: null });
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow(
-        'NEXT_REDIRECT',
-      );
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow('NEXT_REDIRECT');
 
       expect(mockCreateAuditLog).toHaveBeenCalledWith({
         accountId: afterAccount.id,
@@ -241,9 +265,9 @@ describe('updateTeamAccountName', () => {
           error: null,
         });
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow(
-        'NEXT_REDIRECT',
-      );
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow('NEXT_REDIRECT');
 
       expect(mockExtractNetworkContext).toHaveBeenCalled();
     });
@@ -274,9 +298,9 @@ describe('updateTeamAccountName', () => {
           error: null,
         });
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow(
-        'NEXT_REDIRECT',
-      );
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow('NEXT_REDIRECT');
 
       expect(mockLogger.info).toHaveBeenCalledWith(
         {
@@ -318,9 +342,9 @@ describe('updateTeamAccountName', () => {
           error: null,
         });
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow(
-        'NEXT_REDIRECT',
-      );
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow('NEXT_REDIRECT');
 
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -355,7 +379,7 @@ describe('updateTeamAccountName', () => {
           error: null,
         });
 
-      const result = await updateTeamAccountName(params, user);
+      const result = await withUser(updateTeamAccountName)(params, user);
 
       expect(result).toEqual({ success: true });
       expect(mockRedirect).not.toHaveBeenCalled();
@@ -371,7 +395,9 @@ describe('updateTeamAccountName', () => {
       };
       const user = { id: '287fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow();
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow();
     });
 
     it('should reject team name longer than 50 characters', async () => {
@@ -382,7 +408,9 @@ describe('updateTeamAccountName', () => {
       };
       const user = { id: '187fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow();
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow();
     });
 
     it('should reject team name with special characters', async () => {
@@ -393,7 +421,9 @@ describe('updateTeamAccountName', () => {
       };
       const user = { id: '087fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow();
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow();
     });
 
     it('should reject reserved name "settings"', async () => {
@@ -404,7 +434,9 @@ describe('updateTeamAccountName', () => {
       };
       const user = { id: 'f87fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow();
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow();
     });
 
     it('should reject reserved name "billing"', async () => {
@@ -415,7 +447,9 @@ describe('updateTeamAccountName', () => {
       };
       const user = { id: 'e87fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow();
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow();
     });
 
     it('should reject empty slug', async () => {
@@ -426,7 +460,9 @@ describe('updateTeamAccountName', () => {
       };
       const user = { id: 'd87fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow();
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow();
     });
 
     it('should reject empty path', async () => {
@@ -437,7 +473,9 @@ describe('updateTeamAccountName', () => {
       };
       const user = { id: 'c87fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow();
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow();
     });
 
     it('should reject slug longer than 255 characters', async () => {
@@ -448,7 +486,9 @@ describe('updateTeamAccountName', () => {
       };
       const user = { id: 'b87fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow();
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow();
     });
 
     it('should accept valid minimum length values', async () => {
@@ -477,9 +517,9 @@ describe('updateTeamAccountName', () => {
           error: null,
         });
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow(
-        'NEXT_REDIRECT',
-      );
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow('NEXT_REDIRECT');
     });
   });
 
@@ -508,9 +548,9 @@ describe('updateTeamAccountName', () => {
           error: updateError,
         });
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow(
-        'Database constraint violation',
-      );
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow('Database constraint violation');
     });
 
     it('should log error when update fails', async () => {
@@ -537,7 +577,9 @@ describe('updateTeamAccountName', () => {
           error: updateError,
         });
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow();
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow();
 
       expect(mockLogger.error).toHaveBeenCalledWith(
         {
@@ -571,7 +613,9 @@ describe('updateTeamAccountName', () => {
           error: new Error('Failed'),
         });
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow();
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow();
 
       expect(mockCreateAuditLog).not.toHaveBeenCalled();
     });
@@ -598,7 +642,9 @@ describe('updateTeamAccountName', () => {
           error: new Error('Failed'),
         });
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow();
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow();
 
       expect(mockRedirect).not.toHaveBeenCalled();
     });
@@ -626,9 +672,9 @@ describe('updateTeamAccountName', () => {
           error: null,
         });
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow(
-        'NEXT_REDIRECT',
-      );
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow('NEXT_REDIRECT');
 
       // Should not create audit log without before state
       expect(mockCreateAuditLog).not.toHaveBeenCalled();
@@ -644,7 +690,7 @@ describe('updateTeamAccountName', () => {
       };
 
       await expect(
-        updateTeamAccountName(params, null as any),
+        withUser(updateTeamAccountName)(params, null as any),
       ).rejects.toThrow();
     });
 
@@ -656,7 +702,9 @@ describe('updateTeamAccountName', () => {
       };
       const user = {} as any;
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow();
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow();
     });
 
     it('should handle missing name field', async () => {
@@ -667,7 +715,7 @@ describe('updateTeamAccountName', () => {
       const user = { id: '487fcdeb-51a2-43d7-8f9e-123456789abc' };
 
       await expect(
-        updateTeamAccountName(params as any, user),
+        withUser(updateTeamAccountName)(params as any, user),
       ).rejects.toThrow();
     });
 
@@ -697,7 +745,9 @@ describe('updateTeamAccountName', () => {
           error: null,
         });
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow(
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow(
         'NEXT_REDIRECT;/home/new-slug/deeply/nested/[account]/path',
       );
 
@@ -733,9 +783,9 @@ describe('updateTeamAccountName', () => {
         .mockResolvedValueOnce({ data: beforeAccount, error: null })
         .mockResolvedValueOnce({ data: afterAccount, error: null });
 
-      await expect(updateTeamAccountName(params, user)).rejects.toThrow(
-        'NEXT_REDIRECT;/home/full-flow-team/settings',
-      );
+      await expect(
+        withUser(updateTeamAccountName)(params, user),
+      ).rejects.toThrow('NEXT_REDIRECT;/home/full-flow-team/settings');
 
       // Verify full flow
       expect(mockLogger.info).toHaveBeenCalledWith(

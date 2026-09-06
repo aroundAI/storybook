@@ -15,21 +15,36 @@ vi.mock('@kit/shared/logger', () => ({
 }));
 
 // Create mock Supabase client
+/**
+ * These mocks resolve to `{ data, error }` where either side can be null.
+ * Inferring the type from a happy-path default pins `data` to one shape and
+ * `error` to `null`, making every failure case in the file a type error.
+ */
+interface QueryResult {
+  data: unknown;
+  error: unknown;
+}
+
 const createMockClient = () => ({
   from: vi.fn(() => ({
     delete: vi.fn().mockReturnThis(),
     update: vi.fn().mockReturnThis(),
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
-    match: vi.fn(() => Promise.resolve({ data: null, error: null })),
-    single: vi.fn(() =>
-      Promise.resolve({
-        data: { name: 'Test Account' },
-        error: null,
-      }),
+    match: vi.fn(
+      (): Promise<QueryResult> => Promise.resolve({ data: null, error: null }),
+    ),
+    single: vi.fn(
+      (): Promise<QueryResult> =>
+        Promise.resolve({
+          data: { name: 'Test Account' },
+          error: null,
+        }),
     ),
   })),
-  rpc: vi.fn(() => Promise.resolve({ data: [], error: null })),
+  rpc: vi.fn(
+    (): Promise<QueryResult> => Promise.resolve({ data: [], error: null }),
+  ),
 });
 
 describe('AccountInvitationsService', () => {
@@ -46,7 +61,10 @@ describe('AccountInvitationsService', () => {
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        match: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       } as any);
 
       await service.deleteInvitation({ invitationId: 123 });
@@ -60,7 +78,9 @@ describe('AccountInvitationsService', () => {
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(() => Promise.resolve({ data: null, error })),
+        match: vi.fn(
+          (): Promise<QueryResult> => Promise.resolve({ data: null, error }),
+        ),
       } as any);
 
       await expect(
@@ -75,7 +95,10 @@ describe('AccountInvitationsService', () => {
 
       mockClient.from.mockReturnValue({
         update: vi.fn().mockReturnThis(),
-        match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        match: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       } as any);
 
       await service.updateInvitation({
@@ -92,7 +115,9 @@ describe('AccountInvitationsService', () => {
 
       mockClient.from.mockReturnValue({
         update: vi.fn().mockReturnThis(),
-        match: vi.fn(() => Promise.resolve({ data: null, error })),
+        match: vi.fn(
+          (): Promise<QueryResult> => Promise.resolve({ data: null, error }),
+        ),
       } as any);
 
       await expect(
@@ -178,11 +203,12 @@ describe('AccountInvitationsService', () => {
       mockClient.from.mockReturnValue({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
-        single: vi.fn(() =>
-          Promise.resolve({
-            data: { name: 'Test Account' },
-            error: null,
-          }),
+        single: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({
+              data: { name: 'Test Account' },
+              error: null,
+            }),
         ),
       } as any);
 
@@ -238,11 +264,12 @@ describe('AccountInvitationsService', () => {
       mockClient.from.mockReturnValue({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
-        single: vi.fn(() =>
-          Promise.resolve({
-            data: null,
-            error: null,
-          }),
+        single: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({
+              data: null,
+              error: null,
+            }),
         ),
       } as any);
 
@@ -271,11 +298,12 @@ describe('AccountInvitationsService', () => {
       mockClient.from.mockReturnValue({
         select: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
-        single: vi.fn(() =>
-          Promise.resolve({
-            data: { name: 'Test Account' },
-            error: null,
-          }),
+        single: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({
+              data: { name: 'Test Account' },
+              error: null,
+            }),
         ),
       } as any);
 
@@ -338,7 +366,10 @@ describe('AccountInvitationsService', () => {
 
       mockClient.from.mockReturnValue({
         update: vi.fn().mockReturnThis(),
-        match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        match: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       } as any);
 
       await service.renewInvitation(123);
@@ -352,7 +383,9 @@ describe('AccountInvitationsService', () => {
 
       mockClient.from.mockReturnValue({
         update: vi.fn().mockReturnThis(),
-        match: vi.fn(() => Promise.resolve({ data: null, error })),
+        match: vi.fn(
+          (): Promise<QueryResult> => Promise.resolve({ data: null, error }),
+        ),
       } as any);
 
       await expect(service.renewInvitation(123)).rejects.toThrow(
@@ -368,7 +401,10 @@ describe('AccountInvitationsService', () => {
         update: vi.fn((data: any) => {
           capturedExpiresAt = data.expires_at;
           return {
-            match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+            match: vi.fn(
+              (): Promise<QueryResult> =>
+                Promise.resolve({ data: null, error: null }),
+            ),
           };
         }),
       } as any);

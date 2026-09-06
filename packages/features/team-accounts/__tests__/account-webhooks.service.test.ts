@@ -76,6 +76,11 @@ describe('AccountWebhooksService', () => {
         slug: null,
         public_data: null,
         primary_owner_user_id: '123',
+        created_by: null,
+        updated_by: null,
+        current_usage_cents: 0,
+        monthly_budget_cents: null,
+        public_profile: null,
       };
 
       await service.handleAccountDeletedWebhook(account);
@@ -103,6 +108,11 @@ describe('AccountWebhooksService', () => {
         slug: null,
         public_data: null,
         primary_owner_user_id: '456',
+        created_by: null,
+        updated_by: null,
+        current_usage_cents: 0,
+        monthly_budget_cents: null,
+        public_profile: null,
       };
 
       await service.handleAccountDeletedWebhook(account);
@@ -123,9 +133,12 @@ describe('AccountWebhooksService', () => {
     it('should use email as display name when name is null', async () => {
       const service = createAccountWebhooksService();
 
+      // `accounts.name` is NOT NULL, so this case is unreachable through the
+      // type — but the service still falls back to the email, and that
+      // fallback is what this test covers.
       const account = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        name: null,
+        name: null as unknown as string,
         email: 'user@example.com',
         is_personal_account: true,
         picture_url: null,
@@ -134,6 +147,11 @@ describe('AccountWebhooksService', () => {
         slug: null,
         public_data: null,
         primary_owner_user_id: '789',
+        created_by: null,
+        updated_by: null,
+        current_usage_cents: 0,
+        monthly_budget_cents: null,
+        public_profile: null,
       };
 
       await service.handleAccountDeletedWebhook(account);
@@ -158,6 +176,11 @@ describe('AccountWebhooksService', () => {
         slug: null,
         public_data: null,
         primary_owner_user_id: '101',
+        created_by: null,
+        updated_by: null,
+        current_usage_cents: 0,
+        monthly_budget_cents: null,
+        public_profile: null,
       };
 
       await service.handleAccountDeletedWebhook(account);
@@ -186,6 +209,11 @@ describe('AccountWebhooksService', () => {
         slug: 'team-account',
         public_data: null,
         primary_owner_user_id: '202',
+        created_by: null,
+        updated_by: null,
+        current_usage_cents: 0,
+        monthly_budget_cents: null,
+        public_profile: null,
       };
 
       await service.handleAccountDeletedWebhook(account);
@@ -208,6 +236,11 @@ describe('AccountWebhooksService', () => {
         slug: 'company-team',
         public_data: null,
         primary_owner_user_id: '303',
+        created_by: null,
+        updated_by: null,
+        current_usage_cents: 0,
+        monthly_budget_cents: null,
+        public_profile: null,
       };
 
       await service.handleAccountDeletedWebhook(account);
@@ -243,6 +276,11 @@ describe('AccountWebhooksService', () => {
         slug: null,
         public_data: null,
         primary_owner_user_id: '404',
+        created_by: null,
+        updated_by: null,
+        current_usage_cents: 0,
+        monthly_budget_cents: null,
+        public_profile: null,
       };
 
       await service.handleAccountDeletedWebhook(account);
@@ -267,6 +305,11 @@ describe('AccountWebhooksService', () => {
         slug: null,
         public_data: null,
         primary_owner_user_id: '505',
+        created_by: null,
+        updated_by: null,
+        current_usage_cents: 0,
+        monthly_budget_cents: null,
+        public_profile: null,
       };
 
       await service.handleAccountDeletedWebhook(account);
@@ -302,6 +345,11 @@ describe('AccountWebhooksService', () => {
         slug: null,
         public_data: null,
         primary_owner_user_id: '606',
+        created_by: null,
+        updated_by: null,
+        current_usage_cents: 0,
+        monthly_budget_cents: null,
+        public_profile: null,
       };
 
       await expect(
@@ -325,6 +373,11 @@ describe('AccountWebhooksService', () => {
         slug: null,
         public_data: null,
         primary_owner_user_id: '707',
+        created_by: null,
+        updated_by: null,
+        current_usage_cents: 0,
+        monthly_budget_cents: null,
+        public_profile: null,
       };
 
       await expect(
@@ -348,6 +401,11 @@ describe('AccountWebhooksService', () => {
         slug: null,
         public_data: null,
         primary_owner_user_id: '801',
+        created_by: null,
+        updated_by: null,
+        current_usage_cents: 0,
+        monthly_budget_cents: null,
+        public_profile: null,
       };
 
       const account2 = {
@@ -361,6 +419,11 @@ describe('AccountWebhooksService', () => {
         slug: null,
         public_data: null,
         primary_owner_user_id: '802',
+        created_by: null,
+        updated_by: null,
+        current_usage_cents: 0,
+        monthly_budget_cents: null,
+        public_profile: null,
       };
 
       await service.handleAccountDeletedWebhook(account1);
@@ -383,6 +446,11 @@ describe('AccountWebhooksService', () => {
         slug: null,
         public_data: null,
         primary_owner_user_id: '901',
+        created_by: null,
+        updated_by: null,
+        current_usage_cents: 0,
+        monthly_budget_cents: null,
+        public_profile: null,
       };
 
       const teamAccount = {
@@ -396,6 +464,11 @@ describe('AccountWebhooksService', () => {
         slug: 'team',
         public_data: null,
         primary_owner_user_id: '902',
+        created_by: null,
+        updated_by: null,
+        current_usage_cents: 0,
+        monthly_budget_cents: null,
+        public_profile: null,
       };
 
       await service.handleAccountDeletedWebhook(personalAccount);

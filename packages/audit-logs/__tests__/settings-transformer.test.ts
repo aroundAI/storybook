@@ -327,7 +327,7 @@ describe('settingsTransformer', () => {
 
   describe('getDescription()', () => {
     it('should describe update action', () => {
-      const description = settingsTransformer.getDescription(
+      const description = settingsTransformer.getDescription!(
         { theme: 'dark' },
         'update',
       );
@@ -335,7 +335,7 @@ describe('settingsTransformer', () => {
     });
 
     it('should describe create action', () => {
-      const description = settingsTransformer.getDescription(
+      const description = settingsTransformer.getDescription!(
         { theme: 'dark' },
         'create',
       );
@@ -343,7 +343,7 @@ describe('settingsTransformer', () => {
     });
 
     it('should describe delete action', () => {
-      const description = settingsTransformer.getDescription(
+      const description = settingsTransformer.getDescription!(
         { theme: 'dark' },
         'delete',
       );
@@ -351,7 +351,7 @@ describe('settingsTransformer', () => {
     });
 
     it('should describe custom action', () => {
-      const description = settingsTransformer.getDescription(
+      const description = settingsTransformer.getDescription!(
         { theme: 'dark' },
         'reset' as AuditAction,
       );
@@ -359,12 +359,12 @@ describe('settingsTransformer', () => {
     });
 
     it('should handle null data', () => {
-      const description = settingsTransformer.getDescription(null, 'update');
+      const description = settingsTransformer.getDescription!(null, 'update');
       expect(description).toBe('Account settings were updated');
     });
 
     it('should handle undefined data', () => {
-      const description = settingsTransformer.getDescription(
+      const description = settingsTransformer.getDescription!(
         undefined,
         'update',
       );
@@ -375,14 +375,14 @@ describe('settingsTransformer', () => {
   describe('calculateChanges()', () => {
     describe('invalid inputs', () => {
       it('should return empty object for non-object before', () => {
-        const changes = settingsTransformer.calculateChanges('string', {
+        const changes = settingsTransformer.calculateChanges!('string', {
           theme: 'dark',
         });
         expect(changes).toEqual({});
       });
 
       it('should return empty object for non-object after', () => {
-        const changes = settingsTransformer.calculateChanges(
+        const changes = settingsTransformer.calculateChanges!(
           { theme: 'dark' },
           'string',
         );
@@ -390,14 +390,14 @@ describe('settingsTransformer', () => {
       });
 
       it('should return empty object for null before', () => {
-        const changes = settingsTransformer.calculateChanges(null, {
+        const changes = settingsTransformer.calculateChanges!(null, {
           theme: 'dark',
         });
         expect(changes).toEqual({});
       });
 
       it('should return empty object for null after', () => {
-        const changes = settingsTransformer.calculateChanges(
+        const changes = settingsTransformer.calculateChanges!(
           { theme: 'dark' },
           null,
         );
@@ -405,14 +405,14 @@ describe('settingsTransformer', () => {
       });
 
       it('should return empty object for undefined before', () => {
-        const changes = settingsTransformer.calculateChanges(undefined, {
+        const changes = settingsTransformer.calculateChanges!(undefined, {
           theme: 'dark',
         });
         expect(changes).toEqual({});
       });
 
       it('should return empty object for undefined after', () => {
-        const changes = settingsTransformer.calculateChanges(
+        const changes = settingsTransformer.calculateChanges!(
           { theme: 'dark' },
           undefined,
         );
@@ -425,7 +425,7 @@ describe('settingsTransformer', () => {
         const before = { theme: 'light' };
         const after = { theme: 'dark' };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.theme).toEqual({
           before: 'light',
@@ -437,7 +437,7 @@ describe('settingsTransformer', () => {
         const before = { language: 'en' };
         const after = { language: 'es' };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.language).toEqual({
           before: 'en',
@@ -449,7 +449,7 @@ describe('settingsTransformer', () => {
         const before = { notifications_enabled: true };
         const after = { notifications_enabled: false };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.notifications_enabled).toEqual({
           before: true,
@@ -461,7 +461,7 @@ describe('settingsTransformer', () => {
         const before = { max_projects: 10 };
         const after = { max_projects: 20 };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.max_projects).toEqual({
           before: 10,
@@ -475,7 +475,7 @@ describe('settingsTransformer', () => {
         const before = { api_key: 'old-key' };
         const after = { api_key: 'new-key' };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.api_key).toEqual({
           before: '***REDACTED***',
@@ -487,7 +487,7 @@ describe('settingsTransformer', () => {
         const before = { client_secret: 'old-secret' };
         const after = { client_secret: 'new-secret' };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.client_secret).toEqual({
           before: '***REDACTED***',
@@ -499,7 +499,7 @@ describe('settingsTransformer', () => {
         const before = { access_token: 'old-token' };
         const after = { access_token: 'new-token' };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.access_token).toEqual({
           before: '***REDACTED***',
@@ -511,7 +511,7 @@ describe('settingsTransformer', () => {
         const before = { password: 'old-pass' };
         const after = { password: 'new-pass' };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.password).toEqual({
           before: '***REDACTED***',
@@ -523,7 +523,7 @@ describe('settingsTransformer', () => {
         const before = { webhook_url: 'https://old.com' };
         const after = { webhook_url: 'https://new.com' };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.webhook_url).toEqual({
           before: '***REDACTED***',
@@ -535,7 +535,7 @@ describe('settingsTransformer', () => {
         const before = { private_key: 'old-key' };
         const after = { private_key: 'new-key' };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.private_key).toEqual({
           before: '***REDACTED***',
@@ -557,7 +557,7 @@ describe('settingsTransformer', () => {
           language: 'es',
         };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.theme).toEqual({
           before: 'light',
@@ -579,7 +579,7 @@ describe('settingsTransformer', () => {
         const before = { theme: 'light' };
         const after = { theme: 'light', language: 'en' };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.language).toEqual({
           before: undefined,
@@ -592,7 +592,7 @@ describe('settingsTransformer', () => {
         const before = { theme: 'light', language: 'en' };
         const after = { theme: 'light' };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.language).toEqual({
           before: 'en',
@@ -605,7 +605,7 @@ describe('settingsTransformer', () => {
         const before = { theme: 'light' };
         const after = { theme: 'light', api_key: 'new-key' };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.api_key).toEqual({
           before: '***REDACTED***',
@@ -618,7 +618,7 @@ describe('settingsTransformer', () => {
         const before = { theme: 'light', api_key: 'old-key' };
         const after = { theme: 'light' };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.api_key).toEqual({
           before: '***REDACTED***',
@@ -633,13 +633,13 @@ describe('settingsTransformer', () => {
         const before = { theme: 'dark', language: 'en' };
         const after = { theme: 'dark', language: 'en' };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes).toEqual({});
       });
 
       it('should return empty object for identical empty objects', () => {
-        const changes = settingsTransformer.calculateChanges({}, {});
+        const changes = settingsTransformer.calculateChanges!({}, {});
         expect(changes).toEqual({});
       });
     });
@@ -649,7 +649,7 @@ describe('settingsTransformer', () => {
         const before = { theme: null };
         const after = { theme: 'dark' };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.theme).toEqual({
           before: null,
@@ -661,7 +661,7 @@ describe('settingsTransformer', () => {
         const before = { theme: 'dark' };
         const after = { theme: null };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.theme).toEqual({
           before: 'dark',
@@ -673,7 +673,7 @@ describe('settingsTransformer', () => {
         const before = { theme: undefined };
         const after = { theme: 'dark' };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.theme).toEqual({
           before: undefined,
@@ -685,7 +685,7 @@ describe('settingsTransformer', () => {
         const before = { theme: 'dark' };
         const after = { theme: undefined };
 
-        const changes = settingsTransformer.calculateChanges(before, after);
+        const changes = settingsTransformer.calculateChanges!(before, after);
 
         expect(changes.theme).toEqual({
           before: 'dark',

@@ -299,9 +299,9 @@ describe('UdioProvider', () => {
       );
 
       expect(result).toHaveLength(3);
-      expect(result[0].jobId).toBe('var-1');
-      expect(result[0].status).toBe('pending');
-      expect(result[0].cost).toBe(UDIO.COST_PER_GENERATION);
+      expect(result[0]!.jobId).toBe('var-1');
+      expect(result[0]!.status).toBe('pending');
+      expect(result[0]!.cost).toBe(UDIO.COST_PER_GENERATION);
     });
 
     it('should validate songId is not empty', async () => {

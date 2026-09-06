@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ScreenplayData, StoryData } from '../src/lib/types';
+import type {
+  ScreenplayData,
+  ScreenplayScene,
+  StoryData,
+} from '../src/lib/types';
 import {
   formatScreenplayForPrompt,
   formatStoryForPrompt,
@@ -12,16 +16,18 @@ describe('Format For Prompt Utilities', () => {
       const screenplay: ScreenplayData = {
         scenes: [
           {
-            sceneNumber: 1,
+            number: 1,
+            heading: 'INT./EXT. LIVING ROOM - DAY',
             location: 'Living Room',
             timeOfDay: 'day',
+            estimatedDuration: 0,
             description: 'A cozy living room with sunlight streaming through.',
             dialogue: [],
           },
         ],
         metadata: {
           totalScenes: 1,
-          totalDialogueLines: 0,
+          estimatedDuration: 0,
           locations: ['Living Room'],
           characters: [],
         },
@@ -39,16 +45,18 @@ describe('Format For Prompt Utilities', () => {
       const screenplay: ScreenplayData = {
         scenes: [
           {
-            sceneNumber: 1,
+            number: 1,
+            heading: 'INT./EXT. KITCHEN - NIGHT',
             location: 'kitchen',
             timeOfDay: 'night',
+            estimatedDuration: 0,
             description: 'Dark kitchen.',
             dialogue: [],
           },
         ],
         metadata: {
           totalScenes: 1,
-          totalDialogueLines: 0,
+          estimatedDuration: 0,
           locations: ['kitchen'],
           characters: [],
         },
@@ -61,17 +69,24 @@ describe('Format For Prompt Utilities', () => {
 
     it('should default to DAY when timeOfDay is not provided', () => {
       const screenplay: ScreenplayData = {
+        // `timeOfDay` is required by ScreenplayScene, and the formatter
+        // still defends against its absence (`scene.timeOfDay?.… ?? 'DAY'`)
+        // because screenplay_data is JSONB: rows stored before the field
+        // existed do not have it. Testing that path needs a scene the type
+        // forbids, which is the point of this case.
         scenes: [
           {
-            sceneNumber: 1,
+            number: 1,
+            heading: 'INT./EXT. PARK - DAY',
             location: 'Park',
             description: 'A sunny park.',
             dialogue: [],
-          },
+            estimatedDuration: 0,
+          } as unknown as ScreenplayScene,
         ],
         metadata: {
           totalScenes: 1,
-          totalDialogueLines: 0,
+          estimatedDuration: 0,
           locations: ['Park'],
           characters: [],
         },
@@ -86,9 +101,11 @@ describe('Format For Prompt Utilities', () => {
       const screenplay: ScreenplayData = {
         scenes: [
           {
-            sceneNumber: 1,
+            number: 1,
+            heading: 'INT./EXT. OFFICE - DAY',
             location: 'Office',
             timeOfDay: 'day',
+            estimatedDuration: 0,
             description: 'A modern office space.',
             dialogue: [
               {
@@ -100,7 +117,7 @@ describe('Format For Prompt Utilities', () => {
         ],
         metadata: {
           totalScenes: 1,
-          totalDialogueLines: 1,
+          estimatedDuration: 1,
           locations: ['Office'],
           characters: ['John'],
         },
@@ -116,9 +133,11 @@ describe('Format For Prompt Utilities', () => {
       const screenplay: ScreenplayData = {
         scenes: [
           {
-            sceneNumber: 1,
+            number: 1,
+            heading: 'INT./EXT. CAFE - DAY',
             location: 'Cafe',
             timeOfDay: 'day',
+            estimatedDuration: 0,
             description: 'A busy cafe.',
             dialogue: [
               {
@@ -131,7 +150,7 @@ describe('Format For Prompt Utilities', () => {
         ],
         metadata: {
           totalScenes: 1,
-          totalDialogueLines: 1,
+          estimatedDuration: 1,
           locations: ['Cafe'],
           characters: ['Maya'],
         },
@@ -148,9 +167,11 @@ describe('Format For Prompt Utilities', () => {
       const screenplay: ScreenplayData = {
         scenes: [
           {
-            sceneNumber: 1,
+            number: 1,
+            heading: 'INT./EXT. RESTAURANT - NIGHT',
             location: 'Restaurant',
             timeOfDay: 'night',
+            estimatedDuration: 0,
             description: 'An elegant restaurant.',
             dialogue: [
               { character: 'Alice', text: 'Good evening.' },
@@ -165,7 +186,7 @@ describe('Format For Prompt Utilities', () => {
         ],
         metadata: {
           totalScenes: 1,
-          totalDialogueLines: 3,
+          estimatedDuration: 3,
           locations: ['Restaurant'],
           characters: ['Alice', 'Bob'],
         },
@@ -185,23 +206,27 @@ describe('Format For Prompt Utilities', () => {
       const screenplay: ScreenplayData = {
         scenes: [
           {
-            sceneNumber: 1,
+            number: 1,
+            heading: 'INT./EXT. BEACH - DAWN',
             location: 'Beach',
             timeOfDay: 'dawn',
+            estimatedDuration: 0,
             description: 'Sun rising over the ocean.',
             dialogue: [],
           },
           {
-            sceneNumber: 2,
+            number: 2,
+            heading: 'INT./EXT. HOTEL ROOM - DAY',
             location: 'Hotel Room',
             timeOfDay: 'day',
+            estimatedDuration: 0,
             description: 'A messy hotel room.',
             dialogue: [{ character: 'Guest', text: "Where's my phone?" }],
           },
         ],
         metadata: {
           totalScenes: 2,
-          totalDialogueLines: 1,
+          estimatedDuration: 1,
           locations: ['Beach', 'Hotel Room'],
           characters: ['Guest'],
         },
@@ -222,7 +247,7 @@ describe('Format For Prompt Utilities', () => {
         scenes: [],
         metadata: {
           totalScenes: 0,
-          totalDialogueLines: 0,
+          estimatedDuration: 0,
           locations: [],
           characters: [],
         },
@@ -237,16 +262,18 @@ describe('Format For Prompt Utilities', () => {
       const screenplay: ScreenplayData = {
         scenes: [
           {
-            sceneNumber: 1,
+            number: 1,
+            heading: 'INT./EXT. FOREST - DUSK',
             location: 'Forest',
             timeOfDay: 'dusk',
+            estimatedDuration: 0,
             description: 'A quiet forest at twilight.',
             dialogue: [],
           },
         ],
         metadata: {
           totalScenes: 1,
-          totalDialogueLines: 0,
+          estimatedDuration: 0,
           locations: ['Forest'],
           characters: [],
         },
@@ -264,16 +291,18 @@ describe('Format For Prompt Utilities', () => {
       const screenplay: ScreenplayData = {
         scenes: [
           {
-            sceneNumber: 1,
+            number: 1,
+            heading: 'INT./EXT. ROOM - DAY',
             location: 'Room',
             timeOfDay: 'day',
+            estimatedDuration: 0,
             description: 'A room.',
             dialogue: [],
           },
         ],
         metadata: {
           totalScenes: 1,
-          totalDialogueLines: 0,
+          estimatedDuration: 0,
           locations: ['Room'],
           characters: [],
         },

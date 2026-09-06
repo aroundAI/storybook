@@ -15,6 +15,16 @@ vi.mock('@kit/shared/logger', () => ({
 }));
 
 // Mock per-seat billing service
+/**
+ * These mocks resolve to `{ data, error }` where either side can be null.
+ * Inferring the type from a happy-path default pins `data` to one shape and
+ * `error` to `null`, making every failure case in the file a type error.
+ */
+interface QueryResult {
+  data: unknown;
+  error: unknown;
+}
+
 const mockDecreaseSeats = vi.fn();
 
 vi.mock('../src/server/services/account-per-seat-billing.service', () => ({
@@ -29,9 +39,13 @@ const createMockClient = () => ({
   from: vi.fn(() => ({
     delete: vi.fn().mockReturnThis(),
     update: vi.fn().mockReturnThis(),
-    match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+    match: vi.fn(
+      (): Promise<QueryResult> => Promise.resolve({ data: null, error: null }),
+    ),
   })),
-  rpc: vi.fn(() => Promise.resolve({ data: true, error: null })),
+  rpc: vi.fn(
+    (): Promise<QueryResult> => Promise.resolve({ data: true, error: null }),
+  ),
 });
 
 describe('AccountMembersService', () => {
@@ -50,7 +64,10 @@ describe('AccountMembersService', () => {
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        match: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       } as any);
 
       await service.removeMemberFromAccount({
@@ -68,7 +85,9 @@ describe('AccountMembersService', () => {
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(() => Promise.resolve({ data: null, error })),
+        match: vi.fn(
+          (): Promise<QueryResult> => Promise.resolve({ data: null, error }),
+        ),
       } as any);
 
       await expect(
@@ -87,7 +106,10 @@ describe('AccountMembersService', () => {
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        match: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       } as any);
 
       await service.removeMemberFromAccount({
@@ -111,7 +133,10 @@ describe('AccountMembersService', () => {
 
       mockAdminClient.from.mockReturnValue({
         update: vi.fn().mockReturnThis(),
-        match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        match: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       } as any);
 
       await service.updateMemberRole(
@@ -182,7 +207,9 @@ describe('AccountMembersService', () => {
 
       mockAdminClient.from.mockReturnValue({
         update: vi.fn().mockReturnThis(),
-        match: vi.fn(() => Promise.resolve({ data: null, error })),
+        match: vi.fn(
+          (): Promise<QueryResult> => Promise.resolve({ data: null, error }),
+        ),
       } as any);
 
       await expect(
@@ -211,7 +238,10 @@ describe('AccountMembersService', () => {
         update: vi.fn((data: any) => {
           capturedRole = data.account_role;
           return {
-            match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+            match: vi.fn(
+              (): Promise<QueryResult> =>
+                Promise.resolve({ data: null, error: null }),
+            ),
           };
         }),
       } as any);
@@ -238,7 +268,10 @@ describe('AccountMembersService', () => {
 
       mockAdminClient.from.mockReturnValue({
         update: vi.fn().mockReturnThis(),
-        match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        match: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       } as any);
 
       await service.updateMemberRole(
@@ -268,6 +301,7 @@ describe('AccountMembersService', () => {
         {
           accountId: 'acc-123',
           userId: 'user-789',
+          otp: 'test-otp',
         },
         mockAdminClient as any,
       );
@@ -296,6 +330,7 @@ describe('AccountMembersService', () => {
           {
             accountId: 'acc-123',
             userId: 'user-789',
+            otp: 'test-otp',
           },
           mockAdminClient as any,
         ),
@@ -314,6 +349,7 @@ describe('AccountMembersService', () => {
         {
           accountId: 'acc-123',
           userId: 'user-789',
+          otp: 'test-otp',
         },
         mockAdminClient as any,
       );

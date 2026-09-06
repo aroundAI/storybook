@@ -6,8 +6,27 @@ import { z } from 'zod';
 
 import { verifyCaptchaToken } from '@kit/auth/captcha/server';
 import { requireUser } from '@kit/supabase/require-user';
+import type { JWTUserData } from '@kit/supabase/types';
 
 import { enhanceAction } from '../src/actions';
+
+/**
+ * requireUser returns a discriminated union keyed on `error`, and its
+ * success branch carries a full JWTUserData. Fixtures that supplied only
+ * id/email/role were describing a user the auth layer never produces.
+ */
+function makeUser(overrides: Partial<JWTUserData> = {}): JWTUserData {
+  return {
+    id: '00000000-0000-0000-0000-000000000000',
+    email: 'user@example.com',
+    phone: '',
+    is_anonymous: false,
+    aal: 'aal1',
+    app_metadata: {},
+    user_metadata: {},
+    ...overrides,
+  };
+}
 
 // Mock dependencies
 vi.mock('next/navigation', () => ({
@@ -131,15 +150,14 @@ describe('enhanceAction', () => {
 
   describe('Authentication', () => {
     it('should require authentication by default', async () => {
-      const mockUser = {
+      const mockUser = makeUser({
         id: 'user-123',
         email: 'user@example.com',
-        role: 'user',
-      };
+      });
 
       vi.mocked(requireUser).mockResolvedValue({
+        error: null,
         data: mockUser,
-        redirectTo: '/auth/sign-in',
       });
 
       const mockFn = vi.fn((data, user) => ({ success: true, user }));
@@ -169,6 +187,9 @@ describe('enhanceAction', () => {
 
     it('should redirect when user is not authenticated', async () => {
       vi.mocked(requireUser).mockResolvedValue({
+        // AuthenticationError adds nothing to Error, and the module is
+        // mocked, so a plain Error satisfies the union's failure branch.
+        error: new Error('Authentication required'),
         data: null,
         redirectTo: '/auth/sign-in',
       });
@@ -186,15 +207,14 @@ describe('enhanceAction', () => {
     });
 
     it('should inject user data when authenticated', async () => {
-      const mockUser = {
+      const mockUser = makeUser({
         id: 'user-456',
         email: 'authenticated@example.com',
-        role: 'admin',
-      };
+      });
 
       vi.mocked(requireUser).mockResolvedValue({
+        error: null,
         data: mockUser,
-        redirectTo: '/auth/sign-in',
       });
 
       const mockFn = vi.fn((data, user) => ({
@@ -302,15 +322,14 @@ describe('enhanceAction', () => {
         content: z.string(),
       });
 
-      const mockUser = {
+      const mockUser = makeUser({
         id: 'user-789',
         email: 'combo@example.com',
-        role: 'user',
-      };
+      });
 
       vi.mocked(requireUser).mockResolvedValue({
+        error: null,
         data: mockUser,
-        redirectTo: '/auth/sign-in',
       });
 
       const mockFn = vi.fn((data, user) => ({
@@ -343,16 +362,15 @@ describe('enhanceAction', () => {
         captchaToken: z.string(),
       });
 
-      const mockUser = {
+      const mockUser = makeUser({
         id: 'user-999',
         email: 'fullstack@example.com',
-        role: 'user',
-      };
+      });
 
       vi.mocked(verifyCaptchaToken).mockResolvedValue(undefined);
       vi.mocked(requireUser).mockResolvedValue({
+        error: null,
         data: mockUser,
-        redirectTo: '/auth/sign-in',
       });
 
       const mockFn = vi.fn((data, user) => ({
@@ -478,15 +496,14 @@ describe('enhanceAction', () => {
         description: z.string().optional(),
       });
 
-      const mockUser = {
+      const mockUser = makeUser({
         id: 'user-123',
         email: 'owner@example.com',
-        role: 'user',
-      };
+      });
 
       vi.mocked(requireUser).mockResolvedValue({
+        error: null,
         data: mockUser,
-        redirectTo: '/auth/sign-in',
       });
 
       const mockFn = vi.fn((data, user) => ({
@@ -554,15 +571,14 @@ describe('enhanceAction', () => {
         notifications: z.boolean(),
       });
 
-      const mockUser = {
+      const mockUser = makeUser({
         id: 'user-456',
         email: 'user@example.com',
-        role: 'user',
-      };
+      });
 
       vi.mocked(requireUser).mockResolvedValue({
+        error: null,
         data: mockUser,
-        redirectTo: '/auth/sign-in',
       });
 
       const mockFn = vi.fn((data, user) => ({

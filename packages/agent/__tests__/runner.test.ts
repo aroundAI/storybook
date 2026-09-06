@@ -3,7 +3,18 @@ import { z } from 'zod';
 
 import { runAgent } from '../src/runner';
 import { createTool, toolError, toolSuccess } from '../src/tool';
+import type { AgentRunContext } from '../src/types';
 import type { AgentConfig } from '../src/types';
+
+/**
+ * runAgent's third argument is required, and is handed to every
+ * `tool.execute` as its second parameter. Omitting it left tools receiving
+ * `undefined` where production passes a tenant context.
+ */
+const RUN_CONTEXT: AgentRunContext = {
+  accountId: '11111111-1111-1111-1111-111111111111',
+  userId: '22222222-2222-2222-2222-222222222222',
+};
 
 // =============================================================================
 // MOCK @kit/llm
@@ -66,9 +77,13 @@ describe('Agent Runner', () => {
         ),
       );
 
-      const result = await runAgent<{ story: string }>(makeConfig(), {
-        userPrompt: 'Write a story',
-      });
+      const result = await runAgent<{ story: string }>(
+        makeConfig(),
+        {
+          userPrompt: 'Write a story',
+        },
+        RUN_CONTEXT,
+      );
 
       expect(result.success).toBe(true);
       expect(result.data).toEqual({ story: 'Once upon a time...' });
@@ -84,7 +99,11 @@ describe('Agent Runner', () => {
         ),
       );
 
-      const result = await runAgent(makeConfig(), { userPrompt: 'Say hello' });
+      const result = await runAgent(
+        makeConfig(),
+        { userPrompt: 'Say hello' },
+        RUN_CONTEXT,
+      );
 
       expect(result.success).toBe(true);
       expect(result.data).toBe('hello');
@@ -126,6 +145,7 @@ describe('Agent Runner', () => {
       const result = await runAgent<{ sum: number }>(
         makeConfig({ tools: [addTool] }),
         { userPrompt: 'Add 3 and 4' },
+        RUN_CONTEXT,
       );
 
       expect(result.success).toBe(true);
@@ -167,9 +187,13 @@ describe('Agent Runner', () => {
         ),
       );
 
-      const result = await runAgent(makeConfig({ tools: [failTool] }), {
-        userPrompt: 'Try this',
-      });
+      const result = await runAgent(
+        makeConfig({ tools: [failTool] }),
+        {
+          userPrompt: 'Try this',
+        },
+        RUN_CONTEXT,
+      );
 
       expect(result.success).toBe(true);
       expect(result.steps[0]!.toolResult?.success).toBe(false);
@@ -198,9 +222,13 @@ describe('Agent Runner', () => {
         ),
       );
 
-      const result = await runAgent(makeConfig(), {
-        userPrompt: 'Test unknown tool',
-      });
+      const result = await runAgent(
+        makeConfig(),
+        {
+          userPrompt: 'Test unknown tool',
+        },
+        RUN_CONTEXT,
+      );
 
       expect(result.success).toBe(true);
       expect(result.steps[0]!.toolResult?.success).toBe(false);
@@ -249,6 +277,7 @@ describe('Agent Runner', () => {
           },
         }),
         { userPrompt: 'Test budget' },
+        RUN_CONTEXT,
       );
 
       expect(result.success).toBe(false);
@@ -281,6 +310,7 @@ describe('Agent Runner', () => {
       const result = await runAgent(
         makeConfig({ tools: [dummyTool], maxSteps: 3 }),
         { userPrompt: 'Keep looping' },
+        RUN_CONTEXT,
       );
 
       expect(result.success).toBe(false);
@@ -296,9 +326,13 @@ describe('Agent Runner', () => {
         mockLLMResponse('This is just plain text, no JSON.'),
       );
 
-      const result = await runAgent(makeConfig(), {
-        userPrompt: 'Test parse error',
-      });
+      const result = await runAgent(
+        makeConfig(),
+        {
+          userPrompt: 'Test parse error',
+        },
+        RUN_CONTEXT,
+      );
 
       // Should succeed with the raw text as data
       expect(result.success).toBe(true);
@@ -313,7 +347,11 @@ describe('Agent Runner', () => {
         new Error('API rate limit exceeded'),
       );
 
-      const result = await runAgent(makeConfig(), { userPrompt: 'Test error' });
+      const result = await runAgent(
+        makeConfig(),
+        { userPrompt: 'Test error' },
+        RUN_CONTEXT,
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('API rate limit exceeded');

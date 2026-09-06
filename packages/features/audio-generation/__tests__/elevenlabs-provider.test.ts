@@ -115,7 +115,7 @@ describe('ElevenLabsProvider', () => {
       await vi.runAllTimersAsync();
       await resultPromise;
 
-      const fetchCall = fetchMock.mock.calls[0];
+      const fetchCall = fetchMock.mock.calls[0]!;
       const body = JSON.parse(fetchCall[1].body);
 
       expect(body.voice_settings.stability).toBe(0.8);
@@ -141,7 +141,7 @@ describe('ElevenLabsProvider', () => {
       await vi.runAllTimersAsync();
       await resultPromise;
 
-      const fetchCall = fetchMock.mock.calls[0];
+      const fetchCall = fetchMock.mock.calls[0]!;
       const body = JSON.parse(fetchCall[1].body);
 
       expect(body.voice_settings.stability).toBe(
@@ -169,7 +169,7 @@ describe('ElevenLabsProvider', () => {
       await vi.runAllTimersAsync();
       await resultPromise;
 
-      const fetchCall = fetchMock.mock.calls[0];
+      const fetchCall = fetchMock.mock.calls[0]!;
       expect(fetchCall[1].headers['xi-api-key']).toBe('test-api-key');
       expect(fetchCall[1].headers['Content-Type']).toBe('application/json');
     });
@@ -191,7 +191,7 @@ describe('ElevenLabsProvider', () => {
       await vi.runAllTimersAsync();
       await resultPromise;
 
-      const fetchCall = fetchMock.mock.calls[0];
+      const fetchCall = fetchMock.mock.calls[0]!;
       expect(fetchCall[0]).toBe(
         `${ELEVENLABS.BASE_URL}/text-to-speech/voice-123`,
       );
@@ -440,7 +440,7 @@ describe('ElevenLabsProvider', () => {
       await vi.runAllTimersAsync();
       await resultPromise;
 
-      const fetchCall = fetchMock.mock.calls[0];
+      const fetchCall = fetchMock.mock.calls[0]!;
       expect(fetchCall[0]).toBe(`${ELEVENLABS.BASE_URL}/voices/add`);
       expect(fetchCall[1].method).toBe('POST');
     });
@@ -507,7 +507,7 @@ describe('ElevenLabsProvider', () => {
 
       await expect(resultPromise).resolves.not.toThrow();
 
-      const fetchCall = fetchMock.mock.calls[0];
+      const fetchCall = fetchMock.mock.calls[0]!;
       expect(fetchCall[0]).toBe(
         `${ELEVENLABS.BASE_URL}/voices/voice-to-delete`,
       );

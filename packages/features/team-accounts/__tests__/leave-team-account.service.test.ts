@@ -3,6 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createLeaveTeamAccountService } from '../src/server/services/leave-team-account.service';
 
 // Mock logger
+/**
+ * These mocks resolve to `{ data, error }` where either side can be null.
+ * Inferring the type from a happy-path default pins `data` to one shape and
+ * `error` to `null`, making every failure case in the file a type error.
+ */
+interface QueryResult {
+  data: unknown;
+  error: unknown;
+}
+
 const mockLogger = {
   info: vi.fn(),
   error: vi.fn(),
@@ -18,9 +28,13 @@ vi.mock('@kit/shared/logger', () => ({
 const createMockClient = () => ({
   from: vi.fn(() => ({
     delete: vi.fn().mockReturnThis(),
-    match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+    match: vi.fn(
+      (): Promise<QueryResult> => Promise.resolve({ data: null, error: null }),
+    ),
   })),
-  rpc: vi.fn(() => Promise.resolve({ data: null, error: null })),
+  rpc: vi.fn(
+    (): Promise<QueryResult> => Promise.resolve({ data: null, error: null }),
+  ),
 });
 
 describe('LeaveTeamAccountService', () => {
@@ -46,7 +60,10 @@ describe('LeaveTeamAccountService', () => {
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        match: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       });
 
       const params = {
@@ -63,8 +80,9 @@ describe('LeaveTeamAccountService', () => {
       const service = createLeaveTeamAccountService(mockClient as any);
 
       const mockDelete = vi.fn().mockReturnThis();
-      const mockMatch = vi.fn(() =>
-        Promise.resolve({ data: null, error: null }),
+      const mockMatch = vi.fn(
+        (): Promise<QueryResult> =>
+          Promise.resolve({ data: null, error: null }),
       );
 
       mockClient.from.mockReturnValue({
@@ -91,7 +109,10 @@ describe('LeaveTeamAccountService', () => {
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        match: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       });
 
       const params = {
@@ -163,11 +184,12 @@ describe('LeaveTeamAccountService', () => {
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(() =>
-          Promise.resolve({
-            data: null,
-            error: dbError,
-          }),
+        match: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({
+              data: null,
+              error: dbError,
+            }),
         ),
       });
 
@@ -195,11 +217,12 @@ describe('LeaveTeamAccountService', () => {
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(() =>
-          Promise.resolve({
-            data: null,
-            error,
-          }),
+        match: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({
+              data: null,
+              error,
+            }),
         ),
       });
 
@@ -218,11 +241,12 @@ describe('LeaveTeamAccountService', () => {
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(() =>
-          Promise.resolve({
-            data: null,
-            error,
-          }),
+        match: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({
+              data: null,
+              error,
+            }),
         ),
       });
 
@@ -279,7 +303,10 @@ describe('LeaveTeamAccountService', () => {
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        match: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       });
 
       const params = {
@@ -298,7 +325,10 @@ describe('LeaveTeamAccountService', () => {
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        match: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       });
 
       const accountId = '123e4567-e89b-12d3-a456-426614174000';

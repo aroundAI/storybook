@@ -27,6 +27,15 @@ vi.mock('@kit/shared/crypto', () => ({
   ),
 }));
 
+/**
+ * PostgREST builders resolve to `{ data, error }`; typing the terminal
+ * methods as that shape is what lets a test override them.
+ */
+interface QueryResult {
+  data: unknown;
+  error: { message: string } | null;
+}
+
 // Mock Supabase client
 const mockSupabase = {
   from: vi.fn(() => mockSupabase),
@@ -35,7 +44,9 @@ const mockSupabase = {
   lt: vi.fn(() => mockSupabase),
   order: vi.fn(() => mockSupabase),
   update: vi.fn(() => mockSupabase),
-  single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+  single: vi.fn(
+    (): Promise<QueryResult> => Promise.resolve({ data: null, error: null }),
+  ),
 };
 
 // token-refresh.ts runs from background workers with no user session, so it

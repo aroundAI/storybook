@@ -3,6 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDeleteTeamAccountService } from '../src/server/services/delete-team-account.service';
 
 // Mock logger
+/**
+ * These mocks resolve to `{ data, error }` where either side can be null.
+ * Inferring the type from a happy-path default pins `data` to one shape and
+ * `error` to `null`, making every failure case in the file a type error.
+ */
+interface QueryResult {
+  data: unknown;
+  error: unknown;
+}
+
 const mockLogger = {
   info: vi.fn(),
   error: vi.fn(),
@@ -18,9 +28,13 @@ vi.mock('@kit/shared/logger', () => ({
 const createMockAdminClient = () => ({
   from: vi.fn(() => ({
     delete: vi.fn().mockReturnThis(),
-    eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+    eq: vi.fn(
+      (): Promise<QueryResult> => Promise.resolve({ data: null, error: null }),
+    ),
   })),
-  rpc: vi.fn(() => Promise.resolve({ data: null, error: null })),
+  rpc: vi.fn(
+    (): Promise<QueryResult> => Promise.resolve({ data: null, error: null }),
+  ),
 });
 
 describe('DeleteTeamAccountService', () => {
@@ -53,7 +67,10 @@ describe('DeleteTeamAccountService', () => {
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        eq: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       });
 
       const params = {
@@ -72,7 +89,10 @@ describe('DeleteTeamAccountService', () => {
       const service = createDeleteTeamAccountService();
 
       const mockDelete = vi.fn().mockReturnThis();
-      const mockEq = vi.fn(() => Promise.resolve({ data: null, error: null }));
+      const mockEq = vi.fn(
+        (): Promise<QueryResult> =>
+          Promise.resolve({ data: null, error: null }),
+      );
 
       mockAdminClient.from.mockReturnValue({
         delete: mockDelete,
@@ -95,7 +115,10 @@ describe('DeleteTeamAccountService', () => {
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        eq: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       });
 
       const params = {
@@ -128,7 +151,10 @@ describe('DeleteTeamAccountService', () => {
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        eq: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       });
 
       const params = {
@@ -151,7 +177,10 @@ describe('DeleteTeamAccountService', () => {
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        eq: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       });
 
       const params = {
@@ -169,7 +198,10 @@ describe('DeleteTeamAccountService', () => {
     it('should delete only the specific account by id', async () => {
       const service = createDeleteTeamAccountService();
 
-      const mockEq = vi.fn(() => Promise.resolve({ data: null, error: null }));
+      const mockEq = vi.fn(
+        (): Promise<QueryResult> =>
+          Promise.resolve({ data: null, error: null }),
+      );
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
@@ -195,11 +227,12 @@ describe('DeleteTeamAccountService', () => {
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn(() =>
-          Promise.resolve({
-            data: null,
-            error: dbError,
-          }),
+        eq: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({
+              data: null,
+              error: dbError,
+            }),
         ),
       });
 
@@ -232,11 +265,12 @@ describe('DeleteTeamAccountService', () => {
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn(() =>
-          Promise.resolve({
-            data: null,
-            error: constraintError,
-          }),
+        eq: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({
+              data: null,
+              error: constraintError,
+            }),
         ),
       });
 
@@ -257,11 +291,12 @@ describe('DeleteTeamAccountService', () => {
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn(() =>
-          Promise.resolve({
-            data: null,
-            error,
-          }),
+        eq: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({
+              data: null,
+              error,
+            }),
         ),
       });
 
@@ -288,11 +323,12 @@ describe('DeleteTeamAccountService', () => {
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn(() =>
-          Promise.resolve({
-            data: null,
-            error: notFoundError,
-          }),
+        eq: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({
+              data: null,
+              error: notFoundError,
+            }),
         ),
       });
 
@@ -313,7 +349,10 @@ describe('DeleteTeamAccountService', () => {
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        eq: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       });
 
       const params = {
@@ -332,7 +371,10 @@ describe('DeleteTeamAccountService', () => {
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        eq: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       });
 
       const params = {
@@ -353,7 +395,10 @@ describe('DeleteTeamAccountService', () => {
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        eq: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       });
 
       const params = {
@@ -371,7 +416,10 @@ describe('DeleteTeamAccountService', () => {
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        eq: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       });
 
       const params = {
@@ -389,7 +437,10 @@ describe('DeleteTeamAccountService', () => {
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        eq: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       });
 
       const params = {
@@ -414,7 +465,10 @@ describe('DeleteTeamAccountService', () => {
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        eq: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       });
 
       const userId = '987fcdeb-51a2-43d7-8f9e-123456789abc';
@@ -439,7 +493,10 @@ describe('DeleteTeamAccountService', () => {
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        eq: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       });
 
       const deletions = [
@@ -473,7 +530,10 @@ describe('DeleteTeamAccountService', () => {
 
       mockAdminClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        eq: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        eq: vi.fn(
+          (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error: null }),
+        ),
       });
 
       const params = {

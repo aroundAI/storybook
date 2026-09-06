@@ -39,6 +39,15 @@ vi.mock('../src/server/calculate-changes', () => ({
   calculateChanges: vi.fn(),
 }));
 
+/**
+ * getLogger resolves to the full Logger interface; these suites stub only
+ * the levels they assert on, so the stub is widened rather than filled in
+ * with methods nothing reads.
+ */
+function asLogger<T>(value: T): Awaited<ReturnType<typeof getLogger>> {
+  return value as unknown as Awaited<ReturnType<typeof getLogger>>;
+}
+
 describe('create-audit-log', () => {
   const mockGetLogger = vi.mocked(getLogger);
   const mockGetSupabaseServerClient = vi.mocked(getSupabaseServerClient);
@@ -56,7 +65,7 @@ describe('create-audit-log', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetLogger.mockResolvedValue(mockLogger);
+    mockGetLogger.mockResolvedValue(asLogger(mockLogger));
     mockGetSupabaseServerClient.mockReturnValue({ from: mockFrom } as any);
     mockFrom.mockReturnValue({ insert: mockInsert });
     mockInsert.mockResolvedValue({ error: null });
@@ -363,7 +372,7 @@ describe('create-audit-log', () => {
       it('should use custom calculateChanges from transformer when provided', async () => {
         mockShouldTrackObject.mockReturnValue(true);
         const mockCustomCalculateChanges = vi.fn(() => ({
-          custom: 'changes',
+          custom: { before: 'old', after: 'new' },
         }));
         mockGetTransformer.mockReturnValue({
           transform: vi.fn((data: any) => data),
@@ -387,7 +396,7 @@ describe('create-audit-log', () => {
         expect(mockCalculateChanges).not.toHaveBeenCalled();
         expect(mockInsert).toHaveBeenCalledWith(
           expect.objectContaining({
-            changes: { custom: 'changes' },
+            changes: { custom: { before: 'old', after: 'new' } },
           }),
         );
       });
@@ -398,7 +407,7 @@ describe('create-audit-log', () => {
           transform: vi.fn((data: any) => data),
         });
         mockCalculateChanges.mockReturnValue({
-          name: { old: 'Old', new: 'New' },
+          name: { before: 'Old', after: 'New' },
         });
 
         const beforeState = { id: 'user-123', name: 'Old' };
@@ -420,7 +429,7 @@ describe('create-audit-log', () => {
         );
         expect(mockInsert).toHaveBeenCalledWith(
           expect.objectContaining({
-            changes: { name: { old: 'Old', new: 'New' } },
+            changes: { name: { before: 'Old', after: 'New' } },
           }),
         );
       });

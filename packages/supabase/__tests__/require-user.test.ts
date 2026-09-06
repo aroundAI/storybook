@@ -3,6 +3,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkRequiresMultiFactorAuthentication } from '../src/check-requires-mfa';
 import { MultiFactorAuthError, requireUser } from '../src/require-user';
 
+/**
+ * requireUser returns a discriminated union: only its failure branches
+ * carry `redirectTo`. Narrowing on `error` is what makes the field
+ * reachable, and asserts the call actually failed rather than reading an
+ * undefined off the success branch.
+ */
+function failureOf<T extends { error: unknown }>(
+  result: T,
+): Extract<T, { redirectTo: string }> {
+  if (!result.error) {
+    throw new Error('expected requireUser to fail');
+  }
+
+  return result as Extract<T, { redirectTo: string }>;
+}
+
 // Mock the check-requires-mfa module
 vi.mock('../src/check-requires-mfa', () => ({
   checkRequiresMultiFactorAuthentication: vi.fn(),
@@ -171,7 +187,7 @@ describe('requireUser', () => {
       expect(result.data).toBeNull();
       expect(result.error).toBeInstanceOf(Error);
       expect(result.error?.message).toBe('Authentication required');
-      expect(result.redirectTo).toBe('/auth/sign-in');
+      expect(failureOf(result).redirectTo).toBe('/auth/sign-in');
     });
 
     it('should return error when getClaims returns error', async () => {
@@ -184,7 +200,7 @@ describe('requireUser', () => {
 
       expect(result.data).toBeNull();
       expect(result.error?.message).toBe('Authentication required');
-      expect(result.redirectTo).toBe('/auth/sign-in');
+      expect(failureOf(result).redirectTo).toBe('/auth/sign-in');
     });
 
     it('should return error when data is undefined', async () => {
@@ -209,7 +225,9 @@ describe('requireUser', () => {
         next: '/dashboard',
       });
 
-      expect(result.redirectTo).toBe('/auth/sign-in?next=/dashboard');
+      expect(failureOf(result).redirectTo).toBe(
+        '/auth/sign-in?next=/dashboard',
+      );
     });
 
     it('should encode next parameter in redirect URL', async () => {
@@ -222,7 +240,7 @@ describe('requireUser', () => {
         next: '/dashboard?tab=settings',
       });
 
-      expect(result.redirectTo).toBe(
+      expect(failureOf(result).redirectTo).toBe(
         '/auth/sign-in?next=/dashboard?tab=settings',
       );
     });
@@ -260,7 +278,7 @@ describe('requireUser', () => {
       expect(result.error?.message).toBe(
         'Multi-factor authentication required',
       );
-      expect(result.redirectTo).toBe('/auth/verify');
+      expect(failureOf(result).redirectTo).toBe('/auth/verify');
     });
 
     it('should include next parameter in MFA redirect URL', async () => {
@@ -275,7 +293,7 @@ describe('requireUser', () => {
         next: '/dashboard',
       });
 
-      expect(result.redirectTo).toBe('/auth/verify?next=/dashboard');
+      expect(failureOf(result).redirectTo).toBe('/auth/verify?next=/dashboard');
     });
 
     it('should not check MFA when verifyMfa option is false', async () => {
@@ -339,7 +357,7 @@ describe('requireUser', () => {
         next: '',
       });
 
-      expect(result.redirectTo).toBe('/auth/sign-in');
+      expect(failureOf(result).redirectTo).toBe('/auth/sign-in');
     });
 
     it('should handle user with all string fields empty', async () => {
@@ -451,7 +469,7 @@ describe('requireUser', () => {
       if (result.error !== null) {
         expect(result.data).toBeNull();
         expect(result.error).toBeInstanceOf(Error);
-        expect(result.redirectTo).toBeDefined();
+        expect(failureOf(result).redirectTo).toBeDefined();
         expect(typeof result.redirectTo).toBe('string');
       }
     });

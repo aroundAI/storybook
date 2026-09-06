@@ -12,10 +12,12 @@ import type { AuditTransformer } from '../src/types';
 describe('audit-registry', () => {
   // Create mock transformers
   const createMockTransformer = (name: string): AuditTransformer => ({
-    transform: vi.fn((data: any) => ({
-      ...data,
-      transformedBy: name,
-    })),
+    transform: vi.fn((data: unknown) =>
+      Promise.resolve({
+        ...(data as Record<string, unknown>),
+        transformedBy: name,
+      }),
+    ),
     getDescription: vi.fn(() => `Test description for ${name}`),
   });
 
@@ -50,7 +52,7 @@ describe('audit-registry', () => {
       expect(hasTransformer('type2')).toBe(true);
     });
 
-    it('should overwrite existing transformer for same type', () => {
+    it('should overwrite existing transformer for same type', async () => {
       const transformer1 = createMockTransformer('first');
       const transformer2 = createMockTransformer('second');
 
@@ -58,9 +60,11 @@ describe('audit-registry', () => {
       registerTransformer('same_type', transformer2);
 
       const retrieved = getTransformer('same_type');
-      const result = retrieved.transform({});
+      const result = await retrieved.transform({}, 'update');
 
-      expect(result.transformedBy).toBe('second');
+      expect((result as { transformedBy: string }).transformedBy).toBe(
+        'second',
+      );
     });
 
     it('should handle empty string object type', () => {
@@ -358,16 +362,16 @@ describe('audit-registry', () => {
   });
 
   describe('transformer functionality', () => {
-    it('should execute registered transformer transform method', () => {
+    it('should execute registered transformer transform method', async () => {
       const transformer = createMockTransformer('test');
       registerTransformer('test_type', transformer);
 
       const retrieved = getTransformer('test_type');
       const data = { id: 1, name: 'test' };
-      const result = retrieved.transform(data);
+      const result = await retrieved.transform(data, 'update');
 
-      expect(transformer.transform).toHaveBeenCalledWith(data);
-      expect(result.transformedBy).toBe('test');
+      expect(transformer.transform).toHaveBeenCalledWith(data, 'update');
+      expect((result as { transformedBy: string }).transformedBy).toBe('test');
     });
 
     it('should execute registered transformer getDescription method', () => {
@@ -375,7 +379,7 @@ describe('audit-registry', () => {
       registerTransformer('test_type', transformer);
 
       const retrieved = getTransformer('test_type');
-      const description = retrieved.getDescription({ id: 1 });
+      const description = retrieved.getDescription!({ id: 1 }, 'update');
 
       expect(transformer.getDescription).toHaveBeenCalled();
       expect(description).toContain('test');
@@ -418,7 +422,7 @@ describe('audit-registry', () => {
   });
 
   describe('integration scenarios', () => {
-    it('should support full registration and retrieval flow', () => {
+    it('should support full registration and retrieval flow', async () => {
       const customTransformer = createMockTransformer('custom');
 
       // Register
@@ -430,9 +434,11 @@ describe('audit-registry', () => {
 
       // Get and use transformer
       const transformer = getTransformer('custom_object');
-      const result = transformer.transform({ id: 1 });
+      const result = await transformer.transform({ id: 1 }, 'update');
 
-      expect(result.transformedBy).toBe('custom');
+      expect((result as { transformedBy: string }).transformedBy).toBe(
+        'custom',
+      );
     });
 
     it('should handle mixed registered and config-based transformers', () => {
@@ -453,7 +459,7 @@ describe('audit-registry', () => {
       expect(unknown).toBeDefined();
     });
 
-    it('should maintain separate transformers for different types', () => {
+    it('should maintain separate transformers for different types', async () => {
       const t1 = createMockTransformer('t1');
       const t2 = createMockTransformer('t2');
 
@@ -463,11 +469,11 @@ describe('audit-registry', () => {
       const retrieved1 = getTransformer('type1');
       const retrieved2 = getTransformer('type2');
 
-      const result1 = retrieved1.transform({});
-      const result2 = retrieved2.transform({});
+      const result1 = await retrieved1.transform({}, 'update');
+      const result2 = await retrieved2.transform({}, 'update');
 
-      expect(result1.transformedBy).toBe('t1');
-      expect(result2.transformedBy).toBe('t2');
+      expect((result1 as { transformedBy: string }).transformedBy).toBe('t1');
+      expect((result2 as { transformedBy: string }).transformedBy).toBe('t2');
     });
   });
 });

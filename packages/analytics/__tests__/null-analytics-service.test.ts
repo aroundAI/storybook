@@ -2,6 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { NullAnalyticsService } from '../src/null-analytics-service';
 
+/**
+ * Every method on NullAnalyticsService is the same variadic `noop`, and the
+ * tests below probe its argument filtering. `AnalyticsService` deliberately
+ * does not expose that — `initialize()` takes none and `trackEvent` takes
+ * one or two — so reaching it needs a widened view of the same object
+ * rather than a looser interface.
+ */
+const noopSurface = NullAnalyticsService as unknown as Record<
+  'initialize' | 'trackPageView' | 'trackEvent' | 'identify',
+  (...args: unknown[]) => Promise<void>
+>;
+
 describe('null-analytics-service', () => {
   let consoleDebugSpy: ReturnType<typeof vi.spyOn>;
 
@@ -41,7 +53,7 @@ describe('null-analytics-service', () => {
       });
 
       it('should handle arguments', async () => {
-        await NullAnalyticsService.initialize('arg1', 'arg2');
+        await noopSurface.initialize('arg1', 'arg2');
 
         expect(consoleDebugSpy).toHaveBeenCalledWith(
           'Noop analytics service called with event: initialize',
@@ -51,7 +63,7 @@ describe('null-analytics-service', () => {
       });
 
       it('should filter falsy arguments', async () => {
-        await NullAnalyticsService.initialize('arg1', null, undefined, 'arg2');
+        await noopSurface.initialize('arg1', null, undefined, 'arg2');
 
         expect(consoleDebugSpy).toHaveBeenCalledWith(
           'Noop analytics service called with event: initialize',
@@ -72,7 +84,7 @@ describe('null-analytics-service', () => {
       });
 
       it('should handle multiple arguments', async () => {
-        await NullAnalyticsService.trackPageView('/dashboard', {
+        await noopSurface.trackPageView('/dashboard', {
           referrer: 'google',
         });
 
@@ -209,12 +221,7 @@ describe('null-analytics-service', () => {
       });
 
       it('should filter null and undefined from args', async () => {
-        await NullAnalyticsService.trackEvent(
-          'test',
-          null as any,
-          undefined,
-          'extra',
-        );
+        await noopSurface.trackEvent('test', null, undefined, 'extra');
 
         expect(consoleDebugSpy).toHaveBeenCalledWith(
           'Noop analytics service called with event: trackEvent',
@@ -224,7 +231,7 @@ describe('null-analytics-service', () => {
       });
 
       it('should not filter falsy values like 0 or false', async () => {
-        await NullAnalyticsService.trackEvent('test', 0 as any, false as any);
+        await noopSurface.trackEvent('test', 0, false);
 
         expect(consoleDebugSpy).toHaveBeenCalledWith(
           'Noop analytics service called with event: trackEvent',

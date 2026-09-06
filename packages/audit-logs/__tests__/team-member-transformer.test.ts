@@ -218,7 +218,7 @@ describe('teamMemberTransformer', () => {
           role: 'owner',
         };
 
-        const description = teamMemberTransformer.getDescription(
+        const description = teamMemberTransformer.getDescription!(
           member,
           'create',
         );
@@ -232,7 +232,7 @@ describe('teamMemberTransformer', () => {
           role: 'admin',
         };
 
-        const description = teamMemberTransformer.getDescription(
+        const description = teamMemberTransformer.getDescription!(
           member,
           'update',
         );
@@ -246,7 +246,7 @@ describe('teamMemberTransformer', () => {
           role: 'admin',
         };
 
-        const description = teamMemberTransformer.getDescription(
+        const description = teamMemberTransformer.getDescription!(
           member,
           'permission_change' as AuditAction,
         );
@@ -260,7 +260,7 @@ describe('teamMemberTransformer', () => {
           role: 'member',
         };
 
-        const description = teamMemberTransformer.getDescription(
+        const description = teamMemberTransformer.getDescription!(
           member,
           'delete',
         );
@@ -273,7 +273,7 @@ describe('teamMemberTransformer', () => {
           account_id: 'account-456',
         };
 
-        const description = teamMemberTransformer.getDescription(
+        const description = teamMemberTransformer.getDescription!(
           member,
           'create',
         );
@@ -287,7 +287,7 @@ describe('teamMemberTransformer', () => {
           role: null,
         };
 
-        const description = teamMemberTransformer.getDescription(
+        const description = teamMemberTransformer.getDescription!(
           member,
           'create',
         );
@@ -303,7 +303,7 @@ describe('teamMemberTransformer', () => {
           role: 'contributor',
         };
 
-        const description = teamMemberTransformer.getDescription(
+        const description = teamMemberTransformer.getDescription!(
           member,
           'create',
         );
@@ -319,7 +319,7 @@ describe('teamMemberTransformer', () => {
           role: 'viewer',
         };
 
-        const description = teamMemberTransformer.getDescription(
+        const description = teamMemberTransformer.getDescription!(
           member,
           'update',
         );
@@ -333,7 +333,7 @@ describe('teamMemberTransformer', () => {
           role: 'admin',
         };
 
-        const description = teamMemberTransformer.getDescription(
+        const description = teamMemberTransformer.getDescription!(
           member,
           'permission_change' as AuditAction,
         );
@@ -347,7 +347,7 @@ describe('teamMemberTransformer', () => {
           role: 'contributor',
         };
 
-        const description = teamMemberTransformer.getDescription(
+        const description = teamMemberTransformer.getDescription!(
           member,
           'delete',
         );
@@ -363,7 +363,7 @@ describe('teamMemberTransformer', () => {
           role: 'admin',
         };
 
-        const description = teamMemberTransformer.getDescription(
+        const description = teamMemberTransformer.getDescription!(
           member,
           'suspend' as AuditAction,
         );
@@ -377,7 +377,7 @@ describe('teamMemberTransformer', () => {
           role: 'viewer',
         };
 
-        const description = teamMemberTransformer.getDescription(
+        const description = teamMemberTransformer.getDescription!(
           member,
           'activate' as AuditAction,
         );
@@ -388,18 +388,18 @@ describe('teamMemberTransformer', () => {
     describe('edge cases', () => {
       it('should throw on null data', () => {
         expect(() =>
-          teamMemberTransformer.getDescription(null, 'create'),
+          teamMemberTransformer.getDescription!(null, 'create'),
         ).toThrow();
       });
 
       it('should throw on undefined data', () => {
         expect(() =>
-          teamMemberTransformer.getDescription(undefined, 'create'),
+          teamMemberTransformer.getDescription!(undefined, 'create'),
         ).toThrow();
       });
 
       it('should handle empty object', () => {
-        const description = teamMemberTransformer.getDescription({}, 'create');
+        const description = teamMemberTransformer.getDescription!({}, 'create');
         expect(description).toBe('Team member added with role "member"');
       });
     });
@@ -408,14 +408,14 @@ describe('teamMemberTransformer', () => {
   describe('calculateChanges()', () => {
     describe('invalid inputs', () => {
       it('should return empty object for non-object before', () => {
-        const changes = teamMemberTransformer.calculateChanges('string', {
+        const changes = teamMemberTransformer.calculateChanges!('string', {
           role: 'admin',
         });
         expect(changes).toEqual({});
       });
 
       it('should return empty object for non-object after', () => {
-        const changes = teamMemberTransformer.calculateChanges(
+        const changes = teamMemberTransformer.calculateChanges!(
           { role: 'member' },
           'string',
         );
@@ -423,14 +423,14 @@ describe('teamMemberTransformer', () => {
       });
 
       it('should return empty object for null before', () => {
-        const changes = teamMemberTransformer.calculateChanges(null, {
+        const changes = teamMemberTransformer.calculateChanges!(null, {
           role: 'admin',
         });
         expect(changes).toEqual({});
       });
 
       it('should return empty object for null after', () => {
-        const changes = teamMemberTransformer.calculateChanges(
+        const changes = teamMemberTransformer.calculateChanges!(
           { role: 'member' },
           null,
         );
@@ -438,14 +438,14 @@ describe('teamMemberTransformer', () => {
       });
 
       it('should return empty object for undefined before', () => {
-        const changes = teamMemberTransformer.calculateChanges(undefined, {
+        const changes = teamMemberTransformer.calculateChanges!(undefined, {
           role: 'admin',
         });
         expect(changes).toEqual({});
       });
 
       it('should return empty object for undefined after', () => {
-        const changes = teamMemberTransformer.calculateChanges(
+        const changes = teamMemberTransformer.calculateChanges!(
           { role: 'member' },
           undefined,
         );
@@ -458,7 +458,7 @@ describe('teamMemberTransformer', () => {
         const before = { role: 'member' };
         const after = { role: 'admin' };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.role).toEqual({
           before: 'member',
@@ -470,7 +470,7 @@ describe('teamMemberTransformer', () => {
         const before = { user_id: 'user-123' };
         const after = { user_id: 'user-456' };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.user_id).toEqual({
           before: 'user-123',
@@ -482,7 +482,7 @@ describe('teamMemberTransformer', () => {
         const before = { permissions: ['read'] };
         const after = { permissions: ['read', 'write'] };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.permissions).toEqual({
           before: ['read'],
@@ -494,7 +494,7 @@ describe('teamMemberTransformer', () => {
         const before = { permissions: ['read', 'write'] };
         const after = { permissions: ['write', 'read'] };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.permissions).toEqual({
           before: ['read', 'write'],
@@ -506,7 +506,7 @@ describe('teamMemberTransformer', () => {
         const before = { permissions: ['read', 'write'] };
         const after = { permissions: ['read', 'write'] };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.permissions).toBeUndefined();
       });
@@ -515,7 +515,7 @@ describe('teamMemberTransformer', () => {
         const before = { permissions: null };
         const after = { permissions: ['read'] };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.permissions).toEqual({
           before: null,
@@ -527,7 +527,7 @@ describe('teamMemberTransformer', () => {
         const before = { permissions: ['read'] };
         const after = { permissions: null };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.permissions).toEqual({
           before: ['read'],
@@ -541,7 +541,7 @@ describe('teamMemberTransformer', () => {
         const before = { id: 'member-123' };
         const after = { id: 'member-456' };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.id).toBeUndefined();
       });
@@ -550,7 +550,7 @@ describe('teamMemberTransformer', () => {
         const before = { account_id: 'account-123' };
         const after = { account_id: 'account-456' };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.account_id).toBeUndefined();
       });
@@ -559,7 +559,7 @@ describe('teamMemberTransformer', () => {
         const before = { project_id: 'project-123' };
         const after = { project_id: 'project-456' };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.project_id).toBeUndefined();
       });
@@ -568,7 +568,7 @@ describe('teamMemberTransformer', () => {
         const before = { created_at: '2024-01-01T00:00:00Z' };
         const after = { created_at: '2024-01-02T00:00:00Z' };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.created_at).toBeUndefined();
       });
@@ -577,7 +577,7 @@ describe('teamMemberTransformer', () => {
         const before = { updated_at: '2024-01-01T00:00:00Z' };
         const after = { updated_at: '2024-01-02T00:00:00Z' };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.updated_at).toBeUndefined();
       });
@@ -596,7 +596,7 @@ describe('teamMemberTransformer', () => {
           user_id: 'user-123',
         };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.role).toEqual({
           before: 'member',
@@ -623,7 +623,7 @@ describe('teamMemberTransformer', () => {
           created_at: '2024-01-02T00:00:00Z', // Untracked
         };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.role).toEqual({
           before: 'member',
@@ -640,13 +640,13 @@ describe('teamMemberTransformer', () => {
         const before = { role: 'admin', permissions: ['read', 'write'] };
         const after = { role: 'admin', permissions: ['read', 'write'] };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes).toEqual({});
       });
 
       it('should return empty object for identical empty objects', () => {
-        const changes = teamMemberTransformer.calculateChanges({}, {});
+        const changes = teamMemberTransformer.calculateChanges!({}, {});
         expect(changes).toEqual({});
       });
     });
@@ -656,7 +656,7 @@ describe('teamMemberTransformer', () => {
         const before = { role: null };
         const after = { role: 'admin' };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.role).toEqual({
           before: null,
@@ -668,7 +668,7 @@ describe('teamMemberTransformer', () => {
         const before = { role: 'admin' };
         const after = { role: null };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.role).toEqual({
           before: 'admin',
@@ -680,7 +680,7 @@ describe('teamMemberTransformer', () => {
         const before = { role: undefined };
         const after = { role: 'member' };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.role).toEqual({
           before: undefined,
@@ -692,7 +692,7 @@ describe('teamMemberTransformer', () => {
         const before = { role: 'member' };
         const after = { role: undefined };
 
-        const changes = teamMemberTransformer.calculateChanges(before, after);
+        const changes = teamMemberTransformer.calculateChanges!(before, after);
 
         expect(changes.role).toEqual({
           before: 'member',
