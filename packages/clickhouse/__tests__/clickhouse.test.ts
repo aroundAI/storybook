@@ -9,9 +9,20 @@ const mockQueryResult = {
   json: vi.fn(),
 };
 
+/**
+ * The shape these tests read back off the mock. Declaring it on the mock
+ * function — rather than casting at each read site — is what makes
+ * `query.mock.calls[0][0]` typed: an untyped `vi.fn(() => …)` has no
+ * parameters, so its `calls` are empty tuples and every index is `never`.
+ */
+interface QueryCall {
+  query: string;
+  query_params: Record<string, unknown>;
+}
+
 const mockClickHouseClient = {
   insert: vi.fn(),
-  query: vi.fn(() => Promise.resolve(mockQueryResult)),
+  query: vi.fn((_args: QueryCall) => Promise.resolve(mockQueryResult)),
   ping: vi.fn(() => Promise.resolve({ success: true })),
   close: vi.fn(),
   command: vi.fn(),
@@ -189,10 +200,7 @@ describe('@kit/clickhouse', () => {
           subscribers_gained: 30,
         });
 
-        const call = mockClickHouseClient.query.mock.calls[0]![0] as {
-          query: string;
-          query_params: Record<string, unknown>;
-        };
+        const call = mockClickHouseClient.query.mock.calls[0]![0];
         expect(call.query).toContain('argMax');
         expect(call.query).toContain('snapshot_date < {beforeDate: Date}');
         expect(call.query_params).toEqual({

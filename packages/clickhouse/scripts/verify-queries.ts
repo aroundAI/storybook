@@ -229,12 +229,11 @@ async function seed() {
       {
         project_id: PROJECT,
         video_id: NORMAL,
+        platform: 'youtube',
         metric_date: '2026-01-11',
         impressions: 4000,
         impressions_ctr: 0.05,
         engaged_views: 90,
-        average_view_duration_seconds: 180,
-        average_view_percentage: 30,
       },
     ]),
   );
@@ -244,6 +243,7 @@ async function seed() {
       {
         project_id: PROJECT,
         video_id: NORMAL,
+        platform: 'youtube',
         metric_date: '2026-01-11',
         source: 'RELATED_VIDEO',
         views: 60,
@@ -252,6 +252,7 @@ async function seed() {
       {
         project_id: PROJECT,
         video_id: NORMAL,
+        platform: 'youtube',
         metric_date: '2026-01-11',
         source: 'YT_SEARCH',
         views: 40,
@@ -265,7 +266,7 @@ async function seed() {
       {
         project_id: PROJECT,
         video_id: NORMAL,
-        snapshot_date: '2026-01-20',
+        platform: 'youtube',
         dimension: 'follower_status',
         key: 'subscribed',
         views: 300,
@@ -274,7 +275,7 @@ async function seed() {
       {
         project_id: PROJECT,
         video_id: NORMAL,
-        snapshot_date: '2026-01-20',
+        platform: 'youtube',
         dimension: 'age_group',
         key: 'age25-34',
         views: 200,
@@ -288,14 +289,14 @@ async function seed() {
       {
         project_id: PROJECT,
         video_id: NORMAL,
-        snapshot_date: '2026-01-20',
+        platform: 'youtube',
         elapsed_ratio: 0.1,
         audience_watch_ratio: 0.9,
       },
       {
         project_id: PROJECT,
         video_id: NORMAL,
-        snapshot_date: '2026-01-20',
+        platform: 'youtube',
         elapsed_ratio: 0.5,
         audience_watch_ratio: 0.4,
       },
@@ -306,10 +307,11 @@ async function seed() {
     insertChannelDaily([
       {
         connection_id: CHANNEL,
-        account_id: ACCOUNT,
         metric_date: '2026-01-11',
         views: 25,
         watch_time_seconds: 300,
+        impressions: 0,
+        engaged_views: 0,
         subscribers_gained: 1,
         subscribers_lost: 0,
       },
