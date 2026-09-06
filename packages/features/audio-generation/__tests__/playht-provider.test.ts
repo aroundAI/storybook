@@ -147,7 +147,7 @@ describe('PlayHTProvider', () => {
       await vi.runAllTimersAsync();
       await resultPromise;
 
-      const fetchCall = fetchMock.mock.calls[0];
+      const fetchCall = fetchMock.mock.calls[0]!;
       const body = JSON.parse(fetchCall[1].body);
 
       expect(body.speed).toBe(1.5);
@@ -178,7 +178,7 @@ describe('PlayHTProvider', () => {
       await vi.runAllTimersAsync();
       await resultPromise;
 
-      const fetchCall = fetchMock.mock.calls[0];
+      const fetchCall = fetchMock.mock.calls[0]!;
       const body = JSON.parse(fetchCall[1].body);
 
       expect(body.speed).toBe(PLAYHT_PROVIDER.DEFAULTS.SPEED);
@@ -209,7 +209,7 @@ describe('PlayHTProvider', () => {
       await vi.runAllTimersAsync();
       await resultPromise;
 
-      const fetchCall = fetchMock.mock.calls[0];
+      const fetchCall = fetchMock.mock.calls[0]!;
       expect(fetchCall[1].headers['Authorization']).toBe('Bearer test-api-key');
       expect(fetchCall[1].headers['X-User-ID']).toBe('test-user-id');
       expect(fetchCall[1].headers['Content-Type']).toBe('application/json');
@@ -238,7 +238,7 @@ describe('PlayHTProvider', () => {
       await vi.runAllTimersAsync();
       await resultPromise;
 
-      const fetchCall = fetchMock.mock.calls[0];
+      const fetchCall = fetchMock.mock.calls[0]!;
       expect(fetchCall[0]).toBe(
         `${PLAYHT_PROVIDER.API.BASE_URL}${PLAYHT_PROVIDER.API.ENDPOINTS.TTS}`,
       );
@@ -325,7 +325,7 @@ describe('PlayHTProvider', () => {
         voiceId: 'voice-123',
       });
 
-      const fetchCall = fetchMock.mock.calls[0];
+      const fetchCall = fetchMock.mock.calls[0]!;
       expect(fetchCall[1].headers['Authorization']).toBe('Bearer test-api-key');
       expect(fetchCall[1].headers['X-User-ID']).toBe('test-user-id');
     });
@@ -655,7 +655,7 @@ describe('PlayHTProvider', () => {
       await vi.runAllTimersAsync();
       await resultPromise;
 
-      const fetchCall = fetchMock.mock.calls[0];
+      const fetchCall = fetchMock.mock.calls[0]!;
       expect(fetchCall[0]).toBe(
         `${PLAYHT_PROVIDER.API.BASE_URL}${PLAYHT_PROVIDER.API.ENDPOINTS.CLONE_INSTANT}`,
       );
@@ -677,7 +677,7 @@ describe('PlayHTProvider', () => {
 
       await expect(resultPromise).resolves.not.toThrow();
 
-      const fetchCall = fetchMock.mock.calls[0];
+      const fetchCall = fetchMock.mock.calls[0]!;
       expect(fetchCall[0]).toBe(
         `${PLAYHT_PROVIDER.API.BASE_URL}${PLAYHT_PROVIDER.API.ENDPOINTS.CLONED_VOICES}/voice-to-delete`,
       );

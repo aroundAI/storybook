@@ -2,6 +2,31 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getDatabaseWebhookHandlerService } from '../src/server/services/database-webhook-handler.service';
 
+type WebhookPayload = Parameters<
+  ReturnType<typeof getDatabaseWebhookHandlerService>['handleWebhook']
+>[0];
+
+/**
+ * These tests exercise routing, signature verification and error handling —
+ * never a record's contents — so they build minimal records. `RecordChange`
+ * is generic over each table's full generated Row, so satisfying it
+ * honestly would mean spelling out every column of `invitations`,
+ * `accounts` and `subscriptions` to assert something none of these cases
+ * looks at.
+ */
+function asPayload(value: {
+  body: {
+    table: string;
+    type: string;
+    record: unknown;
+    old_record: unknown;
+    schema: string;
+  };
+  signature: string;
+}): WebhookPayload {
+  return value as unknown as WebhookPayload;
+}
+
 // Mock logger
 const mockLogger = {
   info: vi.fn(),
@@ -67,7 +92,7 @@ describe('DatabaseWebhookHandlerService', () => {
         signature: 'valid-signature-123',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(mockVerifySignatureOrThrow).toHaveBeenCalledWith(
         'valid-signature-123',
@@ -90,7 +115,7 @@ describe('DatabaseWebhookHandlerService', () => {
         signature: 'invalid-signature',
       };
 
-      await expect(service.handleWebhook(payload)).rejects.toThrow(
+      await expect(service.handleWebhook(asPayload(payload))).rejects.toThrow(
         'Invalid signature',
       );
 
@@ -113,7 +138,7 @@ describe('DatabaseWebhookHandlerService', () => {
         signature: 'bad-signature',
       };
 
-      await expect(service.handleWebhook(payload)).rejects.toThrow();
+      await expect(service.handleWebhook(asPayload(payload))).rejects.toThrow();
       expect(mockHandleWebhook).not.toHaveBeenCalled();
     });
   });
@@ -131,7 +156,7 @@ describe('DatabaseWebhookHandlerService', () => {
         signature: 'valid-signature',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(mockLogger.info).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -155,7 +180,7 @@ describe('DatabaseWebhookHandlerService', () => {
         signature: 'valid-signature',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(mockLogger.info).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -180,7 +205,7 @@ describe('DatabaseWebhookHandlerService', () => {
         signature: 'valid-signature',
       };
 
-      await expect(service.handleWebhook(payload)).rejects.toThrow(
+      await expect(service.handleWebhook(asPayload(payload))).rejects.toThrow(
         'Processing failed',
       );
 
@@ -209,7 +234,7 @@ describe('DatabaseWebhookHandlerService', () => {
         signature: 'valid-signature',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(mockHandleWebhook).toHaveBeenCalledWith(payload.body);
     });
@@ -231,7 +256,7 @@ describe('DatabaseWebhookHandlerService', () => {
           signature: 'valid-signature',
         };
 
-        await service.handleWebhook(payload);
+        await service.handleWebhook(asPayload(payload));
 
         expect(mockHandleWebhook).toHaveBeenCalledWith(payload.body);
       }
@@ -254,7 +279,7 @@ describe('DatabaseWebhookHandlerService', () => {
         handleEvent: customHandler,
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(customHandler).toHaveBeenCalledWith(payload.body);
     });
@@ -284,7 +309,7 @@ describe('DatabaseWebhookHandlerService', () => {
         }),
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(payload.handleEvent).toHaveBeenCalledWith(payload.body);
       expect(mockHandleWebhook).toHaveBeenCalled();
@@ -302,7 +327,9 @@ describe('DatabaseWebhookHandlerService', () => {
         signature: 'valid-signature',
       };
 
-      await expect(service.handleWebhook(payload)).resolves.not.toThrow();
+      await expect(
+        service.handleWebhook(asPayload(payload)),
+      ).resolves.not.toThrow();
     });
 
     it('should propagate custom handler errors', async () => {
@@ -322,7 +349,7 @@ describe('DatabaseWebhookHandlerService', () => {
         handleEvent: customHandler,
       };
 
-      await expect(service.handleWebhook(payload)).rejects.toThrow(
+      await expect(service.handleWebhook(asPayload(payload))).rejects.toThrow(
         'Custom handler failed',
       );
     });
@@ -343,7 +370,7 @@ describe('DatabaseWebhookHandlerService', () => {
         signature: 'valid-signature',
       };
 
-      await expect(service.handleWebhook(payload)).rejects.toThrow(
+      await expect(service.handleWebhook(asPayload(payload))).rejects.toThrow(
         'Router error',
       );
     });
@@ -363,7 +390,7 @@ describe('DatabaseWebhookHandlerService', () => {
         signature: 'valid-signature',
       };
 
-      await expect(service.handleWebhook(payload)).rejects.toThrow(
+      await expect(service.handleWebhook(asPayload(payload))).rejects.toThrow(
         'Database error',
       );
 
@@ -403,7 +430,7 @@ describe('DatabaseWebhookHandlerService', () => {
         signature: 'valid-signature-abc',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       // Verify signature was checked
       expect(mockVerifySignatureOrThrow).toHaveBeenCalledWith(
@@ -448,7 +475,7 @@ describe('DatabaseWebhookHandlerService', () => {
         handleEvent: customHandler,
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       // All steps should complete
       expect(mockVerifySignatureOrThrow).toHaveBeenCalled();

@@ -2,6 +2,38 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createDatabaseWebhookRouterService } from '../src/server/services/database-webhook-router.service';
 
+type AccountWebhooks = ReturnType<
+  (typeof import('@kit/team-accounts/webhooks'))['createAccountWebhooksService']
+>;
+
+/**
+ * Each stub implements only the one method the route under test calls;
+ * AccountWebhooksService is wider. Widening the stub says so, rather than
+ * inventing method bodies no assertion touches.
+ */
+function asAccountWebhooks(value: Partial<AccountWebhooks>): AccountWebhooks {
+  return value as AccountWebhooks;
+}
+
+type RouterPayload = Parameters<
+  ReturnType<typeof createDatabaseWebhookRouterService>['handleWebhook']
+>[0];
+
+/**
+ * The router tests assert which downstream service a change is dispatched
+ * to, never a record's contents, so they build minimal records.
+ * `RecordChange` is generic over each table's full generated Row.
+ */
+function asPayload(value: {
+  table: string;
+  type: string;
+  record: unknown;
+  old_record?: unknown;
+  schema?: string;
+}): RouterPayload {
+  return value as unknown as RouterPayload;
+}
+
 // Mock team accounts webhook service
 const mockHandleInvitationWebhook = vi.fn();
 const mockCreateAccountInvitationsWebhookService = vi.fn(() => ({
@@ -55,7 +87,7 @@ describe('DatabaseWebhookRouterService', () => {
         schema: 'public',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(mockCreateAccountInvitationsWebhookService).toHaveBeenCalledWith(
         mockAdminClient,
@@ -82,7 +114,7 @@ describe('DatabaseWebhookRouterService', () => {
         schema: 'public',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(mockHandleInvitationWebhook).toHaveBeenCalledWith(payload.record);
     });
@@ -106,7 +138,7 @@ describe('DatabaseWebhookRouterService', () => {
         schema: 'public',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(mockHandleInvitationWebhook).toHaveBeenCalledWith(payload.record);
     });
@@ -126,7 +158,7 @@ describe('DatabaseWebhookRouterService', () => {
         schema: 'public',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(mockCreateBillingWebhooksService).toHaveBeenCalled();
       expect(mockHandleSubscriptionDeletedWebhook).toHaveBeenCalledWith(
@@ -147,7 +179,7 @@ describe('DatabaseWebhookRouterService', () => {
         schema: 'public',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(mockHandleSubscriptionDeletedWebhook).not.toHaveBeenCalled();
     });
@@ -169,7 +201,7 @@ describe('DatabaseWebhookRouterService', () => {
         schema: 'public',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(mockHandleSubscriptionDeletedWebhook).not.toHaveBeenCalled();
     });
@@ -183,7 +215,7 @@ describe('DatabaseWebhookRouterService', () => {
         schema: 'public',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(mockHandleSubscriptionDeletedWebhook).not.toHaveBeenCalled();
     });
@@ -195,9 +227,11 @@ describe('DatabaseWebhookRouterService', () => {
 
       vi.mocked(
         await import('@kit/team-accounts/webhooks'),
-      ).createAccountWebhooksService = vi.fn(() => ({
-        handleAccountDeletedWebhook: mockHandleAccountDeletedWebhook,
-      }));
+      ).createAccountWebhooksService = vi.fn(() =>
+        asAccountWebhooks({
+          handleAccountDeletedWebhook: mockHandleAccountDeletedWebhook,
+        }),
+      );
 
       const payload = {
         table: 'accounts' as const,
@@ -210,7 +244,7 @@ describe('DatabaseWebhookRouterService', () => {
         schema: 'public',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(mockHandleAccountDeletedWebhook).toHaveBeenCalledWith(
         payload.old_record,
@@ -222,9 +256,11 @@ describe('DatabaseWebhookRouterService', () => {
 
       vi.mocked(
         await import('@kit/team-accounts/webhooks'),
-      ).createAccountWebhooksService = vi.fn(() => ({
-        handleAccountDeletedWebhook: mockHandleAccountDeletedWebhook,
-      }));
+      ).createAccountWebhooksService = vi.fn(() =>
+        asAccountWebhooks({
+          handleAccountDeletedWebhook: mockHandleAccountDeletedWebhook,
+        }),
+      );
 
       const payload = {
         table: 'accounts' as const,
@@ -237,7 +273,7 @@ describe('DatabaseWebhookRouterService', () => {
         schema: 'public',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(mockHandleAccountDeletedWebhook).not.toHaveBeenCalled();
     });
@@ -247,9 +283,11 @@ describe('DatabaseWebhookRouterService', () => {
 
       vi.mocked(
         await import('@kit/team-accounts/webhooks'),
-      ).createAccountWebhooksService = vi.fn(() => ({
-        handleAccountDeletedWebhook: mockHandleAccountDeletedWebhook,
-      }));
+      ).createAccountWebhooksService = vi.fn(() =>
+        asAccountWebhooks({
+          handleAccountDeletedWebhook: mockHandleAccountDeletedWebhook,
+        }),
+      );
 
       const payload = {
         table: 'accounts' as const,
@@ -265,7 +303,7 @@ describe('DatabaseWebhookRouterService', () => {
         schema: 'public',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(mockHandleAccountDeletedWebhook).not.toHaveBeenCalled();
     });
@@ -275,9 +313,11 @@ describe('DatabaseWebhookRouterService', () => {
 
       vi.mocked(
         await import('@kit/team-accounts/webhooks'),
-      ).createAccountWebhooksService = vi.fn(() => ({
-        handleAccountDeletedWebhook: mockHandleAccountDeletedWebhook,
-      }));
+      ).createAccountWebhooksService = vi.fn(() =>
+        asAccountWebhooks({
+          handleAccountDeletedWebhook: mockHandleAccountDeletedWebhook,
+        }),
+      );
 
       const payload = {
         table: 'accounts' as const,
@@ -287,7 +327,7 @@ describe('DatabaseWebhookRouterService', () => {
         schema: 'public',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(mockHandleAccountDeletedWebhook).not.toHaveBeenCalled();
     });
@@ -304,7 +344,9 @@ describe('DatabaseWebhookRouterService', () => {
       };
 
       // Should not throw
-      await expect(service.handleWebhook(payload)).resolves.toBeUndefined();
+      await expect(
+        service.handleWebhook(asPayload(payload)),
+      ).resolves.toBeUndefined();
 
       // Should not call any webhook services
       expect(mockHandleInvitationWebhook).not.toHaveBeenCalled();
@@ -320,7 +362,7 @@ describe('DatabaseWebhookRouterService', () => {
         schema: 'public',
       };
 
-      const result = await service.handleWebhook(payload);
+      const result = await service.handleWebhook(asPayload(payload));
 
       expect(result).toBeUndefined();
     });
@@ -348,7 +390,7 @@ describe('DatabaseWebhookRouterService', () => {
         schema: 'public',
       };
 
-      await service.handleWebhook(payload);
+      await service.handleWebhook(asPayload(payload));
 
       expect(mockCreateAccountInvitationsWebhookService).toHaveBeenCalledWith(
         mockAdminClient,
@@ -375,7 +417,7 @@ describe('DatabaseWebhookRouterService', () => {
         schema: 'public',
       };
 
-      await expect(service.handleWebhook(payload)).rejects.toThrow(
+      await expect(service.handleWebhook(asPayload(payload))).rejects.toThrow(
         'Invitation processing failed',
       );
     });
@@ -397,7 +439,7 @@ describe('DatabaseWebhookRouterService', () => {
         schema: 'public',
       };
 
-      await expect(service.handleWebhook(payload)).rejects.toThrow(
+      await expect(service.handleWebhook(asPayload(payload))).rejects.toThrow(
         'Billing processing failed',
       );
     });

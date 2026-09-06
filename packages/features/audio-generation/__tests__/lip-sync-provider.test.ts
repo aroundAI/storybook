@@ -103,7 +103,7 @@ describe('SyncLabsProvider', () => {
       await vi.runAllTimersAsync();
       await resultPromise;
 
-      const callBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const callBody = JSON.parse(fetchMock.mock.calls[0]![1].body);
       expect(callBody.faceCoordinates).toEqual({
         x: 100,
         y: 100,

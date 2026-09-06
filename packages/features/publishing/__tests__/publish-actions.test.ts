@@ -34,6 +34,15 @@ vi.mock('@kit/shared/logger', () => ({
 }));
 
 // Mock Supabase client
+/**
+ * PostgREST builders resolve to `{ data, error }`; typing the terminal
+ * methods as that shape is what lets a test override them.
+ */
+interface QueryResult {
+  data: unknown;
+  error: { message: string } | null;
+}
+
 const mockSupabaseClient = {
   from: vi.fn(() => mockSupabaseClient),
   select: vi.fn(() => mockSupabaseClient),
@@ -41,7 +50,9 @@ const mockSupabaseClient = {
   update: vi.fn(() => mockSupabaseClient),
   eq: vi.fn(() => mockSupabaseClient),
   order: vi.fn(() => mockSupabaseClient),
-  single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+  single: vi.fn(
+    (): Promise<QueryResult> => Promise.resolve({ data: null, error: null }),
+  ),
 };
 
 vi.mock('@kit/supabase/server-client', () => ({
