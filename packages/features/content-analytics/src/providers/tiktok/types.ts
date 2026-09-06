@@ -113,7 +113,8 @@ export type TikTokTrafficSourceType =
  * Account-level analytics result
  */
 export interface TikTokAccountAnalytics {
-  followers: number;
+  /** null when the API omitted it; not zero. See FILM-1607 §2. */
+  followers: number | null;
   followersGained: number;
   profileViews: number;
   videoViews: number;

@@ -1391,6 +1391,45 @@ export default $config({
 
     console.log(`✓ Token refresh cron configured (every 30 minutes)`);
 
+    // Subscriber Snapshot Cron - one absolute anchor per connection per day
+    // (FILM-1607). Everything else in the subscriber pipeline is a delta,
+    // which gives a curve its shape but never its height.
+    //
+    // A fixed cron expression, not `rate(1 day)`: rate() fires relative to
+    // deploy time and shifts on every redeploy, so it can settle minutes from
+    // midnight UTC — and the snapshot date is derived from the run clock, so
+    // a run straddling midnight writes two dates for one reading.
+    const subscriberSnapshotCron = new sst.aws.Cron(
+      'StorybookSubscriberSnapshotCron',
+      {
+        job: {
+          handler: 'apps/web/lambda/subscriber-snapshot/index.handler',
+          timeout: '5 minutes',
+          memory: '256 MB',
+          architecture: 'arm64',
+          link: [web],
+          environment: {
+            API_URL: web.url,
+            CRON_SECRET: process.env.CRON_SECRET || '',
+          },
+          transform: {
+            function: {
+              kmsKeyArn: kmsKey.arn,
+            },
+          },
+          permissions: [
+            {
+              actions: ['kms:Decrypt'],
+              resources: [kmsKey.arn],
+            },
+          ],
+        },
+        schedule: 'cron(0 2 * * ? *)',
+      },
+    );
+
+    console.log(`✓ Subscriber snapshot cron configured (daily at 02:00 UTC)`);
+
     // Scheduled Publish Cron - Queries for due publishes and queues them
     // Runs every 5 minutes, sends each publish job to SQS for processing
     const scheduledPublishCron = new sst.aws.Cron(
