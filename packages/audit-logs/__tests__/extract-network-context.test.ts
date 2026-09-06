@@ -14,6 +14,17 @@ vi.mock('next/headers', () => ({
 
 const mockHeaders = vi.mocked(headers);
 
+/**
+ * `headers()` resolves to a full ReadonlyHeaders. These tests stub only
+ * `get`, which is all extractNetworkContext calls, so the stub is widened
+ * rather than filled in with methods nothing reads.
+ */
+function asHeaders(value: {
+  get: (header: string) => string | null;
+}): Awaited<ReturnType<typeof headers>> {
+  return value as unknown as Awaited<ReturnType<typeof headers>>;
+}
+
 describe('extractNetworkContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -21,12 +32,14 @@ describe('extractNetworkContext', () => {
 
   describe('IP address extraction', () => {
     it('should extract IP from x-forwarded-for header', async () => {
-      mockHeaders.mockResolvedValue({
-        get: vi.fn((header: string) => {
-          if (header === 'x-forwarded-for') return '192.168.1.1';
-          return null;
+      mockHeaders.mockResolvedValue(
+        asHeaders({
+          get: vi.fn((header: string) => {
+            if (header === 'x-forwarded-for') return '192.168.1.1';
+            return null;
+          }),
         }),
-      });
+      );
 
       const context = await extractNetworkContext();
 
@@ -34,13 +47,15 @@ describe('extractNetworkContext', () => {
     });
 
     it('should extract first IP from comma-separated x-forwarded-for', async () => {
-      mockHeaders.mockResolvedValue({
-        get: vi.fn((header: string) => {
-          if (header === 'x-forwarded-for')
-            return '192.168.1.1, 10.0.0.1, 172.16.0.1';
-          return null;
+      mockHeaders.mockResolvedValue(
+        asHeaders({
+          get: vi.fn((header: string) => {
+            if (header === 'x-forwarded-for')
+              return '192.168.1.1, 10.0.0.1, 172.16.0.1';
+            return null;
+          }),
         }),
-      });
+      );
 
       const context = await extractNetworkContext();
 
@@ -48,12 +63,14 @@ describe('extractNetworkContext', () => {
     });
 
     it('should trim whitespace from x-forwarded-for IP', async () => {
-      mockHeaders.mockResolvedValue({
-        get: vi.fn((header: string) => {
-          if (header === 'x-forwarded-for') return '  192.168.1.1  ';
-          return null;
+      mockHeaders.mockResolvedValue(
+        asHeaders({
+          get: vi.fn((header: string) => {
+            if (header === 'x-forwarded-for') return '  192.168.1.1  ';
+            return null;
+          }),
         }),
-      });
+      );
 
       const context = await extractNetworkContext();
 
@@ -61,12 +78,14 @@ describe('extractNetworkContext', () => {
     });
 
     it('should fallback to x-real-ip when x-forwarded-for is not present', async () => {
-      mockHeaders.mockResolvedValue({
-        get: vi.fn((header: string) => {
-          if (header === 'x-real-ip') return '10.0.0.1';
-          return null;
+      mockHeaders.mockResolvedValue(
+        asHeaders({
+          get: vi.fn((header: string) => {
+            if (header === 'x-real-ip') return '10.0.0.1';
+            return null;
+          }),
         }),
-      });
+      );
 
       const context = await extractNetworkContext();
 
@@ -74,12 +93,14 @@ describe('extractNetworkContext', () => {
     });
 
     it('should fallback to x-client-ip when other headers are not present', async () => {
-      mockHeaders.mockResolvedValue({
-        get: vi.fn((header: string) => {
-          if (header === 'x-client-ip') return '172.16.0.1';
-          return null;
+      mockHeaders.mockResolvedValue(
+        asHeaders({
+          get: vi.fn((header: string) => {
+            if (header === 'x-client-ip') return '172.16.0.1';
+            return null;
+          }),
         }),
-      });
+      );
 
       const context = await extractNetworkContext();
 
@@ -87,13 +108,15 @@ describe('extractNetworkContext', () => {
     });
 
     it('should prefer x-forwarded-for over x-real-ip', async () => {
-      mockHeaders.mockResolvedValue({
-        get: vi.fn((header: string) => {
-          if (header === 'x-forwarded-for') return '192.168.1.1';
-          if (header === 'x-real-ip') return '10.0.0.1';
-          return null;
+      mockHeaders.mockResolvedValue(
+        asHeaders({
+          get: vi.fn((header: string) => {
+            if (header === 'x-forwarded-for') return '192.168.1.1';
+            if (header === 'x-real-ip') return '10.0.0.1';
+            return null;
+          }),
         }),
-      });
+      );
 
       const context = await extractNetworkContext();
 
@@ -101,13 +124,15 @@ describe('extractNetworkContext', () => {
     });
 
     it('should prefer x-real-ip over x-client-ip', async () => {
-      mockHeaders.mockResolvedValue({
-        get: vi.fn((header: string) => {
-          if (header === 'x-real-ip') return '10.0.0.1';
-          if (header === 'x-client-ip') return '172.16.0.1';
-          return null;
+      mockHeaders.mockResolvedValue(
+        asHeaders({
+          get: vi.fn((header: string) => {
+            if (header === 'x-real-ip') return '10.0.0.1';
+            if (header === 'x-client-ip') return '172.16.0.1';
+            return null;
+          }),
         }),
-      });
+      );
 
       const context = await extractNetworkContext();
 
@@ -115,9 +140,11 @@ describe('extractNetworkContext', () => {
     });
 
     it('should return undefined ipAddress when no IP headers present', async () => {
-      mockHeaders.mockResolvedValue({
-        get: vi.fn(() => null),
-      });
+      mockHeaders.mockResolvedValue(
+        asHeaders({
+          get: vi.fn(() => null),
+        }),
+      );
 
       const context = await extractNetworkContext();
 
@@ -130,12 +157,14 @@ describe('extractNetworkContext', () => {
       const userAgentString =
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0';
 
-      mockHeaders.mockResolvedValue({
-        get: vi.fn((header: string) => {
-          if (header === 'user-agent') return userAgentString;
-          return null;
+      mockHeaders.mockResolvedValue(
+        asHeaders({
+          get: vi.fn((header: string) => {
+            if (header === 'user-agent') return userAgentString;
+            return null;
+          }),
         }),
-      });
+      );
 
       const context = await extractNetworkContext();
 
@@ -143,9 +172,11 @@ describe('extractNetworkContext', () => {
     });
 
     it('should return undefined userAgent when header not present', async () => {
-      mockHeaders.mockResolvedValue({
-        get: vi.fn(() => null),
-      });
+      mockHeaders.mockResolvedValue(
+        asHeaders({
+          get: vi.fn(() => null),
+        }),
+      );
 
       const context = await extractNetworkContext();
 
@@ -153,12 +184,14 @@ describe('extractNetworkContext', () => {
     });
 
     it('should handle empty user agent string', async () => {
-      mockHeaders.mockResolvedValue({
-        get: vi.fn((header: string) => {
-          if (header === 'user-agent') return '';
-          return null;
+      mockHeaders.mockResolvedValue(
+        asHeaders({
+          get: vi.fn((header: string) => {
+            if (header === 'user-agent') return '';
+            return null;
+          }),
         }),
-      });
+      );
 
       const context = await extractNetworkContext();
 
@@ -168,13 +201,15 @@ describe('extractNetworkContext', () => {
 
   describe('Combined extraction', () => {
     it('should extract both IP and user agent', async () => {
-      mockHeaders.mockResolvedValue({
-        get: vi.fn((header: string) => {
-          if (header === 'x-forwarded-for') return '192.168.1.1';
-          if (header === 'user-agent') return 'Mozilla/5.0';
-          return null;
+      mockHeaders.mockResolvedValue(
+        asHeaders({
+          get: vi.fn((header: string) => {
+            if (header === 'x-forwarded-for') return '192.168.1.1';
+            if (header === 'user-agent') return 'Mozilla/5.0';
+            return null;
+          }),
         }),
-      });
+      );
 
       const context = await extractNetworkContext();
 
@@ -205,13 +240,15 @@ describe('extractNetworkContext', () => {
 
   describe('Edge cases', () => {
     it('should handle IPv6 addresses in x-forwarded-for', async () => {
-      mockHeaders.mockResolvedValue({
-        get: vi.fn((header: string) => {
-          if (header === 'x-forwarded-for')
-            return '2001:0db8:85a3:0000:0000:8a2e:0370:7334';
-          return null;
+      mockHeaders.mockResolvedValue(
+        asHeaders({
+          get: vi.fn((header: string) => {
+            if (header === 'x-forwarded-for')
+              return '2001:0db8:85a3:0000:0000:8a2e:0370:7334';
+            return null;
+          }),
         }),
-      });
+      );
 
       const context = await extractNetworkContext();
 
@@ -219,12 +256,14 @@ describe('extractNetworkContext', () => {
     });
 
     it('should handle localhost IP addresses', async () => {
-      mockHeaders.mockResolvedValue({
-        get: vi.fn((header: string) => {
-          if (header === 'x-forwarded-for') return '127.0.0.1';
-          return null;
+      mockHeaders.mockResolvedValue(
+        asHeaders({
+          get: vi.fn((header: string) => {
+            if (header === 'x-forwarded-for') return '127.0.0.1';
+            return null;
+          }),
         }),
-      });
+      );
 
       const context = await extractNetworkContext();
 
@@ -235,12 +274,14 @@ describe('extractNetworkContext', () => {
       const privateIps = ['10.0.0.1', '172.16.0.1', '192.168.1.1'];
 
       for (const ip of privateIps) {
-        mockHeaders.mockResolvedValue({
-          get: vi.fn((header: string) => {
-            if (header === 'x-forwarded-for') return ip;
-            return null;
+        mockHeaders.mockResolvedValue(
+          asHeaders({
+            get: vi.fn((header: string) => {
+              if (header === 'x-forwarded-for') return ip;
+              return null;
+            }),
           }),
-        });
+        );
 
         const context = await extractNetworkContext();
         expect(context.ipAddress).toBe(ip);
@@ -250,12 +291,14 @@ describe('extractNetworkContext', () => {
     it('should handle very long user agent strings', async () => {
       const longUserAgent = 'A'.repeat(1000);
 
-      mockHeaders.mockResolvedValue({
-        get: vi.fn((header: string) => {
-          if (header === 'user-agent') return longUserAgent;
-          return null;
+      mockHeaders.mockResolvedValue(
+        asHeaders({
+          get: vi.fn((header: string) => {
+            if (header === 'user-agent') return longUserAgent;
+            return null;
+          }),
         }),
-      });
+      );
 
       const context = await extractNetworkContext();
 

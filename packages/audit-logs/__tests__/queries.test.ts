@@ -32,6 +32,15 @@ vi.mock('@kit/supabase/server-client', () => ({
   })),
 }));
 
+/**
+ * getLogger resolves to the full Logger interface; these suites stub only
+ * the levels they assert on, so the stub is widened rather than filled in
+ * with methods nothing reads.
+ */
+function asLogger<T>(value: T): Awaited<ReturnType<typeof getLogger>> {
+  return value as unknown as Awaited<ReturnType<typeof getLogger>>;
+}
+
 describe('audit-log-queries', () => {
   const mockGetLogger = vi.mocked(getLogger);
   const mockGetSupabaseServerClient = vi.mocked(getSupabaseServerClient);
@@ -49,7 +58,7 @@ describe('audit-log-queries', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetLogger.mockResolvedValue(mockLogger);
+    mockGetLogger.mockResolvedValue(asLogger(mockLogger));
     mockGetSupabaseServerClient.mockReturnValue({
       from: mockFrom,
       rpc: mockRpc,

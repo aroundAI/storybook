@@ -41,11 +41,11 @@ describe('audit-config', () => {
 
     describe('project configuration', () => {
       it('should be enabled', () => {
-        expect(AUDIT_CONFIG.project.enabled).toBe(true);
+        expect(AUDIT_CONFIG.project!.enabled).toBe(true);
       });
 
       it('should track all CRUD actions plus archive/restore', () => {
-        expect(AUDIT_CONFIG.project.actions).toEqual([
+        expect(AUDIT_CONFIG.project!.actions).toEqual([
           'create',
           'update',
           'delete',
@@ -55,17 +55,17 @@ describe('audit-config', () => {
       });
 
       it('should have no sensitive fields', () => {
-        expect(AUDIT_CONFIG.project.sensitiveFields).toEqual([]);
+        expect(AUDIT_CONFIG.project!.sensitiveFields).toEqual([]);
       });
     });
 
     describe('user configuration', () => {
       it('should be enabled', () => {
-        expect(AUDIT_CONFIG.user.enabled).toBe(true);
+        expect(AUDIT_CONFIG.user!.enabled).toBe(true);
       });
 
       it('should track create, update, delete actions', () => {
-        expect(AUDIT_CONFIG.user.actions).toEqual([
+        expect(AUDIT_CONFIG.user!.actions).toEqual([
           'create',
           'update',
           'delete',
@@ -73,26 +73,30 @@ describe('audit-config', () => {
       });
 
       it('should exclude password and metadata fields', () => {
-        expect(AUDIT_CONFIG.user.excludeFields).toContain('password_hash');
-        expect(AUDIT_CONFIG.user.excludeFields).toContain('encrypted_password');
-        expect(AUDIT_CONFIG.user.excludeFields).toContain('raw_app_meta_data');
-        expect(AUDIT_CONFIG.user.excludeFields).toContain('raw_user_meta_data');
+        expect(AUDIT_CONFIG.user!.excludeFields).toContain('password_hash');
+        expect(AUDIT_CONFIG.user!.excludeFields).toContain(
+          'encrypted_password',
+        );
+        expect(AUDIT_CONFIG.user!.excludeFields).toContain('raw_app_meta_data');
+        expect(AUDIT_CONFIG.user!.excludeFields).toContain(
+          'raw_user_meta_data',
+        );
       });
 
       it('should mark PII as sensitive', () => {
-        expect(AUDIT_CONFIG.user.sensitiveFields).toContain('email');
-        expect(AUDIT_CONFIG.user.sensitiveFields).toContain('phone');
-        expect(AUDIT_CONFIG.user.sensitiveFields).toContain('phone_number');
+        expect(AUDIT_CONFIG.user!.sensitiveFields).toContain('email');
+        expect(AUDIT_CONFIG.user!.sensitiveFields).toContain('phone');
+        expect(AUDIT_CONFIG.user!.sensitiveFields).toContain('phone_number');
       });
     });
 
     describe('account_settings configuration', () => {
       it('should be enabled', () => {
-        expect(AUDIT_CONFIG.account_settings.enabled).toBe(true);
+        expect(AUDIT_CONFIG.account_settings!.enabled).toBe(true);
       });
 
       it('should mark all API keys and secrets as sensitive', () => {
-        const sensitiveFields = AUDIT_CONFIG.account_settings.sensitiveFields!;
+        const sensitiveFields = AUDIT_CONFIG.account_settings!.sensitiveFields!;
 
         expect(sensitiveFields).toContain('api_key');
         expect(sensitiveFields).toContain('secret_key');
@@ -105,38 +109,40 @@ describe('audit-config', () => {
 
     describe('disabled configurations', () => {
       it('should disable session tracking', () => {
-        expect(AUDIT_CONFIG.session.enabled).toBe(false);
+        expect(AUDIT_CONFIG.session!.enabled).toBe(false);
       });
 
       it('should disable notification tracking', () => {
-        expect(AUDIT_CONFIG.notification.enabled).toBe(false);
+        expect(AUDIT_CONFIG.notification!.enabled).toBe(false);
       });
 
       it('should disable analytics_event tracking', () => {
-        expect(AUDIT_CONFIG.analytics_event.enabled).toBe(false);
+        expect(AUDIT_CONFIG.analytics_event!.enabled).toBe(false);
       });
 
       it('should disable cache_entry tracking', () => {
-        expect(AUDIT_CONFIG.cache_entry.enabled).toBe(false);
+        expect(AUDIT_CONFIG.cache_entry!.enabled).toBe(false);
       });
     });
 
     describe('team_member configuration', () => {
       it('should use includeFields instead of excludeFields', () => {
-        expect(AUDIT_CONFIG.team_member.includeFields).toBeDefined();
-        expect(AUDIT_CONFIG.team_member.includeFields).toContain('user_id');
-        expect(AUDIT_CONFIG.team_member.includeFields).toContain('account_id');
-        expect(AUDIT_CONFIG.team_member.includeFields).toContain('role');
-        expect(AUDIT_CONFIG.team_member.includeFields).toContain('permissions');
+        expect(AUDIT_CONFIG.team_member!.includeFields).toBeDefined();
+        expect(AUDIT_CONFIG.team_member!.includeFields).toContain('user_id');
+        expect(AUDIT_CONFIG.team_member!.includeFields).toContain('account_id');
+        expect(AUDIT_CONFIG.team_member!.includeFields).toContain('role');
+        expect(AUDIT_CONFIG.team_member!.includeFields).toContain(
+          'permissions',
+        );
       });
     });
 
     describe('subscription configuration', () => {
       it('should redact payment details', () => {
-        expect(AUDIT_CONFIG.subscription.sensitiveFields).toContain(
+        expect(AUDIT_CONFIG.subscription!.sensitiveFields).toContain(
           'payment_method_id',
         );
-        expect(AUDIT_CONFIG.subscription.sensitiveFields).toContain(
+        expect(AUDIT_CONFIG.subscription!.sensitiveFields).toContain(
           'card_last4',
         );
       });
@@ -144,11 +150,13 @@ describe('audit-config', () => {
 
     describe('auth_event configuration', () => {
       it('should exclude all tokens', () => {
-        expect(AUDIT_CONFIG.auth_event.excludeFields).toContain(
+        expect(AUDIT_CONFIG.auth_event!.excludeFields).toContain(
           'session_token',
         );
-        expect(AUDIT_CONFIG.auth_event.excludeFields).toContain('access_token');
-        expect(AUDIT_CONFIG.auth_event.excludeFields).toContain(
+        expect(AUDIT_CONFIG.auth_event!.excludeFields).toContain(
+          'access_token',
+        );
+        expect(AUDIT_CONFIG.auth_event!.excludeFields).toContain(
           'refresh_token',
         );
       });
@@ -156,7 +164,7 @@ describe('audit-config', () => {
 
     describe('file configuration', () => {
       it('should only include specific metadata fields', () => {
-        expect(AUDIT_CONFIG.file.includeFields).toEqual([
+        expect(AUDIT_CONFIG.file!.includeFields).toEqual([
           'id',
           'name',
           'size',

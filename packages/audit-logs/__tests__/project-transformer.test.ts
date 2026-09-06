@@ -230,7 +230,7 @@ describe('projectTransformer', () => {
       };
 
       it('should describe create action', () => {
-        const description = projectTransformer.getDescription(
+        const description = projectTransformer.getDescription!(
           project,
           'create',
         );
@@ -239,7 +239,7 @@ describe('projectTransformer', () => {
       });
 
       it('should describe update action', () => {
-        const description = projectTransformer.getDescription(
+        const description = projectTransformer.getDescription!(
           project,
           'update',
         );
@@ -248,7 +248,7 @@ describe('projectTransformer', () => {
       });
 
       it('should describe delete action', () => {
-        const description = projectTransformer.getDescription(
+        const description = projectTransformer.getDescription!(
           project,
           'delete',
         );
@@ -257,7 +257,7 @@ describe('projectTransformer', () => {
       });
 
       it('should describe archive action', () => {
-        const description = projectTransformer.getDescription(
+        const description = projectTransformer.getDescription!(
           project,
           'archive' as AuditAction,
         );
@@ -266,7 +266,7 @@ describe('projectTransformer', () => {
       });
 
       it('should describe restore action', () => {
-        const description = projectTransformer.getDescription(
+        const description = projectTransformer.getDescription!(
           project,
           'restore' as AuditAction,
         );
@@ -275,7 +275,7 @@ describe('projectTransformer', () => {
       });
 
       it('should describe custom action', () => {
-        const description = projectTransformer.getDescription(
+        const description = projectTransformer.getDescription!(
           project,
           'duplicate' as AuditAction,
         );
@@ -288,7 +288,7 @@ describe('projectTransformer', () => {
       it('should handle unnamed project', () => {
         const project = {};
 
-        const description = projectTransformer.getDescription(
+        const description = projectTransformer.getDescription!(
           project,
           'create',
         );
@@ -301,7 +301,7 @@ describe('projectTransformer', () => {
           name: null,
         };
 
-        const description = projectTransformer.getDescription(
+        const description = projectTransformer.getDescription!(
           project,
           'update',
         );
@@ -314,7 +314,7 @@ describe('projectTransformer', () => {
           name: '',
         };
 
-        const description = projectTransformer.getDescription(
+        const description = projectTransformer.getDescription!(
           project,
           'delete',
         );
@@ -327,7 +327,7 @@ describe('projectTransformer', () => {
           name: 'Project "Alpha" & Beta',
         };
 
-        const description = projectTransformer.getDescription(
+        const description = projectTransformer.getDescription!(
           project,
           'create',
         );
@@ -342,7 +342,7 @@ describe('projectTransformer', () => {
   describe('calculateChanges()', () => {
     describe('invalid inputs', () => {
       it('should return empty object for non-object before', () => {
-        const changes = projectTransformer.calculateChanges('string', {
+        const changes = projectTransformer.calculateChanges!('string', {
           name: 'After',
         });
 
@@ -350,7 +350,7 @@ describe('projectTransformer', () => {
       });
 
       it('should return empty object for non-object after', () => {
-        const changes = projectTransformer.calculateChanges(
+        const changes = projectTransformer.calculateChanges!(
           { name: 'Before' },
           'string',
         );
@@ -359,7 +359,7 @@ describe('projectTransformer', () => {
       });
 
       it('should return empty object for null before', () => {
-        const changes = projectTransformer.calculateChanges(null, {
+        const changes = projectTransformer.calculateChanges!(null, {
           name: 'After',
         });
 
@@ -367,7 +367,7 @@ describe('projectTransformer', () => {
       });
 
       it('should return empty object for null after', () => {
-        const changes = projectTransformer.calculateChanges(
+        const changes = projectTransformer.calculateChanges!(
           { name: 'Before' },
           null,
         );
@@ -376,7 +376,7 @@ describe('projectTransformer', () => {
       });
 
       it('should return empty object for undefined before', () => {
-        const changes = projectTransformer.calculateChanges(undefined, {
+        const changes = projectTransformer.calculateChanges!(undefined, {
           name: 'After',
         });
 
@@ -384,7 +384,7 @@ describe('projectTransformer', () => {
       });
 
       it('should return empty object for undefined after', () => {
-        const changes = projectTransformer.calculateChanges(
+        const changes = projectTransformer.calculateChanges!(
           { name: 'Before' },
           undefined,
         );
@@ -398,7 +398,7 @@ describe('projectTransformer', () => {
         const before = { name: 'Old Name' };
         const after = { name: 'New Name' };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(changes.name).toEqual({
           before: 'Old Name',
@@ -410,7 +410,7 @@ describe('projectTransformer', () => {
         const before = { slug: 'old-slug' };
         const after = { slug: 'new-slug' };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(changes.slug).toEqual({
           before: 'old-slug',
@@ -422,7 +422,7 @@ describe('projectTransformer', () => {
         const before = { description: 'Old description' };
         const after = { description: 'New description' };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(changes.description).toEqual({
           before: 'Old description',
@@ -434,7 +434,7 @@ describe('projectTransformer', () => {
         const before = { status: 'active' };
         const after = { status: 'archived' };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(changes.status).toEqual({
           before: 'active',
@@ -458,7 +458,7 @@ describe('projectTransformer', () => {
           status: 'archived',
         };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(Object.keys(changes)).toHaveLength(4);
         expect(changes.name).toEqual({ before: 'Old Name', after: 'New Name' });
@@ -485,7 +485,7 @@ describe('projectTransformer', () => {
           description: 'Same description',
         };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(Object.keys(changes)).toHaveLength(1);
         expect(changes.slug).toEqual({
@@ -512,7 +512,7 @@ describe('projectTransformer', () => {
           created_at: '2024-01-02T00:00:00Z',
         };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         // account_id, metadata, and created_at are not tracked
         expect(changes).toEqual({});
@@ -522,7 +522,7 @@ describe('projectTransformer', () => {
         const before = { id: 'project-123' };
         const after = { id: 'project-456' };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(changes.id).toBeUndefined();
       });
@@ -531,7 +531,7 @@ describe('projectTransformer', () => {
         const before = { account_id: 'account-123' };
         const after = { account_id: 'account-456' };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(changes.account_id).toBeUndefined();
       });
@@ -540,7 +540,7 @@ describe('projectTransformer', () => {
         const before = { created_at: '2024-01-01T00:00:00Z' };
         const after = { created_at: '2024-01-02T00:00:00Z' };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(changes.created_at).toBeUndefined();
       });
@@ -549,7 +549,7 @@ describe('projectTransformer', () => {
         const before = { updated_at: '2024-01-01T00:00:00Z' };
         const after = { updated_at: '2024-01-02T00:00:00Z' };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(changes.updated_at).toBeUndefined();
       });
@@ -560,7 +560,7 @@ describe('projectTransformer', () => {
         const before = { name: 'Old Name' };
         const after = { name: null };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(changes.name).toEqual({
           before: 'Old Name',
@@ -572,7 +572,7 @@ describe('projectTransformer', () => {
         const before = { name: null };
         const after = { name: 'New Name' };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(changes.name).toEqual({
           before: null,
@@ -584,7 +584,7 @@ describe('projectTransformer', () => {
         const before = {};
         const after = { name: 'New Name' };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(changes.name).toEqual({
           before: undefined,
@@ -596,7 +596,7 @@ describe('projectTransformer', () => {
         const before = { name: 'Old Name' };
         const after = {};
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(changes.name).toEqual({
           before: 'Old Name',
@@ -608,7 +608,7 @@ describe('projectTransformer', () => {
         const before = { name: null };
         const after = { name: null };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(changes.name).toBeUndefined();
       });
@@ -617,7 +617,7 @@ describe('projectTransformer', () => {
         const before = {};
         const after = {};
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(Object.keys(changes)).toHaveLength(0);
       });
@@ -632,7 +632,7 @@ describe('projectTransformer', () => {
           status: 'active',
         };
 
-        const changes = projectTransformer.calculateChanges(project, project);
+        const changes = projectTransformer.calculateChanges!(project, project);
 
         expect(changes).toEqual({});
       });
@@ -647,7 +647,7 @@ describe('projectTransformer', () => {
           account_id: 'account-new',
         };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(changes).toEqual({});
       });
@@ -655,7 +655,7 @@ describe('projectTransformer', () => {
 
     describe('edge cases', () => {
       it('should handle empty objects', () => {
-        const changes = projectTransformer.calculateChanges({}, {});
+        const changes = projectTransformer.calculateChanges!({}, {});
 
         expect(changes).toEqual({});
       });
@@ -664,7 +664,7 @@ describe('projectTransformer', () => {
         const before = { account_id: 'account-123' };
         const after = { account_id: 'account-456' };
 
-        const changes = projectTransformer.calculateChanges(before, after);
+        const changes = projectTransformer.calculateChanges!(before, after);
 
         expect(changes).toEqual({});
       });

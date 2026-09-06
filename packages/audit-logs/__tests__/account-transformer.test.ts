@@ -240,7 +240,7 @@ describe('accountTransformer', () => {
       };
 
       it('should describe create action for personal account', () => {
-        const description = accountTransformer.getDescription(
+        const description = accountTransformer.getDescription!(
           personalAccount,
           'create',
         );
@@ -249,7 +249,7 @@ describe('accountTransformer', () => {
       });
 
       it('should describe update action for personal account', () => {
-        const description = accountTransformer.getDescription(
+        const description = accountTransformer.getDescription!(
           personalAccount,
           'update',
         );
@@ -258,7 +258,7 @@ describe('accountTransformer', () => {
       });
 
       it('should describe delete action for personal account', () => {
-        const description = accountTransformer.getDescription(
+        const description = accountTransformer.getDescription!(
           personalAccount,
           'delete',
         );
@@ -267,7 +267,7 @@ describe('accountTransformer', () => {
       });
 
       it('should describe custom action for personal account', () => {
-        const description = accountTransformer.getDescription(
+        const description = accountTransformer.getDescription!(
           personalAccount,
           'archive' as AuditAction,
         );
@@ -283,7 +283,7 @@ describe('accountTransformer', () => {
       };
 
       it('should describe create action for team account', () => {
-        const description = accountTransformer.getDescription(
+        const description = accountTransformer.getDescription!(
           teamAccount,
           'create',
         );
@@ -292,7 +292,7 @@ describe('accountTransformer', () => {
       });
 
       it('should describe update action for team account', () => {
-        const description = accountTransformer.getDescription(
+        const description = accountTransformer.getDescription!(
           teamAccount,
           'update',
         );
@@ -301,7 +301,7 @@ describe('accountTransformer', () => {
       });
 
       it('should describe delete action for team account', () => {
-        const description = accountTransformer.getDescription(
+        const description = accountTransformer.getDescription!(
           teamAccount,
           'delete',
         );
@@ -310,7 +310,7 @@ describe('accountTransformer', () => {
       });
 
       it('should describe custom action for team account', () => {
-        const description = accountTransformer.getDescription(
+        const description = accountTransformer.getDescription!(
           teamAccount,
           'suspend' as AuditAction,
         );
@@ -327,7 +327,7 @@ describe('accountTransformer', () => {
           is_personal_account: false,
         };
 
-        const description = accountTransformer.getDescription(
+        const description = accountTransformer.getDescription!(
           account,
           'create',
         );
@@ -341,7 +341,7 @@ describe('accountTransformer', () => {
           is_personal_account: true,
         };
 
-        const description = accountTransformer.getDescription(
+        const description = accountTransformer.getDescription!(
           account,
           'create',
         );
@@ -357,7 +357,7 @@ describe('accountTransformer', () => {
           is_personal_account: false,
         };
 
-        const description = accountTransformer.getDescription(
+        const description = accountTransformer.getDescription!(
           account,
           'update',
         );
@@ -370,7 +370,7 @@ describe('accountTransformer', () => {
           name: 'Test Account',
         };
 
-        const description = accountTransformer.getDescription(
+        const description = accountTransformer.getDescription!(
           account,
           'create',
         );
@@ -384,7 +384,7 @@ describe('accountTransformer', () => {
           is_personal_account: false,
         };
 
-        const description = accountTransformer.getDescription(
+        const description = accountTransformer.getDescription!(
           account,
           'create',
         );
@@ -399,7 +399,7 @@ describe('accountTransformer', () => {
   describe('calculateChanges()', () => {
     describe('invalid inputs', () => {
       it('should return empty object for non-object before', () => {
-        const changes = accountTransformer.calculateChanges('string', {
+        const changes = accountTransformer.calculateChanges!('string', {
           name: 'After',
         });
 
@@ -407,7 +407,7 @@ describe('accountTransformer', () => {
       });
 
       it('should return empty object for non-object after', () => {
-        const changes = accountTransformer.calculateChanges(
+        const changes = accountTransformer.calculateChanges!(
           { name: 'Before' },
           'string',
         );
@@ -416,7 +416,7 @@ describe('accountTransformer', () => {
       });
 
       it('should return empty object for null before', () => {
-        const changes = accountTransformer.calculateChanges(null, {
+        const changes = accountTransformer.calculateChanges!(null, {
           name: 'After',
         });
 
@@ -424,7 +424,7 @@ describe('accountTransformer', () => {
       });
 
       it('should return empty object for null after', () => {
-        const changes = accountTransformer.calculateChanges(
+        const changes = accountTransformer.calculateChanges!(
           { name: 'Before' },
           null,
         );
@@ -433,7 +433,7 @@ describe('accountTransformer', () => {
       });
 
       it('should return empty object for undefined before', () => {
-        const changes = accountTransformer.calculateChanges(undefined, {
+        const changes = accountTransformer.calculateChanges!(undefined, {
           name: 'After',
         });
 
@@ -441,7 +441,7 @@ describe('accountTransformer', () => {
       });
 
       it('should return empty object for undefined after', () => {
-        const changes = accountTransformer.calculateChanges(
+        const changes = accountTransformer.calculateChanges!(
           { name: 'Before' },
           undefined,
         );
@@ -455,7 +455,7 @@ describe('accountTransformer', () => {
         const before = { name: 'Old Name' };
         const after = { name: 'New Name' };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(changes.name).toEqual({
           before: 'Old Name',
@@ -467,7 +467,7 @@ describe('accountTransformer', () => {
         const before = { slug: 'old-slug' };
         const after = { slug: 'new-slug' };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(changes.slug).toEqual({
           before: 'old-slug',
@@ -479,7 +479,7 @@ describe('accountTransformer', () => {
         const before = { email: 'old@example.com' };
         const after = { email: 'new@example.com' };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(changes.email).toEqual({
           before: 'old@example.com',
@@ -491,7 +491,7 @@ describe('accountTransformer', () => {
         const before = { picture_url: 'https://old.com/pic.jpg' };
         const after = { picture_url: 'https://new.com/pic.jpg' };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(changes.picture_url).toEqual({
           before: 'https://old.com/pic.jpg',
@@ -503,7 +503,7 @@ describe('accountTransformer', () => {
         const before = { is_personal_account: true };
         const after = { is_personal_account: false };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(changes.is_personal_account).toEqual({
           before: true,
@@ -515,7 +515,7 @@ describe('accountTransformer', () => {
         const before = { primary_owner_user_id: 'user-123' };
         const after = { primary_owner_user_id: 'user-456' };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(changes.primary_owner_user_id).toEqual({
           before: 'user-123',
@@ -537,7 +537,7 @@ describe('accountTransformer', () => {
           email: 'new@example.com',
         };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(Object.keys(changes)).toHaveLength(3);
         expect(changes.name).toEqual({
@@ -566,7 +566,7 @@ describe('accountTransformer', () => {
           email: 'same@example.com',
         };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(Object.keys(changes)).toHaveLength(1);
         expect(changes.slug).toEqual({
@@ -593,7 +593,7 @@ describe('accountTransformer', () => {
           public_data: { new: 'data' },
         };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(changes).toEqual({});
       });
@@ -602,7 +602,7 @@ describe('accountTransformer', () => {
         const before = { created_at: '2024-01-01T00:00:00Z' };
         const after = { created_at: '2024-01-02T00:00:00Z' };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(changes.created_at).toBeUndefined();
       });
@@ -611,7 +611,7 @@ describe('accountTransformer', () => {
         const before = { updated_at: '2024-01-01T00:00:00Z' };
         const after = { updated_at: '2024-01-02T00:00:00Z' };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(changes.updated_at).toBeUndefined();
       });
@@ -622,7 +622,7 @@ describe('accountTransformer', () => {
         const before = { name: 'Old Name' };
         const after = { name: null };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(changes.name).toEqual({
           before: 'Old Name',
@@ -634,7 +634,7 @@ describe('accountTransformer', () => {
         const before = { name: null };
         const after = { name: 'New Name' };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(changes.name).toEqual({
           before: null,
@@ -646,7 +646,7 @@ describe('accountTransformer', () => {
         const before = {};
         const after = { name: 'New Name' };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(changes.name).toEqual({
           before: undefined,
@@ -658,7 +658,7 @@ describe('accountTransformer', () => {
         const before = { name: 'Old Name' };
         const after = {};
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(changes.name).toEqual({
           before: 'Old Name',
@@ -670,7 +670,7 @@ describe('accountTransformer', () => {
         const before = { name: null };
         const after = { name: null };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(changes.name).toBeUndefined();
       });
@@ -679,7 +679,7 @@ describe('accountTransformer', () => {
         const before = {};
         const after = {};
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(Object.keys(changes)).toHaveLength(0);
       });
@@ -696,7 +696,7 @@ describe('accountTransformer', () => {
           primary_owner_user_id: 'user-123',
         };
 
-        const changes = accountTransformer.calculateChanges(account, account);
+        const changes = accountTransformer.calculateChanges!(account, account);
 
         expect(changes).toEqual({});
       });
@@ -711,7 +711,7 @@ describe('accountTransformer', () => {
           billing_customer_id: 'cus_new',
         };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(changes).toEqual({});
       });
@@ -719,7 +719,7 @@ describe('accountTransformer', () => {
 
     describe('edge cases', () => {
       it('should handle empty objects', () => {
-        const changes = accountTransformer.calculateChanges({}, {});
+        const changes = accountTransformer.calculateChanges!({}, {});
 
         expect(changes).toEqual({});
       });
@@ -728,7 +728,7 @@ describe('accountTransformer', () => {
         const before = { billing_customer_id: 'cus_123' };
         const after = { billing_customer_id: 'cus_456' };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         expect(changes).toEqual({});
       });
@@ -737,7 +737,7 @@ describe('accountTransformer', () => {
         const before = { is_personal_account: false };
         const after = { is_personal_account: 0 };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         // false !== 0, so it should detect a change
         expect(changes.is_personal_account).toEqual({
@@ -750,7 +750,7 @@ describe('accountTransformer', () => {
         const before = { name: '123' };
         const after = { name: 123 };
 
-        const changes = accountTransformer.calculateChanges(before, after);
+        const changes = accountTransformer.calculateChanges!(before, after);
 
         // '123' !== 123, so it should detect a change
         expect(changes.name).toEqual({
