@@ -44,6 +44,7 @@ import {
   queryTotals,
   queryTotalsByVideoIds,
   queryTrafficShareTrend,
+  queryTrafficSourceBreakdown,
   queryTrafficSources,
   queryVideoViewsAtAge,
   queryViewsForVideos,
@@ -394,6 +395,12 @@ async function queries() {
       endDate: '2026-03-31',
     }),
   );
+  await step('queryTrafficSourceBreakdown', () =>
+    queryTrafficSourceBreakdown({ scope, bucket: 'week' }),
+  );
+  await step('queryTrafficSourceBreakdown (month)', () =>
+    queryTrafficSourceBreakdown({ scope, bucket: 'month' }),
+  );
   await step('queryTrafficShareTrend', () =>
     queryTrafficShareTrend({ scope, bucket: 'week' }),
   );
@@ -580,6 +587,43 @@ async function assertions() {
     if (!snap) throw new Error('snapshot missing');
     if (snap.views !== 500) throw new Error(`expected 500, got ${snap.views}`);
     return `views=${snap.views} on ${snap.snapshot_date}`;
+  });
+
+  await step('assert: the trend agrees with the breakdown', async () => {
+    // FILM-1605 rebuilt queryTrafficShareTrend on the breakdown's rows.
+    // Against a real server, the browse+suggested group and the trend's
+    // numerator must be the same number, or the reimplementation moved a
+    // figure that is already on screen.
+    const [breakdown, trend] = await Promise.all([
+      queryTrafficSourceBreakdown({ scope, bucket: 'week' }),
+      queryTrafficShareTrend({ scope, bucket: 'week' }),
+    ]);
+
+    const byBucket = new Map(trend.map((t) => [t.bucket, t]));
+
+    for (const bucket of breakdown) {
+      const browse =
+        bucket.groups.find((g) => g.group === 'browse_suggested')?.views ?? 0;
+      const matching = byBucket.get(bucket.bucket);
+
+      if (!matching) {
+        throw new Error(`trend is missing bucket ${bucket.bucket}`);
+      }
+
+      if (matching.browseSuggestedViews !== browse) {
+        throw new Error(
+          `bucket ${bucket.bucket}: trend ${matching.browseSuggestedViews} != breakdown ${browse}`,
+        );
+      }
+
+      if (matching.totalViews !== bucket.totalViews) {
+        throw new Error(
+          `bucket ${bucket.bucket}: totals ${matching.totalViews} != ${bucket.totalViews}`,
+        );
+      }
+    }
+
+    return `${breakdown.length} bucket(s) agree`;
   });
 
   await step('assert: every orderBy returns the full page', async () => {

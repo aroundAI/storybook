@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1605
 title: Traffic Source Breakdown
-status: DRAFT
+status: ✅ DONE
 effort: M
 dependencies: FILM-1602
 ---
@@ -151,18 +151,18 @@ substitution of a caller value — the same treatment `VIDEO_AGE_ORDER_COLUMNS`
 
 ## 8. Acceptance Criteria
 
-- [ ] `queryTrafficSourceBreakdown` accepts a `DimScope` and returns one row per bucket per group
-- [ ] Every group in `TRAFFIC_SOURCE_GROUPS` appears in every bucket, as zero when it has no views
-- [ ] Group shares within a bucket sum to 1 (within float tolerance) whenever the bucket has views
-- [ ] An unrecognised `TS_*` source is counted in `other` and not dropped
-- [ ] `CHANNEL_PAGE` is its own group and is absent from `browse_suggested`
-- [ ] `END_SCREEN` and `ANNOTATION` are in `other`, not `browse_suggested`
-- [ ] `queryTrafficShareTrend` returns the same shape and the same browse-suggested numbers as before the change
-- [ ] The grouping and share maths are unit-tested with no ClickHouse client mocked at all
-- [ ] `bucket` cannot inject SQL
-- [ ] `getTrafficBreakdownAction` calls `assertScopeAccess` before querying
-- [ ] The stacked card renders group order deterministically across re-renders
-- [ ] The UI states that the denominator excludes unmatched videos
+- [x] `queryTrafficSourceBreakdown` accepts a `DimScope` and returns one row per bucket per group
+- [x] Every group in `TRAFFIC_SOURCE_GROUPS` appears in every bucket, as zero when it has no views
+- [x] Group shares within a bucket sum to 1 (within float tolerance) whenever the bucket has views
+- [x] An unrecognised `TS_*` source is counted in `other` and not dropped
+- [x] `CHANNEL_PAGE` is its own group and is absent from `browse_suggested`
+- [x] `END_SCREEN` and `ANNOTATION` are in `other`, not `browse_suggested`
+- [x] `queryTrafficShareTrend` returns the same shape and the same browse-suggested numbers as before the change
+- [x] The grouping and share maths are unit-tested with no ClickHouse client mocked at all
+- [x] `bucket` cannot inject SQL
+- [x] `getTrafficBreakdownAction` calls `assertScopeAccess` before querying
+- [x] The stacked card renders group order deterministically across re-renders
+- [x] The UI states that the denominator excludes unmatched videos
 
 ## 9. Verification
 

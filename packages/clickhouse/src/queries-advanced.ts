@@ -9,6 +9,11 @@
  */
 import { concatByChunk } from './chunked';
 import { getClickHouseClient, isClickHouseEnabled } from './client';
+import type {
+  TrafficGroupBucket,
+  TrafficSourceRow,
+} from './lib/traffic-groups';
+import { groupTrafficRows } from './lib/traffic-groups';
 import { computeIngestLagDays, computeMaturity } from './lib/video-age';
 import type { VideoDim } from './types';
 
@@ -384,31 +389,50 @@ export async function queryRollingViews(input: {
   }));
 }
 
-/**
- * Browse+Suggested share of views per week/month — the clearest signal of
- * whether the algorithm has decided what the channel is for.
+/** Bucket granularities, mapped to the ClickHouse function by lookup.
+
+ * `bucket` reaches SQL by interpolation because ClickHouse cannot bind a
+ * function name as a parameter, so it must never carry caller text — the
+ * same treatment VIDEO_AGE_ORDER_COLUMNS gives `orderBy`.
  */
-export async function queryTrafficShareTrend(input: {
+const TRAFFIC_BUCKET_FUNCTIONS = {
+  day: 'toDate',
+  week: 'toStartOfWeek',
+  month: 'toStartOfMonth',
+} as const;
+
+export type TrafficBucket = keyof typeof TRAFFIC_BUCKET_FUNCTIONS;
+
+/**
+ * Raw per-bucket, per-source rows for a scope.
+ *
+ * Private, and the single SQL path behind both the group breakdown and the
+ * browse+suggested trend. Two query bodies would drift the first time the
+ * browse set or the date bounds are edited on one and not the other.
+ *
+ * It groups by the raw `source`, never by a presentation group: the
+ * taxonomy lives in `lib/traffic-groups.ts` so that changing it is a code
+ * change rather than a migration.
+ */
+async function queryTrafficSourceRows(input: {
   scope: DimScope;
-  bucket: 'week' | 'month';
-  browseSuggestedSources?: string[];
+  bucket: TrafficBucket;
   startDate?: string;
   endDate?: string;
-}): Promise<TrafficShareBucket[]> {
-  if (!isClickHouseEnabled()) return [];
+}): Promise<TrafficSourceRow[]> {
   assertDimScope(input.scope);
 
   const client = getClickHouseClient();
   const { conditions, params } = buildDimConditions(input.scope);
-  params.browseSources =
-    input.browseSuggestedSources ?? DEFAULT_BROWSE_SUGGESTED_SOURCES;
 
-  const bucketFn = input.bucket === 'week' ? 'toStartOfWeek' : 'toStartOfMonth';
+  const bucketFn = TRAFFIC_BUCKET_FUNCTIONS[input.bucket];
   const dateConditions: string[] = ['1 = 1'];
+
   if (input.startDate) {
     dateConditions.push('metric_date >= {startDate: Date}');
     params.startDate = input.startDate;
   }
+
   if (input.endDate) {
     dateConditions.push('metric_date <= {endDate: Date}');
     params.endDate = input.endDate;
@@ -417,13 +441,14 @@ export async function queryTrafficShareTrend(input: {
   const query = `
     SELECT
       toString(${bucketFn}(metric_date)) as bucket,
-      sum(views) as total_views,
-      sumIf(views, source IN {browseSources: Array(String)}) as browse_views
+      source as source,
+      sum(views) as views,
+      sum(watch_time_minutes) as watch_time_minutes
     FROM video_traffic_sources FINAL
     WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions)}))
       AND ${dateConditions.join(' AND ')}
-    GROUP BY bucket
-    ORDER BY bucket ASC
+    GROUP BY bucket, source
+    ORDER BY bucket ASC, views DESC
   `;
 
   const result = await client.query({
@@ -434,20 +459,87 @@ export async function queryTrafficShareTrend(input: {
 
   const rows = await result.json<{
     bucket: string;
-    total_views: number;
-    browse_views: number;
+    source: string;
+    views: number;
+    watch_time_minutes: number;
   }>();
 
-  return rows.map((row) => {
-    const totalViews = Number(row.total_views);
-    const browseSuggestedViews = Number(row.browse_views);
-    return {
-      bucket: row.bucket,
-      totalViews,
-      browseSuggestedViews,
-      share: totalViews > 0 ? browseSuggestedViews / totalViews : 0,
-    };
-  });
+  return rows.map((row) => ({
+    bucket: row.bucket,
+    source: row.source,
+    views: Number(row.views),
+    watchTimeMinutes: Number(row.watch_time_minutes),
+  }));
+}
+
+/**
+ * Views and watch time per traffic-source group, per bucket (FILM-1605).
+ *
+ * Answers "where did views come from, as a share of the whole, over time"
+ * — the six surfaces beyond Browse+Suggested that the share trend alone
+ * cannot show.
+ *
+ * The denominator is matched videos only: unmatched traffic rows are
+ * dropped at ingest and channel_daily has no `source` column to hold them,
+ * so this share is not comparable to a channel view total and will not
+ * match Studio exactly.
+ */
+export async function queryTrafficSourceBreakdown(input: {
+  scope: DimScope;
+  bucket: TrafficBucket;
+  startDate?: string;
+  endDate?: string;
+}): Promise<TrafficGroupBucket[]> {
+  if (!isClickHouseEnabled()) return [];
+
+  return groupTrafficRows(await queryTrafficSourceRows(input));
+}
+
+/**
+ * Browse+Suggested share of views per week/month — the clearest signal of
+ * whether the algorithm has decided what the channel is for.
+ *
+ * Folded from the same rows the breakdown uses. `browseSuggestedSources`
+ * stays an override on the raw source names rather than resolving through
+ * the group taxonomy, so callers that pass their own set still get exactly
+ * what they asked for and the shipped default is unchanged.
+ */
+export async function queryTrafficShareTrend(input: {
+  scope: DimScope;
+  bucket: 'week' | 'month';
+  browseSuggestedSources?: string[];
+  startDate?: string;
+  endDate?: string;
+}): Promise<TrafficShareBucket[]> {
+  if (!isClickHouseEnabled()) return [];
+
+  const browseSources = new Set(
+    input.browseSuggestedSources ?? DEFAULT_BROWSE_SUGGESTED_SOURCES,
+  );
+
+  const rows = await queryTrafficSourceRows(input);
+  const buckets = new Map<string, { total: number; browse: number }>();
+
+  for (const row of rows) {
+    const bucket = buckets.get(row.bucket) ?? { total: 0, browse: 0 };
+
+    bucket.total += row.views;
+
+    if (browseSources.has(row.source)) {
+      bucket.browse += row.views;
+    }
+
+    buckets.set(row.bucket, bucket);
+  }
+
+  return Array.from(buckets.entries())
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([bucket, totals]) => ({
+      bucket,
+      totalViews: totals.total,
+      browseSuggestedViews: totals.browse,
+      share: totals.total > 0 ? totals.browse / totals.total : 0,
+    }));
 }
 
 /**

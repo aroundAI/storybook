@@ -58,7 +58,7 @@ Specified and not yet built:
 
 | Spec | Status | Effort | Covers |
 |------|--------|--------|--------|
-| FILM-1605 | DRAFT | M | Traffic source breakdown — the six surfaces beyond Browse+Suggested |
+| FILM-1605 | ✅ DONE | M | Traffic source breakdown — the six surfaces beyond Browse+Suggested |
 | FILM-1606 | DRAFT | L | Segment performance by tag, language, content type and channel, at a checkpoint age |
 | FILM-1608 | DRAFT | M | Per-channel YPP targets, and the first writer `analytics_settings` has ever had |
 | FILM-1609 | DRAFT | S | The `licensing` revenue category (the rest of this scope already shipped) |

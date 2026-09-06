@@ -49,6 +49,7 @@ export {
   queryMedianViewsPerVideo,
   queryRollingViews,
   queryTrafficShareTrend,
+  queryTrafficSourceBreakdown,
   queryVideoViewsAtAge,
   queryWatchWindowTotals,
 } from '../queries-advanced';
@@ -61,6 +62,7 @@ export type {
   RollingViewsPoint,
   TagMedianRow,
   TrafficShareBucket,
+  TrafficBucket,
   VideoAgeOrderBy,
   VideoAgeRow,
   WatchWindowTotals,
@@ -119,3 +121,17 @@ export type {
 } from '../types';
 
 export { formatDateStr } from '../utils';
+
+// FILM-1605: the traffic-source taxonomy is pure, so it is usable wherever
+// grouped rows are rendered — the same split video-age and cohort-growth use.
+export {
+  TRAFFIC_SOURCE_GROUPS,
+  groupForSource,
+  groupTrafficRows,
+} from '../lib/traffic-groups';
+export type {
+  TrafficGroupBucket,
+  TrafficGroupShare,
+  TrafficSourceGroup,
+  TrafficSourceRow,
+} from '../lib/traffic-groups';

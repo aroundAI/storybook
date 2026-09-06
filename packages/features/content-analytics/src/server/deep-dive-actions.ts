@@ -9,6 +9,7 @@ import {
   queryMedianViewsPerVideo,
   queryRollingViews,
   queryTrafficShareTrend,
+  queryTrafficSourceBreakdown,
   queryWatchWindowTotals,
 } from '@kit/clickhouse/server';
 import { computeCohortGrowth } from '@kit/clickhouse/server';
@@ -131,6 +132,36 @@ export const getTrafficShareTrendAction = enhanceAction(
     schema: z.object({
       scope: ScopeSchema,
       bucket: z.enum(['week', 'month']).default('week'),
+      from: z.coerce.date().optional(),
+      to: z.coerce.date().optional(),
+    }),
+    auth: true,
+  },
+);
+
+/**
+ * Views and watch time per traffic-source group, per bucket (FILM-1605).
+ *
+ * The share trend answers only "how much is Browse+Suggested"; this answers
+ * where the rest came from. The query carries no tenant predicate beyond
+ * the scope conditions, so `assertScopeAccess` is the boundary rather than
+ * a formality.
+ */
+export const getTrafficBreakdownAction = enhanceAction(
+  async ({ scope, bucket, from, to }) => {
+    await assertScopeAccess(scope);
+
+    return queryTrafficSourceBreakdown({
+      scope: toDimScope(scope),
+      bucket,
+      startDate: from ? formatDate(from) : undefined,
+      endDate: to ? formatDate(to) : undefined,
+    });
+  },
+  {
+    schema: z.object({
+      scope: ScopeSchema,
+      bucket: z.enum(['day', 'week', 'month']).default('week'),
       from: z.coerce.date().optional(),
       to: z.coerce.date().optional(),
     }),
