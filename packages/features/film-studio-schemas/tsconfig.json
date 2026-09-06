@@ -1,8 +1,15 @@
 {
-  "extends": "@kit/tsconfig/base.json",
-  "compilerOptions": {
-    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
-  },
-  "include": ["*.ts", "*.tsx", "src"],
-  "exclude": ["node_modules"]
+    "extends": "@kit/tsconfig/base.json",
+    "compilerOptions": {
+        "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+    },
+    "include": [
+        "*.ts",
+        "*.tsx",
+        "src",
+        "__tests__"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
 }

@@ -79,7 +79,8 @@ describe('crypto', () => {
 
       // Flip a bit in the ciphertext body, past the 12-byte IV. GCM
       // authenticates, so this must fail rather than return garbage.
-      bytes[bytes.length - 1] ^= 0xff;
+      const last = bytes.length - 1;
+      bytes[last] = (bytes[last] ?? 0) ^ 0xff;
 
       await expect(decrypt(bytes.toString('base64'))).rejects.toThrow();
     });

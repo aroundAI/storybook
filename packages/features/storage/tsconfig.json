@@ -2,10 +2,11 @@
     "extends": "../../../tooling/typescript/base.json",
     "compilerOptions": {
         "outDir": "./dist",
-        "rootDir": "./src"
+        "rootDir": "."
     },
     "include": [
-        "src/**/*.ts"
+        "src/**/*.ts",
+        "__tests__"
     ],
     "exclude": [
         "node_modules",

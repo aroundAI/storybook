@@ -330,7 +330,7 @@ describe('LastAuthMethod Utils', () => {
       saveLastAuthMethod(authMethod);
 
       // Mock getItem to return what setItem saved
-      const savedData = localStorageMock.setItem.mock.calls[0][1];
+      const savedData = localStorageMock.setItem.mock.calls[0]![1];
       localStorageMock.getItem.mockReturnValue(savedData);
 
       // Retrieve
@@ -442,7 +442,7 @@ describe('LastAuthMethod Utils', () => {
 
       saveLastAuthMethod(authMethod);
 
-      const savedData = localStorageMock.setItem.mock.calls[0][1];
+      const savedData = localStorageMock.setItem.mock.calls[0]![1];
       expect(JSON.parse(savedData)).toEqual(authMethod);
     });
 
@@ -455,7 +455,7 @@ describe('LastAuthMethod Utils', () => {
 
       saveLastAuthMethod(authMethod);
 
-      const savedData = localStorageMock.setItem.mock.calls[0][1];
+      const savedData = localStorageMock.setItem.mock.calls[0]![1];
       expect(JSON.parse(savedData)).toEqual(authMethod);
     });
   });

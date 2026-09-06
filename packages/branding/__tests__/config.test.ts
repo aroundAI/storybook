@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getBrandingConfig, BrandingConfigSchema } from '../src/config';
 
 describe('Branding Configuration', () => {

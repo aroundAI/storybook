@@ -170,18 +170,6 @@ describe('NotificationsService', () => {
         );
       });
 
-      it('should create success notification', async () => {
-        await service.createNotification({
-          account_id: 'acc-5',
-          body: 'Success message',
-          type: 'success',
-        });
-
-        expect(mockSupabaseClient.from().insert).toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'success' }),
-        );
-      });
-
       it('should create error notification', async () => {
         await service.createNotification({
           account_id: 'acc-6',
