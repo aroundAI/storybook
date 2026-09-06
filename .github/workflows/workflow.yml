@@ -347,6 +347,14 @@ jobs:
       # strings and then *overrode* .env.test with them. Reading .env.test
       # directly also means CI and a local run use the identical mechanism.
 
+      # Immediately after the stack comes up, before the production build and
+      # the app server. pgTAP needs the database and nothing else, and giving
+      # it the runner to itself removes the app from the set of things that
+      # can affect it. It also keeps running before Playwright, which signs up
+      # users and creates teams in the same database.
+      - name: Run Supabase tests
+        run: pnpm --filter web supabase:test
+
       # next build peaks over Node's default heap on a GitHub runner and
       # dies with "Ineffective mark-compacts near heap limit" at ~2GB.
       #
@@ -377,13 +385,6 @@ jobs:
           done
           echo "Next.js did not become ready in 120s"
           exit 1
-
-      # Before Playwright, not after: the pgTAP suite asserts against the
-      # seeded database, and the e2e specs sign up users and create teams in
-      # it. Running them in this order keeps pgTAP's fixtures the only thing
-      # it has to reason about.
-      - name: Run Supabase tests
-        run: pnpm --filter web supabase:test
 
       # Only the e2e package. `pnpm run test` is `turbo test`, which runs
       # every package's suite — the Unit Tests job already does that, and
