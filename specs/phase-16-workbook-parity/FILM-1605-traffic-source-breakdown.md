@@ -179,8 +179,13 @@ no data — a green suite proves the query is well-formed and the taxonomy is
 total, not that any figure is right.
 
 `pnpm --filter @kit/clickhouse verify` runs the real SQL against a live
-instance and is the only thing that proves ClickHouse accepts the query. It
-is not in CI because it needs a reachable host.
+instance and is the only thing that proves ClickHouse accepts the query.
+**It is in CI** — the `clickhouse-sql` job
+(`.github/workflows/workflow.yml:48`) runs the migrations and then every
+query against a 24.8-alpine service container on each PR, because the unit
+suite mocks the client and an alias shadowing a filter column once reached
+main behind 120 green tests. Locally, `./scripts/local-env.sh up` then
+`verify` does the same against the same pinned image.
 
 ## 10. Risk
 

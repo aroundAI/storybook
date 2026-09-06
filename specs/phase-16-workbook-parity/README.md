@@ -67,7 +67,7 @@ Specified and not yet built:
 | FILM-1615 | DRAFT | M | The Video Log table — FILM-1603 built the query and action, not the screen |
 | FILM-1616 | DRAFT | M | `WeeklyDiagnosticsTable` and `RetentionCurveChart`, both of which need actions built |
 | FILM-1617 | DRAFT | S | Subscriber series card, YPP absolute count, Publish Hub badge |
-| FILM-1618 | DRAFT | S | **Bug** — `channel_daily` subscriber columns are never written |
+| FILM-1618 | ✅ DONE | S | **Bug** — `channel_daily` subscriber columns were never written |
 
 ## Locked decisions
 
