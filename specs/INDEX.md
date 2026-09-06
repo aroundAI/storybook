@@ -531,7 +531,7 @@ See [phase-15-deep-analytics/README.md](./phase-15-deep-analytics/README.md) for
 
 See [phase-11-canon-integration/README.md](./phase-11-canon-integration/README.md) for full specification.
 
-### Phase 16: Workbook Parity (7 specs)
+### Phase 16: Workbook Parity (17 specs)
 
 See [phase-16-workbook-parity/README.md](./phase-16-workbook-parity/README.md) for the dependency graph, locked decisions and known limits.
 
@@ -544,8 +544,18 @@ See [phase-16-workbook-parity/README.md](./phase-16-workbook-parity/README.md) f
 | FILM-1607 | [subscriber-snapshots](./phase-16-workbook-parity/FILM-1607-subscriber-snapshots.md) | ✅ DONE | M | FILM-1602, FILM-1612 |
 | FILM-1612 | [postgrest-pagination](./phase-16-workbook-parity/FILM-1612-postgrest-pagination.md) | ✅ DONE | L | FILM-1602 |
 | FILM-1613 | [revenue-alert-account-scoping](./phase-16-workbook-parity/FILM-1613-revenue-alert-account-scoping.md) | ✅ DONE | S | FILM-1508, FILM-1601 |
+| FILM-1605 | [traffic-source-breakdown](./phase-16-workbook-parity/FILM-1605-traffic-source-breakdown.md) | DRAFT | M | FILM-1602 |
+| FILM-1606 | [segment-performance](./phase-16-workbook-parity/FILM-1606-segment-performance.md) | DRAFT | L | FILM-1603, FILM-1605 |
+| FILM-1608 | [ypp-targets-settings](./phase-16-workbook-parity/FILM-1608-ypp-targets-settings.md) | DRAFT | M | FILM-1602 |
+| FILM-1609 | [revenue-mix-completion](./phase-16-workbook-parity/FILM-1609-revenue-mix-completion.md) | DRAFT | S | FILM-1601 |
+| FILM-1610 | [experiment-log-notes](./phase-16-workbook-parity/FILM-1610-experiment-log-notes.md) | DRAFT | M | FILM-1602, FILM-1603, FILM-1605 |
+| FILM-1611 | [deep-dive-channel-selector](./phase-16-workbook-parity/FILM-1611-deep-dive-channel-selector.md) | DRAFT | M | FILM-1606, FILM-1608, FILM-1609 |
+| FILM-1615 | [video-log-table](./phase-16-workbook-parity/FILM-1615-video-log-table.md) | DRAFT | M | FILM-1603, FILM-1611 |
+| FILM-1616 | [weekly-diagnostics-retention](./phase-16-workbook-parity/FILM-1616-weekly-diagnostics-retention.md) | DRAFT | M | FILM-1602 |
+| FILM-1617 | [subscriber-surfaces](./phase-16-workbook-parity/FILM-1617-subscriber-surfaces.md) | DRAFT | S | FILM-1607, FILM-1611, FILM-1618 |
+| FILM-1618 | [channel-residual-subscribers](./phase-16-workbook-parity/FILM-1618-channel-residual-subscribers.md) | DRAFT | S | FILM-1601, FILM-1607 |
 
-The remaining workbook-parity scope (FILM-1605 traffic source breakdown, FILM-1606 segment performance, FILM-1608 YPP targets, FILM-1609 revenue mix completion, FILM-1610 experiment log and per-video notes, FILM-1611 analytics UI) is **not yet specified** — see the phase README, which is authoritative for what each covers.
+All workbook-parity scope is now specified. FILM-1611 was split — what the backlog called "analytics UI" became FILM-1611 (channel selector and orphan wiring), FILM-1615 (Video Log table), FILM-1616 (weekly diagnostics and retention drill-down) and FILM-1617 (subscriber surfaces). FILM-1614 is **not** a phase-16 spec: it is claimed by an in-code `TODO(FILM-1614)` in `revenue-queries.ts` for folding revenue reads into a pre-grouped RPC. See the phase README for the dependency graph and known limits.
 
 ### Spikes (5 specs)
 
