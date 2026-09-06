@@ -4,6 +4,8 @@ Closes the gap between Phase 15's analytics discipline and the *YouTube Channel 
 
 ## Specs & Dependency Order
 
+Shipped:
+
 ```
 FILM-1601 (correctness bugs + revenue delete RLS)
      │
@@ -20,6 +22,28 @@ FILM-1601 (correctness bugs + revenue delete RLS)
      └─→ FILM-1613 (revenue alert account scoping)
 ```
 
+Specified, not yet built:
+
+```
+FILM-1605 (traffic source breakdown)
+     ├─→ FILM-1606 (segment performance) ──┐
+     └─→ FILM-1610 (experiment log + per-video notes)
+                                           │
+FILM-1608 (YPP targets + settings UI) ─────┤
+                                           ├─→ FILM-1611 (channel selector + orphan wiring)
+FILM-1609 (revenue mix completion) ────────┘                │
+                                                            ├─→ FILM-1615 (Video Log table)
+                                                            └─→ FILM-1617 (subscriber surfaces)
+                                                                        ▲
+FILM-1618 (channel-residual subscribers, bug) ──────────────────────────┘
+
+FILM-1616 (weekly diagnostics + retention drill-down) — independent, needs only FILM-1602
+```
+
+FILM-1605, 1608, 1609, 1616 and 1618 are mutually independent and parallelisable. FILM-1611 gates the remaining UI work; FILM-1617 additionally needs FILM-1618, because surfacing a curve built from systematically short deltas publishes a number that drifts from its own anchors.
+
+**FILM-1614 is not a phase-16 spec.** The id is claimed by an in-code `TODO(FILM-1614)` at `packages/features/content-analytics/src/server/revenue-queries.ts:79`, for folding the two client-side revenue query shapes into a pre-grouped RPC. New spec ids in this phase therefore resume at 1615.
+
 | Spec | Delivered in |
 |------|--------------|
 | FILM-1601 | PR #232 (folded into the Phase 15 PR) |
@@ -30,11 +54,26 @@ FILM-1601 (correctness bugs + revenue delete RLS)
 | FILM-1604 | PR #237 |
 | FILM-1607 | PR #242 |
 
+Specified and not yet built:
+
+| Spec | Status | Effort | Covers |
+|------|--------|--------|--------|
+| FILM-1605 | DRAFT | M | Traffic source breakdown — the six surfaces beyond Browse+Suggested |
+| FILM-1606 | DRAFT | L | Segment performance by tag, language, content type and channel, at a checkpoint age |
+| FILM-1608 | DRAFT | M | Per-channel YPP targets, and the first writer `analytics_settings` has ever had |
+| FILM-1609 | DRAFT | S | The `licensing` revenue category (the rest of this scope already shipped) |
+| FILM-1610 | DRAFT | M | Watched metrics, review windows, and per-video notes on `publishes` |
+| FILM-1611 | DRAFT | M | Channel selector, plus mounting `YppProgressCard`, `TagMediansCard`, `RevenueMixCard` |
+| FILM-1615 | DRAFT | M | The Video Log table — FILM-1603 built the query and action, not the screen |
+| FILM-1616 | DRAFT | M | `WeeklyDiagnosticsTable` and `RetentionCurveChart`, both of which need actions built |
+| FILM-1617 | DRAFT | S | Subscriber series card, YPP absolute count, Publish Hub badge |
+| FILM-1618 | DRAFT | S | **Bug** — `channel_daily` subscriber columns are never written |
+
 ## Locked decisions
 
 - **A project spans multiple channels** — different platforms, and separate per-language channels where multi-language audio is unavailable. Channel is a *dimension inside a project*, and YPP must be **per-channel**: pooling channels against one 4,000-hour target reports a threshold as met when neither channel has met it.
 - **Video Log is project-level with a channel filter**, delivered as both an in-app table and CSV export columns.
-- **Unknown YPP applicant status defaults to new applicant (8,000h)** — better to over-state the bar than under-state it.
+- **Unknown YPP applicant status over-states rather than under-states the bar.** Where an escalated threshold is configured, an `unknown` status resolves to the higher one. FILM-1608 declines to hardcode the escalation *date* that an earlier draft attached to this decision: it could not be verified against YouTube policy, and a wrong date silently halves every channel's progress on the day it fires. The threshold is configuration; the over-state rule is unchanged.
 - **Day boundary `< N`** everywhere (days 0–29 = "@30d"), so the codebase carries one convention rather than two.
 - **`CHANNEL_PAGE` stays its own traffic bucket**, not folded into Browse+Suggested — matches Studio, and folding it would silently move the 60% milestone.
 - **Segment RPM is pooled** (Σrevenue / Σviews), not a mean of per-video RPMs, which tiny-view videos dominate.
@@ -44,54 +83,44 @@ FILM-1601 (correctness bugs + revenue delete RLS)
 - `platform_connections.subscriber_count` **is not a column** — it lives in `metadata` jsonb, written once at OAuth/channel-select and never refreshed.
 - `channel_daily` is the **residual** of videos that failed to match a publish. A channel total is `Σ video_metrics for its publishes + channel_daily`; the two compose exactly once `connection_id` is on `video_dim` (FILM-1602) and publish resolution is complete (FILM-1612). They can be UNIONed, never joined per-video.
 - Supabase enforces `max_rows = 1000` on **every** read including the service-role client, silently (FILM-1612).
+- `channel_daily.subscribers_gained` and `subscribers_lost` **have never been written**, despite migration `006`'s docstring saying that channel-wide subscriber movement from unmatched videos "is no longer discarded". `accumulateChannelDaily` (`report-ingest.ts:417`) cannot carry them — its `add` parameter is typed to four other fields — and the unmatched branch passes only those. It is silent because the TypeScript fields are optional, `JSONEachRow` omits absent keys, and both columns are `DEFAULT 0`. The `channel_daily` leg of `querySubscriberDeltas` therefore contributes nothing, so FILM-1607's reconstructed series understates net movement cumulatively (FILM-1618).
+- **Traffic-source rows for unmatched videos are dropped entirely**, not accumulated into `channel_daily` the way the reach and basic branches are — `channel_daily` has no `source` column to hold them. Traffic shares are therefore computed over matched videos only and are not comparable to channel view totals (FILM-1605 §5).
+- `video_metrics.revenue_cents` is **written as literal `0` by every ingest path**. Real revenue exists only in Postgres `revenue_records`, so any per-segment or per-video RPM must be composed across the two stores, and channel-level revenue rows (`publish_id is null`) belong to no segment at all (FILM-1606 §3).
 
-## Not yet specified
+## Everything is now specified
 
-The remaining workbook-parity scope is planned but **deliberately unspecified** — no spec file exists for it yet, and it should get one before implementation. The backlog order below is the spec-id order:
+Every remaining item has a spec file. FILM-1605, 1606, 1608, 1609, 1610,
+1611, 1615, 1616, 1617 and 1618 are all DRAFT; nothing is left planned-but-
+unwritten.
 
-FILM-1605 traffic source breakdown · FILM-1606 segment performance ·
-FILM-1608 YPP targets and settings UI · FILM-1609 revenue mix completion ·
-FILM-1610 experiment log and per-video notes · FILM-1611 analytics UI.
+**FILM-1611 was split.** The backlog entry called "analytics UI" had
+accumulated four unrelated deliverables, and anyone sizing it from its name
+alone would have undercounted it. It is now four specs:
 
-**FILM-1607 (absolute subscriber snapshots) shipped in PR #242** and is no
-longer part of this backlog.
+| was | is | why separate |
+|---|---|---|
+| wire the orphaned components | **FILM-1611** | pure wiring; every action already exists |
+| `VideoLogTable` + its tab | **FILM-1615** | a component that does not exist at all — FILM-1603 built the query and action and deferred the screen |
+| `WeeklyDiagnosticsTable`, `RetentionCurveChart` | **FILM-1616** | needs two new actions, one of which needs an ownership check because ClickHouse is outside RLS |
+| subscriber card + Publish Hub badge | **FILM-1617** | deferred by FILM-1607 §7; touches the publishing package |
 
-This list previously ended with "wiring up the four orphaned components".
-Three are still orphaned today: `RetentionCurveChart`,
-`WeeklyDiagnosticsTable` and `YppProgressCard` are exported from
-`deep-dive/index.ts` and rendered nowhere — `deep-dive-tab.tsx` mounts only
-`MedianViewsCard`, `TrafficShareCard`, `BackCatalogCard` and
-`CohortCurvesChart`. FILM-1611 has since accumulated four deliverables, so
-it is named "analytics UI" rather than after any one of them:
+**Five components are orphaned, not three.** An earlier version of this
+section said three. `deep-dive-tab.tsx` mounts only `MedianViewsCard`,
+`TrafficShareCard`, `BackCatalogCard` and `CohortCurvesChart`, so
+`RetentionCurveChart`, `WeeklyDiagnosticsTable` and `YppProgressCard` are
+orphaned as stated — but so are `TagMediansCard`
+(`components/taxonomy/tag-medians-card.tsx`, the tags page mounts only
+`TagManager`) and `RevenueMixCard` (`components/revenue-mix-card.tsx`).
+`RevenueMixCard` matters most of the five: it is the only place revenue
+category labels and colours are defined, so no revenue category has any
+display path today.
 
-1. wiring those three orphaned components,
-2. the `VideoLogTable` component and its tab, which do not exist at all yet
-   — FILM-1603 built the query and the action and deferred the UI,
-3. the subscriber-series card, deferred here by FILM-1607 §7,
-4. re-pointing the Publish Hub follower badge at
-   `getSubscriberSeriesAction`, also deferred by FILM-1607 §7.
+**FILM-1607 shipped in PR #242.** An earlier version of this section said
+it was "now specified and awaiting implementation", contradicting the
+delivery table above. It is done; the sequencing argument that followed
+(take it before the FILM-1503 cutover) is preserved in FILM-1607 §1, which
+is the authoritative account.
 
-Anyone sizing FILM-1611 from its name alone will undercount it, which is
-why they are listed.
-
-Three items have left this list: per-video views-at-age and the Video Log
-(FILM-1603) and cohort medians and growth (FILM-1604), both shipped; and
-absolute subscriber snapshots (FILM-1607), now specified and awaiting
-implementation.
-
-**Take FILM-1607 before the FILM-1503 cutover.** No API returns a
-historical absolute count, but that does not make earlier days
-unrecoverable: one anchor plus the exact net series levels the past as
-readily as the future, so the first snapshot retroactively levels every day
-for which a delta exists. What bounds recovery is delta collection —
-nothing is written while `CLICKHOUSE_ENABLED=false`, and the FILM-1503
-backfill carries no subscriber columns — so days before the cutover are
-permanently absent and days after it are reconstructible.
-
-Shipping first is therefore still the right sequencing, because it makes
-the reconstructible window empty rather than merely recoverable; but
-shipping late is a degradation, not a permanent loss. See FILM-1607 §1,
-which an earlier version of this paragraph contradicted.
 
 ## Known limits — do not promise these
 

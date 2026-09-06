@@ -1,0 +1,133 @@
+---
+spec_id: FILM-1609
+title: Revenue Mix Completion
+status: DRAFT
+effort: S
+dependencies: FILM-1601
+---
+
+# Revenue Mix Completion
+
+## 1. Overview
+
+This spec is much smaller than its backlog entry implies, and the reason is
+worth stating before the work: **most of it already shipped.**
+
+The original phase plan called for `RevenueSummary` to gain `totalViews`,
+`adsRevenueCents`, `nonAdRevenueCents`, `adsSharePercent`,
+`nonAdSharePercent`, `adsRpmCents` and `allInRpmCents`, so that the
+workbook's Revenue sheet becomes direct field reads. Every one of those
+fields is on the type today (`lib/types/revenue.ts:45-72`), computed in
+`getRevenueSummaryAction`, with `rpm` retained as an alias of
+`allInRpmCents` for back-compat and the RPM denominator already fixed by
+FILM-1601 to count every published video rather than only revenue-bearing
+ones.
+
+Two things are actually missing.
+
+**There is no `licensing` category.** The CHECK constraint permits
+`ads, premium, sponsorship, product, affiliate, other`
+(`schemas/38-revenue-tracking.sql:28-29`). The doc comment on
+`nonAdRevenueCents` already reads *"sponsorship, product, licensing…"* — the
+category was anticipated in prose and never added to the vocabulary. Today
+licensing income is recorded as `other`, where it is indistinguishable from
+everything else uncategorised.
+
+**No category has a display path at all.** The labels and the colours for
+all six exist in exactly one place — `components/revenue-mix-card.tsx:14-31`
+— inside a component that is exported and **rendered nowhere**. So
+`byType` is computed on every summary and shown to no one.
+
+## 2. Why a Seventh Category and Not a Free-Text Field
+
+`category` is a closed vocabulary enforced by a CHECK constraint, a zod
+enum and a unique index that includes it
+(`idx_revenue_records_unique_scope on (coalesce(publish_id, account_id), record_date, category)`).
+Loosening it to free text would let two spellings of the same category
+occupy two rows for one day and one scope, defeating that index silently —
+the mix chart would show "Licensing" and "licensing" as separate wedges.
+
+Licensing/IP revenue has no API on any platform and is manual entry
+permanently (phase README, known limits). That makes it exactly the kind of
+value a human types into a dropdown, which is an argument for adding it to
+the vocabulary, not for removing the vocabulary.
+
+## 3. Colour Allocation
+
+Seven categories, and the design system exposes **five** `bg-chart-*`
+tokens. The current map spends all five plus `bg-muted-foreground` for
+`other` (`revenue-mix-card.tsx:14-31`).
+
+Choose deliberately rather than collide. The rule this spec fixes:
+
+- **`other` keeps `bg-muted-foreground`.** It is the residual, and it
+  should not read as a first-class category.
+- **`ads` and `premium` keep `bg-chart-1` and `bg-chart-2`.** They are the
+  platform-payout pair that `adsRevenueCents` sums
+  (`revenue-actions.ts:123`), and they are the two most people will see.
+- **`licensing` shares a token with the category it is most distant from on
+  screen**, at a different opacity, rather than taking a token from
+  `sponsorship`, `product` or `affiliate` — the three the mix chart exists
+  to separate.
+
+An implementer who instead adds a sixth `bg-chart-6` should check it exists
+in the theme first; a token that does not resolve renders transparent, and
+a transparent wedge in a stacked bar reads as missing revenue rather than
+as a styling bug.
+
+## 4. Implementation Map
+
+| File | Change |
+|------|--------|
+| `apps/web/supabase/schemas/38-revenue-tracking.sql` | Add `licensing` to `revenue_records_category_check`. A CHECK cannot be extended in place — the migration drops and re-adds it. Nothing else in the file changes. |
+| `apps/web/supabase/migrations/<timestamp>_revenue-licensing-category.sql` | The generated migration. Note the constraint was already re-created once by `20260827104500_revenue-categories.sql:26-28`, so the drop must target the current name, not the original schema-file text. |
+| `packages/features/content-analytics/src/lib/schemas/revenue.schema.ts` | Add `licensing` to the category enum (`:29-36`). The manual-entry default stays `sponsorship` (`:53`) — licensing is rarer, and changing a default silently re-categorises whatever a user submits without touching the field. |
+| `packages/features/content-analytics/src/components/revenue-mix-card.tsx` | `CATEGORY_LABELS` and `CATEGORY_COLORS` gain `licensing`, per §3. These maps stay the single source of category presentation; do not fork a second copy into the summary card. |
+| `packages/features/content-analytics/src/server/revenue-actions.ts` | Confirm `licensing` falls to `nonAdRevenueCents`. It should already: `adsRevenueCents` is an explicit `byType.ads + byType.premium` (`:123`), so a new category is non-ad by construction — but the acceptance criteria assert it rather than assuming, because the alternative implementation (`total − ads`) has the same value today and a different one the moment a category is added that should count as a payout. |
+
+Nothing changes in `analytics-sync-cron.ts:977-980`, which writes only
+`ads`, `premium` and `other` from the YouTube Analytics API. Licensing has
+no API source, so no ingest path produces it.
+
+## 5. Out of Scope
+
+- **Rendering `RevenueMixCard`** — FILM-1611. This spec makes the category
+  correct; it does not give it a surface.
+- **Per-video revenue on TikTok and Instagram** — no API exists; phase
+  README known limits.
+- **Anything else on `RevenueSummary`** — already shipped; see §1.
+- **Folding the two revenue query shapes into an RPC** — that is the
+  in-code `TODO(FILM-1614)` at `server/revenue-queries.ts:79`, a separate
+  ticket with its own migration.
+
+## 6. Acceptance Criteria
+
+- [ ] `licensing` is accepted by `revenue_records_category_check`
+- [ ] `licensing` is selectable in the manual revenue entry form
+- [ ] The manual-entry default category is unchanged
+- [ ] `licensing` revenue is counted in `nonAdRevenueCents`, not `adsRevenueCents`
+- [ ] `adsRevenueCents` remains an explicit sum of `ads` and `premium`, not a subtraction from the total
+- [ ] Every category, including `licensing`, resolves to a label and a colour that exists in the theme
+- [ ] `other` is visually distinct from the six named categories
+- [ ] A row inserted with an unknown category is still rejected by the database
+- [ ] `pnpm --filter web check:schema-drift` passes
+- [ ] Both `database.types.ts` copies are regenerated and identical
+
+## 7. Verification
+
+```bash
+pnpm --filter web supabase migration up
+pnpm supabase:web:typegen
+pnpm --filter web check:schema-drift
+pnpm --filter @kit/content-analytics test
+pnpm typecheck && pnpm lint
+```
+
+This is the one spec in the phase that is **fully verifiable today**. It
+touches Postgres and TypeScript only — no ClickHouse — so the constraint,
+the enum and the share arithmetic can all be exercised for real, unlike
+every query-side spec in this phase.
+
+The colour choice cannot be verified by a test; it needs a look at the
+rendered card, which does not render until FILM-1611. Until then, assert
+that each category resolves to a non-empty class name.

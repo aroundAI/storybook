@@ -1,0 +1,171 @@
+---
+spec_id: FILM-1617
+title: Subscriber Surfaces
+status: DRAFT
+effort: S
+dependencies: FILM-1607, FILM-1611, FILM-1618
+---
+
+# Subscriber Surfaces
+
+## 1. Overview
+
+FILM-1607 built the absolute subscriber series — daily snapshots into
+`channel_subscribers`, the anchor and delta queries, the pure
+`reconstructSeries` reconstruction, and `getSubscriberSeriesAction`. It
+deliberately shipped with **no surface**, deferring every presentation
+decision to this spec (FILM-1607 §7) and leaving one acceptance criterion
+unchecked (`FILM-1607:423`).
+
+So three things are true at once today:
+
+- A correct, dated, per-channel subscriber curve is computed and shown to
+  nobody.
+- `YppProgressCard` renders `netSubscribers` under the label
+  **"Subscribers"** — a 365-day *net movement*, not a subscriber count. The
+  action's own comment flags it — *"Net movement, not an absolute count —
+  the absolute figure needs the channel snapshot introduced in FILM-1607"*
+  (`deep-dive-actions.ts:306-307`).
+  A channel with 40,000 subscribers that grew by 900 this year reads as
+  900.
+- The Publish Hub follower badge reads
+  `platform_connections.metadata.followers_count`
+  (`connection-actions.ts:320`) — a value written **only** by the Meta
+  callback (`api/platforms/callback/meta/route.ts:253`). PR #241 fixed the
+  key from singular to plural, which made it work for Instagram and changed
+  nothing for YouTube or TikTok, where nothing writes it at all. The badge's
+  `!= null && > 0` guard hides the absence silently.
+
+This spec gives the series a surface and re-points both misleading numbers
+at it.
+
+## 2. Never Sum Without a Level for Every Channel
+
+`getSubscriberSeriesAction` returns one series **per connection** and does
+not sum them (`subscriber-series-actions.ts:103-106`). That is not an
+oversight to correct here; it is a constraint to honour.
+
+Connections are made at different times, so their first anchors land on
+different dates. A naive sum steps up by an entire channel's level on the
+day that channel's first snapshot arrives — indistinguishable from real
+growth — and reads as a crash on every day before it, where one channel's
+series has not started.
+
+A summed view is permitted, and only under one rule: **emit a summed day
+only where every in-scope connection has a level for that day.** The summed
+series therefore starts at the latest first-anchor across the selection and
+must say so on screen, rather than drawing a shorter line without
+explanation. Where the selection is a single channel, this collapses to
+that channel's own series and the rule costs nothing.
+
+## 3. Disclose the Seed, Not Just the Curve
+
+Each point carries a `SubscriberSource` (`lib/subscriber-series.ts:31`):
+`snapshot`, `interpolated`, `constrained` or `clamped`. These are not
+debugging fields — they are the difference between a measured level and a
+reconstructed one, and the UI must distinguish them:
+
+- `snapshot` days are measured. Draw them as such.
+- `interpolated` and `constrained` days are reconstructed from deltas
+  between anchors and inherit the anchor's error.
+- `clamped` days hit a bound and are the least trustworthy of the four.
+
+**The rounded-seed bias must be disclosed wherever the number is shown** —
+this is FILM-1607's one unchecked acceptance criterion, deferred here
+because this spec owns every surface that shows the number. The YouTube
+Data API rounds `subscriberCount` to three significant figures above 1,000
+(exact below), which `roundingStep` records per anchor. A curve seeded from
+a rounded anchor carries that rounding as a constant offset through every
+reconstructed day: a channel reported as 40,000 may be anywhere in a
+500-wide band, and the *shape* of the curve is right while its *height* is
+approximate.
+
+Two related caveats already recorded in FILM-1607 belong on screen for the
+same reason: the series cannot predate the first snapshot for days with no
+deltas, and a hidden subscriber count returns 0 by design rather than as a
+failure.
+
+## 4. Implementation Map
+
+| File | Change |
+|------|--------|
+| `packages/features/content-analytics/src/server/subscriber-series-actions.ts` | **Fix a live scoping bug.** `ScopeSchema` accepts `projectId` (`:34-38`) but the connection query filters only on `accountId` and `connectionId` (`:65-83`) — so a project-scoped call returns every connection on the account, including channels the project never published to. Either resolve the project's connections (as `listProjectChannels` does) or reject `projectId` outright; silently widening the scope is the one option that must not survive. |
+| `packages/features/content-analytics/src/components/deep-dive/subscriber-series-card.tsx` | New. Renders one line per connection by default, with an optional summed view under the §2 rule. Point sources are visually distinguished per §3, and the rounded-seed band is stated, not implied. |
+| `packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx` | Mount the card, using the channel filter FILM-1611 adds — the selection that filters the other cards must filter this one, or the tab shows two different channel scopes at once. |
+| `packages/features/content-analytics/src/server/deep-dive-actions.ts` | `getYppProgressAction` gains an absolute `subscribers` alongside the existing `netSubscribers`, sourced from the latest series level for that connection, plus `subscribersSource` so the card can mark a reconstructed figure. `netSubscribers` stays — it is the correct input to the growth reading and only its *label* was wrong. Delete the stale comment at `:306-307` once it is true. |
+| `packages/features/content-analytics/src/components/deep-dive/ypp-progress-card.tsx` | `YppChannelProgress` gains `subscribers` and `subscribersSource`. The "Subscribers" label moves onto the absolute figure; the net movement is relabelled as movement over the window. |
+| `packages/features/publishing/src/server/connection-actions.ts` | `getConnectedPlatformsAction` (`:273`) and `getConnectionsAction` (`:87-92`) resolve `followerCount` from the latest subscriber level where one exists, falling back to `metadata.followers_count`. Keep the fallback: Instagram has no `channel_subscribers` row, and dropping it would darken the one platform whose badge currently works. |
+| `packages/features/publishing/src/lib/types.ts` | `followerCount` gains a companion source field (`:52`, `:80`) so the badge can render "as of connection date" for a stale metadata value rather than presenting it as current. |
+
+## 5. Why Not Just Write `followers_count` at Snapshot Time
+
+The smaller change is to have `captureSubscriberSnapshots` also update
+`platform_connections.metadata.followers_count`, leaving the badge's read
+path untouched. It is rejected:
+
+- `metadata` is a shared jsonb written by six OAuth callbacks. A read-
+  modify-write from the snapshot cron races a token refresh or a reconnect
+  and can drop `thumbnail_url`, `linked_page_id` or a token expiry — the
+  same hazard FILM-1610 §4 avoids for publish notes.
+- It would store a value with no date beside it, recreating exactly the
+  "captured once, at a date nobody records, then left to rot" problem
+  FILM-1607 §1 exists to end.
+- The badge would show a number with no way to say whether it is measured
+  or reconstructed.
+
+## 6. Out of Scope
+
+- **Backfilling history before the first snapshot** — the Data API returns
+  current only and the Reporting API gained/lost only. FILM-1607 §1 covers
+  what is and is not reconstructible.
+- **Subscriber figures for TikTok and Instagram beyond what already exists**
+  — `captureSubscriberSnapshots` covers the three platforms it covers.
+- **Any change to `reconstructSeries`** — it is pure, tested, and correct.
+- **Fixing the short deltas that feed it** — FILM-1618, which this spec
+  depends on: surfacing a curve built from systematically short deltas
+  publishes a number that drifts from its own anchors.
+
+## 7. Acceptance Criteria
+
+- [ ] A subscriber series card renders one line per connection
+- [ ] A summed view emits only days on which every in-scope connection has a level
+- [ ] The summed view states the date its series begins and why
+- [ ] Snapshot, interpolated, constrained and clamped points are visually distinguishable
+- [ ] The rounded-seed bias is disclosed wherever an absolute figure is shown
+- [ ] A hidden subscriber count renders as unavailable, not as zero
+- [ ] `YppProgressCard` shows an absolute subscriber count, with net movement separately labelled as movement
+- [ ] The stale comments in `getYppProgressAction` are removed once the figure is absolute
+- [ ] The Publish Hub badge shows a live level for YouTube and TikTok connections
+- [ ] The badge still works for Instagram via the metadata fallback
+- [ ] A metadata-sourced badge value is marked as of the connection date
+- [ ] A project-scoped call to `getSubscriberSeriesAction` no longer returns connections outside that project
+- [ ] Nothing writes subscriber counts into `platform_connections.metadata`
+- [ ] The card is filtered by the same channel selector as the rest of the tab
+
+## 8. Verification
+
+```bash
+pnpm --filter @kit/content-analytics test
+pnpm --filter @kit/clickhouse test
+pnpm --filter @kit/publishing test
+pnpm typecheck && pnpm lint
+```
+
+The scoping fix in §4 is Postgres-only and **fully testable now** — assert
+that a project-scoped call returns only that project's connections. Do this
+one first; it is a live tenant-scoping defect and the rest of the spec is
+cosmetic beside it.
+
+Everything else is gated. `CLICKHOUSE_ENABLED=false`, so
+`querySubscriberAnchors` and `querySubscriberDeltas` return empty,
+`reconstructSeries` produces no points, the card renders its empty state,
+and both badges fall through to the metadata value. A green suite proves
+the fallbacks and the summing rule, not a single subscriber figure.
+
+## 9. Risk
+
+This spec changes a number that is already on screen: the Publish Hub badge
+and the YPP card's "Subscribers". Both are currently wrong — one absent,
+one mislabelled — so the change is a correction, but it will look like a
+regression to anyone who had learned to read the old figure. Say so in the
+PR description rather than letting it be discovered.
