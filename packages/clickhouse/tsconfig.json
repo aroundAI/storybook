@@ -5,7 +5,9 @@
     },
     "include": [
         "*.ts",
-        "src"
+        "src",
+        "scripts",
+        "__tests__"
     ],
     "exclude": [
         "node_modules"
