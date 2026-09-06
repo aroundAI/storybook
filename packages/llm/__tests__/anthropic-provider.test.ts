@@ -10,7 +10,7 @@
  * - Error handling
  * - Integration scenarios
  */
-import Anthropic, { APIError as AnthropicAPIError } from '@anthropic-ai/sdk';
+import Anthropic from '@anthropic-ai/sdk';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AnthropicClient } from '../src/providers/anthropic';
@@ -19,7 +19,7 @@ import { LLMError } from '../src/types';
 // Mock Anthropic SDK
 const mockCreate = vi.fn();
 
-vi.mock('@anthropic-ai/sdk', () => {
+const { MockAPIError } = vi.hoisted(() => {
   class MockAPIError extends Error {
     status: number | undefined;
 
@@ -30,14 +30,19 @@ vi.mock('@anthropic-ai/sdk', () => {
     }
   }
 
+  return { MockAPIError };
+});
+
+vi.mock('@anthropic-ai/sdk', () => {
   const MockAnthropic = vi.fn().mockImplementation(() => ({
     messages: {
       create: mockCreate,
     },
   }));
 
-  // Add APIError as a static property
-  MockAnthropic.APIError = MockAPIError;
+  // Object.assign keeps the static typed; a bare property assignment onto
+  // a vi.fn() is not.
+  Object.assign(MockAnthropic, { APIError: MockAPIError });
 
   return {
     default: MockAnthropic,
@@ -76,7 +81,7 @@ describe('AnthropicClient', () => {
 
   describe('createChatCompletion', () => {
     it('should create chat completion with correct parameters', async () => {
-      const mockResponse: Anthropic.Message = {
+      const mockResponse = {
         id: 'msg_123',
         type: 'message',
         role: 'assistant',
@@ -87,7 +92,7 @@ describe('AnthropicClient', () => {
           input_tokens: 10,
           output_tokens: 5,
         },
-      } as Anthropic.Message;
+      } as unknown as Anthropic.Message;
 
       mockCreate.mockResolvedValue(mockResponse);
 
@@ -128,7 +133,7 @@ describe('AnthropicClient', () => {
         model: 'claude-3-5-sonnet-20241022',
         stop_reason: 'end_turn',
         usage: { input_tokens: 20, output_tokens: 5 },
-      } as Anthropic.Message;
+      } as unknown as Anthropic.Message;
 
       mockCreate.mockResolvedValue(mockResponse);
 
@@ -165,7 +170,7 @@ describe('AnthropicClient', () => {
         model: 'claude-3-5-sonnet-20241022',
         stop_reason: 'end_turn',
         usage: { input_tokens: 10, output_tokens: 3 },
-      } as Anthropic.Message;
+      } as unknown as Anthropic.Message;
 
       mockCreate.mockResolvedValue(mockResponse);
 
@@ -203,7 +208,7 @@ describe('AnthropicClient', () => {
         model: 'claude-3-5-sonnet-20241022',
         stop_reason: 'end_turn',
         usage: { input_tokens: 1000, output_tokens: 500 },
-      } as Anthropic.Message;
+      } as unknown as Anthropic.Message;
 
       mockCreate.mockResolvedValue(mockResponse);
 
@@ -254,7 +259,7 @@ describe('AnthropicClient', () => {
           model: 'claude-3-5-sonnet-20241022',
           stop_reason: stopReason,
           usage: { input_tokens: 10, output_tokens: 5 },
-        } as Anthropic.Message;
+        } as unknown as Anthropic.Message;
 
         mockCreate.mockResolvedValue(mockResponse);
 
@@ -275,7 +280,7 @@ describe('AnthropicClient', () => {
         model: 'claude-3-5-sonnet-20241022',
         stop_reason: 'end_turn',
         usage: { input_tokens: 10, output_tokens: 0 },
-      } as Anthropic.Message;
+      } as unknown as Anthropic.Message;
 
       mockCreate.mockResolvedValue(mockResponse);
 
@@ -303,12 +308,14 @@ describe('AnthropicClient', () => {
         yield {
           type: 'content_block_delta',
           delta: { type: 'text_delta', text: 'Hello' },
-        } as Anthropic.MessageStreamEvent;
+        } as unknown as Anthropic.MessageStreamEvent;
         yield {
           type: 'content_block_delta',
           delta: { type: 'text_delta', text: ' World' },
-        } as Anthropic.MessageStreamEvent;
-        yield { type: 'message_stop' } as Anthropic.MessageStreamEvent;
+        } as unknown as Anthropic.MessageStreamEvent;
+        yield {
+          type: 'message_stop',
+        } as unknown as Anthropic.MessageStreamEvent;
       })();
 
       mockCreate.mockResolvedValue(mockStream);
@@ -341,8 +348,10 @@ describe('AnthropicClient', () => {
         yield {
           type: 'content_block_delta',
           delta: { type: 'text_delta', text: 'Test' },
-        } as Anthropic.MessageStreamEvent;
-        yield { type: 'message_stop' } as Anthropic.MessageStreamEvent;
+        } as unknown as Anthropic.MessageStreamEvent;
+        yield {
+          type: 'message_stop',
+        } as unknown as Anthropic.MessageStreamEvent;
       })();
 
       mockCreate.mockResolvedValue(mockStream);
@@ -370,8 +379,10 @@ describe('AnthropicClient', () => {
         yield {
           type: 'content_block_delta',
           delta: { type: 'text_delta', text: 'Response' },
-        } as Anthropic.MessageStreamEvent;
-        yield { type: 'message_stop' } as Anthropic.MessageStreamEvent;
+        } as unknown as Anthropic.MessageStreamEvent;
+        yield {
+          type: 'message_stop',
+        } as unknown as Anthropic.MessageStreamEvent;
       })();
 
       mockCreate.mockResolvedValue(mockStream);
@@ -410,12 +421,14 @@ describe('AnthropicClient', () => {
         yield {
           type: 'content_block_delta',
           delta: { type: 'input_json_delta' as 'text_delta', text: undefined },
-        } as Anthropic.MessageStreamEvent;
+        } as unknown as Anthropic.MessageStreamEvent;
         yield {
           type: 'content_block_delta',
           delta: { type: 'text_delta', text: 'Valid text' },
-        } as Anthropic.MessageStreamEvent;
-        yield { type: 'message_stop' } as Anthropic.MessageStreamEvent;
+        } as unknown as Anthropic.MessageStreamEvent;
+        yield {
+          type: 'message_stop',
+        } as unknown as Anthropic.MessageStreamEvent;
       })();
 
       mockCreate.mockResolvedValue(mockStream);
@@ -490,7 +503,7 @@ describe('AnthropicClient', () => {
   describe('error handling', () => {
     it('should handle Anthropic API errors', async () => {
       // Create instance of mocked APIError
-      const apiError = new AnthropicAPIError('Invalid API key', 401);
+      const apiError = new MockAPIError('Invalid API key', 401);
       mockCreate.mockRejectedValue(apiError);
 
       const client = new AnthropicClient({
@@ -553,7 +566,7 @@ describe('AnthropicClient', () => {
 
     it('should handle streaming errors', async () => {
       // Create instance of mocked APIError
-      const error = new AnthropicAPIError('Rate limit exceeded', 429);
+      const error = new MockAPIError('Rate limit exceeded', 429);
       mockCreate.mockRejectedValue(error);
 
       const client = new AnthropicClient({
@@ -588,7 +601,7 @@ describe('AnthropicClient', () => {
         model: 'claude-3-5-sonnet-20241022',
         stop_reason: 'end_turn',
         usage: { input_tokens: 50, output_tokens: 10 },
-      } as Anthropic.Message;
+      } as unknown as Anthropic.Message;
 
       mockCreate.mockResolvedValue(mockResponse);
 
@@ -631,7 +644,7 @@ describe('AnthropicClient', () => {
         model: 'claude-3-5-sonnet-20241022',
         stop_reason: 'end_turn',
         usage: { input_tokens: 5, output_tokens: 3 },
-      } as Anthropic.Message;
+      } as unknown as Anthropic.Message;
 
       mockCreate.mockResolvedValue(mockResponse);
 

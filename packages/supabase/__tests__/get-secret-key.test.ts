@@ -294,7 +294,7 @@ describe('get-secret-key', () => {
 
         warnServiceRoleKeyUsage();
 
-        const warningMessage = consoleWarnSpy.mock.calls[0][0];
+        const warningMessage = consoleWarnSpy.mock.calls[0]![0];
         expect(warningMessage).toContain('bypasses RLS');
         expect(warningMessage).toContain('server-side code');
       });
@@ -304,7 +304,7 @@ describe('get-secret-key', () => {
 
         warnServiceRoleKeyUsage();
 
-        const warningMessage = consoleWarnSpy.mock.calls[0][0];
+        const warningMessage = consoleWarnSpy.mock.calls[0]![0];
         expect(warningMessage).toContain('[Dev Only]');
       });
 
@@ -313,7 +313,7 @@ describe('get-secret-key', () => {
 
         warnServiceRoleKeyUsage();
 
-        const warningMessage = consoleWarnSpy.mock.calls[0][0];
+        const warningMessage = consoleWarnSpy.mock.calls[0]![0];
         expect(warningMessage).toContain('intended usage');
       });
     });

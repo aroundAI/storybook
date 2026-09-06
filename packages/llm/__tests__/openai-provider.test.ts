@@ -1,4 +1,4 @@
-import OpenAI, { APIError as OpenAIAPIError } from 'openai';
+import OpenAI from 'openai';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { OpenAIClient } from '../src/providers/openai';
@@ -8,11 +8,11 @@ import { LLMError } from '../src/types';
 // Mock the OpenAI module
 const mockCreate = vi.fn();
 
-vi.mock('openai', () => {
-  // Mock APIError class
+const { MockAPIError } = vi.hoisted(() => {
   class MockAPIError extends Error {
     code: string | null;
     status: number | undefined;
+
     constructor(message: string, status?: number, code?: string | null) {
       super(message);
       this.name = 'APIError';
@@ -21,6 +21,10 @@ vi.mock('openai', () => {
     }
   }
 
+  return { MockAPIError };
+});
+
+vi.mock('openai', () => {
   const MockOpenAI = vi.fn().mockImplementation(() => ({
     chat: {
       completions: {
@@ -29,8 +33,9 @@ vi.mock('openai', () => {
     },
   }));
 
-  // Add APIError as a static property
-  MockOpenAI.APIError = MockAPIError;
+  // Object.assign keeps the static typed; a bare property assignment onto
+  // a vi.fn() is not.
+  Object.assign(MockOpenAI, { APIError: MockAPIError });
 
   return {
     default: MockOpenAI,
@@ -618,7 +623,7 @@ describe('OpenAIClient', () => {
     it('should handle OpenAI APIError', async () => {
       const client = new OpenAIClient(mockConfig);
 
-      const apiError = new OpenAIAPIError(
+      const apiError = new MockAPIError(
         'Invalid API key',
         401,
         'invalid_api_key',
@@ -666,7 +671,7 @@ describe('OpenAIClient', () => {
     it('should handle streaming errors', async () => {
       const client = new OpenAIClient(mockConfig);
 
-      const apiError = new OpenAIAPIError('Rate limit', 429, 'rate_limit');
+      const apiError = new MockAPIError('Rate limit', 429, 'rate_limit');
 
       mockCreate.mockRejectedValue(apiError);
 

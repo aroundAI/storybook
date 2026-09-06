@@ -24,6 +24,8 @@
  *   budgetLimits: { maxTotalTokens: 10000, maxCostUSD: 0.10, maxLatencyMs: 30000 },
  * }, {
  *   userPrompt: 'Find information about TypeScript agents',
+ * }, {
+ *   accountId: account.id,
  * });
  * ```
  */
