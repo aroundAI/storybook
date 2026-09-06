@@ -15,7 +15,7 @@ FILM-1601 (correctness bugs + revenue delete RLS)
      │                 │        │
      │                 │        └─→ FILM-1604 (cohort medians + growth)
      │                 │
-     │                 └─→ FILM-1607 (absolute subscriber snapshots) — not yet built
+     │                 └─→ FILM-1607 (absolute subscriber snapshots)
      │
      └─→ FILM-1613 (revenue alert account scoping)
 ```
@@ -28,6 +28,7 @@ FILM-1601 (correctness bugs + revenue delete RLS)
 | FILM-1612 | PR #235 |
 | FILM-1603 | PR #236 |
 | FILM-1604 | PR #237 |
+| FILM-1607 | PR #242 |
 
 ## Locked decisions
 
@@ -52,10 +53,8 @@ FILM-1605 traffic source breakdown · FILM-1606 segment performance ·
 FILM-1608 YPP targets and settings UI · FILM-1609 revenue mix completion ·
 FILM-1610 experiment log and per-video notes · FILM-1611 analytics UI.
 
-**FILM-1607 (absolute subscriber snapshots) is no longer in this list** —
-it has a spec and is awaiting implementation, so it belongs with the
-specified work below rather than struck through under a heading that says
-no spec file exists.
+**FILM-1607 (absolute subscriber snapshots) shipped in PR #242** and is no
+longer part of this backlog.
 
 This list previously ended with "wiring up the four orphaned components".
 Three are still orphaned today: `RetentionCurveChart`,
