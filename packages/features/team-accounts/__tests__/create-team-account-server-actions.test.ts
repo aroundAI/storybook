@@ -56,16 +56,27 @@ vi.mock('@kit/shared/logger', () => ({
   getLogger: vi.fn(() => Promise.resolve(mockLogger)),
 }));
 
+/**
+ * The service resolves to `{ data, error }` where either side can be null.
+ * Inferring the type from the happy-path default pinned `data` non-null and
+ * `error` to `null`, so every failure case in this file was a type error.
+ */
+interface CreateAccountResult {
+  data: { id: string; name: string; slug: string } | null;
+  error: Error | null;
+}
+
 // Mock create team account service
-const mockCreateNewOrganizationAccount = vi.fn(() =>
-  Promise.resolve({
-    data: {
-      id: '123e4567-e89b-12d3-a456-426614174000',
-      name: 'Test Team',
-      slug: 'test-team',
-    },
-    error: null,
-  }),
+const mockCreateNewOrganizationAccount = vi.fn(
+  (): Promise<CreateAccountResult> =>
+    Promise.resolve({
+      data: {
+        id: '123e4567-e89b-12d3-a456-426614174000',
+        name: 'Test Team',
+        slug: 'test-team',
+      },
+      error: null,
+    }),
 );
 
 vi.mock('../src/server/services/create-team-account.service', () => ({
@@ -88,6 +99,19 @@ vi.mock('@kit/audit-logs/server', () => ({
 const mockCreateAuditLog = vi.mocked(createAuditLog);
 const mockExtractNetworkContext = vi.mocked(extractNetworkContext);
 
+/**
+ * This suite mocks `enhanceAction` to forward every argument, which is how
+ * it injects the user the real wrapper resolves from the session. The
+ * exported actions carry the real wrapper's type, which takes only `data`,
+ * so calling them with a user needs that wider view stated explicitly.
+ */
+function withUser<A extends (...args: never[]) => unknown>(action: A) {
+  return action as unknown as (
+    data: Parameters<A>[0],
+    user?: { id: string },
+  ) => Promise<unknown>;
+}
+
 describe('createTeamAccountAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -107,9 +131,9 @@ describe('createTeamAccountAction', () => {
       const user = { id: '987fcdeb-51a2-43d7-8f9e-123456789abc' };
       const data = { name: 'Test Team' };
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow(
-        'NEXT_REDIRECT;/home/test-team',
-      );
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow('NEXT_REDIRECT;/home/test-team');
 
       expect(mockCreateNewOrganizationAccount).toHaveBeenCalledWith({
         name: 'Test Team',
@@ -130,9 +154,9 @@ describe('createTeamAccountAction', () => {
         error: null,
       });
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow(
-        'NEXT_REDIRECT;/home/my-team',
-      );
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow('NEXT_REDIRECT;/home/my-team');
 
       expect(mockRedirect).toHaveBeenCalledWith('/home/my-team');
     });
@@ -152,9 +176,9 @@ describe('createTeamAccountAction', () => {
         error: null,
       });
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow(
-        'NEXT_REDIRECT',
-      );
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow('NEXT_REDIRECT');
 
       expect(mockCreateAuditLog).toHaveBeenCalledWith({
         accountId: accountData.id,
@@ -174,9 +198,9 @@ describe('createTeamAccountAction', () => {
       const user = { id: '687fcdeb-51a2-43d7-8f9e-123456789abc' };
       const data = { name: 'Network Team' };
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow(
-        'NEXT_REDIRECT',
-      );
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow('NEXT_REDIRECT');
 
       expect(mockExtractNetworkContext).toHaveBeenCalled();
     });
@@ -185,9 +209,9 @@ describe('createTeamAccountAction', () => {
       const user = { id: '587fcdeb-51a2-43d7-8f9e-123456789abc' };
       const data = { name: 'Logged Team' };
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow(
-        'NEXT_REDIRECT',
-      );
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow('NEXT_REDIRECT');
 
       expect(mockLogger.info).toHaveBeenCalledWith(
         {
@@ -220,9 +244,9 @@ describe('createTeamAccountAction', () => {
         error: null,
       });
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow(
-        'NEXT_REDIRECT',
-      );
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow('NEXT_REDIRECT');
 
       expect(mockCreateNewOrganizationAccount).toHaveBeenCalledWith({
         name: 'Café ☕ Team',
@@ -243,9 +267,9 @@ describe('createTeamAccountAction', () => {
         error: null,
       });
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow(
-        'NEXT_REDIRECT',
-      );
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow('NEXT_REDIRECT');
 
       expect(mockCreateNewOrganizationAccount).toHaveBeenCalledWith({
         name: '🚀 Rocket Team',
@@ -259,7 +283,9 @@ describe('createTeamAccountAction', () => {
       const user = { id: '287fcdeb-51a2-43d7-8f9e-123456789abc' };
       const data = { name: 'A' };
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow();
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow();
     });
 
     it('should reject team name longer than 50 characters', async () => {
@@ -268,35 +294,45 @@ describe('createTeamAccountAction', () => {
         name: 'This is a very long team name that exceeds the maximum allowed length of 50 characters',
       };
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow();
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow();
     });
 
     it('should reject team name with special characters', async () => {
       const user = { id: '087fcdeb-51a2-43d7-8f9e-123456789abc' };
       const data = { name: 'Team@Name!' };
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow();
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow();
     });
 
     it('should reject reserved name "settings"', async () => {
       const user = { id: 'f87fcdeb-51a2-43d7-8f9e-123456789abc' };
       const data = { name: 'settings' };
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow();
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow();
     });
 
     it('should reject reserved name "billing"', async () => {
       const user = { id: 'e87fcdeb-51a2-43d7-8f9e-123456789abc' };
       const data = { name: 'billing' };
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow();
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow();
     });
 
     it('should reject reserved names case-insensitively', async () => {
       const user = { id: 'd87fcdeb-51a2-43d7-8f9e-123456789abc' };
       const data = { name: 'SETTINGS' };
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow();
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow();
     });
 
     it('should accept valid 2-character team name', async () => {
@@ -312,9 +348,9 @@ describe('createTeamAccountAction', () => {
         error: null,
       });
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow(
-        'NEXT_REDIRECT',
-      );
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow('NEXT_REDIRECT');
     });
 
     it('should accept valid 50-character team name', async () => {
@@ -330,9 +366,9 @@ describe('createTeamAccountAction', () => {
         error: null,
       });
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow(
-        'NEXT_REDIRECT',
-      );
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow('NEXT_REDIRECT');
     });
 
     it('should accept team name with spaces', async () => {
@@ -348,9 +384,9 @@ describe('createTeamAccountAction', () => {
         error: null,
       });
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow(
-        'NEXT_REDIRECT',
-      );
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow('NEXT_REDIRECT');
     });
 
     it('should accept team name with hyphens and underscores', async () => {
@@ -366,9 +402,9 @@ describe('createTeamAccountAction', () => {
         error: null,
       });
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow(
-        'NEXT_REDIRECT',
-      );
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow('NEXT_REDIRECT');
     });
   });
 
@@ -384,7 +420,7 @@ describe('createTeamAccountAction', () => {
         error: serviceError,
       });
 
-      const result = await createTeamAccountAction(data, user);
+      const result = await withUser(createTeamAccountAction)(data, user);
 
       expect(result).toEqual({ error: true });
       expect(mockRedirect).not.toHaveBeenCalled();
@@ -401,7 +437,7 @@ describe('createTeamAccountAction', () => {
         error: serviceError,
       });
 
-      await createTeamAccountAction(data, user);
+      await withUser(createTeamAccountAction)(data, user);
 
       expect(mockLogger.error).toHaveBeenCalledWith(
         {
@@ -423,7 +459,7 @@ describe('createTeamAccountAction', () => {
         error: new Error('Failed'),
       });
 
-      await createTeamAccountAction(data, user);
+      await withUser(createTeamAccountAction)(data, user);
 
       expect(mockCreateAuditLog).not.toHaveBeenCalled();
     });
@@ -437,7 +473,7 @@ describe('createTeamAccountAction', () => {
         error: new Error('Failed'),
       });
 
-      await createTeamAccountAction(data, user);
+      await withUser(createTeamAccountAction)(data, user);
 
       expect(mockRedirect).not.toHaveBeenCalled();
     });
@@ -450,9 +486,9 @@ describe('createTeamAccountAction', () => {
         new Error('Unexpected error'),
       );
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow(
-        'Unexpected error',
-      );
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow('Unexpected error');
     });
   });
 
@@ -461,7 +497,7 @@ describe('createTeamAccountAction', () => {
       const data = { name: 'Test Team' };
 
       await expect(
-        createTeamAccountAction(data, null as any),
+        withUser(createTeamAccountAction)(data, null as any),
       ).rejects.toThrow();
     });
 
@@ -469,27 +505,35 @@ describe('createTeamAccountAction', () => {
       const data = { name: 'Test Team' };
       const user = {} as any;
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow();
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow();
     });
 
     it('should handle missing name field', async () => {
       const user = { id: '387fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-      await expect(createTeamAccountAction({} as any, user)).rejects.toThrow();
+      await expect(
+        withUser(createTeamAccountAction)({} as any, user),
+      ).rejects.toThrow();
     });
 
     it('should handle empty string name', async () => {
       const user = { id: '287fcdeb-51a2-43d7-8f9e-123456789abc' };
       const data = { name: '' };
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow();
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow();
     });
 
     it('should handle whitespace-only name', async () => {
       const user = { id: '187fcdeb-51a2-43d7-8f9e-123456789abc' };
       const data = { name: '   ' };
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow();
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow();
     });
   });
 
@@ -509,9 +553,9 @@ describe('createTeamAccountAction', () => {
         error: null,
       });
 
-      await expect(createTeamAccountAction(data, user)).rejects.toThrow(
-        'NEXT_REDIRECT;/home/full-flow-team',
-      );
+      await expect(
+        withUser(createTeamAccountAction)(data, user),
+      ).rejects.toThrow('NEXT_REDIRECT;/home/full-flow-team');
 
       // Verify full flow
       expect(mockLogger.info).toHaveBeenCalledWith(
@@ -552,7 +596,7 @@ describe('createTeamAccountAction', () => {
         error: new Error('Creation failed'),
       });
 
-      const result = await createTeamAccountAction(data, user);
+      const result = await withUser(createTeamAccountAction)(data, user);
 
       // Should return error
       expect(result).toEqual({ error: true });

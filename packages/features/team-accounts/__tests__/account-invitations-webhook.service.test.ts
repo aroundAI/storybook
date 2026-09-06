@@ -93,9 +93,9 @@ describe('AccountInvitationsWebhookService', () => {
         invited_by: '123e4567-e89b-12d3-a456-426614174000',
         account_id: '987fcdeb-51a2-43d7-8f9e-123456789abc',
         role: 'member' as const,
-        code: 'ABC123',
         expires_at: '2024-12-31',
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
       };
 
       const result = await service.handleInvitationWebhook(invitation);
@@ -120,7 +120,7 @@ describe('AccountInvitationsWebhookService', () => {
           };
         }
         return {};
-      });
+      }) as unknown as typeof mockAdminClient.from;
 
       const service = createAccountInvitationsWebhookService(
         mockAdminClient as any,
@@ -133,9 +133,9 @@ describe('AccountInvitationsWebhookService', () => {
         invited_by: 'inviter-id-123',
         account_id: 'account-id-456',
         role: 'admin' as const,
-        code: 'DEF456',
         expires_at: '2024-12-31',
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
       };
 
       await service.handleInvitationWebhook(invitation);
@@ -156,9 +156,9 @@ describe('AccountInvitationsWebhookService', () => {
         invited_by: 'inviter-id-789',
         account_id: 'team-account-789',
         role: 'viewer' as const,
-        code: 'GHI789',
         expires_at: '2024-12-31',
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
       };
 
       await service.handleInvitationWebhook(invitation);
@@ -198,7 +198,7 @@ describe('AccountInvitationsWebhookService', () => {
           }
         }
         return {};
-      });
+      }) as unknown as typeof mockAdminClient.from;
 
       const service = createAccountInvitationsWebhookService(
         mockAdminClient as any,
@@ -211,9 +211,9 @@ describe('AccountInvitationsWebhookService', () => {
         invited_by: 'inviter-abc',
         account_id: 'account-abc',
         role: 'member' as const,
-        code: 'JKL012',
         expires_at: '2024-12-31',
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
       };
 
       await service.handleInvitationWebhook(invitation);
@@ -246,9 +246,9 @@ describe('AccountInvitationsWebhookService', () => {
         invited_by: 'inviter-xyz',
         account_id: 'account-xyz',
         role: 'admin' as const,
-        code: 'MNO345',
         expires_at: '2024-12-31',
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
       };
 
       await service.handleInvitationWebhook(invitation);
@@ -272,7 +272,7 @@ describe('AccountInvitationsWebhookService', () => {
             error: new Error('Inviter not found'),
           }),
         ),
-      }));
+      })) as unknown as typeof mockAdminClient.from;
 
       const service = createAccountInvitationsWebhookService(
         mockAdminClient as any,
@@ -285,9 +285,9 @@ describe('AccountInvitationsWebhookService', () => {
         invited_by: 'non-existent-inviter',
         account_id: 'account-id',
         role: 'member' as const,
-        code: 'PQR678',
         expires_at: '2024-12-31',
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
       };
 
       await expect(service.handleInvitationWebhook(invitation)).rejects.toThrow(
@@ -333,7 +333,7 @@ describe('AccountInvitationsWebhookService', () => {
             ),
           };
         }
-      });
+      }) as unknown as typeof mockAdminClient.from;
 
       const service = createAccountInvitationsWebhookService(
         mockAdminClient as any,
@@ -346,9 +346,9 @@ describe('AccountInvitationsWebhookService', () => {
         invited_by: 'inviter-id',
         account_id: 'non-existent-team',
         role: 'member' as const,
-        code: 'STU901',
         expires_at: '2024-12-31',
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
       };
 
       await expect(service.handleInvitationWebhook(invitation)).rejects.toThrow(
@@ -378,9 +378,9 @@ describe('AccountInvitationsWebhookService', () => {
         invited_by: 'inviter-id',
         account_id: 'account-id',
         role: 'member' as const,
-        code: 'VWX234',
         expires_at: '2024-12-31',
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
       };
 
       const result = await service.handleInvitationWebhook(invitation);
@@ -411,9 +411,9 @@ describe('AccountInvitationsWebhookService', () => {
         invited_by: 'inviter-id',
         account_id: 'account-id',
         role: 'member' as const,
-        code: 'YZA567',
         expires_at: '2024-12-31',
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
       };
 
       const result = await service.handleInvitationWebhook(invitation);
@@ -445,9 +445,9 @@ describe('AccountInvitationsWebhookService', () => {
         invited_by: 'inviter-id',
         account_id: 'account-id',
         role: 'member' as const,
-        code: 'BCD890',
         expires_at: '2024-12-31',
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
       };
 
       await service.handleInvitationWebhook(invitation);
@@ -473,9 +473,9 @@ describe('AccountInvitationsWebhookService', () => {
         invited_by: 'inviter-id',
         account_id: 'account-id',
         role: 'member' as const,
-        code: 'EFG123',
         expires_at: '2024-12-31',
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
       };
 
       await service.handleInvitationWebhook(invitation);
@@ -501,9 +501,9 @@ describe('AccountInvitationsWebhookService', () => {
         invited_by: 'inviter-id',
         account_id: 'account-id',
         role: 'member' as const,
-        code: 'HIJ456',
         expires_at: '2024-12-31',
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
       };
 
       await service.handleInvitationWebhook(invitation);
@@ -556,7 +556,7 @@ describe('AccountInvitationsWebhookService', () => {
           }
         }
         return {};
-      });
+      }) as unknown as typeof mockAdminClient.from;
 
       const service = createAccountInvitationsWebhookService(
         mockAdminClient as any,
@@ -569,9 +569,9 @@ describe('AccountInvitationsWebhookService', () => {
         invited_by: 'inviter-id',
         account_id: 'account-id',
         role: 'member' as const,
-        code: 'KLM789',
         expires_at: '2024-12-31',
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
       };
 
       await service.handleInvitationWebhook(invitation);
@@ -612,7 +612,7 @@ describe('AccountInvitationsWebhookService', () => {
           }
         }
         return {};
-      });
+      }) as unknown as typeof mockAdminClient.from;
 
       const service = createAccountInvitationsWebhookService(
         mockAdminClient as any,
@@ -625,9 +625,9 @@ describe('AccountInvitationsWebhookService', () => {
         invited_by: 'inviter-id',
         account_id: 'account-id',
         role: 'member' as const,
-        code: 'NOP012',
         expires_at: '2024-12-31',
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
       };
 
       await service.handleInvitationWebhook(invitation);
@@ -668,7 +668,7 @@ describe('AccountInvitationsWebhookService', () => {
           }
         }
         return {};
-      });
+      }) as unknown as typeof mockAdminClient.from;
 
       const service = createAccountInvitationsWebhookService(
         mockAdminClient as any,
@@ -681,9 +681,9 @@ describe('AccountInvitationsWebhookService', () => {
         invited_by: 'inviter-id',
         account_id: 'account-id',
         role: 'member' as const,
-        code: 'QRS345',
         expires_at: '2024-12-31',
         created_at: '2024-01-01',
+        updated_at: '2024-01-01',
       };
 
       await service.handleInvitationWebhook(invitation);

@@ -35,13 +35,26 @@ const mockRevalidatePath = vi.mocked(revalidatePath);
 // Mock Supabase clients
 const mockSelect = vi.fn().mockReturnThis();
 const mockEq = vi.fn().mockReturnThis();
-const mockSingle = vi.fn(() =>
-  Promise.resolve({
-    data: { name: 'Test Team' },
-    error: null,
-  }),
+/**
+ * PostgREST resolves to `{ data, error }` where either side can be null.
+ * Inferring the type from a happy-path default pins `data` to one shape and
+ * `error` to `null`, making every failure case in the file a type error.
+ */
+interface QueryResult {
+  data: unknown;
+  error: unknown;
+}
+
+const mockSingle = vi.fn(
+  (): Promise<QueryResult> =>
+    Promise.resolve({
+      data: { name: 'Test Team' },
+      error: null,
+    }),
 );
-const mockRpc = vi.fn(() => Promise.resolve({ data: true, error: null }));
+const mockRpc = vi.fn(
+  (): Promise<QueryResult> => Promise.resolve({ data: true, error: null }),
+);
 
 const mockClient = {
   from: vi.fn(() => ({
@@ -108,8 +121,13 @@ vi.mock('../src/server/services/account-members.service', () => ({
 }));
 
 // Mock OTP API
-const mockVerifyToken = vi.fn((params: any) =>
-  Promise.resolve({ valid: true, user_id: params.userId }),
+// An invalid token carries no user_id, so the result type is a union;
+// inferring from the valid case made every failure test a type error.
+const mockVerifyToken = vi.fn(
+  (params: {
+    userId?: string;
+  }): Promise<{ valid: boolean; user_id?: string }> =>
+    Promise.resolve({ valid: true, user_id: params.userId }),
 );
 
 vi.mock('@kit/otp', () => ({
@@ -117,6 +135,19 @@ vi.mock('@kit/otp', () => ({
     verifyToken: mockVerifyToken,
   })),
 }));
+
+/**
+ * This suite mocks `enhanceAction` to forward every argument, which is how
+ * it injects the user the real wrapper resolves from the session. The
+ * exported actions carry the real wrapper's type, which takes only `data`,
+ * so calling them with a user needs that wider view stated explicitly.
+ */
+function withUser<A extends (...args: never[]) => unknown>(action: A) {
+  return action as unknown as (
+    data: Parameters<A>[0],
+    user?: { id: string },
+  ) => Promise<unknown>;
+}
 
 describe('team-members-server-actions', () => {
   beforeEach(() => {
@@ -142,7 +173,10 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        const result = await removeMemberFromAccountAction(data, user);
+        const result = await withUser(removeMemberFromAccountAction)(
+          data,
+          user,
+        );
 
         expect(result).toEqual({ success: true });
         expect(mockRemoveMemberFromAccount).toHaveBeenCalledWith({
@@ -158,7 +192,7 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '687fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await removeMemberFromAccountAction(data, user);
+        await withUser(removeMemberFromAccountAction)(data, user);
 
         expect(mockRevalidatePath).toHaveBeenCalledWith(
           '/home/[account]',
@@ -187,7 +221,7 @@ describe('team-members-server-actions', () => {
           .mockResolvedValueOnce({ data: accountData, error: null })
           .mockResolvedValueOnce({ data: memberData, error: null });
 
-        await removeMemberFromAccountAction(data, user);
+        await withUser(removeMemberFromAccountAction)(data, user);
 
         expect(mockCreateAuditLog).toHaveBeenCalledWith({
           accountId: data.accountId,
@@ -214,7 +248,7 @@ describe('team-members-server-actions', () => {
           .mockResolvedValueOnce({ data: { name: 'Team' }, error: null })
           .mockResolvedValueOnce({ data: {}, error: null });
 
-        await removeMemberFromAccountAction(data, user);
+        await withUser(removeMemberFromAccountAction)(data, user);
 
         expect(mockExtractNetworkContext).toHaveBeenCalled();
       });
@@ -230,7 +264,7 @@ describe('team-members-server-actions', () => {
           .mockResolvedValueOnce({ data: null, error: null })
           .mockResolvedValueOnce({ data: {}, error: null });
 
-        await removeMemberFromAccountAction(data, user);
+        await withUser(removeMemberFromAccountAction)(data, user);
 
         expect(mockCreateAuditLog).not.toHaveBeenCalled();
       });
@@ -245,7 +279,7 @@ describe('team-members-server-actions', () => {
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
         await expect(
-          removeMemberFromAccountAction(data, user),
+          withUser(removeMemberFromAccountAction)(data, user),
         ).rejects.toThrow();
       });
 
@@ -257,7 +291,7 @@ describe('team-members-server-actions', () => {
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
         await expect(
-          removeMemberFromAccountAction(data, user),
+          withUser(removeMemberFromAccountAction)(data, user),
         ).rejects.toThrow();
       });
 
@@ -268,7 +302,7 @@ describe('team-members-server-actions', () => {
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
         await expect(
-          removeMemberFromAccountAction(data as any, user),
+          withUser(removeMemberFromAccountAction)(data as any, user),
         ).rejects.toThrow();
       });
 
@@ -279,7 +313,7 @@ describe('team-members-server-actions', () => {
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
         await expect(
-          removeMemberFromAccountAction(data as any, user),
+          withUser(removeMemberFromAccountAction)(data as any, user),
         ).rejects.toThrow();
       });
     });
@@ -296,9 +330,9 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(removeMemberFromAccountAction(data, user)).rejects.toThrow(
-          'Member not found',
-        );
+        await expect(
+          withUser(removeMemberFromAccountAction)(data, user),
+        ).rejects.toThrow('Member not found');
       });
     });
   });
@@ -313,7 +347,7 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        const result = await updateMemberRoleAction(data, user);
+        const result = await withUser(updateMemberRoleAction)(data, user);
 
         expect(result).toEqual({ success: true });
         expect(mockUpdateMemberRole).toHaveBeenCalledWith(
@@ -330,7 +364,7 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '687fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await updateMemberRoleAction(data, user);
+        await withUser(updateMemberRoleAction)(data, user);
 
         expect(mockRevalidatePath).toHaveBeenCalledWith(
           '/home/[account]',
@@ -346,7 +380,7 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '487fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await updateMemberRoleAction(data, user);
+        await withUser(updateMemberRoleAction)(data, user);
 
         expect(mockUpdateMemberRole).toHaveBeenCalledWith(
           data,
@@ -379,7 +413,7 @@ describe('team-members-server-actions', () => {
           .mockResolvedValueOnce({ data: beforeMember, error: null })
           .mockResolvedValueOnce({ data: afterMember, error: null });
 
-        await updateMemberRoleAction(data, user);
+        await withUser(updateMemberRoleAction)(data, user);
 
         expect(mockCreateAuditLog).toHaveBeenCalledWith({
           accountId: data.accountId,
@@ -409,7 +443,7 @@ describe('team-members-server-actions', () => {
           .mockResolvedValueOnce({ data: {}, error: null })
           .mockResolvedValueOnce({ data: {}, error: null });
 
-        await updateMemberRoleAction(data, user);
+        await withUser(updateMemberRoleAction)(data, user);
 
         expect(mockExtractNetworkContext).toHaveBeenCalled();
       });
@@ -424,7 +458,9 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(updateMemberRoleAction(data, user)).rejects.toThrow();
+        await expect(
+          withUser(updateMemberRoleAction)(data, user),
+        ).rejects.toThrow();
       });
 
       it('should reject invalid accountId UUID', async () => {
@@ -435,7 +471,9 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(updateMemberRoleAction(data, user)).rejects.toThrow();
+        await expect(
+          withUser(updateMemberRoleAction)(data, user),
+        ).rejects.toThrow();
       });
 
       it('should reject missing role', async () => {
@@ -446,7 +484,7 @@ describe('team-members-server-actions', () => {
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
         await expect(
-          updateMemberRoleAction(data as any, user),
+          withUser(updateMemberRoleAction)(data as any, user),
         ).rejects.toThrow();
       });
     });
@@ -464,9 +502,9 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(updateMemberRoleAction(data, user)).rejects.toThrow(
-          'Insufficient permissions',
-        );
+        await expect(
+          withUser(updateMemberRoleAction)(data, user),
+        ).rejects.toThrow('Insufficient permissions');
       });
     });
   });
@@ -481,7 +519,7 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        const result = await transferOwnershipAction(data, user);
+        const result = await withUser(transferOwnershipAction)(data, user);
 
         expect(result).toEqual({ success: true });
         expect(mockTransferOwnership).toHaveBeenCalledWith(
@@ -498,7 +536,7 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '687fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await transferOwnershipAction(data, user);
+        await withUser(transferOwnershipAction)(data, user);
 
         expect(mockRpc).toHaveBeenCalledWith('is_account_owner', {
           account_id: data.accountId,
@@ -513,7 +551,7 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '487fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await transferOwnershipAction(data, user);
+        await withUser(transferOwnershipAction)(data, user);
 
         expect(mockVerifyToken).toHaveBeenCalledWith({
           token: data.otp,
@@ -530,7 +568,7 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '287fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await transferOwnershipAction(data, user);
+        await withUser(transferOwnershipAction)(data, user);
 
         expect(mockTransferOwnership).toHaveBeenCalledWith(
           data,
@@ -562,7 +600,7 @@ describe('team-members-server-actions', () => {
           .mockResolvedValueOnce({ data: beforeAccount, error: null })
           .mockResolvedValueOnce({ data: afterAccount, error: null });
 
-        await transferOwnershipAction(data, user);
+        await withUser(transferOwnershipAction)(data, user);
 
         expect(mockCreateAuditLog).toHaveBeenCalledWith({
           accountId: data.accountId,
@@ -592,7 +630,7 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: 'e87fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await transferOwnershipAction(data, user);
+        await withUser(transferOwnershipAction)(data, user);
 
         expect(mockLogger.info).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -622,7 +660,7 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: 'c87fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await transferOwnershipAction(data, user);
+        await withUser(transferOwnershipAction)(data, user);
 
         expect(mockRevalidatePath).toHaveBeenCalledWith(
           '/home/[account]',
@@ -642,7 +680,9 @@ describe('team-members-server-actions', () => {
 
         mockRpc.mockResolvedValueOnce({ data: false, error: null });
 
-        await expect(transferOwnershipAction(data, user)).rejects.toThrow(
+        await expect(
+          withUser(transferOwnershipAction)(data, user),
+        ).rejects.toThrow(
           'You must be the owner of the account to transfer ownership',
         );
 
@@ -665,7 +705,9 @@ describe('team-members-server-actions', () => {
           error: new Error('RPC failed'),
         });
 
-        await expect(transferOwnershipAction(data, user)).rejects.toThrow(
+        await expect(
+          withUser(transferOwnershipAction)(data, user),
+        ).rejects.toThrow(
           'You must be the owner of the account to transfer ownership',
         );
       });
@@ -682,9 +724,9 @@ describe('team-members-server-actions', () => {
           Promise.resolve({ valid: false }),
         );
 
-        await expect(transferOwnershipAction(data, user)).rejects.toThrow(
-          'Invalid OTP',
-        );
+        await expect(
+          withUser(transferOwnershipAction)(data, user),
+        ).rejects.toThrow('Invalid OTP');
 
         expect(mockLogger.error).toHaveBeenCalledWith(
           expect.any(Object),
@@ -707,9 +749,9 @@ describe('team-members-server-actions', () => {
           }),
         );
 
-        await expect(transferOwnershipAction(data, user)).rejects.toThrow(
-          'Nonce mismatch',
-        );
+        await expect(
+          withUser(transferOwnershipAction)(data, user),
+        ).rejects.toThrow('Nonce mismatch');
 
         expect(mockLogger.error).toHaveBeenCalledWith(
           expect.any(Object),
@@ -727,7 +769,9 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(transferOwnershipAction(data, user)).rejects.toThrow();
+        await expect(
+          withUser(transferOwnershipAction)(data, user),
+        ).rejects.toThrow();
       });
 
       it('should reject invalid accountId UUID', async () => {
@@ -738,7 +782,9 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(transferOwnershipAction(data, user)).rejects.toThrow();
+        await expect(
+          withUser(transferOwnershipAction)(data, user),
+        ).rejects.toThrow();
       });
 
       it('should reject invalid userId UUID', async () => {
@@ -749,7 +795,9 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(transferOwnershipAction(data, user)).rejects.toThrow();
+        await expect(
+          withUser(transferOwnershipAction)(data, user),
+        ).rejects.toThrow();
       });
 
       it('should reject missing OTP', async () => {
@@ -760,7 +808,7 @@ describe('team-members-server-actions', () => {
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
         await expect(
-          transferOwnershipAction(data as any, user),
+          withUser(transferOwnershipAction)(data as any, user),
         ).rejects.toThrow();
       });
     });
@@ -784,9 +832,9 @@ describe('team-members-server-actions', () => {
           new Error('Transfer failed'),
         );
 
-        await expect(transferOwnershipAction(data, user)).rejects.toThrow(
-          'Transfer failed',
-        );
+        await expect(
+          withUser(transferOwnershipAction)(data, user),
+        ).rejects.toThrow('Transfer failed');
       });
     });
   });
@@ -804,7 +852,7 @@ describe('team-members-server-actions', () => {
         role: 'admin',
       };
 
-      await updateMemberRoleAction(updateData, user);
+      await withUser(updateMemberRoleAction)(updateData, user);
 
       expect(mockUpdateMemberRole).toHaveBeenCalledWith(
         updateData,
@@ -817,7 +865,7 @@ describe('team-members-server-actions', () => {
         userId: memberId,
       };
 
-      await removeMemberFromAccountAction(removeData, user);
+      await withUser(removeMemberFromAccountAction)(removeData, user);
 
       expect(mockRemoveMemberFromAccount).toHaveBeenCalledWith(removeData);
 
@@ -850,7 +898,7 @@ describe('team-members-server-actions', () => {
         .mockResolvedValueOnce({ data: beforeAccount, error: null })
         .mockResolvedValueOnce({ data: afterAccount, error: null });
 
-      const result = await transferOwnershipAction(data, user);
+      const result = await withUser(transferOwnershipAction)(data, user);
 
       // Verify all checks performed
       expect(mockRpc).toHaveBeenCalledWith('is_account_owner', {

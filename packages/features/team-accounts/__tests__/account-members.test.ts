@@ -17,6 +17,16 @@ vi.mock('@kit/shared/logger', () => ({
 }));
 
 // Mock per-seat billing service
+/**
+ * These mocks resolve to `{ data, error }` where either side can be null.
+ * Inferring the type from a happy-path default pins `data` to one shape and
+ * `error` to `null`, making every failure case in the file a type error.
+ */
+interface QueryResult {
+  data: unknown;
+  error: unknown;
+}
+
 const mockDecreaseSeats = vi.fn();
 
 vi.mock('../src/server/services/account-per-seat-billing.service', () => ({
@@ -380,6 +390,7 @@ describe('AccountMembersService', () => {
         {
           accountId: ACCOUNT_ID,
           userId: NEW_OWNER_ID,
+          otp: 'test-otp',
         },
         mockAdminClient,
       );
@@ -404,6 +415,7 @@ describe('AccountMembersService', () => {
           {
             accountId: ACCOUNT_ID,
             userId: NEW_OWNER_ID,
+            otp: 'test-otp',
           },
           mockAdminClient,
         ),
@@ -422,6 +434,7 @@ describe('AccountMembersService', () => {
         {
           accountId: ACCOUNT_ID,
           userId: NEW_OWNER_ID,
+          otp: 'test-otp',
         },
         mockAdminClient,
       );
@@ -434,6 +447,7 @@ describe('AccountMembersService', () => {
         {
           accountId: ACCOUNT_ID,
           userId: NEW_OWNER_ID,
+          otp: 'test-otp',
         },
         mockAdminClient,
       );
@@ -453,6 +467,7 @@ describe('AccountMembersService', () => {
         {
           accountId: edgeCaseAccount,
           userId: edgeCaseUser,
+          otp: 'test-otp',
         },
         mockAdminClient,
       );
@@ -474,6 +489,7 @@ describe('AccountMembersService', () => {
           {
             accountId: ACCOUNT_ID,
             userId: NEW_OWNER_ID,
+            otp: 'test-otp',
           },
           mockAdminClient,
         ),
@@ -525,6 +541,7 @@ describe('AccountMembersService', () => {
         {
           accountId: ACCOUNT_ID,
           userId: NEW_OWNER_ID,
+          otp: 'test-otp',
         },
         mockAdminClient,
       );
