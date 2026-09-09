@@ -153,4 +153,26 @@ describe('groupTrafficRows', () => {
   it('returns nothing for no rows', () => {
     expect(groupTrafficRows([])).toEqual([]);
   });
+
+  // The Deep Dive tab derives the Browse+Suggested trend from a breakdown
+  // response rather than issuing a second, byte-identical query. That fold
+  // must produce what queryTrafficShareTrend produces server-side, or the
+  // two surfaces disagree.
+  it('carries enough to reproduce the browse+suggested trend', () => {
+    const rows = [
+      row('2026-01-05', 'RELATED_VIDEO', 400),
+      row('2026-01-05', 'SUBSCRIBER', 150),
+      row('2026-01-05', 'NOTIFICATION', 100),
+      row('2026-01-05', 'YT_SEARCH', 250),
+      row('2026-01-05', 'CHANNEL_PAGE', 100),
+    ];
+
+    const [bucket] = groupTrafficRows(rows);
+    const browse =
+      bucket!.groups.find((g) => g.group === 'browse_suggested')?.views ?? 0;
+
+    expect(bucket!.totalViews).toBe(1000);
+    expect(browse).toBe(650);
+    expect(browse / bucket!.totalViews).toBeCloseTo(0.65, 10);
+  });
 });

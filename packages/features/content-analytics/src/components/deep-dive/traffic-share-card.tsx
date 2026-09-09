@@ -16,6 +16,14 @@ interface TrafficShareCardProps {
   buckets: TrafficShareEntry[];
   /** Loading state */
   isLoading?: boolean;
+  /**
+   * Names the denominator of the headline figure, which is the most recent
+   * bucket — not the whole window. The stacked breakdown card sits beside
+   * this one and legends the same "Browse + Suggested" label across the
+   * entire window, so without saying which is which the two disagree on
+   * screen with no way to reconcile them.
+   */
+  periodLabel?: string;
 }
 
 /** Share above which a channel reads as algorithm-recommended. */
@@ -30,6 +38,7 @@ const RECOMMENDED_CHANNEL_THRESHOLD = 0.6;
 export function TrafficShareCard({
   buckets,
   isLoading = false,
+  periodLabel = 'latest period',
 }: TrafficShareCardProps) {
   if (isLoading) {
     return <TrafficShareCardSkeleton />;
@@ -54,7 +63,7 @@ export function TrafficShareCard({
           {Math.round(latest.share * 100)}%
         </span>
         <span className={'text-muted-foreground text-sm'}>
-          Browse + Suggested
+          Browse + Suggested, {periodLabel}
         </span>
       </div>
 

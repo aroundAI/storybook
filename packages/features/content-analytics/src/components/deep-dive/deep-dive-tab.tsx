@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useMemo } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
 import { CalendarRange, Layers, PieChart, TrendingUp } from 'lucide-react';
@@ -10,7 +11,6 @@ import {
   getCohortCurvesAction,
   getMedianPerformanceAction,
   getTrafficBreakdownAction,
-  getTrafficShareTrendAction,
 } from '../../server/deep-dive-actions';
 import { AnalyticsCard } from '../overview/analytics-card';
 import { BackCatalogCard, BackCatalogCardSkeleton } from './back-catalog-card';
@@ -56,15 +56,35 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
       }),
   });
 
-  const trafficQuery = useQuery({
-    queryKey: ['deep-dive-traffic', projectId],
-    queryFn: () => getTrafficShareTrendAction({ scope, bucket: 'week' }),
-  });
-
   const trafficBreakdownQuery = useQuery({
     queryKey: ['deep-dive-traffic-breakdown', projectId],
     queryFn: () => getTrafficBreakdownAction({ scope, bucket: 'week' }),
   });
+
+  // Derived, not fetched. Both cards want the same scope at the same
+  // granularity, so a second action call would compile to byte-identical
+  // SQL — two `video_traffic_sources FINAL` scans and two dim scans per tab
+  // load — for numbers this response already contains. The fold is exactly
+  // what queryTrafficShareTrend does server-side.
+  const trafficShareBuckets = useMemo(
+    () =>
+      (trafficBreakdownQuery.data ?? []).map((bucket) => {
+        const browseSuggestedViews =
+          bucket.groups.find((group) => group.group === 'browse_suggested')
+            ?.views ?? 0;
+
+        return {
+          bucket: bucket.bucket,
+          totalViews: bucket.totalViews,
+          browseSuggestedViews,
+          share:
+            bucket.totalViews > 0
+              ? browseSuggestedViews / bucket.totalViews
+              : 0,
+        };
+      }),
+    [trafficBreakdownQuery.data],
+  );
 
   const backCatalogQuery = useQuery({
     queryKey: ['deep-dive-back-catalog', projectId],
@@ -133,10 +153,13 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
         }
         className={'h-auto'}
       >
-        {trafficQuery.isLoading ? (
+        {trafficBreakdownQuery.isLoading ? (
           <TrafficShareCardSkeleton />
         ) : (
-          <TrafficShareCard buckets={trafficQuery.data ?? []} />
+          <TrafficShareCard
+            buckets={trafficShareBuckets}
+            periodLabel={'latest week'}
+          />
         )}
       </AnalyticsCard>
 

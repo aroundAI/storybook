@@ -395,13 +395,15 @@ export async function queryRollingViews(input: {
  * function name as a parameter, so it must never carry caller text — the
  * same treatment VIDEO_AGE_ORDER_COLUMNS gives `orderBy`.
  */
-const TRAFFIC_BUCKET_FUNCTIONS = {
+export const TRAFFIC_SOURCE_BUCKETS = ['day', 'week', 'month'] as const;
+
+export type TrafficBucket = (typeof TRAFFIC_SOURCE_BUCKETS)[number];
+
+const TRAFFIC_BUCKET_FUNCTIONS: Record<TrafficBucket, string> = {
   day: 'toDate',
   week: 'toStartOfWeek',
   month: 'toStartOfMonth',
-} as const;
-
-export type TrafficBucket = keyof typeof TRAFFIC_BUCKET_FUNCTIONS;
+};
 
 /**
  * Raw per-bucket, per-source rows for a scope.

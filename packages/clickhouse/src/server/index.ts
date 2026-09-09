@@ -50,6 +50,7 @@ export {
   queryRollingViews,
   queryTrafficShareTrend,
   queryTrafficSourceBreakdown,
+  TRAFFIC_SOURCE_BUCKETS,
   queryVideoViewsAtAge,
   queryWatchWindowTotals,
 } from '../queries-advanced';

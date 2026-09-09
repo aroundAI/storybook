@@ -172,6 +172,9 @@ deliver what this paragraph claims.
 - [x] `CHANNEL_PAGE` is its own group and is absent from `browse_suggested`
 - [x] `END_SCREEN` and `ANNOTATION` are in `other`, not `browse_suggested`
 - [x] `queryTrafficShareTrend` returns the same shape and the same browse-suggested numbers as before the change
+- [x] The Deep Dive tab issues one traffic query, not two identical ones — the trend is derived from the breakdown response
+- [x] The two Browse+Suggested figures on screen name their denominators
+- [x] The bucket union has one definition, so removing a granularity is a compile error rather than a silent weekly fallback
 - [x] The grouping and share maths are unit-tested with no ClickHouse client mocked at all
 - [x] `bucket` cannot inject SQL
 - [x] `getTrafficBreakdownAction` calls `assertScopeAccess` before querying

@@ -3,6 +3,7 @@
 import { z } from 'zod';
 
 import {
+  TRAFFIC_SOURCE_BUCKETS,
   queryBackCatalogShare,
   queryChannelWatchWindow,
   queryCohortMedians,
@@ -170,7 +171,10 @@ export const getTrafficBreakdownAction = enhanceAction(
     schema: z
       .object({
         scope: ScopeSchema,
-        bucket: z.enum(['day', 'week', 'month']).default('week'),
+        // From @kit/clickhouse, not re-listed: a hand-written copy keeps
+        // accepting a granularity after it is removed there, and the
+        // lookup's fallback then serves weeks under the old label.
+        bucket: z.enum(TRAFFIC_SOURCE_BUCKETS).default('week'),
         from: z.coerce.date().optional(),
         to: z.coerce.date().optional(),
       })
