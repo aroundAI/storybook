@@ -99,6 +99,7 @@ decision rather than with an accident:
 | `packages/clickhouse/src/queries-advanced.ts` | `queryTrafficShareTrend` reimplemented over the breakdown: fetch grouped rows, then fold `browse_suggested` share. Its **return type and numbers must not change** — `getTrafficShareTrendAction` and `TrafficShareCard` are live. Keeping two SQL paths is the alternative, and it guarantees the two drift the first time the browse set is edited. |
 | `packages/features/content-analytics/src/server/deep-dive-actions.ts` | New `getTrafficBreakdownAction` reusing `ScopeSchema` and `toDimScope` (`:28`, `:43`), with `await assertScopeAccess(scope)` first like every other action in the file (`:61`, `:91`, `:121`, `:147`). The query carries no tenant predicate of its own beyond the scope conditions, so the guard is the boundary, not a formality. |
 | `packages/features/content-analytics/src/components/deep-dive/traffic-share-card.tsx` | Gains a stacked variant over the group breakdown. `TrafficShareEntry` (`:6`) stays for the existing single-share mode so the card keeps working during the change. |
+| `packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx` | Mount the stacked card. FILM-1611 does not claim this one, so deferring the surface would leave it a sixth orphan in the phase whose defining defect is orphaned components — and would leave the question §1 opens with still unanswerable in the app. |
 | `packages/clickhouse/src/server/index.ts` | Export the new query and the pure helpers, matching how `video-age.ts` and `cohort-growth.ts` are surfaced. |
 | `packages/clickhouse/scripts/verify-queries.ts` | Add the new query. Its header (`:1-14`) records why: the mocked suite once shipped a `WHERE` clause ClickHouse rejects outright, behind 120 green tests. |
 
@@ -127,15 +128,22 @@ because each one silently shrinks the total rather than erroring.
 
 ## 6. Bounding
 
-The breakdown is bounded by buckets × groups — at most a few hundred rows
-for any window, so the *result* needs no pagination. The *scan* is bounded
-by `dimSubquery`, which is the same bound `queryTrafficShareTrend` already
-runs under.
+The breakdown is bounded by buckets × groups. For week and month that is
+at most a few hundred rows for any window, so the *result* needs no
+pagination. **Day is not bounded by the calendar** — a multi-year daily
+query returns a bucket per day, thousands of group objects through a
+server action, rendered as sub-pixel columns — so `getTrafficBreakdownAction`
+requires an explicit `from` and `to` whenever `bucket` is `day`. The *scan*
+is bounded by `dimSubquery`, the same bound `queryTrafficShareTrend`
+already runs under.
 
 `bucket` is a closed union (`'week' | 'month' | 'day'`), interpolated into
 `toStartOfWeek` / `toStartOfMonth` / `toDate` by lookup, never by string
 substitution of a caller value — the same treatment `VIDEO_AGE_ORDER_COLUMNS`
-(`queries-advanced.ts:854`) gives `orderBy`.
+gives `orderBy`, **including its fallback**. Without one, a value outside
+the union yields `undefined` from the lookup and interpolates as the
+literal string, producing a query ClickHouse rejects outright; a test that
+only asserts the payload is absent would pass on it.
 
 ## 7. Out of Scope
 
@@ -162,6 +170,9 @@ substitution of a caller value — the same treatment `VIDEO_AGE_ORDER_COLUMNS`
 - [x] `bucket` cannot inject SQL
 - [x] `getTrafficBreakdownAction` calls `assertScopeAccess` before querying
 - [x] The stacked card renders group order deterministically across re-renders
+- [x] The stacked card is mounted on the Deep Dive tab, not merely exported
+- [x] Daily granularity requires an explicit date range
+- [x] A bucket outside the union yields an executable query, not `undefined(...)`
 - [x] The UI states that the denominator excludes unmatched videos
 
 ## 9. Verification

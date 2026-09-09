@@ -3,12 +3,13 @@
 import { useState } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
-import { CalendarRange, Layers, TrendingUp } from 'lucide-react';
+import { CalendarRange, Layers, PieChart, TrendingUp } from 'lucide-react';
 
 import {
   getBackCatalogAction,
   getCohortCurvesAction,
   getMedianPerformanceAction,
+  getTrafficBreakdownAction,
   getTrafficShareTrendAction,
 } from '../../server/deep-dive-actions';
 import { AnalyticsCard } from '../overview/analytics-card';
@@ -20,6 +21,7 @@ import {
 import type { CohortEntry } from './cohort-curves-chart';
 import { MedianViewsCard, MedianViewsCardSkeleton } from './median-views-card';
 import {
+  TrafficBreakdownCard,
   TrafficShareCard,
   TrafficShareCardSkeleton,
 } from './traffic-share-card';
@@ -57,6 +59,11 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
   const trafficQuery = useQuery({
     queryKey: ['deep-dive-traffic', projectId],
     queryFn: () => getTrafficShareTrendAction({ scope, bucket: 'week' }),
+  });
+
+  const trafficBreakdownQuery = useQuery({
+    queryKey: ['deep-dive-traffic-breakdown', projectId],
+    queryFn: () => getTrafficBreakdownAction({ scope, bucket: 'week' }),
   });
 
   const backCatalogQuery = useQuery({
@@ -130,6 +137,21 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
           <TrafficShareCardSkeleton />
         ) : (
           <TrafficShareCard buckets={trafficQuery.data ?? []} />
+        )}
+      </AnalyticsCard>
+
+      <AnalyticsCard
+        title={'Where views came from'}
+        icon={PieChart}
+        description={
+          'Every traffic surface as a share of views — the six beyond Browse + Suggested.'
+        }
+        className={'h-auto'}
+      >
+        {trafficBreakdownQuery.isLoading ? (
+          <TrafficShareCardSkeleton />
+        ) : (
+          <TrafficBreakdownCard buckets={trafficBreakdownQuery.data ?? []} />
         )}
       </AnalyticsCard>
 

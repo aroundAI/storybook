@@ -159,12 +159,22 @@ export const getTrafficBreakdownAction = enhanceAction(
     });
   },
   {
-    schema: z.object({
-      scope: ScopeSchema,
-      bucket: z.enum(['day', 'week', 'month']).default('week'),
-      from: z.coerce.date().optional(),
-      to: z.coerce.date().optional(),
-    }),
+    schema: z
+      .object({
+        scope: ScopeSchema,
+        bucket: z.enum(['day', 'week', 'month']).default('week'),
+        from: z.coerce.date().optional(),
+        to: z.coerce.date().optional(),
+      })
+      // Week and month buckets are bounded by the calendar; day is bounded
+      // only by the project's history, and a multi-year day query returns a
+      // bucket per day — thousands of group objects through a server action,
+      // rendered as sub-pixel columns. Daily granularity therefore has to
+      // name its window.
+      .refine((value) => value.bucket !== 'day' || (value.from && value.to), {
+        message: 'Daily granularity requires an explicit from and to.',
+        path: ['bucket'],
+      }),
     auth: true,
   },
 );

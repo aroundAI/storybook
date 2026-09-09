@@ -425,7 +425,8 @@ async function queryTrafficSourceRows(input: {
   const client = getClickHouseClient();
   const { conditions, params } = buildDimConditions(input.scope);
 
-  const bucketFn = TRAFFIC_BUCKET_FUNCTIONS[input.bucket];
+  const bucketFn =
+    TRAFFIC_BUCKET_FUNCTIONS[input.bucket] ?? TRAFFIC_BUCKET_FUNCTIONS.week;
   const dateConditions: string[] = ['1 = 1'];
 
   if (input.startDate) {

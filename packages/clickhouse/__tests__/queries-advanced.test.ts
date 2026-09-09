@@ -373,9 +373,16 @@ describe('queries-advanced', () => {
         bucket: "day'; DROP TABLE video_traffic_sources; --" as any,
       });
 
-      // An unknown key resolves to undefined through the lookup rather than
-      // reaching the query body.
-      expect(lastQuery().query).not.toContain('DROP TABLE');
+      const query = lastQuery().query;
+
+      // Absence of the payload is necessary but not sufficient: without a
+      // fallback the lookup yields undefined, which interpolates as the
+      // literal "undefined" and produces a query ClickHouse rejects with
+      // "Unknown function undefined". Assert the query is executable, not
+      // merely that it is not an injection.
+      expect(query).not.toContain('DROP TABLE');
+      expect(query).not.toContain('undefined(');
+      expect(query).toContain('toStartOfWeek(metric_date)');
     });
 
     it('returns nothing when ClickHouse is disabled', async () => {
