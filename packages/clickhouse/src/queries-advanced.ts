@@ -13,7 +13,7 @@ import type {
   TrafficGroupBucket,
   TrafficSourceRow,
 } from './lib/traffic-groups';
-import { groupTrafficRows } from './lib/traffic-groups';
+import { groupTrafficRows, sourcesInGroup } from './lib/traffic-groups';
 import { computeIngestLagDays, computeMaturity } from './lib/video-age';
 import type { VideoDim } from './types';
 
@@ -114,11 +114,8 @@ export interface TagMedianRow {
  * Analytics/Reporting APIs expose no literal BROWSE source. Callers can
  * override.
  */
-export const DEFAULT_BROWSE_SUGGESTED_SOURCES = [
-  'RELATED_VIDEO',
-  'SUBSCRIBER',
-  'NOTIFICATION',
-];
+export const DEFAULT_BROWSE_SUGGESTED_SOURCES =
+  sourcesInGroup('browse_suggested');
 
 function assertDimScope(scope: DimScope): void {
   if (!scope.projectId && !scope.accountId) {

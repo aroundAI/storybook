@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
 import { CalendarRange, Layers, PieChart, TrendingUp } from 'lucide-react';
@@ -39,6 +38,16 @@ type MedianMode = 'cohort_views_to_date' | 'views_in_period';
  * cohort curves. These are the numbers decisions get made on, as opposed
  * to the weekly diagnostics that only catch breakage.
  */
+/**
+ * Window the traffic cards ask for.
+ *
+ * The breakdown returns a row per (bucket, source) where the old share
+ * trend returned one per bucket, so an all-history call is roughly twenty
+ * times the payload for the same picture. A year of weeks is enough to
+ * read the trend and bounds the response at ~52 buckets.
+ */
+const TRAFFIC_WINDOW_WEEKS = 52;
+
 export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
   const [medianMode, setMedianMode] = useState<MedianMode>(
     'cohort_views_to_date',
@@ -56,9 +65,24 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
       }),
   });
 
+  const trafficWindow = useMemo(() => {
+    const to = new Date();
+    const from = new Date(to);
+
+    from.setDate(from.getDate() - TRAFFIC_WINDOW_WEEKS * 7);
+
+    return { from, to };
+  }, []);
+
   const trafficBreakdownQuery = useQuery({
     queryKey: ['deep-dive-traffic-breakdown', projectId],
-    queryFn: () => getTrafficBreakdownAction({ scope, bucket: 'week' }),
+    queryFn: () =>
+      getTrafficBreakdownAction({
+        scope,
+        bucket: 'week',
+        from: trafficWindow.from,
+        to: trafficWindow.to,
+      }),
   });
 
   // Derived, not fetched. Both cards want the same scope at the same
@@ -159,6 +183,7 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
           <TrafficShareCard
             buckets={trafficShareBuckets}
             periodLabel={'latest week'}
+            isError={trafficBreakdownQuery.isError}
           />
         )}
       </AnalyticsCard>

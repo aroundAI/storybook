@@ -24,6 +24,8 @@ interface TrafficShareCardProps {
    * screen with no way to reconcile them.
    */
   periodLabel?: string;
+  /** True when the query failed, so the empty state does not lie about why. */
+  isError?: boolean;
 }
 
 /** Share above which a channel reads as algorithm-recommended. */
@@ -39,9 +41,22 @@ export function TrafficShareCard({
   buckets,
   isLoading = false,
   periodLabel = 'latest period',
+  isError = false,
 }: TrafficShareCardProps) {
   if (isLoading) {
     return <TrafficShareCardSkeleton />;
+  }
+
+  // Same distinction the stacked card makes. Both are fed by one query, so
+  // a failure that left this branch out would put "arrives with the bulk
+  // report ingest" beside a card correctly reporting the fetch failed.
+  if (isError && buckets.length === 0) {
+    return (
+      <p className={'text-muted-foreground text-sm'}>
+        Traffic-source data could not be loaded. This is a fetch failure, not an
+        absence of data — retry, or check the project scope.
+      </p>
+    );
   }
 
   if (buckets.length === 0) {

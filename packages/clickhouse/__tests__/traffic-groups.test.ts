@@ -5,6 +5,7 @@ import {
   TRAFFIC_SOURCE_GROUPS,
   groupForSource,
   groupTrafficRows,
+  sourcesInGroup,
 } from '../src/lib/traffic-groups';
 import { DEFAULT_BROWSE_SUGGESTED_SOURCES } from '../src/queries-advanced';
 
@@ -18,6 +19,14 @@ function row(
 }
 
 describe('groupForSource', () => {
+  it('derives the shipped browse+suggested constant from this taxonomy', () => {
+    // Not two hand-kept lists that happen to agree: reclassifying a source
+    // here must move the trend's numerator with it.
+    expect([...DEFAULT_BROWSE_SUGGESTED_SOURCES].sort()).toEqual(
+      sourcesInGroup('browse_suggested').sort(),
+    );
+  });
+
   it('maps the browse+suggested set exactly as the shipped trend does', () => {
     // These three are what queryTrafficShareTrend has always counted. If
     // this group and that constant disagree, the reimplemented trend moves

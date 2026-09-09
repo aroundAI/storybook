@@ -186,7 +186,9 @@ deliver what this paragraph claims.
 - [x] A bucket outside the union yields an executable query, not `undefined(...)`
 - [x] The UI states that the denominator excludes unmatched videos
 - [x] Legend percentages cover the whole window shown, not the latest bucket
-- [x] A failed fetch renders as a failure, not as "no data yet"
+- [x] A failed fetch renders as a failure, not as "no data yet" — on **both** cards fed by the shared query
+- [x] The Browse+Suggested source set has one definition, derived from the taxonomy
+- [x] The tab asks for a bounded window, since the breakdown returns a row per source rather than per bucket
 - [x] A long window scrolls rather than collapsing the bars — bars carry an explicit min-width, since `flex-1` alone shrinks to zero
 - [x] A failed background refetch keeps the last good chart rather than replacing it with an error
 
