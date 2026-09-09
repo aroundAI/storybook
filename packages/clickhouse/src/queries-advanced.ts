@@ -425,8 +425,12 @@ async function queryTrafficSourceRows(input: {
   const client = getClickHouseClient();
   const { conditions, params } = buildDimConditions(input.scope);
 
-  const bucketFn =
-    TRAFFIC_BUCKET_FUNCTIONS[input.bucket] ?? TRAFFIC_BUCKET_FUNCTIONS.week;
+  // Object.hasOwn, not a bare index: `TRAFFIC_BUCKET_FUNCTIONS['constructor']`
+  // resolves up the prototype chain to a truthy function, which skips a
+  // `??` fallback and interpolates a function body into the query.
+  const bucketFn = Object.hasOwn(TRAFFIC_BUCKET_FUNCTIONS, input.bucket)
+    ? TRAFFIC_BUCKET_FUNCTIONS[input.bucket]
+    : TRAFFIC_BUCKET_FUNCTIONS.week;
   const dateConditions: string[] = ['1 = 1'];
 
   if (input.startDate) {
@@ -1067,9 +1071,12 @@ async function queryVideoViewsAtAgeSingle(input: {
   const limit = Math.min(1000, Math.max(1, Math.floor(input.limit ?? 200)));
   const offset = Math.max(0, Math.floor(input.offset ?? 0));
 
-  const orderColumn =
-    VIDEO_AGE_ORDER_COLUMNS[input.orderBy ?? 'published_at'] ??
-    VIDEO_AGE_ORDER_COLUMNS.published_at;
+  const orderColumn = Object.hasOwn(
+    VIDEO_AGE_ORDER_COLUMNS,
+    input.orderBy ?? 'published_at',
+  )
+    ? VIDEO_AGE_ORDER_COLUMNS[input.orderBy ?? 'published_at']!
+    : VIDEO_AGE_ORDER_COLUMNS.published_at;
   const orderDirection = input.orderDirection === 'asc' ? 'ASC' : 'DESC';
 
   const client = getClickHouseClient();

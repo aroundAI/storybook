@@ -151,7 +151,10 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
         {trafficBreakdownQuery.isLoading ? (
           <TrafficShareCardSkeleton />
         ) : (
-          <TrafficBreakdownCard buckets={trafficBreakdownQuery.data ?? []} />
+          <TrafficBreakdownCard
+            buckets={trafficBreakdownQuery.data ?? []}
+            isError={trafficBreakdownQuery.isError}
+          />
         )}
       </AnalyticsCard>
 

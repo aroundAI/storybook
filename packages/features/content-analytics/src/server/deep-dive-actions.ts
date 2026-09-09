@@ -140,6 +140,14 @@ export const getTrafficShareTrendAction = enhanceAction(
 );
 
 /**
+ * Longest window daily traffic granularity will serve.
+ *
+ * A day bucket carries eight group objects, so this caps one response at
+ * ~1,440 of them. Week and month need no cap: the calendar is the bound.
+ */
+const MAX_DAILY_BREAKDOWN_DAYS = 180;
+
+/**
  * Views and watch time per traffic-source group, per bucket (FILM-1605).
  *
  * The share trend answers only "how much is Browse+Suggested"; this answers
@@ -166,15 +174,27 @@ export const getTrafficBreakdownAction = enhanceAction(
         from: z.coerce.date().optional(),
         to: z.coerce.date().optional(),
       })
+      .refine((value) => !value.from || !value.to || value.from <= value.to, {
+        message: '`from` must not be after `to`.',
+        path: ['from'],
+      })
       // Week and month buckets are bounded by the calendar; day is bounded
-      // only by the project's history, and a multi-year day query returns a
-      // bucket per day — thousands of group objects through a server action,
-      // rendered as sub-pixel columns. Daily granularity therefore has to
-      // name its window.
-      .refine((value) => value.bucket !== 'day' || (value.from && value.to), {
-        message: 'Daily granularity requires an explicit from and to.',
-        path: ['bucket'],
-      }),
+      // only by the window asked for. Requiring the dates to be *present* is
+      // not enough — 2015-01-01 to 2026-01-01 names a window and still
+      // returns ~4,000 buckets of eight group objects through a server
+      // action. The span itself has to be capped.
+      .refine(
+        (value) =>
+          value.bucket !== 'day' ||
+          (value.from !== undefined &&
+            value.to !== undefined &&
+            value.to.getTime() - value.from.getTime() <=
+              MAX_DAILY_BREAKDOWN_DAYS * 86_400_000),
+        {
+          message: `Daily granularity needs an explicit from and to spanning at most ${MAX_DAILY_BREAKDOWN_DAYS} days.`,
+          path: ['bucket'],
+        },
+      ),
     auth: true,
   },
 );

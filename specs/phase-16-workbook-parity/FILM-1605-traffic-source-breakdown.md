@@ -133,17 +133,23 @@ at most a few hundred rows for any window, so the *result* needs no
 pagination. **Day is not bounded by the calendar** — a multi-year daily
 query returns a bucket per day, thousands of group objects through a
 server action, rendered as sub-pixel columns — so `getTrafficBreakdownAction`
-requires an explicit `from` and `to` whenever `bucket` is `day`. The *scan*
+caps the daily *span* at `MAX_DAILY_BREAKDOWN_DAYS` (180). Requiring the
+dates merely to be present is not a bound: `2015-01-01` to `2026-01-01`
+names a window and still returns ~4,000 buckets. The *scan*
 is bounded by `dimSubquery`, the same bound `queryTrafficShareTrend`
 already runs under.
 
 `bucket` is a closed union (`'week' | 'month' | 'day'`), interpolated into
 `toStartOfWeek` / `toStartOfMonth` / `toDate` by lookup, never by string
 substitution of a caller value — the same treatment `VIDEO_AGE_ORDER_COLUMNS`
-gives `orderBy`, **including its fallback**. Without one, a value outside
-the union yields `undefined` from the lookup and interpolates as the
-literal string, producing a query ClickHouse rejects outright; a test that
-only asserts the payload is absent would pass on it.
+gives `orderBy`, **including its fallback** — and the lookup is guarded
+with `Object.hasOwn`, not a bare index. Without a fallback, a value outside
+the union yields `undefined` and interpolates as the literal string,
+producing a query ClickHouse rejects outright; a test that only asserts the
+payload is absent would pass on it. Without `hasOwn`, `'constructor'`
+resolves up the prototype chain to a truthy function, skips the fallback
+entirely, and interpolates a function body — so the fallback alone does not
+deliver what this paragraph claims.
 
 ## 7. Out of Scope
 
@@ -171,9 +177,14 @@ only asserts the payload is absent would pass on it.
 - [x] `getTrafficBreakdownAction` calls `assertScopeAccess` before querying
 - [x] The stacked card renders group order deterministically across re-renders
 - [x] The stacked card is mounted on the Deep Dive tab, not merely exported
-- [x] Daily granularity requires an explicit date range
+- [x] Daily granularity caps the span, not merely requires the dates to be present
+- [x] `from` after `to` is rejected
+- [x] A bucket resolving up the prototype chain cannot reach the query body
 - [x] A bucket outside the union yields an executable query, not `undefined(...)`
 - [x] The UI states that the denominator excludes unmatched videos
+- [x] Legend percentages cover the whole window shown, not the latest bucket
+- [x] A failed fetch renders as a failure, not as "no data yet"
+- [x] A long window scrolls rather than collapsing the bars
 
 ## 9. Verification
 

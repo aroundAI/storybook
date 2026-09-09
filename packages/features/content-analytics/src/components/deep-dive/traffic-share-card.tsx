@@ -118,6 +118,8 @@ interface TrafficBreakdownCardProps {
   /** Buckets in chronological order, from getTrafficBreakdownAction. */
   buckets: TrafficGroupBucket[];
   isLoading?: boolean;
+  /** True when the query failed, so the empty state does not lie about why. */
+  isError?: boolean;
 }
 
 /**
@@ -132,9 +134,22 @@ interface TrafficBreakdownCardProps {
 export function TrafficBreakdownCard({
   buckets,
   isLoading = false,
+  isError = false,
 }: TrafficBreakdownCardProps) {
   if (isLoading) {
     return <TrafficShareCardSkeleton />;
+  }
+
+  // Distinct from the empty state on purpose. "It arrives with the bulk
+  // report ingest" is a promise about the future, and a scope denial or a
+  // ClickHouse timeout will never keep it.
+  if (isError) {
+    return (
+      <p className={'text-muted-foreground text-sm'}>
+        Traffic-source data could not be loaded. This is a fetch failure, not an
+        absence of data — retry, or check the project scope.
+      </p>
+    );
   }
 
   if (buckets.length === 0) {
@@ -146,12 +161,31 @@ export function TrafficBreakdownCard({
     );
   }
 
-  const latest = buckets[buckets.length - 1]!;
+  // Over the whole window, not the latest bucket. The legend sits above a
+  // chart spanning every bucket, so a per-bucket figure reads as the period
+  // share and would be wrong by exactly the amount the last bucket differs.
+  const windowViews = buckets.reduce((sum, b) => sum + b.totalViews, 0);
+  const windowByGroup = new Map<TrafficSourceGroup, number>();
+
+  for (const bucket of buckets) {
+    for (const group of bucket.groups) {
+      windowByGroup.set(
+        group.group,
+        (windowByGroup.get(group.group) ?? 0) + group.views,
+      );
+    }
+  }
+
+  const legend = (buckets[0]?.groups ?? []).map((group) => ({
+    group: group.group,
+    share:
+      windowViews > 0 ? (windowByGroup.get(group.group) ?? 0) / windowViews : 0,
+  }));
 
   return (
     <div className={'flex flex-col gap-4'}>
       <div className={'flex flex-wrap gap-x-4 gap-y-1'}>
-        {latest.groups.map((group) => (
+        {legend.map((group) => (
           <span
             key={group.group}
             className={'flex items-center gap-1.5 text-xs'}
@@ -169,7 +203,13 @@ export function TrafficBreakdownCard({
         ))}
       </div>
 
-      <div className={'flex items-end gap-1'} style={{ height: 80 }}>
+      {/* Bars are fixed-width and scroll: a flex row with gaps cannot shrink
+          past its gaps, so a long window would collapse the bars to nothing
+          and overflow the card instead. */}
+      <div
+        className={'flex items-end gap-1 overflow-x-auto'}
+        style={{ height: 80 }}
+      >
         {buckets.map((bucket) => (
           <div
             key={bucket.bucket}
@@ -192,9 +232,10 @@ export function TrafficBreakdownCard({
       </div>
 
       <p className={'text-muted-foreground text-xs'}>
-        Shares cover videos published through this platform. Views on channel
-        videos that never matched a publish are not counted, so these
-        percentages will not match YouTube Studio exactly.
+        Percentages are the share across the whole window shown. Shares cover
+        videos published through this platform. Views on channel videos that
+        never matched a publish are not counted, so these percentages will not
+        match YouTube Studio exactly.
       </p>
     </div>
   );

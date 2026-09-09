@@ -385,6 +385,31 @@ describe('queries-advanced', () => {
       expect(query).toContain('toStartOfWeek(metric_date)');
     });
 
+    it('does not resolve a bucket up the prototype chain', async () => {
+      mockQueryResult.json.mockResolvedValue([]);
+
+      const { queryTrafficSourceBreakdown } = await import(
+        '../src/queries-advanced'
+      );
+
+      for (const bucket of ['constructor', 'toString', 'valueOf']) {
+        await queryTrafficSourceBreakdown({
+          scope: { projectId: PROJECT },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          bucket: bucket as any,
+        });
+
+        const query = lastQuery().query;
+
+        // A bare index would return Object.prototype.constructor here — a
+        // truthy function that skips a `??` fallback and interpolates its
+        // own body into the SQL.
+        expect(query).not.toContain('native code');
+        expect(query).not.toContain('function');
+        expect(query).toContain('toStartOfWeek(metric_date)');
+      }
+    });
+
     it('returns nothing when ClickHouse is disabled', async () => {
       process.env.CLICKHOUSE_ENABLED = 'false';
 
