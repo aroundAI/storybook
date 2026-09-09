@@ -143,7 +143,10 @@ export function TrafficBreakdownCard({
   // Distinct from the empty state on purpose. "It arrives with the bulk
   // report ingest" is a promise about the future, and a scope denial or a
   // ClickHouse timeout will never keep it.
-  if (isError) {
+  // Only when there is nothing to fall back on: React Query keeps `data`
+  // through a failed background refetch, and discarding a chart the user is
+  // already reading is worse than quietly serving the last good one.
+  if (isError && buckets.length === 0) {
     return (
       <p className={'text-muted-foreground text-sm'}>
         Traffic-source data could not be loaded. This is a fetch failure, not an
@@ -203,9 +206,12 @@ export function TrafficBreakdownCard({
         ))}
       </div>
 
-      {/* Bars are fixed-width and scroll: a flex row with gaps cannot shrink
-          past its gaps, so a long window would collapse the bars to nothing
-          and overflow the card instead. */}
+      {/* Bars grow to fill but never shrink below min-w-2, which is what
+          makes overflow-x-auto engage. `flex-1` alone does not: its default
+          min-width:auto resolves to 0 for an empty div, so the bars would
+          collapse to nothing and the row would render as blank gaps —
+          degrading silently as history accumulates rather than failing at
+          once. */}
       <div
         className={'flex items-end gap-1 overflow-x-auto'}
         style={{ height: 80 }}
@@ -214,7 +220,7 @@ export function TrafficBreakdownCard({
           <div
             key={bucket.bucket}
             className={
-              'flex h-full flex-1 flex-col-reverse overflow-hidden rounded-sm'
+              'flex h-full min-w-2 flex-1 flex-col-reverse overflow-hidden rounded-sm'
             }
           >
             {bucket.groups.map((group) => (
