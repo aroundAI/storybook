@@ -149,6 +149,48 @@ export const getTrafficShareTrendAction = enhanceAction(
 const MAX_DAILY_BREAKDOWN_DAYS = 180;
 
 /**
+ * Declared here rather than inline in `enhanceAction`.
+ *
+ * This module is `'use server'`, and Next treats function expressions
+ * inside an *exported* declaration as Server Actions — so a synchronous
+ * `.refine` callback there fails the build with "Server Actions must be
+ * async functions". `pnpm typecheck` does not model that rule; only the
+ * Next build does. `ScopeSchema` above is the same pattern for the same
+ * reason.
+ */
+const TrafficBreakdownSchema = z
+  .object({
+    scope: ScopeSchema,
+    // From @kit/clickhouse, not re-listed: a hand-written copy keeps
+    // accepting a granularity after it is removed there, and the lookup's
+    // fallback then serves weeks under the old label.
+    bucket: z.enum(TRAFFIC_SOURCE_BUCKETS).default('week'),
+    from: z.coerce.date().optional(),
+    to: z.coerce.date().optional(),
+  })
+  .refine((value) => !value.from || !value.to || value.from <= value.to, {
+    message: '`from` must not be after `to`.',
+    path: ['from'],
+  })
+  // Week and month buckets are bounded by the calendar; day is bounded only
+  // by the window asked for. Requiring the dates to be *present* is not
+  // enough — 2015-01-01 to 2026-01-01 names a window and still returns
+  // ~4,000 buckets of eight group objects through a server action. The span
+  // itself has to be capped.
+  .refine(
+    (value) =>
+      value.bucket !== 'day' ||
+      (value.from !== undefined &&
+        value.to !== undefined &&
+        value.to.getTime() - value.from.getTime() <=
+          MAX_DAILY_BREAKDOWN_DAYS * 86_400_000),
+    {
+      message: `Daily granularity needs an explicit from and to spanning at most ${MAX_DAILY_BREAKDOWN_DAYS} days.`,
+      path: ['bucket'],
+    },
+  );
+
+/**
  * Views and watch time per traffic-source group, per bucket (FILM-1605).
  *
  * The share trend answers only "how much is Browse+Suggested"; this answers
@@ -168,37 +210,7 @@ export const getTrafficBreakdownAction = enhanceAction(
     });
   },
   {
-    schema: z
-      .object({
-        scope: ScopeSchema,
-        // From @kit/clickhouse, not re-listed: a hand-written copy keeps
-        // accepting a granularity after it is removed there, and the
-        // lookup's fallback then serves weeks under the old label.
-        bucket: z.enum(TRAFFIC_SOURCE_BUCKETS).default('week'),
-        from: z.coerce.date().optional(),
-        to: z.coerce.date().optional(),
-      })
-      .refine((value) => !value.from || !value.to || value.from <= value.to, {
-        message: '`from` must not be after `to`.',
-        path: ['from'],
-      })
-      // Week and month buckets are bounded by the calendar; day is bounded
-      // only by the window asked for. Requiring the dates to be *present* is
-      // not enough — 2015-01-01 to 2026-01-01 names a window and still
-      // returns ~4,000 buckets of eight group objects through a server
-      // action. The span itself has to be capped.
-      .refine(
-        (value) =>
-          value.bucket !== 'day' ||
-          (value.from !== undefined &&
-            value.to !== undefined &&
-            value.to.getTime() - value.from.getTime() <=
-              MAX_DAILY_BREAKDOWN_DAYS * 86_400_000),
-        {
-          message: `Daily granularity needs an explicit from and to spanning at most ${MAX_DAILY_BREAKDOWN_DAYS} days.`,
-          path: ['bucket'],
-        },
-      ),
+    schema: TrafficBreakdownSchema,
     auth: true,
   },
 );
