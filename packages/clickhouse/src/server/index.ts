@@ -60,7 +60,6 @@ export type {
   MedianBucket,
   RollingViewsPoint,
   TagMedianRow,
-  TrafficShareBucket,
   TrafficBucket,
   VideoAgeOrderBy,
   VideoAgeRow,
@@ -127,6 +126,7 @@ export {
   TRAFFIC_SOURCE_GROUPS,
   groupForSource,
   groupTrafficRows,
+  sourcesInGroup,
 } from '../lib/traffic-groups';
 export type {
   TrafficGroupBucket,

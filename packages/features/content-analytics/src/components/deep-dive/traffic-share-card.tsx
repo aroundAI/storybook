@@ -90,22 +90,25 @@ export function TrafficShareCard({
         </span>
       </div>
 
-      <div
-        className={'relative flex items-end gap-1 overflow-x-auto'}
-        style={{ height: 80 }}
-      >
-        {buckets.map((bucket) => (
-          <div
-            key={bucket.bucket}
-            className={'bg-primary/70 min-w-2 flex-1 rounded-sm'}
-            style={{ height: `${Math.max(2, bucket.share * 100)}%` }}
-            title={`${bucket.bucket}: ${Math.round(bucket.share * 100)}% of ${bucket.totalViews.toLocaleString()} views`}
-          />
-        ))}
+      <div className={'relative'} style={{ height: 80 }}>
+        <div className={'flex h-full items-end gap-1 overflow-x-auto'}>
+          {buckets.map((bucket) => (
+            <div
+              key={bucket.bucket}
+              className={'bg-primary/70 min-w-2 flex-1 rounded-sm'}
+              style={{ height: `${Math.max(2, bucket.share * 100)}%` }}
+              title={`${bucket.bucket}: ${Math.round(bucket.share * 100)}% of ${bucket.totalViews.toLocaleString()} views`}
+            />
+          ))}
+        </div>
 
+        {/* On the wrapper, not the scroller: an absolutely positioned child
+            of an overflow container is laid out against its visible width
+            and scrolls with the content, so the threshold would cover only
+            the leftmost screenful. */}
         <div
           className={
-            'border-foreground/40 absolute left-0 right-0 border-t border-dashed'
+            'border-foreground/40 pointer-events-none absolute left-0 right-0 border-t border-dashed'
           }
           style={{ bottom: `${RECOMMENDED_CHANNEL_THRESHOLD * 100}%` }}
         />
@@ -329,9 +332,17 @@ export function TrafficBreakdownCard({
                   key={group.group}
                   className={GROUP_COLORS[group.group]}
                   style={{ height: heights.get(group.group) ?? 0 }}
-                  title={`${bucket.bucket} — ${GROUP_LABELS[group.group]}: ${Math.round(
-                    group.share * 100,
-                  )}% of ${bucket.totalViews.toLocaleString()} views`}
+                  // Suppressed on a zero-view bucket so the column's own
+                  // "no views" tooltip is reachable: otherwise the 2px
+                  // baseline slice wins the hover over the only visible
+                  // pixels and the bucket reads as Other-sourced traffic.
+                  title={
+                    bucket.totalViews === 0
+                      ? undefined
+                      : `${bucket.bucket} — ${GROUP_LABELS[group.group]}: ${Math.round(
+                          group.share * 100,
+                        )}% of ${bucket.totalViews.toLocaleString()} views`
+                  }
                 />
               ))}
             </div>

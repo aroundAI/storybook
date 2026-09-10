@@ -197,7 +197,11 @@ deliver what this paragraph claims.
 - [x] `DEFAULT_BROWSE_SUGGESTED_SOURCES` is deleted with the override parameter it documented; the taxonomy is the only definition
 - [x] The trend headline names the bucket it came from, which is the newest bucket *with traffic* and may not be the current one
 - [x] Stack slices are laid out in pixels, so a minimum slice height cannot distort the dominant group
-- [x] Both cards' bar rows scroll rather than collapsing
+- [x] Both cards' bar rows scroll rather than collapsing, and the 60% threshold line sits outside the scroller so it does not scroll away
+- [x] Stack slices are emitted as percentages, so a scrollbar shrinking the column cannot clip the topmost slice
+- [x] A zero-view bucket's own tooltip is reachable
+- [x] The window label is derived from the window constant
+- [x] The requested window starts on the same week boundary ClickHouse buckets on
 - [x] The Browse+Suggested source set has one definition, derived from the taxonomy
 - [x] Every granularity is bounded by the schema, not by the caller happening to pass a window
 - [x] `getTrafficShareTrendAction` is removed rather than left as an unbounded path to identical output

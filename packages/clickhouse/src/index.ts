@@ -42,6 +42,7 @@ export {
   TRAFFIC_SOURCE_GROUPS,
   groupForSource,
   groupTrafficRows,
+  sourcesInGroup,
 } from './lib/traffic-groups';
 export type {
   TrafficGroupBucket,

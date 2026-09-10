@@ -48,8 +48,13 @@ type MedianMode = 'cohort_views_to_date' | 'views_in_period';
  */
 const TRAFFIC_WINDOW_WEEKS = 52;
 
-/** Human-readable form of the window, for the cards' empty state. */
-const TRAFFIC_WINDOW_LABEL = 'the last 52 weeks';
+/**
+ * Human-readable form of the window, for the cards' empty state. Derived,
+ * not restated: this string is the only thing telling a reader why older
+ * data is missing, so it must not be able to name a window the query has
+ * stopped asking for.
+ */
+const TRAFFIC_WINDOW_LABEL = `the last ${TRAFFIC_WINDOW_WEEKS} weeks`;
 
 export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
   const [medianMode, setMedianMode] = useState<MedianMode>(
@@ -80,6 +85,10 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
     const from = new Date(to);
 
     from.setUTCDate(from.getUTCDate() - TRAFFIC_WINDOW_WEEKS * 7);
+    // Snapped to the week start ClickHouse buckets on (toStartOfWeek is
+    // Sunday). An arbitrary weekday returns a partial leading bucket, which
+    // the whole-window legend would average in without saying so.
+    from.setUTCDate(from.getUTCDate() - from.getUTCDay());
 
     return { from, to, key: `${from.toISOString().slice(0, 10)}..${today}` };
   }, [today]);
@@ -208,7 +217,7 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
         title={'Where views came from'}
         icon={PieChart}
         description={
-          'Every traffic surface as a share of views — the six beyond Browse + Suggested.'
+          'Every traffic surface as a share of views — the seven beyond Browse + Suggested.'
         }
         className={'h-auto'}
       >

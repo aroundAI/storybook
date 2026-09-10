@@ -75,11 +75,11 @@ export function groupForSource(source: string): TrafficSourceGroup {
 /**
  * Every raw source assigned to a group.
  *
- * This taxonomy is the only definition of which sources count as
- * Browse+Suggested. A second hand-kept list agrees only for as long as
- * someone remembers both, and reclassifying a source for the stacked
- * legend would otherwise shift the Browse+Suggested card and its 60%
- * milestone without touching anything that looks like that metric.
+ * `SOURCE_TO_GROUP` above is the only definition of which sources count as
+ * Browse+Suggested — every consumer reaches it through `groupForSource`.
+ * This enumerates a group's members for callers that need the set rather
+ * than a lookup, which is what lets the browse+suggested membership be
+ * asserted directly instead of restated in a second hand-kept list.
  */
 export function sourcesInGroup(group: TrafficSourceGroup): string[] {
   return Object.entries(SOURCE_TO_GROUP)

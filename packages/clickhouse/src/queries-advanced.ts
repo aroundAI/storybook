@@ -46,13 +46,6 @@ export interface RollingViewsPoint {
   rollingViews: number;
 }
 
-export interface TrafficShareBucket {
-  bucket: string;
-  totalViews: number;
-  browseSuggestedViews: number;
-  share: number;
-}
-
 export interface BackCatalogBucket {
   bucket: string;
   totalViews: number;
@@ -470,8 +463,8 @@ async function queryTrafficSourceRows(input: {
  * Views and watch time per traffic-source group, per bucket (FILM-1605).
  *
  * Answers "where did views come from, as a share of the whole, over time"
- * — the six surfaces beyond Browse+Suggested that the share trend alone
- * cannot show.
+ * — the seven surfaces beyond Browse+Suggested that a single share
+ * figure cannot show.
  *
  * The denominator is matched videos only: unmatched traffic rows are
  * dropped at ingest and channel_daily has no `source` column to hold them,
