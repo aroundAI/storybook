@@ -500,53 +500,6 @@ export async function queryTrafficSourceBreakdown(input: {
 }
 
 /**
- * Browse+Suggested share of views per week/month — the clearest signal of
- * whether the algorithm has decided what the channel is for.
- *
- * Folded from the same rows the breakdown uses. `browseSuggestedSources`
- * stays an override on the raw source names rather than resolving through
- * the group taxonomy, so callers that pass their own set still get exactly
- * what they asked for and the shipped default is unchanged.
- */
-export async function queryTrafficShareTrend(input: {
-  scope: DimScope;
-  bucket: 'week' | 'month';
-  browseSuggestedSources?: string[];
-  startDate?: string;
-  endDate?: string;
-}): Promise<TrafficShareBucket[]> {
-  if (!isClickHouseEnabled()) return [];
-
-  const browseSources = new Set(
-    input.browseSuggestedSources ?? DEFAULT_BROWSE_SUGGESTED_SOURCES,
-  );
-
-  const rows = await queryTrafficSourceRows(input);
-  const buckets = new Map<string, { total: number; browse: number }>();
-
-  for (const row of rows) {
-    const bucket = buckets.get(row.bucket) ?? { total: 0, browse: 0 };
-
-    bucket.total += row.views;
-
-    if (browseSources.has(row.source)) {
-      bucket.browse += row.views;
-    }
-
-    buckets.set(row.bucket, bucket);
-  }
-
-  return Array.from(buckets.entries())
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([bucket, totals]) => ({
-      bucket,
-      totalViews: totals.total,
-      browseSuggestedViews: totals.browse,
-      share: totals.total > 0 ? totals.browse / totals.total : 0,
-    }));
-}
-
-/**
  * Share of period views coming from videos older than ageDays, bucketed
  * monthly. Rising back-catalog share is the compounding-content signal.
  */

@@ -28,9 +28,9 @@ describe('groupForSource', () => {
   });
 
   it('maps the browse+suggested set exactly as the shipped trend does', () => {
-    // These three are what queryTrafficShareTrend has always counted. If
-    // this group and that constant disagree, the reimplemented trend moves
-    // a number that is already on screen.
+    // These three are the shipped Browse+Suggested set. If this group and
+    // that constant disagree, the trend the tab derives moves a number
+    // that is already on screen.
     for (const source of DEFAULT_BROWSE_SUGGESTED_SOURCES) {
       expect(groupForSource(source)).toBe('browse_suggested');
     }
@@ -165,8 +165,8 @@ describe('groupTrafficRows', () => {
 
   // The Deep Dive tab derives the Browse+Suggested trend from a breakdown
   // response rather than issuing a second, byte-identical query. That fold
-  // must produce what queryTrafficShareTrend produces server-side, or the
-  // two surfaces disagree.
+  // must reproduce the shipped Browse+Suggested figures, or the trend card
+  // and the stacked card disagree.
   it('carries enough to reproduce the browse+suggested trend', () => {
     const rows = [
       row('2026-01-05', 'RELATED_VIDEO', 400),

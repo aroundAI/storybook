@@ -12,6 +12,12 @@ export interface TrafficShareEntry {
 }
 
 interface TrafficShareCardProps {
+  /**
+   * Names the window the query asked for. The empty state used to promise
+   * the data "arrives with the ingest", which is wrong when the data exists
+   * and merely predates the window the caller chose.
+   */
+  windowLabel?: string;
   /** Buckets in chronological order */
   buckets: TrafficShareEntry[];
   /** Loading state */
@@ -42,6 +48,7 @@ export function TrafficShareCard({
   isLoading = false,
   periodLabel = 'latest period',
   isError = false,
+  windowLabel = 'this window',
 }: TrafficShareCardProps) {
   if (isLoading) {
     return <TrafficShareCardSkeleton />;
@@ -62,8 +69,8 @@ export function TrafficShareCard({
   if (buckets.length === 0) {
     return (
       <p className={'text-muted-foreground text-sm'}>
-        No traffic-source data yet. It arrives with the YouTube bulk report
-        ingest.
+        No traffic-source data in {windowLabel}. Anything older falls outside
+        this window; new data arrives with the YouTube bulk report ingest.
       </p>
     );
   }
@@ -139,6 +146,12 @@ const GROUP_COLORS: Record<TrafficSourceGroup, string> = {
 };
 
 interface TrafficBreakdownCardProps {
+  /**
+   * Names the window the query asked for. The empty state used to promise
+   * the data "arrives with the ingest", which is wrong when the data exists
+   * and merely predates the window the caller chose.
+   */
+  windowLabel?: string;
   /** Buckets in chronological order, from getTrafficBreakdownAction. */
   buckets: TrafficGroupBucket[];
   isLoading?: boolean;
@@ -159,6 +172,7 @@ export function TrafficBreakdownCard({
   buckets,
   isLoading = false,
   isError = false,
+  windowLabel = 'this window',
 }: TrafficBreakdownCardProps) {
   if (isLoading) {
     return <TrafficShareCardSkeleton />;
@@ -182,8 +196,8 @@ export function TrafficBreakdownCard({
   if (buckets.length === 0) {
     return (
       <p className={'text-muted-foreground text-sm'}>
-        No traffic-source data yet. It arrives with the YouTube bulk report
-        ingest.
+        No traffic-source data in {windowLabel}. Anything older falls outside
+        this window; new data arrives with the YouTube bulk report ingest.
       </p>
     );
   }
@@ -246,6 +260,9 @@ export function TrafficBreakdownCard({
             className={
               'flex h-full min-w-2 flex-1 flex-col-reverse overflow-hidden rounded-sm'
             }
+            title={
+              bucket.totalViews === 0 ? `${bucket.bucket}: no views` : undefined
+            }
           >
             {bucket.groups.map((group) => (
               <div
@@ -256,7 +273,15 @@ export function TrafficBreakdownCard({
                   // A group under ~1.3% is sub-pixel in an 80px stack: it
                   // disappears and its tooltip becomes unhoverable, so a
                   // small-but-real surface reads as absent.
-                  minHeight: group.views > 0 ? 2 : 0,
+                  // A non-zero group under ~1.3% is sub-pixel in an 80px
+                  // stack; a bucket with no views at all would otherwise
+                  // render as an invisible gap between full-height
+                  // neighbours, with nothing to hover.
+                  minHeight:
+                    group.views > 0 ||
+                    (bucket.totalViews === 0 && group.group === 'other')
+                      ? 2
+                      : 0,
                 }}
                 title={`${bucket.bucket} — ${GROUP_LABELS[group.group]}: ${Math.round(
                   group.share * 100,

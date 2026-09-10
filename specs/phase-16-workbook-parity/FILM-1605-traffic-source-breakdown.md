@@ -133,9 +133,13 @@ at most a few hundred rows for any window, so the *result* needs no
 pagination. **Day is not bounded by the calendar** — a multi-year daily
 query returns a bucket per day, thousands of group objects through a
 server action, rendered as sub-pixel columns — so `getTrafficBreakdownAction`
-caps the daily *span* at `MAX_DAILY_BREAKDOWN_DAYS` (180). Requiring the
+requires `from` and `to` and caps the span per granularity through
+`MAX_BREAKDOWN_SPAN_DAYS` — 180 days for `day`, 1,120 for `week`, 3,650
+for `month`, so every bucket count lands around 120-180. Requiring the
 dates merely to be present is not a bound: `2015-01-01` to `2026-01-01`
-names a window and still returns ~4,000 buckets. The *scan*
+names a window and still returns ~4,000 daily buckets. Capping only `day`
+is not a bound either: a week call with no dates returns every bucket in
+the channel's history. The *scan*
 is bounded by `dimSubquery`, the same bound `queryTrafficShareTrend`
 already runs under.
 
@@ -186,12 +190,15 @@ deliver what this paragraph claims.
 - [x] A bucket outside the union yields an executable query, not `undefined(...)`
 - [x] The UI states that the denominator excludes unmatched videos
 - [x] Legend percentages cover the whole window shown, not the latest bucket
-- [x] A failed fetch renders as a failure, not as "no data yet" — on **both** cards fed by the shared query
+- [x] A failed fetch renders as a failure, not as "no data yet" — on **both** cards fed by the shared query, gated on whether a response ever arrived rather than on the derived array being empty
+- [x] The empty state names the window instead of promising data that may already exist outside it
+- [x] A bucket with no views renders a hoverable baseline rather than an invisible gap
+- [x] `queryTrafficShareTrend` is deleted, not left exported as an unbounded path to output the tab now derives
 - [x] The Browse+Suggested source set has one definition, derived from the taxonomy
 - [x] Every granularity is bounded by the schema, not by the caller happening to pass a window
 - [x] `getTrafficShareTrendAction` is removed rather than left as an unbounded path to identical output
 - [x] A group under a pixel still renders and stays hoverable
-- [x] The traffic window advances at the day boundary and is part of the cache key
+- [x] The traffic window is read per render rather than frozen at mount, and is part of the cache key — nothing schedules a midnight re-render, so an idle tab updates on its next refetch
 - [x] The live-server assertion compares against fixed seeded numbers, not two derivations of the same rows
 - [x] A long window scrolls rather than collapsing the bars — bars carry an explicit min-width, since `flex-1` alone shrinks to zero
 - [x] A failed background refetch keeps the last good chart rather than replacing it with an error

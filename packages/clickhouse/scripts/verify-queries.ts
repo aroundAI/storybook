@@ -43,7 +43,6 @@ import {
   querySubscriberDeltas,
   queryTotals,
   queryTotalsByVideoIds,
-  queryTrafficShareTrend,
   queryTrafficSourceBreakdown,
   queryTrafficSources,
   queryVideoViewsAtAge,
@@ -400,9 +399,6 @@ async function queries() {
   );
   await step('queryTrafficSourceBreakdown (month)', () =>
     queryTrafficSourceBreakdown({ scope, bucket: 'month' }),
-  );
-  await step('queryTrafficShareTrend', () =>
-    queryTrafficShareTrend({ scope, bucket: 'week' }),
   );
   await step('queryBackCatalogShare', () =>
     queryBackCatalogShare({

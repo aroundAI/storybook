@@ -48,6 +48,9 @@ type MedianMode = 'cohort_views_to_date' | 'views_in_period';
  */
 const TRAFFIC_WINDOW_WEEKS = 52;
 
+/** Human-readable form of the window, for the cards' empty state. */
+const TRAFFIC_WINDOW_LABEL = 'the last 52 weeks';
+
 export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
   const [medianMode, setMedianMode] = useState<MedianMode>(
     'cohort_views_to_date',
@@ -65,9 +68,11 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
       }),
   });
 
-  // Recomputed when the UTC day rolls over, not frozen at mount: `to` used
-  // to be fixed for the component's lifetime, so a dashboard left open past
-  // midnight kept refetching yesterday's window.
+  // Read on every render rather than frozen at mount, so the window follows
+  // the UTC day as soon as anything re-renders. Nothing *schedules* a
+  // re-render at midnight, so a completely idle tab keeps yesterday's window
+  // until the next refetch or interaction — better than the previous
+  // mount-time freeze, and not the same as a ticking clock.
   const today = new Date().toISOString().slice(0, 10);
 
   const trafficWindow = useMemo(() => {
@@ -96,7 +101,7 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
   // granularity, so a second action call would compile to byte-identical
   // SQL — two `video_traffic_sources FINAL` scans and two dim scans per tab
   // load — for numbers this response already contains. The fold is exactly
-  // what queryTrafficShareTrend does server-side.
+  // the same fold the query layer used to do before it became dead code.
   const trafficShareBuckets = useMemo(
     () =>
       (trafficBreakdownQuery.data ?? []).map((bucket) => {
@@ -190,7 +195,11 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
           <TrafficShareCard
             buckets={trafficShareBuckets}
             periodLabel={'latest week'}
-            isError={trafficBreakdownQuery.isError}
+            isError={
+              trafficBreakdownQuery.isError &&
+              trafficBreakdownQuery.data === undefined
+            }
+            windowLabel={TRAFFIC_WINDOW_LABEL}
           />
         )}
       </AnalyticsCard>
@@ -208,7 +217,11 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
         ) : (
           <TrafficBreakdownCard
             buckets={trafficBreakdownQuery.data ?? []}
-            isError={trafficBreakdownQuery.isError}
+            isError={
+              trafficBreakdownQuery.isError &&
+              trafficBreakdownQuery.data === undefined
+            }
+            windowLabel={TRAFFIC_WINDOW_LABEL}
           />
         )}
       </AnalyticsCard>

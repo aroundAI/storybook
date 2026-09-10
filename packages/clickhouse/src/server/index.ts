@@ -48,7 +48,6 @@ export {
   queryMedianByTag,
   queryMedianViewsPerVideo,
   queryRollingViews,
-  queryTrafficShareTrend,
   queryTrafficSourceBreakdown,
   TRAFFIC_SOURCE_BUCKETS,
   queryVideoViewsAtAge,
