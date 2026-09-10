@@ -589,41 +589,49 @@ async function assertions() {
     return `views=${snap.views} on ${snap.snapshot_date}`;
   });
 
-  await step('assert: the trend agrees with the breakdown', async () => {
-    // FILM-1605 rebuilt queryTrafficShareTrend on the breakdown's rows.
-    // Against a real server, the browse+suggested group and the trend's
-    // numerator must be the same number, or the reimplementation moved a
-    // figure that is already on screen.
-    const [breakdown, trend] = await Promise.all([
-      queryTrafficSourceBreakdown({ scope, bucket: 'week' }),
-      queryTrafficShareTrend({ scope, bucket: 'week' }),
-    ]);
+  await step('assert: the breakdown groups the seeded sources', async () => {
+    // Fixed expectations, not a comparison of two derivations of the same
+    // rows. Both queries now fold from one private row fetch and the browse
+    // set is derived from the taxonomy, so asserting they agree compares a
+    // thing to itself — it could only fail on a race between two concurrent
+    // reads. The seed is 60 RELATED_VIDEO + 40 YT_SEARCH on one day.
+    const breakdown = await queryTrafficSourceBreakdown({
+      scope,
+      bucket: 'month',
+    });
 
-    const byBucket = new Map(trend.map((t) => [t.bucket, t]));
+    const bucket = breakdown.find((b) => b.totalViews > 0);
 
-    for (const bucket of breakdown) {
-      const browse =
-        bucket.groups.find((g) => g.group === 'browse_suggested')?.views ?? 0;
-      const matching = byBucket.get(bucket.bucket);
-
-      if (!matching) {
-        throw new Error(`trend is missing bucket ${bucket.bucket}`);
-      }
-
-      if (matching.browseSuggestedViews !== browse) {
-        throw new Error(
-          `bucket ${bucket.bucket}: trend ${matching.browseSuggestedViews} != breakdown ${browse}`,
-        );
-      }
-
-      if (matching.totalViews !== bucket.totalViews) {
-        throw new Error(
-          `bucket ${bucket.bucket}: totals ${matching.totalViews} != ${bucket.totalViews}`,
-        );
-      }
+    if (!bucket) {
+      throw new Error('no traffic bucket carried views');
     }
 
-    return `${breakdown.length} bucket(s) agree`;
+    const views = (group: string) =>
+      bucket.groups.find((g) => g.group === group)?.views ?? 0;
+
+    if (bucket.totalViews !== 100) {
+      throw new Error(`total ${bucket.totalViews} != 100`);
+    }
+
+    if (views('browse_suggested') !== 60) {
+      throw new Error(`browse_suggested ${views('browse_suggested')} != 60`);
+    }
+
+    if (views('search') !== 40) {
+      throw new Error(`search ${views('search')} != 40`);
+    }
+
+    if (bucket.groups.length !== 8) {
+      throw new Error(`${bucket.groups.length} groups != 8`);
+    }
+
+    const shareSum = bucket.groups.reduce((sum, g) => sum + g.share, 0);
+
+    if (Math.abs(shareSum - 1) > 1e-9) {
+      throw new Error(`shares sum to ${shareSum}, not 1`);
+    }
+
+    return 'browse 60 / search 40 of 100, 8 groups summing to 1';
   });
 
   await step('assert: every orderBy returns the full page', async () => {

@@ -9,7 +9,6 @@ import {
   queryCohortMedians,
   queryMedianViewsPerVideo,
   queryRollingViews,
-  queryTrafficShareTrend,
   queryTrafficSourceBreakdown,
   queryWatchWindowTotals,
 } from '@kit/clickhouse/server';
@@ -116,37 +115,20 @@ export const getRollingViewsAction = enhanceAction(
 );
 
 /**
- * Browse+Suggested share of views over time.
- */
-export const getTrafficShareTrendAction = enhanceAction(
-  async ({ scope, bucket, from, to }) => {
-    await assertScopeAccess(scope);
-
-    return queryTrafficShareTrend({
-      scope: toDimScope(scope),
-      bucket,
-      startDate: from ? formatDate(from) : undefined,
-      endDate: to ? formatDate(to) : undefined,
-    });
-  },
-  {
-    schema: z.object({
-      scope: ScopeSchema,
-      bucket: z.enum(['week', 'month']).default('week'),
-      from: z.coerce.date().optional(),
-      to: z.coerce.date().optional(),
-    }),
-    auth: true,
-  },
-);
-
-/**
- * Longest window daily traffic granularity will serve.
+ * Longest window each granularity will serve, so every bucket count lands
+ * around 120-180 rather than "however long the channel has existed".
  *
- * A day bucket carries eight group objects, so this caps one response at
- * ~1,440 of them. Week and month need no cap: the calendar is the bound.
+ * Capping only `day` was not a bound: a week or month call with no dates
+ * returns every bucket in history, and the breakdown emits a row per
+ * (bucket, source) — so a ten-year channel is ~520 buckets of eight group
+ * objects through a server action. The spec's bounding claim held only
+ * because the single caller happened to pass a window.
  */
-const MAX_DAILY_BREAKDOWN_DAYS = 180;
+const MAX_BREAKDOWN_SPAN_DAYS = {
+  day: 180,
+  week: 1_120, // ~160 buckets
+  month: 3_650, // ~120 buckets
+} as const;
 
 /**
  * Declared here rather than inline in `enhanceAction`.
@@ -165,29 +147,25 @@ const TrafficBreakdownSchema = z
     // accepting a granularity after it is removed there, and the lookup's
     // fallback then serves weeks under the old label.
     bucket: z.enum(TRAFFIC_SOURCE_BUCKETS).default('week'),
-    from: z.coerce.date().optional(),
-    to: z.coerce.date().optional(),
+    // Required, not optional: absent dates mean all history, which is the
+    // unbounded case this schema exists to prevent.
+    from: z.coerce.date(),
+    to: z.coerce.date(),
   })
-  .refine((value) => !value.from || !value.to || value.from <= value.to, {
+  .refine((value) => value.from <= value.to, {
     message: '`from` must not be after `to`.',
     path: ['from'],
   })
-  // Week and month buckets are bounded by the calendar; day is bounded only
-  // by the window asked for. Requiring the dates to be *present* is not
-  // enough — 2015-01-01 to 2026-01-01 names a window and still returns
-  // ~4,000 buckets of eight group objects through a server action. The span
-  // itself has to be capped.
+  // Every granularity, not just day. `from`/`to` are required above, so
+  // this is a real bound rather than a rule the caller opts into.
   .refine(
     (value) =>
-      value.bucket !== 'day' ||
-      (value.from !== undefined &&
-        value.to !== undefined &&
-        value.to.getTime() - value.from.getTime() <=
-          MAX_DAILY_BREAKDOWN_DAYS * 86_400_000),
-    {
-      message: `Daily granularity needs an explicit from and to spanning at most ${MAX_DAILY_BREAKDOWN_DAYS} days.`,
+      value.to.getTime() - value.from.getTime() <=
+      MAX_BREAKDOWN_SPAN_DAYS[value.bucket] * 86_400_000,
+    (value) => ({
+      message: `A ${value.bucket} breakdown spans at most ${MAX_BREAKDOWN_SPAN_DAYS[value.bucket]} days.`,
       path: ['bucket'],
-    },
+    }),
   );
 
 /**

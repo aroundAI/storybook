@@ -65,17 +65,24 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
       }),
   });
 
+  // Recomputed when the UTC day rolls over, not frozen at mount: `to` used
+  // to be fixed for the component's lifetime, so a dashboard left open past
+  // midnight kept refetching yesterday's window.
+  const today = new Date().toISOString().slice(0, 10);
+
   const trafficWindow = useMemo(() => {
-    const to = new Date();
+    const to = new Date(`${today}T00:00:00.000Z`);
     const from = new Date(to);
 
-    from.setDate(from.getDate() - TRAFFIC_WINDOW_WEEKS * 7);
+    from.setUTCDate(from.getUTCDate() - TRAFFIC_WINDOW_WEEKS * 7);
 
-    return { from, to };
-  }, []);
+    return { from, to, key: `${from.toISOString().slice(0, 10)}..${today}` };
+  }, [today]);
 
   const trafficBreakdownQuery = useQuery({
-    queryKey: ['deep-dive-traffic-breakdown', projectId],
+    // The window is part of the cache identity; without it two different
+    // windows share an entry.
+    queryKey: ['deep-dive-traffic-breakdown', projectId, trafficWindow.key],
     queryFn: () =>
       getTrafficBreakdownAction({
         scope,

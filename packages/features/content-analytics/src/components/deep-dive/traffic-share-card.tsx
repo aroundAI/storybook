@@ -3,7 +3,7 @@
 import type { TrafficGroupBucket, TrafficSourceGroup } from '@kit/clickhouse';
 import { Skeleton } from '@kit/ui/skeleton';
 
-/** One bucket from getTrafficShareTrendAction. */
+/** One bucket of the Browse+Suggested trend, derived from the breakdown. */
 export interface TrafficShareEntry {
   bucket: string;
   totalViews: number;
@@ -251,7 +251,13 @@ export function TrafficBreakdownCard({
               <div
                 key={group.group}
                 className={GROUP_COLORS[group.group]}
-                style={{ height: `${group.share * 100}%` }}
+                style={{
+                  height: `${group.share * 100}%`,
+                  // A group under ~1.3% is sub-pixel in an 80px stack: it
+                  // disappears and its tooltip becomes unhoverable, so a
+                  // small-but-real surface reads as absent.
+                  minHeight: group.views > 0 ? 2 : 0,
+                }}
                 title={`${bucket.bucket} — ${GROUP_LABELS[group.group]}: ${Math.round(
                   group.share * 100,
                 )}% of ${bucket.totalViews.toLocaleString()} views`}

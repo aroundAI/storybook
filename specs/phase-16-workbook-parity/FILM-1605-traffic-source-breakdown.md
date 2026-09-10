@@ -188,7 +188,11 @@ deliver what this paragraph claims.
 - [x] Legend percentages cover the whole window shown, not the latest bucket
 - [x] A failed fetch renders as a failure, not as "no data yet" — on **both** cards fed by the shared query
 - [x] The Browse+Suggested source set has one definition, derived from the taxonomy
-- [x] The tab asks for a bounded window, since the breakdown returns a row per source rather than per bucket
+- [x] Every granularity is bounded by the schema, not by the caller happening to pass a window
+- [x] `getTrafficShareTrendAction` is removed rather than left as an unbounded path to identical output
+- [x] A group under a pixel still renders and stays hoverable
+- [x] The traffic window advances at the day boundary and is part of the cache key
+- [x] The live-server assertion compares against fixed seeded numbers, not two derivations of the same rows
 - [x] A long window scrolls rather than collapsing the bars — bars carry an explicit min-width, since `flex-1` alone shrinks to zero
 - [x] A failed background refetch keeps the last good chart rather than replacing it with an error
 
