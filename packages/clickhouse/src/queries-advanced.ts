@@ -13,7 +13,7 @@ import type {
   TrafficGroupBucket,
   TrafficSourceRow,
 } from './lib/traffic-groups';
-import { groupTrafficRows, sourcesInGroup } from './lib/traffic-groups';
+import { groupTrafficRows } from './lib/traffic-groups';
 import { computeIngestLagDays, computeMaturity } from './lib/video-age';
 import type { VideoDim } from './types';
 
@@ -106,16 +106,6 @@ export interface TagMedianRow {
   meanViews: number;
   medianWatchTimeSeconds: number;
 }
-
-/**
- * Default source names counted as "Browse + Suggested" for the traffic
- * share trend. RELATED_VIDEO is Suggested; SUBSCRIBER (home/subscriptions
- * feeds) plus NOTIFICATION approximate Studio's Browse bucket — the
- * Analytics/Reporting APIs expose no literal BROWSE source. Callers can
- * override.
- */
-export const DEFAULT_BROWSE_SUGGESTED_SOURCES =
-  sourcesInGroup('browse_suggested');
 
 function assertDimScope(scope: DimScope): void {
   if (!scope.projectId && !scope.accountId) {

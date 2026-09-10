@@ -75,12 +75,11 @@ export function groupForSource(source: string): TrafficSourceGroup {
 /**
  * Every raw source assigned to a group.
  *
- * Exists so `DEFAULT_BROWSE_SUGGESTED_SOURCES` can be derived from this
- * taxonomy rather than restated beside it. Two hand-kept lists agree only
- * for as long as someone remembers both: reclassifying a source for the
- * stacked legend would otherwise shift the Browse+Suggested card and its
- * 60% milestone while leaving the function the spec designates as that
- * metric's source of truth untouched.
+ * This taxonomy is the only definition of which sources count as
+ * Browse+Suggested. A second hand-kept list agrees only for as long as
+ * someone remembers both, and reclassifying a source for the stacked
+ * legend would otherwise shift the Browse+Suggested card and its 60%
+ * milestone without touching anything that looks like that metric.
  */
 export function sourcesInGroup(group: TrafficSourceGroup): string[] {
   return Object.entries(SOURCE_TO_GROUP)

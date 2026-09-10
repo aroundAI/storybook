@@ -23,13 +23,14 @@ interface TrafficShareCardProps {
   /** Loading state */
   isLoading?: boolean;
   /**
-   * Names the denominator of the headline figure, which is the most recent
-   * bucket — not the whole window. The stacked breakdown card sits beside
-   * this one and legends the same "Browse + Suggested" label across the
-   * entire window, so without saying which is which the two disagree on
-   * screen with no way to reconcile them.
+   * Noun for one bucket ('week', 'month'). The headline names the actual
+   * bucket it came from, because that bucket is the newest one *present in
+   * the response*, not the current one — buckets exist only where traffic
+   * rows do, so a paused channel's newest bucket can be months old. The
+   * stacked card beside this one legends the whole window under the same
+   * label, so both have to say what they cover.
    */
-  periodLabel?: string;
+  bucketNoun?: string;
   /** True when the query failed, so the empty state does not lie about why. */
   isError?: boolean;
 }
@@ -46,7 +47,7 @@ const RECOMMENDED_CHANNEL_THRESHOLD = 0.6;
 export function TrafficShareCard({
   buckets,
   isLoading = false,
-  periodLabel = 'latest period',
+  bucketNoun = 'period',
   isError = false,
   windowLabel = 'this window',
 }: TrafficShareCardProps) {
@@ -85,15 +86,18 @@ export function TrafficShareCard({
           {Math.round(latest.share * 100)}%
         </span>
         <span className={'text-muted-foreground text-sm'}>
-          Browse + Suggested, {periodLabel}
+          Browse + Suggested — {bucketNoun} of {latest.bucket}
         </span>
       </div>
 
-      <div className={'relative flex items-end gap-1'} style={{ height: 80 }}>
+      <div
+        className={'relative flex items-end gap-1 overflow-x-auto'}
+        style={{ height: 80 }}
+      >
         {buckets.map((bucket) => (
           <div
             key={bucket.bucket}
-            className={'bg-primary/70 flex-1 rounded-sm'}
+            className={'bg-primary/70 min-w-2 flex-1 rounded-sm'}
             style={{ height: `${Math.max(2, bucket.share * 100)}%` }}
             title={`${bucket.bucket}: ${Math.round(bucket.share * 100)}% of ${bucket.totalViews.toLocaleString()} views`}
           />
@@ -109,8 +113,8 @@ export function TrafficShareCard({
 
       <p className={'text-muted-foreground text-xs'}>
         {crossed
-          ? 'Above 60% — the algorithm is recommending this channel rather than merely answering searches.'
-          : 'Below 60% — views still come mostly from Search and external sources. The dashed line marks recommended-channel territory.'}
+          ? `Above 60% in the ${bucketNoun} shown — recommendations, not just search. That is the newest ${bucketNoun} with traffic, which may not be the current one.`
+          : `Below 60% in the ${bucketNoun} shown — views still come mostly from Search and external sources. The dashed line marks recommended-channel territory.`}
       </p>
     </div>
   );
@@ -144,6 +148,57 @@ const GROUP_COLORS: Record<TrafficSourceGroup, string> = {
   direct: 'bg-muted-foreground/40',
   other: 'bg-muted-foreground',
 };
+
+const STACK_HEIGHT_PX = 80;
+const MIN_SLICE_PX = 2;
+
+/**
+ * Pixel height per group for one bucket's stack.
+ *
+ * Percentage heights summing to 100% cannot carry a per-slice minimum: the
+ * floors add pixels the container takes back out of every slice, so a 97%
+ * group drew at roughly 82% while its own tooltip still reported 97%.
+ * Laying the stack out in pixels lets the floors be borrowed from the
+ * largest slice — the only one with room — so the total stays exactly the
+ * container height and the distortion lands where it is least visible.
+ */
+function stackHeights(
+  bucket: TrafficGroupBucket,
+): Map<TrafficSourceGroup, number> {
+  const heights = new Map<TrafficSourceGroup, number>();
+
+  if (bucket.totalViews === 0) {
+    // An invisible column between full-height neighbours reads as a
+    // rendering hole rather than a quiet week.
+    heights.set('other', MIN_SLICE_PX);
+
+    return heights;
+  }
+
+  let borrowed = 0;
+
+  for (const group of bucket.groups) {
+    const raw = group.share * STACK_HEIGHT_PX;
+
+    if (group.views > 0 && raw < MIN_SLICE_PX) {
+      heights.set(group.group, MIN_SLICE_PX);
+      borrowed += MIN_SLICE_PX - raw;
+    } else {
+      heights.set(group.group, raw);
+    }
+  }
+
+  const largest = [...bucket.groups].sort((a, b) => b.views - a.views)[0];
+
+  if (largest && borrowed > 0) {
+    heights.set(
+      largest.group,
+      Math.max(MIN_SLICE_PX, (heights.get(largest.group) ?? 0) - borrowed),
+    );
+  }
+
+  return heights;
+}
 
 interface TrafficBreakdownCardProps {
   /**
@@ -254,42 +309,34 @@ export function TrafficBreakdownCard({
         className={'flex items-end gap-1 overflow-x-auto'}
         style={{ height: 80 }}
       >
-        {buckets.map((bucket) => (
-          <div
-            key={bucket.bucket}
-            className={
-              'flex h-full min-w-2 flex-1 flex-col-reverse overflow-hidden rounded-sm'
-            }
-            title={
-              bucket.totalViews === 0 ? `${bucket.bucket}: no views` : undefined
-            }
-          >
-            {bucket.groups.map((group) => (
-              <div
-                key={group.group}
-                className={GROUP_COLORS[group.group]}
-                style={{
-                  height: `${group.share * 100}%`,
-                  // A group under ~1.3% is sub-pixel in an 80px stack: it
-                  // disappears and its tooltip becomes unhoverable, so a
-                  // small-but-real surface reads as absent.
-                  // A non-zero group under ~1.3% is sub-pixel in an 80px
-                  // stack; a bucket with no views at all would otherwise
-                  // render as an invisible gap between full-height
-                  // neighbours, with nothing to hover.
-                  minHeight:
-                    group.views > 0 ||
-                    (bucket.totalViews === 0 && group.group === 'other')
-                      ? 2
-                      : 0,
-                }}
-                title={`${bucket.bucket} — ${GROUP_LABELS[group.group]}: ${Math.round(
-                  group.share * 100,
-                )}% of ${bucket.totalViews.toLocaleString()} views`}
-              />
-            ))}
-          </div>
-        ))}
+        {buckets.map((bucket) => {
+          const heights = stackHeights(bucket);
+
+          return (
+            <div
+              key={bucket.bucket}
+              className={
+                'flex h-full min-w-2 flex-1 flex-col-reverse overflow-hidden rounded-sm'
+              }
+              title={
+                bucket.totalViews === 0
+                  ? `${bucket.bucket}: no views`
+                  : undefined
+              }
+            >
+              {bucket.groups.map((group) => (
+                <div
+                  key={group.group}
+                  className={GROUP_COLORS[group.group]}
+                  style={{ height: heights.get(group.group) ?? 0 }}
+                  title={`${bucket.bucket} — ${GROUP_LABELS[group.group]}: ${Math.round(
+                    group.share * 100,
+                  )}% of ${bucket.totalViews.toLocaleString()} views`}
+                />
+              ))}
+            </div>
+          );
+        })}
       </div>
 
       <p className={'text-muted-foreground text-xs'}>

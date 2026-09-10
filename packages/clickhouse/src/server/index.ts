@@ -40,7 +40,6 @@ export {
 export type { VideoQualityMetrics } from '../queries-detail';
 
 export {
-  DEFAULT_BROWSE_SUGGESTED_SOURCES,
   insertVideoDims,
   queryBackCatalogShare,
   queryChannelWatchWindow,

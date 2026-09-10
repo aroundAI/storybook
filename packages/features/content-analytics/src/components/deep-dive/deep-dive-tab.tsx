@@ -194,7 +194,7 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
         ) : (
           <TrafficShareCard
             buckets={trafficShareBuckets}
-            periodLabel={'latest week'}
+            bucketNoun={'week'}
             isError={
               trafficBreakdownQuery.isError &&
               trafficBreakdownQuery.data === undefined

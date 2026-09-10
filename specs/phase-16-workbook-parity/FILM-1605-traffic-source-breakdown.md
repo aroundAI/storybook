@@ -95,8 +95,8 @@ decision rather than with an accident:
 | File | Change |
 |------|--------|
 | `packages/clickhouse/src/lib/traffic-groups.ts` | New, pure. `TRAFFIC_SOURCE_GROUPS`, `TrafficSourceGroup`, `groupForSource(source)` and `groupTrafficRows(rows, {allGroups: true})` returning per-bucket per-group views, watch minutes and share. No ClickHouse import, no I/O — the split `lib/cohort-growth.ts` (FILM-1604) and `lib/subscriber-series.ts` (FILM-1607) already establish, and the reason the grouping is unit-testable while `CLICKHOUSE_ENABLED=false`. |
-| `packages/clickhouse/src/queries-advanced.ts` | New `queryTrafficSourceBreakdown({scope, bucket, startDate?, endDate?})`. Groups by `toStartOfWeek/Month(metric_date)` **and raw `source`**, never by group — the SQL must not know the taxonomy, or §2's first convention is lost and a mapping change becomes a migration. Video set from `dimSubquery(conditions)`, exactly as `queryTrafficShareTrend` does at `:417-427`. |
-| `packages/clickhouse/src/queries-advanced.ts` | `queryTrafficShareTrend` reimplemented over the breakdown: fetch grouped rows, then fold `browse_suggested` share. Its **return type and numbers must not change** — `getTrafficShareTrendAction` and `TrafficShareCard` are live. Keeping two SQL paths is the alternative, and it guarantees the two drift the first time the browse set is edited. |
+| `packages/clickhouse/src/queries-advanced.ts` | New `queryTrafficSourceBreakdown({scope, bucket, startDate?, endDate?})`. Groups by `toStartOfWeek/Month(metric_date)` **and raw `source`**, never by group — the SQL must not know the taxonomy, or §2's first convention is lost and a mapping change becomes a migration. Video set from `dimSubquery(conditions)`, the same bound the share trend used before it was deleted. |
+| `packages/clickhouse/src/queries-advanced.ts` | `queryTrafficShareTrend` and `getTrafficShareTrendAction` are **deleted**. The intent was to rebuild the trend on the breakdown so there was one SQL path; the honest end state is that the trend is a fold over the breakdown response, and the tab does that fold client-side. Keeping the query exported afterwards left an unbounded per-source fetch producing output nothing consumed. Its browse+suggested numbers are unchanged and asserted in the pure fold test, which is what the tab actually runs. |
 | `packages/features/content-analytics/src/server/deep-dive-actions.ts` | New `getTrafficBreakdownAction` reusing `ScopeSchema` and `toDimScope` (`:28`, `:43`), with `await assertScopeAccess(scope)` first like every other action in the file (`:61`, `:91`, `:121`, `:147`). The query carries no tenant predicate of its own beyond the scope conditions, so the guard is the boundary, not a formality. |
 | `packages/features/content-analytics/src/components/deep-dive/traffic-share-card.tsx` | Gains a stacked variant over the group breakdown. `TrafficShareEntry` (`:6`) stays for the existing single-share mode so the card keeps working during the change. |
 | `packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx` | Mount the stacked card. FILM-1611 does not claim this one, so deferring the surface would leave it a sixth orphan in the phase whose defining defect is orphaned components — and would leave the question §1 opens with still unanswerable in the app. |
@@ -140,8 +140,8 @@ dates merely to be present is not a bound: `2015-01-01` to `2026-01-01`
 names a window and still returns ~4,000 daily buckets. Capping only `day`
 is not a bound either: a week call with no dates returns every bucket in
 the channel's history. The *scan*
-is bounded by `dimSubquery`, the same bound `queryTrafficShareTrend`
-already runs under.
+is bounded by `dimSubquery`, the same bound the traffic-source reads
+already run under.
 
 `bucket` is a closed union (`'week' | 'month' | 'day'`), interpolated into
 `toStartOfWeek` / `toStartOfMonth` / `toDate` by lookup, never by string
@@ -175,7 +175,7 @@ deliver what this paragraph claims.
 - [x] An unrecognised `TS_*` source is counted in `other` and not dropped
 - [x] `CHANNEL_PAGE` is its own group and is absent from `browse_suggested`
 - [x] `END_SCREEN` and `ANNOTATION` are in `other`, not `browse_suggested`
-- [x] `queryTrafficShareTrend` returns the same shape and the same browse-suggested numbers as before the change
+- [x] The Browse+Suggested numbers are unchanged from before the rewrite, asserted on the fold the tab runs
 - [x] The Deep Dive tab issues one traffic query, not two identical ones — the trend is derived from the breakdown response
 - [x] The two Browse+Suggested figures on screen name their denominators
 - [x] The bucket union has one definition, so removing a granularity is a compile error rather than a silent weekly fallback
@@ -193,7 +193,11 @@ deliver what this paragraph claims.
 - [x] A failed fetch renders as a failure, not as "no data yet" — on **both** cards fed by the shared query, gated on whether a response ever arrived rather than on the derived array being empty
 - [x] The empty state names the window instead of promising data that may already exist outside it
 - [x] A bucket with no views renders a hoverable baseline rather than an invisible gap
-- [x] `queryTrafficShareTrend` is deleted, not left exported as an unbounded path to output the tab now derives
+- [x] `queryTrafficShareTrend` and its action are deleted, not left exported as unbounded paths to output the tab now derives
+- [x] `DEFAULT_BROWSE_SUGGESTED_SOURCES` is deleted with the override parameter it documented; the taxonomy is the only definition
+- [x] The trend headline names the bucket it came from, which is the newest bucket *with traffic* and may not be the current one
+- [x] Stack slices are laid out in pixels, so a minimum slice height cannot distort the dominant group
+- [x] Both cards' bar rows scroll rather than collapsing
 - [x] The Browse+Suggested source set has one definition, derived from the taxonomy
 - [x] Every granularity is bounded by the schema, not by the caller happening to pass a window
 - [x] `getTrafficShareTrendAction` is removed rather than left as an unbounded path to identical output
@@ -228,9 +232,12 @@ main behind 120 green tests. Locally, `./scripts/local-env.sh up` then
 
 ## 10. Risk
 
-Rebuilding `queryTrafficShareTrend` on the new query touches a shipped,
-rendered number. The mitigation is the acceptance criterion above: the
-existing browse-suggested figures must be byte-identical before and after,
-asserted against the same fixture. If that is inconvenient to test, the
-reimplementation is the part to drop — the breakdown stands alone, and two
-SQL paths for one week is cheaper than a silently moved milestone.
+Rebuilding the Browse+Suggested trend touched a shipped, rendered number.
+The mitigation was the acceptance criterion above: the existing figures had
+to be byte-identical before and after, asserted against the same fixture
+and cross-checked against a real server.
+
+That held — and then review found the rebuilt query had no callers left
+once the tab derived the fold client-side, so it and its action were
+deleted rather than kept as unbounded paths to output nothing consumed.
+The number they produced is still asserted, on the fold the tab runs.

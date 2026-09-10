@@ -7,7 +7,6 @@ import {
   groupTrafficRows,
   sourcesInGroup,
 } from '../src/lib/traffic-groups';
-import { DEFAULT_BROWSE_SUGGESTED_SOURCES } from '../src/queries-advanced';
 
 function row(
   bucket: string,
@@ -19,23 +18,15 @@ function row(
 }
 
 describe('groupForSource', () => {
-  it('derives the shipped browse+suggested constant from this taxonomy', () => {
-    // Not two hand-kept lists that happen to agree: reclassifying a source
-    // here must move the trend's numerator with it.
-    expect([...DEFAULT_BROWSE_SUGGESTED_SOURCES].sort()).toEqual(
-      sourcesInGroup('browse_suggested').sort(),
-    );
-  });
-
   it('maps the browse+suggested set exactly as the shipped trend does', () => {
-    // These three are the shipped Browse+Suggested set. If this group and
-    // that constant disagree, the trend the tab derives moves a number
-    // that is already on screen.
-    for (const source of DEFAULT_BROWSE_SUGGESTED_SOURCES) {
-      expect(groupForSource(source)).toBe('browse_suggested');
-    }
-
-    expect(DEFAULT_BROWSE_SUGGESTED_SOURCES).toHaveLength(3);
+    // The shipped Browse+Suggested set. If this changes, the trend the tab
+    // derives moves a number that is already on screen and the 60%
+    // milestone shifts with it.
+    expect(sourcesInGroup('browse_suggested').sort()).toEqual([
+      'NOTIFICATION',
+      'RELATED_VIDEO',
+      'SUBSCRIBER',
+    ]);
   });
 
   it('keeps CHANNEL_PAGE out of browse+suggested', () => {
