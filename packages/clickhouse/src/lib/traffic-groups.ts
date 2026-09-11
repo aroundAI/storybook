@@ -69,7 +69,15 @@ const SOURCE_TO_GROUP: Record<string, TrafficSourceGroup> = {
  * denominator, so the groups would silently stop summing to the total.
  */
 export function groupForSource(source: string): TrafficSourceGroup {
-  return SOURCE_TO_GROUP[source] ?? 'other';
+  // Object.hasOwn, not a bare index. `SOURCE_TO_GROUP['constructor']`
+  // resolves up the prototype chain to a truthy function, so `??` never
+  // fires and the row is accumulated under a key that is not in
+  // TRAFFIC_SOURCE_GROUPS — its views then vanish from every group *and*
+  // from the bucket total, which is precisely what the fallback exists to
+  // prevent.
+  return Object.hasOwn(SOURCE_TO_GROUP, source)
+    ? SOURCE_TO_GROUP[source]!
+    : 'other';
 }
 
 /**

@@ -173,6 +173,7 @@ deliver what this paragraph claims.
 - [x] Every group in `TRAFFIC_SOURCE_GROUPS` appears in every bucket, as zero when it has no views
 - [x] Group shares within a bucket sum to 1 (within float tolerance) whenever the bucket has views
 - [x] An unrecognised `TS_*` source is counted in `other` and not dropped
+- [x] A source named after an `Object.prototype` member resolves to `other` rather than a function, at both the taxonomy and the ingest lookup
 - [x] `CHANNEL_PAGE` is its own group and is absent from `browse_suggested`
 - [x] `END_SCREEN` and `ANNOTATION` are in `other`, not `browse_suggested`
 - [x] The Browse+Suggested numbers are unchanged from before the rewrite, asserted on the fold the tab runs

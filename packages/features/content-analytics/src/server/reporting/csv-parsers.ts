@@ -227,7 +227,12 @@ export function parseTrafficSourceReport(
     const code = stringAt(row, sourceIdx);
     if (!date || !videoId || !code) continue;
 
-    const source = TRAFFIC_SOURCE_CODES[code] ?? `TS_${code}`;
+    // Object.hasOwn, not a bare index: TRAFFIC_SOURCE_CODES['constructor']
+    // reaches Object.prototype and returns a truthy function, which would be
+    // written to video_traffic_sources as the stored source name.
+    const source = Object.hasOwn(TRAFFIC_SOURCE_CODES, code)
+      ? TRAFFIC_SOURCE_CODES[code]!
+      : `TS_${code}`;
     const key = `${videoId}:${date}:${source}`;
     const existing = byKey.get(key) ?? {
       date,

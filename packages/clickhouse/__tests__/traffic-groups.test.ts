@@ -54,6 +54,37 @@ describe('groupForSource', () => {
     expect(groupForSource('VIDEO_REMIXES')).toBe('shorts_feed');
   });
 
+  it('does not resolve a source up the prototype chain', () => {
+    // A bare index returns Object.prototype.constructor here — truthy, so
+    // `??` never fires and the row lands under a key outside
+    // TRAFFIC_SOURCE_GROUPS, removing its views from every group and from
+    // the bucket total at once.
+    for (const source of [
+      'constructor',
+      'toString',
+      'valueOf',
+      'hasOwnProperty',
+      '__proto__',
+    ]) {
+      expect(groupForSource(source)).toBe('other');
+      expect(TRAFFIC_SOURCE_GROUPS).toContain(groupForSource(source));
+    }
+  });
+
+  it('keeps a prototype-named source inside the bucket total', () => {
+    const result = groupTrafficRows([
+      row('2026-01-05', 'YT_SEARCH', 90),
+      row('2026-01-05', 'constructor', 10),
+    ]);
+
+    expect(result[0]!.totalViews).toBe(100);
+    expect(result[0]!.groups.find((g) => g.group === 'other')!.views).toBe(10);
+    expect(result[0]!.groups.reduce((sum, g) => sum + g.share, 0)).toBeCloseTo(
+      1,
+      10,
+    );
+  });
+
   it('falls back to other for a code the parser did not recognise', () => {
     // csv-parsers stores TS_<code> for unknown codes, so these are real.
     expect(groupForSource('TS_99')).toBe('other');
