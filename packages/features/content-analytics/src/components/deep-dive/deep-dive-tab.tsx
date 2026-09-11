@@ -54,7 +54,7 @@ const TRAFFIC_WINDOW_WEEKS = 52;
  * data is missing, so it must not be able to name a window the query has
  * stopped asking for.
  */
-const TRAFFIC_WINDOW_LABEL = `the last ${TRAFFIC_WINDOW_WEEKS} weeks`;
+const TRAFFIC_WINDOW_LABEL = `the last ${TRAFFIC_WINDOW_WEEKS} complete weeks`;
 
 export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
   const [medianMode, setMedianMode] = useState<MedianMode>(
@@ -81,14 +81,26 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
   const today = new Date().toISOString().slice(0, 10);
 
   const trafficWindow = useMemo(() => {
-    const to = new Date(`${today}T00:00:00.000Z`);
-    const from = new Date(to);
+    // Both ends land on the week boundary ClickHouse buckets on
+    // (toStartOfWeek is Sunday), so every bucket returned is a complete
+    // week. Snapping only the leading edge still left the newest bucket
+    // partial — and that is the one TrafficShareCard headlines against the
+    // 60% threshold, so a Monday ingest could read "above 60%" off a single
+    // day.
+    const currentWeekStart = new Date(`${today}T00:00:00.000Z`);
+
+    currentWeekStart.setUTCDate(
+      currentWeekStart.getUTCDate() - currentWeekStart.getUTCDay(),
+    );
+
+    // Inclusive upper bound, so the last complete week's Saturday.
+    const to = new Date(currentWeekStart);
+
+    to.setUTCDate(to.getUTCDate() - 1);
+
+    const from = new Date(currentWeekStart);
 
     from.setUTCDate(from.getUTCDate() - TRAFFIC_WINDOW_WEEKS * 7);
-    // Snapped to the week start ClickHouse buckets on (toStartOfWeek is
-    // Sunday). An arbitrary weekday returns a partial leading bucket, which
-    // the whole-window legend would average in without saying so.
-    from.setUTCDate(from.getUTCDate() - from.getUTCDay());
 
     return { from, to, key: `${from.toISOString().slice(0, 10)}..${today}` };
   }, [today]);

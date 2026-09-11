@@ -202,7 +202,9 @@ deliver what this paragraph claims.
 - [x] Stack slices are emitted as percentages, so a scrollbar shrinking the column cannot clip the topmost slice
 - [x] A zero-view bucket's own tooltip is reachable
 - [x] The window label is derived from the window constant
-- [x] The requested window starts on the same week boundary ClickHouse buckets on
+- [x] Both window edges land on the week boundary ClickHouse buckets on, so every bucket returned is a complete week
+- [x] A bucket with no views reports no traffic mix rather than a 0% composition
+- [x] The threshold line and the bars share one box, so neither the scroll width nor the scrollbar height offsets them
 - [x] The Browse+Suggested source set has one definition, derived from the taxonomy
 - [x] Every granularity is bounded by the schema, not by the caller happening to pass a window
 - [x] `getTrafficShareTrendAction` is removed rather than left as an unbounded path to identical output

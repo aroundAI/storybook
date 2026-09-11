@@ -35,6 +35,11 @@ interface TrafficShareCardProps {
   isError?: boolean;
 }
 
+/** Bar/stack height in px. Shared by both cards and by stackHeights,
+ * which lays slices out against it. */
+const STACK_HEIGHT_PX = 80;
+const MIN_SLICE_PX = 2;
+
 /** Share above which a channel reads as algorithm-recommended. */
 const RECOMMENDED_CHANNEL_THRESHOLD = 0.6;
 
@@ -78,20 +83,34 @@ export function TrafficShareCard({
 
   const latest = buckets[buckets.length - 1]!;
   const crossed = latest.share >= RECOMMENDED_CHANNEL_THRESHOLD;
+  // A share of 0 out of 0 views is not a composition, and saying "views come
+  // mostly from Search" about a week with no views contradicts the stacked
+  // card, which renders the same bucket as "no views".
+  const hasViews = latest.totalViews > 0;
 
   return (
     <div className={'flex flex-col gap-4'}>
       <div className={'flex items-baseline gap-2'}>
         <span className={'text-2xl font-semibold'}>
-          {Math.round(latest.share * 100)}%
+          {hasViews ? `${Math.round(latest.share * 100)}%` : '—'}
         </span>
         <span className={'text-muted-foreground text-sm'}>
           Browse + Suggested — {bucketNoun} of {latest.bucket}
         </span>
       </div>
 
-      <div className={'relative'} style={{ height: 80 }}>
-        <div className={'flex h-full items-end gap-1 overflow-x-auto'}>
+      <div className={'overflow-x-auto'}>
+        {/* The threshold line is positioned against this inner box, not the
+            scroller: an absolute child of an overflow container is laid out
+            against its *visible* width and scrolls away with the content,
+            while a wrapper outside the scroller does not lose the
+            scrollbar's height and so sits a few pixels off the bars. Sized
+            to content but at least full width, this box is both the bars'
+            containing block and the full scroll width. */}
+        <div
+          className={'relative flex w-max min-w-full items-end gap-1'}
+          style={{ height: STACK_HEIGHT_PX }}
+        >
           {buckets.map((bucket) => (
             <div
               key={bucket.bucket}
@@ -100,24 +119,22 @@ export function TrafficShareCard({
               title={`${bucket.bucket}: ${Math.round(bucket.share * 100)}% of ${bucket.totalViews.toLocaleString()} views`}
             />
           ))}
-        </div>
 
-        {/* On the wrapper, not the scroller: an absolutely positioned child
-            of an overflow container is laid out against its visible width
-            and scrolls with the content, so the threshold would cover only
-            the leftmost screenful. */}
-        <div
-          className={
-            'border-foreground/40 pointer-events-none absolute left-0 right-0 border-t border-dashed'
-          }
-          style={{ bottom: `${RECOMMENDED_CHANNEL_THRESHOLD * 100}%` }}
-        />
+          <div
+            className={
+              'border-foreground/40 pointer-events-none absolute left-0 right-0 border-t border-dashed'
+            }
+            style={{ bottom: `${RECOMMENDED_CHANNEL_THRESHOLD * 100}%` }}
+          />
+        </div>
       </div>
 
       <p className={'text-muted-foreground text-xs'}>
-        {crossed
-          ? `Above 60% in the ${bucketNoun} shown — recommendations, not just search. That is the newest ${bucketNoun} with traffic, which may not be the current one.`
-          : `Below 60% in the ${bucketNoun} shown — views still come mostly from Search and external sources. The dashed line marks recommended-channel territory.`}
+        {!hasViews
+          ? `No views in the ${bucketNoun} of ${latest.bucket}, so there is no traffic mix to report. That is the newest ${bucketNoun} with data.`
+          : crossed
+            ? `Above 60% in the ${bucketNoun} shown — recommendations, not just search. That is the newest ${bucketNoun} with traffic, which may not be the current one.`
+            : `Below 60% in the ${bucketNoun} shown — views still come mostly from Search and external sources. The dashed line marks recommended-channel territory.`}
       </p>
     </div>
   );
@@ -151,9 +168,6 @@ const GROUP_COLORS: Record<TrafficSourceGroup, string> = {
   direct: 'bg-muted-foreground/40',
   other: 'bg-muted-foreground',
 };
-
-const STACK_HEIGHT_PX = 80;
-const MIN_SLICE_PX = 2;
 
 /**
  * Pixel height per group for one bucket's stack.
@@ -310,7 +324,7 @@ export function TrafficBreakdownCard({
           once. */}
       <div
         className={'flex items-end gap-1 overflow-x-auto'}
-        style={{ height: 80 }}
+        style={{ height: STACK_HEIGHT_PX }}
       >
         {buckets.map((bucket) => {
           const heights = stackHeights(bucket);
