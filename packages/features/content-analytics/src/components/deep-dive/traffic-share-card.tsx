@@ -89,7 +89,11 @@ export function TrafficShareCard({
   }
 
   const latest = buckets[buckets.length - 1]!;
-  const crossed = latest.share >= RECOMMENDED_CHANNEL_THRESHOLD;
+  // Gated on the *displayed* figure, not the raw share. Rounding to a whole
+  // percent while testing the unrounded value disagrees on [59.5%, 60%): the
+  // headline reads "60%" directly above a footnote saying "Below 60%".
+  const shownPercent = Math.round(latest.share * 100);
+  const crossed = shownPercent >= RECOMMENDED_CHANNEL_THRESHOLD * 100;
   // A share of 0 out of 0 views is not a composition, and saying "views come
   // mostly from Search" about a week with no views contradicts the stacked
   // card, which renders the same bucket as "no views".
@@ -99,7 +103,7 @@ export function TrafficShareCard({
     <div className={'flex flex-col gap-4'}>
       <div className={'flex items-baseline gap-2'}>
         <span className={'text-2xl font-semibold'}>
-          {hasViews ? `${Math.round(latest.share * 100)}%` : '—'}
+          {hasViews ? `${shownPercent}%` : '—'}
         </span>
         <span className={'text-muted-foreground text-sm'}>
           Browse + Suggested — {bucketNoun} of {latest.bucket}
@@ -121,7 +125,11 @@ export function TrafficShareCard({
           {buckets.map((bucket) => (
             <div
               key={bucket.bucket}
-              className={'bg-primary/70 min-w-2 flex-1 rounded-sm'}
+              className={`min-w-2 flex-1 rounded-sm ${
+                bucket.totalViews === 0
+                  ? 'bg-muted-foreground/30'
+                  : 'bg-primary/70'
+              }`}
               style={{
                 // The same MIN_SLICE_PX floor the stacked card uses, expressed
                 // as a percentage of the same nominal height — it read as a
@@ -131,7 +139,11 @@ export function TrafficShareCard({
                 // true share; there is no neighbouring slice to borrow from.
                 height: `${Math.max(MIN_SLICE_FLOOR_PERCENT, bucket.share * 100)}%`,
               }}
-              title={`${bucket.bucket}: ${Math.round(bucket.share * 100)}% of ${bucket.totalViews.toLocaleString()} views`}
+              title={
+                bucket.totalViews === 0
+                  ? `${bucket.bucket}: no views`
+                  : `${bucket.bucket}: ${Math.round(bucket.share * 100)}% of ${bucket.totalViews.toLocaleString()} views`
+              }
             />
           ))}
 

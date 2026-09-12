@@ -193,7 +193,8 @@ deliver what this paragraph claims.
 - [x] Legend percentages cover the whole window shown, not the latest bucket
 - [x] A failed fetch renders as a failure, not as "no data yet" — on **both** cards fed by the shared query, gated on whether a response ever arrived rather than on the derived array being empty
 - [x] The empty state names the window instead of promising data that may already exist outside it
-- [x] A bucket with no views renders a hoverable baseline rather than an invisible gap
+- [x] A bucket with no views renders a hoverable baseline rather than an invisible gap, on **both** cards, and is visually distinct from a bucket with traffic and a genuine 0% share
+- [x] The threshold verdict is gated on the displayed percentage, so the headline and the footnote cannot disagree
 - [x] `queryTrafficShareTrend` and its action are deleted, not left exported as unbounded paths to output the tab now derives
 - [x] `DEFAULT_BROWSE_SUGGESTED_SOURCES` is deleted with the override parameter it documented; the taxonomy is the only definition
 - [x] The trend headline names the bucket it came from, which is the newest bucket *with traffic* and may not be the current one

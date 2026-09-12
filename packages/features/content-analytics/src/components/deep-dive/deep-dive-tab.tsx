@@ -239,7 +239,7 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
         title={'Where views came from'}
         icon={PieChart}
         description={
-          'Every traffic surface as a share of views — the seven beyond Browse + Suggested.'
+          'Search, Shorts, external, playlists, the channel page and direct — plus an Other residual — as a share of views.'
         }
         className={'h-auto'}
       >

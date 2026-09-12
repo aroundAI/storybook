@@ -183,8 +183,10 @@ export const getTrafficBreakdownAction = enhanceAction(
     return queryTrafficSourceBreakdown({
       scope: toDimScope(scope),
       bucket,
-      startDate: from ? formatDate(from) : undefined,
-      endDate: to ? formatDate(to) : undefined,
+      // Not conditional: the schema requires both dates, which is what
+      // makes MAX_BREAKDOWN_SPAN_DAYS a bound rather than a suggestion.
+      startDate: formatDate(from),
+      endDate: formatDate(to),
     });
   },
   {

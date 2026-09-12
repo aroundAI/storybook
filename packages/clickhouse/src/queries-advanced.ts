@@ -369,8 +369,9 @@ export async function queryRollingViews(input: {
   }));
 }
 
-/** Bucket granularities, mapped to the ClickHouse function by lookup.
-
+/**
+ * Bucket granularities, mapped to the ClickHouse function by lookup.
+ *
  * `bucket` reaches SQL by interpolation because ClickHouse cannot bind a
  * function name as a parameter, so it must never carry caller text — the
  * same treatment VIDEO_AGE_ORDER_COLUMNS gives `orderBy`.
@@ -466,8 +467,8 @@ async function queryTrafficSourceRows(input: {
  * Views and watch time per traffic-source group, per bucket (FILM-1605).
  *
  * Answers "where did views come from, as a share of the whole, over time"
- * — the seven surfaces beyond Browse+Suggested that a single share
- * figure cannot show.
+ * — the six surfaces beyond Browse+Suggested, plus an Other residual,
+ * that a single share figure cannot show.
  *
  * The denominator is matched videos only: unmatched traffic rows are
  * dropped at ingest and channel_daily has no `source` column to hold them,
