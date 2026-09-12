@@ -78,10 +78,12 @@ export function TrafficShareCard({
     return <TrafficShareCardSkeleton />;
   }
 
-  // Same distinction the stacked card makes. Both are fed by one query, so
-  // a failure that left this branch out would put "arrives with the bulk
-  // report ingest" beside a card correctly reporting the fetch failed.
-  if (isError && buckets.length === 0) {
+  // Not gated on an empty array: the tab fills the window's 52 week starts,
+  // so `buckets` is never empty and that test made this branch dead code —
+  // a failed fetch then fell through to "no views", asserting absence where
+  // the truth is failure. The caller passes `isError` only when no response
+  // ever arrived, which is the check that matters.
+  if (isError) {
     return (
       <p className={'text-muted-foreground text-sm'}>
         Traffic-source data could not be loaded. This is a fetch failure, not an
@@ -99,7 +101,14 @@ export function TrafficShareCard({
     );
   }
 
-  const latest = buckets[buckets.length - 1]!;
+  // The newest bucket *with traffic*, which is what the footnote and the
+  // caveat both claim. Since the tab fills absent weeks, the final element
+  // is the most recently closed calendar week whether or not it has been
+  // ingested yet — picking it blindly reported "no views" for a channel
+  // whose previous 51 weeks are full.
+  const latest =
+    [...buckets].reverse().find((bucket) => bucket.totalViews > 0) ??
+    buckets[buckets.length - 1]!;
   // Gated on the *displayed* figure, not the raw share. Rounding to a whole
   // percent while testing the unrounded value disagrees on [59.5%, 60%): the
   // headline reads "60%" directly above a footnote saying "Below 60%".
@@ -298,10 +307,12 @@ export function TrafficBreakdownCard({
   // Distinct from the empty state on purpose. "It arrives with the bulk
   // report ingest" is a promise about the future, and a scope denial or a
   // ClickHouse timeout will never keep it.
-  // Only when there is nothing to fall back on: React Query keeps `data`
-  // through a failed background refetch, and discarding a chart the user is
-  // already reading is worse than quietly serving the last good one.
-  if (isError && buckets.length === 0) {
+  // The caller passes `isError` only when `data === undefined` — React Query
+  // keeps `data` through a failed background refetch, and discarding a chart
+  // the user is already reading is worse than serving the last good one.
+  // Testing `buckets.length` here instead would never fire, since the tab
+  // fills every week in the window.
+  if (isError) {
     return (
       <p className={'text-muted-foreground text-sm'}>
         Traffic-source data could not be loaded. This is a fetch failure, not an

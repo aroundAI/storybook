@@ -191,13 +191,13 @@ deliver what this paragraph claims.
 - [x] A bucket outside the union yields an executable query, not `undefined(...)`
 - [x] The UI states that the denominator excludes unmatched videos
 - [x] Legend percentages cover the whole window shown, not the latest bucket
-- [x] A failed fetch renders as a failure, not as "no data yet" — on **both** cards fed by the shared query, gated on whether a response ever arrived rather than on the derived array being empty
+- [x] A failed fetch renders as a failure, not as "no data yet" — on **both** cards fed by the shared query, gated on whether a response ever arrived and **not** on the derived array being empty, which the gap-fill makes impossible
 - [x] The empty state names the window instead of promising data that may already exist outside it
 - [x] A bucket with no views renders a hoverable baseline rather than an invisible gap, on **both** cards, and is visually distinct from a bucket with traffic and a genuine 0% share
 - [x] The threshold verdict is gated on the displayed percentage, so the headline and the footnote cannot disagree
 - [x] `queryTrafficShareTrend` and its action are deleted, not left exported as unbounded paths to output the tab now derives
 - [x] `DEFAULT_BROWSE_SUGGESTED_SOURCES` is deleted with the override parameter it documented; the taxonomy is the only definition
-- [x] The trend headline names the bucket it came from, which is the newest bucket *with traffic* and may not be the current one
+- [x] The trend headline names the bucket it came from, which is the newest bucket *with traffic* — selected by scanning back past filled-in quiet weeks, not by taking the last element
 - [x] Stack slices are laid out in pixels, so a minimum slice height cannot distort the dominant group
 - [x] Both cards' bar rows scroll rather than collapsing, and the 60% threshold line shares the bars' box so it neither scrolls away nor sits off them
 - [x] Stack slices do their floor arithmetic in pixels and are emitted as percentages, so a scrollbar shrinking the column cannot clip the topmost slice
