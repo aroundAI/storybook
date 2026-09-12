@@ -82,11 +82,13 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
 
   const trafficWindow = useMemo(() => {
     // Both ends land on the week boundary ClickHouse buckets on
-    // (toStartOfWeek is Sunday), so every bucket returned is a complete
-    // week. Snapping only the leading edge still left the newest bucket
-    // partial — and that is the one TrafficShareCard headlines against the
-    // 60% threshold, so a Monday ingest could read "above 60%" off a single
-    // day.
+    // (toStartOfWeek is Sunday), so every bucket is a complete *calendar*
+    // week. That is not the same as a fully *ingested* one: the bulk report
+    // ingest lags 1-3 days, so the newest closed week can still be holding
+    // only its first few days. Snapping the leading edge alone was worse —
+    // the newest bucket was always partial — but the trend card still
+    // headlines this bucket against the threshold, so its footnote says the
+    // bucket may be partially ingested rather than implying otherwise.
     const currentWeekStart = new Date(`${today}T00:00:00.000Z`);
 
     currentWeekStart.setUTCDate(
@@ -102,7 +104,15 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
 
     from.setUTCDate(from.getUTCDate() - TRAFFIC_WINDOW_WEEKS * 7);
 
-    return { from, to, key: `${from.toISOString().slice(0, 10)}..${today}` };
+    return {
+      from,
+      to,
+      // Keyed on the window itself, not on `today`: the bounds only move
+      // once a week, and keying on the date would abandon a byte-identical
+      // cache entry every UTC midnight — skeletons and a fresh
+      // `video_traffic_sources FINAL` scan six days out of seven.
+      key: `${from.toISOString().slice(0, 10)}..${to.toISOString().slice(0, 10)}`,
+    };
   }, [today]);
 
   const trafficBreakdownQuery = useQuery({

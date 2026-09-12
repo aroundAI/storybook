@@ -198,11 +198,13 @@ deliver what this paragraph claims.
 - [x] `DEFAULT_BROWSE_SUGGESTED_SOURCES` is deleted with the override parameter it documented; the taxonomy is the only definition
 - [x] The trend headline names the bucket it came from, which is the newest bucket *with traffic* and may not be the current one
 - [x] Stack slices are laid out in pixels, so a minimum slice height cannot distort the dominant group
-- [x] Both cards' bar rows scroll rather than collapsing, and the 60% threshold line sits outside the scroller so it does not scroll away
-- [x] Stack slices are emitted as percentages, so a scrollbar shrinking the column cannot clip the topmost slice
+- [x] Both cards' bar rows scroll rather than collapsing, and the 60% threshold line shares the bars' box so it neither scrolls away nor sits off them
+- [x] Stack slices do their floor arithmetic in pixels and are emitted as percentages, so a scrollbar shrinking the column cannot clip the topmost slice
 - [x] A zero-view bucket's own tooltip is reachable
 - [x] The window label is derived from the window constant
-- [x] Both window edges land on the week boundary ClickHouse buckets on, so every bucket returned is a complete week
+- [x] Both window edges land on the week boundary ClickHouse buckets on, so every bucket is a complete calendar week
+- [x] The trend footnote says the headline bucket may be only partly ingested — a closed calendar week is not a fully ingested one, since report ingest lags a few days
+- [x] The cache key is the window, not the current date, so it does not churn daily over identical bounds
 - [x] A bucket with no views reports no traffic mix rather than a 0% composition
 - [x] The threshold line and the bars share one box, so neither the scroll width nor the scrollbar height offsets them
 - [x] The Browse+Suggested source set has one definition, derived from the taxonomy

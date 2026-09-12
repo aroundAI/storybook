@@ -133,7 +133,7 @@ export function TrafficShareCard({
         {!hasViews
           ? `No views in the ${bucketNoun} of ${latest.bucket}, so there is no traffic mix to report. That is the newest ${bucketNoun} with data.`
           : crossed
-            ? `Above 60% in the ${bucketNoun} shown — recommendations, not just search. That is the newest ${bucketNoun} with traffic, which may not be the current one.`
+            ? `Above 60% in the ${bucketNoun} shown — recommendations, not just search. That is the newest ${bucketNoun} with traffic; it may not be the current one, and report ingest lags a few days so it may be only partly counted.`
             : `Below 60% in the ${bucketNoun} shown — views still come mostly from Search and external sources. The dashed line marks recommended-channel territory.`}
       </p>
     </div>
@@ -181,15 +181,14 @@ const GROUP_COLORS: Record<TrafficSourceGroup, string> = {
  */
 function stackHeights(
   bucket: TrafficGroupBucket,
-): Map<TrafficSourceGroup, number> {
-  const heights = new Map<TrafficSourceGroup, number>();
+): Map<TrafficSourceGroup, string> {
+  const pixels = new Map<TrafficSourceGroup, number>();
+  const asPercent = (px: number) => `${(px / STACK_HEIGHT_PX) * 100}%`;
 
   if (bucket.totalViews === 0) {
     // An invisible column between full-height neighbours reads as a
     // rendering hole rather than a quiet week.
-    heights.set('other', MIN_SLICE_PX);
-
-    return heights;
+    return new Map([['other' as TrafficSourceGroup, asPercent(MIN_SLICE_PX)]]);
   }
 
   let borrowed = 0;
@@ -198,23 +197,31 @@ function stackHeights(
     const raw = group.share * STACK_HEIGHT_PX;
 
     if (group.views > 0 && raw < MIN_SLICE_PX) {
-      heights.set(group.group, MIN_SLICE_PX);
+      pixels.set(group.group, MIN_SLICE_PX);
       borrowed += MIN_SLICE_PX - raw;
     } else {
-      heights.set(group.group, raw);
+      pixels.set(group.group, raw);
     }
   }
 
   const largest = [...bucket.groups].sort((a, b) => b.views - a.views)[0];
 
   if (largest && borrowed > 0) {
-    heights.set(
+    pixels.set(
       largest.group,
-      Math.max(MIN_SLICE_PX, (heights.get(largest.group) ?? 0) - borrowed),
+      Math.max(MIN_SLICE_PX, (pixels.get(largest.group) ?? 0) - borrowed),
     );
   }
 
-  return heights;
+  // The floor arithmetic has to happen in pixels — that is what makes the
+  // borrowing exact — but the result is emitted as percentages of the
+  // nominal height. The column is `h-full` inside a scroll container, so a
+  // classic horizontal scrollbar shrinks its content box below
+  // STACK_HEIGHT_PX, and a pixel total pinned to 80 would overflow and clip
+  // the topmost slice.
+  return new Map(
+    [...pixels].map(([group, px]) => [group, asPercent(px)] as const),
+  );
 }
 
 interface TrafficBreakdownCardProps {
