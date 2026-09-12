@@ -88,6 +88,15 @@ export function groupForSource(source: string): TrafficSourceGroup {
  * This enumerates a group's members for callers that need the set rather
  * than a lookup, which is what lets the browse+suggested membership be
  * asserted directly instead of restated in a second hand-kept list.
+ *
+ * Only tests call it today. That is deliberate and not the dead-export
+ * shape `queryTrafficShareTrend` was deleted for: that was a second,
+ * unbounded path to output something else already produced, whereas this
+ * is the inverse of `groupForSource` over a taxonomy whose forward lookup
+ * and group list are both already public. Review has pointed both ways on
+ * it — once to export it, once to drop it — so the call is recorded here:
+ * it stays, as public API, because the alternative is asserting group
+ * membership against a module-private constant.
  */
 export function sourcesInGroup(group: TrafficSourceGroup): string[] {
   return Object.entries(SOURCE_TO_GROUP)

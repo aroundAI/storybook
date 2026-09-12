@@ -388,9 +388,12 @@ const TRAFFIC_BUCKET_FUNCTIONS: Record<TrafficBucket, string> = {
 /**
  * Raw per-bucket, per-source rows for a scope.
  *
- * Private, and the single SQL path behind both the group breakdown and the
- * browse+suggested trend. Two query bodies would drift the first time the
- * browse set or the date bounds are edited on one and not the other.
+ * Private, and the only SQL path to this table's grouped rows. It was
+ * extracted when the browse+suggested trend also read them, so the two
+ * could not drift on a date bound edited in one body and not the other;
+ * that trend has since been deleted, so `queryTrafficSourceBreakdown`
+ * below is the sole caller. Kept separate because the fold and the fetch
+ * are worth reading apart, not because a second consumer exists.
  *
  * It groups by the raw `source`, never by a presentation group: the
  * taxonomy lives in `lib/traffic-groups.ts` so that changing it is a code

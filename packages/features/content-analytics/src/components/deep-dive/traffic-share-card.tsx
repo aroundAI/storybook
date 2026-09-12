@@ -35,10 +35,17 @@ interface TrafficShareCardProps {
   isError?: boolean;
 }
 
-/** Bar/stack height in px. Shared by both cards and by stackHeights,
- * which lays slices out against it. */
+/**
+ * Bar and stack height in px, shared by both cards and by `stackHeights`,
+ * which does its floor arithmetic against it.
+ */
 const STACK_HEIGHT_PX = 80;
+
+/** Smallest height a non-zero bar or slice may draw at. */
 const MIN_SLICE_PX = 2;
+
+/** The same floor as a percentage, for the cards that size in percentages. */
+const MIN_SLICE_FLOOR_PERCENT = (MIN_SLICE_PX / STACK_HEIGHT_PX) * 100;
 
 /** Share above which a channel reads as algorithm-recommended. */
 const RECOMMENDED_CHANNEL_THRESHOLD = 0.6;
@@ -115,7 +122,15 @@ export function TrafficShareCard({
             <div
               key={bucket.bucket}
               className={'bg-primary/70 min-w-2 flex-1 rounded-sm'}
-              style={{ height: `${Math.max(2, bucket.share * 100)}%` }}
+              style={{
+                // The same MIN_SLICE_PX floor the stacked card uses, expressed
+                // as a percentage of the same nominal height — it read as a
+                // bare `2` percent (1.6px) before, so the two adjacent charts
+                // floored at different heights off one query. Bars here are
+                // independent, so a floored bar's tooltip still reports its
+                // true share; there is no neighbouring slice to borrow from.
+                height: `${Math.max(MIN_SLICE_FLOOR_PERCENT, bucket.share * 100)}%`,
+              }}
               title={`${bucket.bucket}: ${Math.round(bucket.share * 100)}% of ${bucket.totalViews.toLocaleString()} views`}
             />
           ))}
