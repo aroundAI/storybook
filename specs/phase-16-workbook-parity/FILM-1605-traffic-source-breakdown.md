@@ -204,7 +204,9 @@ deliver what this paragraph claims.
 - [x] A zero-view bucket's own tooltip is reachable
 - [x] The window label is derived from the window constant
 - [x] Both window edges land on the week boundary ClickHouse buckets on, so every bucket is a complete calendar week
-- [x] The trend footnote says the headline bucket may be only partly ingested — a closed calendar week is not a fully ingested one, since report ingest lags a few days
+- [x] The trend footnote says the headline bucket may be only partly ingested — on **both** threshold branches, since a partly ingested week depresses the share and so biases toward the below-60% verdict
+- [x] Weeks with no traffic are drawn as gaps in place, so the bars are a time axis rather than a list of buckets that happen to exist
+- [x] A window with no views at all reports no traffic mix rather than a legend of zeroes
 - [x] The cache key is the window, not the current date, so it does not churn daily over identical bounds
 - [x] A bucket with no views reports no traffic mix rather than a 0% composition
 - [x] The threshold line and the bars share one box, so neither the scroll width nor the scrollbar height offsets them

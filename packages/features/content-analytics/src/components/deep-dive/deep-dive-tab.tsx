@@ -5,6 +5,9 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { CalendarRange, Layers, PieChart, TrendingUp } from 'lucide-react';
 
+import { TRAFFIC_SOURCE_GROUPS } from '@kit/clickhouse';
+import type { TrafficGroupBucket } from '@kit/clickhouse';
+
 import {
   getBackCatalogAction,
   getCohortCurvesAction,
@@ -128,6 +131,47 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
       }),
   });
 
+  // Gaps filled, so the x-axis is time rather than "buckets that exist".
+  // ClickHouse groups by (bucket, source), so a week with no traffic rows
+  // produces no bucket at all — a channel dark for 20 of 52 weeks would
+  // otherwise draw 32 adjacent bars that read as 32 consecutive weeks,
+  // directly under a label promising the last 52 complete weeks. Only the
+  // per-bar tooltip carried the real date, and the trend shape is what the
+  // card exists to show.
+  const trafficBuckets = useMemo(() => {
+    const byBucket = new Map(
+      (trafficBreakdownQuery.data ?? []).map((bucket) => [
+        bucket.bucket,
+        bucket,
+      ]),
+    );
+
+    const filled: TrafficGroupBucket[] = [];
+    const cursor = new Date(trafficWindow.from);
+
+    for (let week = 0; week < TRAFFIC_WINDOW_WEEKS; week++) {
+      const key = cursor.toISOString().slice(0, 10);
+
+      filled.push(
+        byBucket.get(key) ?? {
+          bucket: key,
+          totalViews: 0,
+          totalWatchTimeMinutes: 0,
+          groups: TRAFFIC_SOURCE_GROUPS.map((group) => ({
+            group,
+            views: 0,
+            watchTimeMinutes: 0,
+            share: 0,
+          })),
+        },
+      );
+
+      cursor.setUTCDate(cursor.getUTCDate() + 7);
+    }
+
+    return filled;
+  }, [trafficBreakdownQuery.data, trafficWindow.from]);
+
   // Derived, not fetched. Both cards want the same scope at the same
   // granularity, so a second action call would compile to byte-identical
   // SQL — two `video_traffic_sources FINAL` scans and two dim scans per tab
@@ -135,7 +179,7 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
   // the same fold the query layer used to do before it became dead code.
   const trafficShareBuckets = useMemo(
     () =>
-      (trafficBreakdownQuery.data ?? []).map((bucket) => {
+      trafficBuckets.map((bucket) => {
         const browseSuggestedViews =
           bucket.groups.find((group) => group.group === 'browse_suggested')
             ?.views ?? 0;
@@ -150,7 +194,7 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
               : 0,
         };
       }),
-    [trafficBreakdownQuery.data],
+    [trafficBuckets],
   );
 
   const backCatalogQuery = useQuery({
@@ -247,7 +291,7 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
           <TrafficShareCardSkeleton />
         ) : (
           <TrafficBreakdownCard
-            buckets={trafficBreakdownQuery.data ?? []}
+            buckets={trafficBuckets}
             isError={
               trafficBreakdownQuery.isError &&
               trafficBreakdownQuery.data === undefined

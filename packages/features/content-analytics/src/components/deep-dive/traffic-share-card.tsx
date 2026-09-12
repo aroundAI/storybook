@@ -47,6 +47,17 @@ const MIN_SLICE_PX = 2;
 /** The same floor as a percentage, for the cards that size in percentages. */
 const MIN_SLICE_FLOOR_PERCENT = (MIN_SLICE_PX / STACK_HEIGHT_PX) * 100;
 
+/**
+ * Carried by *both* threshold branches, not just the one above 60%.
+ *
+ * The bias runs the wrong way to disclose on one side only: a partially
+ * ingested newest week depresses Browse+Suggested share, so a channel
+ * genuinely above the threshold is the one most likely to land in the
+ * below-60% branch and be told its views "come mostly from Search".
+ */
+const LATEST_BUCKET_CAVEAT = (bucketNoun: string) =>
+  `That is the newest ${bucketNoun} with traffic; it may not be the current one, and report ingest lags a few days so it may be only partly counted.`;
+
 /** Share above which a channel reads as algorithm-recommended. */
 const RECOMMENDED_CHANNEL_THRESHOLD = 0.6;
 
@@ -160,8 +171,8 @@ export function TrafficShareCard({
         {!hasViews
           ? `No views in the ${bucketNoun} of ${latest.bucket}, so there is no traffic mix to report. That is the newest ${bucketNoun} with data.`
           : crossed
-            ? `Above 60% in the ${bucketNoun} shown — recommendations, not just search. That is the newest ${bucketNoun} with traffic; it may not be the current one, and report ingest lags a few days so it may be only partly counted.`
-            : `Below 60% in the ${bucketNoun} shown — views still come mostly from Search and external sources. The dashed line marks recommended-channel territory.`}
+            ? `Above 60% in the ${bucketNoun} shown — recommendations, not just search. ${LATEST_BUCKET_CAVEAT(bucketNoun)}`
+            : `Below 60% in the ${bucketNoun} shown — views still come mostly from Search and external sources. The dashed line marks recommended-channel territory. ${LATEST_BUCKET_CAVEAT(bucketNoun)}`}
       </p>
     </div>
   );
@@ -212,10 +223,10 @@ function stackHeights(
   const pixels = new Map<TrafficSourceGroup, number>();
   const asPercent = (px: number) => `${(px / STACK_HEIGHT_PX) * 100}%`;
 
+  // A zero-view bucket never reaches here: the card renders that column
+  // explicitly, so its baseline is not mistaken for genuine Other traffic.
   if (bucket.totalViews === 0) {
-    // An invisible column between full-height neighbours reads as a
-    // rendering hole rather than a quiet week.
-    return new Map([['other' as TrafficSourceGroup, asPercent(MIN_SLICE_PX)]]);
+    return new Map();
   }
 
   let borrowed = 0;
@@ -323,6 +334,14 @@ export function TrafficBreakdownCard({
     }
   }
 
+  if (windowViews === 0) {
+    return (
+      <p className={'text-muted-foreground text-sm'}>
+        No views in {windowLabel}, so there is no traffic mix to report.
+      </p>
+    );
+  }
+
   const legend = (buckets[0]?.groups ?? []).map((group) => ({
     group: group.group,
     share:
@@ -375,24 +394,34 @@ export function TrafficBreakdownCard({
                   : undefined
               }
             >
-              {bucket.groups.map((group) => (
+              {bucket.totalViews === 0 ? (
+                // Distinct from genuine Other traffic, which paints
+                // bg-muted-foreground at full opacity. Matching the
+                // sibling card's treatment of the same case.
                 <div
-                  key={group.group}
-                  className={GROUP_COLORS[group.group]}
-                  style={{ height: heights.get(group.group) ?? 0 }}
-                  // Suppressed on a zero-view bucket so the column's own
-                  // "no views" tooltip is reachable: otherwise the 2px
-                  // baseline slice wins the hover over the only visible
-                  // pixels and the bucket reads as Other-sourced traffic.
-                  title={
-                    bucket.totalViews === 0
-                      ? undefined
-                      : `${bucket.bucket} — ${GROUP_LABELS[group.group]}: ${Math.round(
-                          group.share * 100,
-                        )}% of ${bucket.totalViews.toLocaleString()} views`
-                  }
+                  className={'bg-muted-foreground/30'}
+                  style={{ height: `${MIN_SLICE_FLOOR_PERCENT}%` }}
                 />
-              ))}
+              ) : (
+                bucket.groups.map((group) => (
+                  <div
+                    key={group.group}
+                    className={GROUP_COLORS[group.group]}
+                    style={{ height: heights.get(group.group) ?? 0 }}
+                    // Suppressed on a zero-view bucket so the column's own
+                    // "no views" tooltip is reachable: otherwise the 2px
+                    // baseline slice wins the hover over the only visible
+                    // pixels and the bucket reads as Other-sourced traffic.
+                    title={
+                      bucket.totalViews === 0
+                        ? undefined
+                        : `${bucket.bucket} — ${GROUP_LABELS[group.group]}: ${Math.round(
+                            group.share * 100,
+                          )}% of ${bucket.totalViews.toLocaleString()} views`
+                    }
+                  />
+                ))
+              )}
             </div>
           );
         })}
