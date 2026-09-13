@@ -22,6 +22,20 @@ export const TRAFFIC_SOURCE_GROUPS = [
 export type TrafficSourceGroup = (typeof TRAFFIC_SOURCE_GROUPS)[number];
 
 /**
+ * Bucket granularities the traffic breakdown supports.
+ *
+ * Here rather than beside the SQL that consumes it, for the same reason
+ * MIN_MATURE_VIDEOS lives in lib/cohort-growth.ts: this module is pure and
+ * dependency-free, so a zod schema or a browser bundle can share the
+ * granularity list instead of restating it and drifting. The
+ * ClickHouse-function lookup this drives stays in queries-advanced.ts,
+ * which is where the driver already is.
+ */
+export const TRAFFIC_SOURCE_BUCKETS = ['day', 'week', 'month'] as const;
+
+export type TrafficBucket = (typeof TRAFFIC_SOURCE_BUCKETS)[number];
+
+/**
  * Raw Reporting-API source names to groups.
  *
  * Three assignments are deliberate rather than obvious, and are recorded

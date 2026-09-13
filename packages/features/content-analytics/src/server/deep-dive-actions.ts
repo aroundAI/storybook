@@ -3,7 +3,6 @@
 import { z } from 'zod';
 
 import {
-  TRAFFIC_SOURCE_BUCKETS,
   queryBackCatalogShare,
   queryChannelWatchWindow,
   queryCohortMedians,
@@ -18,28 +17,17 @@ import { enhanceAction } from '@kit/next/actions';
 import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+// Out of this file because it is `'use server'`: every export of such a
+// module must be an async function, so a schema with a synchronous
+// `.refine` cannot live here and stay testable. See traffic.schema.ts.
+import {
+  type Scope,
+  ScopeSchema,
+  TrafficBreakdownSchema,
+} from '../lib/schemas/traffic.schema';
 import { formatDate } from '../lib/utils';
 import { listAccountChannels } from './channels';
 import { assertScopeAccess } from './scope-access';
-
-/**
- * Scope shared by the deep-dive actions: project- or account-level, with
- * optional segment filters.
- */
-const ScopeSchema = z
-  .object({
-    projectId: z.string().uuid().optional(),
-    accountId: z.string().uuid().optional(),
-    connectionId: z.string().uuid().optional(),
-    platform: z.enum(['youtube', 'tiktok', 'instagram']).optional(),
-    contentType: z.string().max(50).optional(),
-    language: z.string().max(10).optional(),
-  })
-  .refine((scope) => scope.projectId || scope.accountId, {
-    message: 'projectId or accountId is required',
-  });
-
-type Scope = z.infer<typeof ScopeSchema>;
 
 function toDimScope(scope: Scope): DimScope {
   return {
@@ -113,60 +101,6 @@ export const getRollingViewsAction = enhanceAction(
     auth: true,
   },
 );
-
-/**
- * Longest window each granularity will serve, so every bucket count lands
- * around 120-180 rather than "however long the channel has existed".
- *
- * Capping only `day` was not a bound: a week or month call with no dates
- * returns every bucket in history, and the breakdown emits a row per
- * (bucket, source) — so a ten-year channel is ~520 buckets of eight group
- * objects through a server action. The spec's bounding claim held only
- * because the single caller happened to pass a window.
- */
-const MAX_BREAKDOWN_SPAN_DAYS = {
-  day: 180,
-  week: 1_120, // ~160 buckets
-  month: 3_650, // ~120 buckets
-} as const;
-
-/**
- * Declared here rather than inline in `enhanceAction`.
- *
- * This module is `'use server'`, and Next treats function expressions
- * inside an *exported* declaration as Server Actions — so a synchronous
- * `.refine` callback there fails the build with "Server Actions must be
- * async functions". `pnpm typecheck` does not model that rule; only the
- * Next build does. `ScopeSchema` above is the same pattern for the same
- * reason.
- */
-const TrafficBreakdownSchema = z
-  .object({
-    scope: ScopeSchema,
-    // From @kit/clickhouse, not re-listed: a hand-written copy keeps
-    // accepting a granularity after it is removed there, and the lookup's
-    // fallback then serves weeks under the old label.
-    bucket: z.enum(TRAFFIC_SOURCE_BUCKETS).default('week'),
-    // Required, not optional: absent dates mean all history, which is the
-    // unbounded case this schema exists to prevent.
-    from: z.coerce.date(),
-    to: z.coerce.date(),
-  })
-  .refine((value) => value.from <= value.to, {
-    message: '`from` must not be after `to`.',
-    path: ['from'],
-  })
-  // Every granularity, not just day. `from`/`to` are required above, so
-  // this is a real bound rather than a rule the caller opts into.
-  .refine(
-    (value) =>
-      value.to.getTime() - value.from.getTime() <=
-      MAX_BREAKDOWN_SPAN_DAYS[value.bucket] * 86_400_000,
-    (value) => ({
-      message: `A ${value.bucket} breakdown spans at most ${MAX_BREAKDOWN_SPAN_DAYS[value.bucket]} days.`,
-      path: ['bucket'],
-    }),
-  );
 
 /**
  * Views and watch time per traffic-source group, per bucket (FILM-1605).

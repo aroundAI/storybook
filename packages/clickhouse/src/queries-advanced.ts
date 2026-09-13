@@ -14,6 +14,7 @@ import type {
   TrafficSourceRow,
 } from './lib/traffic-groups';
 import { groupTrafficRows } from './lib/traffic-groups';
+import type { TrafficBucket } from './lib/traffic-groups';
 import { computeIngestLagDays, computeMaturity } from './lib/video-age';
 import type { VideoDim } from './types';
 
@@ -370,16 +371,15 @@ export async function queryRollingViews(input: {
 }
 
 /**
- * Bucket granularities, mapped to the ClickHouse function by lookup.
+ * Each granularity mapped to its ClickHouse function.
  *
  * `bucket` reaches SQL by interpolation because ClickHouse cannot bind a
  * function name as a parameter, so it must never carry caller text — the
- * same treatment VIDEO_AGE_ORDER_COLUMNS gives `orderBy`.
+ * same treatment VIDEO_AGE_ORDER_COLUMNS gives `orderBy`. The granularity
+ * list itself lives in lib/traffic-groups.ts, which is pure, so the zod
+ * schema that validates `bucket` can share it without pulling the driver
+ * into a client bundle.
  */
-export const TRAFFIC_SOURCE_BUCKETS = ['day', 'week', 'month'] as const;
-
-export type TrafficBucket = (typeof TRAFFIC_SOURCE_BUCKETS)[number];
-
 const TRAFFIC_BUCKET_FUNCTIONS: Record<TrafficBucket, string> = {
   day: 'toDate',
   week: 'toStartOfWeek',

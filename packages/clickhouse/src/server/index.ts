@@ -48,7 +48,6 @@ export {
   queryMedianViewsPerVideo,
   queryRollingViews,
   queryTrafficSourceBreakdown,
-  TRAFFIC_SOURCE_BUCKETS,
   queryVideoViewsAtAge,
   queryWatchWindowTotals,
 } from '../queries-advanced';
@@ -60,7 +59,6 @@ export type {
   MedianBucket,
   RollingViewsPoint,
   TagMedianRow,
-  TrafficBucket,
   VideoAgeOrderBy,
   VideoAgeRow,
   WatchWindowTotals,
@@ -124,11 +122,13 @@ export { formatDateStr } from '../utils';
 // grouped rows are rendered — the same split video-age and cohort-growth use.
 export {
   TRAFFIC_SOURCE_GROUPS,
+  TRAFFIC_SOURCE_BUCKETS,
   groupForSource,
   groupTrafficRows,
   sourcesInGroup,
 } from '../lib/traffic-groups';
 export type {
+  TrafficBucket,
   TrafficGroupBucket,
   TrafficGroupShare,
   TrafficSourceGroup,
