@@ -71,8 +71,24 @@ changes numbers that are already on screen.
 | **Content** | The only tab whose platform filter already works server-side (`aggregation-queries.ts:831-832`). Cards are per-publish and already carry a platform badge; reconcile that badge with the new chip rather than showing both. |
 | **Audience** | Post-FILM-1701 this is three real cards. Each needs a family and a chip; YouTube reports seven dimensions, TikTok three percentage-only, Instagram three at **account** level — an Instagram "audience" row is the channel's audience replicated per video, which the chip must not present as per-video measurement. |
 | **Deep Dive** | §2, plus chips on the five cards. |
-| **Language** | Re-shell onto `AnalyticsCard`; declare `metricFamily: 'language'`; surface FILM-1702's dimension toggle. |
+| **Language** | Re-shell onto `AnalyticsCard`; surface FILM-1702's dimension toggle. **Note `'language'` is not a `MetricFamily`** — see below. |
 | **AI Insights** | A generated narrative is not a measurement. Its provenance statement is which numbers it was given and when, not which platform reported them. |
+
+### Language is a dimension, not a metric family
+
+`METRIC_FAMILIES` (FILM-1703 §4) has no `'language'` member, and `metricFamily`
+is a **required** prop (FILM-1706 §5), so `metricFamily: 'language'` would not
+typecheck.
+
+That is correct rather than an omission. Language is a **segmentation of** a
+metric, not a metric: the Language tab's cards show engagement, watch time and
+retention *split by* language. Each card therefore declares the family it
+actually shows, and the language split is a scope dimension —
+`DimScope.language` already exists (`queries-advanced.ts:32`).
+
+Adding a `'language'` family would also not be free: FILM-1703's structural test
+requires an entry for every (family, platform) pair with a creator-facing note
+each, and the entries would describe a thing that is not a data source.
 
 ## 4. The orphaned cards
 

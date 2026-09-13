@@ -3,7 +3,7 @@ spec_id: FILM-1714
 title: The Signal Model
 status: DRAFT
 effort: M
-dependencies: FILM-1703, FILM-1713
+dependencies: FILM-1703, FILM-1713, FILM-1716
 ---
 
 # The Signal Model

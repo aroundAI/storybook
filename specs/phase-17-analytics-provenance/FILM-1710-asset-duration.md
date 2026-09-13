@@ -69,8 +69,21 @@ every historical row is in.
 for `POST /v2/video/query/` (FILM-1721 §4) — the same endpoint we already call,
 requiring only the `video.list` scope FILM-1711 adds. No extra integration.
 
-No backfill script — the nightly `upsertVideoDims()` reconcile fills it, and
-nothing has been published yet.
+**A backfill is required, and the first draft was wrong to say otherwise.**
+It claimed "nothing has been published yet" — but §1 says the Hook Lab is
+producing wrong verdicts *today*, and FILM-1701 §6 counts 41 live publishes.
+Both cannot be true.
+
+The nightly `upsertVideoDims()` reconcile copies `publishes.duration_seconds`
+into `video_dim`, but the provider sync only *writes* that column going
+forward. So existing publishes keep a null asset duration forever unless
+something fetches it for them.
+
+That means a one-off backfill that re-reads each published asset's duration
+from its provider — YouTube `videos.list` (1 unit, batched), TikTok
+`/v2/video/query/` `duration`, Instagram `video_duration`. Until it runs, those
+rows are `duration_unknown` by §3's rules, which is correct but is *not* a
+corrected figure.
 
 ## 3. Interim rules until it lands
 
@@ -117,7 +130,8 @@ be quietly re-read.
 - [ ] A 45-second Short reports a 45-second duration, not its episode's
 - [ ] `retention_3s` for a short-form variant is computed against the clip, and no longer reads ≈ 1.0
 - [ ] A variant whose asset duration is unknown yields `duration_unknown`, not a winner
-- [ ] Existing short-form retention caches are cleared and recomputed, not silently reused
+- [ ] Existing publishes have their asset duration backfilled from the provider, not left null
+- [ ] Existing short-form retention caches are cleared, and recomputed **where a duration is now known**; where it is not, they read `duration_unknown` rather than a stale figure
 - [ ] Any consumer that cannot get a duration returns a named reason rather than a number
 - [ ] `detectRetentionCliff` is not passed a duration it cannot trust
 

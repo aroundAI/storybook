@@ -6,10 +6,11 @@ from**. This phase does, and the investigation that produced it found that the
 answer is currently no — in ways that range from a missing label to three cards
 displaying literals typed into a source file.
 
-The phase has two halves. **Provenance** (FILM-1701–1709) answers *where did
-this number come from*. **Signal** (FILM-1710–1720) answers *what is it
-telling me* — which is a different answer on every platform, because each one
-defines a valuable viewer differently.
+The phase has three parts. **Provenance** (FILM-1701–1709) answers *where did
+this number come from*. **Signal** (FILM-1710–1720) answers *what is it telling
+me* — a different answer on every platform. **Reference** (FILM-1721–1723) is
+the researched vendor truth the other two are built on, and it is the root of
+the dependency graph rather than an appendix.
 
 Scheduled to start **after Phase 16 closes**. FILM-1706 makes a prop required
 on a card shell used by ~14 files, and FILM-1611, 1615 and 1617 all add cards;
@@ -32,31 +33,40 @@ The page presents all of this as one kind of thing.
 
 ## Specs & dependency order
 
+The reference trio is the root. Nothing that cites a vendor fact should start
+before FILM-1721 exists.
+
 ```
-FILM-1703 (capability model)
-     ├─→ FILM-1704 (observed coverage) ──┐
-     └─→ FILM-1706 (card shell v2) ──────┤
-                   │                     ├─→ FILM-1705 (provenance surfaces)
-FILM-1701 (audience truth-up) ───────────┘              │
-                   │                                    │
-                   │       FILM-1702 (language) ────────┤
-                   │          needs 16's FILM-1606      │
-                   │                                    ├─→ FILM-1707 (six-tab adoption)
-                   │                                    │            │
-                   └─→ FILM-1708 (drill-down + ramp)    │            │
-                          needs 16's FILM-1605 ✅        │            │
-                                                        │            │
-                                    FILM-1709 (filter completion) ←──┘
-                                         also needs FILM-1704
+FILM-1721 (capability reference)  ── the researched vendor truth
+   ├─→ FILM-1722 (view definitions) ─→ FILM-1713 (measures, velocity)
+   ├─→ FILM-1703 (capability matrix)
+   │        ├─→ FILM-1704 (observed coverage) ─┐
+   │        └─→ FILM-1706 (card shell v2) ─────┤
+   │                                           ├─→ FILM-1705 (surfaces)
+   ├─→ FILM-1711 (authorisation) ─→ FILM-1712 (metric recovery)
+   └─→ FILM-1715, FILM-1720
+
+FILM-1723 (API versions)  ── independent; check Graph v18 first
+FILM-1701 (audience truth-up) ─→ FILM-1705
+FILM-1710 (asset duration) ─→ FILM-1716 (format families) ─→ FILM-1714, FILM-1715
+
+FILM-1714 (signal model)  ← FILM-1703, FILM-1713, FILM-1716
+FILM-1715 (self-benchmark) ← FILM-1703, FILM-1713, FILM-1716, FILM-1721
+   └─→ FILM-1718 (diagnosis)   ← does NOT wait on the genome
+FILM-1717 (genome) ← FILM-1606, FILM-1610, FILM-1715, FILM-1716
+   └─→ FILM-1719 (signal surfaces) ← also FILM-1706, FILM-1718
+FILM-1702 (language) ← phase-16 FILM-1606 ─→ FILM-1707
+FILM-1708 (drill-down + ramp) ← FILM-1605 ✅, FILM-1706
+FILM-1709 (filter completion) ← FILM-1704, FILM-1707
+FILM-1720 (Facebook + X) ← FILM-1711, FILM-1714, FILM-1721, FILM-1723
 ```
 
-**`FILM-1701` and `FILM-1703` are the two independent starting points** and can
-run in parallel. Everything else descends from one of them: `FILM-1703` gates
-`FILM-1704` and `FILM-1706` (both need `MetricFamily`), and those three
-converge on `FILM-1705`.
+**FILM-1721, FILM-1723 and FILM-1710 are the only true roots.** FILM-1701 is
+independent of the reference but feeds FILM-1705. Everything else descends from
+one of them — in particular FILM-1703 now depends on FILM-1721, so it is no
+longer a starting point.
 
-`FILM-1708` needs only the shell and Phase 16's FILM-1605, so it can run
-alongside `FILM-1707` rather than after it.
+FILM-1710 is a **production correctness incident** and ships before any of it.
 
 | Spec | Status | Effort | Covers |
 |------|--------|--------|--------|
@@ -93,7 +103,7 @@ FILM-1720 (Facebook + X) ── last, and the test of whether 1714 was expandabl
 |------|--------|--------|--------|
 | [FILM-1710](./FILM-1710-asset-duration.md) | DRAFT | M | The published clip's real duration. **Fixes a live bug** — every Short auto-wins in the Hook Lab |
 | [FILM-1711](./FILM-1711-analytics-authorisation.md) | DRAFT | L | TikTok and Instagram analytics were never authorised; scope audit across all five platforms |
-| [FILM-1712](./FILM-1712-metric-recovery.md) | DRAFT | M | Request the fields we already have access to; give Instagram `reach` a column |
+| [FILM-1712](./FILM-1712-metric-recovery.md) | DRAFT | L | Request the fields we already have access to; give Instagram `reach` a column |
 | [FILM-1713](./FILM-1713-normalised-measures-velocity.md) | DRAFT | M | One definition per rate; bucketed velocity, acceleration, `growth_state` |
 | [FILM-1714](./FILM-1714-signal-model.md) | DRAFT | M | Five funnel stages, primary/supporting signals, unbound stages, the expandability test |
 | [FILM-1715](./FILM-1715-self-benchmarking.md) | DRAFT | M | Band, lift, cohort median and n against your own history; shrinkage |

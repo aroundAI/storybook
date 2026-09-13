@@ -41,6 +41,24 @@ wait seven months for enough tagged videos to be meaningful.
 | Attention and Transmission above, Audience below | Consumption is strong; follow conversion is weaker than comparable videos |
 | All above | Strong across every measurable stage |
 
+### The table is a precedence list, not a partition
+
+The rows above are **ordered**, and the first match wins. They are deliberately
+not mutually exclusive and not exhaustive:
+
+- bands are three-valued (`below | typical | above`), and the rows are phrased
+  only in `above`/`below` terms, so `typical` satisfies neither side
+- combinations like *Reach below, Hook below, the rest above* match no row
+
+So the contract is: **evaluate in order, first match wins, and a fully-judged
+combination matching nothing yields `no_clear_pattern`** — a named outcome
+distinct from §4's "too few judged stages". Both are absent states; they are
+absent for different reasons and must not share a sentence.
+
+`no_clear_pattern` is a real and common answer. A video whose five stages are
+all `typical` has no diagnosis worth making, and saying so is better than
+forcing it into the nearest row.
+
 ## 3. The wording is measurement, not cause
 
 "Packaging is the limit" is an inference the metrics do not prove. The cause
@@ -111,6 +129,10 @@ Same underlying number, two framings, and neither borrows the other's language.
 
 - [ ] A pattern is computed from the set of judged stage bands
 - [ ] The pattern set is closed, named, and exhaustively tested
+- [ ] Patterns are evaluated in a documented precedence order, first match wins
+- [ ] A fully-judged combination matching no pattern yields `no_clear_pattern`
+- [ ] `no_clear_pattern` is distinguishable from "too few judged stages" — different causes, different sentences
+- [ ] `typical` bands are handled explicitly, not treated as either `above` or `below`
 - [ ] The number of judged stages is reported alongside the diagnosis
 - [ ] Too few judged stages yields a named absent state, not the nearest pattern
 - [ ] Unbound, dark, `not_judgable` and `insufficient_cohort` stages are excluded from the pattern and counted separately
@@ -130,8 +152,10 @@ pnpm turbo typecheck --force && pnpm lint
 Pure function over five optional bands — exhaustively testable without a
 database, and it should be tested exhaustively rather than by example:
 
-- every combination of five three-valued bands resolves to exactly one pattern
-  or to the named absent state
+- every combination of five three-valued bands (3^5 = 243, plus the unjudged
+  cases) resolves to exactly one outcome — a pattern, `no_clear_pattern`, or
+  the too-few-judged state
+- an all-`typical` video yields `no_clear_pattern`, not the nearest row
 - a pattern computed over two judged stages is distinguishable in the output
   from the same pattern over five
 - a stage that is dark and a stage that is `below` produce different patterns

@@ -198,9 +198,6 @@ derived` require a non-null `table`. `unsupported` requires `table: null`
 `review_pending` and `review_denied` require a date. `unknown` availability
 requires a named owner and the question to be answered. Every entry has a
 non-empty `note`, and a `window` whose `anchoredOn` is set.
-`derived` requires `method`. `native | derived` require a non-null `table`.
-`unsupported` requires `table: null` **and** `blockedBy: null`. `not_ingested`
-requires a non-null `blockedBy`. Every entry has a non-empty `note`.
 
 **(b) Writer binding — the load-bearing one.** Export
 

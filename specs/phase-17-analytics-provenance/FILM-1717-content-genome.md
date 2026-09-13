@@ -3,7 +3,7 @@ spec_id: FILM-1717
 title: Content Genome
 status: DRAFT
 effort: XL
-dependencies: FILM-1606, FILM-1715, FILM-1716
+dependencies: FILM-1606, FILM-1610, FILM-1715, FILM-1716
 ---
 
 # Content Genome

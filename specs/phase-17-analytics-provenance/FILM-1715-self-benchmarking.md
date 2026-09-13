@@ -3,7 +3,7 @@ spec_id: FILM-1715
 title: Self-Benchmarking
 status: DRAFT
 effort: M
-dependencies: FILM-1713, FILM-1716, FILM-1721
+dependencies: FILM-1703, FILM-1713, FILM-1716, FILM-1721
 ---
 
 # Self-Benchmarking

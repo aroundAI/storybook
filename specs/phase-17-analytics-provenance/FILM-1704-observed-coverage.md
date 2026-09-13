@@ -36,15 +36,21 @@ fifteen round trips for one page, re-run on every date-range change.
 `packages/clickhouse/src/queries-advanced.ts` — the module that already owns
 `DimScope`, `buildDimConditions` and `dimSubquery`. One statement, `UNION ALL`
 over the five fact tables (`video_metrics`, `video_traffic_sources`,
-`video_reach_daily`, `video_retention_curves`, `channel_daily`), each
-`GROUP BY platform`, returning `count()`, `max(metric_date)` and
-`groupUniqArray(metric_source)` where the column exists. At most fifteen rows
-back.
+`video_reach_daily`, `video_retention_curves`, `channel_daily`), returning
+`count()`, `max(metric_date)` and `groupUniqArray(metric_source)` where those
+columns exist. At most fifteen rows back.
+
+**Four of the five group by `platform`; `channel_daily` cannot** — it has no
+platform column (`migrations/003_reach_and_traffic.ts:45-56`) and is keyed by
+`connection_id`. That branch either joins to the connection to resolve a
+platform, or emits `platform: null` and the fold resolves it. Hence the
+nullable field above. Do not silently label those rows `youtube` because that
+happens to be true today.
 
 ```ts
 interface ObservedCoverageRow {
   table: SourceTable;
-  platform: string;
+  platform: string | null;   // null for channel_daily — see below
   rows: number;
   latestDate: string | null;
   metricSources: string[];
@@ -53,10 +59,6 @@ interface ObservedCoverageRow {
 
 Notes for implementation:
 
-- `channel_daily` has **no `platform` column at all** (`migrations/003_reach_and_traffic.ts:45-56`)
-  and is keyed by `connection_id`. Its platform has to come from a join to the
-  connection, or the row reports `platform: null` and the fold resolves it.
-  Do not silently label it `youtube` because that happens to be true today.
 - Avoid `FINAL` for the counts. Coverage asks *does anything exist*, not *what
   is the deduplicated total*, and `FINAL` over five tables on every date change
   is not worth paying for an answer that does not need it.

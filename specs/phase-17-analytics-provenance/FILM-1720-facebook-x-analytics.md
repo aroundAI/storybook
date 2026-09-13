@@ -104,7 +104,9 @@ disagree on the permission (`pages_manage_engagement` + `read_insights` versus
 `pages_read_engagement`); request all three.
 
 Facebook has things no other platform here offers: a real **retention graph**
-(`post_video_retention_graph`, 40 equal intervals), an explicit **replay count**
+(`post_video_retention_graph` — note its segment count is **undocumented**; the
+40-equal-intervals figure belongs to `total_video_retention_graph`, the video
+metric, per FILM-1721 §8), an explicit **replay count**
 (`fb_reels_replay_count`), and **follows attributed to a reel**
 (`post_video_followers`).
 
@@ -141,12 +143,18 @@ Postgres stores `'twitter'`. The product says X. `oauth_states` also permits
 `'meta'`.
 
 Pick one vocabulary **first**. The ClickHouse enum is the expensive thing to
-change twice, and a rename afterwards is a second eight-table migration.
+change twice, and a rename afterwards is a second seven-table migration.
 
 ## 6. The enum migration
 
-`platform` is `Enum8('youtube'=1,'tiktok'=2,'instagram'=3)` in **all eight**
-analytics tables. No migration has ever extended it.
+`platform` is `Enum('youtube' = 1, 'tiktok' = 2, 'instagram' = 3)` in **seven**
+analytics tables — `001_create_tables.ts:17`, `002_metrics_v2.ts:27` and `:48`,
+`003_reach_and_traffic.ts:22` and `:35`, `004_extended_metrics.ts:27` and
+`:37`. No migration has ever extended it.
+
+The other three tables need different treatment, not the same migration:
+`video_dim.platform` is an unconstrained `LowCardinality(String)` (§1), and
+`channel_daily` and `channel_subscribers` carry **no platform column at all**.
 
 Widening means an `ALTER TABLE … MODIFY COLUMN` on each, plus
 `AnalyticsPlatform` (`clickhouse/src/types.ts:11`) and `SyncPlatform`. **Values
@@ -178,7 +186,7 @@ diff rather than by a test.
 
 - [ ] The platform vocabulary is settled and consistent before the migration runs
 - [ ] The enum is widened by appending values, never renumbering
-- [ ] All eight tables, `AnalyticsPlatform`, `SyncPlatform` and `QueryFilters` accept the new platforms
+- [ ] All seven enum-bearing tables, `AnalyticsPlatform`, `SyncPlatform` and `QueryFilters` accept the new platforms, and the three without the enum are handled explicitly rather than assumed
 - [ ] `dim-sync` no longer creates dimension rows for platforms that cannot have metrics
 - [ ] X ships on the pay-per-use path, with Enterprise-only fields declared and dark
 - [ ] The two X quartile vocabularies are never mixed

@@ -70,7 +70,7 @@ A registry, pure and testable, beside the capability matrix:
 
 ```ts
 interface ViewDefinition {
-  platform: AnalyticsPlatform;
+  platform: PlatformId;          // NOT AnalyticsPlatform — see below
   field: string;                 // the provider's own field name
   countsFrom: 'first_frame' | 'past_first_frame' | 'one_millisecond'
             | 'three_seconds' | 'impression' | 'unknown';
@@ -85,6 +85,17 @@ interface ViewDefinition {
 
 const VIEW_DEFINITIONS: readonly ViewDefinition[];
 ```
+
+**`platform` is deliberately not `AnalyticsPlatform`.** That union is
+`'youtube' | 'tiktok' | 'instagram'` (`packages/clickhouse/src/types.ts:11`)
+until FILM-1720 widens it, but §1 and §3 require Facebook and X rows *now* —
+Facebook's four denominators are the clearest example in the whole registry and
+would be lost if the type forbade them.
+
+So the registry is keyed on a wider `PlatformId`, and an entry for a platform
+not yet in `AnalyticsPlatform` is **inert**: recorded, testable, and unreachable
+by any query until FILM-1720 lands. That keeps this spec off FILM-1720's
+critical path while letting it document what it learned.
 
 Two functions are the point of it:
 

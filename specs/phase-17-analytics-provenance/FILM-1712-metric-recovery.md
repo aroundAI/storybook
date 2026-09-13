@@ -132,7 +132,7 @@ response, written at `ingest.ts:139` and `analytics-sync-cron.ts:689`. **Nothing
 reads it** — no `JSONExtract` anywhere in the repository, and the
 `video_daily_stats` view enumerates columns and omits it.
 
-Since nothing has been published yet there is nothing worth recovering from it.
+There are 41 live publishes, so the blob does hold real dropped payloads — but they are a few weeks of a seeded fixture, not history worth a recovery path.
 It should gain a reader or stop being written; an unread payload on every row
 is storage with no purpose.
 

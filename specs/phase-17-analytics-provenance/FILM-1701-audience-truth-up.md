@@ -17,7 +17,7 @@ the same visual treatment as the cards beside them that were.
 
 ```ts
 const DEFAULT_DEVICE_TYPES = { mobile: 78, desktop: 18, tablet: 4 };
-const DEFAULT_INTERESTS = [ /* six hardcoded interest categories */ ];
+const DEFAULT_INTERESTS = [ /* seven hardcoded interest categories */ ];
 const DEFAULT_PEAK_ACTIVITY = [ /* hardcoded hour-of-day curve */ ];
 ```
 
@@ -134,9 +134,13 @@ job, once there is a shell that can describe coverage.
 project, then writes `platform: 'youtube'` on both the traffic-source rows
 (`:274`) and the metric rows (`:286`).
 
-The seeded project has 41 publishes — 16 YouTube, 16 TikTok, 9 Instagram — so
-24 of them are currently carrying YouTube traffic and YouTube metrics in local
-ClickHouse. Verified against the live instance:
+The seeded project has 41 publishes — 16 YouTube, 16 TikTok, 9 Instagram — and
+**23 of them** are currently carrying YouTube traffic and YouTube metrics in
+local ClickHouse.
+
+(23 rather than 25: the loop `continue`s weeks 9–12, so dim indices 11 and 12
+are never selected and 39 of the 41 publishes get rows at all.) Verified against
+the live instance:
 
 | Platform | videos in `video_dim` | videos with traffic rows |
 |---|---|---|
