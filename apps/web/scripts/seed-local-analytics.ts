@@ -46,6 +46,8 @@ const {
   isClickHouseEnabled,
 } = await import('@kit/clickhouse/server');
 
+const { fetchAllRows } = await import('@kit/shared/pagination');
+
 /**
  * Mirrors `dim-sync.ts:21`. Redeclared rather than imported because that
  * module is `server-only`, which throws outside a Next runtime.
@@ -144,20 +146,29 @@ async function main() {
 
   const client = createClient(supabaseUrl, serviceKey);
 
-  const { data, error } = await client
-    .from('publishes')
-    .select(
-      'id, episode_id, platform, content_type, language, title, published_at, platform_connection_id, episodes!inner(project_id, duration_seconds, target_duration_seconds, projects!inner(account_id))',
-    )
-    .eq('status', 'published')
-    .not('published_at', 'is', null)
-    .order('published_at');
-
-  if (error) {
-    throw new Error(`Failed to read publishes: ${error.message}`);
-  }
-
-  const publishes = (data ?? []) as unknown as PublishRow[];
+  // Paged, and ordered by `id` rather than `published_at`. PostgREST caps a
+  // read at max_rows and signals it with a short body, HTTP 200 and
+  // `error: null` — so an unpaged read of a large local database would build
+  // video_dim from the first 1000 publishes and then print a row count that
+  // looks complete. Range pagination also needs a *unique* order, which
+  // `published_at` is not: two publishes sharing a timestamp can be skipped
+  // or repeated across page boundaries.
+  const publishes = await fetchAllRows<PublishRow>(
+    (from, to) =>
+      client
+        .from('publishes')
+        .select(
+          'id, episode_id, platform, content_type, language, title, published_at, platform_connection_id, episodes!inner(project_id, duration_seconds, target_duration_seconds, projects!inner(account_id))',
+        )
+        .eq('status', 'published')
+        .not('published_at', 'is', null)
+        .order('id')
+        .range(from, to) as unknown as PromiseLike<{
+        data: PublishRow[] | null;
+        error: { message: string } | null;
+      }>,
+    'publishes',
+  );
 
   if (publishes.length === 0) {
     throw new Error(
@@ -193,6 +204,20 @@ async function main() {
       },
     ];
   });
+
+  // Every other precondition here fails with something actionable; without
+  // this one an empty `dims` would not. The rows are read through `!inner`
+  // joins so the flatMap should never drop all of them — but `data` is cast
+  // to PublishRow[] rather than checked, so the nullability is unverified,
+  // and `week % 0` is NaN, which indexes to undefined and surfaces three
+  // lines later as "Cannot read properties of undefined (reading
+  // 'project_id')".
+  if (dims.length === 0) {
+    throw new Error(
+      `Read ${publishes.length} publishes but none carried an episode and project. ` +
+        `Check that episodes.project_id and projects.account_id are populated.`,
+    );
+  }
 
   await insertVideoDims(dims);
 

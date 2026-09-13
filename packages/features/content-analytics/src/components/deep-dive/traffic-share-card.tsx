@@ -113,6 +113,13 @@ export function TrafficShareCard({
   // percent while testing the unrounded value disagrees on [59.5%, 60%): the
   // headline reads "60%" directly above a footnote saying "Below 60%".
   const shownPercent = Math.round(latest.share * 100);
+  // `>=`, and the copy below says "At or above" rather than "Above", because
+  // a share of exactly 60% is on the line and not past it. The bars stay on
+  // the unrounded share while this verdict uses the rounded one: over the
+  // [59.5%, 60%) window where those disagree the bar sits at most 0.4px
+  // below the dashed line on an 80px stack, which is under the pixel the
+  // browser rounds to. Positioning the line off this bucket's rounding
+  // instead would move a reference shared by all 52 bars to suit one.
   const crossed = shownPercent >= RECOMMENDED_CHANNEL_THRESHOLD * 100;
   // A share of 0 out of 0 views is not a composition, and saying "views come
   // mostly from Search" about a week with no views contradicts the stacked
@@ -186,7 +193,7 @@ export function TrafficShareCard({
           : !hasViews
             ? `No views in the ${bucketNoun} of ${latest.bucket}, so there is no traffic mix to report. That is the newest ${bucketNoun} with data.`
             : crossed
-              ? `Above 60% in the ${bucketNoun} shown — recommendations, not just search. ${LATEST_BUCKET_CAVEAT(bucketNoun)}`
+              ? `At or above 60% in the ${bucketNoun} shown — recommendations, not just search. ${LATEST_BUCKET_CAVEAT(bucketNoun)}`
               : `Below 60% in the ${bucketNoun} shown — views still come mostly from Search and external sources. The dashed line marks recommended-channel territory. ${LATEST_BUCKET_CAVEAT(bucketNoun)}`}
       </p>
     </div>
