@@ -1,0 +1,143 @@
+---
+spec_id: FILM-1709
+title: Platform Filter Completion
+status: DRAFT
+effort: L
+dependencies: FILM-1704, FILM-1707
+---
+
+# Platform Filter Completion
+
+## 1. Overview
+
+There is a **Platforms** button at the top of the analytics page
+(`components/platform-filter.tsx`, mounted at
+`components/analytics-dashboard.tsx:355-358`). It reaches two of the six tabs.
+
+| Consumer | Filtered? | How |
+|---|---|---|
+| Content tab | yes, server-side | `platforms` → `getContentListAction` → `.in('platform', …)` (`aggregation-queries.ts:831-832`) |
+| Overview — Platform Split, Platform Distribution | yes, client-side | `filteredPlatformTotals` (`analytics-dashboard.tsx:261-263`) |
+| Overview — Performance Over Time | yes, client-side | `filteredDailyMetrics` (`:304-338`) |
+| Overview — AI Insight card | partially | `platformMetrics` filtered (`:283`), `totals` not |
+| **The seven MetricCards** | **no** | `getProjectAnalyticsAction` takes no `platforms` argument |
+| **Audience tab** | **no** | `getProjectAudienceDataAction` takes no platforms |
+| **Deep Dive tab** | **no** | only `projectId` is passed; `scope = { projectId }` |
+| **Language tab** | **no** | none of its six queries accept platforms |
+
+The seven MetricCards are the most-read numbers on the page and sit *directly
+below* the filter, showing unfiltered cross-platform sums. Deselecting TikTok
+changes the Content grid and leaves the headline Views figure untouched.
+
+This is the loudest remaining lie once the rest of the phase has made the page
+honest — which is exactly why it comes last. Before FILM-1705, "the filter
+doesn't apply here" was one problem among many; after it, a card that announces
+its platform coverage and then ignores a platform selection is conspicuous.
+
+## 2. What makes this tractable now
+
+Three things that did not exist before this phase:
+
+- **The scope type already supports it.** `ScopeSchema` and `DimScope` carry
+  `platform`, `connectionId`, `contentType` and `language`
+  (`lib/schemas/traffic.schema.ts:28-39`), and `toDimScope`
+  (`server/deep-dive-actions.ts:32-41`) forwards them. `buildDimConditions`
+  (`queries-advanced.ts:134-137`) applies the predicate. The Deep Dive tab
+  simply never populates it.
+- **The capability matrix says which cards *can* honour a selection.** Filtering
+  a YouTube-only card by TikTok is not a filter, it is an empty result; the card
+  should dim rather than blank, per FILM-1705 §3.
+- **FILM-1707 settled Deep Dive's scope.** Adding a platform filter to a tab
+  that was silently pooling two different time semantics would have made the
+  pooling harder to see, not easier.
+
+## 3. The shape of the work
+
+**Server-side, not client-side, wherever the query allows it.** The two working
+filters today take opposite approaches — Content filters in SQL, Overview
+filters the response in the browser. Client-side filtering of a pre-aggregated
+total is only correct when the aggregate decomposes by platform, which is why
+`totals` is unfiltered in the AI Insight path while `platformMetrics` is: it
+was not decomposable, so it was skipped. Pushing the predicate into the query
+removes that class of bug.
+
+Concretely:
+
+- `getProjectAnalyticsAction` gains a `platforms` argument;
+  `queryTotals`/`queryPlatformBreakdown` already accept `QueryFilters.platforms`
+  and build `platform IN {platforms: Array(Enum(...))}` (`queries.ts:220-224`).
+- `getProjectAudienceDataAction` gains the same.
+- Deep Dive populates `scope.platform` from the filter. Note `DimScope.platform`
+  is singular while the filter is a multi-select — either widen the scope to a
+  list or state why single-platform is the right grain for that tab. Do not
+  quietly send only the first selection.
+- The Language tab inherits filtering once FILM-1702 moves it onto ClickHouse.
+
+**The enum boundary.** `QueryFilters.platforms` is typed as
+`Array(Enum('youtube','tiktok','instagram'))` at the ClickHouse parameter
+level, so passing `'facebook'` errors at the server — while
+`lib/schemas/report.schema.ts:26` offers Facebook for export. FILM-1705 decided
+that a connected unsupported platform is *shown* as unsupported; this spec must
+ensure it cannot be *sent* to a query that will reject it.
+
+## 4. Interaction with the coverage strip
+
+The filter and the strip answer adjacent questions and must not contradict each
+other. If the strip says TikTok has no rows in this window, selecting TikTok
+alone should produce the same explanation on every card, not fifteen distinct
+empty states. Route both through `CoverageState` from FILM-1704 so the wording
+is shared.
+
+A selection that would leave a card with nothing to show is a legitimate state
+and should read as a consequence of the selection, not as a failure.
+
+## 5. Out of scope
+
+- The date range, which Deep Dive also ignores in favour of fixed windows. That
+  is a defensible design decision (its cards are about 52-week and quarterly
+  shapes) and is a separate question from platform.
+- `connectionId`, `contentType` and `language` as UI filters — the scope
+  supports them and FILM-1611 nominally owns exposing them.
+- Adding platforms to `AnalyticsPlatform`.
+
+## 6. Acceptance criteria
+
+- [ ] Every tab either honours the platform selection or visibly states that it cannot, and no tab silently ignores it
+- [ ] The seven MetricCards honour the selection
+- [ ] Deselecting a platform changes the headline Views figure
+- [ ] Filtering happens in the query wherever the query supports it, not on an already-aggregated response
+- [ ] Deep Dive's multi-select is either fully represented in scope or the single-platform grain is justified in the spec
+- [ ] A platform outside `AnalyticsPlatform` can never be sent to a ClickHouse query
+- [ ] A card that cannot cover the selection dims with a reason rather than blanking
+- [ ] The filter and the coverage strip give the same explanation for the same absence
+- [ ] Selecting no platforms is handled deliberately, not as an empty `IN ()`
+- [ ] The selection survives tab switches
+
+## 7. Verification
+
+```bash
+pnpm --filter @kit/content-analytics test
+pnpm --filter @kit/clickhouse test
+./scripts/local-env.sh verify
+pnpm turbo typecheck --force && pnpm lint
+```
+
+The decisive test is arithmetic, not visual: on the multi-platform fixture from
+FILM-1701, the Views total with all three platforms selected must equal the sum
+of the three single-platform totals. That is the property the page currently
+fails, and it cannot be satisfied by labelling.
+
+Then, per tab in Chrome: deselect a platform and confirm every figure either
+moves or explains why it did not.
+
+## 8. Risk
+
+Every figure on the page becomes filter-dependent, so a bug here changes
+numbers everywhere at once. The arithmetic check in §7 is the guard and should
+be a test rather than a manual step.
+
+The second risk is performance: pushing predicates into the queries means the
+whole page refetches on a filter change, where today most of it does not
+because most of it ignores the filter. Coverage (FILM-1704) is cached and
+should not be part of that refetch — the set of platforms with data does not
+depend on which the user is currently looking at.
