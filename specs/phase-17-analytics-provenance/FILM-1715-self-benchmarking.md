@@ -1,0 +1,189 @@
+---
+spec_id: FILM-1715
+title: Self-Benchmarking
+status: DRAFT
+effort: M
+dependencies: FILM-1713, FILM-1716
+---
+
+# Self-Benchmarking
+
+## 1. Overview
+
+Platform view definitions differ enough that cross-platform percentages are not
+comparable — X counts a view at two seconds with half the player visible,
+YouTube distinguishes engaged views from swipes, TikTok reports several
+different play-time measures. The only defensible benchmark is **the channel's
+own history at a comparable age**.
+
+That is already 90% built and has never been wired together:
+
+- `queryVideoViewsAtAge` (`queries-advanced.ts:884`) — a video's views at
+  30/90/180/365 days, gated by `matureAt`, with `ingestLagDays`.
+- `queryCohortMedians` (`:539`) — the channel's own median/p25/p75 at those same
+  ages, `quantileExact` so it is deterministic, maturity judged **per video per
+  checkpoint**, `LEFT JOIN` so a zero-view video counts as zero.
+- Both take the same `DimScope` and the same checkpoint array.
+- `computeMaturity` / `checkpointPredatesIngest` (`lib/video-age.ts`) already
+  answer "is this knowable yet".
+- `MIN_MATURE_VIDEOS` and `GrowthSuppressionReason` (`lib/cohort-growth.ts`)
+  already encode when a comparison may not be reported, with *named* reasons.
+
+**Nothing computes "this video at 30 days versus your median at 30 days."** The
+hard parts — maturity, ingest-lag exclusion, exact quantiles, suppression — are
+done. This spec is the join.
+
+## 2. Band, not percentile
+
+`queryCohortMedians` returns p25 / median / p75. From three quantiles a **band**
+is computable and a percentile is not.
+
+Shipping a function named `percentile` that returns a band is how a model
+becomes decoration. Name it for what it does — `benchmarkVideoAgainstCohort` —
+and add a percentile only when a peer-rows query exists.
+
+Do not fold the existing paged `queryVideoViewsAtAge` to fake one: a percentile
+over the first 500 videos is not a percentile, and nothing in the result would
+say so.
+
+## 3. Four things, never just the band
+
+A band alone is not actionable — 1.21% against a median of 1.20% is "above",
+and so is 1.8%. A lift alone misleads too: 1.8× from 0.1% to 0.18% is not 1.8×
+from 4% to 7.2%. So:
+
+```
+4.2% shares/reach · 1.8× typical · typical = 2.3% · n = 83
+```
+
+- **band** — below / typical / above, for the five-stage strip only
+- **lift** — `value / cohortMedian`, a descriptive ratio, explicitly not a
+  significance claim
+- **cohort median** — the base rate the lift is against
+- **n** — the peer count
+
+The drill-down shows all four. Banding everything is how a dashboard becomes
+visual noise.
+
+## 4. Benchmarkability is not performance
+
+"We cannot judge this" must never render like "this did badly":
+
+| State | Meaning |
+|---|---|
+| `not_judgable` | the video is too young, or predates ingest at this checkpoint |
+| `insufficient_cohort` | fewer comparable peers than `MIN_MATURE_VIDEOS` |
+| `directional` | judgable, but the peer set is thin — dimmed, with its n |
+| `established` | a reportable comparison |
+
+`insufficient_cohort` is a statement about the **peer set**; a band is a
+statement about the **video**. A card rendering both as a grey bar has thrown
+away the distinction the phase is built on.
+
+Modelled as a discriminated union so a consumer cannot render them alike — a
+band exists only on the judged variant, so no bar can be painted without one.
+
+## 5. Comparable
+
+Same **channel** (`connectionId`, not `projectId` — a Reach comparison against
+another channel's impressions is meaningless, and FILM-1602 added the channel
+dimension for this), same format family, same language, same checkpoint age,
+within a trailing window.
+
+**Format never relaxes.** A Short's Hook band against long-form is nonsense.
+
+Relaxation when peers fall below `MIN_MATURE_VIDEOS`: widen the window, then
+drop language, then stop. **Never the channel** — that stops being
+self-benchmarking, and the type should forbid it.
+
+`relaxedAxes` is returned so the card says "compared with your last 14
+episodes, across all languages" rather than lying by omission.
+
+Default window: 24 months, doc-commented — long enough that a biweekly channel
+clears five mature videos, short enough that a format change three years ago is
+not the benchmark.
+
+**A real obstacle:** `DimScope.contentType` is a single string
+(`queries-advanced.ts:25`) and `buildDimConditions` binds one value, so a
+format family spanning several content types needs a scope change. For v1,
+compare like to like and say so in the copy.
+
+## 6. Shrinkage
+
+Two videos at +180% must not outrank a hundred at +35%. The smaller the cohort,
+the more the observed lift is shrunk toward 1×.
+
+**Both lifts survive.** The UI says "early signal · 1.35× adjusted"; the raw
+layer still knows it saw 2.8× on n=2. Shrinkage changes what is *shown*, never
+what is *known* — without both, debugging the model later is guesswork.
+
+A full Bayesian treatment is not needed initially. The shrinkage rule is, and
+it belongs in the first version rather than being retrofitted after someone
+acts on a two-video finding.
+
+## 7. Confidence: reuse, do not invent
+
+FILM-1606 already defines `resolveConfidence` (n<5 insufficient, n<15
+directional, n≥15 reportable). Reuse it. A second confidence vocabulary would
+contradict it on the same screen.
+
+Split the two jobs cleanly: `MIN_MATURE_VIDEOS` is the **suppression gate**
+(below it, no band at all); `resolveConfidence` is the **rendering tier** above
+it. Note these are the same number written twice in two files and should be
+imported, not restated.
+
+## 8. Out of scope
+
+- Reading patterns across several stages — FILM-1718.
+- Attribute-level comparison — FILM-1717.
+- Rendering — FILM-1719.
+- A true percentile, until a peer-rows query exists.
+
+## 9. Acceptance criteria
+
+- [ ] A video is benchmarked against its own channel's history at the same checkpoint age
+- [ ] The result is named a band, not a percentile
+- [ ] Band, lift, cohort median and n are returned together; a band never appears without the other three
+- [ ] `not_judgable`, `insufficient_cohort`, `directional` and `established` are distinguishable, in the type and in the DOM
+- [ ] A thin peer set never renders as weak performance
+- [ ] Relaxation is ordered, bounded, and reported via `relaxedAxes`
+- [ ] The channel axis cannot be relaxed
+- [ ] Format never relaxes
+- [ ] `observedLift` and `adjustedLift` both survive to the raw layer
+- [ ] A two-video cohort cannot outrank a hundred-video one
+- [ ] Confidence tiers are imported from FILM-1606, not redefined
+- [ ] A video excluded from the cohort denominator is also suppressed on the numerator side
+
+## 10. Verification
+
+```bash
+pnpm --filter @kit/clickhouse test
+pnpm --filter @kit/content-analytics test
+./scripts/local-env.sh verify
+pnpm turbo typecheck --force && pnpm lint
+```
+
+The statistics are pure and should be tested without a database. Assert
+specifically:
+
+- the naive-lift case as a **failing control**: n=2 at +180% must not outrank
+  n=100 at +35%
+- a video one day short of a checkpoint yields `not_judgable`, not a band
+- a cohort of four yields `insufficient_cohort`, not `below`
+- numerator/denominator agreement: a video the cohort query excludes for
+  ingest lag must also be suppressed on its own side. This is the test that
+  keeps the two halves honest, and it is the one most likely to be skipped.
+
+## 11. Risk
+
+The two halves of this join already apply maturity rules — the cohort side
+inside SQL, the video side in TypeScript. If they ever diverge, the video is
+compared against a peer set built on different eligibility and nothing in the
+output would say so. Reusing `computeMaturity` and `checkpointPredatesIngest`
+on both sides is what makes them agree by construction; the §10 test is what
+proves it stayed that way.
+
+The second risk is the band quietly becoming a verdict. It is relative to one
+channel's history — a "below" on a channel whose median is excellent is not a
+bad video. That framing belongs in FILM-1719's copy and is worth stating before
+the copy is written.

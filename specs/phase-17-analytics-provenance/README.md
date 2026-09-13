@@ -1,10 +1,15 @@
-# Phase 17: Analytics Data Provenance
+# Phase 17: Analytics Provenance and Signal
 
 Phase 15 made the analytics numbers disciplined and Phase 16 made them match
 the workbook. Neither asked whether a reader can tell **where a number came
 from**. This phase does, and the investigation that produced it found that the
 answer is currently no — in ways that range from a missing label to three cards
 displaying literals typed into a source file.
+
+The phase has two halves. **Provenance** (FILM-1701–1709) answers *where did
+this number come from*. **Signal** (FILM-1710–1720) answers *what is it
+telling me* — which is a different answer on every platform, because each one
+defines a valuable viewer differently.
 
 Scheduled to start **after Phase 16 closes**. FILM-1706 makes a prop required
 on a card shell used by ~14 files, and FILM-1611, 1615 and 1617 all add cards;
@@ -65,6 +70,44 @@ alongside `FILM-1707` rather than after it.
 | [FILM-1708](./FILM-1708-traffic-drill-down-colour-ramp.md) | DRAFT | M | Group → native source drill-down; eight distinguishable colours |
 | [FILM-1709](./FILM-1709-platform-filter-completion.md) | DRAFT | L | The filter reaching the four tabs it currently ignores |
 
+### The signal half
+
+```
+FILM-1710 (asset duration) ── a production incident, ships first
+     │
+FILM-1711 (authorisation) ──┬─→ FILM-1712 (metric recovery)
+                            │
+FILM-1713 (measures, velocity) ─┐
+FILM-1714 (signal model) ───────┼─→ FILM-1715 (self-benchmark)
+FILM-1716 (format families) ────┘         │
+                                          ├─→ FILM-1718 (diagnosis) ← not the genome
+                                          │
+                                          └─→ FILM-1717 (genome v1 → v2)
+                                                   │
+                                                   └─→ FILM-1719 (surfaces)
+
+FILM-1720 (Facebook + X) ── last, and the test of whether 1714 was expandable
+```
+
+| Spec | Status | Effort | Covers |
+|------|--------|--------|--------|
+| [FILM-1710](./FILM-1710-asset-duration.md) | DRAFT | M | The published clip's real duration. **Fixes a live bug** — every Short auto-wins in the Hook Lab |
+| [FILM-1711](./FILM-1711-analytics-authorisation.md) | DRAFT | L | TikTok and Instagram analytics were never authorised; scope audit across all five platforms |
+| [FILM-1712](./FILM-1712-metric-recovery.md) | DRAFT | M | Request the fields we already have access to; give Instagram `reach` a column |
+| [FILM-1713](./FILM-1713-normalised-measures-velocity.md) | DRAFT | M | One definition per rate; bucketed velocity, acceleration, `growth_state` |
+| [FILM-1714](./FILM-1714-signal-model.md) | DRAFT | M | Five funnel stages, primary/supporting signals, unbound stages, the expandability test |
+| [FILM-1715](./FILM-1715-self-benchmarking.md) | DRAFT | M | Band, lift, cohort median and n against your own history; shrinkage |
+| [FILM-1716](./FILM-1716-format-families.md) | DRAFT | M | `short_vertical` … `live`, mapped from `content_type` rather than read from it |
+| [FILM-1717](./FILM-1717-content-genome.md) | DRAFT | XL | Creative mechanisms vs outcomes, discriminated against comparable losers. **v1 then v2** |
+| [FILM-1718](./FILM-1718-stage-diagnosis.md) | DRAFT | M | Distribution-vs-content and the finite failure patterns. **Does not depend on the genome** |
+| [FILM-1719](./FILM-1719-signal-surfaces.md) | DRAFT | L | The five-stage strip, three depths, evidence, "model after" |
+| [FILM-1720](./FILM-1720-facebook-x-analytics.md) | DRAFT | XL | Widening the enum across eight tables; two providers that do not exist |
+
+**Two independent paths, deliberately.** `metrics → diagnosis` (FILM-1718)
+works without the genome, so a creator gets a usable diagnosis immediately;
+`metrics + genome → creative explanation` enriches it later. Coupling them
+would make the diagnosis wait seven months for enough tagged videos.
+
 ## Already shipped as a prerequisite
 
 **Declarative schema drift** (PR #253, not a spec). Four live columns —
@@ -110,6 +153,38 @@ data card compete with the chart for meaning.
 coverage is per project, per window. They render on different paths so
 capability can paint immediately.
 
+### Locked for the signal half
+
+**Five funnel stages, and no composite score, ever.** Reach, Hook, Attention,
+Transmission, Audience. A total would average a dark stage as zero — exactly
+the failure the dark/weak distinction exists to prevent — and it collapses the
+diagnosis that makes the data useful.
+
+**No Monetisation stage.** `video_metrics.revenue_cents` is literal `0` on all
+four write paths. It would be dark or wrong on every platform forever. Its
+absence is a decision.
+
+**A stage may be unbound, and often should be.** Five stages is a vocabulary,
+not a quota. Four honest stages beat five with one invented.
+
+**The stage layer contains no absolute thresholds.** Every figure is relative
+to the channel's own cohort. This is what keeps it from colliding with
+FILM-1616, where the 0.03 CTR flag is deliberately a breakage check and not a
+content verdict. Reach *benchmarks* CTR; it never *flags* it — and the
+converse binds, so the diagnostics table gets no bands.
+
+**Stage scores are never compared across platforms.** An Instagram share and a
+YouTube share are different acts. Platform view definitions differ enough that
+cross-platform percentages are not comparable; the only defensible benchmark is
+your own history.
+
+**Diagnosis describes, it does not explain.** `measurement → diagnosis →
+hypothesis`, never `measurement → pretend-causality`. A causal claim is
+reachable only through an experiment.
+
+**No recommendation without evidence** — enforced by the type, not by review.
+A recommendation that cannot name its evidence does not construct.
+
 ## Verified corrections to earlier assumptions
 
 Recorded because each was believed at some point during this phase's planning:
@@ -130,8 +205,36 @@ Recorded because each was believed at some point during this phase's planning:
 - **`database.types.ts` is not stale.** A regeneration differs by 443 lines,
   but every difference is a CLI-version artifact — the local CLI would *remove*
   the `__InternalSupabase` block and rewrite `unknown` as `unknown | null`.
+- **TikTok and Instagram analytics were never authorised.**
+  `oauth/tiktok/config.ts:11` requests only `user.info.basic` and
+  `video.upload`; `oauth/meta/config.ts:10` omits `instagram_manage_insights`.
+  Only YouTube holds its analytics scope. This — not the seed fixture — is why
+  `video_metrics` holds YouTube rows and nothing else.
+- **Providers request fewer fields than their own types declare.** TikTok asks
+  for five fields while declaring ten, omitting `full_video_watched_rate` —
+  its completion rate. Instagram never requests `follows` or `profile_visits`,
+  and the `reach` it *does* request is discarded at ingest for want of a
+  column. YouTube's daily query omits `averageViewPercentage`.
+- **`video_dim.duration_seconds` is the episode's, not the clip's**
+  (`dim-sync.ts:166-168`). Short-form publishes in the live fixture average
+  ~1,550 seconds, which makes every locally-derived completion rate wrong and
+  causes every Short to auto-win in the Hook Lab.
+- **`video_metrics.extra_metrics` is write-only.** It holds the full provider
+  payload and nothing in the repository reads it — no `JSONExtract` anywhere.
 
 ## Known limits — do not promise these
+
+**Four things the research asks for that no provider gives us:** "sends" as
+distinct from shares, replays and loops, stayed-to-watch and sub-second holds,
+and new-vs-returning viewers (Studio-only — FILM-1506 already records the
+subscribed-share proxy as the documented best available). Each becomes an
+`unsupported` entry with a creator-facing sentence, and an unbound stage where
+it was a platform's only candidate signal.
+
+**The genome is a back-catalog feature.** At weekly publishing, a binary
+creative attribute needs roughly seven months to reach an established evidence
+tier; at biweekly, fifteen. The product must extract value below that tier by
+labelling early signals as early, not by waiting or by overclaiming.
 
 - **Traffic-source attribution is YouTube-only and stays that way in this
   phase.** TikTok's provider returns percentage-only sources with incompatible

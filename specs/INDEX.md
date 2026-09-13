@@ -557,7 +557,7 @@ See [phase-16-workbook-parity/README.md](./phase-16-workbook-parity/README.md) f
 
 All workbook-parity scope is now specified. FILM-1611 was split — what the backlog called "analytics UI" became FILM-1611 (channel selector and orphan wiring), FILM-1615 (Video Log table), FILM-1616 (weekly diagnostics and retention drill-down) and FILM-1617 (subscriber surfaces). FILM-1614 is **not** a phase-16 spec: it is claimed by an in-code `TODO(FILM-1614)` in `revenue-queries.ts` for folding revenue reads into a pre-grouped RPC. See the phase README for the dependency graph and known limits.
 
-### Phase 17: Analytics Data Provenance (9 specs)
+### Phase 17: Analytics Provenance and Signal (20 specs)
 
 See [phase-17-analytics-provenance/README.md](./phase-17-analytics-provenance/README.md) for the dependency graph, locked decisions, known limits and open product questions.
 
@@ -574,8 +574,21 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1707 | [six-tab-adoption](./phase-17-analytics-provenance/FILM-1707-six-tab-adoption.md) | DRAFT | L | FILM-1702, FILM-1705, FILM-1706 |
 | FILM-1708 | [traffic-drill-down-colour-ramp](./phase-17-analytics-provenance/FILM-1708-traffic-drill-down-colour-ramp.md) | DRAFT | M | FILM-1605, FILM-1706 |
 | FILM-1709 | [platform-filter-completion](./phase-17-analytics-provenance/FILM-1709-platform-filter-completion.md) | DRAFT | L | FILM-1704, FILM-1707 |
+| FILM-1710 | [asset-duration](./phase-17-analytics-provenance/FILM-1710-asset-duration.md) | DRAFT | M | - |
+| FILM-1711 | [analytics-authorisation](./phase-17-analytics-provenance/FILM-1711-analytics-authorisation.md) | DRAFT | L | - |
+| FILM-1712 | [metric-recovery](./phase-17-analytics-provenance/FILM-1712-metric-recovery.md) | DRAFT | M | FILM-1711 |
+| FILM-1713 | [normalised-measures-velocity](./phase-17-analytics-provenance/FILM-1713-normalised-measures-velocity.md) | DRAFT | M | - |
+| FILM-1714 | [signal-model](./phase-17-analytics-provenance/FILM-1714-signal-model.md) | DRAFT | M | FILM-1703, FILM-1713 |
+| FILM-1715 | [self-benchmarking](./phase-17-analytics-provenance/FILM-1715-self-benchmarking.md) | DRAFT | M | FILM-1713, FILM-1716 |
+| FILM-1716 | [format-families](./phase-17-analytics-provenance/FILM-1716-format-families.md) | DRAFT | M | FILM-1710 |
+| FILM-1717 | [content-genome](./phase-17-analytics-provenance/FILM-1717-content-genome.md) | DRAFT | XL | FILM-1606, FILM-1715, FILM-1716 |
+| FILM-1718 | [stage-diagnosis](./phase-17-analytics-provenance/FILM-1718-stage-diagnosis.md) | DRAFT | M | FILM-1714, FILM-1715 |
+| FILM-1719 | [signal-surfaces](./phase-17-analytics-provenance/FILM-1719-signal-surfaces.md) | DRAFT | L | FILM-1706, FILM-1717, FILM-1718 |
+| FILM-1720 | [facebook-x-analytics](./phase-17-analytics-provenance/FILM-1720-facebook-x-analytics.md) | DRAFT | XL | FILM-1711, FILM-1714 |
 
-The page currently presents YouTube-only, snapshot-derived and cross-platform numbers in identical treatment, and three Audience cards render literals typed into a source file. FILM-1701, 1703 and 1706 are the parallelisable foundations. The declarative schema-drift repair that this phase's investigation surfaced shipped separately as PR #253.
+Two halves. **Provenance** (1701–1709) answers *where did this number come from*: the page presents YouTube-only, snapshot-derived and cross-platform numbers in identical treatment, and three Audience cards render literals typed into a source file. **Signal** (1710–1720) answers *what is it telling me*, which differs per platform — five funnel stages benchmarked against your own history, then creative mechanisms correlated with them.
+
+FILM-1710 fixes a live bug and ships first: `video_dim.duration_seconds` is the episode's duration, so every Short auto-wins in the Hook Lab. FILM-1711 records that TikTok and Instagram analytics were never authorised — neither OAuth config requests its analytics scope, which is why `video_metrics` holds YouTube rows and nothing else. The declarative schema-drift repair this investigation surfaced shipped separately as PR #253.
 
 ### Spikes (5 specs)
 

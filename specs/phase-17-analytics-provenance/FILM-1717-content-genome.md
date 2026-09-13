@@ -1,0 +1,234 @@
+---
+spec_id: FILM-1717
+title: Content Genome
+status: DRAFT
+effort: XL
+dependencies: FILM-1606, FILM-1715, FILM-1716
+---
+
+# Content Genome
+
+## 1. Overview
+
+Everything below this spec answers *what happened to this video*. This one
+answers *what should I make next*, and it is the difference between an
+analytics dashboard and a creative intelligence system.
+
+It turns:
+
+> Transmission: above
+
+into:
+
+> Identity framing is associated with 2.1× typical transmission, on 8
+> comparable videos.
+
+## 2. Two milestones, not one pull request
+
+This is XL and contains enough to become an unreviewable single change. Split
+it:
+
+**Genome v1** — observable attributes on the existing tag infrastructure,
+winner/loser comparison, evidence levels, adjusted lift. Useful alone: it makes
+FILM-1718's diagnosis *explainable*.
+
+**Genome v2** — semantic attributes, creative templates, hypothesis generation,
+experiment linkage, causal evidence. This is what makes it *generative*.
+
+v1 must ship and be useful before v2 starts.
+
+## 3. Three things that share storage and must not share meaning
+
+| Concept | Question | Example |
+|---|---|---|
+| **Taxonomy** | What *is* this video? | `topic = AI`, `format = tutorial` |
+| **Genome** | What creative *mechanisms* does it contain? | `identity = high`, `result_first = true` |
+| **Performance** | What happened? | `attention = 1.4×`, `transmission = 2.1×` |
+
+Physically all of these flow through `publish_tags` → `video_dim.tags`, which
+is `Array(String)` and already serialises any dimension — **so ClickHouse needs
+no change at all**. Semantically they stay distinct types, or the genome
+degenerates into an undifferentiated tag bag and nothing can be reasoned about.
+
+## 4. Two attribute layers
+
+**Layer A — observable.** Extractable or recorded at publish: duration, hook
+type, opening visual, first sentence, face present, text present, cuts per
+minute, scene changes, question in first 3s, result-first.
+
+**Layer B — semantic.** What the creative is *doing*: curiosity, novelty,
+utility, relatability, identity, surprise, aspiration, controversy, humour,
+authority. Harder to capture, more useful.
+
+Both are additional `dimension` values on the existing CHECK in
+`68-content-taxonomy.sql` (today `topic`, `format`, `thumbnail_style`,
+`hook_type`). Layer A is v1; Layer B is v2.
+
+## 5. Not a second statistics engine
+
+The correlation is FILM-1606's `querySegmentPerformance({ kind: 'tag' })`,
+unchanged — a genome attribute *is* a tag, and its association with an outcome
+is its segment median at a checkpoint with its confidence tier and `spread`.
+
+The one worthwhile addition is a **stage-aware measure**, so
+`hook_type:cold_open` scores against the **Hook** stage rather than against
+views. That is one `GROUP BY` expression and a different measure, not a new
+path.
+
+Building a parallel statistics layer here would duplicate FILM-1606's
+checkpoint handling, maturity gating and confidence tiers — and the two would
+disagree on screen within a release.
+
+## 6. Discriminating attributes, not merely correlated ones
+
+The naive question is *what do winners have?*. The useful question is **what do
+winners have that comparable losers don't?**
+
+```
+identity framing:   winners 4.2%   comparable losers 1.3%   ← discriminates
+face present:       winners 71%    comparable losers 68%    ← tells you nothing
+```
+
+The second is common among winners and worthless as guidance. So every claim
+carries both sets:
+
+- **successful comparables** — videos with this mechanism, above the median
+- **unsuccessful comparables** — videos with this mechanism, below it
+
+This is also far more useful to a creator than a statistic. "Here are 12 videos
+that used this mechanism successfully and 11 comparable ones that did not"
+teaches faster than "1.9× association", and it is what lets the system say *the
+difference is not the format, it is the hook*.
+
+## 7. Confounding, and three claim strengths
+
+"Face present performs 20% better" may mean faces work — or that face videos
+are shorter, or on different topics, or by a different creator. The topic may
+be the real variable.
+
+| Strength | Wording | Source |
+|---|---|---|
+| `observed` | "Videos tagged identity had 1.7× typical transmission" | a cross-tab |
+| `controlled_association` | "Among comparable videos, identity is associated with 1.7×" | same platform, format family, duration band, topic, creator; one attribute varying |
+| `causal` | "Changing the framing increased transmission" | **only** from an experiment |
+
+The third is the one people will trust for creative decisions, so it is gated
+on `analytics_experiments` and reachable by no other path.
+
+## 8. Evidence, and why "come back in seven months" is unacceptable
+
+Reusing FILM-1606's tiers, surfaced as evidence rather than as a gate:
+
+| Level | Wording |
+|---|---|
+| Observation | "Early signal — 7 videos" |
+| Directional | "Directional — 19 videos" |
+| Established | "Established pattern — 53 videos" |
+
+At weekly publishing a binary attribute needs roughly seven months to reach the
+top tier; at biweekly, fifteen. The genome is a back-catalog feature and that
+must be said plainly — but the product still has to extract value below the top
+tier. An early signal *labelled as one* is useful; silence is not.
+
+**Shrinkage.** Two videos at +180% must not outrank a hundred at +35%. The
+smaller the cohort, the more the observed lift shrinks toward 1×. **Both lifts
+survive** — the UI says "early signal · 1.35× adjusted", the raw layer still
+knows it saw 2.8× on n=2.
+
+Every claim carries the `Evidence` object defined in the phase plan: level, n,
+cohort n, comparable definition, claim strength, observed and adjusted lift,
+shrinkage factor, both comparable sets, source rows, and a `MetricProvenance`
+naming the provider field and ingestion path that produced the measure.
+
+**A recommendation without an `Evidence` must not construct.** Enforced by the
+type, not by review.
+
+## 9. Templates and the closed loop (v2)
+
+A winning pattern generalises into a template — hook mechanism, body, payoff,
+emotional mechanism, typical duration, strongest stages — instantiable into new
+concepts that preserve the mechanism while changing the subject. That is the
+difference between finding similar videos and understanding the creative
+grammar.
+
+```
+genome hypothesis → experiment → variant → outcome
+    → causal evidence → genome confidence update
+```
+
+`analytics_experiments` already exists and already refuses to claim
+significance (FILM-1610). The one addition that closes the loop: **an
+experiment must reference the genome hypothesis that generated it.** Without
+that link the genome can only ever accumulate correlations, however well
+controlled.
+
+## 10. Two vocabularies to reconcile while here
+
+`hook_variants.hook_type` (`71-hook-testing.sql`) is free `text` with no
+foreign key, while the taxonomy has a `hook_type` dimension with a controlled
+vocabulary. They are already two vocabularies for one concept — validate the
+Lab's against `content_tags`, or the genome reports on `cold_open` while the
+Hook Lab reports on `Cold Open`.
+
+Adding the five `FunnelStage` values to FILM-1610's closed `metric_watched`
+vocabulary lets an experiment record which stage it was about — the cleanest
+available join between the two specs, and it avoids a parallel enum.
+
+## 11. Out of scope
+
+- A new statistics path, a new table, or a ClickHouse change.
+- Significance testing. FILM-1610 forbids it and this spec does not revisit it.
+- Automated semantic extraction in v1 — Layer B is v2.
+- Rendering — FILM-1719.
+
+## 12. Acceptance criteria
+
+- [ ] Taxonomy, genome and performance are distinct types even though storage is shared
+- [ ] Attributes flow through the existing tag infrastructure with no ClickHouse migration
+- [ ] Correlation uses FILM-1606's segment query with a stage-aware measure, not a second engine
+- [ ] Every claim carries both successful and unsuccessful comparables
+- [ ] An attribute common to winners *and* comparable losers is not reported as a finding
+- [ ] Claim strength is explicit, and `causal` requires an experiment reference
+- [ ] Observed and adjusted lift both survive to the raw layer
+- [ ] A two-video cohort cannot outrank a hundred-video one
+- [ ] Evidence level is visible, and sparse evidence is labelled rather than hidden
+- [ ] A recommendation cannot be constructed without an `Evidence`
+- [ ] Every `Evidence` carries a `MetricProvenance`
+- [ ] The Hook Lab's `hook_type` vocabulary is reconciled with the taxonomy's
+- [ ] v1 ships and is useful before v2 begins
+
+## 13. Verification
+
+```bash
+pnpm --filter @kit/clickhouse test
+pnpm --filter @kit/content-analytics test
+./scripts/local-env.sh verify
+pnpm turbo typecheck --force && pnpm lint
+```
+
+The statistics are pure and belong in unit tests. The decisive ones:
+
+- the **failing control**: an attribute present in 71% of winners and 68% of
+  comparable losers must produce no finding
+- n=2 at +180% must rank below n=100 at +35%
+- a `causal` claim constructed without an experiment reference must not compile
+- a recommendation constructed without an `Evidence` must not compile
+- confounded input: two attributes that always co-occur must not both be
+  reported as independent findings
+
+## 14. Risk
+
+**This spec can quietly become a bullshit generator.** It produces sentences
+that sound authoritative about creative decisions, from small samples, on
+observational data. Every safeguard here — comparable losers, claim strengths,
+shrinkage, the evidence object, the compile-time gate — exists for that one
+reason, and none of them should be treated as optional polish.
+
+**Sample size is a product problem, not only a statistical one.** Seven months
+to an established pattern is the honest number. A product that says nothing
+until then will be judged useless; one that overclaims before then will be
+judged wrong. The evidence-level vocabulary is the only way through, and it has
+to be in the first version.
+
+**Scope.** The v1/v2 split in §2 is the mitigation for this being XL. If v1
+starts absorbing semantic extraction or templates, stop and re-split.
