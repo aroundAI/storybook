@@ -395,10 +395,20 @@ async function queries() {
     }),
   );
   await step('queryTrafficSourceBreakdown', () =>
-    queryTrafficSourceBreakdown({ scope, bucket: 'week' }),
+    queryTrafficSourceBreakdown({
+      scope,
+      bucket: 'week',
+      startDate: '2020-01-01',
+      endDate: '2030-01-01',
+    }),
   );
   await step('queryTrafficSourceBreakdown (month)', () =>
-    queryTrafficSourceBreakdown({ scope, bucket: 'month' }),
+    queryTrafficSourceBreakdown({
+      scope,
+      bucket: 'month',
+      startDate: '2020-01-01',
+      endDate: '2030-01-01',
+    }),
   );
   await step('queryBackCatalogShare', () =>
     queryBackCatalogShare({
@@ -594,6 +604,8 @@ async function assertions() {
     const breakdown = await queryTrafficSourceBreakdown({
       scope,
       bucket: 'month',
+      startDate: '2020-01-01',
+      endDate: '2030-01-01',
     });
 
     const bucket = breakdown.find((b) => b.totalViews > 0);

@@ -478,8 +478,16 @@ async function queryTrafficSourceRows(input: {
 export async function queryTrafficSourceBreakdown(input: {
   scope: DimScope;
   bucket: TrafficBucket;
-  startDate?: string;
-  endDate?: string;
+  /**
+   * Required, unlike the other scope queries. This one returns a row per
+   * (bucket, source) rather than per bucket, so an unbounded call is ~18x
+   * the payload — and the span cap lives in the action's schema, which a
+   * direct importer of this export bypasses entirely. Putting the
+   * requirement here is what makes the bound a property of the query
+   * rather than of the caller's manners.
+   */
+  startDate: string;
+  endDate: string;
 }): Promise<TrafficGroupBucket[]> {
   if (!isClickHouseEnabled()) return [];
 

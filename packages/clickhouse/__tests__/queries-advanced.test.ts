@@ -177,6 +177,8 @@ describe('queries-advanced', () => {
 
       await queryTrafficSourceBreakdown({
         scope: { projectId: PROJECT },
+        startDate: '2026-01-01',
+        endDate: '2026-06-30',
         bucket: 'month',
       });
 
@@ -216,6 +218,8 @@ describe('queries-advanced', () => {
 
       const buckets = await queryTrafficSourceBreakdown({
         scope: { projectId: PROJECT },
+        startDate: '2026-01-01',
+        endDate: '2026-06-30',
         bucket: 'week',
       });
 
@@ -239,6 +243,8 @@ describe('queries-advanced', () => {
 
       await queryTrafficSourceBreakdown({
         scope: { projectId: PROJECT },
+        startDate: '2026-01-01',
+        endDate: '2026-06-30',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         bucket: "day'; DROP TABLE video_traffic_sources; --" as any,
       });
@@ -265,6 +271,8 @@ describe('queries-advanced', () => {
       for (const bucket of ['constructor', 'toString', 'valueOf']) {
         await queryTrafficSourceBreakdown({
           scope: { projectId: PROJECT },
+          startDate: '2026-01-01',
+          endDate: '2026-06-30',
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           bucket: bucket as any,
         });
@@ -290,6 +298,8 @@ describe('queries-advanced', () => {
       await expect(
         queryTrafficSourceBreakdown({
           scope: { projectId: PROJECT },
+          startDate: '2026-01-01',
+          endDate: '2026-06-30',
           bucket: 'week',
         }),
       ).resolves.toEqual([]);

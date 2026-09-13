@@ -211,7 +211,9 @@ deliver what this paragraph claims.
 - [x] A bucket with no views reports no traffic mix rather than a 0% composition
 - [x] The threshold line and the bars share one box, so neither the scroll width nor the scrollbar height offsets them
 - [x] The Browse+Suggested source set has one definition, derived from the taxonomy
-- [x] Every granularity is bounded by the schema, not by the caller happening to pass a window
+- [x] Every granularity is bounded by the schema, and `queryTrafficSourceBreakdown` requires its dates outright — so the bound holds for a direct importer of the export, not only for callers that go through the action
+- [x] A window with no views anywhere reports the window, not a nonexistent "newest week with data"
+- [x] Server buckets the gap-fill does not match are kept rather than dropped, so a granularity change degrades to unfilled real data instead of a blank chart
 - [x] `getTrafficShareTrendAction` is removed rather than left as an unbounded path to identical output
 - [x] A group under a pixel still renders and stays hoverable
 - [x] The traffic window is read per render rather than frozen at mount, and is part of the cache key — nothing schedules a midnight re-render, so an idle tab updates on its next refetch

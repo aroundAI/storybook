@@ -147,6 +147,7 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
     );
 
     const filled: TrafficGroupBucket[] = [];
+    const consumed = new Set<string>();
     const cursor = new Date(trafficWindow.from);
 
     for (let week = 0; week < TRAFFIC_WINDOW_WEEKS; week++) {
@@ -167,9 +168,22 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
       );
 
       cursor.setUTCDate(cursor.getUTCDate() + 7);
+      consumed.add(key);
     }
 
-    return filled;
+    // Anything the server returned that no generated key matched is kept
+    // rather than dropped. The fill hardcodes weekly Sunday keys, so
+    // changing this card's `bucket` to 'month' — a one-line edit that
+    // compiles and typechecks — would otherwise render 52 empty weeks and
+    // "No views" while the action returned a full response. Degrading to
+    // "shows the real data, unfilled" beats a silently blank chart.
+    for (const bucket of byBucket.values()) {
+      if (!consumed.has(bucket.bucket)) {
+        filled.push(bucket);
+      }
+    }
+
+    return filled.sort((a, b) => (a.bucket < b.bucket ? -1 : 1));
   }, [trafficBreakdownQuery.data, trafficWindow.from]);
 
   // Derived, not fetched. Both cards want the same scope at the same

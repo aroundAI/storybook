@@ -118,6 +118,10 @@ export function TrafficShareCard({
   // mostly from Search" about a week with no views contradicts the stacked
   // card, which renders the same bucket as "no views".
   const hasViews = latest.totalViews > 0;
+  // Distinct from "this particular week was quiet": when nothing in the
+  // window has views there is no newest-week-with-data to name, and the
+  // stacked card states the window rather than a week.
+  const windowHasViews = buckets.some((bucket) => bucket.totalViews > 0);
 
   return (
     <div className={'flex flex-col gap-4'}>
@@ -177,11 +181,13 @@ export function TrafficShareCard({
       </div>
 
       <p className={'text-muted-foreground text-xs'}>
-        {!hasViews
-          ? `No views in the ${bucketNoun} of ${latest.bucket}, so there is no traffic mix to report. That is the newest ${bucketNoun} with data.`
-          : crossed
-            ? `Above 60% in the ${bucketNoun} shown — recommendations, not just search. ${LATEST_BUCKET_CAVEAT(bucketNoun)}`
-            : `Below 60% in the ${bucketNoun} shown — views still come mostly from Search and external sources. The dashed line marks recommended-channel territory. ${LATEST_BUCKET_CAVEAT(bucketNoun)}`}
+        {!windowHasViews
+          ? `No views in ${windowLabel}, so there is no traffic mix to report.`
+          : !hasViews
+            ? `No views in the ${bucketNoun} of ${latest.bucket}, so there is no traffic mix to report. That is the newest ${bucketNoun} with data.`
+            : crossed
+              ? `Above 60% in the ${bucketNoun} shown — recommendations, not just search. ${LATEST_BUCKET_CAVEAT(bucketNoun)}`
+              : `Below 60% in the ${bucketNoun} shown — views still come mostly from Search and external sources. The dashed line marks recommended-channel territory. ${LATEST_BUCKET_CAVEAT(bucketNoun)}`}
       </p>
     </div>
   );
