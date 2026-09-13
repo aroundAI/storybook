@@ -239,12 +239,28 @@ create table if not exists public.platform_connections (
   refresh_token_encrypted text,
   token_expires_at timestamp with time zone,
   scopes text[],
+  -- `metadata` and `language` are live columns that were missing from this
+  -- copy of the definition. This file and 32-platform-connections.sql both
+  -- declare the table with `if not exists`, so this one wins on ordering and
+  -- the other is a silent no-op — meaning the columns absent *here* are the
+  -- ones `db diff` would generate a DROP for. See the note below about the
+  -- duplication itself.
+  metadata jsonb default '{}'::jsonb,
+  language varchar(5) default 'en' not null,
   is_active boolean default true not null,
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
   check (platform in ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin')),
   unique(account_id, platform, platform_account_id)
 );
+
+-- NOTE: public.platform_connections is declared twice — here and in
+-- 32-platform-connections.sql. Both use `if not exists`, so the two must be
+-- kept in step by hand or they drift apart silently, which is exactly what
+-- happened to `metadata` and `language`. Collapsing them to one definition is
+-- the right fix, but it moves the table's creation order relative to
+-- public.publishes (which references it), so it is deliberately left as a
+-- separate change rather than bundled with a drift repair.
 
 comment on table public.platform_connections is 'OAuth tokens for publishing to social platforms';
 comment on column public.platform_connections.platform is 'Platform: youtube, tiktok, instagram, facebook, twitter, linkedin';
@@ -534,6 +550,20 @@ create table if not exists public.publishes (
   scheduled_at timestamp with time zone,
   published_at timestamp with time zone,
   metadata jsonb,
+  -- Language of this specific publish, and the dubbed version it came from.
+  -- Both are live (migration 20251224180000_add_multi_language_analytics.sql)
+  -- and both feed analytics: `language` is what dim-sync writes to
+  -- video_dim.language. Declared here so `db diff` does not emit a DROP.
+  --
+  -- Note the `default 'en'`: it means an unset language is indistinguishable
+  -- from a deliberate English one, so "English" doubles as the unknown bucket
+  -- in every language breakdown. Changing that needs a backfill decision, so
+  -- it is tracked separately rather than altered here.
+  -- dubbed_version_id carries no inline `references` because
+  -- public.dubbed_versions is created much later in this same file; the
+  -- foreign key is added just after that table instead.
+  language varchar(5) default 'en' not null,
+  dubbed_version_id uuid,
   created_at timestamp with time zone default now() not null,
   check (platform in ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin')),
   check (content_type in ('full', 'short', 'teaser', 'trailer')),
@@ -1368,6 +1398,39 @@ comment on column public.dubbed_versions.metadata is 'Additional metadata (LLM c
 create index if not exists idx_dubbed_versions_episode_id on public.dubbed_versions(episode_id);
 create index if not exists idx_dubbed_versions_language on public.dubbed_versions(episode_id, language);
 create index if not exists idx_dubbed_versions_status on public.dubbed_versions(status);
+
+-- Deferred foreign key for public.publishes.dubbed_version_id: the column is
+-- declared with the rest of public.publishes far above, but the table it
+-- points at is only created here.
+-- Guarded on the column the constraint covers, not on its name: the live
+-- constraint was created implicitly by `ALTER TABLE ... ADD COLUMN ...
+-- REFERENCES`, so its name is whatever Postgres generated. Matching on a
+-- guessed name would add a second, duplicate foreign key wherever the guess
+-- is wrong.
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint c
+    join pg_attribute a
+      on a.attrelid = c.conrelid and a.attnum = any (c.conkey)
+    where c.conrelid = 'public.publishes'::regclass
+      and c.contype = 'f'
+      and a.attname = 'dubbed_version_id'
+  ) then
+    alter table public.publishes
+      add constraint publishes_dubbed_version_id_fkey
+      foreign key (dubbed_version_id)
+      references public.dubbed_versions(id) on delete set null;
+  end if;
+end $$;
+
+-- Analytics aggregation indexes on public.publishes.language, declared with
+-- the column's dependency rather than beside the table.
+create index if not exists idx_publishes_language on public.publishes(language);
+create index if not exists idx_publishes_platform_language on public.publishes(platform, language);
+create index if not exists idx_publishes_dubbed_version_id
+  on public.publishes(dubbed_version_id) where dubbed_version_id is not null;
 
 -- Timestamps trigger for dubbed_versions
 create trigger dubbed_versions_set_timestamps
