@@ -99,9 +99,14 @@ export function AnalyticsCard({
 
       {/* Footer */}
       {footer && (
-        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        // A div, not a p. `footer` is ReactNode, and the deep-dive tab passes
+        // a flex row of buttons — a <div> inside a <p> is invalid HTML, which
+        // React logs as a hydration error and the parser fixes by closing the
+        // <p> early, so the footer escaped the card's text styling. Tailwind's
+        // preflight zeroes <p> margins, so nothing moves.
+        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
           {footer}
-        </p>
+        </div>
       )}
     </div>
   );

@@ -1,15 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
-import { CalendarRange, Layers, TrendingUp } from 'lucide-react';
+import { CalendarRange, Layers, PieChart, TrendingUp } from 'lucide-react';
+
+import { TRAFFIC_SOURCE_GROUPS } from '@kit/clickhouse';
+import type { TrafficGroupBucket } from '@kit/clickhouse';
 
 import {
   getBackCatalogAction,
   getCohortCurvesAction,
   getMedianPerformanceAction,
-  getTrafficShareTrendAction,
+  getTrafficBreakdownAction,
 } from '../../server/deep-dive-actions';
 import { AnalyticsCard } from '../overview/analytics-card';
 import { BackCatalogCard, BackCatalogCardSkeleton } from './back-catalog-card';
@@ -20,6 +23,7 @@ import {
 import type { CohortEntry } from './cohort-curves-chart';
 import { MedianViewsCard, MedianViewsCardSkeleton } from './median-views-card';
 import {
+  TrafficBreakdownCard,
   TrafficShareCard,
   TrafficShareCardSkeleton,
 } from './traffic-share-card';
@@ -37,6 +41,24 @@ type MedianMode = 'cohort_views_to_date' | 'views_in_period';
  * cohort curves. These are the numbers decisions get made on, as opposed
  * to the weekly diagnostics that only catch breakage.
  */
+/**
+ * Window the traffic cards ask for.
+ *
+ * The breakdown returns a row per (bucket, source) where the old share
+ * trend returned one per bucket, so an all-history call is roughly twenty
+ * times the payload for the same picture. A year of weeks is enough to
+ * read the trend and bounds the response at ~52 buckets.
+ */
+const TRAFFIC_WINDOW_WEEKS = 52;
+
+/**
+ * Human-readable form of the window, for the cards' empty state. Derived,
+ * not restated: this string is the only thing telling a reader why older
+ * data is missing, so it must not be able to name a window the query has
+ * stopped asking for.
+ */
+const TRAFFIC_WINDOW_LABEL = `the last ${TRAFFIC_WINDOW_WEEKS} complete weeks`;
+
 export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
   const [medianMode, setMedianMode] = useState<MedianMode>(
     'cohort_views_to_date',
@@ -54,10 +76,140 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
       }),
   });
 
-  const trafficQuery = useQuery({
-    queryKey: ['deep-dive-traffic', projectId],
-    queryFn: () => getTrafficShareTrendAction({ scope, bucket: 'week' }),
+  // Read on every render rather than frozen at mount, so the window follows
+  // the UTC day as soon as anything re-renders. Nothing *schedules* a
+  // re-render at midnight, so a completely idle tab keeps yesterday's window
+  // until the next refetch or interaction — better than the previous
+  // mount-time freeze, and not the same as a ticking clock.
+  const today = new Date().toISOString().slice(0, 10);
+
+  const trafficWindow = useMemo(() => {
+    // Both ends land on the week boundary ClickHouse buckets on
+    // (toStartOfWeek is Sunday), so every bucket is a complete *calendar*
+    // week. That is not the same as a fully *ingested* one: the bulk report
+    // ingest lags 1-3 days, so the newest closed week can still be holding
+    // only its first few days. Snapping the leading edge alone was worse —
+    // the newest bucket was always partial — but the trend card still
+    // headlines this bucket against the threshold, so its footnote says the
+    // bucket may be partially ingested rather than implying otherwise.
+    const currentWeekStart = new Date(`${today}T00:00:00.000Z`);
+
+    currentWeekStart.setUTCDate(
+      currentWeekStart.getUTCDate() - currentWeekStart.getUTCDay(),
+    );
+
+    // Inclusive upper bound, so the last complete week's Saturday.
+    const to = new Date(currentWeekStart);
+
+    to.setUTCDate(to.getUTCDate() - 1);
+
+    const from = new Date(currentWeekStart);
+
+    from.setUTCDate(from.getUTCDate() - TRAFFIC_WINDOW_WEEKS * 7);
+
+    return {
+      from,
+      to,
+      // Keyed on the window itself, not on `today`: the bounds only move
+      // once a week, and keying on the date would abandon a byte-identical
+      // cache entry every UTC midnight — skeletons and a fresh
+      // `video_traffic_sources FINAL` scan six days out of seven.
+      key: `${from.toISOString().slice(0, 10)}..${to.toISOString().slice(0, 10)}`,
+    };
+  }, [today]);
+
+  const trafficBreakdownQuery = useQuery({
+    // The window is part of the cache identity; without it two different
+    // windows share an entry.
+    queryKey: ['deep-dive-traffic-breakdown', projectId, trafficWindow.key],
+    queryFn: () =>
+      getTrafficBreakdownAction({
+        scope,
+        bucket: 'week',
+        from: trafficWindow.from,
+        to: trafficWindow.to,
+      }),
   });
+
+  // Gaps filled, so the x-axis is time rather than "buckets that exist".
+  // ClickHouse groups by (bucket, source), so a week with no traffic rows
+  // produces no bucket at all — a channel dark for 20 of 52 weeks would
+  // otherwise draw 32 adjacent bars that read as 32 consecutive weeks,
+  // directly under a label promising the last 52 complete weeks. Only the
+  // per-bar tooltip carried the real date, and the trend shape is what the
+  // card exists to show.
+  const trafficBuckets = useMemo(() => {
+    const byBucket = new Map(
+      (trafficBreakdownQuery.data ?? []).map((bucket) => [
+        bucket.bucket,
+        bucket,
+      ]),
+    );
+
+    const filled: TrafficGroupBucket[] = [];
+    const consumed = new Set<string>();
+    const cursor = new Date(trafficWindow.from);
+
+    for (let week = 0; week < TRAFFIC_WINDOW_WEEKS; week++) {
+      const key = cursor.toISOString().slice(0, 10);
+
+      filled.push(
+        byBucket.get(key) ?? {
+          bucket: key,
+          totalViews: 0,
+          totalWatchTimeMinutes: 0,
+          groups: TRAFFIC_SOURCE_GROUPS.map((group) => ({
+            group,
+            views: 0,
+            watchTimeMinutes: 0,
+            share: 0,
+          })),
+        },
+      );
+
+      cursor.setUTCDate(cursor.getUTCDate() + 7);
+      consumed.add(key);
+    }
+
+    // Anything the server returned that no generated key matched is kept
+    // rather than dropped. The fill hardcodes weekly Sunday keys, so
+    // changing this card's `bucket` to 'month' — a one-line edit that
+    // compiles and typechecks — would otherwise render 52 empty weeks and
+    // "No views" while the action returned a full response. Degrading to
+    // "shows the real data, unfilled" beats a silently blank chart.
+    for (const bucket of byBucket.values()) {
+      if (!consumed.has(bucket.bucket)) {
+        filled.push(bucket);
+      }
+    }
+
+    return filled.sort((a, b) => (a.bucket < b.bucket ? -1 : 1));
+  }, [trafficBreakdownQuery.data, trafficWindow.from]);
+
+  // Derived, not fetched. Both cards want the same scope at the same
+  // granularity, so a second action call would compile to byte-identical
+  // SQL — two `video_traffic_sources FINAL` scans and two dim scans per tab
+  // load — for numbers this response already contains. The fold is exactly
+  // the same fold the query layer used to do before it became dead code.
+  const trafficShareBuckets = useMemo(
+    () =>
+      trafficBuckets.map((bucket) => {
+        const browseSuggestedViews =
+          bucket.groups.find((group) => group.group === 'browse_suggested')
+            ?.views ?? 0;
+
+        return {
+          bucket: bucket.bucket,
+          totalViews: bucket.totalViews,
+          browseSuggestedViews,
+          share:
+            bucket.totalViews > 0
+              ? browseSuggestedViews / bucket.totalViews
+              : 0,
+        };
+      }),
+    [trafficBuckets],
+  );
 
   const backCatalogQuery = useQuery({
     queryKey: ['deep-dive-back-catalog', projectId],
@@ -126,10 +278,40 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
         }
         className={'h-auto'}
       >
-        {trafficQuery.isLoading ? (
+        {trafficBreakdownQuery.isLoading ? (
           <TrafficShareCardSkeleton />
         ) : (
-          <TrafficShareCard buckets={trafficQuery.data ?? []} />
+          <TrafficShareCard
+            buckets={trafficShareBuckets}
+            bucketNoun={'week'}
+            isError={
+              trafficBreakdownQuery.isError &&
+              trafficBreakdownQuery.data === undefined
+            }
+            windowLabel={TRAFFIC_WINDOW_LABEL}
+          />
+        )}
+      </AnalyticsCard>
+
+      <AnalyticsCard
+        title={'Where views came from'}
+        icon={PieChart}
+        description={
+          'Search, Shorts, external, playlists, the channel page and direct — plus an Other residual — as a share of views.'
+        }
+        className={'h-auto'}
+      >
+        {trafficBreakdownQuery.isLoading ? (
+          <TrafficShareCardSkeleton />
+        ) : (
+          <TrafficBreakdownCard
+            buckets={trafficBuckets}
+            isError={
+              trafficBreakdownQuery.isError &&
+              trafficBreakdownQuery.data === undefined
+            }
+            windowLabel={TRAFFIC_WINDOW_LABEL}
+          />
         )}
       </AnalyticsCard>
 

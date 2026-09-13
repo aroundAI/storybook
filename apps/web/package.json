@@ -35,7 +35,8 @@
     "supabase:typegen:app": "supabase gen types typescript --local > ./lib/database.types.ts",
     "supabase:db:dump:local": "supabase db dump --local --data-only",
     "supabase:typegen:prod": "set -a && . ../../deployment/config/production.env && set +a && supabase gen types typescript --linked > ../../packages/supabase/src/database.types.ts && cp ../../packages/supabase/src/database.types.ts ./lib/database.types.ts",
-    "check:schema-drift": "tsx scripts/check-schema-drift.ts"
+    "check:schema-drift": "tsx scripts/check-schema-drift.ts",
+    "seed:local-analytics": "tsx scripts/seed-local-analytics.ts"
   },
   "dependencies": {
     "@aws-sdk/client-ssm": "^3.911.0",

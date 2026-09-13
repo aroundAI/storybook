@@ -23,7 +23,8 @@
     "./config/**/*.ts",
     "components/**/*",
     "lib/**/*.ts",
-    "app"
+    "app",
+    "scripts"
   ],
   "exclude": [
     "node_modules",

@@ -34,7 +34,7 @@ export {
   getMedianPerformanceAction,
   getReturningViewerProxyAction,
   getRollingViewsAction,
-  getTrafficShareTrendAction,
+  getTrafficBreakdownAction,
   getYppProgressAction,
 } from './deep-dive-actions';
 

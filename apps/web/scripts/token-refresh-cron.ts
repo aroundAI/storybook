@@ -7,7 +7,12 @@
  *
  * Usage: pnpm run dev:cron
  */
-import Cron from 'croner';
+// Named and constructed, not a default import called as a function. croner 9
+// is ESM (`export { Cron, CronDate, CronPattern, scheduledJobs }`) with no
+// default, so `import Cron from 'croner'` resolved to undefined and the call
+// below threw on every start. Invisible until apps/web/scripts came inside
+// the tsconfig include.
+import { Cron } from 'croner';
 
 const CRON_SECRET = process.env.CRON_SECRET || 'dev-secret';
 const APP_URL =
@@ -51,7 +56,7 @@ setTimeout(() => {
 }, 10000);
 
 // Schedule to run every 30 minutes
-const job = Cron('*/30 * * * *', () => {
+const job = new Cron('*/30 * * * *', () => {
   refreshTokens();
 });
 

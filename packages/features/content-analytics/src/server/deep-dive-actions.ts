@@ -8,7 +8,7 @@ import {
   queryCohortMedians,
   queryMedianViewsPerVideo,
   queryRollingViews,
-  queryTrafficShareTrend,
+  queryTrafficSourceBreakdown,
   queryWatchWindowTotals,
 } from '@kit/clickhouse/server';
 import { computeCohortGrowth } from '@kit/clickhouse/server';
@@ -17,28 +17,17 @@ import { enhanceAction } from '@kit/next/actions';
 import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+// Out of this file because it is `'use server'`: every export of such a
+// module must be an async function, so a schema with a synchronous
+// `.refine` cannot live here and stay testable. See traffic.schema.ts.
+import {
+  type Scope,
+  ScopeSchema,
+  TrafficBreakdownSchema,
+} from '../lib/schemas/traffic.schema';
 import { formatDate } from '../lib/utils';
 import { listAccountChannels } from './channels';
 import { assertScopeAccess } from './scope-access';
-
-/**
- * Scope shared by the deep-dive actions: project- or account-level, with
- * optional segment filters.
- */
-const ScopeSchema = z
-  .object({
-    projectId: z.string().uuid().optional(),
-    accountId: z.string().uuid().optional(),
-    connectionId: z.string().uuid().optional(),
-    platform: z.enum(['youtube', 'tiktok', 'instagram']).optional(),
-    contentType: z.string().max(50).optional(),
-    language: z.string().max(10).optional(),
-  })
-  .refine((scope) => scope.projectId || scope.accountId, {
-    message: 'projectId or accountId is required',
-  });
-
-type Scope = z.infer<typeof ScopeSchema>;
 
 function toDimScope(scope: Scope): DimScope {
   return {
@@ -114,26 +103,28 @@ export const getRollingViewsAction = enhanceAction(
 );
 
 /**
- * Browse+Suggested share of views over time.
+ * Views and watch time per traffic-source group, per bucket (FILM-1605).
+ *
+ * The share trend answers only "how much is Browse+Suggested"; this answers
+ * where the rest came from. The query carries no tenant predicate beyond
+ * the scope conditions, so `assertScopeAccess` is the boundary rather than
+ * a formality.
  */
-export const getTrafficShareTrendAction = enhanceAction(
+export const getTrafficBreakdownAction = enhanceAction(
   async ({ scope, bucket, from, to }) => {
     await assertScopeAccess(scope);
 
-    return queryTrafficShareTrend({
+    return queryTrafficSourceBreakdown({
       scope: toDimScope(scope),
       bucket,
-      startDate: from ? formatDate(from) : undefined,
-      endDate: to ? formatDate(to) : undefined,
+      // Not conditional: the schema requires both dates, which is what
+      // makes MAX_BREAKDOWN_SPAN_DAYS a bound rather than a suggestion.
+      startDate: formatDate(from),
+      endDate: formatDate(to),
     });
   },
   {
-    schema: z.object({
-      scope: ScopeSchema,
-      bucket: z.enum(['week', 'month']).default('week'),
-      from: z.coerce.date().optional(),
-      to: z.coerce.date().optional(),
-    }),
+    schema: TrafficBreakdownSchema,
     auth: true,
   },
 );

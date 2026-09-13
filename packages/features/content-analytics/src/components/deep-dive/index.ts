@@ -4,6 +4,7 @@ export { MedianViewsCard, MedianViewsCardSkeleton } from './median-views-card';
 export type { MedianBucketEntry } from './median-views-card';
 
 export {
+  TrafficBreakdownCard,
   TrafficShareCard,
   TrafficShareCardSkeleton,
 } from './traffic-share-card';

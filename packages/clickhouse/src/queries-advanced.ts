@@ -9,6 +9,12 @@
  */
 import { concatByChunk } from './chunked';
 import { getClickHouseClient, isClickHouseEnabled } from './client';
+import type {
+  TrafficGroupBucket,
+  TrafficSourceRow,
+} from './lib/traffic-groups';
+import { groupTrafficRows } from './lib/traffic-groups';
+import type { TrafficBucket } from './lib/traffic-groups';
 import { computeIngestLagDays, computeMaturity } from './lib/video-age';
 import type { VideoDim } from './types';
 
@@ -39,13 +45,6 @@ export interface RollingViewsPoint {
   date: string;
   views: number;
   rollingViews: number;
-}
-
-export interface TrafficShareBucket {
-  bucket: string;
-  totalViews: number;
-  browseSuggestedViews: number;
-  share: number;
 }
 
 export interface BackCatalogBucket {
@@ -101,19 +100,6 @@ export interface TagMedianRow {
   meanViews: number;
   medianWatchTimeSeconds: number;
 }
-
-/**
- * Default source names counted as "Browse + Suggested" for the traffic
- * share trend. RELATED_VIDEO is Suggested; SUBSCRIBER (home/subscriptions
- * feeds) plus NOTIFICATION approximate Studio's Browse bucket — the
- * Analytics/Reporting APIs expose no literal BROWSE source. Callers can
- * override.
- */
-export const DEFAULT_BROWSE_SUGGESTED_SOURCES = [
-  'RELATED_VIDEO',
-  'SUBSCRIBER',
-  'NOTIFICATION',
-];
 
 function assertDimScope(scope: DimScope): void {
   if (!scope.projectId && !scope.accountId) {
@@ -385,30 +371,59 @@ export async function queryRollingViews(input: {
 }
 
 /**
- * Browse+Suggested share of views per week/month — the clearest signal of
- * whether the algorithm has decided what the channel is for.
+ * Each granularity mapped to its ClickHouse function.
+ *
+ * `bucket` reaches SQL by interpolation because ClickHouse cannot bind a
+ * function name as a parameter, so it must never carry caller text — the
+ * same treatment VIDEO_AGE_ORDER_COLUMNS gives `orderBy`. The granularity
+ * list itself lives in lib/traffic-groups.ts, which is pure, so the zod
+ * schema that validates `bucket` can share it without pulling the driver
+ * into a client bundle.
  */
-export async function queryTrafficShareTrend(input: {
+const TRAFFIC_BUCKET_FUNCTIONS: Record<TrafficBucket, string> = {
+  day: 'toDate',
+  week: 'toStartOfWeek',
+  month: 'toStartOfMonth',
+};
+
+/**
+ * Raw per-bucket, per-source rows for a scope.
+ *
+ * Private, and the only SQL path to this table's grouped rows. It was
+ * extracted when the browse+suggested trend also read them, so the two
+ * could not drift on a date bound edited in one body and not the other;
+ * that trend has since been deleted, so `queryTrafficSourceBreakdown`
+ * below is the sole caller. Kept separate because the fold and the fetch
+ * are worth reading apart, not because a second consumer exists.
+ *
+ * It groups by the raw `source`, never by a presentation group: the
+ * taxonomy lives in `lib/traffic-groups.ts` so that changing it is a code
+ * change rather than a migration.
+ */
+async function queryTrafficSourceRows(input: {
   scope: DimScope;
-  bucket: 'week' | 'month';
-  browseSuggestedSources?: string[];
+  bucket: TrafficBucket;
   startDate?: string;
   endDate?: string;
-}): Promise<TrafficShareBucket[]> {
-  if (!isClickHouseEnabled()) return [];
+}): Promise<TrafficSourceRow[]> {
   assertDimScope(input.scope);
 
   const client = getClickHouseClient();
   const { conditions, params } = buildDimConditions(input.scope);
-  params.browseSources =
-    input.browseSuggestedSources ?? DEFAULT_BROWSE_SUGGESTED_SOURCES;
 
-  const bucketFn = input.bucket === 'week' ? 'toStartOfWeek' : 'toStartOfMonth';
+  // Object.hasOwn, not a bare index: `TRAFFIC_BUCKET_FUNCTIONS['constructor']`
+  // resolves up the prototype chain to a truthy function, which skips a
+  // `??` fallback and interpolates a function body into the query.
+  const bucketFn = Object.hasOwn(TRAFFIC_BUCKET_FUNCTIONS, input.bucket)
+    ? TRAFFIC_BUCKET_FUNCTIONS[input.bucket]
+    : TRAFFIC_BUCKET_FUNCTIONS.week;
   const dateConditions: string[] = ['1 = 1'];
+
   if (input.startDate) {
     dateConditions.push('metric_date >= {startDate: Date}');
     params.startDate = input.startDate;
   }
+
   if (input.endDate) {
     dateConditions.push('metric_date <= {endDate: Date}');
     params.endDate = input.endDate;
@@ -417,13 +432,14 @@ export async function queryTrafficShareTrend(input: {
   const query = `
     SELECT
       toString(${bucketFn}(metric_date)) as bucket,
-      sum(views) as total_views,
-      sumIf(views, source IN {browseSources: Array(String)}) as browse_views
+      source as source,
+      sum(views) as views,
+      sum(watch_time_minutes) as watch_time_minutes
     FROM video_traffic_sources FINAL
     WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions)}))
       AND ${dateConditions.join(' AND ')}
-    GROUP BY bucket
-    ORDER BY bucket ASC
+    GROUP BY bucket, source
+    ORDER BY bucket ASC, views DESC
   `;
 
   const result = await client.query({
@@ -434,20 +450,48 @@ export async function queryTrafficShareTrend(input: {
 
   const rows = await result.json<{
     bucket: string;
-    total_views: number;
-    browse_views: number;
+    source: string;
+    views: number;
+    watch_time_minutes: number;
   }>();
 
-  return rows.map((row) => {
-    const totalViews = Number(row.total_views);
-    const browseSuggestedViews = Number(row.browse_views);
-    return {
-      bucket: row.bucket,
-      totalViews,
-      browseSuggestedViews,
-      share: totalViews > 0 ? browseSuggestedViews / totalViews : 0,
-    };
-  });
+  return rows.map((row) => ({
+    bucket: row.bucket,
+    source: row.source,
+    views: Number(row.views),
+    watchTimeMinutes: Number(row.watch_time_minutes),
+  }));
+}
+
+/**
+ * Views and watch time per traffic-source group, per bucket (FILM-1605).
+ *
+ * Answers "where did views come from, as a share of the whole, over time"
+ * — the six surfaces beyond Browse+Suggested, plus an Other residual,
+ * that a single share figure cannot show.
+ *
+ * The denominator is matched videos only: unmatched traffic rows are
+ * dropped at ingest and channel_daily has no `source` column to hold them,
+ * so this share is not comparable to a channel view total and will not
+ * match Studio exactly.
+ */
+export async function queryTrafficSourceBreakdown(input: {
+  scope: DimScope;
+  bucket: TrafficBucket;
+  /**
+   * Required, unlike the other scope queries. This one returns a row per
+   * (bucket, source) rather than per bucket, so an unbounded call is ~18x
+   * the payload — and the span cap lives in the action's schema, which a
+   * direct importer of this export bypasses entirely. Putting the
+   * requirement here is what makes the bound a property of the query
+   * rather than of the caller's manners.
+   */
+  startDate: string;
+  endDate: string;
+}): Promise<TrafficGroupBucket[]> {
+  if (!isClickHouseEnabled()) return [];
+
+  return groupTrafficRows(await queryTrafficSourceRows(input));
 }
 
 /**
@@ -974,9 +1018,12 @@ async function queryVideoViewsAtAgeSingle(input: {
   const limit = Math.min(1000, Math.max(1, Math.floor(input.limit ?? 200)));
   const offset = Math.max(0, Math.floor(input.offset ?? 0));
 
-  const orderColumn =
-    VIDEO_AGE_ORDER_COLUMNS[input.orderBy ?? 'published_at'] ??
-    VIDEO_AGE_ORDER_COLUMNS.published_at;
+  const orderColumn = Object.hasOwn(
+    VIDEO_AGE_ORDER_COLUMNS,
+    input.orderBy ?? 'published_at',
+  )
+    ? VIDEO_AGE_ORDER_COLUMNS[input.orderBy ?? 'published_at']!
+    : VIDEO_AGE_ORDER_COLUMNS.published_at;
   const orderDirection = input.orderDirection === 'asc' ? 'ASC' : 'DESC';
 
   const client = getClickHouseClient();

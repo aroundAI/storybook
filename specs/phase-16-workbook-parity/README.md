@@ -53,12 +53,13 @@ FILM-1605, 1608, 1609, 1616 and 1618 are mutually independent and parallelisable
 | FILM-1603 | PR #236 |
 | FILM-1604 | PR #237 |
 | FILM-1607 | PR #242 |
+| FILM-1618 | PR #249 |
+| FILM-1605 | PR #252 |
 
 Specified and not yet built:
 
 | Spec | Status | Effort | Covers |
 |------|--------|--------|--------|
-| FILM-1605 | DRAFT | M | Traffic source breakdown — the six surfaces beyond Browse+Suggested |
 | FILM-1606 | DRAFT | L | Segment performance by tag, language, content type and channel, at a checkpoint age |
 | FILM-1608 | DRAFT | M | Per-channel YPP targets, and the first writer `analytics_settings` has ever had |
 | FILM-1609 | DRAFT | S | The `licensing` revenue category (the rest of this scope already shipped) |
@@ -67,7 +68,6 @@ Specified and not yet built:
 | FILM-1615 | DRAFT | M | The Video Log table — FILM-1603 built the query and action, not the screen |
 | FILM-1616 | DRAFT | M | `WeeklyDiagnosticsTable` and `RetentionCurveChart`, both of which need actions built |
 | FILM-1617 | DRAFT | S | Subscriber series card, YPP absolute count, Publish Hub badge |
-| FILM-1618 | ✅ DONE | S | **Bug** — `channel_daily` subscriber columns were never written |
 
 ## Locked decisions
 

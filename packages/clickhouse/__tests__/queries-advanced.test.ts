@@ -167,40 +167,142 @@ describe('queries-advanced', () => {
     });
   });
 
-  describe('queryTrafficShareTrend', () => {
-    it('computes Browse+Suggested share per bucket', async () => {
-      mockQueryResult.json.mockResolvedValue([
-        { bucket: '2026-06-01', total_views: '1000', browse_views: '650' },
-      ]);
+  describe('queryTrafficSourceBreakdown', () => {
+    it('buckets by the requested granularity and groups by raw source', async () => {
+      mockQueryResult.json.mockResolvedValue([]);
 
-      const { queryTrafficShareTrend } = await import(
+      const { queryTrafficSourceBreakdown } = await import(
         '../src/queries-advanced'
       );
 
-      const rows = await queryTrafficShareTrend({
+      await queryTrafficSourceBreakdown({
         scope: { projectId: PROJECT },
-        bucket: 'week',
-      });
-
-      expect(rows[0]!.share).toBeCloseTo(0.65, 6);
-      expect(lastQuery().query_params.browseSources).toContain('RELATED_VIDEO');
-    });
-
-    it('returns zero share rather than dividing by zero', async () => {
-      mockQueryResult.json.mockResolvedValue([
-        { bucket: '2026-06-01', total_views: '0', browse_views: '0' },
-      ]);
-
-      const { queryTrafficShareTrend } = await import(
-        '../src/queries-advanced'
-      );
-
-      const rows = await queryTrafficShareTrend({
-        scope: { projectId: PROJECT },
+        startDate: '2026-01-01',
+        endDate: '2026-06-30',
         bucket: 'month',
       });
 
-      expect(rows[0]!.share).toBe(0);
+      const query = lastQuery().query;
+
+      expect(query).toContain('toStartOfMonth(metric_date)');
+      expect(query).toContain('GROUP BY bucket, source');
+      // The taxonomy must not reach SQL, or changing it becomes a migration.
+      expect(query).not.toContain('browse_suggested');
+    });
+
+    it('returns every group per bucket with shares over one denominator', async () => {
+      mockQueryResult.json.mockResolvedValue([
+        {
+          bucket: '2026-06-01',
+          source: 'RELATED_VIDEO',
+          views: '600',
+          watch_time_minutes: '60',
+        },
+        {
+          bucket: '2026-06-01',
+          source: 'YT_SEARCH',
+          views: '300',
+          watch_time_minutes: '30',
+        },
+        {
+          bucket: '2026-06-01',
+          source: 'TS_91',
+          views: '100',
+          watch_time_minutes: '10',
+        },
+      ]);
+
+      const { queryTrafficSourceBreakdown } = await import(
+        '../src/queries-advanced'
+      );
+
+      const buckets = await queryTrafficSourceBreakdown({
+        scope: { projectId: PROJECT },
+        startDate: '2026-01-01',
+        endDate: '2026-06-30',
+        bucket: 'week',
+      });
+
+      expect(buckets[0]!.totalViews).toBe(1000);
+      expect(buckets[0]!.groups).toHaveLength(8);
+      expect(
+        buckets[0]!.groups.reduce((sum, g) => sum + g.share, 0),
+      ).toBeCloseTo(1, 10);
+      // The unrecognised code is counted, not dropped.
+      expect(buckets[0]!.groups.find((g) => g.group === 'other')!.views).toBe(
+        100,
+      );
+    });
+
+    it('bucket cannot inject SQL', async () => {
+      mockQueryResult.json.mockResolvedValue([]);
+
+      const { queryTrafficSourceBreakdown } = await import(
+        '../src/queries-advanced'
+      );
+
+      await queryTrafficSourceBreakdown({
+        scope: { projectId: PROJECT },
+        startDate: '2026-01-01',
+        endDate: '2026-06-30',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        bucket: "day'; DROP TABLE video_traffic_sources; --" as any,
+      });
+
+      const query = lastQuery().query;
+
+      // Absence of the payload is necessary but not sufficient: without a
+      // fallback the lookup yields undefined, which interpolates as the
+      // literal "undefined" and produces a query ClickHouse rejects with
+      // "Unknown function undefined". Assert the query is executable, not
+      // merely that it is not an injection.
+      expect(query).not.toContain('DROP TABLE');
+      expect(query).not.toContain('undefined(');
+      expect(query).toContain('toStartOfWeek(metric_date)');
+    });
+
+    it('does not resolve a bucket up the prototype chain', async () => {
+      mockQueryResult.json.mockResolvedValue([]);
+
+      const { queryTrafficSourceBreakdown } = await import(
+        '../src/queries-advanced'
+      );
+
+      for (const bucket of ['constructor', 'toString', 'valueOf']) {
+        await queryTrafficSourceBreakdown({
+          scope: { projectId: PROJECT },
+          startDate: '2026-01-01',
+          endDate: '2026-06-30',
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          bucket: bucket as any,
+        });
+
+        const query = lastQuery().query;
+
+        // A bare index would return Object.prototype.constructor here — a
+        // truthy function that skips a `??` fallback and interpolates its
+        // own body into the SQL.
+        expect(query).not.toContain('native code');
+        expect(query).not.toContain('function');
+        expect(query).toContain('toStartOfWeek(metric_date)');
+      }
+    });
+
+    it('returns nothing when ClickHouse is disabled', async () => {
+      process.env.CLICKHOUSE_ENABLED = 'false';
+
+      const { queryTrafficSourceBreakdown } = await import(
+        '../src/queries-advanced'
+      );
+
+      await expect(
+        queryTrafficSourceBreakdown({
+          scope: { projectId: PROJECT },
+          startDate: '2026-01-01',
+          endDate: '2026-06-30',
+          bucket: 'week',
+        }),
+      ).resolves.toEqual([]);
     });
   });
 

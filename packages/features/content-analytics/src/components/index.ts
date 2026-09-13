@@ -162,6 +162,7 @@ export {
   MedianViewsCardSkeleton,
   RetentionCurveChart,
   RetentionCurveChartSkeleton,
+  TrafficBreakdownCard,
   TrafficShareCard,
   TrafficShareCardSkeleton,
   WeeklyDiagnosticsTable,

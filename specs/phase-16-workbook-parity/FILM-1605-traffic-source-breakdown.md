@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1605
 title: Traffic Source Breakdown
-status: DRAFT
+status: ✅ DONE
 effort: M
 dependencies: FILM-1602
 ---
@@ -94,11 +94,12 @@ decision rather than with an accident:
 
 | File | Change |
 |------|--------|
-| `packages/clickhouse/src/lib/traffic-groups.ts` | New, pure. `TRAFFIC_SOURCE_GROUPS`, `TrafficSourceGroup`, `groupForSource(source)` and `groupTrafficRows(rows, {allGroups: true})` returning per-bucket per-group views, watch minutes and share. No ClickHouse import, no I/O — the split `lib/cohort-growth.ts` (FILM-1604) and `lib/subscriber-series.ts` (FILM-1607) already establish, and the reason the grouping is unit-testable while `CLICKHOUSE_ENABLED=false`. |
-| `packages/clickhouse/src/queries-advanced.ts` | New `queryTrafficSourceBreakdown({scope, bucket, startDate?, endDate?})`. Groups by `toStartOfWeek/Month(metric_date)` **and raw `source`**, never by group — the SQL must not know the taxonomy, or §2's first convention is lost and a mapping change becomes a migration. Video set from `dimSubquery(conditions)`, exactly as `queryTrafficShareTrend` does at `:417-427`. |
-| `packages/clickhouse/src/queries-advanced.ts` | `queryTrafficShareTrend` reimplemented over the breakdown: fetch grouped rows, then fold `browse_suggested` share. Its **return type and numbers must not change** — `getTrafficShareTrendAction` and `TrafficShareCard` are live. Keeping two SQL paths is the alternative, and it guarantees the two drift the first time the browse set is edited. |
+| `packages/clickhouse/src/lib/traffic-groups.ts` | New, pure. `TRAFFIC_SOURCE_GROUPS`, `TrafficSourceGroup`, `groupForSource(source)` and `groupTrafficRows(rows)` (all groups unconditionally — an opt-in flag was specified and dropped, since a bucket missing a group is indistinguishable from a group with no views) returning per-bucket per-group views, watch minutes and share. No ClickHouse import, no I/O — the split `lib/cohort-growth.ts` (FILM-1604) and `lib/subscriber-series.ts` (FILM-1607) already establish, and the reason the grouping is unit-testable while `CLICKHOUSE_ENABLED=false`. |
+| `packages/clickhouse/src/queries-advanced.ts` | New `queryTrafficSourceBreakdown({scope, bucket, startDate?, endDate?})`. Groups by `toStartOfWeek/Month(metric_date)` **and raw `source`**, never by group — the SQL must not know the taxonomy, or §2's first convention is lost and a mapping change becomes a migration. Video set from `dimSubquery(conditions)`, the same bound the share trend used before it was deleted. |
+| `packages/clickhouse/src/queries-advanced.ts` | `queryTrafficShareTrend` and `getTrafficShareTrendAction` are **deleted**. The intent was to rebuild the trend on the breakdown so there was one SQL path; the honest end state is that the trend is a fold over the breakdown response, and the tab does that fold client-side. Keeping the query exported afterwards left an unbounded per-source fetch producing output nothing consumed. Its browse+suggested numbers are unchanged and asserted in the pure fold test, which is what the tab actually runs. |
 | `packages/features/content-analytics/src/server/deep-dive-actions.ts` | New `getTrafficBreakdownAction` reusing `ScopeSchema` and `toDimScope` (`:28`, `:43`), with `await assertScopeAccess(scope)` first like every other action in the file (`:61`, `:91`, `:121`, `:147`). The query carries no tenant predicate of its own beyond the scope conditions, so the guard is the boundary, not a formality. |
 | `packages/features/content-analytics/src/components/deep-dive/traffic-share-card.tsx` | Gains a stacked variant over the group breakdown. `TrafficShareEntry` (`:6`) stays for the existing single-share mode so the card keeps working during the change. |
+| `packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx` | Mount the stacked card. FILM-1611 does not claim this one, so deferring the surface would leave it a sixth orphan in the phase whose defining defect is orphaned components — and would leave the question §1 opens with still unanswerable in the app. |
 | `packages/clickhouse/src/server/index.ts` | Export the new query and the pure helpers, matching how `video-age.ts` and `cohort-growth.ts` are surfaced. |
 | `packages/clickhouse/scripts/verify-queries.ts` | Add the new query. Its header (`:1-14`) records why: the mocked suite once shipped a `WHERE` clause ClickHouse rejects outright, behind 120 green tests. |
 
@@ -127,15 +128,32 @@ because each one silently shrinks the total rather than erroring.
 
 ## 6. Bounding
 
-The breakdown is bounded by buckets × groups — at most a few hundred rows
-for any window, so the *result* needs no pagination. The *scan* is bounded
-by `dimSubquery`, which is the same bound `queryTrafficShareTrend` already
-runs under.
+The breakdown is bounded by buckets × groups. For week and month that is
+at most a few hundred rows for any window, so the *result* needs no
+pagination. **Day is not bounded by the calendar** — a multi-year daily
+query returns a bucket per day, thousands of group objects through a
+server action, rendered as sub-pixel columns — so `getTrafficBreakdownAction`
+requires `from` and `to` and caps the span per granularity through
+`MAX_BREAKDOWN_SPAN_DAYS` — 180 days for `day`, 1,120 for `week`, 3,650
+for `month`, so every bucket count lands around 120-180. Requiring the
+dates merely to be present is not a bound: `2015-01-01` to `2026-01-01`
+names a window and still returns ~4,000 daily buckets. Capping only `day`
+is not a bound either: a week call with no dates returns every bucket in
+the channel's history. The *scan*
+is bounded by `dimSubquery`, the same bound the traffic-source reads
+already run under.
 
 `bucket` is a closed union (`'week' | 'month' | 'day'`), interpolated into
 `toStartOfWeek` / `toStartOfMonth` / `toDate` by lookup, never by string
 substitution of a caller value — the same treatment `VIDEO_AGE_ORDER_COLUMNS`
-(`queries-advanced.ts:854`) gives `orderBy`.
+gives `orderBy`, **including its fallback** — and the lookup is guarded
+with `Object.hasOwn`, not a bare index. Without a fallback, a value outside
+the union yields `undefined` and interpolates as the literal string,
+producing a query ClickHouse rejects outright; a test that only asserts the
+payload is absent would pass on it. Without `hasOwn`, `'constructor'`
+resolves up the prototype chain to a truthy function, skips the fallback
+entirely, and interpolates a function body — so the fallback alone does not
+deliver what this paragraph claims.
 
 ## 7. Out of Scope
 
@@ -151,18 +169,60 @@ substitution of a caller value — the same treatment `VIDEO_AGE_ORDER_COLUMNS`
 
 ## 8. Acceptance Criteria
 
-- [ ] `queryTrafficSourceBreakdown` accepts a `DimScope` and returns one row per bucket per group
-- [ ] Every group in `TRAFFIC_SOURCE_GROUPS` appears in every bucket, as zero when it has no views
-- [ ] Group shares within a bucket sum to 1 (within float tolerance) whenever the bucket has views
-- [ ] An unrecognised `TS_*` source is counted in `other` and not dropped
-- [ ] `CHANNEL_PAGE` is its own group and is absent from `browse_suggested`
-- [ ] `END_SCREEN` and `ANNOTATION` are in `other`, not `browse_suggested`
-- [ ] `queryTrafficShareTrend` returns the same shape and the same browse-suggested numbers as before the change
-- [ ] The grouping and share maths are unit-tested with no ClickHouse client mocked at all
-- [ ] `bucket` cannot inject SQL
-- [ ] `getTrafficBreakdownAction` calls `assertScopeAccess` before querying
-- [ ] The stacked card renders group order deterministically across re-renders
-- [ ] The UI states that the denominator excludes unmatched videos
+- [x] `queryTrafficSourceBreakdown` accepts a `DimScope` and returns one row per bucket per group
+- [x] Every group in `TRAFFIC_SOURCE_GROUPS` appears in every bucket, as zero when it has no views
+- [x] Group shares within a bucket sum to 1 (within float tolerance) whenever the bucket has views
+- [x] An unrecognised `TS_*` source is counted in `other` and not dropped
+- [x] A source named after an `Object.prototype` member resolves to `other` rather than a function, at both the taxonomy and the ingest lookup
+- [x] `CHANNEL_PAGE` is its own group and is absent from `browse_suggested`
+- [x] `END_SCREEN` and `ANNOTATION` are in `other`, not `browse_suggested`
+- [x] The Browse+Suggested numbers are unchanged from before the rewrite, asserted on the fold the tab runs
+- [x] The Deep Dive tab issues one traffic query, not two identical ones — the trend is derived from the breakdown response
+- [x] The two Browse+Suggested figures on screen name their denominators
+- [x] The bucket union has one definition, so removing a granularity is a compile error rather than a silent weekly fallback
+- [x] The grouping and share maths are unit-tested with no ClickHouse client mocked at all
+- [x] `bucket` cannot inject SQL
+- [x] `getTrafficBreakdownAction` calls `assertScopeAccess` before querying
+- [x] The stacked card renders group order deterministically across re-renders
+- [x] The stacked card is mounted on the Deep Dive tab, not merely exported
+- [x] Daily granularity caps the span, not merely requires the dates to be present
+- [x] `from` after `to` is rejected
+- [x] A bucket resolving up the prototype chain cannot reach the query body
+- [x] A bucket outside the union yields an executable query, not `undefined(...)`
+- [x] The UI states that the denominator excludes unmatched videos
+- [x] Legend percentages cover the whole window shown, not the latest bucket
+- [x] A failed fetch renders as a failure, not as "no data yet" — on **both** cards fed by the shared query, gated on whether a response ever arrived and **not** on the derived array being empty, which the gap-fill makes impossible
+- [x] The empty state names the window instead of promising data that may already exist outside it
+- [x] A bucket with no views renders a hoverable baseline rather than an invisible gap, on **both** cards, and is visually distinct from a bucket with traffic and a genuine 0% share
+- [x] The threshold verdict is gated on the displayed percentage, so the headline and the footnote cannot disagree
+- [x] `queryTrafficShareTrend` and its action are deleted, not left exported as unbounded paths to output the tab now derives
+- [x] `DEFAULT_BROWSE_SUGGESTED_SOURCES` is deleted with the override parameter it documented; the taxonomy is the only definition
+- [x] The trend headline names the bucket it came from, which is the newest bucket *with traffic* — selected by scanning back past filled-in quiet weeks, not by taking the last element
+- [x] Stack slices are laid out in pixels, so a minimum slice height cannot distort the dominant group
+- [x] Both cards' bar rows scroll rather than collapsing, and the 60% threshold line shares the bars' box so it neither scrolls away nor sits off them
+- [x] Stack slices do their floor arithmetic in pixels and are emitted as percentages, so a scrollbar shrinking the column cannot clip the topmost slice
+- [x] A zero-view bucket's own tooltip is reachable
+- [x] The window label is derived from the window constant
+- [x] Both window edges land on the week boundary ClickHouse buckets on, so every bucket is a complete calendar week
+- [x] The trend footnote says the headline bucket may be only partly ingested — on **both** threshold branches, since a partly ingested week depresses the share and so biases toward the below-60% verdict
+- [x] Weeks with no traffic are drawn as gaps in place, so the bars are a time axis rather than a list of buckets that happen to exist
+- [x] A window with no views at all reports no traffic mix rather than a legend of zeroes
+- [x] The cache key is the window, not the current date, so it does not churn daily over identical bounds
+- [x] A bucket with no views reports no traffic mix rather than a 0% composition
+- [x] The threshold line and the bars share one box, so neither the scroll width nor the scrollbar height offsets them
+- [x] The Browse+Suggested source set has one definition, derived from the taxonomy
+- [x] Every granularity is bounded by the schema, and `queryTrafficSourceBreakdown` requires its dates outright — so the bound holds for a direct importer of the export, not only for callers that go through the action
+- [x] A window with no views anywhere reports the window, not a nonexistent "newest week with data"
+- [x] Server buckets the gap-fill does not match are kept rather than dropped, so a granularity change degrades to unfilled real data instead of a blank chart
+- [x] `getTrafficShareTrendAction` is removed rather than left as an unbounded path to identical output
+- [x] A group under a pixel still renders and stays hoverable
+- [x] The traffic window is read per render rather than frozen at mount, and is part of the cache key — nothing schedules a midnight re-render, so an idle tab updates on its next refetch
+- [x] The live-server assertion compares against fixed seeded numbers, not two derivations of the same rows
+- [x] A long window scrolls rather than collapsing the bars — bars carry an explicit min-width, since `flex-1` alone shrinks to zero
+- [x] A failed background refetch keeps the last good chart rather than replacing it with an error
+- [x] The action schemas live outside the `'use server'` file, so the span cap and the `from <= to` rule are reachable from a unit test rather than resting on review
+- [x] Every granularity's cap is asserted against the exported constant, so raising one cannot leave a test passing against the old number
+- [x] The cards have been seen rendering a full 52-week window of real ClickHouse rows, not only reasoned about
 
 ## 9. Verification
 
@@ -178,6 +238,23 @@ production (`client.ts:98`), so reads return empty and the card renders as
 no data — a green suite proves the query is well-formed and the taxonomy is
 total, not that any figure is right.
 
+`pnpm --filter web seed:local-analytics` fills a local ClickHouse with a
+shaped 52-week window for the seeded project — quiet weeks with no rows, a
+week whose rows sum to zero views, a sub-1% source, and a Browse+Suggested
+share that crosses 60% — so the paths this card was reviewed for can be
+looked at instead of argued about. It refuses to run against anything but
+localhost. The window it generates is the one the tab asks for, derived
+from the same `toStartOfWeek` arithmetic rather than guessed.
+
+What that pass confirmed, measured in the live DOM rather than by eye: the
+legend sums to 100%; all 52 weeks render, with the five no-traffic weeks as
+muted 2px stubs in place; the 60% line sits within a pixel of a 60% bar;
+the headline names `week of 2026-09-06` and its footnote agrees; the
+stacked columns hold an 8px min-width and scroll inside a 224px track
+without the page itself overflowing; and a sub-1% group renders as a
+floored 2px slice while the dominant slice absorbs the difference
+(72% actual, 68.5% drawn) rather than the column overflowing.
+
 `pnpm --filter @kit/clickhouse verify` runs the real SQL against a live
 instance and is the only thing that proves ClickHouse accepts the query.
 **It is in CI** — the `clickhouse-sql` job
@@ -189,9 +266,12 @@ main behind 120 green tests. Locally, `./scripts/local-env.sh up` then
 
 ## 10. Risk
 
-Rebuilding `queryTrafficShareTrend` on the new query touches a shipped,
-rendered number. The mitigation is the acceptance criterion above: the
-existing browse-suggested figures must be byte-identical before and after,
-asserted against the same fixture. If that is inconvenient to test, the
-reimplementation is the part to drop — the breakdown stands alone, and two
-SQL paths for one week is cheaper than a silently moved milestone.
+Rebuilding the Browse+Suggested trend touched a shipped, rendered number.
+The mitigation was the acceptance criterion above: the existing figures had
+to be byte-identical before and after, asserted against the same fixture
+and cross-checked against a real server.
+
+That held — and then review found the rebuilt query had no callers left
+once the tab derived the fold client-side, so it and its action were
+deleted rather than kept as unbounded paths to output nothing consumed.
+The number they produced is still asserted, on the fold the tab runs.

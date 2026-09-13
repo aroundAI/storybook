@@ -37,3 +37,18 @@ export type {
 } from './types';
 
 export { formatDateStr } from './utils';
+
+export {
+  TRAFFIC_SOURCE_GROUPS,
+  TRAFFIC_SOURCE_BUCKETS,
+  groupForSource,
+  groupTrafficRows,
+  sourcesInGroup,
+} from './lib/traffic-groups';
+export type {
+  TrafficBucket,
+  TrafficGroupBucket,
+  TrafficGroupShare,
+  TrafficSourceGroup,
+  TrafficSourceRow,
+} from './lib/traffic-groups';

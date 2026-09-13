@@ -125,3 +125,19 @@ describe('parseReachReport', () => {
     );
   });
 });
+
+describe('traffic source code lookup', () => {
+  it('does not resolve a code up the prototype chain', () => {
+    // 'constructor' as a traffic_source_type would otherwise be stored as a
+    // function body instead of TS_constructor.
+    const csv = [
+      'date,video_id,traffic_source_type,views,watch_time_minutes',
+      '20260111,abc123,constructor,10,1',
+    ].join('\n');
+
+    const rows = parseTrafficSourceReport(csv);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.source).toBe('TS_constructor');
+  });
+});

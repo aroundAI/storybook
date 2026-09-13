@@ -43,7 +43,7 @@ import {
   querySubscriberDeltas,
   queryTotals,
   queryTotalsByVideoIds,
-  queryTrafficShareTrend,
+  queryTrafficSourceBreakdown,
   queryTrafficSources,
   queryVideoViewsAtAge,
   queryViewsForVideos,
@@ -394,8 +394,21 @@ async function queries() {
       endDate: '2026-03-31',
     }),
   );
-  await step('queryTrafficShareTrend', () =>
-    queryTrafficShareTrend({ scope, bucket: 'week' }),
+  await step('queryTrafficSourceBreakdown', () =>
+    queryTrafficSourceBreakdown({
+      scope,
+      bucket: 'week',
+      startDate: '2020-01-01',
+      endDate: '2030-01-01',
+    }),
+  );
+  await step('queryTrafficSourceBreakdown (month)', () =>
+    queryTrafficSourceBreakdown({
+      scope,
+      bucket: 'month',
+      startDate: '2020-01-01',
+      endDate: '2030-01-01',
+    }),
   );
   await step('queryBackCatalogShare', () =>
     queryBackCatalogShare({
@@ -580,6 +593,53 @@ async function assertions() {
     if (!snap) throw new Error('snapshot missing');
     if (snap.views !== 500) throw new Error(`expected 500, got ${snap.views}`);
     return `views=${snap.views} on ${snap.snapshot_date}`;
+  });
+
+  await step('assert: the breakdown groups the seeded sources', async () => {
+    // Fixed expectations, not a comparison of two derivations of the same
+    // rows. Both queries now fold from one private row fetch and the browse
+    // set is derived from the taxonomy, so asserting they agree compares a
+    // thing to itself — it could only fail on a race between two concurrent
+    // reads. The seed is 60 RELATED_VIDEO + 40 YT_SEARCH on one day.
+    const breakdown = await queryTrafficSourceBreakdown({
+      scope,
+      bucket: 'month',
+      startDate: '2020-01-01',
+      endDate: '2030-01-01',
+    });
+
+    const bucket = breakdown.find((b) => b.totalViews > 0);
+
+    if (!bucket) {
+      throw new Error('no traffic bucket carried views');
+    }
+
+    const views = (group: string) =>
+      bucket.groups.find((g) => g.group === group)?.views ?? 0;
+
+    if (bucket.totalViews !== 100) {
+      throw new Error(`total ${bucket.totalViews} != 100`);
+    }
+
+    if (views('browse_suggested') !== 60) {
+      throw new Error(`browse_suggested ${views('browse_suggested')} != 60`);
+    }
+
+    if (views('search') !== 40) {
+      throw new Error(`search ${views('search')} != 40`);
+    }
+
+    if (bucket.groups.length !== 8) {
+      throw new Error(`${bucket.groups.length} groups != 8`);
+    }
+
+    const shareSum = bucket.groups.reduce((sum, g) => sum + g.share, 0);
+
+    if (Math.abs(shareSum - 1) > 1e-9) {
+      throw new Error(`shares sum to ${shareSum}, not 1`);
+    }
+
+    return 'browse 60 / search 40 of 100, 8 groups summing to 1';
   });
 
   await step('assert: every orderBy returns the full page', async () => {
