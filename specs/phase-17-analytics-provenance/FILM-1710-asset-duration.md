@@ -52,7 +52,7 @@ used on that path.
 | Layer | Change |
 |---|---|
 | Postgres | `publishes.duration_seconds integer` (nullable) |
-| Sync | Write it from the provider — YouTube `contentDetails.duration`, TikTok `duration`, Instagram `video_duration` |
+| Sync | Write it from the provider — YouTube `contentDetails.duration`, **TikTok `duration`** (confirmed on `/v2/video/query/`), Instagram `video_duration` |
 | ClickHouse | Migration `009_video_dim_asset_duration`: add `asset_duration_seconds Nullable(UInt32)` |
 | `dim-sync.ts` | Read the publish's duration; **stop falling back to the episode** |
 
@@ -64,6 +64,10 @@ reading a column whose meaning has changed.
 
 Nullable is the point: absence must be representable, because it is the state
 every historical row is in.
+
+**TikTok's is confirmed available.** `duration` is on the documented field list
+for `POST /v2/video/query/` (FILM-1721 §4) — the same endpoint we already call,
+requiring only the `video.list` scope FILM-1711 adds. No extra integration.
 
 No backfill script — the nightly `upsertVideoDims()` reconcile fills it, and
 nothing has been published yet.

@@ -102,6 +102,9 @@ FILM-1720 (Facebook + X) ── last, and the test of whether 1714 was expandabl
 | [FILM-1718](./FILM-1718-stage-diagnosis.md) | DRAFT | M | Distribution-vs-content and the finite failure patterns. **Does not depend on the genome** |
 | [FILM-1719](./FILM-1719-signal-surfaces.md) | DRAFT | L | The five-stage strip, three depths, evidence, "model after" |
 | [FILM-1720](./FILM-1720-facebook-x-analytics.md) | DRAFT | XL | Widening the enum across eight tables; two providers that do not exist |
+| [FILM-1721](./FILM-1721-platform-capability-reference.md) | DRAFT | L | **The researched truth table.** Per platform × metric × API surface × field name × scope × window, cited to vendor docs |
+| [FILM-1722](./FILM-1722-view-definition-registry.md) | DRAFT | M | What "a view" means per platform, with effective dates and the YouTube discontinuity |
+| [FILM-1723](./FILM-1723-api-version-consolidation.md) | DRAFT | M | One pinned version per vendor; the Graph v18 token-refresh risk; X onto `api.x.com` |
 
 **Two independent paths, deliberately.** `metrics → diagnosis` (FILM-1718)
 works without the genome, so a creator gets a usable diagnosis immediately;
@@ -221,6 +224,40 @@ Recorded because each was believed at some point during this phase's planning:
   causes every Short to auto-win in the Hook Lab.
 - **`video_metrics.extra_metrics` is write-only.** It holds the full provider
   payload and nothing in the repository reads it — no `JSONExtract` anywhere.
+
+## Corrections from the API research (2026-09-14)
+
+The signal specs were first written citing **our own TypeScript types** as
+evidence of platform capability. Research against vendor documentation
+overturned several claims. FILM-1721 is the reference that exists so this
+cannot recur; the rule it establishes is that **a metric name may not appear in
+a spec, a type or a request unless FILM-1721 documents it with a citation.**
+
+- **TikTok: five field names do not exist on the endpoint we call.**
+  `save_count` exists nowhere for own videos; `average_watch_time`,
+  `total_play_time`, `full_video_watched_rate` and `traffic_source_types` are
+  real names on the **TikTok API for Business** — a different host, a separate
+  app registration, and a creator-side **Business account** requirement. What
+  looked like a field-list change is a second integration.
+- **The TikTok scope is `video.list`.** There is no `video.query` scope.
+- **`research.creator_insights` does not exist**, and the Research API is
+  academic/non-profit only.
+- **Instagram `profile_visits` and `follows` are FEED and STORY only — not
+  REELS**, so Instagram's Audience stage has no per-media signal.
+- **Instagram has no replay metric, no retention graph and no completion rate.**
+  `reels_skip_rate` is the entire retention surface.
+- **YouTube redefined `views` on 2026-08-27** across all formats (and for
+  Shorts on 2025-03-31). `engagedViews` carries the previous methodology. Our
+  series has a live discontinuity, which FILM-1722 exists to handle.
+- **Facebook ThruPlay is an Ads metric**, absent from organic video insights;
+  `total_video_15s_views` is not equivalent. And
+  `post_video_avg_time_watched` **can exceed the video's duration**, which
+  YouTube's average view duration cannot.
+- **X analytics is capable but Enterprise-gated**, with a real degraded
+  pay-per-use path. The decisive unknown is the undocumented historical window,
+  not the unpublished price.
+- **Meta Advanced Access needs App Review *and* Business Verification**, both,
+  plus an annual Data Use Checkup.
 
 ## Known limits — do not promise these
 

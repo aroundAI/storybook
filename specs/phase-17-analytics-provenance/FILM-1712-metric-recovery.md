@@ -2,140 +2,158 @@
 spec_id: FILM-1712
 title: Metric Recovery
 status: DRAFT
-effort: M
-dependencies: FILM-1711
+effort: L
+dependencies: FILM-1711, FILM-1721
 ---
 
 # Metric Recovery
 
+> **Rewritten 2026-09-14.** The first draft claimed most missing metrics were a
+> field-list change. Research against vendor documentation showed that is true
+> for YouTube and false for TikTok and Instagram. The corrections are in §2.
+
 ## 1. Overview
 
-Most of what the growth research asks us to measure is not missing because the
-platforms withhold it. It is missing because we do not ask for it, or because
-we ask for it and throw it away.
+Some of what the growth research asks for is data we already fetch and discard,
+or never ask for despite having access. Some of it is a second API integration
+we mistook for a URL parameter. This spec separates the two, because they cost
+very different amounts and only one of them is cheap.
 
-Three kinds of gap, with very different costs:
+| Kind | Platform | Fix |
+|---|---|---|
+| Requested, dropped at ingest | Instagram `reach` | a column and a mapping |
+| Not requested, same endpoint | YouTube ×3 | add to a metrics string |
+| **Different API entirely** | TikTok ×5 | a second integration |
+| **Does not exist for this surface** | Instagram `follows`, `profile_visits` on Reels | record as a limit |
 
-| Kind | Fix |
+## 2. Corrections to the first draft
+
+These were wrong, and they were wrong because the first draft cited **our own
+TypeScript types** as evidence of a platform's capability.
+
+**TikTok: five of the fields are not on that endpoint.** The complete
+documented field list for `POST /v2/video/query/` is `id, create_time,
+cover_image_url, share_url, video_description, duration, height, width, title,
+embed_html, embed_link, like_count, comment_count, share_count, view_count,
+is_aigc`.
+
+| We planned to add | Reality |
 |---|---|
-| **Not requested**, though declared available in our own types | add to a field list |
-| **Requested but dropped** at ingest | a column and a mapping |
-| **Genuinely unavailable** | record as a limit; do not promise |
+| `save_count` | **Does not exist** for own videos on any creator-auth surface |
+| `average_watch_time` | `average_time_watched` — **TikTok Business API** |
+| `total_play_time` | `total_time_watched` — **TikTok Business API** |
+| `full_video_watched_rate` | Right name, **wrong API** |
+| `traffic_source_types` | `impression_sources` — **TikTok Business API** |
 
-This spec closes the first two. The third is recorded in FILM-1703's capability
-matrix as `unsupported`, with a sentence a creator can read.
+**Instagram: `profile_visits` and `follows` do not exist for REELS.** They are
+FEED and STORY only. Since Reels is what creators publish, Instagram's Audience
+stage has no per-media signal, and no amount of requesting will produce one.
 
-## 2. Not requested
+**YouTube: this part was right.** `averageViewPercentage` *is* valid with
+`dimensions=day` and `filters=video==ID` — so it folds into the daily query and
+the two YouTube calls collapse into one.
 
-**TikTok** (`providers/tiktok/tiktok-analytics.ts:121`) asks for exactly:
+## 3. What is genuinely cheap
 
-```
-?fields=id,like_count,comment_count,share_count,view_count
-```
+### YouTube — three metrics onto the daily query
 
-`TikTokVideoData` (`providers/tiktok/types.ts:126-137`) declares five more:
-`save_count`, `average_watch_time`, `total_play_time`,
-**`full_video_watched_rate`** and `traffic_source_types`.
+The daily query (`youtube-analytics.ts:225`) currently asks for
+`views,likes,comments,shares,estimatedMinutesWatched,averageViewDuration,subscribersGained`.
+Add:
 
-`full_video_watched_rate` is TikTok's completion rate. Every one of these is
-typed, mapped through ingest, and structurally `0` because it was never
-requested — which is worse than absent, because `saves: 0` and
-`watch_time_seconds: 0` look like measurements.
+- **`averageViewPercentage`** — completion on the fast path, instead of only
+  via the 1–3 day lagged bulk report
+- **`subscribersLost`** — so net subscribers is real rather than gross
+- **`dislikes`**
 
-**Instagram** (`providers/instagram/instagram-insights.ts:105-123`) requests
-`views, reach, total_interactions, likes, comments, saved, shares`. The
-declared union (`providers/instagram/types.ts:20-29`) also has `profile_visits`
-and `follows`. `follows` is mapped to `subscribers_gained`
-(`analytics-sync-cron.ts:780`) and is always `0` for the same reason.
+All three are already requested on the separate *totals* call and dropped,
+because `buildYouTubeDailyRows` (`ingest.ts:115-141`) builds rows from the
+daily query. Adding them there lets the totals call go.
 
-Note `input.metrics` is accepted by the provider's type and **ignored** — only
-`mediaId` is destructured at `:77`. Either honour it or remove it.
+Not `annotationClickThroughRate` — annotations were retired and it returns
+zeros. Keep `cardClickRate`.
 
-**YouTube** requests `annotationClickThroughRate` and `cardClickRate` nowhere,
-though both sit in `YouTubeMetric` (`providers/youtube/types.ts:32-33`).
+### Instagram — a column for the reach we already fetch
 
-## 3. Requested but dropped
+`reach` is in the request (`instagram-insights.ts:107`), read at `:139`, and
+discarded because no column exists. It is the denominator the growth research
+recommends for nearly every Instagram ratio. Give it one.
 
-**Instagram `reach` is already being returned and discarded.** It is in the
-request at `:107`, read at `instagram-insights.ts:139`, and there is no column
-for it anywhere in ClickHouse — so it is swept into `extra_metrics` and never
-read again. `reach` is the denominator the research recommends for nearly every
-Instagram ratio.
+Also worth taking while here, all already returned: `total_interactions`,
+`reposts`.
 
-**YouTube's totals block is dropped except revenue.** The totals call
-(`youtube-analytics.ts:151-165`) *does* request `averageViewPercentage`,
-`subscribersLost` and `dislikes`. But `buildYouTubeDailyRows`
-(`ingest.ts:115-141`) builds rows from the separate **daily** query
-(`:225`), which asks for only:
+## 4. What is a second integration
 
-```
-views,likes,comments,shares,estimatedMinutesWatched,averageViewDuration,subscribersGained
-```
+TikTok's real analytics live on the **TikTok API for Business**,
+`business-api.tiktok.com/open_api/v1.3/business/video/list/`:
+`video_views`, `reach`, `full_video_watched_rate`, `total_time_watched`,
+`average_time_watched`, `impression_sources`, `audience_countries`.
 
-So three columns that exist — `avg_view_percentage`, `subscribers_lost`,
-`dislikes` — are filled only by the bulk-report path, which lags one to three
-days. Adding them to the daily query gives YouTube completion on the fast path.
+That is a different host, a **separate developer portal and app registration**,
+and — the part that is not an engineering problem — **the creator must be on a
+TikTok Business account.**
 
-## 4. The changes
+This is why `account_type_gated` exists in FILM-1703's access axis. A creator on
+a personal account cannot grant these metrics, and the honest UI response is to
+say so, not to show an empty chart.
 
-| Platform | Add to the request | Unlocks |
-|---|---|---|
-| YouTube | `averageViewPercentage`, `subscribersLost`, `dislikes` on the **daily** query | completion, net subscribers and dislikes without the report lag |
-| TikTok | `full_video_watched_rate`, `average_watch_time`, `total_play_time`, `save_count` | completion rate, watch time, saves — TikTok's entire Attention stage |
-| Instagram | `follows`, `profile_visits` | follower conversion, profile intent |
+Documented constraints to carry into the capability matrix:
 
-Plus new columns for what is returned and has nowhere to land:
+- `video_views` **mixes organic and paid** and cannot be separated
+- `reach`, `full_video_watched_rate`, `total_time_watched`,
+  `average_time_watched`, `impression_sources`, `audience_countries` return
+  **empty when the video has been inactive for more than 7 days**
+- post data **stops updating 365 days after publish**
+- if TikTok Studio does not show it, the API will not return it
 
-| Column | Table | Why |
-|---|---|---|
-| `reach` | `video_metrics` | Instagram returns it today; it is the denominator for that platform's ratios |
-| `completion_rate` | `video_metrics` | TikTok's `full_video_watched_rate`; do not overload `avg_view_percentage`, which means something subtly different |
-| `profile_visits` | `video_metrics` | Instagram, and TikTok when it ever returns a non-zero |
-
-`traffic_source_types` is deliberately **not** ingested here. TikTok's traffic
-sources are percentage-only with labels (`'For You'`, `'Following'`) that are
-structurally incompatible with `VideoTrafficSource`, which requires `views` and
-`watch_time_minutes`. It stays `not_ingested` in the matrix with a ticket.
+**Recommendation: split this out.** The Business API integration is its own
+piece of work with its own approval, its own app and its own product
+constraint. Doing it inside a spec called "metric recovery" would hide a second
+integration inside a cheap-sounding name — which is exactly the mistake the
+first draft made.
 
 ## 5. Stop writing zeros that look like measurements
 
-The rule this spec establishes: **a field we do not have is null or absent, not
-zero.** Today `saves: 0` for TikTok, `watch_time_seconds: 0` for Instagram and
-`revenue_cents: 0` everywhere are indistinguishable from genuine zeros.
+The rule this spec establishes, independent of platform: **a field we do not
+have is null or absent, never zero.**
 
-Where a column cannot be made nullable without a migration cost that outweighs
-the benefit, the capability matrix carries the fact instead and the UI reads it
-from there — but the default must be to represent absence.
+Today `saves: 0` for TikTok, `watch_time_seconds: 0` for Instagram, and
+`revenue_cents: 0` everywhere are indistinguishable from genuine zeros. Several
+of those exist *because* a never-requested field was mapped into a column — the
+first draft would have added more.
+
+Where a column cannot be made nullable cheaply, the capability matrix carries
+the fact and the UI reads it from there. The default is to represent absence.
 
 ## 6. `extra_metrics` is write-only
 
-Worth recording because it changes what "recovery" can mean.
 `video_metrics.extra_metrics` holds `JSON.stringify` of the entire provider
-response, written at `ingest.ts:139` (YouTube, latest date's row only) and
-`analytics-sync-cron.ts:689` (TikTok/Instagram, every snapshot row). **Nothing
-reads it** — no `JSONExtract` anywhere in the repo, and the `video_daily_stats`
-view enumerates columns and omits it.
+response, written at `ingest.ts:139` and `analytics-sync-cron.ts:689`. **Nothing
+reads it** — no `JSONExtract` anywhere in the repository, and the
+`video_daily_stats` view enumerates columns and omits it.
 
-So the dropped fields are physically present for rows where it was written.
-Since nothing has been published yet there is nothing worth recovering, but the
-blob should either gain a reader or stop being written — an unread payload on
-every row is storage with no purpose.
+Since nothing has been published yet there is nothing worth recovering from it.
+It should gain a reader or stop being written; an unread payload on every row
+is storage with no purpose.
 
 ## 7. Out of scope
 
-- OAuth scopes — FILM-1711, which gates this spec entirely for TikTok and
-  Instagram.
+- OAuth scopes and permissions — FILM-1711, which gates this entirely for
+  TikTok and Instagram.
+- The TikTok Business API integration, per §4's recommendation.
+- Graph API version consolidation — FILM-1723, though it touches the same
+  Instagram files and should be sequenced with this.
 - Facebook and X — FILM-1720.
-- Any ratio, signal or benchmark computed from these fields — FILM-1713 onward.
-- Ingesting TikTok traffic sources.
+- Any ratio or signal computed from these fields — FILM-1713 onward.
 
 ## 8. Acceptance criteria
 
-- [ ] Every field declared in a provider's own types is either requested or documented as deliberately not requested
-- [ ] A test fails when a type declares a field the request does not ask for
-- [ ] TikTok returns and persists completion rate, average watch time and saves
+- [ ] Every field added to a request appears in FILM-1721 with a citation
+- [ ] A test fails when a provider type declares a field the request does not ask for **and** when a request asks for a field FILM-1721 does not document
+- [ ] YouTube's daily query returns average view percentage, and the separate totals call is removed or justified
 - [ ] Instagram's `reach` reaches a column instead of `extra_metrics`
-- [ ] YouTube's daily query returns average view percentage, so completion does not wait on the bulk report
+- [ ] The five TikTok field names that do not exist are recorded as such, so they are not re-added
+- [ ] Instagram `follows`/`profile_visits` are recorded as unavailable for Reels rather than requested
 - [ ] No provider maps a never-requested field to a column as zero
 - [ ] A metric we do not have is distinguishable from one that is genuinely zero
 - [ ] `input.metrics` on the Instagram provider is honoured or removed
@@ -151,22 +169,27 @@ pnpm --filter @kit/clickhouse test
 pnpm turbo typecheck --force && pnpm lint
 ```
 
-The declared-vs-requested test in §8 is the one that stops this recurring;
-see it fail first by adding a field to a provider type without requesting it.
+The declared-vs-requested-vs-documented test in §8 is what stops this
+recurring, and it is the one to write first. The first draft of this spec would
+have passed review without it; it is the mechanical version of "our own types
+are not evidence".
 
 Everything else needs live connections and therefore FILM-1711. Against a real
-account per platform, assert that each newly-requested field returns a non-zero
+account per platform, assert each newly-requested field returns a **non-zero**
 for a video known to have one — a zero proves nothing, because a zero is what
 the bug produced.
 
 ## 10. Risk
 
-**The estimate depends on FILM-1711's findings.** If TikTok's analytics scopes
-need a higher app tier, or Meta declines `instagram_manage_insights`, this spec
-cannot be verified on those platforms regardless of how small the diff is.
-Adding a field to a URL is easy; proving it returns data is not.
+**The estimate depends on FILM-1711's findings.** If TikTok's `video.list`
+needs app review, or Meta declines the insights permission, this spec cannot be
+verified on those platforms regardless of how small the diff is.
 
-**A new column that only one writer fills is the failure mode to avoid** — the
+**A new column that only one writer fills** is the failure mode to avoid — the
 same shape as `revenue_cents` being literal zero in all four writers. Each new
-column gets one writer and a named absent state, or it becomes another silent
-zero.
+column gets one writer and a named absent state.
+
+**And the meta-risk, recorded because it already happened once:** citing our own
+types as evidence of a platform's capability. Five field names in the first
+draft came from `TikTokVideoData` and none of them were real. FILM-1721 exists
+to be the evidence instead.

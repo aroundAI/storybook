@@ -3,7 +3,7 @@ spec_id: FILM-1703
 title: Data Provenance Capability Model
 status: DRAFT
 effort: M
-dependencies: none
+dependencies: FILM-1721
 ---
 
 # Data Provenance Capability Model
@@ -113,6 +113,65 @@ export const CAPABILITY_MATRIX:
   Record<MetricFamily, Record<AnalyticsPlatform, PlatformCapability>>;
 ```
 
+### Four axes, not one level
+
+Research (FILM-1721) made a single level untenable. Instagram is *capable* and
+*implemented* and still returns nothing, because we lack a permission. X is
+capable and gated on a contract. TikTok's deep metrics are gated on something
+neither we nor the platform controls — **the creator's account type**.
+
+`SupportLevel` stays exactly as specced. Three orthogonal fields join it:
+
+```ts
+interface PlatformCapability {
+  level: SupportLevel;         // what the platform can do, and what we built
+  access: AccessState;         // whether we are permitted
+  availability: Availability;  // whether we can obtain it commercially
+  window: DataWindow;          // how far back, anchored on what
+  ...
+}
+
+type AccessState =
+  | 'authorised'          // scope held AND verified against a live account
+  | 'scope_missing'       // the scope exists; our OAuth config does not ask
+  | 'review_required'     // App Review / audit needed before we may ask
+  | 'review_pending'
+  | 'review_denied'
+  | 'account_type_gated'; // e.g. TikTok Business account — the creator's call
+
+type Availability = 'included' | 'metered' | 'tier_gated' | 'unknown';
+
+interface DataWindow {
+  maxAgeDays: number | null;        // null = unbounded
+  anchoredOn: 'publish_date' | 'job_creation' | 'request_date';
+  stopsUpdatingAfterDays?: number;
+}
+```
+
+**This does not violate §2's "do not add a fifth level" — it is what that rule
+was protecting.** The prohibition guards the capability axis against having
+absence-for-any-reason collapsed into it. Adding orthogonal axes is the
+alternative to that collapse, not an instance of it.
+
+Each state has a different owner and a different sentence:
+
+| State | Who resolves it | What the user is told |
+|---|---|---|
+| `scope_missing` | us, this sprint | "Reconnect your account" |
+| `review_required` | us, over weeks | a roadmap item |
+| `account_type_gated` | **the creator** | "Switch to a Business account" |
+| `tier_gated` | a commercial decision | possibly never |
+| `unknown` | must be resolved before it is claimed either way | nothing |
+
+`unknown` is not a default. It means *we asked and the vendor does not
+publish it* — X's `/2/media/analytics` historical window is the live example —
+and it carries the owner and the question.
+
+`DataWindow.anchoredOn` matters as much as the number. YouTube's reporting
+backfill is 30 days from **job creation**, so it shrinks the longer we wait to
+onboard a channel; X's is 30 days from **post creation**, so it is fixed per
+post. Those constrain benchmarking differently.
+
 `note` is not optional and is not developer commentary — it is the sentence a
 creator reads when they ask why a number is missing. Writing it is part of
 adding a matrix entry.
@@ -133,6 +192,12 @@ believed. Three layers, in `packages/clickhouse/__tests__/data-provenance.test.t
 
 **(a) Structural.** Every (family, platform) pair has an entry — so adding a
 value to `AnalyticsPlatform` fails the suite until the matrix is extended.
+Every entry carries all four axes. `derived` requires `method`. `native |
+derived` require a non-null `table`. `unsupported` requires `table: null`
+**and** `blockedBy: null`. `not_ingested` requires a non-null `blockedBy`.
+`review_pending` and `review_denied` require a date. `unknown` availability
+requires a named owner and the question to be answered. Every entry has a
+non-empty `note`, and a `window` whose `anchoredOn` is set.
 `derived` requires `method`. `native | derived` require a non-null `table`.
 `unsupported` requires `table: null` **and** `blockedBy: null`. `not_ingested`
 requires a non-null `blockedBy`. Every entry has a non-empty `note`.
@@ -196,6 +261,12 @@ for TikTok means the matrix is wrong.
 - [ ] The live check reports any platform present in a table but marked `unsupported` or `not_ingested`
 - [ ] The declared derivation for a platform is consistent with the `metric_source` values actually observed for it
 - [ ] No consumer restates a platform list that the matrix could have told it
+- [ ] Every entry carries capability, access, availability and window
+- [ ] `scope_missing`, `review_required` and `account_type_gated` are distinguishable, because they have different owners
+- [ ] `unknown` availability is never a default and always names its owner and question
+- [ ] `DataWindow.anchoredOn` is explicit, so a job-creation-anchored window is not confused with a publish-anchored one
+- [ ] Every entry traces to a cited row in FILM-1721
+- [ ] A metric name absent from FILM-1721 cannot be added to the matrix
 
 ## 8. Verification
 

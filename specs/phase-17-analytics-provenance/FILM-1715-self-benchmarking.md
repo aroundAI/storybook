@@ -3,7 +3,7 @@ spec_id: FILM-1715
 title: Self-Benchmarking
 status: DRAFT
 effort: M
-dependencies: FILM-1713, FILM-1716
+dependencies: FILM-1713, FILM-1716, FILM-1721
 ---
 
 # Self-Benchmarking
@@ -83,7 +83,36 @@ away the distinction the phase is built on.
 Modelled as a discriminated union so a consumer cannot render them alike — a
 band exists only on the judged variant, so no bar can be painted without one.
 
-## 5. Comparable
+## 5. Checkpoints are a platform capability, not a constant
+
+`DEFAULT_CHECKPOINTS = [30, 90, 180, 365]` is global
+(`video-log-actions.ts:18`). Research showed no platform can honour all four:
+
+| Platform | Window | Anchored on |
+|---|---|---|
+| YouTube (Analytics) | unbounded | — |
+| YouTube (Reporting) | 30 days of backfill | **job creation** — shrinks the later a channel is onboarded |
+| TikTok Business | stops updating at 365 days | publish |
+| Instagram | media ~2 years; account ~90 days | request |
+| Facebook | 2 years | request |
+| X (pay-per-use) | **30 days** | **post creation** |
+| X (Enterprise) | **undocumented** | — |
+
+So X on the degraded path can only ever be benchmarked at 30 days, and TikTok's
+365-day figure stops moving rather than becoming unavailable — a different
+thing again.
+
+A checkpoint outside a platform's window yields `not_judgable` with a named
+reason, never an absent number. This **extends `checkpointPredatesIngest`**
+(`lib/video-age.ts:118`) rather than inventing a mechanism: that function
+already answers "is this checkpoint knowable for this video", and the platform
+window is a second reason it may not be.
+
+`DataWindow.anchoredOn` from FILM-1703 is what makes the distinction usable —
+a job-creation-anchored window is a different operational problem from a
+publish-anchored one, because onboarding sooner recovers it.
+
+## 6. Comparable
 
 Same **channel** (`connectionId`, not `projectId` — a Reach comparison against
 another channel's impressions is meaningless, and FILM-1602 added the channel
@@ -108,7 +137,7 @@ not the benchmark.
 format family spanning several content types needs a scope change. For v1,
 compare like to like and say so in the copy.
 
-## 6. Shrinkage
+## 7. Shrinkage
 
 Two videos at +180% must not outrank a hundred at +35%. The smaller the cohort,
 the more the observed lift is shrunk toward 1×.
@@ -121,7 +150,7 @@ A full Bayesian treatment is not needed initially. The shrinkage rule is, and
 it belongs in the first version rather than being retrofitted after someone
 acts on a two-video finding.
 
-## 7. Confidence: reuse, do not invent
+## 8. Confidence: reuse, do not invent
 
 FILM-1606 already defines `resolveConfidence` (n<5 insufficient, n<15
 directional, n≥15 reportable). Reuse it. A second confidence vocabulary would
@@ -132,16 +161,19 @@ Split the two jobs cleanly: `MIN_MATURE_VIDEOS` is the **suppression gate**
 it. Note these are the same number written twice in two files and should be
 imported, not restated.
 
-## 8. Out of scope
+## 9. Out of scope
 
 - Reading patterns across several stages — FILM-1718.
 - Attribute-level comparison — FILM-1717.
 - Rendering — FILM-1719.
 - A true percentile, until a peer-rows query exists.
 
-## 9. Acceptance criteria
+## 10. Acceptance criteria
 
 - [ ] A video is benchmarked against its own channel's history at the same checkpoint age
+- [ ] Checkpoints are per platform, not a global constant
+- [ ] A checkpoint outside a platform's data window is `not_judgable` with a named reason
+- [ ] A window anchored on job creation is distinguishable from one anchored on publish date
 - [ ] The result is named a band, not a percentile
 - [ ] Band, lift, cohort median and n are returned together; a band never appears without the other three
 - [ ] `not_judgable`, `insufficient_cohort`, `directional` and `established` are distinguishable, in the type and in the DOM
@@ -154,7 +186,7 @@ imported, not restated.
 - [ ] Confidence tiers are imported from FILM-1606, not redefined
 - [ ] A video excluded from the cohort denominator is also suppressed on the numerator side
 
-## 10. Verification
+## 11. Verification
 
 ```bash
 pnpm --filter @kit/clickhouse test
@@ -174,7 +206,7 @@ specifically:
   ingest lag must also be suppressed on its own side. This is the test that
   keeps the two halves honest, and it is the one most likely to be skipped.
 
-## 11. Risk
+## 12. Risk
 
 The two halves of this join already apply maturity rules — the cohort side
 inside SQL, the video side in TypeScript. If they ever diverge, the video is

@@ -3,7 +3,7 @@ spec_id: FILM-1713
 title: Normalised Measures, Velocity and Acceleration
 status: DRAFT
 effort: M
-dependencies: none
+dependencies: FILM-1722
 ---
 
 # Normalised Measures, Velocity and Acceleration
@@ -46,7 +46,32 @@ The four duplicate engagement-rate sites all import the one definition. That
 is most of the value of this spec — not the new measures, but the end of four
 copies drifting.
 
-## 3. Denominators are a platform fact
+## 3. The denominator is not stable, even within one platform
+
+Before any rate can be defined, the thing it divides by has to be pinned down —
+and `views` is not one metric.
+
+**YouTube redefined it on 2026-08-27**, three weeks before this spec was
+written: `views` now counts plays from the first frame with no minimum watch
+time, for all formats. Shorts changed the same way on 2025-03-31. The previous
+methodology moved to **`engagedViews`**.
+
+So `video_metrics.views` for YouTube holds two different metrics either side of
+that date, and every rate computed from it inherits the discontinuity.
+
+**Facebook has four concurrent denominators** — impression (entered the screen,
+no playback, estimated), play (≥1ms, replays excluded), 3-second view (≥3s *or*
+full length if shorter), and ThruPlay (ads only, not on organic insights).
+
+**Instagram's `views` replaced `plays`** in 2025, and **TikTok's Business-API
+`video_views` mixes organic and paid** inseparably.
+
+Every measure therefore records **which view definition produced it**, read
+from FILM-1722's registry, and a measure computed across a definition change is
+suppressed rather than returned. `engagedViews` is the series that is
+continuous across the YouTube change and should back anything historical.
+
+## 4. Denominators are a platform fact
 
 | Platform | Preferred denominator | Fallback |
 |---|---|---|
@@ -59,7 +84,7 @@ and must say so, because a share rate over views and a share rate over reach
 are different numbers with the same name. The measure carries which denominator
 produced it, and FILM-1714 gives them different signal ids.
 
-## 4. Velocity
+## 5. Velocity
 
 Video age is already first-class — `computeMaturity`,
 `checkpointPredatesIngest` (`lib/video-age.ts`), checkpoints at 30/90/180/365.
@@ -89,7 +114,7 @@ either `video_snapshots` (which carries `fetched_at`) or an accepted limit that
 the finest available grain is daily. State which; do not quietly emit a
 daily-grain number into an hourly bucket.
 
-## 5. Acceleration
+## 6. Acceleration
 
 Velocity alone cannot tell a dying video from one that is breaking out:
 
@@ -113,7 +138,7 @@ is not `decelerating` — one is "this is over", the other is "this is cooling" 
 and both are different from "we do not have two points yet", which is a named
 absent state, not `stable`.
 
-## 6. Out of scope
+## 7. Out of scope
 
 - Comparing any of these to a cohort — FILM-1715. This spec produces the
   measure; benchmarking it is the next layer.
@@ -121,11 +146,13 @@ absent state, not `stable`.
 - Attention efficiency as a *rendered* figure, which waits on FILM-1710's asset
   duration. The measure is defined here and gated on a non-null duration.
 
-## 7. Acceptance criteria
+## 8. Acceptance criteria
 
 - [ ] Engagement rate has exactly one definition in the repository
 - [ ] Share rate, save rate and subscriber conversion exist and are unit-tested
-- [ ] Every measure records the denominator that produced it
+- [ ] Every measure records the denominator that produced it, **including which view definition and its effective date**
+- [ ] A measure spanning a view-definition change is suppressed with a named reason, not returned
+- [ ] `engagedViews` backs any YouTube series crossing 2026-08-27
 - [ ] A measure computed over a fallback denominator is distinguishable from one over the preferred denominator
 - [ ] Velocity is only compared within an age bucket
 - [ ] The finest genuinely available time grain is stated, and no measure is emitted at a finer one than the data supports
@@ -134,7 +161,7 @@ absent state, not `stable`.
 - [ ] Every threshold is a named constant with a doc-comment arguing the number
 - [ ] Attention efficiency returns `duration_unknown` rather than a figure when the asset duration is null
 
-## 8. Verification
+## 9. Verification
 
 ```bash
 pnpm --filter @kit/clickhouse test
@@ -153,7 +180,7 @@ Assert specifically:
 - removing the shared engagement-rate import from any of the four former
   duplicate sites fails typecheck
 
-## 9. Risk
+## 10. Risk
 
 The genuine risk is quiet precision loss: emitting an hourly-looking velocity
 from daily-grain data. It would look right, be wrong, and feed everything
