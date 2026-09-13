@@ -220,6 +220,9 @@ deliver what this paragraph claims.
 - [x] The live-server assertion compares against fixed seeded numbers, not two derivations of the same rows
 - [x] A long window scrolls rather than collapsing the bars — bars carry an explicit min-width, since `flex-1` alone shrinks to zero
 - [x] A failed background refetch keeps the last good chart rather than replacing it with an error
+- [x] The action schemas live outside the `'use server'` file, so the span cap and the `from <= to` rule are reachable from a unit test rather than resting on review
+- [x] Every granularity's cap is asserted against the exported constant, so raising one cannot leave a test passing against the old number
+- [x] The cards have been seen rendering a full 52-week window of real ClickHouse rows, not only reasoned about
 
 ## 9. Verification
 
@@ -234,6 +237,23 @@ fully testable now. **The numbers are not.** `CLICKHOUSE_ENABLED=false` in
 production (`client.ts:98`), so reads return empty and the card renders as
 no data — a green suite proves the query is well-formed and the taxonomy is
 total, not that any figure is right.
+
+`pnpm --filter web seed:local-analytics` fills a local ClickHouse with a
+shaped 52-week window for the seeded project — quiet weeks with no rows, a
+week whose rows sum to zero views, a sub-1% source, and a Browse+Suggested
+share that crosses 60% — so the paths this card was reviewed for can be
+looked at instead of argued about. It refuses to run against anything but
+localhost. The window it generates is the one the tab asks for, derived
+from the same `toStartOfWeek` arithmetic rather than guessed.
+
+What that pass confirmed, measured in the live DOM rather than by eye: the
+legend sums to 100%; all 52 weeks render, with the five no-traffic weeks as
+muted 2px stubs in place; the 60% line sits within a pixel of a 60% bar;
+the headline names `week of 2026-09-06` and its footnote agrees; the
+stacked columns hold an 8px min-width and scroll inside a 224px track
+without the page itself overflowing; and a sub-1% group renders as a
+floored 2px slice while the dominant slice absorbs the difference
+(72% actual, 68.5% drawn) rather than the column overflowing.
 
 `pnpm --filter @kit/clickhouse verify` runs the real SQL against a live
 instance and is the only thing that proves ClickHouse accepts the query.
