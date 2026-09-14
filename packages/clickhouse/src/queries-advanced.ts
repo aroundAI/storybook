@@ -95,14 +95,6 @@ export interface WatchWindowTotals {
   netSubscribers: number;
 }
 
-export interface TagMedianRow {
-  tag: string;
-  videoCount: number;
-  medianViews: number;
-  meanViews: number;
-  medianWatchTimeSeconds: number;
-}
-
 function assertDimScope(scope: DimScope): void {
   if (!scope.projectId && !scope.accountId) {
     throw new Error(
@@ -785,70 +777,6 @@ export async function queryChannelWatchWindow(input: {
   return {
     watchTimeSeconds: rows.length > 0 ? Number(rows[0]!.watch_time_seconds) : 0,
   };
-}
-
-/**
- * Median performance per taxonomy tag of one dimension. Individual video
- * performance is mostly luck; tag-level medians across enough videos are
- * signal.
- */
-export async function queryMedianByTag(input: {
-  scope: DimScope;
-  dimension: string;
-  minVideos: number;
-}): Promise<TagMedianRow[]> {
-  if (!isClickHouseEnabled()) return [];
-  assertDimScope(input.scope);
-
-  const client = getClickHouseClient();
-  const { conditions, params } = buildDimConditions(input.scope);
-  params.tagPrefix = `${input.dimension}:%`;
-  params.minVideos = Math.max(1, Math.floor(input.minVideos));
-
-  const query = `
-    SELECT
-      t.tag as tag,
-      count() as video_count,
-      quantileExact(0.5)(v.total_views) as median_views,
-      avg(v.total_views) as mean_views,
-      quantileExact(0.5)(v.total_watch) as median_watch
-    FROM (
-      SELECT video_id, sum(views) as total_views, sum(watch_time_seconds) as total_watch
-      FROM video_daily_stats
-      WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions)}))
-      GROUP BY video_id
-    ) v
-    INNER JOIN (
-      SELECT video_id, arrayJoin(tags) as tag
-      FROM (${dimSubquery(conditions)})
-    ) t ON v.video_id = t.video_id
-    WHERE t.tag LIKE {tagPrefix: String}
-    GROUP BY t.tag
-    HAVING video_count >= {minVideos: UInt32}
-    ORDER BY median_views DESC
-  `;
-
-  const result = await client.query({
-    query,
-    query_params: params,
-    format: 'JSONEachRow',
-  });
-
-  const rows = await result.json<{
-    tag: string;
-    video_count: number;
-    median_views: number;
-    mean_views: number;
-    median_watch: number;
-  }>();
-
-  return rows.map((row) => ({
-    tag: row.tag,
-    videoCount: Number(row.video_count),
-    medianViews: Number(row.median_views),
-    meanViews: Number(row.mean_views),
-    medianWatchTimeSeconds: Number(row.median_watch),
-  }));
 }
 
 /**

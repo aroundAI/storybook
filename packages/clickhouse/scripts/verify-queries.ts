@@ -32,13 +32,14 @@ import {
   queryDailyTimeSeries,
   queryDailyTimeSeriesByPlatform,
   queryLatestSnapshots,
-  queryMedianByTag,
   queryMedianViewsPerVideo,
   queryPerVideoTotals,
   queryPlatformBreakdown,
   queryQualityMetricsForVideos,
   queryRetentionCurve,
   queryRollingViews,
+  querySegmentMembership,
+  querySegmentPerformance,
   querySubscriberAnchors,
   querySubscriberDeltas,
   queryTotals,
@@ -422,8 +423,26 @@ async function queries() {
   await step('queryCohortMedians (month)', () =>
     queryCohortMedians({ scope, bucket: 'month' }),
   );
-  await step('queryMedianByTag', () =>
-    queryMedianByTag({ scope, dimension: 'topic', minVideos: 1 }),
+  // Every kind, because the grouping expression is the one part of the SQL
+  // that changes between them — arrayJoin for tags, a bare column for the
+  // rest — and only the server can say whether each shape is accepted.
+  for (const kind of [
+    'tag',
+    'language',
+    'content_type',
+    'connection',
+  ] as const) {
+    await step(`querySegmentPerformance (${kind})`, () =>
+      querySegmentPerformance({
+        scope,
+        segment: { kind, dimension: kind === 'tag' ? 'topic' : undefined },
+        minVideos: 1,
+      }),
+    );
+  }
+
+  await step('querySegmentMembership', () =>
+    querySegmentMembership({ scope, segment: { kind: 'language' } }),
   );
   await step('queryVideoViewsAtAge', () => queryVideoViewsAtAge({ scope }));
   await step('queryWatchWindowTotals', () =>

@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 
-import { queryMedianByTag } from '@kit/clickhouse/server';
+import { querySegmentPerformance } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -18,6 +18,7 @@ import {
   UpdateTagSchema,
 } from '../lib/schemas/taxonomy.schema';
 import { upsertVideoDims } from './dim-sync';
+import { assertScopeAccess } from './scope-access';
 
 export const createTagAction = enhanceAction(
   async (data, user) => {
@@ -263,9 +264,21 @@ export const getPublishTagsAction = enhanceAction(
  * separates repeatable format effects from single-video luck. Gated until
  * the account has tagged enough videos for the comparison to mean
  * anything.
+ *
+ * Figures are bounded to a checkpoint age (default 30 days) rather than
+ * summed over a lifetime, so a tag applied mostly to older uploads no
+ * longer wins on nothing but time. This changes every number the card
+ * shows, and that is the point (FILM-1606).
  */
 export const getMedianByTagAction = enhanceAction(
-  async ({ accountId, projectId, dimension }) => {
+  async ({ accountId, projectId, dimension, checkpointDays }) => {
+    const scope = projectId ? { projectId } : { accountId };
+
+    // ClickHouse is outside Postgres RLS. This action previously took
+    // accountId and projectId as user input and queried on them with no
+    // ownership check at all.
+    await assertScopeAccess(scope);
+
     const client = getSupabaseServerClient();
 
     // Counts DISTINCT tagged videos. A row count over publish_tags counts
@@ -289,10 +302,11 @@ export const getMedianByTagAction = enhanceAction(
       };
     }
 
-    const rows = await queryMedianByTag({
-      scope: projectId ? { projectId } : { accountId },
-      dimension,
+    const rows = await querySegmentPerformance({
+      scope,
+      segment: { kind: 'tag', dimension },
       minVideos: settings?.tag_min_sample ?? 5,
+      checkpointDays,
     });
 
     return { insufficientSample: false as const, rows };
@@ -302,6 +316,7 @@ export const getMedianByTagAction = enhanceAction(
       accountId: z.string().uuid(),
       projectId: z.string().uuid().optional(),
       dimension: TagDimensionSchema,
+      checkpointDays: z.number().int().min(1).max(730).default(30),
     }),
     auth: true,
   },

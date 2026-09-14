@@ -971,24 +971,6 @@ describe('queries-advanced', () => {
     });
   });
 
-  describe('queryMedianByTag', () => {
-    it('filters to one dimension and enforces a minimum sample', async () => {
-      const { queryMedianByTag } = await import('../src/queries-advanced');
-
-      await queryMedianByTag({
-        scope: { accountId: PROJECT },
-        dimension: 'topic',
-        minVideos: 5,
-      });
-
-      const { query, query_params } = lastQuery();
-      expect(query).toContain('arrayJoin(tags)');
-      expect(query).toContain('HAVING video_count >=');
-      expect(query_params.tagPrefix).toBe('topic:%');
-      expect(query_params.minVideos).toBe(5);
-    });
-  });
-
   describe('querySegmentPerformance', () => {
     async function run(
       segment: { kind: string; dimension?: string },
