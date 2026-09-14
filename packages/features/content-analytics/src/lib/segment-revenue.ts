@@ -78,6 +78,55 @@ export function checkpointWindow(
   };
 }
 
+/**
+ * Drops segment names the aggregate trimmed, and any video left with none.
+ *
+ * The aggregate applies `minVideos`; membership does not. Without this, a
+ * trimmed segment's revenue is attributed to a key no returned row carries
+ * — displayed nowhere and counted in no total, breaking the guarantee that
+ * every cent lands in exactly one of three buckets.
+ *
+ * Narrowing each video's segment list, rather than reconciling per segment
+ * afterwards, is what keeps a video in two trimmed tags from being counted
+ * as unattributed twice.
+ */
+export function retainSurvivingSegments(
+  membership: Map<string, MembershipEntry>,
+  surviving: Set<string>,
+): void {
+  for (const [videoId, entry] of membership) {
+    const kept = entry.segments.filter((name) => surviving.has(name));
+
+    if (kept.length === 0) {
+      membership.delete(videoId);
+      continue;
+    }
+
+    entry.segments = kept;
+  }
+}
+
+/**
+ * A segment's pooled rate, or null when it has no revenue rows at all.
+ *
+ * The distinction is the point: a segment whose rows sum to zero earned
+ * nothing, while a segment with no rows has no rate to report. Revenue
+ * ingest covering one platform and not another makes the second case
+ * ordinary, and rendering it as "$0.00 RPM" states a finding about the
+ * content that the data cannot support.
+ */
+export function segmentRpmCents(
+  revenueBySegment: Map<string, number>,
+  segment: string,
+  totalViews: number,
+): number | null {
+  if (!revenueBySegment.has(segment)) return null;
+
+  const cents = revenueBySegment.get(segment)!;
+
+  return totalViews > 0 ? (cents / totalViews) * 1000 : null;
+}
+
 export function createSegmentRevenueFold(
   membership: Map<string, MembershipEntry>,
 ) {

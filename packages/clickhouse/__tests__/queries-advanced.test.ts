@@ -1227,9 +1227,11 @@ describe('queries-advanced', () => {
     });
 
     it('always paginates, and clamps an oversized limit', async () => {
-      await runMembership({ limit: 50_000 });
+      await runMembership({ limit: 5_000_000 });
 
-      expect(lastQuery().query).toContain('LIMIT 1000');
+      // Clamped high on purpose: each page re-runs the whole CTE chain, so
+      // a small page multiplies scans rather than saving memory.
+      expect(lastQuery().query).toContain('LIMIT 50000');
     });
 
     it('resumes by keyset rather than re-scanning with OFFSET', async () => {

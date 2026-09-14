@@ -7,7 +7,6 @@ import type {
   SegmentPerformanceRow,
 } from '@kit/clickhouse/server';
 import {
-  pooledRpmCents,
   querySegmentMembership,
   querySegmentPerformance,
 } from '@kit/clickhouse/server';
@@ -19,22 +18,32 @@ import type { MembershipEntry } from '../lib/segment-revenue';
 import {
   checkpointWindow,
   createSegmentRevenueFold,
+  retainSurvivingSegments,
+  segmentRpmCents,
 } from '../lib/segment-revenue';
 import { forEachAccountRevenueRow } from './revenue-queries';
 import { assertScopeAccess } from './scope-access';
 
-/** One membership page. The query clamps to this too. */
-const MEMBERSHIP_PAGE_SIZE = 1000;
+/**
+ * One membership page.
+ *
+ * Large on purpose. Keyset paging removes the sort-and-discard but not the
+ * CTE re-execution, so every extra page is another full pass over the
+ * metrics history — a 1,000-row page meant up to 100 passes for a single
+ * render. Two large pages cover the same ceiling in at most two.
+ */
+const MEMBERSHIP_PAGE_SIZE = 50_000;
 
 /**
- * Membership pages read before giving up.
+ * Membership pages read before giving up — 100k rows at the page size
+ * above.
  *
  * A tag segment fans a video out per tag, so membership is larger than the
- * video count — but an account that reaches a million rows here has a data
- * problem, and an unbounded loop against ClickHouse is not the place to
- * discover it.
+ * video count. An account past this ceiling has a data problem, and an
+ * unbounded loop against ClickHouse is not the place to discover it;
+ * hitting it suppresses the rate rather than understating it.
  */
-const MEMBERSHIP_MAX_PAGES = 100;
+const MEMBERSHIP_MAX_PAGES = 2;
 
 const SegmentPerformanceSchema = z
   .object({
@@ -90,10 +99,17 @@ export interface SegmentPerformanceResult {
    */
   attributedRevenueOnly: boolean;
   /**
-   * Revenue scoped to an account rather than a publish: real income
-   * belonging to no video, and so to no segment.
+   * Revenue scoped to an account rather than a publish — income belonging
+   * to no video, and so to no segment — **within `measuredWindow` only**.
+   *
+   * The window is derived from the videos' checkpoint spans, so on an
+   * account whose newest publish is months old it ends months ago and
+   * recent channel-level sponsorship is outside it. Named for the bound
+   * rather than described as the account's channel-level total, which it
+   * is not: a figure silently truncated is worse than one that says what
+   * it covers.
    */
-  channelLevelRevenueCents: number;
+  channelLevelRevenueCentsInWindow: number;
   /**
    * Revenue on a publish outside the measured set — another project under
    * the same account, a video excluded as immature, or earnings after its
@@ -101,6 +117,13 @@ export interface SegmentPerformanceResult {
    * against a total shown elsewhere can be explained.
    */
   unattributedRevenueCents: number;
+  /**
+   * The span both revenue figures cover: earliest checkpoint window start
+   * to latest end, across the measured videos. Null when no rate was
+   * computed. Returned so the UI can state the bound rather than imply
+   * there is none.
+   */
+  measuredWindow: { from: string; to: string } | null;
 }
 
 /**
@@ -212,8 +235,9 @@ export const getSegmentPerformanceAction = enhanceAction(
     const withoutRevenue = (revenueStatus: RevenueStatus) => ({
       revenueStatus,
       attributedRevenueOnly: false,
-      channelLevelRevenueCents: 0,
+      channelLevelRevenueCentsInWindow: 0,
       unattributedRevenueCents: 0,
+      measuredWindow: null,
     });
 
     const rows = await querySegmentPerformance({
@@ -224,8 +248,14 @@ export const getSegmentPerformanceAction = enhanceAction(
       asOf,
     });
 
-    if (!input.includeRevenue || rows.length === 0 || !scopeAccountId) {
+    if (!input.includeRevenue) {
       return { rows, ...withoutRevenue('not_requested') };
+    }
+
+    // Revenue *was* asked for. Saying "not requested" here would tell the
+    // caller it never asked — the one thing revenueStatus exists to stop.
+    if (rows.length === 0 || !scopeAccountId) {
+      return { rows, ...withoutRevenue('no_data') };
     }
 
     const { membership, truncated } = await collectMembership({
@@ -234,6 +264,17 @@ export const getSegmentPerformanceAction = enhanceAction(
       checkpointDays: input.checkpointDays,
       asOf,
     });
+
+    // querySegmentPerformance trims segments below minVideos; membership
+    // does not, so a trimmed segment's revenue would otherwise be
+    // attributed to a key no returned row carries — displayed nowhere and
+    // counted in no total, breaking the result's own guarantee that every
+    // cent lands in exactly one of three buckets.
+    //
+    // Narrowing each video's segment list to the surviving set (rather
+    // than reconciling per segment afterwards) is what keeps a video in
+    // two trimmed tags from being counted as unattributed twice.
+    retainSurvivingSegments(membership, new Set(rows.map((r) => r.segment)));
 
     // A partial membership understates every segment's rate by an unknown
     // amount, and an RPM quietly too low is worse than none: it reads as a
@@ -296,15 +337,17 @@ export const getSegmentPerformanceAction = enhanceAction(
     return {
       rows: rows.map((row) => ({
         ...row,
-        rpmCents: pooledRpmCents(
-          revenueBySegment.get(row.segment) ?? 0,
+        rpmCents: segmentRpmCents(
+          revenueBySegment,
+          row.segment,
           row.totalViews,
         ),
       })),
       revenueStatus: 'included' as const,
       attributedRevenueOnly: true,
-      channelLevelRevenueCents: channelLevelCents,
+      channelLevelRevenueCentsInWindow: channelLevelCents,
       unattributedRevenueCents: unattributedCents,
+      measuredWindow: window,
     };
   },
   { schema: SegmentPerformanceSchema, auth: true },

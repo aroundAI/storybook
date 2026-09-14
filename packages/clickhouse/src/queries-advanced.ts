@@ -1101,12 +1101,18 @@ export interface SegmentMembershipRow {
  * no ordering choice to whitelist, and a fixed key is stronger than a
  * validated one.
  *
- * Paged by **keyset**, not OFFSET. The CTE chain behind this — the dim
- * scan, the metrics union, the arrayJoin fan-out and the sort — is
- * re-executed for every page, so `OFFSET n` re-reads and discards
- * everything before it: forty pages over a tagged library means forty full
- * passes over the metrics history for one request. `after` resumes from
- * the last row instead, which the unique total order makes exact.
+ * Paged by **keyset**, not OFFSET — but note what that does and does not
+ * buy. The whole CTE chain (the dim scan, the ingest join over
+ * video_daily_stats, the metrics union, the arrayJoin fan-out) is
+ * re-executed on every page either way; keyset removes only the
+ * sort-and-discard of the rows before the cursor, and removes the
+ * possibility of a concurrent write shifting rows across a page boundary.
+ * It does not make paging cheap.
+ *
+ * The scan cost is therefore controlled by taking *few, large* pages
+ * rather than many small ones — see MEMBERSHIP_PAGE_SIZE. An earlier
+ * version of this comment claimed keyset avoided the repeated passes; it
+ * does not, and the page size is what does.
  */
 export async function querySegmentMembership(input: {
   scope: DimScope;
@@ -1127,7 +1133,10 @@ export async function querySegmentMembership(input: {
   const { conditions, params } = buildDimConditions(input.scope);
 
   const days = Math.max(1, Math.floor(input.checkpointDays ?? 30));
-  const limit = Math.min(1000, Math.max(1, Math.floor(input.limit ?? 500)));
+  // Clamped high deliberately: each page re-runs the full CTE chain, so a
+  // small page size multiplies scans rather than saving memory. The rows
+  // are four small columns, so 50k of them is a few megabytes.
+  const limit = Math.min(50_000, Math.max(1, Math.floor(input.limit ?? 500)));
 
   params.asOf = input.asOf ?? formatClickHouseDateTime(new Date());
 

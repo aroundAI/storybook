@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   checkpointWindow,
   createSegmentRevenueFold,
+  retainSurvivingSegments,
+  segmentRpmCents,
 } from '../src/lib/segment-revenue';
 
 /** v1 published 2026-01-01, so its 30-day window is 01-01 … 01-30. */
@@ -160,5 +162,88 @@ describe('createSegmentRevenueFold', () => {
       channelLevelCents: 0,
       unattributedCents: 0,
     });
+  });
+});
+
+describe('retainSurvivingSegments', () => {
+  it('drops segments the aggregate trimmed', () => {
+    const membership = new Map([
+      [
+        'v1',
+        {
+          segments: ['kept', 'trimmed'],
+          windowStart: '2026-01-01',
+          windowEnd: '2026-01-31',
+        },
+      ],
+    ]);
+
+    retainSurvivingSegments(membership, new Set(['kept']));
+
+    expect(membership.get('v1')?.segments).toEqual(['kept']);
+  });
+
+  it('drops a video whose every segment was trimmed, so its revenue reads as unattributed', () => {
+    const membership = new Map([
+      [
+        'v1',
+        {
+          segments: ['gone-a', 'gone-b'],
+          windowStart: '2026-01-01',
+          windowEnd: '2026-01-31',
+        },
+      ],
+    ]);
+
+    retainSurvivingSegments(membership, new Set(['kept']));
+
+    expect(membership.has('v1')).toBe(false);
+  });
+
+  it('counts a video in two trimmed segments once, not twice', () => {
+    // Reconciling per segment afterwards would add its revenue to
+    // unattributed once per trimmed segment.
+    const membership = new Map([
+      [
+        'v1',
+        {
+          segments: ['gone-a', 'gone-b'],
+          windowStart: '2026-01-01',
+          windowEnd: '2026-01-31',
+        },
+      ],
+    ]);
+
+    retainSurvivingSegments(membership, new Set(['kept']));
+
+    const fold = createSegmentRevenueFold(membership);
+
+    fold.add({
+      publish_id: 'v1',
+      record_date: '2026-01-05',
+      revenue_cents: 900,
+    });
+
+    expect(fold.result().unattributedCents).toBe(900);
+  });
+});
+
+describe('segmentRpmCents', () => {
+  it('pools cents over views per thousand', () => {
+    expect(segmentRpmCents(new Map([['a', 5000]]), 'a', 10_000)).toBe(500);
+  });
+
+  it('reports a segment whose rows sum to zero as zero, which is a fact', () => {
+    expect(segmentRpmCents(new Map([['a', 0]]), 'a', 10_000)).toBe(0);
+  });
+
+  it('has no rate for a segment with no revenue rows at all', () => {
+    // Revenue ingest covering YouTube but not Instagram makes this
+    // ordinary; "$0.00 RPM" would state a finding about the content.
+    expect(segmentRpmCents(new Map([['a', 500]]), 'b', 10_000)).toBeNull();
+  });
+
+  it('has no rate without views to divide by', () => {
+    expect(segmentRpmCents(new Map([['a', 500]]), 'a', 0)).toBeNull();
   });
 });

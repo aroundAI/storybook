@@ -184,6 +184,7 @@ export type { VideoLogRow } from './video-log-actions';
 
 export { getSegmentPerformanceAction } from './segment-actions';
 export type {
+  RevenueStatus,
   SegmentPerformanceEntry,
   SegmentPerformanceResult,
 } from './segment-actions';
