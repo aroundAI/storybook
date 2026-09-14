@@ -61,8 +61,13 @@ describe('YouTubeAnalyticsProvider', () => {
     });
 
     it('should create OAuth2 client with credentials', () => {
-      const oauth2Instance = (google.auth.OAuth2 as ReturnType<typeof vi.fn>)
-        .mock.results[0]?.value;
+      // Through `unknown`: the googleapis constructor type and vitest's
+      // Mock share no members, so TypeScript rejects the direct assertion.
+      // This only surfaced once __tests__ entered the type net — the
+      // directory was in both `include` and `exclude`, and exclude wins.
+      const oauth2Instance = (
+        google.auth.OAuth2 as unknown as ReturnType<typeof vi.fn>
+      ).mock.results[0]?.value;
       expect(oauth2Instance.setCredentials).toHaveBeenCalledWith({
         access_token: 'test-access-token',
       });

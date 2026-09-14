@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -96,21 +98,38 @@ describe('REVENUE_CATEGORY_LABELS', () => {
 
 describe('REVENUE_CATEGORY_COLOR', () => {
   /**
-   * Tokens the theme actually defines. `--chart-1..6` are declared in all
-   * three blocks of `apps/web/styles/shadcn-ui.css` and mapped to
-   * `--color-chart-N` in `theme.css`; a `bg-chart-*` class whose token is
-   * missing resolves to nothing and renders transparent, which in a
-   * stacked bar reads as missing revenue rather than as a styling bug.
+   * Read out of the stylesheet, never restated here.
+   *
+   * An earlier version of this test hardcoded the token list, which made it
+   * unable to detect the one failure it names: someone adding
+   * `bg-chart-7`, seeing this test fail, and "fixing" it by adding
+   * `bg-chart-7` to the literal — green suite, transparent wedge. A
+   * transparent wedge in a stacked bar reads as missing revenue rather
+   * than as a styling bug, which is why this is worth reading from source.
    */
-  const DEFINED_TOKENS = [
-    'bg-chart-1',
-    'bg-chart-2',
-    'bg-chart-3',
-    'bg-chart-4',
-    'bg-chart-5',
-    'bg-chart-6',
-    'bg-muted-foreground',
-  ];
+  const themeTokens = (() => {
+    const css = readFileSync(
+      resolve(__dirname, '../../../../apps/web/styles/shadcn-ui.css'),
+      'utf8',
+    );
+
+    const chart = new Set(
+      [...css.matchAll(/--(chart-\d+)\s*:/g)].map((m) => `bg-${m[1]}`),
+    );
+
+    // Not a chart token, but a real Tailwind utility backed by
+    // --muted-foreground in the same stylesheet.
+    if (/--muted-foreground\s*:/.test(css)) chart.add('bg-muted-foreground');
+
+    return chart;
+  })();
+
+  it('reads a non-empty token set out of the stylesheet', () => {
+    // Guards the test itself: a moved or renamed stylesheet would
+    // otherwise make every assertion below vacuously pass.
+    expect(themeTokens.size).toBeGreaterThan(5);
+    expect(themeTokens.has('bg-chart-6')).toBe(true);
+  });
 
   it('gives every category a colour', () => {
     for (const { value } of REVENUE_CATEGORY_LABELS) {
@@ -120,7 +139,7 @@ describe('REVENUE_CATEGORY_COLOR', () => {
 
   it('uses only tokens the theme defines', () => {
     for (const { value } of REVENUE_CATEGORY_LABELS) {
-      expect(DEFINED_TOKENS).toContain(REVENUE_CATEGORY_COLOR[value]);
+      expect([...themeTokens]).toContain(REVENUE_CATEGORY_COLOR[value]);
     }
   });
 

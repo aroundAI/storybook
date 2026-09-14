@@ -33,7 +33,7 @@ create table if not exists public.revenue_records (
 
 comment on table public.revenue_records is 'Daily revenue records per publish (or per account for channel-level revenue), split by category';
 comment on column public.revenue_records.source is 'Source of revenue data: api (fetched from platform) or manual (user entered)';
-comment on column public.revenue_records.category is 'Revenue category: ads, premium, sponsorship, product, affiliate, other';
+comment on column public.revenue_records.category is 'Revenue category: ads, premium, sponsorship, product, affiliate, licensing, other';
 comment on column public.revenue_records.account_id is 'Set instead of publish_id for channel-level revenue (sponsorships, product sales)';
 comment on column public.revenue_records.breakdown is 'JSONB with detailed revenue breakdown (adRevenueCents, membershipRevenueCents, etc.)';
 

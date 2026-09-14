@@ -123,7 +123,18 @@ no API source, so no ingest path produces it.
 ## 6. Acceptance Criteria
 
 - [x] `licensing` is accepted by `revenue_records_category_check`
-- [x] `licensing` is selectable in the manual revenue entry form
+- [x] `licensing` is selectable **and submittable** in the manual revenue entry form
+
+  **This was ticked prematurely.** Selectable was true; submittable was not,
+  and the form could not submit *any* entry. `accountId` was declared in
+  `ManualRevenueFormProps` and never destructured, its only mount passes no
+  `publishes`, and `defaultValues.publishId` was `''` against a
+  `z.string().uuid().optional()` field — `''` is not `undefined`, so uuid
+  validation failed and `handleSubmit` never reached `onSubmit`. The
+  channel-level path the schema has always allowed (`publishId ?? accountId`)
+  was unreachable from the UI. Since licensing has no API on any platform
+  and is manual entry permanently, shipping the category into a form that
+  cannot submit would have made this spec inert.
 - [x] The manual-entry default category is unchanged
 - [x] `licensing` revenue is counted in `nonAdRevenueCents`, not `adsRevenueCents`
 - [x] `adsRevenueCents` remains an explicit sum of `ads` and `premium`, not a subtraction from the total

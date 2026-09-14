@@ -56,7 +56,11 @@ interface ManualRevenueFormProps {
   onSuccess?: () => void;
 }
 
+/** Sentinel for "no video": Radix Select cannot hold an empty value. */
+const CHANNEL_LEVEL = '__channel__';
+
 export function ManualRevenueForm({
+  accountId,
   publishes = [],
   onSuccess,
 }: ManualRevenueFormProps) {
@@ -65,7 +69,11 @@ export function ManualRevenueForm({
   const form = useForm({
     resolver: zodResolver(AddManualRevenueSchema),
     defaultValues: {
-      publishId: '',
+      // `undefined`, not ''. AddManualRevenueSchema types publishId as
+      // `z.string().uuid().optional()`, and '' is not undefined — it is a
+      // string that fails uuid validation, so handleSubmit never reached
+      // onSubmit and the form could not be submitted at all.
+      publishId: undefined,
       date: '',
       revenueCents: 0,
       currency: 'USD',
@@ -85,8 +93,15 @@ export function ManualRevenueForm({
 
   async function onSubmit(data: z.infer<typeof AddManualRevenueSchema>) {
     try {
+      // The schema requires one of publishId or accountId. Revenue with no
+      // video attached is channel-level income — sponsorship, product, and
+      // licensing, which has no API on any platform and is manual entry
+      // permanently. Without this the channel-level path the schema
+      // provides was unreachable from the UI.
       await addManualRevenueAction({
         ...data,
+        publishId: data.publishId || undefined,
+        accountId: data.publishId ? undefined : accountId,
         currency: data.currency || 'USD',
       });
       toast.success('Revenue entry added successfully');
@@ -124,15 +139,30 @@ export function ManualRevenueForm({
                 <FormItem>
                   <FormLabel>Published Content</FormLabel>
                   <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    onValueChange={(value) =>
+                      field.onChange(
+                        value === CHANNEL_LEVEL ? undefined : value,
+                      )
+                    }
+                    defaultValue={field.value ?? CHANNEL_LEVEL}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select published content" />
+                        <SelectValue />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      {/*
+                        Always offered, and the default. Sponsorship,
+                        product and licensing income often belongs to the
+                        channel rather than to one video — the schema has
+                        always allowed it, but with no option here the path
+                        was unreachable from the UI.
+                      */}
+                      <SelectItem value={CHANNEL_LEVEL}>
+                        Whole channel (not one video)
+                      </SelectItem>
+
                       {publishes.length === 0 ? (
                         <SelectItem value="none" disabled>
                           No published content available

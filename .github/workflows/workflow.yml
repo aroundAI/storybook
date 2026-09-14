@@ -233,6 +233,8 @@ jobs:
           pnpm --filter @kit/database-webhooks test
           pnpm --filter @kit/email-templates test
           pnpm --filter @kit/analytics test
+          pnpm --filter @kit/clickhouse test
+          pnpm --filter @kit/content-analytics test
 
       - name: Generate Coverage Report
         run: pnpm --filter web test:coverage
