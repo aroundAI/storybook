@@ -55,7 +55,15 @@ export function RevenueMixCard({
   // server's RevenueSummary.adsSharePercent is computed from the same
   // split, and a channel with Premium revenue would otherwise see two
   // different numbers for one stated metric on one screen.
-  const adShare = splitRevenueByPayout(byType, total).adsRevenueCents / total;
+  //
+  // Over the *unfiltered* total, which is what the server divides by.
+  // `total` above covers only the wedges drawn, and those are filtered to
+  // `cents > 0`; revenue_cents has no non-negative CHECK, so on a clawback
+  // day a negative ads bucket would be in this numerator and out of that
+  // denominator, putting the share below zero or above one.
+  const grossTotal = Object.values(byType).reduce((sum, c) => sum + c, 0);
+  const adsCents = splitRevenueByPayout(byType, grossTotal).adsRevenueCents;
+  const adShare = grossTotal !== 0 ? adsCents / grossTotal : 0;
 
   return (
     <div className={'flex flex-col gap-4'}>

@@ -66,6 +66,12 @@ export function ManualRevenueForm({
   onSuccess,
 }: ManualRevenueFormProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
+  /**
+   * The amount as typed. Kept beside form state rather than derived from
+   * it: deriving `250.50` back out of 25050 cents drops the trailing zero
+   * mid-keystroke. Cleared where reset happens, so the two cannot drift.
+   */
+  const [amountText, setAmountText] = useState('');
 
   const form = useForm({
     resolver: zodResolver(AddManualRevenueSchema),
@@ -95,6 +101,7 @@ export function ManualRevenueForm({
       toast.success('Revenue entry added successfully');
       form.reset(manualRevenueDefaults(accountId));
       setSelectedDate(undefined);
+      setAmountText('');
       onSuccess?.();
     } catch (error) {
       toast.error(
@@ -105,8 +112,13 @@ export function ManualRevenueForm({
 
   // Convert dollar input to cents
   const handleAmountChange = (value: string) => {
+    setAmountText(value);
+
     const dollars = parseFloat(value) || 0;
-    form.setValue('revenueCents', Math.round(dollars * 100));
+
+    form.setValue('revenueCents', Math.round(dollars * 100), {
+      shouldValidate: true,
+    });
   };
 
   return (
@@ -231,25 +243,41 @@ export function ManualRevenueForm({
             />
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormItem>
-                <FormLabel>Amount (USD)</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <span className="text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2">
-                      $
-                    </span>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      className="pl-7"
-                      onChange={(e) => handleAmountChange(e.target.value)}
-                    />
-                  </div>
-                </FormControl>
-                <FormDescription>Revenue amount in dollars</FormDescription>
-              </FormItem>
+              {/*
+                Registered through FormField, and the text is controlled.
+                Previously this was a bare FormItem writing to form state
+                only via setValue, so form.reset() zeroed revenueCents
+                while the input kept showing the typed amount — the next
+                submit wrote a 0 row, which the schema accepts. It also had
+                no FormMessage, so any error on this field was invisible.
+              */}
+              <FormField
+                control={form.control}
+                name="revenueCents"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>Amount (USD)</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <span className="text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2">
+                          $
+                        </span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          className="pl-7"
+                          value={amountText}
+                          onChange={(e) => handleAmountChange(e.target.value)}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormDescription>Revenue amount in dollars</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
@@ -257,10 +285,7 @@ export function ManualRevenueForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Currency</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select currency" />
