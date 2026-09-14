@@ -26,7 +26,7 @@ Specified, not yet built:
 
 ```
 FILM-1608 (YPP targets + settings UI) ──┐
-FILM-1609 (revenue mix completion) ─────┼─→ FILM-1611 (channel selector + orphan wiring)
+FILM-1609 ✅ (revenue mix completion) ──┼─→ FILM-1611 (channel selector + orphan wiring)
 FILM-1606 ✅ (segment performance) ─────┘         │
                                                   ├─→ FILM-1615 (Video Log table)
                                                   └─→ FILM-1617 (subscriber surfaces)
@@ -45,7 +45,7 @@ than the published clip's (phase-17 FILM-1710). The column has no readers
 today, so FILM-1616 would be the first — it must either take FILM-1710
 first or source the duration deliberately and say which it used.
 
-FILM-1608, 1609, 1610 and 1616 are mutually independent and parallelisable. FILM-1611 gates the remaining UI work; FILM-1617 additionally needs FILM-1618 (✅ PR #249), because surfacing a curve built from systematically short deltas publishes a number that drifts from its own anchors.
+FILM-1608, 1610 and 1616 are mutually independent and parallelisable. FILM-1611 gates the remaining UI work; FILM-1617 additionally needs FILM-1618 (✅ PR #249), because surfacing a curve built from systematically short deltas publishes a number that drifts from its own anchors.
 
 **FILM-1614 is not a phase-16 spec.** The id is claimed by an in-code `TODO(FILM-1614)` at `packages/features/content-analytics/src/server/revenue-queries.ts:79`, for folding the two client-side revenue query shapes into a pre-grouped RPC. New spec ids in this phase therefore resume at 1615.
 
@@ -61,13 +61,13 @@ FILM-1608, 1609, 1610 and 1616 are mutually independent and parallelisable. FILM
 | FILM-1618 | PR #249 |
 | FILM-1605 | PR #252 |
 | FILM-1606 | PR #255 |
+| FILM-1609 | this PR |
 
 Specified and not yet built:
 
 | Spec | Status | Effort | Covers |
 |------|--------|--------|--------|
 | FILM-1608 | DRAFT | M | Per-channel YPP targets, and the first writer `analytics_settings` has ever had |
-| FILM-1609 | DRAFT | S | The `licensing` revenue category (the rest of this scope already shipped) |
 | FILM-1610 | DRAFT | M | Watched metrics, review windows, and per-video notes on `publishes` |
 | FILM-1611 | DRAFT | M | Channel selector, plus mounting `YppProgressCard`, `TagMediansCard`, `RevenueMixCard` |
 | FILM-1615 | DRAFT | M | The Video Log table — FILM-1603 built the query and action, not the screen |
@@ -94,8 +94,8 @@ Specified and not yet built:
 
 ## Everything is now specified
 
-Every remaining item has a spec file. FILM-1608, 1609, 1610, 1611, 1615,
-1616 and 1617 are DRAFT; nothing is left planned-but-unwritten.
+Every remaining item has a spec file. FILM-1608, 1610, 1611, 1615, 1616 and
+1617 are DRAFT; nothing is left planned-but-unwritten.
 
 **FILM-1611 was split.** The backlog entry called "analytics UI" had
 accumulated four unrelated deliverables, and anyone sizing it from its name

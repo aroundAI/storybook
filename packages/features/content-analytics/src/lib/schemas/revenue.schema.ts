@@ -32,6 +32,7 @@ export const RevenueCategorySchema = z.enum([
   'sponsorship',
   'product',
   'affiliate',
+  'licensing',
   'other',
 ]);
 

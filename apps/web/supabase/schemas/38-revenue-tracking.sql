@@ -26,7 +26,7 @@ create table if not exists public.revenue_records (
   check (platform in ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin', 'manual')),
   check (source in ('api', 'manual')),
   constraint revenue_records_category_check
-    check (category in ('ads', 'premium', 'sponsorship', 'product', 'affiliate', 'other')),
+    check (category in ('ads', 'premium', 'sponsorship', 'product', 'affiliate', 'licensing', 'other')),
   constraint revenue_records_scope_check
     check (publish_id is not null or account_id is not null)
 );

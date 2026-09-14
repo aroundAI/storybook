@@ -40,6 +40,7 @@ import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
 
+import { REVENUE_CATEGORY_LABELS } from '../lib/revenue-mix';
 import { AddManualRevenueSchema } from '../lib/schemas/revenue.schema';
 import { addManualRevenueAction } from '../server/revenue-actions';
 
@@ -270,12 +271,11 @@ export function ManualRevenueForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="sponsorship">Sponsorship</SelectItem>
-                      <SelectItem value="product">Product sales</SelectItem>
-                      <SelectItem value="affiliate">Affiliate</SelectItem>
-                      <SelectItem value="ads">Ads</SelectItem>
-                      <SelectItem value="premium">Premium</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      {REVENUE_CATEGORY_LABELS.map(({ value, label }) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormDescription>

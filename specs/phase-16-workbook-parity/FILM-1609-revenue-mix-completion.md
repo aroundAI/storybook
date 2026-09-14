@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1609
 title: Revenue Mix Completion
-status: DRAFT
+status: ✅ DONE
 effort: S
 dependencies: FILM-1601
 ---
@@ -75,6 +75,24 @@ in the theme first; a token that does not resolve renders transparent, and
 a transparent wedge in a stacked bar reads as missing revenue rather than
 as a styling bug.
 
+### Corrected during implementation: a sixth token, not a shared one
+
+**The opacity-sharing rule above rests on an assumption that does not
+hold.** It reasons from where categories sit relative to each other on
+screen — but `RevenueMixCard` sorts wedges by value descending
+(`revenue-mix-card.tsx:53-55`), so adjacency is data-dependent and the two
+sharing a hue can land side by side, reading as one wedge with a gradient
+rather than two categories.
+
+`--chart-6` was therefore **added** — to all three theme blocks in
+`apps/web/styles/shadcn-ui.css` (`:root.light`, `:root`, `.dark`) and
+mapped to `--color-chart-6` in `theme.css`, which is what makes
+`bg-chart-6` resolve. The check this section asks for was done first: only
+`--chart-1` … `--chart-5` existed, so `bg-chart-6` would indeed have
+rendered transparent. The addition is purely additive — nothing else uses
+the token — and a test binds every category's colour to the set the theme
+defines, so the transparent-wedge failure cannot recur silently.
+
 ## 4. Implementation Map
 
 | File | Change |
@@ -82,7 +100,9 @@ as a styling bug.
 | `apps/web/supabase/schemas/38-revenue-tracking.sql` | Add `licensing` to `revenue_records_category_check`. A CHECK cannot be extended in place — the migration drops and re-adds it. Nothing else in the file changes. |
 | `apps/web/supabase/migrations/<timestamp>_revenue-licensing-category.sql` | The generated migration. Note the constraint was already re-created once by `20260827104500_revenue-categories.sql:26-28`, so the drop must target the current name, not the original schema-file text. |
 | `packages/features/content-analytics/src/lib/schemas/revenue.schema.ts` | Add `licensing` to the category enum (`:29-36`). The manual-entry default stays `sponsorship` (`:53`) — licensing is rarer, and changing a default silently re-categorises whatever a user submits without touching the field. |
-| `packages/features/content-analytics/src/components/revenue-mix-card.tsx` | `CATEGORY_LABELS` and `CATEGORY_COLORS` gain `licensing`, per §3. These maps stay the single source of category presentation; do not fork a second copy into the summary card. |
+| `packages/features/content-analytics/src/components/revenue-mix-card.tsx` | Reads labels and colours from `lib/revenue-mix.ts` rather than holding its own maps — see below. |
+| `packages/features/content-analytics/src/lib/revenue-mix.ts` | **New.** `REVENUE_CATEGORY_LABELS` (ordered, for the entry form), `REVENUE_CATEGORY_LABEL` (keyed, for lookups), `REVENUE_CATEGORY_COLOR`, and `splitRevenueByPayout`. |
+| `packages/features/content-analytics/src/components/manual-revenue-form.tsx` | **Not in the original map, and required by AC-2.** The form held a hardcoded `<SelectItem>` list — a *third* copy of the vocabulary after the zod enum and the card's labels. Adding `licensing` to it alone would have left the next category to be added in three places, so the labels were collapsed into the shared list and the form now renders from it. |
 | `packages/features/content-analytics/src/server/revenue-actions.ts` | Confirm `licensing` falls to `nonAdRevenueCents`. It should already: `adsRevenueCents` is an explicit `byType.ads + byType.premium` (`:123`), so a new category is non-ad by construction — but the acceptance criteria assert it rather than assuming, because the alternative implementation (`total − ads`) has the same value today and a different one the moment a category is added that should count as a payout. |
 
 Nothing changes in `analytics-sync-cron.ts:977-980`, which writes only
@@ -102,16 +122,27 @@ no API source, so no ingest path produces it.
 
 ## 6. Acceptance Criteria
 
-- [ ] `licensing` is accepted by `revenue_records_category_check`
-- [ ] `licensing` is selectable in the manual revenue entry form
-- [ ] The manual-entry default category is unchanged
-- [ ] `licensing` revenue is counted in `nonAdRevenueCents`, not `adsRevenueCents`
-- [ ] `adsRevenueCents` remains an explicit sum of `ads` and `premium`, not a subtraction from the total
-- [ ] Every category, including `licensing`, resolves to a label and a colour that exists in the theme
-- [ ] `other` is visually distinct from the six named categories
-- [ ] A row inserted with an unknown category is still rejected by the database
-- [ ] `pnpm --filter web check:schema-drift` passes
-- [ ] Both `database.types.ts` copies are regenerated and identical
+- [x] `licensing` is accepted by `revenue_records_category_check`
+- [x] `licensing` is selectable in the manual revenue entry form
+- [x] The manual-entry default category is unchanged
+- [x] `licensing` revenue is counted in `nonAdRevenueCents`, not `adsRevenueCents`
+- [x] `adsRevenueCents` remains an explicit sum of `ads` and `premium`, not a subtraction from the total
+- [x] Every category, including `licensing`, resolves to a label and a colour that exists in the theme
+- [x] `other` is visually distinct from the six named categories
+- [x] A row inserted with an unknown category is still rejected by the database
+- [x] `pnpm --filter web check:schema-drift` passes
+- [x] Both `database.types.ts` copies are **unchanged**, and identical to each other
+
+  **This criterion was wrong as written.** `category` is `varchar(30)` with
+  a CHECK, not a Postgres enum, so extending the vocabulary produces no
+  change in the generated types at all — a regeneration confirmed zero
+  revenue-related lines in the diff. What it *did* produce was 372 lines of
+  unrelated churn (`__InternalSupabase` removed, `SetofOptions` blocks
+  dropped, `unknown` rewritten), because the local Supabase CLI (v2.40.7)
+  is older than the one that generated the committed file. Committing that
+  would be a silent CLI downgrade dressed as a schema change — the same
+  artifact Phase 17's README already records. The right outcome here is an
+  unchanged file, not a regenerated one.
 
 ## 7. Verification
 

@@ -7,6 +7,7 @@ import { enhanceAction } from '@kit/next/actions';
 import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { splitRevenueByPayout } from '../lib/revenue-mix';
 import {
   AddManualRevenueSchema,
   DeleteManualRevenueSchema,
@@ -120,8 +121,14 @@ export const getRevenueSummaryAction = enhanceAction(
     // Revenue mix: ads + Premium are platform payouts; everything else is
     // income the channel built itself. A falling ads share is the health
     // signal, so both halves are returned rather than derived downstream.
-    const adsRevenueCents = (byType.ads ?? 0) + (byType.premium ?? 0);
-    const nonAdRevenueCents = totalRevenueCents - adsRevenueCents;
+    //
+    // The split lives in lib/revenue-mix.ts so that "which side does a new
+    // category fall on" is answered by a test rather than by re-reading
+    // this line each time the vocabulary grows.
+    const { adsRevenueCents, nonAdRevenueCents } = splitRevenueByPayout(
+      byType,
+      totalRevenueCents,
+    );
 
     /** Cents per 1000 views. Display sites divide by 100 for dollars. */
     const allInRpmCents =
