@@ -40,6 +40,7 @@ import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
 
+import { manualRevenueDefaults } from '../lib/manual-revenue';
 import { REVENUE_CATEGORY_LABELS } from '../lib/revenue-mix';
 import { AddManualRevenueSchema } from '../lib/schemas/revenue.schema';
 import { addManualRevenueAction } from '../server/revenue-actions';
@@ -68,18 +69,7 @@ export function ManualRevenueForm({
 
   const form = useForm({
     resolver: zodResolver(AddManualRevenueSchema),
-    defaultValues: {
-      // `undefined`, not ''. AddManualRevenueSchema types publishId as
-      // `z.string().uuid().optional()`, and '' is not undefined — it is a
-      // string that fails uuid validation, so handleSubmit never reached
-      // onSubmit and the form could not be submitted at all.
-      publishId: undefined,
-      date: '',
-      revenueCents: 0,
-      currency: 'USD',
-      category: 'sponsorship' as const,
-      notes: '',
-    },
+    defaultValues: manualRevenueDefaults(accountId),
   });
 
   const isSubmitting = form.formState.isSubmitting;
@@ -93,11 +83,9 @@ export function ManualRevenueForm({
 
   async function onSubmit(data: z.infer<typeof AddManualRevenueSchema>) {
     try {
-      // The schema requires one of publishId or accountId. Revenue with no
-      // video attached is channel-level income — sponsorship, product, and
-      // licensing, which has no API on any platform and is manual entry
-      // permanently. Without this the channel-level path the schema
-      // provides was unreachable from the UI.
+      // Exactly one scope reaches the action. revenue_records' unique
+      // index is on coalesce(publish_id, account_id), so sending both
+      // would attach the row to a video *and* to the channel.
       await addManualRevenueAction({
         ...data,
         publishId: data.publishId || undefined,
@@ -105,7 +93,7 @@ export function ManualRevenueForm({
         currency: data.currency || 'USD',
       });
       toast.success('Revenue entry added successfully');
-      form.reset();
+      form.reset(manualRevenueDefaults(accountId));
       setSelectedDate(undefined);
       onSuccess?.();
     } catch (error) {
@@ -138,13 +126,21 @@ export function ManualRevenueForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Published Content</FormLabel>
+                  {/*
+                    Controlled, like the category Select below. With
+                    `defaultValue` Radix owns the displayed value, so after
+                    form.reset() the trigger kept showing the last video
+                    while form state said undefined — the next entry would
+                    be written as channel-level revenue under a label
+                    naming a video.
+                  */}
                   <Select
                     onValueChange={(value) =>
                       field.onChange(
                         value === CHANNEL_LEVEL ? undefined : value,
                       )
                     }
-                    defaultValue={field.value ?? CHANNEL_LEVEL}
+                    value={field.value ?? CHANNEL_LEVEL}
                   >
                     <FormControl>
                       <SelectTrigger>

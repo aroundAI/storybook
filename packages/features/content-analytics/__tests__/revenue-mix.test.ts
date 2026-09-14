@@ -108,20 +108,30 @@ describe('REVENUE_CATEGORY_COLOR', () => {
    * than as a styling bug, which is why this is worth reading from source.
    */
   const themeTokens = (() => {
-    const css = readFileSync(
-      resolve(__dirname, '../../../../apps/web/styles/shadcn-ui.css'),
-      'utf8',
+    const styles = resolve(__dirname, '../../../../apps/web/styles');
+    const css = readFileSync(resolve(styles, 'shadcn-ui.css'), 'utf8');
+    const theme = readFileSync(resolve(styles, 'theme.css'), 'utf8');
+
+    // Both halves are required, and an earlier version of this test read
+    // only the first. A `--chart-7` declared in shadcn-ui.css is not a
+    // utility until theme.css maps `--color-chart-7` inside `@theme`;
+    // delete that one line and `bg-chart-7` resolves to nothing while a
+    // declaration-only check stays green — the transparent wedge again.
+    const declared = new Set(
+      [...css.matchAll(/--(chart-\d+)\s*:/g)].map((m) => m[1]!),
+    );
+    const mapped = new Set(
+      [...theme.matchAll(/--color-(chart-\d+)\s*:/g)].map((m) => m[1]!),
     );
 
-    const chart = new Set(
-      [...css.matchAll(/--(chart-\d+)\s*:/g)].map((m) => `bg-${m[1]}`),
+    const usable = new Set(
+      [...declared].filter((name) => mapped.has(name)).map((n) => `bg-${n}`),
     );
 
-    // Not a chart token, but a real Tailwind utility backed by
-    // --muted-foreground in the same stylesheet.
-    if (/--muted-foreground\s*:/.test(css)) chart.add('bg-muted-foreground');
+    // Not a chart token, but a real utility backed by --muted-foreground.
+    if (/--muted-foreground\s*:/.test(css)) usable.add('bg-muted-foreground');
 
-    return chart;
+    return usable;
   })();
 
   it('reads a non-empty token set out of the stylesheet', () => {

@@ -109,6 +109,31 @@ Nothing changes in `analytics-sync-cron.ts:977-980`, which writes only
 `ads`, `premium` and `other` from the YouTube Analytics API. Licensing has
 no API source, so no ingest path produces it.
 
+## 4b. Two things this spec makes reachable and does not resolve
+
+Both pre-date this work. Neither mattered while the manual form could not
+submit; both matter now that it can.
+
+**Same-day channel-level entries overwrite rather than accumulate.** The
+existing-row lookup in `revenue-actions.ts` keys on
+`(record_date, category, account_id)` and updates in place, matching
+`idx_revenue_records_unique_scope` on
+`coalesce(publish_id, account_id), record_date, category`. Two sponsorship
+deals — or two licensing payments — recorded for one channel on one date
+collapse to a single row, the second replacing the first, with no error and
+no warning. Manual channel-level income is exactly where two entries on one
+date are normal, so this wants a decision: sum them, reject the second, or
+key on something finer. It is a product question, not a cleanup, and it is
+**not decided here**.
+
+**Per-video attribution is unreachable from the dashboard.**
+`revenue-dashboard.tsx:295` mounts the form without a `publishes` prop, so
+the video list always renders its disabled "No published content available"
+item and channel-level is the only selectable scope. The per-publish path
+that `byContent`, per-video RPM and top-content all read from therefore
+cannot be populated by hand. Wiring the publish list in is small and
+belongs with whoever next touches that dashboard.
+
 ## 5. Out of Scope
 
 - **Rendering `RevenueMixCard`** — FILM-1611. This spec makes the category

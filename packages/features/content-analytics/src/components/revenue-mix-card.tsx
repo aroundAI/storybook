@@ -7,6 +7,7 @@ import { Skeleton } from '@kit/ui/skeleton';
 import {
   REVENUE_CATEGORY_COLOR,
   REVENUE_CATEGORY_LABEL,
+  splitRevenueByPayout,
 } from '../lib/revenue-mix';
 
 interface RevenueMixCardProps {
@@ -50,7 +51,11 @@ export function RevenueMixCard({
     );
   }
 
-  const adShare = (byType.ads ?? 0) / total;
+  // ads + premium, via the shared rule — not `byType.ads` alone. The
+  // server's RevenueSummary.adsSharePercent is computed from the same
+  // split, and a channel with Premium revenue would otherwise see two
+  // different numbers for one stated metric on one screen.
+  const adShare = splitRevenueByPayout(byType, total).adsRevenueCents / total;
 
   return (
     <div className={'flex flex-col gap-4'}>
@@ -89,8 +94,9 @@ export function RevenueMixCard({
       </div>
 
       <p className={'text-muted-foreground text-xs'}>
-        {Math.round(adShare * 100)}% of revenue comes from ads. A falling ad
-        share means other income is growing faster than platform payouts.
+        {Math.round(adShare * 100)}% of revenue comes from platform payouts (ads
+        and Premium). A falling share means other income is growing faster than
+        what the platform pays out.
       </p>
     </div>
   );
