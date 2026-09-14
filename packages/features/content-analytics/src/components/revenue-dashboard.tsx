@@ -259,7 +259,9 @@ export function RevenueDashboard({
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="platforms">By Platform</TabsTrigger>
           <TabsTrigger value="content">By Content</TabsTrigger>
-          <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+          <TabsTrigger value="manual" data-test="revenue-tab-manual">
+            Manual Entry
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">

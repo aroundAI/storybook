@@ -132,7 +132,11 @@ export function ManualRevenueForm({
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-6"
+            data-test="manual-revenue-form"
+          >
             <FormField
               control={form.control}
               name="publishId"
@@ -156,7 +160,7 @@ export function ManualRevenueForm({
                     value={field.value ?? CHANNEL_LEVEL}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger data-test="revenue-publish-trigger">
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
@@ -209,6 +213,7 @@ export function ManualRevenueForm({
                       <FormControl>
                         <Button
                           variant="outline"
+                          data-test="revenue-date-trigger"
                           className={cn(
                             'w-[240px] pl-3 text-left font-normal',
                             !field.value && 'text-muted-foreground',
@@ -276,6 +281,7 @@ export function ManualRevenueForm({
                           inputMode="decimal"
                           placeholder="0.00"
                           className="pl-7"
+                          data-test="revenue-amount-input"
                           value={amountText}
                           onChange={(e) => handleAmountChange(e.target.value)}
                         />
@@ -295,7 +301,7 @@ export function ManualRevenueForm({
                     <FormLabel>Currency</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger data-test="revenue-currency-trigger">
                           <SelectValue placeholder="Select currency" />
                         </SelectTrigger>
                       </FormControl>
@@ -325,7 +331,7 @@ export function ManualRevenueForm({
                   <FormLabel>Category</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger data-test="revenue-category-trigger">
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
@@ -366,7 +372,11 @@ export function ManualRevenueForm({
               )}
             />
 
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              data-test="revenue-submit"
+            >
               {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
