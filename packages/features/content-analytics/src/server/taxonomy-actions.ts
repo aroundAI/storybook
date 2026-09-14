@@ -283,7 +283,17 @@ export const getMedianByTagAction = enhanceAction(
     // accountId they cannot see, RLS would return no rows rather than
     // raise, and the gate would report "tag medians unlock at 30 videos"
     // for a fully tagged library — a silent wrong answer.
-    const resolvedAccountId = (await assertScopeAccess(scope)) ?? accountId;
+    // No `?? accountId` fallback: that is the unvalidated input this whole
+    // comment exists to reject, and reverting to it silently would undo
+    // the check. projects.account_id is NOT NULL, so the resolve cannot
+    // fail for a project scope, and the account branch returns the id it
+    // verified — an absence here means an assumption broke, and failing is
+    // the right answer.
+    const resolvedAccountId = await assertScopeAccess(scope);
+
+    if (!resolvedAccountId) {
+      throw new Error('Scope resolved to no account');
+    }
 
     const client = getSupabaseServerClient();
 

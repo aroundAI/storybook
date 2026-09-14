@@ -25,6 +25,7 @@
  * revenue by a lifetime of first-30-day views is an RPM wrong by whatever
  * ratio those windows happen to stand in.
  */
+import { pooledRpmCents } from '@kit/clickhouse';
 
 /** The only fields of a revenue row this fold reads. */
 export interface FoldableRevenueRow {
@@ -122,9 +123,10 @@ export function segmentRpmCents(
 ): number | null {
   if (!revenueBySegment.has(segment)) return null;
 
-  const cents = revenueBySegment.get(segment)!;
-
-  return totalViews > 0 ? (cents / totalViews) * 1000 : null;
+  // Delegated, never re-derived: an inline `(cents / views) * 1000` here
+  // would be a second definition of the pooled rate, which is the drift
+  // lib/segment-stats.ts exists to prevent.
+  return pooledRpmCents(revenueBySegment.get(segment)!, totalViews);
 }
 
 export function createSegmentRevenueFold(
@@ -178,4 +180,49 @@ export function createSegmentRevenueFold(
       return { revenueBySegment, channelLevelCents, unattributedCents };
     },
   };
+}
+
+/** Earliest and latest day any video checkpoint window touches. */
+export function revenueFetchWindow(membership: Map<string, MembershipEntry>) {
+  let from: string | undefined;
+  let toExclusive: string | undefined;
+
+  for (const entry of membership.values()) {
+    if (!from || entry.windowStart < from) from = entry.windowStart;
+    if (!toExclusive || entry.windowEnd > toExclusive) {
+      toExclusive = entry.windowEnd;
+    }
+  }
+
+  return from && toExclusive ? { from, toExclusive } : null;
+}
+
+/**
+ * Splits a span into year-long chunks.
+ *
+ * forEachAccountRevenueRow refuses to read past 100k rows *per call*, and
+ * revenue_records holds a row per publish per day per category — so a
+ * couple of hundred tracked videos over a year in two categories already
+ * approaches that. Because this window spans the account's whole history
+ * by construction, reading it in one call would make the guard fire for
+ * exactly the accounts the feature is for. Chunking keeps each call inside
+ * the limit; TODO(FILM-1614)'s pre-grouped RPC is the real fix.
+ */
+export function yearChunks(from: string, toExclusive: string) {
+  const chunks: Array<{ from: string; toExclusive: string }> = [];
+  let cursor = from;
+
+  while (cursor < toExclusive) {
+    const next = new Date(`${cursor}T00:00:00Z`);
+
+    next.setUTCFullYear(next.getUTCFullYear() + 1);
+
+    const end = next.toISOString().slice(0, 10);
+    const chunkEnd = end < toExclusive ? end : toExclusive;
+
+    chunks.push({ from: cursor, toExclusive: chunkEnd });
+    cursor = chunkEnd;
+  }
+
+  return chunks;
 }

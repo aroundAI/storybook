@@ -234,13 +234,17 @@ interpolating caller text; `dimension` is a bound parameter used as a
 - [x] `confidence` is derived from `matureVideoCount`, not `videoCount`
 - [x] A `directional` segment renders dimmed with its n, and is not hidden
 - [x] `rpmCents` is pooled, and is absent rather than zero when revenue was not requested
-- [x] Channel-level revenue is excluded from `rpmCents` and reported as `channelLevelRevenueCents`
+- [x] Channel-level revenue is excluded from `rpmCents` and reported as `channelLevelRevenueCentsInWindow`, named for the bound it carries
 - [x] Revenue is bounded to each video's own checkpoint window, so the rate's numerator and denominator cover the same span
 - [x] Every streamed cent lands in a segment, `channelLevelRevenueCents` or `unattributedRevenueCents` — none is dropped
 - [x] A truncated membership suppresses `rpmCents` rather than understating it
 - [x] An account with no revenue rows yields no rate, not `$0.00 RPM` on every segment
 - [x] A revenue read that exceeds the pagination guard degrades to figures-without-a-rate rather than throwing
-- [x] `revenueStatus` distinguishes the four reasons a rate can be absent, and never says `not_requested` when a rate *was* requested
+- [x] `revenueStatus` gives each absence its own reason, and never reports one the code did not check
+- [x] The revenue read is chunked by year, so the pagination guard is not tripped by the window spanning the account's whole history
+- [x] A membership that exactly fills the page budget is not reported truncated
+- [x] The scope carries project **or** account, never both ANDed together
+- [x] `segmentRpmCents` delegates to `pooledRpmCents` rather than restating the arithmetic
 - [x] A segment with no revenue rows at all yields `rpmCents: null`, distinct from one whose rows sum to zero
 - [x] Revenue for a segment the aggregate trimmed is counted as unattributed, once, not attributed to a key no row carries
 - [x] `channelLevelRevenueCentsInWindow` is named for the bound it carries, and `measuredWindow` states that bound

@@ -4,7 +4,9 @@ import {
   checkpointWindow,
   createSegmentRevenueFold,
   retainSurvivingSegments,
+  revenueFetchWindow,
   segmentRpmCents,
+  yearChunks,
 } from '../src/lib/segment-revenue';
 
 /** v1 published 2026-01-01, so its 30-day window is 01-01 … 01-30. */
@@ -245,5 +247,59 @@ describe('segmentRpmCents', () => {
 
   it('has no rate without views to divide by', () => {
     expect(segmentRpmCents(new Map([['a', 500]]), 'a', 0)).toBeNull();
+  });
+});
+
+describe('revenueFetchWindow', () => {
+  it('spans the earliest start to the latest exclusive end', () => {
+    expect(revenueFetchWindow(membership())).toEqual({
+      from: '2026-01-01',
+      toExclusive: '2026-03-03',
+    });
+  });
+
+  it('is null when there is nothing measured', () => {
+    expect(revenueFetchWindow(new Map())).toBeNull();
+  });
+});
+
+describe('yearChunks', () => {
+  it('returns a single chunk for a span under a year', () => {
+    expect(yearChunks('2026-01-01', '2026-03-03')).toEqual([
+      { from: '2026-01-01', toExclusive: '2026-03-03' },
+    ]);
+  });
+
+  it('splits a multi-year span so no single read approaches the row guard', () => {
+    // forEachAccountRevenueRow refuses past 100k rows per call, and
+    // revenue_records holds a row per publish per day per category.
+    expect(yearChunks('2024-01-01', '2026-06-01')).toEqual([
+      { from: '2024-01-01', toExclusive: '2025-01-01' },
+      { from: '2025-01-01', toExclusive: '2026-01-01' },
+      { from: '2026-01-01', toExclusive: '2026-06-01' },
+    ]);
+  });
+
+  it('covers the span exactly, with no gap or overlap between chunks', () => {
+    const chunks = yearChunks('2023-03-15', '2026-09-14');
+
+    expect(chunks[0]!.from).toBe('2023-03-15');
+    expect(chunks[chunks.length - 1]!.toExclusive).toBe('2026-09-14');
+
+    for (let i = 1; i < chunks.length; i++) {
+      expect(chunks[i]!.from).toBe(chunks[i - 1]!.toExclusive);
+    }
+  });
+
+  it('returns nothing for an empty or inverted span, rather than looping', () => {
+    expect(yearChunks('2026-01-01', '2026-01-01')).toEqual([]);
+    expect(yearChunks('2026-06-01', '2026-01-01')).toEqual([]);
+  });
+
+  it('handles a leap day without drifting', () => {
+    expect(yearChunks('2028-02-29', '2029-06-01')[0]).toEqual({
+      from: '2028-02-29',
+      toExclusive: '2029-03-01',
+    });
   });
 });

@@ -1182,18 +1182,18 @@ describe('queries-advanced', () => {
         {
           segment: 'en',
           video_id: 'v1',
-          views: '900',
           published_at: '2026-01-01 00:00:00',
         },
       ]);
 
       const rows = await runMembership();
 
+      // No `views`: the RPM denominator is the aggregate's totalViews, and
+      // a per-video figure here would invite a mismatched one.
       expect(rows).toEqual([
         {
           segment: 'en',
           videoId: 'v1',
-          views: 900,
           publishedAt: '2026-01-01 00:00:00',
         },
       ]);

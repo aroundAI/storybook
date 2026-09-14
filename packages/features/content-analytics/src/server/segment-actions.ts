@@ -19,7 +19,9 @@ import {
   checkpointWindow,
   createSegmentRevenueFold,
   retainSurvivingSegments,
+  revenueFetchWindow,
   segmentRpmCents,
+  yearChunks,
 } from '../lib/segment-revenue';
 import { forEachAccountRevenueRow } from './revenue-queries';
 import { assertScopeAccess } from './scope-access';
@@ -78,6 +80,8 @@ export type RevenueStatus =
   | 'not_requested'
   /** The account has no revenue records at all in the measured window. */
   | 'no_data'
+  /** No segment cleared `minVideos`, so there is nothing to rate. */
+  | 'no_segments'
   /** Membership paging hit its bound; any rate would be understated. */
   | 'membership_truncated'
   /** The revenue read exceeded the pagination guard. */
@@ -118,12 +122,13 @@ export interface SegmentPerformanceResult {
    */
   unattributedRevenueCents: number;
   /**
-   * The span both revenue figures cover: earliest checkpoint window start
-   * to latest end, across the measured videos. Null when no rate was
-   * computed. Returned so the UI can state the bound rather than imply
-   * there is none.
+   * The span both revenue figures cover, across the measured videos:
+   * earliest checkpoint window start, to the exclusive end of the latest.
+   * `toExclusive` is named for what it is — rendering it as the last day
+   * of a range would overstate the span by one day. Null when no rate was
+   * computed.
    */
-  measuredWindow: { from: string; to: string } | null;
+  measuredWindow: { from: string; toExclusive: string } | null;
 }
 
 /**
@@ -174,20 +179,21 @@ async function collectMembership(input: {
     }
   }
 
-  return { membership, truncated };
-}
+  // A final page that came back full says nothing about whether more
+  // exists — a membership of exactly the page budget would otherwise be
+  // reported truncated and have its rate suppressed on a complete read.
+  // One row settles it.
+  if (truncated && after) {
+    const probe = await querySegmentMembership({
+      ...input,
+      limit: 1,
+      after,
+    });
 
-/** Earliest and latest day any video checkpoint window touches. */
-function revenueFetchWindow(membership: Map<string, MembershipEntry>) {
-  let from: string | undefined;
-  let to: string | undefined;
-
-  for (const entry of membership.values()) {
-    if (!from || entry.windowStart < from) from = entry.windowStart;
-    if (!to || entry.windowEnd > to) to = entry.windowEnd;
+    truncated = probe.length > 0;
   }
 
-  return from && to ? { from, to } : null;
+  return { membership, truncated };
 }
 
 /**
@@ -211,9 +217,15 @@ function revenueFetchWindow(membership: Map<string, MembershipEntry>) {
  */
 export const getSegmentPerformanceAction = enhanceAction(
   async (input): Promise<SegmentPerformanceResult> => {
+    // One of project or account, never both. buildDimConditions ANDs every
+    // key it is given, and assertScopeAccess verifies only the project — so
+    // a project the caller owns plus any other account id would AND to zero
+    // ClickHouse rows and report as an empty result. getMedianByTagAction
+    // makes the same choice for the same reason.
     const scope = {
-      projectId: input.projectId,
-      accountId: input.accountId,
+      ...(input.projectId
+        ? { projectId: input.projectId }
+        : { accountId: input.accountId }),
       connectionId: input.connectionId,
       contentType: input.contentType,
       language: input.language,
@@ -252,10 +264,20 @@ export const getSegmentPerformanceAction = enhanceAction(
       return { rows, ...withoutRevenue('not_requested') };
     }
 
-    // Revenue *was* asked for. Saying "not requested" here would tell the
-    // caller it never asked — the one thing revenueStatus exists to stop.
-    if (rows.length === 0 || !scopeAccountId) {
-      return { rows, ...withoutRevenue('no_data') };
+    // Revenue *was* asked for, so each absence gets its own reason. Reusing
+    // 'no_data' here would have a UI say "no revenue recorded" off a fact
+    // the code never checked — the silent substitution revenueStatus
+    // exists to stop.
+    if (rows.length === 0) {
+      return { rows, ...withoutRevenue('no_segments') };
+    }
+
+    // projects.account_id is NOT NULL and accountId is required when no
+    // project is given, so assertScopeAccess always resolves one. Guarded
+    // rather than asserted because the alternative is reading another
+    // account's revenue if that ever stops being true.
+    if (!scopeAccountId) {
+      throw new Error('Scope resolved to no account; cannot read revenue');
     }
 
     const { membership, truncated } = await collectMembership({
@@ -296,17 +318,19 @@ export const getSegmentPerformanceAction = enhanceAction(
     let rowsSeen = 0;
 
     try {
-      await forEachAccountRevenueRow(
-        client,
-        scopeAccountId,
-        window.from,
-        window.to,
-        (row) => {
-          rowsSeen++;
-          fold.add(row);
-        },
-        { toExclusive: true },
-      );
+      for (const chunk of yearChunks(window.from, window.toExclusive)) {
+        await forEachAccountRevenueRow(
+          client,
+          scopeAccountId,
+          chunk.from,
+          chunk.toExclusive,
+          (row) => {
+            rowsSeen++;
+            fold.add(row);
+          },
+          { toExclusive: true },
+        );
+      }
     } catch (error) {
       // The window spans the account's whole publish history, so this is
       // the one revenue read whose span is unbounded by construction and

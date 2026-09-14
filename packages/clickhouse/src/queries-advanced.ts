@@ -1075,14 +1075,21 @@ export async function querySegmentPerformance(input: {
 export interface SegmentMembershipRow {
   segment: string;
   videoId: string;
-  /** Views at the checkpoint — the RPM denominator for this video. */
-  views: number;
   /**
    * Publish date, so revenue can be bounded to the same window the views
    * cover. Without it the two halves of the rate measure different spans.
    */
   publishedAt: string;
 }
+
+/**
+ * Deliberately no `views` column. The RPM denominator is
+ * querySegmentPerformance's `totalViews`, which is what keeps numerator
+ * and denominator over the same set of videos; a per-video figure carried
+ * here would invite a caller to sum it into a denominator that does not
+ * match the aggregate — and would ship a column nothing reads for up to
+ * 100k rows a render.
+ */
 
 /**
  * Which videos make up each segment, and what each contributed.
@@ -1159,7 +1166,6 @@ export async function querySegmentMembership(input: {
     SELECT
       segment,
       video_id,
-      v_views as views,
       toString(published_at) as published_at
     FROM per_video
     WHERE ${segmentEligible(days)}${tagFilter ? ` AND ${tagFilter}` : ''}${keyset}
@@ -1176,14 +1182,12 @@ export async function querySegmentMembership(input: {
   const rows = await result.json<{
     segment: string;
     video_id: string;
-    views: number;
     published_at: string;
   }>();
 
   return rows.map((row) => ({
     segment: String(row.segment),
     videoId: String(row.video_id),
-    views: Number(row.views ?? 0),
     publishedAt: String(row.published_at),
   }));
 }
