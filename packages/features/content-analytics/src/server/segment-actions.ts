@@ -12,6 +12,7 @@ import {
   querySegmentPerformance,
 } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
+import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { MembershipEntry } from '../lib/segment-revenue';
@@ -61,8 +62,27 @@ export interface SegmentPerformanceEntry extends SegmentPerformanceRow {
   rpmCents?: number | null;
 }
 
+/** Why `rpmCents` is absent, when it is. */
+export type RevenueStatus =
+  | 'included'
+  /** The caller did not ask for it. */
+  | 'not_requested'
+  /** The account has no revenue records at all in the measured window. */
+  | 'no_data'
+  /** Membership paging hit its bound; any rate would be understated. */
+  | 'membership_truncated'
+  /** The revenue read exceeded the pagination guard. */
+  | 'read_failed';
+
 export interface SegmentPerformanceResult {
   rows: SegmentPerformanceEntry[];
+  /**
+   * Whether the rate is present, and if not, why — so the UI can say
+   * "no revenue recorded" rather than silently omitting a column the
+   * caller asked for. The same disclosure discipline the two revenue
+   * totals below exist for.
+   */
+  revenueStatus: RevenueStatus;
   /**
    * True whenever `rpmCents` is present. Revenue reaches a segment only
    * through a publish, and only within that video's own checkpoint window
@@ -98,13 +118,18 @@ async function collectMembership(input: {
 }) {
   const membership = new Map<string, MembershipEntry>();
   let truncated = true;
+  let after: { segment: string; videoId: string } | undefined;
 
   for (let page = 0; page < MEMBERSHIP_MAX_PAGES; page++) {
     const rows = await querySegmentMembership({
       ...input,
       limit: MEMBERSHIP_PAGE_SIZE,
-      offset: page * MEMBERSHIP_PAGE_SIZE,
+      after,
     });
+
+    const last = rows[rows.length - 1];
+
+    if (last) after = { segment: last.segment, videoId: last.videoId };
 
     for (const row of rows) {
       const existing = membership.get(row.videoId);
@@ -184,11 +209,12 @@ export const getSegmentPerformanceAction = enhanceAction(
     // covers a video set its denominator does not.
     const asOf = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
-    const empty = {
+    const withoutRevenue = (revenueStatus: RevenueStatus) => ({
+      revenueStatus,
       attributedRevenueOnly: false,
       channelLevelRevenueCents: 0,
       unattributedRevenueCents: 0,
-    };
+    });
 
     const rows = await querySegmentPerformance({
       scope,
@@ -199,7 +225,7 @@ export const getSegmentPerformanceAction = enhanceAction(
     });
 
     if (!input.includeRevenue || rows.length === 0 || !scopeAccountId) {
-      return { rows, ...empty };
+      return { rows, ...withoutRevenue('not_requested') };
     }
 
     const { membership, truncated } = await collectMembership({
@@ -212,11 +238,11 @@ export const getSegmentPerformanceAction = enhanceAction(
     // A partial membership understates every segment's rate by an unknown
     // amount, and an RPM quietly too low is worse than none: it reads as a
     // finding about the content. Figures without revenue still stand.
-    if (truncated) return { rows, ...empty };
+    if (truncated) return { rows, ...withoutRevenue('membership_truncated') };
 
     const window = revenueFetchWindow(membership);
 
-    if (!window) return { rows, ...empty };
+    if (!window) return { rows, ...withoutRevenue('no_data') };
 
     const fold = createSegmentRevenueFold(membership);
     const client = getSupabaseServerClient();
@@ -226,14 +252,43 @@ export const getSegmentPerformanceAction = enhanceAction(
     // exactly the days its views were counted over. Streamed, not
     // collected — revenue_records holds a row per publish per day per
     // category.
-    await forEachAccountRevenueRow(
-      client,
-      scopeAccountId,
-      window.from,
-      window.to,
-      (row) => fold.add(row),
-      { toExclusive: true },
-    );
+    let rowsSeen = 0;
+
+    try {
+      await forEachAccountRevenueRow(
+        client,
+        scopeAccountId,
+        window.from,
+        window.to,
+        (row) => {
+          rowsSeen++;
+          fold.add(row);
+        },
+        { toExclusive: true },
+      );
+    } catch (error) {
+      // The window spans the account's whole publish history, so this is
+      // the one revenue read whose span is unbounded by construction and
+      // the likeliest to trip the 100k pagination guard. Losing the whole
+      // response to that would throw away the distribution figures, which
+      // are correct and were the point of the request — degrade the way a
+      // truncated membership does instead.
+      const logger = await getLogger();
+
+      logger.warn(
+        { name: 'segment-performance', accountId: scopeAccountId, error },
+        'Revenue read failed; returning segment figures without a rate',
+      );
+
+      return { rows, ...withoutRevenue('read_failed') };
+    }
+
+    // No revenue rows anywhere in the window means the account records no
+    // revenue, not that every segment earned nothing. Reporting "$0.00
+    // RPM" on each row would state a finding about the content that the
+    // data cannot support — the same zero-versus-absent distinction
+    // pooledRpmCents itself is built around.
+    if (rowsSeen === 0) return { rows, ...withoutRevenue('no_data') };
 
     const { revenueBySegment, channelLevelCents, unattributedCents } =
       fold.result();
@@ -246,6 +301,7 @@ export const getSegmentPerformanceAction = enhanceAction(
           row.totalViews,
         ),
       })),
+      revenueStatus: 'included' as const,
       attributedRevenueOnly: true,
       channelLevelRevenueCents: channelLevelCents,
       unattributedRevenueCents: unattributedCents,

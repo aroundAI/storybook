@@ -1100,13 +1100,21 @@ export interface SegmentMembershipRow {
  * cannot skip or repeat a row. Fixed rather than caller-chosen: there is
  * no ordering choice to whitelist, and a fixed key is stronger than a
  * validated one.
+ *
+ * Paged by **keyset**, not OFFSET. The CTE chain behind this — the dim
+ * scan, the metrics union, the arrayJoin fan-out and the sort — is
+ * re-executed for every page, so `OFFSET n` re-reads and discards
+ * everything before it: forty pages over a tagged library means forty full
+ * passes over the metrics history for one request. `after` resumes from
+ * the last row instead, which the unique total order makes exact.
  */
 export async function querySegmentMembership(input: {
   scope: DimScope;
   segment: { kind: SegmentKind; dimension?: string };
   checkpointDays?: number;
   limit?: number;
-  offset?: number;
+  /** Last row of the previous page; resumes strictly after it. */
+  after?: { segment: string; videoId: string };
   asOf?: string;
 }): Promise<SegmentMembershipRow[]> {
   const kind = input.segment.kind;
@@ -1120,11 +1128,22 @@ export async function querySegmentMembership(input: {
 
   const days = Math.max(1, Math.floor(input.checkpointDays ?? 30));
   const limit = Math.min(1000, Math.max(1, Math.floor(input.limit ?? 500)));
-  const offset = Math.max(0, Math.floor(input.offset ?? 0));
 
   params.asOf = input.asOf ?? formatClickHouseDateTime(new Date());
 
   const tagFilter = segmentTagFilter(kind, input.segment.dimension, params);
+
+  // Tuple comparison, so the resume point is the pair rather than either
+  // column alone — a segment spanning more than one page would otherwise
+  // restart at its first video.
+  let keyset = '';
+
+  if (input.after) {
+    keyset =
+      ' AND (segment, video_id) > ({afterSegment: String}, {afterVideoId: String})';
+    params.afterSegment = input.after.segment;
+    params.afterVideoId = input.after.videoId;
+  }
 
   const query = `
     ${segmentPerVideoSql(conditions, grouping, days)}
@@ -1134,9 +1153,9 @@ export async function querySegmentMembership(input: {
       v_views as views,
       toString(published_at) as published_at
     FROM per_video
-    WHERE ${segmentEligible(days)}${tagFilter ? ` AND ${tagFilter}` : ''}
+    WHERE ${segmentEligible(days)}${tagFilter ? ` AND ${tagFilter}` : ''}${keyset}
     ORDER BY segment ASC, video_id ASC
-    LIMIT ${limit} OFFSET ${offset}
+    LIMIT ${limit}
   `;
 
   const result = await client.query({

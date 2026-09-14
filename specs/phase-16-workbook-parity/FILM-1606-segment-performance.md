@@ -134,12 +134,26 @@ The fetch window is computed from the membership (earliest window start to
 latest window end) rather than supplied, so the two halves of the rate
 cannot be given different spans by a caller.
 
-### A partial membership suppresses the rate entirely
+### The rate is present or explained, never quietly wrong
 
-Membership paging is bounded. If the bound is hit, `rpmCents` is omitted
-from every row rather than computed from what was read: a rate understated
-by an unknown amount reads as a finding about the content. The distribution
-figures are unaffected and still render.
+`revenueStatus` says which, and the four absent cases are distinct:
+`not_requested`, `no_data` (the account records no revenue in the window),
+`membership_truncated` (paging hit its bound, so any rate would be
+understated by an unknown amount), `read_failed` (the revenue read tripped
+the 100k pagination guard). In every case the distribution figures still
+render — they are correct and were the point of the request.
+
+**No revenue anywhere is not a rate of zero.** With no `revenue_records`
+rows, every segment would otherwise pool to `$0.00 RPM` and read as a
+finding about the content. That is the same zero-versus-absent distinction
+`pooledRpmCents` is built around, and the action must not undo it with a
+`?? 0`.
+
+**The revenue read degrades rather than throws.** This window spans the
+account's whole publish history, making it the one revenue read whose span
+is unbounded by construction and the likeliest to exceed the guard in
+`forEachPage`. Losing the whole response to that would discard correct
+distribution figures.
 
 Reads use `forEachAccountRevenueRow` (`server/revenue-queries.ts:41`),
 already paged and already split across the two PostgREST query shapes
@@ -224,6 +238,11 @@ interpolating caller text; `dimension` is a bound parameter used as a
 - [x] Revenue is bounded to each video's own checkpoint window, so the rate's numerator and denominator cover the same span
 - [x] Every streamed cent lands in a segment, `channelLevelRevenueCents` or `unattributedRevenueCents` — none is dropped
 - [x] A truncated membership suppresses `rpmCents` rather than understating it
+- [x] An account with no revenue rows yields no rate, not `$0.00 RPM` on every segment
+- [x] A revenue read that exceeds the pagination guard degrades to figures-without-a-rate rather than throwing
+- [x] `revenueStatus` distinguishes the four reasons a rate can be absent
+- [x] Membership pages by keyset, so a page does not re-scan the metrics history
+- [x] `getMedianByTagAction` reads through the *resolved* account, not the caller's unvalidated `accountId`
 - [x] `minVideos` gates on `matureVideoCount`, so a segment with nothing measurable is trimmed rather than rendered as zero
 - [x] A `tag` segment with no `dimension` returns every tag rather than silently none
 - [x] One `asOf` is resolved per request and passed to every query

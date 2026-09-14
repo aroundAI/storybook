@@ -277,7 +277,13 @@ export const getMedianByTagAction = enhanceAction(
     // ClickHouse is outside Postgres RLS. This action previously took
     // accountId and projectId as user input and queried on them with no
     // ownership check at all.
-    await assertScopeAccess(scope);
+    //
+    // The *resolved* account is what the reads below use. Validating the
+    // scope alone is not enough: with a project the caller owns and an
+    // accountId they cannot see, RLS would return no rows rather than
+    // raise, and the gate would report "tag medians unlock at 30 videos"
+    // for a fully tagged library — a silent wrong answer.
+    const resolvedAccountId = (await assertScopeAccess(scope)) ?? accountId;
 
     const client = getSupabaseServerClient();
 
@@ -288,9 +294,11 @@ export const getMedianByTagAction = enhanceAction(
       client
         .from('analytics_settings')
         .select('tag_min_sample')
-        .eq('account_id', accountId)
+        .eq('account_id', resolvedAccountId)
         .maybeSingle(),
-      client.rpc('count_tagged_publishes', { target_account_id: accountId }),
+      client.rpc('count_tagged_publishes', {
+        target_account_id: resolvedAccountId,
+      }),
     ]);
 
     if ((taggedCount ?? 0) < TAGGED_LIBRARY_THRESHOLD) {

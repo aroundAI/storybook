@@ -16,11 +16,19 @@ export const CONFIDENCE_DIRECTIONAL_MIN = 5;
 /** Mature videos a segment needs before its figures are worth reporting. */
 export const CONFIDENCE_REPORTABLE_MIN = 15;
 
-/** Spread at or above which a segment is no longer internally consistent. */
-export const SPREAD_CONSISTENT_MAX = 2;
+/**
+ * Spread strictly below which a segment is internally consistent.
+ *
+ * Named for the comparison rather than the band: `*_MAX` and `*_MIN` read
+ * as inclusive, and a consumer writing `>= SPREAD_CARRIED_ABOVE` would
+ * classify a spread of exactly 4.0 differently from `interpretSpread` —
+ * two disagreeing definitions of one band, which is what exporting these
+ * at all is meant to prevent.
+ */
+export const SPREAD_CONSISTENT_BELOW = 2;
 
-/** Spread above which one video is carrying the segment. */
-export const SPREAD_CARRIED_MIN = 4;
+/** Spread strictly above which one video is carrying the segment. */
+export const SPREAD_CARRIED_ABOVE = 4;
 
 /** How much weight a segment's figures can bear. */
 export type SegmentConfidence = 'insufficient' | 'directional' | 'reportable';
@@ -97,8 +105,8 @@ export function interpretSpread(
 ): SpreadInterpretation | null {
   if (spread === null) return null;
 
-  if (spread < SPREAD_CONSISTENT_MAX) return 'consistent';
-  if (spread > SPREAD_CARRIED_MIN) return 'carried_by_one';
+  if (spread < SPREAD_CONSISTENT_BELOW) return 'consistent';
+  if (spread > SPREAD_CARRIED_ABOVE) return 'carried_by_one';
 
   return 'mixed';
 }

@@ -1227,9 +1227,33 @@ describe('queries-advanced', () => {
     });
 
     it('always paginates, and clamps an oversized limit', async () => {
-      await runMembership({ limit: 50_000, offset: 40 });
+      await runMembership({ limit: 50_000 });
 
-      expect(lastQuery().query).toContain('LIMIT 1000 OFFSET 40');
+      expect(lastQuery().query).toContain('LIMIT 1000');
+    });
+
+    it('resumes by keyset rather than re-scanning with OFFSET', async () => {
+      // Every page re-executes the dim scan, the metrics union and the
+      // arrayJoin fan-out, so OFFSET n re-reads and discards everything
+      // before it — forty pages meant forty passes over the history.
+      await runMembership({ after: { segment: 'en', videoId: 'v9' } });
+
+      const { query, query_params } = lastQuery();
+
+      expect(query).not.toContain('OFFSET');
+      expect(query).toContain(
+        '(segment, video_id) > ({afterSegment: String}, {afterVideoId: String})',
+      );
+      expect(query_params.afterSegment).toBe('en');
+      expect(query_params.afterVideoId).toBe('v9');
+    });
+
+    it('compares the key as a tuple, so a segment spanning pages resumes correctly', async () => {
+      await runMembership({ after: { segment: 'en', videoId: 'v9' } });
+
+      // Comparing segment alone would restart 'en' at its first video;
+      // comparing video_id alone would skip other segments' videos.
+      expect(lastQuery().query).toContain('(segment, video_id) >');
     });
 
     it('refuses a segment kind outside the closed lookup', async () => {

@@ -578,6 +578,51 @@ async function assertions() {
   });
 
   await step(
+    'assert: keyset paging returns every membership row exactly once',
+    async () => {
+      const all = await querySegmentMembership({
+        scope,
+        segment: { kind: 'language' },
+      });
+
+      // One row at a time, so the resume path is exercised on every row
+      // rather than only on a boundary that happens to fall mid-set.
+      const paged: string[] = [];
+      let after: { segment: string; videoId: string } | undefined;
+
+      for (let i = 0; i < all.length + 2; i++) {
+        const page = await querySegmentMembership({
+          scope,
+          segment: { kind: 'language' },
+          limit: 1,
+          after,
+        });
+
+        if (page.length === 0) break;
+
+        const row = page[0]!;
+
+        paged.push(`${row.segment}/${row.videoId}`);
+        after = { segment: row.segment, videoId: row.videoId };
+      }
+
+      const expected = all.map((r) => `${r.segment}/${r.videoId}`);
+
+      if (paged.join('|') !== expected.join('|')) {
+        throw new Error(
+          `keyset paging drifted: got [${paged.join(', ')}] want [${expected.join(', ')}]`,
+        );
+      }
+
+      if (new Set(paged).size !== paged.length) {
+        throw new Error(`keyset paging repeated a row: ${paged.join(', ')}`);
+      }
+
+      return `${paged.length} row(s), one per page, no repeats`;
+    },
+  );
+
+  await step(
     'assert: a segment with no mature videos is trimmed, not shown as zero',
     async () => {
       // Gating on video_count instead would return this segment with every

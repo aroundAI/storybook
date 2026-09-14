@@ -20,8 +20,8 @@ export type {
 export {
   CONFIDENCE_DIRECTIONAL_MIN,
   CONFIDENCE_REPORTABLE_MIN,
-  SPREAD_CARRIED_MIN,
-  SPREAD_CONSISTENT_MAX,
+  SPREAD_CARRIED_ABOVE,
+  SPREAD_CONSISTENT_BELOW,
   computeSpread,
   interpretSpread,
   pooledRpmCents,
