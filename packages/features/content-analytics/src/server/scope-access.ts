@@ -23,8 +23,14 @@ export interface AnalyticsScope {
  * Lives outside the `'use server'` action modules so both can share it —
  * there, every export becomes a callable endpoint, and an access check that
  * takes a scope and returns nothing must not be reachable that way.
+ *
+ * Returns the account the scope resolved to, which a project-scoped caller
+ * would otherwise have to look up again. Callers that only need the check
+ * ignore it.
  */
-export async function assertScopeAccess(scope: AnalyticsScope): Promise<void> {
+export async function assertScopeAccess(
+  scope: AnalyticsScope,
+): Promise<string | undefined> {
   const client = getSupabaseServerClient();
 
   let scopeAccountId = scope.accountId;
@@ -53,7 +59,7 @@ export async function assertScopeAccess(scope: AnalyticsScope): Promise<void> {
     }
   }
 
-  if (!scope.connectionId) return;
+  if (!scope.connectionId) return scopeAccountId;
 
   // A channel filter narrows a scope that has already been proven to belong
   // to the caller — `buildDimConditions` ANDs it onto the verified project
@@ -72,4 +78,6 @@ export async function assertScopeAccess(scope: AnalyticsScope): Promise<void> {
   ) {
     throw new Error('Channel not found or not part of this scope');
   }
+
+  return scopeAccountId;
 }
