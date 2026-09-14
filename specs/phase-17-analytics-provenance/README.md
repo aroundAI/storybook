@@ -66,7 +66,13 @@ independent of the reference but feeds FILM-1705. Everything else descends from
 one of them — in particular FILM-1703 now depends on FILM-1721, so it is no
 longer a starting point.
 
-FILM-1710 is a **production correctness incident** and ships before any of it.
+**FILM-1710's urgency was overstated and is corrected in the spec.** It was
+described here as a production correctness incident that ships before all of
+this, on the grounds that every Short auto-wins in the Hook Lab. The Hook Lab
+reads `hook_variants.duration_seconds`, not `video_dim.duration_seconds`, and
+the latter has no readers anywhere — so it is a latent write-only defect. It
+still ships early, but for a different reason: phase-16 FILM-1616 is the first
+thing that would read the column, through `getRetentionCurveAction`.
 
 | Spec | Status | Effort | Covers |
 |------|--------|--------|--------|
@@ -83,7 +89,7 @@ FILM-1710 is a **production correctness incident** and ships before any of it.
 ### The signal half
 
 ```
-FILM-1710 (asset duration) ── a production incident, ships first
+FILM-1710 (asset duration) ── latent defect; ships before FILM-1616 reads it
      │
 FILM-1711 (authorisation) ──┬─→ FILM-1712 (metric recovery)
                             │
@@ -101,7 +107,7 @@ FILM-1720 (Facebook + X) ── last, and the test of whether 1714 was expandabl
 
 | Spec | Status | Effort | Covers |
 |------|--------|--------|--------|
-| [FILM-1710](./FILM-1710-asset-duration.md) | DRAFT | M | The published clip's real duration. **Fixes a live bug** — every Short auto-wins in the Hook Lab |
+| [FILM-1710](./FILM-1710-asset-duration.md) | DRAFT | M | The published clip's real duration. A **latent** defect — `video_dim.duration_seconds` is the episode's, and today nothing reads it |
 | [FILM-1711](./FILM-1711-analytics-authorisation.md) | DRAFT | L | TikTok and Instagram analytics were never authorised; scope audit across all five platforms |
 | [FILM-1712](./FILM-1712-metric-recovery.md) | DRAFT | L | Request the fields we already have access to; give Instagram `reach` a column |
 | [FILM-1713](./FILM-1713-normalised-measures-velocity.md) | DRAFT | M | One definition per rate; bucketed velocity, acceleration, `growth_state` |
@@ -230,8 +236,12 @@ Recorded because each was believed at some point during this phase's planning:
   column. YouTube's daily query omits `averageViewPercentage`.
 - **`video_dim.duration_seconds` is the episode's, not the clip's**
   (`dim-sync.ts:166-168`). Short-form publishes in the live fixture average
-  ~1,550 seconds, which makes every locally-derived completion rate wrong and
-  causes every Short to auto-win in the Hook Lab.
+  ~1,550 seconds, so any completion rate derived from it would be wrong.
+  **It is write-only today** — no reader anywhere in
+  `packages/clickhouse/src/queries*.ts` — so nothing is currently wrong on
+  screen because of it. The Hook Lab divides by `hook_variants.duration_seconds`
+  instead (`hook-retention.ts:81`, `numeric default 5`), so the claim that
+  every Short auto-wins there was mistaken and is withdrawn in FILM-1710 §1.
 - **`video_metrics.extra_metrics` is write-only.** It holds the full provider
   payload and nothing in the repository reads it — no `JSONExtract` anywhere.
 

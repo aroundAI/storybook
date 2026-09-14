@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1606
 title: Segment Performance
-status: DRAFT
+status: ✅ DONE
 effort: L
 dependencies: FILM-1603, FILM-1605
 ---
@@ -54,11 +54,18 @@ guidance asks for.
   about what "@30d" means. **This changes every number the tag card shows
   today, and that is the point.**
 - **Videos whose checkpoint window closed before their channel's ingest
-  began are excluded from that checkpoint**, not counted as zero, via
-  `checkpointPredatesIngest` (`video-age.ts:122`). A video with no data and
-  a video with no views are different facts; FILM-1604 §2 settled this and
-  this spec must not re-litigate it. The count is returned as
-  `predatesIngestCount`.
+  began are excluded from that checkpoint**, not counted as zero. A video
+  with no data and a video with no views are different facts; FILM-1604 §2
+  settled this and this spec must not re-litigate it. The count is returned
+  as `predatesIngestCount`.
+
+  Expressed **in SQL**, as `age_days >= N AND ingest_lag_days < N`, matching
+  `queryCohortMedians` (`queries-advanced.ts:586`, `:594`). The TypeScript
+  `checkpointPredatesIngest` (`video-age.ts:122`) is *not* called by any
+  query — it has no production caller at all — and `computeMaturity` is
+  called only by `queryVideoViewsAtAge` (`:1069`), which post-processes rows
+  already fetched. An earlier draft of this spec implied both were shared
+  call sites. Both forms must agree; nothing enforces that but review.
 - **Videos with no metric rows but a live ingest window count as zero.**
   LEFT JOIN from `dimSubquery`, never INNER from the metrics side.
 - **A video may belong to several segments of one kind.** Tags are
@@ -113,7 +120,7 @@ yearly window — the doc comment at `:145-150` says why.
 |------|--------|
 | `packages/clickhouse/src/queries-advanced.ts` | New `querySegmentPerformance({scope, segment: {kind: 'tag' \| 'language' \| 'content_type' \| 'connection', dimension?}, minVideos, checkpointDays})` → `SegmentPerformanceRow[]`. One SQL body, one `GROUP BY` expression selected by `kind` from a closed lookup — `arrayJoin(tags)` for `tag`, the bare `d.language` / `d.content_type` / `d.connection_id` otherwise. That single difference is the whole reason to generalise rather than extend `queryMedianByTag`. |
 | ↑ | Returns `segment, videoCount, matureVideoCount, predatesIngestCount, medianViews, meanViews, p25Views, p75Views, minViews, maxViews, spread, medianWatchTimeSeconds, meanCtr, totalViews`. `spread = maxViews / medianViews`, guarded so a zero median yields `null` rather than `Infinity` — the same suppression discipline `computeCohortGrowth` applies to a zero baseline. |
-| ↑ | `meanCtr` is **view-weighted**, from a `video_reach_daily FINAL` leg keyed the same way `queryQualityMetricsForVideos` (`queries-detail.ts:156`) does it. An unweighted `avg(impressions_ctr)` lets a 12-impression day outvote a 100,000-impression one. |
+| ↑ | `meanCtr` is **impression-weighted** — `sum(impressions_ctr * impressions) / sum(impressions)` — from a `video_reach_daily FINAL` leg keyed the same way `queryQualityMetricsForVideos` (`queries-detail.ts:297-301`) does it. An unweighted `avg(impressions_ctr)` lets a 12-impression day outvote a 100,000-impression one. **An earlier draft of this line said view-weighted**, contradicting both its own rationale (which is an argument about impressions) and the precedent it cited (which divides `ctr_weighted` by `impressions`, and weights only AVD by views). Impressions are CTR's denominator; views arrive from surfaces that never produced an impression at all. Absent rather than zero where a segment has no impressions, matching `rpmCents`. |
 | `packages/clickhouse/src/queries-advanced.ts` | New `querySegmentMembership({scope, segment, checkpointDays, limit, offset})` → `{segment, videoId, views}`. Needed only because revenue lives in the other store; returning `groupArray(video_id)` from the main query instead would put an unbounded array in one cell and blow memory on a large segment. Paged, with the same whitelisted-ordering treatment as `VIDEO_AGE_ORDER_COLUMNS` (`:854`). |
 | `packages/clickhouse/src/queries-advanced.ts` | `queryMedianByTag` kept as a **deprecated wrapper** over `querySegmentPerformance({kind: 'tag'})`, so nothing fails to compile mid-change — then its one caller is migrated in the same PR and the wrapper deleted. Leaving the wrapper behind is how two definitions of "tag median" end up shipped. |
 | `packages/clickhouse/src/lib/segment-stats.ts` | New, pure. `resolveConfidence(matureVideoCount)`, `pooledRpmCents(revenueCents, views)`, `interpretSpread(spread)` (< 2.0 consistent, > 4.0 one video carrying it — the workbook's own thresholds). No I/O, so it is fully testable while ClickHouse is disabled. |
@@ -169,24 +176,25 @@ interpolating caller text; `dimension` is a bound parameter used as a
 
 ## 8. Acceptance Criteria
 
-- [ ] `querySegmentPerformance` supports all four segment kinds through one SQL body
-- [ ] Language segments are grouped by `video_dim.language`, not by a taxonomy tag
-- [ ] Figures are bounded to `checkpointDays`, not lifetime
-- [ ] Only videos that have reached the checkpoint are counted, via `computeMaturity`
-- [ ] Videos whose checkpoint predates their channel's ingest are excluded and reported as `predatesIngestCount`
-- [ ] Videos with no metric rows count as zero rather than vanishing
-- [ ] `spread` is `null`, not `Infinity`, when the median is zero
-- [ ] `meanCtr` is view-weighted
-- [ ] `confidence` is derived from `matureVideoCount`, not `videoCount`
-- [ ] A `directional` segment renders dimmed with its n, and is not hidden
-- [ ] `rpmCents` is pooled, and is absent rather than zero when revenue was not requested
-- [ ] Channel-level revenue is excluded from `rpmCents` and reported as `excludedRevenueCents`
-- [ ] `attributedRevenueOnly` is surfaced wherever `rpmCents` renders
-- [ ] Revenue is read through `forEachAccountRevenueRow` and is never collected whole for a long window
-- [ ] `getMedianByTagAction` returns the new shape and keeps both existing sample gates
-- [ ] `queryMedianByTag` is deleted, not left as a permanent wrapper
-- [ ] `kind` and `dimension` cannot inject SQL
-- [ ] `getSegmentPerformanceAction` calls `assertScopeAccess` before either query
+- [x] `querySegmentPerformance` supports all four segment kinds through one SQL body
+- [x] Language segments are grouped by `video_dim.language`, not by a taxonomy tag
+- [x] Figures are bounded to `checkpointDays`, not lifetime
+- [x] Only videos that have reached the checkpoint are counted
+- [x] Videos whose checkpoint predates their channel's ingest are excluded and reported as `predatesIngestCount`
+- [x] Videos with no metric rows count as zero rather than vanishing
+- [x] `spread` is `null`, not `Infinity`, when the median is zero
+- [x] `meanCtr` is impression-weighted
+- [x] `confidence` is derived from `matureVideoCount`, not `videoCount`
+- [x] A `directional` segment renders dimmed with its n, and is not hidden
+- [x] `rpmCents` is pooled, and is absent rather than zero when revenue was not requested
+- [x] Channel-level revenue is excluded from `rpmCents` and reported as `excludedRevenueCents`
+- [x] `attributedRevenueOnly` is surfaced wherever `rpmCents` renders
+- [x] Revenue is read through `forEachAccountRevenueRow` and is never collected whole for a long window
+- [x] `getMedianByTagAction` returns the new shape and keeps both existing sample gates
+- [x] `queryMedianByTag` is deleted, not left as a permanent wrapper — with `TagMedianRow`, which had no other producer
+- [x] `kind` and `dimension` cannot inject SQL
+- [x] `getSegmentPerformanceAction` calls `assertScopeAccess` before either query
+- [x] `getMedianByTagAction` calls `assertScopeAccess`, which it never did — ClickHouse is outside Postgres RLS and that path took `accountId`/`projectId` as unverified user input
 
 ## 9. Verification
 
