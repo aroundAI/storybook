@@ -57,6 +57,26 @@ function makeAgeRow(videoId: string, publishedAt: string) {
   };
 }
 
+function makeSegmentRow(overrides: Record<string, unknown> = {}) {
+  return {
+    segment: 'en',
+    video_count: 20,
+    mature_video_count: 18,
+    predates_ingest_count: 0,
+    median_views: 500,
+    mean_views: 600,
+    p25_views: 300,
+    p75_views: 900,
+    min_views: 100,
+    max_views: 1000,
+    median_watch: 120,
+    total_views: 12_000,
+    impressions: 50_000,
+    ctr_weighted: 2_500,
+    ...overrides,
+  };
+}
+
 describe('queries-advanced', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -951,21 +971,305 @@ describe('queries-advanced', () => {
     });
   });
 
-  describe('queryMedianByTag', () => {
-    it('filters to one dimension and enforces a minimum sample', async () => {
-      const { queryMedianByTag } = await import('../src/queries-advanced');
+  describe('querySegmentPerformance', () => {
+    async function run(
+      segment: { kind: string; dimension?: string },
+      overrides: Record<string, unknown> = {},
+    ) {
+      const { querySegmentPerformance } = await import(
+        '../src/queries-advanced'
+      );
 
-      await queryMedianByTag({
-        scope: { accountId: PROJECT },
-        dimension: 'topic',
-        minVideos: 5,
+      return querySegmentPerformance({
+        scope: { projectId: PROJECT },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        segment: segment as any,
+        minVideos: 3,
+        ...overrides,
       });
+    }
+
+    it('groups tags by arrayJoin so a video counts toward each of its tags', async () => {
+      await run({ kind: 'tag', dimension: 'topic' });
+
+      expect(lastQuery().query).toContain('arrayJoin(d.tags)');
+    });
+
+    it('groups language by the dim column, never by a taxonomy tag', async () => {
+      await run({ kind: 'language' });
+
+      const { query } = lastQuery();
+
+      expect(query).toContain('d.language as segment');
+      expect(query).not.toContain('arrayJoin');
+    });
+
+    it('groups content type and channel by their dim columns', async () => {
+      await run({ kind: 'content_type' });
+      expect(lastQuery().query).toContain('d.content_type as segment');
+
+      await run({ kind: 'connection' });
+      expect(lastQuery().query).toContain(
+        'toString(d.connection_id) as segment',
+      );
+    });
+
+    it('refuses a segment kind outside the closed lookup', async () => {
+      // The grouping expression is interpolated, so an unrecognised kind
+      // must fail loudly rather than reaching SQL.
+      await expect(run({ kind: 'tags) FROM x --' })).rejects.toThrow(
+        /segment kind/i,
+      );
+      expect(mockClickHouseClient.query).not.toHaveBeenCalled();
+    });
+
+    it('binds the tag dimension as a parameter rather than splicing it', async () => {
+      await run({ kind: 'tag', dimension: "topic'; DROP TABLE video_dim --" });
 
       const { query, query_params } = lastQuery();
-      expect(query).toContain('arrayJoin(tags)');
-      expect(query).toContain('HAVING video_count >=');
-      expect(query_params.tagPrefix).toBe('topic:%');
-      expect(query_params.minVideos).toBe(5);
+
+      expect(query).toContain('{tagPrefix: String}');
+      expect(query).not.toContain('DROP TABLE');
+      expect(query_params.tagPrefix).toBe("topic'; DROP TABLE video_dim --:%");
+    });
+
+    it('bounds views to the checkpoint rather than summing a lifetime', async () => {
+      await run({ kind: 'language' }, { checkpointDays: 90 });
+
+      const { query } = lastQuery();
+
+      expect(query).toContain('< 90');
+      expect(query).toContain('age_days >= 90');
+    });
+
+    it('defaults the checkpoint to 30 days', async () => {
+      await run({ kind: 'language' });
+
+      expect(lastQuery().query).toContain('age_days >= 30');
+    });
+
+    it('joins from the dimension side so zero-view videos still count', async () => {
+      await run({ kind: 'language' });
+
+      const { query } = lastQuery();
+
+      expect(query).toContain('LEFT JOIN');
+      expect(query).not.toContain('INNER JOIN video_daily_stats m');
+    });
+
+    it('trims the tail on the count the figures are computed over', async () => {
+      // Gating on video_count would admit a segment of 8 videos all
+      // younger than the checkpoint: every *If(…, eligible) aggregate is
+      // then empty and the row renders as a measured zero.
+      await run({ kind: 'language' }, { minVideos: 7 });
+
+      const { query, query_params } = lastQuery();
+
+      expect(query).toContain(
+        'HAVING mature_video_count >= {minVideos: UInt32}',
+      );
+      expect(query).not.toContain('HAVING video_count');
+      expect(query_params.minVideos).toBe(7);
+    });
+
+    it('returns every tag when no dimension is given, rather than none', async () => {
+      // Tags are stored as `dimension:slug`, so a prefix built from an
+      // absent dimension is ':%' and matches nothing — a silent empty
+      // result that reads as "this account has no tags".
+      await run({ kind: 'tag' });
+
+      const { query, query_params } = lastQuery();
+
+      expect(query).not.toContain('tagPrefix');
+      expect(query_params.tagPrefix).toBeUndefined();
+    });
+
+    it('derives confidence from the mature count, not the video count', async () => {
+      mockQueryResult.json.mockResolvedValue([
+        makeSegmentRow({ video_count: 40, mature_video_count: 3 }),
+      ]);
+
+      const [row] = await run({ kind: 'language' });
+
+      expect(row?.videoCount).toBe(40);
+      expect(row?.matureVideoCount).toBe(3);
+      expect(row?.confidence).toBe('insufficient');
+    });
+
+    it('suppresses spread rather than reporting Infinity on a zero median', async () => {
+      mockQueryResult.json.mockResolvedValue([
+        makeSegmentRow({ median_views: 0, max_views: 900 }),
+      ]);
+
+      const [row] = await run({ kind: 'language' });
+
+      expect(row?.spread).toBeNull();
+    });
+
+    it('reports spread as the top video over the median', async () => {
+      mockQueryResult.json.mockResolvedValue([
+        makeSegmentRow({ median_views: 250, max_views: 1000 }),
+      ]);
+
+      const [row] = await run({ kind: 'language' });
+
+      expect(row?.spread).toBe(4);
+    });
+
+    it('weights CTR by impressions, which is its denominator', async () => {
+      // 0.1 over 1000 impressions and 0.02 over 9000 pools to 0.028 —
+      // a plain mean of the two rates would say 0.06.
+      mockQueryResult.json.mockResolvedValue([
+        makeSegmentRow({ impressions: 10_000, ctr_weighted: 280 }),
+      ]);
+
+      const [row] = await run({ kind: 'language' });
+
+      expect(row?.meanCtr).toBeCloseTo(0.028);
+    });
+
+    it('leaves CTR absent rather than zero where there are no impressions', async () => {
+      mockQueryResult.json.mockResolvedValue([
+        makeSegmentRow({ impressions: 0, ctr_weighted: 0 }),
+      ]);
+
+      const [row] = await run({ kind: 'language' });
+
+      expect(row?.meanCtr).toBeNull();
+    });
+
+    it('reports videos excluded for predating ingest separately', async () => {
+      mockQueryResult.json.mockResolvedValue([
+        makeSegmentRow({ predates_ingest_count: 6 }),
+      ]);
+
+      const [row] = await run({ kind: 'language' });
+
+      expect(row?.predatesIngestCount).toBe(6);
+    });
+
+    it('requires a project or account scope', async () => {
+      await expect(run({ kind: 'language' }, { scope: {} })).rejects.toThrow(
+        /projectId or accountId/,
+      );
+    });
+
+    it('returns empty results instead of querying when disabled', async () => {
+      process.env.CLICKHOUSE_ENABLED = 'false';
+
+      const rows = await run({ kind: 'language' });
+
+      expect(rows).toEqual([]);
+      expect(mockClickHouseClient.query).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('querySegmentMembership', () => {
+    async function runMembership(overrides: Record<string, unknown> = {}) {
+      const { querySegmentMembership } = await import(
+        '../src/queries-advanced'
+      );
+
+      return querySegmentMembership({
+        scope: { projectId: PROJECT },
+        segment: { kind: 'language' },
+        ...overrides,
+      });
+    }
+
+    it('returns one row per video per segment it belongs to', async () => {
+      mockQueryResult.json.mockResolvedValue([
+        {
+          segment: 'en',
+          video_id: 'v1',
+          published_at: '2026-01-01 00:00:00',
+        },
+      ]);
+
+      const rows = await runMembership();
+
+      // No `views`: the RPM denominator is the aggregate's totalViews, and
+      // a per-video figure here would invite a mismatched one.
+      expect(rows).toEqual([
+        {
+          segment: 'en',
+          videoId: 'v1',
+          publishedAt: '2026-01-01 00:00:00',
+        },
+      ]);
+    });
+
+    it('carries published_at so revenue can be bounded to the same window', async () => {
+      // totalViews is each video's first N days. Revenue over any other
+      // span divided by it is an RPM wrong by whatever ratio the two
+      // windows happen to stand in.
+      await runMembership();
+
+      expect(lastQuery().query).toContain('published_at');
+    });
+
+    it('counts only the videos the aggregate counted', async () => {
+      // The pooled RPM divides revenue from these videos by the views the
+      // aggregate reported. Admitting an immature video here but not there
+      // would silently deflate every segment's RPM.
+      await runMembership({ checkpointDays: 30 });
+
+      const { query } = lastQuery();
+
+      expect(query).toContain('age_days >= 30');
+      expect(query).toContain('ingest_lag_days < 30');
+    });
+
+    it('orders deterministically so pages cannot overlap or skip', async () => {
+      await runMembership();
+
+      expect(lastQuery().query).toContain('ORDER BY segment ASC, video_id ASC');
+    });
+
+    it('always paginates, and clamps an oversized limit', async () => {
+      await runMembership({ limit: 5_000_000 });
+
+      // Clamped high on purpose: each page re-runs the whole CTE chain, so
+      // a small page multiplies scans rather than saving memory.
+      expect(lastQuery().query).toContain('LIMIT 50000');
+    });
+
+    it('resumes by keyset rather than re-scanning with OFFSET', async () => {
+      // Every page re-executes the dim scan, the metrics union and the
+      // arrayJoin fan-out, so OFFSET n re-reads and discards everything
+      // before it — forty pages meant forty passes over the history.
+      await runMembership({ after: { segment: 'en', videoId: 'v9' } });
+
+      const { query, query_params } = lastQuery();
+
+      expect(query).not.toContain('OFFSET');
+      expect(query).toContain(
+        '(segment, video_id) > ({afterSegment: String}, {afterVideoId: String})',
+      );
+      expect(query_params.afterSegment).toBe('en');
+      expect(query_params.afterVideoId).toBe('v9');
+    });
+
+    it('compares the key as a tuple, so a segment spanning pages resumes correctly', async () => {
+      await runMembership({ after: { segment: 'en', videoId: 'v9' } });
+
+      // Comparing segment alone would restart 'en' at its first video;
+      // comparing video_id alone would skip other segments' videos.
+      expect(lastQuery().query).toContain('(segment, video_id) >');
+    });
+
+    it('refuses a segment kind outside the closed lookup', async () => {
+      await expect(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        runMembership({ segment: { kind: 'evil' } as any }),
+      ).rejects.toThrow(/segment kind/i);
+    });
+
+    it('returns empty results instead of querying when disabled', async () => {
+      process.env.CLICKHOUSE_ENABLED = 'false';
+
+      expect(await runMembership()).toEqual([]);
+      expect(mockClickHouseClient.query).not.toHaveBeenCalled();
     });
   });
 

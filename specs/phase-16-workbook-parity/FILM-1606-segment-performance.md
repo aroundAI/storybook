@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1606
 title: Segment Performance
-status: DRAFT
+status: ✅ DONE
 effort: L
 dependencies: FILM-1603, FILM-1605
 ---
@@ -54,11 +54,18 @@ guidance asks for.
   about what "@30d" means. **This changes every number the tag card shows
   today, and that is the point.**
 - **Videos whose checkpoint window closed before their channel's ingest
-  began are excluded from that checkpoint**, not counted as zero, via
-  `checkpointPredatesIngest` (`video-age.ts:122`). A video with no data and
-  a video with no views are different facts; FILM-1604 §2 settled this and
-  this spec must not re-litigate it. The count is returned as
-  `predatesIngestCount`.
+  began are excluded from that checkpoint**, not counted as zero. A video
+  with no data and a video with no views are different facts; FILM-1604 §2
+  settled this and this spec must not re-litigate it. The count is returned
+  as `predatesIngestCount`.
+
+  Expressed **in SQL**, as `age_days >= N AND ingest_lag_days < N`, matching
+  `queryCohortMedians` (`queries-advanced.ts:586`, `:594`). The TypeScript
+  `checkpointPredatesIngest` (`video-age.ts:122`) is *not* called by any
+  query — it has no production caller at all — and `computeMaturity` is
+  called only by `queryVideoViewsAtAge` (`:1069`), which post-processes rows
+  already fetched. An earlier draft of this spec implied both were shared
+  call sites. Both forms must agree; nothing enforces that but review.
 - **Videos with no metric rows but a live ingest window count as zero.**
   LEFT JOIN from `dimSubquery`, never INNER from the metrics side.
 - **A video may belong to several segments of one kind.** Tags are
@@ -97,9 +104,56 @@ cross-store composition, and it forces a disclosure:
   it cannot be attributed to a tag or a language. Silently dropping it
   would understate every segment's RPM against a total the user can see
   elsewhere.
-- Every result therefore carries `attributedRevenueOnly: true` and
-  `excludedRevenueCents` — the channel-level total for the same window — so
-  the UI can state the gap rather than let the user find it.
+- Every result therefore carries `attributedRevenueOnly: true`,
+  `channelLevelRevenueCents` and `unattributedRevenueCents`, so the UI can
+  state the gap rather than let the user find it. **Every cent streamed in
+  lands in exactly one of the three buckets** — a segment, channel-level,
+  or unattributed — and an earlier implementation silently dropped the
+  third, so revenue from another project under the same account, or from a
+  video excluded as immature, vanished from every total.
+
+### The revenue window is per video, and is derived rather than asked for
+
+An earlier draft left the window unspecified and the first implementation
+took `revenueFrom`/`revenueTo` from the caller. **That produced an RPM
+wrong by an arbitrary factor**, and the defect is worth stating because it
+looks right: the denominator, `totalViews`, is each video's views in its
+*first `checkpointDays` of life*, summed over every eligible video ever
+published — while the numerator was revenue over a calendar window. A
+channel with three years of uploads asking for last month's revenue got
+last month's earnings over three years of first-30-day views.
+
+**`rpmCents` therefore means: cents earned per thousand views, both
+measured over each video's own first `checkpointDays`.** Each revenue row
+is admitted only when its `record_date` falls in `[published_at,
+published_at + checkpointDays)` — the same half-open `< N` convention the
+phase uses everywhere. Revenue outside that span is real but unattributable
+to this figure, and is counted in `unattributedRevenueCents`.
+
+The fetch window is computed from the membership (earliest window start to
+latest window end) rather than supplied, so the two halves of the rate
+cannot be given different spans by a caller.
+
+### The rate is present or explained, never quietly wrong
+
+`revenueStatus` says which, and the four absent cases are distinct:
+`not_requested`, `no_data` (the account records no revenue in the window),
+`membership_truncated` (paging hit its bound, so any rate would be
+understated by an unknown amount), `read_failed` (the revenue read tripped
+the 100k pagination guard). In every case the distribution figures still
+render — they are correct and were the point of the request.
+
+**No revenue anywhere is not a rate of zero.** With no `revenue_records`
+rows, every segment would otherwise pool to `$0.00 RPM` and read as a
+finding about the content. That is the same zero-versus-absent distinction
+`pooledRpmCents` is built around, and the action must not undo it with a
+`?? 0`.
+
+**The revenue read degrades rather than throws.** This window spans the
+account's whole publish history, making it the one revenue read whose span
+is unbounded by construction and the likeliest to exceed the guard in
+`forEachPage`. Losing the whole response to that would discard correct
+distribution figures.
 
 Reads use `forEachAccountRevenueRow` (`server/revenue-queries.ts:41`),
 already paged and already split across the two PostgREST query shapes
@@ -113,8 +167,8 @@ yearly window — the doc comment at `:145-150` says why.
 |------|--------|
 | `packages/clickhouse/src/queries-advanced.ts` | New `querySegmentPerformance({scope, segment: {kind: 'tag' \| 'language' \| 'content_type' \| 'connection', dimension?}, minVideos, checkpointDays})` → `SegmentPerformanceRow[]`. One SQL body, one `GROUP BY` expression selected by `kind` from a closed lookup — `arrayJoin(tags)` for `tag`, the bare `d.language` / `d.content_type` / `d.connection_id` otherwise. That single difference is the whole reason to generalise rather than extend `queryMedianByTag`. |
 | ↑ | Returns `segment, videoCount, matureVideoCount, predatesIngestCount, medianViews, meanViews, p25Views, p75Views, minViews, maxViews, spread, medianWatchTimeSeconds, meanCtr, totalViews`. `spread = maxViews / medianViews`, guarded so a zero median yields `null` rather than `Infinity` — the same suppression discipline `computeCohortGrowth` applies to a zero baseline. |
-| ↑ | `meanCtr` is **view-weighted**, from a `video_reach_daily FINAL` leg keyed the same way `queryQualityMetricsForVideos` (`queries-detail.ts:156`) does it. An unweighted `avg(impressions_ctr)` lets a 12-impression day outvote a 100,000-impression one. |
-| `packages/clickhouse/src/queries-advanced.ts` | New `querySegmentMembership({scope, segment, checkpointDays, limit, offset})` → `{segment, videoId, views}`. Needed only because revenue lives in the other store; returning `groupArray(video_id)` from the main query instead would put an unbounded array in one cell and blow memory on a large segment. Paged, with the same whitelisted-ordering treatment as `VIDEO_AGE_ORDER_COLUMNS` (`:854`). |
+| ↑ | `meanCtr` is **impression-weighted** — `sum(impressions_ctr * impressions) / sum(impressions)` — from a `video_reach_daily FINAL` leg keyed the same way `queryQualityMetricsForVideos` (`queries-detail.ts:297-301`) does it. An unweighted `avg(impressions_ctr)` lets a 12-impression day outvote a 100,000-impression one. **An earlier draft of this line said view-weighted**, contradicting both its own rationale (which is an argument about impressions) and the precedent it cited (which divides `ctr_weighted` by `impressions`, and weights only AVD by views). Impressions are CTR's denominator; views arrive from surfaces that never produced an impression at all. Absent rather than zero where a segment has no impressions, matching `rpmCents`. |
+| `packages/clickhouse/src/queries-advanced.ts` | New `querySegmentMembership({scope, segment, checkpointDays, limit, after})` → `{segment, videoId, views}`. Needed only because revenue lives in the other store; returning `groupArray(video_id)` from the main query instead would put an unbounded array in one cell and blow memory on a large segment. Paged by **keyset** on the `(segment, video_id)` tuple — unique and total, so pages cannot skip or repeat. Keyset removes the sort-and-discard but *not* the CTE re-execution, so the scan cost is controlled by taking few large pages rather than many small ones. |
 | `packages/clickhouse/src/queries-advanced.ts` | `queryMedianByTag` kept as a **deprecated wrapper** over `querySegmentPerformance({kind: 'tag'})`, so nothing fails to compile mid-change — then its one caller is migrated in the same PR and the wrapper deleted. Leaving the wrapper behind is how two definitions of "tag median" end up shipped. |
 | `packages/clickhouse/src/lib/segment-stats.ts` | New, pure. `resolveConfidence(matureVideoCount)`, `pooledRpmCents(revenueCents, views)`, `interpretSpread(spread)` (< 2.0 consistent, > 4.0 one video carrying it — the workbook's own thresholds). No I/O, so it is fully testable while ClickHouse is disabled. |
 | `packages/features/content-analytics/src/server/taxonomy-actions.ts` | `getMedianByTagAction` (`:267`) re-pointed at the new query. Keeps its existing gates: the `count_tagged_publishes` RPC against `TAGGED_LIBRARY_THRESHOLD = 30` (counting **publishes**, not assignments — FILM-1601's bug #8) and `analytics_settings.tag_min_sample ?? 5` (`:276`). |
@@ -169,24 +223,43 @@ interpolating caller text; `dimension` is a bound parameter used as a
 
 ## 8. Acceptance Criteria
 
-- [ ] `querySegmentPerformance` supports all four segment kinds through one SQL body
-- [ ] Language segments are grouped by `video_dim.language`, not by a taxonomy tag
-- [ ] Figures are bounded to `checkpointDays`, not lifetime
-- [ ] Only videos that have reached the checkpoint are counted, via `computeMaturity`
-- [ ] Videos whose checkpoint predates their channel's ingest are excluded and reported as `predatesIngestCount`
-- [ ] Videos with no metric rows count as zero rather than vanishing
-- [ ] `spread` is `null`, not `Infinity`, when the median is zero
-- [ ] `meanCtr` is view-weighted
-- [ ] `confidence` is derived from `matureVideoCount`, not `videoCount`
-- [ ] A `directional` segment renders dimmed with its n, and is not hidden
-- [ ] `rpmCents` is pooled, and is absent rather than zero when revenue was not requested
-- [ ] Channel-level revenue is excluded from `rpmCents` and reported as `excludedRevenueCents`
-- [ ] `attributedRevenueOnly` is surfaced wherever `rpmCents` renders
-- [ ] Revenue is read through `forEachAccountRevenueRow` and is never collected whole for a long window
-- [ ] `getMedianByTagAction` returns the new shape and keeps both existing sample gates
-- [ ] `queryMedianByTag` is deleted, not left as a permanent wrapper
-- [ ] `kind` and `dimension` cannot inject SQL
-- [ ] `getSegmentPerformanceAction` calls `assertScopeAccess` before either query
+- [x] `querySegmentPerformance` supports all four segment kinds through one SQL body
+- [x] Language segments are grouped by `video_dim.language`, not by a taxonomy tag
+- [x] Figures are bounded to `checkpointDays`, not lifetime
+- [x] Only videos that have reached the checkpoint are counted
+- [x] Videos whose checkpoint predates their channel's ingest are excluded and reported as `predatesIngestCount`
+- [x] Videos with no metric rows count as zero rather than vanishing
+- [x] `spread` is `null`, not `Infinity`, when the median is zero
+- [x] `meanCtr` is impression-weighted
+- [x] `confidence` is derived from `matureVideoCount`, not `videoCount`
+- [x] A `directional` segment renders dimmed with its n, and is not hidden
+- [x] `rpmCents` is pooled, and is absent rather than zero when revenue was not requested
+- [x] Channel-level revenue is excluded from `rpmCents` and reported as `channelLevelRevenueCentsInWindow`, named for the bound it carries
+- [x] Revenue is bounded to each video's own checkpoint window, so the rate's numerator and denominator cover the same span
+- [x] Every streamed cent lands in a segment, `channelLevelRevenueCents` or `unattributedRevenueCents` — none is dropped
+- [x] A truncated membership suppresses `rpmCents` rather than understating it
+- [x] An account with no revenue rows yields no rate, not `$0.00 RPM` on every segment
+- [x] A revenue read that exceeds the pagination guard degrades to figures-without-a-rate rather than throwing
+- [x] `revenueStatus` gives each absence its own reason, and never reports one the code did not check
+- [x] The revenue read is chunked by year, so the pagination guard is not tripped by the window spanning the account's whole history
+- [x] A membership that exactly fills the page budget is not reported truncated
+- [x] The scope carries project **or** account, never both ANDed together
+- [x] `segmentRpmCents` delegates to `pooledRpmCents` rather than restating the arithmetic
+- [x] A segment with no revenue rows at all yields `rpmCents: null`, distinct from one whose rows sum to zero
+- [x] Revenue for a segment the aggregate trimmed is counted as unattributed, once, not attributed to a key no row carries
+- [x] `channelLevelRevenueCentsInWindow` is named for the bound it carries, and `measuredWindow` states that bound
+- [x] Membership pages by keyset, so a page does not re-scan the metrics history
+- [x] `getMedianByTagAction` reads through the *resolved* account, not the caller's unvalidated `accountId`
+- [x] `minVideos` gates on `matureVideoCount`, so a segment with nothing measurable is trimmed rather than rendered as zero
+- [x] A `tag` segment with no `dimension` returns every tag rather than silently none
+- [x] One `asOf` is resolved per request and passed to every query
+- [x] `attributedRevenueOnly` is surfaced wherever `rpmCents` renders
+- [x] Revenue is read through `forEachAccountRevenueRow` and is never collected whole for a long window
+- [x] `getMedianByTagAction` returns the new shape and keeps both existing sample gates
+- [x] `queryMedianByTag` is deleted, not left as a permanent wrapper — with `TagMedianRow`, which had no other producer
+- [x] `kind` and `dimension` cannot inject SQL
+- [x] `getSegmentPerformanceAction` calls `assertScopeAccess` before either query
+- [x] `getMedianByTagAction` calls `assertScopeAccess`, which it never did — ClickHouse is outside Postgres RLS and that path took `accountId`/`projectId` as unverified user input
 
 ## 9. Verification
 

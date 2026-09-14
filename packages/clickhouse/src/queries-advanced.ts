@@ -9,6 +9,8 @@
  */
 import { concatByChunk } from './chunked';
 import { getClickHouseClient, isClickHouseEnabled } from './client';
+import type { SegmentConfidence } from './lib/segment-stats';
+import { computeSpread, resolveConfidence } from './lib/segment-stats';
 import type {
   TrafficGroupBucket,
   TrafficSourceRow,
@@ -91,14 +93,6 @@ export interface CohortMedianRow {
 export interface WatchWindowTotals {
   watchTimeSeconds: number;
   netSubscribers: number;
-}
-
-export interface TagMedianRow {
-  tag: string;
-  videoCount: number;
-  medianViews: number;
-  meanViews: number;
-  medianWatchTimeSeconds: number;
 }
 
 function assertDimScope(scope: DimScope): void {
@@ -786,43 +780,243 @@ export async function queryChannelWatchWindow(input: {
 }
 
 /**
- * Median performance per taxonomy tag of one dimension. Individual video
- * performance is mostly luck; tag-level medians across enough videos are
- * signal.
+ * Grouping expression per segment kind.
+ *
+ * Closed, because this expression is interpolated into SQL — it is the one
+ * thing in the query that cannot be a bound parameter, since ClickHouse
+ * binds values and not identifiers. Same argument VIDEO_AGE_ORDER_COLUMNS
+ * makes for ORDER BY.
+ *
+ * `tag` is the only kind that fans a video out across several segments;
+ * the other three partition. That single difference is the whole reason
+ * this generalises queryMedianByTag rather than extending it.
  */
-export async function queryMedianByTag(input: {
+const SEGMENT_GROUPINGS = {
+  tag: 'arrayJoin(d.tags)',
+  language: 'd.language',
+  content_type: 'd.content_type',
+  connection: 'toString(d.connection_id)',
+} as const;
+
+export type SegmentKind = keyof typeof SEGMENT_GROUPINGS;
+
+/**
+ * Videos the figures at this checkpoint are computed over.
+ *
+ * Old enough to have reached it, and with a channel whose ingest covers
+ * the window. Shared by both segment queries: the pooled RPM divides
+ * revenue from the membership by views from the aggregate, so a video
+ * admitted to one and not the other silently skews the rate.
+ */
+function segmentEligible(days: number): string {
+  return `age_days >= ${days} AND ingest_lag_days < ${days}`;
+}
+
+/**
+ * CTEs reducing a scope to one row per (video, segment) at a checkpoint.
+ *
+ * Ingest start is a property of the CHANNEL, not the video: a video with
+ * no rows on a well-ingested channel is a real zero and must keep counting
+ * as one. One row per connection, so the join cannot multiply.
+ *
+ * The reach leg is UNIONed rather than joined — both tables carry one row
+ * per video per day, and a join would multiply views by impression days.
+ *
+ * Each zero-filled column must be cast to the *declared* type of the column
+ * it stands in for — `views` and `watch_time_seconds` are UInt64
+ * (`002_metrics_v2.ts`), `impressions` UInt64 — because ClickHouse refuses
+ * to find a supertype for UInt64 and Float64: "there is no floating point
+ * type that can exactly represent all required integers". A mocked client
+ * cannot catch this; `pnpm verify` against a real server is what does.
+ *
+ * `days` is floored by both callers before it reaches here, and `grouping`
+ * comes from SEGMENT_GROUPINGS, so neither is caller text.
+ */
+function segmentPerVideoSql(
+  conditions: string,
+  grouping: string,
+  days: number,
+): string {
+  return `
+    WITH dim AS (${dimSubquery(conditions)}),
+    ingest AS (
+      SELECT d.connection_id as connection_id, min(s.metric_date) as ingest_start
+      FROM dim d
+      INNER JOIN video_daily_stats s
+        ON s.video_id = d.video_id AND s.project_id = d.project_id
+      GROUP BY d.connection_id
+    ),
+    metrics AS (
+      SELECT
+        video_id, project_id, metric_date,
+        views, watch_time_seconds,
+        toUInt64(0) as impressions, toFloat64(0) as ctr_weighted
+      FROM video_daily_stats
+      WHERE video_id IN (SELECT video_id FROM dim)
+
+      UNION ALL
+
+      SELECT
+        video_id, project_id, metric_date,
+        toUInt64(0) as views, toUInt64(0) as watch_time_seconds,
+        impressions, impressions_ctr * impressions as ctr_weighted
+      FROM video_reach_daily FINAL
+      WHERE video_id IN (SELECT video_id FROM dim)
+    ),
+    per_video AS (
+      SELECT
+        d.video_id as video_id,
+        ${grouping} as segment,
+        d.published_at as published_at,
+        dateDiff('day', d.published_at, {asOf: DateTime}) as age_days,
+        if(
+          any(i.ingest_start) > toDate(0),
+          greatest(0, dateDiff('day', d.published_at, toDateTime(any(i.ingest_start)))),
+          toInt32(100000)
+        ) as ingest_lag_days,
+        sumIf(m.views, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_views,
+        sumIf(m.watch_time_seconds, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_watch,
+        sumIf(m.impressions, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_impressions,
+        sumIf(m.ctr_weighted, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_ctr_weighted
+      FROM dim d
+      LEFT JOIN metrics m
+        ON m.video_id = d.video_id AND m.project_id = d.project_id
+      LEFT JOIN ingest i ON i.connection_id = d.connection_id
+      GROUP BY video_id, segment, d.published_at
+    )
+  `;
+}
+
+/**
+ * `LIKE` clause restricting tag segments to one dimension.
+ *
+ * Empty for every other kind, and empty when no dimension is given —
+ * `dimension:slug` means a prefix built from an absent dimension is ':%',
+ * which matches no tag in existence. Returning every tag is a defensible
+ * answer; returning none with no error is not.
+ */
+function segmentTagFilter(
+  kind: SegmentKind,
+  dimension: string | undefined,
+  params: Record<string, unknown>,
+): string {
+  if (kind !== 'tag' || !dimension) return '';
+
+  params.tagPrefix = `${dimension}:%`;
+
+  return 'segment LIKE {tagPrefix: String}';
+}
+
+/** Resolves a segment kind, refusing anything outside the closed lookup. */
+function resolveSegmentGrouping(kind: SegmentKind): string {
+  // Own-property only: a kind of 'constructor' or '__proto__' would
+  // otherwise resolve up the prototype chain to a function, and splice its
+  // source text into the query.
+  if (!Object.prototype.hasOwnProperty.call(SEGMENT_GROUPINGS, kind)) {
+    throw new Error(`Unknown segment kind: ${String(kind)}`);
+  }
+
+  return SEGMENT_GROUPINGS[kind];
+}
+
+export interface SegmentPerformanceRow {
+  segment: string;
+  videoCount: number;
+  /** Videos that actually reached the checkpoint. Drives `confidence`. */
+  matureVideoCount: number;
+  /** Excluded: their checkpoint window closed before ingest began. */
+  predatesIngestCount: number;
+  medianViews: number;
+  meanViews: number;
+  p25Views: number;
+  p75Views: number;
+  minViews: number;
+  maxViews: number;
+  /** maxViews / medianViews, or null when the median is zero. */
+  spread: number | null;
+  medianWatchTimeSeconds: number;
+  /** Impression-weighted, or null where the segment has no impressions. */
+  meanCtr: number | null;
+  totalViews: number;
+  confidence: SegmentConfidence;
+}
+
+/**
+ * Per-segment view distribution at a fixed video age.
+ *
+ * Replaces queryMedianByTag, which answered a narrower and quietly wrong
+ * version of "which kinds of video work?": it summed a lifetime with no
+ * age bound, so a tag applied mostly to older uploads won on nothing but
+ * time; it INNER JOINed from the metrics side, so a tag whose videos
+ * mostly flopped reported the median of its survivors; and it only knew
+ * tags, while language is a dim column that cannot be forced into a
+ * taxonomy without making it permanently unanswerable.
+ *
+ * Maturity is judged per video — `age_days >= N` admits a video to the
+ * "@Nd" figure only once *it* is N days old — and a video whose whole
+ * checkpoint window closed before its channel's ingest began is excluded
+ * rather than counted as zero, because "no data" and "no views" are
+ * different facts. Both rules are expressed here in SQL, matching
+ * queryCohortMedians; lib/video-age.ts holds the per-row TypeScript form
+ * used by queryVideoViewsAtAge, and the two must not drift.
+ *
+ * CTR is weighted by impressions, not views: impressions are its
+ * denominator, and views arrive from surfaces that never produced an
+ * impression at all.
+ */
+export async function querySegmentPerformance(input: {
   scope: DimScope;
-  dimension: string;
+  segment: { kind: SegmentKind; dimension?: string };
   minVideos: number;
-}): Promise<TagMedianRow[]> {
+  /** Video age the figures are measured at. Defaults to 30 days. */
+  checkpointDays?: number;
+  /** Fixes "how old is this video"; bound so a call is reproducible. */
+  asOf?: string;
+}): Promise<SegmentPerformanceRow[]> {
+  const kind = input.segment.kind;
+  const grouping = resolveSegmentGrouping(kind);
+
   if (!isClickHouseEnabled()) return [];
   assertDimScope(input.scope);
 
   const client = getClickHouseClient();
   const { conditions, params } = buildDimConditions(input.scope);
-  params.tagPrefix = `${input.dimension}:%`;
+
+  // Floored to an integer, so it is safe to interpolate.
+  const days = Math.max(1, Math.floor(input.checkpointDays ?? 30));
+
   params.minVideos = Math.max(1, Math.floor(input.minVideos));
+  params.asOf = input.asOf ?? formatClickHouseDateTime(new Date());
+
+  // Only tags carry a dimension prefix; the other kinds are whole columns.
+  // Omitted when no dimension is given: tags are stored as `dimension:slug`,
+  // so a prefix of ':%' matches nothing and would report "no tags" for an
+  // account full of them — a silent empty result, not a filter.
+  const tagFilter = segmentTagFilter(kind, input.segment.dimension, params);
+
+  const eligible = segmentEligible(days);
 
   const query = `
+    ${segmentPerVideoSql(conditions, grouping, days)}
     SELECT
-      t.tag as tag,
+      segment,
       count() as video_count,
-      quantileExact(0.5)(v.total_views) as median_views,
-      avg(v.total_views) as mean_views,
-      quantileExact(0.5)(v.total_watch) as median_watch
-    FROM (
-      SELECT video_id, sum(views) as total_views, sum(watch_time_seconds) as total_watch
-      FROM video_daily_stats
-      WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions)}))
-      GROUP BY video_id
-    ) v
-    INNER JOIN (
-      SELECT video_id, arrayJoin(tags) as tag
-      FROM (${dimSubquery(conditions)})
-    ) t ON v.video_id = t.video_id
-    WHERE t.tag LIKE {tagPrefix: String}
-    GROUP BY t.tag
-    HAVING video_count >= {minVideos: UInt32}
+      countIf(${eligible}) as mature_video_count,
+      countIf(age_days >= ${days} AND ingest_lag_days >= ${days}) as predates_ingest_count,
+      quantileExactIf(0.5)(v_views, ${eligible}) as median_views,
+      avgIf(v_views, ${eligible}) as mean_views,
+      quantileExactIf(0.25)(v_views, ${eligible}) as p25_views,
+      quantileExactIf(0.75)(v_views, ${eligible}) as p75_views,
+      minIf(v_views, ${eligible}) as min_views,
+      maxIf(v_views, ${eligible}) as max_views,
+      quantileExactIf(0.5)(v_watch, ${eligible}) as median_watch,
+      sumIf(v_views, ${eligible}) as total_views,
+      sumIf(v_impressions, ${eligible}) as impressions,
+      sumIf(v_ctr_weighted, ${eligible}) as ctr_weighted
+    FROM per_video
+    ${tagFilter ? `WHERE ${tagFilter}` : ''}
+    GROUP BY segment
+    HAVING mature_video_count >= {minVideos: UInt32}
     ORDER BY median_views DESC
   `;
 
@@ -833,19 +1027,168 @@ export async function queryMedianByTag(input: {
   });
 
   const rows = await result.json<{
-    tag: string;
+    segment: string;
     video_count: number;
+    mature_video_count: number;
+    predates_ingest_count: number;
     median_views: number;
     mean_views: number;
+    p25_views: number;
+    p75_views: number;
+    min_views: number;
+    max_views: number;
     median_watch: number;
+    total_views: number;
+    impressions: number;
+    ctr_weighted: number;
+  }>();
+
+  return rows.map((row) => {
+    const medianViews = Math.round(Number(row.median_views ?? 0));
+    const maxViews = Math.round(Number(row.max_views ?? 0));
+    const matureVideoCount = Number(row.mature_video_count ?? 0);
+    const impressions = Number(row.impressions ?? 0);
+
+    return {
+      segment: String(row.segment),
+      videoCount: Number(row.video_count ?? 0),
+      matureVideoCount,
+      predatesIngestCount: Number(row.predates_ingest_count ?? 0),
+      medianViews,
+      meanViews: Math.round(Number(row.mean_views ?? 0)),
+      p25Views: Math.round(Number(row.p25_views ?? 0)),
+      p75Views: Math.round(Number(row.p75_views ?? 0)),
+      minViews: Math.round(Number(row.min_views ?? 0)),
+      maxViews,
+      spread: computeSpread(maxViews, medianViews),
+      medianWatchTimeSeconds: Number(row.median_watch ?? 0),
+      // Absent, not zero: a segment with no impressions has no CTR, and a
+      // zero would read as "nobody clicked".
+      meanCtr:
+        impressions > 0 ? Number(row.ctr_weighted ?? 0) / impressions : null,
+      totalViews: Number(row.total_views ?? 0),
+      confidence: resolveConfidence(matureVideoCount),
+    };
+  });
+}
+
+export interface SegmentMembershipRow {
+  segment: string;
+  videoId: string;
+  /**
+   * Publish date, so revenue can be bounded to the same window the views
+   * cover. Without it the two halves of the rate measure different spans.
+   */
+  publishedAt: string;
+}
+
+/**
+ * Deliberately no `views` column. The RPM denominator is
+ * querySegmentPerformance's `totalViews`, which is what keeps numerator
+ * and denominator over the same set of videos; a per-video figure carried
+ * here would invite a caller to sum it into a denominator that does not
+ * match the aggregate — and would ship a column nothing reads for up to
+ * 100k rows a render.
+ */
+
+/**
+ * Which videos make up each segment, and what each contributed.
+ *
+ * Exists only because revenue lives in Postgres and views live here, so
+ * pooling RPM per segment needs the video ids on both sides. Returning
+ * groupArray(video_id) from querySegmentPerformance instead would put an
+ * unbounded array in a single cell and blow memory on a large segment.
+ *
+ * Counts exactly the videos querySegmentPerformance counted — same
+ * eligibility, same checkpoint. A video admitted here but not there would
+ * put revenue over a denominator that excludes it, deflating the rate.
+ *
+ * Ordered by (segment, video_id), which is unique and total, so paging
+ * cannot skip or repeat a row. Fixed rather than caller-chosen: there is
+ * no ordering choice to whitelist, and a fixed key is stronger than a
+ * validated one.
+ *
+ * Paged by **keyset**, not OFFSET — but note what that does and does not
+ * buy. The whole CTE chain (the dim scan, the ingest join over
+ * video_daily_stats, the metrics union, the arrayJoin fan-out) is
+ * re-executed on every page either way; keyset removes only the
+ * sort-and-discard of the rows before the cursor, and removes the
+ * possibility of a concurrent write shifting rows across a page boundary.
+ * It does not make paging cheap.
+ *
+ * The scan cost is therefore controlled by taking *few, large* pages
+ * rather than many small ones — see MEMBERSHIP_PAGE_SIZE. An earlier
+ * version of this comment claimed keyset avoided the repeated passes; it
+ * does not, and the page size is what does.
+ */
+export async function querySegmentMembership(input: {
+  scope: DimScope;
+  segment: { kind: SegmentKind; dimension?: string };
+  checkpointDays?: number;
+  limit?: number;
+  /** Last row of the previous page; resumes strictly after it. */
+  after?: { segment: string; videoId: string };
+  asOf?: string;
+}): Promise<SegmentMembershipRow[]> {
+  const kind = input.segment.kind;
+  const grouping = resolveSegmentGrouping(kind);
+
+  if (!isClickHouseEnabled()) return [];
+  assertDimScope(input.scope);
+
+  const client = getClickHouseClient();
+  const { conditions, params } = buildDimConditions(input.scope);
+
+  const days = Math.max(1, Math.floor(input.checkpointDays ?? 30));
+  // Clamped high deliberately: each page re-runs the full CTE chain, so a
+  // small page size multiplies scans rather than saving memory. The rows
+  // are four small columns, so 50k of them is a few megabytes.
+  const limit = Math.min(50_000, Math.max(1, Math.floor(input.limit ?? 500)));
+
+  params.asOf = input.asOf ?? formatClickHouseDateTime(new Date());
+
+  const tagFilter = segmentTagFilter(kind, input.segment.dimension, params);
+
+  // Tuple comparison, so the resume point is the pair rather than either
+  // column alone — a segment spanning more than one page would otherwise
+  // restart at its first video.
+  let keyset = '';
+
+  if (input.after) {
+    keyset =
+      ' AND (segment, video_id) > ({afterSegment: String}, {afterVideoId: String})';
+    params.afterSegment = input.after.segment;
+    params.afterVideoId = input.after.videoId;
+  }
+
+  const query = `
+    ${segmentPerVideoSql(conditions, grouping, days)}
+    SELECT
+      segment,
+      video_id,
+      toString(published_at) as published_at
+    FROM per_video
+    WHERE ${segmentEligible(days)}${tagFilter ? ` AND ${tagFilter}` : ''}${keyset}
+    ORDER BY segment ASC, video_id ASC
+    LIMIT ${limit}
+  `;
+
+  const result = await client.query({
+    query,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<{
+    segment: string;
+    video_id: string;
+    published_at: string;
   }>();
 
   return rows.map((row) => ({
-    tag: row.tag,
-    videoCount: Number(row.video_count),
-    medianViews: Number(row.median_views),
-    meanViews: Number(row.mean_views),
-    medianWatchTimeSeconds: Number(row.median_watch),
+    segment: String(row.segment),
+    videoId: String(row.video_id),
+    publishedAt: String(row.published_at),
   }));
 }
 

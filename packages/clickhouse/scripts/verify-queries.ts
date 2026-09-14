@@ -32,13 +32,14 @@ import {
   queryDailyTimeSeries,
   queryDailyTimeSeriesByPlatform,
   queryLatestSnapshots,
-  queryMedianByTag,
   queryMedianViewsPerVideo,
   queryPerVideoTotals,
   queryPlatformBreakdown,
   queryQualityMetricsForVideos,
   queryRetentionCurve,
   queryRollingViews,
+  querySegmentMembership,
+  querySegmentPerformance,
   querySubscriberAnchors,
   querySubscriberDeltas,
   queryTotals,
@@ -422,8 +423,26 @@ async function queries() {
   await step('queryCohortMedians (month)', () =>
     queryCohortMedians({ scope, bucket: 'month' }),
   );
-  await step('queryMedianByTag', () =>
-    queryMedianByTag({ scope, dimension: 'topic', minVideos: 1 }),
+  // Every kind, because the grouping expression is the one part of the SQL
+  // that changes between them — arrayJoin for tags, a bare column for the
+  // rest — and only the server can say whether each shape is accepted.
+  for (const kind of [
+    'tag',
+    'language',
+    'content_type',
+    'connection',
+  ] as const) {
+    await step(`querySegmentPerformance (${kind})`, () =>
+      querySegmentPerformance({
+        scope,
+        segment: { kind, dimension: kind === 'tag' ? 'topic' : undefined },
+        minVideos: 1,
+      }),
+    );
+  }
+
+  await step('querySegmentMembership', () =>
+    querySegmentMembership({ scope, segment: { kind: 'language' } }),
   );
   await step('queryVideoViewsAtAge', () => queryVideoViewsAtAge({ scope }));
   await step('queryWatchWindowTotals', () =>
@@ -557,6 +576,96 @@ async function assertions() {
     }
     return 'firstMetricDate=null, ingestLagDays=null';
   });
+
+  await step(
+    'assert: keyset paging returns every membership row exactly once',
+    async () => {
+      const all = await querySegmentMembership({
+        scope,
+        segment: { kind: 'language' },
+      });
+
+      // One row at a time, so the resume path is exercised on every row
+      // rather than only on a boundary that happens to fall mid-set.
+      const paged: string[] = [];
+      let after: { segment: string; videoId: string } | undefined;
+
+      for (let i = 0; i < all.length + 2; i++) {
+        const page = await querySegmentMembership({
+          scope,
+          segment: { kind: 'language' },
+          limit: 1,
+          after,
+        });
+
+        if (page.length === 0) break;
+
+        const row = page[0]!;
+
+        paged.push(`${row.segment}/${row.videoId}`);
+        after = { segment: row.segment, videoId: row.videoId };
+      }
+
+      const expected = all.map((r) => `${r.segment}/${r.videoId}`);
+
+      if (paged.join('|') !== expected.join('|')) {
+        throw new Error(
+          `keyset paging drifted: got [${paged.join(', ')}] want [${expected.join(', ')}]`,
+        );
+      }
+
+      if (new Set(paged).size !== paged.length) {
+        throw new Error(`keyset paging repeated a row: ${paged.join(', ')}`);
+      }
+
+      return `${paged.length} row(s), one per page, no repeats`;
+    },
+  );
+
+  await step(
+    'assert: a segment with no mature videos is trimmed, not shown as zero',
+    async () => {
+      // Gating on video_count instead would return this segment with every
+      // aggregate empty — medianViews 0 over a real video count — which
+      // renders as a measured zero rather than an absent measurement.
+      const rows = await querySegmentPerformance({
+        scope,
+        segment: { kind: 'language' },
+        minVideos: 1,
+        // No video in the fixture is a year old as of its publish date, so
+        // every segment should fall below the gate rather than come back
+        // with zeroed figures.
+        checkpointDays: 3650,
+      });
+
+      const zeroed = rows.find((r) => r.matureVideoCount === 0);
+
+      if (zeroed) {
+        throw new Error(
+          `segment "${zeroed.segment}" returned with 0 mature videos and medianViews=${zeroed.medianViews}`,
+        );
+      }
+
+      return `${rows.length} segment(s) survived a 3650-day checkpoint`;
+    },
+  );
+
+  await step(
+    'assert: an absent tag dimension returns tags rather than nothing',
+    async () => {
+      const all = await querySegmentPerformance({
+        scope,
+        segment: { kind: 'tag' },
+        minVideos: 1,
+      });
+
+      if (all.length === 0) {
+        throw new Error('no tags returned when no dimension was given');
+      }
+
+      return `${all.length} tag(s) across all dimensions`;
+    },
+  );
 
   await step(
     'assert: pre-ingest videos are excluded from a checkpoint',

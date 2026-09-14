@@ -3,12 +3,12 @@ spec_id: FILM-1710
 title: Asset Duration
 status: DRAFT
 effort: M
-dependencies: none
+dependencies: FILM-1711 (TikTok leg only)
 ---
 
 # Asset Duration
 
-## 1. This is a correctness incident, not an enhancement
+## 1. A latent data defect, not a live incident
 
 `video_dim.duration_seconds` is the **episode's** duration, not the duration of
 the clip that was actually published. `dim-sync.ts:166-168`:
@@ -26,24 +26,35 @@ plan, not a measurement — then zero.
 In the live local fixture, Instagram and TikTok publishes with
 `content_type = 'short'` average **1,550 seconds**.
 
-### The Hook Lab is producing wrong verdicts today
+### Corrected: the column is wrong, but nothing reads it
 
-`retentionAtSeconds(points, 3, durationSeconds)`
-(`packages/features/content-analytics/src/lib/retention.ts:23`) converts a
-time in seconds to an `elapsed_ratio` by dividing by the duration it is given.
-`hook_tests.viral_threshold` (`71-hook-testing.sql:17`, default `0.75`)
-declares a winner when `retention_3s` clears it.
+**An earlier version of this section claimed the Hook Lab is producing wrong
+verdicts today — that `retentionAtSeconds` receives the episode duration, so
+every short-form variant clears `0.75` and a winner is auto-declared. The code
+does not do that, and the claim is withdrawn.**
 
-Give it a 22-minute episode duration for a 45-second Short and `t = 3s`
-resolves to `elapsed_ratio ≈ 0.002` — inside the first bucket of the retention
-curve, where the curve is ≈ 1.0 by construction. **Every short-form variant
-clears 0.75 and a winner is auto-declared.**
+`refreshTestRetention` reads **`hook_variants.duration_seconds`**
+(`hook-retention.ts:72`, used at `:81`), not `video_dim.duration_seconds`.
+That column is `numeric default 5` (`71-hook-testing.sql:46`), so it is never
+null and never the episode's duration. This section previously asserted that
+column "is not used on that path"; it is, at `:81`.
 
-The Hook Lab is reachable at `/studio/[projectSlug]/hooks` and has a "Refresh
-retention" button wired to `refreshHookTestAction`. This is live.
+`video_dim.duration_seconds` has **no readers at all** — no hits anywhere in
+`packages/clickhouse/src/queries*.ts`, and the only `retentionAtSeconds`
+caller is the Hook Lab path above. The column is written by `dim-sync.ts` and
+read by nothing.
 
-`hook_variants.duration_seconds` exists (`71-hook-testing.sql:46`) and is not
-used on that path.
+So this is a **latent write-only data defect, not a live incident**, and it
+does not need to ship before the rest of the phase. What it does need is to
+ship before anything starts reading the column — which phase-16 FILM-1616 is
+the first thing to do, via `getRetentionCurveAction`'s `durationSeconds`.
+
+**A separate, real bug is visible here and is not this spec's scope.**
+Dividing `t = 3s` by a 5-second hook-length default puts the checkpoint at
+60% through the whole video's retention curve, because `elapsed_ratio` is a
+position through the *video*, not through the hook. That understates
+retention rather than auto-declaring winners — the opposite sign to the
+withdrawn claim. It wants its own ticket against `hook_variants`.
 
 ## 2. Fix
 

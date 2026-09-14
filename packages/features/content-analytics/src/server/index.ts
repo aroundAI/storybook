@@ -182,6 +182,13 @@ export {
 export { getVideoLogAction } from './video-log-actions';
 export type { VideoLogRow } from './video-log-actions';
 
+export { getSegmentPerformanceAction } from './segment-actions';
+export type {
+  RevenueStatus,
+  SegmentPerformanceEntry,
+  SegmentPerformanceResult,
+} from './segment-actions';
+
 export { captureSubscriberSnapshots } from './subscriber-snapshot';
 export type { SubscriberCaptureResult } from './subscriber-snapshot';
 export { getSubscriberSeriesAction } from './subscriber-series-actions';

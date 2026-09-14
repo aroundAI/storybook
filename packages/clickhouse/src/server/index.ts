@@ -44,9 +44,10 @@ export {
   queryBackCatalogShare,
   queryChannelWatchWindow,
   queryCohortMedians,
-  queryMedianByTag,
   queryMedianViewsPerVideo,
   queryRollingViews,
+  querySegmentMembership,
+  querySegmentPerformance,
   queryTrafficSourceBreakdown,
   queryVideoViewsAtAge,
   queryWatchWindowTotals,
@@ -58,7 +59,9 @@ export type {
   DimScope,
   MedianBucket,
   RollingViewsPoint,
-  TagMedianRow,
+  SegmentKind,
+  SegmentMembershipRow,
+  SegmentPerformanceRow,
   VideoAgeOrderBy,
   VideoAgeRow,
   WatchWindowTotals,
@@ -93,6 +96,21 @@ export type {
   CohortGrowth,
   GrowthSuppressionReason,
 } from '../lib/cohort-growth';
+
+export {
+  CONFIDENCE_DIRECTIONAL_MIN,
+  CONFIDENCE_REPORTABLE_MIN,
+  SPREAD_CARRIED_ABOVE,
+  SPREAD_CONSISTENT_BELOW,
+  computeSpread,
+  interpretSpread,
+  pooledRpmCents,
+  resolveConfidence,
+} from '../lib/segment-stats';
+export type {
+  SegmentConfidence,
+  SpreadInterpretation,
+} from '../lib/segment-stats';
 
 export type {
   AggregatedTotals,

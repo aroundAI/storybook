@@ -2,15 +2,25 @@
 
 import { BarChart3 } from 'lucide-react';
 
+import { interpretSpread } from '@kit/clickhouse';
+import type { SegmentConfidence } from '@kit/clickhouse';
 import { Progress } from '@kit/ui/progress';
 import { Skeleton } from '@kit/ui/skeleton';
+import { cn } from '@kit/ui/utils';
 
-/** One tag's aggregated performance, from getMedianByTagAction. */
+/** One segment's aggregated performance, from getMedianByTagAction. */
 export interface TagMedianEntry {
-  tag: string;
+  segment: string;
   videoCount: number;
+  /** Videos that actually reached the checkpoint. Drives `confidence`. */
+  matureVideoCount: number;
   medianViews: number;
   meanViews: number;
+  /** maxViews / medianViews, or null when the median is zero. */
+  spread: number | null;
+  confidence: SegmentConfidence;
+  /** Pooled revenue per thousand views, when revenue was requested. */
+  rpmCents?: number | null;
 }
 
 interface TagMediansCardProps {
@@ -22,6 +32,11 @@ interface TagMediansCardProps {
   taggedCount?: number;
   /** Videos required before medians are shown */
   required?: number;
+  /**
+   * True when `rpmCents` covers only publish-attributed revenue, which it
+   * always does — channel-level income belongs to no segment.
+   */
+  attributedRevenueOnly?: boolean;
   /** Loading state */
   isLoading?: boolean;
 }
@@ -38,6 +53,10 @@ function tagLabel(tag: string): string {
   return separator >= 0 ? tag.slice(separator + 1) : tag;
 }
 
+function formatRpm(cents: number): string {
+  return `$${(cents / 100).toFixed(2)} RPM`;
+}
+
 /**
  * Median performance by tag. Medians, not means: a single viral video
  * drags a mean upward and would make a mediocre format look like a winner.
@@ -47,6 +66,7 @@ export function TagMediansCard({
   insufficientSample = false,
   taggedCount = 0,
   required = 30,
+  attributedRevenueOnly = false,
   isLoading = false,
 }: TagMediansCardProps) {
   if (isLoading) {
@@ -82,13 +102,22 @@ export function TagMediansCard({
   return (
     <div className={'flex flex-col gap-3'}>
       {rows.map((row) => (
-        <div key={row.tag} className={'flex flex-col gap-1'}>
+        <div
+          key={row.segment}
+          // Dimmed, never hidden: a hard gate removes the only information
+          // a new channel has. The n travels with the row instead.
+          className={cn(
+            'flex flex-col gap-1',
+            row.confidence !== 'reportable' && 'opacity-60',
+          )}
+        >
           <div className={'flex items-baseline justify-between gap-2'}>
             <span className={'truncate text-sm font-medium'}>
-              {tagLabel(row.tag)}
+              {tagLabel(row.segment)}
             </span>
             <span className={'text-muted-foreground shrink-0 text-xs'}>
-              {formatViews(row.medianViews)} median · {row.videoCount} videos
+              {formatViews(row.medianViews)} median · {row.matureVideoCount} of{' '}
+              {row.videoCount} videos
             </span>
           </div>
 
@@ -99,11 +128,34 @@ export function TagMediansCard({
             />
           </div>
 
-          {row.meanViews > row.medianViews * 1.5 ? (
-            <p className={'text-muted-foreground text-xs'}>
-              Mean {formatViews(row.meanViews)} — skewed by an outlier
-            </p>
-          ) : null}
+          <div
+            className={'text-muted-foreground flex flex-wrap gap-x-2 text-xs'}
+          >
+            {row.confidence !== 'reportable' ? (
+              <span>
+                {row.confidence === 'insufficient'
+                  ? 'Too few videos to report'
+                  : 'Directional only'}
+              </span>
+            ) : null}
+
+            {interpretSpread(row.spread) === 'carried_by_one' ? (
+              <span>One video carrying it</span>
+            ) : null}
+
+            {row.meanViews > row.medianViews * 1.5 ? (
+              <span>
+                Mean {formatViews(row.meanViews)} — skewed by an outlier
+              </span>
+            ) : null}
+
+            {typeof row.rpmCents === 'number' ? (
+              <span>
+                {formatRpm(row.rpmCents)}
+                {attributedRevenueOnly ? ' (per-video revenue only)' : ''}
+              </span>
+            ) : null}
+          </div>
         </div>
       ))}
     </div>

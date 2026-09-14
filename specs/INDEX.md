@@ -591,7 +591,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 
 Three parts. **Provenance** (1701–1709) answers *where did this number come from*. **Signal** (1710–1720) answers *what is it telling me*, which differs per platform. **Reference** (1721–1723) is the researched vendor truth the other two are built on.
 
-FILM-1710 fixes a live bug and ships first: `video_dim.duration_seconds` is the episode's duration, so every Short auto-wins in the Hook Lab. FILM-1711 records that TikTok and Instagram analytics were never authorised. FILM-1721 exists because the first draft of the signal specs cited our own TypeScript types as evidence of platform capability and was wrong in five places on TikTok alone — its rule is that a metric name may not appear in a spec, a type or a request unless FILM-1721 documents it with a vendor citation. The declarative schema-drift repair this investigation surfaced shipped separately as PR #253.
+FILM-1710 fixes a latent write-only defect: `video_dim.duration_seconds` is the episode's duration, not the published clip's. Nothing reads the column today — the Hook Lab divides by `hook_variants.duration_seconds` — so it ships ahead of FILM-1616, the first thing that would read it, rather than ahead of the whole phase. FILM-1711 records that TikTok and Instagram analytics were never authorised. FILM-1721 exists because the first draft of the signal specs cited our own TypeScript types as evidence of platform capability and was wrong in five places on TikTok alone — its rule is that a metric name may not appear in a spec, a type or a request unless FILM-1721 documents it with a vendor citation. The declarative schema-drift repair this investigation surfaced shipped separately as PR #253.
 
 ### Spikes (5 specs)
 
@@ -667,10 +667,12 @@ SPIKE-01 through SPIKE-05
 | 11. Canon Integ | 21 | 0 | 0 | 0 | 0 | 21 |
 | 12. Scale | 2 | 0 | 0 | 0 | 0 | 2 |
 | 13. Hook Opt | 2 | 1 | 0 | 0 | 0 | 1 |
+| 14. Edit Suite v2 | 1 | 1 | 0 | 0 | 0 | 0 |
 | 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 11 |
-| 16. Workbook Parity | 7 | 0 | 0 | 0 | 0 | 7 |
+| 16. Workbook Parity | 17 | 7 | 0 | 0 | 0 | 10 |
+| 17. Analytics Provenance | 23 | 23 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **180** | **1** | **0** | **0** | **0** | **179** |
+| **TOTAL** | **214** | **32** | **0** | **0** | **0** | **182** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
@@ -680,6 +682,11 @@ SPIKE-01 through SPIKE-05
 | Post-MVP (Ph 6-9) | 37 | 37 | 100% |
 | Canon (Ph 10-11) | 28 | 28 | 100% |
 | Scale & Hooks (Ph 12-13) | 4 | 2 | 50% |
+| Workbook Parity (Ph 16) | 17 | 10 | 59% |
+| Provenance & Signal (Ph 17) | 23 | 0 | 0% |
+
+Phase 14 (`edit-suite-v2`) carries an `ENGINEERING.md` with no status
+frontmatter and is counted as one unstarted item.
 
 ---
 

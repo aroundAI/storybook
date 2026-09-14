@@ -14,6 +14,24 @@ export type {
   GrowthSuppressionReason,
 } from './lib/cohort-growth';
 
+// Same argument for the segment vocabulary: the card decides how to render
+// a directional row, so it needs the tiers the server assigned, not a
+// second copy of the thresholds.
+export {
+  CONFIDENCE_DIRECTIONAL_MIN,
+  CONFIDENCE_REPORTABLE_MIN,
+  SPREAD_CARRIED_ABOVE,
+  SPREAD_CONSISTENT_BELOW,
+  computeSpread,
+  interpretSpread,
+  pooledRpmCents,
+  resolveConfidence,
+} from './lib/segment-stats';
+export type {
+  SegmentConfidence,
+  SpreadInterpretation,
+} from './lib/segment-stats';
+
 export type {
   AggregatedTotals,
   AnalyticsPlatform,
