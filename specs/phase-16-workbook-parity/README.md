@@ -60,7 +60,7 @@ FILM-1608, 1609, 1610 and 1616 are mutually independent and parallelisable. FILM
 | FILM-1607 | PR #242 |
 | FILM-1618 | PR #249 |
 | FILM-1605 | PR #252 |
-| FILM-1606 | this PR |
+| FILM-1606 | PR #255 |
 
 Specified and not yet built:
 
