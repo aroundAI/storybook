@@ -243,6 +243,14 @@ try {
 
 ## Testing
 
+**The manual revenue form has browser coverage, and needs it.** Four review
+rounds found defects in it that typecheck, lint and the unit suite all
+passed — unsubmittable forms, a field that kept its text while form state
+read zero. They live between the DOM and form state. Changes to
+`manual-revenue-form.tsx` or `revenue-mix-card.tsx` should be checked
+against `apps/e2e/tests/revenue/`; see the E2E section of the root
+`CLAUDE.md` for how these are written.
+
 ```bash
 # Run tests
 pnpm --filter @kit/content-analytics test

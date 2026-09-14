@@ -575,6 +575,45 @@ See **TESTING-PROGRESS.md** for detailed list of remaining tests.
 - ✅ `packages/branding/__tests__/color-utils.test.ts` (41 tests)
 - ✅ `packages/next/__tests__/enhance-action.test.ts` (21 tests)
 
+### E2E: when a unit test cannot see the bug ⚠️
+
+**A form or interactive component needs a Playwright spec before its
+acceptance criteria are ticked.** FILM-1609 went four review rounds on one
+form while typecheck, lint and 256 unit tests stayed green, because every
+defect lived between the DOM and form state:
+
+| Defect | What made it invisible |
+|---|---|
+| `publishId: ''` against `.uuid().optional()` | Valid TypeScript; the resolver rejected it at runtime |
+| `accountId` injected in `onSubmit` | `zodResolver` runs over form values *first*, so it never reached `onSubmit` |
+| Unregistered amount input | `reset()` zeroed state while the DOM kept the text → a `0` row saved silently |
+| Uncontrolled `Select` | Radix keeps the displayed value across `reset()` |
+
+The rules, with `apps/e2e/tests/revenue/` as the worked example — full
+detail in `apps/e2e/README.md`:
+
+- **Seed through the API, not the UI.** `tests/utils/seed.ts` creates a
+  confirmed user and team directly. Driving sign-up, confirmation mail and
+  the account selector first makes a test fail for reasons unrelated to its
+  subject, and is ~20× slower (26s for eight specs, versus 90s timeouts).
+- **Assert the *second* submission.** State bugs are invisible on a fresh
+  form; they appear after a reset when DOM and form state disagree.
+- **Prove the guard fails without the fix.** Revert the fix, watch it go
+  red, restore. A test that only ever passed on fixed code has proved
+  nothing — this is the step that turns it into a regression test.
+- **`data-test` on anything a test touches**, per the React guidance above.
+- **`PLAYWRIGHT_BASE_URL`** points a run at a server other than whatever
+  holds port 3000. A dev server left up for days goes stale and silently
+  stops sending auth email, which looks exactly like a broken suite.
+
+```bash
+# run against your own server
+PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test revenue
+
+# regenerate PR screenshots (skipped in CI without the flag)
+CAPTURE_EVIDENCE=1 EVIDENCE_DIR=/tmp/evidence npx playwright test revenue-evidence
+```
+
 ## Feature Specifications
 
 Feature implementations must adhere to the specifications in the `specs/` folder:

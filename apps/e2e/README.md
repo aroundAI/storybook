@@ -295,6 +295,93 @@ HEADED=false
 BROWSER=chromium
 ```
 
+## Proving a UI fix with a browser test
+
+Four consecutive review rounds on FILM-1609 found bugs in one form that
+typecheck, lint and 256 unit tests all passed. They had one thing in
+common: they lived between the DOM and form state, where only a browser
+looks. `tests/revenue/` is the worked example of covering that class.
+
+### Seed the account through the API, not the UI
+
+`tests/utils/seed.ts` creates a confirmed user and a team account by
+calling Supabase directly, then the test signs in and goes straight to the
+page under test.
+
+```ts
+const account = await seedTeamAccount();   // user + team, confirmed
+await this.auth.goToSignIn();
+await this.auth.signIn(account);
+await this.page.goto(`/home/${account.slug}/studio/analytics`);
+```
+
+Driving sign-up → confirmation mail → account selector → create-team
+dialog first means a revenue test fails for four reasons that have nothing
+to do with revenue, and two of those flows are the ones the admin and
+invitation specs already flake on. It is also roughly 20× slower: the
+revenue suite runs eight specs in 26s seeded, against 90s *timeouts*
+through the UI.
+
+Seed with the product's own entry points (`create_team_account` rather than
+inserting rows) so the fixture cannot drift from what the app creates.
+
+### Assert the second submission, not the first
+
+Most state bugs are invisible on a fresh form. They appear after a reset,
+when the DOM and form state disagree:
+
+```ts
+await revenue.addEntry({ dollars: '250.00', category: 'Licensing' });
+await revenue.expectSuccessToast();
+
+// Shipped bug: the field kept "250.00" while form state held 0, so the
+// next save wrote a zero row and reported success.
+await expect(revenue.amountInput()).toHaveValue('');
+```
+
+### Prove the guard fails without the fix
+
+A test that passes on fixed code has proved nothing. Revert the fix, watch
+the test go red, restore it:
+
+```bash
+# revert .min(1) -> .min(0), then:
+npx playwright test revenue -g "refuses a blank amount"   # must FAIL
+```
+
+Do this for every guard you add. Three of the revenue specs were verified
+this way, and the exercise is what distinguishes a regression test from a
+test that happens to be green.
+
+### Point a run at your own server
+
+```bash
+PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test revenue
+```
+
+A dev server left running for days goes stale — its Supabase client and
+compiled routes outlive a `supabase stop`. The symptom is that every signup
+silently sends no mail and every test hangs at the confirmation step, which
+reads as a broken test rather than a broken server. If auth email stops
+arriving, restart the dev server before debugging the suite.
+
+### Capturing screenshots for a PR
+
+`tests/revenue/revenue-evidence.spec.ts` is the pattern: a spec that is
+skipped unless `CAPTURE_EVIDENCE=1`, so it costs CI nothing, and that
+measures its claims in the DOM rather than asserting them by eye.
+
+```bash
+CAPTURE_EVIDENCE=1 EVIDENCE_DIR=/tmp/evidence \
+  PLAYWRIGHT_BASE_URL=http://localhost:3100 \
+  npx playwright test revenue-evidence
+```
+
+GitHub's image store for comments is web-upload only, so the PNGs are
+dragged into the comment by hand. Put the measured table in the comment
+text, where it is reviewable and greppable, and let the screenshots
+illustrate it.
+
 ## Contributing
 
 When adding new tests:
