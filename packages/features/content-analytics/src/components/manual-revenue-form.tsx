@@ -40,7 +40,10 @@ import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
 
-import { manualRevenueDefaults } from '../lib/manual-revenue';
+import {
+  manualRevenueDefaults,
+  parseAmountToCents,
+} from '../lib/manual-revenue';
 import { REVENUE_CATEGORY_LABELS } from '../lib/revenue-mix';
 import { AddManualRevenueSchema } from '../lib/schemas/revenue.schema';
 import { addManualRevenueAction } from '../server/revenue-actions';
@@ -114,12 +117,14 @@ export function ManualRevenueForm({
   const handleAmountChange = (value: string) => {
     setAmountText(value);
 
-    // Non-numeric is *no amount*, which the schema rejects — not zero,
-    // which it would once have accepted and written over a real figure.
-    const dollars = Number.parseFloat(value);
-    const cents = Number.isFinite(dollars) ? Math.round(dollars * 100) : 0;
+    const cents = parseAmountToCents(value);
 
-    form.setValue('revenueCents', cents, { shouldValidate: true });
+    // Anything that is not a whole-string amount is *no amount*, never a
+    // parsed prefix: `1,250.00` must not become $1.00. It lands as 0, which
+    // the schema rejects with a message covering both an empty field and a
+    // malformed one — a setError here would be replaced by the resolver the
+    // moment submit re-validates.
+    form.setValue('revenueCents', cents ?? 0, { shouldValidate: true });
   };
 
   return (

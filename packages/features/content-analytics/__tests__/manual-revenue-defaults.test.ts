@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { manualRevenueDefaults } from '../src/lib/manual-revenue';
+import {
+  manualRevenueDefaults,
+  parseAmountToCents,
+} from '../src/lib/manual-revenue';
 import { AddManualRevenueSchema } from '../src/lib/schemas/revenue.schema';
 
 const ACCOUNT = '550e8400-e29b-41d4-a716-446655440000';
@@ -60,5 +63,40 @@ describe('manualRevenueDefaults', () => {
     const result = AddManualRevenueSchema.safeParse(withoutAccount);
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe('parseAmountToCents', () => {
+  it('reads a plain amount', () => {
+    expect(parseAmountToCents('250.00')).toBe(25_000);
+    expect(parseAmountToCents('250')).toBe(25_000);
+    expect(parseAmountToCents('0.01')).toBe(1);
+  });
+
+  it('allows a trailing dot mid-keystroke', () => {
+    expect(parseAmountToCents('12.')).toBe(1_200);
+  });
+
+  it('refuses a thousands separator rather than reading its prefix', () => {
+    // parseFloat('1,250.00') is 1. That passes .min(1), submits, reports
+    // success, and overwrites a real figure with $1.00 while the field
+    // still reads 1,250.00.
+    expect(parseAmountToCents('1,250.00')).toBeNull();
+    expect(parseAmountToCents('1 250')).toBeNull();
+  });
+
+  it('refuses currency symbols and stray text', () => {
+    expect(parseAmountToCents('$250')).toBeNull();
+    expect(parseAmountToCents('250usd')).toBeNull();
+    expect(parseAmountToCents('abc')).toBeNull();
+  });
+
+  it('refuses a negative amount', () => {
+    expect(parseAmountToCents('-250')).toBeNull();
+  });
+
+  it('treats empty and whitespace as no amount', () => {
+    expect(parseAmountToCents('')).toBeNull();
+    expect(parseAmountToCents('   ')).toBeNull();
   });
 });

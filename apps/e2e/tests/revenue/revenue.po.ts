@@ -94,22 +94,19 @@ export class RevenuePageObject {
   /**
    * Picks today from the calendar popover.
    *
-   * By the cell's exact text, not its accessible name: react-day-picker
-   * names each button "Monday, September 14th, 2026", so matching on the
-   * day number alone never hits, and reconstructing that string here would
-   * bind the test to a date format the library owns.
+   * By `data-day`, which react-day-picker sets to the cell's ISO date.
+   * Matching on the day number instead hits the wrong cell roughly one day
+   * a month: `showOutsideDays` is on, so the grid opens with the previous
+   * month's trailing days — on 30 September the first `30` in the DOM is
+   * 30 August, it is in the past so no guard blocks it, and the test
+   * silently records a date a month early while still passing.
    */
   async pickToday() {
     await this.page.click('[data-test="revenue-date-trigger"]');
 
-    const today = new Date().getDate().toString();
+    const iso = new Date().toISOString().slice(0, 10);
 
-    await this.page
-      .locator('[role="gridcell"] button', {
-        hasText: new RegExp(`^${today}$`),
-      })
-      .first()
-      .click();
+    await this.page.click(`[role="gridcell"][data-day="${iso}"] button`);
   }
 
   async submit() {

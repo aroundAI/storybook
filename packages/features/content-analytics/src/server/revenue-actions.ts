@@ -7,7 +7,7 @@ import { enhanceAction } from '@kit/next/actions';
 import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { splitRevenueByPayout } from '../lib/revenue-mix';
+import { payoutShare, splitRevenueByPayout } from '../lib/revenue-mix';
 import {
   AddManualRevenueSchema,
   DeleteManualRevenueSchema,
@@ -183,12 +183,12 @@ export const getRevenueSummaryAction = enhanceAction(
       totalViews,
       adsRevenueCents,
       nonAdRevenueCents,
-      adsSharePercent:
-        totalRevenueCents > 0 ? (adsRevenueCents / totalRevenueCents) * 100 : 0,
-      nonAdSharePercent:
-        totalRevenueCents > 0
-          ? (nonAdRevenueCents / totalRevenueCents) * 100
-          : 0,
+      // Over positive buckets, via the shared rule. A signed total is not
+      // a denominator: `{ ads: 10000, sponsorship: -8000 }` reported
+      // adsSharePercent as 500 while the card showed 100 for the same
+      // data. The card was fixed first and this was left behind.
+      adsSharePercent: payoutShare(byType) * 100,
+      nonAdSharePercent: (1 - payoutShare(byType)) * 100,
       adsRpmCents,
       allInRpmCents,
       averageDailyRevenueCents,

@@ -113,6 +113,28 @@ export interface RevenueMixView {
  * CHECK and the YouTube sync writes what the API reports, so a clawback is
  * real and the card should say it is not counting it.
  */
+/**
+ * Payout share of revenue, in [0, 1].
+ *
+ * Over positive buckets only, on both sides of the division. A signed
+ * total is not a denominator: with `{ ads: 10000, sponsorship: -8000 }`
+ * the numerator is 10000 and a signed total is 2000, which reports the
+ * share as 500%. Shared by the card and `getRevenueSummaryAction` so the
+ * two cannot state different numbers for one metric — they did, and the
+ * card was fixed alone.
+ */
+export function payoutShare(byType: Record<string, number>): number {
+  const positive = Object.fromEntries(
+    Object.entries(byType).filter(([, cents]) => cents > 0),
+  );
+
+  const total = Object.values(positive).reduce((sum, cents) => sum + cents, 0);
+
+  if (total <= 0) return 0;
+
+  return splitRevenueByPayout(positive, total).adsRevenueCents / total;
+}
+
 export function revenueMixView(byType: Record<string, number>): RevenueMixView {
   const entries = Object.entries(byType)
     .filter(([, cents]) => cents > 0)
@@ -120,15 +142,10 @@ export function revenueMixView(byType: Record<string, number>): RevenueMixView {
 
   const total = entries.reduce((sum, [, cents]) => sum + cents, 0);
 
-  const { adsRevenueCents } = splitRevenueByPayout(
-    Object.fromEntries(entries),
-    total,
-  );
-
   return {
     entries,
     total,
-    adShare: total > 0 ? adsRevenueCents / total : 0,
+    adShare: payoutShare(byType),
     negatives: Object.entries(byType).filter(([, cents]) => cents < 0),
   };
 }

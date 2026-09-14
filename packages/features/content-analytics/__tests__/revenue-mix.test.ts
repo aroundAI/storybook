@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   REVENUE_CATEGORY_COLOR,
   REVENUE_CATEGORY_LABELS,
+  payoutShare,
   revenueMixView,
   splitRevenueByPayout,
 } from '../src/lib/revenue-mix';
@@ -272,5 +273,37 @@ describe('AddManualRevenueSchema amount', () => {
     expect(
       AddManualRevenueSchema.safeParse({ ...base, revenueCents: 1 }).success,
     ).toBe(true);
+  });
+});
+
+describe('payoutShare', () => {
+  it('is the same number the card and the server both report', () => {
+    // These disagreed: the card said 100% and getRevenueSummaryAction said
+    // 500% for this data, because a signed total was used as a denominator.
+    const byType = { ads: 10_000, sponsorship: -8_000 };
+
+    expect(payoutShare(byType)).toBe(1);
+    expect(revenueMixView(byType).adShare).toBe(payoutShare(byType));
+  });
+
+  it('stays within [0, 1] whatever the buckets do', () => {
+    const cases: Array<Record<string, number>> = [
+      { ads: 10_000, sponsorship: -8_000 },
+      { ads: -5_000, sponsorship: 1_000 },
+      { ads: 10_000, other: -10_000 },
+      { sponsorship: 500 },
+      {},
+    ];
+
+    for (const byType of cases) {
+      const share = payoutShare(byType);
+
+      expect(share).toBeGreaterThanOrEqual(0);
+      expect(share).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('counts premium alongside ads', () => {
+    expect(payoutShare({ ads: 300, premium: 300, other: 400 })).toBe(0.6);
   });
 });

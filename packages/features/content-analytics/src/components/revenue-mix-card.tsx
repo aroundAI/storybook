@@ -40,9 +40,16 @@ export function RevenueMixCard({
   const { entries, total, adShare, negatives } = revenueMixView(byType);
 
   if (total === 0) {
+    // "No revenue recorded" would be wrong when every row was a clawback:
+    // something was recorded, and hiding it is what the negatives
+    // disclosure below exists to stop.
     return (
       <p className={'text-muted-foreground text-sm'}>
-        No revenue recorded for this period.
+        {negatives.length > 0
+          ? `No positive revenue this period — ${negatives.length} negative ${
+              negatives.length === 1 ? 'adjustment' : 'adjustments'
+            } only.`
+          : 'No revenue recorded for this period.'}
       </p>
     );
   }

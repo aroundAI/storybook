@@ -53,7 +53,13 @@ export const AddManualRevenueSchema = z
     // through as a valid zero, which combined with the same-date update
     // path below means submitting a blank form replaces a real figure with
     // $0 and reports success.
-    revenueCents: z.number().int().min(1, 'Enter an amount greater than zero'),
+    revenueCents: z
+      .number()
+      .int()
+      .min(
+        1,
+        'Enter an amount greater than zero, digits only — for example 1250.00',
+      ),
     currency: z.string().length(3).optional().default('USD'),
     category: RevenueCategorySchema.default('sponsorship'),
     notes: z.string().max(1000).optional(),

@@ -101,7 +101,7 @@ test.describe('Manual revenue entry', () => {
     // because one entry per date and category replaces the previous one,
     // that zero would overwrite a real amount and report success.
     await expect(
-      page.getByText('Enter an amount greater than zero'),
+      page.getByText(/Enter an amount greater than zero/),
     ).toBeVisible();
   });
 
@@ -124,6 +124,31 @@ test.describe('Manual revenue entry', () => {
     await revenue.submit();
 
     await revenue.expectSuccessToast();
+  });
+
+  test('refuses a pasted thousands separator rather than saving its prefix', async ({
+    page,
+  }) => {
+    const revenue = new RevenuePageObject(page);
+
+    await revenue.setup();
+
+    // Straight out of a spreadsheet. parseFloat reads this as 1, which
+    // passes validation, submits, reports success, and — because one entry
+    // per date and category replaces the previous — overwrites a real
+    // figure with $1.00 while the field still reads 1,250.00.
+    await revenue.fillAmount('1,250.00');
+    await revenue.pickToday();
+    await revenue.chooseCategory('Licensing');
+    await revenue.submit();
+
+    // The figure is refused, not read as $1.00 and saved.
+    await expect(
+      page.getByText(/Enter an amount greater than zero/),
+    ).toBeVisible();
+    await expect(
+      page.getByText('Revenue entry added successfully'),
+    ).toBeHidden();
   });
 
   test('offers every category the schema accepts', async ({ page }) => {

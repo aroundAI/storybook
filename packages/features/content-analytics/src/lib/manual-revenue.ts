@@ -40,3 +40,32 @@ export function manualRevenueDefaults(
     notes: '',
   };
 }
+
+/** A whole-string amount: digits, optionally one dot and up to two more. */
+const AMOUNT = /^\d+(\.\d{0,2})?$/;
+
+/**
+ * Cents from what the user typed, or null when the text is not an amount.
+ *
+ * `parseFloat` is deliberately not used. It reads a numeric *prefix*, so
+ * pasting `1,250.00` out of a spreadsheet yields `1` — which passes
+ * validation, submits, reports success, and (because one entry per date
+ * and category replaces the previous one) overwrites a real figure with
+ * $1.00, while the field still reads `1,250.00`. The `type="number"`
+ * widget used to reject that at the browser level; parsing the string
+ * ourselves means rejecting it ourselves.
+ *
+ * A trailing dot is allowed so `12.` is 1200 rather than an error
+ * mid-keystroke.
+ */
+export function parseAmountToCents(raw: string): number | null {
+  const text = raw.trim();
+
+  if (text === '') return null;
+
+  const normalised = text.endsWith('.') ? text.slice(0, -1) : text;
+
+  if (!AMOUNT.test(normalised)) return null;
+
+  return Math.round(Number(normalised) * 100);
+}
