@@ -7,7 +7,7 @@ import { Skeleton } from '@kit/ui/skeleton';
 import {
   REVENUE_CATEGORY_COLOR,
   REVENUE_CATEGORY_LABEL,
-  splitRevenueByPayout,
+  revenueMixView,
 } from '../lib/revenue-mix';
 
 interface RevenueMixCardProps {
@@ -37,11 +37,7 @@ export function RevenueMixCard({
     return <RevenueMixCardSkeleton />;
   }
 
-  const entries = Object.entries(byType)
-    .filter(([, cents]) => cents > 0)
-    .sort(([, a], [, b]) => b - a);
-
-  const total = entries.reduce((sum, [, cents]) => sum + cents, 0);
+  const { entries, total, adShare, negatives } = revenueMixView(byType);
 
   if (total === 0) {
     return (
@@ -50,20 +46,6 @@ export function RevenueMixCard({
       </p>
     );
   }
-
-  // ads + premium, via the shared rule — not `byType.ads` alone. The
-  // server's RevenueSummary.adsSharePercent is computed from the same
-  // split, and a channel with Premium revenue would otherwise see two
-  // different numbers for one stated metric on one screen.
-  //
-  // Over the *unfiltered* total, which is what the server divides by.
-  // `total` above covers only the wedges drawn, and those are filtered to
-  // `cents > 0`; revenue_cents has no non-negative CHECK, so on a clawback
-  // day a negative ads bucket would be in this numerator and out of that
-  // denominator, putting the share below zero or above one.
-  const grossTotal = Object.values(byType).reduce((sum, c) => sum + c, 0);
-  const adsCents = splitRevenueByPayout(byType, grossTotal).adsRevenueCents;
-  const adShare = grossTotal !== 0 ? adsCents / grossTotal : 0;
 
   return (
     <div className={'flex flex-col gap-4'}>
@@ -106,6 +88,14 @@ export function RevenueMixCard({
         and Premium). A falling share means other income is growing faster than
         what the platform pays out.
       </p>
+
+      {negatives.length > 0 ? (
+        <p className={'text-muted-foreground text-xs'}>
+          Excludes {negatives.length} negative{' '}
+          {negatives.length === 1 ? 'adjustment' : 'adjustments'} — this mix
+          covers positive revenue only, so it will not match the period total.
+        </p>
+      ) : null}
     </div>
   );
 }

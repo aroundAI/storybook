@@ -85,6 +85,54 @@ export interface RevenueSplit {
   nonAdRevenueCents: number;
 }
 
+export interface RevenueMixView {
+  /** Buckets the chart draws, positive only, largest first. */
+  entries: Array<[string, number]>;
+  /** Sum of those buckets — the denominator for every figure shown. */
+  total: number;
+  /** Payout share of `total`, in [0, 1]. */
+  adShare: number;
+  /** Negative buckets, excluded from the chart and disclosed beside it. */
+  negatives: Array<[string, number]>;
+}
+
+/**
+ * Everything the mix card renders, derived once.
+ *
+ * Here rather than in the component because this share has now been wrong
+ * twice in two different ways: first as `byType.ads / total`, which
+ * disagreed with the server's ads+premium definition, and then as
+ * `(ads + premium) / grossTotal`, where the numerator came from every
+ * bucket and the denominator from the positive ones — so
+ * `{ ads: 10000, sponsorship: -8000 }` rendered 500%, and a gross of zero
+ * rendered 0% beside a full-width ads wedge.
+ *
+ * Numerator and denominator are drawn from the same positive-only set, so
+ * the share cannot leave [0, 1] whatever the data does. Negative buckets
+ * are reported rather than folded in: `revenue_cents` has no non-negative
+ * CHECK and the YouTube sync writes what the API reports, so a clawback is
+ * real and the card should say it is not counting it.
+ */
+export function revenueMixView(byType: Record<string, number>): RevenueMixView {
+  const entries = Object.entries(byType)
+    .filter(([, cents]) => cents > 0)
+    .sort(([, a], [, b]) => b - a);
+
+  const total = entries.reduce((sum, [, cents]) => sum + cents, 0);
+
+  const { adsRevenueCents } = splitRevenueByPayout(
+    Object.fromEntries(entries),
+    total,
+  );
+
+  return {
+    entries,
+    total,
+    adShare: total > 0 ? adsRevenueCents / total : 0,
+    negatives: Object.entries(byType).filter(([, cents]) => cents < 0),
+  };
+}
+
 export function splitRevenueByPayout(
   byType: Partial<Record<RevenueCategory, number>> | Record<string, number>,
   totalRevenueCents: number,

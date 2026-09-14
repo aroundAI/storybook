@@ -114,11 +114,12 @@ export function ManualRevenueForm({
   const handleAmountChange = (value: string) => {
     setAmountText(value);
 
-    const dollars = parseFloat(value) || 0;
+    // Non-numeric is *no amount*, which the schema rejects — not zero,
+    // which it would once have accepted and written over a real figure.
+    const dollars = Number.parseFloat(value);
+    const cents = Number.isFinite(dollars) ? Math.round(dollars * 100) : 0;
 
-    form.setValue('revenueCents', Math.round(dollars * 100), {
-      shouldValidate: true,
-    });
+    form.setValue('revenueCents', cents, { shouldValidate: true });
   };
 
   return (
@@ -262,10 +263,17 @@ export function ManualRevenueForm({
                         <span className="text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2">
                           $
                         </span>
+                        {/*
+                          text + inputMode, not type="number": a number
+                          input returns '' for a mid-edit value like '12.',
+                          so amountText became '' and revenueCents became 0
+                          while the field still displayed 12. — React
+                          rewrites nothing, both sides being ''. Parsing the
+                          raw string ourselves keeps the two in step.
+                        */}
                         <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
+                          type="text"
+                          inputMode="decimal"
                           placeholder="0.00"
                           className="pl-7"
                           value={amountText}
@@ -331,7 +339,9 @@ export function ManualRevenueForm({
                   </Select>
                   <FormDescription>
                     Tracked so the revenue mix — ads falling as a share of the
-                    total — stays measurable.
+                    total — stays measurable. One entry per date and category:
+                    saving again for the same pair <strong>replaces</strong> the
+                    earlier amount rather than adding to it.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

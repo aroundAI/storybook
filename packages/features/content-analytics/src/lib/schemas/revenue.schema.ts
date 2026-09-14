@@ -49,7 +49,11 @@ export const AddManualRevenueSchema = z
     date: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
-    revenueCents: z.number().int().min(0),
+    // At least one cent. `min(0)` let an untouched — or mid-edit — amount
+    // through as a valid zero, which combined with the same-date update
+    // path below means submitting a blank form replaces a real figure with
+    // $0 and reports success.
+    revenueCents: z.number().int().min(1, 'Enter an amount greater than zero'),
     currency: z.string().length(3).optional().default('USD'),
     category: RevenueCategorySchema.default('sponsorship'),
     notes: z.string().max(1000).optional(),

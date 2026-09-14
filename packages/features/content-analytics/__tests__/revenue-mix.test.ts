@@ -5,9 +5,13 @@ import { describe, expect, it } from 'vitest';
 import {
   REVENUE_CATEGORY_COLOR,
   REVENUE_CATEGORY_LABELS,
+  revenueMixView,
   splitRevenueByPayout,
 } from '../src/lib/revenue-mix';
-import { RevenueCategorySchema } from '../src/lib/schemas/revenue.schema';
+import {
+  AddManualRevenueSchema,
+  RevenueCategorySchema,
+} from '../src/lib/schemas/revenue.schema';
 
 describe('RevenueCategorySchema', () => {
   it('accepts licensing', () => {
@@ -178,5 +182,95 @@ describe('REVENUE_CATEGORY_COLOR', () => {
 
   it('keeps other visually distinct from the named categories', () => {
     expect(REVENUE_CATEGORY_COLOR.other).toBe('bg-muted-foreground');
+  });
+});
+
+describe('revenueMixView', () => {
+  it('shares the denominator with the wedges it draws', () => {
+    const view = revenueMixView({ ads: 600, sponsorship: 400 });
+
+    expect(view.total).toBe(1000);
+    expect(view.adShare).toBe(0.6);
+  });
+
+  it('counts premium as a payout, matching the server', () => {
+    // RevenueSummary.adsSharePercent is ads + premium. A card showing
+    // ads alone puts two numbers for one metric on one screen.
+    expect(revenueMixView({ ads: 400, premium: 200, other: 400 }).adShare).toBe(
+      0.6,
+    );
+  });
+
+  it('cannot exceed 1 when a bucket is negative', () => {
+    // { ads: 10000, sponsorship: -8000 } rendered "500% of revenue comes
+    // from platform payouts" when the numerator came from every bucket and
+    // the denominator from the positive ones.
+    const view = revenueMixView({ ads: 10_000, sponsorship: -8_000 });
+
+    expect(view.adShare).toBe(1);
+    expect(view.total).toBe(10_000);
+  });
+
+  it('cannot go below 0 when payouts themselves are clawed back', () => {
+    const view = revenueMixView({ ads: -5_000, sponsorship: 1_000 });
+
+    expect(view.adShare).toBe(0);
+    expect(view.adShare).toBeGreaterThanOrEqual(0);
+  });
+
+  it('reports negative buckets rather than hiding them', () => {
+    const view = revenueMixView({ ads: 10_000, other: -2_000 });
+
+    expect(view.negatives).toEqual([['other', -2_000]]);
+    expect(view.entries.map(([name]) => name)).not.toContain('other');
+  });
+
+  it('is empty, not NaN, when everything nets to nothing', () => {
+    // A gross of zero previously rendered 0% beside a full-width wedge.
+    const view = revenueMixView({ ads: 10_000, other: -10_000 });
+
+    expect(view.total).toBe(10_000);
+    expect(view.adShare).toBe(1);
+    expect(Number.isNaN(view.adShare)).toBe(false);
+  });
+
+  it('has no share at all with no positive revenue', () => {
+    const view = revenueMixView({});
+
+    expect(view.total).toBe(0);
+    expect(view.adShare).toBe(0);
+  });
+
+  it('orders wedges largest first', () => {
+    const view = revenueMixView({ other: 100, ads: 900, premium: 500 });
+
+    expect(view.entries.map(([name]) => name)).toEqual([
+      'ads',
+      'premium',
+      'other',
+    ]);
+  });
+});
+
+describe('AddManualRevenueSchema amount', () => {
+  const base = {
+    accountId: '550e8400-e29b-41d4-a716-446655440000',
+    date: '2026-09-14',
+    category: 'licensing' as const,
+  };
+
+  it('rejects a zero amount', () => {
+    // min(0) let an untouched or mid-edit amount through, and the same-date
+    // update path would then replace a real figure with $0 and report
+    // success.
+    expect(
+      AddManualRevenueSchema.safeParse({ ...base, revenueCents: 0 }).success,
+    ).toBe(false);
+  });
+
+  it('accepts one cent', () => {
+    expect(
+      AddManualRevenueSchema.safeParse({ ...base, revenueCents: 1 }).success,
+    ).toBe(true);
   });
 });
