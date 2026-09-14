@@ -2,7 +2,7 @@
 
 import { BarChart3 } from 'lucide-react';
 
-import { SPREAD_CARRIED_MIN } from '@kit/clickhouse';
+import { interpretSpread } from '@kit/clickhouse';
 import type { SegmentConfidence } from '@kit/clickhouse';
 import { Progress } from '@kit/ui/progress';
 import { Skeleton } from '@kit/ui/skeleton';
@@ -139,7 +139,7 @@ export function TagMediansCard({
               </span>
             ) : null}
 
-            {row.spread !== null && row.spread > SPREAD_CARRIED_MIN ? (
+            {interpretSpread(row.spread) === 'carried_by_one' ? (
               <span>One video carrying it</span>
             ) : null}
 

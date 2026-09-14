@@ -22,6 +22,10 @@ export {
   CONFIDENCE_REPORTABLE_MIN,
   SPREAD_CARRIED_MIN,
   SPREAD_CONSISTENT_MAX,
+  computeSpread,
+  interpretSpread,
+  pooledRpmCents,
+  resolveConfidence,
 } from './lib/segment-stats';
 export type {
   SegmentConfidence,

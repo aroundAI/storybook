@@ -104,9 +104,42 @@ cross-store composition, and it forces a disclosure:
   it cannot be attributed to a tag or a language. Silently dropping it
   would understate every segment's RPM against a total the user can see
   elsewhere.
-- Every result therefore carries `attributedRevenueOnly: true` and
-  `excludedRevenueCents` — the channel-level total for the same window — so
-  the UI can state the gap rather than let the user find it.
+- Every result therefore carries `attributedRevenueOnly: true`,
+  `channelLevelRevenueCents` and `unattributedRevenueCents`, so the UI can
+  state the gap rather than let the user find it. **Every cent streamed in
+  lands in exactly one of the three buckets** — a segment, channel-level,
+  or unattributed — and an earlier implementation silently dropped the
+  third, so revenue from another project under the same account, or from a
+  video excluded as immature, vanished from every total.
+
+### The revenue window is per video, and is derived rather than asked for
+
+An earlier draft left the window unspecified and the first implementation
+took `revenueFrom`/`revenueTo` from the caller. **That produced an RPM
+wrong by an arbitrary factor**, and the defect is worth stating because it
+looks right: the denominator, `totalViews`, is each video's views in its
+*first `checkpointDays` of life*, summed over every eligible video ever
+published — while the numerator was revenue over a calendar window. A
+channel with three years of uploads asking for last month's revenue got
+last month's earnings over three years of first-30-day views.
+
+**`rpmCents` therefore means: cents earned per thousand views, both
+measured over each video's own first `checkpointDays`.** Each revenue row
+is admitted only when its `record_date` falls in `[published_at,
+published_at + checkpointDays)` — the same half-open `< N` convention the
+phase uses everywhere. Revenue outside that span is real but unattributable
+to this figure, and is counted in `unattributedRevenueCents`.
+
+The fetch window is computed from the membership (earliest window start to
+latest window end) rather than supplied, so the two halves of the rate
+cannot be given different spans by a caller.
+
+### A partial membership suppresses the rate entirely
+
+Membership paging is bounded. If the bound is hit, `rpmCents` is omitted
+from every row rather than computed from what was read: a rate understated
+by an unknown amount reads as a finding about the content. The distribution
+figures are unaffected and still render.
 
 Reads use `forEachAccountRevenueRow` (`server/revenue-queries.ts:41`),
 already paged and already split across the two PostgREST query shapes
@@ -187,7 +220,13 @@ interpolating caller text; `dimension` is a bound parameter used as a
 - [x] `confidence` is derived from `matureVideoCount`, not `videoCount`
 - [x] A `directional` segment renders dimmed with its n, and is not hidden
 - [x] `rpmCents` is pooled, and is absent rather than zero when revenue was not requested
-- [x] Channel-level revenue is excluded from `rpmCents` and reported as `excludedRevenueCents`
+- [x] Channel-level revenue is excluded from `rpmCents` and reported as `channelLevelRevenueCents`
+- [x] Revenue is bounded to each video's own checkpoint window, so the rate's numerator and denominator cover the same span
+- [x] Every streamed cent lands in a segment, `channelLevelRevenueCents` or `unattributedRevenueCents` — none is dropped
+- [x] A truncated membership suppresses `rpmCents` rather than understating it
+- [x] `minVideos` gates on `matureVideoCount`, so a segment with nothing measurable is trimmed rather than rendered as zero
+- [x] A `tag` segment with no `dimension` returns every tag rather than silently none
+- [x] One `asOf` is resolved per request and passed to every query
 - [x] `attributedRevenueOnly` is surfaced wherever `rpmCents` renders
 - [x] Revenue is read through `forEachAccountRevenueRow` and is never collected whole for a long window
 - [x] `getMedianByTagAction` returns the new shape and keeps both existing sample gates

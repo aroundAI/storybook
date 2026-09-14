@@ -822,6 +822,13 @@ function segmentEligible(days: number): string {
  * The reach leg is UNIONed rather than joined — both tables carry one row
  * per video per day, and a join would multiply views by impression days.
  *
+ * Each zero-filled column must be cast to the *declared* type of the column
+ * it stands in for — `views` and `watch_time_seconds` are UInt64
+ * (`002_metrics_v2.ts`), `impressions` UInt64 — because ClickHouse refuses
+ * to find a supertype for UInt64 and Float64: "there is no floating point
+ * type that can exactly represent all required integers". A mocked client
+ * cannot catch this; `pnpm verify` against a real server is what does.
+ *
  * `days` is floored by both callers before it reaches here, and `grouping`
  * comes from SEGMENT_GROUPINGS, so neither is caller text.
  */
@@ -851,7 +858,7 @@ function segmentPerVideoSql(
 
       SELECT
         video_id, project_id, metric_date,
-        toUInt64(0) as views, toFloat64(0) as watch_time_seconds,
+        toUInt64(0) as views, toUInt64(0) as watch_time_seconds,
         impressions, impressions_ctr * impressions as ctr_weighted
       FROM video_reach_daily FINAL
       WHERE video_id IN (SELECT video_id FROM dim)
@@ -860,6 +867,7 @@ function segmentPerVideoSql(
       SELECT
         d.video_id as video_id,
         ${grouping} as segment,
+        d.published_at as published_at,
         dateDiff('day', d.published_at, {asOf: DateTime}) as age_days,
         if(
           any(i.ingest_start) > toDate(0),
@@ -877,6 +885,26 @@ function segmentPerVideoSql(
       GROUP BY video_id, segment, d.published_at
     )
   `;
+}
+
+/**
+ * `LIKE` clause restricting tag segments to one dimension.
+ *
+ * Empty for every other kind, and empty when no dimension is given —
+ * `dimension:slug` means a prefix built from an absent dimension is ':%',
+ * which matches no tag in existence. Returning every tag is a defensible
+ * answer; returning none with no error is not.
+ */
+function segmentTagFilter(
+  kind: SegmentKind,
+  dimension: string | undefined,
+  params: Record<string, unknown>,
+): string {
+  if (kind !== 'tag' || !dimension) return '';
+
+  params.tagPrefix = `${dimension}:%`;
+
+  return 'segment LIKE {tagPrefix: String}';
 }
 
 /** Resolves a segment kind, refusing anything outside the closed lookup. */
@@ -961,12 +989,10 @@ export async function querySegmentPerformance(input: {
   params.asOf = input.asOf ?? formatClickHouseDateTime(new Date());
 
   // Only tags carry a dimension prefix; the other kinds are whole columns.
-  const tagFilter =
-    kind === 'tag' ? 'WHERE segment LIKE {tagPrefix: String}' : '';
-
-  if (kind === 'tag') {
-    params.tagPrefix = `${input.segment.dimension ?? ''}:%`;
-  }
+  // Omitted when no dimension is given: tags are stored as `dimension:slug`,
+  // so a prefix of ':%' matches nothing and would report "no tags" for an
+  // account full of them — a silent empty result, not a filter.
+  const tagFilter = segmentTagFilter(kind, input.segment.dimension, params);
 
   const eligible = segmentEligible(days);
 
@@ -988,9 +1014,9 @@ export async function querySegmentPerformance(input: {
       sumIf(v_impressions, ${eligible}) as impressions,
       sumIf(v_ctr_weighted, ${eligible}) as ctr_weighted
     FROM per_video
-    ${tagFilter}
+    ${tagFilter ? `WHERE ${tagFilter}` : ''}
     GROUP BY segment
-    HAVING video_count >= {minVideos: UInt32}
+    HAVING mature_video_count >= {minVideos: UInt32}
     ORDER BY median_views DESC
   `;
 
@@ -1051,6 +1077,11 @@ export interface SegmentMembershipRow {
   videoId: string;
   /** Views at the checkpoint — the RPM denominator for this video. */
   views: number;
+  /**
+   * Publish date, so revenue can be bounded to the same window the views
+   * cover. Without it the two halves of the rate measure different spans.
+   */
+  publishedAt: string;
 }
 
 /**
@@ -1093,21 +1124,17 @@ export async function querySegmentMembership(input: {
 
   params.asOf = input.asOf ?? formatClickHouseDateTime(new Date());
 
-  const tagFilter =
-    kind === 'tag' ? 'AND segment LIKE {tagPrefix: String}' : '';
-
-  if (kind === 'tag') {
-    params.tagPrefix = `${input.segment.dimension ?? ''}:%`;
-  }
+  const tagFilter = segmentTagFilter(kind, input.segment.dimension, params);
 
   const query = `
     ${segmentPerVideoSql(conditions, grouping, days)}
     SELECT
       segment,
       video_id,
-      v_views as views
+      v_views as views,
+      toString(published_at) as published_at
     FROM per_video
-    WHERE ${segmentEligible(days)} ${tagFilter}
+    WHERE ${segmentEligible(days)}${tagFilter ? ` AND ${tagFilter}` : ''}
     ORDER BY segment ASC, video_id ASC
     LIMIT ${limit} OFFSET ${offset}
   `;
@@ -1122,12 +1149,14 @@ export async function querySegmentMembership(input: {
     segment: string;
     video_id: string;
     views: number;
+    published_at: string;
   }>();
 
   return rows.map((row) => ({
     segment: String(row.segment),
     videoId: String(row.video_id),
     views: Number(row.views ?? 0),
+    publishedAt: String(row.published_at),
   }));
 }
 

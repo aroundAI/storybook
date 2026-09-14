@@ -578,6 +578,51 @@ async function assertions() {
   });
 
   await step(
+    'assert: a segment with no mature videos is trimmed, not shown as zero',
+    async () => {
+      // Gating on video_count instead would return this segment with every
+      // aggregate empty — medianViews 0 over a real video count — which
+      // renders as a measured zero rather than an absent measurement.
+      const rows = await querySegmentPerformance({
+        scope,
+        segment: { kind: 'language' },
+        minVideos: 1,
+        // No video in the fixture is a year old as of its publish date, so
+        // every segment should fall below the gate rather than come back
+        // with zeroed figures.
+        checkpointDays: 3650,
+      });
+
+      const zeroed = rows.find((r) => r.matureVideoCount === 0);
+
+      if (zeroed) {
+        throw new Error(
+          `segment "${zeroed.segment}" returned with 0 mature videos and medianViews=${zeroed.medianViews}`,
+        );
+      }
+
+      return `${rows.length} segment(s) survived a 3650-day checkpoint`;
+    },
+  );
+
+  await step(
+    'assert: an absent tag dimension returns tags rather than nothing',
+    async () => {
+      const all = await querySegmentPerformance({
+        scope,
+        segment: { kind: 'tag' },
+        minVideos: 1,
+      });
+
+      if (all.length === 0) {
+        throw new Error('no tags returned when no dimension was given');
+      }
+
+      return `${all.length} tag(s) across all dimensions`;
+    },
+  );
+
+  await step(
     'assert: pre-ingest videos are excluded from a checkpoint',
     async () => {
       const rows = await queryCohortMedians({

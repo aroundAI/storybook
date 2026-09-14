@@ -9,45 +9,115 @@
  * An accumulator rather than a function over an array: revenue_records
  * holds a row per publish per day per category, so a yearly window on a
  * busy account reaches six figures and is streamed a page at a time.
+ *
+ * Two rules make the resulting rate meaningful rather than merely present:
+ *
+ * **Every cent is accounted for.** A row lands in exactly one of three
+ * buckets — a segment, `channelLevelCents`, or `unattributedCents` — and
+ * the three sum to what was streamed in. An earlier version silently
+ * dropped any publish outside the membership, so revenue from another
+ * project, or from a video excluded as immature, vanished without
+ * appearing in any total the UI could show.
+ *
+ * **Revenue is bounded to the same window as the views.** `totalViews` is
+ * each video's views in its first N days of life, so revenue must be each
+ * video's earnings over that same span. Dividing a calendar month's
+ * revenue by a lifetime of first-30-day views is an RPM wrong by whatever
+ * ratio those windows happen to stand in.
  */
 
 /** The only fields of a revenue row this fold reads. */
 export interface FoldableRevenueRow {
   publish_id: string | null;
+  record_date: string;
   revenue_cents: number;
+}
+
+/** A video's segments and the window its views were measured over. */
+export interface MembershipEntry {
+  segments: string[];
+  /** Inclusive first day of the video's checkpoint window, 'YYYY-MM-DD'. */
+  windowStart: string;
+  /** Exclusive last day of that window, 'YYYY-MM-DD'. */
+  windowEnd: string;
 }
 
 export interface SegmentRevenueTotals {
   revenueBySegment: Map<string, number>;
   /**
-   * Channel-level revenue: real income belonging to no segment, because
-   * `revenue_records` permits a row scoped to an account rather than a
-   * publish. Kept so the gap can be stated rather than discovered.
+   * Revenue scoped to an account rather than a publish: real income that
+   * belongs to no video, and therefore to no segment.
    */
-  excludedRevenueCents: number;
+  channelLevelCents: number;
+  /**
+   * Revenue on a publish that is not in the membership, or is but falls
+   * outside its checkpoint window. Neither attributable nor channel-level
+   * — reported so the difference against a total shown elsewhere can be
+   * explained rather than discovered.
+   */
+  unattributedCents: number;
+}
+
+/** Day the video's checkpoint window opens and closes, as date strings. */
+export function checkpointWindow(
+  publishedAt: string,
+  checkpointDays: number,
+): { windowStart: string; windowEnd: string } {
+  // Parsed as UTC. ClickHouse hands back zone-less timestamps, which V8
+  // reads as local for 'YYYY-MM-DD HH:MM:SS' and as UTC for 'YYYY-MM-DD' —
+  // so an unqualified Date() here shifts the window by a day either side
+  // of midnight depending on where the process runs.
+  const start = new Date(`${publishedAt.slice(0, 10)}T00:00:00Z`);
+  const end = new Date(start);
+
+  end.setUTCDate(end.getUTCDate() + checkpointDays);
+
+  return {
+    windowStart: start.toISOString().slice(0, 10),
+    windowEnd: end.toISOString().slice(0, 10),
+  };
 }
 
 export function createSegmentRevenueFold(
-  segmentsByVideo: Map<string, string[]>,
+  membership: Map<string, MembershipEntry>,
 ) {
   const revenueBySegment = new Map<string, number>();
-  let excludedRevenueCents = 0;
+  let channelLevelCents = 0;
+  let unattributedCents = 0;
 
   return {
     add(row: FoldableRevenueRow): void {
       if (!row.publish_id) {
-        excludedRevenueCents += row.revenue_cents;
+        channelLevelCents += row.revenue_cents;
         return;
       }
 
-      const segments = segmentsByVideo.get(row.publish_id);
+      const entry = membership.get(row.publish_id);
 
-      // A video absent from the membership was excluded from the figures
-      // too — immature, or predating ingest. Its revenue must not land in
-      // a segment whose views do not include it, or the rate inflates.
-      if (!segments) return;
+      // Absent from the membership: another project under the same
+      // account, or a video excluded as immature or predating ingest. Its
+      // views are not in any denominator, so its revenue must not be in
+      // any numerator — but it is still money, so it is still counted.
+      if (!entry) {
+        unattributedCents += row.revenue_cents;
+        return;
+      }
 
-      for (const name of segments) {
+      const day = row.record_date.slice(0, 10);
+
+      // Outside the window the views were measured over. Half-open, so a
+      // 30-day checkpoint covers days 0-29 — the `< N` convention the rest
+      // of the phase uses.
+      if (day < entry.windowStart || day >= entry.windowEnd) {
+        unattributedCents += row.revenue_cents;
+        return;
+      }
+
+      // A video in four tags contributes its revenue to four segments,
+      // exactly as it contributes its views to four medians. Segment
+      // totals therefore do not sum to the account total, which is a
+      // property of overlapping segments and not double-counting.
+      for (const name of entry.segments) {
         revenueBySegment.set(
           name,
           (revenueBySegment.get(name) ?? 0) + row.revenue_cents,
@@ -56,7 +126,7 @@ export function createSegmentRevenueFold(
     },
 
     result(): SegmentRevenueTotals {
-      return { revenueBySegment, excludedRevenueCents };
+      return { revenueBySegment, channelLevelCents, unattributedCents };
     },
   };
 }

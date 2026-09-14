@@ -14,7 +14,11 @@ import {
 import { enhanceAction } from '@kit/next/actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { createSegmentRevenueFold } from '../lib/segment-revenue';
+import type { MembershipEntry } from '../lib/segment-revenue';
+import {
+  checkpointWindow,
+  createSegmentRevenueFold,
+} from '../lib/segment-revenue';
 import { forEachAccountRevenueRow } from './revenue-queries';
 import { assertScopeAccess } from './scope-access';
 
@@ -44,24 +48,10 @@ const SegmentPerformanceSchema = z
     minVideos: z.number().int().min(1).max(1000).default(5),
     checkpointDays: z.number().int().min(1).max(730).default(30),
     includeRevenue: z.boolean().default(false),
-    revenueFrom: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .optional(),
-    revenueTo: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .optional(),
   })
   .refine((input) => input.projectId || input.accountId, {
     message: 'projectId or accountId is required',
-  })
-  .refine(
-    (input) => !input.includeRevenue || (input.revenueFrom && input.revenueTo),
-    {
-      message: 'revenueFrom and revenueTo are required when including revenue',
-    },
-  );
+  });
 
 export interface SegmentPerformanceEntry extends SegmentPerformanceRow {
   /**
@@ -74,17 +64,23 @@ export interface SegmentPerformanceEntry extends SegmentPerformanceRow {
 export interface SegmentPerformanceResult {
   rows: SegmentPerformanceEntry[];
   /**
-   * True whenever `rpmCents` is present. Revenue can only be attributed to
-   * a segment through a publish, so channel-level rows are never in it —
-   * the UI must say so wherever the rate renders.
+   * True whenever `rpmCents` is present. Revenue reaches a segment only
+   * through a publish, and only within that video's own checkpoint window
+   * — the UI must say so wherever the rate renders.
    */
   attributedRevenueOnly: boolean;
   /**
-   * Channel-level revenue in the same window: real income that belongs to
-   * no segment. Surfaced so the gap against a total the user can see
-   * elsewhere is stated rather than discovered.
+   * Revenue scoped to an account rather than a publish: real income
+   * belonging to no video, and so to no segment.
    */
-  excludedRevenueCents: number;
+  channelLevelRevenueCents: number;
+  /**
+   * Revenue on a publish outside the measured set — another project under
+   * the same account, a video excluded as immature, or earnings after its
+   * checkpoint window closed. Reported rather than dropped so the gap
+   * against a total shown elsewhere can be explained.
+   */
+  unattributedRevenueCents: number;
 }
 
 /**
@@ -98,8 +94,10 @@ async function collectMembership(input: {
   scope: Parameters<typeof querySegmentMembership>[0]['scope'];
   segment: { kind: SegmentKind; dimension?: string };
   checkpointDays: number;
+  asOf: string;
 }) {
-  const segmentsByVideo = new Map<string, string[]>();
+  const membership = new Map<string, MembershipEntry>();
+  let truncated = true;
 
   for (let page = 0; page < MEMBERSHIP_MAX_PAGES; page++) {
     const rows = await querySegmentMembership({
@@ -109,19 +107,39 @@ async function collectMembership(input: {
     });
 
     for (const row of rows) {
-      const existing = segmentsByVideo.get(row.videoId);
+      const existing = membership.get(row.videoId);
 
       if (existing) {
-        existing.push(row.segment);
-      } else {
-        segmentsByVideo.set(row.videoId, [row.segment]);
+        existing.segments.push(row.segment);
+        continue;
       }
+
+      membership.set(row.videoId, {
+        segments: [row.segment],
+        ...checkpointWindow(row.publishedAt, input.checkpointDays),
+      });
     }
 
-    if (rows.length < MEMBERSHIP_PAGE_SIZE) break;
+    if (rows.length < MEMBERSHIP_PAGE_SIZE) {
+      truncated = false;
+      break;
+    }
   }
 
-  return segmentsByVideo;
+  return { membership, truncated };
+}
+
+/** Earliest and latest day any video checkpoint window touches. */
+function revenueFetchWindow(membership: Map<string, MembershipEntry>) {
+  let from: string | undefined;
+  let to: string | undefined;
+
+  for (const entry of membership.values()) {
+    if (!from || entry.windowStart < from) from = entry.windowStart;
+    if (!to || entry.windowEnd > to) to = entry.windowEnd;
+  }
+
+  return from && to ? { from, to } : null;
 }
 
 /**
@@ -159,38 +177,66 @@ export const getSegmentPerformanceAction = enhanceAction(
 
     const segment = { kind: input.kind, dimension: input.dimension };
 
+    // Resolved once and passed to every query. Each call would otherwise
+    // evaluate its own `now`, and across a UTC midnight `age_days` shifts
+    // mid-pagination — a video crossing into eligibility between pages is
+    // then skipped or repeated by the OFFSET, and the rate's numerator
+    // covers a video set its denominator does not.
+    const asOf = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+    const empty = {
+      attributedRevenueOnly: false,
+      channelLevelRevenueCents: 0,
+      unattributedRevenueCents: 0,
+    };
+
     const rows = await querySegmentPerformance({
       scope,
       segment,
       minVideos: input.minVideos,
       checkpointDays: input.checkpointDays,
+      asOf,
     });
 
     if (!input.includeRevenue || rows.length === 0 || !scopeAccountId) {
-      return { rows, attributedRevenueOnly: false, excludedRevenueCents: 0 };
+      return { rows, ...empty };
     }
 
-    const segmentsByVideo = await collectMembership({
+    const { membership, truncated } = await collectMembership({
       scope,
       segment,
       checkpointDays: input.checkpointDays,
+      asOf,
     });
 
-    const fold = createSegmentRevenueFold(segmentsByVideo);
+    // A partial membership understates every segment's rate by an unknown
+    // amount, and an RPM quietly too low is worse than none: it reads as a
+    // finding about the content. Figures without revenue still stand.
+    if (truncated) return { rows, ...empty };
+
+    const window = revenueFetchWindow(membership);
+
+    if (!window) return { rows, ...empty };
+
+    const fold = createSegmentRevenueFold(membership);
     const client = getSupabaseServerClient();
 
-    // Streamed, not collected: revenue_records holds a row per publish per
-    // day per category, so a yearly window on a busy account reaches six
-    // figures.
+    // The window is derived from the data, not asked for: it spans every
+    // video's own checkpoint window, so each video's revenue is bounded to
+    // exactly the days its views were counted over. Streamed, not
+    // collected — revenue_records holds a row per publish per day per
+    // category.
     await forEachAccountRevenueRow(
       client,
       scopeAccountId,
-      input.revenueFrom!,
-      input.revenueTo!,
+      window.from,
+      window.to,
       (row) => fold.add(row),
+      { toExclusive: true },
     );
 
-    const { revenueBySegment, excludedRevenueCents } = fold.result();
+    const { revenueBySegment, channelLevelCents, unattributedCents } =
+      fold.result();
 
     return {
       rows: rows.map((row) => ({
@@ -201,7 +247,8 @@ export const getSegmentPerformanceAction = enhanceAction(
         ),
       })),
       attributedRevenueOnly: true,
-      excludedRevenueCents,
+      channelLevelRevenueCents: channelLevelCents,
+      unattributedRevenueCents: unattributedCents,
     };
   },
   { schema: SegmentPerformanceSchema, auth: true },

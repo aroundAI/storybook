@@ -1057,13 +1057,31 @@ describe('queries-advanced', () => {
       expect(query).not.toContain('INNER JOIN video_daily_stats m');
     });
 
-    it('trims the tail with minVideos', async () => {
+    it('trims the tail on the count the figures are computed over', async () => {
+      // Gating on video_count would admit a segment of 8 videos all
+      // younger than the checkpoint: every *If(…, eligible) aggregate is
+      // then empty and the row renders as a measured zero.
       await run({ kind: 'language' }, { minVideos: 7 });
 
       const { query, query_params } = lastQuery();
 
-      expect(query).toContain('HAVING video_count >= {minVideos: UInt32}');
+      expect(query).toContain(
+        'HAVING mature_video_count >= {minVideos: UInt32}',
+      );
+      expect(query).not.toContain('HAVING video_count');
       expect(query_params.minVideos).toBe(7);
+    });
+
+    it('returns every tag when no dimension is given, rather than none', async () => {
+      // Tags are stored as `dimension:slug`, so a prefix built from an
+      // absent dimension is ':%' and matches nothing — a silent empty
+      // result that reads as "this account has no tags".
+      await run({ kind: 'tag' });
+
+      const { query, query_params } = lastQuery();
+
+      expect(query).not.toContain('tagPrefix');
+      expect(query_params.tagPrefix).toBeUndefined();
     });
 
     it('derives confidence from the mature count, not the video count', async () => {
@@ -1161,16 +1179,33 @@ describe('queries-advanced', () => {
 
     it('returns one row per video per segment it belongs to', async () => {
       mockQueryResult.json.mockResolvedValue([
-        { segment: 'en', video_id: 'v1', views: '900' },
-        { segment: 'es', video_id: 'v2', views: '100' },
+        {
+          segment: 'en',
+          video_id: 'v1',
+          views: '900',
+          published_at: '2026-01-01 00:00:00',
+        },
       ]);
 
       const rows = await runMembership();
 
       expect(rows).toEqual([
-        { segment: 'en', videoId: 'v1', views: 900 },
-        { segment: 'es', videoId: 'v2', views: 100 },
+        {
+          segment: 'en',
+          videoId: 'v1',
+          views: 900,
+          publishedAt: '2026-01-01 00:00:00',
+        },
       ]);
+    });
+
+    it('carries published_at so revenue can be bounded to the same window', async () => {
+      // totalViews is each video's first N days. Revenue over any other
+      // span divided by it is an RPM wrong by whatever ratio the two
+      // windows happen to stand in.
+      await runMembership();
+
+      expect(lastQuery().query).toContain('published_at');
     });
 
     it('counts only the videos the aggregate counted', async () => {
