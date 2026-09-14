@@ -614,6 +614,44 @@ PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test revenue
 CAPTURE_EVIDENCE=1 EVIDENCE_DIR=/tmp/evidence npx playwright test revenue-evidence
 ```
 
+### Posting screenshots to a PR — `gh --attach` ⚠️
+
+**`gh` uploads images directly. Do not claim otherwise.** The flag landed in
+**gh 2.99.0** (this repo is on 2.100.0), and an assistant working from older
+knowledge will confidently state that GitHub's `user-attachments` store is
+web-upload only. It is not, and that claim cost a round trip here.
+
+Supported on six commands: `gh issue create|edit|comment` and
+`gh pr create|edit|comment`. Up to 50 files per command. Alt text goes after
+a `#`; without one the filename is used.
+
+```bash
+gh pr comment 256 \
+  --body-file body.md \
+  --attach "/abs/path/02-blank-amount.png#The form refusing a blank amount" \
+  --attach "/abs/path/04-after-save.png#Every field back to its default"
+```
+
+**The path in `--attach` must match the reference in the body, character for
+character.** `gh` rewrites `![alt](<path>)` only where `<path>` is the exact
+string passed to `--attach`; anything it cannot match is appended at the end
+instead, leaving the inline reference dead. Passing `/abs/path/x.png` while
+the body says `./x.png` produces five broken images *and* five appended
+duplicates — use the same absolute path in both, or run from the directory
+holding the files and use the same relative path in both.
+
+Verify rather than assume, because a broken image renders as alt text and is
+easy to miss:
+
+```bash
+gh pr view <n> --json comments \
+  --jq '.comments[-1].body' | grep -oE '!\[[^]]*\]\([^)]+\)'
+# every URL should be https://github.com/user-attachments/...
+```
+
+`--edit-last` amends your own most recent comment, so a botched attach is
+fixable in place rather than by posting again.
+
 ## Feature Specifications
 
 Feature implementations must adhere to the specifications in the `specs/` folder:

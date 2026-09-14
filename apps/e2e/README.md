@@ -377,10 +377,27 @@ CAPTURE_EVIDENCE=1 EVIDENCE_DIR=/tmp/evidence \
   npx playwright test revenue-evidence
 ```
 
-GitHub's image store for comments is web-upload only, so the PNGs are
-dragged into the comment by hand. Put the measured table in the comment
-text, where it is reviewable and greppable, and let the screenshots
-illustrate it.
+Attach them with `gh --attach` (gh 2.99.0+; this repo is on 2.100.0) rather
+than dragging them into the web UI:
+
+```bash
+gh pr comment 256 \
+  --body-file body.md \
+  --attach "/abs/path/02-blank-amount.png#The form refusing a blank amount"
+```
+
+The path given to `--attach` must match the `![alt](<path>)` reference in the
+body exactly, or `gh` appends the upload at the end and leaves the inline
+reference broken. Check afterwards — a broken image renders as alt text and
+reads as fine at a glance:
+
+```bash
+gh pr view 256 --json comments --jq '.comments[-1].body' \
+  | grep -oE '!\[[^]]*\]\([^)]+\)'
+```
+
+Put the measured table in the comment text, where it is reviewable and
+greppable, and let the screenshots illustrate it.
 
 ## Contributing
 
