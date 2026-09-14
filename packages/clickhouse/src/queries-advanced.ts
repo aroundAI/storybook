@@ -872,6 +872,97 @@ const SEGMENT_GROUPINGS = {
 
 export type SegmentKind = keyof typeof SEGMENT_GROUPINGS;
 
+/**
+ * Videos the figures at this checkpoint are computed over.
+ *
+ * Old enough to have reached it, and with a channel whose ingest covers
+ * the window. Shared by both segment queries: the pooled RPM divides
+ * revenue from the membership by views from the aggregate, so a video
+ * admitted to one and not the other silently skews the rate.
+ */
+function segmentEligible(days: number): string {
+  return `age_days >= ${days} AND ingest_lag_days < ${days}`;
+}
+
+/**
+ * CTEs reducing a scope to one row per (video, segment) at a checkpoint.
+ *
+ * Ingest start is a property of the CHANNEL, not the video: a video with
+ * no rows on a well-ingested channel is a real zero and must keep counting
+ * as one. One row per connection, so the join cannot multiply.
+ *
+ * The reach leg is UNIONed rather than joined — both tables carry one row
+ * per video per day, and a join would multiply views by impression days.
+ *
+ * `days` is floored by both callers before it reaches here, and `grouping`
+ * comes from SEGMENT_GROUPINGS, so neither is caller text.
+ */
+function segmentPerVideoSql(
+  conditions: string,
+  grouping: string,
+  days: number,
+): string {
+  return `
+    WITH dim AS (${dimSubquery(conditions)}),
+    ingest AS (
+      SELECT d.connection_id as connection_id, min(s.metric_date) as ingest_start
+      FROM dim d
+      INNER JOIN video_daily_stats s
+        ON s.video_id = d.video_id AND s.project_id = d.project_id
+      GROUP BY d.connection_id
+    ),
+    metrics AS (
+      SELECT
+        video_id, project_id, metric_date,
+        views, watch_time_seconds,
+        toUInt64(0) as impressions, toFloat64(0) as ctr_weighted
+      FROM video_daily_stats
+      WHERE video_id IN (SELECT video_id FROM dim)
+
+      UNION ALL
+
+      SELECT
+        video_id, project_id, metric_date,
+        toUInt64(0) as views, toFloat64(0) as watch_time_seconds,
+        impressions, impressions_ctr * impressions as ctr_weighted
+      FROM video_reach_daily FINAL
+      WHERE video_id IN (SELECT video_id FROM dim)
+    ),
+    per_video AS (
+      SELECT
+        d.video_id as video_id,
+        ${grouping} as segment,
+        dateDiff('day', d.published_at, {asOf: DateTime}) as age_days,
+        if(
+          any(i.ingest_start) > toDate(0),
+          greatest(0, dateDiff('day', d.published_at, toDateTime(any(i.ingest_start)))),
+          toInt32(100000)
+        ) as ingest_lag_days,
+        sumIf(m.views, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_views,
+        sumIf(m.watch_time_seconds, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_watch,
+        sumIf(m.impressions, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_impressions,
+        sumIf(m.ctr_weighted, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_ctr_weighted
+      FROM dim d
+      LEFT JOIN metrics m
+        ON m.video_id = d.video_id AND m.project_id = d.project_id
+      LEFT JOIN ingest i ON i.connection_id = d.connection_id
+      GROUP BY video_id, segment, d.published_at
+    )
+  `;
+}
+
+/** Resolves a segment kind, refusing anything outside the closed lookup. */
+function resolveSegmentGrouping(kind: SegmentKind): string {
+  // Own-property only: a kind of 'constructor' or '__proto__' would
+  // otherwise resolve up the prototype chain to a function, and splice its
+  // source text into the query.
+  if (!Object.prototype.hasOwnProperty.call(SEGMENT_GROUPINGS, kind)) {
+    throw new Error(`Unknown segment kind: ${String(kind)}`);
+  }
+
+  return SEGMENT_GROUPINGS[kind];
+}
+
 export interface SegmentPerformanceRow {
   segment: string;
   videoCount: number;
@@ -927,13 +1018,7 @@ export async function querySegmentPerformance(input: {
   asOf?: string;
 }): Promise<SegmentPerformanceRow[]> {
   const kind = input.segment.kind;
-
-  // Own-property only: a kind of 'constructor' or '__proto__' would
-  // otherwise resolve up the prototype chain to a function, and splice
-  // its source text into the query.
-  if (!Object.prototype.hasOwnProperty.call(SEGMENT_GROUPINGS, kind)) {
-    throw new Error(`Unknown segment kind: ${String(kind)}`);
-  }
+  const grouping = resolveSegmentGrouping(kind);
 
   if (!isClickHouseEnabled()) return [];
   assertDimScope(input.scope);
@@ -947,8 +1032,6 @@ export async function querySegmentPerformance(input: {
   params.minVideos = Math.max(1, Math.floor(input.minVideos));
   params.asOf = input.asOf ?? formatClickHouseDateTime(new Date());
 
-  const grouping = SEGMENT_GROUPINGS[kind];
-
   // Only tags carry a dimension prefix; the other kinds are whole columns.
   const tagFilter =
     kind === 'tag' ? 'WHERE segment LIKE {tagPrefix: String}' : '';
@@ -957,40 +1040,10 @@ export async function querySegmentPerformance(input: {
     params.tagPrefix = `${input.segment.dimension ?? ''}:%`;
   }
 
-  const eligible = `age_days >= ${days} AND ingest_lag_days < ${days}`;
+  const eligible = segmentEligible(days);
 
-  // Ingest start is a property of the CHANNEL, not the video: a video with
-  // no rows on a well-ingested channel is a real zero and must keep
-  // counting as one. One row per connection, so the join cannot multiply.
-  //
-  // The reach leg is UNIONed rather than joined — one row per video per
-  // day in each table, and a join would multiply views by impression days.
   const query = `
-    WITH dim AS (${dimSubquery(conditions)}),
-    ingest AS (
-      SELECT d.connection_id as connection_id, min(s.metric_date) as ingest_start
-      FROM dim d
-      INNER JOIN video_daily_stats s
-        ON s.video_id = d.video_id AND s.project_id = d.project_id
-      GROUP BY d.connection_id
-    ),
-    metrics AS (
-      SELECT
-        video_id, project_id, metric_date,
-        views, watch_time_seconds,
-        toUInt64(0) as impressions, toFloat64(0) as ctr_weighted
-      FROM video_daily_stats
-      WHERE video_id IN (SELECT video_id FROM dim)
-
-      UNION ALL
-
-      SELECT
-        video_id, project_id, metric_date,
-        toUInt64(0) as views, toFloat64(0) as watch_time_seconds,
-        impressions, impressions_ctr * impressions as ctr_weighted
-      FROM video_reach_daily FINAL
-      WHERE video_id IN (SELECT video_id FROM dim)
-    )
+    ${segmentPerVideoSql(conditions, grouping, days)}
     SELECT
       segment,
       count() as video_count,
@@ -1006,26 +1059,7 @@ export async function querySegmentPerformance(input: {
       sumIf(v_views, ${eligible}) as total_views,
       sumIf(v_impressions, ${eligible}) as impressions,
       sumIf(v_ctr_weighted, ${eligible}) as ctr_weighted
-    FROM (
-      SELECT
-        d.video_id as video_id,
-        ${grouping} as segment,
-        dateDiff('day', d.published_at, {asOf: DateTime}) as age_days,
-        if(
-          any(i.ingest_start) > toDate(0),
-          greatest(0, dateDiff('day', d.published_at, toDateTime(any(i.ingest_start)))),
-          toInt32(100000)
-        ) as ingest_lag_days,
-        sumIf(m.views, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_views,
-        sumIf(m.watch_time_seconds, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_watch,
-        sumIf(m.impressions, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_impressions,
-        sumIf(m.ctr_weighted, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_ctr_weighted
-      FROM dim d
-      LEFT JOIN metrics m
-        ON m.video_id = d.video_id AND m.project_id = d.project_id
-      LEFT JOIN ingest i ON i.connection_id = d.connection_id
-      GROUP BY video_id, segment, d.published_at
-    ) per_video
+    FROM per_video
     ${tagFilter}
     GROUP BY segment
     HAVING video_count >= {minVideos: UInt32}
@@ -1082,6 +1116,91 @@ export async function querySegmentPerformance(input: {
       confidence: resolveConfidence(matureVideoCount),
     };
   });
+}
+
+export interface SegmentMembershipRow {
+  segment: string;
+  videoId: string;
+  /** Views at the checkpoint — the RPM denominator for this video. */
+  views: number;
+}
+
+/**
+ * Which videos make up each segment, and what each contributed.
+ *
+ * Exists only because revenue lives in Postgres and views live here, so
+ * pooling RPM per segment needs the video ids on both sides. Returning
+ * groupArray(video_id) from querySegmentPerformance instead would put an
+ * unbounded array in a single cell and blow memory on a large segment.
+ *
+ * Counts exactly the videos querySegmentPerformance counted — same
+ * eligibility, same checkpoint. A video admitted here but not there would
+ * put revenue over a denominator that excludes it, deflating the rate.
+ *
+ * Ordered by (segment, video_id), which is unique and total, so paging
+ * cannot skip or repeat a row. Fixed rather than caller-chosen: there is
+ * no ordering choice to whitelist, and a fixed key is stronger than a
+ * validated one.
+ */
+export async function querySegmentMembership(input: {
+  scope: DimScope;
+  segment: { kind: SegmentKind; dimension?: string };
+  checkpointDays?: number;
+  limit?: number;
+  offset?: number;
+  asOf?: string;
+}): Promise<SegmentMembershipRow[]> {
+  const kind = input.segment.kind;
+  const grouping = resolveSegmentGrouping(kind);
+
+  if (!isClickHouseEnabled()) return [];
+  assertDimScope(input.scope);
+
+  const client = getClickHouseClient();
+  const { conditions, params } = buildDimConditions(input.scope);
+
+  const days = Math.max(1, Math.floor(input.checkpointDays ?? 30));
+  const limit = Math.min(1000, Math.max(1, Math.floor(input.limit ?? 500)));
+  const offset = Math.max(0, Math.floor(input.offset ?? 0));
+
+  params.asOf = input.asOf ?? formatClickHouseDateTime(new Date());
+
+  const tagFilter =
+    kind === 'tag' ? 'AND segment LIKE {tagPrefix: String}' : '';
+
+  if (kind === 'tag') {
+    params.tagPrefix = `${input.segment.dimension ?? ''}:%`;
+  }
+
+  const query = `
+    ${segmentPerVideoSql(conditions, grouping, days)}
+    SELECT
+      segment,
+      video_id,
+      v_views as views
+    FROM per_video
+    WHERE ${segmentEligible(days)} ${tagFilter}
+    ORDER BY segment ASC, video_id ASC
+    LIMIT ${limit} OFFSET ${offset}
+  `;
+
+  const result = await client.query({
+    query,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<{
+    segment: string;
+    video_id: string;
+    views: number;
+  }>();
+
+  return rows.map((row) => ({
+    segment: String(row.segment),
+    videoId: String(row.video_id),
+    views: Number(row.views ?? 0),
+  }));
 }
 
 /** True for a bare 'YYYY-MM-DD', which needs widening to a DateTime bound. */

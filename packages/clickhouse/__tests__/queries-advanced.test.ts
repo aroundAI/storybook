@@ -1164,6 +1164,72 @@ describe('queries-advanced', () => {
     });
   });
 
+  describe('querySegmentMembership', () => {
+    async function runMembership(overrides: Record<string, unknown> = {}) {
+      const { querySegmentMembership } = await import(
+        '../src/queries-advanced'
+      );
+
+      return querySegmentMembership({
+        scope: { projectId: PROJECT },
+        segment: { kind: 'language' },
+        ...overrides,
+      });
+    }
+
+    it('returns one row per video per segment it belongs to', async () => {
+      mockQueryResult.json.mockResolvedValue([
+        { segment: 'en', video_id: 'v1', views: '900' },
+        { segment: 'es', video_id: 'v2', views: '100' },
+      ]);
+
+      const rows = await runMembership();
+
+      expect(rows).toEqual([
+        { segment: 'en', videoId: 'v1', views: 900 },
+        { segment: 'es', videoId: 'v2', views: 100 },
+      ]);
+    });
+
+    it('counts only the videos the aggregate counted', async () => {
+      // The pooled RPM divides revenue from these videos by the views the
+      // aggregate reported. Admitting an immature video here but not there
+      // would silently deflate every segment's RPM.
+      await runMembership({ checkpointDays: 30 });
+
+      const { query } = lastQuery();
+
+      expect(query).toContain('age_days >= 30');
+      expect(query).toContain('ingest_lag_days < 30');
+    });
+
+    it('orders deterministically so pages cannot overlap or skip', async () => {
+      await runMembership();
+
+      expect(lastQuery().query).toContain('ORDER BY segment ASC, video_id ASC');
+    });
+
+    it('always paginates, and clamps an oversized limit', async () => {
+      await runMembership({ limit: 50_000, offset: 40 });
+
+      expect(lastQuery().query).toContain('LIMIT 1000 OFFSET 40');
+    });
+
+    it('refuses a segment kind outside the closed lookup', async () => {
+      await expect(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        runMembership({ segment: { kind: 'evil' } as any }),
+      ).rejects.toThrow(/segment kind/i);
+    });
+
+    it('returns empty results instead of querying when disabled', async () => {
+      process.env.CLICKHOUSE_ENABLED = 'false';
+
+      expect(await runMembership()).toEqual([]);
+      expect(mockClickHouseClient.query).not.toHaveBeenCalled();
+    });
+  });
+
   describe('disabled ClickHouse', () => {
     it('returns empty results instead of querying', async () => {
       process.env.CLICKHOUSE_ENABLED = 'false';
