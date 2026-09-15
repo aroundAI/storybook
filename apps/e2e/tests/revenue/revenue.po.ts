@@ -37,10 +37,11 @@ export class RevenuePageObject {
 
     await this.auth.goToSignIn();
 
-    // Through the shared helper, which now waits for the control rather
-    // than a timer. Keeping a second copy here was the same duplication
-    // this PR kept fixing elsewhere — and it would have hidden whether the
-    // shared fix actually works.
+    // Through the shared helper. An attempt to harden it lives in this
+    // PR's history and was reverted: three variations each made CI worse
+    // than the 500ms wait it replaced, and the original flake was never
+    // reproduced. See docs/ENGINEERING-WORKFLOW.md, "changing shared test
+    // infrastructure".
     await this.auth.signIn({
       email: account.email,
       password: account.password,

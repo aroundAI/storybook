@@ -356,19 +356,19 @@ Do this for every guard you add. Three of the revenue specs were verified
 this way, and the exercise is what distinguishes a regression test from a
 test that happens to be green.
 
-### Fixed waits are the flake
+### Fixed waits, and why they are still here
 
-`AuthPageObject.signIn` and `signUp` used to wait a flat 500ms and then type.
-On a page that has painted but not hydrated, the values land, React attaches,
-the inputs come back empty, and the spec sits on an untouched form until
-`waitForURL` times out — which reads as a broken test rather than a slow page.
-They now wait for the control and re-read the value to confirm it survived.
+`AuthPageObject.signIn` and `signUp` wait a flat 500ms before typing, and
+~10 other `waitForTimeout` calls sit in `billing.po.ts`, `account.po.ts`,
+`otp.po.ts`, `team-accounts.po.ts` and `admin.spec.ts`. A fixed wait is a bet
+that the page is ready, and the right shape is a wait on a signal.
 
-**~10 other `waitForTimeout` calls remain** in `billing.po.ts`,
-`account.po.ts`, `otp.po.ts`, `team-accounts.po.ts` and `admin.spec.ts`. Each
-is the same bet, and each is worth replacing with a wait on a signal —
-`expect(locator).toHaveValue(...)`, `waitForURL`, `toBeVisible` — the next time
-its spec is touched.
+**Three attempts to replace the sign-in ones made CI worse and were reverted**
+(2 flaky → 5 flaky → an aborted run). The original flake was never reproduced
+locally, so each change was a guess dressed as a fix. If you take this on:
+reproduce the failure first, change one helper, and read the CI flake count
+before changing a second. The history is in PR #256 and the lesson is in
+[docs/ENGINEERING-WORKFLOW.md](../../docs/ENGINEERING-WORKFLOW.md).
 
 ### Run it the way CI does
 

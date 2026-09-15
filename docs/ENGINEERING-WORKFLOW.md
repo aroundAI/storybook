@@ -81,17 +81,47 @@ or it is labelled a hypothesis. Where a doc describes a list the code also has,
 bind them — `REVENUE_CATEGORY_LABELS` is asserted against `RevenueCategorySchema`
 so the two cannot drift.
 
-### 4b. Detecting a race instead of surviving it
+### 4b. Changing shared test infrastructure on an unreproduced hypothesis
 
-> A sign-in helper was changed to assert that typed credentials had survived
-> hydration. The assertion was correct — and it turned a recoverable condition
-> into a test failure. **CI flakes went from 2 to 5**, two of them in the specs
-> the change was meant to protect.
+The longest and most expensive mistake in this PR, kept in full because it is
+the easiest one to repeat.
 
-**Check:** when the condition is transient and recovery is cheap, retry it;
-reserve assertions for conditions that should never happen. `expect(...).toPass()`
-refills and re-reads; `expect(...).toHaveValue()` fails the run. Asking "is this
-state wrong, or just early?" picks the right one.
+A flake was diagnosed from a single observed failure: a sign-in helper waits a
+flat 500ms before typing, so on an unhydrated page the values are wiped. The
+diagnosis was plausible, the helper is used by most of the suite, and **the
+failure was never reproduced**. Three fixes went out on that basis:
+
+| Change | CI result |
+|---|---|
+| *(baseline — the 500ms wait)* | **2 flaky**, job passed |
+| Wait for the control, assert the value stuck | **5 flaky**, job passed |
+| Retry the fill; retry opening the sign-out menu | **1 hard failure**, run aborted at `--max-failures=1` |
+
+All three were reverted. Each step was locally green and each made CI worse.
+
+Three separate errors compounded:
+
+1. **Acting on an unreproduced diagnosis.** A delayed-JS probe passed with the
+   old code, which should have stopped the change rather than prompting a
+   better-sounding one.
+2. **Asserting on a transient state.** The `toHaveValue` check was *correct* —
+   it detected the wipe — and converted a recoverable condition into a failed
+   run. When recovery is cheap, retry; reserve assertions for what should
+   never happen.
+3. **Changing shared infrastructure without a baseline.** `AuthPageObject` is
+   used by most specs. Its flake rate before the change was never measured, so
+   "is this better?" had no answer until CI produced one.
+
+**Check:** before touching a helper the suite depends on —
+
+- Reproduce the failure. If you cannot, say so and stop.
+- Record the current flake count. That is the only number that can tell you
+  whether you helped.
+- Change one thing, and read CI before changing a second.
+
+A fixed `waitForTimeout` is a bad pattern and replacing it is worth doing. It
+is worth doing *with a reproduction*, which is a different piece of work from
+the ticket that happens to notice it.
 
 ### 5. Tests that cannot fail
 
