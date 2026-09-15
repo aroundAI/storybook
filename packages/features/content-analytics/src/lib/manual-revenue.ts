@@ -98,7 +98,11 @@ export function parseLocalDate(value: string | undefined): Date | null {
   const [, year, month, day] = match;
   const date = new Date(Number(year), Number(month) - 1, Number(day));
 
-  return Number.isNaN(date.getTime()) ? null : date;
+  // Round-tripped, because the constructor rolls over rather than failing:
+  // `2026-02-31` becomes 3 March and `Number.isNaN` never fires, so the
+  // trigger would show a different day than the value being submitted —
+  // the three-disagreeing-states bug this function exists to end.
+  return formatLocalDate(date) === value ? date : null;
 }
 
 /** A `Date` as the `yyyy-MM-dd` the schema and the column expect. */

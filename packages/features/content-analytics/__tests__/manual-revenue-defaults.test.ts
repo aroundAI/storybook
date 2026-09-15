@@ -130,6 +130,18 @@ describe('parseLocalDate / formatLocalDate', () => {
     expect(formatLocalDate(new Date(2026, 0, 5))).toBe('2026-01-05');
   });
 
+  it('has no date for a day that does not exist', () => {
+    // `new Date(2026, 1, 31)` rolls over to 3 March rather than failing,
+    // so the trigger would render a different day than the value submitted.
+    expect(parseLocalDate('2026-02-31')).toBeNull();
+    expect(parseLocalDate('2026-13-01')).toBeNull();
+    expect(parseLocalDate('2026-04-31')).toBeNull();
+  });
+
+  it('accepts a real leap day', () => {
+    expect(parseLocalDate('2028-02-29')?.getDate()).toBe(29);
+  });
+
   it('has no date for an empty or partial value', () => {
     expect(parseLocalDate('')).toBeNull();
     expect(parseLocalDate(undefined)).toBeNull();

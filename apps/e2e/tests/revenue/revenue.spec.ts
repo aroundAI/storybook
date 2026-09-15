@@ -180,10 +180,9 @@ test.describe('Manual revenue entry', () => {
     // `new Date('2026-09-14')` is UTC midnight, so west of UTC the trigger
     // rendered the previous day while the calendar highlighted the right
     // one and the row saved the right date.
-    const now = new Date();
-    const expected = now.getDate().toString();
-
-    await expect(revenue.dateTrigger()).toContainText(expected);
+    await expect(revenue.dateTrigger()).toHaveText(
+      await revenue.expectedDateText(),
+    );
   });
 
   test('offers every category the schema accepts', async ({ page }) => {
@@ -230,9 +229,13 @@ test.describe('Manual revenue entry — west of UTC', () => {
     await revenue.setup();
     await revenue.pickToday();
 
-    const day = await page.evaluate(() => new Date().getDate().toString());
-
-    await expect(revenue.dateTrigger()).toContainText(day);
+    // The whole rendered string, not the day number: "September 2nd, 2026"
+    // contains "2", so a bare-number assertion passes on the 2nd, 6th,
+    // 20th and 26th even when the trigger shows the wrong day — blind on
+    // four days a month, which is where a regression would hide.
+    await expect(revenue.dateTrigger()).toHaveText(
+      await revenue.expectedDateText(),
+    );
   });
 
   test('picks today rather than a disabled tomorrow', async ({ page }) => {

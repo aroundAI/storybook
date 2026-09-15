@@ -84,6 +84,29 @@ export class RevenuePageObject {
     return this.page.locator('[data-test="revenue-publish-trigger"]');
   }
 
+  /**
+   * Today as the trigger should render it, read from the page's clock.
+   *
+   * Matches date-fns `PPP` — "September 15th, 2026".
+   */
+  async expectedDateText() {
+    return this.page.evaluate(() => {
+      const now = new Date();
+      const day = now.getDate();
+      const suffix =
+        day % 10 === 1 && day !== 11
+          ? 'st'
+          : day % 10 === 2 && day !== 12
+            ? 'nd'
+            : day % 10 === 3 && day !== 13
+              ? 'rd'
+              : 'th';
+      const month = now.toLocaleDateString('en-US', { month: 'long' });
+
+      return `${month} ${day}${suffix}, ${now.getFullYear()}`;
+    });
+  }
+
   dateTrigger() {
     return this.page.locator('[data-test="revenue-date-trigger"]');
   }
@@ -120,19 +143,25 @@ export class RevenuePageObject {
   async pickToday() {
     await this.page.click('[data-test="revenue-date-trigger"]');
 
-    // Local, not toISOString(): react-day-picker writes `data-day` with
-    // date-fns `format`, which is local. West of UTC after ~17:00 the ISO
-    // string is tomorrow — a cell that exists but is disabled by the
-    // calendar's `date > new Date()` guard, so the click waits out the
-    // test timeout and every revenue spec fails. East of UTC in the early
-    // hours it silently selects yesterday and still passes. CI runs UTC,
-    // so both hide there.
-    const now = new Date();
-    const local = [
-      now.getFullYear(),
-      String(now.getMonth() + 1).padStart(2, '0'),
-      String(now.getDate()).padStart(2, '0'),
-    ].join('-');
+    // Computed *in the page*, because that is whose clock `data-day` and
+    // the calendar's `date > new Date()` guard both use.
+    //
+    // Two zones are in play and they are not the same one: `test.use({
+    // timezoneId })` pins the browser, while the runner keeps its own —
+    // UTC in CI. Reading `new Date()` here compared a UTC day against a
+    // Pacific grid, so between 00:00 and 08:00 UTC the selector named
+    // tomorrow, that cell is rendered but disabled, and the click waited
+    // out the whole timeout. An earlier version of this comment claimed to
+    // have fixed exactly that while still reading the runner's clock.
+    const local = await this.page.evaluate(() => {
+      const now = new Date();
+
+      return [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0'),
+      ].join('-');
+    });
 
     await this.page.click(`[role="gridcell"][data-day="${local}"] button`);
 
