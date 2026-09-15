@@ -37,22 +37,15 @@ export class RevenuePageObject {
 
     await this.auth.goToSignIn();
 
-    // Filled here rather than through AuthPageObject.signIn, which waits a
-    // fixed 500ms before typing. On a cold page that loses the race with
-    // hydration: the values land, React attaches, and the inputs come back
-    // empty — the form then sits there until waitForURL times out. Waiting
-    // for the control to be ready is the same wait, but on the right
-    // signal.
-    const email = this.page.locator('input[name="email"]');
+    // Through the shared helper, which now waits for the control rather
+    // than a timer. Keeping a second copy here was the same duplication
+    // this PR kept fixing elsewhere — and it would have hidden whether the
+    // shared fix actually works.
+    await this.auth.signIn({
+      email: account.email,
+      password: account.password,
+    });
 
-    await email.waitFor({ state: 'visible' });
-    await email.fill(account.email);
-    await this.page.fill('input[name="password"]', account.password);
-
-    // Proof the values survived hydration before anything is submitted.
-    await expect(email).toHaveValue(account.email);
-
-    await this.page.click('button[type="submit"]');
     await this.page.waitForURL('**/home');
     await this.goToRevenue(account.slug);
 

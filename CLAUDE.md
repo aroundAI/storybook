@@ -614,6 +614,26 @@ PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test revenue
 CAPTURE_EVIDENCE=1 EVIDENCE_DIR=/tmp/evidence npx playwright test revenue-evidence
 ```
 
+### How work gets verified — read `docs/ENGINEERING-WORKFLOW.md`
+
+**[docs/ENGINEERING-WORKFLOW.md](docs/ENGINEERING-WORKFLOW.md) is the canonical
+process**: the six failure modes that produced ~40 findings across nine review
+rounds on one `S`-sized spec, what each test layer can and cannot see, the
+sequence for a change, and the pre-PR audit.
+
+Three rules from it are non-negotiable and repeated here because this file is
+what gets read first:
+
+1. **Red before green.** A guard that has never been seen to fail has proved
+   nothing. Revert the fix, watch the test fail for the stated reason, restore.
+2. **Execute before claiming.** "This should now work" is not a result. A form
+   means driving the form; a CLI capability means running `--help`.
+3. **Fix the class, not the instance.** After a fix, grep for its shape across
+   the repo. If the same rule now lives in two places, make it one function.
+
+And the question that would have caught the most: **what does my fix now allow
+that it did not before?**
+
 ### Screenshots are required for UI changes
 
 **A PR that changes what a user sees must show what they now see.** Not a

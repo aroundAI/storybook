@@ -179,11 +179,20 @@ create policy "revenue_records_create" on public.revenue_records for insert
     )
   );
 
+-- Channel-level revenue: any member may record it, only an owner may
+-- change or remove it. Replacement is silent (one row per date+category+
+-- scope, overwritten in place), so overwriting a figure nobody re-checks is
+-- the damaging half — a member correcting their own typo is the smaller
+-- loss. `is_account_owner` covers the primary owner, `has_role_on_account`
+-- the membership row; neither implies the other.
 create policy "revenue_records_update" on public.revenue_records for update
   to authenticated using (
     (
       account_id is not null
-      and public.has_account_access(account_id)
+      and (
+        public.is_account_owner(account_id)
+        or public.has_role_on_account(account_id, 'owner')
+      )
     )
     or exists (
       select 1 from public.publishes pub
@@ -199,7 +208,10 @@ create policy "revenue_records_delete" on public.revenue_records for delete
   to authenticated using (
     (
       account_id is not null
-      and public.has_account_access(account_id)
+      and (
+        public.is_account_owner(account_id)
+        or public.has_role_on_account(account_id, 'owner')
+      )
     )
     or exists (
       select 1 from public.publishes pub

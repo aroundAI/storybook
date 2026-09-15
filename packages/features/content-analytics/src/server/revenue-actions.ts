@@ -7,7 +7,11 @@ import { enhanceAction } from '@kit/next/actions';
 import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { payoutShare, splitRevenueByPayout } from '../lib/revenue-mix';
+import {
+  REVENUE_SUMMARY_SCHEMA_VERSION,
+  payoutShare,
+  splitRevenueByPayout,
+} from '../lib/revenue-mix';
 import {
   AddManualRevenueSchema,
   DeleteManualRevenueSchema,
@@ -306,10 +310,22 @@ export const addManualRevenueAction = enhanceAction(
           .update(values)
           .eq('id', existing.id)
           .select()
-          .single()
+          // maybeSingle, not single: a member may *read* a channel-level
+          // row but not update it, so RLS filters the write to zero rows
+          // rather than raising. `single()` turns that into PostgREST's
+          // "JSON object requested, multiple (or no) rows returned", which
+          // tells the user nothing about what actually happened.
+          .maybeSingle()
       : await client.from('revenue_records').insert(values).select().single();
 
     if (error) throw error;
+
+    if (existing && !record) {
+      throw new Error(
+        'An entry already exists for this date and category, and only an account owner can change it.',
+      );
+    }
+
     if (!record) throw new Error('Failed to create revenue record');
 
     return {
@@ -689,7 +705,15 @@ export const generateRevenueReportAction = enhanceAction(
         period_type: periodType,
         start_date: startDate,
         end_date: endDate,
-        summary_data: JSON.parse(JSON.stringify(summary)) as Json,
+        // Stamped so a reader can tell which definition of
+        // adsSharePercent it is looking at; rows without it predate the
+        // change from a signed denominator to a positive-only one.
+        summary_data: JSON.parse(
+          JSON.stringify({
+            ...summary,
+            schemaVersion: REVENUE_SUMMARY_SCHEMA_VERSION,
+          }),
+        ) as Json,
         top_performers: JSON.parse(JSON.stringify(topPerformers)) as Json,
         platform_breakdown: JSON.parse(
           JSON.stringify(platformBreakdown),

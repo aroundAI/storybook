@@ -448,6 +448,9 @@ storybook/
 
 ## 🚀 Development Workflow
 
+> **How work gets verified:** [docs/ENGINEERING-WORKFLOW.md](docs/ENGINEERING-WORKFLOW.md)
+> — the six failure modes, what each test layer can see, and the pre-PR audit.
+>
 > **UI changes need screenshots in the PR.** Anything that changes what a
 > user sees ships with the rendered result attached — including the state
 > *after* the action and any error states. Generate them from a Playwright

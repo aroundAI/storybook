@@ -2,6 +2,11 @@
 
 This file contains instructions for working with feature packages including accounts, teams, billing, auth, and notifications.
 
+> **Verification process:** [docs/ENGINEERING-WORKFLOW.md](../../docs/ENGINEERING-WORKFLOW.md)
+> — the six failure modes, what each test layer can and cannot see, and the
+> pre-PR audit. Before citing a test count, check the package is actually in the
+> CI job: two were missing for months.
+
 ## Feature Package Structure
 
 - `accounts/` - Personal account management

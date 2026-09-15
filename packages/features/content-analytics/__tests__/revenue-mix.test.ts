@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   MANUAL_ENTRY_CATEGORIES,
+  REVENUE_SUMMARY_SCHEMA_VERSION,
   REVENUE_CATEGORY_COLOR,
   REVENUE_CATEGORY_LABELS,
   payoutShare,
@@ -360,5 +361,13 @@ describe('MANUAL_ENTRY_CATEGORIES', () => {
     for (const { value } of MANUAL_ENTRY_CATEGORIES) {
       expect(all).toContain(value);
     }
+  });
+});
+
+describe('REVENUE_SUMMARY_SCHEMA_VERSION', () => {
+  it('is stamped, so stored reports can be told apart', () => {
+    // adsSharePercent changed denominator without changing key. Rows
+    // written before carry no version; that absence is the marker.
+    expect(REVENUE_SUMMARY_SCHEMA_VERSION).toBeGreaterThanOrEqual(2);
   });
 });

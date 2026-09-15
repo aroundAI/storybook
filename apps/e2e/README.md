@@ -297,6 +297,9 @@ BROWSER=chromium
 
 ## Proving a UI fix with a browser test
 
+> Part of [docs/ENGINEERING-WORKFLOW.md](../../docs/ENGINEERING-WORKFLOW.md),
+> which covers why this layer exists and what the others cannot see.
+
 Four consecutive review rounds on FILM-1609 found bugs in one form that
 typecheck, lint and 256 unit tests all passed. They had one thing in
 common: they lived between the DOM and form state, where only a browser
@@ -352,6 +355,20 @@ npx playwright test revenue -g "refuses a blank amount"   # must FAIL
 Do this for every guard you add. Three of the revenue specs were verified
 this way, and the exercise is what distinguishes a regression test from a
 test that happens to be green.
+
+### Fixed waits are the flake
+
+`AuthPageObject.signIn` and `signUp` used to wait a flat 500ms and then type.
+On a page that has painted but not hydrated, the values land, React attaches,
+the inputs come back empty, and the spec sits on an untouched form until
+`waitForURL` times out — which reads as a broken test rather than a slow page.
+They now wait for the control and re-read the value to confirm it survived.
+
+**~10 other `waitForTimeout` calls remain** in `billing.po.ts`,
+`account.po.ts`, `otp.po.ts`, `team-accounts.po.ts` and `admin.spec.ts`. Each
+is the same bet, and each is worth replacing with a wait on a signal —
+`expect(locator).toHaveValue(...)`, `waitForURL`, `toBeVisible` — the next time
+its spec is touched.
 
 ### Point a run at your own server
 

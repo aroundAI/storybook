@@ -9,6 +9,21 @@
 import type { RevenueCategory } from './schemas/revenue.schema';
 
 /**
+ * Shape version stamped onto `revenue_reports.summary_data`.
+ *
+ * Bump this whenever a field in `RevenueSummary` changes *meaning* rather
+ * than value. Version 2 is the first stamped one: `adsSharePercent` and
+ * `nonAdSharePercent` moved from a signed denominator to positive buckets
+ * only, so rows written before this carry the same keys with a different
+ * definition. **Absence of the field identifies those rows** — they cannot
+ * be migrated, because the inputs were not stored alongside them.
+ *
+ * The two definitions differ only where a category is negative, i.e. a
+ * clawback month, which is exactly the case nobody would notice by eye.
+ */
+export const REVENUE_SUMMARY_SCHEMA_VERSION = 2;
+
+/**
  * Categories the platform pays out, as opposed to income the channel
  * built itself.
  *

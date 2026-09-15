@@ -25,10 +25,8 @@ export class AuthPageObject {
   }
 
   async signIn(params: { email: string; password: string }) {
-    await this.page.waitForTimeout(500);
+    await this.fillCredentials(params);
 
-    await this.page.fill('input[name="email"]', params.email);
-    await this.page.fill('input[name="password"]', params.password);
     await this.page.click('button[type="submit"]');
   }
 
@@ -37,13 +35,34 @@ export class AuthPageObject {
     password: string;
     repeatPassword: string;
   }) {
-    await this.page.waitForTimeout(500);
+    await this.fillCredentials(params);
 
-    await this.page.fill('input[name="email"]', params.email);
-    await this.page.fill('input[name="password"]', params.password);
     await this.page.fill('input[name="repeatPassword"]', params.repeatPassword);
-
     await this.page.click('button[type="submit"]');
+  }
+
+  /**
+   * Types credentials once the form can actually hold them.
+   *
+   * These two used to wait a flat 500ms and start typing. On a cold page
+   * that loses the race with hydration: the values land in the DOM, React
+   * attaches, the inputs come back empty, and the spec sits on an untouched
+   * form until `waitForURL` times out — which reads as a broken test rather
+   * than a slow page. It is the cause of the admin, auth and invitation
+   * flakes, each of which costs a full E2E job under `--max-failures=1`.
+   *
+   * Waiting for the control is the same wait on a signal that means
+   * something; the re-read afterwards is what proves the value survived
+   * hydration rather than assuming a longer timer would have.
+   */
+  private async fillCredentials(params: { email: string; password: string }) {
+    const email = this.page.locator('input[name="email"]');
+
+    await email.waitFor({ state: 'visible' });
+    await email.fill(params.email);
+    await this.page.fill('input[name="password"]', params.password);
+
+    await expect(email).toHaveValue(params.email);
   }
 
   async submitMFAVerification(key: string) {

@@ -127,6 +127,17 @@ key on something finer. It is a product question, not a cleanup, and it is
 **not decided here**.
 
 **Channel-level revenue accepts any account role; per-video does not.**
+✅ **Fixed** — `revenue_records_update` and `_delete` now require an account
+owner on the account branch; `_create` stays open to any member. There is
+no account-level `admin` (`17-roles-seed.sql` seeds only `owner` and
+`member`), so this is owner-or-nothing. Proven against the local database
+with both roles: a member may insert and is filtered to zero rows on update
+and delete; an owner does all three. The sync is unaffected — it writes
+through the service-role client and only ever sets `publish_id`. Because
+RLS filters rather than raises, the action now translates the zero-row
+update into a message naming the reason.
+
+The original finding, kept for the record:
 `revenue_records_create` has two branches (`schemas/38-revenue-tracking.sql:166`).
 The publish branch requires `pm.role in ('owner','admin','member')` on the
 project. The account branch requires only `public.has_account_access`,
@@ -142,7 +153,10 @@ revenue write path including the sync jobs, which is a security decision
 with a blast radius past a category vocabulary. It wants its own ticket.
 
 **Reports generated before and after this spec store different metrics
-under the same keys.** `adsSharePercent` and `nonAdSharePercent` moved from
+under the same keys.** ✅ **Fixed** — `summary_data` now carries
+`REVENUE_SUMMARY_SCHEMA_VERSION`; absence of it identifies pre-change rows,
+which cannot be migrated because their inputs were not stored. The original
+finding: `adsSharePercent` and `nonAdSharePercent` moved from
 a signed denominator to a positive-only one, and
 `generateRevenueReportAction` serialises them verbatim into
 `revenue_reports.summary_data` with no version marker. Rows written earlier
