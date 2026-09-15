@@ -448,6 +448,13 @@ storybook/
 
 ## 🚀 Development Workflow
 
+> **UI changes need screenshots in the PR.** Anything that changes what a
+> user sees ships with the rendered result attached — including the state
+> *after* the action and any error states. Generate them from a Playwright
+> spec (`apps/e2e/tests/revenue/revenue-evidence.spec.ts` is the pattern)
+> and attach with `gh pr comment --attach`. Full rule in `CLAUDE.md`.
+
+
 ### **Install Dependencies**
 
 ```bash

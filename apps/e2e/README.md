@@ -365,7 +365,16 @@ silently sends no mail and every test hangs at the confirmation step, which
 reads as a broken test rather than a broken server. If auth email stops
 arriving, restart the dev server before debugging the suite.
 
-### Capturing screenshots for a PR
+### Capturing screenshots for a PR — required for UI changes
+
+**A PR that changes what a user sees must show what they now see.** This is
+a requirement, not a nicety: FILM-1609 spent six text-only review rounds on
+a form that could not be submitted, and one screenshot of it after a save
+would have ended that at round one.
+
+Capture the state *after* the action as well as before — the reset-and-
+rerender case is where this repo's UI bugs have lived — and include the
+error states, which are invisible in a diff.
 
 `tests/revenue/revenue-evidence.spec.ts` is the pattern: a spec that is
 skipped unless `CAPTURE_EVIDENCE=1`, so it costs CI nothing, and that

@@ -614,6 +614,37 @@ PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test revenue
 CAPTURE_EVIDENCE=1 EVIDENCE_DIR=/tmp/evidence npx playwright test revenue-evidence
 ```
 
+### Screenshots are required for UI changes
+
+**A PR that changes what a user sees must show what they now see.** Not a
+description of it, not a passing test name — the rendered result, in the PR,
+before review.
+
+This is a rule because of what it costs when it is skipped. FILM-1609 ran
+**six review rounds** on one form. Every round was text-only: reading the
+diff, reasoning about the types, running 256 green unit tests. The form
+could not be submitted at all for two of those rounds, wrote `$0` rows over
+real figures in a third, and turned a pasted `1,250.00` into `$1.00` in a
+fourth. **A single screenshot of the form after a save would have ended it
+at round one.** Nobody looked until round five.
+
+What counts:
+
+- **The state after the action, not just before it.** Most UI bugs in this
+  repo have been reset-and-rerender bugs: a field that keeps its text while
+  form state has moved on, a select that keeps its label. The first
+  screenshot looks fine; the second is where the bug is.
+- **The error states too.** A validation message that never renders is
+  indistinguishable from one that does, in a diff.
+- **Measurements for anything numeric.** "Looks right" is not a claim a
+  reviewer can check. Read the value out of the DOM and put it in the
+  comment as a table — see the FILM-1605 and FILM-1609 PR comments.
+
+Generate them from a Playwright spec rather than by hand, so they can be
+regenerated when the UI changes and so the states are the ones the tests
+already assert — `apps/e2e/tests/revenue/revenue-evidence.spec.ts` is the
+pattern, gated behind `CAPTURE_EVIDENCE=1` so CI pays nothing for it.
+
 ### Posting screenshots to a PR — `gh --attach` ⚠️
 
 **`gh` uploads images directly. Do not claim otherwise.** The flag landed in
@@ -925,3 +956,5 @@ After implementation:
 2. **Run `pnpm lint:fix`** - Auto-fix issues
 3. **Run `pnpm format:fix`** - Format code
 4. **Verify spec compliance** - If implementing a feature from `specs/`, ensure the spec document is updated to match any implementation changes
+5. **Screenshot every UI change in the PR** - Required, not optional. See
+   [Screenshots are required for UI changes](#screenshots-are-required-for-ui-changes)
