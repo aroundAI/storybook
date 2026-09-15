@@ -25,9 +25,8 @@ FILM-1601 (correctness bugs + revenue delete RLS)
 Specified, not yet built:
 
 ```
-FILM-1608 (YPP targets + settings UI) ──┐
-FILM-1609 ✅ (revenue mix completion) ──┼─→ FILM-1611 (channel selector + orphan wiring)
-FILM-1606 ✅ (segment performance) ─────┘         │
+FILM-1608 (YPP targets + settings UI) ─→ FILM-1611 (channel selector + orphan wiring)
+        the last remaining gate                   │
                                                   ├─→ FILM-1615 (Video Log table)
                                                   └─→ FILM-1617 (subscriber surfaces)
 
@@ -35,6 +34,10 @@ FILM-1610 (experiment log + per-video notes) — independent, needs FILM-1605 �
 
 FILM-1616 (weekly diagnostics + retention drill-down) — independent, needs only FILM-1602
 ```
+
+**FILM-1611's other two dependencies are done** — FILM-1606 (PR #255) and
+FILM-1609 (PR #256) — so FILM-1608 alone now stands between here and the
+remaining UI work.
 
 **FILM-1616 has an unrecorded dependency.** It adds
 `getRetentionCurveAction`, returning `{ points, durationSeconds }` for
@@ -45,7 +48,7 @@ than the published clip's (phase-17 FILM-1710). The column has no readers
 today, so FILM-1616 would be the first — it must either take FILM-1710
 first or source the duration deliberately and say which it used.
 
-FILM-1608, 1610 and 1616 are mutually independent and parallelisable. FILM-1611 gates the remaining UI work; FILM-1617 additionally needs FILM-1618 (✅ PR #249), because surfacing a curve built from systematically short deltas publishes a number that drifts from its own anchors.
+FILM-1608, 1610 and 1616 are mutually independent and parallelisable, and are the only specs that can start today. FILM-1611 gates the remaining UI work; FILM-1617 additionally needs FILM-1618 (✅ PR #249), because surfacing a curve built from systematically short deltas publishes a number that drifts from its own anchors.
 
 **FILM-1614 is not a phase-16 spec.** The id is claimed by an in-code `TODO(FILM-1614)` at `packages/features/content-analytics/src/server/revenue-queries.ts:79`, for folding the two client-side revenue query shapes into a pre-grouped RPC. New spec ids in this phase therefore resume at 1615.
 
@@ -73,6 +76,27 @@ Specified and not yet built:
 | FILM-1615 | DRAFT | M | The Video Log table — FILM-1603 built the query and action, not the screen |
 | FILM-1616 | DRAFT | M | `WeeklyDiagnosticsTable` and `RetentionCurveChart`, both of which need actions built |
 | FILM-1617 | DRAFT | S | Subscriber series card, YPP absolute count, Publish Hub badge |
+
+## Testing precedent set by this phase
+
+Two things changed about how work in this phase is verified, both worth
+applying to the six remaining specs rather than rediscovering:
+
+**UI changes ship with screenshots in the PR.** FILM-1609 ran seven review
+rounds on one form, every one text-only, while the form could not be
+submitted at all. A screenshot of it after a save would have ended that at
+round one. The rule and the mechanism are in the root `CLAUDE.md`.
+
+**Browser coverage for anything with form state.** Unit tests could not see
+any of the defects in that form — they lived between the DOM and form
+state, and only appeared on the *second* submission, after a reset.
+`apps/e2e/tests/revenue/` is the pattern: seed the account through the API
+rather than the UI (three brittle flows and ~20× slower otherwise), assert
+the second submission, and prove each guard fails before believing it.
+
+Relevant to what is left: FILM-1608 builds a settings writer, FILM-1611
+mounts four cards, FILM-1615 and FILM-1617 add screens. All five remaining
+UI specs fall under both rules.
 
 ## Locked decisions
 

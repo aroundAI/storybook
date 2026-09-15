@@ -545,9 +545,9 @@ See [phase-16-workbook-parity/README.md](./phase-16-workbook-parity/README.md) f
 | FILM-1612 | [postgrest-pagination](./phase-16-workbook-parity/FILM-1612-postgrest-pagination.md) | ✅ DONE | L | FILM-1602 |
 | FILM-1613 | [revenue-alert-account-scoping](./phase-16-workbook-parity/FILM-1613-revenue-alert-account-scoping.md) | ✅ DONE | S | FILM-1508, FILM-1601 |
 | FILM-1605 | [traffic-source-breakdown](./phase-16-workbook-parity/FILM-1605-traffic-source-breakdown.md) | ✅ DONE | M | FILM-1602 |
-| FILM-1606 | [segment-performance](./phase-16-workbook-parity/FILM-1606-segment-performance.md) | DRAFT | L | FILM-1603, FILM-1605 |
+| FILM-1606 | [segment-performance](./phase-16-workbook-parity/FILM-1606-segment-performance.md) | ✅ DONE | L | FILM-1603, FILM-1605 |
 | FILM-1608 | [ypp-targets-settings](./phase-16-workbook-parity/FILM-1608-ypp-targets-settings.md) | DRAFT | M | FILM-1602 |
-| FILM-1609 | [revenue-mix-completion](./phase-16-workbook-parity/FILM-1609-revenue-mix-completion.md) | DRAFT | S | FILM-1601 |
+| FILM-1609 | [revenue-mix-completion](./phase-16-workbook-parity/FILM-1609-revenue-mix-completion.md) | ✅ DONE | S | FILM-1601 |
 | FILM-1610 | [experiment-log-notes](./phase-16-workbook-parity/FILM-1610-experiment-log-notes.md) | DRAFT | M | FILM-1602, FILM-1603, FILM-1605 |
 | FILM-1611 | [deep-dive-channel-selector](./phase-16-workbook-parity/FILM-1611-deep-dive-channel-selector.md) | DRAFT | M | FILM-1606, FILM-1608, FILM-1609 |
 | FILM-1615 | [video-log-table](./phase-16-workbook-parity/FILM-1615-video-log-table.md) | DRAFT | M | FILM-1603, FILM-1611 |
@@ -669,10 +669,10 @@ SPIKE-01 through SPIKE-05
 | 13. Hook Opt | 2 | 1 | 0 | 0 | 0 | 1 |
 | 14. Edit Suite v2 | 1 | 1 | 0 | 0 | 0 | 0 |
 | 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 11 |
-| 16. Workbook Parity | 17 | 7 | 0 | 0 | 0 | 10 |
+| 16. Workbook Parity | 17 | 6 | 0 | 0 | 0 | 11 |
 | 17. Analytics Provenance | 23 | 23 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **214** | **32** | **0** | **0** | **0** | **182** |
+| **TOTAL** | **214** | **31** | **0** | **0** | **0** | **183** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
@@ -682,7 +682,7 @@ SPIKE-01 through SPIKE-05
 | Post-MVP (Ph 6-9) | 37 | 37 | 100% |
 | Canon (Ph 10-11) | 28 | 28 | 100% |
 | Scale & Hooks (Ph 12-13) | 4 | 2 | 50% |
-| Workbook Parity (Ph 16) | 17 | 10 | 59% |
+| Workbook Parity (Ph 16) | 17 | 11 | 65% |
 | Provenance & Signal (Ph 17) | 23 | 0 | 0% |
 
 Phase 14 (`edit-suite-v2`) carries an `ENGINEERING.md` with no status

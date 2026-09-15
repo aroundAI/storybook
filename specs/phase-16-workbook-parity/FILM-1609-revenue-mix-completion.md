@@ -149,6 +149,26 @@ that `byContent`, per-video RPM and top-content all read from therefore
 cannot be populated by hand. Wiring the publish list in is small and
 belongs with whoever next touches that dashboard.
 
+## 4c. Delivered beyond this spec
+
+Seven review rounds on an S-sized spec, because the acceptance criterion
+"licensing is selectable in the manual revenue entry form" turned out to
+require repairing a form that could not submit anything at all. What
+shipped alongside the category:
+
+| Area | Why it was in scope |
+|---|---|
+| The manual entry form | Unsubmittable in two ways; then stale amount, currency, publish and date fields across a reset; a blank amount saved as `$0`; a pasted `1,250.00` saved as `$1.00`; the trigger showing the previous day west of UTC. Licensing is manual entry permanently, so an inert form makes this spec inert. |
+| `@kit/content-analytics` and `@kit/clickhouse` in CI | Neither package's unit tests ran in CI at all — the job enumerates packages by name and both were missing. Every "N tests pass" reported against them was a local run. |
+| `apps/e2e/tests/revenue/` | 13 browser specs, seeded through the API. Four review rounds passed typecheck, lint and 256 unit tests while the form was broken; every defect lived between the DOM and form state. |
+| `tsconfig` test exclusion | `__tests__` was in both `include` and `exclude`, so the package's tests were never typechecked. Removing it surfaced a pre-existing bad cast. |
+| Screenshot requirement | Written into `CLAUDE.md`, `README.md` and `apps/e2e/README.md`: UI changes ship with the rendered result in the PR. |
+
+The lesson worth carrying into FILM-1608, which builds the first writer
+`analytics_settings` has ever had: **an acceptance criterion about a form
+is not met until the form has been driven end to end.** Four rounds here
+ticked one on the strength of reading types.
+
 ## 5. Out of Scope
 
 - **Rendering `RevenueMixCard`** — FILM-1611. This spec makes the category
