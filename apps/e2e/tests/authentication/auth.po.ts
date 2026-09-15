@@ -20,7 +20,20 @@ export class AuthPageObject {
   }
 
   async signOut() {
-    await this.page.click('[data-test="account-dropdown-trigger"]');
+    // Retried, because a click on a trigger that has painted but not
+    // hydrated does nothing at all — and the failure then surfaces as a
+    // timeout on the *menu item*, which reads as "the menu is missing"
+    // rather than "the trigger was not listening yet". This is the same
+    // shape as `openAccountsSelector` in the team-accounts page object,
+    // and the same idiom.
+    await expect(async () => {
+      await this.page.click('[data-test="account-dropdown-trigger"]');
+
+      await expect(
+        this.page.locator('[data-test="account-dropdown-sign-out"]'),
+      ).toBeVisible();
+    }).toPass();
+
     await this.page.click('[data-test="account-dropdown-sign-out"]');
   }
 
@@ -57,12 +70,22 @@ export class AuthPageObject {
    */
   private async fillCredentials(params: { email: string; password: string }) {
     const email = this.page.locator('input[name="email"]');
+    const password = this.page.locator('input[name="password"]');
 
-    await email.waitFor({ state: 'visible' });
-    await email.fill(params.email);
-    await this.page.fill('input[name="password"]', params.password);
+    // Retried, not asserted. An earlier version filled once and asserted
+    // the value had stuck, which correctly *detected* hydration wiping the
+    // inputs — and then failed the test over it. CI flakes went 2 -> 5.
+    //
+    // Hydration clearing a field is recoverable: type it again. The loop
+    // exits as soon as both values survive a re-read, so a page that was
+    // ready keeps costing one pass.
+    await expect(async () => {
+      await email.fill(params.email);
+      await password.fill(params.password);
 
-    await expect(email).toHaveValue(params.email);
+      await expect(email).toHaveValue(params.email);
+      await expect(password).toHaveValue(params.password);
+    }).toPass({ timeout: 15_000 });
   }
 
   async submitMFAVerification(key: string) {

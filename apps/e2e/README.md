@@ -370,6 +370,22 @@ is the same bet, and each is worth replacing with a wait on a signal —
 `expect(locator).toHaveValue(...)`, `waitForURL`, `toBeVisible` — the next time
 its spec is touched.
 
+### Run it the way CI does
+
+```bash
+# production build + production server + the full suite, as CI runs it
+pnpm --filter web-e2e test:prod
+
+# on a busy port
+PORT=3100 PLAYWRIGHT_BASE_URL=http://localhost:3100 pnpm --filter web-e2e test:prod
+```
+
+`test:prod` is `build:test` → `start:test` → `playwright test`, the same three
+steps as the CI job, with Playwright owning the server through
+`PLAYWRIGHT_SERVER_COMMAND` so it is torn down with the run. Use it before
+claiming the suite is fine; `pnpm dev` compiles on demand and gives different
+answers.
+
 ### Point a run at your own server
 
 ```bash

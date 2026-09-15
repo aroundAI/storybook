@@ -81,6 +81,18 @@ or it is labelled a hypothesis. Where a doc describes a list the code also has,
 bind them — `REVENUE_CATEGORY_LABELS` is asserted against `RevenueCategorySchema`
 so the two cannot drift.
 
+### 4b. Detecting a race instead of surviving it
+
+> A sign-in helper was changed to assert that typed credentials had survived
+> hydration. The assertion was correct — and it turned a recoverable condition
+> into a test failure. **CI flakes went from 2 to 5**, two of them in the specs
+> the change was meant to protect.
+
+**Check:** when the condition is transient and recovery is cheap, retry it;
+reserve assertions for conditions that should never happen. `expect(...).toPass()`
+refills and re-reads; `expect(...).toHaveValue()` fails the run. Asking "is this
+state wrong, or just early?" picks the right one.
+
 ### 5. Tests that cannot fail
 
 A test written against already-fixed code has demonstrated nothing.
@@ -118,7 +130,11 @@ not the change.
 | Running | Good for | Not a gate for |
 |---|---|---|
 | `pnpm dev` + `PLAYWRIGHT_BASE_URL` | The specs you are writing; fast iteration | The suite as a whole |
-| CI (production build) | The suite as a whole | — |
+| `pnpm --filter web-e2e test:prod` | The suite, the way CI runs it | — |
+
+`test:prod` exists because the first version of this section said "let CI judge
+the rest", which was a worse answer than reproducing CI locally. It runs the same
+three steps the job does.
 
 So: iterate locally on your own specs, and let CI judge the rest. If you suspect
 you broke a shared helper, **A/B it** — run the suspect specs with and without
