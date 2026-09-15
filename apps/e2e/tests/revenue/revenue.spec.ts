@@ -185,27 +185,33 @@ test.describe('Manual revenue entry', () => {
     );
   });
 
-  test('offers every category the schema accepts', async ({ page }) => {
+  test('offers the categories a person may enter, and not the synced two', async ({
+    page,
+  }) => {
     const revenue = new RevenuePageObject(page);
 
     await revenue.setup();
 
     await revenue.categoryTrigger().click();
 
-    // The vocabulary lived in three places before FILM-1609. These are the
-    // seven the database CHECK accepts.
     for (const label of [
       'Sponsorship',
       'Product sales',
       'Affiliate',
       'Licensing',
-      'Ads',
-      'Premium',
       'Other',
     ]) {
       await expect(
         page.getByRole('option', { name: label, exact: true }),
       ).toBeVisible();
+    }
+
+    // Ads and Premium are the sync's to write. A hand-typed one would be
+    // counted as a platform payout and inflate the ad-share signal.
+    for (const label of ['Ads', 'Premium']) {
+      await expect(
+        page.getByRole('option', { name: label, exact: true }),
+      ).toBeHidden();
     }
   });
 });

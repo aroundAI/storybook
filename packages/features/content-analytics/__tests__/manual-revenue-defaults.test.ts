@@ -87,6 +87,14 @@ describe('parseAmountToCents', () => {
     expect(parseAmountToCents('1 250')).toBeNull();
   });
 
+  it('refuses a second decimal point', () => {
+    // `12..` used to normalise to `12.` and save $12.00 while the field
+    // displayed `12..` — one keystroke from a displayed-value mismatch.
+    expect(parseAmountToCents('12..')).toBeNull();
+    expect(parseAmountToCents('12.5.')).toBeNull();
+    expect(parseAmountToCents('1.2.3')).toBeNull();
+  });
+
   it('refuses currency symbols and stray text', () => {
     expect(parseAmountToCents('$250')).toBeNull();
     expect(parseAmountToCents('250usd')).toBeNull();

@@ -21,10 +21,11 @@ import type { RevenueCategory } from './schemas/revenue.schema';
 const PLATFORM_PAYOUT_CATEGORIES = ['ads', 'premium'] as const;
 
 /**
- * Every category, in the order a person picks from when entering revenue
- * by hand — the manual categories first, because API-sourced ones
- * (`ads`, `premium`) are never typed in, and `other` last because it is
- * the residual.
+ * Every category the schema accepts, with its label.
+ *
+ * This is the *display* vocabulary — the mix card labels wedges from it.
+ * What a person may type is `MANUAL_ENTRY_CATEGORIES` below, which is a
+ * strict subset.
  *
  * One list, because there were three: this map, the mix card's labels, and
  * a hardcoded `<SelectItem>` list in the manual entry form. A vocabulary
@@ -42,6 +43,22 @@ export const REVENUE_CATEGORY_LABELS: Array<{
   { value: 'premium', label: 'Premium' },
   { value: 'other', label: 'Other' },
 ];
+
+/**
+ * The categories a person may enter by hand.
+ *
+ * `ads` and `premium` are excluded, and that is a correctness rule rather
+ * than tidiness: `splitRevenueByPayout` counts every cent in those two as
+ * a *platform payout*, with no way to tell a synced row from a typed one.
+ * Offering them in the form let a hand-typed "Ads" entry inflate
+ * `adsSharePercent` — the ad-share health signal this feature exists to
+ * make measurable. They reach the table only through the sync
+ * (`analytics-sync-cron.ts`), which is the only thing that knows they are
+ * really platform payouts.
+ */
+export const MANUAL_ENTRY_CATEGORIES = REVENUE_CATEGORY_LABELS.filter(
+  ({ value }) => value !== 'ads' && value !== 'premium',
+);
 
 /** Label for one category, for lookups keyed by the stored value. */
 export const REVENUE_CATEGORY_LABEL: Record<string, string> =

@@ -141,6 +141,17 @@ Not changed here deliberately: tightening that policy affects every
 revenue write path including the sync jobs, which is a security decision
 with a blast radius past a category vocabulary. It wants its own ticket.
 
+**Reports generated before and after this spec store different metrics
+under the same keys.** `adsSharePercent` and `nonAdSharePercent` moved from
+a signed denominator to a positive-only one, and
+`generateRevenueReportAction` serialises them verbatim into
+`revenue_reports.summary_data` with no version marker. Rows written earlier
+have no `positiveRevenueCents` either, so nothing distinguishes the two.
+The values differ only where a category is negative — a clawback month —
+but a consumer comparing an old report against a new one cannot tell which
+definition it is reading. Stamping a schema version on `summary_data`, or
+backfilling, is the fix; neither belongs in a category vocabulary change.
+
 **Per-video attribution is unreachable from the dashboard.**
 `revenue-dashboard.tsx:295` mounts the form without a `publishes` prop, so
 the video list always renders its disabled "No published content available"

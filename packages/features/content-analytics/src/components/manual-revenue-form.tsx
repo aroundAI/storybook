@@ -46,7 +46,7 @@ import {
   parseAmountToCents,
   parseLocalDate,
 } from '../lib/manual-revenue';
-import { REVENUE_CATEGORY_LABELS } from '../lib/revenue-mix';
+import { MANUAL_ENTRY_CATEGORIES } from '../lib/revenue-mix';
 import { AddManualRevenueSchema } from '../lib/schemas/revenue.schema';
 import { addManualRevenueAction } from '../server/revenue-actions';
 
@@ -193,7 +193,9 @@ export function ManualRevenueForm({
                     </SelectContent>
                   </Select>
                   <FormDescription>
-                    Select the content this revenue is associated with
+                    {publishes.length === 0
+                      ? 'Recorded against the whole channel. Per-video entry arrives with the publish list (FILM-1611).'
+                      : 'Select the content this revenue is associated with'}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -345,7 +347,7 @@ export function ManualRevenueForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {REVENUE_CATEGORY_LABELS.map(({ value, label }) => (
+                      {MANUAL_ENTRY_CATEGORIES.map(({ value, label }) => (
                         <SelectItem key={value} value={value}>
                           {label}
                         </SelectItem>

@@ -69,11 +69,13 @@ export function parseAmountToCents(raw: string): number | null {
 
   if (text === '') return null;
 
-  const normalised = text.endsWith('.') ? text.slice(0, -1) : text;
+  // No trailing-dot strip: the pattern already admits `12.`, and stripping
+  // first let a second dot through — `12..` normalised to `12.` and saved
+  // $12.00 while the field displayed `12..`, which is the displayed-value-
+  // is-not-saved-value bug this module exists to end, one keystroke away.
+  if (!AMOUNT.test(text)) return null;
 
-  if (!AMOUNT.test(normalised)) return null;
-
-  return Math.round(Number(normalised) * 100);
+  return Math.round(Number.parseFloat(text) * 100);
 }
 
 /**

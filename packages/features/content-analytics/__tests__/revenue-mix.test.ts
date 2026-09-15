@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  MANUAL_ENTRY_CATEGORIES,
   REVENUE_CATEGORY_COLOR,
   REVENUE_CATEGORY_LABELS,
   payoutShare,
@@ -330,5 +331,34 @@ describe('AddManualRevenueSchema ceiling', () => {
       AddManualRevenueSchema.safeParse({ ...base, revenueCents: 2_147_483_647 })
         .success,
     ).toBe(true);
+  });
+});
+
+describe('MANUAL_ENTRY_CATEGORIES', () => {
+  it('excludes the two the sync owns', () => {
+    // splitRevenueByPayout counts every ads/premium cent as a platform
+    // payout with no way to tell a typed row from a synced one, so
+    // offering them by hand inflates the ad-share health signal.
+    const values = MANUAL_ENTRY_CATEGORIES.map((entry) => entry.value);
+
+    expect(values).not.toContain('ads');
+    expect(values).not.toContain('premium');
+  });
+
+  it('offers everything else the schema accepts', () => {
+    const values = [...MANUAL_ENTRY_CATEGORIES.map((e) => e.value)].sort();
+    const expected = [...RevenueCategorySchema.options]
+      .filter((c) => c !== 'ads' && c !== 'premium')
+      .sort();
+
+    expect(values).toEqual(expected);
+  });
+
+  it('is a subset of the display vocabulary', () => {
+    const all = REVENUE_CATEGORY_LABELS.map((e) => e.value);
+
+    for (const { value } of MANUAL_ENTRY_CATEGORIES) {
+      expect(all).toContain(value);
+    }
   });
 });

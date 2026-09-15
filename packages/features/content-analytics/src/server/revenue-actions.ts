@@ -258,7 +258,7 @@ export const addManualRevenueAction = enhanceAction(
     // named as an onConflict target, so replace any existing row explicitly.
     const existingQuery = client
       .from('revenue_records')
-      .select('id')
+      .select('id, source')
       .eq('record_date', date)
       .eq('category', category);
 
@@ -267,6 +267,25 @@ export const addManualRevenueAction = enhanceAction(
         ? existingQuery.eq('publish_id', publishId)
         : existingQuery.eq('account_id', accountId!)
     ).maybeSingle();
+
+    // A manual entry replaces a manual entry, never a synced one. The
+    // lookup keys on date + category + scope, which is also what the sync
+    // writes (`analytics-sync-cron.ts` emits ads/premium/other per publish
+    // per day with source 'api'), so without this an entry for a synced
+    // publish and date would update that row in place — flipping `source`
+    // to manual, leaving the API `breakdown` attached to a hand-typed
+    // amount, and putting real platform revenue behind
+    // deleteManualRevenueAction, which only ever filters on source.
+    //
+    // Refused rather than inserted alongside: the unique index is on
+    // (coalesce(publish_id, account_id), record_date, category) regardless
+    // of source, so a second row is not available to us either way. Saying
+    // so is better than a raw constraint violation.
+    if (existing && existing.source !== 'manual') {
+      throw new Error(
+        'Revenue for this date and category was synced from the platform and cannot be overwritten by hand.',
+      );
+    }
 
     const values = {
       publish_id: publishId ?? null,
