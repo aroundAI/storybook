@@ -9,7 +9,12 @@
  * before `onSubmit` runs, so anything the schema needs and the defaults
  * omit kills the whole submit with an error on an unrelated field.
  */
-import type { RevenueCategory } from './schemas/revenue.schema';
+import type { z } from 'zod';
+
+import type { ManualRevenueCategorySchema } from './schemas/revenue.schema';
+
+/** The categories a person may record by hand — the schema's subset. */
+type ManualRevenueCategory = z.infer<typeof ManualRevenueCategorySchema>;
 
 export interface ManualRevenueDefaults {
   publishId: undefined;
@@ -17,7 +22,7 @@ export interface ManualRevenueDefaults {
   date: string;
   revenueCents: number;
   currency: string;
-  category: RevenueCategory;
+  category: ManualRevenueCategory;
   notes: string;
 }
 

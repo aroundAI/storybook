@@ -18,6 +18,7 @@ import { Skeleton } from '@kit/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
 import { formatCurrency } from '../lib/format';
+import { formatLocalDate } from '../lib/manual-revenue';
 import {
   getRevenueProjectionAction,
   getRevenueSummaryAction,
@@ -66,8 +67,8 @@ export function RevenueDashboard({
   );
 
   // Format dates for API calls
-  const startDate = dateRange.from.toISOString().split('T')[0];
-  const endDate = dateRange.to.toISOString().split('T')[0];
+  const startDate = formatLocalDate(dateRange.from);
+  const endDate = formatLocalDate(dateRange.to);
 
   // Fetch revenue summary
   const { data: summary, isLoading: summaryLoading } = useQuery({

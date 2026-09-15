@@ -86,9 +86,8 @@ export function ManualRevenueForm({
 
   async function onSubmit(data: z.infer<typeof AddManualRevenueSchema>) {
     try {
-      // Exactly one scope reaches the action. revenue_records' unique
-      // index is on coalesce(publish_id, account_id), so sending both
-      // would attach the row to a video *and* to the channel.
+      // One scope, and the action enforces it too — this is a server
+      // action, so the form is not its only possible caller.
       await addManualRevenueAction({
         ...data,
         publishId: data.publishId || undefined,

@@ -39,6 +39,33 @@ export const RevenueCategorySchema = z.enum([
 export type RevenueCategory = z.infer<typeof RevenueCategorySchema>;
 
 /**
+ * Categories the platform pays out, as opposed to income a channel built
+ * itself.
+ *
+ * Lives here, with the vocabulary, because three things need it and one of
+ * them is this schema: `splitRevenueByPayout` sums these as platform
+ * revenue, the entry form must not offer them, and manual entry must not
+ * accept them. Defining it in `revenue-mix.ts` instead would make the
+ * schema import from the module that imports the schema.
+ */
+export const PLATFORM_PAYOUT_CATEGORIES = ['ads', 'premium'] as const;
+
+/**
+ * What a person may record by hand.
+ *
+ * `ads` and `premium` are excluded **at the schema**, not merely omitted
+ * from a dropdown. `addManualRevenueAction` is a server action — a public
+ * endpoint — so a category list enforced only in JSX is not enforced: a
+ * posted `category: 'ads'` would be stored with `source: 'manual'`,
+ * counted as a platform payout, and persisted into a revenue report as an
+ * inflated ad share. Which is the defect the dropdown change was meant to
+ * prevent.
+ */
+export const ManualRevenueCategorySchema = RevenueCategorySchema.exclude(
+  PLATFORM_PAYOUT_CATEGORIES,
+);
+
+/**
  * Manual revenue entry. Sponsorship and product income is often
  * channel-level, so a record attaches to either a publish or an account.
  */
@@ -66,7 +93,7 @@ export const AddManualRevenueSchema = z
       // error — a save that fails with nothing actionable in it.
       .max(2_147_483_647, 'Amount is too large to record'),
     currency: z.string().length(3).optional().default('USD'),
-    category: RevenueCategorySchema.default('sponsorship'),
+    category: ManualRevenueCategorySchema.default('sponsorship'),
     notes: z.string().max(1000).optional(),
   })
   .refine((data) => data.publishId ?? data.accountId, {

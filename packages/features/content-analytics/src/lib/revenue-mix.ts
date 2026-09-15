@@ -7,6 +7,10 @@
  * category is added.
  */
 import type { RevenueCategory } from './schemas/revenue.schema';
+import {
+  ManualRevenueCategorySchema,
+  PLATFORM_PAYOUT_CATEGORIES,
+} from './schemas/revenue.schema';
 
 /**
  * Shape version stamped onto `revenue_reports.summary_data`.
@@ -33,7 +37,6 @@ export const REVENUE_SUMMARY_SCHEMA_VERSION = 2;
  * a payout, and only the explicit form forces that decision to be made
  * rather than inherited.
  */
-const PLATFORM_PAYOUT_CATEGORIES = ['ads', 'premium'] as const;
 
 /**
  * Every category the schema accepts, with its label.
@@ -72,7 +75,11 @@ export const REVENUE_CATEGORY_LABELS: Array<{
  * really platform payouts.
  */
 export const MANUAL_ENTRY_CATEGORIES = REVENUE_CATEGORY_LABELS.filter(
-  ({ value }) => value !== 'ads' && value !== 'premium',
+  // Derived from the schema, not from two string literals. Naming them
+  // here meant adding a third payout category would silently make it
+  // hand-enterable — and the guard test named the same two literals, so it
+  // would have stayed green while doing it.
+  ({ value }) => ManualRevenueCategorySchema.safeParse(value).success,
 );
 
 /** Label for one category, for lookups keyed by the stored value. */

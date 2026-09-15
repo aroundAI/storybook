@@ -4,15 +4,16 @@ import { describe, expect, it } from 'vitest';
 
 import {
   MANUAL_ENTRY_CATEGORIES,
-  REVENUE_SUMMARY_SCHEMA_VERSION,
   REVENUE_CATEGORY_COLOR,
   REVENUE_CATEGORY_LABELS,
+  REVENUE_SUMMARY_SCHEMA_VERSION,
   payoutShare,
   revenueMixView,
   splitRevenueByPayout,
 } from '../src/lib/revenue-mix';
 import {
   AddManualRevenueSchema,
+  PLATFORM_PAYOUT_CATEGORIES,
   RevenueCategorySchema,
 } from '../src/lib/schemas/revenue.schema';
 
@@ -336,14 +337,31 @@ describe('AddManualRevenueSchema ceiling', () => {
 });
 
 describe('MANUAL_ENTRY_CATEGORIES', () => {
-  it('excludes the two the sync owns', () => {
-    // splitRevenueByPayout counts every ads/premium cent as a platform
-    // payout with no way to tell a typed row from a synced one, so
-    // offering them by hand inflates the ad-share health signal.
+  it('excludes every payout category, not two named literals', () => {
+    // Derived from PLATFORM_PAYOUT_CATEGORIES so a third payout category
+    // cannot become hand-enterable while this test stays green — which is
+    // what naming 'ads' and 'premium' here would have allowed.
     const values = MANUAL_ENTRY_CATEGORIES.map((entry) => entry.value);
 
-    expect(values).not.toContain('ads');
-    expect(values).not.toContain('premium');
+    for (const payout of PLATFORM_PAYOUT_CATEGORIES) {
+      expect(values).not.toContain(payout);
+    }
+  });
+
+  it('is enforced by the schema, not only by the dropdown', () => {
+    // addManualRevenueAction is a server action. A category list enforced
+    // in JSX alone is not enforced: a posted `category: 'ads'` would store
+    // a hand-typed figure as a platform payout.
+    for (const payout of PLATFORM_PAYOUT_CATEGORIES) {
+      expect(
+        AddManualRevenueSchema.safeParse({
+          accountId: '550e8400-e29b-41d4-a716-446655440000',
+          date: '2026-09-15',
+          revenueCents: 1000,
+          category: payout,
+        }).success,
+      ).toBe(false);
+    }
   });
 
   it('offers everything else the schema accepts', () => {

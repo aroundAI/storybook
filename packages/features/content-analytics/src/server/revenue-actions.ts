@@ -292,8 +292,14 @@ export const addManualRevenueAction = enhanceAction(
     }
 
     const values = {
+      // Exactly one scope, enforced here rather than trusted from the
+      // caller. The schema permits both, and a row carrying both ids makes
+      // the lookup above match two rows for one date and category —
+      // `maybeSingle` then fails, and channel entry for that pair is
+      // blocked for good. A comment in the form used to assert this; the
+      // form is not the only caller of a server action.
       publish_id: publishId ?? null,
-      account_id: accountId ?? null,
+      account_id: publishId ? null : (accountId ?? null),
       platform,
       record_date: date,
       revenue_cents: revenueCents,
@@ -363,23 +369,52 @@ export const deleteManualRevenueAction = enhanceAction(
     const client = getSupabaseServerClient();
     const { publishId, accountId, date, category } = data;
 
+    // What the caller can *see*. Reading is open to any member, so this
+    // says whether there was anything to delete — which the delete itself
+    // cannot, since RLS filters rows out of a DELETE silently rather than
+    // raising.
+    let visible = client
+      .from('revenue_records')
+      .select('id')
+      .eq('record_date', date)
+      .eq('source', 'manual');
+
     let query = client
       .from('revenue_records')
       .delete()
       .eq('record_date', date)
       .eq('source', 'manual');
 
-    query = publishId
-      ? query.eq('publish_id', publishId)
-      : query.eq('account_id', accountId!);
+    if (publishId) {
+      visible = visible.eq('publish_id', publishId);
+      query = query.eq('publish_id', publishId);
+    } else {
+      visible = visible.eq('account_id', accountId!);
+      query = query.eq('account_id', accountId!);
+    }
 
     if (category) {
+      visible = visible.eq('category', category);
       query = query.eq('category', category);
     }
 
-    const { error } = await query;
+    const { data: matched, error: matchError } = await visible;
+
+    if (matchError) throw matchError;
+
+    const { data: removed, error } = await query.select('id');
 
     if (error) throw error;
+
+    // Rows exist, the caller can read them, and none were removed: the
+    // delete policy refused. Returning `{ success: true }` here is the same
+    // silent-no-op the update path already guards against — channel-level
+    // delete is owner-only since 20260915150338.
+    if ((matched?.length ?? 0) > 0 && (removed?.length ?? 0) === 0) {
+      throw new Error(
+        'Only an account owner can delete channel-level revenue entries.',
+      );
+    }
 
     return { success: true };
   },
