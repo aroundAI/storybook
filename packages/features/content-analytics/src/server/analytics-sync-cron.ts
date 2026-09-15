@@ -985,13 +985,33 @@ async function upsertRevenueRecords(
   const logger = await getLogger();
 
   for (const row of byCategory) {
-    const { data: existing } = await client
+    const { data: existing, error: existingError } = await client
       .from('revenue_records')
       .select('id, source')
       .eq('publish_id', data.publish_id)
       .eq('record_date', data.snapshot_date)
       .eq('category', row.category)
       .maybeSingle();
+
+    // A failed lookup left `existing` nullish and fell through to the
+    // insert, which then collided with the unique index and was swallowed
+    // by the warn below — skipping the manual-entry guard entirely for that
+    // row. The mirror of this lookup in revenue-actions.ts throws; these
+    // two should not disagree about whether a failed read is survivable.
+    if (existingError) {
+      logger.warn(
+        {
+          name: 'analytics-sync',
+          publishId: data.publish_id,
+          date: data.snapshot_date,
+          category: row.category,
+          error: existingError,
+        },
+        'Skipping revenue row: could not read the existing record',
+      );
+
+      continue;
+    }
 
     // A hand-entered row is not the sync's to rewrite. The unique index
     // allows only one row per (publish, date, category) regardless of

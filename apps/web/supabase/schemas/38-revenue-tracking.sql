@@ -167,9 +167,14 @@ create policy "revenue_records_read" on public.revenue_records for select
     )
   );
 
+-- `source = 'manual'` is enforced here, not only in the action: this PR made
+-- `source` decide who may touch a row, and a rule the app keeps to itself is
+-- not a rule. The sync writes 'api' through the service-role client, which
+-- bypasses RLS.
 create policy "revenue_records_create" on public.revenue_records for insert
   to authenticated with check (
-    (
+    source = 'manual'
+    and ((
       account_id is not null
       and public.has_account_access(account_id)
     )
@@ -207,7 +212,8 @@ create policy "revenue_records_update" on public.revenue_records for update
       and pm.user_id = auth.uid()
       and pm.role in ('owner', 'admin', 'member')
     )
-  );
+  )
+  with check (source = 'manual');
 
 create policy "revenue_records_delete" on public.revenue_records for delete
   to authenticated using (
@@ -225,7 +231,7 @@ create policy "revenue_records_delete" on public.revenue_records for delete
       join public.project_members pm on pm.project_id = e.project_id
       where pub.id = revenue_records.publish_id
       and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin')
+      and (pm.role in ('owner', 'admin') or revenue_records.created_by = auth.uid())
     )
   );
 

@@ -282,7 +282,14 @@ export const addManualRevenueAction = enhanceAction(
     const { data: existing, error: existingError } = await (
       publishId
         ? existingQuery.eq('publish_id', publishId)
-        : existingQuery.eq('account_id', accountId!)
+        : // `is('publish_id', null)` matters: the unique index keys on
+          // coalesce(publish_id, account_id), so a legacy row carrying
+          // *both* ids coalesces to its publish and can sit beside a real
+          // channel-level row for the same date and category. Without this,
+          // the account branch could match that row and `update` it — which
+          // sets publish_id null and quietly turns a per-video entry into a
+          // channel-level one — or match two rows and fail permanently.
+          existingQuery.eq('account_id', accountId!).is('publish_id', null)
     ).maybeSingle();
 
     // Not discarded: a legacy row carrying both publish_id and account_id
@@ -401,7 +408,12 @@ export const addManualRevenueAction = enhanceAction(
 /** Why a delete removed nothing, in a form that survives a prod build. */
 export type DeleteManualRevenueResult =
   | { success: true }
-  | { success: false; reason: 'project_role' | 'not_yours' };
+  | {
+      success: false;
+      reason: 'project_role' | 'not_yours';
+      /** Rows the caller did remove before the rest were refused. */
+      removed: number;
+    };
 
 export const deleteManualRevenueAction = enhanceAction(
   async function (data): Promise<DeleteManualRevenueResult> {
@@ -428,8 +440,10 @@ export const deleteManualRevenueAction = enhanceAction(
       visible = visible.eq('publish_id', publishId);
       query = query.eq('publish_id', publishId);
     } else {
-      visible = visible.eq('account_id', accountId!);
-      query = query.eq('account_id', accountId!);
+      // Same reasoning as the lookup above: a dual-scope row belongs to
+      // its publish, not to the channel.
+      visible = visible.eq('account_id', accountId!).is('publish_id', null);
+      query = query.eq('account_id', accountId!).is('publish_id', null);
     }
 
     if (category) {
@@ -462,6 +476,10 @@ export const deleteManualRevenueAction = enhanceAction(
       return {
         success: false,
         reason: publishId ? 'project_role' : 'not_yours',
+        // What *was* removed. Without it a caller deleting a whole date is
+        // told the operation failed while their own rows are already gone —
+        // the refusal is true of the rest and false of what it destroyed.
+        removed: removed?.length ?? 0,
       };
     }
 
