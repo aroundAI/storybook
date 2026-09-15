@@ -59,7 +59,12 @@ export const AddManualRevenueSchema = z
       .min(
         1,
         'Enter an amount greater than zero, digits only — for example 1250.00',
-      ),
+      )
+      // revenue_records.revenue_cents is a Postgres `integer`. Without a
+      // ceiling the insert fails with `value out of range for type
+      // integer`, which reaches the user as a redacted server-action
+      // error — a save that fails with nothing actionable in it.
+      .max(2_147_483_647, 'Amount is too large to record'),
     currency: z.string().length(3).optional().default('USD'),
     category: RevenueCategorySchema.default('sponsorship'),
     notes: z.string().max(1000).optional(),

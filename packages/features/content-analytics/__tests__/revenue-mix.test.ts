@@ -307,3 +307,28 @@ describe('payoutShare', () => {
     expect(payoutShare({ ads: 300, premium: 300, other: 400 })).toBe(0.6);
   });
 });
+
+describe('AddManualRevenueSchema ceiling', () => {
+  const base = {
+    accountId: '550e8400-e29b-41d4-a716-446655440000',
+    date: '2026-09-14',
+    category: 'licensing' as const,
+  };
+
+  it('refuses an amount past what the integer column holds', () => {
+    // revenue_records.revenue_cents is a Postgres integer; without this
+    // the insert fails with `value out of range`, which reaches the user
+    // as a redacted server-action error.
+    expect(
+      AddManualRevenueSchema.safeParse({ ...base, revenueCents: 2_147_483_648 })
+        .success,
+    ).toBe(false);
+  });
+
+  it('accepts the largest amount it can store', () => {
+    expect(
+      AddManualRevenueSchema.safeParse({ ...base, revenueCents: 2_147_483_647 })
+        .success,
+    ).toBe(true);
+  });
+});

@@ -41,8 +41,14 @@ export function manualRevenueDefaults(
   };
 }
 
-/** A whole-string amount: digits, optionally one dot and up to two more. */
-const AMOUNT = /^\d+(\.\d{0,2})?$/;
+/**
+ * A whole-string amount: digits with an optional decimal part.
+ *
+ * The integer part is optional so `.50` is fifty cents — `type="number"`
+ * accepted that, and requiring a leading digit made a common entry a hard
+ * error with a message that did not explain it.
+ */
+const AMOUNT = /^(\d+(\.\d{0,2})?|\.\d{1,2})$/;
 
 /**
  * Cents from what the user typed, or null when the text is not an amount.

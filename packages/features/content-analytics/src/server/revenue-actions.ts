@@ -130,6 +130,13 @@ export const getRevenueSummaryAction = enhanceAction(
       totalRevenueCents,
     );
 
+    // The denominator the two share fields use: positive buckets only.
+    const positiveRevenueCents = Object.values(byType).reduce(
+      (sum, cents) => sum + (cents > 0 ? cents : 0),
+      0,
+    );
+    const payoutSharePercent = payoutShare(byType) * 100;
+
     /** Cents per 1000 views. Display sites divide by 100 for dollars. */
     const allInRpmCents =
       totalViews > 0 ? (totalRevenueCents / totalViews) * 1000 : 0;
@@ -183,12 +190,23 @@ export const getRevenueSummaryAction = enhanceAction(
       totalViews,
       adsRevenueCents,
       nonAdRevenueCents,
-      // Over positive buckets, via the shared rule. A signed total is not
-      // a denominator: `{ ads: 10000, sponsorship: -8000 }` reported
-      // adsSharePercent as 500 while the card showed 100 for the same
-      // data. The card was fixed first and this was left behind.
-      adsSharePercent: payoutShare(byType) * 100,
-      nonAdSharePercent: (1 - payoutShare(byType)) * 100,
+      // Over positive buckets, via the shared rule, and computed once.
+      //
+      // A signed total is not a denominator: `{ ads: 10000, sponsorship:
+      // -8000 }` reported adsSharePercent as 500 while the card showed 100
+      // for the same data. Fixing that dropped the old `total > 0` guard,
+      // which made an account with no revenue at all report
+      // `nonAdSharePercent: 100` — and that figure is persisted into
+      // revenue_reports.summary_data, so it is not display-only.
+      //
+      // positiveRevenueCents travels with them because the cents fields
+      // beside these are signed: without the denominator in the payload, a
+      // consumer recomputing `adsRevenueCents / totalRevenueCents` gets a
+      // different number than the percentage states.
+      adsSharePercent: positiveRevenueCents > 0 ? payoutSharePercent : 0,
+      nonAdSharePercent:
+        positiveRevenueCents > 0 ? 100 - payoutSharePercent : 0,
+      positiveRevenueCents,
       adsRpmCents,
       allInRpmCents,
       averageDailyRevenueCents,

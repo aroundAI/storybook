@@ -104,9 +104,21 @@ export class RevenuePageObject {
   async pickToday() {
     await this.page.click('[data-test="revenue-date-trigger"]');
 
-    const iso = new Date().toISOString().slice(0, 10);
+    // Local, not toISOString(): react-day-picker writes `data-day` with
+    // date-fns `format`, which is local. West of UTC after ~17:00 the ISO
+    // string is tomorrow — a cell that exists but is disabled by the
+    // calendar's `date > new Date()` guard, so the click waits out the
+    // test timeout and every revenue spec fails. East of UTC in the early
+    // hours it silently selects yesterday and still passes. CI runs UTC,
+    // so both hide there.
+    const now = new Date();
+    const local = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+    ].join('-');
 
-    await this.page.click(`[role="gridcell"][data-day="${iso}"] button`);
+    await this.page.click(`[role="gridcell"][data-day="${local}"] button`);
   }
 
   async submit() {

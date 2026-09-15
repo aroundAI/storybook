@@ -95,6 +95,17 @@ describe('parseAmountToCents', () => {
     expect(parseAmountToCents('-250')).toBeNull();
   });
 
+  it('reads a leading-decimal amount', () => {
+    // `type="number"` accepted `.50`; requiring a leading digit turned a
+    // common entry into a hard error whose message did not explain it.
+    expect(parseAmountToCents('.50')).toBe(50);
+    expect(parseAmountToCents('.5')).toBe(50);
+  });
+
+  it('still refuses a lone dot', () => {
+    expect(parseAmountToCents('.')).toBeNull();
+  });
+
   it('treats empty and whitespace as no amount', () => {
     expect(parseAmountToCents('')).toBeNull();
     expect(parseAmountToCents('   ')).toBeNull();

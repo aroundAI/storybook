@@ -126,6 +126,21 @@ date are normal, so this wants a decision: sum them, reject the second, or
 key on something finer. It is a product question, not a cleanup, and it is
 **not decided here**.
 
+**Channel-level revenue accepts any account role; per-video does not.**
+`revenue_records_create` has two branches (`schemas/38-revenue-tracking.sql:166`).
+The publish branch requires `pm.role in ('owner','admin','member')` on the
+project. The account branch requires only `public.has_account_access`,
+which returns true for the owner *or any team member* with no role filter
+(`30-film-studio.sql:1329`). The `accountId` cannot be forged — RLS
+settles that — but the two branches disagree about who may write, and
+this spec is what makes the account branch reachable from the UI. So the
+lowest-privileged member of an account can now create, overwrite and
+delete channel-level revenue while being unable to touch a single video's.
+
+Not changed here deliberately: tightening that policy affects every
+revenue write path including the sync jobs, which is a security decision
+with a blast radius past a category vocabulary. It wants its own ticket.
+
 **Per-video attribution is unreachable from the dashboard.**
 `revenue-dashboard.tsx:295` mounts the form without a `publishes` prop, so
 the video list always renders its disabled "No published content available"
