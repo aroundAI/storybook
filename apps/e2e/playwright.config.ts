@@ -28,6 +28,11 @@ if (!enableTeamAccountTests) {
   testIgnore.push('*team-accounts.spec.ts');
   testIgnore.push('*invitations.spec.ts');
   testIgnore.push('*team-billing.spec.ts');
+  // The revenue specs seed through `create_team_account`, which raises
+  // 'Team accounts are not enabled' when the feature is off — so without
+  // this they do not skip, they fail at setup for a reason that has
+  // nothing to do with revenue.
+  testIgnore.push('*revenue*.spec.ts');
 }
 
 /**

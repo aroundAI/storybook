@@ -228,8 +228,21 @@ export const getRevenueSummaryAction = enhanceAction(
  * Add or update a manual revenue entry.
  * Uses upsert to handle both create and update.
  */
+/**
+ * Why a manual entry was refused, in a form that survives a production
+ * build.
+ *
+ * `synced` — the platform already reported this date and category, so a
+ * hand-typed figure would overwrite real provenance.
+ * `not_yours` — an entry exists and the caller neither wrote it nor owns
+ * the account.
+ */
+export type AddManualRevenueResult =
+  | { ok: true; record: RevenueRecord }
+  | { ok: false; reason: 'synced' | 'not_yours' };
+
 export const addManualRevenueAction = enhanceAction(
-  async function (data): Promise<RevenueRecord> {
+  async function (data, user): Promise<AddManualRevenueResult> {
     const client = getSupabaseServerClient();
     const {
       publishId,
@@ -266,11 +279,18 @@ export const addManualRevenueAction = enhanceAction(
       .eq('record_date', date)
       .eq('category', category);
 
-    const { data: existing } = await (
+    const { data: existing, error: existingError } = await (
       publishId
         ? existingQuery.eq('publish_id', publishId)
         : existingQuery.eq('account_id', accountId!)
     ).maybeSingle();
+
+    // Not discarded: a legacy row carrying both publish_id and account_id
+    // makes this match twice, and maybeSingle then returns an error with a
+    // null row — which fell through to the INSERT and surfaced a raw
+    // duplicate-key violation, the very thing the comment below claims
+    // this lookup avoids.
+    if (existingError) throw existingError;
 
     // A manual entry replaces a manual entry, never a synced one. The
     // lookup keys on date + category + scope, which is also what the sync
@@ -286,9 +306,11 @@ export const addManualRevenueAction = enhanceAction(
     // of source, so a second row is not available to us either way. Saying
     // so is better than a raw constraint violation.
     if (existing && existing.source !== 'manual') {
-      throw new Error(
-        'Revenue for this date and category was synced from the platform and cannot be overwritten by hand.',
-      );
+      // Returned, not thrown. Next masks Server Action errors in a
+      // production build — replacing the message with a digest — which is
+      // the same redaction this file's `.max()` ceiling exists to avoid.
+      // A reason the client can switch on survives; a message does not.
+      return { ok: false, reason: 'synced' };
     }
 
     const values = {
@@ -300,6 +322,10 @@ export const addManualRevenueAction = enhanceAction(
       // form is not the only caller of a server action.
       publish_id: publishId ?? null,
       account_id: publishId ? null : (accountId ?? null),
+      // Who to let correct this later. The update policy allows the author
+      // or an account owner; without it a member could record a figure and
+      // then be unable to fix their own typo.
+      created_by: user.id,
       platform,
       record_date: date,
       revenue_cents: revenueCents,
@@ -327,32 +353,33 @@ export const addManualRevenueAction = enhanceAction(
     if (error) throw error;
 
     if (existing && !record) {
-      throw new Error(
-        'An entry already exists for this date and category, and only an account owner can change it.',
-      );
+      return { ok: false, reason: 'not_yours' };
     }
 
     if (!record) throw new Error('Failed to create revenue record');
 
     return {
-      id: record.id,
-      publishId: record.publish_id ?? '',
-      platform: record.platform as
-        | 'youtube'
-        | 'tiktok'
-        | 'instagram'
-        | 'facebook'
-        | 'twitter'
-        | 'linkedin'
-        | 'manual',
-      date: record.record_date,
-      revenueCents: record.revenue_cents,
-      currency: record.currency ?? 'USD',
-      source: record.source as 'api' | 'manual',
-      breakdown: record.breakdown as Record<string, number> | undefined,
-      metadata: record.metadata as Record<string, unknown> | undefined,
-      createdAt: new Date(record.created_at),
-      updatedAt: new Date(record.updated_at),
+      ok: true,
+      record: {
+        id: record.id,
+        publishId: record.publish_id ?? '',
+        platform: record.platform as
+          | 'youtube'
+          | 'tiktok'
+          | 'instagram'
+          | 'facebook'
+          | 'twitter'
+          | 'linkedin'
+          | 'manual',
+        date: record.record_date,
+        revenueCents: record.revenue_cents,
+        currency: record.currency ?? 'USD',
+        source: record.source as 'api' | 'manual',
+        breakdown: record.breakdown as Record<string, number> | undefined,
+        metadata: record.metadata as Record<string, unknown> | undefined,
+        createdAt: new Date(record.created_at),
+        updatedAt: new Date(record.updated_at),
+      },
     };
   },
   {
@@ -364,8 +391,13 @@ export const addManualRevenueAction = enhanceAction(
 /**
  * Delete a manual revenue entry.
  */
+/** Why a delete removed nothing, in a form that survives a prod build. */
+export type DeleteManualRevenueResult =
+  | { success: true }
+  | { success: false; reason: 'project_role' | 'not_yours' };
+
 export const deleteManualRevenueAction = enhanceAction(
-  async function (data): Promise<{ success: boolean }> {
+  async function (data): Promise<DeleteManualRevenueResult> {
     const client = getSupabaseServerClient();
     const { publishId, accountId, date, category } = data;
 
@@ -411,9 +443,14 @@ export const deleteManualRevenueAction = enhanceAction(
     // silent-no-op the update path already guards against — channel-level
     // delete is owner-only since 20260915150338.
     if ((matched?.length ?? 0) > 0 && (removed?.length ?? 0) === 0) {
-      throw new Error(
-        'Only an account owner can delete channel-level revenue entries.',
-      );
+      // Scope-specific: the same condition fires for either RLS branch,
+      // and a project member refused by the publish branch was being told
+      // about account owners and channel-level entries — neither of which
+      // described their situation.
+      return {
+        success: false,
+        reason: publishId ? 'project_role' : 'not_yours',
+      };
     }
 
     return { success: true };

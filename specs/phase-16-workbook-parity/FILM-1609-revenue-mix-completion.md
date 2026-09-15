@@ -127,8 +127,22 @@ key on something finer. It is a product question, not a cleanup, and it is
 **not decided here**.
 
 **Channel-level revenue accepts any account role; per-video does not.**
-✅ **Fixed** — `revenue_records_update` and `_delete` now require an account
-owner on the account branch; `_create` stays open to any member. There is
+✅ **Fixed, then fixed again.** The first attempt made update and delete
+owner-only, which closed the gap and opened a worse one: the entry form is
+rendered to every member, so a member could record a figure and then be
+unable to correct their own typo or remove it — invited into a state with
+no exit. The property worth protecting was never "members cannot write", it
+was "nobody rewrites someone else's figure unnoticed", which needs to know
+who wrote it. `revenue_records.created_by` now records that, and the
+policies allow the author **or** an account owner. Proven with three users:
+the author corrects and deletes their own row, another member cannot touch
+it, the owner can.
+
+Rows predating the column keep `created_by` null and stay owner-only —
+the safe direction to be wrong about authorship.
+
+The original tightening: `revenue_records_update` and `_delete` require an
+account owner on the account branch; `_create` stays open to any member. There is
 no account-level `admin` (`17-roles-seed.sql` seeds only `owner` and
 `member`), so this is owner-or-nothing. Proven against the local database
 with both roles: a member may insert and is filtered to zero rows on update

@@ -88,12 +88,26 @@ export function ManualRevenueForm({
     try {
       // One scope, and the action enforces it too — this is a server
       // action, so the form is not its only possible caller.
-      await addManualRevenueAction({
+      const result = await addManualRevenueAction({
         ...data,
         publishId: data.publishId || undefined,
         accountId: data.publishId ? undefined : accountId,
         currency: data.currency || 'USD',
       });
+
+      // The reason comes back as a value and the sentence is written here,
+      // because Next masks Server Action error messages in a production
+      // build — a thrown explanation reaches the user as a digest.
+      if (!result.ok) {
+        toast.error(
+          result.reason === 'synced'
+            ? 'The platform already reported revenue for this date and category. Hand entries cannot overwrite synced figures.'
+            : 'An entry already exists for this date and category. Only the person who added it, or an account owner, can change it.',
+        );
+
+        return;
+      }
+
       toast.success('Revenue entry added successfully');
       form.reset(manualRevenueDefaults(accountId));
       setAmountText('');

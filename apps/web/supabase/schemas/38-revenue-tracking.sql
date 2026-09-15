@@ -21,6 +21,10 @@ create table if not exists public.revenue_records (
   category varchar(30) not null default 'ads',
   breakdown jsonb default '{}',
   metadata jsonb default '{}',
+  -- Who recorded this by hand. Null for sync-written rows, and for rows
+  -- predating the column — those stay owner-only, which is the safe way to
+  -- be wrong about authorship.
+  created_by uuid references auth.users(id) on delete set null,
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
   check (platform in ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin', 'manual')),
@@ -192,6 +196,7 @@ create policy "revenue_records_update" on public.revenue_records for update
       and (
         public.is_account_owner(account_id)
         or public.has_role_on_account(account_id, 'owner')
+        or created_by = auth.uid()
       )
     )
     or exists (
@@ -211,6 +216,7 @@ create policy "revenue_records_delete" on public.revenue_records for delete
       and (
         public.is_account_owner(account_id)
         or public.has_role_on_account(account_id, 'owner')
+        or created_by = auth.uid()
       )
     )
     or exists (
