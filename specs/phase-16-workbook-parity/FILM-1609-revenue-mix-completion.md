@@ -224,6 +224,84 @@ The lesson worth carrying into FILM-1608, which builds the first writer
 is not met until the form has been driven end to end.** Four rounds here
 ticked one on the strength of reading types.
 
+## 4d. The revenue write model — one design pass
+
+Three migrations in this PR arrived by iteration: open writes, then
+owner-only, then owner-or-author, then `source` constrained. Each was a
+correct response to a review finding and none of them was a design. This
+section is the design, made once, and the implementation follows it rather
+than the other way round.
+
+### The root cause of most of it
+
+`idx_revenue_records_unique_scope` is
+`(coalesce(publish_id, account_id), record_date, category)` — **one row per
+scope, date and category regardless of who wrote it**. Everything awkward
+downstream follows from that single decision:
+
+- A synced figure and a hand-entered one compete for one slot, so one must
+  lose. That produced the silent overwrite (sync clobbering manual), then
+  the guard against it, then the permanent block of that slot for `other`.
+- `source` had to become an *authorization* input — "may I touch this row?"
+  — because it was the only way to tell whose slot it was.
+- A row carrying both ids coalesces to its publish, so the account-scoped
+  lookup needed `is('publish_id', null)` bolted on.
+
+### Decision 1 — the index carries `source`
+
+`(coalesce(publish_id, account_id), record_date, category, source)`.
+
+A day and category may hold **at most one synced figure and at most one
+hand-entered figure**, and the period total is their sum. That is not a
+compromise, it is the correct model: YouTube reporting $100 of ad revenue
+and a person recording a $50 sponsorship are different money, and every
+consumer already accumulates (`forEachAccountRevenueRow` callers all fold
+with `+=`; nothing reads a single row per key).
+
+This is a *relaxation* — no existing row can violate a wider unique key —
+so it is safe on live data.
+
+**What it deletes:** the sync's manual-entry skip, the action's `synced`
+refusal, and the `other` category permanently blocking platform revenue for
+a publish and date. Three guards disappear because the situation they
+guarded cannot arise.
+
+### Decision 2 — `source` is a partition, not a permission
+
+It stays enforced at the database, but for a different reason: an
+authenticated writer may only write `source = 'manual'`, because writing
+`'api'` would claim the platform's slot and its provenance. The sync writes
+`'api'` through the service-role client, which bypasses RLS. Nothing reads
+`source` to decide *who may act* any more.
+
+### Decision 3 — authorship, not role alone, governs correction
+
+- **Create**: any account member; any project member (`owner/admin/member`).
+  Recording revenue is ordinary work.
+- **Update and delete**: the **author**, or an account owner (account
+  scope) / a project `owner`/`admin` (publish scope).
+
+The property being protected was never "members cannot write" — it is
+*nobody rewrites someone else's figure unnoticed*. Role alone cannot
+express that, which is why `created_by` exists. Rows predating that column
+are null and therefore owner-only: the safe way to be wrong about
+authorship.
+
+### Decision 4 — a row has exactly one scope
+
+`check (num_nonnulls(publish_id, account_id) = 1)`, added `not valid` so it
+binds new and updated rows without scanning history. The existing
+`revenue_records_scope_check` only requires *at least* one, which is what
+allowed the ambiguous rows the lookup had to defend against. With this, the
+`is('publish_id', null)` guards become belt-and-braces rather than load-
+bearing.
+
+### What this does not decide
+
+Whether a person should be able to record `ads` or `premium` by hand stays
+settled as **no** (§4c): the sync owns those categories, and a typed figure
+there is counted as a platform payout.
+
 ## 5. Out of Scope
 
 - **Rendering `RevenueMixCard`** — FILM-1611. This spec makes the category

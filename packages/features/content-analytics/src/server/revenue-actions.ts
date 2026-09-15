@@ -232,14 +232,15 @@ export const getRevenueSummaryAction = enhanceAction(
  * Why a manual entry was refused, in a form that survives a production
  * build.
  *
- * `synced` — the platform already reported this date and category, so a
- * hand-typed figure would overwrite real provenance.
- * `not_yours` — an entry exists and the caller neither wrote it nor owns
- * the account.
+ * `not_yours` — a hand-entered row exists for this date and category, and
+ * the caller neither wrote it nor owns the account.
+ *
+ * There is no `synced` case: `source` is part of the unique key, so a
+ * platform figure occupies a different row and is never in the way.
  */
 export type AddManualRevenueResult =
   | { ok: true; record: RevenueRecord }
-  | { ok: false; reason: 'synced' | 'not_yours' };
+  | { ok: false; reason: 'not_yours' };
 
 export const addManualRevenueAction = enhanceAction(
   async function (data, user): Promise<AddManualRevenueResult> {
@@ -273,11 +274,15 @@ export const addManualRevenueAction = enhanceAction(
 
     // The unique index is on coalesce(publish_id, account_id) and cannot be
     // named as an onConflict target, so replace any existing row explicitly.
+    // Scoped to the manual slot, because `source` is part of the unique key
+    // now: a synced figure for this date and category lives in its own row
+    // and is none of this action's business.
     const existingQuery = client
       .from('revenue_records')
-      .select('id, source')
+      .select('id')
       .eq('record_date', date)
-      .eq('category', category);
+      .eq('category', category)
+      .eq('source', 'manual');
 
     const { data: existing, error: existingError } = await (
       publishId
@@ -312,14 +317,6 @@ export const addManualRevenueAction = enhanceAction(
     // (coalesce(publish_id, account_id), record_date, category) regardless
     // of source, so a second row is not available to us either way. Saying
     // so is better than a raw constraint violation.
-    if (existing && existing.source !== 'manual') {
-      // Returned, not thrown. Next masks Server Action errors in a
-      // production build — replacing the message with a digest — which is
-      // the same redaction this file's `.max()` ceiling exists to avoid.
-      // A reason the client can switch on survives; a message does not.
-      return { ok: false, reason: 'synced' };
-    }
-
     const values = {
       // Exactly one scope, enforced here rather than trusted from the
       // caller. The schema permits both, and a row carrying both ids makes

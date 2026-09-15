@@ -99,10 +99,10 @@ export function ManualRevenueForm({
       // because Next masks Server Action error messages in a production
       // build — a thrown explanation reaches the user as a digest.
       if (!result.ok) {
+        // Written here rather than thrown from the action: Next masks
+        // Server Action error messages in a production build.
         toast.error(
-          result.reason === 'synced'
-            ? 'The platform already reported revenue for this date and category. Hand entries cannot overwrite synced figures.'
-            : 'An entry already exists for this date and category. Only the person who added it, or an account owner, can change it.',
+          'An entry already exists for this date and category. Only the person who added it, or an account owner, can change it.',
         );
 
         return;

@@ -987,10 +987,14 @@ async function upsertRevenueRecords(
   for (const row of byCategory) {
     const { data: existing, error: existingError } = await client
       .from('revenue_records')
-      .select('id, source')
+      .select('id')
       .eq('publish_id', data.publish_id)
       .eq('record_date', data.snapshot_date)
       .eq('category', row.category)
+      // The sync owns the 'api' row for this key and nothing else. Since
+      // `source` joined the unique index, a person's entry sits in its own
+      // row — there is no collision to lose, and nothing to skip.
+      .eq('source', 'api')
       .maybeSingle();
 
     // A failed lookup left `existing` nullish and fell through to the
@@ -1008,28 +1012,6 @@ async function upsertRevenueRecords(
           error: existingError,
         },
         'Skipping revenue row: could not read the existing record',
-      );
-
-      continue;
-    }
-
-    // A hand-entered row is not the sync's to rewrite. The unique index
-    // allows only one row per (publish, date, category) regardless of
-    // source, so there is nowhere to put both — and overwriting silently
-    // flips `source` to 'api', leaving a typed figure wearing the
-    // platform's provenance and a stale `breakdown` beside it.
-    //
-    // `addManualRevenueAction` refuses the mirror of this. Guarding one
-    // direction only left the direction that destroys hand-entered data.
-    if (existing && existing.source !== 'api') {
-      logger.warn(
-        {
-          name: 'analytics-sync',
-          publishId: data.publish_id,
-          date: data.snapshot_date,
-          category: row.category,
-        },
-        'Skipping synced revenue: a manual entry already holds this date and category',
       );
 
       continue;

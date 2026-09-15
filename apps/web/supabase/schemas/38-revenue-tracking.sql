@@ -32,7 +32,12 @@ create table if not exists public.revenue_records (
   constraint revenue_records_category_check
     check (category in ('ads', 'premium', 'sponsorship', 'product', 'affiliate', 'licensing', 'other')),
   constraint revenue_records_scope_check
-    check (publish_id is not null or account_id is not null)
+    check (publish_id is not null or account_id is not null),
+  -- Exactly one. `scope_check` above requires at least one, which allowed
+  -- rows carrying both — and those coalesce to their publish, so a
+  -- channel-scoped lookup could match one and, on update, convert it.
+  constraint revenue_records_single_scope_check
+    check (num_nonnulls(publish_id, account_id) = 1)
 );
 
 comment on table public.revenue_records is 'Daily revenue records per publish (or per account for channel-level revenue), split by category';
@@ -43,9 +48,17 @@ comment on column public.revenue_records.breakdown is 'JSONB with detailed reven
 
 -- Uniqueness includes category: YouTube writes separate ads and premium
 -- rows for the same publish and day
+-- One row per scope, date, category and source. A synced figure and a
+-- hand-entered one are different money: they coexist and sum, and neither
+-- can overwrite the other. Adding `source` is what removed the sync's
+-- skip-guard, the action's synced-refusal, and a manual `other` entry
+-- blocking a publish's platform revenue for good.
 create unique index if not exists idx_revenue_records_unique_scope
   on public.revenue_records (
-    coalesce(publish_id, account_id), record_date, category
+    coalesce(publish_id, account_id),
+    record_date,
+    category,
+    source
   );
 
 -- Indexes for revenue queries
