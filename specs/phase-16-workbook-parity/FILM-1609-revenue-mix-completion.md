@@ -180,6 +180,22 @@ but a consumer comparing an old report against a new one cannot tell which
 definition it is reading. Stamping a schema version on `summary_data`, or
 backfilling, is the fix; neither belongs in a category vocabulary change.
 
+**A manual `other` entry on a publish blocks that day's synced revenue.**
+`revenue_records` has one row per `(coalesce(publish_id, account_id),
+record_date, category)` regardless of source, and the sync writes
+uncategorized platform revenue under exactly `other`. Since the sync now
+refuses to overwrite a manual row — it previously did so silently, flipping
+`source` to `api` — a publish-scoped manual `other` entry holds that slot
+permanently, and the platform's figure for that day is never recorded. The
+only trace is a `logger.warn`.
+
+Not resolved here, and the options are a product decision: drop `other`
+from manual entry (losing a legitimate category), let the sync win (losing
+typed data), or widen the unique index to include `source` (two rows, and
+every consumer then has to decide which it means). Currently hard to reach
+— the dashboard mounts the form without a publish list — but
+`addManualRevenueAction` accepts a `publishId` from any caller.
+
 **Per-video attribution is unreachable from the dashboard.**
 `revenue-dashboard.tsx:295` mounts the form without a `publishes` prop, so
 the video list always renders its disabled "No published content available"

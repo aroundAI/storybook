@@ -28,17 +28,6 @@ import {
 export const REVENUE_SUMMARY_SCHEMA_VERSION = 2;
 
 /**
- * Categories the platform pays out, as opposed to income the channel
- * built itself.
- *
- * Closed and explicit. `adsRevenueCents` is the sum of these, never
- * `total − everything else`: the two have the same value today and
- * different values the moment a category is added that ought to count as
- * a payout, and only the explicit form forces that decision to be made
- * rather than inherited.
- */
-
-/**
  * Every category the schema accepts, with its label.
  *
  * This is the *display* vocabulary — the mix card labels wedges from it.

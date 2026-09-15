@@ -4218,6 +4218,7 @@ export type Database = {
           breakdown: Json | null
           category: string
           created_at: string
+          created_by: string | null
           currency: string | null
           id: string
           metadata: Json | null
@@ -4233,6 +4234,7 @@ export type Database = {
           breakdown?: Json | null
           category?: string
           created_at?: string
+          created_by?: string | null
           currency?: string | null
           id?: string
           metadata?: Json | null
@@ -4248,6 +4250,7 @@ export type Database = {
           breakdown?: Json | null
           category?: string
           created_at?: string
+          created_by?: string | null
           currency?: string | null
           id?: string
           metadata?: Json | null

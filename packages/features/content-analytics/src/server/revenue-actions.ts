@@ -322,10 +322,6 @@ export const addManualRevenueAction = enhanceAction(
       // form is not the only caller of a server action.
       publish_id: publishId ?? null,
       account_id: publishId ? null : (accountId ?? null),
-      // Who to let correct this later. The update policy allows the author
-      // or an account owner; without it a member could record a figure and
-      // then be unable to fix their own typo.
-      created_by: user.id,
       platform,
       record_date: date,
       revenue_cents: revenueCents,
@@ -339,6 +335,12 @@ export const addManualRevenueAction = enhanceAction(
     const { data: record, error } = existing
       ? await client
           .from('revenue_records')
+          // `values` deliberately carries no `created_by`: it is set on
+          // insert only. Stamping it on every correction transfers
+          // authorship — an owner fixing a member's typo would become the
+          // author, the member would lose the right to touch their own
+          // entry, and the column would name the wrong person. Which is
+          // the provenance the column was added to keep.
           .update(values)
           .eq('id', existing.id)
           .select()
@@ -348,7 +350,12 @@ export const addManualRevenueAction = enhanceAction(
           // "JSON object requested, multiple (or no) rows returned", which
           // tells the user nothing about what actually happened.
           .maybeSingle()
-      : await client.from('revenue_records').insert(values).select().single();
+      : await client
+          .from('revenue_records')
+          // Who may correct this later: the author, or an account owner.
+          .insert({ ...values, created_by: user.id })
+          .select()
+          .single();
 
     if (error) throw error;
 
@@ -442,7 +449,12 @@ export const deleteManualRevenueAction = enhanceAction(
     // delete policy refused. Returning `{ success: true }` here is the same
     // silent-no-op the update path already guards against — channel-level
     // delete is owner-only since 20260915150338.
-    if ((matched?.length ?? 0) > 0 && (removed?.length ?? 0) === 0) {
+    // Compared, not merely checked for zero. `category` is optional, so one
+    // call can match several rows — and with the author-or-owner delete
+    // policy a member deleting a whole date removes only their own. Some
+    // rows removed and some refused is not success, and reporting it as
+    // success leaves the survivors invisible.
+    if ((matched?.length ?? 0) > (removed?.length ?? 0)) {
       // Scope-specific: the same condition fires for either RLS branch,
       // and a project member refused by the publish branch was being told
       // about account owners and channel-level entries — neither of which
