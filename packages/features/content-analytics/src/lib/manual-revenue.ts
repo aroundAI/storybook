@@ -75,3 +75,37 @@ export function parseAmountToCents(raw: string): number | null {
 
   return Math.round(Number(normalised) * 100);
 }
+
+/**
+ * A `yyyy-MM-dd` string as a *local* date.
+ *
+ * `new Date('2026-09-14')` is parsed as UTC midnight, so west of UTC it is
+ * the previous day: the trigger rendered "September 13th" the moment a
+ * user clicked the 14th, while the calendar still highlighted the 14th and
+ * the row saved as 2026-09-14 — three states, two of them disagreeing, on
+ * the field that keys the replace-on-save behaviour.
+ *
+ * Returns null for anything that is not a full date, so a half-typed or
+ * empty value renders as "Pick a date" rather than "Invalid Date".
+ */
+export function parseLocalDate(value: string | undefined): Date | null {
+  if (!value) return null;
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+  if (!match) return null;
+
+  const [, year, month, day] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** A `Date` as the `yyyy-MM-dd` the schema and the column expect. */
+export function formatLocalDate(date: Date): string {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}

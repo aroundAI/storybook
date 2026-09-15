@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
@@ -41,8 +41,10 @@ import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
 
 import {
+  formatLocalDate,
   manualRevenueDefaults,
   parseAmountToCents,
+  parseLocalDate,
 } from '../lib/manual-revenue';
 import { REVENUE_CATEGORY_LABELS } from '../lib/revenue-mix';
 import { AddManualRevenueSchema } from '../lib/schemas/revenue.schema';
@@ -68,7 +70,6 @@ export function ManualRevenueForm({
   publishes = [],
   onSuccess,
 }: ManualRevenueFormProps) {
-  const [selectedDate, setSelectedDate] = useState<Date>();
   /**
    * The amount as typed. Kept beside form state rather than derived from
    * it: deriving `250.50` back out of 25050 cents drops the trailing zero
@@ -83,13 +84,6 @@ export function ManualRevenueForm({
 
   const isSubmitting = form.formState.isSubmitting;
 
-  // Update date field when calendar selection changes
-  useEffect(() => {
-    if (selectedDate) {
-      form.setValue('date', format(selectedDate, 'yyyy-MM-dd'));
-    }
-  }, [selectedDate, form]);
-
   async function onSubmit(data: z.infer<typeof AddManualRevenueSchema>) {
     try {
       // Exactly one scope reaches the action. revenue_records' unique
@@ -103,7 +97,6 @@ export function ManualRevenueForm({
       });
       toast.success('Revenue entry added successfully');
       form.reset(manualRevenueDefaults(accountId));
-      setSelectedDate(undefined);
       setAmountText('');
       onSuccess?.();
     } catch (error) {
@@ -224,8 +217,8 @@ export function ManualRevenueForm({
                             !field.value && 'text-muted-foreground',
                           )}
                         >
-                          {field.value ? (
-                            format(new Date(field.value), 'PPP')
+                          {parseLocalDate(field.value) ? (
+                            format(parseLocalDate(field.value)!, 'PPP')
                           ) : (
                             <span>Pick a date</span>
                           )}
@@ -234,10 +227,21 @@ export function ManualRevenueForm({
                       </FormControl>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
+                      {/*
+                        The form field is the single source of truth. A
+                        mirrored `selectedDate` plus a one-way useEffect
+                        drifted: react-day-picker toggles, so clicking the
+                        selected day again calls onSelect(undefined), which
+                        the effect ignored — the calendar showed nothing
+                        selected while the entry still submitted under the
+                        old date.
+                      */}
                       <Calendar
                         mode="single"
-                        selected={selectedDate}
-                        onSelect={setSelectedDate}
+                        selected={parseLocalDate(field.value) ?? undefined}
+                        onSelect={(date) =>
+                          field.onChange(date ? formatLocalDate(date) : '')
+                        }
                         disabled={(date) =>
                           date > new Date() || date < new Date('2020-01-01')
                         }

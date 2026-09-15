@@ -151,6 +151,41 @@ test.describe('Manual revenue entry', () => {
     ).toBeHidden();
   });
 
+  test('clearing the date clears it, rather than submitting the old one', async ({
+    page,
+  }) => {
+    const revenue = new RevenuePageObject(page);
+
+    await revenue.setup();
+
+    await revenue.pickToday();
+    await expect(revenue.dateTrigger()).not.toContainText('Pick a date');
+
+    // react-day-picker toggles: clicking the selected day deselects it.
+    // A one-way useEffect ignored that, so the calendar showed nothing
+    // selected while the entry still submitted under the old date.
+    await revenue.pickToday();
+
+    await expect(revenue.dateTrigger()).toContainText('Pick a date');
+  });
+
+  test('shows the day that was clicked, in the local zone', async ({
+    page,
+  }) => {
+    const revenue = new RevenuePageObject(page);
+
+    await revenue.setup();
+    await revenue.pickToday();
+
+    // `new Date('2026-09-14')` is UTC midnight, so west of UTC the trigger
+    // rendered the previous day while the calendar highlighted the right
+    // one and the row saved the right date.
+    const now = new Date();
+    const expected = now.getDate().toString();
+
+    await expect(revenue.dateTrigger()).toContainText(expected);
+  });
+
   test('offers every category the schema accepts', async ({ page }) => {
     const revenue = new RevenuePageObject(page);
 
@@ -173,5 +208,42 @@ test.describe('Manual revenue entry', () => {
         page.getByRole('option', { name: label, exact: true }),
       ).toBeVisible();
     }
+  });
+});
+
+/**
+ * The date field, with the browser west of UTC.
+ *
+ * CI runs UTC, where every date bug in this form is invisible: a
+ * `yyyy-MM-dd` parsed as UTC midnight renders as the previous day only
+ * when the viewer is behind UTC. Pinning the zone is the only way this
+ * class is ever caught before a user in California finds it.
+ */
+test.describe('Manual revenue entry — west of UTC', () => {
+  test.use({ timezoneId: 'America/Los_Angeles' });
+
+  test('shows the day that was clicked, not the day before', async ({
+    page,
+  }) => {
+    const revenue = new RevenuePageObject(page);
+
+    await revenue.setup();
+    await revenue.pickToday();
+
+    const day = await page.evaluate(() => new Date().getDate().toString());
+
+    await expect(revenue.dateTrigger()).toContainText(day);
+  });
+
+  test('picks today rather than a disabled tomorrow', async ({ page }) => {
+    // The page object built its selector from toISOString() once, which
+    // west of UTC after ~17:00 targets tomorrow — a cell that exists but
+    // is disabled, so the click waits out the whole test timeout.
+    const revenue = new RevenuePageObject(page);
+
+    await revenue.setup();
+    await revenue.addEntry({ dollars: '10.00', category: 'Licensing' });
+
+    await revenue.expectSuccessToast();
   });
 });

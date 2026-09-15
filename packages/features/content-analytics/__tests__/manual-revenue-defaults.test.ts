@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  formatLocalDate,
   manualRevenueDefaults,
   parseAmountToCents,
+  parseLocalDate,
 } from '../src/lib/manual-revenue';
 import { AddManualRevenueSchema } from '../src/lib/schemas/revenue.schema';
 
@@ -109,5 +111,29 @@ describe('parseAmountToCents', () => {
   it('treats empty and whitespace as no amount', () => {
     expect(parseAmountToCents('')).toBeNull();
     expect(parseAmountToCents('   ')).toBeNull();
+  });
+});
+
+describe('parseLocalDate / formatLocalDate', () => {
+  it('reads a date as local, not UTC midnight', () => {
+    // `new Date('2026-09-14')` is UTC midnight, which west of UTC is the
+    // 13th — the trigger rendered the day before the one the user clicked.
+    const date = parseLocalDate('2026-09-14')!;
+
+    expect(date.getFullYear()).toBe(2026);
+    expect(date.getMonth()).toBe(8);
+    expect(date.getDate()).toBe(14);
+  });
+
+  it('round-trips through the string the column stores', () => {
+    expect(formatLocalDate(parseLocalDate('2026-01-05')!)).toBe('2026-01-05');
+    expect(formatLocalDate(new Date(2026, 0, 5))).toBe('2026-01-05');
+  });
+
+  it('has no date for an empty or partial value', () => {
+    expect(parseLocalDate('')).toBeNull();
+    expect(parseLocalDate(undefined)).toBeNull();
+    expect(parseLocalDate('2026-09')).toBeNull();
+    expect(parseLocalDate('not a date')).toBeNull();
   });
 });

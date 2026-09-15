@@ -36,11 +36,23 @@ export class RevenuePageObject {
     const account = await seedTeamAccount();
 
     await this.auth.goToSignIn();
-    await this.auth.signIn({
-      email: account.email,
-      password: account.password,
-    });
 
+    // Filled here rather than through AuthPageObject.signIn, which waits a
+    // fixed 500ms before typing. On a cold page that loses the race with
+    // hydration: the values land, React attaches, and the inputs come back
+    // empty — the form then sits there until waitForURL times out. Waiting
+    // for the control to be ready is the same wait, but on the right
+    // signal.
+    const email = this.page.locator('input[name="email"]');
+
+    await email.waitFor({ state: 'visible' });
+    await email.fill(account.email);
+    await this.page.fill('input[name="password"]', account.password);
+
+    // Proof the values survived hydration before anything is submitted.
+    await expect(email).toHaveValue(account.email);
+
+    await this.page.click('button[type="submit"]');
     await this.page.waitForURL('**/home');
     await this.goToRevenue(account.slug);
 
@@ -70,6 +82,10 @@ export class RevenuePageObject {
 
   publishTrigger() {
     return this.page.locator('[data-test="revenue-publish-trigger"]');
+  }
+
+  dateTrigger() {
+    return this.page.locator('[data-test="revenue-date-trigger"]');
   }
 
   submitButton() {
@@ -119,6 +135,13 @@ export class RevenuePageObject {
     ].join('-');
 
     await this.page.click(`[role="gridcell"][data-day="${local}"] button`);
+
+    // Radix does not close the popover on select, so leaving it open makes
+    // every later interaction depend on where floating-ui placed it — and
+    // makes a second pickToday() click the trigger *shut* rather than
+    // reopening it. Closing explicitly keeps the state deterministic.
+    await this.page.keyboard.press('Escape');
+    await expect(this.page.locator('[role="gridcell"]').first()).toBeHidden();
   }
 
   async submit() {

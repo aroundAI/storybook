@@ -65,16 +65,22 @@ export interface RevenueSummary {
    * positive revenue.
    *
    * Not a share of `totalRevenueCents`, which is signed: a clawback month
-   * would otherwise put this above 100. Divide by
-   * `positiveRevenueCents`, which travels with it for exactly that reason.
+   * would otherwise put this above 100.
+   *
+   * **The cents fields beside this cannot reconstruct it.** They stay
+   * signed while this filters to positives, so with
+   * `{ ads: -5000, sponsorship: 1000 }` the payload reads
+   * `adsRevenueCents: -5000`, `positiveRevenueCents: 1000` and
+   * `adsSharePercent: 0` — dividing one by the other gives -500%. Read
+   * this field; do not derive it.
    */
   adsSharePercent: number;
   /** The complement of `adsSharePercent`, over the same denominator. */
   nonAdSharePercent: number;
   /**
    * Sum of the positive category buckets — the denominator the two share
-   * fields use. Differs from `totalRevenueCents` whenever a category is
-   * negative.
+   * fields use, and what "100%" refers to. Differs from
+   * `totalRevenueCents` whenever a category is negative.
    */
   positiveRevenueCents: number;
   /** Cents per 1000 views from ads + Premium only. */
