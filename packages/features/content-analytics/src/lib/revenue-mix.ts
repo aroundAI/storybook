@@ -71,6 +71,35 @@ export const MANUAL_ENTRY_CATEGORIES = REVENUE_CATEGORY_LABELS.filter(
   ({ value }) => ManualRevenueCategorySchema.safeParse(value).success,
 );
 
+/**
+ * The category a row counts as, given who recorded it.
+ *
+ * `ads` and `premium` assert *the platform paid us this*. Only the sync is in
+ * a position to know that, and `MANUAL_ENTRY_CATEGORIES` now keeps them out of
+ * the form — but the form used to offer them, so rows typed before that change
+ * still sit in those categories and still inflate `adsSharePercent`, the one
+ * signal this feature exists to make trustworthy. Closing the form did nothing
+ * about the rows already in the table.
+ *
+ * A hand-entered row in a payout category is therefore read as `other`. The
+ * money is real and stays in the total; what it stops being is evidence of
+ * what the platform paid. Done here rather than by a backfill because it is a
+ * reinterpretation rather than a correction — the row records what someone
+ * entered, and rewriting it would destroy that.
+ */
+export function effectiveRevenueCategory(
+  category: string,
+  source: string,
+): string {
+  const isPayoutCategory = (
+    PLATFORM_PAYOUT_CATEGORIES as readonly string[]
+  ).includes(category);
+
+  // Anything that is not the sync, rather than `=== 'manual'`: a third source
+  // added later is not a platform payout until someone says it is.
+  return source !== 'api' && isPayoutCategory ? 'other' : category;
+}
+
 /** Label for one category, for lookups keyed by the stored value. */
 export const REVENUE_CATEGORY_LABEL: Record<string, string> =
   Object.fromEntries(

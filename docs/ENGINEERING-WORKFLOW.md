@@ -89,6 +89,12 @@ common thread: a fix removed a constraint without naming its replacement.
 fix that removes a guard — a widget, a validation, a bound — names what replaces
 it, in the code, not in the PR description.
 
+**And ask what the fix leaves open on the paths it did not touch.** Round 10
+added a `WITH CHECK` that constrained `created_by` — on one of two branches —
+and then wrote "defect 2 fixed" in the migration header. The sentence was the
+defect: it stopped the next reader looking. Scope a claim to what you actually
+tested, or test the rest.
+
 ### 4. Comments asserting what the code does not do
 
 > A comment claiming it prevented a 500% share sat directly above code that
@@ -152,6 +158,14 @@ A test written against already-fixed code has demonstrated nothing.
 > against `"September 2nd, 2026"` — which contains `2`, so it passed on four
 > days a month regardless.
 
+> Round 11 then found the sharpest version of this. Round 10's suite covered
+> `revenue_records`' **account** branch only, its fix covered the account
+> branch only, and its migration header claimed the defect fixed outright.
+> Three holes sat in the publish branch — a branch that is *deliberately more
+> permissive*, which is precisely why it needed its own cases instead of an
+> assumption that the account ones generalise. **A guard written against one
+> branch of a policy proves nothing about the other.**
+>
 > Two more from the pgTAP suite in round 10, both visible only because the file
 > was run red first:
 >

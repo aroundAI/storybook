@@ -9,6 +9,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
   REVENUE_SUMMARY_SCHEMA_VERSION,
+  effectiveRevenueCategory,
   payoutShare,
   splitRevenueByPayout,
 } from '../lib/revenue-mix';
@@ -85,8 +86,15 @@ export const getRevenueSummaryAction = enhanceAction(
         const platform = r.platform || 'unknown';
         byPlatform[platform] = (byPlatform[platform] || 0) + revenueCents;
 
-        // Group by revenue category (the mix: ads vs sponsorship vs product)
-        const category = r.category || 'ads';
+        // Group by revenue category (the mix: ads vs sponsorship vs product).
+        // Keyed on what the row counts as rather than what it says: a
+        // hand-entered 'ads' row from before the form dropped that option is
+        // not evidence of a platform payout, and counting it as one inflates
+        // the ad-share signal for every account that has an old row.
+        const category = effectiveRevenueCategory(
+          r.category || 'ads',
+          r.source,
+        );
         byType[category] = (byType[category] || 0) + revenueCents;
 
         // Group by content (episode) — channel-level rows have no episode
@@ -240,12 +248,16 @@ export const getRevenueSummaryAction = enhanceAction(
  * beside the point. Split because one sentence cannot be true of both, and
  * `deleteManualRevenueAction` already made this distinction.
  *
+ * `no_access` — the caller may not record revenue against this scope at all,
+ * as opposed to being blocked by an entry that already exists. Reached on a
+ * date with no entry, where the other two cannot apply.
+ *
  * There is no `synced` case: `source` is part of the unique key, so a
  * platform figure occupies a different row and is never in the way.
  */
 export type AddManualRevenueResult =
   | { ok: true; record: RevenueRecord }
-  | { ok: false; reason: 'project_role' | 'not_yours' };
+  | { ok: false; reason: 'project_role' | 'not_yours' | 'no_access' };
 
 export const addManualRevenueAction = enhanceAction(
   async function (data, user): Promise<AddManualRevenueResult> {
@@ -355,6 +367,16 @@ export const addManualRevenueAction = enhanceAction(
           .insert({ ...values, created_by: user.id })
           .select()
           .single();
+
+    // An insert the policy refuses raises 42501 rather than returning zero
+    // rows, and a thrown error reaches the user as a Next digest in a
+    // production build — the same masking that made every other refusal on
+    // this path a return value. A caller who is an account member but not on
+    // the publish's project hits this on any date that has no entry yet,
+    // while the identical wall on a date that *does* have one gets a sentence.
+    if (error?.code === '42501') {
+      return { ok: false, reason: 'no_access' };
+    }
 
     if (error) throw error;
 

@@ -7,6 +7,7 @@ import {
   REVENUE_CATEGORY_COLOR,
   REVENUE_CATEGORY_LABELS,
   REVENUE_SUMMARY_SCHEMA_VERSION,
+  effectiveRevenueCategory,
   payoutShare,
   revenueMixView,
   splitRevenueByPayout,
@@ -387,5 +388,55 @@ describe('REVENUE_SUMMARY_SCHEMA_VERSION', () => {
     // adsSharePercent changed denominator without changing key. Rows
     // written before carry no version; that absence is the marker.
     expect(REVENUE_SUMMARY_SCHEMA_VERSION).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('effectiveRevenueCategory', () => {
+  it('leaves synced platform payouts alone', () => {
+    expect(effectiveRevenueCategory('ads', 'api')).toBe('ads');
+    expect(effectiveRevenueCategory('premium', 'api')).toBe('premium');
+  });
+
+  it('reads a hand-entered payout category as other', () => {
+    // The defect this closes: the form used to offer Ads, and every row typed
+    // then still counts toward adsSharePercent.
+    expect(effectiveRevenueCategory('ads', 'manual')).toBe('other');
+    expect(effectiveRevenueCategory('premium', 'manual')).toBe('other');
+  });
+
+  it('leaves hand-enterable categories alone whoever wrote them', () => {
+    for (const source of ['manual', 'api']) {
+      expect(effectiveRevenueCategory('sponsorship', source)).toBe(
+        'sponsorship',
+      );
+      expect(effectiveRevenueCategory('licensing', source)).toBe('licensing');
+      expect(effectiveRevenueCategory('other', source)).toBe('other');
+    }
+  });
+
+  it('treats an unknown source as not-a-platform-payout', () => {
+    expect(effectiveRevenueCategory('ads', 'imported')).toBe('other');
+  });
+
+  it('covers every payout category, not two literals', () => {
+    // Derived, so a third payout category added to the schema is normalised
+    // without anyone remembering to extend this test.
+    for (const category of PLATFORM_PAYOUT_CATEGORIES) {
+      expect(effectiveRevenueCategory(category, 'manual')).toBe('other');
+      expect(effectiveRevenueCategory(category, 'api')).toBe(category);
+    }
+  });
+
+  it('moves the share, not the total', () => {
+    // A legacy hand-typed ads row beside a real one: the ad share halves,
+    // and nothing goes missing.
+    const raw = { ads: 1000 };
+    const normalised = { ads: 500, other: 500 };
+
+    expect(payoutShare(raw)).toBe(1);
+    expect(payoutShare(normalised)).toBe(0.5);
+    expect(Object.values(raw).reduce((a, b) => a + b, 0)).toBe(
+      Object.values(normalised).reduce((a, b) => a + b, 0),
+    );
   });
 });

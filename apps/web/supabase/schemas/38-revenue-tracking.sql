@@ -266,14 +266,23 @@ create policy "revenue_records_create" on public.revenue_records for insert
 
 -- Postgres uses USING as the check expression for UPDATE only when WITH CHECK
 -- is absent, so naming one silently drops the other. Both are named.
+--
+-- `source = 'manual'` is in USING as well as WITH CHECK, and that asymmetry
+-- was a hole: with it only in WITH CHECK, a project member could PATCH the
+-- platform's `api` row to an arbitrary figure, because USING passed on the old
+-- row and WITH CHECK passed on the new one that now said 'manual'. A synced
+-- row is the platform's record of what it paid and is not this app's to select
+-- for update at all. The sync writes through the service-role client, which
+-- bypasses RLS.
 create policy "revenue_records_update" on public.revenue_records for update
   to authenticated
   using (
-    public.can_write_revenue_record(publish_id, account_id, created_by)
+    source = 'manual'
+    and public.can_write_revenue_record(publish_id, account_id, created_by)
   )
   with check (
-    public.can_write_revenue_record(publish_id, account_id, created_by)
-    and source = 'manual'
+    source = 'manual'
+    and public.can_write_revenue_record(publish_id, account_id, created_by)
   );
 
 -- The account branch is the same rule. The publish branch is deliberately
@@ -281,6 +290,10 @@ create policy "revenue_records_update" on public.revenue_records for update
 -- its own expression rather than calling the shared function.
 create policy "revenue_records_delete" on public.revenue_records for delete
   to authenticated using (
+    -- `deleteManualRevenueAction` filters to source = 'manual'; PostgREST does
+    -- not have to, so a project owner or admin could remove synced rows.
+    source = 'manual'
+    and (
     (
       account_id is not null
       and (
@@ -301,7 +314,46 @@ create policy "revenue_records_delete" on public.revenue_records for delete
           or revenue_records.created_by = (select auth.uid())
         )
     )
+    )
   );
+
+-- ==================================
+-- Section: Authorship is written once
+-- ==================================
+-- The update and delete policies authorize on `created_by`, so a writer who
+-- can change it can change who those policies answer to. A member who pins a
+-- colleague's per-video row on themselves gains a delete right that otherwise
+-- needs project owner or admin.
+--
+-- A trigger rather than a policy clause, because a policy cannot see OLD — and
+-- because one total statement beats restating the rule on each branch. No code
+-- path sets `created_by` on update: the action excludes it deliberately, and
+-- the sync never names it.
+
+create or replace function public.revenue_records_freeze_created_by()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.created_by is distinct from old.created_by then
+    raise exception 'revenue_records.created_by is immutable'
+      using hint = 'Authorship is recorded on insert. A correction does not transfer it.';
+  end if;
+
+  return new;
+end;
+$$;
+
+comment on function public.revenue_records_freeze_created_by() is
+  'Rejects any UPDATE that changes revenue_records.created_by. The update and delete policies authorize on that column, so letting a writer change it lets them change who those policies answer to.';
+
+drop trigger if exists revenue_records_freeze_created_by on public.revenue_records;
+
+create trigger revenue_records_freeze_created_by
+  before update on public.revenue_records
+  for each row
+  execute function public.revenue_records_freeze_created_by();
 
 -- ==================================
 -- Section: Revenue Reports RLS Policies

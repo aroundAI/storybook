@@ -350,6 +350,54 @@ database's 99 tables**. The root `CLAUDE.md` called generating from it the
 proposing to drop them. The instructions were the defect. They now say
 migrations are the source of truth; reconciling the 33 tables is its own work.
 
+## 4f. Round 11 — the branch round 10 did not cover
+
+Round 10 fixed `created_by` on the **account** branch and its migration header
+claimed the defect fixed outright. It was half fixed, and the pgTAP suite
+exercised only account-scoped rows, so nothing caught it. Three holes on the
+publish branch, all reproduced before being fixed:
+
+| | Before | Now |
+|---|---|---|
+| Project member overwrites the platform's synced row | allowed | refused |
+| Project owner/admin deletes a synced row | allowed | refused |
+| Project member seizes authorship of a colleague's row | allowed | refused |
+
+**The laundering one compounds.** An overwritten `api` row keeps
+`category = 'ads'`, so it still counts as a platform payout in the ad-share
+signal — and because `source` joined the unique index, the next sync finds no
+`api` row for that key and inserts a fresh one, so the day is counted twice
+from then on.
+
+**The authorship one is an escalation, not just bad attribution.** The delete
+policy grants removal to `created_by`, so pinning a colleague's row on yourself
+is how you get a delete right that otherwise needs project owner or admin.
+
+Fixed with `source = 'manual'` in the update and delete `USING` clauses — in
+`USING`, because a synced row is not this app's to *select* for update — and
+with a `BEFORE UPDATE` trigger freezing `created_by`. A trigger rather than a
+fourth policy clause: a policy cannot see `OLD`, and one total statement beats
+restating the rule per branch and keeping the copies in step, which is what
+failed in rounds 10 and 11 both.
+
+### The ad-share signal, for rows that already exist
+
+Closing the form to `ads` and `premium` (§4c) did nothing about rows typed
+while it was open. They still counted as platform payouts.
+`effectiveRevenueCategory(category, source)` now reads any non-synced row in a
+payout category as `other`: the money stays in the total, but stops being
+evidence of what the platform paid. A reinterpretation at read time rather than
+a backfill, because the row honestly records what somebody entered.
+
+### What the migration reports rather than assumes
+
+Putting `source` in the key (§4d) was a deliberate model change, but it changes
+*totals* for any key that already held both a synced and a hand-entered row —
+previously one overwrote the other. Nobody had checked whether such rows exist.
+The migration now counts them and both legacy payout rows at apply time and
+raises a `NOTICE`, so the number comes from the database being migrated. Both
+are zero locally; production will say for itself.
+
 ## 5. Out of Scope
 
 - **Rendering `RevenueMixCard`** — FILM-1611. This spec makes the category

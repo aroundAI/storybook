@@ -5,7 +5,7 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 -- of the way through on a permissions error and still reported one failing
 -- test out of four, which reads like a nearly-passing suite. With a plan, a
 -- run that stops early fails as a plan mismatch instead of looking fine.
-select plan(13);
+select plan(20);
 
 -- Revenue rows are money attributed to a tenant, and `created_by` decides who
 -- may correct one later. Nine review rounds argued about these policies by
@@ -39,6 +39,17 @@ create or replace function public.revenue_rls_test_reset() returns void
          publish_id = null,
          created_by = tests.get_supabase_uid('member')
    where id = 'aaaaaaaa-0000-4000-8000-000000000001';
+$fn$;
+
+create or replace function public.revenue_rls_test_reset_publish() returns void
+  language sql security definer set search_path = '' as $fn$
+  update public.revenue_records
+     set revenue_cents = 1000, source = 'api', category = 'ads', created_by = null
+   where id = 'bbbbbbbb-0000-4000-8000-000000000009';
+  update public.revenue_records
+     set revenue_cents = 2000, source = 'manual', category = 'sponsorship',
+         created_by = tests.get_supabase_uid('colleague')
+   where id = 'bbbbbbbb-0000-4000-8000-00000000000a';
 $fn$;
 
 -- A second team that the `storybook` member has no access to at all.
@@ -161,10 +172,24 @@ select makerkit.authenticate_as('member');
 select throws_ok(
   $$ update public.revenue_records set created_by = tests.get_supabase_uid('owner')
      where id = 'aaaaaaaa-0000-4000-8000-000000000001' $$,
-  '42501',
-  'new row violates row-level security policy for table "revenue_records"',
+  'P0001',
+  'revenue_records.created_by is immutable',
   'A member may not reassign authorship of their own row'
 );
+
+-- The raise is not the property; the column is. Asserting only the message
+-- would keep passing if the guard moved and started letting the write through
+-- under a different error.
+set local role postgres;
+
+select is(
+  (select created_by from public.revenue_records
+   where id = 'aaaaaaaa-0000-4000-8000-000000000001'),
+  tests.get_supabase_uid('member'),
+  'Authorship is unchanged after the refusal'
+);
+
+select makerkit.authenticate_as('member');
 
 set local role postgres;
 select public.revenue_rls_test_reset();
@@ -218,6 +243,140 @@ select is(
    where id = 'aaaaaaaa-0000-4000-8000-000000000001'),
   3000,
   'A non-member cannot change another account revenue'
+);
+
+-- ==================================
+-- Publish-scoped rows
+-- ==================================
+-- Round 10 covered only the account branch, and round 11 found three holes in
+-- the branch it did not cover. The publish branch is more permissive by design
+-- — any project member may correct per-video revenue — which is exactly why it
+-- needs its own cases rather than an assumption that the account ones
+-- generalise.
+
+set local role postgres;
+
+-- The account owner creates the project, because the creator trigger on
+-- `projects` reads auth.uid() and inserting as `postgres` makes it null.
+select makerkit.authenticate_as('primary_owner');
+
+insert into public.projects (id, account_id, name, status)
+  values ('bbbbbbbb-0000-4000-8000-000000000001',
+          current_setting('revtest.story')::uuid, 'Revenue RLS fixture', 'active');
+
+set local role postgres;
+
+insert into public.episodes (id, project_id, number, title, status)
+  values ('bbbbbbbb-0000-4000-8000-000000000002',
+          'bbbbbbbb-0000-4000-8000-000000000001', 1, 'E1', 'draft');
+
+insert into public.publishes (id, episode_id, platform, content_type, status)
+  values ('bbbbbbbb-0000-4000-8000-000000000003',
+          'bbbbbbbb-0000-4000-8000-000000000002', 'youtube', 'full', 'published');
+
+select tests.create_supabase_user('colleague', 'colleague@storybook.dev');
+
+insert into public.project_members (project_id, user_id, role)
+  values ('bbbbbbbb-0000-4000-8000-000000000001', tests.get_supabase_uid('member'), 'member'),
+         ('bbbbbbbb-0000-4000-8000-000000000001', tests.get_supabase_uid('colleague'), 'member'),
+         -- A seeded *account* member given the project admin role. A user who
+         -- exists only in project_members cannot pass revenue_records_read,
+         -- so the delete below would match nothing whatever the delete policy
+         -- said — passing before and after the fix, guarding nothing.
+         ('bbbbbbbb-0000-4000-8000-000000000001', tests.get_supabase_uid('owner'), 'admin')
+  on conflict do nothing;
+
+-- What the sync writes, and what a colleague hand-entered.
+insert into public.revenue_records
+  (id, publish_id, platform, record_date, revenue_cents, source, category)
+  values ('bbbbbbbb-0000-4000-8000-000000000009',
+          'bbbbbbbb-0000-4000-8000-000000000003', 'youtube', '2026-04-01', 1000, 'api', 'ads');
+
+insert into public.revenue_records
+  (id, publish_id, platform, record_date, revenue_cents, source, category, created_by)
+  values ('bbbbbbbb-0000-4000-8000-00000000000a',
+          'bbbbbbbb-0000-4000-8000-000000000003', 'youtube', '2026-04-02', 2000, 'manual',
+          'sponsorship', tests.get_supabase_uid('colleague'));
+
+select makerkit.authenticate_as('member');
+
+-- A synced figure is the platform's, not a project member's. Overwriting one
+-- leaves it `category = 'ads'`, so it still counts as a platform payout in the
+-- ad-share signal — and since `source` joined the unique index, the next sync
+-- inserts its own row beside it and the day is counted twice, for good.
+set local role postgres;
+select public.revenue_rls_test_reset_publish();
+select makerkit.authenticate_as('member');
+
+-- Filtered, not raised: `source = 'manual'` is in USING, so the row is never
+-- selected for update and PostgREST reports a cheerful 204. The row itself is
+-- the only honest assertion, which is why the next test exists.
+select lives_ok(
+  $$ update public.revenue_records set revenue_cents = 500000, source = 'manual'
+     where id = 'bbbbbbbb-0000-4000-8000-000000000009' $$,
+  'Laundering a synced row matches nothing rather than raising'
+);
+
+set local role postgres;
+
+select is(
+  (select count(*)::int from public.revenue_records
+   where id = 'bbbbbbbb-0000-4000-8000-000000000009'
+     and source = 'api' and revenue_cents = 1000),
+  1,
+  'A project member may not launder a synced row into a hand-entered one'
+);
+
+-- `deleteManualRevenueAction` filters to source = 'manual'; PostgREST does not
+-- have to.
+-- As a project *admin*, deliberately. A plain member is already refused by the
+-- role check in the delete policy, so testing this with one would pass before
+-- and after the fix and guard nothing. The `owner|admin` branch is the only
+-- place the missing `source` predicate was reachable.
+set local role postgres;
+select public.revenue_rls_test_reset_publish();
+select makerkit.authenticate_as('owner');
+
+select lives_ok(
+  $$ delete from public.revenue_records
+     where id = 'bbbbbbbb-0000-4000-8000-000000000009' $$,
+  'Deleting a synced row matches nothing rather than raising'
+);
+
+set local role postgres;
+
+select is(
+  (select count(*)::int from public.revenue_records
+   where id = 'bbbbbbbb-0000-4000-8000-000000000009'),
+  1,
+  'A project admin may not delete a synced row'
+);
+
+-- Authorship on this branch. Seizing it is not merely rude: the delete policy
+-- grants removal to `created_by`, so this is how a member gives themselves a
+-- right that otherwise needs project owner or admin.
+set local role postgres;
+select public.revenue_rls_test_reset_publish();
+select makerkit.authenticate_as('member');
+
+select throws_ok(
+  $$ update public.revenue_records set created_by = tests.get_supabase_uid('member')
+     where id = 'bbbbbbbb-0000-4000-8000-00000000000a' $$,
+  'P0001',
+  'revenue_records.created_by is immutable',
+  'A project member may not seize authorship of a colleague entry'
+);
+
+-- The permissiveness that is deliberate: correcting a colleague's figure is
+-- allowed on this branch, and does not change who recorded it.
+set local role postgres;
+select public.revenue_rls_test_reset_publish();
+select makerkit.authenticate_as('member');
+
+select lives_ok(
+  $$ update public.revenue_records set revenue_cents = 2500
+     where id = 'bbbbbbbb-0000-4000-8000-00000000000a' $$,
+  'A project member may correct a colleague per-video entry'
 );
 
 select * from finish();

@@ -49,6 +49,10 @@ import {
 import { MANUAL_ENTRY_CATEGORIES } from '../lib/revenue-mix';
 import { AddManualRevenueSchema } from '../lib/schemas/revenue.schema';
 import { addManualRevenueAction } from '../server/revenue-actions';
+// Type-only, so nothing server-side is pulled into the client bundle. The
+// point of naming it is exhaustiveness: a new refusal reason fails to compile
+// until it has a sentence.
+import type { AddManualRevenueResult } from '../server/revenue-actions';
 
 interface Publish {
   id: string;
@@ -64,6 +68,24 @@ interface ManualRevenueFormProps {
 
 /** Sentinel for "no video": Radix Select cannot hold an empty value. */
 const CHANNEL_LEVEL = '__channel__';
+
+/**
+ * One sentence per refusal, because who can unblock the caller differs and
+ * telling a project member to find an account owner sends them to the wrong
+ * person. Written here rather than thrown from the action: Next masks Server
+ * Action error messages in a production build.
+ */
+const REFUSAL_MESSAGE: Record<
+  Exclude<AddManualRevenueResult, { ok: true }>['reason'],
+  string
+> = {
+  not_yours:
+    'An entry already exists for this date and category. Only the person who added it, or an account owner, can change it.',
+  project_role:
+    'An entry already exists for this date and category. Only someone with access to this video’s project can change it.',
+  no_access:
+    'You do not have access to record revenue here. Ask an account owner, or someone on this video’s project.',
+};
 
 export function ManualRevenueForm({
   accountId,
@@ -103,11 +125,7 @@ export function ManualRevenueForm({
       // telling a project member to find an account owner sends them to the
       // wrong person.
       if (!result.ok) {
-        toast.error(
-          result.reason === 'project_role'
-            ? 'An entry already exists for this date and category. Only someone with access to this video’s project can change it.'
-            : 'An entry already exists for this date and category. Only the person who added it, or an account owner, can change it.',
-        );
+        toast.error(REFUSAL_MESSAGE[result.reason]);
 
         return;
       }
