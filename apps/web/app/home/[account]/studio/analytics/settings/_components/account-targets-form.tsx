@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { isRedirectError } from 'next/dist/client/components/redirect-error';
 import { useRouter } from 'next/navigation';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -61,7 +62,21 @@ export function AccountTargetsForm({
     yppTargetSubscribers: number | null;
     tagMinSample: number | null;
   }) => {
-    const result = await updateAccountAnalyticsSettingsAction(values);
+    // The action reports refusals as `{ ok: false }` rather than throwing,
+    // because Next masks Server Action errors in production. Anything that
+    // still throws — a server-side schema failure, an unexpected exception —
+    // rejects here, and `handleSubmit` would re-enable the button with no
+    // toast at all: a save that looks like it was simply ignored.
+    let result;
+
+    try {
+      result = await updateAccountAnalyticsSettingsAction(values);
+    } catch (error) {
+      if (isRedirectError(error)) throw error;
+
+      toast.error(REFUSAL_MESSAGE.write_failed);
+      return;
+    }
 
     if (!result.ok) {
       toast.error(REFUSAL_MESSAGE[result.reason]);

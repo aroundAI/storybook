@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { fetchAllRows } from '@kit/shared/pagination';
 import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -89,18 +90,24 @@ export async function fetchChannelAnalyticsOverrides(
   accountId: string,
   client: Client = getSupabaseServerClient(),
 ): Promise<Map<string, ChannelAnalyticsOverride>> {
-  const { data, error } = await client
-    .from('channel_analytics_settings')
-    .select(
-      'connection_id, ypp_target_watch_hours, ypp_target_subscribers, ypp_applicant_status, joined_ypp_at',
-    )
-    .eq('account_id', accountId);
+  // Paged, like `listAccountChannels` beside it in the same Promise.all.
+  // PostgREST caps a read at `max_rows` and returns the short result with a
+  // 200 and `error: null`, so a truncation is invisible — and this one is not
+  // cosmetic: a missing override silently demotes a channel to the account's
+  // target and reports a number the operator never chose. `.order` is on the
+  // primary key, which is what makes range paging sound.
+  const rows = await fetchAllRows<ChannelAnalyticsOverride>(
+    (from, to) =>
+      client
+        .from('channel_analytics_settings')
+        .select(
+          'connection_id, ypp_target_watch_hours, ypp_target_subscribers, ypp_applicant_status, joined_ypp_at',
+        )
+        .eq('account_id', accountId)
+        .order('connection_id')
+        .range(from, to),
+    'channel analytics settings',
+  );
 
-  if (error) {
-    throw new Error(
-      `Failed to read per-channel analytics settings: ${error.message}`,
-    );
-  }
-
-  return new Map((data ?? []).map((row) => [row.connection_id, row]));
+  return new Map(rows.map((row) => [row.connection_id, row]));
 }

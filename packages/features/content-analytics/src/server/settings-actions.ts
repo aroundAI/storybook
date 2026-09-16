@@ -143,11 +143,17 @@ export const updateChannelAnalyticsSettingsAction = enhanceAction(
     // The account is read off the connection, never taken from the caller.
     // This select is RLS-scoped, so a connection belonging to someone else
     // returns no row at all and the write never happens.
-    const { data: connection } = await client
+    const { data: connection, error: connectionError } = await client
       .from('platform_connections')
       .select('id, account_id')
       .eq('id', connectionId)
       .maybeSingle();
+
+    // Two ways to get no row, and they must not report the same thing. An
+    // error means the read failed; telling the user their own channel "is not
+    // part of this account" would be the same conflation `settings-queries`
+    // refuses to make, just moved one file across.
+    if (connectionError) return { ok: false, reason: 'write_failed' };
 
     if (!connection) return { ok: false, reason: 'no_access' };
 

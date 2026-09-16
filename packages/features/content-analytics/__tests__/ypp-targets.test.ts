@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ANALYTICS_DEFAULTS,
+  overriddenChannelTargets,
   parseOptionalInteger,
   resolveTagMinSample,
   resolveYppTarget,
@@ -356,6 +357,95 @@ describe('non-positive stored targets', () => {
       expect(result.watchHours).toBeGreaterThan(0);
       expect(result.subscribers).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('overriddenChannelTargets', () => {
+  // This exists because the settings form grew its own copy of the escalation
+  // rule and the two disagreed. The form now asks this, which asks
+  // `resolveYppTarget` — so a warning about an ignored override cannot
+  // contradict what the resolver actually does.
+
+  it('reports nothing when the account level is not configured', () => {
+    // The defect this was written for. The form collapsed "no account row"
+    // into the default 4,000 and warned that a channel target of 1,200 would
+    // lose to it — but `resolveOne` only escalates when *both* levels hold a
+    // value, so 1,200 is honoured. Every account was in this state, because
+    // the table had no writer before FILM-1608.
+    const result = overriddenChannelTargets({
+      channelSettings: { ...CHANNEL, ypp_target_watch_hours: 1200 },
+      accountSettings: null,
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it('reports nothing when the channel override wins', () => {
+    const result = overriddenChannelTargets({
+      channelSettings: {
+        ...CHANNEL,
+        ypp_target_watch_hours: 1200,
+        ypp_applicant_status: 'existing_partner',
+      },
+      accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 4000 },
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it('reports the metric and both numbers when the override is overruled', () => {
+    const result = overriddenChannelTargets({
+      channelSettings: { ...CHANNEL, ypp_target_watch_hours: 1200 },
+      accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 4000 },
+    });
+
+    expect(result).toEqual([
+      { metric: 'watchHours', channel: 1200, resolved: 4000 },
+    ]);
+  });
+
+  it('ignores a non-positive channel value', () => {
+    // The number field writes 0 for text it cannot parse, so the schema's
+    // `.positive()` renders a field error. That sentinel reached the notice
+    // and produced "the target below 0 is lower than the account's 4,000"
+    // beside the field's own complaint.
+    for (const sentinel of [0, -5]) {
+      const result = overriddenChannelTargets({
+        channelSettings: { ...CHANNEL, ypp_target_watch_hours: sentinel },
+        accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 4000 },
+      });
+
+      expect(result).toEqual([]);
+    }
+  });
+
+  it('reports each metric independently', () => {
+    const result = overriddenChannelTargets({
+      channelSettings: {
+        ...CHANNEL,
+        ypp_target_watch_hours: 1200,
+        ypp_target_subscribers: 5000,
+      },
+      accountSettings: {
+        ypp_target_watch_hours: 4000,
+        ypp_target_subscribers: 1000,
+      },
+    });
+
+    // Watch hours lose to the higher account figure; subscribers are already
+    // the higher of the two, so that override stands.
+    expect(result).toEqual([
+      { metric: 'watchHours', channel: 1200, resolved: 4000 },
+    ]);
+  });
+
+  it('reports nothing when the channel sets no override at all', () => {
+    const result = overriddenChannelTargets({
+      channelSettings: CHANNEL,
+      accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 4000 },
+    });
+
+    expect(result).toEqual([]);
   });
 });
 

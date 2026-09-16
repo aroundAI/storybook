@@ -1,4 +1,3 @@
-import { ANALYTICS_DEFAULTS } from '@kit/content-analytics/lib/ypp-targets';
 import { getAnalyticsSettingsAction } from '@kit/content-analytics/server/settings-actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { createTeamAccountsApi } from '@kit/team-accounts/api';
@@ -81,16 +80,15 @@ async function AnalyticsSettingsPage({ params }: PageProps) {
             <ChannelTargetsForm
               key={channel.connectionId}
               channel={channel}
-              // The value this channel inherits when it sets nothing — what
-              // the form compares against to warn that a lower override will
-              // lose to the over-state rule.
+              // Raw, including null. The form passes these straight to the
+              // resolver, which distinguishes "the account set nothing" from
+              // "the account set the default" — collapsing the two here is
+              // what made the override warning fire on every fresh account.
               accountWatchHours={
-                settings.accountSettings?.ypp_target_watch_hours ??
-                ANALYTICS_DEFAULTS.watchHours
+                settings.accountSettings?.ypp_target_watch_hours ?? null
               }
               accountSubscribers={
-                settings.accountSettings?.ypp_target_subscribers ??
-                ANALYTICS_DEFAULTS.subscribers
+                settings.accountSettings?.ypp_target_subscribers ?? null
               }
             />
           ))

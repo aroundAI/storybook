@@ -2,10 +2,14 @@
 
 import { useState } from 'react';
 
+import { isRedirectError } from 'next/dist/client/components/redirect-error';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
 import { UpdateChannelAnalyticsSettingsSchema } from '@kit/content-analytics/lib/schemas/settings';
+import type { OverriddenTarget } from '@kit/content-analytics/lib/ypp-targets';
+import { overriddenChannelTargets } from '@kit/content-analytics/lib/ypp-targets';
 import type { ChannelSettingsEntry } from '@kit/content-analytics/server/settings-actions';
 import { updateChannelAnalyticsSettingsAction } from '@kit/content-analytics/server/settings-actions';
 import { Button } from '@kit/ui/button';
@@ -54,9 +58,16 @@ export function ChannelTargetsForm({
   accountSubscribers,
 }: {
   channel: ChannelSettingsEntry;
-  /** The account-level values this channel inherits, already resolved. */
-  accountWatchHours: number;
-  accountSubscribers: number;
+  /**
+   * The account's own values, or null where it has none.
+   *
+   * Null rather than the shipped default on purpose: "the account has not
+   * configured this" and "the account is using 4,000" resolve differently,
+   * and collapsing them is what made the notice below cry wolf on every
+   * account that had never saved a setting.
+   */
+  accountWatchHours: number | null;
+  accountSubscribers: number | null;
 }) {
   const [version, setVersion] = useState(0);
 
@@ -81,7 +92,18 @@ export function ChannelTargetsForm({
     yppApplicantStatus: 'unknown' | 'new_applicant' | 'existing_partner';
     joinedYppAt: string | null;
   }) => {
-    const result = await updateChannelAnalyticsSettingsAction(values);
+    // See the account form: a rejection here would otherwise leave the button
+    // enabled and say nothing at all.
+    let result;
+
+    try {
+      result = await updateChannelAnalyticsSettingsAction(values);
+    } catch (error) {
+      if (isRedirectError(error)) throw error;
+
+      toast.error(REFUSAL_MESSAGE.write_failed);
+      return;
+    }
 
     if (!result.ok) {
       toast.error(REFUSAL_MESSAGE[result.reason]);
@@ -111,19 +133,18 @@ export function ChannelTargetsForm({
             data-test={'channel-targets-form'}
           >
             <OverriddenNotice
-              status={form.watch('yppApplicantStatus')}
-              entries={[
-                {
-                  label: 'watch hours',
-                  channel: form.watch('yppTargetWatchHours'),
-                  account: accountWatchHours,
+              overridden={overriddenChannelTargets({
+                channelSettings: {
+                  ypp_target_watch_hours: form.watch('yppTargetWatchHours'),
+                  ypp_target_subscribers: form.watch('yppTargetSubscribers'),
+                  ypp_applicant_status: form.watch('yppApplicantStatus'),
+                  joined_ypp_at: null,
                 },
-                {
-                  label: 'subscribers',
-                  channel: form.watch('yppTargetSubscribers'),
-                  account: accountSubscribers,
+                accountSettings: {
+                  ypp_target_watch_hours: accountWatchHours,
+                  ypp_target_subscribers: accountSubscribers,
                 },
-              ]}
+              })}
             />
 
             <div key={version} className={'grid gap-6 md:grid-cols-2'}>
@@ -224,26 +245,13 @@ export function ChannelTargetsForm({
 /**
  * Says so when a target the user has typed will not be the one used.
  *
- * With the default `unknown` status, a channel value *lower* than the
- * account value loses to the over-state rule — the save succeeds, the toast
- * fires, the number round-trips on reload, and the progress card goes on
- * using the account's. Everything says it worked. Without this notice the
- * most likely first action anyone takes on this page, lowering one channel's
- * bar, appears to work and does not.
+ * Which targets those are is decided by `overriddenChannelTargets`, which
+ * asks the resolver. This component only renders the answer. An earlier
+ * version compared the numbers here and disagreed with the rule it was
+ * describing — telling people on a fresh account that a valid override would
+ * be ignored, and to change a status they had no reason to change.
  */
-function OverriddenNotice({
-  status,
-  entries,
-}: {
-  status: 'unknown' | 'new_applicant' | 'existing_partner';
-  entries: Array<{ label: string; channel: number | null; account: number }>;
-}) {
-  if (status !== 'unknown') return null;
-
-  const overridden = entries.filter(
-    (entry) => entry.channel !== null && entry.channel < entry.account,
-  );
-
+function OverriddenNotice({ overridden }: { overridden: OverriddenTarget[] }) {
   if (overridden.length === 0) return null;
 
   return (
@@ -254,12 +262,17 @@ function OverriddenNotice({
       {overridden
         .map(
           (entry) =>
-            `The ${entry.label} target below ${entry.channel!.toLocaleString()} is lower than the account's ${entry.account.toLocaleString()}`,
+            `The ${METRIC_LABEL[entry.metric]} target ${entry.channel.toLocaleString()} will not be used; this channel is measured against ${entry.resolved.toLocaleString()}`,
         )
-        .join('; ')}
-      . While the applicant status is Unknown the higher figure is used, so this
-      channel will still be measured against the account target. Set the status
-      to &ldquo;Already a partner&rdquo; if the lower bar is the real one.
+        .join('. ')}
+      . While the applicant status is Unknown the higher of the two configured
+      figures wins. Set the status to &ldquo;Already a partner&rdquo; if the
+      lower bar is the real one.
     </p>
   );
 }
+
+const METRIC_LABEL: Record<OverriddenTarget['metric'], string> = {
+  watchHours: 'watch hours',
+  subscribers: 'subscriber',
+};

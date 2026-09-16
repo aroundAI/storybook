@@ -153,6 +153,69 @@ test.describe('Analytics settings', () => {
     ).toBeVisible();
   });
 
+  test('no override notice when the account has set nothing', async ({
+    page,
+  }) => {
+    const settings = new AnalyticsSettingsPageObject(page);
+
+    await settings.setup();
+
+    // A fresh account, nothing saved at the account level — the state every
+    // account was in, because this table had no writer before FILM-1608.
+    //
+    // The first version of the notice compared against the shipped default
+    // and announced that this override would be ignored. It will not be:
+    // `resolveOne` escalates only when *both* levels hold a value, so 1,200
+    // is the target. The warning told people to change a status they had no
+    // reason to change.
+    await settings.chooseStatus('Unknown');
+    await settings.channelWatchHours().fill('1200');
+
+    await expect(
+      page.locator('[data-test="channel-overridden-notice"]'),
+    ).toHaveCount(0);
+  });
+
+  test('no override notice for text the field cannot parse', async ({
+    page,
+  }) => {
+    const settings = new AnalyticsSettingsPageObject(page);
+
+    await settings.setup();
+
+    await settings.accountWatchHours().fill('4000');
+    await settings.saveAccount();
+
+    // The number field writes 0 for unparseable text so the schema's
+    // `.positive()` renders a message. That sentinel reached the notice and
+    // produced "the target 0 will not be used" beside the field's own error.
+    await settings.chooseStatus('Unknown');
+    await settings.channelWatchHours().fill('1,2');
+
+    await expect(
+      page.locator('[data-test="channel-overridden-notice"]'),
+    ).toHaveCount(0);
+
+    // Submitted, because react-hook-form only surfaces validation on submit —
+    // the first draft of this case asserted the message without submitting
+    // and failed on its own assertion rather than on the behaviour.
+    await settings.channelSubmit().click();
+
+    await expect(
+      page
+        .getByText(
+          'Enter a whole number greater than zero, or leave blank to inherit',
+        )
+        .first(),
+    ).toBeVisible();
+
+    // Still silent after the failed submit: 0 is a parse sentinel, not a
+    // target anyone chose.
+    await expect(
+      page.locator('[data-test="channel-overridden-notice"]'),
+    ).toHaveCount(0);
+  });
+
   test('the override notice quotes the account value just saved, not the one from page load', async ({
     page,
   }) => {
@@ -175,6 +238,8 @@ test.describe('Analytics settings', () => {
     const notice = page.locator('[data-test="channel-overridden-notice"]');
 
     await expect(notice).toBeVisible();
+    // The resolved target, read off `resolveYppTarget` rather than
+    // recomputed here, so this cannot drift from the rule again.
     await expect(notice).toContainText('3,500');
     await expect(notice).not.toContainText('4,000');
   });

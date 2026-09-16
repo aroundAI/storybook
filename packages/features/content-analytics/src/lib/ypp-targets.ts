@@ -245,3 +245,68 @@ export function parseOptionalInteger(raw: string): number | null | undefined {
   // denominator, and a target of nothing renders as 100% complete.
   return value > 0 ? value : undefined;
 }
+
+export interface OverriddenTarget {
+  metric: 'watchHours' | 'subscribers';
+  /** What the operator typed on the channel. */
+  channel: number;
+  /** What `resolveYppTarget` will actually measure against. */
+  resolved: number;
+}
+
+/**
+ * Channel overrides that will not be the target actually used.
+ *
+ * The settings form warns before saving one of these, and it needs to be a
+ * *consequence* of the resolution rule rather than a second copy of it. The
+ * first version of that warning re-derived the rule — "is the channel value
+ * lower than the account's?" — and got it wrong in the most common case
+ * there is: with no account row at all it compared against the shipped
+ * default and announced that a perfectly good override would be ignored.
+ * `resolveOne` escalates only when *both* levels hold a value, so it would
+ * not have been.
+ *
+ * Asking the resolver also means this covers every reason an override loses,
+ * not only the `unknown`-status escalation that prompted it, and a
+ * non-positive value needs no special case — `resolveOne` already treats one
+ * as unconfigured, so it resolves to some other basis and reports nothing.
+ */
+export function overriddenChannelTargets({
+  channelSettings,
+  accountSettings,
+}: ResolveInput): OverriddenTarget[] {
+  const resolved = resolveYppTarget({ channelSettings, accountSettings });
+
+  const candidates: Array<{
+    metric: OverriddenTarget['metric'];
+    channel: number | null;
+    basis: TargetBasis;
+    resolved: number;
+  }> = [
+    {
+      metric: 'watchHours',
+      channel: channelSettings?.ypp_target_watch_hours ?? null,
+      basis: resolved.watchHoursBasis,
+      resolved: resolved.watchHours,
+    },
+    {
+      metric: 'subscribers',
+      channel: channelSettings?.ypp_target_subscribers ?? null,
+      basis: resolved.subscribersBasis,
+      resolved: resolved.subscribers,
+    },
+  ];
+
+  return candidates
+    .filter(
+      (candidate) =>
+        candidate.channel !== null &&
+        candidate.channel > 0 &&
+        candidate.basis !== 'channel',
+    )
+    .map(({ metric, channel, resolved: value }) => ({
+      metric,
+      channel: channel!,
+      resolved: value,
+    }));
+}
