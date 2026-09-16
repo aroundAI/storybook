@@ -2,8 +2,8 @@ import { Page, expect, selectors, test } from '@playwright/test';
 
 import { AuthPageObject } from '../authentication/auth.po';
 import { TeamAccountsPageObject } from '../team-accounts/team-accounts.po';
+import { SUPER_ADMIN } from '../utils/super-admin';
 
-const MFA_KEY = 'NHOHJVGPO3R3LKVPRMNIYLCDMBHUM2SE';
 
 test.describe('Admin Auth flow without MFA', () => {
   test('will return a 404 for non-admin users', async ({ page }) => {
@@ -338,7 +338,7 @@ async function goToAdmin(page: Page) {
   await page.waitForTimeout(250);
 
   await expect(async () => {
-    await auth.submitMFAVerification(MFA_KEY);
+    await auth.submitMFAVerification(SUPER_ADMIN.mfaKey);
     await page.waitForURL('/home');
   }).toPass({
     intervals: [
