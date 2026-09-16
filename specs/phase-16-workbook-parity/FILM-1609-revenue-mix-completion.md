@@ -398,6 +398,53 @@ The migration now counts them and both legacy payout rows at apply time and
 raises a `NOTICE`, so the number comes from the database being migrated. Both
 are zero locally; production will say for itself.
 
+## 4g. Round 12 — what `not valid` actually postponed
+
+**`not valid` postpones the scan, not the rule.** §4d added
+`revenue_records_single_scope_check ... not valid` reasoning that legacy
+dual-scope rows would be "left alone rather than blocking the migration". True
+of the migration, false of everything after it: the constraint is enforced on
+every later UPDATE of an existing row. Proven — a dual-scope row updated the
+way `upsertRevenueRecords` updates it fails with `23514`, and
+`analytics-sync-cron.ts` logs that at warn and continues. **That
+publish/date/category silently stops being recorded, for good, with nothing
+failing.**
+
+Fixed by normalising rather than postponing: a dual-scope row belongs to its
+publish, which is what the unique index (`coalesce`), the channel-branch query
+(`publish_id is null`) and `addManualRevenueAction` all already assume. Clearing
+`account_id` writes down what every reader believes, **changes no total** —
+these rows were already counted once, through the publish branch — and lets the
+constraint be validated, so the database holds the invariant instead of
+promising it for future rows. pgTAP now asserts `convalidated` and that no
+dual-scope row exists.
+
+**A category revised down to zero was never cleared.** The sync dropped zero
+figures before looking, so the previous figure survived: no later run visits
+that key, nothing clears it, and `effectiveRevenueCategory` reads
+`source = 'api'` as proof of a platform payout — so a stale 4000¢ of ads
+revenue inflates `adsSharePercent` permanently. The reconciliation is now a pure
+function, `planRevenueRowWrites`, because the case that matters has no network
+in it: zero is written when a row exists and withheld when one does not.
+Correcting a figure to nothing is not the same act as inventing a zero payout
+for every category of every publish. It also turned three round-trips per
+publish-day into one read.
+
+**A concurrent insert reached the user as a digest.** Only `42501` was handled;
+a `23505` on `idx_revenue_records_unique_scope` — two members, or one person in
+two tabs, since `isSubmitting` guards a single mount — was rethrown. It returns
+`conflict` now. Reported rather than retried: a retry silently overwrites the
+figure the other person just saved, and a lost update nobody is told about is
+worse than a refusal they can act on.
+
+**Not fixed, documented.** `deleteManualRevenueAction` compares `matched`
+against `removed` across two round-trips, so a row deleted by someone else in
+between reports a permissions refusal that never happened. The fix is one
+statement instead of two — the RPC already tracked as `TODO(FILM-1614)`. And
+`matched === 0` returning success also covers a scope the caller cannot see,
+which is deliberate: the alternative distinguishes "nothing there" from "not
+yours to see", a disclosure the read policy exists to prevent.
+
 ## 5. Out of Scope
 
 - **Rendering `RevenueMixCard`** — FILM-1611. This spec makes the category

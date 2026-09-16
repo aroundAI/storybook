@@ -9,6 +9,7 @@ import {
   REVENUE_SUMMARY_SCHEMA_VERSION,
   effectiveRevenueCategory,
   payoutShare,
+  planRevenueRowWrites,
   revenueMixView,
   splitRevenueByPayout,
 } from '../src/lib/revenue-mix';
@@ -438,5 +439,95 @@ describe('effectiveRevenueCategory', () => {
     expect(Object.values(raw).reduce((a, b) => a + b, 0)).toBe(
       Object.values(normalised).reduce((a, b) => a + b, 0),
     );
+  });
+});
+
+describe('planRevenueRowWrites', () => {
+  const existing = (
+    category: string,
+    revenueCents: number,
+    id = `id-${category}`,
+  ) => ({ id, category, revenueCents });
+
+  it('inserts a category the platform reports for the first time', () => {
+    expect(
+      planRevenueRowWrites([{ category: 'ads', revenueCents: 4000 }], []),
+    ).toEqual([{ op: 'insert', category: 'ads', revenueCents: 4000 }]);
+  });
+
+  it('updates a figure the platform has revised', () => {
+    expect(
+      planRevenueRowWrites(
+        [{ category: 'ads', revenueCents: 4500 }],
+        [existing('ads', 4000)],
+      ),
+    ).toEqual([
+      { op: 'update', id: 'id-ads', category: 'ads', revenueCents: 4500 },
+    ]);
+  });
+
+  // The defect this function exists for: the sync dropped zero figures before
+  // looking, so a revised-down category kept its old row for good and went on
+  // counting as a platform payout.
+  it('clears a category the platform has revised down to zero', () => {
+    expect(
+      planRevenueRowWrites(
+        [{ category: 'ads', revenueCents: 0 }],
+        [existing('ads', 4000)],
+      ),
+    ).toEqual([
+      { op: 'update', id: 'id-ads', category: 'ads', revenueCents: 0 },
+    ]);
+  });
+
+  it('does not invent a zero row where nothing was recorded', () => {
+    expect(
+      planRevenueRowWrites([{ category: 'ads', revenueCents: 0 }], []),
+    ).toEqual([]);
+  });
+
+  it('writes nothing when the stored figure is already right', () => {
+    expect(
+      planRevenueRowWrites(
+        [{ category: 'ads', revenueCents: 4000 }],
+        [existing('ads', 4000)],
+      ),
+    ).toEqual([]);
+  });
+
+  it('writes nothing when the stored figure is already zero', () => {
+    // Otherwise every sync run rewrites updated_at on every cleared row.
+    expect(
+      planRevenueRowWrites(
+        [{ category: 'ads', revenueCents: 0 }],
+        [existing('ads', 0)],
+      ),
+    ).toEqual([]);
+  });
+
+  it('handles the three categories independently', () => {
+    expect(
+      planRevenueRowWrites(
+        [
+          { category: 'ads', revenueCents: 0 },
+          { category: 'premium', revenueCents: 250 },
+          { category: 'other', revenueCents: 0 },
+        ],
+        [existing('ads', 4000), existing('premium', 250)],
+      ),
+    ).toEqual([
+      { op: 'update', id: 'id-ads', category: 'ads', revenueCents: 0 },
+    ]);
+  });
+
+  it('ignores stored rows the platform no longer reports on', () => {
+    // `licensing` is hand-enterable and never synced; nothing here should
+    // touch it even though it shares the publish and day.
+    expect(
+      planRevenueRowWrites(
+        [{ category: 'ads', revenueCents: 100 }],
+        [existing('licensing', 900)],
+      ),
+    ).toEqual([{ op: 'insert', category: 'ads', revenueCents: 100 }]);
   });
 });

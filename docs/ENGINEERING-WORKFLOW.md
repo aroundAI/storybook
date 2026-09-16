@@ -89,6 +89,13 @@ common thread: a fix removed a constraint without naming its replacement.
 fix that removes a guard — a widget, a validation, a bound — names what replaces
 it, in the code, not in the PR description.
 
+**A deferral is a claim too.** `add constraint ... not valid` was chosen to
+avoid a scan and described as leaving legacy rows alone. It postpones the
+*scan*, not the *rule*: every later UPDATE of one of those rows fails, and the
+one caller that updates them logs the error at warn and continues, so the data
+silently stops being recorded. Read what the escape hatch actually does, then
+check the callers that touch the rows you just excused.
+
 **And ask what the fix leaves open on the paths it did not touch.** Round 10
 added a `WITH CHECK` that constrained `created_by` — on one of two branches —
 and then wrote "defect 2 fixed" in the migration header. The sentence was the

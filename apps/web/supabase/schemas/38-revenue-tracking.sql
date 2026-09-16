@@ -39,12 +39,19 @@ create table if not exists public.revenue_records (
 -- rows carrying both — and those coalesce to their publish, so a
 -- channel-scoped lookup could match one and, on update, convert it.
 --
--- Declared out here and `not valid` so this file agrees with
--- 20260915195006, which could not scan history. Postgres does not accept
--- NOT VALID inside CREATE TABLE, so inline is not a form the two can share.
+-- Declared out here rather than inline because 20260915195006 added it
+-- `not valid` and 20260916050127 validated it, and a CREATE TABLE constraint
+-- has no way to express that history.
+--
+-- It is **validated** now, which matters: `not valid` postpones the scan, not
+-- the rule, so a legacy dual-scope row could not be updated at all — the sync
+-- failed it with 23514 and logged the error at warn, and that
+-- publish/date/category silently stopped being recorded. 20260916050127
+-- normalises those rows to their publish (where every reader already counted
+-- them, so no total moves) and validates.
 alter table public.revenue_records
   add constraint revenue_records_single_scope_check
-  check (num_nonnulls(publish_id, account_id) = 1) not valid;
+  check (num_nonnulls(publish_id, account_id) = 1);
 
 comment on table public.revenue_records is 'Daily revenue records per publish (or per account for channel-level revenue), split by category';
 comment on column public.revenue_records.source is 'Source of revenue data: api (fetched from platform) or manual (user entered)';

@@ -252,12 +252,23 @@ export const getRevenueSummaryAction = enhanceAction(
  * as opposed to being blocked by an entry that already exists. Reached on a
  * date with no entry, where the other two cannot apply.
  *
+ * `conflict` — an entry for this date and category appeared between this
+ * call's lookup and its insert. Two members, or one person in two tabs
+ * (`isSubmitting` only guards a single mount): both lookups miss, both
+ * insert, and the loser hits `idx_revenue_records_unique_scope` with 23505.
+ * Reported rather than retried — a retry would silently overwrite the figure
+ * the other person just saved, and a lost update nobody is told about is
+ * worse than a refusal they can act on.
+ *
  * There is no `synced` case: `source` is part of the unique key, so a
  * platform figure occupies a different row and is never in the way.
  */
 export type AddManualRevenueResult =
   | { ok: true; record: RevenueRecord }
-  | { ok: false; reason: 'project_role' | 'not_yours' | 'no_access' };
+  | {
+      ok: false;
+      reason: 'project_role' | 'not_yours' | 'no_access' | 'conflict';
+    };
 
 export const addManualRevenueAction = enhanceAction(
   async function (data, user): Promise<AddManualRevenueResult> {
@@ -378,6 +389,15 @@ export const addManualRevenueAction = enhanceAction(
       return { ok: false, reason: 'no_access' };
     }
 
+    // 23505: the row this call's lookup did not find was created by someone
+    // else before the insert landed. Rethrowing reaches the user as a Next
+    // digest, which is the opaque failure this whole return-value shape
+    // exists to avoid — and it is the one refusal on this path that is
+    // nobody's fault and worth retrying by hand.
+    if (error?.code === '23505') {
+      return { ok: false, reason: 'conflict' };
+    }
+
     if (error) throw error;
 
     if (existing && !record) {
@@ -486,6 +506,17 @@ export const deleteManualRevenueAction = enhanceAction(
     // policy a member deleting a whole date removes only their own. Some
     // rows removed and some refused is not success, and reporting it as
     // success leaves the survivors invisible.
+    //
+    // Two known limits, stated so the next reader need not re-derive them:
+    //
+    // - These are two round-trips, so a row deleted by someone else in
+    //   between makes this report a permissions refusal that never happened,
+    //   with an under-counted `removed`. Rare, and the fix is one statement
+    //   rather than two — the RPC already planned as TODO(FILM-1614).
+    // - `matched === 0` returns success, which also covers a scope the caller
+    //   cannot see at all. That is deliberate: the alternative distinguishes
+    //   "nothing there" from "not yours to see", which is a disclosure the
+    //   read policy exists to prevent. Deleting nothing is not a failure.
     if ((matched?.length ?? 0) > (removed?.length ?? 0)) {
       // Scope-specific: the same condition fires for either RLS branch,
       // and a project member refused by the publish branch was being told

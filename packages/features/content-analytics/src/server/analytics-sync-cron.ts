@@ -19,6 +19,7 @@ import { getLogger } from '@kit/shared/logger';
 import { fetchAllByIds } from '@kit/shared/pagination';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import { planRevenueRowWrites } from '../lib/revenue-mix';
 import {
   InstagramInsightsScopeError,
   createInstagramInsightsProvider,
@@ -976,66 +977,83 @@ async function upsertRevenueRecords(
   const uncategorized =
     data.revenue_cents - data.ad_revenue_cents - data.red_revenue_cents;
 
+  // Not filtered to positive figures. A category the platform has revised
+  // *down* to zero still needs its row corrected, and dropping it here left
+  // the previous figure in place for good: no later sync visits that key, no
+  // code path clears it, and `effectiveRevenueCategory` reads `source = 'api'`
+  // as proof of a platform payout — so a stale 4000c of ads revenue inflates
+  // `adsSharePercent` permanently. Owning a row includes zeroing it.
   const byCategory: Array<{ category: string; revenue_cents: number }> = [
     { category: 'ads', revenue_cents: data.ad_revenue_cents },
     { category: 'premium', revenue_cents: data.red_revenue_cents },
     { category: 'other', revenue_cents: Math.max(0, uncategorized) },
-  ].filter((row) => row.revenue_cents > 0);
-
-  if (byCategory.length === 0) return;
+  ];
 
   const logger = await getLogger();
 
-  for (const row of byCategory) {
-    const { data: existing, error: existingError } = await client
-      .from('revenue_records')
-      .select('id')
-      .eq('publish_id', data.publish_id)
-      .eq('record_date', data.snapshot_date)
-      .eq('category', row.category)
-      // The sync owns the 'api' row for this key and nothing else. Since
-      // `source` joined the unique index, a person's entry sits in its own
-      // row — there is no collision to lose, and nothing to skip.
-      .eq('source', 'api')
-      .maybeSingle();
+  // One read for the whole day rather than one per category. The previous
+  // shape did three round-trips to write at most three rows; reconciling
+  // against zero now has to look even when every figure is zero, so the read
+  // had to get cheaper rather than three times more frequent.
+  const { data: existingRows, error: existingError } = await client
+    .from('revenue_records')
+    .select('id, category, revenue_cents')
+    .eq('publish_id', data.publish_id)
+    .eq('record_date', data.snapshot_date)
+    // The sync owns the 'api' rows for this key and nothing else. Since
+    // `source` joined the unique index, a person's entry sits in its own
+    // row — there is no collision to lose, and nothing to skip.
+    .eq('source', 'api');
 
-    // A failed lookup left `existing` nullish and fell through to the
-    // insert, which then collided with the unique index and was swallowed
-    // by the warn below — skipping the manual-entry guard entirely for that
-    // row. The mirror of this lookup in revenue-actions.ts throws; these
-    // two should not disagree about whether a failed read is survivable.
-    if (existingError) {
-      logger.warn(
-        {
-          name: 'analytics-sync',
-          publishId: data.publish_id,
-          date: data.snapshot_date,
-          category: row.category,
-          error: existingError,
-        },
-        'Skipping revenue row: could not read the existing record',
-      );
+  // A failed lookup used to leave `existing` nullish and fall through to the
+  // insert, which then collided with the unique index and was swallowed by
+  // the warn below. The mirror of this lookup in revenue-actions.ts throws;
+  // these two should not disagree about whether a failed read is survivable.
+  if (existingError) {
+    logger.warn(
+      {
+        name: 'analytics-sync',
+        publishId: data.publish_id,
+        date: data.snapshot_date,
+        error: existingError,
+      },
+      'Skipping revenue rows: could not read the existing records',
+    );
 
-      continue;
-    }
+    return;
+  }
 
+  // The decision is pure and lives in `planRevenueRowWrites`, where the case
+  // that matters — a figure revised down to zero — can be tested without a
+  // database.
+  const plan = planRevenueRowWrites(
+    byCategory.map((row) => ({
+      category: row.category,
+      revenueCents: row.revenue_cents,
+    })),
+    (existingRows ?? []).map((row) => ({
+      id: row.id,
+      category: row.category,
+      revenueCents: row.revenue_cents,
+    })),
+  );
+
+  for (const write of plan) {
     const values = {
       publish_id: data.publish_id,
       platform,
       record_date: data.snapshot_date,
-      revenue_cents: row.revenue_cents,
+      revenue_cents: write.revenueCents,
       currency: 'USD',
       source: 'api' as const,
-      category: row.category,
+      category: write.category,
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = existing
-      ? await client
-          .from('revenue_records')
-          .update(values)
-          .eq('id', existing.id)
-      : await client.from('revenue_records').insert(values);
+    const { error } =
+      write.op === 'update'
+        ? await client.from('revenue_records').update(values).eq('id', write.id)
+        : await client.from('revenue_records').insert(values);
 
     if (error) {
       // Log but don't fail the sync - revenue_records is supplementary
@@ -1043,7 +1061,7 @@ async function upsertRevenueRecords(
         {
           error: error.message,
           publishId: data.publish_id,
-          category: row.category,
+          category: write.category,
         },
         'Failed to upsert revenue record',
       );

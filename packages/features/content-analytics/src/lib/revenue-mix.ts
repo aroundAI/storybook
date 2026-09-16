@@ -100,6 +100,67 @@ export function effectiveRevenueCategory(
   return source !== 'api' && isPayoutCategory ? 'other' : category;
 }
 
+/** One write the sync should make to reconcile a publish-day with the platform. */
+export type RevenueRowPlan =
+  | { op: 'insert'; category: string; revenueCents: number }
+  | { op: 'update'; id: string; category: string; revenueCents: number };
+
+/**
+ * What to write so the stored `api` rows match what the platform now reports.
+ *
+ * Pure, and separate from the sync, because the interesting case has no
+ * network in it: a category the platform **revises down to zero**. The sync
+ * used to drop zero figures before looking, so the previous row survived —
+ * no later run visited that key, nothing cleared it, and
+ * `effectiveRevenueCategory` reads `source = 'api'` as proof of a platform
+ * payout, so a stale figure inflated `adsSharePercent` for good.
+ *
+ * Zero is therefore written when a row exists and withheld when one does not:
+ * correcting a figure to nothing is not the same act as inventing a zero
+ * payout for every category of every publish.
+ */
+export function planRevenueRowWrites(
+  reported: ReadonlyArray<{ category: string; revenueCents: number }>,
+  existing: ReadonlyArray<{
+    id: string;
+    category: string;
+    revenueCents: number;
+  }>,
+): RevenueRowPlan[] {
+  const existingByCategory = new Map(
+    existing.map((row) => [row.category, row]),
+  );
+
+  return reported.flatMap<RevenueRowPlan>((row) => {
+    const current = existingByCategory.get(row.category);
+
+    if (!current) {
+      return row.revenueCents === 0
+        ? []
+        : [
+            {
+              op: 'insert',
+              category: row.category,
+              revenueCents: row.revenueCents,
+            },
+          ];
+    }
+
+    // Already correct, including already zero. Skipping these keeps the sync
+    // from touching `updated_at` on every run for rows nothing changed.
+    return current.revenueCents === row.revenueCents
+      ? []
+      : [
+          {
+            op: 'update',
+            id: current.id,
+            category: row.category,
+            revenueCents: row.revenueCents,
+          },
+        ];
+  });
+}
+
 /** Label for one category, for lookups keyed by the stored value. */
 export const REVENUE_CATEGORY_LABEL: Record<string, string> =
   Object.fromEntries(

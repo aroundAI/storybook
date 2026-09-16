@@ -5,7 +5,7 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 -- of the way through on a permissions error and still reported one failing
 -- test out of four, which reads like a nearly-passing suite. With a plan, a
 -- run that stops early fails as a plan mismatch instead of looking fine.
-select plan(20);
+select plan(22);
 
 -- Revenue rows are money attributed to a tenant, and `created_by` decides who
 -- may correct one later. Nine review rounds argued about these policies by
@@ -377,6 +377,32 @@ select lives_ok(
   $$ update public.revenue_records set revenue_cents = 2500
      where id = 'bbbbbbbb-0000-4000-8000-00000000000a' $$,
   'A project member may correct a colleague per-video entry'
+);
+
+-- ==================================
+-- The scope invariant is held, not promised
+-- ==================================
+-- `not valid` postpones the scan and nothing else: the constraint is enforced
+-- on every later UPDATE of an existing row. A legacy dual-scope row therefore
+-- could not be updated at all — the sync failed it with 23514 and swallowed
+-- the error at warn, so that publish/date/category silently stopped being
+-- recorded. 20260916050127 normalises those rows and validates the constraint;
+-- these two assert the end state rather than the migration.
+
+set local role postgres;
+
+select is(
+  (select convalidated from pg_constraint
+   where conname = 'revenue_records_single_scope_check'),
+  true,
+  'The single-scope constraint is validated, not merely declared'
+);
+
+select is(
+  (select count(*)::int from public.revenue_records
+   where publish_id is not null and account_id is not null),
+  0,
+  'No row carries both a publish and an account scope'
 );
 
 select * from finish();
