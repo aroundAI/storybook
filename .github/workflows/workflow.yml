@@ -434,3 +434,14 @@ jobs:
           name: playwright-report
           path: apps/e2e/playwright-report/
           retention-days: 7
+
+      # Machine-readable, so "did that change help?" can be answered by
+      # diffing two runs instead of opening the HTML report and counting.
+      # A flaky test passes on retry and is invisible in the job's exit
+      # status; this file is where it is recorded.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-results-json
+          path: apps/e2e/test-results/results.json
+          retention-days: 7

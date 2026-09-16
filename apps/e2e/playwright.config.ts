@@ -53,8 +53,22 @@ export default defineConfig({
   retries: 3,
   /* Limit parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  /*
+   * Reporter to use. See https://playwright.dev/docs/test-reporters
+   *
+   * The JSON reporter is here so a flake rate is a number rather than an
+   * impression. `retries: 3` means a flaky test reports as passing, so the
+   * only record that it flaked at all was inside the HTML artifact — which
+   * has to be downloaded and opened by hand, and expires after 7 days.
+   *
+   * `docs/ENGINEERING-WORKFLOW.md` requires a baseline flake count before
+   * anyone touches shared test infrastructure. That was not obtainable from
+   * CI until this line existed.
+   */
+  reporter: [
+    ['html', { open: 'never' }],
+    ['json', { outputFile: 'test-results/results.json' }],
+  ],
   /* Ignore billing tests if the environment variable is not set. */
   testIgnore,
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
