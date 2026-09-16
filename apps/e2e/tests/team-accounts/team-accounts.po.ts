@@ -32,12 +32,24 @@ export class TeamAccountsPageObject {
     return this.page.locator('[data-test="account-selector-team"]');
   }
 
+  /**
+   * `exact: true`, and the three below likewise.
+   *
+   * These were `locator('a', { hasText: 'Settings' })`, which is a *substring*
+   * match on every link on the page. Adding a nav item called "Analytics
+   * Settings" (FILM-1608) made it resolve to two elements and fail strict
+   * mode — a deterministic break in a spec that has nothing to do with
+   * analytics, and the first nav label in this repo to contain another one.
+   *
+   * It would not have been the last: "Members" and "Billing" had the same
+   * shape, one label away from the same failure. Exact role-based names are
+   * what Playwright's own strict-mode error suggests, and they cannot be
+   * widened by a future label.
+   */
   goToSettings() {
     return expect(async () => {
       await this.page
-        .locator('a', {
-          hasText: 'Settings',
-        })
+        .getByRole('link', { name: 'Settings', exact: true })
         .click();
 
       await this.page.waitForURL('**/home/*/settings');
@@ -47,9 +59,7 @@ export class TeamAccountsPageObject {
   goToMembers() {
     return expect(async () => {
       await this.page
-        .locator('a', {
-          hasText: 'Members',
-        })
+        .getByRole('link', { name: 'Members', exact: true })
         .click();
 
       await this.page.waitForURL('**/home/*/members');
@@ -59,9 +69,7 @@ export class TeamAccountsPageObject {
   goToBilling() {
     return expect(async () => {
       await this.page
-        .locator('a', {
-          hasText: 'Billing',
-        })
+        .getByRole('link', { name: 'Billing', exact: true })
         .click();
 
       return await this.page.waitForURL('**/home/*/billing');
