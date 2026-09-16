@@ -36,7 +36,12 @@ DATABASE_PROVIDER=mysql
 ### The Required Workflow
 
 1. **Edit schema file** (e.g., `supabase/schemas/18-projects.sql`)
-2. **Generate migration**: `pnpm --filter web supabase:db:diff -f migration_name`
+> ⛔ **`db diff` does not work in this repo.** The database is built from
+> `apps/web/supabase/migrations/`, and `schemas/` is missing 33 of the 99
+> tables — a diff against it would propose dropping them. Write migrations by
+> hand; see the root `CLAUDE.md`.
+
+2. **Write the migration by hand** in `apps/web/supabase/migrations/` (see the warning above)
    - This compares your schema against the current database and creates a migration
 3. **Apply migration**: `pnpm --filter web supabase migration up`
    - This actually executes the SQL changes in the database

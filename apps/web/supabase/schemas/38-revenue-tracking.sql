@@ -21,27 +21,57 @@ create table if not exists public.revenue_records (
   category varchar(30) not null default 'ads',
   breakdown jsonb default '{}',
   metadata jsonb default '{}',
+  -- Who recorded this by hand. Null for sync-written rows, and for rows
+  -- predating the column — those stay owner-only, which is the safe way to
+  -- be wrong about authorship.
+  created_by uuid references auth.users(id) on delete set null,
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
   check (platform in ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin', 'manual')),
   check (source in ('api', 'manual')),
   constraint revenue_records_category_check
-    check (category in ('ads', 'premium', 'sponsorship', 'product', 'affiliate', 'other')),
+    check (category in ('ads', 'premium', 'sponsorship', 'product', 'affiliate', 'licensing', 'other')),
   constraint revenue_records_scope_check
     check (publish_id is not null or account_id is not null)
 );
 
+-- Exactly one scope. `scope_check` above requires at least one, which allowed
+-- rows carrying both — and those coalesce to their publish, so a
+-- channel-scoped lookup could match one and, on update, convert it.
+--
+-- Declared out here rather than inline because 20260915195006 added it
+-- `not valid` and 20260916050127 validated it, and a CREATE TABLE constraint
+-- has no way to express that history.
+--
+-- It is **validated** now, which matters: `not valid` postpones the scan, not
+-- the rule, so a legacy dual-scope row could not be updated at all — the sync
+-- failed it with 23514 and logged the error at warn, and that
+-- publish/date/category silently stopped being recorded. 20260916050127
+-- normalises those rows to their publish (where every reader already counted
+-- them, so no total moves) and validates.
+alter table public.revenue_records
+  add constraint revenue_records_single_scope_check
+  check (num_nonnulls(publish_id, account_id) = 1);
+
 comment on table public.revenue_records is 'Daily revenue records per publish (or per account for channel-level revenue), split by category';
 comment on column public.revenue_records.source is 'Source of revenue data: api (fetched from platform) or manual (user entered)';
-comment on column public.revenue_records.category is 'Revenue category: ads, premium, sponsorship, product, affiliate, other';
+comment on column public.revenue_records.category is 'Revenue category: ads, premium, sponsorship, product, affiliate, licensing, other';
 comment on column public.revenue_records.account_id is 'Set instead of publish_id for channel-level revenue (sponsorships, product sales)';
 comment on column public.revenue_records.breakdown is 'JSONB with detailed revenue breakdown (adRevenueCents, membershipRevenueCents, etc.)';
 
 -- Uniqueness includes category: YouTube writes separate ads and premium
 -- rows for the same publish and day
+-- One row per scope, date, category and source. A synced figure and a
+-- hand-entered one are different money: they coexist and sum, and neither
+-- can overwrite the other. Adding `source` is what removed the sync's
+-- skip-guard, the action's synced-refusal, and a manual `other` entry
+-- blocking a publish's platform revenue for good.
 create unique index if not exists idx_revenue_records_unique_scope
   on public.revenue_records (
-    coalesce(publish_id, account_id), record_date, category
+    coalesce(publish_id, account_id),
+    record_date,
+    category,
+    source
   );
 
 -- Indexes for revenue queries
@@ -163,53 +193,181 @@ create policy "revenue_records_read" on public.revenue_records for select
     )
   );
 
+-- Who may write a revenue row, stated once.
+--
+-- Channel-level revenue may be changed by an account owner or by the person
+-- who recorded it; per-video revenue by any member of the publish's project.
+-- The rule lived in three places — update USING, update WITH CHECK, delete
+-- USING — and two of them diverging is how `created_by` briefly became
+-- writable by anyone who could already edit the row.
+--
+-- Security invoker, unlike `has_account_access`: the expression this replaces
+-- was inline in the policy, so it read `project_members` under the caller's
+-- own RLS. A definer function would quietly widen that.
+create or replace function public.can_write_revenue_record(
+  target_publish_id uuid,
+  target_account_id uuid,
+  record_author uuid
+)
+returns boolean
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select
+    (
+      target_account_id is not null
+      and (
+        public.is_account_owner(target_account_id)
+        or public.has_role_on_account(target_account_id, 'owner')
+        or record_author = (select auth.uid())
+      )
+    )
+    or exists (
+      select 1
+      from public.publishes pub
+      join public.episodes e on e.id = pub.episode_id
+      join public.project_members pm on pm.project_id = e.project_id
+      where pub.id = target_publish_id
+        and pm.user_id = (select auth.uid())
+        and pm.role in ('owner', 'admin', 'member')
+    );
+$$;
+
+comment on function public.can_write_revenue_record(uuid, uuid, uuid) is
+  'Channel-level revenue may be changed by an account owner or by the person who recorded it; per-video revenue by any member of the publish''s project. The single definition behind revenue_records update and delete.';
+
+grant execute on function public.can_write_revenue_record(uuid, uuid, uuid) to authenticated;
+
+-- `source = 'manual'` is enforced here, not only in the action: `source`
+-- decides whether a row can ever be removed through the app, and a rule the
+-- app keeps to itself is not a rule. The sync writes 'api' through the
+-- service-role client, which bypasses RLS.
+--
+-- `created_by` is constrained for the same reason one level down: it is what
+-- the update and delete policies authorize on, so a caller able to name
+-- somebody else can rewrite who those policies answer to. Null stays
+-- permitted, matching `verified_facts` — a row with no author is owner-only
+-- for good, which is the safe way to be wrong about authorship.
 create policy "revenue_records_create" on public.revenue_records for insert
   to authenticated with check (
-    (
-      account_id is not null
-      and public.has_account_access(account_id)
-    )
-    or exists (
-      select 1 from public.publishes pub
-      join public.episodes e on e.id = pub.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where pub.id = revenue_records.publish_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin', 'member')
+    source = 'manual'
+    and (created_by is null or created_by = (select auth.uid()))
+    and (
+      (
+        account_id is not null
+        and public.has_account_access(account_id)
+      )
+      or exists (
+        select 1
+        from public.publishes pub
+        join public.episodes e on e.id = pub.episode_id
+        join public.project_members pm on pm.project_id = e.project_id
+        where pub.id = revenue_records.publish_id
+          and pm.user_id = (select auth.uid())
+          and pm.role in ('owner', 'admin', 'member')
+      )
     )
   );
 
+-- Postgres uses USING as the check expression for UPDATE only when WITH CHECK
+-- is absent, so naming one silently drops the other. Both are named.
+--
+-- `source = 'manual'` is in USING as well as WITH CHECK, and that asymmetry
+-- was a hole: with it only in WITH CHECK, a project member could PATCH the
+-- platform's `api` row to an arbitrary figure, because USING passed on the old
+-- row and WITH CHECK passed on the new one that now said 'manual'. A synced
+-- row is the platform's record of what it paid and is not this app's to select
+-- for update at all. The sync writes through the service-role client, which
+-- bypasses RLS.
 create policy "revenue_records_update" on public.revenue_records for update
-  to authenticated using (
-    (
-      account_id is not null
-      and public.has_account_access(account_id)
-    )
-    or exists (
-      select 1 from public.publishes pub
-      join public.episodes e on e.id = pub.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where pub.id = revenue_records.publish_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin', 'member')
-    )
+  to authenticated
+  using (
+    source = 'manual'
+    and public.can_write_revenue_record(publish_id, account_id, created_by)
+  )
+  with check (
+    source = 'manual'
+    and public.can_write_revenue_record(publish_id, account_id, created_by)
   );
 
+-- The account branch is the same rule. The publish branch is deliberately
+-- stricter than update — project owner or admin, or the author — so it keeps
+-- its own expression rather than calling the shared function.
 create policy "revenue_records_delete" on public.revenue_records for delete
   to authenticated using (
+    -- `deleteManualRevenueAction` filters to source = 'manual'; PostgREST does
+    -- not have to, so a project owner or admin could remove synced rows.
+    source = 'manual'
+    and (
     (
       account_id is not null
-      and public.has_account_access(account_id)
+      and (
+        public.is_account_owner(account_id)
+        or public.has_role_on_account(account_id, 'owner')
+        or created_by = (select auth.uid())
+      )
     )
     or exists (
-      select 1 from public.publishes pub
+      select 1
+      from public.publishes pub
       join public.episodes e on e.id = pub.episode_id
       join public.project_members pm on pm.project_id = e.project_id
       where pub.id = revenue_records.publish_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin')
+        and pm.user_id = (select auth.uid())
+        and (
+          pm.role in ('owner', 'admin')
+          or revenue_records.created_by = (select auth.uid())
+        )
+    )
     )
   );
+
+-- ==================================
+-- Section: Authorship is written once
+-- ==================================
+-- The update and delete policies authorize on `created_by`, so a writer who
+-- can change it can change who those policies answer to. A member who pins a
+-- colleague's per-video row on themselves gains a delete right that otherwise
+-- needs project owner or admin.
+--
+-- A trigger rather than a policy clause, because a policy cannot see OLD — and
+-- because one total statement beats restating the rule on each branch. No code
+-- path sets `created_by` on update: the action excludes it deliberately, and
+-- the sync never names it.
+--
+-- **Erasing is allowed; naming is not.** `on delete set null` is implemented as
+-- an internal UPDATE, and a BEFORE UPDATE row trigger fires on it — so a freeze
+-- against *any* change also rejected the foreign key's own set-null, and every
+-- user who had saved one entry became undeletable. The condition is therefore
+-- on the new value, not on the change.
+
+create or replace function public.revenue_records_freeze_created_by()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.created_by is not null
+     and new.created_by is distinct from old.created_by then
+    raise exception 'revenue_records.created_by is immutable'
+      using hint = 'Authorship is recorded on insert. A correction does not transfer it, and a deleted user''s entries keep their figures without an author.';
+  end if;
+
+  return new;
+end;
+$$;
+
+comment on function public.revenue_records_freeze_created_by() is
+  'Rejects any UPDATE that points revenue_records.created_by at a user. The update and delete policies authorize on that column, so letting a writer set it lets them choose who those policies answer to. Clearing it is allowed: the auth.users foreign key does exactly that, as an UPDATE, when an author is deleted.';
+
+drop trigger if exists revenue_records_freeze_created_by on public.revenue_records;
+
+create trigger revenue_records_freeze_created_by
+  before update on public.revenue_records
+  for each row
+  execute function public.revenue_records_freeze_created_by();
 
 -- ==================================
 -- Section: Revenue Reports RLS Policies

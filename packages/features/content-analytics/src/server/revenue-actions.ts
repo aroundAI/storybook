@@ -8,6 +8,12 @@ import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
+  REVENUE_SUMMARY_SCHEMA_VERSION,
+  effectiveRevenueCategory,
+  payoutShare,
+  splitRevenueByPayout,
+} from '../lib/revenue-mix';
+import {
   AddManualRevenueSchema,
   DeleteManualRevenueSchema,
   GenerateRevenueReportSchema,
@@ -80,8 +86,15 @@ export const getRevenueSummaryAction = enhanceAction(
         const platform = r.platform || 'unknown';
         byPlatform[platform] = (byPlatform[platform] || 0) + revenueCents;
 
-        // Group by revenue category (the mix: ads vs sponsorship vs product)
-        const category = r.category || 'ads';
+        // Group by revenue category (the mix: ads vs sponsorship vs product).
+        // Keyed on what the row counts as rather than what it says: a
+        // hand-entered 'ads' row from before the form dropped that option is
+        // not evidence of a platform payout, and counting it as one inflates
+        // the ad-share signal for every account that has an old row.
+        const category = effectiveRevenueCategory(
+          r.category || 'ads',
+          r.source,
+        );
         byType[category] = (byType[category] || 0) + revenueCents;
 
         // Group by content (episode) — channel-level rows have no episode
@@ -120,8 +133,21 @@ export const getRevenueSummaryAction = enhanceAction(
     // Revenue mix: ads + Premium are platform payouts; everything else is
     // income the channel built itself. A falling ads share is the health
     // signal, so both halves are returned rather than derived downstream.
-    const adsRevenueCents = (byType.ads ?? 0) + (byType.premium ?? 0);
-    const nonAdRevenueCents = totalRevenueCents - adsRevenueCents;
+    //
+    // The split lives in lib/revenue-mix.ts so that "which side does a new
+    // category fall on" is answered by a test rather than by re-reading
+    // this line each time the vocabulary grows.
+    const { adsRevenueCents, nonAdRevenueCents } = splitRevenueByPayout(
+      byType,
+      totalRevenueCents,
+    );
+
+    // The denominator the two share fields use: positive buckets only.
+    const positiveRevenueCents = Object.values(byType).reduce(
+      (sum, cents) => sum + (cents > 0 ? cents : 0),
+      0,
+    );
+    const payoutSharePercent = payoutShare(byType) * 100;
 
     /** Cents per 1000 views. Display sites divide by 100 for dollars. */
     const allInRpmCents =
@@ -176,12 +202,23 @@ export const getRevenueSummaryAction = enhanceAction(
       totalViews,
       adsRevenueCents,
       nonAdRevenueCents,
-      adsSharePercent:
-        totalRevenueCents > 0 ? (adsRevenueCents / totalRevenueCents) * 100 : 0,
+      // Over positive buckets, via the shared rule, and computed once.
+      //
+      // A signed total is not a denominator: `{ ads: 10000, sponsorship:
+      // -8000 }` reported adsSharePercent as 500 while the card showed 100
+      // for the same data. Fixing that dropped the old `total > 0` guard,
+      // which made an account with no revenue at all report
+      // `nonAdSharePercent: 100` — and that figure is persisted into
+      // revenue_reports.summary_data, so it is not display-only.
+      //
+      // positiveRevenueCents travels with them because the cents fields
+      // beside these are signed: without the denominator in the payload, a
+      // consumer recomputing `adsRevenueCents / totalRevenueCents` gets a
+      // different number than the percentage states.
+      adsSharePercent: positiveRevenueCents > 0 ? payoutSharePercent : 0,
       nonAdSharePercent:
-        totalRevenueCents > 0
-          ? (nonAdRevenueCents / totalRevenueCents) * 100
-          : 0,
+        positiveRevenueCents > 0 ? 100 - payoutSharePercent : 0,
+      positiveRevenueCents,
       adsRpmCents,
       allInRpmCents,
       averageDailyRevenueCents,
@@ -199,8 +236,42 @@ export const getRevenueSummaryAction = enhanceAction(
  * Add or update a manual revenue entry.
  * Uses upsert to handle both create and update.
  */
+/**
+ * Why a manual entry was refused, in a form that survives a production
+ * build.
+ *
+ * `not_yours` — a channel-level entry exists for this date and category, and
+ * the caller neither wrote it nor owns the account.
+ *
+ * `project_role` — the same refusal on a per-video entry, where the blocker
+ * is the caller's role on the publish's project and account ownership is
+ * beside the point. Split because one sentence cannot be true of both, and
+ * `deleteManualRevenueAction` already made this distinction.
+ *
+ * `no_access` — the caller may not record revenue against this scope at all,
+ * as opposed to being blocked by an entry that already exists. Reached on a
+ * date with no entry, where the other two cannot apply.
+ *
+ * `conflict` — an entry for this date and category appeared between this
+ * call's lookup and its insert. Two members, or one person in two tabs
+ * (`isSubmitting` only guards a single mount): both lookups miss, both
+ * insert, and the loser hits `idx_revenue_records_unique_scope` with 23505.
+ * Reported rather than retried — a retry would silently overwrite the figure
+ * the other person just saved, and a lost update nobody is told about is
+ * worse than a refusal they can act on.
+ *
+ * There is no `synced` case: `source` is part of the unique key, so a
+ * platform figure occupies a different row and is never in the way.
+ */
+export type AddManualRevenueResult =
+  | { ok: true; record: RevenueRecord }
+  | {
+      ok: false;
+      reason: 'project_role' | 'not_yours' | 'no_access' | 'conflict';
+    };
+
 export const addManualRevenueAction = enhanceAction(
-  async function (data): Promise<RevenueRecord> {
+  async function (data, user): Promise<AddManualRevenueResult> {
     const client = getSupabaseServerClient();
     const {
       publishId,
@@ -231,21 +302,48 @@ export const addManualRevenueAction = enhanceAction(
 
     // The unique index is on coalesce(publish_id, account_id) and cannot be
     // named as an onConflict target, so replace any existing row explicitly.
+    // Scoped to the manual slot, because `source` is part of the unique key
+    // now: a synced figure for this date and category lives in its own row
+    // and is none of this action's business.
     const existingQuery = client
       .from('revenue_records')
       .select('id')
       .eq('record_date', date)
-      .eq('category', category);
+      .eq('category', category)
+      .eq('source', 'manual');
 
-    const { data: existing } = await (
+    const { data: existing, error: existingError } = await (
       publishId
         ? existingQuery.eq('publish_id', publishId)
-        : existingQuery.eq('account_id', accountId!)
+        : // `is('publish_id', null)` matters: the unique index keys on
+          // coalesce(publish_id, account_id), so a legacy row carrying
+          // *both* ids coalesces to its publish and can sit beside a real
+          // channel-level row for the same date and category. Without this,
+          // the account branch could match that row and `update` it — which
+          // sets publish_id null and quietly turns a per-video entry into a
+          // channel-level one — or match two rows and fail permanently.
+          existingQuery.eq('account_id', accountId!).is('publish_id', null)
     ).maybeSingle();
 
+    // Not discarded: a legacy row carrying both publish_id and account_id
+    // makes this match twice, and maybeSingle then returns an error with a
+    // null row — which fell through to the INSERT and surfaced a raw
+    // duplicate-key violation, which is what this lookup exists to avoid.
+    if (existingError) throw existingError;
+
+    // A manual entry replaces a manual entry and never a synced one, which
+    // is a property of the lookup above rather than of a refusal: `source`
+    // is part of the unique key, so the platform's figure for this date and
+    // category lives in its own row and is none of this action's business.
     const values = {
+      // Exactly one scope, enforced here rather than trusted from the
+      // caller. The schema permits both, and a row carrying both ids makes
+      // the lookup above match two rows for one date and category —
+      // `maybeSingle` then fails, and channel entry for that pair is
+      // blocked for good. A comment in the form used to assert this; the
+      // form is not the only caller of a server action.
       publish_id: publishId ?? null,
-      account_id: accountId ?? null,
+      account_id: publishId ? null : (accountId ?? null),
       platform,
       record_date: date,
       revenue_cents: revenueCents,
@@ -259,34 +357,80 @@ export const addManualRevenueAction = enhanceAction(
     const { data: record, error } = existing
       ? await client
           .from('revenue_records')
+          // `values` deliberately carries no `created_by`: it is set on
+          // insert only. Stamping it on every correction transfers
+          // authorship — an owner fixing a member's typo would become the
+          // author, the member would lose the right to touch their own
+          // entry, and the column would name the wrong person. Which is
+          // the provenance the column was added to keep.
           .update(values)
           .eq('id', existing.id)
           .select()
-          .single()
-      : await client.from('revenue_records').insert(values).select().single();
+          // maybeSingle, not single: a member may *read* a channel-level
+          // row but not update it, so RLS filters the write to zero rows
+          // rather than raising. `single()` turns that into PostgREST's
+          // "JSON object requested, multiple (or no) rows returned", which
+          // tells the user nothing about what actually happened.
+          .maybeSingle()
+      : await client
+          .from('revenue_records')
+          // Who may correct this later: the author, or an account owner.
+          .insert({ ...values, created_by: user.id })
+          .select()
+          .single();
+
+    // An insert the policy refuses raises 42501 rather than returning zero
+    // rows, and a thrown error reaches the user as a Next digest in a
+    // production build — the same masking that made every other refusal on
+    // this path a return value. A caller who is an account member but not on
+    // the publish's project hits this on any date that has no entry yet,
+    // while the identical wall on a date that *does* have one gets a sentence.
+    if (error?.code === '42501') {
+      return { ok: false, reason: 'no_access' };
+    }
+
+    // 23505: the row this call's lookup did not find was created by someone
+    // else before the insert landed. Rethrowing reaches the user as a Next
+    // digest, which is the opaque failure this whole return-value shape
+    // exists to avoid — and it is the one refusal on this path that is
+    // nobody's fault and worth retrying by hand.
+    if (error?.code === '23505') {
+      return { ok: false, reason: 'conflict' };
+    }
 
     if (error) throw error;
+
+    if (existing && !record) {
+      // Scope-specific, mirroring the delete path: the same zero-row result
+      // arrives from either RLS branch, and a project member refused by the
+      // publish branch was being told about account owners.
+      return { ok: false, reason: publishId ? 'project_role' : 'not_yours' };
+    }
+
     if (!record) throw new Error('Failed to create revenue record');
 
     return {
-      id: record.id,
-      publishId: record.publish_id ?? '',
-      platform: record.platform as
-        | 'youtube'
-        | 'tiktok'
-        | 'instagram'
-        | 'facebook'
-        | 'twitter'
-        | 'linkedin'
-        | 'manual',
-      date: record.record_date,
-      revenueCents: record.revenue_cents,
-      currency: record.currency ?? 'USD',
-      source: record.source as 'api' | 'manual',
-      breakdown: record.breakdown as Record<string, number> | undefined,
-      metadata: record.metadata as Record<string, unknown> | undefined,
-      createdAt: new Date(record.created_at),
-      updatedAt: new Date(record.updated_at),
+      ok: true,
+      record: {
+        id: record.id,
+        publishId: record.publish_id ?? '',
+        platform: record.platform as
+          | 'youtube'
+          | 'tiktok'
+          | 'instagram'
+          | 'facebook'
+          | 'twitter'
+          | 'linkedin'
+          | 'manual',
+        date: record.record_date,
+        revenueCents: record.revenue_cents,
+        currency: record.currency ?? 'USD',
+        source: record.source as 'api' | 'manual',
+        breakdown: record.breakdown as Record<string, number> | undefined,
+        metadata: record.metadata as Record<string, unknown> | undefined,
+        createdAt: new Date(record.created_at),
+        updatedAt: new Date(record.updated_at),
+      },
     };
   },
   {
@@ -298,10 +442,30 @@ export const addManualRevenueAction = enhanceAction(
 /**
  * Delete a manual revenue entry.
  */
+/** Why a delete removed nothing, in a form that survives a prod build. */
+export type DeleteManualRevenueResult =
+  | { success: true }
+  | {
+      success: false;
+      reason: 'project_role' | 'not_yours';
+      /** Rows the caller did remove before the rest were refused. */
+      removed: number;
+    };
+
 export const deleteManualRevenueAction = enhanceAction(
-  async function (data): Promise<{ success: boolean }> {
+  async function (data): Promise<DeleteManualRevenueResult> {
     const client = getSupabaseServerClient();
     const { publishId, accountId, date, category } = data;
+
+    // What the caller can *see*. Reading is open to any member, so this
+    // says whether there was anything to delete — which the delete itself
+    // cannot, since RLS filters rows out of a DELETE silently rather than
+    // raising.
+    let visible = client
+      .from('revenue_records')
+      .select('id')
+      .eq('record_date', date)
+      .eq('source', 'manual');
 
     let query = client
       .from('revenue_records')
@@ -309,17 +473,64 @@ export const deleteManualRevenueAction = enhanceAction(
       .eq('record_date', date)
       .eq('source', 'manual');
 
-    query = publishId
-      ? query.eq('publish_id', publishId)
-      : query.eq('account_id', accountId!);
+    if (publishId) {
+      visible = visible.eq('publish_id', publishId);
+      query = query.eq('publish_id', publishId);
+    } else {
+      // Same reasoning as the lookup above: a dual-scope row belongs to
+      // its publish, not to the channel.
+      visible = visible.eq('account_id', accountId!).is('publish_id', null);
+      query = query.eq('account_id', accountId!).is('publish_id', null);
+    }
 
     if (category) {
+      visible = visible.eq('category', category);
       query = query.eq('category', category);
     }
 
-    const { error } = await query;
+    const { data: matched, error: matchError } = await visible;
+
+    if (matchError) throw matchError;
+
+    const { data: removed, error } = await query.select('id');
 
     if (error) throw error;
+
+    // Rows exist, the caller can read them, and none were removed: the
+    // delete policy refused. Returning `{ success: true }` here is the same
+    // silent-no-op the update path already guards against — channel-level
+    // delete is author-or-owner since 20260915190043, so a member can read
+    // rows they may not remove.
+    // Compared, not merely checked for zero. `category` is optional, so one
+    // call can match several rows — and with the author-or-owner delete
+    // policy a member deleting a whole date removes only their own. Some
+    // rows removed and some refused is not success, and reporting it as
+    // success leaves the survivors invisible.
+    //
+    // Two known limits, stated so the next reader need not re-derive them:
+    //
+    // - These are two round-trips, so a row deleted by someone else in
+    //   between makes this report a permissions refusal that never happened,
+    //   with an under-counted `removed`. Rare, and the fix is one statement
+    //   rather than two — the RPC already planned as TODO(FILM-1614).
+    // - `matched === 0` returns success, which also covers a scope the caller
+    //   cannot see at all. That is deliberate: the alternative distinguishes
+    //   "nothing there" from "not yours to see", which is a disclosure the
+    //   read policy exists to prevent. Deleting nothing is not a failure.
+    if ((matched?.length ?? 0) > (removed?.length ?? 0)) {
+      // Scope-specific: the same condition fires for either RLS branch,
+      // and a project member refused by the publish branch was being told
+      // about account owners and channel-level entries — neither of which
+      // described their situation.
+      return {
+        success: false,
+        reason: publishId ? 'project_role' : 'not_yours',
+        // What *was* removed. Without it a caller deleting a whole date is
+        // told the operation failed while their own rows are already gone —
+        // the refusal is true of the rest and false of what it destroyed.
+        removed: removed?.length ?? 0,
+      };
+    }
 
     return { success: true };
   },
@@ -645,7 +856,15 @@ export const generateRevenueReportAction = enhanceAction(
         period_type: periodType,
         start_date: startDate,
         end_date: endDate,
-        summary_data: JSON.parse(JSON.stringify(summary)) as Json,
+        // Stamped so a reader can tell which definition of
+        // adsSharePercent it is looking at; rows without it predate the
+        // change from a signed denominator to a positive-only one.
+        summary_data: JSON.parse(
+          JSON.stringify({
+            ...summary,
+            schemaVersion: REVENUE_SUMMARY_SCHEMA_VERSION,
+          }),
+        ) as Json,
         top_performers: JSON.parse(JSON.stringify(topPerformers)) as Json,
         platform_breakdown: JSON.parse(
           JSON.stringify(platformBreakdown),

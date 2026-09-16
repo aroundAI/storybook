@@ -472,7 +472,12 @@ if (!await canPerformAdminAction(user)) {
 ### Creating Database Changes
 
 1. **Edit schema file**: `apps/web/supabase/schemas/XX-feature.sql`
-2. **Generate migration**: `pnpm --filter web supabase:db:diff -f migration_name`
+> ⛔ **`db diff` does not work in this repo.** The database is built from
+> `apps/web/supabase/migrations/`, and `schemas/` is missing 33 of the 99
+> tables — a diff against it would propose dropping them. Write migrations by
+> hand; see the root `CLAUDE.md`.
+
+2. **Write the migration by hand** in `apps/web/supabase/migrations/` (see the warning above)
 3. **Apply migration**: `pnpm --filter web supabase migration up`
 4. **Generate types**: `pnpm supabase:web:typegen`
 
@@ -524,7 +529,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key # Admin operations only
 
 1. **"relation does not exist" error**
    - Schema file edited but migration not generated
-   - Run: `pnpm --filter web supabase:db:diff -f fix_missing_table`
+   - Write the migration by hand in `apps/web/supabase/migrations/`
 
 2. **Type errors after schema changes**
    - Types not regenerated after migration

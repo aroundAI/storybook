@@ -4,31 +4,18 @@ import { PieChart } from 'lucide-react';
 
 import { Skeleton } from '@kit/ui/skeleton';
 
+import {
+  REVENUE_CATEGORY_COLOR,
+  REVENUE_CATEGORY_LABEL,
+  revenueMixView,
+} from '../lib/revenue-mix';
+
 interface RevenueMixCardProps {
   /** Revenue in cents keyed by category, from RevenueSummary.byType */
   byType: Record<string, number>;
   /** Loading state */
   isLoading?: boolean;
 }
-
-const CATEGORY_LABELS: Record<string, string> = {
-  ads: 'Ads',
-  premium: 'Premium',
-  sponsorship: 'Sponsorship',
-  product: 'Product',
-  affiliate: 'Affiliate',
-  other: 'Other',
-};
-
-/** Distinct hues per category so the mix reads at a glance. */
-const CATEGORY_COLORS: Record<string, string> = {
-  ads: 'bg-chart-1',
-  premium: 'bg-chart-2',
-  sponsorship: 'bg-chart-3',
-  product: 'bg-chart-4',
-  affiliate: 'bg-chart-5',
-  other: 'bg-muted-foreground',
-};
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toLocaleString(undefined, {
@@ -50,21 +37,22 @@ export function RevenueMixCard({
     return <RevenueMixCardSkeleton />;
   }
 
-  const entries = Object.entries(byType)
-    .filter(([, cents]) => cents > 0)
-    .sort(([, a], [, b]) => b - a);
-
-  const total = entries.reduce((sum, [, cents]) => sum + cents, 0);
+  const { entries, total, adShare, negatives } = revenueMixView(byType);
 
   if (total === 0) {
+    // "No revenue recorded" would be wrong when every row was a clawback:
+    // something was recorded, and hiding it is what the negatives
+    // disclosure below exists to stop.
     return (
       <p className={'text-muted-foreground text-sm'}>
-        No revenue recorded for this period.
+        {negatives.length > 0
+          ? `No positive revenue this period — ${negatives.length} negative ${
+              negatives.length === 1 ? 'adjustment' : 'adjustments'
+            } only.`
+          : 'No revenue recorded for this period.'}
       </p>
     );
   }
-
-  const adShare = (byType.ads ?? 0) / total;
 
   return (
     <div className={'flex flex-col gap-4'}>
@@ -72,9 +60,11 @@ export function RevenueMixCard({
         {entries.map(([category, cents]) => (
           <div
             key={category}
-            className={CATEGORY_COLORS[category] ?? 'bg-muted-foreground'}
+            className={
+              REVENUE_CATEGORY_COLOR[category] ?? 'bg-muted-foreground'
+            }
             style={{ width: `${(cents / total) * 100}%` }}
-            title={`${CATEGORY_LABELS[category] ?? category}: ${formatCents(cents)}`}
+            title={`${REVENUE_CATEGORY_LABEL[category] ?? category}: ${formatCents(cents)}`}
           />
         ))}
       </div>
@@ -88,10 +78,10 @@ export function RevenueMixCard({
             <span className={'flex items-center gap-2'}>
               <span
                 className={`h-2.5 w-2.5 rounded-full ${
-                  CATEGORY_COLORS[category] ?? 'bg-muted-foreground'
+                  REVENUE_CATEGORY_COLOR[category] ?? 'bg-muted-foreground'
                 }`}
               />
-              {CATEGORY_LABELS[category] ?? category}
+              {REVENUE_CATEGORY_LABEL[category] ?? category}
             </span>
             <span className={'text-muted-foreground'}>
               {formatCents(cents)} · {Math.round((cents / total) * 100)}%
@@ -101,9 +91,18 @@ export function RevenueMixCard({
       </div>
 
       <p className={'text-muted-foreground text-xs'}>
-        {Math.round(adShare * 100)}% of revenue comes from ads. A falling ad
-        share means other income is growing faster than platform payouts.
+        {Math.round(adShare * 100)}% of revenue comes from platform payouts (ads
+        and Premium). A falling share means other income is growing faster than
+        what the platform pays out.
       </p>
+
+      {negatives.length > 0 ? (
+        <p className={'text-muted-foreground text-xs'}>
+          Excludes {negatives.length} negative{' '}
+          {negatives.length === 1 ? 'adjustment' : 'adjustments'} — this mix
+          covers positive revenue only, so it will not match the period total.
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -19,6 +19,7 @@ import { getLogger } from '@kit/shared/logger';
 import { fetchAllByIds } from '@kit/shared/pagination';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import { planRevenueRowWrites } from '../lib/revenue-mix';
 import {
   InstagramInsightsScopeError,
   createInstagramInsightsProvider,
@@ -961,7 +962,9 @@ export async function syncSinglePublishById(
  * YouTube reports ad revenue and YouTube Premium revenue separately, and
  * the mix between them — plus manually-entered sponsorship and product
  * income — is the monetization health signal. Each category is its own
- * row; the unique index covers (publish/account, date, category).
+ * row; the unique index covers (publish/account, date, category, source), so
+ * this writes the 'api' row and a person's entry for the same day and
+ * category sits beside it rather than competing for the slot.
  *
  * Any revenue the platform reports but does not attribute to a category
  * falls into 'other' so totals still reconcile.
@@ -974,42 +977,94 @@ async function upsertRevenueRecords(
   const uncategorized =
     data.revenue_cents - data.ad_revenue_cents - data.red_revenue_cents;
 
+  // Not filtered to positive figures. A category the platform has revised
+  // *down* to zero still needs its row corrected, and dropping it here left
+  // the previous figure in place for good: no later sync visits that key, no
+  // code path clears it, and `effectiveRevenueCategory` reads `source = 'api'`
+  // as proof of a platform payout — so a stale 4000c of ads revenue inflates
+  // `adsSharePercent` permanently. Owning a row includes zeroing it.
   const byCategory: Array<{ category: string; revenue_cents: number }> = [
     { category: 'ads', revenue_cents: data.ad_revenue_cents },
     { category: 'premium', revenue_cents: data.red_revenue_cents },
     { category: 'other', revenue_cents: Math.max(0, uncategorized) },
-  ].filter((row) => row.revenue_cents > 0);
-
-  if (byCategory.length === 0) return;
+  ];
 
   const logger = await getLogger();
 
-  for (const row of byCategory) {
-    const { data: existing } = await client
-      .from('revenue_records')
-      .select('id')
-      .eq('publish_id', data.publish_id)
-      .eq('record_date', data.snapshot_date)
-      .eq('category', row.category)
-      .maybeSingle();
+  // One read for the whole day rather than one per category.
+  //
+  // Honest about the cost, because it is not a straight win: on YouTube this
+  // replaces up to three round-trips with one, but on TikTok and Instagram —
+  // whose normalizers hardcode all three figures to zero — it replaces *none*
+  // with one, on every publish of every run. That is the price of reconciling
+  // against zero rather than filtering it out, and the price of not hardcoding
+  // "these platforms never report revenue" here, which is an assumption that
+  // silently rots the day one of them starts.
+  //
+  // Judged acceptable because the caller already makes a provider API call per
+  // publish, next to which one indexed lookup on (publish_id, record_date) is
+  // noise. If it ever stops being noise, the fix is a `revenue_supported` flag
+  // on `NormalizedAnalytics` — set where the zeros are hardcoded, so adding
+  // revenue to a platform cannot forget to update it.
+  const { data: existingRows, error: existingError } = await client
+    .from('revenue_records')
+    .select('id, category, revenue_cents')
+    .eq('publish_id', data.publish_id)
+    .eq('record_date', data.snapshot_date)
+    // The sync owns the 'api' rows for this key and nothing else. Since
+    // `source` joined the unique index, a person's entry sits in its own
+    // row — there is no collision to lose, and nothing to skip.
+    .eq('source', 'api');
 
+  // A failed lookup used to leave `existing` nullish and fall through to the
+  // insert, which then collided with the unique index and was swallowed by
+  // the warn below. The mirror of this lookup in revenue-actions.ts throws;
+  // these two should not disagree about whether a failed read is survivable.
+  if (existingError) {
+    logger.warn(
+      {
+        name: 'analytics-sync',
+        publishId: data.publish_id,
+        date: data.snapshot_date,
+        error: existingError,
+      },
+      'Skipping revenue rows: could not read the existing records',
+    );
+
+    return;
+  }
+
+  // The decision is pure and lives in `planRevenueRowWrites`, where the case
+  // that matters — a figure revised down to zero — can be tested without a
+  // database.
+  const plan = planRevenueRowWrites(
+    byCategory.map((row) => ({
+      category: row.category,
+      revenueCents: row.revenue_cents,
+    })),
+    (existingRows ?? []).map((row) => ({
+      id: row.id,
+      category: row.category,
+      revenueCents: row.revenue_cents,
+    })),
+  );
+
+  for (const write of plan) {
     const values = {
       publish_id: data.publish_id,
       platform,
       record_date: data.snapshot_date,
-      revenue_cents: row.revenue_cents,
+      revenue_cents: write.revenueCents,
       currency: 'USD',
       source: 'api' as const,
-      category: row.category,
+      category: write.category,
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = existing
-      ? await client
-          .from('revenue_records')
-          .update(values)
-          .eq('id', existing.id)
-      : await client.from('revenue_records').insert(values);
+    const { error } =
+      write.op === 'update'
+        ? await client.from('revenue_records').update(values).eq('id', write.id)
+        : await client.from('revenue_records').insert(values);
 
     if (error) {
       // Log but don't fail the sync - revenue_records is supplementary
@@ -1017,7 +1072,7 @@ async function upsertRevenueRecords(
         {
           error: error.message,
           publishId: data.publish_id,
-          category: row.category,
+          category: write.category,
         },
         'Failed to upsert revenue record',
       );

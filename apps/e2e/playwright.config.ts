@@ -28,6 +28,11 @@ if (!enableTeamAccountTests) {
   testIgnore.push('*team-accounts.spec.ts');
   testIgnore.push('*invitations.spec.ts');
   testIgnore.push('*team-billing.spec.ts');
+  // The revenue specs seed through `create_team_account`, which raises
+  // 'Team accounts are not enabled' when the feature is off — so without
+  // this they do not skip, they fail at setup for a reason that has
+  // nothing to do with revenue.
+  testIgnore.push('*revenue*.spec.ts');
 }
 
 /**
@@ -54,8 +59,16 @@ export default defineConfig({
   testIgnore,
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:3000',
+    /*
+     * Base URL to use in actions like `await page.goto('/')`.
+     *
+     * Overridable so a run can target a server other than whatever holds
+     * port 3000 — a long-lived dev server goes stale (its Supabase client
+     * and compiled routes outlive a `supabase stop`), and the failure mode
+     * is every signup silently not sending mail, which reads as a broken
+     * test rather than a broken server.
+     */
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
 
     // take a screenshot when a test fails
     screenshot: 'only-on-failure',
@@ -102,7 +115,7 @@ export default defineConfig({
     ? {
         cwd: '../../',
         command: process.env.PLAYWRIGHT_SERVER_COMMAND,
-        url: 'http://localhost:3000',
+        url: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
         reuseExistingServer: !process.env.CI,
         stdout: 'pipe',
         stderr: 'pipe',

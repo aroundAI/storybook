@@ -142,7 +142,7 @@ pnpm supabase:web:start     # Start Supabase locally
 pnpm --filter web supabase migration up     # Apply new migrations
 pnpm supabase:web:reset     # Reset with latest schema (clean rebuild)
 pnpm supabase:web:typegen   # Generate TypeScript types
-pnpm --filter web supabase:db:diff  # Create migration
+# NOTE: no `db diff` — see "Do not run supabase db diff" below
 ```
 
 The typegen command must be run after applying migrations or resetting the database.
@@ -151,29 +151,50 @@ The typegen command must be run after applying migrations or resetting the datab
 
 When adding new database features, ALWAYS follow this exact order:
 
-### Method 1: Using db diff (Recommended for modifications)
+### ⛔ Do not run `supabase db diff` in this repo
 
-1. **Create/modify schema file** in `apps/web/supabase/schemas/XX-feature.sql`
-2. **Generate migration**: `pnpm --filter web supabase db diff -f <migration_name>`
-3. **Apply migration**: `pnpm --filter web supabase migration up`
-4. **Generate types**: `supabase gen types typescript --local > lib/database.types.ts && cp lib/database.types.ts /path/to/packages/supabase/src/database.types.ts`
-5. **Verify types exist** before using in code
+**The database is built from `apps/web/supabase/migrations/`.** `supabase db
+reset --help` says so in as many words: *"Resets the local database to current
+migrations."* `apps/web/supabase/schemas/` feeds `db diff` and nothing else — no
+test, no CI job and no reset reads it.
 
-### Method 2: Manual migration from schema (For new features)
+And it has been left behind. Measured 2026-09-16:
 
-1. **Create schema file** in `apps/web/supabase/schemas/XX-feature.sql`
-2. **Create timestamped migration**:
+```
+tables in schemas/    : 66
+tables in migrations/ : 99
+missing from schemas/ : 33   # verified_facts, content_analytics, shorts, …
+```
+
+`db diff` generates the SQL that makes the database match `schema_paths`. Run
+against a `schemas/` missing a third of the tables, that is a migration
+proposing to **drop them**. Nobody has been bitten only because the shadow
+database fails first, which is luck rather than a guard.
+
+So: **write migrations by hand** (Method 2 below), and treat `schemas/` as
+partial documentation that may be wrong. Update the schema file alongside a
+migration when one exists for that table — it is still what most people read
+first — but never generate from it, and never trust it over `migrations/`.
+Restoring `db diff` means reconciling those 33 tables first; that is its own
+piece of work.
+
+### Method 2: Hand-written timestamped migration — the method here
+
+1. **Write the migration** in `apps/web/supabase/migrations/`:
    ```bash
    timestamp=$(date -u +"%Y%m%d%H%M%S")
-   cp apps/web/supabase/schemas/XX-feature.sql "apps/web/supabase/migrations/${timestamp}_feature-name.sql"
+   $EDITOR "apps/web/supabase/migrations/${timestamp}_feature-name.sql"
    ```
-3. **Reset database**: `pnpm --filter web supabase db reset`
-4. **Generate types**: `supabase gen types typescript --local > lib/database.types.ts && cp lib/database.types.ts /path/to/packages/supabase/src/database.types.ts`
-5. **Verify types exist** before using in code
+2. **Apply it**: `pnpm --filter web supabase migration up`
+3. **Mirror it** into `apps/web/supabase/schemas/XX-feature.sql` if that table
+   has a schema file, so the two do not drift further
+4. **Generate types**: `supabase gen types typescript --local > lib/database.types.ts && cp lib/database.types.ts ../../packages/supabase/src/database.types.ts`
+5. **Verify types exist** before using them in code
+6. **Cover RLS with a pgTAP test** in `apps/web/supabase/tests/database/` when
+   the migration touches a policy. Policies are not verified by reading them —
+   see `docs/ENGINEERING-WORKFLOW.md`
 
-⚠️ **IMPORTANT**: Schema files alone don't create tables! You MUST either:
-- Generate a migration with `db diff`, OR
-- Manually copy the schema to migrations folder with timestamp
+⚠️ Schema files alone don't create tables. Only a migration does.
 
 **Migration vs Reset**:
 - Use `migration up` for normal development (applies only new migrations)
@@ -575,6 +596,135 @@ See **TESTING-PROGRESS.md** for detailed list of remaining tests.
 - ✅ `packages/branding/__tests__/color-utils.test.ts` (41 tests)
 - ✅ `packages/next/__tests__/enhance-action.test.ts` (21 tests)
 
+### E2E: when a unit test cannot see the bug ⚠️
+
+**A form or interactive component needs a Playwright spec before its
+acceptance criteria are ticked.** FILM-1609 went four review rounds on one
+form while typecheck, lint and 256 unit tests stayed green, because every
+defect lived between the DOM and form state:
+
+| Defect | What made it invisible |
+|---|---|
+| `publishId: ''` against `.uuid().optional()` | Valid TypeScript; the resolver rejected it at runtime |
+| `accountId` injected in `onSubmit` | `zodResolver` runs over form values *first*, so it never reached `onSubmit` |
+| Unregistered amount input | `reset()` zeroed state while the DOM kept the text → a `0` row saved silently |
+| Uncontrolled `Select` | Radix keeps the displayed value across `reset()` |
+
+The rules, with `apps/e2e/tests/revenue/` as the worked example — full
+detail in `apps/e2e/README.md`:
+
+- **Seed through the API, not the UI.** `tests/utils/seed.ts` creates a
+  confirmed user and team directly. Driving sign-up, confirmation mail and
+  the account selector first makes a test fail for reasons unrelated to its
+  subject, and is ~20× slower (26s for eight specs, versus 90s timeouts).
+- **Assert the *second* submission.** State bugs are invisible on a fresh
+  form; they appear after a reset when DOM and form state disagree.
+- **Prove the guard fails without the fix.** Revert the fix, watch it go
+  red, restore. A test that only ever passed on fixed code has proved
+  nothing — this is the step that turns it into a regression test.
+- **`data-test` on anything a test touches**, per the React guidance above.
+- **`PLAYWRIGHT_BASE_URL`** points a run at a server other than whatever
+  holds port 3000. A dev server left up for days goes stale and silently
+  stops sending auth email, which looks exactly like a broken suite.
+
+```bash
+# run against your own server
+PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test revenue
+
+# regenerate PR screenshots (skipped in CI without the flag)
+CAPTURE_EVIDENCE=1 EVIDENCE_DIR=/tmp/evidence npx playwright test revenue-evidence
+```
+
+### How work gets verified — read `docs/ENGINEERING-WORKFLOW.md`
+
+**[docs/ENGINEERING-WORKFLOW.md](docs/ENGINEERING-WORKFLOW.md) is the canonical
+process**: the six failure modes behind ten review rounds on one `S`-sized
+spec, what each test layer can and cannot see, the sequence for a change, and
+the pre-PR audit. (The doc carries the counts; this pointer deliberately does
+not repeat them, because the two copies drifted apart within a day.)
+
+Three rules from it are non-negotiable and repeated here because this file is
+what gets read first:
+
+1. **Red before green.** A guard that has never been seen to fail has proved
+   nothing. Revert the fix, watch the test fail for the stated reason, restore.
+2. **Execute before claiming.** "This should now work" is not a result. A form
+   means driving the form; a CLI capability means running `--help`.
+3. **Fix the class, not the instance.** After a fix, grep for its shape across
+   the repo. If the same rule now lives in two places, make it one function.
+
+And the question that would have caught the most: **what does my fix now allow
+that it did not before?**
+
+### Screenshots are required for UI changes
+
+**A PR that changes what a user sees must show what they now see.** Not a
+description of it, not a passing test name — the rendered result, in the PR,
+before review.
+
+This is a rule because of what it costs when it is skipped. FILM-1609 ran
+**six review rounds** on one form. Every round was text-only: reading the
+diff, reasoning about the types, running 256 green unit tests. The form
+could not be submitted at all for two of those rounds, wrote `$0` rows over
+real figures in a third, and turned a pasted `1,250.00` into `$1.00` in a
+fourth. **A single screenshot of the form after a save would have ended it
+at round one.** Nobody looked until round five.
+
+What counts:
+
+- **The state after the action, not just before it.** Most UI bugs in this
+  repo have been reset-and-rerender bugs: a field that keeps its text while
+  form state has moved on, a select that keeps its label. The first
+  screenshot looks fine; the second is where the bug is.
+- **The error states too.** A validation message that never renders is
+  indistinguishable from one that does, in a diff.
+- **Measurements for anything numeric.** "Looks right" is not a claim a
+  reviewer can check. Read the value out of the DOM and put it in the
+  comment as a table — see the FILM-1605 and FILM-1609 PR comments.
+
+Generate them from a Playwright spec rather than by hand, so they can be
+regenerated when the UI changes and so the states are the ones the tests
+already assert — `apps/e2e/tests/revenue/revenue-evidence.spec.ts` is the
+pattern, gated behind `CAPTURE_EVIDENCE=1` so CI pays nothing for it.
+
+### Posting screenshots to a PR — `gh --attach` ⚠️
+
+**`gh` uploads images directly. Do not claim otherwise.** The flag landed in
+**gh 2.99.0** (this repo is on 2.100.0), and an assistant working from older
+knowledge will confidently state that GitHub's `user-attachments` store is
+web-upload only. It is not, and that claim cost a round trip here.
+
+Supported on six commands: `gh issue create|edit|comment` and
+`gh pr create|edit|comment`. Up to 50 files per command. Alt text goes after
+a `#`; without one the filename is used.
+
+```bash
+gh pr comment 256 \
+  --body-file body.md \
+  --attach "/abs/path/02-blank-amount.png#The form refusing a blank amount" \
+  --attach "/abs/path/04-after-save.png#Every field back to its default"
+```
+
+**The path in `--attach` must match the reference in the body, character for
+character.** `gh` rewrites `![alt](<path>)` only where `<path>` is the exact
+string passed to `--attach`; anything it cannot match is appended at the end
+instead, leaving the inline reference dead. Passing `/abs/path/x.png` while
+the body says `./x.png` produces five broken images *and* five appended
+duplicates — use the same absolute path in both, or run from the directory
+holding the files and use the same relative path in both.
+
+Verify rather than assume, because a broken image renders as alt text and is
+easy to miss:
+
+```bash
+gh pr view <n> --json comments \
+  --jq '.comments[-1].body' | grep -oE '!\[[^]]*\]\([^)]+\)'
+# every URL should be https://github.com/user-attachments/...
+```
+
+`--edit-last` amends your own most recent comment, so a botched attach is
+fixable in place rather than by posting again.
+
 ## Feature Specifications
 
 Feature implementations must adhere to the specifications in the `specs/` folder:
@@ -848,3 +998,5 @@ After implementation:
 2. **Run `pnpm lint:fix`** - Auto-fix issues
 3. **Run `pnpm format:fix`** - Format code
 4. **Verify spec compliance** - If implementing a feature from `specs/`, ensure the spec document is updated to match any implementation changes
+5. **Screenshot every UI change in the PR** - Required, not optional. See
+   [Screenshots are required for UI changes](#screenshots-are-required-for-ui-changes)

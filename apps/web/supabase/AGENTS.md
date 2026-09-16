@@ -36,51 +36,42 @@ Schemas are organized in numbered files in the `schemas/` directory. Numbers are
 
 Migrations are generated from schemas. You MUST create a migration file for database changes to take effect.
 
-### Method 1: Using `db diff` (Recommended for modifications)
+### ⛔ `db diff` does not work here — write migrations by hand
+
+The database is built from `migrations/`, not from `schemas/`. As of 2026-09-16
+`schemas/` is missing **33 of the database's 99 tables**, so a `db diff` against
+it would generate SQL to drop them. See the root `CLAUDE.md` for the full
+measurement; the short version is that `schemas/` is partial documentation and
+`migrations/` is the truth.
+
+### Writing a migration
 
 ```bash
-# Edit schema file (e.g., schemas/03-accounts.sql)
-# Make your changes...
+# 1. Write the migration by hand
+timestamp=$(date -u +"%Y%m%d%H%M%S")
+$EDITOR "apps/web/supabase/migrations/${timestamp}_my-feature.sql"
 
-# Create migration for changes
-pnpm --filter web run supabase db diff -f update-accounts
-
-# Apply and test
+# 2. Apply it
 pnpm --filter web supabase migration up
 
-# Generate TypeScript types
-supabase gen types typescript --local > lib/database.types.ts
-cp lib/database.types.ts ../../packages/supabase/src/database.types.ts
-```
-
-**Verify** the diff command generated the expected SQL; if not, manually adjust the migration.
-
-### Method 2: Manual Migration from Schema (For new features)
-
-When adding a completely new schema file, manually create a timestamped migration:
-
-```bash
-# 1. Create schema file
-touch apps/web/supabase/schemas/19-my-feature.sql
-# ... edit the schema file ...
-
-# 2. Create timestamped migration from schema
-timestamp=$(date -u +"%Y%m%d%H%M%S")
-cp apps/web/supabase/schemas/19-my-feature.sql "apps/web/supabase/migrations/${timestamp}_my-feature.sql"
-
-# 3. Reset database to apply all migrations
-pnpm --filter web supabase db reset
+# 3. Mirror it into schemas/XX-my-feature.sql if that table has a schema file
+#    (so the two do not drift further) — but never generate from it
 
 # 4. Generate TypeScript types
 supabase gen types typescript --local > lib/database.types.ts
 cp lib/database.types.ts ../../packages/supabase/src/database.types.ts
 ```
 
-⚠️ **CRITICAL**: Schema files are just templates! Database changes require:
+⚠️ **CRITICAL**: Schema files are just documentation. Only a migration changes
+the database.
 
-- Either: Run `db diff` to generate migration
-- Or: Manually copy schema to migrations folder with timestamp
-- Then: Apply with `migration up` or `db reset`
+**A migration that touches an RLS policy owes a pgTAP test** in
+`tests/database/`, exercised with real roles via `makerkit.authenticate_as`.
+Reading a policy is not testing it: a review of `revenue_records` read the
+policies and reported a cross-tenant hole that does not exist, while missing two
+that did. `revenue-records-rls.test.sql` is the worked example — including the
+two traps, that `makerkit.get_account_id_by_slug` returns NULL for accounts the
+caller cannot see, and that cases sharing a row must reset it between them.
 
 ## Security First Patterns
 

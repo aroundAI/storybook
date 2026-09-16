@@ -2,6 +2,11 @@
 
 This file contains instructions specific to the main Next.js web application.
 
+> **Verification process:** [docs/ENGINEERING-WORKFLOW.md](../../docs/ENGINEERING-WORKFLOW.md).
+> Anything with form state needs a browser test — every UI defect in FILM-1609
+> lived between the DOM and form state, and appeared only on the *second*
+> submission. UI changes also ship with screenshots in the PR.
+
 ## Application Structure
 
 ### Route Organization

@@ -1,3 +1,8 @@
+> **Acceptance criteria are claims, and claims get executed.** One about a form
+> is not met until the form has been driven end to end — four review rounds in
+> FILM-1609 were spent on a criterion ticked by reading types. See
+> [docs/ENGINEERING-WORKFLOW.md](../docs/ENGINEERING-WORKFLOW.md).
+
 # Storybook Film Studio - Specification Documents
 
 This directory contains all specification documents for the AI Cinematic Film Studio project, following **Spec-Driven Development (SDD)** methodology.
