@@ -620,10 +620,34 @@ defect lived between the DOM and form state:
 The rules, with `apps/e2e/tests/revenue/` as the worked example — full
 detail in `apps/e2e/README.md`:
 
-- **Seed through the API, not the UI.** `tests/utils/seed.ts` creates a
-  confirmed user and team directly. Driving sign-up, confirmation mail and
-  the account selector first makes a test fail for reasons unrelated to its
-  subject, and is ~20× slower (26s for eight specs, versus 90s timeouts).
+- **Seed through the API, not the UI.** `tests/utils/seed.ts` gives you
+  `seedUser`, `seedTeamAccount` and `signInAs`; `tests/utils/session.ts` signs
+  the fixture in. Driving sign-up, confirmation mail and the account selector
+  first makes a test fail for reasons unrelated to its subject, and is ~20×
+  slower (26s for eight specs, versus 90s timeouts).
+
+  This is a rule with an edge, not a preference. **Three specs are exempt
+  because auth is their subject** — `authentication/auth.spec.ts`,
+  `authentication/password-reset.spec.ts` and
+  `team-accounts/team-invitation-mfa.spec.ts`. Everything else seeds.
+
+  It went unenforced long enough for four suites to ignore it, and the bill
+  came due as a recurring red build: the admin suite drove a sign-up, a mail
+  round trip, a sign-out, a sign-in and a TOTP challenge before every single
+  assertion, and was marked `mode: 'serial'` to cope — which turned one
+  rejected code into eight skipped tests. A measured run before the fix was
+  5 failures and 8 skips; after, 29 passes and nothing skipped.
+
+- **Authenticate once, not per test.** The super-admin session is captured by
+  the `setup` project (`tests/auth.setup.ts`) and reused via `storageState`.
+  It must be captured *after* MFA: `public.is_super_admin()` returns false
+  unless the session is `aal2`, so a session that skipped the challenge gets
+  a 404 that reads like a product bug.
+
+- **`waitForTimeout` is not synchronisation.** It encodes how fast the machine
+  that wrote it happened to be. Wait for the condition — a URL, an element, a
+  value — and let the assertion retry. Every fixed sleep removed from the
+  admin suite was hiding a question its author could have asked directly.
 - **Assert the *second* submission.** State bugs are invisible on a fresh
   form; they appear after a reset when DOM and form state disagree.
 - **Prove the guard fails without the fix.** Revert the fix, watch it go
