@@ -171,23 +171,31 @@ test.describe('Admin', () => {
 
       await page.getByRole('button', { name: 'Reactivate User' }).click();
 
-      // Wait for the dialog to close before reading the page behind it. The
-      // action redirects to the URL it is already on, and a redirect to the
-      // current route does not always force the client to re-render from the
-      // server — so the badge can still be the pre-action markup while the
-      // database is already correct. Verified: querying the same page in a
-      // fresh context immediately afterwards shows no badge.
-      await expect(
-        page.getByRole('heading', { name: 'Reactivate User' }),
-      ).toBeHidden();
-
-      await page.reload();
-
-      // `toHaveCount(0)` on a test id, not `getByText('Banned')`. The text
+      // Reload until the badge is gone, rather than asserting once and hoping
+      // the page has caught up.
+      //
+      // The action redirects to the URL it is already on, and a redirect to
+      // the current route does not reliably force a re-render from the
+      // server — so the badge can still be pre-action markup while the
+      // database is already correct. Verified at the time: the server logs
+      // the reactivation as successful, `banned_until` is NULL, and loading
+      // the same page in a fresh context shows no badge.
+      //
+      // An earlier version of this waited for the dialog to close and then
+      // reloaded once. That passed three runs and then failed two, because it
+      // was still a single observation of a timing-dependent state — the same
+      // mistake in a new place. `toPass` retries the whole reload-and-check,
+      // so it is the *outcome* being waited on. A reactivation that genuinely
+      // failed still fails this, it just fails at the timeout.
+      //
+      // `toHaveCount(0)` on a test id, not `getByText('Banned')`: the text
       // locator had `.first()` when asserting presence and not when asserting
       // absence, so the negative case was a strict-mode hazard the moment
       // anything else on the page said "Banned".
-      await expect(page.getByTestId('admin-banned-badge')).toHaveCount(0);
+      await expect(async () => {
+        await page.reload();
+        await expect(page.getByTestId('admin-banned-badge')).toHaveCount(0);
+      }).toPass();
 
       // Log out
       await page.context().clearCookies();
