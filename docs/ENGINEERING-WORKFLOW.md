@@ -219,6 +219,14 @@ value habit in this document — it has caught a bad test every time it was used
 > against it proposes dropping those 33. Nothing was wrong with the code. The
 > instructions were wrong, and no test covers instructions.
 
+> And a red job is not automatically a defect in the change. `🐘 Supabase DB`
+> failed on `supabase/setup-cli@v1` with *"Failed to resolve latest Supabase CLI
+> release: rate limit exceeded"* — `version: latest` resolves through the GitHub
+> API unauthenticated — and every later step *skipped*, so the job read as red
+> for a commit that had nothing to do with it. Read **which step** failed before
+> touching the code, and pin the versions CI installs, or the same code can be
+> green and red on consecutive days.
+
 **Check:** before citing a number, confirm CI actually runs it. And pin what CI
 holds constant — it runs in UTC, so a date bug that only appears west of UTC is
 invisible unless a test sets `timezoneId`. When a file tells

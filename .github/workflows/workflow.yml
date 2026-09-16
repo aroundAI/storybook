@@ -136,9 +136,19 @@ jobs:
           node-version: lts/*
           cache: 'pnpm'
 
+      # Pinned, not `latest`. `version: latest` makes the action resolve the
+      # release through the GitHub API unauthenticated, and that fails outright
+      # when the runner is rate limited:
+      #
+      #   ##[error]Failed to resolve latest Supabase CLI release: rate limit exceeded
+      #
+      # Every later step then *skips*, so the job reports red for a reason that
+      # has nothing to do with the commit. A fixed version is resolved from npm
+      # instead, which removes the API call — and stops the CLI under CI
+      # drifting between runs of the same code.
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.117.0
 
       - name: Install dependencies
         run: pnpm install
@@ -168,7 +178,10 @@ jobs:
           pnpm --filter @kit/supabase verify
 
       - name: Stop Supabase
+        # Cleanup, and it cannot succeed when the CLI failed to install — which
+        # is exactly when it reported a second failure and buried the first.
         if: always()
+        continue-on-error: true
         working-directory: apps/web
         run: supabase stop
 
@@ -317,6 +330,12 @@ jobs:
 
       - name: Supabase CLI
         uses: supabase/setup-cli@v1
+        # Pinned for the same reason as the Supabase DB job above. Omitting
+        # `version` would make the action read the root lockfile, which pins
+        # 2.40.7 — a version CI has never run, so not something to switch to
+        # as a side effect of fixing a rate limit.
+        with:
+          version: 2.117.0
 
       - name: Supabase Server
         run: pnpm run supabase:web:start -- -x studio,migra,deno-relay,pgadmin-schema-diff,imgproxy,logflare
