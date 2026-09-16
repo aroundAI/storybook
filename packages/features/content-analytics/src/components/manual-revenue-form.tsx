@@ -98,11 +98,15 @@ export function ManualRevenueForm({
       // The reason comes back as a value and the sentence is written here,
       // because Next masks Server Action error messages in a production
       // build — a thrown explanation reaches the user as a digest.
+      //
+      // One sentence per branch: who can unblock the caller differs, and
+      // telling a project member to find an account owner sends them to the
+      // wrong person.
       if (!result.ok) {
-        // Written here rather than thrown from the action: Next masks
-        // Server Action error messages in a production build.
         toast.error(
-          'An entry already exists for this date and category. Only the person who added it, or an account owner, can change it.',
+          result.reason === 'project_role'
+            ? 'An entry already exists for this date and category. Only someone with access to this video’s project can change it.'
+            : 'An entry already exists for this date and category. Only the person who added it, or an account owner, can change it.',
         );
 
         return;

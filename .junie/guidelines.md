@@ -1149,7 +1149,7 @@ export async function myServerAction() {
 
 ## Migrations
 - After creating a schema, we can create a migration
-- Use the command `pnpm --filter web supabase:db:diff` for creating migrations from schemas
+- Write migrations by hand in `apps/web/supabase/migrations/`. Do NOT run `supabase db diff`: `schemas/` is missing 33 of the 99 tables, so a diff would propose dropping them
 - After generating a migration, reset the database for applying the changes using the command `pnpm --filter web supabase:reset`
 
 ## Security & RLS

@@ -4,9 +4,13 @@ How work gets verified here, and why the rules are shaped the way they are.
 
 ## Why this exists
 
-FILM-1609 added **one revenue category** — an `S`-sized spec. It took **nine
-review rounds and roughly forty findings**, and four of those rounds contained a
-defect created by the *previous* round's fix.
+FILM-1609 added **one revenue category** — an `S`-sized spec. By round ten it
+had drawn **roughly fifty findings**, and four of those rounds contained a defect
+created by the *previous* round's fix.
+
+(Counts are as of round ten and will be out of date; they are here for scale,
+not as a score. What matters is the shape, and the shape stopped changing around
+round three.)
 
 The tempting conclusion was to stop reviewing. That is switching off the
 check-engine light: the reviews were working, and the thing missing was a process
@@ -54,9 +58,25 @@ now work".
 form. A CLI capability means running `--help`. An API behaviour means calling it.
 If a claim cannot be executed, say it is unverified.
 
+**An RLS policy is the worst offender, because it reads like it can be checked
+by eye and cannot.** Round 10 reported a HIGH cross-tenant hole in
+`revenue_records_update`: its `WITH CHECK` names only `source`, so on paper any
+member could repoint a row at another tenant. Running it refused the write —
+Postgres also applies the *SELECT* policy to the row an `UPDATE` produces, and
+`revenue_records_read` tests `has_account_access` on the new `account_id`, so
+the hole was closed by a rule nobody had connected to it. The same reading
+missed two holes that were real: `created_by` was writable on insert **and** on
+update, so anyone could plant a row attributed to a colleague.
+
+Three claims from one policy set, all confidently reasoned: one wrong, two
+absent. Exercise policies with `makerkit.authenticate_as` in
+`apps/web/supabase/tests/database/`, which CI runs, and widen one policy at a
+time when you need to know which is doing the work.
+
 ### 3. The fix creating the next defect
 
-Four of the nine rounds found a bug introduced by the previous round's fix. The
+Four of the first nine rounds found a bug introduced by the previous round's
+fix. The
 common thread: a fix removed a constraint without naming its replacement.
 
 > `type="number"` was swapped for `type="text"` to fix a mid-edit bug — and with
@@ -132,6 +152,18 @@ A test written against already-fixed code has demonstrated nothing.
 > against `"September 2nd, 2026"` — which contains `2`, so it passed on four
 > days a month regardless.
 
+> Two more from the pgTAP suite in round 10, both visible only because the file
+> was run red first:
+>
+> - **Cases sharing one row chained.** The authorship case succeeded pre-fix,
+>   stripping the member's own `USING` branch, so every later case matched zero
+>   rows and "passed" for a reason unrelated to what it claimed. Each case now
+>   resets the row first.
+> - **The file aborted a third of the way in** — `create schema` while the role
+>   was `authenticated` — and reported *one failing test out of four*, which
+>   reads like a nearly-passing suite. `select plan(13)` rather than
+>   `no_plan()` turns a truncated run into a plan mismatch.
+
 **Check: red before green, every guard, no exceptions.** Revert the fix, watch
 the test fail *for the stated reason*, restore it. This is the single highest-
 value habit in this document — it has caught a bad test every time it was used.
@@ -143,9 +175,17 @@ value habit in this document — it has caught a bad test every time it was used
 > `include` and `exclude` in a tsconfig, so those tests were never typechecked. A
 > mocked ClickHouse client passed SQL that the real server rejected outright.
 
+> And a whole directory can sit outside every green. `apps/web/supabase/schemas/`
+> is read by no test, no CI job and no `db reset` — the database is built from
+> `migrations/`. It is missing **33 of the database's 99 tables**, while the root
+> `CLAUDE.md` called generating from it the "Recommended" workflow; a `db diff`
+> against it proposes dropping those 33. Nothing was wrong with the code. The
+> instructions were wrong, and no test covers instructions.
+
 **Check:** before citing a number, confirm CI actually runs it. And pin what CI
 holds constant — it runs in UTC, so a date bug that only appears west of UTC is
-invisible unless a test sets `timezoneId`.
+invisible unless a test sets `timezoneId`. When a file tells
+someone to run a command, run it once yourself.
 
 **And know what your *local* green covers.** CI's E2E job builds and serves a
 **production** bundle (`next build` → `start:test` → `playwright test`). A local

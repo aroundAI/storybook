@@ -961,7 +961,9 @@ export async function syncSinglePublishById(
  * YouTube reports ad revenue and YouTube Premium revenue separately, and
  * the mix between them — plus manually-entered sponsorship and product
  * income — is the monetization health signal. Each category is its own
- * row; the unique index covers (publish/account, date, category).
+ * row; the unique index covers (publish/account, date, category, source), so
+ * this writes the 'api' row and a person's entry for the same day and
+ * category sits beside it rather than competing for the slot.
  *
  * Any revenue the platform reports but does not attribute to a category
  * falls into 'other' so totals still reconcile.

@@ -295,6 +295,24 @@ HEADED=false
 BROWSER=chromium
 ```
 
+## `test:prod` runs on port 3010, deliberately
+
+`reuseExistingServer` is on outside CI, so if anything already holds the port
+Playwright **attaches to it silently** rather than starting your build. A
+long-lived dev server on 3000 is the common case, and a stale one fails every
+sign-in with a `waitForURL` timeout — which reads as a broken test suite, not a
+broken server. That cost two full runs before anyone looked at what was
+listening:
+
+```
+$ lsof -ti:3000 | xargs ps -o lstart,command
+Sun Sep  6 02:00:41 2026   next-server (v15.5.3)     # ten days old
+```
+
+So `test:prod` pins `PORT=3010` and `PLAYWRIGHT_BASE_URL` to match. If you
+override either, override both, and check nothing else is on the port first.
+CI is unaffected — it starts its own server and never calls `test:prod`.
+
 ## Proving a UI fix with a browser test
 
 > Part of [docs/ENGINEERING-WORKFLOW.md](../../docs/ENGINEERING-WORKFLOW.md),

@@ -232,15 +232,20 @@ export const getRevenueSummaryAction = enhanceAction(
  * Why a manual entry was refused, in a form that survives a production
  * build.
  *
- * `not_yours` — a hand-entered row exists for this date and category, and
+ * `not_yours` — a channel-level entry exists for this date and category, and
  * the caller neither wrote it nor owns the account.
+ *
+ * `project_role` — the same refusal on a per-video entry, where the blocker
+ * is the caller's role on the publish's project and account ownership is
+ * beside the point. Split because one sentence cannot be true of both, and
+ * `deleteManualRevenueAction` already made this distinction.
  *
  * There is no `synced` case: `source` is part of the unique key, so a
  * platform figure occupies a different row and is never in the way.
  */
 export type AddManualRevenueResult =
   | { ok: true; record: RevenueRecord }
-  | { ok: false; reason: 'not_yours' };
+  | { ok: false; reason: 'project_role' | 'not_yours' };
 
 export const addManualRevenueAction = enhanceAction(
   async function (data, user): Promise<AddManualRevenueResult> {
@@ -300,23 +305,13 @@ export const addManualRevenueAction = enhanceAction(
     // Not discarded: a legacy row carrying both publish_id and account_id
     // makes this match twice, and maybeSingle then returns an error with a
     // null row — which fell through to the INSERT and surfaced a raw
-    // duplicate-key violation, the very thing the comment below claims
-    // this lookup avoids.
+    // duplicate-key violation, which is what this lookup exists to avoid.
     if (existingError) throw existingError;
 
-    // A manual entry replaces a manual entry, never a synced one. The
-    // lookup keys on date + category + scope, which is also what the sync
-    // writes (`analytics-sync-cron.ts` emits ads/premium/other per publish
-    // per day with source 'api'), so without this an entry for a synced
-    // publish and date would update that row in place — flipping `source`
-    // to manual, leaving the API `breakdown` attached to a hand-typed
-    // amount, and putting real platform revenue behind
-    // deleteManualRevenueAction, which only ever filters on source.
-    //
-    // Refused rather than inserted alongside: the unique index is on
-    // (coalesce(publish_id, account_id), record_date, category) regardless
-    // of source, so a second row is not available to us either way. Saying
-    // so is better than a raw constraint violation.
+    // A manual entry replaces a manual entry and never a synced one, which
+    // is a property of the lookup above rather than of a refusal: `source`
+    // is part of the unique key, so the platform's figure for this date and
+    // category lives in its own row and is none of this action's business.
     const values = {
       // Exactly one scope, enforced here rather than trusted from the
       // caller. The schema permits both, and a row carrying both ids makes
@@ -364,7 +359,10 @@ export const addManualRevenueAction = enhanceAction(
     if (error) throw error;
 
     if (existing && !record) {
-      return { ok: false, reason: 'not_yours' };
+      // Scope-specific, mirroring the delete path: the same zero-row result
+      // arrives from either RLS branch, and a project member refused by the
+      // publish branch was being told about account owners.
+      return { ok: false, reason: publishId ? 'project_role' : 'not_yours' };
     }
 
     if (!record) throw new Error('Failed to create revenue record');
@@ -459,7 +457,8 @@ export const deleteManualRevenueAction = enhanceAction(
     // Rows exist, the caller can read them, and none were removed: the
     // delete policy refused. Returning `{ success: true }` here is the same
     // silent-no-op the update path already guards against — channel-level
-    // delete is owner-only since 20260915150338.
+    // delete is author-or-owner since 20260915190043, so a member can read
+    // rows they may not remove.
     // Compared, not merely checked for zero. `category` is optional, so one
     // call can match several rows — and with the author-or-owner delete
     // policy a member deleting a whole date removes only their own. Some

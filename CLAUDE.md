@@ -142,7 +142,7 @@ pnpm supabase:web:start     # Start Supabase locally
 pnpm --filter web supabase migration up     # Apply new migrations
 pnpm supabase:web:reset     # Reset with latest schema (clean rebuild)
 pnpm supabase:web:typegen   # Generate TypeScript types
-pnpm --filter web supabase:db:diff  # Create migration
+# NOTE: no `db diff` — see "Do not run supabase db diff" below
 ```
 
 The typegen command must be run after applying migrations or resetting the database.
@@ -151,29 +151,50 @@ The typegen command must be run after applying migrations or resetting the datab
 
 When adding new database features, ALWAYS follow this exact order:
 
-### Method 1: Using db diff (Recommended for modifications)
+### ⛔ Do not run `supabase db diff` in this repo
 
-1. **Create/modify schema file** in `apps/web/supabase/schemas/XX-feature.sql`
-2. **Generate migration**: `pnpm --filter web supabase db diff -f <migration_name>`
-3. **Apply migration**: `pnpm --filter web supabase migration up`
-4. **Generate types**: `supabase gen types typescript --local > lib/database.types.ts && cp lib/database.types.ts /path/to/packages/supabase/src/database.types.ts`
-5. **Verify types exist** before using in code
+**The database is built from `apps/web/supabase/migrations/`.** `supabase db
+reset --help` says so in as many words: *"Resets the local database to current
+migrations."* `apps/web/supabase/schemas/` feeds `db diff` and nothing else — no
+test, no CI job and no reset reads it.
 
-### Method 2: Manual migration from schema (For new features)
+And it has been left behind. Measured 2026-09-16:
 
-1. **Create schema file** in `apps/web/supabase/schemas/XX-feature.sql`
-2. **Create timestamped migration**:
+```
+tables in schemas/    : 66
+tables in migrations/ : 99
+missing from schemas/ : 33   # verified_facts, content_analytics, shorts, …
+```
+
+`db diff` generates the SQL that makes the database match `schema_paths`. Run
+against a `schemas/` missing a third of the tables, that is a migration
+proposing to **drop them**. Nobody has been bitten only because the shadow
+database fails first, which is luck rather than a guard.
+
+So: **write migrations by hand** (Method 2 below), and treat `schemas/` as
+partial documentation that may be wrong. Update the schema file alongside a
+migration when one exists for that table — it is still what most people read
+first — but never generate from it, and never trust it over `migrations/`.
+Restoring `db diff` means reconciling those 33 tables first; that is its own
+piece of work.
+
+### Method 2: Hand-written timestamped migration — the method here
+
+1. **Write the migration** in `apps/web/supabase/migrations/`:
    ```bash
    timestamp=$(date -u +"%Y%m%d%H%M%S")
-   cp apps/web/supabase/schemas/XX-feature.sql "apps/web/supabase/migrations/${timestamp}_feature-name.sql"
+   $EDITOR "apps/web/supabase/migrations/${timestamp}_feature-name.sql"
    ```
-3. **Reset database**: `pnpm --filter web supabase db reset`
-4. **Generate types**: `supabase gen types typescript --local > lib/database.types.ts && cp lib/database.types.ts /path/to/packages/supabase/src/database.types.ts`
-5. **Verify types exist** before using in code
+2. **Apply it**: `pnpm --filter web supabase migration up`
+3. **Mirror it** into `apps/web/supabase/schemas/XX-feature.sql` if that table
+   has a schema file, so the two do not drift further
+4. **Generate types**: `supabase gen types typescript --local > lib/database.types.ts && cp lib/database.types.ts ../../packages/supabase/src/database.types.ts`
+5. **Verify types exist** before using them in code
+6. **Cover RLS with a pgTAP test** in `apps/web/supabase/tests/database/` when
+   the migration touches a policy. Policies are not verified by reading them —
+   see `docs/ENGINEERING-WORKFLOW.md`
 
-⚠️ **IMPORTANT**: Schema files alone don't create tables! You MUST either:
-- Generate a migration with `db diff`, OR
-- Manually copy the schema to migrations folder with timestamp
+⚠️ Schema files alone don't create tables. Only a migration does.
 
 **Migration vs Reset**:
 - Use `migration up` for normal development (applies only new migrations)

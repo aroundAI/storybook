@@ -32,13 +32,19 @@ create table if not exists public.revenue_records (
   constraint revenue_records_category_check
     check (category in ('ads', 'premium', 'sponsorship', 'product', 'affiliate', 'licensing', 'other')),
   constraint revenue_records_scope_check
-    check (publish_id is not null or account_id is not null),
-  -- Exactly one. `scope_check` above requires at least one, which allowed
-  -- rows carrying both — and those coalesce to their publish, so a
-  -- channel-scoped lookup could match one and, on update, convert it.
-  constraint revenue_records_single_scope_check
-    check (num_nonnulls(publish_id, account_id) = 1)
+    check (publish_id is not null or account_id is not null)
 );
+
+-- Exactly one scope. `scope_check` above requires at least one, which allowed
+-- rows carrying both — and those coalesce to their publish, so a
+-- channel-scoped lookup could match one and, on update, convert it.
+--
+-- Declared out here and `not valid` so this file agrees with
+-- 20260915195006, which could not scan history. Postgres does not accept
+-- NOT VALID inside CREATE TABLE, so inline is not a form the two can share.
+alter table public.revenue_records
+  add constraint revenue_records_single_scope_check
+  check (num_nonnulls(publish_id, account_id) = 1) not valid;
 
 comment on table public.revenue_records is 'Daily revenue records per publish (or per account for channel-level revenue), split by category';
 comment on column public.revenue_records.source is 'Source of revenue data: api (fetched from platform) or manual (user entered)';
@@ -180,54 +186,99 @@ create policy "revenue_records_read" on public.revenue_records for select
     )
   );
 
--- `source = 'manual'` is enforced here, not only in the action: this PR made
--- `source` decide who may touch a row, and a rule the app keeps to itself is
--- not a rule. The sync writes 'api' through the service-role client, which
--- bypasses RLS.
-create policy "revenue_records_create" on public.revenue_records for insert
-  to authenticated with check (
-    source = 'manual'
-    and ((
-      account_id is not null
-      and public.has_account_access(account_id)
-    )
-    or exists (
-      select 1 from public.publishes pub
-      join public.episodes e on e.id = pub.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where pub.id = revenue_records.publish_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin', 'member')
-    )
-  );
-
--- Channel-level revenue: any member may record it, only an owner may
--- change or remove it. Replacement is silent (one row per date+category+
--- scope, overwritten in place), so overwriting a figure nobody re-checks is
--- the damaging half — a member correcting their own typo is the smaller
--- loss. `is_account_owner` covers the primary owner, `has_role_on_account`
--- the membership row; neither implies the other.
-create policy "revenue_records_update" on public.revenue_records for update
-  to authenticated using (
+-- Who may write a revenue row, stated once.
+--
+-- Channel-level revenue may be changed by an account owner or by the person
+-- who recorded it; per-video revenue by any member of the publish's project.
+-- The rule lived in three places — update USING, update WITH CHECK, delete
+-- USING — and two of them diverging is how `created_by` briefly became
+-- writable by anyone who could already edit the row.
+--
+-- Security invoker, unlike `has_account_access`: the expression this replaces
+-- was inline in the policy, so it read `project_members` under the caller's
+-- own RLS. A definer function would quietly widen that.
+create or replace function public.can_write_revenue_record(
+  target_publish_id uuid,
+  target_account_id uuid,
+  record_author uuid
+)
+returns boolean
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select
     (
-      account_id is not null
+      target_account_id is not null
       and (
-        public.is_account_owner(account_id)
-        or public.has_role_on_account(account_id, 'owner')
-        or created_by = auth.uid()
+        public.is_account_owner(target_account_id)
+        or public.has_role_on_account(target_account_id, 'owner')
+        or record_author = (select auth.uid())
       )
     )
     or exists (
-      select 1 from public.publishes pub
+      select 1
+      from public.publishes pub
       join public.episodes e on e.id = pub.episode_id
       join public.project_members pm on pm.project_id = e.project_id
-      where pub.id = revenue_records.publish_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin', 'member')
-    )
-  )
-  with check (source = 'manual');
+      where pub.id = target_publish_id
+        and pm.user_id = (select auth.uid())
+        and pm.role in ('owner', 'admin', 'member')
+    );
+$$;
 
+comment on function public.can_write_revenue_record(uuid, uuid, uuid) is
+  'Channel-level revenue may be changed by an account owner or by the person who recorded it; per-video revenue by any member of the publish''s project. The single definition behind revenue_records update and delete.';
+
+grant execute on function public.can_write_revenue_record(uuid, uuid, uuid) to authenticated;
+
+-- `source = 'manual'` is enforced here, not only in the action: `source`
+-- decides whether a row can ever be removed through the app, and a rule the
+-- app keeps to itself is not a rule. The sync writes 'api' through the
+-- service-role client, which bypasses RLS.
+--
+-- `created_by` is constrained for the same reason one level down: it is what
+-- the update and delete policies authorize on, so a caller able to name
+-- somebody else can rewrite who those policies answer to. Null stays
+-- permitted, matching `verified_facts` — a row with no author is owner-only
+-- for good, which is the safe way to be wrong about authorship.
+create policy "revenue_records_create" on public.revenue_records for insert
+  to authenticated with check (
+    source = 'manual'
+    and (created_by is null or created_by = (select auth.uid()))
+    and (
+      (
+        account_id is not null
+        and public.has_account_access(account_id)
+      )
+      or exists (
+        select 1
+        from public.publishes pub
+        join public.episodes e on e.id = pub.episode_id
+        join public.project_members pm on pm.project_id = e.project_id
+        where pub.id = revenue_records.publish_id
+          and pm.user_id = (select auth.uid())
+          and pm.role in ('owner', 'admin', 'member')
+      )
+    )
+  );
+
+-- Postgres uses USING as the check expression for UPDATE only when WITH CHECK
+-- is absent, so naming one silently drops the other. Both are named.
+create policy "revenue_records_update" on public.revenue_records for update
+  to authenticated
+  using (
+    public.can_write_revenue_record(publish_id, account_id, created_by)
+  )
+  with check (
+    public.can_write_revenue_record(publish_id, account_id, created_by)
+    and source = 'manual'
+  );
+
+-- The account branch is the same rule. The publish branch is deliberately
+-- stricter than update — project owner or admin, or the author — so it keeps
+-- its own expression rather than calling the shared function.
 create policy "revenue_records_delete" on public.revenue_records for delete
   to authenticated using (
     (
@@ -235,16 +286,20 @@ create policy "revenue_records_delete" on public.revenue_records for delete
       and (
         public.is_account_owner(account_id)
         or public.has_role_on_account(account_id, 'owner')
-        or created_by = auth.uid()
+        or created_by = (select auth.uid())
       )
     )
     or exists (
-      select 1 from public.publishes pub
+      select 1
+      from public.publishes pub
       join public.episodes e on e.id = pub.episode_id
       join public.project_members pm on pm.project_id = e.project_id
       where pub.id = revenue_records.publish_id
-      and pm.user_id = auth.uid()
-      and (pm.role in ('owner', 'admin') or revenue_records.created_by = auth.uid())
+        and pm.user_id = (select auth.uid())
+        and (
+          pm.role in ('owner', 'admin')
+          or revenue_records.created_by = (select auth.uid())
+        )
     )
   );
 

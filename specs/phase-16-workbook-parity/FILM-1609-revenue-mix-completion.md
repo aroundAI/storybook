@@ -302,6 +302,54 @@ Whether a person should be able to record `ads` or `premium` by hand stays
 settled as **no** (§4c): the sync owns those categories, and a typed figure
 there is counted as a platform payout.
 
+## 4e. Round 10 — what running the policies changed
+
+§4d was designed and then reviewed. The review returned five findings; auditing
+the diff found four more; running the policies against a real database
+overturned one of the review's and confirmed two nobody had raised.
+
+**The review's HIGH finding was wrong.** It read `revenue_records_update`'s
+`WITH CHECK` — `source = 'manual'` and nothing else — and concluded an ordinary
+member could `PATCH` a row's `account_id` into another tenant. The write is
+refused. Postgres applies the *SELECT* policy to the row an `UPDATE` produces,
+and `revenue_records_read` requires `has_account_access` on the new
+`account_id`. Confirmed on PostgreSQL 17.6 with and without `RETURNING`, by
+widening each policy in turn: widening the read policy lets the repoint
+through, widening the update policy does not.
+
+**Two real holes were found instead**, both about `created_by` — the column the
+update and delete policies authorize on, so writing it rewrites who those
+policies answer to:
+
+| | Before | Now |
+|---|---|---|
+| Insert a row attributed to a colleague | allowed | refused |
+| Reassign `created_by` on your own row | allowed | refused |
+
+`verified_facts` had constrained exactly this on insert since PR #178. The rule
+existed in the repo, correct, and was simply absent here.
+
+**The rule is now stated once.** It had been written in three places — update
+`USING`, update `WITH CHECK`, delete `USING` — and two of them diverging is the
+whole of the second hole. `public.can_write_revenue_record(publish_id,
+account_id, created_by)` is the single definition; the delete policy's publish
+branch keeps its own expression because it is deliberately stricter.
+
+**Proven, not argued:** `supabase/tests/database/revenue-records-rls.test.sql`,
+13 cases with real roles, red on exactly the two holes and green after. It runs
+in CI. Two of its own defects were caught by running it red first — cases that
+chained off each other's damage, and a run that aborted a third of the way in
+while reporting one failure out of four.
+
+### The other thing round 10 found
+
+`apps/web/supabase/schemas/` is read by no test, no CI job and no `db reset` —
+the database is built from `migrations/` — and it is missing **33 of the
+database's 99 tables**. The root `CLAUDE.md` called generating from it the
+"Recommended" workflow, which against that directory means a migration
+proposing to drop them. The instructions were the defect. They now say
+migrations are the source of truth; reconciling the 33 tables is its own work.
+
 ## 5. Out of Scope
 
 - **Rendering `RevenueMixCard`** — FILM-1611. This spec makes the category
@@ -309,6 +357,19 @@ there is counted as a platform payout.
 - **Per-video revenue on TikTok and Instagram** — no API exists; phase
   README known limits.
 - **Anything else on `RevenueSummary`** — already shipped; see §1.
+- **`verified_facts` — two defects found by the same sweep, deliberately not
+  fixed here.** Swept for the shape of the round-10 finding (a narrow
+  `WITH CHECK` beside a broad `USING`) and `verified_facts` is the only other
+  instance in the repo. Following it up found something larger:
+  `verifyFactAction` (`fact-actions.ts:191`) and `disputeFactAction` (`:229`)
+  write `verification_status` values that their own policy forbids, through
+  `getSupabaseServerClient()` — the *user* client, so RLS applies. The update
+  matches zero rows, PostgREST returns `error: null`, and the action returns
+  `{ success: true }`. **A user marks a fact verified, is told it worked, and
+  nothing changes.** The policy comment says these "require service-role
+  access"; the code was never switched. That feature needs its own branch and
+  someone who knows it — folding it in here would import an unknown amount of
+  work into a PR already ten rounds deep.
 - **Folding the two revenue query shapes into an RPC** — that is the
   in-code `TODO(FILM-1614)` at `server/revenue-queries.ts:79`, a separate
   ticket with its own migration.

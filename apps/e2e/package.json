@@ -6,7 +6,7 @@
   "scripts": {
     "report": "playwright show-report",
     "test": "playwright test --max-failures=1",
-    "test:prod": "pnpm --filter web build:test && PLAYWRIGHT_SERVER_COMMAND='pnpm --filter web start:test' playwright test",
+    "test:prod": "pnpm --filter web build:test && PLAYWRIGHT_BASE_URL='http://localhost:3010' PLAYWRIGHT_SERVER_COMMAND='PORT=3010 pnpm --filter web start:test' playwright test",
     "test:ui": "playwright test --ui"
   },
   "keywords": [],
