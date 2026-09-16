@@ -445,6 +445,57 @@ statement instead of two — the RPC already tracked as `TODO(FILM-1614)`. And
 which is deliberate: the alternative distinguishes "nothing there" from "not
 yours to see", a disclosure the read policy exists to prevent.
 
+## 4h. Round 13 — the freeze that made users undeletable
+
+The worst defect this PR produced, and it was mine, from §4f.
+
+`created_by` is `references auth.users(id) on delete set null`. Postgres
+implements that as an internal `UPDATE ONLY public.revenue_records SET
+created_by = NULL`, and a `BEFORE UPDATE ... FOR EACH ROW` trigger fires on it
+like any other update. The round-11 freeze was written as "reject any change",
+so it rejected the foreign key's own set-null and aborted the `DELETE`:
+
+```
+USER DELETE FAILED: revenue_records.created_by is immutable (P0001)
+```
+
+**Any user who had ever saved one manual revenue entry became undeletable**,
+which takes `deleteUserAction` and personal-account self-deletion with it — a
+path that has to work for reasons well beyond this feature, and one no test in
+this PR touched.
+
+The rule was right; the statement of it was too broad. A change is refused only
+when it *names* somebody: erasing is allowed, claiming (`null → someone`) and
+transferring (`someone → someone else`) stay refused, which is the whole of the
+escalation the trigger exists for.
+
+A project member can now also clear a colleague's authorship by hand. That is
+vandalism rather than escalation — they could already edit the row, it grants
+them nothing, and it costs them the delete right if the row was theirs.
+Blocking it precisely would mean a privileged read of `auth.users` from inside
+a trigger on every update, which is not worth the difference.
+
+pgTAP now deletes a user and asserts the entry survives without an author. That
+case did not exist because every test in the suite was about who may *write* a
+revenue row; nothing asked what happens to one when its author goes away.
+
+### Two smaller ones from the same round
+
+- **The sync's read comment overclaimed.** Folding three round-trips into one
+  is true on YouTube; on TikTok and Instagram, whose normalizers hardcode all
+  three figures to zero, it goes from none to one on every publish of every
+  run. Kept — the caller already makes a provider API call per publish, next to
+  which an indexed lookup is noise, and hardcoding "these platforms never
+  report revenue" is an assumption that rots the day one of them does. The
+  comment now says so, and names the fix (`revenue_supported` on
+  `NormalizedAnalytics`) if it ever matters.
+- **Two refusal messages pointed at a screen that was never built.** "Reopen
+  the page to see it, then edit that entry instead" — there is no list of
+  recorded entries anywhere in `RevenueDashboard`, and
+  `deleteManualRevenueAction` has no UI caller at all. The copy now says what
+  actually happened and who to ask, without directing anyone to a view that
+  does not exist. The list is FILM-1611's, with the mix card.
+
 ## 5. Out of Scope
 
 - **Rendering `RevenueMixCard`** — FILM-1611. This spec makes the category

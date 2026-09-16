@@ -991,10 +991,21 @@ async function upsertRevenueRecords(
 
   const logger = await getLogger();
 
-  // One read for the whole day rather than one per category. The previous
-  // shape did three round-trips to write at most three rows; reconciling
-  // against zero now has to look even when every figure is zero, so the read
-  // had to get cheaper rather than three times more frequent.
+  // One read for the whole day rather than one per category.
+  //
+  // Honest about the cost, because it is not a straight win: on YouTube this
+  // replaces up to three round-trips with one, but on TikTok and Instagram —
+  // whose normalizers hardcode all three figures to zero — it replaces *none*
+  // with one, on every publish of every run. That is the price of reconciling
+  // against zero rather than filtering it out, and the price of not hardcoding
+  // "these platforms never report revenue" here, which is an assumption that
+  // silently rots the day one of them starts.
+  //
+  // Judged acceptable because the caller already makes a provider API call per
+  // publish, next to which one indexed lookup on (publish_id, record_date) is
+  // noise. If it ever stops being noise, the fix is a `revenue_supported` flag
+  // on `NormalizedAnalytics` — set where the zeros are hardcoded, so adding
+  // revenue to a platform cannot forget to update it.
   const { data: existingRows, error: existingError } = await client
     .from('revenue_records')
     .select('id, category, revenue_cents')

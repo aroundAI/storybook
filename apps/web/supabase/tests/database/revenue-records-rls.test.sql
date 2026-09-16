@@ -5,7 +5,7 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 -- of the way through on a permissions error and still reported one failing
 -- test out of four, which reads like a nearly-passing suite. With a plan, a
 -- run that stops early fails as a plan mismatch instead of looking fine.
-select plan(22);
+select plan(25);
 
 -- Revenue rows are money attributed to a tenant, and `created_by` decides who
 -- may correct one later. Nine review rounds argued about these policies by
@@ -59,6 +59,7 @@ select public.create_team_account('Other Co');
 
 set local role postgres;
 select set_config('revtest.other', makerkit.get_account_id_by_slug('other-co')::text, true);
+select set_config('revtest.member', tests.get_supabase_uid('member')::text, true);
 select set_config('revtest.story', makerkit.get_account_id_by_slug('storybook')::text, true);
 
 -- ==================================
@@ -403,6 +404,69 @@ select is(
    where publish_id is not null and account_id is not null),
   0,
   'No row carries both a publish and an account scope'
+);
+
+-- ==================================
+-- Authorship: what the freeze must NOT block
+-- ==================================
+-- `created_by` is `references auth.users(id) on delete set null`, and Postgres
+-- implements that as an internal `UPDATE ... SET created_by = NULL`. A
+-- BEFORE UPDATE row trigger fires on it, so a freeze written as "reject any
+-- change" also rejects the foreign key's own set-null — and every user who had
+-- ever saved one entry became undeletable, taking account deletion with them.
+--
+-- The rule is therefore narrower than "never changes": authorship may be
+-- erased, never moved. These three cases are the whole of it.
+
+set local role postgres;
+
+select tests.create_supabase_user('departing', 'departing@storybook.dev');
+
+-- Stashed, like the account ids above: `tests.get_supabase_uid` resolves fine
+-- in a plain statement but not inside the string `lives_ok` EXECUTEs, where it
+-- raises "identifier not found" and reads like the delete itself failing.
+select set_config('revtest.departing',
+                  tests.get_supabase_uid('departing')::text, true);
+
+insert into public.revenue_records
+  (id, account_id, platform, record_date, revenue_cents, source, category, created_by)
+  values ('cafe0000-0000-4000-8000-000000000001',
+          current_setting('revtest.story')::uuid, 'manual', '2026-08-01', 500,
+          'manual', 'sponsorship', current_setting('revtest.departing')::uuid);
+
+select lives_ok(
+  $$ delete from auth.users where id = current_setting('revtest.departing')::uuid $$,
+  'A user who has recorded revenue can still be deleted'
+);
+
+select is(
+  (select created_by from public.revenue_records
+   where id = 'cafe0000-0000-4000-8000-000000000001'),
+  null,
+  'Their entry survives with authorship erased, as the foreign key intends'
+);
+
+-- The escalation the freeze exists for, on a row with no author. It has to be
+-- a *publish-scoped* row: on the account branch a member cannot pass USING on
+-- an unauthored row at all, so the update would match nothing and the test
+-- would pass without the trigger ever running.
+--
+-- Claiming one would hand the claimer the delete right that `created_by`
+-- grants — otherwise project owner or admin only.
+insert into public.revenue_records
+  (id, publish_id, platform, record_date, revenue_cents, source, category, created_by)
+  values ('cafe0000-0000-4000-8000-000000000002',
+          'bbbbbbbb-0000-4000-8000-000000000003', 'youtube', '2026-08-02', 700,
+          'manual', 'sponsorship', null);
+
+select makerkit.authenticate_as('member');
+
+select throws_ok(
+  $$ update public.revenue_records set created_by = current_setting('revtest.member')::uuid
+     where id = 'cafe0000-0000-4000-8000-000000000002' $$,
+  'P0001',
+  'revenue_records.created_by is immutable',
+  'An unauthored entry may not be claimed'
 );
 
 select * from finish();

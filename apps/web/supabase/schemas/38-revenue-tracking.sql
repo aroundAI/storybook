@@ -336,6 +336,12 @@ create policy "revenue_records_delete" on public.revenue_records for delete
 -- because one total statement beats restating the rule on each branch. No code
 -- path sets `created_by` on update: the action excludes it deliberately, and
 -- the sync never names it.
+--
+-- **Erasing is allowed; naming is not.** `on delete set null` is implemented as
+-- an internal UPDATE, and a BEFORE UPDATE row trigger fires on it — so a freeze
+-- against *any* change also rejected the foreign key's own set-null, and every
+-- user who had saved one entry became undeletable. The condition is therefore
+-- on the new value, not on the change.
 
 create or replace function public.revenue_records_freeze_created_by()
 returns trigger
@@ -343,9 +349,10 @@ language plpgsql
 set search_path = ''
 as $$
 begin
-  if new.created_by is distinct from old.created_by then
+  if new.created_by is not null
+     and new.created_by is distinct from old.created_by then
     raise exception 'revenue_records.created_by is immutable'
-      using hint = 'Authorship is recorded on insert. A correction does not transfer it.';
+      using hint = 'Authorship is recorded on insert. A correction does not transfer it, and a deleted user''s entries keep their figures without an author.';
   end if;
 
   return new;
@@ -353,7 +360,7 @@ end;
 $$;
 
 comment on function public.revenue_records_freeze_created_by() is
-  'Rejects any UPDATE that changes revenue_records.created_by. The update and delete policies authorize on that column, so letting a writer change it lets them change who those policies answer to.';
+  'Rejects any UPDATE that points revenue_records.created_by at a user. The update and delete policies authorize on that column, so letting a writer set it lets them choose who those policies answer to. Clearing it is allowed: the auth.users foreign key does exactly that, as an UPDATE, when an author is deleted.';
 
 drop trigger if exists revenue_records_freeze_created_by on public.revenue_records;
 

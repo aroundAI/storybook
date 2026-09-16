@@ -89,6 +89,22 @@ common thread: a fix removed a constraint without naming its replacement.
 fix that removes a guard — a widget, a validation, a bound — names what replaces
 it, in the code, not in the PR description.
 
+**A green test can cover the feature and miss the interaction.** There is an
+account-deletion spec, and it passed throughout — its user had never saved a
+revenue entry, so it never reached the trigger that made deletion impossible.
+Coverage of A and coverage of B is not coverage of A-meets-B, and a passing
+spec in the area is exactly what stops anyone looking.
+
+**A new guard has a blast radius; go and find it.** The `created_by` freeze was
+written as "reject any UPDATE that changes this column", which is exactly the
+rule that was wanted and also rejected the foreign key's own
+`on delete set null` — implemented, like every referential action, as an
+internal UPDATE that fires row triggers. Every user who had saved one revenue
+entry became undeletable, and account deletion with them. The question that
+catches this is not "is my rule right?" but **"what else writes this column,
+including things I did not write?"** — foreign key actions, cascades, triggers,
+and the service-role paths that skip RLS entirely.
+
 **A deferral is a claim too.** `add constraint ... not valid` was chosen to
 avoid a scan and described as leaving legacy rows alone. It postpones the
 *scan*, not the *rule*: every later UPDATE of one of those rows fails, and the

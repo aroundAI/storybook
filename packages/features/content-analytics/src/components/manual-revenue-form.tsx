@@ -80,13 +80,13 @@ const REFUSAL_MESSAGE: Record<
   string
 > = {
   not_yours:
-    'An entry already exists for this date and category. Only the person who added it, or an account owner, can change it.',
+    'An entry already exists for this date and category, and only the person who added it, or an account owner, can change it. Ask one of them, or use a different category.',
   project_role:
-    'An entry already exists for this date and category. Only someone with access to this video’s project can change it.',
+    'An entry already exists for this date and category, and only someone with access to this video’s project can change it.',
   no_access:
     'You do not have access to record revenue here. Ask an account owner, or someone on this video’s project.',
   conflict:
-    'Someone just added an entry for this date and category. Reopen the page to see it, then edit that entry instead.',
+    'Someone just saved an entry for this date and category. Your figure was not recorded — check with them before entering it again.',
 };
 
 export function ManualRevenueForm({
