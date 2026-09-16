@@ -366,8 +366,15 @@ jobs:
       # `vector` is excluded alongside `logflare` deliberately: vector ships
       # its logs to logflare, so excluding one without the other leaves the
       # container unhealthy and `supabase start` times out waiting on it.
+      # Called directly rather than through `pnpm run ... -- -x ...`. pnpm
+      # forwards the `--` into the command, and 2.117.0 reads everything after
+      # it as positional: `Unexpected positional arguments: "-x", "..."`.
+      # 2.40.7 tolerated the same line. The Supabase DB job above already
+      # invokes the CLI this way, and PATH here resolves to the version
+      # `supabase/setup-cli` installed, which is the one pinned above.
       - name: Supabase Server
-        run: pnpm run supabase:web:start -- -x studio,imgproxy,logflare,vector
+        working-directory: apps/web
+        run: supabase start -x studio,imgproxy,logflare,vector
 
       # No credential export step. apps/web/.env.test already carries the
       # local URL and the CLI's fixed public development keys — the same
