@@ -271,11 +271,101 @@ describe('resolveYppTarget', () => {
   });
 });
 
+describe('escalated', () => {
+  it('is false when nothing is configured at either level', () => {
+    // The card printed "the higher configured target is shown" off the raw
+    // status, and `unknown` is every channel's default — so a brand-new
+    // account was told a bar had been raised when neither level held a
+    // value. A sentence claiming a rule fired needs a flag that says it did.
+    const result = resolveYppTarget({
+      channelSettings: CHANNEL,
+      accountSettings: null,
+    });
+
+    expect(result.applicantStatus).toBe('unknown');
+    expect(result.escalated).toBe(false);
+  });
+
+  it('is false when only one level is configured', () => {
+    const result = resolveYppTarget({
+      channelSettings: { ...CHANNEL, ypp_target_watch_hours: 2000 },
+      accountSettings: null,
+    });
+
+    expect(result.escalated).toBe(false);
+  });
+
+  it('is true only when the rule actually raised the target', () => {
+    const result = resolveYppTarget({
+      channelSettings: { ...CHANNEL, ypp_target_watch_hours: 2000 },
+      accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 8000 },
+    });
+
+    expect(result.watchHours).toBe(8000);
+    expect(result.escalated).toBe(true);
+  });
+
+  it('is false when the channel was already the higher of the two', () => {
+    // Precedence and the over-state rule agree here, so nothing was raised.
+    const result = resolveYppTarget({
+      channelSettings: { ...CHANNEL, ypp_target_watch_hours: 9000 },
+      accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 3000 },
+    });
+
+    expect(result.watchHours).toBe(9000);
+    expect(result.escalated).toBe(false);
+  });
+});
+
+describe('non-positive stored targets', () => {
+  it('treats zero as unconfigured rather than as a target', () => {
+    // Every one of these is a denominator: Math.min(1, hours / 0) is 1, so a
+    // stored zero reports the monetisation gate as *met*. A check constraint
+    // rejects it at the database now; this is the single place the number
+    // becomes a denominator, so it degrades to the default here too.
+    const result = resolveYppTarget({
+      channelSettings: { ...CHANNEL, ypp_target_watch_hours: 0 },
+      accountSettings: null,
+    });
+
+    expect(result.watchHours).toBe(4000);
+    expect(result.watchHoursBasis).toBe('default');
+  });
+
+  it('falls through a zero channel value to a real account value', () => {
+    const result = resolveYppTarget({
+      channelSettings: {
+        ...CHANNEL,
+        ypp_target_watch_hours: 0,
+        ypp_applicant_status: 'existing_partner',
+      },
+      accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 3000 },
+    });
+
+    expect(result.watchHours).toBe(3000);
+    expect(result.watchHoursBasis).toBe('account');
+  });
+
+  it('never produces a zero target, which would render as 100% complete', () => {
+    for (const bad of [0, -1]) {
+      const result = resolveYppTarget({
+        channelSettings: { ...CHANNEL, ypp_target_watch_hours: bad },
+        accountSettings: { ...ACCOUNT, ypp_target_subscribers: bad },
+      });
+
+      expect(result.watchHours).toBeGreaterThan(0);
+      expect(result.subscribers).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe('resolveTagMinSample', () => {
   it('prefers the account value and falls back to the default', () => {
     expect(resolveTagMinSample({ tag_min_sample: 12 })).toBe(12);
     expect(resolveTagMinSample({ tag_min_sample: null })).toBe(5);
     expect(resolveTagMinSample(null)).toBe(5);
+    // Zero would admit every tag, with no videos behind it, into a median.
+    expect(resolveTagMinSample({ tag_min_sample: 0 })).toBe(5);
   });
 });
 

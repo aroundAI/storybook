@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+import { useRouter } from 'next/navigation';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
@@ -44,6 +46,7 @@ export function AccountTargetsForm({
   // state would leave the previous text on screen while the form believed
   // something else — the exact DOM/form-state split that took FILM-1609
   // four review rounds to find.
+  const router = useRouter();
   const [version, setVersion] = useState(0);
   const [saved, setSaved] = useState(initial);
 
@@ -74,6 +77,14 @@ export function AccountTargetsForm({
     setSaved(next);
     form.reset({ accountId, ...next });
     setVersion((current) => current + 1);
+
+    // The channel cards below are server-rendered with the account's values,
+    // and one of them compares against those values to warn that a lower
+    // override will lose to the over-state rule. Without this the warning
+    // keeps quoting the figure from page load: a screenshot caught it saying
+    // "lower than the account's 4,000" directly under a field reading 3,500.
+    router.refresh();
+
     toast.success('Analytics settings saved');
   };
 

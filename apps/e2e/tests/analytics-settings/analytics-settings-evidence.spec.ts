@@ -61,6 +61,19 @@ test.describe('Analytics settings — evidence', () => {
       fullPage: true,
     });
 
+    // A downward override while the status is Unknown. The save succeeds and
+    // the value round-trips, but the over-state rule means the account's
+    // figure is what actually gets used — so the form says so rather than
+    // letting the page look like it worked.
+    await settings.chooseStatus('Unknown');
+    await settings.channelWatchHours().fill('1200');
+    await page.locator('[data-test="channel-overridden-notice"]').waitFor();
+
+    await page.screenshot({
+      path: `${OUT}/05-lower-override-notice.png`,
+      fullPage: true,
+    });
+
     // The second submission — clearing an override. This is the state that
     // would look identical to a working one in a screenshot taken before the
     // action, and different in the one taken after.
@@ -69,7 +82,7 @@ test.describe('Analytics settings — evidence', () => {
     await settings.goToSettings(account.slug);
 
     await page.screenshot({
-      path: `${OUT}/05-override-cleared.png`,
+      path: `${OUT}/06-override-cleared.png`,
       fullPage: true,
     });
 

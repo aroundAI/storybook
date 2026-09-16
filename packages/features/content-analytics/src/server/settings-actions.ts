@@ -13,7 +13,10 @@ import {
 import type { ChannelSettingsRow } from '../lib/ypp-targets';
 import { listAccountChannels } from './channels';
 import { assertScopeAccess } from './scope-access';
-import { fetchAccountAnalyticsSettings } from './settings-queries';
+import {
+  fetchAccountAnalyticsSettings,
+  fetchChannelAnalyticsOverrides,
+} from './settings-queries';
 
 /**
  * The first writer `analytics_settings` has ever had (FILM-1608).
@@ -45,7 +48,7 @@ export const getAnalyticsSettingsAction = enhanceAction(
 
     const client = getSupabaseServerClient();
 
-    const [accountSettings, channels, { data: overrides }] = await Promise.all([
+    const [accountSettings, channels, byConnection] = await Promise.all([
       fetchAccountAnalyticsSettings(accountId, client),
       // The same filter `getYppProgressAction` applies. If the settings
       // page listed channels the progress card does not, an operator
@@ -55,19 +58,8 @@ export const getAnalyticsSettingsAction = enhanceAction(
         platform: 'youtube',
         activeOnly: true,
       }),
-      client
-        .from('channel_analytics_settings')
-        .select(
-          'connection_id, ypp_target_watch_hours, ypp_target_subscribers, ypp_applicant_status, joined_ypp_at',
-        )
-        .eq('account_id', accountId),
+      fetchChannelAnalyticsOverrides(accountId, client),
     ]);
-
-    // One row per channel at most — `connection_id` is the primary key — so
-    // a map cannot lose an override to a duplicate key.
-    const byConnection = new Map(
-      (overrides ?? []).map((row) => [row.connection_id, row]),
-    );
 
     return {
       accountSettings,

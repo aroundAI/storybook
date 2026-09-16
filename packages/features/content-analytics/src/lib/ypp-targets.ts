@@ -63,6 +63,16 @@ export interface ResolvedYppTarget {
   watchHoursBasis: TargetBasis;
   subscribersBasis: TargetBasis;
   applicantStatus: YppApplicantStatus;
+  /**
+   * True only where the `unknown`-status over-state rule actually raised a
+   * target above plain channel-then-account precedence.
+   *
+   * The card used to infer this from `applicantStatus === 'unknown'`, which
+   * is the default for every channel — so a brand-new account was told the
+   * higher configured target was being shown when nothing was configured at
+   * all. A sentence that claims a rule fired owes a value that says it did.
+   */
+  escalated: boolean;
   joinedYppAt: string | null;
   alreadyJoined: boolean;
 }
@@ -119,9 +129,17 @@ export function resolveYppTarget({
     subscribers: subscribers.value,
     subscribersBasis: subscribers.basis,
     applicantStatus,
+    escalated: watchHours.escalated || subscribers.escalated,
     joinedYppAt,
     alreadyJoined: joinedYppAt !== null,
   };
+}
+
+interface ResolvedOne {
+  value: number;
+  basis: TargetBasis;
+  /** True only when the over-state rule actually changed the answer. */
+  escalated: boolean;
 }
 
 function resolveOne(
@@ -129,29 +147,45 @@ function resolveOne(
   account: number | null,
   fallback: number,
   status: YppApplicantStatus,
-): { value: number; basis: TargetBasis } {
+): ResolvedOne {
   const candidates: Array<{ value: number; basis: TargetBasis }> = [];
 
-  if (channel !== null) candidates.push({ value: channel, basis: 'channel' });
-  if (account !== null) candidates.push({ value: account, basis: 'account' });
+  // Non-positive values are treated as unconfigured rather than trusted.
+  // A database constraint rejects them now, but every one of these numbers
+  // is a denominator — `Math.min(1, hours / 0)` is 1, which reports the gate
+  // as *met* — and this is the single place they become one. A row that
+  // predates the constraint, or arrives through some path that does not go
+  // near it, degrades to the shipped default instead of to a false pass.
+  if (channel !== null && channel > 0) {
+    candidates.push({ value: channel, basis: 'channel' });
+  }
+
+  if (account !== null && account > 0) {
+    candidates.push({ value: account, basis: 'account' });
+  }
 
   if (candidates.length === 0) {
-    return { value: fallback, basis: 'default' };
+    return { value: fallback, basis: 'default', escalated: false };
   }
 
   // Both levels configured and disagreeing is the only shape the status can
   // act on. `candidates[0]` is the channel whenever there is one, so plain
   // precedence is the default answer.
-  const escalated =
+  const disagree =
     candidates.length > 1 && candidates[0]!.value !== candidates[1]!.value;
 
-  if (status === 'unknown' && escalated) {
-    return candidates.reduce((highest, candidate) =>
-      candidate.value > highest.value ? candidate : highest,
+  if (status === 'unknown' && disagree) {
+    const highest = candidates.reduce((best, candidate) =>
+      candidate.value > best.value ? candidate : best,
     );
+
+    // Escalation only counts when it moved the answer off plain precedence.
+    // Reporting it otherwise makes the card claim a bar was raised when the
+    // channel's own value was already the higher one.
+    return { ...highest, escalated: highest.basis !== candidates[0]!.basis };
   }
 
-  return candidates[0]!;
+  return { ...candidates[0]!, escalated: false };
 }
 
 function toApplicantStatus(raw: string | undefined): YppApplicantStatus {
@@ -164,11 +198,21 @@ function toApplicantStatus(raw: string | undefined): YppApplicantStatus {
     : 'unknown';
 }
 
-/** The account-wide minimum sample size for tag medians. */
+/**
+ * The account-wide minimum sample size for tag medians.
+ *
+ * Non-positive is treated as unset, matching `resolveOne`: a threshold of
+ * zero would admit every tag with no videos behind it into a median, which
+ * is the opposite of what the setting is for.
+ */
 export function resolveTagMinSample(
   accountSettings: { tag_min_sample: number | null } | null,
 ): number {
-  return accountSettings?.tag_min_sample ?? ANALYTICS_DEFAULTS.tagMinSample;
+  const configured = accountSettings?.tag_min_sample ?? null;
+
+  return configured !== null && configured > 0
+    ? configured
+    : ANALYTICS_DEFAULTS.tagMinSample;
 }
 
 const WHOLE_NUMBER = /^\d+$/;

@@ -24,7 +24,13 @@ create table if not exists public.channel_analytics_settings (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint channel_analytics_settings_status_check
-    check (ypp_applicant_status in ('unknown', 'new_applicant', 'existing_partner'))
+    check (ypp_applicant_status in ('unknown', 'new_applicant', 'existing_partner')),
+  -- Denominators, so zero is not a legal target — see 67 and the
+  -- 20260916130805 migration.
+  constraint channel_analytics_settings_watch_hours_positive
+    check (ypp_target_watch_hours is null or ypp_target_watch_hours > 0),
+  constraint channel_analytics_settings_subscribers_positive
+    check (ypp_target_subscribers is null or ypp_target_subscribers > 0)
 );
 
 comment on table public.channel_analytics_settings is

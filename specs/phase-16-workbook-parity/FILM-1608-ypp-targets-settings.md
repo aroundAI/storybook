@@ -264,3 +264,55 @@ sufficient for every current use.
   because Postgres applies the SELECT policy to the row an UPDATE produces.
   Widening the read policy as well turns the case red. The migration says so
   rather than implying the clause is load-bearing.
+
+## 9. Code-review remediation
+
+Eight findings, all confirmed before acting on any of them.
+
+**Discarded PostgREST errors, in three places.** `fetchAccountAnalyticsSettings`
+and both reads of `channel_analytics_settings` dropped `error` and returned
+`null` / an empty map — which this feature *defines* as "nothing configured".
+A transient read failure therefore rendered every field blank and armed the
+user's next save to upsert those blanks over a good row, erasing the applicant
+status and joined date a delete was deliberately kept away from. All three now
+throw. The second read was the same query twice, so it moved into
+`fetchChannelAnalyticsOverrides` rather than being fixed twice.
+
+**Targets had no positivity constraint.** Every one is a denominator:
+`Math.min(1, hours / 0)` is `1`, so a stored zero reported the monetisation
+gate as *met*, and `0 / 0` put `NaN` into the progress bar. `.positive()`
+guarded one writer; service_role, psql and any future caller went straight
+past it. Migration `20260916130805` puts the invariant on both tables (NULL
+still passes, so "inherit" survives), `resolveOne` treats a non-positive
+stored value as unconfigured, and three pgTAP cases hold it.
+
+**The generated types were regenerated with the wrong CLI.** Local
+`supabase` is 2.40.7; CI pins 2.117.0. The committed diff was 358/102 with
+only 5 lines touching this feature — it deleted `__InternalSupabase.
+PostgrestVersion` and nine `SetofOptions` blocks, which is what types an
+`.rpc()` result as a row rather than an array. Now spliced from main so the
+diff is 71/9: the new table plus nine nullable columns, nothing else.
+
+**The card asserted an escalation that had not happened.** It printed "the
+higher configured target is shown" whenever the status was `unknown`, which
+is every channel's default — so a brand-new account with nothing configured
+was told a bar had been raised. `resolveYppTarget` now returns `escalated`,
+true only where the rule actually moved the answer.
+
+**A lower channel override looked like it worked and did not.** Saving one
+under the default `unknown` status succeeds, toasts, and round-trips, while
+the over-state rule keeps the account's figure. The form now says so before
+the save, naming both numbers.
+
+**One test could not fail.** `'a blank target is accepted and means inherit'`
+asserted a blank form on a freshly seeded account — both assertions already
+true before the save, so a no-op save stayed green. It now sets values,
+clears them, and reloads; a no-op save was confirmed to turn it red.
+
+### And one defect the screenshots caught that nothing else did
+
+The override notice quoted the account figure from *page load*, so after
+saving new defaults without reloading it read "lower than the account's
+4,000" directly beneath a field showing 3,500. No test asserted that number
+and no type could. `router.refresh()` fixes it, and a Playwright case now
+pins both figures — proven red first.

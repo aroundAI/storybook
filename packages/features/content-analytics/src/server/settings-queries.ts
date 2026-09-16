@@ -33,16 +33,74 @@ export interface AccountAnalyticsSettings {
  * Returns `null` when no row exists, which callers must treat exactly as they
  * treat a row of nulls: both mean "nothing configured". `resolveYppTarget`
  * and `resolveTagMinSample` already do.
+ *
+ * **Throws on a failed read rather than returning null.** The two are not the
+ * same thing and the difference is destructive here: `null` means "nothing
+ * configured", so a swallowed error renders every field blank, and the user's
+ * next save upserts those blanks over a row that was fine. A read failure has
+ * to stop the page, not quietly become a proposal to erase the settings.
  */
 export async function fetchAccountAnalyticsSettings(
   accountId: string,
   client: Client = getSupabaseServerClient(),
 ): Promise<AccountAnalyticsSettings | null> {
-  const { data } = await client
+  const { data, error } = await client
     .from('analytics_settings')
     .select('ypp_target_watch_hours, ypp_target_subscribers, tag_min_sample')
     .eq('account_id', accountId)
     .maybeSingle();
 
+  if (error) {
+    throw new Error(`Failed to read analytics settings: ${error.message}`);
+  }
+
   return data;
+}
+
+export interface ChannelAnalyticsOverride {
+  connection_id: string;
+  ypp_target_watch_hours: number | null;
+  ypp_target_subscribers: number | null;
+  ypp_applicant_status: string;
+  joined_ypp_at: string | null;
+}
+
+/**
+ * Every per-channel override on an account, keyed by connection.
+ *
+ * Here rather than inline in its two callers — the settings page and
+ * `getYppProgressAction` — because it is the same query twice, and the last
+ * time this table had two independent readers they drifted on what an unset
+ * value meant.
+ *
+ * Throws on a failed read, for the same reason the account read does. An
+ * empty map is indistinguishable from "no overrides configured": on the
+ * settings page that renders every channel blank and arms a save that wipes
+ * the status and joined date the header of `settings-actions.ts` explains
+ * were deliberately kept out of reach of a delete. In
+ * `getYppProgressAction` it is worse than blank — every channel then reports
+ * `basis: 'account'` or `'default'`, so the card states a provenance that is
+ * false rather than merely missing.
+ *
+ * The result is a Map because `connection_id` is the table's primary key, so
+ * a lookup cannot lose an override to a duplicate.
+ */
+export async function fetchChannelAnalyticsOverrides(
+  accountId: string,
+  client: Client = getSupabaseServerClient(),
+): Promise<Map<string, ChannelAnalyticsOverride>> {
+  const { data, error } = await client
+    .from('channel_analytics_settings')
+    .select(
+      'connection_id, ypp_target_watch_hours, ypp_target_subscribers, ypp_applicant_status, joined_ypp_at',
+    )
+    .eq('account_id', accountId);
+
+  if (error) {
+    throw new Error(
+      `Failed to read per-channel analytics settings: ${error.message}`,
+    );
+  }
+
+  return new Map((data ?? []).map((row) => [row.connection_id, row]));
 }

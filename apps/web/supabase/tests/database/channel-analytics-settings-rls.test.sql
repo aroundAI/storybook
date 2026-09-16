@@ -4,7 +4,7 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 -- A fixed count rather than no_plan(): a file that aborts partway through
 -- still reports the tests it managed to run, which reads like a nearly-
 -- passing suite. With a plan, stopping early is a plan mismatch.
-select plan(21);
+select plan(24);
 
 -- FILM-1608. Two tables are exercised here:
 --
@@ -262,6 +262,39 @@ select is(
 );
 
 select makerkit.authenticate_as('member');
+
+-- ==================================
+-- Targets are denominators, so zero is not a legal target
+-- ==================================
+-- `Math.min(1, watchHours / 0)` is 1, so a stored zero reports the
+-- monetisation gate as *met* rather than erroring, and `0 / 0` puts NaN into
+-- the progress bar. `.positive()` in the Zod schema guards one writer;
+-- service_role, psql and every future caller reach these columns without it.
+
+select throws_ok(
+  $$ update public.channel_analytics_settings set ypp_target_watch_hours = 0
+     where connection_id = 'c0ffee11-0000-4000-8000-000000000001' $$,
+  '23514',
+  'new row for relation "channel_analytics_settings" violates check constraint "channel_analytics_settings_watch_hours_positive"',
+  'A channel target of zero is refused by the database, not just by Zod'
+);
+
+select throws_ok(
+  $$ update public.analytics_settings set ypp_target_subscribers = 0
+     where account_id = current_setting('cas.story')::uuid $$,
+  '23514',
+  'new row for relation "analytics_settings" violates check constraint "analytics_settings_subscribers_positive"',
+  'An account target of zero is refused too'
+);
+
+-- The constraints must not have cost us the vocabulary they were added
+-- beside: null is how a channel says "inherit" and an account says "use the
+-- shipped default", and a CHECK that evaluates to NULL passes.
+select lives_ok(
+  $$ update public.channel_analytics_settings set ypp_target_watch_hours = null
+     where connection_id = 'c0ffee11-0000-4000-8000-000000000001' $$,
+  'Null is still accepted, so "inherit" survives the positivity constraint'
+);
 
 -- ==================================
 -- Cascades

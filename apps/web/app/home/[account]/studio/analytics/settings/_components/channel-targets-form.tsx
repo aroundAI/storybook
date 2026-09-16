@@ -50,8 +50,13 @@ const STATUS_LABEL = {
 
 export function ChannelTargetsForm({
   channel,
+  accountWatchHours,
+  accountSubscribers,
 }: {
   channel: ChannelSettingsEntry;
+  /** The account-level values this channel inherits, already resolved. */
+  accountWatchHours: number;
+  accountSubscribers: number;
 }) {
   const [version, setVersion] = useState(0);
 
@@ -105,6 +110,22 @@ export function ChannelTargetsForm({
             className={'space-y-6'}
             data-test={'channel-targets-form'}
           >
+            <OverriddenNotice
+              status={form.watch('yppApplicantStatus')}
+              entries={[
+                {
+                  label: 'watch hours',
+                  channel: form.watch('yppTargetWatchHours'),
+                  account: accountWatchHours,
+                },
+                {
+                  label: 'subscribers',
+                  channel: form.watch('yppTargetSubscribers'),
+                  account: accountSubscribers,
+                },
+              ]}
+            />
+
             <div key={version} className={'grid gap-6 md:grid-cols-2'}>
               <OverrideNumberField
                 control={form.control}
@@ -197,5 +218,48 @@ export function ChannelTargetsForm({
         </Form>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Says so when a target the user has typed will not be the one used.
+ *
+ * With the default `unknown` status, a channel value *lower* than the
+ * account value loses to the over-state rule — the save succeeds, the toast
+ * fires, the number round-trips on reload, and the progress card goes on
+ * using the account's. Everything says it worked. Without this notice the
+ * most likely first action anyone takes on this page, lowering one channel's
+ * bar, appears to work and does not.
+ */
+function OverriddenNotice({
+  status,
+  entries,
+}: {
+  status: 'unknown' | 'new_applicant' | 'existing_partner';
+  entries: Array<{ label: string; channel: number | null; account: number }>;
+}) {
+  if (status !== 'unknown') return null;
+
+  const overridden = entries.filter(
+    (entry) => entry.channel !== null && entry.channel < entry.account,
+  );
+
+  if (overridden.length === 0) return null;
+
+  return (
+    <p
+      className={'text-muted-foreground border-l-2 pl-3 text-xs'}
+      data-test={'channel-overridden-notice'}
+    >
+      {overridden
+        .map(
+          (entry) =>
+            `The ${entry.label} target below ${entry.channel!.toLocaleString()} is lower than the account's ${entry.account.toLocaleString()}`,
+        )
+        .join('; ')}
+      . While the applicant status is Unknown the higher figure is used, so this
+      channel will still be measured against the account target. Set the status
+      to &ldquo;Already a partner&rdquo; if the lower bar is the real one.
+    </p>
   );
 }

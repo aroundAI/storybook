@@ -1,3 +1,4 @@
+import { ANALYTICS_DEFAULTS } from '@kit/content-analytics/lib/ypp-targets';
 import { getAnalyticsSettingsAction } from '@kit/content-analytics/server/settings-actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { createTeamAccountsApi } from '@kit/team-accounts/api';
@@ -77,7 +78,21 @@ async function AnalyticsSettingsPage({ params }: PageProps) {
           </p>
         ) : (
           settings.channels.map((channel) => (
-            <ChannelTargetsForm key={channel.connectionId} channel={channel} />
+            <ChannelTargetsForm
+              key={channel.connectionId}
+              channel={channel}
+              // The value this channel inherits when it sets nothing — what
+              // the form compares against to warn that a lower override will
+              // lose to the over-state rule.
+              accountWatchHours={
+                settings.accountSettings?.ypp_target_watch_hours ??
+                ANALYTICS_DEFAULTS.watchHours
+              }
+              accountSubscribers={
+                settings.accountSettings?.ypp_target_subscribers ??
+                ANALYTICS_DEFAULTS.subscribers
+              }
+            />
           ))
         )}
       </div>

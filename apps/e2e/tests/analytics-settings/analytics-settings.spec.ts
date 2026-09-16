@@ -28,26 +28,44 @@ test.describe('Analytics settings', () => {
     await expect(settings.accountSavedSummary()).toContainText('watch hours');
   });
 
-  test('a blank target is accepted and means inherit', async ({ page }) => {
+  test('a blank account target is stored as inherit, not as a number', async ({
+    page,
+  }) => {
     const settings = new AnalyticsSettingsPageObject(page);
 
     const account = await settings.setup();
 
-    // Nothing filled in at all. The schema takes `null`, not `undefined` and
-    // not 0 — if blank were being coerced to a number this would either be
-    // rejected on a field the user never touched, or saved as a real target.
+    // A value is set first, deliberately. The first draft of this test saved
+    // a blank form on a freshly seeded account and asserted the fields were
+    // blank — both true *before* the save, so it stayed green whether or not
+    // the save did anything at all. Clearing something that was really there
+    // is the only version of this that can fail.
+    await settings.accountWatchHours().fill('3500');
+    await settings.accountSubscribers().fill('900');
+    await settings.saveAccount();
+
+    await settings.goToSettings(account.slug);
+    await expect(settings.accountWatchHours()).toHaveValue('3500');
+
+    await settings.accountWatchHours().fill('');
+    await settings.accountSubscribers().fill('');
     await settings.saveAccount();
 
     await expect(settings.accountSavedSummary()).toContainText(
       'All three using defaults',
     );
 
+    // Round-tripped through Postgres: a blank must come back as null, not as
+    // 0 and not as the default written into the column.
     await settings.goToSettings(account.slug);
 
     await expect(settings.accountWatchHours()).toHaveValue('');
+    await expect(settings.accountSubscribers()).toHaveValue('');
   });
 
-  test('clearing a channel override stores null, not zero', async ({ page }) => {
+  test('clearing a channel override stores null, not zero', async ({
+    page,
+  }) => {
     const settings = new AnalyticsSettingsPageObject(page);
 
     const account = await settings.setup();
@@ -133,5 +151,31 @@ test.describe('Analytics settings', () => {
         'Enter a whole number greater than zero, or leave blank to inherit',
       ),
     ).toBeVisible();
+  });
+
+  test('the override notice quotes the account value just saved, not the one from page load', async ({
+    page,
+  }) => {
+    const settings = new AnalyticsSettingsPageObject(page);
+
+    await settings.setup();
+
+    // Save a new account default without reloading, then look at a channel.
+    // The channel card is server-rendered with the account's figures, so
+    // before `router.refresh()` the notice went on quoting the value from
+    // page load — a screenshot caught it saying "lower than the account's
+    // 4,000" directly beneath a field reading 3,500. Nothing asserted that
+    // number, which is exactly why the screenshot rule exists.
+    await settings.accountWatchHours().fill('3500');
+    await settings.saveAccount();
+
+    await settings.chooseStatus('Unknown');
+    await settings.channelWatchHours().fill('1200');
+
+    const notice = page.locator('[data-test="channel-overridden-notice"]');
+
+    await expect(notice).toBeVisible();
+    await expect(notice).toContainText('3,500');
+    await expect(notice).not.toContainText('4,000');
   });
 });

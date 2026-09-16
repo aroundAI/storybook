@@ -34,6 +34,8 @@ export interface YppChannelProgress {
   watchHoursBasis: TargetBasis;
   subscribersBasis: TargetBasis;
   applicantStatus: YppApplicantStatus;
+  /** Set only where the over-state rule actually raised a target. */
+  escalated: boolean;
   joinedYppAt: string | null;
   alreadyJoined: boolean;
   windowDays: number;
@@ -97,8 +99,14 @@ export function YppProgressCard({
         {bothMet
           ? `Both thresholds met over the trailing ${progress.windowDays} days.`
           : `Trailing ${progress.windowDays} days, channel-wide.`}
-        {progress.applicantStatus === 'unknown'
-          ? ' Applicant status unknown, so the higher configured target is shown.'
+        {/*
+          Gated on `escalated`, not on the status alone. Every channel starts
+          `unknown`, so keying off the status announced a raised bar on a
+          brand-new account where nothing was configured at either level —
+          a sentence asserting a rule that had not fired.
+        */}
+        {progress.escalated
+          ? ' Applicant status unknown, so the higher of the two configured targets is shown.'
           : ''}
       </p>
     </div>

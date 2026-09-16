@@ -29,7 +29,10 @@ import { formatDate } from '../lib/utils';
 import { resolveYppTarget } from '../lib/ypp-targets';
 import { listAccountChannels } from './channels';
 import { assertScopeAccess } from './scope-access';
-import { fetchAccountAnalyticsSettings } from './settings-queries';
+import {
+  fetchAccountAnalyticsSettings,
+  fetchChannelAnalyticsOverrides,
+} from './settings-queries';
 
 function toDimScope(scope: Scope): DimScope {
   return {
@@ -240,27 +243,20 @@ export const getYppProgressAction = enhanceAction(
 
     const client = getSupabaseServerClient();
 
-    const [accountSettings, channels, { data: overrides }] = await Promise.all([
-      fetchAccountAnalyticsSettings(accountId, client),
-      listAccountChannels(accountId, client, {
-        platform: 'youtube',
-        activeOnly: true,
-      }),
-      client
-        .from('channel_analytics_settings')
-        .select(
-          'connection_id, ypp_target_watch_hours, ypp_target_subscribers, ypp_applicant_status, joined_ypp_at',
-        )
-        .eq('account_id', accountId),
-    ]);
-
     // The targets used to be `?? 4000` / `?? 1000` right here, which applied
     // one account-wide pair to every channel of a gate that is per-channel.
     // Resolution now lives in `resolveYppTarget` — channel, then account,
     // then default — so this action and the taxonomy one cannot disagree
     // about what an unset setting means.
-    const overrideByConnection = new Map(
-      (overrides ?? []).map((row) => [row.connection_id, row]),
+    const [accountSettings, channels, overrideByConnection] = await Promise.all(
+      [
+        fetchAccountAnalyticsSettings(accountId, client),
+        listAccountChannels(accountId, client, {
+          platform: 'youtube',
+          activeOnly: true,
+        }),
+        fetchChannelAnalyticsOverrides(accountId, client),
+      ],
     );
 
     const selected = connectionId
@@ -325,6 +321,7 @@ export const getYppProgressAction = enhanceAction(
           watchHoursBasis: target.watchHoursBasis,
           subscribersBasis: target.subscribersBasis,
           applicantStatus: target.applicantStatus,
+          escalated: target.escalated,
           joinedYppAt: target.joinedYppAt,
           alreadyJoined: target.alreadyJoined,
           windowDays,
