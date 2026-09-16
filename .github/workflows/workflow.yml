@@ -167,6 +167,30 @@ jobs:
         working-directory: apps/web
         run: supabase start
 
+      # `CLAUDE.md` has told people to run typegen after a migration since
+      # this repo began, and nothing checked. FILM-1608 shipped a
+      # `database.types.ts` that had been hand-spliced rather than generated,
+      # because the documented command produced a *worse* file than CI's
+      # toolchain — the devDependency was 2.40.7 while this job pins 2.117.0,
+      # so `pnpm supabase:web:typegen` silently deleted the `SetofOptions`
+      # blocks that type an `.rpc()` result as a row rather than an array.
+      #
+      # The versions are aligned now, so regenerating here is deterministic:
+      # this job already started Supabase from every migration, and the CLI
+      # that did it is the one npm resolves. A file that is stale, or edited
+      # by hand, fails.
+      - name: Types are generated, not hand-written
+        working-directory: apps/web
+        run: |
+          pnpm run supabase:typegen
+          cd "$GITHUB_WORKSPACE"
+          if ! git diff --exit-code -- \
+            apps/web/lib/database.types.ts \
+            packages/supabase/src/database.types.ts; then
+            echo "::error::database.types.ts does not match the schema. Run 'pnpm supabase:web:typegen' and commit the result."
+            exit 1
+          fi
+
       - name: Verify pagination and RLS against a real PostgREST
         working-directory: apps/web
         run: |

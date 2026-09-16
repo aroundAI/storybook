@@ -1,6 +1,21 @@
 -- WEBHOOKS SEED
 -- PLEASE NOTE: These webhooks are only for development purposes. Leave them as they are or add new ones.
 
+-- `supabase_functions.http_request` — the function every trigger below calls —
+-- dispatches through `net.http_post`, so it needs pg_net. Older Supabase
+-- images installed that extension into the template database, so nothing here
+-- ever had to ask for it; CLI 2.117.0 does not, and a fresh `supabase start`
+-- or `db reset` then leaves these triggers pointing at a schema that does not
+-- exist. Every delete on accounts, subscriptions or invitations fails with
+-- `3F000: schema "net" does not exist`, which takes most of the pgTAP suite
+-- with it.
+--
+-- Declared here rather than in a migration because the triggers are
+-- development-only: production creates its webhooks through the dashboard,
+-- and a migration would push the extension onto every environment to satisfy
+-- a fixture.
+create extension if not exists pg_net;
+
 -- These webhooks are only for development purposes.
 -- In production, you should manually create webhooks in the Supabase dashboard (or create a migration to do so).
 -- We don't do it because you'll need to manually add your webhook URL and secret key.

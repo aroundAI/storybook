@@ -58,8 +58,11 @@ pnpm --filter web supabase migration up
 #    (so the two do not drift further) — but never generate from it
 
 # 4. Generate TypeScript types
-supabase gen types typescript --local > lib/database.types.ts
-cp lib/database.types.ts ../../packages/supabase/src/database.types.ts
+pnpm supabase:web:typegen   # writes both copies; never hand-edit the result
+
+# CI regenerates and diffs this. A hand-edited or stale database.types.ts
+# fails the Supabase DB job. The CLI version in apps/web/package.json is
+# pinned to the one CI installs so the two agree byte for byte.
 ```
 
 ⚠️ **CRITICAL**: Schema files are just documentation. Only a migration changes
