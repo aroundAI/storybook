@@ -17,8 +17,10 @@ import {
   TagDimensionSchema,
   UpdateTagSchema,
 } from '../lib/schemas/taxonomy.schema';
+import { resolveTagMinSample } from '../lib/ypp-targets';
 import { upsertVideoDims } from './dim-sync';
 import { assertScopeAccess } from './scope-access';
+import { fetchAccountAnalyticsSettings } from './settings-queries';
 
 export const createTagAction = enhanceAction(
   async (data, user) => {
@@ -300,12 +302,8 @@ export const getMedianByTagAction = enhanceAction(
     // Counts DISTINCT tagged videos. A row count over publish_tags counts
     // assignments, so one video carrying four tags would advance the gate
     // by four.
-    const [{ data: settings }, { data: taggedCount }] = await Promise.all([
-      client
-        .from('analytics_settings')
-        .select('tag_min_sample')
-        .eq('account_id', resolvedAccountId)
-        .maybeSingle(),
+    const [settings, { data: taggedCount }] = await Promise.all([
+      fetchAccountAnalyticsSettings(resolvedAccountId, client),
       client.rpc('count_tagged_publishes', {
         target_account_id: resolvedAccountId,
       }),
@@ -323,7 +321,11 @@ export const getMedianByTagAction = enhanceAction(
     const rows = await querySegmentPerformance({
       scope,
       segment: { kind: 'tag', dimension },
-      minVideos: settings?.tag_min_sample ?? 5,
+      // `?? 5` until FILM-1608. The literal defaults now live in
+      // ANALYTICS_DEFAULTS beside the YPP ones, because the two readers of
+      // this table had already drifted into resolving an unset value
+      // differently from each other.
+      minVideos: resolveTagMinSample(settings),
       checkpointDays,
     });
 

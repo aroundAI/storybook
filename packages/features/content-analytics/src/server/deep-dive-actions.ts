@@ -26,8 +26,10 @@ import {
   TrafficBreakdownSchema,
 } from '../lib/schemas/traffic.schema';
 import { formatDate } from '../lib/utils';
+import { resolveYppTarget } from '../lib/ypp-targets';
 import { listAccountChannels } from './channels';
 import { assertScopeAccess } from './scope-access';
+import { fetchAccountAnalyticsSettings } from './settings-queries';
 
 function toDimScope(scope: Scope): DimScope {
   return {
@@ -238,20 +240,28 @@ export const getYppProgressAction = enhanceAction(
 
     const client = getSupabaseServerClient();
 
-    const [{ data: settings }, channels] = await Promise.all([
-      client
-        .from('analytics_settings')
-        .select('ypp_target_watch_hours, ypp_target_subscribers')
-        .eq('account_id', accountId)
-        .maybeSingle(),
+    const [accountSettings, channels, { data: overrides }] = await Promise.all([
+      fetchAccountAnalyticsSettings(accountId, client),
       listAccountChannels(accountId, client, {
         platform: 'youtube',
         activeOnly: true,
       }),
+      client
+        .from('channel_analytics_settings')
+        .select(
+          'connection_id, ypp_target_watch_hours, ypp_target_subscribers, ypp_applicant_status, joined_ypp_at',
+        )
+        .eq('account_id', accountId),
     ]);
 
-    const targetWatchHours = settings?.ypp_target_watch_hours ?? 4000;
-    const targetSubscribers = settings?.ypp_target_subscribers ?? 1000;
+    // The targets used to be `?? 4000` / `?? 1000` right here, which applied
+    // one account-wide pair to every channel of a gate that is per-channel.
+    // Resolution now lives in `resolveYppTarget` — channel, then account,
+    // then default — so this action and the taxonomy one cannot disagree
+    // about what an unset setting means.
+    const overrideByConnection = new Map(
+      (overrides ?? []).map((row) => [row.connection_id, row]),
+    );
 
     const selected = connectionId
       ? channels.filter((channel) => channel.connectionId === connectionId)
@@ -288,20 +298,35 @@ export const getYppProgressAction = enhanceAction(
           (videoTotals.watchTimeSeconds + channelTotals.watchTimeSeconds) /
           3600;
 
+        const target = resolveYppTarget({
+          channelSettings:
+            overrideByConnection.get(channel.connectionId) ?? null,
+          accountSettings,
+        });
+
         return {
           connectionId: channel.connectionId,
           channelName: channel.name,
           watchHours: Math.round(watchHours * 10) / 10,
-          targetWatchHours,
-          watchHoursProgress: Math.min(1, watchHours / targetWatchHours),
+          targetWatchHours: target.watchHours,
+          watchHoursProgress: Math.min(1, watchHours / target.watchHours),
           // Net movement, not an absolute count — the absolute figure needs
           // the channel snapshot introduced in FILM-1607.
           netSubscribers: videoTotals.netSubscribers,
-          targetSubscribers,
+          targetSubscribers: target.subscribers,
           subscriberProgress: Math.min(
             1,
-            Math.max(0, videoTotals.netSubscribers) / targetSubscribers,
+            Math.max(0, videoTotals.netSubscribers) / target.subscribers,
           ),
+          // Per metric, because the two override columns are independently
+          // nullable: a channel can set a subscriber target and inherit its
+          // watch-hours one, and a single basis would be wrong about one of
+          // them.
+          watchHoursBasis: target.watchHoursBasis,
+          subscribersBasis: target.subscribersBasis,
+          applicantStatus: target.applicantStatus,
+          joinedYppAt: target.joinedYppAt,
+          alreadyJoined: target.alreadyJoined,
           windowDays,
         };
       }),

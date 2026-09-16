@@ -9,6 +9,7 @@ import {
   Settings,
   Share2,
   Tags,
+  Target,
   Users,
 } from 'lucide-react';
 
@@ -53,6 +54,11 @@ const getRoutes = (account: string) => [
         label: 'common:routes.experiments',
         path: `/home/${account}/studio/analytics/experiments`,
         Icon: <FlaskConical className={iconClasses} />,
+      },
+      {
+        label: 'common:routes.analyticsSettings',
+        path: `/home/${account}/studio/analytics/settings`,
+        Icon: <Target className={iconClasses} />,
       },
     ],
   },

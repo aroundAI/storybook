@@ -38,6 +38,18 @@ export {
   getYppProgressAction,
 } from './deep-dive-actions';
 
+// Analytics settings writer (FILM-1608)
+export {
+  getAnalyticsSettingsAction,
+  updateAccountAnalyticsSettingsAction,
+  updateChannelAnalyticsSettingsAction,
+} from './settings-actions';
+export type {
+  AnalyticsSettingsView,
+  ChannelSettingsEntry,
+  UpdateAnalyticsSettingsResult,
+} from './settings-actions';
+
 // Hook Lab (FILM-1510)
 export {
   addHookVariantAction,

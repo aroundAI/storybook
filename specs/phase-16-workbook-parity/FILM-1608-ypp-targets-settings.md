@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1608
 title: YPP Targets & Analytics Settings
-status: DRAFT
+status: ✅ DONE
 effort: M
 dependencies: FILM-1602
 ---
@@ -87,6 +87,19 @@ structure is built for it; the assertion is not made on a guess.
   grant** (`schemas/67-analytics-settings.sql`). Reset-to-default is
   writing `null`, never deleting the row. The new table matches, so both
   behave the same way.
+
+  **As specified this was impossible, and the migration fixes it.**
+  `analytics_settings`' three integer columns shipped `not null default
+  4000/1000/5`, so a null write to the account row fails outright — the two
+  levels could not have behaved the same way, and `basis` could not have
+  been reported honestly. Migration `20260916073206` drops the NOT NULL and
+  the defaults. Safe without a backfill: the table has never had a writer
+  and is empty in every environment, and both existing readers already
+  spell the fallback `??`, which treats null and absent alike.
+
+  The same migration attaches `trigger_set_timestamps()` to
+  `analytics_settings`, which had none — §4 below flagged the choice
+  between fixing it and making every writer remember; fixing it won.
 - **The resolver is pure.** No Supabase client, no I/O; the caller passes
   fetched rows in. It is unit-testable while ClickHouse and the database
   are both unavailable, which is the only reason this spec's logic can be
@@ -166,7 +179,7 @@ every existing channel.
 
 | File | Change |
 |------|--------|
-| `packages/features/content-analytics/src/lib/ypp-targets.ts` | New, pure. `resolveYppTarget({channelSettings, accountSettings, now, joinedYppAt})` → `{watchHours, subscribers, basis: 'channel' \| 'account' \| 'default', applicantStatus, alreadyJoined}`. No I/O. **Write its tests first** — override-wins, channel-null-inherits, account-null-defaults, unknown-status-takes-the-higher-configured-bar, already-joined. Cheap, and the only part of this spec verifiable before a database exists. |
+| `packages/features/content-analytics/src/lib/ypp-targets.ts` | New, pure. `resolveYppTarget({channelSettings, accountSettings})` → `{watchHours, subscribers, watchHoursBasis, subscribersBasis, applicantStatus, joinedYppAt, alreadyJoined}`. **Two basis fields, not one**: the override columns are independently nullable, so a channel that sets a subscriber target and inherits its watch-hours target is an ordinary row, and a single `basis` would have to be wrong about one of them. No `now` parameter — nothing here is time-dependent once the escalation date is configuration. No I/O. **Write its tests first** — override-wins, channel-null-inherits, account-null-defaults, unknown-status-takes-the-higher-configured-bar, already-joined. Cheap, and the only part of this spec verifiable before a database exists. |
 | `packages/features/content-analytics/src/lib/schemas/settings.schema.ts` | New. `AccountAnalyticsSettingsSchema` and `ChannelAnalyticsSettingsSchema`, shared by the actions and the forms — the repo's form architecture requires one schema for both sides, not two that drift. |
 | `packages/features/content-analytics/src/server/settings-actions.ts` | New. `getAnalyticsSettingsAction`, `updateAccountAnalyticsSettingsAction`, `updateChannelAnalyticsSettingsAction`. `enhanceAction` with the shared schemas. Upsert, never delete; a cleared field writes `null`. The channel action must verify the connection belongs to the account **before** upserting — `account_id` is caller-supplied on insert, and RLS checks the value written, not the value implied by `connection_id`. |
 | `packages/features/content-analytics/src/server/deep-dive-actions.ts` | `getYppProgressAction` (`:244`) fetches the account row and the per-channel rows for the channels it already lists, then calls `resolveYppTarget` per channel. Deletes the `?? 4000` / `?? 1000` at `:262-263`. Adds `targetBasis` to each entry so the card can say where the number came from. Keeps the existing throw when `connectionId` is not an active YouTube connection (`:273-277`). |
@@ -189,20 +202,20 @@ every existing channel.
 
 ## 7. Acceptance Criteria
 
-- [ ] `resolveYppTarget` is pure and unit-tested before any UI exists
-- [ ] A channel override wins over the account row, which wins over the default
-- [ ] `null` on a channel column inherits rather than resolving to zero
-- [ ] Defaults remain 4,000 watch hours and 1,000 subscribers, so no shipped number moves on deploy
-- [ ] No escalation date is hardcoded anywhere in the resolver
-- [ ] With an escalated threshold configured, `ypp_applicant_status = 'unknown'` resolves to the higher bar
-- [ ] A channel with `joined_ypp_at` set reports as joined rather than rendering progress toward the gate
-- [ ] `getYppProgressAction` returns a per-channel target and a `targetBasis`
-- [ ] Every account and channel settings write is an upsert; clearing a value writes `null` and never deletes a row
-- [ ] The channel action rejects a `connection_id` that does not belong to the caller's account
-- [ ] `updated_at` advances on every settings write, on both tables
-- [ ] `analytics_settings` has exactly one reader after this change
-- [ ] A timestamped migration creates `channel_analytics_settings`, and `pnpm --filter web check:schema-drift` passes
-- [ ] Both `database.types.ts` copies are regenerated and identical
+- [x] `resolveYppTarget` is pure and unit-tested before any UI exists
+- [x] A channel override wins over the account row, which wins over the default — **except where it collides with the over-state rule below.** A channel value *lower* than the account value, with the default `unknown` status, resolves to the account value. `existing_partner` is how an operator asserts the lower bar. Both directions have tests; §8 records the collision.
+- [x] `null` on a channel column inherits rather than resolving to zero
+- [x] Defaults remain 4,000 watch hours and 1,000 subscribers, so no shipped number moves on deploy
+- [x] No escalation date is hardcoded anywhere in the resolver
+- [x] With an escalated threshold configured, `ypp_applicant_status = 'unknown'` resolves to the higher bar
+- [x] A channel with `joined_ypp_at` set reports as joined — `resolveYppTarget` returns `alreadyJoined`, unit-tested, and `YppProgressCard` early-returns on it. The *rendering* half is unverified in a browser because the card is mounted nowhere until FILM-1611.
+- [x] `getYppProgressAction` returns a per-channel target and a basis per metric — **verified by unit test only.** `YppProgressCard` is mounted nowhere and the action has no caller outside the package barrel, so this output reaches no screen until FILM-1611. Not ticked on the strength of reading types; not claimed to be visible either.
+- [x] Every account and channel settings write is an upsert; clearing a value writes `null` and never deletes a row
+- [x] The channel action rejects a `connection_id` that does not belong to the caller's account — it derives `account_id` from an RLS-scoped read of the connection, so a foreign id returns no row and the upsert never runs. Proven at the database layer by pgTAP; the action path itself has no test of its own, which is the weakest claim in this list.
+- [x] `updated_at` advances on every settings write, on both tables
+- [x] `analytics_settings` has exactly one reader after this change — `fetchAccountAnalyticsSettings` (`server/settings-queries.ts`). Verified by grep: the only other reference to the table is the writer's `upsert`.
+- [x] A timestamped migration creates `channel_analytics_settings`, and `pnpm --filter web check:schema-drift` passes
+- [x] Both `database.types.ts` copies are regenerated and identical
 
 ## 8. Verification
 
@@ -233,3 +246,21 @@ deletion rather than a null-write, that needs a delete policy and a grant,
 and is a separate decision. This spec deliberately does not add one: the
 open question was recorded in the original phase plan and nulling is
 sufficient for every current use.
+
+## 8. What shipped differently
+
+- **`analytics_settings` gained a schema change** the implementation map did
+  not list — nullable targets and a timestamp trigger. See §3.
+- **Two basis fields rather than one.** See §5.
+- **The channel action does not accept `account_id`.** §5 said to verify a
+  caller-supplied value before upserting; it is derived from the connection
+  row instead, which removes the class rather than guarding the instance.
+- **The `unknown`-status rule collides with channel precedence** when an
+  override is *lower* than the account value. The over-state rule wins;
+  `existing_partner` is how an operator asserts the lower bar. Both
+  directions are pinned by tests, and the phase README records it.
+- **`with check` on the update policy is not what refuses a cross-tenant
+  repoint.** Measured: widening it to `true` leaves the pgTAP suite green,
+  because Postgres applies the SELECT policy to the row an UPDATE produces.
+  Widening the read policy as well turns the case red. The migration says so
+  rather than implying the clause is load-bearing.
