@@ -30,6 +30,8 @@ export interface SeededTeam {
   password: string;
   slug: string;
   accountId: string;
+  /** The team's display name, which the admin accounts table filters on. */
+  name: string;
 }
 
 async function post(path: string, key: string, body: unknown, token?: string) {
@@ -114,10 +116,13 @@ export async function seedUser(prefix = 'user'): Promise<SeededUser> {
  * slug, and reproducing its behaviour here would mean a fixture that
  * drifts from what the product actually creates.
  */
-export async function seedTeamAccount(): Promise<SeededTeam> {
+export async function seedTeamAccount(
+  namePrefix = 'Revenue',
+): Promise<SeededTeam> {
   const stamp = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
-  const email = `revenue-${stamp}@makerkit.dev`;
+  const email = `${namePrefix.toLowerCase()}-${stamp}@makerkit.dev`;
   const password = 'password';
+  const name = `${namePrefix} ${stamp}`;
 
   await post('/auth/v1/admin/users', SERVICE_ROLE_KEY, {
     email,
@@ -134,7 +139,7 @@ export async function seedTeamAccount(): Promise<SeededTeam> {
   const account = await post(
     '/rest/v1/rpc/create_team_account',
     ANON_KEY,
-    { account_name: `Revenue ${stamp}` },
+    { account_name: name },
     session.access_token as string,
   );
 
@@ -147,6 +152,7 @@ export async function seedTeamAccount(): Promise<SeededTeam> {
   return {
     email,
     password,
+    name,
     slug: account.slug as string,
     accountId: account.id as string,
   };
