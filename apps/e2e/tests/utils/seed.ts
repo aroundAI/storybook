@@ -52,6 +52,60 @@ async function post(path: string, key: string, body: unknown, token?: string) {
   return text ? JSON.parse(text) : null;
 }
 
+export interface SeededUser {
+  email: string;
+  password: string;
+  userId: string;
+  /**
+   * The display name the account trigger derives from the email, which is
+   * what the admin accounts table shows and filters on.
+   */
+  name: string;
+}
+
+/**
+ * A confirmed user with a personal account, ready to sign in.
+ *
+ * `POST /auth/v1/admin/users` with `email_confirm: true` is the whole thing —
+ * no follow-up call is needed. `kit.setup_new_user`
+ * (`apps/web/supabase/schemas/03-accounts.sql`) fires on every insert into
+ * `auth.users`, including one made through the admin API, and writes the
+ * `public.accounts` row with `is_personal_account = true`. That row is what
+ * `/admin/accounts` lists.
+ *
+ * The trigger derives the account name from `raw_user_meta_data->>'name'`,
+ * falling back to `split_part(email, '@', 1)` — so `name` below is what the
+ * admin table renders, and what a test should filter on.
+ *
+ * This replaces driving sign-up, waiting on the confirmation mail and signing
+ * out again: three flows, each an independent way for an unrelated test to
+ * fail, none of them the subject of the test that needed a user.
+ */
+export async function seedUser(prefix = 'user'): Promise<SeededUser> {
+  const stamp = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  const email = `${prefix}-${stamp}@makerkit.dev`;
+  const password = 'password';
+
+  const user = await post('/auth/v1/admin/users', SERVICE_ROLE_KEY, {
+    email,
+    password,
+    email_confirm: true,
+  });
+
+  if (!user?.id) {
+    throw new Error(
+      `admin/users returned no id: ${JSON.stringify(user)}`,
+    );
+  }
+
+  return {
+    email,
+    password,
+    userId: user.id as string,
+    name: email.split('@')[0]!,
+  };
+}
+
 /**
  * A confirmed user who owns a team account, ready to sign in.
  *
