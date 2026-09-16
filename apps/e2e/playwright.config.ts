@@ -99,9 +99,26 @@ export default defineConfig({
   },
   /* Configure projects for major browsers */
   projects: [
+    /*
+     * Signs in as the super-admin and completes the TOTP challenge once, then
+     * saves the session. `admin.spec.ts` used to do this in `beforeEach` —
+     * eight times a run, and again on every retry — which is what made a
+     * 30-second code window into a recurring red build.
+     *
+     * Its own timeout, because the MFA retry ladder is allowed to outlast a
+     * test here. In `beforeEach` the same ladder summed to 285s under a 120s
+     * test timeout: it could never finish, and every attempt it did make came
+     * out of the budget the test body needed.
+     */
+    {
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+      timeout: 180 * 1000,
+    },
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
     },
     /* Test against mobile viewports. */
     // {
