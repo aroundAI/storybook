@@ -175,21 +175,17 @@ jobs:
       # so `pnpm supabase:web:typegen` silently deleted the `SetofOptions`
       # blocks that type an `.rpc()` result as a row rather than an array.
       #
-      # The versions are aligned now, so regenerating here is deterministic:
-      # this job already started Supabase from every migration, and the CLI
-      # that did it is the one npm resolves. A file that is stale, or edited
-      # by hand, fails.
+      # Scoped to the `public` schema, and that is not a softening. The first
+      # version of this step diffed the whole generated file and failed on one
+      # column — `storage.buckets.versioning_status` — because CI pulls its
+      # service images from ghcr.io (see SUPABASE_INTERNAL_IMAGE_REGISTRY)
+      # while a developer's machine pulls them from public.ecr.aws, and the
+      # two registries ship different storage-api builds. Gating on the whole
+      # file gates on Supabase's release schedule; gating on `public` gates on
+      # what our own migrations control. The script explains the rest.
       - name: Types are generated, not hand-written
         working-directory: apps/web
-        run: |
-          pnpm run supabase:typegen
-          cd "$GITHUB_WORKSPACE"
-          if ! git diff --exit-code -- \
-            apps/web/lib/database.types.ts \
-            packages/supabase/src/database.types.ts; then
-            echo "::error::database.types.ts does not match the schema. Run 'pnpm supabase:web:typegen' and commit the result."
-            exit 1
-          fi
+        run: pnpm run check:types-current
 
       - name: Verify pagination and RLS against a real PostgREST
         working-directory: apps/web
@@ -361,8 +357,17 @@ jobs:
         with:
           version: 2.117.0
 
+      # `migra`, `deno-relay` and `pgadmin-schema-diff` were valid service
+      # names for CLI 2.40.7 and do not exist in 2.117.0, which rejects the
+      # whole flag rather than ignoring the unknown ones. Its accepted list is
+      # gotrue, realtime, storage-api, imgproxy, kong, mailpit, postgrest,
+      # postgres-meta, studio, edge-runtime, logflare, vector, supavisor.
+      #
+      # `vector` is excluded alongside `logflare` deliberately: vector ships
+      # its logs to logflare, so excluding one without the other leaves the
+      # container unhealthy and `supabase start` times out waiting on it.
       - name: Supabase Server
-        run: pnpm run supabase:web:start -- -x studio,migra,deno-relay,pgadmin-schema-diff,imgproxy,logflare
+        run: pnpm run supabase:web:start -- -x studio,imgproxy,logflare,vector
 
       # No credential export step. apps/web/.env.test already carries the
       # local URL and the CLI's fixed public development keys — the same
