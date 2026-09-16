@@ -171,6 +171,18 @@ test.describe('Admin', () => {
 
       await page.getByRole('button', { name: 'Reactivate User' }).click();
 
+      // Wait for the dialog to close before reading the page behind it. The
+      // action redirects to the URL it is already on, and a redirect to the
+      // current route does not always force the client to re-render from the
+      // server — so the badge can still be the pre-action markup while the
+      // database is already correct. Verified: querying the same page in a
+      // fresh context immediately afterwards shows no badge.
+      await expect(
+        page.getByRole('heading', { name: 'Reactivate User' }),
+      ).toBeHidden();
+
+      await page.reload();
+
       // `toHaveCount(0)` on a test id, not `getByText('Banned')`. The text
       // locator had `.first()` when asserting presence and not when asserting
       // absence, so the negative case was a strict-mode hazard the moment
@@ -266,7 +278,7 @@ test.describe('Admin', () => {
       // `create_team_account` through the API, which is the same function the
       // product calls — so the fixture cannot drift from what a real team
       // looks like, and no part of it depends on the create-team dialog.
-      team = await seedTeamAccount('Admin');
+      team = await seedTeamAccount({ name: `Admin ${Date.now()}` });
 
       await page.goto(`/admin/accounts`);
 

@@ -117,12 +117,16 @@ export async function seedUser(prefix = 'user'): Promise<SeededUser> {
  * drifts from what the product actually creates.
  */
 export async function seedTeamAccount(
-  namePrefix = 'Revenue',
+  options: { name?: string; emailPrefix?: string } = {},
 ): Promise<SeededTeam> {
   const stamp = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
-  const email = `${namePrefix.toLowerCase()}-${stamp}@makerkit.dev`;
+  const email = `${options.emailPrefix ?? 'seeded'}-${stamp}@makerkit.dev`;
   const password = 'password';
-  const name = `${namePrefix} ${stamp}`;
+  // The caller may need a specific name — several team tests assert on it.
+  // The slug is whatever `create_team_account` derives, and is returned
+  // rather than guessed, because guessing it is how a test ends up
+  // navigating to a team that does not exist.
+  const name = options.name ?? `Seeded ${stamp}`;
 
   await post('/auth/v1/admin/users', SERVICE_ROLE_KEY, {
     email,

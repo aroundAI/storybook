@@ -1,6 +1,8 @@
 import { Page, expect } from '@playwright/test';
 
 import { AuthPageObject } from '../authentication/auth.po';
+import { seedTeamAccount } from '../utils/seed';
+import { signInAs } from '../utils/session';
 import { OtpPo } from '../utils/otp.po';
 
 export class TeamAccountsPageObject {
@@ -14,12 +16,25 @@ export class TeamAccountsPageObject {
     this.otp = new OtpPo(page);
   }
 
+  /*
+   * The team is seeded through `create_team_account` — the same function the
+   * product calls — and the user is signed in once. It used to drive sign-up,
+   * a confirmation mail, a sign-out and the create-team dialog before any
+   * test could begin, none of which is the subject of the tests that call it.
+   *
+   * `createTeam` is untouched and still covered: the reserved-names test
+   * drives that dialog directly, which is where it belongs.
+   *
+   * Returns the slug the server derived rather than the one the caller
+   * suggested — guessing it is how a test navigates to a team that is not
+   * there.
+   */
   async setup(params = this.createTeamName()) {
-    const { email } = await this.auth.signUpFlow('/home');
+    const team = await seedTeamAccount({ name: params.teamName });
 
-    await this.createTeam(params);
+    await signInAs(this.page, team);
 
-    return { email, teamName: params.teamName, slug: params.slug };
+    return { email: team.email, teamName: team.name, slug: team.slug };
   }
 
   getTeamFromSelector(teamName: string) {

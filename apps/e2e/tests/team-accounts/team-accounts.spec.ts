@@ -277,10 +277,11 @@ test.describe('Team Account Security', () => {
     const params = teamAccounts.createTeamName();
 
     // Setup User A and create team
-    await teamAccounts.setup(params);
+    const { slug: teamSlug } = await teamAccounts.setup(params);
 
-    // Store team slug for later use
-    const teamSlug = params.slug;
+    // The slug the server derived, not the one suggested. `create_team_account`
+    // owns slug generation, so reading it back is the only way to be sure the
+    // URL below points at the team that was actually created.
 
     // 2. Sign out User A
     await page.context().clearCookies();
