@@ -4,7 +4,7 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 -- A fixed count rather than no_plan(): a file that aborts partway through
 -- still reports the tests it managed to run, which reads like a nearly-
 -- passing suite. With a plan, stopping early is a plan mismatch.
-select plan(24);
+select plan(25);
 
 -- FILM-1608. Two tables are exercised here:
 --
@@ -78,14 +78,41 @@ select throws_ok(
   'A member may not create an override against an account they cannot access'
 );
 
+-- Deliberately the caller's *own* connection. An earlier version of this case
+-- used the other account's connection with this account's id, and passed —
+-- on a 23514 from the status constraint, which meant RLS had already let the
+-- row through. It was demonstrating the cross-tenant hole below while
+-- claiming to test the status check. A case that passes for the wrong reason
+-- is worse than no case.
 select throws_ok(
-  $$ insert into public.channel_analytics_settings
-       (connection_id, account_id, ypp_applicant_status)
-     values ('c0ffee11-0000-4000-8000-000000000002',
-             current_setting('cas.story')::uuid, 'not_a_status') $$,
+  $$ update public.channel_analytics_settings
+       set ypp_applicant_status = 'not_a_status'
+     where connection_id = 'c0ffee11-0000-4000-8000-000000000001' $$,
   '23514',
   'new row for relation "channel_analytics_settings" violates check constraint "channel_analytics_settings_status_check"',
   'The status check constraint admits only the three documented values'
+);
+
+-- The hole that case was hiding.
+--
+-- The policies authorise on the denormalised `account_id`, and a foreign key
+-- check does not run RLS. With `connection_id references
+-- platform_connections(id)` alone, a member of one account could file a row
+-- against another account's connection under their own account_id: the
+-- `with check` passes, because the account really is theirs. `connection_id`
+-- is the primary key, so the row squats the slot and the rightful owner's
+-- upsert fails from then on, with no delete grant to clear it.
+--
+-- The composite foreign key refuses it as a data-integrity violation rather
+-- than an authorisation one, so it holds for every writer.
+select throws_ok(
+  $$ insert into public.channel_analytics_settings
+       (connection_id, account_id, ypp_target_watch_hours)
+     values ('c0ffee11-0000-4000-8000-000000000002',
+             current_setting('cas.story')::uuid, 8000) $$,
+  '23503',
+  'insert or update on table "channel_analytics_settings" violates foreign key constraint "channel_analytics_settings_connection_account_fkey"',
+  'A member may not squat an override on another account''s channel'
 );
 
 -- ==================================

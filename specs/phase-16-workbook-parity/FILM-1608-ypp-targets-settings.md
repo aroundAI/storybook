@@ -189,6 +189,19 @@ every existing channel.
 | `apps/web/config/team-account-navigation.config.tsx` | Nav entry alongside the existing analytics routes (`:44`, `:49`, `:54`). |
 | `packages/features/content-analytics/src/server/taxonomy-actions.ts` | `tag_min_sample` read (`:276`) moves onto the same settings fetch so there is one reader of the table, not two with independent fallbacks. |
 
+### Files the map did not anticipate
+
+Added while remediating review findings, and worth naming because §5 above is
+otherwise read as the complete list:
+
+| File | Why |
+|------|-----|
+| `server/settings-queries.ts` | The single read of `analytics_settings`, once three call sites existed |
+| `settings/_components/override-number-field.tsx` | The empty-means-inherit rule, in one place rather than five |
+| `migrations/…_analytics-targets-positive.sql` | Positivity constraints — every target is a denominator |
+| `migrations/…_channel-settings-owner-integrity.sql` | The composite foreign key closing the cross-tenant squat |
+| `apps/web/scripts/check-types-current.ts` | The gate that stops a hand-edited `database.types.ts` |
+
 ## 6. Out of Scope
 
 - **A per-channel `tag_min_sample`** — taxonomy is account-wide; nothing
@@ -239,15 +252,15 @@ will save correctly and the progress card will read zero.
 
 ## 9. Follow-up
 
-`analytics_settings` gains a writer here but keeps its odd shape — no
-delete policy, and (unless fixed in this migration) no `updated_at`
-trigger. If a "reset to defaults" affordance is ever wanted as a row
+`analytics_settings` gains a writer here and keeps one piece of its odd
+shape: no delete policy. The missing `updated_at` trigger *was* fixed in
+this migration, so that half of the question is closed. If a "reset to defaults" affordance is ever wanted as a row
 deletion rather than a null-write, that needs a delete policy and a grant,
 and is a separate decision. This spec deliberately does not add one: the
 open question was recorded in the original phase plan and nulling is
 sufficient for every current use.
 
-## 8. What shipped differently
+## 10. What shipped differently
 
 - **`analytics_settings` gained a schema change** the implementation map did
   not list — nullable targets and a timestamp trigger. See §3.
@@ -265,7 +278,7 @@ sufficient for every current use.
   Widening the read policy as well turns the case red. The migration says so
   rather than implying the clause is load-bearing.
 
-## 9. Code-review remediation
+## 11. Code-review remediation
 
 Eight findings, all confirmed before acting on any of them.
 
@@ -316,3 +329,35 @@ saving new defaults without reloading it read "lower than the account's
 4,000" directly beneath a field showing 3,500. No test asserted that number
 and no type could. `router.refresh()` fixes it, and a Playwright case now
 pins both figures — proven red first.
+
+## 12. Second and third review rounds
+
+**Five findings, and one of them was mine from the round before.** Round one
+fixed "a lower channel override is silently ignored" by adding a notice. That
+notice re-derived the escalation rule instead of asking the resolver, and the
+two disagreed: `page.tsx` collapsed "the account has no row" into the literal
+4,000, while `resolveOne` escalates only when *both* levels hold a value. On
+a fresh account — every account, since this table had no writer — a perfectly
+good override was reported as ignored. `overriddenChannelTargets` now asks
+`resolveYppTarget`, so the notice is a consequence of the rule rather than a
+copy of it.
+
+Also then: three discarded PostgREST errors that would have rendered blank
+fields and armed a save to overwrite a good row; an unpaged read subject to
+the `max_rows` cap; unguarded form submits; and a blank-target test that
+could not fail.
+
+**A cross-tenant integrity hole, found by the third review.** The policies
+authorise on the denormalised `account_id`, and a foreign key check does not
+run RLS — so a member of one account could file a row against another
+account's connection under their own account id. `connection_id` is the
+primary key, so the row squats the slot and the rightful owner's upsert fails
+from then on, with no delete grant to clear it. Reproduced before fixing. A
+composite foreign key to `(id, account_id)` makes the pair consistent by
+construction, for every writer rather than for one action.
+
+**The pgTAP suite had been demonstrating that hole while claiming to test
+something else.** A case inserted another account's connection under this
+account's id and asserted a `23514` check-constraint failure — which meant
+RLS had already let the row through. It now uses the caller's own connection,
+and a separate case asserts the squat is refused.
