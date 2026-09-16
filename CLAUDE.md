@@ -638,9 +638,10 @@ CAPTURE_EVIDENCE=1 EVIDENCE_DIR=/tmp/evidence npx playwright test revenue-eviden
 ### How work gets verified — read `docs/ENGINEERING-WORKFLOW.md`
 
 **[docs/ENGINEERING-WORKFLOW.md](docs/ENGINEERING-WORKFLOW.md) is the canonical
-process**: the six failure modes that produced ~40 findings across nine review
-rounds on one `S`-sized spec, what each test layer can and cannot see, the
-sequence for a change, and the pre-PR audit.
+process**: the six failure modes behind ten review rounds on one `S`-sized
+spec, what each test layer can and cannot see, the sequence for a change, and
+the pre-PR audit. (The doc carries the counts; this pointer deliberately does
+not repeat them, because the two copies drifted apart within a day.)
 
 Three rules from it are non-negotiable and repeated here because this file is
 what gets read first:
