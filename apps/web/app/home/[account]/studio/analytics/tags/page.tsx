@@ -46,7 +46,12 @@ async function ContentTagsPage({ params }: PageProps) {
       .eq('account_id', accountData.id)
       .order('dimension')
       .order('label'),
-    fetchAccountAnalyticsSettings(accountData.id, client),
+    // Swallowed on purpose: this read throws by contract, so that the
+    // settings *form* cannot upsert blanks over real values. Here it only
+    // supplies a median panel's cut-off, and letting it throw would take the
+    // whole Content Tags page — the tag manager included — down with it.
+    // `resolveTagMinSample(null)` is the shipped default.
+    fetchAccountAnalyticsSettings(accountData.id, client).catch(() => null),
   ]);
 
   return (

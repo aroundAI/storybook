@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
 import { formatCurrency } from '../lib/format';
 import { formatLocalDate } from '../lib/manual-revenue';
+import { isUnavailable } from '../lib/query-state';
 import {
   getRevenueProjectionAction,
   getRevenueSummaryAction,
@@ -75,7 +76,7 @@ export function RevenueDashboard({
   const {
     data: summary,
     isLoading: summaryLoading,
-    isError: summaryError,
+    isError: summaryIsError,
   } = useQuery({
     queryKey: ['revenue-summary', accountId, startDate, endDate] as const,
     queryFn: () =>
@@ -91,7 +92,7 @@ export function RevenueDashboard({
   const {
     data: projection,
     isLoading: projectionLoading,
-    isError: projectionError,
+    isError: projectionIsError,
   } = useQuery({
     queryKey: ['revenue-projection', accountId] as const,
     queryFn: () => getRevenueProjectionAction({ accountId }),
@@ -110,7 +111,11 @@ export function RevenueDashboard({
   });
 
   // Fetch top content
-  const { data: topContent, isLoading: topContentLoading } = useQuery({
+  const {
+    data: topContent,
+    isLoading: topContentLoading,
+    isError: topContentIsError,
+  } = useQuery({
     queryKey: ['revenue-top-content', accountId, startDate, endDate] as const,
     queryFn: () =>
       getTopContentByRevenueAction({
@@ -120,6 +125,22 @@ export function RevenueDashboard({
         limit: 10,
       }),
     enabled: activeTab === 'content' && !!startDate && !!endDate,
+  });
+
+  // A failed *refetch* keeps the last good answer, so "unavailable" is
+  // errored *and* empty — otherwise a transient failure blanks a dashboard
+  // that still has figures to show.
+  const summaryUnavailable = isUnavailable({
+    isError: summaryIsError,
+    data: summary,
+  });
+  const projectionUnavailable = isUnavailable({
+    isError: projectionIsError,
+    data: projection,
+  });
+  const topContentUnavailable = isUnavailable({
+    isError: topContentIsError,
+    data: topContent,
   });
 
   const handleManualRevenueSuccess = () => {
@@ -168,7 +189,7 @@ export function RevenueDashboard({
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card data-test="revenue-tile-total">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
             <DollarSign className="text-muted-foreground h-4 w-4" />
@@ -176,8 +197,8 @@ export function RevenueDashboard({
           <CardContent>
             {summaryLoading ? (
               <Skeleton className="h-8 w-24" />
-            ) : summaryError ? (
-              <SummaryUnavailable />
+            ) : summaryUnavailable ? (
+              <SummaryUnavailable tile="total" />
             ) : (
               <>
                 <div className="text-2xl font-bold">
@@ -195,7 +216,7 @@ export function RevenueDashboard({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-test="revenue-tile-daily">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Daily Average</CardTitle>
             <TrendingUp className="text-muted-foreground h-4 w-4" />
@@ -203,8 +224,8 @@ export function RevenueDashboard({
           <CardContent>
             {summaryLoading ? (
               <Skeleton className="h-8 w-24" />
-            ) : summaryError ? (
-              <SummaryUnavailable />
+            ) : summaryUnavailable ? (
+              <SummaryUnavailable tile="daily" />
             ) : (
               <>
                 <div className="text-2xl font-bold">
@@ -218,7 +239,7 @@ export function RevenueDashboard({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-test="revenue-tile-rpm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">RPM</CardTitle>
             <PieChart className="text-muted-foreground h-4 w-4" />
@@ -226,8 +247,8 @@ export function RevenueDashboard({
           <CardContent>
             {summaryLoading ? (
               <Skeleton className="h-8 w-24" />
-            ) : summaryError ? (
-              <SummaryUnavailable />
+            ) : summaryUnavailable ? (
+              <SummaryUnavailable tile="rpm" />
             ) : (
               <>
                 <div className="text-2xl font-bold">
@@ -239,7 +260,7 @@ export function RevenueDashboard({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-test="revenue-tile-projection">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Monthly Projection
@@ -249,8 +270,8 @@ export function RevenueDashboard({
           <CardContent>
             {projectionLoading ? (
               <Skeleton className="h-8 w-24" />
-            ) : projectionError ? (
-              <SummaryUnavailable />
+            ) : projectionUnavailable ? (
+              <SummaryUnavailable tile="projection" />
             ) : (
               <>
                 <div className="text-2xl font-bold">
@@ -312,7 +333,7 @@ export function RevenueDashboard({
                 empty mix as "no revenue recorded" — a measured claim off a
                 read that never landed.
               */}
-              {summaryError ? (
+              {summaryUnavailable ? (
                 <p
                   className="text-destructive text-sm"
                   data-test="revenue-mix-error"
@@ -330,18 +351,30 @@ export function RevenueDashboard({
         </TabsContent>
 
         <TabsContent value="platforms">
-          <RevenuePlatformBreakdown
-            breakdown={summary?.byPlatform ?? {}}
-            total={summary?.totalRevenueCents ?? 0}
-            isLoading={summaryLoading}
-          />
+          {/*
+            Same failed summary as the tiles and the mix: without this the tab
+            prints "No revenue data by platform", which is a measurement.
+          */}
+          {summaryUnavailable ? (
+            <SummaryUnavailable tile="platforms" />
+          ) : (
+            <RevenuePlatformBreakdown
+              breakdown={summary?.byPlatform ?? {}}
+              total={summary?.totalRevenueCents ?? 0}
+              isLoading={summaryLoading}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="content">
-          <RevenueTopContent
-            data={topContent ?? []}
-            isLoading={topContentLoading}
-          />
+          {topContentUnavailable ? (
+            <SummaryUnavailable tile="content" />
+          ) : (
+            <RevenueTopContent
+              data={topContent ?? []}
+              isLoading={topContentLoading}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="manual">
@@ -393,9 +426,12 @@ export function RevenueDashboardSkeleton() {
  * directly above the revenue mix's own "could not be loaded", so the same
  * screen both admitted the failure and reported $0.00 from it.
  */
-function SummaryUnavailable() {
+function SummaryUnavailable({ tile }: { tile: string }) {
   return (
-    <p className="text-destructive text-sm" data-test="revenue-summary-error">
+    <p
+      className="text-destructive text-sm"
+      data-test={`revenue-summary-error-${tile}`}
+    >
       Revenue could not be loaded.
     </p>
   );

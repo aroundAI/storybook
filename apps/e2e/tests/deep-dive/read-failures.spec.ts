@@ -21,6 +21,9 @@ import { DeepDivePageObject } from './deep-dive.po';
  * leave to chance on a loaded runner.
  */
 const ERROR_STATE = { timeout: 20_000 };
+
+/** One request plus React Query's three default retries. */
+const RETRIED_ATTEMPTS = 4;
 async function abortActionMatching(
   page: Page,
   matches: (body: string) => boolean,
@@ -90,13 +93,36 @@ test.describe('Failed reads', () => {
     );
     await expect(mix).not.toContainText('No revenue recorded for this period.');
 
-    // The tiles above the mix read the same summary. Reporting $0.00 beside
-    // an admission that the read never landed is the same false claim the
-    // mix card was fixed for, one card up the page.
+    // The tiles above the mix read the same summary. Reporting a figure
+    // beside an admission that the read never landed is the same false claim
+    // the mix card was fixed for, one card up the page.
+    //
+    // `$0`, not `$0.00`: `formatCurrency` renders whole dollars, so the
+    // earlier assertion could not fail on any implementation.
+    for (const tile of ['total', 'daily', 'rpm']) {
+      await expect(
+        page.locator(`[data-test="revenue-summary-error-${tile}"]`),
+      ).toBeVisible(ERROR_STATE);
+    }
+
+    // No figure left in the three tiles the summary feeds. `$0`, not
+    // `$0.00` — `formatCurrency` renders whole dollars, so the earlier
+    // assertion could not fail on any implementation. Monthly Projection
+    // reads its own query, which succeeded, so its figure is real.
+    for (const tile of ['total', 'daily', 'rpm']) {
+      await expect(
+        page.locator(`[data-test="revenue-tile-${tile}"]`).getByText('$'),
+      ).toHaveCount(0);
+    }
+
+    // And the same failed summary one tab across, which printed "No revenue
+    // data by platform" — a measurement, off a read that never landed.
+    await page.locator('[role="tab"]', { hasText: 'By Platform' }).click();
+
     await expect(
-      page.locator('[data-test="revenue-summary-error"]').first(),
+      page.locator('[data-test="revenue-summary-error-platforms"]'),
     ).toBeVisible(ERROR_STATE);
-    await expect(page.getByText('$0.00')).toHaveCount(0);
+    await expect(page.getByText('No revenue data by platform')).toHaveCount(0);
   });
 
   test('failed deep-dive reads are reported, not shown as no data', async ({
@@ -137,7 +163,7 @@ test.describe('Failed reads', () => {
     await expect(page.getByText('No upload cohorts yet.')).toHaveCount(0);
   });
 
-  test('a failed refetch keeps the channel filter and the cards', async ({
+  test('a failed refetch keeps the channel filter', async ({
     page,
   }) => {
     const deepDive = new DeepDivePageObject(page);
@@ -148,34 +174,59 @@ test.describe('Failed reads', () => {
 
     const fixture = await deepDive.setup();
 
-    // Loaded, then filtered: the state a discarded channel list would strand,
-    // since the filter is the only control that can clear the filtering.
+    // Loaded, then filtered: the state a discarded channel list strands, since
+    // the filter is the only control that can clear the filtering.
     await deepDive.chooseChannel(fixture.activeChannelId);
     await expect(deepDive.channelFilter()).toContainText('Active Channel');
+
+    let attempts = 0;
 
     await abortActionMatching(page, (body) => {
       try {
         const [args] = JSON.parse(body) as Array<Record<string, unknown>>;
-        return Object.keys(args ?? {}).join() === 'projectId';
+
+        if (Object.keys(args ?? {}).join() !== 'projectId') return false;
+
+        attempts += 1;
+
+        return true;
       } catch {
         return false;
       }
     });
 
     // `visibilitychange` on `window` is what React Query's focus manager
-    // listens to; the second fast-forward runs its retry backoff out, so the
-    // refetch has genuinely failed by the time this asserts.
+    // listens to.
     await page.clock.fastForward('02:00');
     await page.evaluate(() =>
       window.dispatchEvent(new Event('visibilitychange')),
     );
-    await page.clock.fastForward('00:30');
 
-    // A failed *refetch* is not an absence: React Query keeps the last good
-    // data and leaves `status` at success, so the filter must keep working.
+    // Run the clock until the retries are spent: the query only reports
+    // failure after the last one, and asserting before that passes against
+    // any implementation.
+    await expect
+      .poll(
+        async () => {
+          await page.clock.runFor('00:05');
+          return attempts;
+        },
+        { timeout: 30_000 },
+      )
+      .toBeGreaterThanOrEqual(RETRIED_ATTEMPTS);
+
+    // The query has now failed, and its last good data is still cached:
+    // query-core sets `status: 'error'` but keeps `data`, so a bare
+    // `isError` would take the filter away while the filtering it applied
+    // stays on every card.
     await expect(
       page.locator('[data-test="channel-filter-error"]'),
     ).toHaveCount(0);
     await expect(deepDive.channelFilter()).toContainText('Active Channel');
+
+    // The cards follow the same rule through `isUnavailable`, covered by its
+    // unit test: driving *their* refetch from a browser needs a key switch,
+    // which leaves some of them genuinely uncached — a different case, and a
+    // flaky assertion.
   });
 });

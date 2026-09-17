@@ -14,6 +14,7 @@ import {
 import { TRAFFIC_SOURCE_GROUPS } from '@kit/clickhouse';
 import type { TrafficGroupBucket } from '@kit/clickhouse';
 
+import { isUnavailable } from '../../lib/query-state';
 import { listChannelsAction } from '../../server/channels-actions';
 import {
   getBackCatalogAction,
@@ -327,7 +328,7 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
             setFilters((current) => ({ ...current, connectionId }))
           }
           isLoading={channelsQuery.isLoading}
-          isError={channelsQuery.isError}
+          isError={isUnavailable(channelsQuery)}
         />
       </div>
 
@@ -394,10 +395,7 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
             <TrafficShareCard
               buckets={trafficShareBuckets}
               bucketNoun={'week'}
-              isError={
-                trafficBreakdownQuery.isError &&
-                trafficBreakdownQuery.data === undefined
-              }
+              isError={isUnavailable(trafficBreakdownQuery)}
               windowLabel={TRAFFIC_WINDOW_LABEL}
             />
           )}
@@ -416,10 +414,7 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
           ) : (
             <TrafficBreakdownCard
               buckets={trafficBuckets}
-              isError={
-                trafficBreakdownQuery.isError &&
-                trafficBreakdownQuery.data === undefined
-              }
+              isError={isUnavailable(trafficBreakdownQuery)}
               windowLabel={TRAFFIC_WINDOW_LABEL}
             />
           )}
@@ -477,7 +472,7 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
           <YppProgressSection
             applies={yppApplies}
             isLoading={yppQuery.isLoading || channelsQuery.isLoading}
-            isError={yppQuery.isError || channelsQuery.isError}
+            isError={isUnavailable(yppQuery) || isUnavailable(channelsQuery)}
             progress={projectYppProgress}
           />
         </AnalyticsCard>
@@ -487,12 +482,13 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
 }
 
 /**
- * Loading, failed, or the card.
+ * Loading, unavailable, or the card.
  *
- * `data ?? []` renders a failed read as a measured zero: a back catalog
- * contributing nothing looks exactly like one that could not be read. The
- * traffic cards take their own `isError` because they can show a stale answer
- * beside it; these three have nothing to show, so the tab answers for them.
+ * `data ?? []` rendered a failed read as a measured zero: a back catalog
+ * contributing nothing looks exactly like one that could not be read. But
+ * `isError` alone is the opposite mistake — query-core keeps `data` when a
+ * refetch fails, so a rendered chart would be thrown away over a transient
+ * failure. `isUnavailable` is the question both need answered.
  */
 function QueryState({
   query,
@@ -501,7 +497,7 @@ function QueryState({
   dataTest,
   children,
 }: {
-  query: { isLoading: boolean; isError: boolean };
+  query: { isLoading: boolean; isError: boolean; data: unknown };
   skeleton: ReactNode;
   message: string;
   dataTest: string;
@@ -509,7 +505,7 @@ function QueryState({
 }) {
   if (query.isLoading) return skeleton;
 
-  if (query.isError) {
+  if (isUnavailable(query)) {
     return (
       <p className={'text-destructive text-sm'} data-test={dataTest}>
         {message}
