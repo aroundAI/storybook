@@ -378,3 +378,26 @@ export async function seedAnalyticsSettings(
     { key: SERVICE_ROLE_KEY },
   );
 }
+
+/**
+ * A `channel_analytics_settings` row, written with the service role.
+ *
+ * Bypasses the settings schema on purpose: a test needs a row holding a value
+ * the form would now refuse, to prove such a row can still be edited.
+ */
+export async function seedChannelSettings(
+  connectionId: string,
+  accountId: string,
+  row: {
+    joined_ypp_at?: string | null;
+    ypp_target_watch_hours?: number | null;
+    ypp_target_subscribers?: number | null;
+    ypp_applicant_status?: string;
+  },
+): Promise<void> {
+  await insertRow(
+    'channel_analytics_settings',
+    { connection_id: connectionId, account_id: accountId, ...row },
+    { key: SERVICE_ROLE_KEY },
+  );
+}

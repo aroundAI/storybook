@@ -79,6 +79,13 @@ export function ChannelTargetsForm({
 }) {
   const [version, setVersion] = useState(0);
 
+  const storedJoinedAt = channel.joined_ypp_at;
+
+  const maxJoinedDate =
+    storedJoinedAt && storedJoinedAt > joinedCutoff
+      ? storedJoinedAt
+      : joinedCutoff;
+
   const form = useForm({
     resolver: zodResolver(UpdateChannelAnalyticsSettingsSchema),
     defaultValues: {
@@ -227,11 +234,18 @@ export function ChannelTargetsForm({
                       <Input
                         type={'date'}
                         value={field.value ?? ''}
-                        // The same bound the schema enforces and
-                        // `alreadyJoined` uses, fixed on the server: computing
+                        // The schema's bound, fixed on the server — computing
                         // it here would make the server (UTC) and the browser
                         // (local) render different HTML across a day boundary.
-                        max={joinedCutoff}
+                        //
+                        // Widened to a stored date that is already later:
+                        // rows written before this bound existed would
+                        // otherwise fail native validation, and the browser
+                        // refuses to submit the *whole card* for them, so the
+                        // watch-hours override could not be saved either. The
+                        // schema still refuses to save it — as a message in
+                        // the form, which the native bubble pre-empted.
+                        max={maxJoinedDate}
                         data-test={'channel-joined-input'}
                         onChange={(event) =>
                           field.onChange(event.target.value || null)

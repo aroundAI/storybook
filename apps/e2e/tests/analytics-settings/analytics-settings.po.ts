@@ -85,7 +85,9 @@ export class AnalyticsSettingsPageObject {
   }
 
   accountTagMinSample() {
-    return this.page.locator('[data-test="account-tag-min-sample-input"]:visible');
+    return this.page.locator(
+      '[data-test="account-tag-min-sample-input"]:visible',
+    );
   }
 
   accountSubmit() {
@@ -133,7 +135,9 @@ export class AnalyticsSettingsPageObject {
   }
 
   expectAccountSaved() {
-    return expect(this.page.getByText('Analytics settings saved')).toBeVisible();
+    return expect(
+      this.page.getByText('Analytics settings saved'),
+    ).toBeVisible();
   }
 
   expectChannelSaved() {
