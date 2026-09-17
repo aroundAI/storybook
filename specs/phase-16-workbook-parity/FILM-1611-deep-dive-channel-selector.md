@@ -207,12 +207,19 @@ decisions differ from the text above.
 - **`listProjectChannels` pages in a unique order** (`platform_connection_id`,
   then `id`), which is what offset paging needs — the list now decides which
   YPP cards render.
-- **A failed *refetch* is not an absence, and was already handled.** A review
-  argued `isError` discards a still-cached answer; measured in a browser, a
-  failed refetch leaves React Query's `status` at success, so `isError`
-  already means "errored with nothing to show". An e2e test locks that in.
-  The revenue summary tiles, however, did report `$0.00` from a failed read,
-  beside the mix card's own admission — fixed, projection tile included.
+- **A failed *refetch* is not an absence — and an earlier note here said the
+  opposite.** That note claimed query-core leaves `status` at success when a
+  refetch fails with data cached; it does not (`build/modern/query.js`, `case
+  'error'` sets `status: 'error'` and keeps `data`), and the test offered as
+  evidence never reached the error state. Driven to a real failure, a bare
+  `isError` removed the channel filter while its filtering stayed on every
+  card. `isUnavailable(query)` — errored *and* nothing cached — is now the one
+  rule, used by the filter, the YPP section, `QueryState`, the traffic cards,
+  the revenue tiles, mix, platforms, content and projection, and the tag
+  medians panel.
+- **The revenue summary tiles reported a figure from a failed read**, beside
+  the mix card's own admission — fixed, with the platforms and content tabs
+  and the projection, which had the same gap off the same queries.
 - **A stored future joined date no longer locks its channel card.** The date
   input's `max` widens to a date already stored, so rows written before that
   bound can still be edited; the schema still refuses to save them, in the
