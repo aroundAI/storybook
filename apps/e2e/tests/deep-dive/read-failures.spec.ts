@@ -80,4 +80,42 @@ test.describe('Failed reads', () => {
     await expect(mix.locator('[data-test="revenue-mix-error"]')).toBeVisible();
     await expect(mix).not.toContainText('No revenue recorded for this period.');
   });
+
+  test('failed deep-dive reads are reported, not shown as no data', async ({
+    page,
+  }) => {
+    const deepDive = new DeepDivePageObject(page);
+    const fixture = await deepDive.setup();
+
+    // The three cards that still rendered an empty result on failure. Each is
+    // told apart by an argument only it carries.
+    await abortActionMatching(
+      page,
+      (body) =>
+        body.includes('"mode"') ||
+        body.includes('"ageDays"') ||
+        body.includes('"checkpoints"'),
+    );
+
+    await deepDive.goToDeepDive(fixture.team.slug, fixture.project.slug);
+
+    await expect(
+      page.locator('[data-test="median-error"]:visible'),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-test="back-catalog-error"]:visible'),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-test="cohort-error"]:visible'),
+    ).toBeVisible();
+
+    // The claims that must not be made off a read that never landed.
+    await expect(
+      page.getByText('Not enough published videos yet to compute a median.'),
+    ).toHaveCount(0);
+    await expect(
+      page.getByText('Not enough history yet to separate back catalog'),
+    ).toHaveCount(0);
+    await expect(page.getByText('No upload cohorts yet.')).toHaveCount(0);
+  });
 });
