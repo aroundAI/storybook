@@ -38,7 +38,8 @@
     "./lib/types/revenue": "./src/lib/types/revenue.ts",
     "./lib/schemas/revenue": "./src/lib/schemas/revenue.schema.ts",
     "./lib/schemas/settings": "./src/lib/schemas/settings.schema.ts",
-    "./lib/ypp-targets": "./src/lib/ypp-targets.ts"
+    "./lib/ypp-targets": "./src/lib/ypp-targets.ts",
+    "./lib/query-state": "./src/lib/query-state.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",

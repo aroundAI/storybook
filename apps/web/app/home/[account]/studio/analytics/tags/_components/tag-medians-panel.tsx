@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { TagMediansCard } from '@kit/content-analytics/components';
+import { isUnavailable } from '@kit/content-analytics/lib/query-state';
 import { getSegmentPerformanceAction } from '@kit/content-analytics/server/segment-actions';
 import { getMedianByTagAction } from '@kit/content-analytics/server/taxonomy-actions';
 import {
@@ -130,7 +131,7 @@ export function TagMediansPanel({
         </Select>
       </div>
 
-      {query.isError ? (
+      {isUnavailable(query) ? (
         <p className={'text-destructive text-sm'}>
           Medians could not be loaded.
         </p>
