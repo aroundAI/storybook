@@ -200,6 +200,13 @@ decisions differ from the text above.
   recorded". Both now report the failure. `RevenuePlatformBreakdown` and
   `RevenueTopContent` read the same summary and still have this blind spot —
   pre-existing, and a follow-up.
+- **Every card on the Deep Dive tab states a failed read.** Median views, back
+  catalog and upload cohorts rendered `data ?? []` as a measured zero; a local
+  `QueryState` wrapper now owns loading, failed and the card. The sample gate
+  on `TagMediansCard` names the segment it gates, through `sampleGateCopy`.
+- **`listProjectChannels` pages in a unique order** (`platform_connection_id`,
+  then `id`), which is what offset paging needs — the list now decides which
+  YPP cards render.
 - **One join-date bound, resolved on the server.** The input's `max`, the
   schema and `alreadyJoined` all use `latestJoinDate()` passed down as
   `joinedCutoff`, so SSR and the browser cannot disagree.
