@@ -42,6 +42,8 @@ const SERVICE_ROLE_KEY =
 export interface SeededTeam {
   email: string;
   password: string;
+  /** The owner's auth user id */
+  userId: string;
   slug: string;
   accountId: string;
   /** The team's display name, which the admin accounts table filters on. */
@@ -109,9 +111,7 @@ export async function seedUser(prefix = 'user'): Promise<SeededUser> {
   });
 
   if (!user?.id) {
-    throw new Error(
-      `admin/users returned no id: ${JSON.stringify(user)}`,
-    );
+    throw new Error(`admin/users returned no id: ${JSON.stringify(user)}`);
   }
 
   return {
@@ -170,6 +170,7 @@ export async function seedTeamAccount(
   return {
     email,
     password,
+    userId: session.user.id as string,
     name,
     slug: account.slug as string,
     accountId: account.id as string,
@@ -191,6 +192,7 @@ export async function seedTeamAccount(
 export async function seedYouTubeConnection(
   accountId: string,
   name = 'Seeded Channel',
+  options: { isActive?: boolean } = {},
 ): Promise<string> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/platform_connections`, {
     method: 'POST',
@@ -206,7 +208,9 @@ export async function seedYouTubeConnection(
       account_id: accountId,
       platform: 'youtube',
       platform_account_name: name,
-      is_active: true,
+      // A disconnected channel keeps its history, so the Deep Dive filter
+      // must still list it — which needs one to exist.
+      is_active: options.isActive ?? true,
     }),
   });
 
@@ -226,4 +230,130 @@ export async function seedYouTubeConnection(
   }
 
   return id;
+}
+
+/** Inserts one row through PostgREST and returns it. */
+async function insertRow<T>(
+  table: string,
+  body: Record<string, unknown>,
+  auth: { key: string; token?: string },
+): Promise<T> {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: {
+      apikey: auth.key,
+      Authorization: `Bearer ${auth.token ?? auth.key}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify(body),
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(
+      `insert into ${table} failed (${response.status}): ${text}`,
+    );
+  }
+
+  const row = (JSON.parse(text) as T[])[0];
+
+  if (!row) {
+    throw new Error(`insert into ${table} returned no row: ${text}`);
+  }
+
+  return row;
+}
+
+export interface SeededProject {
+  id: string;
+  slug: string;
+  name: string;
+}
+
+/**
+ * A project on a seeded team, created **as the team's owner**.
+ *
+ * Not with the service role: `projects.created_by` defaults to the session
+ * user and `add_project_owner` inserts the owner membership from it, so a
+ * service-role insert leaves a project nobody is a member of. Slugs are
+ * unique per account, not generated, so one is set explicitly.
+ */
+export async function seedProject(
+  team: Pick<SeededTeam, 'email' | 'password' | 'accountId'>,
+  options: { name?: string; slug?: string } = {},
+): Promise<SeededProject> {
+  const session = await post('/auth/v1/token?grant_type=password', ANON_KEY, {
+    email: team.email,
+    password: team.password,
+  });
+
+  const stamp = uniqueStamp().slice(0, 8);
+  const name = options.name ?? `Seeded Project ${stamp}`;
+  const slug = options.slug ?? `seeded-project-${stamp}`;
+
+  const row = await insertRow<{ id: string; slug: string; name: string }>(
+    'projects',
+    { account_id: team.accountId, name, slug },
+    { key: ANON_KEY, token: session.access_token as string },
+  );
+
+  return { id: row.id, slug: row.slug, name: row.name };
+}
+
+/**
+ * An episode with one published publish to a channel.
+ *
+ * `listProjectChannels` derives a project's channels from its *published*
+ * publishes, not from the account's connections, so a channel only appears
+ * on the project's Deep Dive tab once something has been published to it.
+ */
+export async function seedPublishedEpisode(
+  projectId: string,
+  connectionId: string,
+  options: { number?: number; platform?: string } = {},
+): Promise<{ episodeId: string; publishId: string }> {
+  const auth = { key: SERVICE_ROLE_KEY };
+
+  const episode = await insertRow<{ id: string }>(
+    'episodes',
+    {
+      project_id: projectId,
+      number: options.number ?? 1,
+      title: `Seeded Episode ${options.number ?? 1}`,
+    },
+    auth,
+  );
+
+  const publish = await insertRow<{ id: string }>(
+    'publishes',
+    {
+      episode_id: episode.id,
+      platform_connection_id: connectionId,
+      platform: options.platform ?? 'youtube',
+      status: 'published',
+      published_at: new Date().toISOString(),
+    },
+    auth,
+  );
+
+  return { episodeId: episode.id, publishId: publish.id };
+}
+
+/**
+ * Adds an existing user to another team as a member, skipping the invitation
+ * flow — which has its own specs, and is not the subject of a test that only
+ * needs someone to belong to two teams.
+ */
+export async function seedMembership(
+  userId: string,
+  accountId: string,
+  role = 'member',
+): Promise<void> {
+  await insertRow(
+    'accounts_memberships',
+    { user_id: userId, account_id: accountId, account_role: role },
+    { key: SERVICE_ROLE_KEY },
+  );
 }
