@@ -207,6 +207,16 @@ decisions differ from the text above.
 - **`listProjectChannels` pages in a unique order** (`platform_connection_id`,
   then `id`), which is what offset paging needs — the list now decides which
   YPP cards render.
+- **A failed *refetch* is not an absence, and was already handled.** A review
+  argued `isError` discards a still-cached answer; measured in a browser, a
+  failed refetch leaves React Query's `status` at success, so `isError`
+  already means "errored with nothing to show". An e2e test locks that in.
+  The revenue summary tiles, however, did report `$0.00` from a failed read,
+  beside the mix card's own admission — fixed, projection tile included.
+- **A stored future joined date no longer locks its channel card.** The date
+  input's `max` widens to a date already stored, so rows written before that
+  bound can still be edited; the schema still refuses to save them, in the
+  form rather than a native bubble.
 - **One join-date bound, resolved on the server.** The input's `max`, the
   schema and `alreadyJoined` all use `latestJoinDate()` passed down as
   `joinedCutoff`, so SSR and the browser cannot disagree.
