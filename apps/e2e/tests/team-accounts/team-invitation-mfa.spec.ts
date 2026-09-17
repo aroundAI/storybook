@@ -3,8 +3,8 @@ import { expect, test } from '@playwright/test';
 import { AuthPageObject } from '../authentication/auth.po';
 import { InvitationsPageObject } from '../invitations/invitations.po';
 import { TeamAccountsPageObject } from './team-accounts.po';
+import { SUPER_ADMIN } from '../utils/super-admin';
 
-const MFA_KEY = 'NHOHJVGPO3R3LKVPRMNIYLCDMBHUM2SE';
 
 test.describe('Team Invitation with MFA Flow', () => {
   test('complete flow: test@storybook.dev creates team, invites super-admin@storybook.dev who accepts after MFA', async ({
@@ -71,7 +71,7 @@ test.describe('Team Invitation with MFA Flow', () => {
 
     // Complete MFA verification
     await expect(async () => {
-      await auth.submitMFAVerification(MFA_KEY);
+      await auth.submitMFAVerification(SUPER_ADMIN.mfaKey);
     }).toPass({
       intervals: [
         500, 2500, 5000, 7500, 10_000, 15_000, 20_000, 25_000, 30_000, 35_000,

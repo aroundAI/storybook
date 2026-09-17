@@ -1,6 +1,8 @@
 import { Page, expect } from '@playwright/test';
 
 import { AuthPageObject } from '../authentication/auth.po';
+import { seedUser } from '../utils/seed';
+import { signInAs } from '../utils/session';
 import { OtpPo } from '../utils/otp.po';
 
 export class AccountPageObject {
@@ -14,8 +16,18 @@ export class AccountPageObject {
     this.otp = new OtpPo(page);
   }
 
+  /*
+   * Seeded and signed in, rather than signed up. These tests are about the
+   * account settings screen; the sign-up form and the confirmation mail have
+   * their own spec and were only ever setup cost here.
+   */
   async setup() {
-    return this.auth.signUpFlow('/home/settings');
+    const user = await seedUser('account');
+
+    await signInAs(this.page, user);
+    await this.page.goto('/home/settings');
+
+    return { email: user.email, password: user.password };
   }
 
   async updateName(name: string) {

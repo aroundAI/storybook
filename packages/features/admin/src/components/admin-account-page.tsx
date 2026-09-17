@@ -140,7 +140,16 @@ async function PersonalAccountPage(props: { account: Account }) {
             <Badge variant={'outline'}>Personal Account</Badge>
 
             <If condition={isBanned}>
-              <Badge variant={'destructive'}>Banned</Badge>
+              {/*
+                `data-test` because the e2e suite asserts both that this
+                appears and that it disappears. Without one the only handle
+                was `getByText('Banned')`, which matches any other element
+                saying the same word — so the absence assertion was a
+                strict-mode hazard waiting for unrelated copy to change.
+              */}
+              <Badge variant={'destructive'} data-test={'admin-banned-badge'}>
+                Banned
+              </Badge>
             </If>
           </div>
         </div>

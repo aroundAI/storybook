@@ -56,7 +56,7 @@ test.describe('Account Deletion', () => {
     const account = new AccountPageObject(page);
     const auth = new AuthPageObject(page);
 
-    const { email } = await account.setup();
+    const { email, password } = await account.setup();
 
     await account.deleteAccount(email);
 
@@ -64,11 +64,9 @@ test.describe('Account Deletion', () => {
 
     await page.goto('/auth/sign-in');
 
-    // sign in will now fail
-    await auth.signIn({
-      email,
-      password: 'testingpassword',
-    });
+    // Sign in with the password that worked before deletion. A wrong one
+    // fails whether or not the account was deleted, and proves nothing.
+    await auth.signIn({ email, password });
 
     await expect(page.locator('[data-test="auth-error-message"]')).toBeVisible();
   });
