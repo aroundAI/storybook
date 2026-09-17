@@ -7,10 +7,7 @@ import { isRedirectError } from 'next/dist/client/components/redirect-error';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
-import {
-  UpdateChannelAnalyticsSettingsSchema,
-  latestJoinDate,
-} from '@kit/content-analytics/lib/schemas/settings';
+import { UpdateChannelAnalyticsSettingsSchema } from '@kit/content-analytics/lib/schemas/settings';
 import type { OverriddenTarget } from '@kit/content-analytics/lib/ypp-targets';
 import { overriddenChannelTargets } from '@kit/content-analytics/lib/ypp-targets';
 import type { ChannelSettingsEntry } from '@kit/content-analytics/server/settings-actions';
@@ -49,15 +46,6 @@ const REFUSAL_MESSAGE: Record<'no_access' | 'write_failed', string> = {
   write_failed: 'Settings could not be saved. Please try again.',
 };
 
-/** `YYYY-MM-DD` in the browser's timezone, for the date input's `max`. */
-function localToday(): string {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-
-  return `${now.getFullYear()}-${month}-${day}`;
-}
-
 const STATUS_LABEL = {
   unknown: 'Unknown',
   new_applicant: 'New applicant',
@@ -68,6 +56,7 @@ export function ChannelTargetsForm({
   channel,
   accountWatchHours,
   accountSubscribers,
+  joinedCutoff,
 }: {
   channel: ChannelSettingsEntry;
   /**
@@ -80,6 +69,13 @@ export function ChannelTargetsForm({
    */
   accountWatchHours: number | null;
   accountSubscribers: number | null;
+  /**
+   * The latest joined date that counts, from `latestJoinDate()` on the server.
+   * A prop rather than a call here so the server and the browser cannot
+   * disagree across a UTC day boundary — which would both mismatch on
+   * hydration and change which override warnings render.
+   */
+  joinedCutoff: string;
 }) {
   const [version, setVersion] = useState(0);
 
@@ -161,7 +157,7 @@ export function ChannelTargetsForm({
                   ypp_target_watch_hours: accountWatchHours,
                   ypp_target_subscribers: accountSubscribers,
                 },
-                joinedCutoff: latestJoinDate(),
+                joinedCutoff,
               })}
             />
 
@@ -231,9 +227,11 @@ export function ChannelTargetsForm({
                       <Input
                         type={'date'}
                         value={field.value ?? ''}
-                        // The browser's own local today; the schema allows
-                        // one day of slack over UTC for the same reason.
-                        max={localToday()}
+                        // The same bound the schema enforces and
+                        // `alreadyJoined` uses, fixed on the server: computing
+                        // it here would make the server (UTC) and the browser
+                        // (local) render different HTML across a day boundary.
+                        max={joinedCutoff}
                         data-test={'channel-joined-input'}
                         onChange={(event) =>
                           field.onChange(event.target.value || null)

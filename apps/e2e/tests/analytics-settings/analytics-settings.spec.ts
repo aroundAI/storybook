@@ -283,4 +283,24 @@ test.describe('Analytics settings', () => {
 
     await expect(settings.channelJoined()).toHaveValue('');
   });
+
+  test('the joined date input allows exactly what the schema allows', async ({
+    page,
+  }) => {
+    const settings = new AnalyticsSettingsPageObject(page);
+
+    await settings.setup();
+
+    // Tomorrow in UTC: the schema's bound, because a user ahead of UTC is
+    // already on their local today. The input used the *browser's* today,
+    // a third bound — so a user behind UTC could pick a date the schema
+    // refuses, or be refused one it accepts.
+    const tomorrow = new Date();
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+
+    await expect(settings.channelJoined()).toHaveAttribute(
+      'max',
+      tomorrow.toISOString().slice(0, 10),
+    );
+  });
 });
