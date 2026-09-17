@@ -28,6 +28,7 @@ import {
 import { DateRangePicker, type DateRangeValue } from './date-range-picker';
 import { ManualRevenueForm } from './manual-revenue-form';
 import { RevenueChart } from './revenue-chart';
+import { RevenueMixCard } from './revenue-mix-card';
 import { RevenuePlatformBreakdown } from './revenue-platform-breakdown';
 import { RevenueTopContent } from './revenue-top-content';
 
@@ -257,7 +258,9 @@ export function RevenueDashboard({
         className="space-y-4"
       >
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="overview" data-test="revenue-tab-overview">
+            Overview
+          </TabsTrigger>
           <TabsTrigger value="platforms">By Platform</TabsTrigger>
           <TabsTrigger value="content">By Content</TabsTrigger>
           <TabsTrigger value="manual" data-test="revenue-tab-manual">
@@ -274,6 +277,23 @@ export function RevenueDashboard({
               <RevenueChart
                 data={timeSeries ?? []}
                 isLoading={timeSeriesLoading}
+              />
+            </CardContent>
+          </Card>
+
+          {/*
+            The only display path revenue categories have: without it, a new
+            category (FILM-1609 licensing) could be recorded and shown to
+            nobody.
+          */}
+          <Card data-test="revenue-mix-card">
+            <CardHeader>
+              <CardTitle>Revenue Mix</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RevenueMixCard
+                byType={summary?.byType ?? {}}
+                isLoading={summaryLoading}
               />
             </CardContent>
           </Card>
