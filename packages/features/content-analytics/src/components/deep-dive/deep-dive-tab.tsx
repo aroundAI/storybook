@@ -283,11 +283,14 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
 
   const yppQuery = useQuery({
     queryKey: ['deep-dive-ypp', accountId, filters.connectionId],
+    // Spread, not `connectionId: filters.connectionId`: an undefined property
+    // is still serialized into the action call as `$undefined`, and "All
+    // channels" must send no `connectionId` at all.
     queryFn: () =>
       getYppProgressAction({
         accountId,
-        connectionId: filters.connectionId,
         windowDays: 365,
+        ...(filters.connectionId ? { connectionId: filters.connectionId } : {}),
       }),
     enabled: yppApplies,
   });
