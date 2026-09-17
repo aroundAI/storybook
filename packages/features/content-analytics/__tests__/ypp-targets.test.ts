@@ -529,6 +529,15 @@ describe('resolveTagMinSample', () => {
     // Zero would admit every tag, with no videos behind it, into a median.
     expect(resolveTagMinSample({ tag_min_sample: 0 })).toBe(5);
   });
+
+  // The segment action refuses a `minVideos` above 1000, so a larger stored
+  // value made the tags page's Language option fail on every load while the
+  // tag options worked. Clamped here, every reader gets one cut-off — and
+  // rows saved before the schema capped it still work.
+  it('clamps a stored value above the maximum', () => {
+    expect(resolveTagMinSample({ tag_min_sample: 1500 })).toBe(1000);
+    expect(resolveTagMinSample({ tag_min_sample: 1000 })).toBe(1000);
+  });
 });
 
 describe('parseOptionalInteger', () => {

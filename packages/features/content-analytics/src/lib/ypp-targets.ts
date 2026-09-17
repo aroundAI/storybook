@@ -19,6 +19,13 @@ export const ANALYTICS_DEFAULTS = {
 } as const;
 
 /**
+ * The largest tag minimum sample any reader accepts. The segment query's
+ * action refuses more, and a minimum above it would hide every segment
+ * anyway — so the setting, the schema and the resolver all use this one.
+ */
+export const MAX_TAG_MIN_SAMPLE = 1000;
+
+/**
  * The three values `channel_analytics_settings.ypp_applicant_status` admits.
  *
  * One list, exported, because the same set otherwise has to be restated in
@@ -221,8 +228,10 @@ export function resolveTagMinSample(
 ): number {
   const configured = accountSettings?.tag_min_sample ?? null;
 
+  // Clamped rather than trusted: rows saved before the schema capped the
+  // setting can hold more, and the segment action rejects anything above it.
   return configured !== null && configured > 0
-    ? configured
+    ? Math.min(configured, MAX_TAG_MIN_SAMPLE)
     : ANALYTICS_DEFAULTS.tagMinSample;
 }
 
