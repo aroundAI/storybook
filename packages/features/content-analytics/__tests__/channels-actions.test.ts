@@ -45,9 +45,7 @@ describe('listChannelsAction', () => {
   });
 
   it('lists the channels a project publishes to', async () => {
-    await expect(listChannelsAction({ projectId })).resolves.toEqual([
-      channel,
-    ]);
+    await expect(listChannelsAction({ projectId })).resolves.toEqual([channel]);
 
     expect(mocks.assertScopeAccess).toHaveBeenCalledWith({ projectId });
     expect(mocks.listProjectChannels).toHaveBeenCalledOnce();
