@@ -3,19 +3,28 @@
 import { useMemo, useState } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
-import { CalendarRange, Layers, PieChart, TrendingUp } from 'lucide-react';
+import {
+  BadgeCheck,
+  CalendarRange,
+  Layers,
+  PieChart,
+  TrendingUp,
+} from 'lucide-react';
 
 import { TRAFFIC_SOURCE_GROUPS } from '@kit/clickhouse';
 import type { TrafficGroupBucket } from '@kit/clickhouse';
 
+import { listChannelsAction } from '../../server/channels-actions';
 import {
   getBackCatalogAction,
   getCohortCurvesAction,
   getMedianPerformanceAction,
   getTrafficBreakdownAction,
+  getYppProgressAction,
 } from '../../server/deep-dive-actions';
 import { AnalyticsCard } from '../overview/analytics-card';
 import { BackCatalogCard, BackCatalogCardSkeleton } from './back-catalog-card';
+import { ChannelFilter } from './channel-filter';
 import {
   CohortCurvesChart,
   CohortCurvesChartSkeleton,
@@ -27,10 +36,23 @@ import {
   TrafficShareCard,
   TrafficShareCardSkeleton,
 } from './traffic-share-card';
+import { YppProgressCard, YppProgressCardSkeleton } from './ypp-progress-card';
 
 interface DeepDiveTabProps {
   /** Project the deep-dive analysis is scoped to */
   projectId: string;
+  /** The project's account — YPP progress is read per account channel */
+  accountId: string;
+}
+
+/**
+ * View filters narrowing the project scope. One object, so adding a filter
+ * is a field here rather than another `useState`. Only channel has a
+ * control today; `ScopeSchema` also accepts platform, content type and
+ * language, which are added here when they get one.
+ */
+interface DeepDiveFilters {
+  connectionId?: string;
 }
 
 type MedianMode = 'cohort_views_to_date' | 'views_in_period';
@@ -59,15 +81,43 @@ const TRAFFIC_WINDOW_WEEKS = 52;
  */
 const TRAFFIC_WINDOW_LABEL = `the last ${TRAFFIC_WINDOW_WEEKS} complete weeks`;
 
-export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
+export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
   const [medianMode, setMedianMode] = useState<MedianMode>(
     'cohort_views_to_date',
   );
 
-  const scope = { projectId };
+  const [filters, setFilters] = useState<DeepDiveFilters>({});
 
+  // "All channels" leaves `connectionId` out of the scope entirely rather
+  // than sending a sentinel, so the actions see exactly today's scope.
+  const scope = useMemo(
+    () =>
+      filters.connectionId
+        ? { projectId, connectionId: filters.connectionId }
+        : { projectId },
+    [projectId, filters.connectionId],
+  );
+
+  const channelsQuery = useQuery({
+    queryKey: ['deep-dive-channels', projectId],
+    queryFn: () => listChannelsAction({ projectId }),
+  });
+
+  const selectedChannel = channelsQuery.data?.find(
+    (channel) => channel.connectionId === filters.connectionId,
+  );
+
+  // `getYppProgressAction` throws for a connection that is not an active
+  // YouTube channel, and the gate is YouTube's, so any other selection skips
+  // the query and says why.
+  const yppApplies =
+    !filters.connectionId ||
+    (selectedChannel?.platform === 'youtube' && selectedChannel.isActive);
+
+  // Every key carries the selected channel: a key without it would keep
+  // serving the all-channel cache entry after the filter changed.
   const medianQuery = useQuery({
-    queryKey: ['deep-dive-median', projectId, medianMode],
+    queryKey: ['deep-dive-median', projectId, filters.connectionId, medianMode],
     queryFn: () =>
       getMedianPerformanceAction({
         scope,
@@ -121,7 +171,12 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
   const trafficBreakdownQuery = useQuery({
     // The window is part of the cache identity; without it two different
     // windows share an entry.
-    queryKey: ['deep-dive-traffic-breakdown', projectId, trafficWindow.key],
+    queryKey: [
+      'deep-dive-traffic-breakdown',
+      projectId,
+      filters.connectionId,
+      trafficWindow.key,
+    ],
     queryFn: () =>
       getTrafficBreakdownAction({
         scope,
@@ -212,12 +267,12 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
   );
 
   const backCatalogQuery = useQuery({
-    queryKey: ['deep-dive-back-catalog', projectId],
+    queryKey: ['deep-dive-back-catalog', projectId, filters.connectionId],
     queryFn: () => getBackCatalogAction({ scope, ageDays: 90 }),
   });
 
   const cohortQuery = useQuery({
-    queryKey: ['deep-dive-cohorts', projectId],
+    queryKey: ['deep-dive-cohorts', projectId, filters.connectionId],
     queryFn: () =>
       getCohortCurvesAction({
         scope,
@@ -226,128 +281,238 @@ export function DeepDiveTab({ projectId }: DeepDiveTabProps) {
       }),
   });
 
+  const yppQuery = useQuery({
+    queryKey: ['deep-dive-ypp', accountId, filters.connectionId],
+    queryFn: () =>
+      getYppProgressAction({
+        accountId,
+        connectionId: filters.connectionId,
+        windowDays: 365,
+      }),
+    enabled: yppApplies,
+  });
+
   return (
-    <div className={'grid gap-4 md:grid-cols-2'}>
-      <AnalyticsCard
-        title={'Median views per video'}
-        icon={TrendingUp}
-        description={
-          'The median resists outliers; one viral video can make a flat channel look like it is growing.'
-        }
-        colSpan={2}
-        className={'h-auto'}
-        footer={
-          <div className={'flex gap-2 text-xs'}>
-            <button
-              type={'button'}
-              onClick={() => setMedianMode('cohort_views_to_date')}
-              className={
-                medianMode === 'cohort_views_to_date'
-                  ? 'font-medium underline'
-                  : 'text-muted-foreground'
+    <div className={'flex flex-col gap-4'} data-test={'deep-dive-tab'}>
+      <div className={'flex items-center justify-end'}>
+        <ChannelFilter
+          channels={channelsQuery.data ?? []}
+          value={filters.connectionId}
+          onChange={(connectionId) =>
+            setFilters((current) => ({ ...current, connectionId }))
+          }
+          isLoading={channelsQuery.isLoading}
+        />
+      </div>
+
+      <div className={'grid gap-4 md:grid-cols-2'}>
+        <AnalyticsCard
+          title={'Median views per video'}
+          icon={TrendingUp}
+          description={
+            'The median resists outliers; one viral video can make a flat channel look like it is growing.'
+          }
+          colSpan={2}
+          className={'h-auto'}
+          footer={
+            <div className={'flex gap-2 text-xs'}>
+              <button
+                type={'button'}
+                onClick={() => setMedianMode('cohort_views_to_date')}
+                className={
+                  medianMode === 'cohort_views_to_date'
+                    ? 'font-medium underline'
+                    : 'text-muted-foreground'
+                }
+              >
+                By upload month
+              </button>
+              <button
+                type={'button'}
+                onClick={() => setMedianMode('views_in_period')}
+                className={
+                  medianMode === 'views_in_period'
+                    ? 'font-medium underline'
+                    : 'text-muted-foreground'
+                }
+              >
+                Views in period
+              </button>
+            </div>
+          }
+        >
+          {medianQuery.isLoading ? (
+            <MedianViewsCardSkeleton />
+          ) : (
+            <MedianViewsCard
+              buckets={medianQuery.data ?? []}
+              mode={medianMode}
+            />
+          )}
+        </AnalyticsCard>
+
+        <AnalyticsCard
+          title={'Browse + Suggested share'}
+          icon={TrendingUp}
+          description={
+            'Whether the algorithm has decided what this channel is for.'
+          }
+          className={'h-auto'}
+        >
+          {trafficBreakdownQuery.isLoading ? (
+            <TrafficShareCardSkeleton />
+          ) : (
+            <TrafficShareCard
+              buckets={trafficShareBuckets}
+              bucketNoun={'week'}
+              isError={
+                trafficBreakdownQuery.isError &&
+                trafficBreakdownQuery.data === undefined
               }
-            >
-              By upload month
-            </button>
-            <button
-              type={'button'}
-              onClick={() => setMedianMode('views_in_period')}
-              className={
-                medianMode === 'views_in_period'
-                  ? 'font-medium underline'
-                  : 'text-muted-foreground'
+              windowLabel={TRAFFIC_WINDOW_LABEL}
+            />
+          )}
+        </AnalyticsCard>
+
+        <AnalyticsCard
+          title={'Where views came from'}
+          icon={PieChart}
+          description={
+            'Search, Shorts, external, playlists, the channel page and direct — plus an Other residual — as a share of views.'
+          }
+          className={'h-auto'}
+        >
+          {trafficBreakdownQuery.isLoading ? (
+            <TrafficShareCardSkeleton />
+          ) : (
+            <TrafficBreakdownCard
+              buckets={trafficBuckets}
+              isError={
+                trafficBreakdownQuery.isError &&
+                trafficBreakdownQuery.data === undefined
               }
-            >
-              Views in period
-            </button>
-          </div>
-        }
-      >
-        {medianQuery.isLoading ? (
-          <MedianViewsCardSkeleton />
-        ) : (
-          <MedianViewsCard buckets={medianQuery.data ?? []} mode={medianMode} />
-        )}
-      </AnalyticsCard>
+              windowLabel={TRAFFIC_WINDOW_LABEL}
+            />
+          )}
+        </AnalyticsCard>
 
-      <AnalyticsCard
-        title={'Browse + Suggested share'}
-        icon={TrendingUp}
-        description={
-          'Whether the algorithm has decided what this channel is for.'
-        }
-        className={'h-auto'}
-      >
-        {trafficBreakdownQuery.isLoading ? (
-          <TrafficShareCardSkeleton />
-        ) : (
-          <TrafficShareCard
-            buckets={trafficShareBuckets}
-            bucketNoun={'week'}
-            isError={
-              trafficBreakdownQuery.isError &&
-              trafficBreakdownQuery.data === undefined
-            }
-            windowLabel={TRAFFIC_WINDOW_LABEL}
+        <AnalyticsCard
+          title={'Back catalog contribution'}
+          icon={Layers}
+          description={
+            'Share of views from videos over 90 days old — the compounding signal.'
+          }
+          className={'h-auto'}
+        >
+          {backCatalogQuery.isLoading ? (
+            <BackCatalogCardSkeleton />
+          ) : (
+            <BackCatalogCard buckets={backCatalogQuery.data ?? []} />
+          )}
+        </AnalyticsCard>
+
+        <AnalyticsCard
+          title={'Upload cohorts'}
+          icon={CalendarRange}
+          description={
+            'Cumulative views per video at matched ages, so growth is measured independently of how long each video has been live.'
+          }
+          colSpan={2}
+          className={'h-auto'}
+        >
+          {cohortQuery.isLoading ? (
+            <CohortCurvesChartSkeleton />
+          ) : (
+            <CohortCurvesChart
+              cohorts={(cohortQuery.data ?? []) as CohortEntry[]}
+              bucket={'quarter'}
+            />
+          )}
+        </AnalyticsCard>
+
+        <AnalyticsCard
+          title={'YouTube Partner Programme'}
+          icon={BadgeCheck}
+          description={
+            'Progress toward the monetization gate, one card per channel — the gate is per channel, so a pooled total would report it met when no channel has met it.'
+          }
+          colSpan={2}
+          className={'h-auto'}
+        >
+          <YppProgressSection
+            applies={yppApplies}
+            isLoading={yppQuery.isLoading}
+            isError={yppQuery.isError}
+            progress={yppQuery.data ?? []}
           />
-        )}
-      </AnalyticsCard>
+        </AnalyticsCard>
+      </div>
+    </div>
+  );
+}
 
-      <AnalyticsCard
-        title={'Where views came from'}
-        icon={PieChart}
-        description={
-          'Search, Shorts, external, playlists, the channel page and direct — plus an Other residual — as a share of views.'
-        }
-        className={'h-auto'}
+function YppProgressSection({
+  applies,
+  isLoading,
+  isError,
+  progress,
+}: {
+  applies: boolean;
+  isLoading: boolean;
+  isError: boolean;
+  progress: Awaited<ReturnType<typeof getYppProgressAction>>;
+}) {
+  if (!applies) {
+    return (
+      <p
+        className={'text-muted-foreground text-sm'}
+        data-test={'ypp-not-applicable'}
       >
-        {trafficBreakdownQuery.isLoading ? (
-          <TrafficShareCardSkeleton />
-        ) : (
-          <TrafficBreakdownCard
-            buckets={trafficBuckets}
-            isError={
-              trafficBreakdownQuery.isError &&
-              trafficBreakdownQuery.data === undefined
-            }
-            windowLabel={TRAFFIC_WINDOW_LABEL}
-          />
-        )}
-      </AnalyticsCard>
+        Partner Programme progress applies to active YouTube channels.
+      </p>
+    );
+  }
 
-      <AnalyticsCard
-        title={'Back catalog contribution'}
-        icon={Layers}
-        description={
-          'Share of views from videos over 90 days old — the compounding signal.'
-        }
-        className={'h-auto'}
-      >
-        {backCatalogQuery.isLoading ? (
-          <BackCatalogCardSkeleton />
-        ) : (
-          <BackCatalogCard buckets={backCatalogQuery.data ?? []} />
-        )}
-      </AnalyticsCard>
+  if (isLoading) {
+    return <YppProgressCardSkeleton />;
+  }
 
-      <AnalyticsCard
-        title={'Upload cohorts'}
-        icon={CalendarRange}
-        description={
-          'Cumulative views per video at matched ages, so growth is measured independently of how long each video has been live.'
-        }
-        colSpan={2}
-        className={'h-auto'}
+  if (isError) {
+    return (
+      <p className={'text-destructive text-sm'}>
+        Partner Programme progress could not be loaded.
+      </p>
+    );
+  }
+
+  if (progress.length === 0) {
+    return (
+      <p
+        className={'text-muted-foreground text-sm'}
+        data-test={'ypp-no-channels'}
       >
-        {cohortQuery.isLoading ? (
-          <CohortCurvesChartSkeleton />
-        ) : (
-          <CohortCurvesChart
-            cohorts={(cohortQuery.data ?? []) as CohortEntry[]}
-            bucket={'quarter'}
-          />
-        )}
-      </AnalyticsCard>
+        No active YouTube channels are connected to this account.
+      </p>
+    );
+  }
+
+  // One card per channel, never a sum: pooling watch hours against one
+  // target reports the gate met when no single channel has met it.
+  return (
+    <div
+      className={'grid gap-6 md:grid-cols-2'}
+      data-test={'ypp-progress-list'}
+    >
+      {progress.map((channel) => (
+        <div
+          key={channel.connectionId}
+          className={'flex flex-col gap-2'}
+          data-test={'ypp-progress-card'}
+        >
+          <span className={'text-sm font-medium'}>{channel.channelName}</span>
+          <YppProgressCard progress={channel} />
+        </div>
+      ))}
     </div>
   );
 }
