@@ -194,6 +194,15 @@ decisions differ from the text above.
   joined (`joinedCutoff`), so a date a user ahead of UTC enters counts at once.
 - **YPP cards are the project's channels.** The action stays per account; the
   tab narrows its answer to the channels the filter lists.
+- **A failed read is stated, never rendered as an absence.** Narrowing the YPP
+  cards to the project's channels made a failed channel read look like a
+  project with no channels, and an errored revenue summary read as "no revenue
+  recorded". Both now report the failure. `RevenuePlatformBreakdown` and
+  `RevenueTopContent` read the same summary and still have this blind spot —
+  pre-existing, and a follow-up.
+- **One join-date bound, resolved on the server.** The input's `max`, the
+  schema and `alreadyJoined` all use `latestJoinDate()` passed down as
+  `joinedCutoff`, so SSR and the browser cannot disagree.
 
 **Verification.** `apps/e2e/tests/deep-dive/deep-dive.spec.ts`,
 `tests/tags/tag-medians.spec.ts`, and additions to the revenue and
