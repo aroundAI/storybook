@@ -56,12 +56,18 @@ import { PlatformFilter } from './platform-filter';
 
 export interface AnalyticsDashboardProps {
   projectId: string;
-  accountSlug: string;
+  /**
+   * The project's account **id**. This was an `accountSlug` handed to
+   * `ExportReports` as `accountId`, which the report schemas reject as a
+   * non-uuid — report generation and the scheduled-reports list failed
+   * validation on this page.
+   */
+  accountId: string;
 }
 
 export function AnalyticsDashboard({
   projectId,
-  accountSlug,
+  accountId,
 }: AnalyticsDashboardProps) {
   const [dateRange, setDateRange] = useState<DateRangeValue>({
     from: subDays(new Date(), 30),
@@ -373,7 +379,9 @@ export function AnalyticsDashboard({
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
           <TabsTrigger value="audience">Audience</TabsTrigger>
-          <TabsTrigger value="deep-dive">Deep Dive</TabsTrigger>
+          <TabsTrigger value="deep-dive" data-test="analytics-tab-deep-dive">
+            Deep Dive
+          </TabsTrigger>
           <TabsTrigger value="language">Language</TabsTrigger>
           <TabsTrigger value="insights">AI Insights</TabsTrigger>
         </TabsList>
@@ -433,7 +441,7 @@ export function AnalyticsDashboard({
         </TabsContent>
 
         <TabsContent value="deep-dive" className="mt-6">
-          <DeepDiveTab projectId={projectId} />
+          <DeepDiveTab projectId={projectId} accountId={accountId} />
         </TabsContent>
 
         <TabsContent value="insights" className="mt-6">
@@ -468,7 +476,7 @@ export function AnalyticsDashboard({
           <DialogHeader>
             <DialogTitle>Export Reports</DialogTitle>
           </DialogHeader>
-          <ExportReports accountId={accountSlug} />
+          <ExportReports accountId={accountId} />
         </DialogContent>
       </Dialog>
     </div>
