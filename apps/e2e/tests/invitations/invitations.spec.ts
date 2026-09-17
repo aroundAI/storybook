@@ -60,8 +60,18 @@ test.describe('Invitations', () => {
       'Owner',
     );
   });
+});
 
+/*
+ * Its own team, not the shared `beforeAll` one above. It counts every
+ * invitation on the team, and "users can update invites" leaves one behind —
+ * so run serially after it, this saw 2 and failed, and it flaked in CI.
+ */
+test.describe('Duplicate invitations', () => {
   test('user cannot invite a member of the team again', async ({ page }) => {
+    const invitations = new InvitationsPageObject(page);
+
+    await invitations.setup();
     await invitations.navigateToMembers();
 
     const email = invitations.auth.createRandomEmail();
@@ -78,11 +88,22 @@ test.describe('Invitations', () => {
 
     await expect(invitations.getInvitations()).toHaveCount(1);
 
-    // Try to invite the same member again
-    // This should fail
+    // A second invite to the same address is refused: `invitations` is unique
+    // on (email, account_id), so the action rejects and the dialog's toast
+    // reports it. The dialog closes before the action settles, so its closing
+    // is no signal; the toast is.
     await invitations.openInviteForm();
     await invitations.inviteMembers(invites);
-    await page.waitForTimeout(500);
+
+    await expect(
+      page.getByText('Sorry, members could not be invited. Please try again.'),
+    ).toBeVisible();
+
+    // Count from a fresh server render, not the list already on screen. The
+    // previous version waited on the action's response and counted at once;
+    // with a second invitation really written it still passed, because it
+    // read the stale one-row list.
+    await page.reload();
     await expect(invitations.getInvitations()).toHaveCount(1);
   });
 });

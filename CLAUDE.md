@@ -621,15 +621,25 @@ The rules, with `apps/e2e/tests/revenue/` as the worked example — full
 detail in `apps/e2e/README.md`:
 
 - **Seed through the API, not the UI.** `tests/utils/seed.ts` gives you
-  `seedUser`, `seedTeamAccount` and `signInAs`; `tests/utils/session.ts` signs
-  the fixture in. Driving sign-up, confirmation mail and the account selector
+  `seedUser` and `seedTeamAccount`; `signInAs` in `tests/utils/session.ts`
+  signs the fixture in. Driving sign-up, confirmation mail and the account selector
   first makes a test fail for reasons unrelated to its subject, and is ~20×
   slower (26s for eight specs, versus 90s timeouts).
 
   This is a rule with an edge, not a preference. **Three specs are exempt
   because auth is their subject** — `authentication/auth.spec.ts`,
   `authentication/password-reset.spec.ts` and
-  `team-accounts/team-invitation-mfa.spec.ts`. Everything else seeds.
+  `team-accounts/team-invitation-mfa.spec.ts`. Signing up through an
+  invitation link is also legitimate where accepting the invite is the
+  subject — "Full Invitation Flow" in `invitations.spec.ts` and
+  `setupTeamWithMember` in `team-accounts.spec.ts`.
+
+  Two places still sign up through the UI without that excuse, and should
+  seed when next touched: the second user in `team-accounts.spec.ts`'s
+  "unauthorized user cannot access team account", and
+  `user-billing/user-billing.po.ts`. The billing one is unmigrated because
+  billing specs are off locally and in CI (`ENABLE_BILLING_TESTS`), so a
+  change there could not be run.
 
   It went unenforced long enough for four suites to ignore it, and the bill
   came due as a recurring red build: the admin suite drove a sign-up, a mail
