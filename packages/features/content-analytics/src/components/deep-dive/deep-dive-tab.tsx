@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -367,14 +367,17 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
             </div>
           }
         >
-          {medianQuery.isLoading ? (
-            <MedianViewsCardSkeleton />
-          ) : (
+          <QueryState
+            query={medianQuery}
+            skeleton={<MedianViewsCardSkeleton />}
+            message={'Median views could not be loaded.'}
+            dataTest={'median-error'}
+          >
             <MedianViewsCard
               buckets={medianQuery.data ?? []}
               mode={medianMode}
             />
-          )}
+          </QueryState>
         </AnalyticsCard>
 
         <AnalyticsCard
@@ -430,11 +433,14 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
           }
           className={'h-auto'}
         >
-          {backCatalogQuery.isLoading ? (
-            <BackCatalogCardSkeleton />
-          ) : (
+          <QueryState
+            query={backCatalogQuery}
+            skeleton={<BackCatalogCardSkeleton />}
+            message={'Back catalog contribution could not be loaded.'}
+            dataTest={'back-catalog-error'}
+          >
             <BackCatalogCard buckets={backCatalogQuery.data ?? []} />
-          )}
+          </QueryState>
         </AnalyticsCard>
 
         <AnalyticsCard
@@ -446,14 +452,17 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
           colSpan={2}
           className={'h-auto'}
         >
-          {cohortQuery.isLoading ? (
-            <CohortCurvesChartSkeleton />
-          ) : (
+          <QueryState
+            query={cohortQuery}
+            skeleton={<CohortCurvesChartSkeleton />}
+            message={'Upload cohorts could not be loaded.'}
+            dataTest={'cohort-error'}
+          >
             <CohortCurvesChart
               cohorts={(cohortQuery.data ?? []) as CohortEntry[]}
               bucket={'quarter'}
             />
-          )}
+          </QueryState>
         </AnalyticsCard>
 
         <AnalyticsCard
@@ -475,6 +484,40 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
       </div>
     </div>
   );
+}
+
+/**
+ * Loading, failed, or the card.
+ *
+ * `data ?? []` renders a failed read as a measured zero: a back catalog
+ * contributing nothing looks exactly like one that could not be read. The
+ * traffic cards take their own `isError` because they can show a stale answer
+ * beside it; these three have nothing to show, so the tab answers for them.
+ */
+function QueryState({
+  query,
+  skeleton,
+  message,
+  dataTest,
+  children,
+}: {
+  query: { isLoading: boolean; isError: boolean };
+  skeleton: ReactNode;
+  message: string;
+  dataTest: string;
+  children: ReactNode;
+}) {
+  if (query.isLoading) return skeleton;
+
+  if (query.isError) {
+    return (
+      <p className={'text-destructive text-sm'} data-test={dataTest}>
+        {message}
+      </p>
+    );
+  }
+
+  return children;
 }
 
 function YppProgressSection({
