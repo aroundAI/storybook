@@ -24,6 +24,7 @@
     "./server/experiment-actions": "./src/server/experiment-actions.ts",
     "./server/hook-actions": "./src/server/hook-actions.ts",
     "./server/taxonomy-actions": "./src/server/taxonomy-actions.ts",
+    "./server/segment-actions": "./src/server/segment-actions.ts",
     "./server/settings-actions": "./src/server/settings-actions.ts",
     "./components": "./src/components/index.ts",
     "./types": "./src/types.ts",

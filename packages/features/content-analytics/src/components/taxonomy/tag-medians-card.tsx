@@ -39,6 +39,12 @@ interface TagMediansCardProps {
   attributedRevenueOnly?: boolean;
   /** Loading state */
   isLoading?: boolean;
+  /**
+   * What a row is, for the gate and empty copy. Language rows come from the
+   * segment action — a `video_dim` column, not a taxonomy tag — and must not
+   * be described as tags.
+   */
+  segmentNoun?: 'tag' | 'language';
 }
 
 function formatViews(value: number): string {
@@ -68,6 +74,7 @@ export function TagMediansCard({
   required = 30,
   attributedRevenueOnly = false,
   isLoading = false,
+  segmentNoun = 'tag',
 }: TagMediansCardProps) {
   if (isLoading) {
     return <TagMediansCardSkeleton />;
@@ -91,8 +98,11 @@ export function TagMediansCard({
 
   if (rows.length === 0) {
     return (
-      <p className={'text-muted-foreground text-sm'}>
-        No tag has enough videos yet for a reliable median.
+      <p
+        className={'text-muted-foreground text-sm'}
+        data-test={'tag-medians-empty'}
+      >
+        No {segmentNoun} has enough videos yet for a reliable median.
       </p>
     );
   }
