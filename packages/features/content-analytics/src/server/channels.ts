@@ -55,17 +55,22 @@ export async function listProjectChannels(
   // truncation arrives as a short 200, not an error. Collecting the ids
   // first keeps the second query proportional to the channel count, and
   // drops the cast the embedded shape forced.
+  // `id` is the tie-breaker, not a column anything reads: offset paging needs
+  // a unique order, and `platform_connection_id` repeats once per publish, so
+  // rows sharing one could come back in a different order per request.
   const publishRows = await fetchAllRows<{
+    id: string;
     platform_connection_id: string | null;
   }>(
     (from, to) =>
       client
         .from('publishes')
-        .select('platform_connection_id, episodes!inner(project_id)')
+        .select('id, platform_connection_id, episodes!inner(project_id)')
         .eq('status', 'published')
         .eq('episodes.project_id', projectId)
         .not('platform_connection_id', 'is', null)
         .order('platform_connection_id')
+        .order('id')
         .range(from, to),
     'project channels',
   );
