@@ -256,3 +256,28 @@ test.describe('Manual revenue entry — west of UTC', () => {
     await revenue.expectSuccessToast();
   });
 });
+
+/**
+ * The revenue mix (FILM-1611). The card existed and rendered nowhere, so
+ * revenue categories had no display path at all.
+ */
+test.describe('Revenue mix', () => {
+  test('shows the mix on the overview, including a licensing entry', async ({
+    page,
+  }) => {
+    const revenue = new RevenuePageObject(page);
+    const account = await revenue.setup();
+
+    await revenue.addEntry({ dollars: '250.00', category: 'Licensing' });
+    await revenue.expectSuccessToast();
+
+    // A fresh load, so the summary is read after the entry was written.
+    await page.goto(`/home/${account.slug}/studio/analytics`);
+    await page.locator('[data-test="revenue-tab-overview"]').click();
+
+    const mix = page.locator('[data-test="revenue-mix-card"]:visible');
+
+    await expect(mix).toBeVisible();
+    await expect(mix).toContainText('Licensing');
+  });
+});

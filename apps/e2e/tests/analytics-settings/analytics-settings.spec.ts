@@ -248,4 +248,39 @@ test.describe('Analytics settings', () => {
     await expect(notice).toContainText('3,500');
     await expect(notice).not.toContainText('4,000');
   });
+
+  test('refuses a joined date that has not happened yet', async ({ page }) => {
+    const settings = new AnalyticsSettingsPageObject(page);
+
+    const account = await settings.setup();
+
+    // A week ahead: past the one day of slack the schema allows for users
+    // ahead of UTC. Typed rather than picked — the input's `max` stops the
+    // picker, not a typed value.
+    const future = new Date();
+    future.setUTCDate(future.getUTCDate() + 7);
+    const futureIso = future.toISOString().slice(0, 10);
+
+    await settings.channelJoined().fill(futureIso);
+    await settings.channelSubmit().click();
+
+    // The input's `max` makes the browser refuse the submission before the
+    // form's schema sees it, so the refusal to assert is the native one; the
+    // schema's own message is the backstop for anything that bypasses the
+    // input, and is covered by the unit tests.
+    await expect
+      .poll(() =>
+        settings
+          .channelJoined()
+          .evaluate((input: HTMLInputElement) => input.validity.rangeOverflow),
+      )
+      .toBe(true);
+
+    await expect(page.getByText(/Saved settings for/)).toHaveCount(0);
+
+    // And nothing was written: after a reload the field is still empty.
+    await settings.goToSettings(account.slug);
+
+    await expect(settings.channelJoined()).toHaveValue('');
+  });
 });
