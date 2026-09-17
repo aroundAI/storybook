@@ -1,3 +1,5 @@
+import { resolveTagMinSample } from '@kit/content-analytics/lib/ypp-targets';
+import { fetchAccountAnalyticsSettings } from '@kit/content-analytics/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { createTeamAccountsApi } from '@kit/team-accounts/api';
 import { Heading } from '@kit/ui/heading';
@@ -5,6 +7,7 @@ import { Heading } from '@kit/ui/heading';
 import { withI18n } from '~/lib/i18n/with-i18n';
 
 import { TagManagerClient } from './_components/tag-manager-client';
+import { TagMediansPanel } from './_components/tag-medians-panel';
 
 export const metadata = {
   title: 'Content Tags | Film Studio',
@@ -36,12 +39,15 @@ async function ContentTagsPage({ params }: PageProps) {
     );
   }
 
-  const { data: tags } = await client
-    .from('content_tags')
-    .select('id, dimension, slug, label')
-    .eq('account_id', accountData.id)
-    .order('dimension')
-    .order('label');
+  const [{ data: tags }, settings] = await Promise.all([
+    client
+      .from('content_tags')
+      .select('id, dimension, slug, label')
+      .eq('account_id', accountData.id)
+      .order('dimension')
+      .order('label'),
+    fetchAccountAnalyticsSettings(accountData.id, client),
+  ]);
 
   return (
     <div className={'container mx-auto flex flex-col gap-6 py-8'}>
@@ -53,6 +59,11 @@ async function ContentTagsPage({ params }: PageProps) {
           tag medians across 30+ videos are signal.
         </p>
       </div>
+
+      <TagMediansPanel
+        accountId={accountData.id}
+        minVideos={resolveTagMinSample(settings)}
+      />
 
       <TagManagerClient accountId={accountData.id} initialTags={tags ?? []} />
     </div>
