@@ -551,11 +551,18 @@ See [phase-16-workbook-parity/README.md](./phase-16-workbook-parity/README.md) f
 | FILM-1610 | [experiment-log-notes](./phase-16-workbook-parity/FILM-1610-experiment-log-notes.md) | DRAFT | M | FILM-1602, FILM-1603, FILM-1605 |
 | FILM-1611 | [deep-dive-channel-selector](./phase-16-workbook-parity/FILM-1611-deep-dive-channel-selector.md) | DRAFT | M | FILM-1606, FILM-1608, FILM-1609 |
 | FILM-1615 | [video-log-table](./phase-16-workbook-parity/FILM-1615-video-log-table.md) | DRAFT | M | FILM-1603, FILM-1611 |
-| FILM-1616 | [weekly-diagnostics-retention](./phase-16-workbook-parity/FILM-1616-weekly-diagnostics-retention.md) | DRAFT | M | FILM-1602 |
+| FILM-1616 | [weekly-diagnostics-retention](./phase-16-workbook-parity/FILM-1616-weekly-diagnostics-retention.md) | DRAFT | M | FILM-1602; FILM-1710 or the duration-free fallback (see note) |
 | FILM-1617 | [subscriber-surfaces](./phase-16-workbook-parity/FILM-1617-subscriber-surfaces.md) | DRAFT | S | FILM-1607, FILM-1611, FILM-1618 |
 | FILM-1618 | [channel-residual-subscribers](./phase-16-workbook-parity/FILM-1618-channel-residual-subscribers.md) | ✅ DONE | S | FILM-1601, FILM-1607 |
 
 All workbook-parity scope is now specified. FILM-1611 was split — what the backlog called "analytics UI" became FILM-1611 (channel selector and orphan wiring), FILM-1615 (Video Log table), FILM-1616 (weekly diagnostics and retention drill-down) and FILM-1617 (subscriber surfaces). FILM-1614 is **not** a phase-16 spec: it is claimed by an in-code `TODO(FILM-1614)` in `revenue-queries.ts` for folding revenue reads into a pre-grouped RPC. See the phase README for the dependency graph and known limits.
+
+**FILM-1616 and phase-17 FILM-1710.** This cross-phase link was found after both phases were planned, while FILM-1710 was being written. It was recorded in both phase READMEs, but until now not here or in FILM-1616 itself. `video_dim.duration_seconds` holds the **episode's** duration (falling back to its *target* duration, then `0`), not the published clip's (`dim-sync.ts:166-168`). Nothing reads that column today. FILM-1616's `getRetentionCurveAction` returns `{ points, durationSeconds }`, which would make it the first reader. The chart itself is unaffected, because it plots `elapsedRatio`. The duration only turns the detected cliff into a timestamp ("around 0:42"): `RetentionCurveChart` and `detectRetentionCliff` both take `durationSeconds` as optional. Read from that column, a Short's cliff would be labelled at a time far past the end of the clip. So FILM-1616 either:
+
+- **ships after FILM-1710**, which adds a nullable `asset_duration_seconds` from the provider; its YouTube leg does not need FILM-1711; or
+- **ships first with no duration**, following FILM-1710 §3: omit `durationSeconds`, so the cliff shows its position through the video but no time, then passes the asset duration once FILM-1710 lands.
+
+It must not read `video_dim.duration_seconds` either way. This is the only reason FILM-1710 is ordered ahead of the rest of phase 17.
 
 ### Phase 17: Analytics Provenance and Signal (23 specs)
 
