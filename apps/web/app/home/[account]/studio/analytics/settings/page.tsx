@@ -1,3 +1,4 @@
+import { latestJoinDate } from '@kit/content-analytics/lib/schemas/settings';
 import { getAnalyticsSettingsAction } from '@kit/content-analytics/server/settings-actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { createTeamAccountsApi } from '@kit/team-accounts/api';
@@ -23,6 +24,7 @@ async function AnalyticsSettingsPage({ params }: PageProps) {
 
   const client = getSupabaseServerClient();
   const api = createTeamAccountsApi(client);
+  const joinedCutoff = latestJoinDate();
   const accountData = await api.getTeamAccount(account);
 
   if (!accountData) {
@@ -90,6 +92,9 @@ async function AnalyticsSettingsPage({ params }: PageProps) {
               accountSubscribers={
                 settings.accountSettings?.ypp_target_subscribers ?? null
               }
+              // Resolved once, on the server, so every form agrees with the
+              // schema and with each other.
+              joinedCutoff={joinedCutoff}
             />
           ))
         )}
