@@ -175,7 +175,18 @@ test.describe('Admin', () => {
 
       await page.fill('[placeholder="Type CONFIRM to confirm"]', 'CONFIRM');
 
-      await page.getByRole('button', { name: 'Reactivate User' }).click();
+      // Wait for the action's response before the reload loop below. A reload
+      // unloads the page, and a request still in flight — or not yet sent,
+      // while the form validates — is cancelled with it: the user stays
+      // banned and the loop reloads until the test times out.
+      await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.url().includes('/admin/accounts') &&
+            response.request().method() === 'POST',
+        ),
+        page.getByRole('button', { name: 'Reactivate User' }).click(),
+      ]);
 
       // Reload until the badge is gone, rather than asserting once and hoping
       // the page has caught up.
