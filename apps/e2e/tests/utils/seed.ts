@@ -10,6 +10,20 @@
  * Uses `fetch` rather than @supabase/supabase-js so this adds no
  * dependency to the e2e app.
  */
+import { randomUUID } from 'node:crypto';
+
+/**
+ * A suffix no other seeded name can contain.
+ *
+ * The admin search is `ilike %query%` and rows are located with `hasText`,
+ * both substring matches. `${Date.now()}${random 0-999}` was neither fixed
+ * length nor unique, so one name could be a prefix of another — `…5` inside
+ * `…57` — and a filter would return two rows. A UUID is both.
+ */
+export function uniqueStamp() {
+  return randomUUID();
+}
+
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? 'http://127.0.0.1:55321';
 
 /**
@@ -84,7 +98,7 @@ export interface SeededUser {
  * fail, none of them the subject of the test that needed a user.
  */
 export async function seedUser(prefix = 'user'): Promise<SeededUser> {
-  const stamp = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  const stamp = uniqueStamp();
   const email = `${prefix}-${stamp}@makerkit.dev`;
   const password = 'password';
 
@@ -119,7 +133,7 @@ export async function seedUser(prefix = 'user'): Promise<SeededUser> {
 export async function seedTeamAccount(
   options: { name?: string; emailPrefix?: string } = {},
 ): Promise<SeededTeam> {
-  const stamp = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  const stamp = uniqueStamp();
   const email = `${options.emailPrefix ?? 'seeded'}-${stamp}@makerkit.dev`;
   const password = 'password';
   // The caller may need a specific name — several team tests assert on it.

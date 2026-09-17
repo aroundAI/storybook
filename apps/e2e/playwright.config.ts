@@ -109,6 +109,12 @@ export default defineConfig({
      * test here. In `beforeEach` the same ladder summed to 285s under a 120s
      * test timeout: it could never finish, and every attempt it did make came
      * out of the budget the test body needed.
+     *
+     * Only the `admin` project depends on it. Playwright runs a dependency
+     * whenever a dependent project runs, even when the command names one
+     * spec — so hanging it off `chromium` made every run, down to
+     * `playwright test revenue`, pass a super-admin MFA challenge first, and
+     * one failed challenge skipped the entire suite.
      */
     {
       name: 'setup',
@@ -116,9 +122,17 @@ export default defineConfig({
       timeout: 180 * 1000,
     },
     {
-      name: 'chromium',
+      name: 'admin',
+      testMatch: /admin\/.*\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup'],
+    },
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+      // A project-level `testIgnore` replaces the top-level one rather than
+      // adding to it, so the billing and team-account exclusions come along.
+      testIgnore: [...testIgnore, '**/admin/**'],
     },
     /* Test against mobile viewports. */
     // {

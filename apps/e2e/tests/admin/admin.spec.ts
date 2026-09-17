@@ -1,7 +1,13 @@
 import { Page, expect, selectors, test } from '@playwright/test';
 
 import { AuthPageObject } from '../authentication/auth.po';
-import { SeededTeam, SeededUser, seedTeamAccount, seedUser } from '../utils/seed';
+import {
+  SeededTeam,
+  SeededUser,
+  seedTeamAccount,
+  seedUser,
+  uniqueStamp,
+} from '../utils/seed';
 import { SUPER_ADMIN_STORAGE_STATE } from '../utils/super-admin';
 
 
@@ -286,7 +292,7 @@ test.describe('Admin', () => {
       // `create_team_account` through the API, which is the same function the
       // product calls — so the fixture cannot drift from what a real team
       // looks like, and no part of it depends on the create-team dialog.
-      team = await seedTeamAccount({ name: `Admin ${Date.now()}` });
+      team = await seedTeamAccount({ name: `Admin ${uniqueStamp()}` });
 
       await page.goto(`/admin/accounts`);
 
