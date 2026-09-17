@@ -277,6 +277,12 @@ export function overriddenChannelTargets({
 }: ResolveInput): OverriddenTarget[] {
   const resolved = resolveYppTarget({ channelSettings, accountSettings });
 
+  // A channel already in the programme is past the gate, and nothing measures
+  // it against a target — `YppProgressCard` returns early on `alreadyJoined`.
+  // Warning that its override will be overruled would describe a comparison
+  // that never happens.
+  if (resolved.alreadyJoined) return [];
+
   const candidates: Array<{
     metric: OverriddenTarget['metric'];
     channel: number | null;

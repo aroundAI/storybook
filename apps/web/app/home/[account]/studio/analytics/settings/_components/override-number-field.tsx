@@ -52,9 +52,20 @@ export function OverrideNumberField<T extends FieldValues>({
         <FormItem>
           <FormLabel>{label}</FormLabel>
           <FormControl>
+            {/*
+              `FormControl` is a Slot: it clones its child with `id`,
+              `aria-describedby` and `aria-invalid`. NumericInput has to
+              forward those or the label's `htmlFor` points at nothing and the
+              validation message is never announced — on all five target
+              inputs, since this component renders every one of them.
+            */}
             <NumericInput
               initial={field.value as number | null}
               onParsed={field.onChange}
+              // Without the ref, a failed save has nothing to focus and
+              // the user is left on the button, hunting for the error.
+              ref={field.ref}
+              onBlur={field.onBlur}
               placeholder={placeholder}
               dataTest={dataTest}
               disabled={disabled}
@@ -74,13 +85,14 @@ function NumericInput({
   placeholder,
   dataTest,
   disabled,
+  ...slotted
 }: {
   initial: number | null;
   onParsed: (value: number | null) => void;
   placeholder: string;
   dataTest: string;
   disabled?: boolean;
-}) {
+} & React.ComponentProps<'input'>) {
   // The text the user sees is held here rather than derived from form state,
   // so a value the schema rejects still renders as typed. Deriving it would
   // reproduce the FILM-1609 defect in reverse: paste `1,250`, watch the box
@@ -89,6 +101,10 @@ function NumericInput({
 
   return (
     <Input
+      // `id`, `aria-describedby` and `aria-invalid` arrive here from
+      // FormControl's Slot, and are what tie the label and the error message
+      // to this input.
+      {...slotted}
       type={'text'}
       inputMode={'numeric'}
       autoComplete={'off'}

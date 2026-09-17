@@ -439,6 +439,22 @@ describe('overriddenChannelTargets', () => {
     ]);
   });
 
+  it('reports nothing for a channel already in the programme', () => {
+    // A joined channel is never measured against a target — the card
+    // short-circuits on `alreadyJoined` — so warning that its override will
+    // be overruled describes a comparison that never happens.
+    const result = overriddenChannelTargets({
+      channelSettings: {
+        ...CHANNEL,
+        ypp_target_watch_hours: 1200,
+        joined_ypp_at: '2026-03-01',
+      },
+      accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 4000 },
+    });
+
+    expect(result).toEqual([]);
+  });
+
   it('reports nothing when the channel sets no override at all', () => {
     const result = overriddenChannelTargets({
       channelSettings: CHANNEL,

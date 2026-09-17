@@ -96,13 +96,21 @@ export const updateAccountAnalyticsSettingsAction = enhanceAction(
       tagMinSample,
     } = data;
 
-    try {
-      await assertScopeAccess({ accountId });
-    } catch {
-      return { ok: false, reason: 'no_access' };
-    }
-
     const client = getSupabaseServerClient();
+
+    // Read directly rather than through `assertScopeAccess`, which discards
+    // the read error and throws the same "access denied" for both cases. An
+    // outage must not tell a real member they have been locked out — the same
+    // split the channel action below makes.
+    const { data: account, error: accountError } = await client
+      .from('accounts')
+      .select('id')
+      .eq('id', accountId)
+      .maybeSingle();
+
+    if (accountError) return { ok: false, reason: 'write_failed' };
+
+    if (!account) return { ok: false, reason: 'no_access' };
 
     const { error } = await client.from('analytics_settings').upsert(
       {

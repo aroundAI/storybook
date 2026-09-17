@@ -11,8 +11,7 @@
 -- The reasoning is recorded in migration 20260916073206_ypp-targets-settings.sql.
 
 create table if not exists public.channel_analytics_settings (
-  connection_id uuid primary key
-    references public.platform_connections(id) on delete cascade,
+  connection_id uuid primary key,
   account_id uuid not null
     references public.accounts(id) on delete cascade,
   -- Nullable with no default: `null` means inherit. A default here would make
@@ -30,7 +29,19 @@ create table if not exists public.channel_analytics_settings (
   constraint channel_analytics_settings_watch_hours_positive
     check (ypp_target_watch_hours is null or ypp_target_watch_hours > 0),
   constraint channel_analytics_settings_subscribers_positive
-    check (ypp_target_subscribers is null or ypp_target_subscribers > 0)
+    check (ypp_target_subscribers is null or ypp_target_subscribers > 0),
+  -- Composite, not `connection_id references platform_connections(id)`. The
+  -- policies authorise on the denormalised `account_id`, and a foreign key
+  -- check does not run RLS — so with a single-column key a member of one
+  -- account could file a row against another account's connection under
+  -- their own account_id. `connection_id` is the primary key, so that row
+  -- squats the slot and the real owner's upsert fails forever, with no
+  -- delete grant to clear it. This makes the pair consistent by
+  -- construction, for every writer including service_role.
+  constraint channel_analytics_settings_connection_account_fkey
+    foreign key (connection_id, account_id)
+    references public.platform_connections (id, account_id)
+    on delete cascade
 );
 
 comment on table public.channel_analytics_settings is

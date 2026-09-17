@@ -138,7 +138,12 @@ export function ChannelTargetsForm({
                   ypp_target_watch_hours: form.watch('yppTargetWatchHours'),
                   ypp_target_subscribers: form.watch('yppTargetSubscribers'),
                   ypp_applicant_status: form.watch('yppApplicantStatus'),
-                  joined_ypp_at: null,
+                  // The form's actual value, not null. A channel already in
+                  // the programme is never measured against a target —
+                  // `YppProgressCard` short-circuits on `alreadyJoined` — so
+                  // warning that its override will be overruled describes a
+                  // comparison that never happens.
+                  joined_ypp_at: form.watch('joinedYppAt'),
                 },
                 accountSettings: {
                   ypp_target_watch_hours: accountWatchHours,

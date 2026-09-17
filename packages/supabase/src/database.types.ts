@@ -1052,11 +1052,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "channel_analytics_settings_connection_id_fkey"
-            columns: ["connection_id"]
-            isOneToOne: true
+            foreignKeyName: "channel_analytics_settings_connection_account_fkey"
+            columns: ["connection_id", "account_id"]
+            isOneToOne: false
             referencedRelation: "platform_connections"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "account_id"]
           },
         ]
       }
