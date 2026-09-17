@@ -7,7 +7,10 @@ import { isRedirectError } from 'next/dist/client/components/redirect-error';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
-import { UpdateChannelAnalyticsSettingsSchema } from '@kit/content-analytics/lib/schemas/settings';
+import {
+  UpdateChannelAnalyticsSettingsSchema,
+  latestJoinDate,
+} from '@kit/content-analytics/lib/schemas/settings';
 import type { OverriddenTarget } from '@kit/content-analytics/lib/ypp-targets';
 import { overriddenChannelTargets } from '@kit/content-analytics/lib/ypp-targets';
 import type { ChannelSettingsEntry } from '@kit/content-analytics/server/settings-actions';
@@ -158,7 +161,7 @@ export function ChannelTargetsForm({
                   ypp_target_watch_hours: accountWatchHours,
                   ypp_target_subscribers: accountSubscribers,
                 },
-                today: new Date().toISOString().slice(0, 10),
+                joinedCutoff: latestJoinDate(),
               })}
             />
 

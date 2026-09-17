@@ -17,6 +17,7 @@ import { enhanceAction } from '@kit/next/actions';
 import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { latestJoinDate } from '../lib/schemas/settings.schema';
 // Out of this file because it is `'use server'`: every export of such a
 // module must be an async function, so a schema with a synchronous
 // `.refine` cannot live here and stay testable. See traffic.schema.ts.
@@ -298,7 +299,7 @@ export const getYppProgressAction = enhanceAction(
           channelSettings:
             overrideByConnection.get(channel.connectionId) ?? null,
           accountSettings,
-          today: new Date().toISOString().slice(0, 10),
+          joinedCutoff: latestJoinDate(),
         });
 
         return {

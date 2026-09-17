@@ -23,8 +23,8 @@ import {
   segmentRpmCents,
   yearChunks,
 } from '../lib/segment-revenue';
-import { forEachAccountRevenueRow } from './revenue-queries';
 import { MAX_TAG_MIN_SAMPLE } from '../lib/ypp-targets';
+import { forEachAccountRevenueRow } from './revenue-queries';
 import { assertScopeAccess } from './scope-access';
 
 /**
