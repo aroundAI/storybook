@@ -35,7 +35,9 @@ test.describe('Analytics settings — evidence', () => {
     await settings.accountWatchHours().fill('1,250');
     await settings.accountSubmit().click();
     await page
-      .getByText('Enter a whole number greater than zero, or leave blank to inherit')
+      .getByText(
+        'Enter a whole number greater than zero, or leave blank to inherit',
+      )
       .waitFor();
 
     await page.screenshot({

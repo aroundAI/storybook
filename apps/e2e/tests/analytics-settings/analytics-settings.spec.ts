@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { seedChannelSettings } from '../utils/seed';
 import { AnalyticsSettingsPageObject } from './analytics-settings.po';
 
 /**
@@ -302,5 +303,38 @@ test.describe('Analytics settings', () => {
       'max',
       tomorrow.toISOString().slice(0, 10),
     );
+  });
+
+  test('a channel whose stored joined date is in the future can still be edited', async ({
+    page,
+  }) => {
+    const settings = new AnalyticsSettingsPageObject(page);
+
+    const account = await settings.setup();
+
+    // `ypp-targets.ts` expects rows written before the form refused future
+    // dates. With the input's `max` pinned at the cutoff, the browser refuses
+    // to submit the whole card for such a channel — so its watch-hours
+    // override cannot be saved, and the only feedback is a native bubble.
+    const future = new Date();
+    future.setUTCDate(future.getUTCDate() + 7);
+    const futureIso = future.toISOString().slice(0, 10);
+
+    await seedChannelSettings(account.connectionId, account.accountId, {
+      joined_ypp_at: futureIso,
+    });
+
+    await settings.goToSettings(account.slug);
+
+    await expect(settings.channelJoined()).toHaveValue(futureIso);
+
+    await settings.channelWatchHours().fill('7000');
+    await settings.channelSubmit().click();
+
+    // The form reaches its own validation, which says what is wrong and
+    // where, rather than the submission never starting.
+    await expect(
+      page.getByText("Joined date can't be in the future"),
+    ).toBeVisible();
   });
 });
