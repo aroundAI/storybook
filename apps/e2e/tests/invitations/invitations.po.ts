@@ -59,9 +59,7 @@ export class InvitationsPageObject {
   navigateToMembers() {
     return expect(async () => {
       await this.page
-        .locator('a', {
-          hasText: 'Members',
-        })
+        .getByRole('link', { name: 'Members', exact: true })
         .click();
 
       await this.page.waitForURL('**/home/*/members');

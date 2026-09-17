@@ -188,7 +188,14 @@ piece of work.
 2. **Apply it**: `pnpm --filter web supabase migration up`
 3. **Mirror it** into `apps/web/supabase/schemas/XX-feature.sql` if that table
    has a schema file, so the two do not drift further
-4. **Generate types**: `supabase gen types typescript --local > lib/database.types.ts && cp lib/database.types.ts ../../packages/supabase/src/database.types.ts`
+4. **Generate types**: `pnpm supabase:web:typegen` — and *generate* them, never
+   hand-edit. CI regenerates and fails the build if the committed file differs
+   ("Types are generated, not hand-written" in the Supabase DB job), because
+   FILM-1608 shipped a spliced one. The command writes both copies; the CLI
+   version is pinned in `apps/web/package.json` to match the one CI installs,
+   so local and CI produce byte-identical output. If those two ever drift
+   again, the generated file silently loses `SetofOptions` blocks — which is
+   what types an `.rpc()` result as a row rather than an array.
 5. **Verify types exist** before using them in code
 6. **Cover RLS with a pgTAP test** in `apps/web/supabase/tests/database/` when
    the migration touches a policy. Policies are not verified by reading them —

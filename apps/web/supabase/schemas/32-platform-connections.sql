@@ -30,7 +30,12 @@ CREATE TABLE IF NOT EXISTS public.platform_connections (
 
   -- Unique connection per account + platform + platform account
   CONSTRAINT platform_connections_unique
-    UNIQUE(account_id, platform, platform_account_id)
+    UNIQUE(account_id, platform, platform_account_id),
+  -- Referenced by channel_analytics_settings' composite foreign key, so a
+  -- per-channel override cannot be filed under an account that does not own
+  -- the channel. Adds no meaningful cost: (id, account_id) is unique wherever
+  -- id already is.
+  CONSTRAINT platform_connections_id_account_key UNIQUE (id, account_id)
 );
 
 -- Enable RLS

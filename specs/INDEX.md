@@ -546,7 +546,7 @@ See [phase-16-workbook-parity/README.md](./phase-16-workbook-parity/README.md) f
 | FILM-1613 | [revenue-alert-account-scoping](./phase-16-workbook-parity/FILM-1613-revenue-alert-account-scoping.md) | ✅ DONE | S | FILM-1508, FILM-1601 |
 | FILM-1605 | [traffic-source-breakdown](./phase-16-workbook-parity/FILM-1605-traffic-source-breakdown.md) | ✅ DONE | M | FILM-1602 |
 | FILM-1606 | [segment-performance](./phase-16-workbook-parity/FILM-1606-segment-performance.md) | ✅ DONE | L | FILM-1603, FILM-1605 |
-| FILM-1608 | [ypp-targets-settings](./phase-16-workbook-parity/FILM-1608-ypp-targets-settings.md) | DRAFT | M | FILM-1602 |
+| FILM-1608 | [ypp-targets-settings](./phase-16-workbook-parity/FILM-1608-ypp-targets-settings.md) | ✅ DONE | M | FILM-1602 |
 | FILM-1609 | [revenue-mix-completion](./phase-16-workbook-parity/FILM-1609-revenue-mix-completion.md) | ✅ DONE | S | FILM-1601 |
 | FILM-1610 | [experiment-log-notes](./phase-16-workbook-parity/FILM-1610-experiment-log-notes.md) | DRAFT | M | FILM-1602, FILM-1603, FILM-1605 |
 | FILM-1611 | [deep-dive-channel-selector](./phase-16-workbook-parity/FILM-1611-deep-dive-channel-selector.md) | DRAFT | M | FILM-1606, FILM-1608, FILM-1609 |

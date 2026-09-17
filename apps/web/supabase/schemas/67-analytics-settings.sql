@@ -3,15 +3,32 @@
 -- ==================================
 -- Per-account analytics configuration: YPP gate targets and tag-analysis
 -- sample thresholds.
+--
+-- The three integer columns were `not null default 4000/1000/5` until
+-- FILM-1608 (migration 20260916073206) made them nullable with no default.
+-- `null` means "fall through to the shipped default", which is the same
+-- vocabulary a null override uses in `channel_analytics_settings` (73) — the
+-- two levels have to agree or `basis` cannot be reported honestly. The
+-- defaults themselves did not move; they live in the resolver.
 
 create table if not exists public.analytics_settings (
   account_id uuid primary key references public.accounts(id) on delete cascade,
-  ypp_target_watch_hours integer not null default 4000,
-  ypp_target_subscribers integer not null default 1000,
-  tag_min_sample integer not null default 5,
+  ypp_target_watch_hours integer,
+  ypp_target_subscribers integer,
+  tag_min_sample integer,
   settings jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  -- Every one of these is a denominator: `Math.min(1, hours / 0)` is 1, so a
+  -- stored zero reports the monetisation gate as met rather than erroring.
+  -- NULL still passes, because a CHECK that evaluates to NULL is not a
+  -- violation — which is what keeps "inherit" expressible.
+  constraint analytics_settings_targets_positive
+    check (ypp_target_watch_hours is null or ypp_target_watch_hours > 0),
+  constraint analytics_settings_subscribers_positive
+    check (ypp_target_subscribers is null or ypp_target_subscribers > 0),
+  constraint analytics_settings_tag_min_sample_positive
+    check (tag_min_sample is null or tag_min_sample > 0)
 );
 
 comment on table public.analytics_settings is 'Per-account analytics configuration (YPP targets, tag sample thresholds)';
@@ -30,3 +47,10 @@ create policy "analytics_settings_insert" on public.analytics_settings for inser
 
 create policy "analytics_settings_update" on public.analytics_settings for update
   to authenticated using (public.has_account_access(account_id));
+
+-- Added by FILM-1608. Without it `updated_at` was only ever the insert
+-- default, because this table shipped with no writer to notice.
+create trigger set_analytics_settings_timestamp
+  before update on public.analytics_settings
+  for each row
+  execute function public.trigger_set_timestamps();

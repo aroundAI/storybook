@@ -24,6 +24,7 @@
     "./server/experiment-actions": "./src/server/experiment-actions.ts",
     "./server/hook-actions": "./src/server/hook-actions.ts",
     "./server/taxonomy-actions": "./src/server/taxonomy-actions.ts",
+    "./server/settings-actions": "./src/server/settings-actions.ts",
     "./components": "./src/components/index.ts",
     "./types": "./src/types.ts",
     "./lib/format": "./src/lib/format.ts",
@@ -34,7 +35,9 @@
     "./lib/raw-export-generator": "./src/lib/raw-export-generator.ts",
     "./lib/pdf-generator": "./src/lib/pdf-generator.tsx",
     "./lib/types/revenue": "./src/lib/types/revenue.ts",
-    "./lib/schemas/revenue": "./src/lib/schemas/revenue.schema.ts"
+    "./lib/schemas/revenue": "./src/lib/schemas/revenue.schema.ts",
+    "./lib/schemas/settings": "./src/lib/schemas/settings.schema.ts",
+    "./lib/ypp-targets": "./src/lib/ypp-targets.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",

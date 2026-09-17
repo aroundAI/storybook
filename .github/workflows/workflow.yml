@@ -167,6 +167,26 @@ jobs:
         working-directory: apps/web
         run: supabase start
 
+      # `CLAUDE.md` has told people to run typegen after a migration since
+      # this repo began, and nothing checked. FILM-1608 shipped a
+      # `database.types.ts` that had been hand-spliced rather than generated,
+      # because the documented command produced a *worse* file than CI's
+      # toolchain — the devDependency was 2.40.7 while this job pins 2.117.0,
+      # so `pnpm supabase:web:typegen` silently deleted the `SetofOptions`
+      # blocks that type an `.rpc()` result as a row rather than an array.
+      #
+      # Scoped to the `public` schema, and that is not a softening. The first
+      # version of this step diffed the whole generated file and failed on one
+      # column — `storage.buckets.versioning_status` — because CI pulls its
+      # service images from ghcr.io (see SUPABASE_INTERNAL_IMAGE_REGISTRY)
+      # while a developer's machine pulls them from public.ecr.aws, and the
+      # two registries ship different storage-api builds. Gating on the whole
+      # file gates on Supabase's release schedule; gating on `public` gates on
+      # what our own migrations control. The script explains the rest.
+      - name: Types are generated, not hand-written
+        working-directory: apps/web
+        run: pnpm run check:types-current
+
       - name: Verify pagination and RLS against a real PostgREST
         working-directory: apps/web
         run: |
@@ -337,8 +357,24 @@ jobs:
         with:
           version: 2.117.0
 
+      # `migra`, `deno-relay` and `pgadmin-schema-diff` were valid service
+      # names for CLI 2.40.7 and do not exist in 2.117.0, which rejects the
+      # whole flag rather than ignoring the unknown ones. Its accepted list is
+      # gotrue, realtime, storage-api, imgproxy, kong, mailpit, postgrest,
+      # postgres-meta, studio, edge-runtime, logflare, vector, supavisor.
+      #
+      # `vector` is excluded alongside `logflare` deliberately: vector ships
+      # its logs to logflare, so excluding one without the other leaves the
+      # container unhealthy and `supabase start` times out waiting on it.
+      # Called directly rather than through `pnpm run ... -- -x ...`. pnpm
+      # forwards the `--` into the command, and 2.117.0 reads everything after
+      # it as positional: `Unexpected positional arguments: "-x", "..."`.
+      # 2.40.7 tolerated the same line. The Supabase DB job above already
+      # invokes the CLI this way, and PATH here resolves to the version
+      # `supabase/setup-cli` installed, which is the one pinned above.
       - name: Supabase Server
-        run: pnpm run supabase:web:start -- -x studio,migra,deno-relay,pgadmin-schema-diff,imgproxy,logflare
+        working-directory: apps/web
+        run: supabase start -x studio,imgproxy,logflare,vector
 
       # No credential export step. apps/web/.env.test already carries the
       # local URL and the CLI's fixed public development keys — the same

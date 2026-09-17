@@ -97,3 +97,55 @@ export async function seedTeamAccount(): Promise<SeededTeam> {
     accountId: account.id as string,
   };
 }
+
+/**
+ * An active YouTube channel on a seeded account.
+ *
+ * The analytics settings page lists per-channel targets from
+ * `platform_connections`, and a freshly seeded team has none — without this
+ * the page renders its empty state and a channel test would assert against
+ * nothing while still passing.
+ *
+ * Written with the service-role key because the OAuth flow that normally
+ * creates these rows is an entire external round trip, and nothing in a
+ * settings test is served by exercising it.
+ */
+export async function seedYouTubeConnection(
+  accountId: string,
+  name = 'Seeded Channel',
+): Promise<string> {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/platform_connections`, {
+    method: 'POST',
+    headers: {
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+      // Without this PostgREST returns 201 and an empty body, so the id
+      // would come back undefined and every later locator would miss.
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify({
+      account_id: accountId,
+      platform: 'youtube',
+      platform_account_name: name,
+      is_active: true,
+    }),
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(
+      `seedYouTubeConnection failed (${response.status}): ${text}`,
+    );
+  }
+
+  const rows = JSON.parse(text) as Array<{ id: string }>;
+  const id = rows[0]?.id;
+
+  if (!id) {
+    throw new Error(`seedYouTubeConnection returned no id: ${text}`);
+  }
+
+  return id;
+}
