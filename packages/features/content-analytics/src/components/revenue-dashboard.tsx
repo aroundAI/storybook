@@ -72,7 +72,11 @@ export function RevenueDashboard({
   const endDate = formatLocalDate(dateRange.to);
 
   // Fetch revenue summary
-  const { data: summary, isLoading: summaryLoading } = useQuery({
+  const {
+    data: summary,
+    isLoading: summaryLoading,
+    isError: summaryError,
+  } = useQuery({
     queryKey: ['revenue-summary', accountId, startDate, endDate] as const,
     queryFn: () =>
       getRevenueSummaryAction({
@@ -291,10 +295,24 @@ export function RevenueDashboard({
               <CardTitle>Revenue Mix</CardTitle>
             </CardHeader>
             <CardContent>
-              <RevenueMixCard
-                byType={summary?.byType ?? {}}
-                isLoading={summaryLoading}
-              />
+              {/*
+                A failed summary leaves `byType` empty, and the card reads an
+                empty mix as "no revenue recorded" — a measured claim off a
+                read that never landed.
+              */}
+              {summaryError ? (
+                <p
+                  className="text-destructive text-sm"
+                  data-test="revenue-mix-error"
+                >
+                  Revenue could not be loaded.
+                </p>
+              ) : (
+                <RevenueMixCard
+                  byType={summary?.byType ?? {}}
+                  isLoading={summaryLoading}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
