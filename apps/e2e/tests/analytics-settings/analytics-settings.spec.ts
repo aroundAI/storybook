@@ -151,6 +151,11 @@ test.describe('Analytics settings', () => {
         'Enter a whole number greater than zero, or leave blank to inherit',
       ),
     ).toBeVisible();
+
+    // The resolver can only move focus to a field it holds a ref for. Without
+    // one, focus stays on the button and, below the fold, the error is never
+    // seen.
+    await expect(settings.accountWatchHours()).toBeFocused();
   });
 
   test('no override notice when the account has set nothing', async ({

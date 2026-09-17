@@ -62,6 +62,10 @@ export function OverrideNumberField<T extends FieldValues>({
             <NumericInput
               initial={field.value as number | null}
               onParsed={field.onChange}
+              // Without the ref, a failed save has nothing to focus and
+              // the user is left on the button, hunting for the error.
+              ref={field.ref}
+              onBlur={field.onBlur}
               placeholder={placeholder}
               dataTest={dataTest}
               disabled={disabled}
@@ -88,7 +92,7 @@ function NumericInput({
   placeholder: string;
   dataTest: string;
   disabled?: boolean;
-} & React.ComponentPropsWithoutRef<'input'>) {
+} & React.ComponentProps<'input'>) {
   // The text the user sees is held here rather than derived from form state,
   // so a value the schema rejects still renders as typed. Deriving it would
   // reproduce the FILM-1609 defect in reverse: paste `1,250`, watch the box

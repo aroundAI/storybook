@@ -43,6 +43,14 @@ test.describe('Analytics settings — evidence', () => {
       fullPage: true,
     });
 
+    // Focus moved by the resolver after a mouse click does not match
+    // `:focus-visible`, so the screenshot shows no ring either way. Read it.
+    const focused = await page.evaluate(() =>
+      document.activeElement?.getAttribute('data-test'),
+    );
+
+    console.log('FOCUSED_AFTER_REJECTED_SAVE', focused);
+
     await settings.accountWatchHours().fill('3500');
     await settings.accountSubscribers().fill('900');
     await settings.saveAccount();
