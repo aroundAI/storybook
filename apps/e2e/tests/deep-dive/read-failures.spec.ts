@@ -118,4 +118,46 @@ test.describe('Failed reads', () => {
     ).toHaveCount(0);
     await expect(page.getByText('No upload cohorts yet.')).toHaveCount(0);
   });
+
+  test('a failed refetch keeps the channel filter and the cards', async ({
+    page,
+  }) => {
+    const deepDive = new DeepDivePageObject(page);
+
+    // Installed before the page loads: the refetch below only happens once
+    // the entry is stale, and the app's stale time is 60s.
+    await page.clock.install();
+
+    const fixture = await deepDive.setup();
+
+    // Loaded, then filtered: the state a discarded channel list would strand,
+    // since the filter is the only control that can clear the filtering.
+    await deepDive.chooseChannel(fixture.activeChannelId);
+    await expect(deepDive.channelFilter()).toContainText('Active Channel');
+
+    await abortActionMatching(page, (body) => {
+      try {
+        const [args] = JSON.parse(body) as Array<Record<string, unknown>>;
+        return Object.keys(args ?? {}).join() === 'projectId';
+      } catch {
+        return false;
+      }
+    });
+
+    // `visibilitychange` on `window` is what React Query's focus manager
+    // listens to; the second fast-forward runs its retry backoff out, so the
+    // refetch has genuinely failed by the time this asserts.
+    await page.clock.fastForward('02:00');
+    await page.evaluate(() =>
+      window.dispatchEvent(new Event('visibilitychange')),
+    );
+    await page.clock.fastForward('00:30');
+
+    // A failed *refetch* is not an absence: React Query keeps the last good
+    // data and leaves `status` at success, so the filter must keep working.
+    await expect(
+      page.locator('[data-test="channel-filter-error"]'),
+    ).toHaveCount(0);
+    await expect(deepDive.channelFilter()).toContainText('Active Channel');
+  });
 });
