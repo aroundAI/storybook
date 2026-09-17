@@ -25,7 +25,7 @@ FILM-1601 (correctness bugs + revenue delete RLS)
 Specified, not yet built:
 
 ```
-FILM-1611 (channel selector + orphan wiring)  ← every dependency now shipped
+FILM-1611 (channel selector + orphan wiring) ✅ PR #260
         │
         ├─→ FILM-1615 (Video Log table)
         └─→ FILM-1617 (subscriber surfaces)
@@ -35,9 +35,7 @@ FILM-1610 (experiment log + per-video notes) — independent, needs FILM-1605 �
 FILM-1616 (weekly diagnostics + retention drill-down) — independent, needs only FILM-1602
 ```
 
-**FILM-1611 is now unblocked.** All three of its dependencies have shipped —
-FILM-1606 (PR #255), FILM-1609 (PR #256) and FILM-1608. Nothing gates the
-remaining UI work.
+**FILM-1611 shipped (PR #260)**, so FILM-1615 and FILM-1617 are unblocked on it.
 
 **FILM-1616 has an unrecorded dependency.** It adds
 `getRetentionCurveAction`, returning `{ points, durationSeconds }` for
@@ -66,13 +64,13 @@ FILM-1610, 1616 and 1611 are mutually independent and can start today. FILM-1611
 | FILM-1606 | PR #255 |
 | FILM-1609 | PR #256 |
 | FILM-1608 | PR #257 |
+| FILM-1611 | PR #260 |
 
 Specified and not yet built:
 
 | Spec | Status | Effort | Covers |
 |------|--------|--------|--------|
 | FILM-1610 | DRAFT | M | Watched metrics, review windows, and per-video notes on `publishes` |
-| FILM-1611 | DRAFT | M | Channel selector, plus mounting `YppProgressCard`, `TagMediansCard`, `RevenueMixCard` |
 | FILM-1615 | DRAFT | M | The Video Log table — FILM-1603 built the query and action, not the screen |
 | FILM-1616 | DRAFT | M | `WeeklyDiagnosticsTable` and `RetentionCurveChart`, both of which need actions built |
 | FILM-1617 | DRAFT | S | Subscriber series card, YPP absolute count, Publish Hub badge |
@@ -166,6 +164,7 @@ is the authoritative account.
 - **Exact YPP watch hours as YouTube computes them** — their figure adjusts for deleted/private/ineligible content no API exposes. Ours is a close approximation. The Shorts alternate path (10M views/90d) is not implemented.
 - **A literal "Browse" traffic source** — no such code exists; it is approximated, so the percentage will not match Studio exactly.
 - **Licensing/IP revenue** and **per-video revenue on TikTok/Instagram** — no API anywhere; manual entry permanently.
+- **Project pages look projects up by slug alone.** Slugs are unique per account, not globally. FILM-1611 scoped the analytics page to the URL's account (a user in two teams sharing a slug got a 404 there); `page.tsx`, research, settings, facts, facts/add, platforms, episodes, canon, hooks, assets and audio-library under `[projectSlug]` still do not. `[projectSlug]/layout.tsx` is the correct pattern.
 
 ## Blocked on infrastructure
 
