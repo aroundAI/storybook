@@ -262,7 +262,21 @@ test.describe('Analytics settings', () => {
     future.setUTCDate(future.getUTCDate() + 7);
     const futureIso = future.toISOString().slice(0, 10);
 
+    // `max` has to be on the element before anything is typed. Without this
+    // wait the fill can land on server-rendered markup that React then
+    // replaces, leaving a value the browser never range-checks — which is how
+    // this flaked in CI, with `rangeOverflow` false for the full 10s.
+    const cutoff = new Date();
+    cutoff.setUTCDate(cutoff.getUTCDate() + 1);
+
+    await expect(settings.channelJoined()).toHaveAttribute(
+      'max',
+      cutoff.toISOString().slice(0, 10),
+    );
+
     await settings.channelJoined().fill(futureIso);
+    await expect(settings.channelJoined()).toHaveValue(futureIso);
+
     await settings.channelSubmit().click();
 
     // The input's `max` makes the browser refuse the submission before the
