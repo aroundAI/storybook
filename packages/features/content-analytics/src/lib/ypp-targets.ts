@@ -88,11 +88,13 @@ interface ResolveInput {
   channelSettings: ChannelSettingsRow | null;
   accountSettings: AccountSettingsRow | null;
   /**
-   * `YYYY-MM-DD` in UTC. Required rather than read from the clock here: this
-   * module stays free of dates (see the escalation-date guard in its tests),
-   * and a caller cannot forget it and silently count a future date as joined.
+   * The latest `joined_ypp_at` (`YYYY-MM-DD`) that counts as joined — pass
+   * `latestJoinDate()`, the same bound the settings form accepts, so a date
+   * the form lets someone enter counts the moment it is saved. Required rather
+   * than read from the clock here: this module stays free of dates (see the
+   * escalation-date guard in its tests), and a caller cannot forget it.
    */
-  today: string;
+  joinedCutoff: string;
 }
 
 /**
@@ -115,7 +117,7 @@ interface ResolveInput {
 export function resolveYppTarget({
   channelSettings,
   accountSettings,
-  today,
+  joinedCutoff,
 }: ResolveInput): ResolvedYppTarget {
   const applicantStatus = toApplicantStatus(
     channelSettings?.ypp_applicant_status,
@@ -149,7 +151,7 @@ export function resolveYppTarget({
     // refused future dates may hold one. Until the date arrives the channel
     // is still short of the gate, so its progress keeps showing. ISO dates
     // compare correctly as strings.
-    alreadyJoined: joinedYppAt !== null && joinedYppAt <= today,
+    alreadyJoined: joinedYppAt !== null && joinedYppAt <= joinedCutoff,
   };
 }
 
@@ -294,12 +296,12 @@ export interface OverriddenTarget {
 export function overriddenChannelTargets({
   channelSettings,
   accountSettings,
-  today,
+  joinedCutoff,
 }: ResolveInput): OverriddenTarget[] {
   const resolved = resolveYppTarget({
     channelSettings,
     accountSettings,
-    today,
+    joinedCutoff,
   });
 
   // A channel already in the programme is past the gate, and nothing measures

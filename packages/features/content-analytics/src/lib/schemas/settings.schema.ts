@@ -23,6 +23,23 @@ import { MAX_TAG_MIN_SAMPLE, YPP_APPLICANT_STATUSES } from '../ypp-targets';
  * which reaches the user as a redacted server-action error, a save that fails
  * with nothing actionable in it.
  */
+/**
+ * The latest joined date anyone can mean: tomorrow in UTC, since for a user
+ * ahead of UTC their local today already is UTC's tomorrow. A date after it
+ * has not happened anywhere.
+ *
+ * One bound for both sides — the schema refuses dates after it, and
+ * `resolveYppTarget` counts dates up to it as joined — so a date the form
+ * accepts is never one the cards still treat as upcoming.
+ */
+export function latestJoinDate(now: Date = new Date()): string {
+  const tomorrow = new Date(now);
+
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+
+  return tomorrow.toISOString().slice(0, 10);
+}
+
 const OptionalTarget = z
   .number()
   .int()
@@ -75,17 +92,9 @@ export const UpdateChannelAnalyticsSettingsSchema = z.object({
       },
       { message: 'Invalid date' },
     )
-    // Compared with tomorrow in UTC, not today: for someone ahead of UTC,
-    // their local today is already UTC's tomorrow. A date after that has not
-    // happened anywhere, and would mark the channel joined early.
-    .refine(
-      (value) => {
-        const tomorrow = new Date();
-        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-        return value <= tomorrow.toISOString().slice(0, 10);
-      },
-      { message: "Joined date can't be in the future" },
-    )
+    .refine((value) => value <= latestJoinDate(), {
+      message: "Joined date can't be in the future",
+    })
     .nullable(),
 });
 

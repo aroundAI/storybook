@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   UpdateAccountAnalyticsSettingsSchema,
   UpdateChannelAnalyticsSettingsSchema,
+  latestJoinDate,
 } from '../src/lib/schemas/settings.schema';
 
 const base = {
@@ -95,6 +96,31 @@ describe('UpdateAccountAnalyticsSettingsSchema tagMinSample', () => {
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.message).toBe(
       'Use 1000 or fewer — a higher minimum hides every segment',
+    );
+  });
+});
+
+describe('latestJoinDate', () => {
+  it('is tomorrow in UTC', () => {
+    expect(latestJoinDate(new Date('2026-09-17T23:30:00.000Z'))).toBe(
+      '2026-09-18',
+    );
+  });
+
+  it('rolls over a month and a year end', () => {
+    expect(latestJoinDate(new Date('2026-09-30T08:00:00.000Z'))).toBe(
+      '2026-10-01',
+    );
+    expect(latestJoinDate(new Date('2026-12-31T12:00:00.000Z'))).toBe(
+      '2027-01-01',
+    );
+  });
+
+  // The UTC+10 case: 08:00 local on the 18th is 22:00 UTC on the 17th. The
+  // user's today is the 18th, which is exactly the cutoff.
+  it('covers a user ahead of UTC entering their local today', () => {
+    expect(latestJoinDate(new Date('2026-09-17T22:00:00.000Z'))).toBe(
+      '2026-09-18',
     );
   });
 });
