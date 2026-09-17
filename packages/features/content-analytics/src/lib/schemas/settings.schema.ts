@@ -11,19 +11,6 @@ import { z } from 'zod';
 import { MAX_TAG_MIN_SAMPLE, YPP_APPLICANT_STATUSES } from '../ypp-targets';
 
 /**
- * A target, or `null` for "inherit".
- *
- * `.nullable()` and not `.optional()`: absent and null mean different things
- * here. Null is a value the form submits and the action writes, and it is the
- * only way to clear an override once set.
- *
- * `.positive()` because every one of these is a denominator — a target of
- * zero renders as 100% complete against a bar of nothing. The ceiling is
- * Postgres' `integer`: without it the insert fails with `value out of range`,
- * which reaches the user as a redacted server-action error, a save that fails
- * with nothing actionable in it.
- */
-/**
  * The latest joined date anyone can mean: tomorrow in UTC, since for a user
  * ahead of UTC their local today already is UTC's tomorrow. A date after it
  * has not happened anywhere.
@@ -40,6 +27,19 @@ export function latestJoinDate(now: Date = new Date()): string {
   return tomorrow.toISOString().slice(0, 10);
 }
 
+/**
+ * A target, or `null` for "inherit".
+ *
+ * `.nullable()` and not `.optional()`: absent and null mean different things
+ * here. Null is a value the form submits and the action writes, and it is the
+ * only way to clear an override once set.
+ *
+ * `.positive()` because every one of these is a denominator — a target of
+ * zero renders as 100% complete against a bar of nothing. The ceiling is
+ * Postgres' `integer`: without it the insert fails with `value out of range`,
+ * which reaches the user as a redacted server-action error, a save that fails
+ * with nothing actionable in it.
+ */
 const OptionalTarget = z
   .number()
   .int()

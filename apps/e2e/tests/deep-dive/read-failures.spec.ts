@@ -14,7 +14,13 @@ import { DeepDivePageObject } from './deep-dive.po';
  * The failure is produced by aborting one server action and leaving the rest
  * of the page alone. Server action bodies are the serialized argument list,
  * which is how one action is told from another here.
+ *
+ * The error states carry an explicit timeout: React Query retries three times
+ * with backoff before a query reports failure, so the state under assertion
+ * lands several seconds after the abort — too close to the 10s default to
+ * leave to chance on a loaded runner.
  */
+const ERROR_STATE = { timeout: 20_000 };
 async function abortActionMatching(
   page: Page,
   matches: (body: string) => boolean,
@@ -56,9 +62,11 @@ test.describe('Failed reads', () => {
 
     await expect(
       page.locator('[data-test="channel-filter-error"]:visible'),
-    ).toBeVisible();
+    ).toBeVisible(ERROR_STATE);
 
-    await expect(page.locator('[data-test="ypp-error"]:visible')).toBeVisible();
+    await expect(page.locator('[data-test="ypp-error"]:visible')).toBeVisible(
+      ERROR_STATE,
+    );
 
     // The claim that must not be made: the channels are unknown, not absent.
     await expect(page.locator('[data-test="ypp-no-channels"]')).toHaveCount(0);
@@ -77,7 +85,9 @@ test.describe('Failed reads', () => {
 
     const mix = page.locator('[data-test="revenue-mix-card"]:visible');
 
-    await expect(mix.locator('[data-test="revenue-mix-error"]')).toBeVisible();
+    await expect(mix.locator('[data-test="revenue-mix-error"]')).toBeVisible(
+      ERROR_STATE,
+    );
     await expect(mix).not.toContainText('No revenue recorded for this period.');
 
     // The tiles above the mix read the same summary. Reporting $0.00 beside
@@ -85,7 +95,7 @@ test.describe('Failed reads', () => {
     // mix card was fixed for, one card up the page.
     await expect(
       page.locator('[data-test="revenue-summary-error"]').first(),
-    ).toBeVisible();
+    ).toBeVisible(ERROR_STATE);
     await expect(page.getByText('$0.00')).toHaveCount(0);
   });
 
@@ -109,13 +119,13 @@ test.describe('Failed reads', () => {
 
     await expect(
       page.locator('[data-test="median-error"]:visible'),
-    ).toBeVisible();
+    ).toBeVisible(ERROR_STATE);
     await expect(
       page.locator('[data-test="back-catalog-error"]:visible'),
-    ).toBeVisible();
+    ).toBeVisible(ERROR_STATE);
     await expect(
       page.locator('[data-test="cohort-error"]:visible'),
-    ).toBeVisible();
+    ).toBeVisible(ERROR_STATE);
 
     // The claims that must not be made off a read that never landed.
     await expect(
