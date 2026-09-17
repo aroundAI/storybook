@@ -60,8 +60,18 @@ test.describe('Invitations', () => {
       'Owner',
     );
   });
+});
 
+/*
+ * Its own team, not the shared `beforeAll` one above. It counts every
+ * invitation on the team, and "users can update invites" leaves one behind —
+ * so run serially after it, this saw 2 and failed, and it flaked in CI.
+ */
+test.describe('Duplicate invitations', () => {
   test('user cannot invite a member of the team again', async ({ page }) => {
+    const invitations = new InvitationsPageObject(page);
+
+    await invitations.setup();
     await invitations.navigateToMembers();
 
     const email = invitations.auth.createRandomEmail();
@@ -78,11 +88,20 @@ test.describe('Invitations', () => {
 
     await expect(invitations.getInvitations()).toHaveCount(1);
 
-    // Try to invite the same member again
-    // This should fail
+    // Inviting the same address again must not add a second row. Wait for
+    // that submission's server action to answer before counting, rather than
+    // a fixed 500ms guess at how long it takes.
     await invitations.openInviteForm();
-    await invitations.inviteMembers(invites);
-    await page.waitForTimeout(500);
+
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes('/members') &&
+          response.request().method() === 'POST',
+      ),
+      invitations.inviteMembers(invites),
+    ]);
+
     await expect(invitations.getInvitations()).toHaveCount(1);
   });
 });
