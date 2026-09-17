@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1611
 title: Deep Dive Channel Selector & Orphan Wiring
-status: DRAFT
+status: ✅ DONE
 effort: M
 dependencies: FILM-1606, FILM-1608, FILM-1609
 ---
@@ -16,11 +16,11 @@ verification, `listProjectChannels` / `listAccountChannels`, and a
 per-channel `getYppProgressAction`. All of it works. **None of it is
 reachable from the UI.**
 
-`ScopeSchema` (`deep-dive-actions.ts:28-39`) accepts `connectionId`,
+`ScopeSchema` (`lib/schemas/traffic.schema.ts:28-41`) accepts `connectionId`,
 `platform`, `contentType` and `language`. A search across `apps/` and
 `packages/` finds no route and no component that passes any of the four.
-`DeepDiveTab` (`components/deep-dive/deep-dive-tab.tsx:40`) takes
-`{ projectId }` and builds `scope = { projectId }` at `:45`. There is no
+`DeepDiveTab` (`components/deep-dive/deep-dive-tab.tsx:62`) takes
+`{ projectId }` and builds `scope = { projectId }` at `:67`. There is no
 channel selector anywhere in the analytics UI — the only `ChannelPicker` in
 the repo belongs to the YouTube connect flow and is unrelated.
 
@@ -30,9 +30,9 @@ props, so each needs a mount point and nothing else:
 
 | component | its data |
 |---|---|
-| `YppProgressCard` (`deep-dive/ypp-progress-card.tsx:39`) | `getYppProgressAction` returns an array whose element type **already matches** its `progress` prop exactly |
-| `TagMediansCard` (`taxonomy/tag-medians-card.tsx:45`) | `getMedianByTagAction` returns its rows *and* its gate fields |
-| `RevenueMixCard` (`revenue-mix-card.tsx:45`) | `RevenueSummary.byType`, computed on every summary |
+| `YppProgressCard` (`deep-dive/ypp-progress-card.tsx:58`) | `getYppProgressAction` returns an array whose element type **already matches** its `progress` prop exactly |
+| `TagMediansCard` (`taxonomy/tag-medians-card.tsx:64`) | `getMedianByTagAction` returns its rows *and* its gate fields |
+| `RevenueMixCard` (`revenue-mix-card.tsx:32`) | `RevenueSummary.byType`, computed on every summary |
 
 **Five components are orphaned in total, not three.** The phase README
 originally counted `RetentionCurveChart`, `WeeklyDiagnosticsTable` and
@@ -40,8 +40,9 @@ originally counted `RetentionCurveChart`, `WeeklyDiagnosticsTable` and
 other two need actions built and are FILM-1616. The two the README missed —
 `TagMediansCard` and `RevenueMixCard` — are both mountable now and are
 therefore here instead. `RevenueMixCard` is the one that matters most: it
-is the only place revenue category labels and colours are defined, so
-adding a category (FILM-1609) still shows nobody anything until it renders.
+is the only *display* path for revenue categories (the labels and colours
+themselves live in `lib/revenue-mix.ts`), so adding a category (FILM-1609)
+still shows nobody anything until it renders.
 
 This spec is **pure wiring**. Every action it needs already exists; none of
 it adds a query. The two orphans that need a data path built are FILM-1616.
@@ -109,19 +110,19 @@ on screen and lose the reason it is empty.
 
 ## 6. Acceptance Criteria
 
-- [ ] A channel selector appears on the Deep Dive tab and defaults to "All channels"
-- [ ] Selecting a channel passes `connectionId` into every deep-dive action on the tab
-- [ ] "All channels" omits `connectionId` entirely rather than sending a sentinel value
-- [ ] Every figure on the tab is unchanged from today when "All channels" is selected
-- [ ] Inactive channels appear in the selector and are marked as inactive
-- [ ] `YppProgressCard` renders once per YouTube channel, never as a pooled total
-- [ ] `TagMediansCard` renders on the tags page with a dimension switcher including Language
-- [ ] The Language option calls the segment action, not the tag action
-- [ ] `RevenueMixCard` renders, and every revenue category resolves to a label and a colour
-- [ ] `ExportReports` receives an account id, not a slug
-- [ ] `DeepDiveTab` holds its filter state in a single state object
-- [ ] No new ClickHouse query is added by this spec
-- [ ] Loading states are rendered for every newly mounted card
+- [x] A channel selector appears on the Deep Dive tab and defaults to "All channels"
+- [x] Selecting a channel passes `connectionId` into every deep-dive action on the tab
+- [x] "All channels" omits `connectionId` entirely rather than sending a sentinel value
+- [x] Every figure on the tab is unchanged from today when "All channels" is selected
+- [x] Inactive channels appear in the selector and are marked as inactive
+- [x] `YppProgressCard` renders once per YouTube channel, never as a pooled total
+- [x] `TagMediansCard` renders on the tags page with a dimension switcher including Language
+- [x] The Language option calls the segment action, not the tag action
+- [x] `RevenueMixCard` renders, and every revenue category resolves to a label and a colour
+- [x] `ExportReports` receives an account id, not a slug
+- [x] `DeepDiveTab` holds its filter state in a single state object
+- [x] No new ClickHouse query is added by this spec
+- [x] Loading states are rendered for every newly mounted card
 
 ## 7. Verification
 
@@ -141,3 +142,49 @@ before.
 The regression that matters is the "All channels" criterion above: the four
 already-rendered cards must show the same numbers after this change as
 before it.
+
+## 8. As built
+
+Checked against `main` before implementation; these corrections and
+decisions differ from the text above.
+
+**Corrections to the spec.**
+- `DeepDiveTab` rendered **five** cards from four queries, and every query
+  key used `projectId` alone. Without adding the channel to the keys a filter
+  change would have served the all-channel cache entry and refetched nothing.
+- `getYppProgressAction` **throws** for a `connectionId` that is not an active
+  YouTube channel. The tab skips the query for any other selection and says
+  why ("Partner Programme progress applies to active YouTube channels").
+- The page does not render `DeepDiveTab` directly: the chain is
+  `analytics/page.tsx` → `LazyAnalyticsDashboard` → `AnalyticsDashboard` →
+  `DeepDiveTab`, so the account id is threaded through the dashboard.
+- **The `ExportReports` slug bug was live, not latent.** Every report schema
+  requires a uuid, so report generation and the scheduled-reports read failed
+  validation on this page — silently, since the failure only reached the
+  console.
+
+**Deviations and decisions.**
+- `DeepDiveFilters` is `{ connectionId? }`, not `{ connectionId, contentType,
+  language }`: only channel has a control, and declaring the other two would be
+  state nothing sets. It is still one object, so the next filter is a field.
+- "All channels" builds the YPP call **without** the key. Passing
+  `connectionId: undefined` serializes as `$undefined` in a server action call,
+  which the e2e spec caught on the request body.
+- Language on the tags page uses the account's `tag_min_sample` as `minVideos`
+  (resolved on the server), so every option on the switcher applies the same
+  cut-off; the segment action's own default is 5. Both paths use a 30-day
+  checkpoint. `TagMediansCard` gained `segmentNoun` so Language is not
+  described as a tag.
+- Included, beyond the map: the project analytics page now looks the project
+  up by slug **and** account. Slugs are unique per account, so a user in two
+  teams sharing a slug got a 404 under both URLs. The other eleven
+  `[projectSlug]` pages still look up by slug alone — see the phase README.
+- Included from the FILM-1608 review: a future `joined_ypp_at` no longer counts
+  as joined (resolver, schema and date input), since this spec is the first to
+  render `YppProgressCard`.
+
+**Verification.** `apps/e2e/tests/deep-dive/deep-dive.spec.ts`,
+`tests/tags/tag-medians.spec.ts`, and additions to the revenue and
+analytics-settings specs. With ClickHouse off, the filter is asserted on the
+server action request bodies. Every guard was seen to fail with its change
+reverted. Screenshots: `deep-dive-evidence.spec.ts` (`CAPTURE_EVIDENCE=1`).
