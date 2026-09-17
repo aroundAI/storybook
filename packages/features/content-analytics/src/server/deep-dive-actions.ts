@@ -298,6 +298,7 @@ export const getYppProgressAction = enhanceAction(
           channelSettings:
             overrideByConnection.get(channel.connectionId) ?? null,
           accountSettings,
+          today: new Date().toISOString().slice(0, 10),
         });
 
         return {

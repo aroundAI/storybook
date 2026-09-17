@@ -46,6 +46,15 @@ const REFUSAL_MESSAGE: Record<'no_access' | 'write_failed', string> = {
   write_failed: 'Settings could not be saved. Please try again.',
 };
 
+/** `YYYY-MM-DD` in the browser's timezone, for the date input's `max`. */
+function localToday(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
 const STATUS_LABEL = {
   unknown: 'Unknown',
   new_applicant: 'New applicant',
@@ -149,6 +158,7 @@ export function ChannelTargetsForm({
                   ypp_target_watch_hours: accountWatchHours,
                   ypp_target_subscribers: accountSubscribers,
                 },
+                today: new Date().toISOString().slice(0, 10),
               })}
             />
 
@@ -218,6 +228,9 @@ export function ChannelTargetsForm({
                       <Input
                         type={'date'}
                         value={field.value ?? ''}
+                        // The browser's own local today; the schema allows
+                        // one day of slack over UTC for the same reason.
+                        max={localToday()}
                         data-test={'channel-joined-input'}
                         onChange={(event) =>
                           field.onChange(event.target.value || null)
