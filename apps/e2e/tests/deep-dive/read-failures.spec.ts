@@ -79,6 +79,14 @@ test.describe('Failed reads', () => {
 
     await expect(mix.locator('[data-test="revenue-mix-error"]')).toBeVisible();
     await expect(mix).not.toContainText('No revenue recorded for this period.');
+
+    // The tiles above the mix read the same summary. Reporting $0.00 beside
+    // an admission that the read never landed is the same false claim the
+    // mix card was fixed for, one card up the page.
+    await expect(
+      page.locator('[data-test="revenue-summary-error"]').first(),
+    ).toBeVisible();
+    await expect(page.getByText('$0.00')).toHaveCount(0);
   });
 
   test('failed deep-dive reads are reported, not shown as no data', async ({

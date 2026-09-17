@@ -88,7 +88,11 @@ export function RevenueDashboard({
   });
 
   // Fetch projection
-  const { data: projection, isLoading: projectionLoading } = useQuery({
+  const {
+    data: projection,
+    isLoading: projectionLoading,
+    isError: projectionError,
+  } = useQuery({
     queryKey: ['revenue-projection', accountId] as const,
     queryFn: () => getRevenueProjectionAction({ accountId }),
   });
@@ -172,6 +176,8 @@ export function RevenueDashboard({
           <CardContent>
             {summaryLoading ? (
               <Skeleton className="h-8 w-24" />
+            ) : summaryError ? (
+              <SummaryUnavailable />
             ) : (
               <>
                 <div className="text-2xl font-bold">
@@ -197,6 +203,8 @@ export function RevenueDashboard({
           <CardContent>
             {summaryLoading ? (
               <Skeleton className="h-8 w-24" />
+            ) : summaryError ? (
+              <SummaryUnavailable />
             ) : (
               <>
                 <div className="text-2xl font-bold">
@@ -218,6 +226,8 @@ export function RevenueDashboard({
           <CardContent>
             {summaryLoading ? (
               <Skeleton className="h-8 w-24" />
+            ) : summaryError ? (
+              <SummaryUnavailable />
             ) : (
               <>
                 <div className="text-2xl font-bold">
@@ -239,6 +249,8 @@ export function RevenueDashboard({
           <CardContent>
             {projectionLoading ? (
               <Skeleton className="h-8 w-24" />
+            ) : projectionError ? (
+              <SummaryUnavailable />
             ) : (
               <>
                 <div className="text-2xl font-bold">
@@ -371,5 +383,20 @@ export function RevenueDashboardSkeleton() {
 
       <Skeleton className="h-[400px] w-full" />
     </div>
+  );
+}
+
+/**
+ * What a tile shows when its read failed.
+ *
+ * `?? 0` renders a failed read as a measured zero — and these tiles sat
+ * directly above the revenue mix's own "could not be loaded", so the same
+ * screen both admitted the failure and reported $0.00 from it.
+ */
+function SummaryUnavailable() {
+  return (
+    <p className="text-destructive text-sm" data-test="revenue-summary-error">
+      Revenue could not be loaded.
+    </p>
   );
 }
