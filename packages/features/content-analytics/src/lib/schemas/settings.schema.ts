@@ -8,7 +8,7 @@
  */
 import { z } from 'zod';
 
-import { YPP_APPLICANT_STATUSES } from '../ypp-targets';
+import { MAX_TAG_MIN_SAMPLE, YPP_APPLICANT_STATUSES } from '../ypp-targets';
 
 /**
  * A target, or `null` for "inherit".
@@ -40,7 +40,10 @@ export const UpdateAccountAnalyticsSettingsSchema = z.object({
   accountId: z.string().uuid(),
   yppTargetWatchHours: OptionalTarget,
   yppTargetSubscribers: OptionalTarget,
-  tagMinSample: OptionalTarget,
+  tagMinSample: OptionalTarget.refine(
+    (value) => value === null || value <= MAX_TAG_MIN_SAMPLE,
+    `Use ${MAX_TAG_MIN_SAMPLE} or fewer — a higher minimum hides every segment`,
+  ),
 });
 
 /**

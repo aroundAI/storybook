@@ -24,6 +24,7 @@ import {
   yearChunks,
 } from '../lib/segment-revenue';
 import { forEachAccountRevenueRow } from './revenue-queries';
+import { MAX_TAG_MIN_SAMPLE } from '../lib/ypp-targets';
 import { assertScopeAccess } from './scope-access';
 
 /**
@@ -57,7 +58,7 @@ const SegmentPerformanceSchema = z
     kind: z.enum(['tag', 'language', 'content_type', 'connection']),
     /** Tag dimension prefix — meaningful only when `kind` is 'tag'. */
     dimension: z.string().max(50).optional(),
-    minVideos: z.number().int().min(1).max(1000).default(5),
+    minVideos: z.number().int().min(1).max(MAX_TAG_MIN_SAMPLE).default(5),
     checkpointDays: z.number().int().min(1).max(730).default(30),
     includeRevenue: z.boolean().default(false),
   })

@@ -357,3 +357,24 @@ export async function seedMembership(
     { key: SERVICE_ROLE_KEY },
   );
 }
+
+/**
+ * An `analytics_settings` row for an account, written with the service role.
+ *
+ * Bypasses the settings schema deliberately: some tests need a value the form
+ * would now refuse, to prove a row saved before that refusal still works.
+ */
+export async function seedAnalyticsSettings(
+  accountId: string,
+  row: {
+    tag_min_sample?: number | null;
+    ypp_target_watch_hours?: number | null;
+    ypp_target_subscribers?: number | null;
+  },
+): Promise<void> {
+  await insertRow(
+    'analytics_settings',
+    { account_id: accountId, ...row },
+    { key: SERVICE_ROLE_KEY },
+  );
+}

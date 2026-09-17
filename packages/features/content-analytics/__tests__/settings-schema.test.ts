@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { UpdateChannelAnalyticsSettingsSchema } from '../src/lib/schemas/settings.schema';
+import {
+  UpdateAccountAnalyticsSettingsSchema,
+  UpdateChannelAnalyticsSettingsSchema,
+} from '../src/lib/schemas/settings.schema';
 
 const base = {
   connectionId: '00000000-0000-4000-8000-0000000000c1',
@@ -62,5 +65,36 @@ describe('UpdateChannelAnalyticsSettingsSchema joinedYppAt', () => {
           .success,
       ).toBe(false);
     }
+  });
+});
+
+describe('UpdateAccountAnalyticsSettingsSchema tagMinSample', () => {
+  const account = {
+    accountId: '00000000-0000-4000-8000-0000000000a1',
+    yppTargetWatchHours: null,
+    yppTargetSubscribers: null,
+  };
+
+  it('accepts up to 1000, and blank', () => {
+    for (const tagMinSample of [1, 1000, null]) {
+      expect(
+        UpdateAccountAnalyticsSettingsSchema.safeParse({
+          ...account,
+          tagMinSample,
+        }).success,
+      ).toBe(true);
+    }
+  });
+
+  it('refuses more than 1000', () => {
+    const result = UpdateAccountAnalyticsSettingsSchema.safeParse({
+      ...account,
+      tagMinSample: 1001,
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe(
+      'Use 1000 or fewer — a higher minimum hides every segment',
+    );
   });
 });

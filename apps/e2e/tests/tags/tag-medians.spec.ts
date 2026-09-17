@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { seedTeamAccount } from '../utils/seed';
+import { seedAnalyticsSettings, seedTeamAccount } from '../utils/seed';
 import { signInAs } from '../utils/session';
 
 /**
@@ -48,5 +48,29 @@ test.describe('Tag medians', () => {
     await expect(card.locator('[data-test="tag-medians-empty"]')).toHaveCount(
       0,
     );
+  });
+
+  test('Language still loads when the stored minimum sample is above the cap', async ({
+    page,
+  }) => {
+    const team = await seedTeamAccount();
+
+    // Above what the segment action accepts. The form now refuses this, but a
+    // row saved before it did would otherwise break Language on every load.
+    await seedAnalyticsSettings(team.accountId, { tag_min_sample: 1500 });
+
+    await signInAs(page, team);
+    await page.goto(`/home/${team.slug}/studio/analytics/tags`);
+
+    const card = page.locator('[data-test="tag-medians-card"]:visible');
+    const trigger = card.locator('[data-test="tag-medians-dimension-trigger"]');
+
+    await trigger.click();
+    await page.locator('[data-test="tag-medians-dimension-language"]').click();
+
+    await expect(card.locator('[data-test="tag-medians-empty"]')).toHaveText(
+      'No language has enough videos yet for a reliable median.',
+    );
+    await expect(card).not.toContainText('Medians could not be loaded.');
   });
 });
