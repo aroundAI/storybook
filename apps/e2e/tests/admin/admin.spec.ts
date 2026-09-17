@@ -1,4 +1,4 @@
-import { Page, expect, selectors, test } from '@playwright/test';
+import { Browser, Page, expect, selectors, test } from '@playwright/test';
 
 import { AuthPageObject } from '../authentication/auth.po';
 import {
@@ -114,7 +114,7 @@ test.describe('Admin', () => {
       ).toBeVisible();
     });
 
-    test('ban user flow', async ({ page }) => {
+    test('ban user flow', async ({ page, browser }) => {
       await page.getByTestId('admin-ban-account-button').click();
       await expect(
         page.getByRole('heading', { name: 'Ban User' }),
@@ -128,43 +128,20 @@ test.describe('Admin', () => {
         page.getByRole('heading', { name: 'Ban User' }),
       ).toBeVisible(); // Dialog should still be open
 
-      // Confirm with correct text
-      await page.fill('[placeholder="Type CONFIRM to confirm"]', 'CONFIRM');
+      await confirmBan(page);
 
-      // Asserting the resulting state rather than waiting on a response. The
-      // matcher here was `url.includes('/admin/accounts') && POST`, which
-      // matches any POST to that path — a server action and its revalidation
-      // both qualify, so it could resolve on the wrong one and carry on
-      // before the badge existed. This retries until the UI actually says so.
-      await page.getByRole('button', { name: 'Ban User' }).click();
+      await withSignedOutPage(browser, async (signedOut) => {
+        await signIn(signedOut, testUser);
 
-      await expect(page.getByTestId('admin-banned-badge')).toBeVisible();
-
-      await page.context().clearCookies();
-
-      // Verify user can't log in
-      await page.goto('/auth/sign-in');
-
-      const auth = new AuthPageObject(page);
-
-      await auth.signIn({
-        email: testUser.email,
-        password: testUser.password,
+        await expect(
+          signedOut.locator('[data-test="auth-error-message"]'),
+        ).toBeVisible();
       });
-
-      // Should show an error message
-      await expect(
-        page.locator('[data-test="auth-error-message"]'),
-      ).toBeVisible();
     });
 
-    test('reactivate user flow', async ({ page }) => {
-      // First ban the user
+    test('reactivate user flow', async ({ page, browser }) => {
       await page.getByTestId('admin-ban-account-button').click();
-      await page.fill('[placeholder="Type CONFIRM to confirm"]', 'CONFIRM');
-      await page.getByRole('button', { name: 'Ban User' }).click();
-
-      await expect(page.getByTestId('admin-banned-badge')).toBeVisible();
+      await confirmBan(page);
 
       // Now reactivate
       await page.getByTestId('admin-reactivate-account-button').click();
@@ -175,18 +152,7 @@ test.describe('Admin', () => {
 
       await page.fill('[placeholder="Type CONFIRM to confirm"]', 'CONFIRM');
 
-      // Wait for the action's response before the reload loop below. A reload
-      // unloads the page, and a request still in flight — or not yet sent,
-      // while the form validates — is cancelled with it: the user stays
-      // banned and the loop reloads until the test times out.
-      await Promise.all([
-        page.waitForResponse(
-          (response) =>
-            response.url().includes('/admin/accounts') &&
-            response.request().method() === 'POST',
-        ),
-        page.getByRole('button', { name: 'Reactivate User' }).click(),
-      ]);
+      await submitAdminAction(page, 'Reactivate User');
 
       // Reload until the badge is gone, rather than asserting once and hoping
       // the page has caught up.
@@ -214,20 +180,11 @@ test.describe('Admin', () => {
         await expect(page.getByTestId('admin-banned-badge')).toHaveCount(0);
       }).toPass();
 
-      // Log out
-      await page.context().clearCookies();
+      await withSignedOutPage(browser, async (signedOut) => {
+        await signIn(signedOut, testUser);
 
-      // Verify user can log in again
-      await page.goto('/auth/sign-in');
-
-      const auth = new AuthPageObject(page);
-
-      await auth.signIn({
-        email: testUser.email,
-        password: testUser.password,
+        await signedOut.waitForURL('/home');
       });
-
-      await page.waitForURL('/home');
     });
 
     test('impersonate user flow', async ({ page }) => {
@@ -369,4 +326,80 @@ async function selectAccount(page: Page, name: string) {
     // page".
     await page.waitForURL(/\/admin\/accounts\//);
   }).toPass();
+}
+
+/**
+ * Submits an admin dialog's server action and waits for its response.
+ *
+ * The response wait is not the assertion — callers reload until the page
+ * shows the outcome. It is here because a reload unloads the page, and a
+ * request not yet sent (the form validates first) or still in flight is
+ * cancelled with it: the action never lands and the reload loop runs out
+ * the test timeout.
+ */
+async function submitAdminAction(page: Page, buttonName: string) {
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.url().includes('/admin/accounts') &&
+        response.request().method() === 'POST',
+    ),
+    page.getByRole('button', { name: buttonName }).click(),
+  ]);
+}
+
+/**
+ * Confirms the open ban dialog and waits until the page shows the badge.
+ *
+ * `banUserAction` redirects to the route it is already on, which does not
+ * reliably re-render from the server, and the ban dialog — unlike
+ * reactivate — does not call `router.refresh()`. A single visibility check
+ * could time out against pre-action markup while the user is already
+ * banned, so this reloads until the page says so.
+ */
+async function confirmBan(page: Page) {
+  await page.fill('[placeholder="Type CONFIRM to confirm"]', 'CONFIRM');
+
+  await submitAdminAction(page, 'Ban User');
+
+  await expect(async () => {
+    await page.reload();
+    await expect(page.getByTestId('admin-banned-badge')).toBeVisible();
+  }).toPass();
+}
+
+/**
+ * Runs `check` in a fresh, signed-out browser context.
+ *
+ * These checks used to clear cookies on the admin page and navigate it to
+ * sign-in. But that page is still mounted, and `useAuthChangeListener`
+ * sends a private route that loses its session to `/` with
+ * `window.location.assign` — racing the test's own `goto`, which Chrome
+ * then aborts (`net::ERR_ABORTED`, captured on the landing page in CI). A
+ * separate context has no admin page to react.
+ */
+async function withSignedOutPage(
+  browser: Browser,
+  check: (page: Page) => Promise<void>,
+) {
+  // Explicitly empty: contexts created here inherit the project's `use`
+  // options, including the super-admin `storageState` this block sets.
+  const context = await browser.newContext({
+    storageState: { cookies: [], origins: [] },
+  });
+
+  try {
+    await check(await context.newPage());
+  } finally {
+    await context.close();
+  }
+}
+
+async function signIn(page: Page, user: { email: string; password: string }) {
+  await page.goto('/auth/sign-in');
+
+  await new AuthPageObject(page).signIn({
+    email: user.email,
+    password: user.password,
+  });
 }
