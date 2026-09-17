@@ -61,6 +61,28 @@ export const UpdateChannelAnalyticsSettingsSchema = z.object({
   joinedYppAt: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)')
+    // The regex alone admits 2026-13-45; a real date survives a round trip.
+    .refine(
+      (value) => {
+        const date = new Date(`${value}T00:00:00.000Z`);
+        return (
+          !Number.isNaN(date.getTime()) &&
+          date.toISOString().slice(0, 10) === value
+        );
+      },
+      { message: 'Invalid date' },
+    )
+    // Compared with tomorrow in UTC, not today: for someone ahead of UTC,
+    // their local today is already UTC's tomorrow. A date after that has not
+    // happened anywhere, and would mark the channel joined early.
+    .refine(
+      (value) => {
+        const tomorrow = new Date();
+        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+        return value <= tomorrow.toISOString().slice(0, 10);
+      },
+      { message: "Joined date can't be in the future" },
+    )
     .nullable(),
 });
 

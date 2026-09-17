@@ -80,6 +80,12 @@ export interface ResolvedYppTarget {
 interface ResolveInput {
   channelSettings: ChannelSettingsRow | null;
   accountSettings: AccountSettingsRow | null;
+  /**
+   * `YYYY-MM-DD` in UTC. Required rather than read from the clock here: this
+   * module stays free of dates (see the escalation-date guard in its tests),
+   * and a caller cannot forget it and silently count a future date as joined.
+   */
+  today: string;
 }
 
 /**
@@ -102,6 +108,7 @@ interface ResolveInput {
 export function resolveYppTarget({
   channelSettings,
   accountSettings,
+  today,
 }: ResolveInput): ResolvedYppTarget {
   const applicantStatus = toApplicantStatus(
     channelSettings?.ypp_applicant_status,
@@ -131,7 +138,11 @@ export function resolveYppTarget({
     applicantStatus,
     escalated: watchHours.escalated || subscribers.escalated,
     joinedYppAt,
-    alreadyJoined: joinedYppAt !== null,
+    // A date can be recorded ahead of time, and rows written before the form
+    // refused future dates may hold one. Until the date arrives the channel
+    // is still short of the gate, so its progress keeps showing. ISO dates
+    // compare correctly as strings.
+    alreadyJoined: joinedYppAt !== null && joinedYppAt <= today,
   };
 }
 
@@ -274,8 +285,13 @@ export interface OverriddenTarget {
 export function overriddenChannelTargets({
   channelSettings,
   accountSettings,
+  today,
 }: ResolveInput): OverriddenTarget[] {
-  const resolved = resolveYppTarget({ channelSettings, accountSettings });
+  const resolved = resolveYppTarget({
+    channelSettings,
+    accountSettings,
+    today,
+  });
 
   // A channel already in the programme is past the gate, and nothing measures
   // it against a target — `YppProgressCard` returns early on `alreadyJoined`.

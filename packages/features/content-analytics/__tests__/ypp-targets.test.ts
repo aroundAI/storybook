@@ -10,6 +10,9 @@ import {
   resolveYppTarget,
 } from '../src/lib/ypp-targets';
 
+/** Fixed, so no test depends on the clock. */
+const TODAY = '2026-09-17';
+
 const CHANNEL = {
   ypp_target_watch_hours: null,
   ypp_target_subscribers: null,
@@ -54,6 +57,7 @@ describe('resolveYppTarget', () => {
     const result = resolveYppTarget({
       channelSettings: null,
       accountSettings: null,
+      today: TODAY,
     });
 
     expect(result.watchHours).toBe(4000);
@@ -66,6 +70,7 @@ describe('resolveYppTarget', () => {
     const result = resolveYppTarget({
       channelSettings: null,
       accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 3000 },
+      today: TODAY,
     });
 
     expect(result.watchHours).toBe(3000);
@@ -88,6 +93,7 @@ describe('resolveYppTarget', () => {
         ypp_applicant_status: 'existing_partner',
       },
       accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 3000 },
+      today: TODAY,
     });
 
     expect(result.watchHours).toBe(2000);
@@ -100,6 +106,7 @@ describe('resolveYppTarget', () => {
     const result = resolveYppTarget({
       channelSettings: { ...CHANNEL, ypp_target_watch_hours: 9000 },
       accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 3000 },
+      today: TODAY,
     });
 
     expect(result.watchHours).toBe(9000);
@@ -120,6 +127,7 @@ describe('resolveYppTarget', () => {
     const result = resolveYppTarget({
       channelSettings: { ...CHANNEL, ypp_target_watch_hours: 2000 },
       accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 3000 },
+      today: TODAY,
     });
 
     expect(result.watchHours).toBe(3000);
@@ -143,6 +151,7 @@ describe('resolveYppTarget', () => {
         ypp_applicant_status: 'existing_partner',
       },
       accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 3000 },
+      today: TODAY,
     });
 
     expect(result.watchHours).toBe(3000);
@@ -157,6 +166,7 @@ describe('resolveYppTarget', () => {
     const result = resolveYppTarget({
       channelSettings: { ...CHANNEL, ypp_target_subscribers: 500 },
       accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 6000 },
+      today: TODAY,
     });
 
     expect(result.watchHoursBasis).toBe('account');
@@ -174,6 +184,7 @@ describe('resolveYppTarget', () => {
           ypp_applicant_status: 'unknown',
         },
         accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 8000 },
+        today: TODAY,
       });
 
       expect(result.watchHours).toBe(8000);
@@ -189,6 +200,7 @@ describe('resolveYppTarget', () => {
           ypp_applicant_status: 'existing_partner',
         },
         accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 8000 },
+        today: TODAY,
       });
 
       expect(result.watchHours).toBe(4000);
@@ -206,6 +218,7 @@ describe('resolveYppTarget', () => {
           ypp_applicant_status: 'unknown',
         },
         accountSettings: null,
+        today: TODAY,
       });
 
       expect(result.watchHours).toBe(2000);
@@ -220,6 +233,7 @@ describe('resolveYppTarget', () => {
           ypp_applicant_status: 'unknown',
         },
         accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 5000 },
+        today: TODAY,
       });
 
       expect(result.watchHours).toBe(5000);
@@ -230,6 +244,7 @@ describe('resolveYppTarget', () => {
       const result = resolveYppTarget({
         channelSettings: null,
         accountSettings: null,
+        today: TODAY,
       });
 
       expect(result.applicantStatus).toBe('unknown');
@@ -241,6 +256,7 @@ describe('resolveYppTarget', () => {
       const result = resolveYppTarget({
         channelSettings: { ...CHANNEL, joined_ypp_at: '2026-03-01' },
         accountSettings: null,
+        today: TODAY,
       });
 
       expect(result.alreadyJoined).toBe(true);
@@ -251,10 +267,35 @@ describe('resolveYppTarget', () => {
       const result = resolveYppTarget({
         channelSettings: CHANNEL,
         accountSettings: null,
+        today: TODAY,
       });
 
       expect(result.alreadyJoined).toBe(false);
       expect(result.joinedYppAt).toBeNull();
+    });
+
+    // A date can be entered ahead of time. Counting it as joined would tell
+    // the card to stop showing progress toward a gate the channel has not
+    // cleared yet — "In the Partner Programme since <next month>".
+    it('is not joined while the date is still in the future', () => {
+      const result = resolveYppTarget({
+        channelSettings: { ...CHANNEL, joined_ypp_at: '2026-10-01' },
+        accountSettings: null,
+        today: '2026-09-17',
+      });
+
+      expect(result.alreadyJoined).toBe(false);
+      expect(result.joinedYppAt).toBe('2026-10-01');
+    });
+
+    it('is joined on the date itself', () => {
+      const result = resolveYppTarget({
+        channelSettings: { ...CHANNEL, joined_ypp_at: '2026-09-17' },
+        accountSettings: null,
+        today: '2026-09-17',
+      });
+
+      expect(result.alreadyJoined).toBe(true);
     });
 
     it('still resolves targets for a joined channel', () => {
@@ -264,6 +305,7 @@ describe('resolveYppTarget', () => {
       const result = resolveYppTarget({
         channelSettings: { ...CHANNEL, joined_ypp_at: '2026-03-01' },
         accountSettings: null,
+        today: TODAY,
       });
 
       expect(result.watchHours).toBe(4000);
@@ -281,6 +323,7 @@ describe('escalated', () => {
     const result = resolveYppTarget({
       channelSettings: CHANNEL,
       accountSettings: null,
+      today: TODAY,
     });
 
     expect(result.applicantStatus).toBe('unknown');
@@ -291,6 +334,7 @@ describe('escalated', () => {
     const result = resolveYppTarget({
       channelSettings: { ...CHANNEL, ypp_target_watch_hours: 2000 },
       accountSettings: null,
+      today: TODAY,
     });
 
     expect(result.escalated).toBe(false);
@@ -300,6 +344,7 @@ describe('escalated', () => {
     const result = resolveYppTarget({
       channelSettings: { ...CHANNEL, ypp_target_watch_hours: 2000 },
       accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 8000 },
+      today: TODAY,
     });
 
     expect(result.watchHours).toBe(8000);
@@ -311,6 +356,7 @@ describe('escalated', () => {
     const result = resolveYppTarget({
       channelSettings: { ...CHANNEL, ypp_target_watch_hours: 9000 },
       accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 3000 },
+      today: TODAY,
     });
 
     expect(result.watchHours).toBe(9000);
@@ -327,6 +373,7 @@ describe('non-positive stored targets', () => {
     const result = resolveYppTarget({
       channelSettings: { ...CHANNEL, ypp_target_watch_hours: 0 },
       accountSettings: null,
+      today: TODAY,
     });
 
     expect(result.watchHours).toBe(4000);
@@ -341,6 +388,7 @@ describe('non-positive stored targets', () => {
         ypp_applicant_status: 'existing_partner',
       },
       accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 3000 },
+      today: TODAY,
     });
 
     expect(result.watchHours).toBe(3000);
@@ -352,6 +400,7 @@ describe('non-positive stored targets', () => {
       const result = resolveYppTarget({
         channelSettings: { ...CHANNEL, ypp_target_watch_hours: bad },
         accountSettings: { ...ACCOUNT, ypp_target_subscribers: bad },
+        today: TODAY,
       });
 
       expect(result.watchHours).toBeGreaterThan(0);
@@ -375,6 +424,7 @@ describe('overriddenChannelTargets', () => {
     const result = overriddenChannelTargets({
       channelSettings: { ...CHANNEL, ypp_target_watch_hours: 1200 },
       accountSettings: null,
+      today: TODAY,
     });
 
     expect(result).toEqual([]);
@@ -388,6 +438,7 @@ describe('overriddenChannelTargets', () => {
         ypp_applicant_status: 'existing_partner',
       },
       accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 4000 },
+      today: TODAY,
     });
 
     expect(result).toEqual([]);
@@ -397,6 +448,7 @@ describe('overriddenChannelTargets', () => {
     const result = overriddenChannelTargets({
       channelSettings: { ...CHANNEL, ypp_target_watch_hours: 1200 },
       accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 4000 },
+      today: TODAY,
     });
 
     expect(result).toEqual([
@@ -413,6 +465,7 @@ describe('overriddenChannelTargets', () => {
       const result = overriddenChannelTargets({
         channelSettings: { ...CHANNEL, ypp_target_watch_hours: sentinel },
         accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 4000 },
+        today: TODAY,
       });
 
       expect(result).toEqual([]);
@@ -430,6 +483,7 @@ describe('overriddenChannelTargets', () => {
         ypp_target_watch_hours: 4000,
         ypp_target_subscribers: 1000,
       },
+      today: TODAY,
     });
 
     // Watch hours lose to the higher account figure; subscribers are already
@@ -450,6 +504,7 @@ describe('overriddenChannelTargets', () => {
         joined_ypp_at: '2026-03-01',
       },
       accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 4000 },
+      today: TODAY,
     });
 
     expect(result).toEqual([]);
@@ -459,6 +514,7 @@ describe('overriddenChannelTargets', () => {
     const result = overriddenChannelTargets({
       channelSettings: CHANNEL,
       accountSettings: { ...ACCOUNT, ypp_target_watch_hours: 4000 },
+      today: TODAY,
     });
 
     expect(result).toEqual([]);
