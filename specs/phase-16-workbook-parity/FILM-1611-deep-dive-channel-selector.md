@@ -183,6 +183,18 @@ decisions differ from the text above.
   as joined (resolver, schema and date input), since this spec is the first to
   render `YppProgressCard`.
 
+**From the PR #260 review.**
+- **One tag minimum-sample cap.** The segment action refuses a `minVideos`
+  above 1000 while the setting allowed any positive integer, so Language
+  failed for a high setting. `MAX_TAG_MIN_SAMPLE` is now used by the settings
+  schema, the segment action and `resolveTagMinSample`, which clamps rows
+  saved before the cap.
+- **One joined-date bound.** `latestJoinDate()` (tomorrow in UTC) is both the
+  latest date the form accepts and the cutoff `resolveYppTarget` counts as
+  joined (`joinedCutoff`), so a date a user ahead of UTC enters counts at once.
+- **YPP cards are the project's channels.** The action stays per account; the
+  tab narrows its answer to the channels the filter lists.
+
 **Verification.** `apps/e2e/tests/deep-dive/deep-dive.spec.ts`,
 `tests/tags/tag-medians.spec.ts`, and additions to the revenue and
 analytics-settings specs. With ClickHouse off, the filter is asserted on the
