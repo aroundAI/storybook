@@ -22,6 +22,7 @@ export type { ReportIngestResult } from './reporting/report-ingest';
 // Channel dimension (FILM-1602)
 export { listAccountChannels, listProjectChannels } from './channels';
 export type { ChannelRef } from './channels';
+export { listChannelsAction } from './channels-actions';
 export { UNATTRIBUTED_CONNECTION_ID } from './dim-sync';
 
 // Video dimension sync (FILM-1506)
