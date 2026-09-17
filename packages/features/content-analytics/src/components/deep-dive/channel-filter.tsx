@@ -25,6 +25,8 @@ interface ChannelFilterProps {
   value: string | undefined;
   onChange: (connectionId: string | undefined) => void;
   isLoading?: boolean;
+  /** The channel list failed to load — say so rather than offering nothing */
+  isError?: boolean;
 }
 
 /**
@@ -43,9 +45,24 @@ export function ChannelFilter({
   value,
   onChange,
   isLoading = false,
+  isError = false,
 }: ChannelFilterProps) {
   if (isLoading) {
     return <Skeleton className={'h-9 w-56'} />;
+  }
+
+  // An empty list and a failed read look identical in a dropdown: both offer
+  // "All channels" and nothing else. Only one of them means this project
+  // publishes nowhere.
+  if (isError) {
+    return (
+      <p
+        className={'text-muted-foreground text-sm'}
+        data-test={'channel-filter-error'}
+      >
+        Channels could not be loaded.
+      </p>
+    );
   }
 
   return (

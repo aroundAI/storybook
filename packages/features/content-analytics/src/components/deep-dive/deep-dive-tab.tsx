@@ -303,6 +303,10 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
   // project's channels. So the cards are narrowed to those channels — a card
   // for a channel this project never publishes to could not be selected and
   // would not belong on this tab.
+  //
+  // The intersection only means anything when the channel list loaded: a
+  // failed read leaves it empty, which would empty the section and report it
+  // as "no channels publish here". That is why its error is passed on below.
   const projectYppProgress = useMemo(() => {
     const projectChannelIds = new Set(
       (channelsQuery.data ?? []).map((channel) => channel.connectionId),
@@ -323,6 +327,7 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
             setFilters((current) => ({ ...current, connectionId }))
           }
           isLoading={channelsQuery.isLoading}
+          isError={channelsQuery.isError}
         />
       </div>
 
@@ -463,7 +468,7 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
           <YppProgressSection
             applies={yppApplies}
             isLoading={yppQuery.isLoading || channelsQuery.isLoading}
-            isError={yppQuery.isError}
+            isError={yppQuery.isError || channelsQuery.isError}
             progress={projectYppProgress}
           />
         </AnalyticsCard>
@@ -500,7 +505,7 @@ function YppProgressSection({
 
   if (isError) {
     return (
-      <p className={'text-destructive text-sm'}>
+      <p className={'text-destructive text-sm'} data-test={'ypp-error'}>
         Partner Programme progress could not be loaded.
       </p>
     );
