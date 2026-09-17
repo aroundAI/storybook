@@ -88,20 +88,22 @@ test.describe('Duplicate invitations', () => {
 
     await expect(invitations.getInvitations()).toHaveCount(1);
 
-    // Inviting the same address again must not add a second row. Wait for
-    // that submission's server action to answer before counting, rather than
-    // a fixed 500ms guess at how long it takes.
+    // A second invite to the same address is refused: `invitations` is unique
+    // on (email, account_id), so the action rejects and the dialog's toast
+    // reports it. The dialog closes before the action settles, so its closing
+    // is no signal; the toast is.
     await invitations.openInviteForm();
+    await invitations.inviteMembers(invites);
 
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.url().includes('/members') &&
-          response.request().method() === 'POST',
-      ),
-      invitations.inviteMembers(invites),
-    ]);
+    await expect(
+      page.getByText('Sorry, members could not be invited. Please try again.'),
+    ).toBeVisible();
 
+    // Count from a fresh server render, not the list already on screen. The
+    // previous version waited on the action's response and counted at once;
+    // with a second invitation really written it still passed, because it
+    // read the stale one-row list.
+    await page.reload();
     await expect(invitations.getInvitations()).toHaveCount(1);
   });
 });
