@@ -34,6 +34,12 @@ export class TeamAccountsPageObject {
 
     await signInAs(this.page, team);
 
+    // Sign-in lands on the personal account. The dialog this replaced left
+    // callers on the team, and every helper they call next navigates by the
+    // team sidebar — Members, Settings, Billing — none of which exist here.
+    await this.page.goto(`/home/${team.slug}`);
+    await this.page.waitForURL(`**/home/${team.slug}`);
+
     return { email: team.email, teamName: team.name, slug: team.slug };
   }
 
