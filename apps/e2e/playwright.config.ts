@@ -123,7 +123,11 @@ export default defineConfig({
     },
     {
       name: 'admin',
-      testMatch: /admin\/.*\.spec\.ts/,
+      // Anchored to `tests/admin/`: `testMatch` is tested against the absolute
+      // path, so an unanchored `admin/` also matched a checkout under
+      // `/Users/admin/` or a folder like `tests/team-admin/`, running those
+      // specs here as well as in `chromium`.
+      testMatch: /tests\/admin\/[^/]+\.spec\.ts$/,
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup'],
     },
@@ -132,7 +136,7 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       // A project-level `testIgnore` replaces the top-level one rather than
       // adding to it, so the billing and team-account exclusions come along.
-      testIgnore: [...testIgnore, '**/admin/**'],
+      testIgnore: [...testIgnore, '**/tests/admin/**'],
     },
     /* Test against mobile viewports. */
     // {
