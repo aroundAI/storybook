@@ -41,7 +41,10 @@ import { YppProgressCard, YppProgressCardSkeleton } from './ypp-progress-card';
 interface DeepDiveTabProps {
   /** Project the deep-dive analysis is scoped to */
   projectId: string;
-  /** The project's account — YPP progress is read per account channel */
+  /**
+   * The project's account. `getYppProgressAction` is per account, so the tab
+   * narrows its answer to the project's channels itself.
+   */
   accountId: string;
 }
 
@@ -295,6 +298,21 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
     enabled: yppApplies,
   });
 
+  // The action answers for every active YouTube channel on the account; every
+  // other card here is scoped to the project, and the filter lists only the
+  // project's channels. So the cards are narrowed to those channels — a card
+  // for a channel this project never publishes to could not be selected and
+  // would not belong on this tab.
+  const projectYppProgress = useMemo(() => {
+    const projectChannelIds = new Set(
+      (channelsQuery.data ?? []).map((channel) => channel.connectionId),
+    );
+
+    return (yppQuery.data ?? []).filter((channel) =>
+      projectChannelIds.has(channel.connectionId),
+    );
+  }, [yppQuery.data, channelsQuery.data]);
+
   return (
     <div className={'flex flex-col gap-4'} data-test={'deep-dive-tab'}>
       <div className={'flex items-center justify-end'}>
@@ -444,9 +462,9 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
         >
           <YppProgressSection
             applies={yppApplies}
-            isLoading={yppQuery.isLoading}
+            isLoading={yppQuery.isLoading || channelsQuery.isLoading}
             isError={yppQuery.isError}
-            progress={yppQuery.data ?? []}
+            progress={projectYppProgress}
           />
         </AnalyticsCard>
       </div>
@@ -494,7 +512,7 @@ function YppProgressSection({
         className={'text-muted-foreground text-sm'}
         data-test={'ypp-no-channels'}
       >
-        No active YouTube channels are connected to this account.
+        No active YouTube channel publishes in this project.
       </p>
     );
   }
