@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { RevenuePageObject } from '../revenue/revenue.po';
-import { seedYouTubeConnection } from '../utils/seed';
+import { seedPublishedEpisode, seedYouTubeConnection } from '../utils/seed';
 import { DeepDivePageObject } from './deep-dive.po';
 
 /**
@@ -29,7 +29,14 @@ test.describe('FILM-1611 — evidence', () => {
     const deepDive = new DeepDivePageObject(page);
     const fixture = await deepDive.setup();
 
-    await seedYouTubeConnection(fixture.team.accountId, 'Second Channel');
+    const secondChannelId = await seedYouTubeConnection(
+      fixture.team.accountId,
+      'Second Channel',
+    );
+
+    await seedPublishedEpisode(fixture.project.id, secondChannelId, {
+      number: 3,
+    });
     await page.reload();
     await page.locator('[data-test="analytics-tab-deep-dive"]').click();
     await expect(deepDive.yppCards()).toHaveCount(2);

@@ -3,6 +3,7 @@ import { Page, Request, expect, test } from '@playwright/test';
 import {
   seedMembership,
   seedProject,
+  seedPublishedEpisode,
   seedTeamAccount,
   seedYouTubeConnection,
 } from '../utils/seed';
@@ -141,20 +142,36 @@ test.describe('Deep Dive channel filter', () => {
     const deepDive = new DeepDivePageObject(page);
     const fixture = await deepDive.setup();
 
-    // A second active YouTube channel on the account. With one active channel
-    // a pooled total would also render exactly one card, so this is what lets
-    // the test tell per-channel cards from a sum.
-    await seedYouTubeConnection(fixture.team.accountId, 'Second Channel');
+    // A second active YouTube channel that this project publishes to. With
+    // one active channel a pooled total would also render exactly one card,
+    // so this is what lets the test tell per-channel cards from a sum.
+    const secondChannelId = await seedYouTubeConnection(
+      fixture.team.accountId,
+      'Second Channel',
+    );
+
+    await seedPublishedEpisode(fixture.project.id, secondChannelId, {
+      number: 3,
+    });
+
+    // And one on the same account that this project has never published to.
+    // Every other card on the tab is project-scoped and the filter cannot
+    // select it, so it must not get a YPP card here either.
+    await seedYouTubeConnection(fixture.team.accountId, 'Unrelated Channel');
+
     await page.reload();
     await page.locator('[data-test="analytics-tab-deep-dive"]').click();
 
-    // Two active channels, two cards — never a pooled total, and never one for
-    // the disconnected channel, which can no longer earn toward the gate.
+    // The project's two active channels, two cards — never a pooled total,
+    // never the disconnected channel, never the account's unrelated one.
     await expect(deepDive.yppCards()).toHaveCount(2);
     await expect(deepDive.yppCards()).toContainText([
       'Active Channel',
       'Second Channel',
     ]);
+    await expect(
+      deepDive.yppCards().filter({ hasText: 'Unrelated Channel' }),
+    ).toHaveCount(0);
 
     await deepDive.chooseChannel(fixture.inactiveChannelId);
 
