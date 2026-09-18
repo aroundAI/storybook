@@ -228,6 +228,31 @@ Each fix below was watched failing before it was believed.
   `verify-coverage.test.ts` fails when one does not. Three had never run
   against a server, one of them this spec's.
 
+**Round 2**, reviewed by class rather than by file — each class checked at
+every place it occurs:
+
+- **Abandon had no rule**, so it could overwrite a concluded experiment's
+  result. It now takes planned or running only.
+- **Lifecycle writes are atomic.** Start, conclude and abandon each carry
+  their status condition on the update itself; a check followed by a write
+  let two tabs both start an experiment, the second replacing the first's
+  baseline.
+- **Replacing links is one transaction** (`replace_experiment_publishes`):
+  as a delete then an insert, a refused insert left an experiment with no
+  videos.
+- **The table enforces what the actions do:** the metric and window freeze
+  on start (trigger), and links change only while planned (policy).
+- **Audit fields are the database's.** The note's author and time, and an
+  experiment's creator, are set by triggers; a caller could claim either.
+  The note trigger lets a foreign-key cascade through, or deleting a user
+  who wrote a note would fail — which the existing deletion test caught.
+- **Editability is one rule.** `editable_publish_ids` replaces a role list
+  restated in TypeScript, and pgTAP checks it against a real update for a
+  project member, a viewer, an account member off the project and an
+  outsider.
+- The experiment list is paged; a failed cleanup after a failed link is
+  reported; the due list's cache key carries its date.
+
 ## 6. Implementation Map
 
 | File | Change |
@@ -277,7 +302,7 @@ Each fix below was watched failing before it was believed.
 - [x] A user without update rights on a publish cannot write its note — proved by a pgTAP test, not by reading the policy
 - [x] Notes are absent from every ClickHouse insert — `dim-sync.ts` selects an explicit column list and `VideoDim` has no note field, so the type is the guard
 - [x] `pnpm --filter web check:schema-drift` passes and both `database.types.ts` copies match
-- [x] A started experiment cannot be started again, concluded early or backwards, or have its metric, window or videos changed (§5a)
+- [x] An experiment starts only from planned, concludes only from running and never before its start, is abandoned only from planned or running, and once started cannot have its metric, window or videos changed — each enforced by the table as well as the action (§5a). Concluding before the review date is allowed: the date says when to look, not when you may
 - [x] The table refuses a link to another account's video, for a user who belongs to both (pgTAP)
 - [x] A partially covered window says so on the page, and a sum is also shown per day (measured against local ClickHouse: +15, data on 3 of 30 days, 5.0 per day)
 - [x] A video whose 30 days predate ingest is excluded from `views_at_30d` (measured: 100 with 1 of 2 videos; 50 with 2 of 2 when the exclusion is reverted)

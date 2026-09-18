@@ -12,12 +12,12 @@ const state: {
   notes: Array<{
     id: string;
     analytics_note: string | null;
-    episodes: { project_id: string };
   }>;
   notesError: { message: string } | null;
-  /** Projects where the caller holds a role that may update publishes. */
-  editableProjects: string[];
-} = { notes: [], notesError: null, editableProjects: [] };
+  /** What `editable_publish_ids` returns for the caller. */
+  editableIds: string[];
+  rpcCalls: string[];
+} = { notes: [], notesError: null, editableIds: [], rpcCalls: [] };
 
 vi.mock('@kit/next/actions', () => ({
   enhanceAction:
@@ -74,35 +74,25 @@ function pageOf(rows: unknown[], error: { message: string } | null = null) {
 
 vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => ({
+    rpc: async (name: string) => {
+      state.rpcCalls.push(name);
+      return { data: state.editableIds, error: null };
+    },
     from: (table: string) =>
       table === 'publishes'
         ? pageOf(state.notes, state.notesError)
-        : table === 'project_members'
-          ? {
-              select: () => ({
-                eq: () => ({
-                  in: () => ({
-                    in: async () => ({
-                      data: state.editableProjects.map((project_id) => ({
-                        project_id,
-                      })),
-                      error: null,
-                    }),
-                  }),
-                }),
-              }),
-            }
-          : pageOf([]),
+        : pageOf([]),
   }),
 }));
 
 beforeEach(() => {
   state.notes = [
-    { id: 'p1', analytics_note: null, episodes: { project_id: 'proj-a' } },
-    { id: 'p2', analytics_note: null, episodes: { project_id: 'proj-b' } },
+    { id: 'p1', analytics_note: null },
+    { id: 'p2', analytics_note: null },
   ];
   state.notesError = null;
-  state.editableProjects = [];
+  state.editableIds = [];
+  state.rpcCalls = [];
 });
 
 const input = {
@@ -133,10 +123,13 @@ describe('getVideoLogAction — analytics notes', () => {
   });
 
   it('says per video whether the caller may edit its note, by the publishes_update rule', async () => {
-    // Member of proj-a's project with an editing role; not of proj-b's.
-    state.editableProjects = ['proj-a'];
+    // The database answers, from the same rule as publishes_update; the
+    // two are checked against each other in experiments-integrity.test.sql.
+    state.editableIds = ['p1'];
 
     const rows = await getVideoLogAction(input);
+
+    expect(state.rpcCalls).toEqual(['editable_publish_ids']);
 
     expect(rows.map((row) => [row.videoId, row.canEditNote])).toEqual([
       ['p1', true],

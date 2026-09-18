@@ -48,7 +48,7 @@ beforeEach(() => {
 });
 
 describe('updatePublishNoteAction', () => {
-  it('writes the note with its author and time in one update', async () => {
+  it('writes only the note, leaving its author and time to the database', async () => {
     state.matched = [
       {
         id: PUBLISH,
@@ -62,12 +62,9 @@ describe('updatePublishNoteAction', () => {
       note: 'Swapped thumbnail',
     });
 
-    expect(state.written).toMatchObject({
-      analytics_note: 'Swapped thumbnail',
-      analytics_note_updated_by: 'u1',
-    });
-    expect(state.written).toHaveProperty('analytics_note_updated_at');
-    expect(state.written).not.toHaveProperty('metadata');
+    // Only the note: its author and time are set by the database
+    // (publishes_analytics_note_audit), so a caller cannot claim either.
+    expect(state.written).toEqual({ analytics_note: 'Swapped thumbnail' });
     expect(result).toEqual({
       publishId: PUBLISH,
       note: 'Swapped thumbnail',
