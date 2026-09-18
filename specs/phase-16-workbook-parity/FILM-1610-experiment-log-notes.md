@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1610
 title: Experiment Log & Per-Video Notes
-status: DRAFT
+status: ✅ DONE
 effort: M
 dependencies: FILM-1602, FILM-1603, FILM-1605
 ---
@@ -69,10 +69,19 @@ alter table public.analytics_experiments
   add column if not exists metric_watched varchar(40),
   add column if not exists review_window_days integer not null default 60,
   add column if not exists notes text,
-  add column if not exists connection_id uuid
-    references public.platform_connections(id) on delete set null,
+  add column if not exists connection_id uuid,
   add column if not exists review_due_at date
     generated always as (started_at + review_window_days) stored;
+
+alter table public.analytics_experiments
+  add constraint analytics_experiments_review_window_days_check
+  check (review_window_days between 1 and 365);
+
+alter table public.analytics_experiments
+  add constraint analytics_experiments_connection_account_fkey
+  foreign key (connection_id, account_id)
+  references public.platform_connections (id, account_id)
+  on delete set null (connection_id);
 
 create index if not exists idx_analytics_experiments_review_due
   on public.analytics_experiments (account_id, review_due_at)
@@ -83,6 +92,13 @@ create index if not exists idx_analytics_experiments_review_due
   already behaves in this table. Cascading would delete the experiment
   record when a channel is disconnected, destroying the history the log
   exists to keep.
+- **`connection_id` is a composite key onto `(id, account_id)`** —
+  *corrected during implementation.* A plain foreign key does not run RLS,
+  so a member of account A could attach account B's channel: the FILM-1608
+  hole, fixed the same way. And the delete action must be
+  `set null (connection_id)`, not a bare `set null`, which on a composite key
+  nulls `account_id` too and makes disconnecting a channel fail on its NOT
+  NULL. Both were watched failing in pgTAP without the fix.
 - **`review_window_days` is `not null default 60`** so every existing row
   gets a window and `review_due_at` computes for all of them. A nullable
   window would make the generated column null for every historical
@@ -133,23 +149,51 @@ assumption to carry into it.
 
 ## 5. Watched Metrics
 
-`captureSnapshot` gains `watched: { metric, value, unit } | null` alongside
-the unchanged `totals`. Every source already exists or lands earlier in
-this phase:
+*Rewritten during implementation. The table this section first shipped
+with sourced three metrics from scope-level queries and weighted CTR by
+views; both are corrected below.*
 
-| `metric_watched` | source |
-|---|---|
-| `views_at_30d` | `queryVideoViewsAtAge` (FILM-1603) |
-| `ctr` | `queryQualityMetricsForVideos` (`queries-detail.ts:156`), view-weighted |
-| `avg_view_duration` | same |
-| `avg_view_percentage` | same |
-| `browse_suggested_share` | `queryTrafficSourceBreakdown` (FILM-1605) |
-| `search_share` | same |
-| `subscribers_net` | `queryWatchWindowTotals` |
+`captureSnapshot` gains `watched: WatchedValue | null` alongside the
+unchanged `totals`. `null` means the experiment watches no metric.
+`WatchedValue` is a discriminated union
+(`lib/watched-metrics.ts`): `measured`, with the value, its unit, the
+window and how many of the linked videos had data; or `unmeasured`, with
+the reason — `no_linked_videos`, `no_data`, `none_mature` or
+`unknown_metric`. **A metric that cannot be measured is never a zero**,
+and the type makes one impossible to construct without a value.
 
-An unrecognised `metric_watched` resolves to `watched: null` and the
-snapshot still saves. Failing the whole capture because a metric name was
-retired would lose the totals too, which are the part that always works.
+**Every metric is measured over the experiment's linked videos only.**
+`queryTrafficSourceBreakdown` and `queryWatchWindowTotals`, which the first
+draft named, take a project or account scope: they would have measured the
+whole channel for an experiment run on six videos.
+
+| `metric_watched` | source | pooled across the videos as |
+|---|---|---|
+| `views_at_30d` | `queryVideoViewsAtAge({ videoIds, checkpoints: [30] })` | median of the videos whose 30 days have elapsed; `none_mature` if none have |
+| `ctr` | `queryQualityMetricsForVideos({ videoIds, …window })` | Σ(ctr × impressions) / Σ impressions — **impression**-weighted, since CTR is clicks per impression |
+| `avg_view_duration`, `avg_view_percentage` | same, plus windowed views from `queryTotalsByVideoIds` | weighted by each video's views in the window |
+| `browse_suggested_share`, `search_share` | `queryTrafficSources({ videoIds, …window, byVideo })` | group views / total views, through `groupForSource` (FILM-1605) |
+| `subscribers_net` | new `queryNetSubscribersForVideos` | Σ gained − Σ lost |
+
+**Windows.** Lifetime figures would dilute a change with every day before
+it. The baseline covers the `review_window_days` days *before*
+`started_at`; the result covers `started_at` to `ended_at`, both
+inclusive. `views_at_30d` is age-bounded already and records a null
+window. The `totals` block stays lifetime and byte-identical.
+
+An unrecognised `metric_watched` resolves to `unmeasured: unknown_metric`
+and the snapshot still saves. Failing the whole capture because a metric
+name was retired would lose the totals too, which are the part that
+always works.
+
+**Linking videos.** The shipped form hard-coded `publishIds: []`, so every
+experiment logged from the UI measured zero videos. The form now has a
+video picker over the account's published videos. Linking also got a
+tenant check it lacked: `experiment_publishes` checked access to the
+*experiment* only, so any publish id could be linked and ClickHouse — which
+has no RLS — would report its figures. Links must now belong to the
+experiment's account, and snapshots read only linked publishes the caller
+can see.
 
 ## 6. Implementation Map
 
@@ -166,6 +210,10 @@ retired would lose the totals too, which are the part that always works.
 | `packages/features/content-analytics/src/server/video-log-actions.ts` | `getVideoLogAction` (`:100`) joins `analytics_note` from Postgres for the page of videos it returns — bounded by the same `limit`, so no new pagination concern. `VideoLogRow` gains `analyticsNote`. |
 | `packages/features/content-analytics/src/server/publish-notes-actions.ts` | New `updatePublishNoteAction`, setting the note plus its `updated_at` / `updated_by` in one write. |
 | `apps/web/app/home/[account]/studio/analytics/experiments/_components/` | Fields for category, watched metric, review window, notes and channel; a "due for review" list. `ExperimentMetricSnapshot` (`experiment-detail.tsx:9-20`) gains an optional `watched` block rendered beneath the existing six deltas. |
+| `packages/features/content-analytics/src/lib/watched-metrics.ts` | *Added in implementation.* The registry, the `WatchedValue` union and every fold, pure. |
+| `packages/features/content-analytics/src/server/watched-metric-snapshot.ts` | *Added in implementation.* Fetches over the linked videos and folds. |
+| `packages/clickhouse/src/queries-detail.ts` | *Added in implementation.* `queryNetSubscribersForVideos`. |
+| `packages/features/content-analytics/src/components/experiments/video-picker.tsx` | *Added in implementation.* The picker, fed by `listLinkablePublishesAction`. |
 
 ## 7. Out of Scope
 
@@ -181,21 +229,21 @@ retired would lose the totals too, which are the part that always works.
 
 ## 8. Acceptance Criteria
 
-- [ ] `review_due_at` is a generated stored column and cannot be written directly
-- [ ] `review_due_at` is null for an experiment that has not started
-- [ ] Every pre-existing experiment gets `review_window_days = 60` and a computed `review_due_at`
-- [ ] `listExperimentsDueForReviewAction` returns only running experiments at or past their due date, ordered by due date
-- [ ] `concludeExperimentAction` records the actual elapsed days, not the planned window
-- [ ] The `totals` block of a snapshot is byte-identical to what shipped before this change
-- [ ] A snapshot with a recognised `metric_watched` carries a `watched` value with its unit
-- [ ] An unrecognised `metric_watched` yields `watched: null` and still saves the totals
-- [ ] `abandonExperimentAction` still writes no snapshot
-- [ ] Disconnecting a channel nulls `connection_id` and leaves the experiment row intact
-- [ ] `publishes.analytics_note` is a column, and nothing writes notes into `publishes.metadata`
-- [ ] A note write sets `analytics_note_updated_at` and `analytics_note_updated_by`
-- [ ] A user without update rights on a publish cannot write its note — proved by a pgTAP test, not by reading the policy
-- [ ] Notes are absent from every ClickHouse insert
-- [ ] `pnpm --filter web check:schema-drift` passes and both `database.types.ts` copies match
+- [x] `review_due_at` is a generated stored column and cannot be written directly
+- [x] `review_due_at` is null for an experiment that has not started
+- [x] Every pre-existing experiment gets `review_window_days = 60` and a computed `review_due_at` — by the column default, which `ADD COLUMN … NOT NULL DEFAULT` writes to every existing row; pgTAP checks the default, not a pre-migration row
+- [x] `listExperimentsDueForReviewAction` returns only running experiments at or past their due date, ordered by due date
+- [x] `concludeExperimentAction` records the actual elapsed days, not the planned window
+- [x] The `totals` block of a snapshot is byte-identical to what shipped before this change
+- [x] A snapshot with a recognised `metric_watched` carries a `watched` value with its unit
+- [x] An unrecognised `metric_watched` yields `unmeasured: unknown_metric` (was: `watched: null`, which now means *no metric chosen*) and still saves the totals
+- [x] `abandonExperimentAction` still writes no snapshot
+- [x] Disconnecting a channel nulls `connection_id` and leaves the experiment row intact
+- [x] `publishes.analytics_note` is a column, and nothing writes notes into `publishes.metadata`
+- [x] A note write sets `analytics_note_updated_at` and `analytics_note_updated_by`
+- [x] A user without update rights on a publish cannot write its note — proved by a pgTAP test, not by reading the policy
+- [x] Notes are absent from every ClickHouse insert — `dim-sync.ts` selects an explicit column list and `VideoDim` has no note field, so the type is the guard
+- [x] `pnpm --filter web check:schema-drift` passes and both `database.types.ts` copies match
 
 ## 9. Verification
 
@@ -220,6 +268,11 @@ which is one of the four FILM-1609 defects. This half is Postgres-only and
 runs in CI in full. Screenshots of the form after the second save and of the
 due-for-review list go in the PR.
 
+Built as `apps/e2e/tests/experiments/`. Two guards were watched failing
+with their fix reverted: an uncontrolled metric select kept "Impressions
+click-through rate" on screen after the reset, and a cleared review window
+fell back to 60 instead of being refused.
+
 The Postgres half is genuinely verifiable: the generated column, the
 partial index, the backfill of `review_window_days` and the RLS behaviour
 all run for real in the `supabase-db` CI job, which applies every migration
@@ -227,8 +280,10 @@ from scratch against live PostgREST.
 
 The snapshot half is not. Every watched-metric source is a ClickHouse
 query, and `CLICKHOUSE_ENABLED=false` in production — so `watched` will be
-present, shaped correctly, and zero. A green suite proves the plumbing and
-the fallback, not the value.
+`unmeasured: no_data`, and the detail view says so in words (*corrected:
+the first draft said it would be zero, which is the confusion the union
+exists to prevent*). The folds are unit-tested with fixture rows; no watched
+value has been checked against real ClickHouse data.
 
 ## 10. Risk
 

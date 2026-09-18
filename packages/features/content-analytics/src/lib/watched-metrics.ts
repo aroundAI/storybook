@@ -25,7 +25,12 @@ export const WATCHED_METRIC_KEYS = [
 
 export type WatchedMetricKey = (typeof WATCHED_METRIC_KEYS)[number];
 
-export type WatchedUnit = 'views' | 'ratio' | 'seconds' | 'percent' | 'subscribers';
+export type WatchedUnit =
+  | 'views'
+  | 'ratio'
+  | 'seconds'
+  | 'percent'
+  | 'subscribers';
 
 interface WatchedMetricDefinition {
   label: string;
@@ -38,16 +43,46 @@ interface WatchedMetricDefinition {
   windowed: boolean;
 }
 
-export const WATCHED_METRICS: Record<WatchedMetricKey, WatchedMetricDefinition> =
-  {
-    views_at_30d: { label: 'Median views at 30 days', unit: 'views', windowed: false },
-    ctr: { label: 'Impressions click-through rate', unit: 'ratio', windowed: true },
-    avg_view_duration: { label: 'Average view duration', unit: 'seconds', windowed: true },
-    avg_view_percentage: { label: 'Average percentage viewed', unit: 'percent', windowed: true },
-    browse_suggested_share: { label: 'Browse + suggested share of views', unit: 'ratio', windowed: true },
-    search_share: { label: 'Search share of views', unit: 'ratio', windowed: true },
-    subscribers_net: { label: 'Net subscribers from these videos', unit: 'subscribers', windowed: true },
-  };
+export const WATCHED_METRICS: Record<
+  WatchedMetricKey,
+  WatchedMetricDefinition
+> = {
+  views_at_30d: {
+    label: 'Median views at 30 days',
+    unit: 'views',
+    windowed: false,
+  },
+  ctr: {
+    label: 'Impressions click-through rate',
+    unit: 'ratio',
+    windowed: true,
+  },
+  avg_view_duration: {
+    label: 'Average view duration',
+    unit: 'seconds',
+    windowed: true,
+  },
+  avg_view_percentage: {
+    label: 'Average percentage viewed',
+    unit: 'percent',
+    windowed: true,
+  },
+  browse_suggested_share: {
+    label: 'Browse + suggested share of views',
+    unit: 'ratio',
+    windowed: true,
+  },
+  search_share: {
+    label: 'Search share of views',
+    unit: 'ratio',
+    windowed: true,
+  },
+  subscribers_net: {
+    label: 'Net subscribers from these videos',
+    unit: 'subscribers',
+    windowed: true,
+  },
+};
 
 export function isWatchedMetricKey(value: string): value is WatchedMetricKey {
   return Object.hasOwn(WATCHED_METRICS, value);
@@ -144,7 +179,9 @@ export function foldViewsAtAge(
     .sort((a, b) => a - b);
 
   if (mature.length === 0) {
-    return rows.length === 0 ? NO_DATA : { status: 'unmeasured', reason: 'none_mature' };
+    return rows.length === 0
+      ? NO_DATA
+      : { status: 'unmeasured', reason: 'none_mature' };
   }
 
   const middle = Math.floor(mature.length / 2);
@@ -179,7 +216,11 @@ export function foldCtr(
 
   if (impressions === 0) return NO_DATA;
 
-  return { status: 'measured', value: clicks / impressions, coveredVideos: covered };
+  return {
+    status: 'measured',
+    value: clicks / impressions,
+    coveredVideos: covered,
+  };
 }
 
 /**
@@ -202,7 +243,11 @@ export function foldViewWeighted(
 
   if (views === 0) return NO_DATA;
 
-  return { status: 'measured', value: weighted / views, coveredVideos: covered };
+  return {
+    status: 'measured',
+    value: weighted / views,
+    coveredVideos: covered,
+  };
 }
 
 /**
@@ -228,7 +273,11 @@ export function foldTrafficShare(
 
   if (total === 0) return NO_DATA;
 
-  return { status: 'measured', value: inGroup / total, coveredVideos: videos.size };
+  return {
+    status: 'measured',
+    value: inGroup / total,
+    coveredVideos: videos.size,
+  };
 }
 
 /** Net subscribers summed across the videos that have data in the window. */
@@ -250,8 +299,14 @@ export function foldNetSubscribers(
  * *since*. Both are inclusive. Lifetime figures would dilute the change with
  * every day that came before it.
  */
-export function baselineWindow(startedAt: string, windowDays: number): DateWindow {
-  return { start: addDays(startedAt, -windowDays), end: addDays(startedAt, -1) };
+export function baselineWindow(
+  startedAt: string,
+  windowDays: number,
+): DateWindow {
+  return {
+    start: addDays(startedAt, -windowDays),
+    end: addDays(startedAt, -1),
+  };
 }
 
 export function resultWindow(startedAt: string, endedAt: string): DateWindow {
@@ -261,7 +316,8 @@ export function resultWindow(startedAt: string, endedAt: string): DateWindow {
 /** Whole days from `startedAt` to `endedAt` — what actually elapsed. */
 export function daysBetween(startedAt: string, endedAt: string): number {
   return Math.round(
-    (Date.parse(`${endedAt}T00:00:00Z`) - Date.parse(`${startedAt}T00:00:00Z`)) /
+    (Date.parse(`${endedAt}T00:00:00Z`) -
+      Date.parse(`${startedAt}T00:00:00Z`)) /
       86_400_000,
   );
 }
@@ -270,4 +326,33 @@ function addDays(date: string, days: number): string {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+/** What each unmeasured reason means, in words a reader can act on. */
+export const UNMEASURED_REASON_TEXT: Record<UnmeasuredReason, string> = {
+  no_linked_videos:
+    'No videos are linked to this experiment, so there is nothing to measure.',
+  no_data: 'None of the linked videos has data for this metric in this window.',
+  none_mature:
+    'No linked video is 30 days old yet, so views at 30 days are not knowable.',
+  unknown_metric:
+    'This metric is no longer recognised, so it was not measured.',
+};
+
+/** A measured value in its unit, for display. */
+export function formatWatchedValue(value: number, unit: WatchedUnit): string {
+  switch (unit) {
+    case 'ratio':
+      return `${(value * 100).toFixed(1)}%`;
+    case 'percent':
+      return `${value.toFixed(1)}%`;
+    case 'seconds': {
+      const total = Math.round(value);
+      return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+    }
+    case 'subscribers':
+      return `${value > 0 ? '+' : ''}${Math.round(value).toLocaleString('en-US')}`;
+    case 'views':
+      return Math.round(value).toLocaleString('en-US');
+  }
 }

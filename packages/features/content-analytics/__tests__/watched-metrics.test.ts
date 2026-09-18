@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  UNMEASURED_REASON_TEXT,
   WATCHED_METRICS,
   WATCHED_METRIC_KEYS,
   baselineWindow,
@@ -10,6 +11,7 @@ import {
   foldTrafficShare,
   foldViewWeighted,
   foldViewsAtAge,
+  formatWatchedValue,
   isWatchedMetricKey,
   resultWindow,
   stampFold,
@@ -75,7 +77,10 @@ describe('foldViewsAtAge', () => {
   });
 
   it('says there is no data when there are no rows at all', () => {
-    expect(foldViewsAtAge([])).toEqual({ status: 'unmeasured', reason: 'no_data' });
+    expect(foldViewsAtAge([])).toEqual({
+      status: 'unmeasured',
+      reason: 'no_data',
+    });
   });
 });
 
@@ -165,11 +170,16 @@ describe('foldNetSubscribers', () => {
   });
 
   it('can be negative, which is a result and not an error', () => {
-    expect(foldNetSubscribers([{ gained: 1, lost: 6 }])).toMatchObject({ value: -5 });
+    expect(foldNetSubscribers([{ gained: 1, lost: 6 }])).toMatchObject({
+      value: -5,
+    });
   });
 
   it('is unmeasured when no video has data, rather than a net of zero', () => {
-    expect(foldNetSubscribers([])).toEqual({ status: 'unmeasured', reason: 'no_data' });
+    expect(foldNetSubscribers([])).toEqual({
+      status: 'unmeasured',
+      reason: 'no_data',
+    });
   });
 });
 
@@ -178,7 +188,12 @@ describe('stampFold', () => {
     const window = { start: '2026-07-01', end: '2026-08-29' };
 
     expect(
-      stampFold('ctr', { status: 'measured', value: 0.04, coveredVideos: 3 }, window, 5),
+      stampFold(
+        'ctr',
+        { status: 'measured', value: 0.04, coveredVideos: 3 },
+        window,
+        5,
+      ),
     ).toEqual({
       status: 'measured',
       metric: 'ctr',
@@ -192,7 +207,12 @@ describe('stampFold', () => {
 
   it('carries the reason through for an unmeasured fold', () => {
     expect(
-      stampFold('views_at_30d', { status: 'unmeasured', reason: 'none_mature' }, null, 2),
+      stampFold(
+        'views_at_30d',
+        { status: 'unmeasured', reason: 'none_mature' },
+        null,
+        2,
+      ),
     ).toEqual({
       status: 'unmeasured',
       metric: 'views_at_30d',
@@ -229,5 +249,29 @@ describe('snapshot windows', () => {
 
   it('is not thrown by a daylight-saving change', () => {
     expect(daysBetween('2026-03-01', '2026-04-01')).toBe(31);
+  });
+});
+
+describe('formatWatchedValue', () => {
+  it('formats each unit', () => {
+    expect(formatWatchedValue(0.0283, 'ratio')).toBe('2.8%');
+    expect(formatWatchedValue(47.25, 'percent')).toBe('47.3%');
+    expect(formatWatchedValue(95.4, 'seconds')).toBe('1:35');
+    expect(formatWatchedValue(23, 'subscribers')).toBe('+23');
+    expect(formatWatchedValue(-5, 'subscribers')).toBe('-5');
+    expect(formatWatchedValue(12345.6, 'views')).toBe('12,346');
+  });
+});
+
+describe('UNMEASURED_REASON_TEXT', () => {
+  it('explains every reason', () => {
+    for (const reason of [
+      'no_linked_videos',
+      'no_data',
+      'none_mature',
+      'unknown_metric',
+    ] as const) {
+      expect(UNMEASURED_REASON_TEXT[reason].length).toBeGreaterThan(0);
+    }
   });
 });

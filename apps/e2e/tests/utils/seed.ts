@@ -434,3 +434,52 @@ export async function seedChannelSettings(
     { key: SERVICE_ROLE_KEY },
   );
 }
+
+/**
+ * A running experiment, written with the service role (FILM-1610).
+ *
+ * The due-for-review list needs one whose window has already passed, which
+ * the UI cannot make without waiting out the window: starting an experiment
+ * stamps today as its start. Writing `started_at` directly puts it in the
+ * past, and `review_due_at` is generated from it by the table itself.
+ */
+export async function seedRunningExperiment(
+  accountId: string,
+  options: { title: string; startedAt: string; reviewWindowDays: number },
+): Promise<string> {
+  const row = await insertRow<{ id: string }>(
+    'analytics_experiments',
+    {
+      account_id: accountId,
+      title: options.title,
+      change_description: 'Seeded experiment',
+      status: 'running',
+      started_at: options.startedAt,
+      review_window_days: options.reviewWindowDays,
+    },
+    { key: SERVICE_ROLE_KEY },
+  );
+
+  return row.id;
+}
+
+/**
+ * Reads rows with the service role, for asserting what a form actually
+ * saved. A toast says a request succeeded; only the row says what it wrote.
+ */
+export async function readRows<T>(table: string, query: string): Promise<T[]> {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+    headers: {
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+    },
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`read ${table} failed (${response.status}): ${text}`);
+  }
+
+  return JSON.parse(text) as T[];
+}

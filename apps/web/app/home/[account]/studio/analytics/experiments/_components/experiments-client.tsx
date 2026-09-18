@@ -11,12 +11,16 @@ import {
   ExperimentForm,
   ExperimentList,
   ExperimentListSkeleton,
+  ExperimentsDueList,
 } from '@kit/content-analytics/components';
+import { listChannelsAction } from '@kit/content-analytics/server/channels-actions';
 import {
   concludeExperimentAction,
   createExperimentAction,
   getExperimentAction,
   listExperimentsAction,
+  listExperimentsDueForReviewAction,
+  listLinkablePublishesAction,
   startExperimentAction,
 } from '@kit/content-analytics/server/experiment-actions';
 import { Button } from '@kit/ui/button';
@@ -27,6 +31,7 @@ import {
   DialogTitle,
 } from '@kit/ui/dialog';
 import { Input } from '@kit/ui/input';
+import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 
 interface ExperimentsClientProps {
@@ -48,6 +53,21 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
     queryFn: () => listExperimentsAction({ accountId }),
   });
 
+  const dueQuery = useQuery({
+    queryKey: ['experiments-due', accountId],
+    queryFn: () => listExperimentsDueForReviewAction({ accountId }),
+  });
+
+  const channelsQuery = useQuery({
+    queryKey: ['experiment-channels', accountId],
+    queryFn: () => listChannelsAction({ accountId }),
+  });
+
+  const videosQuery = useQuery({
+    queryKey: ['experiment-linkable-videos', accountId],
+    queryFn: () => listLinkablePublishesAction({ accountId }),
+  });
+
   const detailQuery = useQuery({
     queryKey: ['experiment', selectedId],
     queryFn: () => getExperimentAction({ experimentId: selectedId! }),
@@ -55,7 +75,12 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
   });
 
   const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: ['experiments', accountId] });
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['experiments', accountId] }),
+      queryClient.invalidateQueries({
+        queryKey: ['experiments-due', accountId],
+      }),
+    ]);
 
   const experiment = detailQuery.data;
 
@@ -65,11 +90,34 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
         <h3 className={'text-sm font-medium'}>Log a new experiment</h3>
         <ExperimentForm
           accountId={accountId}
+          channels={channelsQuery.data ?? []}
+          channelsLoading={channelsQuery.isLoading}
+          channelsError={channelsQuery.isError}
+          videos={videosQuery.data ?? []}
+          videosLoading={videosQuery.isLoading}
+          videosError={videosQuery.isError}
           onSubmit={async (values) => {
             await createExperimentAction(values);
           }}
           onSuccess={refresh}
         />
+      </section>
+
+      <section className={'flex flex-col gap-3'}>
+        <h3 className={'text-sm font-medium'}>Due for review</h3>
+
+        {dueQuery.isLoading ? (
+          <Skeleton className={'h-12 w-full rounded-lg'} />
+        ) : dueQuery.isError ? (
+          <p className={'text-muted-foreground text-sm'}>
+            Experiments due for review could not be loaded.
+          </p>
+        ) : (
+          <ExperimentsDueList
+            experiments={dueQuery.data ?? []}
+            onSelect={setSelectedId}
+          />
+        )}
       </section>
 
       <section className={'flex flex-col gap-3'}>

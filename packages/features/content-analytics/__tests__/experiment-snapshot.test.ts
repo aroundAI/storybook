@@ -55,15 +55,16 @@ const experimentRow = {
 };
 
 vi.mock('@kit/next/actions', () => ({
-  enhanceAction: (handler: (data: unknown, user: unknown) => unknown) =>
-    (data: unknown) =>
+  enhanceAction:
+    (handler: (data: unknown, user: unknown) => unknown) => (data: unknown) =>
       handler(data, { id: 'u1' }),
 }));
 
 const totalsByVideoIds = vi.fn(async () => PER_VIDEO);
 
 vi.mock('@kit/clickhouse/server', () => ({
-  queryTotalsByVideoIds: (...args: unknown[]) => totalsByVideoIds(...(args as [])),
+  queryTotalsByVideoIds: (...args: unknown[]) =>
+    totalsByVideoIds(...(args as [])),
 }));
 
 vi.mock('@kit/supabase/server-client', () => ({

@@ -57,6 +57,12 @@ export interface ExperimentSnapshot {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+/**
+ * An optional text field left empty is no value, not an empty string: the
+ * detail view shows "Not recorded" for null and a blank box for ''.
+ */
+const blankToNull = (value?: string) => (value?.trim() ? value : null);
+
 /** The experiment fields a snapshot needs, read before it is taken. */
 interface SnapshotContext {
   account_id: string;
@@ -244,13 +250,13 @@ export const createExperimentAction = enhanceAction(
         account_id: data.accountId,
         project_id: data.projectId ?? null,
         title: data.title,
-        hypothesis: data.hypothesis ?? null,
+        hypothesis: blankToNull(data.hypothesis),
         change_description: data.changeDescription,
-        expected_outcome: data.expectedOutcome ?? null,
+        expected_outcome: blankToNull(data.expectedOutcome),
         category: data.category ?? null,
         metric_watched: data.metricWatched ?? null,
         review_window_days: data.reviewWindowDays,
-        notes: data.notes ?? null,
+        notes: blankToNull(data.notes),
         connection_id: data.connectionId ?? null,
         created_by: user.id,
       })

@@ -134,7 +134,10 @@ beforeEach(() => {
 
 describe('startExperimentAction', () => {
   it('measures the watched metric over the review window before the start', async () => {
-    await startExperimentAction({ experimentId: 'e1', startedAt: '2026-07-01' });
+    await startExperimentAction({
+      experimentId: 'e1',
+      startedAt: '2026-07-01',
+    });
 
     expect(resolveWatchedMetric).toHaveBeenCalledWith({
       metric: 'ctr',
@@ -147,7 +150,10 @@ describe('startExperimentAction', () => {
   it('writes watched: null when the experiment watches no metric', async () => {
     state.experiment.metric_watched = null;
 
-    await startExperimentAction({ experimentId: 'e1', startedAt: '2026-07-01' });
+    await startExperimentAction({
+      experimentId: 'e1',
+      startedAt: '2026-07-01',
+    });
 
     expect(resolveWatchedMetric).not.toHaveBeenCalled();
     expect(
@@ -205,7 +211,10 @@ describe('concludeExperimentAction', () => {
 
 describe('abandonExperimentAction', () => {
   it('still writes no snapshot', async () => {
-    await abandonExperimentAction({ experimentId: 'e1', reason: 'Channel paused' });
+    await abandonExperimentAction({
+      experimentId: 'e1',
+      reason: 'Channel paused',
+    });
 
     expect(state.updates[0]).not.toHaveProperty('result_metrics');
     expect(state.updates[0]).not.toHaveProperty('baseline_metrics');
@@ -244,7 +253,7 @@ describe('linking videos', () => {
     expect(state.inserts).toHaveLength(0);
   });
 
-  it('checks relinked videos on update against the experiment\'s own account', async () => {
+  it("checks relinked videos on update against the experiment's own account", async () => {
     state.inAccount = [];
 
     await expect(
@@ -267,6 +276,24 @@ describe('linking videos', () => {
         notes: null,
         connection_id: null,
       },
+    });
+  });
+
+  it('stores blank optional text as null, not an empty string', async () => {
+    await createExperimentAction({
+      accountId: 'a1',
+      title: 'Blank fields',
+      changeDescription: 'Something',
+      hypothesis: '',
+      expectedOutcome: '   ',
+      notes: '',
+      reviewWindowDays: 60,
+      publishIds: [],
+      tagIds: [],
+    });
+
+    expect(state.inserts[0]).toMatchObject({
+      payload: { hypothesis: null, expected_outcome: null, notes: null },
     });
   });
 });

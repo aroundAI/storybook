@@ -187,15 +187,18 @@ export {
   type VariantRetentionEntry,
 } from './hooks';
 
-// Experiment log (FILM-1509)
+// Experiment log (FILM-1509, FILM-1610)
 export {
   ExperimentDetail,
   ExperimentDetailSkeleton,
   ExperimentForm,
   ExperimentList,
   ExperimentListSkeleton,
+  ExperimentsDueList,
+  type DueExperimentEntry,
   type ExperimentListEntry,
   type ExperimentMetricSnapshot,
+  type LinkableVideo,
 } from './experiments';
 
 // Revenue mix (FILM-1508)

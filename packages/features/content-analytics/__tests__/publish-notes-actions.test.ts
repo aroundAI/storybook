@@ -7,7 +7,11 @@ const PUBLISH = '0b6f5a4e-3c1d-4e2f-9a8b-7c6d5e4f3a2b';
 
 const state: {
   /** Rows the update matched; empty is what an RLS refusal looks like. */
-  matched: Array<{ id: string; analytics_note: string | null; analytics_note_updated_at: string }>;
+  matched: Array<{
+    id: string;
+    analytics_note: string | null;
+    analytics_note_updated_at: string;
+  }>;
   written: Record<string, unknown> | null;
 } = { matched: [], written: null };
 
@@ -46,7 +50,11 @@ beforeEach(() => {
 describe('updatePublishNoteAction', () => {
   it('writes the note with its author and time in one update', async () => {
     state.matched = [
-      { id: PUBLISH, analytics_note: 'Swapped thumbnail', analytics_note_updated_at: 't' },
+      {
+        id: PUBLISH,
+        analytics_note: 'Swapped thumbnail',
+        analytics_note_updated_at: 't',
+      },
     ];
 
     const result = await updatePublishNoteAction({
@@ -60,7 +68,11 @@ describe('updatePublishNoteAction', () => {
     });
     expect(state.written).toHaveProperty('analytics_note_updated_at');
     expect(state.written).not.toHaveProperty('metadata');
-    expect(result).toEqual({ publishId: PUBLISH, note: 'Swapped thumbnail', updatedAt: 't' });
+    expect(result).toEqual({
+      publishId: PUBLISH,
+      note: 'Swapped thumbnail',
+      updatedAt: 't',
+    });
   });
 
   it('reports a refused write as a failure, not a save', async () => {
@@ -75,19 +87,29 @@ describe('updatePublishNoteAction', () => {
 
 describe('UpdatePublishNoteSchema', () => {
   it('stores a blank or whitespace note as no note', () => {
-    expect(UpdatePublishNoteSchema.parse({ publishId: PUBLISH, note: '   ' }).note).toBeNull();
-    expect(UpdatePublishNoteSchema.parse({ publishId: PUBLISH, note: '' }).note).toBeNull();
+    expect(
+      UpdatePublishNoteSchema.parse({ publishId: PUBLISH, note: '   ' }).note,
+    ).toBeNull();
+    expect(
+      UpdatePublishNoteSchema.parse({ publishId: PUBLISH, note: '' }).note,
+    ).toBeNull();
   });
 
   it('keeps a real note exactly as written', () => {
     expect(
-      UpdatePublishNoteSchema.parse({ publishId: PUBLISH, note: '  Day 3: new hook ' }).note,
+      UpdatePublishNoteSchema.parse({
+        publishId: PUBLISH,
+        note: '  Day 3: new hook ',
+      }).note,
     ).toBe('  Day 3: new hook ');
   });
 
   it('refuses a note over the limit', () => {
     expect(() =>
-      UpdatePublishNoteSchema.parse({ publishId: PUBLISH, note: 'x'.repeat(5001) }),
+      UpdatePublishNoteSchema.parse({
+        publishId: PUBLISH,
+        note: 'x'.repeat(5001),
+      }),
     ).toThrow();
   });
 });

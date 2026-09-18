@@ -35,7 +35,11 @@ export const WatchedMetricSchema = z.enum(WATCHED_METRIC_KEYS);
 export const DEFAULT_REVIEW_WINDOW_DAYS = 60;
 
 /** Days an experiment runs before review; the table enforces the same bounds. */
-export const ReviewWindowDaysSchema = z.number().int().min(1).max(365);
+export const ReviewWindowDaysSchema = z
+  .number({ invalid_type_error: 'Enter a number of days' })
+  .int('Whole days only')
+  .min(1, 'At least 1 day')
+  .max(365, 'At most 365 days');
 
 export type ExperimentStatus = z.infer<typeof ExperimentStatusSchema>;
 export type ExperimentCategory = z.infer<typeof ExperimentCategorySchema>;

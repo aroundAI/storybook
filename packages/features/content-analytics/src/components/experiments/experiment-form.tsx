@@ -16,18 +16,66 @@ import {
   FormMessage,
 } from '@kit/ui/form';
 import { Input } from '@kit/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@kit/ui/select';
 import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
 
-import { CreateExperimentSchema } from '../../lib/schemas/experiment.schema';
+import {
+  CreateExperimentSchema,
+  DEFAULT_REVIEW_WINDOW_DAYS,
+  ExperimentCategorySchema,
+} from '../../lib/schemas/experiment.schema';
+import {
+  WATCHED_METRICS,
+  WATCHED_METRIC_KEYS,
+} from '../../lib/watched-metrics';
+import type { ChannelRef } from '../../server/channels';
+import { ChannelFilter } from '../deep-dive/channel-filter';
+import { type LinkableVideo, VideoPicker } from './video-picker';
 
 type CreateExperimentValues = z.infer<typeof CreateExperimentSchema>;
+
+/** The schema caps linked videos at this; the picker enforces the same. */
+const MAX_LINKED_VIDEOS = 200;
+
+/**
+ * Radix `Select` cannot hold an empty-string value, so "none" needs a token.
+ * It never reaches form state: the field holds `undefined` instead.
+ */
+const NONE = 'none';
+
+const CATEGORY_LABELS: Record<
+  z.infer<typeof ExperimentCategorySchema>,
+  string
+> = {
+  packaging: 'Packaging (title, thumbnail)',
+  hook: 'Hook / opening',
+  length: 'Length',
+  format: 'Format',
+  topic: 'Topic',
+  schedule: 'Schedule',
+  other: 'Other',
+};
 
 interface ExperimentFormProps {
   /** Account the experiment belongs to */
   accountId: string;
   /** Optional project scope */
   projectId?: string;
+  /** The account's channels, for the optional channel field */
+  channels: ChannelRef[];
+  channelsLoading?: boolean;
+  channelsError?: boolean;
+  /** The account's published videos, for linking */
+  videos: LinkableVideo[];
+  videosLoading?: boolean;
+  videosError?: boolean;
   /** Persists the experiment */
   onSubmit: (values: CreateExperimentValues) => Promise<void>;
   /** Called after a successful save */
@@ -35,28 +83,55 @@ interface ExperimentFormProps {
 }
 
 /**
+ * Every field's empty value, in one place.
+ *
+ * Used for both `defaultValues` and `reset()`. Two copies drift, and a field
+ * missing from the reset keeps its old value in form state while the screen
+ * shows it cleared — or the other way round — which is how the FILM-1609
+ * form saved rows nobody typed.
+ */
+function emptyValues(accountId: string, projectId?: string) {
+  return {
+    accountId,
+    projectId,
+    title: '',
+    hypothesis: '',
+    changeDescription: '',
+    expectedOutcome: '',
+    category: undefined,
+    metricWatched: undefined,
+    reviewWindowDays: DEFAULT_REVIEW_WINDOW_DAYS,
+    notes: '',
+    connectionId: undefined,
+    publishIds: [],
+    tagIds: [],
+  };
+}
+
+/**
  * Captures an experiment before it runs: what is changing, why, and what
  * result is expected. Recording the expectation up front is what makes the
  * eventual outcome informative rather than a post-hoc story.
+ *
+ * Every select here is controlled (`value`, not `defaultValue`): Radix keeps
+ * an uncontrolled select's label across `reset()`, so the screen would show
+ * the last experiment's metric while form state held none.
  */
 export function ExperimentForm({
   accountId,
   projectId,
+  channels,
+  channelsLoading = false,
+  channelsError = false,
+  videos,
+  videosLoading = false,
+  videosError = false,
   onSubmit,
   onSuccess,
 }: ExperimentFormProps) {
   const form = useForm({
     resolver: zodResolver(CreateExperimentSchema),
-    defaultValues: {
-      accountId,
-      projectId,
-      title: '',
-      hypothesis: '',
-      changeDescription: '',
-      expectedOutcome: '',
-      publishIds: [],
-      tagIds: [],
-    },
+    defaultValues: emptyValues(accountId, projectId),
   });
 
   const isSubmitting = form.formState.isSubmitting;
@@ -65,16 +140,7 @@ export function ExperimentForm({
     try {
       await onSubmit(values);
       toast.success('Experiment logged');
-      form.reset({
-        accountId,
-        projectId,
-        title: '',
-        hypothesis: '',
-        changeDescription: '',
-        expectedOutcome: '',
-        publishIds: [],
-        tagIds: [],
-      });
+      form.reset(emptyValues(accountId, projectId));
       onSuccess?.();
     } catch (error) {
       toast.error(
@@ -101,6 +167,7 @@ export function ExperimentForm({
               <FormControl>
                 <Input
                   placeholder={'e.g. Shorter cold-open on process videos'}
+                  data-test={'experiment-title'}
                   {...field}
                 />
               </FormControl>
@@ -121,6 +188,7 @@ export function ExperimentForm({
                   placeholder={
                     'Cut the intro from 20s to 5s on the next six uploads'
                   }
+                  data-test={'experiment-change'}
                   {...field}
                 />
               </FormControl>
@@ -128,6 +196,164 @@ export function ExperimentForm({
             </FormItem>
           )}
         />
+
+        <div className={'grid gap-4 sm:grid-cols-2'}>
+          <FormField
+            control={form.control}
+            name={'category'}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Category (optional)</FormLabel>
+                <Select
+                  value={field.value ?? NONE}
+                  onValueChange={(next) =>
+                    field.onChange(next === NONE ? undefined : next)
+                  }
+                >
+                  <FormControl>
+                    <SelectTrigger data-test={'experiment-category'}>
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value={NONE}>No category</SelectItem>
+                    {ExperimentCategorySchema.options.map((category) => (
+                      <SelectItem
+                        key={category}
+                        value={category}
+                        data-test={`experiment-category-option-${category}`}
+                      >
+                        {CATEGORY_LABELS[category]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name={'metricWatched'}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Metric you are watching (optional)</FormLabel>
+                <Select
+                  value={field.value ?? NONE}
+                  onValueChange={(next) =>
+                    field.onChange(next === NONE ? undefined : next)
+                  }
+                >
+                  <FormControl>
+                    <SelectTrigger data-test={'experiment-metric'}>
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value={NONE}>No specific metric</SelectItem>
+                    {WATCHED_METRIC_KEYS.map((metric) => (
+                      <SelectItem
+                        key={metric}
+                        value={metric}
+                        data-test={`experiment-metric-option-${metric}`}
+                      >
+                        {WATCHED_METRICS[metric].label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  Measured on the linked videos only, before and after the
+                  start.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name={'publishIds'}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Videos this experiment runs on</FormLabel>
+              <VideoPicker
+                videos={videos}
+                value={field.value ?? []}
+                onChange={field.onChange}
+                max={MAX_LINKED_VIDEOS}
+                isLoading={videosLoading}
+                isError={videosError}
+              />
+              <FormDescription>
+                Snapshots measure these videos, not the whole channel.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className={'grid gap-4 sm:grid-cols-2'}>
+          <FormField
+            control={form.control}
+            name={'connectionId'}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Channel (optional)</FormLabel>
+                <div data-test={'experiment-channel'}>
+                  <ChannelFilter
+                    channels={channels}
+                    value={field.value}
+                    onChange={field.onChange}
+                    isLoading={channelsLoading}
+                    isError={channelsError}
+                    allLabel={'No specific channel'}
+                  />
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name={'reviewWindowDays'}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Review after (days)</FormLabel>
+                <FormControl>
+                  <Input
+                    type={'number'}
+                    inputMode={'numeric'}
+                    min={1}
+                    max={365}
+                    data-test={'experiment-review-window'}
+                    name={field.name}
+                    ref={field.ref}
+                    onBlur={field.onBlur}
+                    // A cleared field is NaN, which the schema refuses. It
+                    // must not fall back to the default: a blank that
+                    // silently saves 60 is a value nobody entered.
+                    value={Number.isNaN(field.value) ? '' : field.value}
+                    onChange={(event) =>
+                      field.onChange(
+                        event.target.value === ''
+                          ? Number.NaN
+                          : Number(event.target.value),
+                      )
+                    }
+                  />
+                </FormControl>
+                <FormDescription>
+                  The baseline covers the same number of days before the start.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}
@@ -173,10 +399,25 @@ export function ExperimentForm({
           )}
         />
 
+        <FormField
+          control={form.control}
+          name={'notes'}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Notes (optional)</FormLabel>
+              <FormControl>
+                <Textarea rows={2} data-test={'experiment-notes'} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <Button
           type={'submit'}
           disabled={isSubmitting}
           className={'self-start'}
+          data-test={'experiment-submit'}
         >
           {isSubmitting ? (
             <Loader2 className={'mr-2 h-4 w-4 animate-spin'} />
