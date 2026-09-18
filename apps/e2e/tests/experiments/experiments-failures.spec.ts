@@ -142,6 +142,33 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
     expect(seen).toHaveLength(1);
   });
 
+  test('two clicks in the same instant send one start', async ({ page }) => {
+    // The disabled state only applies once React re-renders, so it cannot
+    // stop a second click that lands in the same task as the first. That is
+    // what the in-flight ref is for, and a double click does not reach it:
+    // Playwright lets the page re-render between the two clicks.
+    const team = await seedTeamAccount();
+    const id = await seedExperiment(team.accountId, { title: 'Same instant' });
+
+    await signInAs(page, team);
+    await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
+    await page.locator(`[data-test="experiment-row-${id}"]:visible`).click();
+
+    const start = page.getByRole('button', { name: 'Start experiment' });
+    await expect(start).toBeVisible();
+
+    const seen: string[] = [];
+    await onAction(page, startAction, { delayMs: 1500, seen });
+
+    await start.evaluate((button) => {
+      (button as HTMLButtonElement).click();
+      (button as HTMLButtonElement).click();
+    });
+
+    await expect(page.getByText('Experiment started')).toBeVisible();
+    expect(seen).toHaveLength(1);
+  });
+
   test('a second tab left open cannot start the experiment again', async ({
     browser,
   }) => {
