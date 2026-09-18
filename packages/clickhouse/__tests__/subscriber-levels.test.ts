@@ -144,7 +144,11 @@ describe('subscriber levels', () => {
         to: '2026-09-02',
       });
 
-      expect(series).toEqual({ connectionId: A, points: [], roundingStep: 0 });
+      expect(series).toMatchObject({
+        connectionId: A,
+        points: [],
+        roundingStep: 0,
+      });
     });
   });
 
@@ -168,6 +172,33 @@ describe('subscriber levels', () => {
       });
 
       expect(series?.points.at(-1)?.date).toBe('2026-09-12');
+    });
+
+    // Data that ended before the window leaves no points in it — but the
+    // channel had a history, and a surface must not call it "no count yet".
+    it('reports when a series with no points in the window last had data', async () => {
+      mocks.querySubscriberAnchors.mockResolvedValue([
+        anchor(A, '2025-01-01', 2300),
+      ]);
+
+      const [series] = await querySubscriberSeries({
+        connectionIds: [A],
+        from: '2025-09-18',
+        to: '2026-09-18',
+      });
+
+      expect(series?.points).toEqual([]);
+      expect(series?.lastDataDate).toBe('2025-01-01');
+    });
+
+    it('has no last data date for a channel never measured', async () => {
+      const [series] = await querySubscriberSeries({
+        connectionIds: [A],
+        from: '2025-09-18',
+        to: '2026-09-18',
+      });
+
+      expect(series?.lastDataDate).toBeNull();
     });
 
     it('ends a channel with no data after its last anchor on that anchor', async () => {

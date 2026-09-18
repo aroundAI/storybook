@@ -27,6 +27,12 @@ export interface ConnectionSubscriberSeries {
    * not — surfaces must say so.
    */
   roundingStep: number;
+  /**
+   * The newest date with any measurement, in the window or not; null when
+   * the connection has never been measured. Tells "history that ended
+   * before this window" apart from "no count yet" when `points` is empty.
+   */
+  lastDataDate: string | null;
 }
 
 export interface LatestSubscriberLevel extends SubscriberPoint {
@@ -138,6 +144,7 @@ export async function querySubscriberSeries(input: {
         (point) => last !== null && point.date <= last,
       ),
       roundingStep: widestStep(anchors),
+      lastDataDate: last,
     };
   });
 }
