@@ -1,7 +1,7 @@
 import {
   type SubscriberPoint,
-  type SubscriberSource,
   isSubscriberTracked,
+  weakestSource,
 } from '@kit/clickhouse';
 
 import { roundingErrorOf } from './subscriber-disclosure';
@@ -28,18 +28,6 @@ export interface SubscriberSeriesSum {
    * level can be off by its own rounding error, and a sum adds them.
    */
   roundingError: number;
-}
-
-// Least to most measured. A total inherits the weakest of its parts.
-const SOURCE_RANK: Record<SubscriberSource, number> = {
-  clamped: 0,
-  constrained: 1,
-  interpolated: 2,
-  snapshot: 3,
-};
-
-function weaker(a: SubscriberSource, b: SubscriberSource): SubscriberSource {
-  return SOURCE_RANK[a] <= SOURCE_RANK[b] ? a : b;
 }
 
 export function sumSubscriberSeries(
@@ -77,7 +65,9 @@ export function sumSubscriberSeries(
               point: {
                 date: point.date,
                 level: day.point.level + point.level,
-                source: weaker(day.point.source, point.source),
+                // The weakest of its parts: one reconstructed channel makes the
+                // day reconstructed.
+                source: weakestSource(day.point.source, point.source),
               },
               count: day.count + 1,
             }

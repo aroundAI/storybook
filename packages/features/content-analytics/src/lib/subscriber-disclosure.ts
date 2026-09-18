@@ -1,4 +1,4 @@
-import { SUBSCRIBER_SOURCE_LABEL } from '@kit/clickhouse';
+import { SUBSCRIBER_SOURCE_LABEL, roundingErrorOf } from '@kit/clickhouse';
 
 /**
  * What every surface showing a subscriber level must say about it
@@ -8,24 +8,11 @@ import { SUBSCRIBER_SOURCE_LABEL } from '@kit/clickhouse';
 
 // One table for every surface, the follower chip included: defined in
 // @kit/clickhouse, which the publishing package also depends on.
-export { SUBSCRIBER_SOURCE_LABEL };
+export { SUBSCRIBER_SOURCE_LABEL, roundingErrorOf };
 
 /** Why a channel has no level. The data cannot tell these two apart. */
 export const NO_SUBSCRIBER_LEVEL =
   'No subscriber count yet — the channel owner may hide it, or no snapshot has been captured.';
-
-/**
- * How far a figure built on a rounded anchor can sit from the truth.
- *
- * Either way, not only low. The seed pins to the floor of the platform's
- * rounded band, so the first stretch can only read low; but a later anchor
- * can clamp a level to the band's top, or leave it anywhere inside, and then
- * it can read high. The true count is inside the band on every anchor day,
- * so the error is at most one less than the step in either direction.
- */
-export function roundingErrorOf(roundingStep: number): number {
-  return Math.max(0, roundingStep - 1);
-}
 
 /**
  * A rounded seed offsets every reconstructed day by the same amount, so the

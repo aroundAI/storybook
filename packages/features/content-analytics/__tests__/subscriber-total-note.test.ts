@@ -35,7 +35,16 @@ function noteFor(
 
   if (!total) throw new Error('expected a YouTube total');
 
-  return describeTotal(total, names, lastData);
+  return describeTotal(
+    total,
+    names,
+    Object.fromEntries(
+      Object.entries(lastData).map(([id, since]) => [
+        id,
+        since ? { kind: 'ended' as const, since } : { kind: 'none' as const },
+      ]),
+    ),
+  );
 }
 
 describe('describeTotal', () => {
