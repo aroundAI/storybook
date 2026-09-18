@@ -416,6 +416,27 @@ silently sends no mail and every test hangs at the confirmation step, which
 reads as a broken test rather than a broken server. If auth email stops
 arriving, restart the dev server before debugging the suite.
 
+#### A 120s click timeout locally is usually the machine, not the suite
+
+Twice during FILM-1611 a click timed out at the full 120s test timeout in a
+combined run, and the same spec passed alone in ~15s. Both times something
+heavy — a `tsc --noEmit` over the web app, a package build — was running in
+the same shell session.
+
+Measured afterwards against a `pnpm dev` server on 3000, `tests/deep-dive
+tests/tags tests/analytics-settings tests/revenue`, nothing else running:
+
+| Run | Result |
+|-----|--------|
+| default workers, server already warm | 37 passed, **45s** |
+| `--workers=1`, same server | 37 passed, **2.6m** |
+| default workers, server just started | 37 passed, **46s** |
+
+So neither parallelism nor a cold server reproduces it — **do not reach for
+`--workers=1`**, which here was three times slower and fixed nothing. Rerun
+the spec on its own before treating a lone 120s timeout as a product bug, and
+use `test:prod` when the answer matters.
+
 ### Capturing screenshots for a PR — required for UI changes
 
 **A PR that changes what a user sees must show what they now see.** This is

@@ -217,6 +217,13 @@ decisions differ from the text above.
   rule, used by the filter, the YPP section, `QueryState`, the traffic cards,
   the revenue tiles, mix, platforms, content and projection, and the tag
   medians panel.
+- **The Deep Dive cards' refetch behaviour rests on `isUnavailable`'s unit
+  test, not a browser one.** Two attempts: the first selected a channel first,
+  which left the cards' new keys genuinely uncached — a different case. The
+  second tried a fresh load, where every card holds an answer, but a focus
+  refetch fires for the channel list and not for those three queries, so the
+  state under test never arrives. The rule itself is covered, and the channel
+  filter's own browser guard exercises it end to end.
 - **The revenue summary tiles reported a figure from a failed read**, beside
   the mix card's own admission — fixed, with the platforms and content tabs
   and the projection, which had the same gap off the same queries.
