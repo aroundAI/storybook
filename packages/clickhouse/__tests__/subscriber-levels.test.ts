@@ -51,21 +51,46 @@ describe('subscriber levels', () => {
       expect(mocks.querySubscriberAnchors).not.toHaveBeenCalled();
     });
 
-    // An anchor before the window still levels it, so both reads reach back.
-    it('reaches back 400 days for anchors and deltas alike', async () => {
+    // One seed for every reader: all anchors ever, and deltas from the
+    // earliest of them — or from `from`, if that is earlier, for the walk
+    // back before a channel's first snapshot.
+    it('reads every anchor, and deltas from the earliest one', async () => {
+      mocks.querySubscriberAnchors.mockResolvedValue([
+        anchor(A, '2024-03-01', 100),
+      ]);
+
       await querySubscriberSeries({
         connectionIds: [A],
         from: '2026-09-01',
         to: '2026-09-03',
       });
 
-      const expected = {
+      expect(mocks.querySubscriberAnchors).toHaveBeenCalledWith({
         connectionIds: [A],
-        from: '2025-07-28',
+        from: '1970-01-01',
         to: '2026-09-03',
-      };
-      expect(mocks.querySubscriberAnchors).toHaveBeenCalledWith(expected);
-      expect(mocks.querySubscriberDeltas).toHaveBeenCalledWith(expected);
+      });
+      expect(mocks.querySubscriberDeltas).toHaveBeenCalledWith({
+        connectionIds: [A],
+        from: '2024-03-01',
+        to: '2026-09-03',
+      });
+    });
+
+    it('reads deltas from `from` when it precedes every anchor', async () => {
+      mocks.querySubscriberAnchors.mockResolvedValue([
+        anchor(A, '2026-09-02', 100),
+      ]);
+
+      await querySubscriberSeries({
+        connectionIds: [A],
+        from: '2026-09-01',
+        to: '2026-09-03',
+      });
+
+      expect(mocks.querySubscriberDeltas).toHaveBeenCalledWith(
+        expect.objectContaining({ from: '2026-09-01' }),
+      );
     });
 
     it('keeps each connection to its own anchors and deltas', async () => {
@@ -157,6 +182,61 @@ describe('subscriber levels', () => {
       });
 
       expect(series?.points.map((p) => p.date)).toEqual(['2026-06-01']);
+    });
+  });
+
+  // Every reader seeds `reconstructSeries` from the earliest anchor it is
+  // given. If readers fetch different windows, a rounded channel's seed sits
+  // at a different point in its band for each, and the curve, the YPP count
+  // and the follower chip disagree by up to step − 1.
+  describe('one seed for every reader', () => {
+    const anchors = [
+      anchor(A, '2025-01-01', 100_000, 1000),
+      anchor(A, '2025-09-01', 100_000, 1000),
+    ];
+    const deltas = [delta(A, '2025-03-01', 600), delta(A, '2026-09-10', 5)];
+
+    // As the real queries do: only rows inside the requested range come back.
+    function withRange<T>(rows: T[], dateOf: (row: T) => string) {
+      return async (input: { from: string; to: string }) =>
+        rows.filter((r) => dateOf(r) >= input.from && dateOf(r) <= input.to);
+    }
+
+    beforeEach(() => {
+      mocks.querySubscriberAnchors.mockImplementation(
+        withRange(anchors, (a) => a.snapshotDate),
+      );
+      mocks.querySubscriberDeltas.mockImplementation(
+        withRange(deltas, (d) => d.metricDate),
+      );
+    });
+
+    it('gives the curve and the latest level the same figure', async () => {
+      const [series] = await querySubscriberSeries({
+        connectionIds: [A],
+        from: '2025-09-18',
+        to: '2026-09-18',
+      });
+      const latest = (await queryLatestSubscriberLevels([A], '2026-09-18')).get(
+        A,
+      );
+
+      expect(series?.points.at(-1)).toMatchObject({
+        date: '2026-09-10',
+        level: 100_605,
+      });
+      expect(latest).toMatchObject({ date: '2026-09-10', level: 100_605 });
+    });
+
+    it('does not move when an old snapshot ages out', async () => {
+      const before = (await queryLatestSubscriberLevels([A], '2026-02-01')).get(
+        A,
+      );
+      const after = (await queryLatestSubscriberLevels([A], '2026-02-10')).get(
+        A,
+      );
+
+      expect(after?.level).toBe(before?.level);
     });
   });
 

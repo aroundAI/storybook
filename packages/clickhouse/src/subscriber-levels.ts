@@ -33,14 +33,11 @@ export interface LatestSubscriberLevel extends SubscriberPoint {
   roundingStep: number;
 }
 
-/** Days of lookback for the anchor that levels the start of the window. */
-const ANCHOR_LOOKBACK_DAYS = 400;
-
-function shiftDate(date: string, days: number): string {
-  const d = new Date(`${date}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+/**
+ * The lower bound for the anchor read: ClickHouse `Date`'s minimum, so every
+ * snapshot a connection has ever had comes back.
+ */
+const EARLIEST_DATE = '1970-01-01';
 
 function widestStep(anchors: Array<{ roundingStep: number }>): number {
   return anchors.reduce((widest, a) => Math.max(widest, a.roundingStep), 0);
@@ -69,23 +66,46 @@ function lastEvidenceDate(
   return last;
 }
 
-/** Anchors and deltas grouped per connection, reaching back past `from`. */
+/**
+ * Anchors and deltas grouped per connection, seeded from the earliest
+ * snapshot ever recorded.
+ *
+ * Not from a window relative to `from`. `reconstructSeries` seeds from the
+ * earliest anchor it is given, so readers with different windows — the
+ * Deep Dive curve reaches back a year further than the YPP card or the
+ * follower chip — seeded a rounded channel at different points in its band
+ * and disagreed by up to step − 1. And as old anchors left the window, the
+ * seed moved: the figure shifted overnight with nothing new measured.
+ *
+ * Cost: the delta read now spans each channel's whole capture history. That
+ * is small today — capture began with FILM-1607 — and grows daily. If it
+ * becomes a problem, the answer is a stored level per connection, not a
+ * shorter window, which would bring the disagreement back.
+ */
 async function readInputs(input: {
   connectionIds: string[];
   from: string;
   to: string;
 }) {
-  // Both reads reach back past `from`. An anchor dated before the window
-  // still levels it, and the walk from that anchor needs the deltas between
-  // it and `from` — without the same reach-back on the deltas, a window
-  // opening inside a capture gap renders a hole at its left edge,
-  // indistinguishable from "no data yet".
-  const lookbackFrom = shiftDate(input.from, -ANCHOR_LOOKBACK_DAYS);
+  const anchors = await querySubscriberAnchors({
+    connectionIds: input.connectionIds,
+    from: EARLIEST_DATE,
+    to: input.to,
+  });
 
-  const [anchors, deltas] = await Promise.all([
-    querySubscriberAnchors({ ...input, from: lookbackFrom }),
-    querySubscriberDeltas({ ...input, from: lookbackFrom }),
-  ]);
+  // Every delta after the earliest seed, for the forward walks; and every
+  // delta from `from`, for the curve's backward walk before a channel's
+  // first snapshot.
+  const deltasFrom = anchors.reduce(
+    (earliest, a) => (a.snapshotDate < earliest ? a.snapshotDate : earliest),
+    input.from,
+  );
+
+  const deltas = await querySubscriberDeltas({
+    connectionIds: input.connectionIds,
+    from: deltasFrom,
+    to: input.to,
+  });
 
   return input.connectionIds.map((connectionId) => ({
     connectionId,
