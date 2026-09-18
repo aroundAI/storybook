@@ -102,6 +102,16 @@ reconstructed one, and the UI must distinguish them:
 > reads high. Every surface says "off by up to N either way", and a total's
 > bound is the sum of its channels'.
 
+> **Every reader seeds from the same snapshot.** `reconstructSeries` seeds
+> from the earliest anchor it is given, and the readers once fetched
+> different windows — the curve reached a year further back than the YPP card
+> and the follower chip — so a rounded channel was seeded at different points
+> in its band and the figures disagreed. Every read now seeds from the
+> channel's earliest snapshot ever recorded, so the three agree and none
+> shifts overnight as old snapshots age out. The delta read spans the whole
+> capture history as a result; a stored level per connection is the remedy
+> if that grows costly, not a shorter window.
+
 **The rounded-seed bias must be disclosed wherever the number is shown** —
 this is FILM-1607's one unchecked acceptance criterion, deferred here
 because this spec owns every surface that shows the number. The YouTube
