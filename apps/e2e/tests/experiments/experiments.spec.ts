@@ -28,7 +28,7 @@ function isoDaysAgo(days: number) {
 }
 
 test.describe('Experiment log (FILM-1610)', () => {
-  test('the second experiment saves its own values, not the first one\'s', async ({
+  test("the second experiment saves its own values, not the first one's", async ({
     page,
   }) => {
     const log = new ExperimentsPageObject(page);
@@ -38,7 +38,10 @@ test.describe('Experiment log (FILM-1610)', () => {
     // First: every new field set.
     await log.field('experiment-title').fill('First experiment');
     await log.field('experiment-change').fill('Faces on thumbnails');
-    await log.choose('experiment-category', 'experiment-category-option-packaging');
+    await log.choose(
+      'experiment-category',
+      'experiment-category-option-packaging',
+    );
     await log.choose('experiment-metric', 'experiment-metric-option-ctr');
     await log.linkVideo(firstVideo);
     await log.chooseChannel(team.connectionId);
@@ -49,10 +52,14 @@ test.describe('Experiment log (FILM-1610)', () => {
     // After the reset, every field must *look* empty too. An uncontrolled
     // Radix select keeps its label across reset() while form state clears.
     await expect(log.field('experiment-category')).toHaveText('No category');
-    await expect(log.field('experiment-metric')).toHaveText('No specific metric');
+    await expect(log.field('experiment-metric')).toHaveText(
+      'No specific metric',
+    );
     await expect(log.field('video-picker-trigger')).toHaveText('Choose videos');
     await expect(
-      log.field('experiment-channel').locator('[data-test="channel-filter-trigger"]'),
+      log
+        .field('experiment-channel')
+        .locator('[data-test="channel-filter-trigger"]'),
     ).toHaveText('No specific channel');
     await expect(log.field('experiment-review-window')).toHaveValue('60');
     await expect(log.field('experiment-notes')).toHaveValue('');
@@ -62,7 +69,10 @@ test.describe('Experiment log (FILM-1610)', () => {
     await log.field('experiment-title').fill('Second experiment');
     await log.field('experiment-change').fill('Shorter hook');
     await log.choose('experiment-category', 'experiment-category-option-hook');
-    await log.choose('experiment-metric', 'experiment-metric-option-search_share');
+    await log.choose(
+      'experiment-metric',
+      'experiment-metric-option-search_share',
+    );
     await log.linkVideo(secondVideo);
     await log.field('experiment-review-window').fill('14');
     await log.field('experiment-notes').fill('second notes');
@@ -151,10 +161,12 @@ test.describe('Experiment log (FILM-1610)', () => {
     await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
     await expect(log.form()).toBeVisible();
 
-    await expect(page.locator(`[data-test="experiment-due-${due}"]:visible`)).toContainText(
-      'Overdue experiment',
-    );
-    await expect(page.locator(`[data-test="experiment-due-${notDue}"]`)).toHaveCount(0);
+    await expect(
+      page.locator(`[data-test="experiment-due-${due}"]:visible`),
+    ).toContainText('Overdue experiment');
+    await expect(
+      page.locator(`[data-test="experiment-due-${notDue}"]`),
+    ).toHaveCount(0);
   });
 
   test('a watched metric with no data says why instead of showing zero', async ({
@@ -174,12 +186,16 @@ test.describe('Experiment log (FILM-1610)', () => {
       `select=id&account_id=eq.${team.accountId}`,
     );
 
-    await page.locator(`[data-test="experiment-row-${row!.id}"]:visible`).click();
+    await page
+      .locator(`[data-test="experiment-row-${row!.id}"]:visible`)
+      .click();
     await page.getByRole('button', { name: 'Start experiment' }).click();
 
     // ClickHouse is off here, so the linked video has no reach data: the
     // baseline must name that, and must not render a 0.0%.
-    const baseline = page.locator('[data-test="experiment-watched-baseline-unmeasured"]');
+    const baseline = page.locator(
+      '[data-test="experiment-watched-baseline-unmeasured"]',
+    );
     await expect(baseline).toHaveAttribute('data-reason', 'no_data');
     await expect(
       page.locator('[data-test="experiment-watched-baseline-value"]'),

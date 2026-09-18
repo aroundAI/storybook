@@ -282,8 +282,14 @@ The snapshot half is not. Every watched-metric source is a ClickHouse
 query, and `CLICKHOUSE_ENABLED=false` in production — so `watched` will be
 `unmeasured: no_data`, and the detail view says so in words (*corrected:
 the first draft said it would be zero, which is the confusion the union
-exists to prevent*). The folds are unit-tested with fixture rows; no watched
-value has been checked against real ClickHouse data.
+exists to prevent*). The folds are unit-tested with fixture rows, and one
+metric was measured end to end against the local ClickHouse
+(`./scripts/local-env.sh`): `experiments-evidence.spec.ts` seeds 1,000
+impressions at 10% and 9,000 at 2% on two linked videos, and the started
+experiment's baseline reads **2.8%** on the page over the right window, 2 of 2
+videos covered. With CTR reverted to a plain mean it reads 6.0% and the spec
+fails. The other six metrics share the plumbing but not the fold, and were
+not individually run against ClickHouse.
 
 ## 10. Risk
 
