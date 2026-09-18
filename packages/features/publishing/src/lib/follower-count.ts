@@ -2,6 +2,7 @@ import {
   SUBSCRIBER_LEVEL_FRESH_DAYS,
   SUBSCRIBER_SOURCE_LABEL,
   isLevelOutdated,
+  roundingErrorOf,
 } from '@kit/clickhouse';
 
 import { formatFollowers } from './platform-limits';
@@ -82,7 +83,7 @@ export function describeFollowerCount(input: {
   // Off either way by up to step − 1: a reconstructed level can sit anywhere
   // in the platform's rounded band. The short form cannot carry this —
   // `formatFollowers` rounds to one decimal itself.
-  const error = Math.max(0, (input.roundingStep ?? 0) - 1);
+  const error = roundingErrorOf(input.roundingStep ?? 0);
   const rounding =
     error > 0
       ? ` Rounded by the platform — may be off by up to ${error.toLocaleString(

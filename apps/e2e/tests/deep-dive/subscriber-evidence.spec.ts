@@ -223,7 +223,36 @@ test.describe('FILM-1617 — evidence', () => {
         })),
       );
 
-    // 7. The publish screen's follower counts.
+    // 7. A total mixing a capture gap with a rounded channel — the pair
+    //    whose gap round eight found drawn as measured. The gap must be
+    //    dashed in the YouTube total.
+    const pairProject = await seedProject(team, { name: 'Gap Pair' });
+
+    for (const [index, id] of (
+      ['healthy-rounded', 'capture-gap'] as const
+    ).entries()) {
+      await seedPublishedEpisode(pairProject.id, idByScenario.get(id)!, {
+        number: index + 1,
+      });
+    }
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await deepDive.goToDeepDive(team.slug, pairProject.slug);
+    await expect(
+      page.locator('[data-test="subscriber-series"]:visible'),
+    ).toBeVisible();
+    await page.locator('[data-test="subscriber-series-total"]').click();
+    await clearHover();
+    await cardAround(page, 'subscriber-series').screenshot({
+      path: `${OUT}/25-gap-pair-total.png`,
+    });
+
+    const gapPairNote = await texts(
+      page,
+      '[data-test="subscriber-series-total-note"] li',
+    );
+
+    // 8. The publish screen's follower counts.
     const episode = await seedEpisodeWithShot(project.id, {
       number: SUBSCRIBER_SCENARIOS.length + 1,
     });
@@ -257,7 +286,15 @@ test.describe('FILM-1617 — evidence', () => {
     console.log(
       'MEASURED',
       JSON.stringify(
-        { perChannel, total, untrackedAlone, stoppedAlone, yppRows, chips },
+        {
+          perChannel,
+          total,
+          untrackedAlone,
+          stoppedAlone,
+          yppRows,
+          gapPairNote,
+          chips,
+        },
         null,
         2,
       ),
