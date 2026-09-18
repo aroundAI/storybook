@@ -87,7 +87,7 @@ affects **every historical video**.
 | `packages/features/content-analytics/src/components/analytics-dashboard.tsx` | New "Video Log" tab beside the existing six (`:371-378`). |
 | ↑ | Reuse the `ChannelFilter` built in FILM-1611 rather than adding a second selector — two channel pickers with independent state on one dashboard is how the tabs start disagreeing about what is selected. |
 | `packages/features/content-analytics/src/server/video-log-actions.ts` | No signature change. If FILM-1610 has landed, `VideoLogRow.analyticsNote` renders as an editable cell; if it has not, the column is simply absent — FILM-1603 already establishes that the action "leaves the field out entirely rather than" faking one. |
-| `packages/features/content-analytics/src/components/video-log/note-cell.tsx` | New, only if FILM-1610 has landed. **This spec owns the note editor**: FILM-1610 §7 ships the column and `updatePublishNoteAction` and leaves the cell here. `react-hook-form` + `@kit/ui/form`, per the root `CLAUDE.md`, with `data-test` on the input and the save control. Land FILM-1610 first so this ships in one piece. |
+| `packages/features/content-analytics/src/components/video-log/note-cell.tsx` | New, only if FILM-1610 has landed. **This spec owns the note editor**: FILM-1610 §7 ships the column and `updatePublishNoteAction` and leaves the cell here. `react-hook-form` + `@kit/ui/form`, per the root `CLAUDE.md`, with `data-test` on the input and the save control. Land FILM-1610 first so this ships in one piece. **Editable only where `VideoLogRow.canEditNote` is true** (FILM-1610 computes it from the `publishes_update` roles); elsewhere the note renders read-only. The E2E must assert both: a project member gets an editor, and an account member who is not on the project gets read-only text — that is what proves `canEditNote` agrees with the policy. |
 
 ## 5. Bounding
 
@@ -121,6 +121,7 @@ it is summing the page.
 - [ ] Any footer total states that it covers the current page only
 - [ ] A loading state renders while the action is in flight
 - [ ] If FILM-1610 has landed, a note saved from a row survives a re-query, and a second edit to the same row saves the second value, not the first
+- [ ] The note is editable only where `canEditNote` is true; an account member who is not on the video's project sees it read-only
 - [ ] If FILM-1610 has not landed, the note column is absent rather than rendered empty
 
 ## 8. Verification

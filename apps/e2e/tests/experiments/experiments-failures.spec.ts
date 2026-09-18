@@ -52,11 +52,22 @@ async function onAction(
   });
 }
 
-const onlyAccountId = (args: Record<string, unknown>) =>
-  Object.keys(args).join() === 'accountId';
+/**
+ * The account-scoped reads: the log, the channels and the videos send
+ * `{ accountId }`; the due list also sends the caller's `asOf` date.
+ */
+const accountRead = (args: Record<string, unknown>) =>
+  'accountId' in args &&
+  Object.keys(args).every((key) => key === 'accountId' || key === 'asOf');
 
-const onlyExperimentId = (args: Record<string, unknown>) =>
-  Object.keys(args).join() === 'experimentId';
+/**
+ * The start action, told apart by its `startedAt`. Matching on
+ * `{ experimentId }` alone would also catch the detail read — and once start
+ * began sending a date, that matcher silently stopped seeing start at all,
+ * leaving the double-click test counting the wrong request and passing.
+ */
+const startAction = (args: Record<string, unknown>) =>
+  'experimentId' in args && 'startedAt' in args;
 
 test.describe('Experiment log — failures (FILM-1610)', () => {
   test('failed reads are reported, not shown as an empty log', async ({
@@ -68,7 +79,7 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
     await signInAs(page, team);
     // Every account-scoped read on this page: the log, the due list, the
     // channels and the videos. None of them may claim to be empty.
-    await onAction(page, onlyAccountId, 'abort');
+    await onAction(page, accountRead, 'abort');
     await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
 
     await expect(
@@ -100,8 +111,7 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
     const start = page.getByRole('button', { name: 'Start experiment' });
     await expect(start).toBeVisible();
 
-    // Installed only now: the detail read has the same argument shape.
-    await onAction(page, onlyExperimentId, 'abort');
+    await onAction(page, startAction, 'abort');
     await start.click();
 
     await expect(
@@ -123,13 +133,12 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
     await expect(start).toBeVisible();
 
     const seen: string[] = [];
-    await onAction(page, onlyExperimentId, { delayMs: 1500, seen });
+    await onAction(page, startAction, { delayMs: 1500, seen });
     await start.dblclick();
 
     await expect(page.getByText('Experiment started')).toBeVisible();
 
-    // The first request is the start; count how often that action was sent.
-    const startAction = seen[0];
-    expect(seen.filter((id) => id === startAction)).toHaveLength(1);
+    // Every request `seen` is a start; the double click must send one.
+    expect(seen).toHaveLength(1);
   });
 });

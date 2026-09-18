@@ -163,7 +163,7 @@ test.describe('Experiment log — evidence', () => {
 
     await insertClickHouse('video_reach_daily', [
       {
-        project_id: team.accountId,
+        project_id: team.projectId,
         video_id: first,
         platform: 'youtube',
         metric_date: metricDate,
@@ -172,7 +172,7 @@ test.describe('Experiment log — evidence', () => {
         engaged_views: 0,
       },
       {
-        project_id: team.accountId,
+        project_id: team.projectId,
         video_id: second,
         platform: 'youtube',
         metric_date: metricDate,
@@ -216,5 +216,132 @@ test.describe('Experiment log — evidence', () => {
       path: `${OUT}/04-measured-against-clickhouse.png`,
       fullPage: true,
     });
+  });
+
+  /**
+   * Coverage, end to end against the local ClickHouse (FILM-1610 review, C).
+   *
+   * Two experiments on the same two videos:
+   * - subscribers_net over a 30-day baseline where only 3 days have data:
+   *   +15 in total, shown as data on 3 of 30 days and 5.0 per day.
+   * - views_at_30d where one video's first 30 days closed before the
+   *   channel's ingest began: it is left out, so the median is the other
+   *   video's 100 views and 1 of 2 videos is covered.
+   */
+  test('states partial coverage and leaves out pre-ingest windows', async ({
+    page,
+  }) => {
+    test.skip(
+      !process.env.CLICKHOUSE_EVIDENCE,
+      'Set CLICKHOUSE_EVIDENCE=1 with a server reading the local ClickHouse.',
+    );
+
+    const log = new ExperimentsPageObject(page);
+    const team = await log.setup();
+    const [recent, old] = team.publishIds;
+
+    const daysAgo = (days: number) => {
+      const date = new Date();
+      date.setUTCDate(date.getUTCDate() - days);
+      return date.toISOString().slice(0, 10);
+    };
+
+    const dim = (videoId: string, publishedAt: string) => ({
+      video_id: videoId,
+      project_id: team.projectId,
+      account_id: team.accountId,
+      episode_id: '00000000-0000-4000-8000-000000000000',
+      connection_id: team.connectionId,
+      platform: 'youtube',
+      content_type: 'full',
+      language: 'en',
+      title: videoId,
+      published_at: `${publishedAt} 00:00:00`,
+      duration_seconds: 600,
+      tags: [],
+    });
+
+    const metric = (
+      videoId: string,
+      date: string,
+      views: number,
+      gained: number,
+    ) => ({
+      project_id: team.projectId,
+      video_id: videoId,
+      platform: 'youtube',
+      metric_date: date,
+      views,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      saves: 0,
+      watch_time_seconds: 0,
+      revenue_cents: 0,
+      subscribers_gained: gained,
+      subscribers_lost: 0,
+      metric_source: 'analytics_api',
+      extra_metrics: '{}',
+    });
+
+    // `recent` was published 60 days ago and measured from its first day, so
+    // the channel's ingest starts then. `old` was published two years ago:
+    // its first 30 days closed long before any metric was ingested.
+    await insertClickHouse('video_dim', [
+      dim(recent!, daysAgo(60)),
+      dim(old!, daysAgo(730)),
+    ]);
+    await insertClickHouse('video_metrics', [
+      metric(recent!, daysAgo(60), 100, 0),
+      metric(old!, daysAgo(50), 3, 0),
+      // Three days of subscriber data inside the 30-day baseline window.
+      metric(recent!, daysAgo(20), 0, 5),
+      metric(recent!, daysAgo(10), 0, 5),
+      metric(recent!, daysAgo(5), 0, 5),
+    ]);
+
+    const readings: Record<string, string | null> = {};
+
+    for (const [title, option] of [
+      ['Subscriber push', 'experiment-metric-option-subscribers_net'],
+      ['Thirty-day views', 'experiment-metric-option-views_at_30d'],
+    ] as const) {
+      await log.field('experiment-title').fill(title);
+      await log.field('experiment-change').fill('Coverage evidence');
+      await log.choose('experiment-metric', option);
+      await log.linkVideo(recent!);
+      await log.linkVideo(old!);
+      await log.field('experiment-review-window').fill('30');
+      await log.submitAndWaitForReset();
+
+      const [row] = await readRows<{ id: string }>(
+        'analytics_experiments',
+        `select=id&account_id=eq.${team.accountId}&title=eq.${encodeURIComponent(title)}`,
+      );
+      await page
+        .locator(`[data-test="experiment-row-${row!.id}"]:visible`)
+        .click();
+      await page.getByRole('button', { name: 'Start experiment' }).click();
+
+      const side = page.locator('[data-test="experiment-watched-baseline"]');
+      await expect(
+        page.locator('[data-test="experiment-watched-baseline-value"]'),
+      ).toBeVisible();
+      readings[title] = await side.textContent();
+
+      await page.screenshot({
+        path: `${OUT}/${title === 'Subscriber push' ? '05-partial-coverage' : '06-predates-ingest-excluded'}.png`,
+        fullPage: true,
+      });
+      await page.keyboard.press('Escape');
+    }
+
+    console.log('COVERAGE_READINGS', JSON.stringify(readings));
+
+    expect(readings['Subscriber push']).toContain('+15');
+    expect(readings['Subscriber push']).toContain('data on 3 of 30 days');
+    expect(readings['Subscriber push']).toContain('5.0 per day');
+    expect(readings['Thirty-day views']).toContain('100');
+    expect(readings['Thirty-day views']).toContain('1 of 2 videos had data');
   });
 });

@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import {
   readRows,
+  seedExperiment,
   seedRunningExperiment,
   seedTeamAccount,
 } from '../utils/seed';
@@ -200,5 +201,37 @@ test.describe('Experiment log (FILM-1610)', () => {
     await expect(
       page.locator('[data-test="experiment-watched-baseline-value"]'),
     ).toHaveCount(0);
+  });
+});
+
+test.describe("Experiment dates are the user's own (FILM-1610 review, E1)", () => {
+  // 00:30 on 2 March in Kolkata is still 1 March in UTC. A date taken from
+  // the server's UTC clock records the start a day early for anyone east of
+  // it. The fixed date is far from today on purpose: the old server-side
+  // date cannot match it by coincidence.
+  test.use({ timezoneId: 'Asia/Kolkata' });
+
+  test('a start just after local midnight is recorded on the local date', async ({
+    page,
+  }) => {
+    const team = await seedTeamAccount();
+    const id = await seedExperiment(team.accountId, {
+      title: 'Midnight start',
+    });
+
+    await signInAs(page, team);
+    await page.clock.setFixedTime(new Date('2026-03-01T19:00:00Z'));
+    await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
+
+    await page.locator(`[data-test="experiment-row-${id}"]:visible`).click();
+    await page.getByRole('button', { name: 'Start experiment' }).click();
+    await expect(page.getByText('Experiment started')).toBeVisible();
+
+    const [row] = await readRows<{ started_at: string }>(
+      'analytics_experiments',
+      `select=started_at&id=eq.${id}`,
+    );
+
+    expect(row!.started_at).toBe('2026-03-02');
   });
 });
