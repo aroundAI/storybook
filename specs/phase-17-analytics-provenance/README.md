@@ -90,19 +90,23 @@ thing that would read the column, through `getRetentionCurveAction`.
 
 ```
 FILM-1710 (asset duration) ── latent defect; ships before FILM-1616 reads it
-     │
-FILM-1711 (authorisation) ──┬─→ FILM-1712 (metric recovery)
-                            │
-FILM-1713 (measures, velocity) ─┐
-FILM-1714 (signal model) ───────┼─→ FILM-1715 (self-benchmark)
-FILM-1716 (format families) ────┘         │
-                                          ├─→ FILM-1718 (diagnosis) ← not the genome
-                                          │
-                                          └─→ FILM-1717 (genome v1 → v2)
-                                                   │
-                                                   └─→ FILM-1719 (surfaces)
+     │                         (TikTok leg only waits on FILM-1711)
+     └─→ FILM-1716 (format families)
 
-FILM-1720 (Facebook + X) ── last, and the test of whether 1714 was expandable
+FILM-1711 (authorisation) ─→ FILM-1712 (metric recovery)
+
+FILM-1713 (measures, velocity) ─┬─→ FILM-1714 (signal model)   ← also FILM-1703
+FILM-1716 (format families) ────┤
+                                └─→ FILM-1715 (self-benchmark) ← also FILM-1703, FILM-1721
+
+FILM-1714 + FILM-1715 ─→ FILM-1718 (diagnosis) ← not the genome
+
+FILM-1715 + FILM-1716 ─→ FILM-1717 (genome v1 → v2) ← also FILM-1606 ✅, FILM-1610
+
+FILM-1717 + FILM-1718 ─→ FILM-1719 (surfaces) ← also FILM-1706
+
+FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook + X)
+   ── last, and the test of whether 1714 was expandable
 ```
 
 | Spec | Status | Effort | Covers |
