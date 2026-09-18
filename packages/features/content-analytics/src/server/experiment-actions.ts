@@ -10,6 +10,7 @@ import type { Json } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
+  assertCanAbandon,
   assertCanConclude,
   assertCanStart,
   assertEditable,
@@ -212,6 +213,43 @@ async function assertPublishesInAccount(
   }
 }
 
+/**
+ * A lifecycle write that applies only if the experiment is still in one of
+ * `from` when the row is written.
+ *
+ * The status is read and checked first for a clear message, but that check
+ * alone is a race: two tabs can both read `planned` and both start, the
+ * second overwriting the first's baseline. The status condition on the
+ * update itself is what makes it atomic; zero rows matched means someone
+ * else moved the experiment first.
+ */
+async function updateIfStatus(
+  client: Client,
+  experimentId: string,
+  from: string[],
+  payload: Record<string, unknown>,
+  what: string,
+): Promise<void> {
+  const base = client
+    .from('analytics_experiments')
+    .update(payload)
+    .eq('id', experimentId);
+
+  const { data, error } = await (
+    from.length === 1 ? base.eq('status', from[0]!) : base.in('status', from)
+  ).select('id');
+
+  if (error) {
+    throw new Error(`Failed to ${what}: ${error.message}`);
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error(
+      `This experiment was changed by someone else before it could ${what}. Reload and try again.`,
+    );
+  }
+}
+
 /** PostgREST reports a refused or failed write as a value, not a throw. */
 function throwIfFailed(
   result: { error: { message: string } | null },
@@ -401,18 +439,17 @@ export const startExperimentAction = enhanceAction(
       window: baselineWindow(started, context.review_window_days),
     });
 
-    const { error } = await client
-      .from('analytics_experiments')
-      .update({
+    await updateIfStatus(
+      client,
+      experimentId,
+      ['planned'],
+      {
         status: 'running',
         started_at: started,
         baseline_metrics: baseline as unknown as Json,
-      })
-      .eq('id', experimentId);
-
-    if (error) {
-      throw new Error(`Failed to start experiment: ${error.message}`);
-    }
+      },
+      'start',
+    );
 
     return { success: true, baseline };
   },
@@ -445,20 +482,19 @@ export const concludeExperimentAction = enhanceAction(
     // experiment is labelled 74.
     result.resultAfterDays = daysBetween(startedAt, ended);
 
-    const { error } = await client
-      .from('analytics_experiments')
-      .update({
+    await updateIfStatus(
+      client,
+      experimentId,
+      ['running'],
+      {
         status: 'concluded',
         ended_at: ended,
         actual_outcome: actualOutcome,
         outcome_status: outcomeStatus,
         result_metrics: result as unknown as Json,
-      })
-      .eq('id', experimentId);
-
-    if (error) {
-      throw new Error(`Failed to conclude experiment: ${error.message}`);
-    }
+      },
+      'conclude',
+    );
 
     return { success: true, result };
   },
@@ -469,19 +505,21 @@ export const abandonExperimentAction = enhanceAction(
   async ({ experimentId, reason }) => {
     const client = getSupabaseServerClient();
 
-    const { error } = await client
-      .from('analytics_experiments')
-      .update({
+    const context = await readSnapshotContext(client, experimentId);
+    assertCanAbandon(context.status);
+
+    await updateIfStatus(
+      client,
+      experimentId,
+      ['planned', 'running'],
+      {
         status: 'abandoned',
         ended_at: today(),
         actual_outcome: reason ?? null,
         outcome_status: 'inconclusive',
-      })
-      .eq('id', experimentId);
-
-    if (error) {
-      throw new Error(`Failed to abandon experiment: ${error.message}`);
-    }
+      },
+      'abandon',
+    );
 
     return { success: true };
   },

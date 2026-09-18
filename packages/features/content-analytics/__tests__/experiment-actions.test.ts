@@ -33,6 +33,10 @@ const state: {
   /** Errors a link table returns, as PostgREST would: 200-shaped, not thrown. */
   linkReadError: { message: string } | null;
   linkWriteError: { message: string } | null;
+  /** Status conditions each conditional update carried. */
+  statusGuards: unknown[];
+  /** Whether a conditional update still finds its row (false = someone else won). */
+  rowStillMatches: boolean;
 } = {
   experiment: {
     account_id: 'a1',
@@ -48,7 +52,39 @@ const state: {
   deletedExperiments: [],
   linkReadError: null,
   linkWriteError: null,
+  statusGuards: [],
+  rowStillMatches: true,
 };
+
+/**
+ * An update builder: chainable filters, `select` for a conditional update
+ * that reports the rows it matched, and awaitable for a plain update.
+ */
+interface UpdateBuilder extends PromiseLike<{ error: null }> {
+  eq: (column: string, value: unknown) => UpdateBuilder;
+  in: (column: string, values: unknown[]) => UpdateBuilder;
+  select: () => Promise<{ data: Array<{ id: string }>; error: null }>;
+}
+
+function updateBuilder(): UpdateBuilder {
+  const builder: UpdateBuilder = {
+    eq: (column, value) => {
+      if (column === 'status') state.statusGuards.push(value);
+      return builder;
+    },
+    in: (column, values) => {
+      if (column === 'status') state.statusGuards.push(values);
+      return builder;
+    },
+    select: async () => ({
+      data: state.rowStillMatches ? [{ id: 'e1' }] : [],
+      error: null,
+    }),
+    then: (resolve, reject) =>
+      Promise.resolve({ error: null as null }).then(resolve, reject),
+  };
+  return builder;
+}
 
 vi.mock('@kit/next/actions', () => ({
   enhanceAction:
@@ -128,7 +164,7 @@ vi.mock('@kit/supabase/server-client', () => ({
         },
         update: (payload: Record<string, unknown>) => {
           state.updates.push(payload);
-          return { eq: async () => ({ error: null }) };
+          return updateBuilder();
         },
         delete: () => ({
           eq: async (_: string, id: string) => {
@@ -156,6 +192,8 @@ beforeEach(() => {
   state.deletedExperiments = [];
   state.linkReadError = null;
   state.linkWriteError = null;
+  state.statusGuards = [];
+  state.rowStillMatches = true;
   resolveWatchedMetric.mockClear();
 });
 
@@ -482,5 +520,56 @@ describe('updateExperimentAction normalises blank text like create (E3)', () => 
     expect(state.updates).toEqual([
       { hypothesis: null, expected_outcome: null, notes: null },
     ]);
+  });
+});
+
+describe('lifecycle writes are atomic, and abandon has rules too (R1, R2)', () => {
+  it('starts only if the row is still planned at the moment of writing', async () => {
+    await startExperimentAction({
+      experimentId: 'e1',
+      startedAt: '2026-07-01',
+    });
+
+    expect(state.statusGuards).toEqual(['planned']);
+  });
+
+  it('reports a start that lost the race instead of overwriting the winner', async () => {
+    // The read saw `planned`; by the write, another tab had started it.
+    state.rowStillMatches = false;
+
+    await expect(
+      startExperimentAction({ experimentId: 'e1', startedAt: '2026-07-01' }),
+    ).rejects.toThrow(/changed by someone else/i);
+  });
+
+  it('concludes only if the row is still running at the moment of writing', async () => {
+    state.experiment.status = 'running';
+    state.experiment.started_at = '2026-07-01';
+
+    await concludeExperimentAction({
+      experimentId: 'e1',
+      actualOutcome: 'x',
+      outcomeStatus: 'confirmed',
+      endedAt: '2026-08-01',
+    });
+
+    expect(state.statusGuards).toEqual(['running']);
+  });
+
+  it('refuses to abandon a concluded experiment, which would erase its result', async () => {
+    state.experiment.status = 'concluded';
+
+    await expect(
+      abandonExperimentAction({ experimentId: 'e1', reason: 'oops' }),
+    ).rejects.toThrow(/only a planned or running experiment/i);
+    expect(state.updates).toHaveLength(0);
+  });
+
+  it('abandons only if the row is still planned or running when written', async () => {
+    state.experiment.status = 'running';
+
+    await abandonExperimentAction({ experimentId: 'e1', reason: 'Paused' });
+
+    expect(state.statusGuards).toEqual([['planned', 'running']]);
   });
 });

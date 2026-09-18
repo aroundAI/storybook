@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  assertCanAbandon,
   assertCanConclude,
   assertCanStart,
   assertEditable,
@@ -72,5 +73,19 @@ describe('assertEditable', () => {
     expect(() =>
       assertEditable('running', ['title', 'notes', 'hypothesis', 'category']),
     ).not.toThrow();
+  });
+});
+
+describe('assertCanAbandon', () => {
+  it('abandons only a planned or running experiment', () => {
+    expect(() => assertCanAbandon('planned')).not.toThrow();
+    expect(() => assertCanAbandon('running')).not.toThrow();
+
+    for (const status of ['concluded', 'abandoned']) {
+      // A concluded experiment's result would be overwritten.
+      expect(() => assertCanAbandon(status)).toThrow(
+        /only a planned or running experiment/i,
+      );
+    }
   });
 });

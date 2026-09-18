@@ -49,6 +49,18 @@ export function assertCanConclude(
   }
 }
 
+/**
+ * Abandoning a concluded experiment would overwrite its recorded result with
+ * "inconclusive"; an abandoned one has nothing left to abandon.
+ */
+export function assertCanAbandon(status: string): void {
+  if (status !== 'planned' && status !== 'running') {
+    throw new Error(
+      `Only a planned or running experiment can be abandoned; this one is ${status}.`,
+    );
+  }
+}
+
 /** Refuses an edit to a frozen field once the experiment has started. */
 export function assertEditable(status: string, fields: string[]): void {
   if (status === 'planned') return;
