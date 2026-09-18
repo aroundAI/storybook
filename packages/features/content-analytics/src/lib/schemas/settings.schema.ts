@@ -92,11 +92,41 @@ export const UpdateChannelAnalyticsSettingsSchema = z.object({
       },
       { message: 'Invalid date' },
     )
-    .refine((value) => value <= latestJoinDate(), {
-      message: "Joined date can't be in the future",
-    })
     .nullable(),
 });
+
+/**
+ * Whether a date is past the bound anyone can mean.
+ *
+ * Not a refine on the schema above: whether a future date is acceptable
+ * depends on what is already stored for that channel, which a schema cannot
+ * see. Rows written before this bound existed hold one, and refusing them
+ * outright locks every other setting on their card.
+ */
+export function isFutureJoinDate(value: string, now?: Date): boolean {
+  return value > latestJoinDate(now);
+}
+
+/**
+ * The channel form's schema, which refuses a future date **unless it is the
+ * one already stored** — so a legacy row can be left alone while its targets
+ * are saved, and no new future date can be typed in.
+ *
+ * The server repeats the rule against the row it reads: this resolver is a
+ * convenience, and a caller can bypass it.
+ */
+export function buildChannelSettingsFormSchema(storedJoinedAt: string | null) {
+  return UpdateChannelAnalyticsSettingsSchema.refine(
+    (values) =>
+      values.joinedYppAt === null ||
+      values.joinedYppAt === storedJoinedAt ||
+      !isFutureJoinDate(values.joinedYppAt),
+    {
+      path: ['joinedYppAt'],
+      message: "Joined date can't be in the future",
+    },
+  );
+}
 
 export type UpdateAccountAnalyticsSettingsInput = z.infer<
   typeof UpdateAccountAnalyticsSettingsSchema

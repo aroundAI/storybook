@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   UpdateAccountAnalyticsSettingsSchema,
   UpdateChannelAnalyticsSettingsSchema,
+  buildChannelSettingsFormSchema,
   latestJoinDate,
 } from '../src/lib/schemas/settings.schema';
 
@@ -38,25 +39,16 @@ describe('UpdateChannelAnalyticsSettingsSchema joinedYppAt', () => {
     ).toBe(true);
   });
 
-  // One day of slack for users ahead of UTC, whose local today is UTC's
-  // tomorrow; beyond that the date has not happened anywhere.
-  it('accepts tomorrow in UTC but rejects anything later', () => {
-    expect(
-      UpdateChannelAnalyticsSettingsSchema.safeParse({
-        ...base,
-        joinedYppAt: isoDaysFromNow(1),
-      }).success,
-    ).toBe(true);
-
-    const later = UpdateChannelAnalyticsSettingsSchema.safeParse({
-      ...base,
-      joinedYppAt: isoDaysFromNow(2),
-    });
-
-    expect(later.success).toBe(false);
-    expect(later.error?.issues[0]?.message).toBe(
-      "Joined date can't be in the future",
-    );
+  // The future check is not here: whether a future date is acceptable depends
+  // on what the row already holds, which this schema never sees. It lives in
+  // `buildChannelSettingsFormSchema` below and, for real, in the action.
+  it('accepts any real date, including a future one', () => {
+    for (const joinedYppAt of [isoDaysFromNow(1), isoDaysFromNow(30)]) {
+      expect(
+        UpdateChannelAnalyticsSettingsSchema.safeParse({ ...base, joinedYppAt })
+          .success,
+      ).toBe(true);
+    }
   });
 
   it('rejects a date that does not exist', () => {
@@ -122,5 +114,52 @@ describe('latestJoinDate', () => {
     expect(latestJoinDate(new Date('2026-09-17T22:00:00.000Z'))).toBe(
       '2026-09-18',
     );
+  });
+});
+
+describe('buildChannelSettingsFormSchema', () => {
+  const future = isoDaysFromNow(7);
+
+  it('accepts the future date already stored on the row', () => {
+    // A row written before the bound existed. Refusing it would lock every
+    // other setting on that channel's card.
+    expect(
+      buildChannelSettingsFormSchema(future).safeParse({
+        ...base,
+        joinedYppAt: future,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('refuses a different future date', () => {
+    const result = buildChannelSettingsFormSchema(future).safeParse({
+      ...base,
+      joinedYppAt: isoDaysFromNow(8),
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe(
+      "Joined date can't be in the future",
+    );
+  });
+
+  it('refuses a future date when nothing is stored', () => {
+    expect(
+      buildChannelSettingsFormSchema(null).safeParse({
+        ...base,
+        joinedYppAt: future,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('accepts a past date and clearing the field', () => {
+    for (const joinedYppAt of ['2025-01-15', null]) {
+      expect(
+        buildChannelSettingsFormSchema(future).safeParse({
+          ...base,
+          joinedYppAt,
+        }).success,
+      ).toBe(true);
+    }
   });
 });

@@ -9,6 +9,7 @@ import {
   GetAnalyticsSettingsSchema,
   UpdateAccountAnalyticsSettingsSchema,
   UpdateChannelAnalyticsSettingsSchema,
+  isFutureJoinDate,
 } from '../lib/schemas/settings.schema';
 import type { ChannelSettingsRow } from '../lib/ypp-targets';
 import { listAccountChannels } from './channels';
@@ -87,6 +88,15 @@ export type UpdateAnalyticsSettingsResult =
   | { ok: true }
   | { ok: false; reason: 'no_access' | 'write_failed' };
 
+/**
+ * The channel writer can also refuse the joined date, which the account one
+ * has no field for — a shared type would make every caller handle a reason
+ * its action cannot return.
+ */
+export type UpdateChannelSettingsResult =
+  | { ok: true }
+  | { ok: false; reason: 'no_access' | 'write_failed' | 'invalid_joined_date' };
+
 export const updateAccountAnalyticsSettingsAction = enhanceAction(
   async (data): Promise<UpdateAnalyticsSettingsResult> => {
     const {
@@ -137,7 +147,7 @@ export const updateAccountAnalyticsSettingsAction = enhanceAction(
 );
 
 export const updateChannelAnalyticsSettingsAction = enhanceAction(
-  async (data): Promise<UpdateAnalyticsSettingsResult> => {
+  async (data): Promise<UpdateChannelSettingsResult> => {
     const {
       connectionId,
       yppTargetWatchHours,
@@ -164,6 +174,25 @@ export const updateChannelAnalyticsSettingsAction = enhanceAction(
     if (connectionError) return { ok: false, reason: 'write_failed' };
 
     if (!connection) return { ok: false, reason: 'no_access' };
+
+    // A future date cannot be *entered*, but one already stored may be left
+    // alone: rows written before that bound existed would otherwise lock
+    // every other setting on the channel. The stored value is read here
+    // rather than trusted from the caller, and the schema cannot make this
+    // call because it never sees the row.
+    if (joinedYppAt !== null && isFutureJoinDate(joinedYppAt)) {
+      const { data: stored, error: storedError } = await client
+        .from('channel_analytics_settings')
+        .select('joined_ypp_at')
+        .eq('connection_id', connectionId)
+        .maybeSingle();
+
+      if (storedError) return { ok: false, reason: 'write_failed' };
+
+      if (stored?.joined_ypp_at !== joinedYppAt) {
+        return { ok: false, reason: 'invalid_joined_date' };
+      }
+    }
 
     const { error } = await client.from('channel_analytics_settings').upsert(
       {
