@@ -269,6 +269,31 @@ describe('Connection Actions', () => {
         });
       });
 
+      // A slow read is an outage the page would otherwise wait on forever:
+      // the publish screen must not be gated on analytics.
+      it('falls back to the stored count when the level read hangs', async () => {
+        vi.useFakeTimers();
+
+        try {
+          clickhouse.queryLatestSubscriberLevels.mockReturnValue(
+            new Promise(() => {}),
+          );
+
+          const pending = connectedPlatforms([youtube]);
+
+          await vi.advanceTimersByTimeAsync(2_000);
+
+          const [connection] = await pending;
+
+          expect(connection).toMatchObject({
+            followerCount: 900,
+            followerCountSource: 'metadata',
+          });
+        } finally {
+          vi.useRealTimers();
+        }
+      }, 5_000);
+
       // The badge is decoration; an analytics outage must not fail publishing.
       it('falls back to the stored count when the level read fails', async () => {
         clickhouse.queryLatestSubscriberLevels.mockRejectedValue(
