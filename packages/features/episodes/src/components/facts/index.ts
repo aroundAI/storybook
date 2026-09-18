@@ -3,7 +3,7 @@ export { FactCard } from './fact-card';
 export { FactLibrary } from './fact-library';
 export { AddFactForm } from './add-fact-form';
 export { FactVerificationDialog } from './fact-verification-dialog';
-export type { MappedFact } from '../../server/fact-actions';
+export type { MappedFact } from '../../server/fact-row-mapper';
 export {
   STATUS_STYLES,
   STATUS_LABELS,

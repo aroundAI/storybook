@@ -17,7 +17,7 @@ import { Label } from '@kit/ui/label';
 import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
 
-import type { MappedFact } from '../../server/fact-actions';
+import type { MappedFact } from '../../server/fact-row-mapper';
 
 type FactForVerification = Pick<
   MappedFact,
