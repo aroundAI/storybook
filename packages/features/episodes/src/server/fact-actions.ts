@@ -11,8 +11,6 @@ import { SOURCE_TYPES } from '../components/facts/fact-constants';
 import { mapFactRow } from './fact-row-mapper';
 import type { VerifiedFactRow } from './fact-row-mapper';
 
-export type { MappedFact } from './fact-row-mapper';
-
 // =============================================================================
 // HELPERS
 // =============================================================================

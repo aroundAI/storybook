@@ -13,12 +13,6 @@ import type { GenerationJobType } from '../../types';
 
 const logger = await getLogger();
 
-/**
- * Job types for generation jobs
- * Maps to job_type column in generation_jobs table
- */
-export type { GenerationJobType };
-
 export type GenerationJobStatus =
   | 'queued'
   | 'processing'

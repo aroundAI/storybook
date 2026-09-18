@@ -23,7 +23,7 @@ import {
 } from '@kit/ui/dropdown-menu';
 import { toast } from '@kit/ui/sonner';
 
-import type { MappedFact } from '../../server/fact-actions';
+import type { MappedFact } from '../../server/fact-row-mapper';
 import { STATUS_LABELS, STATUS_STYLES } from './fact-constants';
 
 interface FactCardProps {

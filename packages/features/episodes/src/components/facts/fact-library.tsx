@@ -33,7 +33,7 @@ import {
   disputeFactAction,
   verifyFactAction,
 } from '../../server/fact-actions';
-import type { MappedFact } from '../../server/fact-actions';
+import type { MappedFact } from '../../server/fact-row-mapper';
 import { FactCard } from './fact-card';
 import { CATEGORY_OPTIONS, STATUS_OPTIONS } from './fact-constants';
 import { FactVerificationDialog } from './fact-verification-dialog';
