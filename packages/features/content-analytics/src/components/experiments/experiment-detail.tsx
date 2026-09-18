@@ -5,6 +5,7 @@ import { ArrowDown, ArrowRight, ArrowUp } from 'lucide-react';
 import { Badge } from '@kit/ui/badge';
 import { Skeleton } from '@kit/ui/skeleton';
 
+import { categoryLabel } from '../../lib/schemas/experiment.schema';
 import {
   type DateWindow,
   UNMEASURED_REASON_TEXT,
@@ -12,6 +13,7 @@ import {
   type WatchedValue,
   formatWatchedValue,
   isWatchedMetricKey,
+  perDay,
 } from '../../lib/watched-metrics';
 
 /** Snapshot persisted by start/conclude, mirroring ExperimentSnapshot. */
@@ -65,10 +67,57 @@ const METRICS = [
   { key: 'revenueCents', label: 'Revenue (cents)' },
 ] as const;
 
+function metricLabelOf(metric: string): string {
+  return isWatchedMetricKey(metric) ? WATCHED_METRICS[metric].label : metric;
+}
+
+/** Blank text saved before blanks became null reads as nothing recorded. */
+function textOr(value: string | null, fallback: string): string {
+  return value?.trim() ? value : fallback;
+}
+
 function formatWindow(window: DateWindow | null): string {
   return window
     ? `${window.start} → ${window.end}`
     : "each video's first 30 days";
+}
+
+/**
+ * What a measured value covers: the window, how many videos had data, and —
+ * when the data does not span the whole window — how many days it does. A
+ * sum is also given per day of data, since a sum grows with the window.
+ */
+function WatchedCoverage({
+  watched,
+}: {
+  watched: Extract<WatchedValue, { status: 'measured' }>;
+}) {
+  // Snapshots written before coverage was recorded have neither field.
+  const daysWithData = watched.daysWithData ?? null;
+  const windowDays = watched.windowDays ?? null;
+
+  const partial =
+    daysWithData !== null && windowDays !== null && daysWithData < windowDays;
+
+  const daily =
+    isWatchedMetricKey(watched.metric) &&
+    WATCHED_METRICS[watched.metric].kind === 'sum' &&
+    daysWithData !== null
+      ? perDay(watched.value, daysWithData)
+      : null;
+
+  return (
+    <span className={'text-muted-foreground text-xs'}>
+      {formatWindow(watched.window)} · {watched.coveredVideos} of{' '}
+      {watched.totalVideos} videos had data
+      {partial ? (
+        <span data-test={'watched-partial-coverage'}>
+          {` · data on ${daysWithData} of ${windowDays} days`}
+        </span>
+      ) : null}
+      {daily !== null ? ` · ${daily.toFixed(1)} per day` : null}
+    </span>
+  );
 }
 
 /** One side of the watched metric: a value, or why there is none. */
@@ -98,10 +147,7 @@ function WatchedSide({
           >
             {formatWatchedValue(watched.value, watched.unit)}
           </span>
-          <span className={'text-muted-foreground text-xs'}>
-            {formatWindow(watched.window)} · {watched.coveredVideos} of{' '}
-            {watched.totalVideos} videos had data
-          </span>
+          <WatchedCoverage watched={watched} />
         </>
       ) : (
         // A reason, never a zero: "no data" and "measured zero" are different
@@ -161,12 +207,17 @@ export function ExperimentDetail({
 
   const before = experiment.baseline_metrics?.totals;
   const after = experiment.result_metrics?.totals;
-  const metric = experiment.metric_watched;
-  const metricLabel = metric
-    ? isWatchedMetricKey(metric)
-      ? WATCHED_METRICS[metric].label
-      : metric
-    : null;
+  // What the snapshots measured is the truth about them; the experiment's
+  // current setting is only a fallback before anything has been captured.
+  const baselineMetric = experiment.baseline_metrics?.watched?.metric;
+  const resultMetric = experiment.result_metrics?.watched?.metric;
+  const metric =
+    baselineMetric ?? resultMetric ?? experiment.metric_watched ?? null;
+  const metricLabel = metric ? metricLabelOf(metric) : null;
+  const mismatched =
+    baselineMetric !== undefined &&
+    resultMetric !== undefined &&
+    baselineMetric !== resultMetric;
   const resultAfterDays = experiment.result_metrics?.resultAfterDays;
 
   return (
@@ -184,6 +235,11 @@ export function ExperimentDetail({
             ? `Started ${experiment.started_at}`
             : 'Not started'}
           {experiment.ended_at ? ` · Ended ${experiment.ended_at}` : ''}
+          {resultAfterDays !== undefined ? (
+            <span data-test={'experiment-result-after-days'}>
+              {` · result after ${resultAfterDays} days`}
+            </span>
+          ) : null}
           {experiment.review_window_days
             ? ` · ${experiment.review_window_days}-day review window`
             : ''}
@@ -194,7 +250,7 @@ export function ExperimentDetail({
         {experiment.category ? (
           <div>
             <Badge variant={'outline'} data-test={'experiment-detail-category'}>
-              {experiment.category}
+              {categoryLabel(experiment.category)}
             </Badge>
           </div>
         ) : null}
@@ -208,7 +264,7 @@ export function ExperimentDetail({
           </p>
         </div>
 
-        {experiment.hypothesis ? (
+        {experiment.hypothesis?.trim() ? (
           <div className={'flex flex-col gap-1'}>
             <h3 className={'text-sm font-medium'}>Hypothesis</h3>
             <p className={'text-muted-foreground text-sm'}>
@@ -221,14 +277,14 @@ export function ExperimentDetail({
           <div className={'flex flex-col gap-1 rounded-lg border p-3'}>
             <h3 className={'text-sm font-medium'}>Expected</h3>
             <p className={'text-muted-foreground text-sm'}>
-              {experiment.expected_outcome ?? 'Not recorded'}
+              {textOr(experiment.expected_outcome, 'Not recorded')}
             </p>
           </div>
 
           <div className={'flex flex-col gap-1 rounded-lg border p-3'}>
             <h3 className={'text-sm font-medium'}>What actually happened</h3>
             <p className={'text-muted-foreground text-sm'}>
-              {experiment.actual_outcome ?? 'Not concluded yet'}
+              {textOr(experiment.actual_outcome, 'Not concluded yet')}
             </p>
           </div>
         </div>
@@ -239,18 +295,17 @@ export function ExperimentDetail({
           className={'flex flex-col gap-2'}
           data-test={'experiment-watched'}
         >
-          <h3 className={'text-sm font-medium'}>
-            Watched: {metricLabel}
-            {resultAfterDays !== undefined ? (
-              <span
-                className={'text-muted-foreground font-normal'}
-                data-test={'experiment-result-after-days'}
-              >
-                {' '}
-                · result after {resultAfterDays} days
-              </span>
-            ) : null}
-          </h3>
+          <h3 className={'text-sm font-medium'}>Watched: {metricLabel}</h3>
+          {mismatched ? (
+            <p
+              className={'text-destructive text-sm'}
+              data-test={'experiment-watched-mismatch'}
+            >
+              The baseline measured {metricLabelOf(baselineMetric!)} and the
+              result measured {metricLabelOf(resultMetric!)}. They are not
+              comparable.
+            </p>
+          ) : null}
           <div className={'grid gap-3 rounded-lg border p-3 sm:grid-cols-2'}>
             <WatchedSide
               label={'Before the change'}
@@ -292,7 +347,7 @@ export function ExperimentDetail({
         </p>
       )}
 
-      {experiment.notes ? (
+      {experiment.notes?.trim() ? (
         <section className={'flex flex-col gap-1'}>
           <h3 className={'text-sm font-medium'}>Notes</h3>
           <p

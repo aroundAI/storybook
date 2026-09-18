@@ -41,7 +41,21 @@ interface WatchedMetricDefinition {
    * top would cut some videos' first thirty days short.
    */
   windowed: boolean;
+  /**
+   * A rate reads the same over any window length; a sum grows with it. A sum
+   * compared across windows of different length, or partly covered, says
+   * more about the window than the videos — so sums are also shown per day.
+   */
+  kind: 'rate' | 'sum';
+  /** The table whose days of data this metric's coverage is counted from. */
+  source: WatchedSource;
 }
+
+/**
+ * Where a windowed metric's rows come from. Named here, mapped to a table in
+ * `@kit/clickhouse`, so no table name ever comes from a caller.
+ */
+export type WatchedSource = 'reach' | 'daily' | 'traffic' | 'age';
 
 export const WATCHED_METRICS: Record<
   WatchedMetricKey,
@@ -51,36 +65,50 @@ export const WATCHED_METRICS: Record<
     label: 'Median views at 30 days',
     unit: 'views',
     windowed: false,
+    kind: 'rate',
+    source: 'age',
   },
   ctr: {
     label: 'Impressions click-through rate',
     unit: 'ratio',
     windowed: true,
+    kind: 'rate',
+    source: 'reach',
   },
   avg_view_duration: {
     label: 'Average view duration',
     unit: 'seconds',
     windowed: true,
+    kind: 'rate',
+    source: 'daily',
   },
   avg_view_percentage: {
     label: 'Average percentage viewed',
     unit: 'percent',
     windowed: true,
+    kind: 'rate',
+    source: 'daily',
   },
   browse_suggested_share: {
     label: 'Browse + suggested share of views',
     unit: 'ratio',
     windowed: true,
+    kind: 'rate',
+    source: 'traffic',
   },
   search_share: {
     label: 'Search share of views',
     unit: 'ratio',
     windowed: true,
+    kind: 'rate',
+    source: 'traffic',
   },
   subscribers_net: {
     label: 'Net subscribers from these videos',
     unit: 'subscribers',
     windowed: true,
+    kind: 'sum',
+    source: 'daily',
   },
 };
 
@@ -105,6 +133,11 @@ export type UnmeasuredReason =
   | 'no_data'
   /** `views_at_30d` only: no linked video is thirty days old yet. */
   | 'none_mature'
+  /**
+   * `views_at_30d` only: the mature videos' 30 days all closed before ingest
+   * began, so their figures hold no data from their own window (FILM-1603).
+   */
+  | 'predates_ingest'
   /** The stored metric name is not one this code knows. */
   | 'unknown_metric';
 
@@ -119,6 +152,13 @@ export type WatchedValue =
       coveredVideos: number;
       /** All linked videos. */
       totalVideos: number;
+      /**
+       * Days in the window with any data for these videos, and the window's
+       * length. Null for an age-bounded metric, which has no calendar window.
+       * Fewer days than the window means the value covers only part of it.
+       */
+      daysWithData: number | null;
+      windowDays: number | null;
     }
   | {
       status: 'unmeasured';
@@ -130,7 +170,10 @@ export type WatchedValue =
 /** A fold's result before it is stamped with the metric, unit and window. */
 export type FoldResult =
   | { status: 'measured'; value: number; coveredVideos: number }
-  | { status: 'unmeasured'; reason: 'no_data' | 'none_mature' };
+  | {
+      status: 'unmeasured';
+      reason: 'no_data' | 'none_mature' | 'predates_ingest';
+    };
 
 const NO_DATA: FoldResult = { status: 'unmeasured', reason: 'no_data' };
 
@@ -147,6 +190,7 @@ export function stampFold(
   fold: FoldResult,
   window: DateWindow | null,
   totalVideos: number,
+  daysWithData: number | null,
 ): WatchedValue {
   if (fold.status === 'unmeasured') {
     return unmeasured(metric, fold.reason, window);
@@ -160,7 +204,17 @@ export function stampFold(
     window,
     coveredVideos: fold.coveredVideos,
     totalVideos,
+    daysWithData: window ? daysWithData : null,
+    windowDays: window ? daysBetween(window.start, window.end) + 1 : null,
   };
+}
+
+/**
+ * A sum per day of data. The raw sum stays in the snapshot beside it: this
+ * changes what is shown, never what is known.
+ */
+export function perDay(value: number, daysWithData: number): number | null {
+  return daysWithData > 0 ? value / daysWithData : null;
 }
 
 /**
@@ -171,17 +225,23 @@ export function stampFold(
  * their thirty days have not happened yet.
  */
 export function foldViewsAtAge(
-  rows: Array<{ views: number; mature: boolean }>,
+  rows: Array<{ views: number; mature: boolean; predatesIngest: boolean }>,
 ): FoldResult {
-  const mature = rows
-    .filter((row) => row.mature)
+  const matureRows = rows.filter((row) => row.mature);
+  // A window that closed before ingest began holds no data from itself: its
+  // figure is an absence, and counting it would pull the median to zero.
+  const mature = matureRows
+    .filter((row) => !row.predatesIngest)
     .map((row) => row.views)
     .sort((a, b) => a - b);
 
   if (mature.length === 0) {
-    return rows.length === 0
-      ? NO_DATA
-      : { status: 'unmeasured', reason: 'none_mature' };
+    if (rows.length === 0) return NO_DATA;
+
+    return {
+      status: 'unmeasured',
+      reason: matureRows.length > 0 ? 'predates_ingest' : 'none_mature',
+    };
   }
 
   const middle = Math.floor(mature.length / 2);
@@ -335,6 +395,8 @@ export const UNMEASURED_REASON_TEXT: Record<UnmeasuredReason, string> = {
   no_data: 'None of the linked videos has data for this metric in this window.',
   none_mature:
     'No linked video is 30 days old yet, so views at 30 days are not knowable.',
+  predates_ingest:
+    "The linked videos' first 30 days ended before analytics collection began, so there is no data for them.",
   unknown_metric:
     'This metric is no longer recognised, so it was not measured.',
 };

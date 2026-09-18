@@ -30,6 +30,27 @@ export const ExperimentCategorySchema = z.enum([
   'other',
 ]);
 
+export type ExperimentCategoryKey = z.infer<typeof ExperimentCategorySchema>;
+
+/** Display labels, shared by the form and the detail view. */
+export const EXPERIMENT_CATEGORY_LABELS: Record<ExperimentCategoryKey, string> =
+  {
+    packaging: 'Packaging (title, thumbnail)',
+    hook: 'Hook / opening',
+    length: 'Length',
+    format: 'Format',
+    topic: 'Topic',
+    schedule: 'Schedule',
+    other: 'Other',
+  };
+
+/** A stored category's label; an unrecognised one shows as stored. */
+export function categoryLabel(category: string): string {
+  return Object.hasOwn(EXPERIMENT_CATEGORY_LABELS, category)
+    ? EXPERIMENT_CATEGORY_LABELS[category as ExperimentCategoryKey]
+    : category;
+}
+
 export const WatchedMetricSchema = z.enum(WATCHED_METRIC_KEYS);
 
 export const DEFAULT_REVIEW_WINDOW_DAYS = 60;
@@ -118,6 +139,14 @@ export const DeleteExperimentSchema = z.object({
 
 export const ListExperimentsDueSchema = z.object({
   accountId: z.string().uuid(),
+  /**
+   * The caller's local date. "Due today" is a calendar question, and the
+   * server's UTC date is a day off for anyone far enough from UTC.
+   */
+  asOf: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 
 export const ListLinkablePublishesSchema = z.object({

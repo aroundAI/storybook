@@ -1,6 +1,8 @@
 import 'server-only';
 
 import {
+  checkpointPredatesIngest,
+  queryDataDaysForVideos,
   queryNetSubscribersForVideos,
   queryQualityMetricsForVideos,
   queryTotalsByVideoIds,
@@ -49,9 +51,23 @@ export async function resolveWatchedMetric(input: {
     return unmeasured(metric, 'no_linked_videos', window);
   }
 
-  const fold = await fetchAndFold(metric, input.accountId, publishIds, window);
+  const definition = WATCHED_METRICS[metric];
 
-  return stampFold(metric, fold, window, publishIds.length);
+  const [fold, daysWithData] = await Promise.all([
+    fetchAndFold(metric, input.accountId, publishIds, window),
+    // How much of the window the figure actually covers. Not counted for an
+    // age-bounded metric, which has no calendar window to cover.
+    window && definition.source !== 'age'
+      ? queryDataDaysForVideos({
+          videoIds: publishIds,
+          source: definition.source,
+          startDate: window.start,
+          endDate: window.end,
+        })
+      : Promise.resolve(null),
+  ]);
+
+  return stampFold(metric, fold, window, publishIds.length, daysWithData);
 }
 
 async function fetchAndFold(
@@ -74,6 +90,8 @@ async function fetchAndFold(
         rows.map((row) => ({
           views: row.viewsAtAge[30] ?? 0,
           mature: row.matureAt[30] ?? false,
+          // FILM-1603's rule, not a second copy of it.
+          predatesIngest: checkpointPredatesIngest(row.ingestLagDays, 30),
         })),
       );
     }

@@ -29,6 +29,7 @@ import { Textarea } from '@kit/ui/textarea';
 import {
   CreateExperimentSchema,
   DEFAULT_REVIEW_WINDOW_DAYS,
+  EXPERIMENT_CATEGORY_LABELS,
   ExperimentCategorySchema,
 } from '../../lib/schemas/experiment.schema';
 import {
@@ -49,19 +50,6 @@ const MAX_LINKED_VIDEOS = 200;
  * It never reaches form state: the field holds `undefined` instead.
  */
 const NONE = 'none';
-
-const CATEGORY_LABELS: Record<
-  z.infer<typeof ExperimentCategorySchema>,
-  string
-> = {
-  packaging: 'Packaging (title, thumbnail)',
-  hook: 'Hook / opening',
-  length: 'Length',
-  format: 'Format',
-  topic: 'Topic',
-  schedule: 'Schedule',
-  other: 'Other',
-};
 
 interface ExperimentFormProps {
   /** Account the experiment belongs to */
@@ -223,7 +211,7 @@ export function ExperimentForm({
                         value={category}
                         data-test={`experiment-category-option-${category}`}
                       >
-                        {CATEGORY_LABELS[category]}
+                        {EXPERIMENT_CATEGORY_LABELS[category]}
                       </SelectItem>
                     ))}
                   </SelectContent>
