@@ -569,6 +569,8 @@ create table if not exists public.publishes (
   analytics_note text,
   analytics_note_updated_at timestamp with time zone,
   analytics_note_updated_by uuid references auth.users(id) on delete set null,
+  constraint publishes_analytics_note_length_check
+    check (char_length(analytics_note) <= 5000),
   created_at timestamp with time zone default now() not null,
   check (platform in ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin')),
   check (content_type in ('full', 'short', 'teaser', 'trailer')),

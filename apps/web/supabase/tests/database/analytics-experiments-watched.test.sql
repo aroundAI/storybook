@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(11);
+select plan(12);
 
 -- FILM-1610. The columns added to `analytics_experiments`: a generated review
 -- date that nobody can write, a review window the table itself bounds, and a
@@ -105,6 +105,14 @@ select throws_ok(
   '23514',
   null,
   'A window over a year is refused'
+);
+
+select throws_ok(
+  $$ update public.analytics_experiments set notes = repeat('x', 5001)
+      where id = 'e0e0e0e0-0000-4000-8000-00000000000a' $$,
+  '23514',
+  null,
+  'Experiment notes over 5,000 characters are refused by the table'
 );
 
 -- ==================================
