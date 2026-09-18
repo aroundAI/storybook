@@ -35,6 +35,8 @@ create table if not exists public.analytics_experiments (
   check (status in ('planned', 'running', 'concluded', 'abandoned')),
   constraint analytics_experiments_review_window_days_check
     check (review_window_days between 1 and 365),
+  constraint analytics_experiments_notes_length_check
+    check (char_length(notes) <= 5000),
   -- The channel must belong to the experiment's own account; see the
   -- migration for why this is composite and why it nulls only connection_id.
   constraint analytics_experiments_connection_account_fkey
@@ -121,12 +123,19 @@ create policy "experiment_publishes_read" on public.experiment_publishes for sel
     )
   );
 
+-- The linked publish must belong to the experiment's account (migration
+-- 20260918203816): snapshots read linked videos from ClickHouse, outside RLS.
 create policy "experiment_publishes_create" on public.experiment_publishes for insert
   to authenticated with check (
     exists (
-      select 1 from public.analytics_experiments e
-      where e.id = experiment_id
-        and public.has_account_access(e.account_id)
+      select 1
+        from public.analytics_experiments e
+        join public.publishes pub on pub.id = experiment_publishes.publish_id
+        join public.episodes ep on ep.id = pub.episode_id
+        join public.projects p on p.id = ep.project_id
+       where e.id = experiment_publishes.experiment_id
+         and public.has_account_access(e.account_id)
+         and p.account_id = e.account_id
     )
   );
 

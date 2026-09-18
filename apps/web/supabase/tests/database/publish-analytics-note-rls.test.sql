@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(12);
+select plan(13);
 
 -- FILM-1610. `publishes.analytics_note` adds no policy: the existing
 -- `publishes_update` policy decides who may write a note — owner, admin or
@@ -168,6 +168,18 @@ select is(
     where id = 'd0d0d0d0-0000-4000-8000-000000000003'),
   'Thumbnail swapped on day 3',
   'The note is still the project member''s after three refused writes'
+);
+
+-- ==================================
+-- The table bounds a note's length, not only the form
+-- ==================================
+
+select throws_ok(
+  $$ update public.publishes set analytics_note = repeat('x', 5001)
+      where id = 'd0d0d0d0-0000-4000-8000-000000000003' $$,
+  '23514',
+  null,
+  'A note over 5,000 characters is refused by the table, not only by zod'
 );
 
 -- ==================================
