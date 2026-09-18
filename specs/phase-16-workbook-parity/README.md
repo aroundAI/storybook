@@ -20,19 +20,25 @@ FILM-1601 (correctness bugs + revenue delete RLS)
      │                 └─→ FILM-1607 (absolute subscriber snapshots)
      │
      └─→ FILM-1613 (revenue alert account scoping)
+
+FILM-1605 (traffic source breakdown)        ← FILM-1602
+FILM-1606 (segment performance)             ← FILM-1603, FILM-1605
+FILM-1608 (YPP targets settings)            ← FILM-1602
+FILM-1609 (revenue mix completion)          ← FILM-1601
+FILM-1618 (channel residual subscribers)    ← FILM-1601, FILM-1607
+FILM-1611 (channel selector + orphan wiring) ← FILM-1606, FILM-1608, FILM-1609
 ```
 
 Specified, not yet built:
 
 ```
-FILM-1611 (channel selector + orphan wiring) ✅ PR #260
-        │
-        ├─→ FILM-1615 (Video Log table)
-        └─→ FILM-1617 (subscriber surfaces)
+FILM-1611 ✅ ──┬─→ FILM-1615 (Video Log table)      ← also FILM-1603 ✅
+               └─→ FILM-1617 (subscriber surfaces)  ← also FILM-1607 ✅, FILM-1618 ✅
 
-FILM-1610 (experiment log + per-video notes) — independent, needs FILM-1605 ✅
+FILM-1610 (experiment log + per-video notes) — needs FILM-1602, 1603, 1605, all ✅
 
-FILM-1616 (weekly diagnostics + retention drill-down) — independent, needs only FILM-1602
+FILM-1616 (weekly diagnostics + retention drill-down) — needs FILM-1602 ✅;
+          duration from FILM-1710, or ship without one (below)
 ```
 
 **FILM-1611 shipped (PR #260)**, so FILM-1615 and FILM-1617 are unblocked on it.
@@ -46,7 +52,7 @@ than the published clip's (phase-17 FILM-1710). The column has no readers
 today, so FILM-1616 would be the first — it must either take FILM-1710
 first or source the duration deliberately and say which it used.
 
-FILM-1610, 1616 and 1611 are mutually independent and can start today. FILM-1611 gates FILM-1615 and FILM-1617; FILM-1617 additionally needs FILM-1618 (✅ PR #249), because surfacing a curve built from systematically short deltas publishes a number that drifts from its own anchors.
+All four remaining specs — FILM-1610, 1615, 1616 and 1617 — are mutually independent and can start today. FILM-1617 needed FILM-1618 (✅ PR #249) as well as FILM-1611, because surfacing a curve built from systematically short deltas publishes a number that drifts from its own anchors.
 
 **FILM-1614 is not a phase-16 spec.** The id is claimed by an in-code `TODO(FILM-1614)` at `packages/features/content-analytics/src/server/revenue-queries.ts:79`, for folding the two client-side revenue query shapes into a pre-grouped RPC. New spec ids in this phase therefore resume at 1615.
 
