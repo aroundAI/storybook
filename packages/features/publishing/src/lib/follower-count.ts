@@ -1,3 +1,9 @@
+import {
+  SUBSCRIBER_LEVEL_FRESH_DAYS,
+  SUBSCRIBER_SOURCE_LABEL,
+  isLevelOutdated,
+} from '@kit/clickhouse';
+
 import { formatFollowers } from './platform-limits';
 import type { FollowerCountSource } from './types';
 
@@ -9,9 +15,18 @@ import type { FollowerCountSource } from './types';
 
 export type { FollowerCountSource };
 
-const SOURCE_LABEL: Record<FollowerCountSource, string> = {
-  snapshot: 'Measured',
-  reconstructed: 'Reconstructed from daily movement',
+function capitalise(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/**
+ * From the one label table every subscriber surface reads, so the chip and
+ * the Deep Dive cannot describe the same day differently. A stored count has
+ * no subscriber source, so it keeps its own.
+ */
+export const FOLLOWER_SOURCE_LABEL: Record<FollowerCountSource, string> = {
+  snapshot: capitalise(SUBSCRIBER_SOURCE_LABEL.snapshot),
+  reconstructed: capitalise(SUBSCRIBER_SOURCE_LABEL.interpolated),
   metadata: 'Stored when the account was connected, not live',
 };
 
@@ -25,19 +40,8 @@ function formatDay(date: string): string {
   });
 }
 
-/**
- * How old a measured count may be before it is marked as old. A week clears
- * YouTube's usual 2-3 day reporting lag, so a healthy channel is never
- * marked; a disconnected one, or one whose capture broke, soon is.
- */
-export const FOLLOWER_COUNT_FRESH_DAYS = 7;
-
-function daysBetween(from: string, to: string): number {
-  return Math.round(
-    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) /
-      86_400_000,
-  );
-}
+/** The shared freshness rule, re-exported for the chip's callers. */
+export const FOLLOWER_COUNT_FRESH_DAYS = SUBSCRIBER_LEVEL_FRESH_DAYS;
 
 export interface FollowerCountDisplay {
   /** "41.0K", with the date appended when the figure is not live. */
@@ -64,12 +68,12 @@ export function describeFollowerCount(input: {
   const old =
     input.source !== 'metadata' &&
     input.asOf != null &&
-    daysBetween(input.asOf, today) > FOLLOWER_COUNT_FRESH_DAYS;
+    isLevelOutdated(input.asOf, today);
   const stale = input.source === 'metadata' || old;
   const day = input.asOf ? formatDay(input.asOf) : null;
 
   const qualifier = [
-    input.source ? SOURCE_LABEL[input.source] : null,
+    input.source ? FOLLOWER_SOURCE_LABEL[input.source] : null,
     day ? (old ? `no newer data since ${day}` : `as of ${day}`) : null,
   ]
     .filter(Boolean)
