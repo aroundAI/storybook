@@ -54,7 +54,8 @@ describe('describeFollowerCount', () => {
       roundingStep: 100,
     });
 
-    expect(rounded.detail).toContain('up to 99 higher');
+    expect(rounded.detail).toContain('off by up to 99 either way');
+    expect(rounded.detail).not.toContain('higher');
     expect(rounded.short).toBe('42.6K');
 
     expect(
@@ -64,7 +65,7 @@ describe('describeFollowerCount', () => {
         asOf: '2026-09-14',
         roundingStep: 0,
       }).detail,
-    ).not.toContain('higher');
+    ).not.toContain('either way');
   });
 
   // Read in UTC: a local-time parse would print Mar 3 west of Greenwich.
