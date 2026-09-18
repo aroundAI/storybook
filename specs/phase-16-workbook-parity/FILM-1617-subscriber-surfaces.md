@@ -157,6 +157,11 @@ The level read is capped at 2 seconds. It reaches back 400 days and joins
 per-video metrics, and these pages are about publishing: a slow read takes
 the same fallback as a failed one, the stored count.
 
+A measured count older than 7 days is marked and dated like a stored one,
+with "no newer data since" in its tooltip: a disconnected channel, or one
+whose capture broke, keeps its last level for up to 400 days of lookback,
+and its source alone does not say it is still true.
+
 A stored count is dated by the connection's `created_at`. A reconnect
 refreshes the stored count without moving that date, so the label can
 understate freshness but never overstate it — `updated_at` would, because
