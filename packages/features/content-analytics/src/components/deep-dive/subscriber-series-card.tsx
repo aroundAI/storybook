@@ -20,6 +20,7 @@ import {
   roundingErrorOf,
 } from '../../lib/subscriber-disclosure';
 import { sumByPlatform } from '../../lib/subscriber-series-sum';
+import { describeTotal, platformLabel } from '../../lib/subscriber-total-note';
 import type { ChannelRef } from '../../server/channels';
 
 interface SubscriberSeriesCardProps {
@@ -29,20 +30,6 @@ interface SubscriberSeriesCardProps {
 }
 
 type View = 'per-channel' | 'total';
-
-const PLATFORM_LABELS: Record<string, string> = {
-  youtube: 'YouTube',
-  tiktok: 'TikTok',
-  instagram: 'Instagram',
-};
-
-function platformLabel(platform: string): string {
-  return PLATFORM_LABELS[platform] ?? platform;
-}
-
-function listNames(names: string[]): string {
-  return names.join(', ');
-}
 
 /**
  * The absolute subscriber curve (FILM-1607, surfaced by FILM-1617).
@@ -246,37 +233,6 @@ export function SubscriberSeriesCard({
       </p>
     </div>
   );
-}
-
-function describeTotal(
-  total: ReturnType<typeof sumByPlatform>[number],
-  channelNames: Record<string, string>,
-): string {
-  const label = platformLabel(total.platform);
-
-  const parts = [
-    total.startsOn
-      ? `${label} total begins ${formatSubscriberDay(total.startsOn)}, the first day every active ${label} channel has a level.`
-      : total.excluded.length > 0
-        ? `No ${label} total yet: ${listNames(
-            total.excluded.map((id) => channelNames[id] ?? 'a channel'),
-          )} ${total.excluded.length === 1 ? 'has' : 'have'} no subscriber count.`
-        : `No ${label} total: no active ${label} channel publishes here.`,
-  ];
-
-  if (total.disconnected.length > 0) {
-    parts.push(
-      `Leaves out ${listNames(total.disconnected)}, disconnected and no longer measured.`,
-    );
-  }
-
-  if (total.channelCount > 1) {
-    parts.push(
-      'Someone subscribed to more than one of these channels is counted once for each.',
-    );
-  }
-
-  return parts.join(' ');
 }
 
 type ChartLine = {

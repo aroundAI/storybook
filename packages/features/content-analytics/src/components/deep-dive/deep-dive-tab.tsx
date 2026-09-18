@@ -317,6 +317,16 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
       }),
   });
 
+  // The card names its lines and groups its totals by the channel list, so
+  // it waits for that list too: without it every line is "Channel" and every
+  // total is empty, with nothing saying why.
+  const subscriberCardQuery = {
+    isLoading: subscriberSeriesQuery.isLoading || channelsQuery.isLoading,
+    isError:
+      isUnavailable(subscriberSeriesQuery) || isUnavailable(channelsQuery),
+    data: isUnavailable(channelsQuery) ? undefined : subscriberSeriesQuery.data,
+  };
+
   const yppQuery = useQuery({
     queryKey: ['deep-dive-ypp', accountId, filters.connectionId],
     // Spread, not `connectionId: filters.connectionId`: an undefined property
@@ -502,7 +512,7 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
           className={'h-auto'}
         >
           <QueryState
-            query={subscriberSeriesQuery}
+            query={subscriberCardQuery}
             skeleton={<SubscriberSeriesCardSkeleton />}
             message={'Subscriber history could not be loaded.'}
             dataTest={'subscriber-series-error'}

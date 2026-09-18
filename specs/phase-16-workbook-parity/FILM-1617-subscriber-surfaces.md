@@ -77,6 +77,12 @@ platform's **active** channels:
   labelled as reconstructed from movement nobody measured.
 - Where a platform sums more than one channel, the note says a person
   subscribed to several is counted once for each.
+- The card waits for the channel list, which names its lines and groups its
+  totals. A failed list shows the card's error state, not unnamed lines and
+  an empty total.
+- Channels that all have data but share no day — capture for one ended
+  before another's began — say exactly that, rather than that no channel
+  publishes here.
 
 ## 3. Disclose the Seed, Not Just the Curve
 
@@ -146,6 +152,10 @@ surface showing a count. A rounded snapshot day — `constrained` or
 measured; only `interpolated` is labelled reconstructed. The Deep Dive
 total discloses the *sum* of its channels' rounding shortfalls, since each
 channel's seed can be low by its own.
+
+The level read is capped at 2 seconds. It reaches back 400 days and joins
+per-video metrics, and these pages are about publishing: a slow read takes
+the same fallback as a failed one, the stored count.
 
 A stored count is dated by the connection's `created_at`. A reconnect
 refreshes the stored count without moving that date, so the label can
