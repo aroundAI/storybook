@@ -11,7 +11,10 @@ import {
   queryTrafficSourceBreakdown,
   queryWatchWindowTotals,
 } from '@kit/clickhouse/server';
-import { computeCohortGrowth } from '@kit/clickhouse/server';
+import {
+  computeCohortGrowth,
+  queryLatestSubscriberLevels,
+} from '@kit/clickhouse/server';
 import type { DimScope } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
 import { fetchAllRows } from '@kit/shared/pagination';
@@ -274,8 +277,14 @@ export const getYppProgressAction = enhanceAction(
       );
     }
 
+    const subscriberLevels = await queryLatestSubscriberLevels(
+      selected.map((channel) => channel.connectionId),
+    );
+
     return Promise.all(
       selected.map(async (channel) => {
+        const level = subscriberLevels.get(channel.connectionId);
+
         const [videoTotals, channelTotals] = await Promise.all([
           queryWatchWindowTotals({
             scope: {
@@ -308,8 +317,12 @@ export const getYppProgressAction = enhanceAction(
           watchHours: Math.round(watchHours * 10) / 10,
           targetWatchHours: target.watchHours,
           watchHoursProgress: Math.min(1, watchHours / target.watchHours),
-          // Net movement, not an absolute count — the absolute figure needs
-          // the channel snapshot introduced in FILM-1607.
+          // Null when no snapshot exists — never captured, or hidden by the
+          // owner — which the card must show as unavailable, not as 0.
+          subscribers: level?.level ?? null,
+          subscribersSource: level?.source ?? null,
+          subscribersAsOf: level?.date ?? null,
+          subscribersRoundingStep: level?.roundingStep ?? 0,
           netSubscribers: videoTotals.netSubscribers,
           targetSubscribers: target.subscribers,
           subscriberProgress: Math.min(

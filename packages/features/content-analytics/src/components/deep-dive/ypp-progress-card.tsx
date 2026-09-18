@@ -1,8 +1,15 @@
 'use client';
 
+import type { SubscriberSource } from '@kit/clickhouse';
 import { Progress } from '@kit/ui/progress';
 import { Skeleton } from '@kit/ui/skeleton';
 
+import {
+  NO_SUBSCRIBER_LEVEL,
+  SUBSCRIBER_SOURCE_LABEL,
+  describeRounding,
+  formatSubscriberDay,
+} from '../../lib/subscriber-disclosure';
 import type { TargetBasis, YppApplicantStatus } from '../../lib/ypp-targets';
 
 /**
@@ -18,6 +25,17 @@ export interface YppChannelProgress {
   watchHours: number;
   targetWatchHours: number;
   watchHoursProgress: number;
+  /**
+   * The channel's latest subscriber level (FILM-1617), or null when it has
+   * no snapshot — never captured, or hidden by the owner.
+   */
+  subscribers: number | null;
+  subscribersSource: SubscriberSource | null;
+  /** The date of the newest data behind `subscribers`. */
+  subscribersAsOf: string | null;
+  /** 0 when exact; otherwise the true count may be up to this minus one higher. */
+  subscribersRoundingStep: number;
+  /** Movement over `windowDays`, not a count: what the progress bar measures. */
   netSubscribers: number;
   targetSubscribers: number;
   subscriberProgress: number;
@@ -87,8 +105,10 @@ export function YppProgressCard({
         basis={progress.watchHoursBasis}
       />
 
+      <SubscriberLevelRow progress={progress} />
+
       <ProgressRow
-        label={'Subscribers'}
+        label={`Net subscriber movement (${progress.windowDays} days)`}
         current={progress.netSubscribers}
         target={progress.targetSubscribers}
         ratio={progress.subscriberProgress}
@@ -108,6 +128,49 @@ export function YppProgressCard({
         {progress.escalated
           ? ' Applicant status unknown, so the higher of the two configured targets is shown.'
           : ''}
+      </p>
+    </div>
+  );
+}
+
+function SubscriberLevelRow({ progress }: { progress: YppChannelProgress }) {
+  if (progress.subscribers === null) {
+    return (
+      <div className={'flex flex-col gap-0.5'} data-test={'ypp-subscribers'}>
+        <div className={'flex items-baseline justify-between text-sm'}>
+          <span>Subscribers</span>
+          <span
+            className={'text-muted-foreground'}
+            data-test={'ypp-subscribers-value'}
+          >
+            Unavailable
+          </span>
+        </div>
+        <p className={'text-muted-foreground text-xs'}>{NO_SUBSCRIBER_LEVEL}</p>
+      </div>
+    );
+  }
+
+  const rounding = describeRounding(progress.subscribersRoundingStep);
+
+  return (
+    <div className={'flex flex-col gap-0.5'} data-test={'ypp-subscribers'}>
+      <div className={'flex items-baseline justify-between text-sm'}>
+        <span>Subscribers</span>
+        <span data-test={'ypp-subscribers-value'}>
+          {progress.subscribers.toLocaleString()}
+        </span>
+      </div>
+      <p className={'text-muted-foreground text-xs'}>
+        {progress.subscribersAsOf
+          ? `As of ${formatSubscriberDay(progress.subscribersAsOf)}`
+          : 'Latest'}
+        {progress.subscribersSource
+          ? `, ${SUBSCRIBER_SOURCE_LABEL[progress.subscribersSource]}.`
+          : '.'}
+        {rounding ? (
+          <span data-test={'ypp-subscribers-rounding'}> {rounding}</span>
+        ) : null}
       </p>
     </div>
   );
