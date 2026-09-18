@@ -73,6 +73,26 @@ test.describe('Failed reads', () => {
 
     // The claim that must not be made: the channels are unknown, not absent.
     await expect(page.locator('[data-test="ypp-no-channels"]')).toHaveCount(0);
+
+    // The subscriber card names and groups its lines by that same list, so
+    // without it the card can only guess — unnamed lines and an empty total.
+    await expect(
+      page.locator('[data-test="subscriber-series-error"]:visible'),
+    ).toBeVisible(ERROR_STATE);
+    await expect(
+      page.locator('[data-test="subscriber-series-empty"]'),
+    ).toHaveCount(0);
+
+    if (process.env.CAPTURE_EVIDENCE) {
+      const card = page
+        .locator('[data-test="subscriber-series-error"]:visible')
+        .locator('xpath=ancestor::div[contains(@class, "rounded-2xl")][1]');
+
+      await card.scrollIntoViewIfNeeded();
+      await card.screenshot({
+        path: `${process.env.EVIDENCE_DIR ?? 'evidence'}/18-subscribers-channel-list-failed.png`,
+      });
+    }
   });
 
   test('a failed subscriber read is reported, not shown as no subscribers', async ({

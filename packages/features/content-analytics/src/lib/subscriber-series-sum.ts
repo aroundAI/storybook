@@ -98,6 +98,8 @@ export interface PlatformSubscriberSum extends SubscriberSeriesSum {
   disconnected: string[];
   /** Channels summed, so a surface can say when two may double-count. */
   channelCount: number;
+  /** The active channels' ids, so a surface can name them. */
+  included: string[];
 }
 
 /**
@@ -154,5 +156,6 @@ export function sumByPlatform(
       ...sumSubscriberSeries(group.active),
       disconnected: group.disconnected,
       channelCount: group.active.length,
+      included: group.active.map((s) => s.connectionId),
     }));
 }
