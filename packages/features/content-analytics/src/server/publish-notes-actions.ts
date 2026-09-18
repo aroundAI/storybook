@@ -6,7 +6,11 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { UpdatePublishNoteSchema } from '../lib/schemas/publish-note.schema';
 
 /**
- * Writes a video's analytics note, with its author and time, in one update.
+ * Writes a video's analytics note.
+ *
+ * Only the note: its author and time are set by the database trigger
+ * `publishes_analytics_note_audit`, so a request — through this action or
+ * straight to PostgREST — cannot claim another author or an older time.
  *
  * Through the caller's own client, so `publishes_update` decides who may
  * write: owner, admin or member of the publish's project. A refused update
@@ -17,16 +21,12 @@ import { UpdatePublishNoteSchema } from '../lib/schemas/publish-note.schema';
  * writes; a read-modify-write there would race it.
  */
 export const updatePublishNoteAction = enhanceAction(
-  async ({ publishId, note }, user) => {
+  async ({ publishId, note }) => {
     const client = getSupabaseServerClient();
 
     const { data, error } = await client
       .from('publishes')
-      .update({
-        analytics_note: note,
-        analytics_note_updated_at: new Date().toISOString(),
-        analytics_note_updated_by: user.id,
-      })
+      .update({ analytics_note: note })
       .eq('id', publishId)
       .select('id, analytics_note, analytics_note_updated_at');
 

@@ -109,7 +109,7 @@ export interface VideoLogRow {
  * creation.
  */
 export const getVideoLogAction = enhanceAction(
-  async (input, user): Promise<VideoLogRow[]> => {
+  async (input): Promise<VideoLogRow[]> => {
     const { checkpoints, limit, offset, orderBy, orderDirection } = input;
 
     const scope = {
@@ -155,7 +155,7 @@ export const getVideoLogAction = enhanceAction(
           ? listProjectChannels(input.projectId, client)
           : listAccountChannels(input.accountId!, client),
         fetchRevenueByPublish(client, videoIds),
-        fetchNotesByPublish(client, videoIds, user.id),
+        fetchNotesByPublish(client, videoIds),
       ]);
 
     const channelNameById = new Map(
@@ -239,70 +239,46 @@ async function fetchRevenueByPublish(
 }
 
 /**
- * Project roles that may update a publish — the `publishes_update` policy's
- * list (`schemas/30-film-studio.sql`). If that policy changes, this changes
- * with it. `publish-analytics-note-rls.test.sql` pins the policy (member
- * writes, viewer and non-project account member refused); FILM-1615's E2E
- * owes the other half, asserting `canEditNote` against those same users.
- */
-const NOTE_EDITOR_ROLES = ['owner', 'admin', 'member'];
-
-/**
  * Each video's analytics note, and whether the caller may edit it, for one
  * page of videos. One row per publish, bounded by the page, but read through
  * the same chunked pager as revenue so a raised page size cannot outgrow it.
+ *
+ * Editability is the database's answer (`editable_publish_ids`), not a role
+ * list restated here: the function carries the `publishes_update` rule, and
+ * experiments-integrity.test.sql checks the two agree for every kind of user.
  */
 async function fetchNotesByPublish(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   publishIds: string[],
-  userId: string,
 ): Promise<Map<string, { note: string | null; canEdit: boolean }>> {
-  const rows = await fetchAllByIds<{
-    id: string;
-    analytics_note: string | null;
-    episodes: { project_id: string };
-  }>(
-    publishIds,
-    (chunk, from, to) =>
-      client
-        .from('publishes')
-        .select('id, analytics_note, episodes!inner(project_id)')
-        .in('id', chunk)
-        .order('id')
-        .range(from, to),
-    'video log notes',
-  );
+  const [rows, editable] = await Promise.all([
+    fetchAllByIds<{ id: string; analytics_note: string | null }>(
+      publishIds,
+      (chunk, from, to) =>
+        client
+          .from('publishes')
+          .select('id, analytics_note')
+          .in('id', chunk)
+          .order('id')
+          .range(from, to),
+      'video log notes',
+    ),
+    client.rpc('editable_publish_ids', { p_publish_ids: publishIds }),
+  ]);
 
-  const projectIds = [...new Set(rows.map((row) => row.episodes.project_id))];
-
-  const editable = new Set<string>();
-
-  if (projectIds.length > 0) {
-    // Bounded by the page's projects, which is at most the page size.
-    const { data, error } = await client
-      .from('project_members')
-      .select('project_id')
-      .eq('user_id', userId)
-      .in('role', NOTE_EDITOR_ROLES)
-      .in('project_id', projectIds);
-
-    if (error) {
-      throw new Error(`Failed to read note permissions: ${error.message}`);
-    }
-
-    for (const row of (data ?? []) as Array<{ project_id: string }>) {
-      editable.add(row.project_id);
-    }
+  if (editable.error) {
+    throw new Error(
+      `Failed to read note permissions: ${editable.error.message}`,
+    );
   }
+
+  const editableIds = new Set<string>(editable.data ?? []);
 
   return new Map(
     rows.map((row) => [
       row.id,
-      {
-        note: row.analytics_note,
-        canEdit: editable.has(row.episodes.project_id),
-      },
+      { note: row.analytics_note, canEdit: editableIds.has(row.id) },
     ]),
   );
 }

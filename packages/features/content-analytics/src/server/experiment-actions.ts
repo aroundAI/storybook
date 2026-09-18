@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { queryTotalsByVideoIds } from '@kit/clickhouse/server';
 import type { AggregatedTotals } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
+import { getLogger } from '@kit/shared/logger';
 import { fetchAllRows } from '@kit/shared/pagination';
 import type { Json } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -261,10 +262,14 @@ function throwIfFailed(
 }
 
 /**
- * Unpaged for the same reason as `linkedPublishIds`: capped at 200.
+ * Replaces an experiment's links, each set in one database call.
  *
- * Every write is checked. These results used to be discarded, so a refused
- * insert left an experiment with no videos behind a "logged" toast.
+ * `replace_experiment_publishes` deletes and inserts inside one function, so
+ * one transaction: a refused insert rolls the delete back. Done as two
+ * requests, as it was, a refused insert left the experiment with no videos.
+ * The function also removes repeated ids, and runs as the caller, so every
+ * policy — the same-account link rule, the planned-only rule — still applies.
+ * Capped at 200 ids by the schemas.
  */
 async function replaceLinks(
   client: Client,
@@ -273,55 +278,28 @@ async function replaceLinks(
   tagIds?: string[],
 ): Promise<void> {
   if (publishIds) {
-    // A repeated id would hit the primary key and fail the whole insert.
-    const unique = Array.from(new Set(publishIds));
-
     throwIfFailed(
-      await client
-        .from('experiment_publishes')
-        .delete()
-        .eq('experiment_id', experimentId),
-      'clear linked videos',
+      await client.rpc('replace_experiment_publishes', {
+        p_experiment_id: experimentId,
+        p_publish_ids: publishIds,
+      }),
+      'link videos',
     );
-
-    if (unique.length > 0) {
-      throwIfFailed(
-        await client.from('experiment_publishes').insert(
-          unique.map((publishId) => ({
-            experiment_id: experimentId,
-            publish_id: publishId,
-          })),
-        ),
-        'link videos',
-      );
-    }
   }
 
   if (tagIds) {
     throwIfFailed(
-      await client
-        .from('experiment_tags')
-        .delete()
-        .eq('experiment_id', experimentId),
-      'clear linked tags',
+      await client.rpc('replace_experiment_tags', {
+        p_experiment_id: experimentId,
+        p_tag_ids: tagIds,
+      }),
+      'link tags',
     );
-
-    if (tagIds.length > 0) {
-      throwIfFailed(
-        await client.from('experiment_tags').insert(
-          tagIds.map((tagId) => ({
-            experiment_id: experimentId,
-            tag_id: tagId,
-          })),
-        ),
-        'link tags',
-      );
-    }
   }
 }
 
 export const createExperimentAction = enhanceAction(
-  async (data, user) => {
+  async (data) => {
     const client = getSupabaseServerClient();
 
     await assertPublishesInAccount(client, data.accountId, data.publishIds);
@@ -340,7 +318,7 @@ export const createExperimentAction = enhanceAction(
         review_window_days: data.reviewWindowDays,
         notes: blankToNull(data.notes),
         connection_id: data.connectionId ?? null,
-        created_by: user.id,
+        // created_by is set by the database (analytics_experiments_set_creator).
       })
       .select('id')
       .single();
@@ -352,13 +330,34 @@ export const createExperimentAction = enhanceAction(
     try {
       await replaceLinks(client, experiment.id, data.publishIds, data.tagIds);
     } catch (linkError) {
-      // PostgREST has no transaction across these writes, so undo the one
-      // that landed. Left in place, a retry would log the experiment twice —
-      // once with no videos.
-      await client
+      // The experiment row and its links are separate requests, so undo the
+      // row that landed. Left in place, a retry would log the experiment
+      // twice — once with no videos.
+      const cleanup = await client
         .from('analytics_experiments')
         .delete()
         .eq('id', experiment.id);
+
+      if (cleanup.error) {
+        const reason =
+          linkError instanceof Error ? linkError.message : String(linkError);
+
+        // Both failed: say so, rather than let the orphan pass unnoticed.
+        const logger = await getLogger();
+        logger.error(
+          {
+            experimentId: experiment.id,
+            reason,
+            cleanup: cleanup.error.message,
+          },
+          'Experiment left without its links',
+        );
+
+        throw new Error(
+          `${reason}. The experiment (${experiment.id}) could not be removed afterwards (${cleanup.error.message}); delete it before retrying.`,
+        );
+      }
+
       throw linkError;
     }
 
@@ -601,28 +600,44 @@ export const listLinkablePublishesAction = enhanceAction(
   { schema: ListLinkablePublishesSchema, auth: true },
 );
 
+/**
+ * The account's experiments, newest first.
+ *
+ * Paged: PostgREST caps a read at 1,000 rows and reports nothing when it
+ * does, so an unpaged list would look complete and silently not be. Ordered
+ * by `created_at` then `id`, so paging cannot skip or repeat a row that
+ * shares a timestamp.
+ */
 export const listExperimentsAction = enhanceAction(
   async ({ accountId, projectId, status }) => {
     const client = getSupabaseServerClient();
 
-    let query = client
-      .from('analytics_experiments')
-      .select(
-        'id, title, hypothesis, status, outcome_status, started_at, ended_at, created_at, project_id',
-      )
-      .eq('account_id', accountId)
-      .order('created_at', { ascending: false });
+    return fetchAllRows<{
+      id: string;
+      title: string;
+      hypothesis: string | null;
+      status: string;
+      outcome_status: string;
+      started_at: string | null;
+      ended_at: string | null;
+      created_at: string;
+      project_id: string | null;
+    }>((from, to) => {
+      let query = client
+        .from('analytics_experiments')
+        .select(
+          'id, title, hypothesis, status, outcome_status, started_at, ended_at, created_at, project_id',
+        )
+        .eq('account_id', accountId);
 
-    if (projectId) query = query.eq('project_id', projectId);
-    if (status) query = query.eq('status', status);
+      if (projectId) query = query.eq('project_id', projectId);
+      if (status) query = query.eq('status', status);
 
-    const { data, error } = await query;
-
-    if (error) {
-      throw new Error(`Failed to list experiments: ${error.message}`);
-    }
-
-    return data ?? [];
+      return query
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: true })
+        .range(from, to);
+    }, 'experiments');
   },
   { schema: ListExperimentsSchema, auth: true },
 );

@@ -30,6 +30,11 @@ const state: {
   updates: Array<Record<string, unknown>>;
   /** Experiment ids deleted from analytics_experiments. */
   deletedExperiments: string[];
+  /** Deletes issued directly against a link table (should be none). */
+  linkTableDeletes: string[];
+  rpcCalls: Array<{ name: string; args: Record<string, unknown> }>;
+  /** Error the compensating delete of a just-created experiment returns. */
+  cleanupError: { message: string } | null;
   /** Errors a link table returns, as PostgREST would: 200-shaped, not thrown. */
   linkReadError: { message: string } | null;
   linkWriteError: { message: string } | null;
@@ -50,6 +55,9 @@ const state: {
   inserts: [],
   updates: [],
   deletedExperiments: [],
+  linkTableDeletes: [],
+  rpcCalls: [],
+  cleanupError: null,
   linkReadError: null,
   linkWriteError: null,
   statusGuards: [],
@@ -110,6 +118,10 @@ vi.mock('../src/server/watched-metric-snapshot', () => ({
 
 vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => ({
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      state.rpcCalls.push({ name, args });
+      return { error: state.linkWriteError };
+    },
     from: (table: string) => {
       if (table === 'experiment_publishes' || table === 'experiment_tags') {
         return {
@@ -122,9 +134,10 @@ vi.mock('@kit/supabase/server-client', () => ({
                     error: null,
                   },
           }),
-          delete: () => ({
-            eq: async () => ({ error: state.linkWriteError }),
-          }),
+          delete: () => {
+            state.linkTableDeletes.push(table);
+            return { eq: async () => ({ error: state.linkWriteError }) };
+          },
           insert: async (payload: unknown) => {
             if (state.linkWriteError) return { error: state.linkWriteError };
             state.inserts.push({ table, payload });
@@ -169,7 +182,7 @@ vi.mock('@kit/supabase/server-client', () => ({
         delete: () => ({
           eq: async (_: string, id: string) => {
             state.deletedExperiments.push(id);
-            return { error: null };
+            return { error: state.cleanupError };
           },
         }),
       };
@@ -190,6 +203,9 @@ beforeEach(() => {
   state.inserts = [];
   state.updates = [];
   state.deletedExperiments = [];
+  state.linkTableDeletes = [];
+  state.rpcCalls = [];
+  state.cleanupError = null;
   state.linkReadError = null;
   state.linkWriteError = null;
   state.statusGuards = [];
@@ -361,9 +377,10 @@ describe('linking videos', () => {
 
     await create(['p1', 'p2']);
 
-    expect(
-      state.inserts.find((insert) => insert.table === 'experiment_publishes'),
-    ).toBeDefined();
+    expect(state.rpcCalls).toContainEqual({
+      name: 'replace_experiment_publishes',
+      args: { p_experiment_id: 'e1', p_publish_ids: ['p1', 'p2'] },
+    });
   });
 
   it('refuses a video from outside the account, and creates nothing', async () => {
@@ -399,6 +416,8 @@ describe('linking videos', () => {
         connection_id: null,
       },
     });
+    // The creator is set by the database (analytics_experiments_set_creator).
+    expect(state.inserts[0]!.payload).not.toHaveProperty('created_by');
   });
 
   it('stores blank optional text as null, not an empty string', async () => {
@@ -491,20 +510,26 @@ describe('the comparison stays comparable (B1-B3, B6)', () => {
     expect(state.updates).toEqual([{ title: 'Renamed' }]);
   });
 
-  it('links a repeated video once', async () => {
+  it('replaces links in one transaction, never as a delete then an insert (R3)', async () => {
+    // Two requests left an experiment with no videos when the insert was
+    // refused after the delete had landed. Duplicates are removed in SQL
+    // (experiments-integrity.test.sql), in the same call.
     state.inAccount = ['p1'];
 
     await createExperimentAction({
       accountId: 'a1',
-      title: 'Dupes',
+      title: 'Links',
       changeDescription: 'x',
       reviewWindowDays: 60,
       publishIds: ['p1', 'p1'],
-      tagIds: [],
+      tagIds: ['t1'],
     });
 
-    const links = state.inserts.find((i) => i.table === 'experiment_publishes');
-    expect(links?.payload).toEqual([{ experiment_id: 'e1', publish_id: 'p1' }]);
+    expect(state.linkTableDeletes).toEqual([]);
+    expect(state.rpcCalls.map((call) => call.name)).toEqual([
+      'replace_experiment_publishes',
+      'replace_experiment_tags',
+    ]);
   });
 });
 
@@ -571,5 +596,24 @@ describe('lifecycle writes are atomic, and abandon has rules too (R1, R2)', () =
     await abandonExperimentAction({ experimentId: 'e1', reason: 'Paused' });
 
     expect(state.statusGuards).toEqual([['planned', 'running']]);
+  });
+});
+
+describe('a failed cleanup is reported, not swallowed (R7)', () => {
+  it('says the experiment may remain when removing it after a failed link also fails', async () => {
+    state.inAccount = ['p1'];
+    state.linkWriteError = { message: 'insert refused' };
+    state.cleanupError = { message: 'delete refused' };
+
+    await expect(
+      createExperimentAction({
+        accountId: 'a1',
+        title: 'Orphan',
+        changeDescription: 'x',
+        reviewWindowDays: 60,
+        publishIds: ['p1'],
+        tagIds: [],
+      }),
+    ).rejects.toThrow(/could not be removed/);
   });
 });

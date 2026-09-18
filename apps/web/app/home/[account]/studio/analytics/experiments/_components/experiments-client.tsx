@@ -34,6 +34,8 @@ import { Input } from '@kit/ui/input';
 import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 
+import { dueQueryKey } from '../_lib/due-query';
+
 /**
  * The user's calendar date, `YYYY-MM-DD`. Experiment dates are calendar
  * dates in the user's day; the server's UTC clock would record a start just
@@ -72,10 +74,10 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
     queryFn: () => listExperimentsAction({ accountId }),
   });
 
+  const asOf = localToday();
   const dueQuery = useQuery({
-    queryKey: ['experiments-due', accountId],
-    queryFn: () =>
-      listExperimentsDueForReviewAction({ accountId, asOf: localToday() }),
+    queryKey: dueQueryKey(accountId, asOf),
+    queryFn: () => listExperimentsDueForReviewAction({ accountId, asOf }),
   });
 
   const channelsQuery = useQuery({
