@@ -8,8 +8,6 @@ import { Progress } from '@kit/ui/progress';
 import { Skeleton } from '@kit/ui/skeleton';
 import { cn } from '@kit/ui/utils';
 
-import { type SegmentNoun, sampleGateCopy } from './tag-medians-copy';
-
 /** One segment's aggregated performance, from getMedianByTagAction. */
 export interface TagMedianEntry {
   segment: string;
@@ -42,11 +40,11 @@ interface TagMediansCardProps {
   /** Loading state */
   isLoading?: boolean;
   /**
-   * What a row is, for the gate and empty copy. Language rows come from the
-   * segment action — a `video_dim` column, not a taxonomy tag — and must not
-   * be described as tags.
+   * What a row is, for the empty copy. Language rows come from the segment
+   * action — a `video_dim` column, not a taxonomy tag — and must not be
+   * described as tags.
    */
-  segmentNoun?: SegmentNoun;
+  segmentNoun?: 'tag' | 'language';
 }
 
 function formatViews(value: number): string {
@@ -83,13 +81,20 @@ export function TagMediansCard({
   }
 
   if (insufficientSample) {
-    const gate = sampleGateCopy(segmentNoun, required, taggedCount);
-
+    // Tag wording without a `segmentNoun` branch: only the tag action returns
+    // this gate. A segment that gains one brings its own copy then, rather
+    // than a second case here that nothing can reach.
     return (
       <div className={'flex flex-col gap-3'}>
-        <p className={'text-muted-foreground text-sm'}>{gate.headline}</p>
+        <p className={'text-muted-foreground text-sm'}>
+          Tag-level medians unlock once {required} videos are tagged — below
+          that, per-tag samples are too small to separate a real format effect
+          from luck.
+        </p>
         <Progress value={(taggedCount / required) * 100} />
-        <p className={'text-muted-foreground text-xs'}>{gate.progressLabel}</p>
+        <p className={'text-muted-foreground text-xs'}>
+          {taggedCount} of {required} videos tagged
+        </p>
       </div>
     );
   }
