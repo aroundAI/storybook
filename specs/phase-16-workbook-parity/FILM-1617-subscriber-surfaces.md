@@ -145,6 +145,47 @@ deltas, and a hidden subscriber count yields no level at all.
 > series comes back empty. The data therefore cannot tell *hidden* from *not
 > captured yet*, and every surface says both.
 
+### 3.2 States and surfaces — the regression guard
+
+Seven review rounds found issues one channel state at a time, and one fix
+broke a state its bug report never mentioned. Every state below now runs
+through every surface in three scenario matrices, from one fixture set
+(`@kit/clickhouse/testing`) and the same pure builders the readers use:
+`packages/clickhouse/__tests__/subscriber-scenarios.test.ts`,
+`packages/features/content-analytics/__tests__/subscriber-scenarios.test.tsx`
+and `packages/features/publishing/__tests__/follower-scenarios.test.ts`.
+A change to any surface must keep every row.
+
+| State | Curve | Channel without a line | Total | YPP row | Follower chip |
+|---|---|---|---|---|---|
+| Never measured | none | "No subscriber count yet…" | blocks, named | Unavailable | hidden |
+| Hidden count (movement, no snapshot) | none | "No subscriber count yet…" | blocks, named | Unavailable | hidden |
+| Untracked platform (Facebook, X, LinkedIn) | none | "…aren't tracked for Facebook, X or LinkedIn channels: {names}." | not offered | — | hidden |
+| One snapshot, yesterday | a dot | — | from that day | as of, measured | plain |
+| Healthy, rounded | solid | — | counted; ± summed | as of, rounded, ± | plain, ± in tooltip |
+| Healthy, exact | solid | — | counted | as of, measured | plain |
+| Capture gap | solid, dashed across the gap | — | counted | as of | plain |
+| Active, capture stopped in window | ends at last data | — | ends early, "It ends … the last day {name} has data" | "No newer data since…" | dated, dimmed |
+| Active, stopped before window | none | "No data since … — its capture may have stopped." | blocks, named with the date | "No newer data since…" | dated, dimmed |
+| Disconnected, history in window | its own line | — | left out, named | — | dated, dimmed |
+| Disconnected, history before window | none | "No data since…" | left out, named | — | dated, dimmed |
+| Disconnected, never measured | none | "No subscriber count yet…" | left out, named | — | hidden |
+
+Invariants checked for every state: no count is ever shown as 0; the curve's
+last point equals the latest level; nothing is drawn after the newest
+measurement; every line with points is visible; each source is described by
+one label (`SUBSCRIBER_SOURCE_LABEL` in `@kit/clickhouse`) on every surface;
+one freshness rule (`isLevelOutdated`) serves the YPP row and the chip; a
+failed level read costs the YPP card only its subscriber row.
+
+**Known limit, by design:** an active channel with no level — never
+measured, a hidden count, or a capture that stopped before the window —
+blocks its platform's total, and the note names it. Leaving it out instead
+would let the total jump by its level the day its first snapshot lands,
+which §2 exists to prevent. A hidden-count channel therefore blocks the
+YouTube total for as long as it is connected; whether to offer a partial
+total, labelled as such, is a product decision for a follow-up.
+
 ## 4. Implementation Map
 
 | File | Change |

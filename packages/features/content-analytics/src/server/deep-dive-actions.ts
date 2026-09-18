@@ -17,6 +17,7 @@ import {
 } from '@kit/clickhouse/server';
 import type { DimScope } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
+import { getLogger } from '@kit/shared/logger';
 import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -277,28 +278,42 @@ export const getYppProgressAction = enhanceAction(
       );
     }
 
-    const subscriberLevels = await queryLatestSubscriberLevels(
+    // In parallel with the per-channel reads, and never fatal: watch hours
+    // do not depend on the subscriber level, so a failed level read costs
+    // only the subscriber row, not the whole gate.
+    const levelsRead = queryLatestSubscriberLevels(
       selected.map((channel) => channel.connectionId),
-    );
+    ).catch(async (error: unknown) => {
+      const logger = await getLogger();
+
+      logger.warn(
+        { name: 'deep-dive.yppProgress', accountId, error },
+        'Subscriber levels unavailable; YPP shows watch hours without them',
+      );
+
+      return null;
+    });
 
     return Promise.all(
       selected.map(async (channel) => {
-        const level = subscriberLevels.get(channel.connectionId);
+        const [videoTotals, channelTotals, subscriberLevels] =
+          await Promise.all([
+            queryWatchWindowTotals({
+              scope: {
+                accountId,
+                connectionId: channel.connectionId,
+                platform: 'youtube',
+              },
+              windowDays,
+            }),
+            queryChannelWatchWindow({
+              connectionIds: [channel.connectionId],
+              windowDays,
+            }),
+            levelsRead,
+          ]);
 
-        const [videoTotals, channelTotals] = await Promise.all([
-          queryWatchWindowTotals({
-            scope: {
-              accountId,
-              connectionId: channel.connectionId,
-              platform: 'youtube',
-            },
-            windowDays,
-          }),
-          queryChannelWatchWindow({
-            connectionIds: [channel.connectionId],
-            windowDays,
-          }),
-        ]);
+        const level = subscriberLevels?.get(channel.connectionId);
 
         const watchHours =
           (videoTotals.watchTimeSeconds + channelTotals.watchTimeSeconds) /
@@ -323,6 +338,7 @@ export const getYppProgressAction = enhanceAction(
           subscribersSource: level?.source ?? null,
           subscribersAsOf: level?.date ?? null,
           subscribersRoundingStep: level?.roundingStep ?? 0,
+          subscribersReadFailed: subscriberLevels === null,
           netSubscribers: videoTotals.netSubscribers,
           targetSubscribers: target.subscribers,
           subscriberProgress: Math.min(

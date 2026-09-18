@@ -1,4 +1,4 @@
-import type { SubscriberSource } from '@kit/clickhouse';
+import { SUBSCRIBER_SOURCE_LABEL } from '@kit/clickhouse';
 
 /**
  * What every surface showing a subscriber level must say about it
@@ -6,12 +6,9 @@ import type { SubscriberSource } from '@kit/clickhouse';
  * cannot describe the same number differently.
  */
 
-export const SUBSCRIBER_SOURCE_LABEL: Record<SubscriberSource, string> = {
-  snapshot: 'measured',
-  interpolated: 'reconstructed from daily movement',
-  constrained: 'reconstructed, within the platform’s rounded figure',
-  clamped: 'held to the edge of the platform’s rounded figure',
-};
+// One table for every surface, the follower chip included: defined in
+// @kit/clickhouse, which the publishing package also depends on.
+export { SUBSCRIBER_SOURCE_LABEL };
 
 /** Why a channel has no level. The data cannot tell these two apart. */
 export const NO_SUBSCRIBER_LEVEL =

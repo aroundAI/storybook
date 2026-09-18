@@ -124,6 +124,7 @@ describe('sumSubscriberSeries', () => {
     expect(sumSubscriberSeries([])).toEqual({
       points: [],
       startsOn: null,
+      endsOn: null,
       excluded: [],
       roundingError: 0,
     });

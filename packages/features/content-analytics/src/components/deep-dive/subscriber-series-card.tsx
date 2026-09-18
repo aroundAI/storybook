@@ -16,19 +16,25 @@ import {
   type ChartLine,
   type ChartRow,
   drawnRoundingError,
+  isolatedKey,
   measuredKey,
   sourceKey,
   toChartData,
 } from '../../lib/subscriber-chart-data';
 import {
-  NO_SUBSCRIBER_LEVEL,
   SUBSCRIBER_SOURCE_LABEL,
   describeRounding,
   formatSubscriberDay,
   roundingErrorOf,
 } from '../../lib/subscriber-disclosure';
 import { sumByPlatform } from '../../lib/subscriber-series-sum';
-import { describeTotal, platformLabel } from '../../lib/subscriber-total-note';
+import {
+  channelStatus,
+  describeChannelStatus,
+  describeTotal,
+  describeUntrackedChannels,
+  platformLabel,
+} from '../../lib/subscriber-total-note';
 import type { ChannelRef } from '../../server/channels';
 
 interface SubscriberSeriesCardProps {
@@ -66,9 +72,24 @@ export function SubscriberSeriesCard({
 
   const [view, setView] = useState<View>('per-channel');
 
-  const withData = series.filter((s) => s.points.length > 0);
-  const withoutData = series.filter((s) => s.points.length === 0);
-  const canTotal = series.length > 1;
+  const channelById = useMemo(
+    () => new Map(channels.map((c) => [c.connectionId, c])),
+    [channels],
+  );
+
+  // A platform no snapshot is ever taken for is explained once, apart from
+  // channels whose count is missing: the reasons differ.
+  const isTracked = (s: ConnectionSubscriberSeries) =>
+    channelStatus(s, channelById.get(s.connectionId)).kind !== 'untracked';
+
+  const tracked = series.filter(isTracked);
+  const untracked = series.filter((s) => !isTracked(s));
+  const withData = tracked.filter((s) => s.points.length > 0);
+  const withoutData = tracked.filter((s) => s.points.length === 0);
+  const canTotal = tracked.length > 1;
+
+  const statusOf = (s: ConnectionSubscriberSeries) =>
+    describeChannelStatus(channelStatus(s, channelById.get(s.connectionId)));
 
   // One per platform: a YouTube subscriber and a TikTok follower are not
   // the same unit, and adding them counts a person on both twice.
@@ -101,14 +122,24 @@ export function SubscriberSeriesCard({
 
   if (withData.length === 0) {
     return (
-      <p
-        className={'text-muted-foreground text-sm'}
+      <div
+        className={'text-muted-foreground flex flex-col gap-1 text-sm'}
         data-test={'subscriber-series-empty'}
       >
-        {series.length === 0
-          ? 'No channel publishes in this project yet.'
-          : NO_SUBSCRIBER_LEVEL}
-      </p>
+        {series.length === 0 ? (
+          <p>No channel publishes in this project yet.</p>
+        ) : series.length === 1 ? (
+          <p>{statusOf(series[0]!)}</p>
+        ) : (
+          <ul>
+            {series.map((s) => (
+              <li key={s.connectionId}>
+                {channelNames[s.connectionId] ?? 'A channel'}: {statusOf(s)}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     );
   }
 
@@ -214,7 +245,7 @@ export function SubscriberSeriesCard({
                 strokeWidth={2}
                 connectNulls={false}
                 isAnimationActive={false}
-                dot={<ClampedDot lineKey={line.key} />}
+                dot={<PointDot lineKey={line.key} />}
                 activeDot={false}
               />
             ))}
@@ -241,7 +272,7 @@ export function SubscriberSeriesCard({
         </ul>
       ) : null}
 
-      <SourceLegend />
+      {lines.length > 0 ? <SourceLegend /> : null}
 
       {withoutData.length > 0 && !showingTotal ? (
         <ul
@@ -250,15 +281,21 @@ export function SubscriberSeriesCard({
         >
           {withoutData.map((s) => (
             <li key={s.connectionId}>
-              {channelNames[s.connectionId] ?? 'A channel'}:{' '}
-              {/* History that ended before this window is not "no count
-                  yet" — the channel was measured, and then stopped. */}
-              {s.lastDataDate
-                ? `no data since ${formatSubscriberDay(s.lastDataDate)} — its capture may have stopped.`
-                : NO_SUBSCRIBER_LEVEL}
+              {channelNames[s.connectionId] ?? 'A channel'}: {statusOf(s)}
             </li>
           ))}
         </ul>
+      ) : null}
+
+      {untracked.length > 0 ? (
+        <p
+          className={'text-muted-foreground text-xs'}
+          data-test={'subscriber-series-untracked'}
+        >
+          {describeUntrackedChannels(
+            untracked.map((s) => channelNames[s.connectionId] ?? 'A channel'),
+          )}
+        </p>
       ) : null}
 
       {rounding ? (
@@ -279,38 +316,47 @@ export function SubscriberSeriesCard({
 }
 
 /**
- * A marker only on clamped days: the platform's rounded figure disagreed with
- * the daily movement, and the level was held to the edge of its band.
- * Snapshots are daily, so marking every measured day buried the line; the
- * solid/dashed stroke carries measured vs reconstructed, the tooltip names
- * every day's source, and this marks the exceptions.
+ * Marks only the exceptions. Snapshots are daily, so marking every measured
+ * day buried the line; the solid/dashed stroke carries measured vs
+ * reconstructed and the tooltip names every day's source. Two cases need a
+ * mark of their own:
  *
- * A square, not a colour: the first chart colour is itself orange in this
- * theme, so an amber dot was indistinguishable on that channel's line.
+ * - a clamped day — the platform's rounded figure disagreed with the daily
+ *   movement — as a square, not a colour: the first chart colour is itself
+ *   orange in this theme, so an amber dot was lost on that channel's line;
+ * - a measured day with none either side, which a stroke cannot draw — a
+ *   channel's first snapshot would otherwise be invisible.
  */
-function ClampedDot(props: {
+function PointDot(props: {
   cx?: number;
   cy?: number;
+  stroke?: string;
   payload?: ChartRow;
   lineKey: string;
 }) {
-  const { cx, cy, payload, lineKey } = props;
+  const { cx, cy, stroke, payload, lineKey } = props;
 
   if (cx === undefined || cy === undefined || !payload) return null;
 
-  if (payload[sourceKey(lineKey)] !== 'clamped') return null;
+  if (payload[sourceKey(lineKey)] === 'clamped') {
+    return (
+      <rect
+        x={cx - 3.5}
+        y={cy - 3.5}
+        width={7}
+        height={7}
+        fill={'var(--background)'}
+        stroke={'var(--foreground)'}
+        strokeWidth={1.5}
+      />
+    );
+  }
 
-  return (
-    <rect
-      x={cx - 3.5}
-      y={cy - 3.5}
-      width={7}
-      height={7}
-      fill={'var(--background)'}
-      stroke={'var(--foreground)'}
-      strokeWidth={1.5}
-    />
-  );
+  if (payload[isolatedKey(lineKey)] === true) {
+    return <circle cx={cx} cy={cy} r={3} fill={stroke} stroke={stroke} />;
+  }
+
+  return null;
 }
 
 function SourceLegend() {
@@ -338,6 +384,10 @@ function SourceLegend() {
           }
         />
         Held to the edge of the platform’s rounded figure
+      </li>
+      <li className={'flex items-center gap-1.5'}>
+        <span className={'bg-foreground inline-block size-2 rounded-full'} />A
+        measured day with none either side
       </li>
     </ul>
   );

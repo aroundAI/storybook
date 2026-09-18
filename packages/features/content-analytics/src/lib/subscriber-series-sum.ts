@@ -1,4 +1,8 @@
-import type { SubscriberPoint, SubscriberSource } from '@kit/clickhouse';
+import {
+  type SubscriberPoint,
+  type SubscriberSource,
+  isSubscriberTracked,
+} from '@kit/clickhouse';
 
 import { roundingErrorOf } from './subscriber-disclosure';
 
@@ -15,6 +19,8 @@ export interface SubscriberSeriesSum {
   points: SubscriberPoint[];
   /** The first summed day, or null when there is none. */
   startsOn: string | null;
+  /** The last summed day, or null when there is none. */
+  endsOn: string | null;
   /** Channels with no level at all, which leave nothing to sum. */
   excluded: string[];
   /**
@@ -48,7 +54,13 @@ export function sumSubscriberSeries(
     .map((s) => s.connectionId);
 
   if (series.length === 0 || excluded.length > 0) {
-    return { points: [], startsOn: null, excluded, roundingError: 0 };
+    return {
+      points: [],
+      startsOn: null,
+      endsOn: null,
+      excluded,
+      roundingError: 0,
+    };
   }
 
   // Checked per day, not from one start date: a series can have gaps.
@@ -87,6 +99,7 @@ export function sumSubscriberSeries(
   return {
     points,
     startsOn: points[0]?.date ?? null,
+    endsOn: points.at(-1)?.date ?? null,
     excluded,
     roundingError,
   };
@@ -100,6 +113,11 @@ export interface PlatformSubscriberSum extends SubscriberSeriesSum {
   channelCount: number;
   /** The active channels' ids, so a surface can name them. */
   included: string[];
+  /**
+   * The channels whose data ends on `endsOn`, when another channel's runs
+   * later — the reason the total stops early. Empty when it does not.
+   */
+  limitedBy: string[];
 }
 
 /**
@@ -133,7 +151,9 @@ export function sumByPlatform(
   for (const s of series) {
     const channel = channelById.get(s.connectionId);
 
-    if (!channel) continue;
+    // No snapshot is ever taken for these: no total to offer, and the card
+    // explains them on their own.
+    if (!channel || !isSubscriberTracked(channel.platform)) continue;
 
     const group = byPlatform.get(channel.platform) ?? {
       active: [],
@@ -151,11 +171,27 @@ export function sumByPlatform(
 
   return [...byPlatform.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([platform, group]) => ({
-      platform,
-      ...sumSubscriberSeries(group.active),
-      disconnected: group.disconnected,
-      channelCount: group.active.length,
-      included: group.active.map((s) => s.connectionId),
-    }));
+    .map(([platform, group]) => {
+      const sum = sumSubscriberSeries(group.active);
+      const lastDayOf = (s: { points: SubscriberPoint[] }) =>
+        s.points.at(-1)?.date ?? '';
+      const latestEnd = group.active.reduce(
+        (latest, s) => (lastDayOf(s) > latest ? lastDayOf(s) : latest),
+        '',
+      );
+
+      return {
+        platform,
+        ...sum,
+        disconnected: group.disconnected,
+        channelCount: group.active.length,
+        included: group.active.map((s) => s.connectionId),
+        limitedBy:
+          sum.endsOn && sum.endsOn < latestEnd
+            ? group.active
+                .filter((s) => lastDayOf(s) === sum.endsOn)
+                .map((s) => s.connectionId)
+            : [],
+      };
+    });
 }
