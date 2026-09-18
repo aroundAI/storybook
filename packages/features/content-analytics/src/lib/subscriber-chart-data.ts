@@ -1,4 +1,4 @@
-import type { SubscriberPoint } from '@kit/clickhouse';
+import { type SubscriberPoint, isMeasuredSource } from '@kit/clickhouse';
 import type { ChartConfig } from '@kit/ui/chart';
 
 /**
@@ -73,8 +73,9 @@ export function toChartData(lines: ChartLine[]): {
       const row = byDate.get(point.date) ?? { date: point.date };
 
       row[line.key] = point.level;
-      row[measuredKey(line.key)] =
-        point.source === 'interpolated' ? null : point.level;
+      row[measuredKey(line.key)] = isMeasuredSource(point.source)
+        ? point.level
+        : null;
       row[sourceKey(line.key)] = point.source;
       byDate.set(point.date, row);
     }
@@ -82,7 +83,7 @@ export function toChartData(lines: ChartLine[]): {
 
   for (const line of lines) {
     const measured = new Set(
-      line.points.filter((p) => p.source !== 'interpolated').map((p) => p.date),
+      line.points.filter((p) => isMeasuredSource(p.source)).map((p) => p.date),
     );
 
     for (const date of measured) {

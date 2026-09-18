@@ -91,10 +91,20 @@ Each point carries a `SubscriberSource` (`lib/subscriber-series.ts:31`):
 debugging fields — they are the difference between a measured level and a
 reconstructed one, and the UI must distinguish them:
 
-- `snapshot` days are measured. Draw them as such.
-- `interpolated` and `constrained` days are reconstructed from deltas
-  between anchors and inherit the anchor's error.
-- `clamped` days hit a bound and are the least trustworthy of the four.
+- `snapshot`, `constrained` and `clamped` days are **measured**: each has a
+  snapshot that day. `constrained` and `clamped` are rounded snapshots — the
+  first kept at the delta-derived figure inside the platform's band, the
+  second held to the band's edge — which is every YouTube snapshot above
+  1,000.
+- `interpolated` days are **reconstructed** from deltas alone, with no
+  snapshot that day. They are the least measured of the four, and a total
+  containing one is reconstructed too (`weakestSource`).
+
+> **Corrected in review.** This list first called `constrained` days
+> reconstructed and `clamped` the least trustworthy. That misreads
+> `reconstructSeries`, which sets both only on days with an anchor; the
+> ranking built on the misreading drew capture gaps in totals as measured.
+> The definition now lives once, as `isMeasuredSource`.
 
 > **Corrected in review: the error runs both ways.** The seed pins to the
 > band floor, so the first stretch can only read low — but a later anchor can
@@ -178,6 +188,31 @@ one label (`SUBSCRIBER_SOURCE_LABEL` in `@kit/clickhouse`) on every surface;
 one freshness rule (`isLevelOutdated`) serves the YPP row and the chip; a
 failed level read costs the YPP card only its subscriber row.
 
+**Shared definitions and their consumers.** Each rule below is written
+once, in `@kit/clickhouse`'s `lib/subscriber-vocabulary.ts`.
+`subscriber-single-definitions.test.ts` fails the build on a local copy of
+the first three. **When a definition changes, re-check every consumer
+listed, and add any new consumer to this table.** Round eight's bug was a
+fourth copy of "measured" that a redefinition updated three of four times.
+
+| Definition | Consumers |
+|---|---|
+| `isMeasuredSource` | chart solid/dashed and isolated marks (`subscriber-chart-data.ts`), follower source (`follower-counts.ts`) |
+| `weakestSource` | a total's day (`subscriber-series-sum.ts`) |
+| `roundingErrorOf` | card and total notes, YPP row (`subscriber-disclosure.ts`), follower tooltip (`follower-count.ts`), total error (`subscriber-series-sum.ts`) |
+| `SUBSCRIBER_SOURCE_LABEL` | chart tooltip, YPP row, follower tooltip |
+| `isLevelOutdated` | YPP row, follower chip |
+| `isSubscriberTracked` / `SUBSCRIBER_TRACKED_PLATFORMS` | snapshot capture, `channelStatus`, `sumByPlatform` |
+| `channelStatus` | empty state, channel list, total note |
+| earliest-anchor seed | `readInputs` for both readers (`subscriber-levels.ts`) |
+
+`subscriber-total-pairs.test.ts` runs every pair of the twelve states
+through the total, because the total's bugs live in combinations. And
+`packages/clickhouse/__tests__/subscriber-vocabulary.test.ts` checks the
+rules themselves exhaustively — all four sources, all sixteen pairs —
+because fixtures cannot reach every combination: a ranking that put
+`clamped` below `interpolated` passed all 78 fixture pairs.
+
 **Known limit, by design:** an active channel with no level — never
 measured, a hidden count, or a capture that stopped before the window —
 blocks its platform's total, and the note names it. Leaving it out instead
@@ -214,17 +249,21 @@ The chip's tooltip carries the rounding disclosure, like every other
 surface showing a count. A rounded snapshot day — `constrained` or
 `clamped`, which is every YouTube snapshot above 1,000 — counts as
 measured; only `interpolated` is labelled reconstructed. The Deep Dive
-total discloses the *sum* of its channels' rounding shortfalls, since each
-channel's seed can be low by its own.
+total discloses the *sum* of its channels' rounding errors, since each
+channel's level can be off by its own, either way.
 
-The level read is capped at 2 seconds. It reaches back 400 days and joins
-per-video metrics, and these pages are about publishing: a slow read takes
-the same fallback as a failed one, the stored count.
+The level read is capped at 2 seconds. It spans each channel's whole
+capture history — every reader seeds from the earliest snapshot, so the
+chip, the YPP card and the curve agree — and joins per-video metrics, so it
+grows with history and the cap will be reached more often over time. These
+pages are about publishing: a slow read takes the same fallback as a failed
+one, the stored count. A stored level per connection is the remedy if the
+cap starts to bite; a shorter window would bring the disagreement back.
 
 A measured count older than 7 days is marked and dated like a stored one,
 with "no newer data since" in its tooltip: a disconnected channel, or one
-whose capture broke, keeps its last level for up to 400 days of lookback,
-and its source alone does not say it is still true.
+whose capture broke, keeps its last level indefinitely, and its source
+alone does not say it is still true.
 
 A stored count is dated by the connection's `created_at`. A reconnect
 refreshes the stored count without moving that date, so the label can

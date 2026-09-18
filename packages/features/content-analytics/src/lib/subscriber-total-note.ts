@@ -81,8 +81,8 @@ export function platformLabel(platform: string): string {
 export function describeTotal(
   total: PlatformSubscriberSum,
   channelNames: Record<string, string>,
-  /** Each channel's newest measurement, in the window or not. */
-  lastDataById: Record<string, string | null> = {},
+  /** Each channel's status, from `channelStatus` — the one rule. */
+  statusById: Record<string, ChannelStatus> = {},
 ): string {
   const label = platformLabel(total.platform);
 
@@ -90,7 +90,7 @@ export function describeTotal(
     total.startsOn
       ? `${label} total begins ${formatSubscriberDay(total.startsOn)}, the first day every active ${label} channel has a level.`
       : total.excluded.length > 0
-        ? describeExcluded(label, total.excluded, channelNames, lastDataById)
+        ? describeExcluded(label, total.excluded, channelNames, statusById)
         : total.channelCount > 0
           ? // Every channel has data, just never on the same day — capture
             // for one ended before another's began.
@@ -143,18 +143,24 @@ function describeExcluded(
   label: string,
   excluded: string[],
   channelNames: Record<string, string>,
-  lastDataById: Record<string, string | null>,
+  statusById: Record<string, ChannelStatus>,
 ): string {
   const nameOf = (id: string) => channelNames[id] ?? 'a channel';
+  const endedSince = (id: string) => {
+    const status = statusById[id];
+    return status?.kind === 'ended' ? status.since : null;
+  };
 
-  const ended = excluded.filter((id) => lastDataById[id]);
-  const never = excluded.filter((id) => !lastDataById[id]);
+  // The channel list's rule, not a second copy of it: ended iff
+  // `channelStatus` says so.
+  const ended = excluded.filter((id) => endedSince(id) !== null);
+  const never = excluded.filter((id) => endedSince(id) === null);
 
   const reasons = [
     ...ended.map(
       (id) =>
         `${nameOf(id)} has no data since ${formatSubscriberDay(
-          lastDataById[id]!,
+          endedSince(id)!,
         )} — its capture may have stopped`,
     ),
     ...(never.length > 0

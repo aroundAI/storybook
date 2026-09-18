@@ -64,12 +64,6 @@ export function SubscriberSeriesCard({
     [channels],
   );
 
-  const lastDataById = useMemo(
-    () =>
-      Object.fromEntries(series.map((s) => [s.connectionId, s.lastDataDate])),
-    [series],
-  );
-
   const [view, setView] = useState<View>('per-channel');
 
   const channelById = useMemo(
@@ -88,8 +82,15 @@ export function SubscriberSeriesCard({
   const withoutData = tracked.filter((s) => s.points.length === 0);
   const canTotal = tracked.length > 1;
 
+  const statusById = Object.fromEntries(
+    series.map((s) => [
+      s.connectionId,
+      channelStatus(s, channelById.get(s.connectionId)),
+    ]),
+  );
+
   const statusOf = (s: ConnectionSubscriberSeries) =>
-    describeChannelStatus(channelStatus(s, channelById.get(s.connectionId)));
+    describeChannelStatus(statusById[s.connectionId]!);
 
   // One per platform: a YouTube subscriber and a TikTok follower are not
   // the same unit, and adding them counts a person on both twice.
@@ -184,7 +185,7 @@ export function SubscriberSeriesCard({
         >
           {totals.map((t) => (
             <li key={t.platform}>
-              {describeTotal(t, channelNames, lastDataById)}
+              {describeTotal(t, channelNames, statusById)}
             </li>
           ))}
         </ul>

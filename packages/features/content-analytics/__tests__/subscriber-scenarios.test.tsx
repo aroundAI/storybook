@@ -257,6 +257,35 @@ describe('the Total view', () => {
   });
 });
 
+describe('the total note and the channel list agree on every state', () => {
+  // One rule for "ended" vs "no count yet", used by both: a state the list
+  // calls ended, the total note must too, and the reverse.
+  const EMPTY_ACTIVE_YOUTUBE = ALL.filter(
+    (s) =>
+      s.platform === 'youtube' && s.isActive && seriesOf(s).points.length === 0,
+  );
+
+  it.each(EMPTY_ACTIVE_YOUTUBE.map((s) => s.id))('%s', (id) => {
+    renderCard(['healthy-exact', id]);
+
+    const listed =
+      [
+        ...document.querySelectorAll(
+          '[data-test="subscriber-series-missing"] li',
+        ),
+      ]
+        .map((el) => el.textContent ?? '')
+        .find((text) => text.includes(scenarioById(id).name)) ?? '';
+
+    showTotal();
+
+    const ended = /No data since/.test(listed);
+
+    expect(totalNote().includes('has no data since')).toBe(ended);
+    expect(totalNote().includes('no subscriber count')).toBe(!ended);
+  });
+});
+
 describe('a channel missing from the channel list', () => {
   // Its platform is unknown, so it must not be called untracked: explain it
   // from its data alone.
