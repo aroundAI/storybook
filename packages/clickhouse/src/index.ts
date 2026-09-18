@@ -88,6 +88,9 @@ export {
   SUBSCRIBER_SOURCE_LABEL,
   SUBSCRIBER_TRACKED_PLATFORMS,
   isLevelOutdated,
+  isMeasuredSource,
   isSubscriberTracked,
+  roundingErrorOf,
+  weakestSource,
 } from './lib/subscriber-vocabulary';
 export type { SubscriberTrackedPlatform } from './lib/subscriber-vocabulary';

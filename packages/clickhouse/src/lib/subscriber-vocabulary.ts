@@ -25,6 +25,46 @@ export const SUBSCRIBER_SOURCE_LABEL: Record<SubscriberSource, string> = {
 };
 
 /**
+ * Whether a day's level was measured — a snapshot that day, exact or
+ * rounded — rather than reconstructed from movement alone.
+ *
+ * The one statement of this rule. Four copies of it once existed, and a
+ * redefinition of `constrained` and `clamped` as measured updated three:
+ * the fourth drew a capture gap in a total as measured.
+ */
+export function isMeasuredSource(source: SubscriberSource): boolean {
+  return source !== 'interpolated';
+}
+
+// Least to most measured. A reconstructed part makes any combination
+// reconstructed; among measured parts, the one furthest from an exact
+// snapshot wins.
+const SOURCE_ORDER: readonly SubscriberSource[] = [
+  'interpolated',
+  'clamped',
+  'constrained',
+  'snapshot',
+];
+
+/** How a total's day was arrived at: the weakest of its parts. */
+export function weakestSource(
+  a: SubscriberSource,
+  b: SubscriberSource,
+): SubscriberSource {
+  return SOURCE_ORDER.indexOf(a) <= SOURCE_ORDER.indexOf(b) ? a : b;
+}
+
+/**
+ * How far a figure built on a rounded anchor can sit from the truth, either
+ * way. The seed pins to the floor of the platform's rounded band, but a
+ * later anchor can clamp a level to the band's top or leave it anywhere
+ * inside, so the error runs both ways, by at most one less than the step.
+ */
+export function roundingErrorOf(roundingStep: number): number {
+  return Math.max(0, roundingStep - 1);
+}
+
+/**
  * The platforms `captureSubscriberSnapshots` reads a count from. Others —
  * Facebook, X, LinkedIn — are allowed connections but are never snapshotted,
  * so "no count yet" would be the wrong explanation for them.
