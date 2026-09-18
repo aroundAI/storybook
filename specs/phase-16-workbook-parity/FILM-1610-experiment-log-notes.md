@@ -57,8 +57,11 @@ is the gap FILM-1603 §5 explicitly deferred here.
 
 ## 3. Schema — `analytics_experiments`
 
-Edit `apps/web/supabase/schemas/69-analytics-experiments.sql` and generate
-the migration with `db diff`.
+Write the migration by hand in `apps/web/supabase/migrations/`, then mirror
+it into `apps/web/supabase/schemas/69-analytics-experiments.sql`. **Do not
+generate it with `db diff`**: `schemas/` is missing a third of the tables
+the migrations create, so a diff proposes dropping them (root `CLAUDE.md`,
+"Do not run `supabase db diff` in this repo").
 
 ```sql
 alter table public.analytics_experiments
@@ -100,7 +103,8 @@ it must not appear in any insert or update payload.
 
 ## 4. Schema — Per-Video Notes
 
-Edit `apps/web/supabase/schemas/30-film-studio.sql` (the `publishes` table,
+A second hand-written migration, mirrored into
+`apps/web/supabase/schemas/30-film-studio.sql` (the `publishes` table,
 `:521-559`):
 
 ```sql
@@ -151,8 +155,9 @@ retired would lose the totals too, which are the part that always works.
 
 | File | Change |
 |------|--------|
-| `apps/web/supabase/schemas/69-analytics-experiments.sql` + migration | §3. |
-| `apps/web/supabase/schemas/30-film-studio.sql` + migration | §4. Both migrations regenerate types into **both** `database.types.ts` copies. |
+| `apps/web/supabase/migrations/<timestamp>_analytics-experiments-watched.sql` | §3, hand-written. Mirrored into `schemas/69-analytics-experiments.sql`. |
+| `apps/web/supabase/migrations/<timestamp>_publishes-analytics-note.sql` | §4, hand-written. Mirrored into `schemas/30-film-studio.sql`. `pnpm supabase:web:typegen` then writes **both** `database.types.ts` copies — generated, never hand-edited. |
+| `apps/web/supabase/tests/database/publish-analytics-note-rls.test.sql` | New pgTAP test for the note-write criterion in §8: a member who can update the publish writes the note; a user who cannot is refused. No policy changes, but the criterion is a claim about RLS, and RLS is verified by running it, not by reading it. |
 | `packages/features/content-analytics/src/lib/schemas/experiment.schema.ts` | `category`, `metricWatched` (zod enum over §5), `reviewWindowDays` (1–365), `notes`, `connectionId`. Shared by the actions and the forms. |
 | `packages/features/content-analytics/src/server/experiment-actions.ts` | `captureSnapshot` (`:47`) takes an optional `metricWatched` and appends `watched`. The `totals` block is untouched — assert this with a fixture comparison, not by eye. |
 | ↑ | New `listExperimentsDueForReviewAction` — `status = 'running' and review_due_at <= current_date`, ordered by `review_due_at`, hitting the new partial index. |
@@ -165,7 +170,9 @@ retired would lose the totals too, which are the part that always works.
 ## 7. Out of Scope
 
 - **The note *editor* inside the Video Log table** — the action and the
-  column land here; the table itself is FILM-1615.
+  column land here; the editable cell belongs to FILM-1615, which owns the
+  table. Land this spec first, so FILM-1615 ships the editor instead of
+  leaving the column out and needing a follow-up.
 - **Syncing notes into `video_dim`** — see §2.
 - **Statistical significance testing** — the log records what was watched
   and what changed; it does not claim the change was significant.
@@ -186,7 +193,7 @@ retired would lose the totals too, which are the part that always works.
 - [ ] Disconnecting a channel nulls `connection_id` and leaves the experiment row intact
 - [ ] `publishes.analytics_note` is a column, and nothing writes notes into `publishes.metadata`
 - [ ] A note write sets `analytics_note_updated_at` and `analytics_note_updated_by`
-- [ ] A user without update rights on a publish cannot write its note
+- [ ] A user without update rights on a publish cannot write its note — proved by a pgTAP test, not by reading the policy
 - [ ] Notes are absent from every ClickHouse insert
 - [ ] `pnpm --filter web check:schema-drift` passes and both `database.types.ts` copies match
 
@@ -196,9 +203,22 @@ retired would lose the totals too, which are the part that always works.
 pnpm --filter web supabase migration up
 pnpm supabase:web:typegen
 pnpm --filter web check:schema-drift
+pnpm --filter web supabase:test          # pgTAP, including the note-write test
 pnpm --filter @kit/content-analytics test
 pnpm typecheck && pnpm lint
+npx playwright test experiments      # from apps/e2e
 ```
+
+**A Playwright spec is required for the experiment form.** It gains five
+fields — category, watched metric, review window, notes and channel — and
+that is the FILM-1609 shape: defects that live between the DOM and form
+state, invisible to unit tests, appearing on the *second* submission after a
+`reset()`. Seed through the API, save an experiment, then save a second one
+and assert every new field holds the second value, not the first or a
+default. The channel `Select` is uncontrolled Radix unless made otherwise,
+which is one of the four FILM-1609 defects. This half is Postgres-only and
+runs in CI in full. Screenshots of the form after the second save and of the
+due-for-review list go in the PR.
 
 The Postgres half is genuinely verifiable: the generated column, the
 partial index, the backfill of `review_window_days` and the RLS behaviour

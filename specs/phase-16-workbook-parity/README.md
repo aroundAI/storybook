@@ -27,32 +27,41 @@ FILM-1608 (YPP targets settings)            ← FILM-1602
 FILM-1609 (revenue mix completion)          ← FILM-1601
 FILM-1618 (channel residual subscribers)    ← FILM-1601, FILM-1607
 FILM-1611 (channel selector + orphan wiring) ← FILM-1606, FILM-1608, FILM-1609
+FILM-1617 (subscriber surfaces)              ← FILM-1607, FILM-1611, FILM-1618
 ```
 
 Specified, not yet built:
 
 ```
-FILM-1611 ✅ ──┬─→ FILM-1615 (Video Log table)      ← also FILM-1603 ✅
-               └─→ FILM-1617 (subscriber surfaces)  ← also FILM-1607 ✅, FILM-1618 ✅
-
 FILM-1610 (experiment log + per-video notes) — needs FILM-1602, 1603, 1605, all ✅
+     ┆ soft: the note column and its action
+     ▼
+FILM-1615 (Video Log table + note editor)     ← FILM-1603 ✅, FILM-1611 ✅
 
 FILM-1616 (weekly diagnostics + retention drill-down) — needs FILM-1602 ✅;
           duration from FILM-1710, or ship without one (below)
 ```
 
-**FILM-1611 shipped (PR #260)**, so FILM-1615 and FILM-1617 are unblocked on it.
+**FILM-1611 (PR #260) and FILM-1617 (PR #262) shipped.**
 
-**FILM-1616 has an unrecorded dependency.** It adds
+**FILM-1610 before FILM-1615.** Not a hard dependency, but the two specs
+handed the note editor to each other: FILM-1610 §7 left the editable cell to
+the table, and FILM-1615 §6 left editing notes to FILM-1610. FILM-1615 now
+owns the cell. If FILM-1610 lands first the table ships complete; if not,
+the note column is left out and needs a follow-up.
+
+**FILM-1616 and FILM-1710.** It adds
 `getRetentionCurveAction`, returning `{ points, durationSeconds }` for
 `RetentionCurveChart`, which converts `elapsed_ratio` to seconds by
 multiplying by that duration. The only per-video duration in ClickHouse is
 `video_dim.duration_seconds`, which holds the **episode's** duration rather
 than the published clip's (phase-17 FILM-1710). The column has no readers
 today, so FILM-1616 would be the first — it must either take FILM-1710
-first or source the duration deliberately and say which it used.
+first or omit the duration, and it must never read that column. FILM-1616
+§4 now says so; the plan is to ship the fallback so phase 16 can close
+without waiting on phase 17.
 
-All four remaining specs — FILM-1610, 1615, 1616 and 1617 — are mutually independent and can start today. FILM-1617 needed FILM-1618 (✅ PR #249) as well as FILM-1611, because surfacing a curve built from systematically short deltas publishes a number that drifts from its own anchors.
+All three remaining specs — FILM-1610, 1615 and 1616 — can start today. Order FILM-1610 ahead of FILM-1615 for the reason above; FILM-1616 is independent of both.
 
 **FILM-1614 is not a phase-16 spec.** The id is claimed by an in-code `TODO(FILM-1614)` at `packages/features/content-analytics/src/server/revenue-queries.ts:79`, for folding the two client-side revenue query shapes into a pre-grouped RPC. New spec ids in this phase therefore resume at 1615.
 
@@ -71,6 +80,7 @@ All four remaining specs — FILM-1610, 1615, 1616 and 1617 — are mutually ind
 | FILM-1609 | PR #256 |
 | FILM-1608 | PR #257 |
 | FILM-1611 | PR #260 |
+| FILM-1617 | PR #262 |
 
 Specified and not yet built:
 
@@ -79,12 +89,11 @@ Specified and not yet built:
 | FILM-1610 | DRAFT | M | Watched metrics, review windows, and per-video notes on `publishes` |
 | FILM-1615 | DRAFT | M | The Video Log table — FILM-1603 built the query and action, not the screen |
 | FILM-1616 | DRAFT | M | `WeeklyDiagnosticsTable` and `RetentionCurveChart`, both of which need actions built |
-| FILM-1617 | ✅ DONE | S | Subscriber series card, YPP absolute count, follower count on the publish screen |
 
 ## Testing precedent set by this phase
 
 Two things changed about how work in this phase is verified, both worth
-applying to the six remaining specs rather than rediscovering:
+applying to the remaining specs rather than rediscovering:
 
 **UI changes ship with screenshots in the PR.** FILM-1609 ran seven review
 rounds on one form, every one text-only, while the form could not be
@@ -101,8 +110,12 @@ the second submission, and prove each guard fails before believing it.
 FILM-1608 was the first to follow both: `apps/e2e/tests/analytics-settings/`
 seeds through the API, asserts the state after a *second* save, and each
 guard was watched failing before it was believed. Relevant to what is left:
-FILM-1611 mounts four cards, FILM-1615 and FILM-1617 add screens. All four
-remaining UI specs fall under both rules.
+all three remaining specs fall under both rules. FILM-1610 adds form fields
+to the experiment log — the FILM-1609 shape exactly, and Postgres-backed, so
+its spec runs in CI in full. FILM-1615 and FILM-1616 add screens that have
+no rows to show while ClickHouse is off, so each splits its browser coverage
+the way FILM-1617 did: a guard spec in CI, and an evidence spec gated on
+`CLICKHOUSE_EVIDENCE` for the screenshots.
 
 ## Locked decisions
 
@@ -130,8 +143,8 @@ remaining UI specs fall under both rules.
 
 ## Everything is now specified
 
-Every remaining item has a spec file. FILM-1610, 1611, 1615, 1616 and 1617
-are DRAFT; nothing is left planned-but-unwritten.
+Every remaining item has a spec file. FILM-1610, 1615 and 1616 are DRAFT;
+nothing is left planned-but-unwritten.
 
 **FILM-1611 was split.** The backlog entry called "analytics UI" had
 accumulated four unrelated deliverables, and anyone sizing it from its name

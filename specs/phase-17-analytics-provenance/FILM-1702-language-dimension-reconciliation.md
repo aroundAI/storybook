@@ -112,7 +112,7 @@ spec exists to remove. If FILM-1606 has not landed, this spec waits.
 
 | File | Change |
 |------|--------|
-| `apps/web/supabase/schemas/30-film-studio.sql` | The `default 'en'` decision from §2, whichever way it goes. A migration follows. |
+| `apps/web/supabase/migrations/<timestamp>_publishes-language-default.sql` | The `default 'en'` decision from §2, whichever way it goes — a hand-written migration, mirrored into `schemas/30-film-studio.sql`. Not generated with `db diff` (root `CLAUDE.md`). |
 | `packages/clickhouse/src/migrations/` | New migration adding `channel_language` to `video_dim`. |
 | `packages/clickhouse/src/types.ts` | `VideoDim.channel_language`. |
 | `packages/features/content-analytics/src/server/dim-sync.ts` | Resolve the connection's language and write it; stop coalescing to `'en'` if §2 changes the sentinel. |

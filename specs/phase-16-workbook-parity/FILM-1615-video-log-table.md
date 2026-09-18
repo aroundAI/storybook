@@ -3,7 +3,7 @@ spec_id: FILM-1615
 title: Video Log Table
 status: DRAFT
 effort: M
-dependencies: FILM-1603, FILM-1611
+dependencies: FILM-1603, FILM-1611; FILM-1610 soft (the note column, §4)
 ---
 
 # Video Log Table
@@ -87,6 +87,7 @@ affects **every historical video**.
 | `packages/features/content-analytics/src/components/analytics-dashboard.tsx` | New "Video Log" tab beside the existing six (`:371-378`). |
 | ↑ | Reuse the `ChannelFilter` built in FILM-1611 rather than adding a second selector — two channel pickers with independent state on one dashboard is how the tabs start disagreeing about what is selected. |
 | `packages/features/content-analytics/src/server/video-log-actions.ts` | No signature change. If FILM-1610 has landed, `VideoLogRow.analyticsNote` renders as an editable cell; if it has not, the column is simply absent — FILM-1603 already establishes that the action "leaves the field out entirely rather than" faking one. |
+| `packages/features/content-analytics/src/components/video-log/note-cell.tsx` | New, only if FILM-1610 has landed. **This spec owns the note editor**: FILM-1610 §7 ships the column and `updatePublishNoteAction` and leaves the cell here. `react-hook-form` + `@kit/ui/form`, per the root `CLAUDE.md`, with `data-test` on the input and the save control. Land FILM-1610 first so this ships in one piece. |
 
 ## 5. Bounding
 
@@ -100,8 +101,6 @@ it is summing the page.
 ## 6. Out of Scope
 
 - **Account-scale Video Log** — see §3; needs an enforced `publishedFrom`.
-- **Editing notes** — the column and its action are FILM-1610; this table
-  renders what exists.
 - **Per-video drill-down into retention** — FILM-1616 owns the retention
   action and the chart; a row-click target can be added once it exists.
 - **New CSV columns** — already shipped by FILM-1603.
@@ -121,13 +120,37 @@ it is summing the page.
 - [ ] The table scrolls horizontally within its own container; the page body does not
 - [ ] Any footer total states that it covers the current page only
 - [ ] A loading state renders while the action is in flight
+- [ ] If FILM-1610 has landed, a note saved from a row survives a re-query, and a second edit to the same row saves the second value, not the first
+- [ ] If FILM-1610 has not landed, the note column is absent rather than rendered empty
 
 ## 8. Verification
 
 ```bash
 pnpm --filter @kit/content-analytics test
 pnpm typecheck && pnpm lint
+npx playwright test video-log        # from apps/e2e; the guard half
 ```
+
+**Playwright is required**, not optional — the table is interactive
+(server-side sort, pagination, and the note editor if FILM-1610 has landed),
+and the root `CLAUDE.md` requires a spec before an interactive component's
+criteria are ticked. It comes in the two halves FILM-1617 used in
+`apps/e2e/tests/deep-dive/`, because with ClickHouse off the table has no
+rows to sort, page or annotate:
+
+- **A guard spec that runs in CI, with ClickHouse off**: the tab mounts,
+  the empty state renders, the loading state appears, and the note column
+  is absent or present according to whether FILM-1610 has landed. Seed
+  through the API (`tests/utils/seed.ts`).
+- **An evidence spec, gated on `CAPTURE_EVIDENCE` and
+  `CLICKHOUSE_EVIDENCE`** as `subscriber-evidence.spec.ts` is, that seeds
+  real rows and drives the table: the three checkpoint-cell states, a
+  server-side sort, a page turn, and a note saved *twice* on one row with
+  the second value surviving a re-query. Its screenshots and DOM readings
+  go in the PR.
+
+The second half cannot run in CI. Say so in the PR rather than letting a
+green guard spec imply the editor was exercised.
 
 Then run the app and open the tab. The three-state cell logic is a pure
 function of `matureAt` / `predatesIngestAt` and is unit-testable now — do
