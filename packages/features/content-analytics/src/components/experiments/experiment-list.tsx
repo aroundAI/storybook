@@ -1,6 +1,6 @@
 'use client';
 
-import { FlaskConical } from 'lucide-react';
+import { CalendarClock, FlaskConical } from 'lucide-react';
 
 import { Badge } from '@kit/ui/badge';
 import { Skeleton } from '@kit/ui/skeleton';
@@ -77,6 +77,7 @@ export function ExperimentList({
           key={experiment.id}
           type={'button'}
           onClick={() => onSelect?.(experiment.id)}
+          data-test={`experiment-row-${experiment.id}`}
           className={
             'hover:bg-accent flex flex-col gap-2 rounded-lg border p-4 text-left transition-colors'
           }
@@ -120,6 +121,62 @@ export function ExperimentListSkeleton() {
     <div className={'flex flex-col gap-2'}>
       {Array.from({ length: 3 }).map((_, index) => (
         <Skeleton key={index} className={'h-24 w-full rounded-lg'} />
+      ))}
+    </div>
+  );
+}
+
+/** Row shape returned by listExperimentsDueForReviewAction. */
+export interface DueExperimentEntry {
+  id: string;
+  title: string;
+  started_at: string | null;
+  review_due_at: string | null;
+}
+
+/**
+ * Running experiments whose review window has passed, soonest first
+ * (FILM-1610). Surfaced, never concluded automatically: a human decides
+ * what the result was.
+ */
+export function ExperimentsDueList({
+  experiments,
+  onSelect,
+}: {
+  experiments: DueExperimentEntry[];
+  onSelect?: (experimentId: string) => void;
+}) {
+  if (experiments.length === 0) {
+    return (
+      <p
+        className={'text-muted-foreground text-sm'}
+        data-test={'experiments-due-empty'}
+      >
+        Nothing is due for review.
+      </p>
+    );
+  }
+
+  return (
+    <div className={'flex flex-col gap-2'} data-test={'experiments-due'}>
+      {experiments.map((experiment) => (
+        <button
+          key={experiment.id}
+          type={'button'}
+          onClick={() => onSelect?.(experiment.id)}
+          className={
+            'hover:bg-accent flex items-center justify-between gap-3 rounded-lg border p-3 text-left transition-colors'
+          }
+          data-test={`experiment-due-${experiment.id}`}
+        >
+          <span className={'flex items-center gap-2 text-sm font-medium'}>
+            <CalendarClock className={'h-4 w-4'} />
+            {experiment.title}
+          </span>
+          <span className={'text-muted-foreground shrink-0 text-xs'}>
+            Due {experiment.review_due_at}
+          </span>
+        </button>
       ))}
     </div>
   );

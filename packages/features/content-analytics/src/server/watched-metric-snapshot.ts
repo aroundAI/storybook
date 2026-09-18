@@ -11,9 +11,9 @@ import {
 import {
   type DateWindow,
   type FoldResult,
+  WATCHED_METRICS,
   type WatchedMetricKey,
   type WatchedValue,
-  WATCHED_METRICS,
   foldCtr,
   foldNetSubscribers,
   foldTrafficShare,
@@ -60,9 +60,7 @@ async function fetchAndFold(
   videoIds: string[],
   window: DateWindow | null,
 ): Promise<FoldResult> {
-  const range = window
-    ? { startDate: window.start, endDate: window.end }
-    : {};
+  const range = window ? { startDate: window.start, endDate: window.end } : {};
 
   switch (metric) {
     case 'views_at_30d': {
@@ -81,7 +79,10 @@ async function fetchAndFold(
     }
 
     case 'ctr': {
-      const quality = await queryQualityMetricsForVideos({ videoIds, ...range });
+      const quality = await queryQualityMetricsForVideos({
+        videoIds,
+        ...range,
+      });
       return foldCtr([...quality.values()]);
     }
 
@@ -108,7 +109,11 @@ async function fetchAndFold(
     case 'browse_suggested_share':
     case 'search_share': {
       // byVideo, so coverage can count the videos that had traffic at all.
-      const rows = await queryTrafficSources({ videoIds, ...range, byVideo: true });
+      const rows = await queryTrafficSources({
+        videoIds,
+        ...range,
+        byVideo: true,
+      });
 
       return foldTrafficShare(
         rows,
@@ -117,7 +122,10 @@ async function fetchAndFold(
     }
 
     case 'subscribers_net': {
-      const perVideo = await queryNetSubscribersForVideos({ videoIds, ...range });
+      const perVideo = await queryNetSubscribersForVideos({
+        videoIds,
+        ...range,
+      });
       return foldNetSubscribers([...perVideo.values()]);
     }
   }

@@ -27,6 +27,11 @@ interface ChannelFilterProps {
   isLoading?: boolean;
   /** The channel list failed to load — say so rather than offering nothing */
   isError?: boolean;
+  /**
+   * What "no channel" means where this is used. On the Deep Dive it is every
+   * channel; on an experiment it is none in particular.
+   */
+  allLabel?: string;
 }
 
 /**
@@ -46,6 +51,7 @@ export function ChannelFilter({
   onChange,
   isLoading = false,
   isError = false,
+  allLabel = 'All channels',
 }: ChannelFilterProps) {
   if (isLoading) {
     return <Skeleton className={'h-9 w-56'} />;
@@ -85,7 +91,7 @@ export function ChannelFilter({
           value={ALL_CHANNELS}
           data-test={'channel-filter-option-all'}
         >
-          All channels
+          {allLabel}
         </SelectItem>
 
         {channels.map((channel) => (

@@ -548,7 +548,7 @@ See [phase-16-workbook-parity/README.md](./phase-16-workbook-parity/README.md) f
 | FILM-1606 | [segment-performance](./phase-16-workbook-parity/FILM-1606-segment-performance.md) | ✅ DONE | L | FILM-1603, FILM-1605 |
 | FILM-1608 | [ypp-targets-settings](./phase-16-workbook-parity/FILM-1608-ypp-targets-settings.md) | ✅ DONE | M | FILM-1602 |
 | FILM-1609 | [revenue-mix-completion](./phase-16-workbook-parity/FILM-1609-revenue-mix-completion.md) | ✅ DONE | S | FILM-1601 |
-| FILM-1610 | [experiment-log-notes](./phase-16-workbook-parity/FILM-1610-experiment-log-notes.md) | DRAFT | M | FILM-1602, FILM-1603, FILM-1605 |
+| FILM-1610 | [experiment-log-notes](./phase-16-workbook-parity/FILM-1610-experiment-log-notes.md) | ✅ DONE | M | FILM-1602, FILM-1603, FILM-1605 |
 | FILM-1611 | [deep-dive-channel-selector](./phase-16-workbook-parity/FILM-1611-deep-dive-channel-selector.md) | ✅ DONE | M | FILM-1606, FILM-1608, FILM-1609 |
 | FILM-1615 | [video-log-table](./phase-16-workbook-parity/FILM-1615-video-log-table.md) | DRAFT | M | FILM-1603, FILM-1611; FILM-1610 soft (note editor) |
 | FILM-1616 | [weekly-diagnostics-retention](./phase-16-workbook-parity/FILM-1616-weekly-diagnostics-retention.md) | DRAFT | M | FILM-1602; FILM-1710 or the duration-free fallback (see note) |

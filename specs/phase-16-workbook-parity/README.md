@@ -28,15 +28,14 @@ FILM-1609 (revenue mix completion)          ← FILM-1601
 FILM-1618 (channel residual subscribers)    ← FILM-1601, FILM-1607
 FILM-1611 (channel selector + orphan wiring) ← FILM-1606, FILM-1608, FILM-1609
 FILM-1617 (subscriber surfaces)              ← FILM-1607, FILM-1611, FILM-1618
+FILM-1610 (experiment log + per-video notes)  ← FILM-1602, FILM-1603, FILM-1605
 ```
 
 Specified, not yet built:
 
 ```
-FILM-1610 (experiment log + per-video notes) — needs FILM-1602, 1603, 1605, all ✅
-     ┆ soft: the note column and its action
-     ▼
-FILM-1615 (Video Log table + note editor)     ← FILM-1603 ✅, FILM-1611 ✅
+FILM-1615 (Video Log table + note editor)     ← FILM-1603 ✅, FILM-1611 ✅,
+                                                FILM-1610 ✅ (note column and action)
 
 FILM-1616 (weekly diagnostics + retention drill-down) — needs FILM-1602 ✅;
           duration from FILM-1710, or ship without one (below)
@@ -61,7 +60,7 @@ first or omit the duration, and it must never read that column. FILM-1616
 §4 now says so; the plan is to ship the fallback so phase 16 can close
 without waiting on phase 17.
 
-All three remaining specs — FILM-1610, 1615 and 1616 — can start today. Order FILM-1610 ahead of FILM-1615 for the reason above; FILM-1616 is independent of both.
+Both remaining specs — FILM-1615 and 1616 — can start today and are independent. FILM-1610 has landed, so FILM-1615 ships the note editor.
 
 **FILM-1614 is not a phase-16 spec.** The id is claimed by an in-code `TODO(FILM-1614)` at `packages/features/content-analytics/src/server/revenue-queries.ts:79`, for folding the two client-side revenue query shapes into a pre-grouped RPC. New spec ids in this phase therefore resume at 1615.
 
@@ -86,7 +85,6 @@ Specified and not yet built:
 
 | Spec | Status | Effort | Covers |
 |------|--------|--------|--------|
-| FILM-1610 | DRAFT | M | Watched metrics, review windows, and per-video notes on `publishes` |
 | FILM-1615 | DRAFT | M | The Video Log table — FILM-1603 built the query and action, not the screen |
 | FILM-1616 | DRAFT | M | `WeeklyDiagnosticsTable` and `RetentionCurveChart`, both of which need actions built |
 
@@ -109,10 +107,9 @@ the second submission, and prove each guard fails before believing it.
 
 FILM-1608 was the first to follow both: `apps/e2e/tests/analytics-settings/`
 seeds through the API, asserts the state after a *second* save, and each
-guard was watched failing before it was believed. Relevant to what is left:
-all three remaining specs fall under both rules. FILM-1610 adds form fields
-to the experiment log — the FILM-1609 shape exactly, and Postgres-backed, so
-its spec runs in CI in full. FILM-1615 and FILM-1616 add screens that have
+guard was watched failing before it was believed. FILM-1610 followed both
+too (`apps/e2e/tests/experiments/`), Postgres-backed and so run in CI in
+full. Relevant to what is left: FILM-1615 and FILM-1616 add screens that have
 no rows to show while ClickHouse is off, so each splits its browser coverage
 the way FILM-1617 did: a guard spec in CI, and an evidence spec gated on
 `CLICKHOUSE_EVIDENCE` for the screenshots.
@@ -143,7 +140,7 @@ the way FILM-1617 did: a guard spec in CI, and an evidence spec gated on
 
 ## Everything is now specified
 
-Every remaining item has a spec file. FILM-1610, 1615 and 1616 are DRAFT;
+Every remaining item has a spec file. FILM-1615 and 1616 are DRAFT;
 nothing is left planned-but-unwritten.
 
 **FILM-1611 was split.** The backlog entry called "analytics UI" had

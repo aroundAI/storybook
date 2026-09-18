@@ -135,21 +135,22 @@ export const getVideoLogAction = enhanceAction(
     // The id list is one page wide, so these stay well inside the limits
     // that made FILM-1612 necessary — but revenue is one row per publish
     // per day per category, so it is still chunked and paged.
-    const [quality, channels, revenueByPublish, notesByPublish] = await Promise.all([
-      // Lifetime, deliberately unbounded by the publish-date filter.
-      // publishedFrom/To select *which videos* appear; passing them here
-      // would have bounded *which metric days* count, so a row would carry
-      // lifetime views next to CTR and view duration measured over only the
-      // slice of the window that video happened to overlap — two different
-      // windows in one row, with nothing saying so. A bounded quality
-      // window would need its own explicitly named inputs.
-      queryQualityMetricsForVideos({ videoIds }),
-      input.projectId
-        ? listProjectChannels(input.projectId, client)
-        : listAccountChannels(input.accountId!, client),
-      fetchRevenueByPublish(client, videoIds),
-      fetchNotesByPublish(client, videoIds),
-    ]);
+    const [quality, channels, revenueByPublish, notesByPublish] =
+      await Promise.all([
+        // Lifetime, deliberately unbounded by the publish-date filter.
+        // publishedFrom/To select *which videos* appear; passing them here
+        // would have bounded *which metric days* count, so a row would carry
+        // lifetime views next to CTR and view duration measured over only the
+        // slice of the window that video happened to overlap — two different
+        // windows in one row, with nothing saying so. A bounded quality
+        // window would need its own explicitly named inputs.
+        queryQualityMetricsForVideos({ videoIds }),
+        input.projectId
+          ? listProjectChannels(input.projectId, client)
+          : listAccountChannels(input.accountId!, client),
+        fetchRevenueByPublish(client, videoIds),
+        fetchNotesByPublish(client, videoIds),
+      ]);
 
     const channelNameById = new Map(
       channels.map((channel) => [channel.connectionId, channel.name]),
