@@ -45,6 +45,7 @@ export class ExperimentsPageObject {
     return {
       ...team,
       connectionId,
+      projectId: project.id,
       publishIds: [first.publishId, second.publishId] as const,
     };
   }

@@ -195,6 +195,39 @@ has no RLS — would report its figures. Links must now belong to the
 experiment's account, and snapshots read only linked publishes the caller
 can see.
 
+### 5a. Corrections from the post-implementation review
+
+A full review of the first version found problems it had shipped green.
+Each fix below was watched failing before it was believed.
+
+- **The comparison is protected.** An experiment starts only from `planned`
+  and concludes only from `running`, never with an end before its start
+  (`lib/experiment-transitions.ts`). Once started, `metricWatched`,
+  `reviewWindowDays` and the linked videos are frozen: the baseline was
+  measured over them. The detail view labels the watched block from what
+  the snapshots recorded, and says so when baseline and result disagree.
+- **The table refuses a cross-account link**, not only the action
+  (migration `20260918203816`, `experiment-publishes-account-rls.test.sql`):
+  PostgREST is reachable directly.
+- **Coverage is stated.** A measured value records `daysWithData` of
+  `windowDays`, counted by `queryDataDaysForVideos`. The page says "data on N
+  of M days" when that is partial, and a **sum** (`subscribers_net`) is also
+  shown per day of data, since a sum grows with its window.
+- **`views_at_30d` leaves out a video whose 30 days closed before ingest
+  began** (FILM-1603's `checkpointPredatesIngest`); when only those remain,
+  the reason is `predates_ingest`. Counted, they pulled the median to zero.
+- **Failures are reported.** Link writes and reads that failed were
+  discarded, so a refused link left an experiment with no videos behind a
+  success toast; a failed list read looked like an empty log.
+- **Dates are the user's.** Start, conclude and "due as of" take the
+  browser's local date; the server's UTC date recorded a start just after
+  local midnight on the previous day for anyone east of UTC.
+- **`canEditNote`** on each Video Log row, from the `publishes_update` roles,
+  so FILM-1615 can render a note read-only where it cannot be written.
+- **Every ClickHouse query now runs in `verify`**, and
+  `verify-coverage.test.ts` fails when one does not. Three had never run
+  against a server, one of them this spec's.
+
 ## 6. Implementation Map
 
 | File | Change |
@@ -244,6 +277,13 @@ can see.
 - [x] A user without update rights on a publish cannot write its note — proved by a pgTAP test, not by reading the policy
 - [x] Notes are absent from every ClickHouse insert — `dim-sync.ts` selects an explicit column list and `VideoDim` has no note field, so the type is the guard
 - [x] `pnpm --filter web check:schema-drift` passes and both `database.types.ts` copies match
+- [x] A started experiment cannot be started again, concluded early or backwards, or have its metric, window or videos changed (§5a)
+- [x] The table refuses a link to another account's video, for a user who belongs to both (pgTAP)
+- [x] A partially covered window says so on the page, and a sum is also shown per day (measured against local ClickHouse: +15, data on 3 of 30 days, 5.0 per day)
+- [x] A video whose 30 days predate ingest is excluded from `views_at_30d` (measured: 100 with 1 of 2 videos; 50 with 2 of 2 when the exclusion is reverted)
+- [x] A failed link write, link read or list read is reported, never shown as success or emptiness
+- [x] Dates are recorded in the user's local calendar (E2E in `Asia/Kolkata` just after midnight)
+- [x] Both notes are bounded at 5,000 characters by the table, not only by zod
 
 ## 9. Verification
 
@@ -288,8 +328,11 @@ metric was measured end to end against the local ClickHouse
 impressions at 10% and 9,000 at 2% on two linked videos, and the started
 experiment's baseline reads **2.8%** on the page over the right window, 2 of 2
 videos covered. With CTR reverted to a plain mean it reads 6.0% and the spec
-fails. The other six metrics share the plumbing but not the fold, and were
-not individually run against ClickHouse.
+fails. `subscribers_net` (partial coverage) and `views_at_30d` (pre-ingest
+exclusion) are measured the same way. The remaining four metrics
+(`avg_view_duration`, `avg_view_percentage` and the two traffic shares) have
+their SQL run against ClickHouse in `verify` — executed, not value-asserted —
+and their folds unit-tested, but were not driven through the page.
 
 ## 10. Risk
 
