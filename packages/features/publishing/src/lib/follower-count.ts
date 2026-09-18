@@ -51,15 +51,15 @@ export function describeFollowerCount(input: {
     .filter(Boolean)
     .join(', ');
 
-  // YouTube rounds down, so the true count is at most step − 1 higher. The
-  // short form cannot carry this: `formatFollowers` rounds to one decimal and
-  // can round up, so a "+" there would be wrong as often as right.
-  const shortfall = Math.max(0, (input.roundingStep ?? 0) - 1);
+  // Off either way by up to step − 1: a reconstructed level can sit anywhere
+  // in the platform's rounded band. The short form cannot carry this —
+  // `formatFollowers` rounds to one decimal itself.
+  const error = Math.max(0, (input.roundingStep ?? 0) - 1);
   const rounding =
-    shortfall > 0
-      ? ` Rounded down by the platform — the true count may be up to ${shortfall.toLocaleString(
+    error > 0
+      ? ` Rounded by the platform — may be off by up to ${error.toLocaleString(
           'en-US',
-        )} higher.`
+        )} either way.`
       : '';
 
   return {
