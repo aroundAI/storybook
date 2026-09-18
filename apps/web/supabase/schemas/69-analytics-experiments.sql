@@ -21,21 +21,42 @@ create table if not exists public.analytics_experiments (
   ended_at date,
   baseline_metrics jsonb not null default '{}'::jsonb,
   result_metrics jsonb not null default '{}'::jsonb,
+  -- FILM-1610 (migration 20260918184817)
+  category varchar(30),
+  metric_watched varchar(40),
+  review_window_days integer not null default 60,
+  notes text,
+  connection_id uuid,
+  review_due_at date generated always as (started_at + review_window_days) stored,
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (outcome_status in ('pending', 'confirmed', 'rejected', 'inconclusive')),
-  check (status in ('planned', 'running', 'concluded', 'abandoned'))
+  check (status in ('planned', 'running', 'concluded', 'abandoned')),
+  constraint analytics_experiments_review_window_days_check
+    check (review_window_days between 1 and 365),
+  -- The channel must belong to the experiment's own account; see the
+  -- migration for why this is composite and why it nulls only connection_id.
+  constraint analytics_experiments_connection_account_fkey
+    foreign key (connection_id, account_id)
+    references public.platform_connections (id, account_id)
+    on delete set null (connection_id)
 );
 
 comment on table public.analytics_experiments is 'Manual log of deliberate content changes with baseline/result metric snapshots';
 comment on column public.analytics_experiments.baseline_metrics is 'Metric totals for linked publishes captured when the experiment started';
 comment on column public.analytics_experiments.result_metrics is 'Metric totals captured when the experiment concluded';
+comment on column public.analytics_experiments.metric_watched is 'The one metric this experiment is judged on; resolved into snapshots alongside the fixed totals';
+comment on column public.analytics_experiments.review_window_days is 'Planned run length in days; the baseline window before the start has the same length';
+comment on column public.analytics_experiments.review_due_at is 'started_at + review_window_days; null until the experiment starts';
 
 create index if not exists idx_analytics_experiments_account
   on public.analytics_experiments(account_id, created_at desc);
 create index if not exists idx_analytics_experiments_status
   on public.analytics_experiments(account_id, status);
+create index if not exists idx_analytics_experiments_review_due
+  on public.analytics_experiments (account_id, review_due_at)
+  where status = 'running';
 
 create trigger set_analytics_experiments_timestamp
   before update on public.analytics_experiments
