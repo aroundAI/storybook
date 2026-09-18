@@ -1609,3 +1609,59 @@ create policy "dubbed_dialogue_lines_delete" on public.dubbed_dialogue_lines for
       and pm.role in ('owner', 'admin')
     )
   );
+
+-- ==================================
+-- Analytics note audit and editability (FILM-1610 review, migration 20260918221250)
+-- ==================================
+
+create or replace function public.set_analytics_note_audit()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  -- A foreign-key action (deleting the author nulls analytics_note_updated_by)
+  -- runs inside the constraint's own trigger, so it arrives here nested.
+  -- Restoring the old author would re-point the row at the user being
+  -- deleted and fail the delete; let the cascade through.
+  if pg_trigger_depth() > 1 then
+    return new;
+  end if;
+
+  if new.analytics_note is distinct from old.analytics_note then
+    new.analytics_note_updated_at = now();
+    new.analytics_note_updated_by = auth.uid();
+  else
+    new.analytics_note_updated_at = old.analytics_note_updated_at;
+    new.analytics_note_updated_by = old.analytics_note_updated_by;
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger publishes_analytics_note_audit
+  before update of analytics_note, analytics_note_updated_at, analytics_note_updated_by
+  on public.publishes
+  for each row execute function public.set_analytics_note_audit();
+
+create or replace function public.editable_publish_ids(p_publish_ids uuid[])
+returns setof uuid
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select pub.id
+    from public.publishes pub
+    join public.episodes e on e.id = pub.episode_id
+   where pub.id = any(p_publish_ids)
+     and exists (
+       select 1 from public.project_members pm
+        where pm.project_id = e.project_id
+          and pm.user_id = auth.uid()
+          and pm.role in ('owner', 'admin', 'member')
+     );
+$$;
+
+grant execute on function public.editable_publish_ids(uuid[]) to authenticated;

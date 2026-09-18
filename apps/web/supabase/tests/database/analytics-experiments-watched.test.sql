@@ -65,15 +65,19 @@ select is(
   'A planned experiment is not due for anything'
 );
 
+-- The start date is set while the experiment stays planned: the due date is
+-- generated from started_at whatever the status, and a *running*
+-- experiment's window is frozen (experiments-integrity.test.sql), so the
+-- window cases below need one that has not started.
 update public.analytics_experiments
-   set status = 'running', started_at = '2026-07-01'
+   set started_at = '2026-07-01'
  where id = 'e0e0e0e0-0000-4000-8000-00000000000a';
 
 select is(
   (select review_due_at from public.analytics_experiments
     where id = 'e0e0e0e0-0000-4000-8000-00000000000a'),
   '2026-08-30'::date,
-  'Starting an experiment makes it due started_at + review_window_days later'
+  'A start date makes it due started_at + review_window_days later'
 );
 
 update public.analytics_experiments
