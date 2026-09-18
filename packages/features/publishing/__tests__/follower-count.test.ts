@@ -45,6 +45,28 @@ describe('describeFollowerCount', () => {
     });
   });
 
+  // A rounded-down count must not read as exact, on any surface.
+  it('discloses the platform rounding in the detail', () => {
+    const rounded = describeFollowerCount({
+      count: 42_600,
+      source: 'snapshot',
+      asOf: '2026-09-14',
+      roundingStep: 100,
+    });
+
+    expect(rounded.detail).toContain('up to 99 higher');
+    expect(rounded.short).toBe('42.6K');
+
+    expect(
+      describeFollowerCount({
+        count: 900,
+        source: 'snapshot',
+        asOf: '2026-09-14',
+        roundingStep: 0,
+      }).detail,
+    ).not.toContain('higher');
+  });
+
   // Read in UTC: a local-time parse would print Mar 3 west of Greenwich.
   it('does not shift the date by the viewer’s time zone', () => {
     expect(

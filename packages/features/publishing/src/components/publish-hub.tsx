@@ -75,6 +75,7 @@ export function PublishHub({
           followerCount: conn.followerCount,
           followerCountSource: conn.followerCountSource,
           followerCountAsOf: conn.followerCountAsOf,
+          followerCountRoundingStep: conn.followerCountRoundingStep,
           tokenValid: conn.tokenValid,
           // Language from connection for multi-language analytics
           language: conn.language || 'en',

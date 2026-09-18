@@ -221,6 +221,32 @@ describe('Connection Actions', () => {
         });
       });
 
+      // YouTube rounds above 1,000, so its snapshot days are `constrained` or
+      // `clamped`, never `snapshot`. They are still measured days.
+      it('treats a rounded snapshot day as measured, and carries its rounding', async () => {
+        clickhouse.queryLatestSubscriberLevels.mockResolvedValue(
+          new Map([
+            [
+              'conn-yt',
+              {
+                date: '2026-09-14',
+                level: 42_600,
+                source: 'constrained',
+                roundingStep: 100,
+              },
+            ],
+          ]),
+        );
+
+        const [connection] = await connectedPlatforms([youtube]);
+
+        expect(connection).toMatchObject({
+          followerCount: 42_600,
+          followerCountSource: 'snapshot',
+          followerCountRoundingStep: 100,
+        });
+      });
+
       // Instagram's badge works today only through this value.
       it('falls back to the stored count, dated by the connection', async () => {
         const [connection] = await connectedPlatforms([youtube]);

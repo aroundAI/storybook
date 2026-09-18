@@ -253,6 +253,7 @@ function AccountInfo({ platform }: { platform: PlatformPublishConfig }) {
           count={platform.followerCount}
           source={platform.followerCountSource ?? null}
           asOf={platform.followerCountAsOf ?? null}
+          roundingStep={platform.followerCountRoundingStep ?? 0}
         />
       )}
     </div>
@@ -267,12 +268,14 @@ function FollowerBadge({
   count,
   source,
   asOf,
+  roundingStep,
 }: {
   count: number;
   source: FollowerCountSource | null;
   asOf: string | null;
+  roundingStep: number;
 }) {
-  const display = describeFollowerCount({ count, source, asOf });
+  const display = describeFollowerCount({ count, source, asOf, roundingStep });
 
   return (
     <Tooltip>

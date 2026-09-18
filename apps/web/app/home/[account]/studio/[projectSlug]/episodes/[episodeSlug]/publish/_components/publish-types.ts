@@ -95,6 +95,7 @@ export interface PlatformConnection {
   followerCount?: number | null;
   followerCountSource?: FollowerCountSource | null;
   followerCountAsOf?: string | null;
+  followerCountRoundingStep?: number;
 }
 
 export interface PlatformConfig {

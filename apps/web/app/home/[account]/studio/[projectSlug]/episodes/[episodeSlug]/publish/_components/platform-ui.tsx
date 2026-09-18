@@ -81,6 +81,7 @@ export const ChannelBadge = ({
           count: conn.followerCount,
           source: conn.followerCountSource,
           asOf: conn.followerCountAsOf,
+          roundingStep: conn.followerCountRoundingStep,
         })
       : null;
 
