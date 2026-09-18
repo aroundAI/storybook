@@ -317,17 +317,6 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
       }),
   });
 
-  const channelNames = useMemo(
-    () =>
-      Object.fromEntries(
-        (channelsQuery.data ?? []).map((channel) => [
-          channel.connectionId,
-          channel.name,
-        ]),
-      ),
-    [channelsQuery.data],
-  );
-
   const yppQuery = useQuery({
     queryKey: ['deep-dive-ypp', accountId, filters.connectionId],
     // Spread, not `connectionId: filters.connectionId`: an undefined property
@@ -520,7 +509,7 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
           >
             <SubscriberSeriesCard
               series={subscriberSeriesQuery.data ?? []}
-              channelNames={channelNames}
+              channels={channelsQuery.data ?? []}
             />
           </QueryState>
         </AnalyticsCard>

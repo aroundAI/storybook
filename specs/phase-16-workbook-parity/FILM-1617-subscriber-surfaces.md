@@ -58,6 +58,26 @@ must say so on screen, rather than drawing a shorter line without
 explanation. Where the selection is a single channel, this collapses to
 that channel's own series and the rule costs nothing.
 
+### 2.1 Settled in review: a total per platform, over active channels
+
+A channel is one `platform_connections` row — a YouTube channel, a TikTok
+account, an Instagram account, with per-language channels as separate rows.
+The first implementation summed all of them, so a YouTube subscriber and a
+TikTok follower were added together and one person on both was counted
+twice. The Total view now shows **one line per platform**, over that
+platform's **active** channels:
+
+- A disconnected channel is never snapshotted again. With no level it
+  blocked the total for good; with an old one it added a figure nothing
+  measures. It is left out, and the note names it. Its own line stays in the
+  per-channel view.
+- Every series ends at its newest anchor or delta. `reconstructSeries`
+  carries a level forward over days with no delta, so a line read to today
+  ran flat past its data — for a disconnected channel, flat for months,
+  labelled as reconstructed from movement nobody measured.
+- Where a platform sums more than one channel, the note says a person
+  subscribed to several is counted once for each.
+
 ## 3. Disclose the Seed, Not Just the Curve
 
 Each point carries a `SubscriberSource` (`lib/subscriber-series.ts:31`):
@@ -69,6 +89,12 @@ reconstructed one, and the UI must distinguish them:
 - `interpolated` and `constrained` days are reconstructed from deltas
   between anchors and inherit the anchor's error.
 - `clamped` days hit a bound and are the least trustworthy of the four.
+
+> **Corrected in review: the error runs both ways.** The seed pins to the
+> band floor, so the first stretch can only read low — but a later anchor can
+> clamp a level to the band's top, or leave it anywhere inside, and then it
+> reads high. Every surface says "off by up to N either way", and a total's
+> bound is the sum of its channels'.
 
 **The rounded-seed bias must be disclosed wherever the number is shown** —
 this is FILM-1607's one unchecked acceptance criterion, deferred here

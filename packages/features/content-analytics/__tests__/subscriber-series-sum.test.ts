@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { SubscriberSource } from '@kit/clickhouse';
 
-import { sumSubscriberSeries } from '../src/lib/subscriber-series-sum';
+import {
+  sumByPlatform,
+  sumSubscriberSeries,
+} from '../src/lib/subscriber-series-sum';
 
 function series(
   connectionId: string,
@@ -99,9 +102,9 @@ describe('sumSubscriberSeries', () => {
     expect(result.excluded).toEqual(['b']);
   });
 
-  // Each channel's seed can sit up to step − 1 below its true level, and a
-  // sum adds those shortfalls: three channels at 10,000 can be 29,997 low.
-  it('adds up the rounding shortfall of every channel in the total', () => {
+  // Each channel's level can be off by up to step − 1, and a sum adds those
+  // bounds: three channels rounded to 10,000 can be off by 29,997.
+  it('adds up the rounding error of every channel in the total', () => {
     const day: Array<[string, number]> = [['2026-09-01', 1_000_000]];
 
     expect(
@@ -109,12 +112,11 @@ describe('sumSubscriberSeries', () => {
         series('a', day, 10_000),
         series('b', day, 10_000),
         series('c', day, 10_000),
-      ]).roundingShortfall,
+      ]).roundingError,
     ).toBe(29_997);
 
     expect(
-      sumSubscriberSeries([series('a', day), series('b', day)])
-        .roundingShortfall,
+      sumSubscriberSeries([series('a', day), series('b', day)]).roundingError,
     ).toBe(0);
   });
 
@@ -123,7 +125,76 @@ describe('sumSubscriberSeries', () => {
       points: [],
       startsOn: null,
       excluded: [],
-      roundingShortfall: 0,
+      roundingError: 0,
     });
+  });
+});
+
+describe('sumByPlatform', () => {
+  const day: Array<[string, number]> = [['2026-09-01', 100]];
+
+  function channel(connectionId: string, platform: string, isActive = true) {
+    return { connectionId, platform, name: `${connectionId} name`, isActive };
+  }
+
+  // YouTube subscribers and TikTok followers are different things, and one
+  // person on both would be counted twice in a cross-platform sum.
+  it('keeps one total per platform', () => {
+    const totals = sumByPlatform(
+      [series('yt-en', day), series('yt-hi', day), series('tt', day)],
+      [
+        channel('yt-en', 'youtube'),
+        channel('yt-hi', 'youtube'),
+        channel('tt', 'tiktok'),
+      ],
+    );
+
+    expect(
+      totals.map((t) => [t.platform, t.points.map((p) => p.level)]),
+    ).toEqual([
+      ['tiktok', [100]],
+      ['youtube', [200]],
+    ]);
+  });
+
+  // A disconnected channel is never snapshotted again, so with no level it
+  // would block its platform's total for good.
+  it('leaves out a disconnected channel, and names it', () => {
+    const [youtube] = sumByPlatform(
+      [series('yt-en', day), series('yt-old', [])],
+      [channel('yt-en', 'youtube'), channel('yt-old', 'youtube', false)],
+    );
+
+    expect(youtube?.points.map((p) => p.level)).toEqual([100]);
+    expect(youtube?.disconnected).toEqual(['yt-old name']);
+    expect(youtube?.excluded).toEqual([]);
+  });
+
+  // An active channel with no level will get one at the next capture, so it
+  // blocks the total and is named as the reason.
+  it('still has no total while an active channel has no level', () => {
+    const [youtube] = sumByPlatform(
+      [series('yt-en', day), series('yt-new', [])],
+      [channel('yt-en', 'youtube'), channel('yt-new', 'youtube')],
+    );
+
+    expect(youtube?.points).toEqual([]);
+    expect(youtube?.excluded).toEqual(['yt-new']);
+  });
+
+  it('adds up rounding error within a platform only', () => {
+    const totals = sumByPlatform(
+      [series('yt-en', day, 100), series('yt-hi', day, 10), series('tt', day)],
+      [
+        channel('yt-en', 'youtube'),
+        channel('yt-hi', 'youtube'),
+        channel('tt', 'tiktok'),
+      ],
+    );
+
+    expect(totals.map((t) => [t.platform, t.roundingError])).toEqual([
+      ['tiktok', 0],
+      ['youtube', 108],
+    ]);
   });
 });
