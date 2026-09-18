@@ -123,6 +123,43 @@ describe('subscriber levels', () => {
     });
   });
 
+  // `reconstructSeries` carries a level forward over days with no delta, so
+  // a line read to today ran flat past its data — for a disconnected channel,
+  // flat for months, labelled as reconstructed from movement nobody measured.
+  describe('series end at their newest data', () => {
+    it('stops a line on its newest delta, not on the window end', async () => {
+      mocks.querySubscriberAnchors.mockResolvedValue([
+        anchor(A, '2026-09-10', 1000),
+      ]);
+      mocks.querySubscriberDeltas.mockResolvedValue([
+        delta(A, '2026-09-11', 5),
+        delta(A, '2026-09-12', 3),
+      ]);
+
+      const [series] = await querySubscriberSeries({
+        connectionIds: [A],
+        from: '2026-09-10',
+        to: '2026-09-18',
+      });
+
+      expect(series?.points.at(-1)?.date).toBe('2026-09-12');
+    });
+
+    it('ends a channel with no data after its last anchor on that anchor', async () => {
+      mocks.querySubscriberAnchors.mockResolvedValue([
+        anchor(A, '2026-06-01', 2300),
+      ]);
+
+      const [series] = await querySubscriberSeries({
+        connectionIds: [A],
+        from: '2026-05-01',
+        to: '2026-09-18',
+      });
+
+      expect(series?.points.map((p) => p.date)).toEqual(['2026-06-01']);
+    });
+  });
+
   describe('queryLatestSubscriberLevels', () => {
     it('dates the level by its newest evidence, not by today', async () => {
       mocks.querySubscriberAnchors.mockResolvedValue([
