@@ -7,10 +7,11 @@ import { sumSubscriberSeries } from '../src/lib/subscriber-series-sum';
 function series(
   connectionId: string,
   points: Array<[string, number, SubscriberSource?]>,
+  roundingStep = 0,
 ) {
   return {
     connectionId,
-    roundingStep: 0,
+    roundingStep,
     points: points.map(([date, level, source = 'interpolated']) => ({
       date,
       level,
@@ -98,11 +99,31 @@ describe('sumSubscriberSeries', () => {
     expect(result.excluded).toEqual(['b']);
   });
 
+  // Each channel's seed can sit up to step − 1 below its true level, and a
+  // sum adds those shortfalls: three channels at 10,000 can be 29,997 low.
+  it('adds up the rounding shortfall of every channel in the total', () => {
+    const day: Array<[string, number]> = [['2026-09-01', 1_000_000]];
+
+    expect(
+      sumSubscriberSeries([
+        series('a', day, 10_000),
+        series('b', day, 10_000),
+        series('c', day, 10_000),
+      ]).roundingShortfall,
+    ).toBe(29_997);
+
+    expect(
+      sumSubscriberSeries([series('a', day), series('b', day)])
+        .roundingShortfall,
+    ).toBe(0);
+  });
+
   it('is empty for no channels', () => {
     expect(sumSubscriberSeries([])).toEqual({
       points: [],
       startsOn: null,
       excluded: [],
+      roundingShortfall: 0,
     });
   });
 });

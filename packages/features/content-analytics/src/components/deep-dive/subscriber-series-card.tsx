@@ -17,6 +17,7 @@ import {
   SUBSCRIBER_SOURCE_LABEL,
   describeRounding,
   formatSubscriberDay,
+  shortfallOf,
 } from '../../lib/subscriber-disclosure';
 import { sumSubscriberSeries } from '../../lib/subscriber-series-sum';
 
@@ -83,8 +84,12 @@ export function SubscriberSeriesCard({
     );
   }
 
+  // Per channel, each line is low by at most its own shortfall; a total is
+  // low by all of them at once.
   const rounding = describeRounding(
-    Math.max(...withData.map((s) => s.roundingStep)),
+    showingTotal
+      ? total.roundingShortfall
+      : Math.max(...withData.map((s) => shortfallOf(s.roundingStep))),
   );
 
   return (

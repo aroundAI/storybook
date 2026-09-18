@@ -1,5 +1,7 @@
 import type { SubscriberPoint, SubscriberSource } from '@kit/clickhouse';
 
+import { shortfallOf } from './subscriber-disclosure';
+
 /**
  * Summing per-channel subscriber series (FILM-1617 §2).
  *
@@ -15,6 +17,11 @@ export interface SubscriberSeriesSum {
   startsOn: string | null;
   /** Channels with no level at all, which leave nothing to sum. */
   excluded: string[];
+  /**
+   * How far below the truth the total can sit: every channel's rounded seed
+   * can be low by its own shortfall, and a sum adds them.
+   */
+  roundingShortfall: number;
 }
 
 // Least to most measured. A total inherits the weakest of its parts.
@@ -30,14 +37,18 @@ function weaker(a: SubscriberSource, b: SubscriberSource): SubscriberSource {
 }
 
 export function sumSubscriberSeries(
-  series: Array<{ connectionId: string; points: SubscriberPoint[] }>,
+  series: Array<{
+    connectionId: string;
+    points: SubscriberPoint[];
+    roundingStep: number;
+  }>,
 ): SubscriberSeriesSum {
   const excluded = series
     .filter((s) => s.points.length === 0)
     .map((s) => s.connectionId);
 
   if (series.length === 0 || excluded.length > 0) {
-    return { points: [], startsOn: null, excluded };
+    return { points: [], startsOn: null, excluded, roundingShortfall: 0 };
   }
 
   // Checked per day, not from one start date: a series can have gaps.
@@ -68,5 +79,15 @@ export function sumSubscriberSeries(
     .map((day) => day.point)
     .sort((a, b) => (a.date < b.date ? -1 : 1));
 
-  return { points, startsOn: points[0]?.date ?? null, excluded };
+  const roundingShortfall = series.reduce(
+    (total, s) => total + shortfallOf(s.roundingStep),
+    0,
+  );
+
+  return {
+    points,
+    startsOn: points[0]?.date ?? null,
+    excluded,
+    roundingShortfall,
+  };
 }
