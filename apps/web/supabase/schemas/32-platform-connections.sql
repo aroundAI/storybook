@@ -16,9 +16,9 @@ CREATE TABLE IF NOT EXISTS public.platform_connections (
   metadata JSONB DEFAULT '{}'::jsonb,
   -- Target language for this channel, so multi-language content can be routed
   -- to the channel that serves that language. Added by migration
-  -- 20251223150000_add_platform_connection_language.sql; declared here because
-  -- `db diff` treats this file as the desired state and would otherwise
-  -- generate a DROP for a column that is live in every environment.
+  -- 20251223150000_add_platform_connection_language.sql; declared here so this
+  -- file matches the database. (`db diff` would read its absence as a DROP;
+  -- this repo writes migrations by hand and does not run it.)
   language VARCHAR(5) DEFAULT 'en' NOT NULL,
   is_active BOOLEAN DEFAULT TRUE NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,

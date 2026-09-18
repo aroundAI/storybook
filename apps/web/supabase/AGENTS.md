@@ -34,7 +34,9 @@ MYSQL_HOST=your-mysql-endpoint.amazonaws.com
 
 Schemas are organized in numbered files in the `schemas/` directory. Numbers are used to sort dependencies.
 
-Migrations are generated from schemas. You MUST create a migration file for database changes to take effect.
+**The database is built from `migrations/` alone.** Schema files are partial
+documentation, mirrored by hand from each migration; nothing is generated
+from them. You MUST write a migration for a database change to take effect.
 
 ### ⛔ `db diff` does not work here — write migrations by hand
 
@@ -58,8 +60,11 @@ pnpm --filter web supabase migration up
 #    (so the two do not drift further) — but never generate from it
 
 # 4. Generate TypeScript types
-supabase gen types typescript --local > lib/database.types.ts
-cp lib/database.types.ts ../../packages/supabase/src/database.types.ts
+pnpm supabase:web:typegen   # writes both copies; never hand-edit the result
+
+# CI regenerates and diffs this. A hand-edited or stale database.types.ts
+# fails the Supabase DB job. The CLI version in apps/web/package.json is
+# pinned to the one CI installs so the two agree byte for byte.
 ```
 
 ⚠️ **CRITICAL**: Schema files are just documentation. Only a migration changes
@@ -278,8 +283,9 @@ pnpm --filter web supabase migration list
 # Reset database completely
 pnpm supabase:web:reset
 
-# Generate migration from schema diff
-pnpm --filter web run supabase:db:diff -f migration-name
+# New migration: write it by hand (see "Writing a migration" above).
+# There is deliberately no db-diff script — it was removed because it
+# generated DROPs for the tables schemas/ is missing.
 
 # Apply specific migration
 pnpm --filter web supabase migration up --include-schemas public

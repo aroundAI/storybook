@@ -263,8 +263,9 @@ supabase db reset
 supabase migration up
 supabase migration down
 
-# Verify data integrity
-supabase db diff
+# Verify data integrity with pgTAP, not `supabase db diff` — in this repo
+# db diff runs against an incomplete schemas/ and proposes dropping tables
+pnpm --filter web supabase:test
 ```
 
 ## Common Gotchas

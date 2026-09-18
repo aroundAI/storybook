@@ -34,7 +34,9 @@ MYSQL_HOST=your-mysql-endpoint.amazonaws.com
 
 Schemas are organized in numbered files in the `schemas/` directory. Numbers are used to sort dependencies.
 
-Migrations are generated from schemas. You MUST create a migration file for database changes to take effect.
+**The database is built from `migrations/` alone.** Schema files are partial
+documentation, mirrored by hand from each migration; nothing is generated
+from them. You MUST write a migration for a database change to take effect.
 
 ### ⛔ `db diff` does not work here — write migrations by hand
 
@@ -281,8 +283,9 @@ pnpm --filter web supabase migration list
 # Reset database completely
 pnpm supabase:web:reset
 
-# Generate migration from schema diff
-pnpm --filter web run supabase:db:diff -f migration-name
+# New migration: write it by hand (see "Writing a migration" above).
+# There is deliberately no db-diff script — it was removed because it
+# generated DROPs for the tables schemas/ is missing.
 
 # Apply specific migration
 pnpm --filter web supabase migration up --include-schemas public
