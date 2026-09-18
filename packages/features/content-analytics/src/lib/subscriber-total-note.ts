@@ -20,6 +20,8 @@ export function platformLabel(platform: string): string {
 export function describeTotal(
   total: PlatformSubscriberSum,
   channelNames: Record<string, string>,
+  /** Each channel's newest measurement, in the window or not. */
+  lastDataById: Record<string, string | null> = {},
 ): string {
   const label = platformLabel(total.platform);
 
@@ -27,9 +29,7 @@ export function describeTotal(
     total.startsOn
       ? `${label} total begins ${formatSubscriberDay(total.startsOn)}, the first day every active ${label} channel has a level.`
       : total.excluded.length > 0
-        ? `No ${label} total yet: ${listNames(
-            total.excluded.map((id) => channelNames[id] ?? 'a channel'),
-          )} ${total.excluded.length === 1 ? 'has' : 'have'} no subscriber count.`
+        ? describeExcluded(label, total.excluded, channelNames, lastDataById)
         : total.channelCount > 0
           ? // Every channel has data, just never on the same day — capture
             // for one ended before another's began.
@@ -59,4 +59,40 @@ function listNames(names: string[]): string {
   if (names.length <= 1) return names.join('');
 
   return `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+}
+
+/**
+ * Why each empty channel leaves no total. A channel never measured has no
+ * count yet; one whose data ended before the window had a count and
+ * stopped — its capture may have broken — and saying "no count yet" of it
+ * sends the reader looking for the wrong problem.
+ */
+function describeExcluded(
+  label: string,
+  excluded: string[],
+  channelNames: Record<string, string>,
+  lastDataById: Record<string, string | null>,
+): string {
+  const nameOf = (id: string) => channelNames[id] ?? 'a channel';
+
+  const ended = excluded.filter((id) => lastDataById[id]);
+  const never = excluded.filter((id) => !lastDataById[id]);
+
+  const reasons = [
+    ...ended.map(
+      (id) =>
+        `${nameOf(id)} has no data since ${formatSubscriberDay(
+          lastDataById[id]!,
+        )} — its capture may have stopped`,
+    ),
+    ...(never.length > 0
+      ? [
+          `${listNames(never.map(nameOf))} ${
+            never.length === 1 ? 'has' : 'have'
+          } no subscriber count`,
+        ]
+      : []),
+  ];
+
+  return `No ${label} total yet: ${reasons.join('; ')}.`;
 }

@@ -53,7 +53,8 @@ async function insertClickHouse(
 }
 
 /**
- * A weekly anchor plus daily movement from `firstAnchorDaysAgo` to today.
+ * A daily anchor — the capture cron runs every day — plus daily movement
+ * from `firstAnchorDaysAgo` to today, except across an optional capture gap.
  * Movement starts on the first anchor, so the curve cannot reach earlier than
  * it — which is what makes the total's start date visible.
  */
@@ -66,6 +67,8 @@ async function seedSubscriberHistory(
     roundingStep: number;
     /** When capture stopped — a disconnected channel's data ends early. */
     stopsDaysAgo?: number;
+    /** Days with movement but no snapshot: a broken capture, then recovery. */
+    gap?: { fromDaysAgo: number; toDaysAgo: number };
   },
 ) {
   const anchors: Array<Record<string, unknown>> = [];
@@ -98,7 +101,12 @@ async function seedSubscriberHistory(
       });
     }
 
-    if ((options.firstAnchorDaysAgo - day) % 7 === 0) {
+    const inGap =
+      options.gap !== undefined &&
+      day <= options.gap.fromDaysAgo &&
+      day >= options.gap.toDaysAgo;
+
+    if (!inGap) {
       const step = options.roundingStep;
 
       anchors.push({
@@ -151,6 +159,7 @@ test.describe('FILM-1617 — evidence', () => {
       startLevel: 40_150,
       dailyGain: 12,
       roundingStep: 100,
+      gap: { fromDaysAgo: 45, toDaysAgo: 26 },
     });
 
     // Below 1,000, so exact — and connected much later.
