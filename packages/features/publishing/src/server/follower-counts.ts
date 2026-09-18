@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { isMeasuredSource } from '@kit/clickhouse';
 import {
   type LatestSubscriberLevel,
   queryLatestSubscriberLevels,
@@ -58,8 +59,9 @@ function resolveOne(
       // `constrained` and `clamped` are set only on days with an anchor, so
       // they are measured days whose figure was rounded — YouTube's every
       // snapshot above 1,000. Only `interpolated` is reconstructed.
-      followerCountSource:
-        level.source === 'interpolated' ? 'reconstructed' : 'snapshot',
+      followerCountSource: isMeasuredSource(level.source)
+        ? 'snapshot'
+        : 'reconstructed',
       followerCountAsOf: level.date,
       followerCountRoundingStep: level.roundingStep,
     };
@@ -86,8 +88,11 @@ function resolveOne(
 
 /**
  * How long the publish pages wait for a subscriber level before falling back
- * to the stored count. The read reaches back 400 days and joins per-video
- * metrics, and these pages are about publishing, not analytics.
+ * to the stored count. The read spans each channel's whole capture history —
+ * every reader seeds from the earliest snapshot, so they agree — and joins
+ * per-video metrics, so it grows with history and this cap will be reached
+ * more often over time. These pages are about publishing, not analytics; a
+ * stored level per connection is the remedy if the cap starts to bite.
  */
 const LEVEL_READ_TIMEOUT_MS = 2_000;
 
