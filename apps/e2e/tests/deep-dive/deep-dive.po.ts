@@ -87,4 +87,8 @@ export class DeepDivePageObject {
   yppCards() {
     return this.page.locator('[data-test="ypp-progress-card"]:visible');
   }
+
+  subscriberEmpty() {
+    return this.page.locator('[data-test="subscriber-series-empty"]:visible');
+  }
 }

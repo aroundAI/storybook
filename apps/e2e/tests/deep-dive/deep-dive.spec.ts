@@ -87,11 +87,12 @@ test.describe('Deep Dive channel filter', () => {
     const deepDive = new DeepDivePageObject(page);
     const fixture = await deepDive.setup();
 
-    // The first render: four deep-dive calls with the plain project scope,
-    // and a YPP call with no channel.
+    // The first render: five deep-dive calls with the plain project scope —
+    // median, traffic, back catalog, cohorts and the subscriber series — and
+    // a YPP call with no channel.
     await expect
       .poll(() => deepDiveCalls(calls).length)
-      .toBeGreaterThanOrEqual(4);
+      .toBeGreaterThanOrEqual(5);
     await expect.poll(() => yppCalls(calls).length).toBeGreaterThanOrEqual(1);
 
     for (const call of [...deepDiveCalls(calls), ...yppCalls(calls)]) {
@@ -107,7 +108,7 @@ test.describe('Deep Dive channel filter', () => {
     // answer and made no request at all.
     await expect
       .poll(() => deepDiveCalls(calls.slice(beforeSelect)).length)
-      .toBe(4);
+      .toBe(5);
     await expect.poll(() => yppCalls(calls.slice(beforeSelect)).length).toBe(1);
 
     for (const call of deepDiveCalls(calls.slice(beforeSelect))) {
@@ -184,6 +185,66 @@ test.describe('Deep Dive channel filter', () => {
 
     await expect(deepDive.yppCards()).toHaveCount(1);
     await expect(deepDive.yppCards()).toContainText(['Active Channel']);
+  });
+});
+
+test.describe('Deep Dive subscribers (FILM-1617)', () => {
+  // ClickHouse is off here, so no channel has a subscriber level. That is
+  // exactly the state a hidden count produces, and the one where a surface is
+  // most tempted to print 0.
+  test('a channel with no subscriber count says so rather than showing zero', async ({
+    page,
+  }) => {
+    const deepDive = new DeepDivePageObject(page);
+    await deepDive.setup();
+
+    await expect(deepDive.subscriberEmpty()).toContainText(
+      'No subscriber count yet',
+    );
+    await expect(
+      page.locator('[data-test="subscriber-series-error"]'),
+    ).toHaveCount(0);
+
+    const ypp = deepDive.yppCards().first();
+
+    await expect(
+      ypp.locator('[data-test="ypp-subscribers-value"]'),
+    ).toHaveText('Unavailable');
+
+    // The net figure stays, under a label that says it is movement.
+    await expect(ypp).toContainText('Net subscriber movement (365 days)');
+  });
+
+  test('the subscriber card follows the channel filter', async ({ page }) => {
+    const calls = recordActionCalls(page);
+    const deepDive = new DeepDivePageObject(page);
+    const fixture = await deepDive.setup();
+
+    // Exactly a scope and a date window. The traffic breakdown also sends
+    // `scope`, `from` and `to`, plus `bucket`, so matching on `to` alone
+    // picks it up.
+    const seriesCalls = (from = 0) =>
+      calls
+        .slice(from)
+        .filter((call) => Object.keys(call).sort().join() === 'from,scope,to');
+
+    await expect.poll(() => seriesCalls().length).toBeGreaterThanOrEqual(1);
+
+    const before = calls.length;
+
+    // The disconnected channel: its history still belongs on this card.
+    await deepDive.chooseChannel(fixture.inactiveChannelId);
+
+    await expect.poll(() => seriesCalls(before).length).toBe(1);
+
+    expect(seriesCalls(before)[0]?.scope).toEqual({
+      projectId: fixture.project.id,
+      connectionId: fixture.inactiveChannelId,
+    });
+
+    await expect(deepDive.subscriberEmpty()).toContainText(
+      'No subscriber count yet',
+    );
   });
 });
 

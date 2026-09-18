@@ -75,6 +75,36 @@ test.describe('Failed reads', () => {
     await expect(page.locator('[data-test="ypp-no-channels"]')).toHaveCount(0);
   });
 
+  test('a failed subscriber read is reported, not shown as no subscribers', async ({
+    page,
+  }) => {
+    const deepDive = new DeepDivePageObject(page);
+    const fixture = await deepDive.setup();
+
+    // `getSubscriberSeriesAction` is the only call whose argument is exactly
+    // a scope and a date window. The traffic breakdown also sends `scope`,
+    // `from` and `to`, but carries `bucket` too.
+    await abortActionMatching(page, (body) => {
+      try {
+        const [args] = JSON.parse(body) as Array<Record<string, unknown>>;
+        return Object.keys(args ?? {}).sort().join() === 'from,scope,to';
+      } catch {
+        return false;
+      }
+    });
+
+    await deepDive.goToDeepDive(fixture.team.slug, fixture.project.slug);
+
+    await expect(
+      page.locator('[data-test="subscriber-series-error"]:visible'),
+    ).toBeVisible(ERROR_STATE);
+
+    // The claim that must not be made: the count is unknown, not absent.
+    await expect(
+      page.locator('[data-test="subscriber-series-empty"]'),
+    ).toHaveCount(0);
+  });
+
   test('a failed revenue summary is reported, not shown as no revenue', async ({
     page,
   }) => {

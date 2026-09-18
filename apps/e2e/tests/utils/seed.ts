@@ -192,7 +192,7 @@ export async function seedTeamAccount(
 export async function seedYouTubeConnection(
   accountId: string,
   name = 'Seeded Channel',
-  options: { isActive?: boolean } = {},
+  options: { isActive?: boolean; metadata?: Record<string, unknown> } = {},
 ): Promise<string> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/platform_connections`, {
     method: 'POST',
@@ -211,6 +211,7 @@ export async function seedYouTubeConnection(
       // A disconnected channel keeps its history, so the Deep Dive filter
       // must still list it — which needs one to exist.
       is_active: options.isActive ?? true,
+      ...(options.metadata ? { metadata: options.metadata } : {}),
     }),
   });
 
@@ -339,6 +340,33 @@ export async function seedPublishedEpisode(
   );
 
   return { episodeId: episode.id, publishId: publish.id };
+}
+
+/**
+ * An episode with one shot, which is what unlocks its publish page — the page
+ * renders "Publishing Locked" until Visual Studio has produced shots.
+ */
+export async function seedEpisodeWithShot(
+  projectId: string,
+  options: { number?: number } = {},
+): Promise<{ episodeId: string; slug: string }> {
+  const auth = { key: SERVICE_ROLE_KEY };
+  const number = options.number ?? 1;
+  const slug = `seeded-episode-${uniqueStamp()}`;
+
+  const episode = await insertRow<{ id: string }>(
+    'episodes',
+    { project_id: projectId, number, title: `Seeded Episode ${number}`, slug },
+    auth,
+  );
+
+  await insertRow(
+    'shots',
+    { episode_id: episode.id, sequence_number: 1, prompt: 'Seeded shot' },
+    auth,
+  );
+
+  return { episodeId: episode.id, slug };
 }
 
 /**
