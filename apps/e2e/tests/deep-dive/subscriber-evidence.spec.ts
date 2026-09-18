@@ -180,6 +180,10 @@ test.describe('FILM-1617 — evidence', () => {
     // 1. Per channel, the default.
     await card.screenshot({ path: `${OUT}/10-subscribers-per-channel.png` });
 
+    const perChannelDisclosure = await page
+      .locator('[data-test="subscriber-seed-disclosure"]:visible')
+      .textContent();
+
     // 2. The total, starting where every channel has a level.
     await page.locator('[data-test="subscriber-series-total"]').click();
 
@@ -192,7 +196,8 @@ test.describe('FILM-1617 — evidence', () => {
     await card.screenshot({ path: `${OUT}/11-subscribers-total.png` });
 
     const totalNoteText = await totalNote.textContent();
-    const seedDisclosure = await page
+    // Summed: every channel's shortfall at once, not the largest one.
+    const totalDisclosure = await page
       .locator('[data-test="subscriber-seed-disclosure"]:visible')
       .textContent();
 
@@ -253,8 +258,30 @@ test.describe('FILM-1617 — evidence', () => {
     const storedTooltip = page.getByRole('tooltip');
 
     await expect(storedTooltip).toContainText('not live');
+
+    // Read now: once another chip is hovered, this locator finds its tooltip.
+    const storedTooltipText = await storedTooltip.textContent();
     await page.screenshot({
       path: `${OUT}/15-publish-stored-count-tooltip.png`,
+      animations: 'disabled',
+    });
+
+    // A rounded YouTube count: measured, and said to be rounded.
+    await clearHover();
+    await chips.filter({ hasText: 'Active Channel' }).hover();
+
+    // The previous tooltip can still be closing, so pick this chip's.
+    const roundedTooltip = page
+      .getByRole('tooltip')
+      .filter({ hasText: 'Active Channel' })
+      .first();
+
+    await expect(roundedTooltip).toContainText('Active Channel');
+
+    const roundedTooltipText = await roundedTooltip.textContent();
+
+    await page.screenshot({
+      path: `${OUT}/17-publish-rounded-count-tooltip.png`,
       animations: 'disabled',
     });
 
@@ -266,16 +293,17 @@ test.describe('FILM-1617 — evidence', () => {
           ?.getAttribute('data-stale'),
       })),
     );
-    const storedTooltipText = await storedTooltip.textContent();
 
     console.log(
       'MEASURED',
       JSON.stringify(
         {
           totalNote: totalNoteText,
-          seedDisclosure,
+          perChannelDisclosure,
+          totalDisclosure,
           publishChips,
           storedTooltipText,
+          roundedTooltipText,
           yppCards: await deepDive.yppCards().evaluateAll((cards) =>
             cards.map((c) => ({
               channel: c.querySelector('span')?.textContent,

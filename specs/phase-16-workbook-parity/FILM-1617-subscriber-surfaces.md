@@ -114,6 +114,13 @@ shared with `PlatformSelector` through `@kit/publishing/lib/follower-count`,
 so the two cannot drift. Deleting the unmounted `PublishHub` is left as a
 follow-up.
 
+The chip's tooltip carries the rounding disclosure, like every other
+surface showing a count. A rounded snapshot day — `constrained` or
+`clamped`, which is every YouTube snapshot above 1,000 — counts as
+measured; only `interpolated` is labelled reconstructed. The Deep Dive
+total discloses the *sum* of its channels' rounding shortfalls, since each
+channel's seed can be low by its own.
+
 A stored count is dated by the connection's `created_at`. A reconnect
 refreshes the stored count without moving that date, so the label can
 understate freshness but never overstate it — `updated_at` would, because

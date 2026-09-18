@@ -9,6 +9,7 @@ import {
   SUBSCRIBER_SOURCE_LABEL,
   describeRounding,
   formatSubscriberDay,
+  shortfallOf,
 } from '../../lib/subscriber-disclosure';
 import type { TargetBasis, YppApplicantStatus } from '../../lib/ypp-targets';
 
@@ -151,7 +152,9 @@ function SubscriberLevelRow({ progress }: { progress: YppChannelProgress }) {
     );
   }
 
-  const rounding = describeRounding(progress.subscribersRoundingStep);
+  const rounding = describeRounding(
+    shortfallOf(progress.subscribersRoundingStep),
+  );
 
   return (
     <div className={'flex flex-col gap-0.5'} data-test={'ypp-subscribers'}>
