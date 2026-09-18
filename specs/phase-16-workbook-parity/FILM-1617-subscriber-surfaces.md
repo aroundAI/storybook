@@ -112,6 +112,19 @@ reconstructed one, and the UI must distinguish them:
 > capture history as a result; a stored level per connection is the remedy
 > if that grows costly, not a shorter window.
 
+### 3.1 Marking sources when snapshots are daily
+
+The capture cron runs daily, so almost every day has an anchor. A marker
+per measured day — the first design — put up to 365 on each line and buried
+it. Only the exceptions are marked now: the line is **solid** through
+measured days and **dashed** where a day was reconstructed from movement
+alone (a capture gap), and a **square** marks a day held to the edge of the
+platform's rounded band. The tooltip still names each day's source.
+
+A channel whose data ended before the window has no points in it but is
+not "no count yet": each series carries its `lastDataDate`, and the card
+and the total note say "no data since {date}" for it.
+
 **The rounded-seed bias must be disclosed wherever the number is shown** —
 this is FILM-1607's one unchecked acceptance criterion, deferred here
 because this spec owns every surface that shows the number. The YouTube
@@ -210,7 +223,7 @@ path untouched. It is rejected:
 - [x] A subscriber series card renders one line per connection
 - [x] A summed view emits only days on which every in-scope connection has a level
 - [x] The summed view states the date its series begins and why
-- [x] Snapshot, interpolated, constrained and clamped points are visually distinguishable — by marker shape, not colour alone
+- [x] Snapshot, interpolated, constrained and clamped points are visually distinguishable — measured days draw solid and reconstructed days dashed, clamped days carry a square, and the tooltip names every day's source (§3.1)
 - [x] The rounded-seed bias is disclosed wherever an absolute figure is shown
 - [x] A hidden subscriber count renders as unavailable, not as zero
 - [x] `YppProgressCard` shows an absolute subscriber count, with net movement separately labelled as movement

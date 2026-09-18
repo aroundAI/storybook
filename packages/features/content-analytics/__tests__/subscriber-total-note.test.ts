@@ -29,12 +29,13 @@ const names = { a: 'Channel A', b: 'Channel B' };
 function noteFor(
   s: ReturnType<typeof series>[],
   c: ReturnType<typeof channel>[],
+  lastData: Record<string, string | null> = {},
 ) {
   const [total] = sumByPlatform(s, c);
 
   if (!total) throw new Error('expected a YouTube total');
 
-  return describeTotal(total, names);
+  return describeTotal(total, names, lastData);
 }
 
 describe('describeTotal', () => {
@@ -66,6 +67,18 @@ describe('describeTotal', () => {
         [channel('a'), channel('b')],
       ),
     ).toContain('No YouTube total yet: Channel B has no subscriber count');
+  });
+
+  // Its data ended before the window: it had a count, it just stopped.
+  it('says an active channel with old data has none since, not none yet', () => {
+    const note = noteFor(
+      [series('a', ['2026-09-01']), series('b', [])],
+      [channel('a'), channel('b')],
+      { b: '2025-06-30' },
+    );
+
+    expect(note).toContain('Channel B has no data since Jun 30, 2025');
+    expect(note).not.toContain('no subscriber count');
   });
 
   it('says so when no active channel publishes here', () => {

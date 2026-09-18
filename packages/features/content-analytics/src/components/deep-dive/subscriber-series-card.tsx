@@ -8,10 +8,18 @@ import type {
   ConnectionSubscriberSeries,
   SubscriberSource,
 } from '@kit/clickhouse';
-import { type ChartConfig, ChartContainer, ChartTooltip } from '@kit/ui/chart';
+import { ChartContainer, ChartTooltip } from '@kit/ui/chart';
 import { Skeleton } from '@kit/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@kit/ui/toggle-group';
 
+import {
+  type ChartLine,
+  type ChartRow,
+  drawnRoundingError,
+  measuredKey,
+  sourceKey,
+  toChartData,
+} from '../../lib/subscriber-chart-data';
 import {
   NO_SUBSCRIBER_LEVEL,
   SUBSCRIBER_SOURCE_LABEL,
@@ -48,6 +56,12 @@ export function SubscriberSeriesCard({
   const channelNames = useMemo(
     () => Object.fromEntries(channels.map((c) => [c.connectionId, c.name])),
     [channels],
+  );
+
+  const lastDataById = useMemo(
+    () =>
+      Object.fromEntries(series.map((s) => [s.connectionId, s.lastDataDate])),
+    [series],
   );
 
   const [view, setView] = useState<View>('per-channel');
@@ -102,7 +116,7 @@ export function SubscriberSeriesCard({
   // total by all of its channels' at once.
   const rounding = describeRounding(
     showingTotal
-      ? Math.max(0, ...totals.map((t) => t.roundingError))
+      ? drawnRoundingError(totals)
       : Math.max(...withData.map((s) => roundingErrorOf(s.roundingStep))),
   );
 
@@ -138,7 +152,9 @@ export function SubscriberSeriesCard({
           data-test={'subscriber-series-total-note'}
         >
           {totals.map((t) => (
-            <li key={t.platform}>{describeTotal(t, channelNames)}</li>
+            <li key={t.platform}>
+              {describeTotal(t, channelNames, lastDataById)}
+            </li>
           ))}
         </ul>
       ) : null}
@@ -168,16 +184,37 @@ export function SubscriberSeriesCard({
               content={<SubscriberTooltip lines={lines} />}
               cursor={false}
             />
+            {/*
+              Two strokes per line. Dashed through every day; solid through
+              measured days, broken wherever a day was reconstructed from
+              movement alone — so a capture gap shows as dashed.
+            */}
             {lines.map((line) => (
               <Line
-                key={line.key}
+                key={`${line.key}-all`}
                 dataKey={line.key}
                 name={line.name}
                 type={'monotone'}
                 stroke={`var(--color-${line.key})`}
-                strokeWidth={2}
+                strokeWidth={1.5}
+                strokeDasharray={'4 4'}
+                strokeOpacity={0.7}
                 isAnimationActive={false}
-                dot={<SourceDot />}
+                dot={false}
+                activeDot={false}
+              />
+            ))}
+            {lines.map((line) => (
+              <Line
+                key={`${line.key}-measured`}
+                dataKey={measuredKey(line.key)}
+                name={line.name}
+                type={'monotone'}
+                stroke={`var(--color-${line.key})`}
+                strokeWidth={2}
+                connectNulls={false}
+                isAnimationActive={false}
+                dot={<ClampedDot lineKey={line.key} />}
                 activeDot={false}
               />
             ))}
@@ -207,15 +244,21 @@ export function SubscriberSeriesCard({
       <SourceLegend />
 
       {withoutData.length > 0 && !showingTotal ? (
-        <p
+        <ul
           className={'text-muted-foreground text-xs'}
           data-test={'subscriber-series-missing'}
         >
-          {withoutData
-            .map((s) => channelNames[s.connectionId] ?? 'A channel')
-            .join(', ')}
-          : {NO_SUBSCRIBER_LEVEL}
-        </p>
+          {withoutData.map((s) => (
+            <li key={s.connectionId}>
+              {channelNames[s.connectionId] ?? 'A channel'}:{' '}
+              {/* History that ended before this window is not "no count
+                  yet" — the channel was measured, and then stopped. */}
+              {s.lastDataDate
+                ? `no data since ${formatSubscriberDay(s.lastDataDate)} — its capture may have stopped.`
+                : NO_SUBSCRIBER_LEVEL}
+            </li>
+          ))}
+        </ul>
       ) : null}
 
       {rounding ? (
@@ -235,100 +278,39 @@ export function SubscriberSeriesCard({
   );
 }
 
-type ChartLine = {
-  key: string;
-  name: string;
-  points: Array<{ date: string; level: number; source: SubscriberSource }>;
-};
-
-type ChartRow = { date: string } & Record<string, string | number>;
-
-function sourceKey(lineKey: string) {
-  return `${lineKey}__source`;
-}
-
-function toChartData(lines: ChartLine[]) {
-  const byDate = new Map<string, ChartRow>();
-
-  for (const line of lines) {
-    for (const point of line.points) {
-      const row = byDate.get(point.date) ?? { date: point.date };
-
-      row[line.key] = point.level;
-      row[sourceKey(line.key)] = point.source;
-      byDate.set(point.date, row);
-    }
-  }
-
-  const config: ChartConfig = Object.fromEntries(
-    lines.map((line, index) => [
-      line.key,
-      { label: line.name, color: `var(--chart-${(index % 5) + 1})` },
-    ]),
-  );
-
-  const rows = [...byDate.values()].sort((a, b) => (a.date < b.date ? -1 : 1));
-
-  return { rows, config };
-}
-
 /**
- * Sources are told apart by shape, never by colour alone: the line's colour
- * already identifies the channel.
+ * A marker only on clamped days: the platform's rounded figure disagreed with
+ * the daily movement, and the level was held to the edge of its band.
+ * Snapshots are daily, so marking every measured day buried the line; the
+ * solid/dashed stroke carries measured vs reconstructed, the tooltip names
+ * every day's source, and this marks the exceptions.
  *
- * A marker only where the day is not a plain reconstruction: a daily dot
- * across a year would bury the line. The line itself is the reconstructed
- * days; the legend says so.
+ * A square, not a colour: the first chart colour is itself orange in this
+ * theme, so an amber dot was indistinguishable on that channel's line.
  */
-function SourceDot(props: {
+function ClampedDot(props: {
   cx?: number;
   cy?: number;
-  dataKey?: string;
   payload?: ChartRow;
-  stroke?: string;
+  lineKey: string;
 }) {
-  const { cx, cy, dataKey, payload, stroke } = props;
+  const { cx, cy, payload, lineKey } = props;
 
-  if (cx === undefined || cy === undefined || !dataKey || !payload) {
-    return null;
-  }
+  if (cx === undefined || cy === undefined || !payload) return null;
 
-  const source = payload[sourceKey(dataKey)] as SubscriberSource | undefined;
+  if (payload[sourceKey(lineKey)] !== 'clamped') return null;
 
-  if (source === 'snapshot') {
-    return <circle cx={cx} cy={cy} r={3} fill={stroke} stroke={stroke} />;
-  }
-
-  if (source === 'constrained') {
-    return (
-      <circle
-        cx={cx}
-        cy={cy}
-        r={3}
-        fill={'var(--background)'}
-        stroke={stroke}
-        strokeWidth={1.5}
-      />
-    );
-  }
-
-  // A square, not a colour: the first chart colour is itself orange in this
-  // theme, so an amber dot on that channel's line was indistinguishable.
-  if (source === 'clamped') {
-    return (
-      <rect
-        x={cx - 3.5}
-        y={cy - 3.5}
-        width={7}
-        height={7}
-        fill={'var(--background)'}
-        stroke={'var(--foreground)'}
-        strokeWidth={1.5}
-      />
-    );
-  }
-
-  return null;
+  return (
+    <rect
+      x={cx - 3.5}
+      y={cy - 3.5}
+      width={7}
+      height={7}
+      fill={'var(--background)'}
+      stroke={'var(--foreground)'}
+      strokeWidth={1.5}
+    />
+  );
 }
 
 function SourceLegend() {
@@ -338,16 +320,16 @@ function SourceLegend() {
       data-test={'subscriber-source-legend'}
     >
       <li className={'flex items-center gap-1.5'}>
-        <span className={'bg-foreground inline-block size-2 rounded-full'} />
-        Snapshot — measured
+        <span className={'bg-foreground inline-block h-0.5 w-4'} />
+        Solid — a snapshot that day
       </li>
       <li className={'flex items-center gap-1.5'}>
         <span
           className={
-            'border-foreground inline-block size-2 rounded-full border'
+            'border-foreground inline-block w-4 border-t border-dashed'
           }
         />
-        Reconstructed, within the platform’s rounded figure
+        Dashed — no snapshot, reconstructed from daily movement
       </li>
       <li className={'flex items-center gap-1.5'}>
         <span
@@ -355,11 +337,7 @@ function SourceLegend() {
             'border-foreground bg-background inline-block size-2 border'
           }
         />
-        Held to the edge of the rounded figure
-      </li>
-      <li className={'flex items-center gap-1.5'}>
-        <span className={'bg-foreground inline-block h-0.5 w-3'} />
-        Line only — reconstructed from daily movement
+        Held to the edge of the platform’s rounded figure
       </li>
     </ul>
   );
