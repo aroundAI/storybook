@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1617
 title: Subscriber Surfaces
-status: DRAFT
+status: ✅ DONE
 effort: S
 dependencies: FILM-1607, FILM-1611, FILM-1618
 ---
@@ -82,20 +82,42 @@ approximate.
 
 Two related caveats already recorded in FILM-1607 belong on screen for the
 same reason: the series cannot predate the first snapshot for days with no
-deltas, and a hidden subscriber count returns 0 by design rather than as a
-failure.
+deltas, and a hidden subscriber count yields no level at all.
+
+> **Corrected during implementation.** This section said a hidden count
+> "returns 0 by design". It does not: `captureSubscriberSnapshots` skips a
+> hidden count (`subscriber-snapshot.ts:152`) and writes no anchor, so the
+> series comes back empty. The data therefore cannot tell *hidden* from *not
+> captured yet*, and every surface says both.
 
 ## 4. Implementation Map
 
 | File | Change |
 |------|--------|
-| `packages/features/content-analytics/src/server/subscriber-series-actions.ts` | **Fix a live scoping bug.** `ScopeSchema` accepts `projectId` (`:34-38`) but the connection query filters only on `accountId` and `connectionId` (`:65-83`) — so a project-scoped call returns every connection on the account, including channels the project never published to. Either resolve the project's connections (as `listProjectChannels` does) or reject `projectId` outright; silently widening the scope is the one option that must not survive. |
+| `packages/features/content-analytics/src/server/subscriber-series-actions.ts` | **Fix a live scoping bug — worse than first described.** The connection query ran on the **admin** client and filtered only on `is_active` plus whatever `accountId`/`connectionId` the caller sent. A `{ projectId }` scope therefore returned every active connection **in every account**, and `{ projectId: mine, accountId: theirs }` passed `assertScopeAccess` (which resolves the project and ignores the extra id) and then read the other account's channels. Nothing called the action before this spec, so it was latent. Now: project scopes resolve through `listProjectChannels`, account scopes filter on the account `assertScopeAccess` *returns*, and the action requires auth. |
 | `packages/features/content-analytics/src/components/deep-dive/subscriber-series-card.tsx` | New. Renders one line per connection by default, with an optional summed view under the §2 rule. Point sources are visually distinguished per §3, and the rounded-seed band is stated, not implied. |
 | `packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx` | Mount the card, using the channel filter FILM-1611 adds — the selection that filters the other cards must filter this one, or the tab shows two different channel scopes at once. |
 | `packages/features/content-analytics/src/server/deep-dive-actions.ts` | `getYppProgressAction` gains an absolute `subscribers` alongside the existing `netSubscribers`, sourced from the latest series level for that connection, plus `subscribersSource` so the card can mark a reconstructed figure. `netSubscribers` stays — it is the correct input to the growth reading and only its *label* was wrong. Delete the stale comment at `:306-307` once it is true. |
 | `packages/features/content-analytics/src/components/deep-dive/ypp-progress-card.tsx` | `YppChannelProgress` gains `subscribers` and `subscribersSource`. The "Subscribers" label moves onto the absolute figure; the net movement is relabelled as movement over the window. |
-| `packages/features/publishing/src/server/connection-actions.ts` | `getConnectedPlatformsAction` (`:273`) and `getConnectionsAction` (`:87-92`) resolve `followerCount` from the latest subscriber level where one exists, falling back to `metadata.followers_count`. Keep the fallback: Instagram has no `channel_subscribers` row, and dropping it would darken the one platform whose badge currently works. |
+| `packages/features/publishing/src/server/connection-actions.ts` | `getConnectedPlatformsAction` (`:273`) and `getConnectionsAction` (`:87-92`) resolve `followerCount` from the latest subscriber level where one exists, falling back to `metadata.followers_count`. Keep the fallback: it is the only figure for any connection without a snapshot, and dropping it would darken the one platform whose badge currently works. (This row originally said Instagram has no `channel_subscribers` row; `captureSubscriberSnapshots` does capture Instagram — the fallback matters for connections not yet snapshotted.) |
 | `packages/features/publishing/src/lib/types.ts` | `followerCount` gains a companion source field (`:52`, `:80`) so the badge can render "as of connection date" for a stale metadata value rather than presenting it as current. |
+
+### 4.1 Where the badge actually lives
+
+The "Publish Hub badge" in this spec is rendered by `PlatformSelector`
+inside `PublishHub` — **a component nothing mounts**. No screen in
+`apps/web` showed a follower count. The dated count is therefore surfaced
+on the real episode publish screen, in `ChannelBadge`
+(`apps/web/.../publish/_components/platform-ui.tsx`): inline on the
+sidebar and upload-dialog chips, and in every chip's tooltip. The wording is
+shared with `PlatformSelector` through `@kit/publishing/lib/follower-count`,
+so the two cannot drift. Deleting the unmounted `PublishHub` is left as a
+follow-up.
+
+A stored count is dated by the connection's `created_at`. A reconnect
+refreshes the stored count without moving that date, so the label can
+understate freshness but never overstate it — `updated_at` would, because
+every token refresh bumps it.
 
 ## 5. Why Not Just Write `followers_count` at Snapshot Time
 
@@ -127,20 +149,20 @@ path untouched. It is rejected:
 
 ## 7. Acceptance Criteria
 
-- [ ] A subscriber series card renders one line per connection
-- [ ] A summed view emits only days on which every in-scope connection has a level
-- [ ] The summed view states the date its series begins and why
-- [ ] Snapshot, interpolated, constrained and clamped points are visually distinguishable
-- [ ] The rounded-seed bias is disclosed wherever an absolute figure is shown
-- [ ] A hidden subscriber count renders as unavailable, not as zero
-- [ ] `YppProgressCard` shows an absolute subscriber count, with net movement separately labelled as movement
-- [ ] The stale comments in `getYppProgressAction` are removed once the figure is absolute
-- [ ] The Publish Hub badge shows a live level for YouTube and TikTok connections
-- [ ] The badge still works for Instagram via the metadata fallback
-- [ ] A metadata-sourced badge value is marked as of the connection date
-- [ ] A project-scoped call to `getSubscriberSeriesAction` no longer returns connections outside that project
-- [ ] Nothing writes subscriber counts into `platform_connections.metadata`
-- [ ] The card is filtered by the same channel selector as the rest of the tab
+- [x] A subscriber series card renders one line per connection
+- [x] A summed view emits only days on which every in-scope connection has a level
+- [x] The summed view states the date its series begins and why
+- [x] Snapshot, interpolated, constrained and clamped points are visually distinguishable — by marker shape, not colour alone
+- [x] The rounded-seed bias is disclosed wherever an absolute figure is shown
+- [x] A hidden subscriber count renders as unavailable, not as zero
+- [x] `YppProgressCard` shows an absolute subscriber count, with net movement separately labelled as movement
+- [x] The stale comments in `getYppProgressAction` are removed once the figure is absolute
+- [x] The follower count shows a live level for any connection with a snapshot — on the publish screen's channel chips, since the Publish Hub is unmounted (§4.1)
+- [x] The count still works for Instagram via the metadata fallback
+- [x] A metadata-sourced value is marked as of the connection date, and as not live
+- [x] A project-scoped call to `getSubscriberSeriesAction` no longer returns connections outside that project — nor, as it did, outside the caller's account
+- [x] Nothing writes subscriber counts into `platform_connections.metadata`
+- [x] The card is filtered by the same channel selector as the rest of the tab
 
 ## 8. Verification
 
@@ -169,3 +191,26 @@ and the YPP card's "Subscribers". Both are currently wrong — one absent,
 one mislabelled — so the change is a correction, but it will look like a
 regression to anyone who had learned to read the old figure. Say so in the
 PR description rather than letting it be discovered.
+
+## 10. Found During Implementation — Not Fixed Here
+
+- **YPP net movement omits the channel residual.** `netSubscribers` sums
+  `video_daily_stats` only, while the subscriber curve's deltas include the
+  `channel_daily` residual (FILM-1618). On a channel whose movement is mostly
+  residual, the card can show a growing count beside a net movement near 0.
+  The progress bar still reads the net figure, by decision, so this is
+  worth its own spec.
+- **`PublishHub` is unmounted.** It and its `PlatformSelector` are dead code
+  kept type-correct by this spec (§4.1); deleting them is a separate change.
+- **`revenue-chart.tsx` colours with `hsl(var(--chart-1))`**, but `--chart-1`
+  is an `oklch(…)` colour under Tailwind 4, which makes that value invalid
+  CSS. The subscriber card uses `var(--chart-N)` directly. Not verified in a
+  browser here.
+
+Fixed here because it blocked verification: two `'use server'` modules in
+`@kit/episodes` re-exported types (`export type { … }`), which Turbopack
+rejects ("Only async functions are allowed to be exported"). Every episode
+page, publish included, failed to build under `pnpm dev`. This spec's own
+first draft made the same mistake in `subscriber-series-actions.ts`, where it
+compiled but threw `ReferenceError` on every action call — invisible to
+typecheck and the unit suite, caught only by the browser suite.
