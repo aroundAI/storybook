@@ -46,6 +46,29 @@ function widestStep(anchors: Array<{ roundingStep: number }>): number {
   return anchors.reduce((widest, a) => Math.max(widest, a.roundingStep), 0);
 }
 
+/**
+ * The newest date this connection has any measurement for.
+ *
+ * `reconstructSeries` carries a level forward over days with no delta, so a
+ * walk read to today always ends today — flat, and labelled as reconstructed
+ * from movement nobody measured. Anything past this date is that invention.
+ */
+function lastEvidenceDate(
+  anchors: Array<{ snapshotDate: string }>,
+  deltas: Array<{ metricDate: string }>,
+): string | null {
+  let last: string | null = null;
+
+  for (const date of [
+    ...anchors.map((a) => a.snapshotDate),
+    ...deltas.map((d) => d.metricDate),
+  ]) {
+    if (last === null || date > last) last = date;
+  }
+
+  return last;
+}
+
 /** Anchors and deltas grouped per connection, reaching back past `from`. */
 async function readInputs(input: {
   connectionIds: string[];
@@ -84,11 +107,19 @@ export async function querySubscriberSeries(input: {
 }): Promise<ConnectionSubscriberSeries[]> {
   if (input.connectionIds.length === 0) return [];
 
-  return (await readInputs(input)).map(({ connectionId, anchors, deltas }) => ({
-    connectionId,
-    points: reconstructSeries(anchors, deltas, input),
-    roundingStep: widestStep(anchors),
-  }));
+  return (await readInputs(input)).map(({ connectionId, anchors, deltas }) => {
+    const last = lastEvidenceDate(anchors, deltas);
+
+    return {
+      connectionId,
+      // Stops where the data stops: a disconnected channel's line ends when
+      // capture ended, and an active one's ends before its ingest lag.
+      points: reconstructSeries(anchors, deltas, input).filter(
+        (point) => last !== null && point.date <= last,
+      ),
+      roundingStep: widestStep(anchors),
+    };
+  });
 }
 
 /**
@@ -113,14 +144,9 @@ export async function queryLatestSubscriberLevels(
   const entries = await readInputs({ connectionIds, from: today, to: today });
 
   for (const { connectionId, anchors, deltas } of entries) {
-    const evidenceDates = [
-      ...anchors.map((a) => a.snapshotDate),
-      ...deltas.map((d) => d.metricDate),
-    ];
+    const lastEvidence = lastEvidenceDate(anchors, deltas);
 
-    if (anchors.length === 0) continue;
-
-    const lastEvidence = evidenceDates.reduce((a, b) => (a > b ? a : b));
+    if (anchors.length === 0 || lastEvidence === null) continue;
 
     // Re-walk only up to the evidence, so the returned point is dated by it.
     const points = reconstructSeries(anchors, deltas, {
