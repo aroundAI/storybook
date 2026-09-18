@@ -38,6 +38,13 @@ export interface PublishHubProps {
 }
 
 /**
+ * Where a follower badge's figure came from (FILM-1617): a measured
+ * snapshot, a level reconstructed from daily movement, or the count stored
+ * when the account was connected.
+ */
+export type FollowerCountSource = 'snapshot' | 'reconstructed' | 'metadata';
+
+/**
  * Platform connection from database
  */
 export interface PlatformConnection {
@@ -50,6 +57,8 @@ export interface PlatformConnection {
   tokenValid: boolean;
   tokenExpiresAt?: string | null;
   followerCount?: number | null;
+  followerCountSource?: FollowerCountSource | null;
+  followerCountAsOf?: string | null;
   scopes?: string[] | null;
   language: string; // Target language for this channel (en, hi, es, pt)
   // Unified fields for compatibility with Settings page
@@ -78,6 +87,8 @@ export interface PlatformPublishConfig {
   platformAccountName?: string;
   avatarUrl?: string | null;
   followerCount?: number | null;
+  followerCountSource?: FollowerCountSource | null;
+  followerCountAsOf?: string | null;
   tokenValid?: boolean;
   accounts?: Array<{
     id: string;

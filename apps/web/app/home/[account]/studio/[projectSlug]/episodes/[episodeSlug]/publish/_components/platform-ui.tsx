@@ -2,6 +2,7 @@
 
 import { AlertCircle, Facebook, Instagram, Youtube } from 'lucide-react';
 
+import { describeFollowerCount } from '@kit/publishing/lib/follower-count';
 import { Avatar, AvatarFallback, AvatarImage } from '@kit/ui/avatar';
 import {
   Tooltip,
@@ -71,6 +72,18 @@ export const ChannelBadge = ({
   size?: 'sm' | 'md';
 }) => {
   const config = PLATFORM_CONFIG[conn.platform];
+
+  // Null means no count exists — never captured, or hidden by the owner —
+  // so nothing is shown rather than a 0 that would read as measured.
+  const followers =
+    conn.followerCount != null
+      ? describeFollowerCount({
+          count: conn.followerCount,
+          source: conn.followerCountSource,
+          asOf: conn.followerCountAsOf,
+        })
+      : null;
+
   return (
     <TooltipProvider>
       <Tooltip>
@@ -91,6 +104,15 @@ export const ChannelBadge = ({
             >
               {conn.platformAccountName}
             </span>
+            {followers && size === 'md' ? (
+              <span
+                className={`text-xs ${followers.stale ? 'text-muted-foreground' : 'text-foreground/70'}`}
+                data-test={'channel-follower-count'}
+                data-stale={followers.stale}
+              >
+                {followers.short}
+              </span>
+            ) : null}
             {!conn.tokenValid && (
               <AlertCircle className="h-3 w-3 text-red-500" />
             )}
@@ -100,6 +122,7 @@ export const ChannelBadge = ({
           <p>
             {config?.name}: {conn.platformAccountName}
           </p>
+          {followers ? <p>{followers.detail}</p> : null}
           {!conn.tokenValid && (
             <p className="text-red-400">Token expired - needs reconnection</p>
           )}

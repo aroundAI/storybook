@@ -31,8 +31,10 @@ import {
   TooltipTrigger,
 } from '@kit/ui/tooltip';
 
-import { PLATFORM_CONFIG, formatFollowers } from '../lib/platform-limits';
+import { describeFollowerCount } from '../lib/follower-count';
+import { PLATFORM_CONFIG } from '../lib/platform-limits';
 import type {
+  FollowerCountSource,
   Platform,
   PlatformPublishConfig,
   PlatformSelectorProps,
@@ -246,12 +248,47 @@ function AccountInfo({ platform }: { platform: PlatformPublishConfig }) {
       <span className="text-muted-foreground text-sm">
         {platform.platformAccountName}
       </span>
-      {platform.followerCount != null && platform.followerCount > 0 && (
-        <Badge variant="secondary" className="text-xs">
-          {formatFollowers(platform.followerCount)}
-        </Badge>
+      {platform.followerCount != null && (
+        <FollowerBadge
+          count={platform.followerCount}
+          source={platform.followerCountSource ?? null}
+          asOf={platform.followerCountAsOf ?? null}
+        />
       )}
     </div>
+  );
+}
+
+/**
+ * The follower count, dated. A figure stored at connection time is marked as
+ * such rather than presented as current (FILM-1617).
+ */
+function FollowerBadge({
+  count,
+  source,
+  asOf,
+}: {
+  count: number;
+  source: FollowerCountSource | null;
+  asOf: string | null;
+}) {
+  const display = describeFollowerCount({ count, source, asOf });
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge
+          variant={display.stale ? 'outline' : 'secondary'}
+          className={
+            display.stale ? 'text-muted-foreground text-xs' : 'text-xs'
+          }
+          data-test={'follower-badge'}
+        >
+          {display.short}
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent>{display.detail}</TooltipContent>
+    </Tooltip>
   );
 }
 
