@@ -5776,6 +5776,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      editable_publish_ids: {
+        Args: { p_publish_ids: string[] }
+        Returns: string[]
+      }
       get_account_invitations: {
         Args: { account_slug: string }
         Returns: {
@@ -6138,6 +6142,14 @@ export type Database = {
       plan_dialogue_timeline: { Args: { p_updates: Json }; Returns: number }
       remove_episode_from_threads_touched: {
         Args: { p_episode_id: string; p_project_id: string }
+        Returns: undefined
+      }
+      replace_experiment_publishes: {
+        Args: { p_experiment_id: string; p_publish_ids: string[] }
+        Returns: undefined
+      }
+      replace_experiment_tags: {
+        Args: { p_experiment_id: string; p_tag_ids: string[] }
         Returns: undefined
       }
       reset_monthly_usage: { Args: never; Returns: number }

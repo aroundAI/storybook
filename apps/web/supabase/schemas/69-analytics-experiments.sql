@@ -124,7 +124,8 @@ create policy "experiment_publishes_read" on public.experiment_publishes for sel
   );
 
 -- The linked publish must belong to the experiment's account (migration
--- 20260918203816): snapshots read linked videos from ClickHouse, outside RLS.
+-- 20260918203816), and links change only while the experiment is planned
+-- (20260918221250): snapshots read linked videos from ClickHouse, outside RLS.
 create policy "experiment_publishes_create" on public.experiment_publishes for insert
   to authenticated with check (
     exists (
@@ -136,6 +137,7 @@ create policy "experiment_publishes_create" on public.experiment_publishes for i
        where e.id = experiment_publishes.experiment_id
          and public.has_account_access(e.account_id)
          and p.account_id = e.account_id
+         and e.status = 'planned'
     )
   );
 
@@ -143,8 +145,9 @@ create policy "experiment_publishes_delete" on public.experiment_publishes for d
   to authenticated using (
     exists (
       select 1 from public.analytics_experiments e
-      where e.id = experiment_id
-        and public.has_account_access(e.account_id)
+       where e.id = experiment_id
+         and public.has_account_access(e.account_id)
+         and e.status = 'planned'
     )
   );
 
@@ -174,3 +177,87 @@ create policy "experiment_tags_delete" on public.experiment_tags for delete
         and public.has_account_access(e.account_id)
     )
   );
+
+-- ==================================
+-- Integrity enforced by the table (FILM-1610 review, migration 20260918221250)
+-- ==================================
+
+create or replace function public.replace_experiment_publishes(
+  p_experiment_id uuid,
+  p_publish_ids uuid[]
+) returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  delete from public.experiment_publishes
+   where experiment_id = p_experiment_id;
+
+  insert into public.experiment_publishes (experiment_id, publish_id)
+  select p_experiment_id, publish_id
+    from (select distinct unnest(p_publish_ids) as publish_id) ids;
+end;
+$$;
+
+create or replace function public.replace_experiment_tags(
+  p_experiment_id uuid,
+  p_tag_ids uuid[]
+) returns void
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  delete from public.experiment_tags
+   where experiment_id = p_experiment_id;
+
+  insert into public.experiment_tags (experiment_id, tag_id)
+  select p_experiment_id, tag_id
+    from (select distinct unnest(p_tag_ids) as tag_id) ids;
+end;
+$$;
+
+grant execute on function public.replace_experiment_publishes(uuid, uuid[]) to authenticated;
+grant execute on function public.replace_experiment_tags(uuid, uuid[]) to authenticated;
+
+create or replace function public.freeze_started_experiment()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if old.status <> 'planned'
+     and (new.metric_watched is distinct from old.metric_watched
+          or new.review_window_days is distinct from old.review_window_days) then
+    raise exception
+      'The watched metric and review window cannot change once an experiment has started';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger analytics_experiments_freeze_started
+  before update of metric_watched, review_window_days on public.analytics_experiments
+  for each row execute function public.freeze_started_experiment();
+
+-- An experiment's creator is whoever inserts it. A service-role insert has no
+-- auth.uid(), so it keeps what it wrote (seeds and backfills).
+create or replace function public.set_experiment_creator()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if auth.uid() is not null then
+    new.created_by = auth.uid();
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger analytics_experiments_set_creator
+  before insert on public.analytics_experiments
+  for each row execute function public.set_experiment_creator();
