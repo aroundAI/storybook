@@ -79,6 +79,14 @@ export {
   querySubscriberDeltas,
 } from '../queries-advanced';
 
+export {
+  queryLatestSubscriberLevels,
+  querySubscriberSeries,
+} from '../subscriber-levels';
+export type {
+  ConnectionSubscriberSeries,
+  LatestSubscriberLevel,
+} from '../subscriber-levels';
 export { reconstructSeries } from '../lib/subscriber-series';
 export type {
   SubscriberAnchor,
