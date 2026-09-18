@@ -1,6 +1,6 @@
 import type { SubscriberPoint, SubscriberSource } from '@kit/clickhouse';
 
-import { shortfallOf } from './subscriber-disclosure';
+import { roundingErrorOf } from './subscriber-disclosure';
 
 /**
  * Summing per-channel subscriber series (FILM-1617 §2).
@@ -18,10 +18,10 @@ export interface SubscriberSeriesSum {
   /** Channels with no level at all, which leave nothing to sum. */
   excluded: string[];
   /**
-   * How far below the truth the total can sit: every channel's rounded seed
-   * can be low by its own shortfall, and a sum adds them.
+   * How far the total can sit from the truth, either way: every channel's
+   * level can be off by its own rounding error, and a sum adds them.
    */
-  roundingShortfall: number;
+  roundingError: number;
 }
 
 // Least to most measured. A total inherits the weakest of its parts.
@@ -48,7 +48,7 @@ export function sumSubscriberSeries(
     .map((s) => s.connectionId);
 
   if (series.length === 0 || excluded.length > 0) {
-    return { points: [], startsOn: null, excluded, roundingShortfall: 0 };
+    return { points: [], startsOn: null, excluded, roundingError: 0 };
   }
 
   // Checked per day, not from one start date: a series can have gaps.
@@ -79,8 +79,8 @@ export function sumSubscriberSeries(
     .map((day) => day.point)
     .sort((a, b) => (a.date < b.date ? -1 : 1));
 
-  const roundingShortfall = series.reduce(
-    (total, s) => total + shortfallOf(s.roundingStep),
+  const roundingError = series.reduce(
+    (total, s) => total + roundingErrorOf(s.roundingStep),
     0,
   );
 
@@ -88,6 +88,71 @@ export function sumSubscriberSeries(
     points,
     startsOn: points[0]?.date ?? null,
     excluded,
-    roundingShortfall,
+    roundingError,
   };
+}
+
+export interface PlatformSubscriberSum extends SubscriberSeriesSum {
+  platform: string;
+  /** Names of the platform's disconnected channels, left out of the total. */
+  disconnected: string[];
+  /** Channels summed, so a surface can say when two may double-count. */
+  channelCount: number;
+}
+
+/**
+ * One total per platform, over its active channels (FILM-1617 §2).
+ *
+ * Per platform because a YouTube subscriber and a TikTok follower are not the
+ * same thing, and one person on both would be counted twice. Active only
+ * because a disconnected channel is never snapshotted again: with no level it
+ * would block the total for good, and with an old one it would add a figure
+ * nothing is measuring any more.
+ */
+export function sumByPlatform(
+  series: Array<{
+    connectionId: string;
+    points: SubscriberPoint[];
+    roundingStep: number;
+  }>,
+  channels: Array<{
+    connectionId: string;
+    platform: string;
+    name: string;
+    isActive: boolean;
+  }>,
+): PlatformSubscriberSum[] {
+  const channelById = new Map(channels.map((c) => [c.connectionId, c]));
+  const byPlatform = new Map<
+    string,
+    { active: typeof series; disconnected: string[] }
+  >();
+
+  for (const s of series) {
+    const channel = channelById.get(s.connectionId);
+
+    if (!channel) continue;
+
+    const group = byPlatform.get(channel.platform) ?? {
+      active: [],
+      disconnected: [],
+    };
+
+    if (channel.isActive) {
+      group.active.push(s);
+    } else {
+      group.disconnected.push(channel.name);
+    }
+
+    byPlatform.set(channel.platform, group);
+  }
+
+  return [...byPlatform.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([platform, group]) => ({
+      platform,
+      ...sumSubscriberSeries(group.active),
+      disconnected: group.disconnected,
+      channelCount: group.active.length,
+    }));
 }

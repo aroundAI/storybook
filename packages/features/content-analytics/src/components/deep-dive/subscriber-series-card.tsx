@@ -17,19 +17,32 @@ import {
   SUBSCRIBER_SOURCE_LABEL,
   describeRounding,
   formatSubscriberDay,
-  shortfallOf,
+  roundingErrorOf,
 } from '../../lib/subscriber-disclosure';
-import { sumSubscriberSeries } from '../../lib/subscriber-series-sum';
+import { sumByPlatform } from '../../lib/subscriber-series-sum';
+import type { ChannelRef } from '../../server/channels';
 
 interface SubscriberSeriesCardProps {
   series: ConnectionSubscriberSeries[];
-  /** Display name per connection id, from the channel list. */
-  channelNames: Record<string, string>;
+  /** The project's channels: names, platforms, and which are still active. */
+  channels: ChannelRef[];
 }
 
 type View = 'per-channel' | 'total';
 
-const TOTAL_KEY = 'total';
+const PLATFORM_LABELS: Record<string, string> = {
+  youtube: 'YouTube',
+  tiktok: 'TikTok',
+  instagram: 'Instagram',
+};
+
+function platformLabel(platform: string): string {
+  return PLATFORM_LABELS[platform] ?? platform;
+}
+
+function listNames(names: string[]): string {
+  return names.join(', ');
+}
 
 /**
  * The absolute subscriber curve (FILM-1607, surfaced by FILM-1617).
@@ -43,30 +56,44 @@ const TOTAL_KEY = 'total';
  */
 export function SubscriberSeriesCard({
   series,
-  channelNames,
+  channels,
 }: SubscriberSeriesCardProps) {
+  const channelNames = useMemo(
+    () => Object.fromEntries(channels.map((c) => [c.connectionId, c.name])),
+    [channels],
+  );
+
   const [view, setView] = useState<View>('per-channel');
 
   const withData = series.filter((s) => s.points.length > 0);
   const withoutData = series.filter((s) => s.points.length === 0);
   const canTotal = series.length > 1;
 
-  const total = useMemo(() => sumSubscriberSeries(series), [series]);
+  // One per platform: a YouTube subscriber and a TikTok follower are not
+  // the same unit, and adding them counts a person on both twice.
+  const totals = useMemo(
+    () => sumByPlatform(series, channels),
+    [series, channels],
+  );
 
   const showingTotal = canTotal && view === 'total';
 
   const lines = useMemo(
     () =>
       showingTotal
-        ? total.points.length > 0
-          ? [{ key: TOTAL_KEY, name: 'All channels', points: total.points }]
-          : []
+        ? totals
+            .filter((t) => t.points.length > 0)
+            .map((t) => ({
+              key: `total-${t.platform}`,
+              name: `${platformLabel(t.platform)} total`,
+              points: t.points,
+            }))
         : withData.map((s) => ({
             key: s.connectionId,
             name: channelNames[s.connectionId] ?? 'Channel',
             points: s.points,
           })),
-    [showingTotal, total.points, withData, channelNames],
+    [showingTotal, totals, withData, channelNames],
   );
 
   const { rows, config } = useMemo(() => toChartData(lines), [lines]);
@@ -84,12 +111,12 @@ export function SubscriberSeriesCard({
     );
   }
 
-  // Per channel, each line is low by at most its own shortfall; a total is
-  // low by all of them at once.
+  // Per channel, each line is off by at most its own rounding error; a
+  // total by all of its channels' at once.
   const rounding = describeRounding(
     showingTotal
-      ? total.roundingShortfall
-      : Math.max(...withData.map((s) => shortfallOf(s.roundingStep))),
+      ? Math.max(0, ...totals.map((t) => t.roundingError))
+      : Math.max(...withData.map((s) => roundingErrorOf(s.roundingStep))),
   );
 
   return (
@@ -119,18 +146,14 @@ export function SubscriberSeriesCard({
       ) : null}
 
       {showingTotal ? (
-        <p
-          className={'text-muted-foreground text-xs'}
+        <ul
+          className={'text-muted-foreground flex flex-col gap-1 text-xs'}
           data-test={'subscriber-series-total-note'}
         >
-          {total.startsOn
-            ? `The total begins ${formatSubscriberDay(total.startsOn)}, the first day every channel has a level. Adding a channel before it has one would read as a jump in subscribers.`
-            : `No total yet: ${total.excluded
-                .map((id) => channelNames[id] ?? 'a channel')
-                .join(
-                  ', ',
-                )} ${total.excluded.length === 1 ? 'has' : 'have'} no subscriber count.`}
-        </p>
+          {totals.map((t) => (
+            <li key={t.platform}>{describeTotal(t, channelNames)}</li>
+          ))}
+        </ul>
       ) : null}
 
       {lines.length > 0 ? (
@@ -175,6 +198,25 @@ export function SubscriberSeriesCard({
         </ChartContainer>
       ) : null}
 
+      {lines.length > 0 ? (
+        <ul
+          className={'flex flex-wrap gap-x-4 gap-y-1 text-xs'}
+          data-test={'subscriber-series-lines'}
+        >
+          {lines.map((line) => (
+            <li key={line.key} className={'flex items-center gap-1.5'}>
+              <span
+                className={'inline-block h-0.5 w-3'}
+                // A global chart token, not the container-scoped
+                // --color-<key>, which only exists inside ChartContainer.
+                style={{ backgroundColor: config[line.key]?.color }}
+              />
+              {line.name}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
       <SourceLegend />
 
       {withoutData.length > 0 && !showingTotal ? (
@@ -204,6 +246,37 @@ export function SubscriberSeriesCard({
       </p>
     </div>
   );
+}
+
+function describeTotal(
+  total: ReturnType<typeof sumByPlatform>[number],
+  channelNames: Record<string, string>,
+): string {
+  const label = platformLabel(total.platform);
+
+  const parts = [
+    total.startsOn
+      ? `${label} total begins ${formatSubscriberDay(total.startsOn)}, the first day every active ${label} channel has a level.`
+      : total.excluded.length > 0
+        ? `No ${label} total yet: ${listNames(
+            total.excluded.map((id) => channelNames[id] ?? 'a channel'),
+          )} ${total.excluded.length === 1 ? 'has' : 'have'} no subscriber count.`
+        : `No ${label} total: no active ${label} channel publishes here.`,
+  ];
+
+  if (total.disconnected.length > 0) {
+    parts.push(
+      `Leaves out ${listNames(total.disconnected)}, disconnected and no longer measured.`,
+    );
+  }
+
+  if (total.channelCount > 1) {
+    parts.push(
+      'Someone subscribed to more than one of these channels is counted once for each.',
+    );
+  }
+
+  return parts.join(' ');
 }
 
 type ChartLine = {

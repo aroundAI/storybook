@@ -192,7 +192,12 @@ export async function seedTeamAccount(
 export async function seedYouTubeConnection(
   accountId: string,
   name = 'Seeded Channel',
-  options: { isActive?: boolean; metadata?: Record<string, unknown> } = {},
+  options: {
+    isActive?: boolean;
+    metadata?: Record<string, unknown>;
+    /** Defaults to YouTube; the Deep Dive total is per platform. */
+    platform?: string;
+  } = {},
 ): Promise<string> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/platform_connections`, {
     method: 'POST',
@@ -206,7 +211,7 @@ export async function seedYouTubeConnection(
     },
     body: JSON.stringify({
       account_id: accountId,
-      platform: 'youtube',
+      platform: options.platform ?? 'youtube',
       platform_account_name: name,
       // A disconnected channel keeps its history, so the Deep Dive filter
       // must still list it — which needs one to exist.

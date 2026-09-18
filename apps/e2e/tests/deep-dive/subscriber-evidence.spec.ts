@@ -64,6 +64,8 @@ async function seedSubscriberHistory(
     startLevel: number;
     dailyGain: number;
     roundingStep: number;
+    /** When capture stopped — a disconnected channel's data ends early. */
+    stopsDaysAgo?: number;
   },
 ) {
   const anchors: Array<Record<string, unknown>> = [];
@@ -71,7 +73,11 @@ async function seedSubscriberHistory(
 
   let level = options.startLevel;
 
-  for (let day = options.firstAnchorDaysAgo; day >= 1; day--) {
+  for (
+    let day = options.firstAnchorDaysAgo;
+    day >= (options.stopsDaysAgo ?? 1);
+    day--
+  ) {
     const date = daysAgo(day);
 
     if (day !== options.firstAnchorDaysAgo) {
@@ -155,12 +161,33 @@ test.describe('FILM-1617 — evidence', () => {
       roundingStep: 0,
     });
 
-    // The disconnected channel, connected in between.
+    // A TikTok account: its own total, never added to YouTube's.
+    const tiktokId = await seedYouTubeConnection(
+      fixture.team.accountId,
+      'TikTok Account',
+      { platform: 'tiktok' },
+    );
+
+    await seedPublishedEpisode(fixture.project.id, tiktokId, {
+      number: 5,
+      platform: 'tiktok',
+    });
+
+    await seedSubscriberHistory(tiktokId, {
+      firstAnchorDaysAgo: 60,
+      startLevel: 15_000,
+      dailyGain: 40,
+      roundingStep: 0,
+    });
+
+    // The disconnected channel, connected in between. Its line stays in the
+    // per-channel view; the YouTube total leaves it out and says so.
     await seedSubscriberHistory(fixture.inactiveChannelId, {
       firstAnchorDaysAgo: 150,
       startLevel: 2_300,
       dailyGain: 1,
       roundingStep: 10,
+      stopsDaysAgo: 30,
     });
 
     await page.reload();
@@ -191,7 +218,9 @@ test.describe('FILM-1617 — evidence', () => {
       '[data-test="subscriber-series-total-note"]:visible',
     );
 
-    await expect(totalNote).toContainText('The total begins');
+    await expect(totalNote).toContainText('YouTube total begins');
+    await expect(totalNote).toContainText('TikTok total begins');
+    await expect(totalNote).toContainText('Leaves out Retired Channel');
     await clearHover();
     await card.screenshot({ path: `${OUT}/11-subscribers-total.png` });
 
