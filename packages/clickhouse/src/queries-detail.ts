@@ -307,6 +307,89 @@ async function queryQualityMetricsForVideosSingle(input: {
   return result;
 }
 
+/** Subscribers a video gained and lost over a window. */
+export interface VideoSubscriberTotals {
+  gained: number;
+  lost: number;
+}
+
+/**
+ * Subscribers gained and lost per video, optionally date-bounded (FILM-1610).
+ *
+ * Per video, not per scope: `queryWatchWindowTotals` answers the same
+ * question for a whole project or account, which is the wrong denominator for
+ * an experiment run on a handful of videos. A video with no rows in the window
+ * is absent from the map rather than present with zeros, so a caller can tell
+ * "gained nothing" from "no data".
+ */
+export async function queryNetSubscribersForVideos(input: {
+  videoIds: string[];
+  startDate?: string;
+  endDate?: string;
+}): Promise<Map<string, VideoSubscriberTotals>> {
+  if (fitsOneChunk(input.videoIds)) {
+    return queryNetSubscribersForVideosSingle(input);
+  }
+
+  return mergeMapsByChunk(input.videoIds, (chunk) =>
+    queryNetSubscribersForVideosSingle({ ...input, videoIds: chunk }),
+  );
+}
+
+async function queryNetSubscribersForVideosSingle(input: {
+  videoIds: string[];
+  startDate?: string;
+  endDate?: string;
+}): Promise<Map<string, VideoSubscriberTotals>> {
+  const result = new Map<string, VideoSubscriberTotals>();
+
+  if (input.videoIds.length === 0 || !isClickHouseEnabled()) return result;
+
+  const client = getClickHouseClient();
+  const params: Record<string, unknown> = { videoIds: input.videoIds };
+  const conditions = ['video_id IN {videoIds: Array(String)}'];
+
+  if (input.startDate) {
+    conditions.push('metric_date >= {startDate: Date}');
+    params.startDate = input.startDate;
+  }
+  if (input.endDate) {
+    conditions.push('metric_date <= {endDate: Date}');
+    params.endDate = input.endDate;
+  }
+
+  // video_daily_stats is a view over `video_metrics FINAL`, so re-fetched
+  // days are already collapsed to one row each.
+  const response = await client.query({
+    query: `
+      SELECT
+        video_id,
+        sum(subscribers_gained) as gained,
+        sum(subscribers_lost) as lost
+      FROM video_daily_stats
+      WHERE ${conditions.join(' AND ')}
+      GROUP BY video_id
+    `,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
+
+  const rows = await response.json<{
+    video_id: string;
+    gained: number;
+    lost: number;
+  }>();
+
+  for (const row of rows) {
+    result.set(row.video_id, {
+      gained: Number(row.gained),
+      lost: Number(row.lost),
+    });
+  }
+
+  return result;
+}
+
 /**
  * Aggregated traffic sources for a set of videos, optionally date-bounded,
  * grouped by source — and additionally by date (`byDate`) and/or by video

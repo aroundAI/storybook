@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { WATCHED_METRIC_KEYS } from '../watched-metrics';
+
 export const ExperimentStatusSchema = z.enum([
   'planned',
   'running',
@@ -14,7 +16,29 @@ export const ExperimentOutcomeSchema = z.enum([
   'inconclusive',
 ]);
 
+/**
+ * What kind of change an experiment tests. A closed list for the form;
+ * stored as unconstrained varchar so adding one needs no migration.
+ */
+export const ExperimentCategorySchema = z.enum([
+  'packaging',
+  'hook',
+  'length',
+  'format',
+  'topic',
+  'schedule',
+  'other',
+]);
+
+export const WatchedMetricSchema = z.enum(WATCHED_METRIC_KEYS);
+
+export const DEFAULT_REVIEW_WINDOW_DAYS = 60;
+
+/** Days an experiment runs before review; the table enforces the same bounds. */
+export const ReviewWindowDaysSchema = z.number().int().min(1).max(365);
+
 export type ExperimentStatus = z.infer<typeof ExperimentStatusSchema>;
+export type ExperimentCategory = z.infer<typeof ExperimentCategorySchema>;
 export type ExperimentOutcome = z.infer<typeof ExperimentOutcomeSchema>;
 
 export const CreateExperimentSchema = z.object({
@@ -24,6 +48,11 @@ export const CreateExperimentSchema = z.object({
   hypothesis: z.string().max(2000).optional(),
   changeDescription: z.string().min(1).max(2000),
   expectedOutcome: z.string().max(2000).optional(),
+  category: ExperimentCategorySchema.optional(),
+  metricWatched: WatchedMetricSchema.optional(),
+  reviewWindowDays: ReviewWindowDaysSchema.default(DEFAULT_REVIEW_WINDOW_DAYS),
+  notes: z.string().max(5000).optional(),
+  connectionId: z.string().uuid().optional(),
   publishIds: z.array(z.string().uuid()).max(200).default([]),
   tagIds: z.array(z.string().uuid()).max(50).default([]),
 });
@@ -34,6 +63,12 @@ export const UpdateExperimentSchema = z.object({
   hypothesis: z.string().max(2000).optional(),
   changeDescription: z.string().min(1).max(2000).optional(),
   expectedOutcome: z.string().max(2000).optional(),
+  /** `null` clears the field; `undefined` leaves it alone. */
+  category: ExperimentCategorySchema.nullable().optional(),
+  metricWatched: WatchedMetricSchema.nullable().optional(),
+  reviewWindowDays: ReviewWindowDaysSchema.optional(),
+  notes: z.string().max(5000).nullable().optional(),
+  connectionId: z.string().uuid().nullable().optional(),
   publishIds: z.array(z.string().uuid()).max(200).optional(),
   tagIds: z.array(z.string().uuid()).max(50).optional(),
 });
@@ -75,4 +110,12 @@ export const GetExperimentSchema = z.object({
 
 export const DeleteExperimentSchema = z.object({
   experimentId: z.string().uuid(),
+});
+
+export const ListExperimentsDueSchema = z.object({
+  accountId: z.string().uuid(),
+});
+
+export const ListLinkablePublishesSchema = z.object({
+  accountId: z.string().uuid(),
 });
