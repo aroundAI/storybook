@@ -220,10 +220,13 @@ decisions differ from the text above.
 - **The revenue summary tiles reported a figure from a failed read**, beside
   the mix card's own admission — fixed, with the platforms and content tabs
   and the projection, which had the same gap off the same queries.
-- **A stored future joined date no longer locks its channel card.** The date
-  input's `max` widens to a date already stored, so rows written before that
-  bound can still be edited; the schema still refuses to save them, in the
-  form rather than a native bubble.
+- **A stored future joined date no longer locks its channel card.** Entering
+  a future date is refused, but one already on the row can be left alone while
+  the targets are saved — the rule needs the stored value, so it lives in
+  `buildChannelSettingsFormSchema` for the form and in the action for real,
+  not in a schema that cannot see the row. An earlier note here claimed the
+  input's `max` alone achieved this; it did not, and the test named for it
+  asserted the opposite.
 - **One join-date bound, resolved on the server.** The input's `max`, the
   schema and `alreadyJoined` all use `latestJoinDate()` passed down as
   `joinedCutoff`, so SSR and the browser cannot disagree.
