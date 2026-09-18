@@ -319,7 +319,7 @@ test.describe('Analytics settings', () => {
     );
   });
 
-  test('a channel whose stored joined date is in the future can still be edited', async ({
+  test('a stored future joined date does not block the rest of its card', async ({
     page,
   }) => {
     const settings = new AnalyticsSettingsPageObject(page);
@@ -327,9 +327,9 @@ test.describe('Analytics settings', () => {
     const account = await settings.setup();
 
     // `ypp-targets.ts` expects rows written before the form refused future
-    // dates. With the input's `max` pinned at the cutoff, the browser refuses
-    // to submit the whole card for such a channel — so its watch-hours
-    // override cannot be saved, and the only feedback is a native bubble.
+    // dates. Such a row must not lock every other setting on the card: the
+    // date cannot be *entered* any more, but one already stored can be left
+    // alone while the targets are saved.
     const future = new Date();
     future.setUTCDate(future.getUTCDate() + 7);
     const futureIso = future.toISOString().slice(0, 10);
@@ -343,12 +343,11 @@ test.describe('Analytics settings', () => {
     await expect(settings.channelJoined()).toHaveValue(futureIso);
 
     await settings.channelWatchHours().fill('7000');
-    await settings.channelSubmit().click();
+    await settings.saveChannel();
 
-    // The form reaches its own validation, which says what is wrong and
-    // where, rather than the submission never starting.
-    await expect(
-      page.getByText("Joined date can't be in the future"),
-    ).toBeVisible();
+    await settings.goToSettings(account.slug);
+
+    await expect(settings.channelWatchHours()).toHaveValue('7000');
+    await expect(settings.channelJoined()).toHaveValue(futureIso);
   });
 });

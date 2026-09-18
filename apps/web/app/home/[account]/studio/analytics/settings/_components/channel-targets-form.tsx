@@ -7,7 +7,7 @@ import { isRedirectError } from 'next/dist/client/components/redirect-error';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
-import { UpdateChannelAnalyticsSettingsSchema } from '@kit/content-analytics/lib/schemas/settings';
+import { buildChannelSettingsFormSchema } from '@kit/content-analytics/lib/schemas/settings';
 import type { OverriddenTarget } from '@kit/content-analytics/lib/ypp-targets';
 import { overriddenChannelTargets } from '@kit/content-analytics/lib/ypp-targets';
 import type { ChannelSettingsEntry } from '@kit/content-analytics/server/settings-actions';
@@ -41,9 +41,13 @@ import { toast } from '@kit/ui/sonner';
 
 import { OverrideNumberField } from './override-number-field';
 
-const REFUSAL_MESSAGE: Record<'no_access' | 'write_failed', string> = {
+const REFUSAL_MESSAGE: Record<
+  'no_access' | 'write_failed' | 'invalid_joined_date',
+  string
+> = {
   no_access: 'That channel is not part of this account.',
   write_failed: 'Settings could not be saved. Please try again.',
+  invalid_joined_date: "Joined date can't be in the future.",
 };
 
 const STATUS_LABEL = {
@@ -87,7 +91,9 @@ export function ChannelTargetsForm({
       : joinedCutoff;
 
   const form = useForm({
-    resolver: zodResolver(UpdateChannelAnalyticsSettingsSchema),
+    // Built from the stored value: a future date cannot be typed in, but the
+    // one already on the row can be left alone while the targets are saved.
+    resolver: zodResolver(buildChannelSettingsFormSchema(storedJoinedAt)),
     defaultValues: {
       connectionId: channel.connectionId,
       yppTargetWatchHours: channel.ypp_target_watch_hours,
@@ -234,17 +240,15 @@ export function ChannelTargetsForm({
                       <Input
                         type={'date'}
                         value={field.value ?? ''}
-                        // The schema's bound, fixed on the server — computing
-                        // it here would make the server (UTC) and the browser
-                        // (local) render different HTML across a day boundary.
+                        // The bound, fixed on the server — computing it here
+                        // would make the server (UTC) and the browser (local)
+                        // render different HTML across a day boundary.
                         //
-                        // Widened to a stored date that is already later:
-                        // rows written before this bound existed would
-                        // otherwise fail native validation, and the browser
-                        // refuses to submit the *whole card* for them, so the
-                        // watch-hours override could not be saved either. The
-                        // schema still refuses to save it — as a message in
-                        // the form, which the native bubble pre-empted.
+                        // Widened to a stored date already past it, so the
+                        // browser does not refuse to submit the whole card
+                        // for a row written before the bound existed. The
+                        // resolver and the action both let that one value
+                        // through while refusing any other future date.
                         max={maxJoinedDate}
                         data-test={'channel-joined-input'}
                         onChange={(event) =>
