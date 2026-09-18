@@ -33,12 +33,14 @@ export {
   insertRetentionCurves,
   insertVideoAudience,
   queryAudienceRows,
+  queryDataDaysForVideos,
   queryNetSubscribersForVideos,
   queryQualityMetricsForVideos,
   queryRetentionCurve,
   queryTrafficSources,
 } from '../queries-detail';
 export type {
+  DataDaySource,
   VideoQualityMetrics,
   VideoSubscriberTotals,
 } from '../queries-detail';
