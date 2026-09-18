@@ -25,12 +25,26 @@ function formatDay(date: string): string {
   });
 }
 
+/**
+ * How old a measured count may be before it is marked as old. A week clears
+ * YouTube's usual 2-3 day reporting lag, so a healthy channel is never
+ * marked; a disconnected one, or one whose capture broke, soon is.
+ */
+export const FOLLOWER_COUNT_FRESH_DAYS = 7;
+
+function daysBetween(from: string, to: string): number {
+  return Math.round(
+    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) /
+      86_400_000,
+  );
+}
+
 export interface FollowerCountDisplay {
   /** "41.0K", with the date appended when the figure is not live. */
   short: string;
   /** "41,000 followers — Measured, as of Sep 15, 2026". */
   detail: string;
-  /** True when the figure was stored at connection time. */
+  /** True when the figure is not current: stored at connection, or old. */
   stale: boolean;
 }
 
@@ -40,13 +54,23 @@ export function describeFollowerCount(input: {
   asOf: string | null | undefined;
   /** 0 or absent when exact. */
   roundingStep?: number;
+  /** `YYYY-MM-DD`; defaults to the current UTC date. */
+  today?: string;
 }): FollowerCountDisplay {
-  const stale = input.source === 'metadata';
+  const today = input.today ?? new Date().toISOString().slice(0, 10);
+
+  // A measured count ages like a stored one: its source says how it was
+  // taken, not whether it is still true.
+  const old =
+    input.source !== 'metadata' &&
+    input.asOf != null &&
+    daysBetween(input.asOf, today) > FOLLOWER_COUNT_FRESH_DAYS;
+  const stale = input.source === 'metadata' || old;
   const day = input.asOf ? formatDay(input.asOf) : null;
 
   const qualifier = [
     input.source ? SOURCE_LABEL[input.source] : null,
-    day ? `as of ${day}` : null,
+    day ? (old ? `no newer data since ${day}` : `as of ${day}`) : null,
   ]
     .filter(Boolean)
     .join(', ');
