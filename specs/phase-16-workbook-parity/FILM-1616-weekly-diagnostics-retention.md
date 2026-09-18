@@ -3,7 +3,7 @@ spec_id: FILM-1616
 title: Weekly Diagnostics & Retention Drill-Down
 status: DRAFT
 effort: M
-dependencies: FILM-1602
+dependencies: FILM-1602; FILM-1710 soft (the cliff timestamp, §4)
 ---
 
 # Weekly Diagnostics & Retention Drill-Down
@@ -86,7 +86,7 @@ bounds it — the same shape `getVideoLogAction` uses.
 |------|--------|
 | `packages/features/content-analytics/src/server/diagnostics-actions.ts` | New `getWeeklyDiagnosticsAction({ scope, sinceDays, limit })`. `assertScopeAccess(scope)` first. Recent publishes from Postgres (paged with `fetchAllRows` — FILM-1612 exists because an unbounded `.select()` returns a short body with HTTP 200 and `error: null`), then `queryQualityMetricsForVideos` for the batch, then per-video `queryRetentionCurve` → `detectRetentionCliff`. Returns `DiagnosticRow[]` — the component's existing type, unchanged. |
 | ↑ | Cap the video count and bound concurrency the way `apps/web/app/api/reports/scheduled/route.ts` already does: `MAX_RETENTION_VIDEOS = 500` (`:40`, applied at `:269` with a `logger.warn` when the cap bites), then `for (const batch of chunkIds(withMetrics, RETENTION_CONCURRENCY))` with an `await Promise.all` per batch (`:282`). Reuse that pattern rather than inventing a second one; an unbounded `Promise.all` over a week of publishes opens one ClickHouse connection per video, which the comment at `:266-267` says outright. Note that comment also wants a batched `queryRetentionCurves(videoIds)` — worth doing here, and it would remove the fan-out from both call sites. |
-| `packages/features/content-analytics/src/server/diagnostics-actions.ts` | New `getRetentionCurveAction({ publishId })` with the §2 ownership check. Returns `{ points, durationSeconds }` — the chart's props. |
+| `packages/features/content-analytics/src/server/diagnostics-actions.ts` | New `getRetentionCurveAction({ publishId })` with the §2 ownership check. Returns `{ points, durationSeconds }` — the chart's props. **`durationSeconds` must not come from `video_dim.duration_seconds`**: that column holds the *episode's* duration, falling back to its target and then `0` (`dim-sync.ts:166-168`), so a Short's cliff would be labelled far past the end of the clip. Either take FILM-1710's `asset_duration_seconds` (its YouTube leg does not need FILM-1711), or ship first with `durationSeconds` omitted — `RetentionCurveChart` and `detectRetentionCliff` already treat it as optional, and the cliff then shows its position through the video without a time. The phase plan ships the fallback, so closing phase 16 does not wait on phase 17. |
 | `packages/features/content-analytics/src/components/deep-dive/weekly-diagnostics-table.tsx` | Unchanged props; `onSelect` finally gets passed. `lowCtrThreshold` keeps its 0.03 default. |
 | `packages/features/content-analytics/src/components/deep-dive/retention-curve-chart.tsx` | Unchanged props. |
 | `packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx` | Mount the diagnostics table, visually separated from the four strategy cards, with the drill-down opening the curve for the selected publish. |
@@ -125,6 +125,7 @@ beyond its ownership check.
 - [ ] The retention chart also renders on the episode analytics page
 - [ ] The diagnostics table is visually distinct from the deep-dive strategy cards
 - [ ] Cliff detection reuses `detectRetentionCliff` and adds no second implementation
+- [ ] Nothing reads `video_dim.duration_seconds`; `durationSeconds` is FILM-1710's asset duration or is omitted
 
 ## 8. Verification
 
@@ -132,6 +133,7 @@ beyond its ownership check.
 pnpm --filter @kit/content-analytics test
 pnpm --filter @kit/clickhouse test
 pnpm typecheck && pnpm lint
+npx playwright test diagnostics      # from apps/e2e
 ```
 
 The ownership check is the one thing in this spec that is **fully testable
@@ -145,6 +147,13 @@ Everything else is gated: `CLICKHOUSE_ENABLED=false`, so
 diagnostics table renders no rows and every chart renders its empty state.
 A green suite proves the guard and the plumbing, not a single retention
 figure.
+
+**Playwright, in the two halves FILM-1617 used** (`apps/e2e/tests/deep-dive/`):
+a guard spec in CI with ClickHouse off — both surfaces mount and render their
+empty states, and a drill-down on another account's publish is refused — and
+an evidence spec gated on `CAPTURE_EVIDENCE` and `CLICKHOUSE_EVIDENCE` that
+seeds a real curve and screenshots the table and the chart with its cliff
+marked. The evidence half cannot run in CI; the PR says so.
 
 ## 9. Risk
 
