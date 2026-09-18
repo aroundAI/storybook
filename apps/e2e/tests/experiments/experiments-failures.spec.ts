@@ -1,6 +1,6 @@
 import { Page, expect, test } from '@playwright/test';
 
-import { seedExperiment, seedTeamAccount } from '../utils/seed';
+import { readRows, seedExperiment, seedTeamAccount } from '../utils/seed';
 import { signInAs } from '../utils/session';
 
 /**
@@ -140,5 +140,54 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
 
     // Every request `seen` is a start; the double click must send one.
     expect(seen).toHaveLength(1);
+  });
+
+  test('a second tab left open cannot start the experiment again', async ({
+    browser,
+  }) => {
+    const team = await seedTeamAccount();
+    const id = await seedExperiment(team.accountId, { title: 'Two tabs' });
+
+    // Two sessions on the same experiment, both showing it as planned.
+    const [first, second] = await Promise.all([
+      browser.newContext().then((context) => context.newPage()),
+      browser.newContext().then((context) => context.newPage()),
+    ]);
+
+    for (const page of [first!, second!]) {
+      await signInAs(page, team);
+      await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
+      await page.locator(`[data-test="experiment-row-${id}"]:visible`).click();
+      await expect(
+        page.getByRole('button', { name: 'Start experiment' }),
+      ).toBeVisible();
+    }
+
+    await first!.getByRole('button', { name: 'Start experiment' }).click();
+    await expect(first!.getByText('Experiment started')).toBeVisible();
+
+    const [before] = await readRows<{
+      started_at: string;
+      baseline_metrics: unknown;
+    }>(
+      'analytics_experiments',
+      `select=started_at,baseline_metrics&id=eq.${id}`,
+    );
+
+    // The second tab still shows Start. Pressing it must not restart the
+    // experiment or replace the baseline the first tab captured.
+    await second!.getByRole('button', { name: 'Start experiment' }).click();
+    await expect(
+      second!.locator('[data-test="experiment-action-error"]'),
+    ).toBeVisible();
+
+    const [after] = await readRows<{
+      started_at: string;
+      baseline_metrics: unknown;
+    }>(
+      'analytics_experiments',
+      `select=started_at,baseline_metrics&id=eq.${id}`,
+    );
+    expect(after).toEqual(before);
   });
 });

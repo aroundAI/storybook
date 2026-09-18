@@ -89,7 +89,14 @@ vi.mock('@kit/supabase/server-client', () => ({
         }),
         update: (payload: Record<string, unknown>) => {
           updates.push(payload);
-          return { eq: async () => ({ error: null }) };
+          // Lifecycle writes are conditional on status and read back the
+          // row they matched; this fixture always matches.
+          const matched = {
+            eq: () => matched,
+            in: () => matched,
+            select: async () => ({ data: [{ id: 'e1' }], error: null }),
+          };
+          return matched;
         },
       };
     },
