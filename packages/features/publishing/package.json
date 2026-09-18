@@ -36,6 +36,7 @@
     "./token-refresh": "./src/lib/token-refresh.ts",
     "./jobs": "./src/jobs/index.ts",
     "./lib/constants": "./src/lib/constants.ts",
+    "./lib/follower-count": "./src/lib/follower-count.ts",
     "./lib/url-validation": "./src/lib/url-validation.ts",
     "./research": "./src/lib/research/index.ts",
     "./server/social-posts": "./src/server/social-post-actions.ts",

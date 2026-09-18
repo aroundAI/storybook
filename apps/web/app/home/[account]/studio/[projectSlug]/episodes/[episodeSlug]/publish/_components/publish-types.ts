@@ -1,5 +1,7 @@
 import { AlertCircle, Facebook, Instagram, Youtube } from 'lucide-react';
 
+import type { FollowerCountSource } from '@kit/publishing/lib/follower-count';
+
 // Platform icons and configurations - with light/dark mode compatible colors
 export const PLATFORM_CONFIG: Record<
   string,
@@ -89,6 +91,10 @@ export interface PlatformConnection {
   avatarUrl: string | null;
   tokenValid: boolean;
   language: string;
+  /** Latest dated level, or the count stored at connection (FILM-1617). */
+  followerCount?: number | null;
+  followerCountSource?: FollowerCountSource | null;
+  followerCountAsOf?: string | null;
 }
 
 export interface PlatformConfig {

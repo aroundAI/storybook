@@ -64,9 +64,16 @@ vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => mockSupabaseClient,
 }));
 
+const clickhouse = vi.hoisted(() => ({
+  queryLatestSubscriberLevels: vi.fn(),
+}));
+
+vi.mock('@kit/clickhouse/server', () => clickhouse);
+
 describe('Connection Actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    clickhouse.queryLatestSubscriberLevels.mockResolvedValue(new Map());
   });
 
   describe('getConnectedPlatformsAction', () => {
@@ -158,6 +165,96 @@ describe('Connection Actions', () => {
       expect(result[0]).toMatchObject({
         avatarUrl: null,
         followerCount: null,
+      });
+    });
+
+    describe('follower badge source (FILM-1617)', () => {
+      const youtube = {
+        id: 'conn-yt',
+        platform: 'youtube',
+        platform_account_id: 'yt-1',
+        platform_account_name: 'Channel',
+        is_active: true,
+        token_expires_at: new Date(Date.now() + 3600000).toISOString(),
+        scopes: null,
+        created_at: '2026-03-04T10:00:00Z',
+        metadata: { followers_count: 900 },
+      };
+
+      async function connectedPlatforms(rows: unknown[]) {
+        mockSupabaseClient.order.mockResolvedValueOnce({
+          data: rows,
+          error: null,
+        });
+
+        const { getConnectedPlatformsAction } = await import(
+          '../src/server/connection-actions'
+        );
+
+        return getConnectedPlatformsAction({ accountId: 'test-account-id' });
+      }
+
+      it('prefers the latest subscriber level over the stored count', async () => {
+        clickhouse.queryLatestSubscriberLevels.mockResolvedValue(
+          new Map([
+            [
+              'conn-yt',
+              {
+                date: '2026-09-15',
+                level: 41_000,
+                source: 'interpolated',
+                roundingStep: 100,
+              },
+            ],
+          ]),
+        );
+
+        const [connection] = await connectedPlatforms([youtube]);
+
+        expect(clickhouse.queryLatestSubscriberLevels).toHaveBeenCalledWith([
+          'conn-yt',
+        ]);
+        expect(connection).toMatchObject({
+          followerCount: 41_000,
+          followerCountSource: 'reconstructed',
+          followerCountAsOf: '2026-09-15',
+        });
+      });
+
+      // Instagram's badge works today only through this value.
+      it('falls back to the stored count, dated by the connection', async () => {
+        const [connection] = await connectedPlatforms([youtube]);
+
+        expect(connection).toMatchObject({
+          followerCount: 900,
+          followerCountSource: 'metadata',
+          followerCountAsOf: '2026-03-04',
+        });
+      });
+
+      it('reports no count, not zero, when neither exists', async () => {
+        const [connection] = await connectedPlatforms([
+          { ...youtube, metadata: {} },
+        ]);
+
+        expect(connection).toMatchObject({
+          followerCount: null,
+          followerCountSource: null,
+        });
+      });
+
+      // The badge is decoration; an analytics outage must not fail publishing.
+      it('falls back to the stored count when the level read fails', async () => {
+        clickhouse.queryLatestSubscriberLevels.mockRejectedValue(
+          new Error('ClickHouse unavailable'),
+        );
+
+        const [connection] = await connectedPlatforms([youtube]);
+
+        expect(connection).toMatchObject({
+          followerCount: 900,
+          followerCountSource: 'metadata',
+        });
       });
     });
 
