@@ -4,6 +4,7 @@ import {
   abandonExperimentAction,
   concludeExperimentAction,
   createExperimentAction,
+  getExperimentAction,
   startExperimentAction,
   updateExperimentAction,
 } from '../src/server/experiment-actions';
@@ -26,6 +27,11 @@ const state: {
   inAccount: string[];
   inserts: Array<{ table: string; payload: unknown }>;
   updates: Array<Record<string, unknown>>;
+  /** Experiment ids deleted from analytics_experiments. */
+  deletedExperiments: string[];
+  /** Errors a link table returns, as PostgREST would: 200-shaped, not thrown. */
+  linkReadError: { message: string } | null;
+  linkWriteError: { message: string } | null;
 } = {
   experiment: {
     account_id: 'a1',
@@ -37,6 +43,9 @@ const state: {
   inAccount: [],
   inserts: [],
   updates: [],
+  deletedExperiments: [],
+  linkReadError: null,
+  linkWriteError: null,
 };
 
 vi.mock('@kit/next/actions', () => ({
@@ -67,13 +76,19 @@ vi.mock('@kit/supabase/server-client', () => ({
       if (table === 'experiment_publishes' || table === 'experiment_tags') {
         return {
           select: () => ({
-            eq: async () => ({
-              data: state.linked.map((id) => ({ publish_id: id })),
-              error: null,
-            }),
+            eq: async () =>
+              state.linkReadError
+                ? { data: null, error: state.linkReadError }
+                : {
+                    data: state.linked.map((id) => ({ publish_id: id })),
+                    error: null,
+                  },
           }),
-          delete: () => ({ eq: async () => ({ error: null }) }),
+          delete: () => ({
+            eq: async () => ({ error: state.linkWriteError }),
+          }),
           insert: async (payload: unknown) => {
+            if (state.linkWriteError) return { error: state.linkWriteError };
             state.inserts.push({ table, payload });
             return { error: null };
           },
@@ -113,6 +128,12 @@ vi.mock('@kit/supabase/server-client', () => ({
           state.updates.push(payload);
           return { eq: async () => ({ error: null }) };
         },
+        delete: () => ({
+          eq: async (_: string, id: string) => {
+            state.deletedExperiments.push(id);
+            return { error: null };
+          },
+        }),
       };
     },
   }),
@@ -129,7 +150,65 @@ beforeEach(() => {
   state.inAccount = [];
   state.inserts = [];
   state.updates = [];
+  state.deletedExperiments = [];
+  state.linkReadError = null;
+  state.linkWriteError = null;
   resolveWatchedMetric.mockClear();
+});
+
+describe('failures are reported, never swallowed (A1, A2)', () => {
+  it('a failed link write fails the create instead of reporting success', async () => {
+    state.inAccount = ['p1'];
+    state.linkWriteError = { message: 'insert refused' };
+
+    await expect(
+      createExperimentAction({
+        accountId: 'a1',
+        title: 'Links fail',
+        changeDescription: 'x',
+        reviewWindowDays: 60,
+        publishIds: ['p1'],
+        tagIds: [],
+      }),
+    ).rejects.toThrow('insert refused');
+  });
+
+  it('removes the experiment it just created when linking fails, so a retry cannot duplicate it', async () => {
+    state.inAccount = ['p1'];
+    state.linkWriteError = { message: 'insert refused' };
+
+    await expect(
+      createExperimentAction({
+        accountId: 'a1',
+        title: 'Links fail',
+        changeDescription: 'x',
+        reviewWindowDays: 60,
+        publishIds: ['p1'],
+        tagIds: [],
+      }),
+    ).rejects.toThrow();
+
+    expect(state.deletedExperiments).toEqual(['e1']);
+  });
+
+  it('a failed read of the linked videos fails the detail instead of showing none', async () => {
+    state.linkReadError = { message: 'read failed' };
+
+    await expect(getExperimentAction({ experimentId: 'e1' })).rejects.toThrow(
+      'read failed',
+    );
+  });
+
+  it('a failed link read fails the start instead of snapshotting zero videos', async () => {
+    state.linkReadError = { message: 'read failed' };
+
+    await expect(
+      startExperimentAction({ experimentId: 'e1', startedAt: '2026-07-01' }),
+    ).rejects.toThrow('read failed');
+
+    expect(state.updates).toHaveLength(0);
+    expect(resolveWatchedMetric).not.toHaveBeenCalled();
+  });
 });
 
 describe('startExperimentAction', () => {

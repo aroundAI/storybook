@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -47,6 +47,16 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [outcome, setOutcome] = useState('');
+  // One state for the in-flight lifecycle action: `pending` disables every
+  // lifecycle button so a double click cannot send it twice, and `error`
+  // keeps a failure on screen after the toast has gone.
+  const [action, setAction] = useState<{
+    pending: boolean;
+    error: string | null;
+  }>({ pending: false, error: null });
+  // The guard itself is a ref: two clicks can land before React re-renders
+  // the disabled button, and both would read `pending` as false.
+  const inFlight = useRef(false);
 
   const listQuery = useQuery({
     queryKey: ['experiments', accountId],
@@ -84,6 +94,33 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
 
   const experiment = detailQuery.data;
 
+  /**
+   * Runs a start or conclude. These used to be awaited bare, so a thrown
+   * action failed with nothing on screen and a second click sent it again.
+   */
+  const runAction = async (run: () => Promise<unknown>, success: string) => {
+    if (inFlight.current) return false;
+
+    inFlight.current = true;
+    setAction({ pending: true, error: null });
+
+    try {
+      await run();
+      toast.success(success);
+      setAction({ pending: false, error: null });
+      await Promise.all([refresh(), detailQuery.refetch()]);
+      return true;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'The action did not complete';
+      toast.error(message);
+      setAction({ pending: false, error: message });
+      return false;
+    } finally {
+      inFlight.current = false;
+    }
+  };
+
   return (
     <div className={'flex flex-col gap-8'}>
       <section className={'flex flex-col gap-3'}>
@@ -109,7 +146,10 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
         {dueQuery.isLoading ? (
           <Skeleton className={'h-12 w-full rounded-lg'} />
         ) : dueQuery.isError ? (
-          <p className={'text-muted-foreground text-sm'}>
+          <p
+            className={'text-muted-foreground text-sm'}
+            data-test={'experiments-due-error'}
+          >
             Experiments due for review could not be loaded.
           </p>
         ) : (
@@ -125,6 +165,15 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
 
         {listQuery.isLoading ? (
           <ExperimentListSkeleton />
+        ) : listQuery.isError ? (
+          // A failed read, not an empty log: the empty state would claim
+          // that no experiments exist.
+          <p
+            className={'text-muted-foreground text-sm'}
+            data-test={'experiment-list-error'}
+          >
+            Experiments could not be loaded.
+          </p>
         ) : (
           <ExperimentList
             experiments={(listQuery.data ?? []) as ExperimentListEntry[]}
@@ -139,6 +188,7 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
           if (!open) {
             setSelectedId(null);
             setOutcome('');
+            setAction({ pending: false, error: null });
           }
         }}
       >
@@ -159,15 +209,26 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
                 }
               />
 
+              {action.error ? (
+                <p
+                  className={'text-destructive text-sm'}
+                  role={'alert'}
+                  data-test={'experiment-action-error'}
+                >
+                  {action.error}
+                </p>
+              ) : null}
+
               {experiment.status === 'planned' ? (
                 <Button
-                  onClick={async () => {
-                    await startExperimentAction({
-                      experimentId: experiment.id,
-                    });
-                    toast.success('Experiment started — baseline captured');
-                    await Promise.all([refresh(), detailQuery.refetch()]);
-                  }}
+                  disabled={action.pending}
+                  onClick={() =>
+                    runAction(
+                      () =>
+                        startExperimentAction({ experimentId: experiment.id }),
+                      'Experiment started — baseline captured',
+                    )
+                  }
                   className={'self-start'}
                 >
                   Start experiment
@@ -189,19 +250,21 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
                           variant={
                             status === 'confirmed' ? 'default' : 'outline'
                           }
-                          disabled={outcome.trim().length === 0}
+                          disabled={
+                            action.pending || outcome.trim().length === 0
+                          }
                           onClick={async () => {
-                            await concludeExperimentAction({
-                              experimentId: experiment.id,
-                              actualOutcome: outcome,
-                              outcomeStatus: status,
-                            });
-                            toast.success('Experiment concluded');
-                            setOutcome('');
-                            await Promise.all([
-                              refresh(),
-                              detailQuery.refetch(),
-                            ]);
+                            const concluded = await runAction(
+                              () =>
+                                concludeExperimentAction({
+                                  experimentId: experiment.id,
+                                  actualOutcome: outcome,
+                                  outcomeStatus: status,
+                                }),
+                              'Experiment concluded',
+                            );
+                            // Kept on failure, so the outcome is not retyped.
+                            if (concluded) setOutcome('');
                           }}
                         >
                           {status}
