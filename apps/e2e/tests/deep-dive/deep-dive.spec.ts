@@ -7,6 +7,7 @@ import {
   seedTeamAccount,
   seedYouTubeConnection,
 } from '../utils/seed';
+import { signInAs } from '../utils/session';
 import { DeepDivePageObject } from './deep-dive.po';
 
 type ActionArgs = {
@@ -243,6 +244,38 @@ test.describe('Deep Dive subscribers (FILM-1617)', () => {
     });
 
     await expect(deepDive.subscriberEmpty()).toContainText(
+      'No subscriber count yet',
+    );
+  });
+});
+
+test.describe('Deep Dive subscribers for an untracked platform (FILM-1617)', () => {
+  // Facebook, X and LinkedIn are allowed connections that no snapshot is ever
+  // taken for. "No count yet" would send someone looking for a missing
+  // snapshot that will never come.
+  test('a Facebook-only project says counts are not tracked', async ({
+    page,
+  }) => {
+    const deepDive = new DeepDivePageObject(page);
+    const team = await seedTeamAccount();
+    const project = await seedProject(team);
+
+    const facebook = await seedYouTubeConnection(team.accountId, 'Page', {
+      platform: 'facebook',
+    });
+
+    await seedPublishedEpisode(project.id, facebook, {
+      number: 1,
+      platform: 'facebook',
+    });
+
+    await signInAs(page, team);
+    await deepDive.goToDeepDive(team.slug, project.slug);
+
+    await expect(deepDive.subscriberEmpty()).toContainText(
+      'aren’t tracked for Facebook',
+    );
+    await expect(deepDive.subscriberEmpty()).not.toContainText(
       'No subscriber count yet',
     );
   });

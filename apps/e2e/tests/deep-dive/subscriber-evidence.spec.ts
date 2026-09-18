@@ -1,19 +1,28 @@
 import { Page, expect, test } from '@playwright/test';
 
 import {
+  SCENARIO_TODAY,
+  SUBSCRIBER_SCENARIOS,
+} from '../../../../packages/clickhouse/src/testing/subscriber-scenarios';
+import {
   seedEpisodeWithShot,
+  seedProject,
   seedPublishedEpisode,
+  seedTeamAccount,
   seedYouTubeConnection,
 } from '../utils/seed';
+import { signInAs } from '../utils/session';
 import { DeepDivePageObject } from './deep-dive.po';
 
 /**
- * Screenshots and DOM measurements for FILM-1617, with real subscriber data.
+ * Screenshots and DOM text for FILM-1617, with real subscriber data for every
+ * channel state.
  *
- * Not a guard: `deep-dive.spec.ts` and `read-failures.spec.ts` hold those,
- * and run with ClickHouse off, where every channel has no level. This spec
- * is the only place the curve, the total and the rounded-seed disclosure are
- * drawn from data, so it needs what CI does not have:
+ * Seeds the twelve scenarios the unit matrices use
+ * (`@kit/clickhouse/testing`) into one project, so what a reviewer sees is
+ * the same set of states the tests assert — never a hand-picked happy path.
+ * Not a guard: `deep-dive.spec.ts`, `read-failures.spec.ts` and the scenario
+ * matrices hold those, with ClickHouse off. This needs what CI lacks:
  *
  * - a ClickHouse the server reads (`CLICKHOUSE_ENABLED=true` on the server),
  * - the same instance reachable from here, via `CLICKHOUSE_HOST`,
@@ -23,9 +32,19 @@ import { DeepDivePageObject } from './deep-dive.po';
  */
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
 
-function daysAgo(days: number): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() - days);
+/**
+ * The fixtures are dated around SCENARIO_TODAY; shifting every date by the
+ * gap to the real today keeps the states the same on any day this runs.
+ */
+const SHIFT_DAYS = Math.round(
+  (Date.parse(new Date().toISOString().slice(0, 10)) -
+    Date.parse(SCENARIO_TODAY)) /
+    86_400_000,
+);
+
+function shift(date: string): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + SHIFT_DAYS);
   return d.toISOString().slice(0, 10);
 }
 
@@ -33,6 +52,8 @@ async function insertClickHouse(
   table: string,
   rows: Array<Record<string, unknown>>,
 ) {
+  if (rows.length === 0) return;
+
   const host = process.env.CLICKHOUSE_HOST ?? 'http://localhost:8123';
   const auth = Buffer.from(
     `${process.env.CLICKHOUSE_USER ?? 'default'}:${process.env.CLICKHOUSE_PASSWORD ?? ''}`,
@@ -48,79 +69,10 @@ async function insertClickHouse(
   );
 
   if (!response.ok) {
-    throw new Error(`ClickHouse insert into ${table} failed: ${await response.text()}`);
+    throw new Error(
+      `ClickHouse insert into ${table} failed: ${await response.text()}`,
+    );
   }
-}
-
-/**
- * A daily anchor — the capture cron runs every day — plus daily movement
- * from `firstAnchorDaysAgo` to today, except across an optional capture gap.
- * Movement starts on the first anchor, so the curve cannot reach earlier than
- * it — which is what makes the total's start date visible.
- */
-async function seedSubscriberHistory(
-  connectionId: string,
-  options: {
-    firstAnchorDaysAgo: number;
-    startLevel: number;
-    dailyGain: number;
-    roundingStep: number;
-    /** When capture stopped — a disconnected channel's data ends early. */
-    stopsDaysAgo?: number;
-    /** Days with movement but no snapshot: a broken capture, then recovery. */
-    gap?: { fromDaysAgo: number; toDaysAgo: number };
-  },
-) {
-  const anchors: Array<Record<string, unknown>> = [];
-  const movement: Array<Record<string, unknown>> = [];
-
-  let level = options.startLevel;
-
-  for (
-    let day = options.firstAnchorDaysAgo;
-    day >= (options.stopsDaysAgo ?? 1);
-    day--
-  ) {
-    const date = daysAgo(day);
-
-    if (day !== options.firstAnchorDaysAgo) {
-      // A little noise, so the line is a measurement rather than a ruler.
-      const gained = options.dailyGain + ((day * 7) % 5);
-      const lost = (day * 3) % 4;
-
-      level += gained - lost;
-      movement.push({
-        connection_id: connectionId,
-        metric_date: date,
-        views: 0,
-        watch_time_seconds: 0,
-        impressions: 0,
-        engaged_views: 0,
-        subscribers_gained: gained,
-        subscribers_lost: lost,
-      });
-    }
-
-    const inGap =
-      options.gap !== undefined &&
-      day <= options.gap.fromDaysAgo &&
-      day >= options.gap.toDaysAgo;
-
-    if (!inGap) {
-      const step = options.roundingStep;
-
-      anchors.push({
-        connection_id: connectionId,
-        snapshot_date: date,
-        // YouTube rounds down, so the reported figure is the band floor.
-        subscriber_count: step > 0 ? Math.floor(level / step) * step : level,
-        rounding_step: step,
-      });
-    }
-  }
-
-  await insertClickHouse('channel_subscribers', anchors);
-  await insertClickHouse('channel_daily', movement);
 }
 
 function cardAround(page: Page, dataTest: string) {
@@ -129,232 +81,183 @@ function cardAround(page: Page, dataTest: string) {
     .locator('xpath=ancestor::div[contains(@class, "rounded-2xl")][1]');
 }
 
+async function texts(page: Page, selector: string): Promise<string[]> {
+  return page
+    .locator(selector)
+    .evaluateAll((els) => els.map((el) => el.textContent?.trim() ?? ''));
+}
+
 test.describe('FILM-1617 — evidence', () => {
   test.skip(
     !process.env.CAPTURE_EVIDENCE || !process.env.CLICKHOUSE_EVIDENCE,
     'Set CAPTURE_EVIDENCE=1 and CLICKHOUSE_EVIDENCE=1 against a ClickHouse-enabled server.',
   );
 
-  test('captures the subscriber curve, the total and the YPP count', async ({
+  test('captures every subscriber scenario on every surface', async ({
     page,
   }) => {
-    // Seeding three channels' history and a cold compile of the tab.
     test.setTimeout(300_000);
 
+    const team = await seedTeamAccount();
+    const project = await seedProject(team);
+
+    // One connection, one published episode and the scenario's ClickHouse
+    // rows per state. The project lists a channel only once something has
+    // been published to it.
+    const idByScenario = new Map<string, string>();
+
+    for (const [index, scenario] of SUBSCRIBER_SCENARIOS.entries()) {
+      const connectionId = await seedYouTubeConnection(
+        team.accountId,
+        scenario.name,
+        { platform: scenario.platform, isActive: scenario.isActive },
+      );
+
+      idByScenario.set(scenario.id, connectionId);
+
+      await seedPublishedEpisode(project.id, connectionId, {
+        number: index + 1,
+        platform: scenario.platform,
+      });
+
+      await insertClickHouse(
+        'channel_subscribers',
+        scenario.anchors.map((a) => ({
+          connection_id: connectionId,
+          snapshot_date: shift(a.snapshotDate),
+          subscriber_count: a.subscriberCount,
+          rounding_step: a.roundingStep,
+        })),
+      );
+      await insertClickHouse(
+        'channel_daily',
+        scenario.deltas.map((d) => ({
+          connection_id: connectionId,
+          metric_date: shift(d.metricDate),
+          views: 0,
+          watch_time_seconds: 0,
+          impressions: 0,
+          engaged_views: 0,
+          subscribers_gained: Math.max(0, d.net),
+          subscribers_lost: Math.max(0, -d.net),
+        })),
+      );
+    }
+
     const deepDive = new DeepDivePageObject(page);
-    const fixture = await deepDive.setup();
 
-    const secondChannelId = await seedYouTubeConnection(
-      fixture.team.accountId,
-      'Second Channel',
-    );
+    await signInAs(page, team);
+    await deepDive.goToDeepDive(team.slug, project.slug);
 
-    await seedPublishedEpisode(fixture.project.id, secondChannelId, {
-      number: 3,
-    });
-
-    // Rounded, like any YouTube channel above 1,000.
-    await seedSubscriberHistory(fixture.activeChannelId, {
-      firstAnchorDaysAgo: 200,
-      startLevel: 40_150,
-      dailyGain: 12,
-      roundingStep: 100,
-      gap: { fromDaysAgo: 45, toDaysAgo: 26 },
-    });
-
-    // Below 1,000, so exact — and connected much later.
-    await seedSubscriberHistory(secondChannelId, {
-      firstAnchorDaysAgo: 90,
-      startLevel: 610,
-      dailyGain: 3,
-      roundingStep: 0,
-    });
-
-    // A TikTok account: its own total, never added to YouTube's.
-    const tiktokId = await seedYouTubeConnection(
-      fixture.team.accountId,
-      'TikTok Account',
-      { platform: 'tiktok' },
-    );
-
-    await seedPublishedEpisode(fixture.project.id, tiktokId, {
-      number: 5,
-      platform: 'tiktok',
-    });
-
-    await seedSubscriberHistory(tiktokId, {
-      firstAnchorDaysAgo: 60,
-      startLevel: 15_000,
-      dailyGain: 40,
-      roundingStep: 0,
-    });
-
-    // The disconnected channel, connected in between. Its line stays in the
-    // per-channel view; the YouTube total leaves it out and says so.
-    await seedSubscriberHistory(fixture.inactiveChannelId, {
-      firstAnchorDaysAgo: 150,
-      startLevel: 2_300,
-      dailyGain: 1,
-      roundingStep: 10,
-      stopsDaysAgo: 30,
-    });
-
-    await page.reload();
-    await page.locator('[data-test="analytics-tab-deep-dive"]').click();
-
-    const series = page.locator('[data-test="subscriber-series"]:visible');
     const card = cardAround(page, 'subscriber-series');
-
-    await expect(series).toBeVisible();
-    await card.scrollIntoViewIfNeeded();
-
-    // A hover tooltip left over from the click would cover the axis.
     const clearHover = () => page.mouse.move(0, 0);
 
+    await expect(
+      page.locator('[data-test="subscriber-series"]:visible'),
+    ).toBeVisible();
+    await card.scrollIntoViewIfNeeded();
     await clearHover();
 
-    // 1. Per channel, the default.
-    await card.screenshot({ path: `${OUT}/10-subscribers-per-channel.png` });
+    // 1. Per channel: lines, and every channel without one explained.
+    await card.screenshot({ path: `${OUT}/20-scenarios-per-channel.png` });
 
-    const perChannelDisclosure = await page
-      .locator('[data-test="subscriber-seed-disclosure"]:visible')
-      .textContent();
+    const perChannel = {
+      lines: await texts(page, '[data-test="subscriber-series-lines"] li'),
+      missing: await texts(page, '[data-test="subscriber-series-missing"] li'),
+      untracked: await texts(page, '[data-test="subscriber-series-untracked"]'),
+      rounding: await texts(page, '[data-test="subscriber-seed-disclosure"]'),
+    };
 
-    // 2. The total, starting where every channel has a level.
+    // 2. Total: one line per platform, and why it has the days it has.
     await page.locator('[data-test="subscriber-series-total"]').click();
+    await clearHover();
+    await card.screenshot({ path: `${OUT}/21-scenarios-total.png` });
 
-    const totalNote = page.locator(
-      '[data-test="subscriber-series-total-note"]:visible',
+    const total = {
+      notes: await texts(page, '[data-test="subscriber-series-total-note"] li'),
+      lines: await texts(page, '[data-test="subscriber-series-lines"] li'),
+    };
+
+    // 3. One snapshot, yesterday: a single measured day must still show.
+    await deepDive.chooseChannel(idByScenario.get('new-one-snapshot')!);
+    await clearHover();
+    await card.screenshot({ path: `${OUT}/22-scenario-new-channel.png` });
+
+    // 4. The untracked platform, selected on its own.
+    await deepDive.chooseChannel(idByScenario.get('untracked-platform')!);
+    await expect(deepDive.subscriberEmpty()).toBeVisible();
+    const untrackedAlone = await texts(
+      page,
+      '[data-test="subscriber-series-empty"]:visible',
     );
 
-    await expect(totalNote).toContainText('YouTube total begins');
-    await expect(totalNote).toContainText('TikTok total begins');
-    await expect(totalNote).toContainText('Leaves out Retired Channel');
-    await clearHover();
-    await card.screenshot({ path: `${OUT}/11-subscribers-total.png` });
+    // 5. The long-stopped channel, selected on its own.
+    await deepDive.chooseChannel(
+      idByScenario.get('active-stopped-before-window')!,
+    );
+    await expect(deepDive.subscriberEmpty()).toContainText('No data since');
+    const stoppedAlone = await texts(
+      page,
+      '[data-test="subscriber-series-empty"]:visible',
+    );
 
-    const totalNoteText = await totalNote.textContent();
-    // Summed: every channel's shortfall at once, not the largest one.
-    const totalDisclosure = await page
-      .locator('[data-test="subscriber-seed-disclosure"]:visible')
-      .textContent();
-
-    // 3. One channel selected: its line alone.
-    await deepDive.chooseChannel(secondChannelId);
-    await expect(
-      page.locator('[data-test="subscriber-series-total"]'),
-    ).toHaveCount(0);
-    await clearHover();
-    await card.screenshot({ path: `${OUT}/12-subscribers-one-channel.png` });
-
-    // 4. The YPP card: the count, and net movement labelled as movement.
+    // 6. YPP: every active YouTube channel's count, or why there is none.
     await deepDive.chooseChannel('all');
 
-    const ypp = deepDive
-      .yppCards()
-      .filter({ hasText: 'Active Channel' })
-      .first();
+    const ypp = cardAround(page, 'ypp-progress-list');
 
-    await expect(ypp.locator('[data-test="ypp-subscribers-value"]')).not.toHaveText(
-      'Unavailable',
-    );
+    // Eight channel cards are taller than the default window, and an element
+    // screenshot inside the app's scroll container is clipped to it.
+    await page.setViewportSize({ width: 1280, height: 2600 });
     await ypp.scrollIntoViewIfNeeded();
-    await cardAround(page, 'ypp-progress-list').screenshot({
-      path: `${OUT}/13-ypp-subscribers.png`,
-    });
+    await ypp.screenshot({ path: `${OUT}/23-scenarios-ypp.png` });
 
-    // 5. The publish screen's channel chips. Active Channel has a dated
-    //    level; this one has only the count stored when it was connected —
-    //    how every Instagram connection reaches the page today.
-    await seedYouTubeConnection(fixture.team.accountId, 'Stored Count Channel', {
-      metadata: { followers_count: 1_250 },
-    });
+    const yppRows = await page
+      .locator('[data-test="ypp-progress-card"]:visible')
+      .evaluateAll((cards) =>
+        cards.map((c) => ({
+          channel: c.querySelector('span')?.textContent,
+          subscribers: c
+            .querySelector('[data-test="ypp-subscribers"]')
+            ?.textContent?.trim(),
+        })),
+      );
 
-    const episode = await seedEpisodeWithShot(fixture.project.id, {
-      number: 4,
+    // 7. The publish screen's follower counts.
+    const episode = await seedEpisodeWithShot(project.id, {
+      number: SUBSCRIBER_SCENARIOS.length + 1,
     });
 
     await page.goto(
-      `/home/${fixture.team.slug}/studio/${fixture.project.slug}/episodes/${episode.slug}/publish`,
+      `/home/${team.slug}/studio/${project.slug}/episodes/${episode.slug}/publish`,
     );
 
-    const followerCounts = page.locator(
-      '[data-test="channel-follower-count"]:visible',
-    );
+    const counts = page.locator('[data-test="channel-follower-count"]:visible');
 
-    await expect(followerCounts.first()).toBeVisible();
+    await expect(counts.first()).toBeVisible();
 
-    const chips = followerCounts.locator('xpath=ancestor::div[contains(@class, "rounded-full")][1]');
-    const chipList = chips.first().locator('xpath=..');
+    const chipList = counts
+      .first()
+      .locator('xpath=ancestor::div[contains(@class, "rounded-full")][1]/..');
 
     await chipList.scrollIntoViewIfNeeded();
-    await chipList.screenshot({ path: `${OUT}/14-publish-follower-counts.png` });
+    await chipList.screenshot({ path: `${OUT}/24-scenarios-publish.png` });
 
-    // The stored one's tooltip, which says it is not live.
-    await chips.filter({ hasText: 'Stored Count Channel' }).hover();
-
-    const storedTooltip = page.getByRole('tooltip');
-
-    await expect(storedTooltip).toContainText('not live');
-
-    // Read now: once another chip is hovered, this locator finds its tooltip.
-    const storedTooltipText = await storedTooltip.textContent();
-    await page.screenshot({
-      path: `${OUT}/15-publish-stored-count-tooltip.png`,
-      animations: 'disabled',
-    });
-
-    // A rounded YouTube count: measured, and said to be rounded.
-    await clearHover();
-    await chips.filter({ hasText: 'Active Channel' }).hover();
-
-    // The previous tooltip can still be closing, so pick this chip's.
-    const roundedTooltip = page
-      .getByRole('tooltip')
-      .filter({ hasText: 'Active Channel' })
-      .first();
-
-    await expect(roundedTooltip).toContainText('Active Channel');
-
-    const roundedTooltipText = await roundedTooltip.textContent();
-
-    await page.screenshot({
-      path: `${OUT}/17-publish-rounded-count-tooltip.png`,
-      animations: 'disabled',
-    });
-
-    const publishChips = await chips.evaluateAll((els) =>
-      els.map((el) => ({
-        text: el.textContent,
-        stale: el
-          .querySelector('[data-test="channel-follower-count"]')
-          ?.getAttribute('data-stale'),
-      })),
-    );
+    const chips = await counts
+      .locator('xpath=ancestor::div[contains(@class, "rounded-full")][1]')
+      .evaluateAll((els) =>
+        els.map((el) => ({
+          text: el.textContent,
+          stale: el
+            .querySelector('[data-test="channel-follower-count"]')
+            ?.getAttribute('data-stale'),
+        })),
+      );
 
     console.log(
       'MEASURED',
       JSON.stringify(
-        {
-          totalNote: totalNoteText,
-          perChannelDisclosure,
-          totalDisclosure,
-          publishChips,
-          storedTooltipText,
-          roundedTooltipText,
-          yppCards: await deepDive.yppCards().evaluateAll((cards) =>
-            cards.map((c) => ({
-              channel: c.querySelector('span')?.textContent,
-              subscribers: c.querySelector('[data-test="ypp-subscribers-value"]')
-                ?.textContent,
-              subscribersNote: c.querySelector('[data-test="ypp-subscribers"] p')
-                ?.textContent,
-              netRow: [...c.querySelectorAll('span')]
-                .find((s) => s.textContent?.startsWith('Net subscriber'))
-                ?.parentElement?.textContent,
-            })),
-          ),
-        },
+        { perChannel, total, untrackedAlone, stoppedAlone, yppRows, chips },
         null,
         2,
       ),

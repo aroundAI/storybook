@@ -1,6 +1,10 @@
 import 'server-only';
 
 import {
+  SUBSCRIBER_TRACKED_PLATFORMS,
+  type SubscriberTrackedPlatform,
+} from '@kit/clickhouse';
+import {
   insertSubscriberSnapshot,
   isClickHouseEnabled,
 } from '@kit/clickhouse/server';
@@ -22,10 +26,14 @@ import { createTikTokAnalyticsProvider } from '../providers/tiktok';
  * pipeline is a delta, which gives a curve its shape but never its height.
  */
 
-/** Only these have a subscriber source (FILM-1607 §4). */
-const SUPPORTED_PLATFORMS = ['youtube', 'tiktok', 'instagram'] as const;
+/**
+ * Only these have a subscriber source (FILM-1607 §4). Shared with the
+ * surfaces, which must explain an untracked platform as untracked, not as a
+ * count that is missing.
+ */
+const SUPPORTED_PLATFORMS = SUBSCRIBER_TRACKED_PLATFORMS;
 
-type SupportedPlatform = (typeof SUPPORTED_PLATFORMS)[number];
+type SupportedPlatform = SubscriberTrackedPlatform;
 
 interface ConnectionRow {
   id: string;

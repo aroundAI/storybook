@@ -1,4 +1,9 @@
-import { formatSubscriberDay } from './subscriber-disclosure';
+import { isSubscriberTracked } from '@kit/clickhouse';
+
+import {
+  NO_SUBSCRIBER_LEVEL,
+  formatSubscriberDay,
+} from './subscriber-disclosure';
 import type { PlatformSubscriberSum } from './subscriber-series-sum';
 
 /**
@@ -11,7 +16,63 @@ const PLATFORM_LABELS: Record<string, string> = {
   youtube: 'YouTube',
   tiktok: 'TikTok',
   instagram: 'Instagram',
+  facebook: 'Facebook',
+  twitter: 'X',
+  linkedin: 'LinkedIn',
 };
+
+/** Said of every channel on a platform no snapshot is ever taken for. */
+export const UNTRACKED_PLATFORMS_SENTENCE =
+  'Subscriber counts aren’t tracked for Facebook, X or LinkedIn channels.';
+
+/** The same sentence, leading into a list of the channels it applies to. */
+export function describeUntrackedChannels(names: string[]): string {
+  return `${UNTRACKED_PLATFORMS_SENTENCE.slice(0, -1)}: ${names.join(', ')}.`;
+}
+
+/**
+ * Why a channel has — or has no — line. One answer, used by the empty state,
+ * the list of channels without a line and the total's note, so the three
+ * cannot give different reasons for the same channel.
+ */
+export type ChannelStatus =
+  | { kind: 'untracked' }
+  | { kind: 'ended'; since: string }
+  | { kind: 'none' }
+  | { kind: 'ok' };
+
+export function channelStatus(
+  series: { points: unknown[]; lastDataDate: string | null },
+  /** Undefined when the channel list does not name it: platform unknown. */
+  channel: { platform: string } | undefined,
+): ChannelStatus {
+  // Only a known platform can be called untracked; an unknown one is
+  // explained from its data, never with a claim about its platform.
+  if (channel && !isSubscriberTracked(channel.platform)) {
+    return { kind: 'untracked' };
+  }
+
+  if (series.points.length > 0) return { kind: 'ok' };
+
+  // Measured, then stopped before this window: not "no count yet".
+  if (series.lastDataDate) return { kind: 'ended', since: series.lastDataDate };
+
+  return { kind: 'none' };
+}
+
+/** The sentence for a channel with no line; null for one that has a line. */
+export function describeChannelStatus(status: ChannelStatus): string | null {
+  switch (status.kind) {
+    case 'untracked':
+      return UNTRACKED_PLATFORMS_SENTENCE;
+    case 'ended':
+      return `No data since ${formatSubscriberDay(status.since)} — its capture may have stopped.`;
+    case 'none':
+      return NO_SUBSCRIBER_LEVEL;
+    case 'ok':
+      return null;
+  }
+}
 
 export function platformLabel(platform: string): string {
   return PLATFORM_LABELS[platform] ?? platform;
@@ -39,13 +100,24 @@ export function describeTotal(
           : `No ${label} total: no active ${label} channel publishes here.`,
   ];
 
+  // A total spans only days every channel has, so it ends with the channel
+  // whose data ends first — say which, or the line just stops.
+  if (total.endsOn && total.limitedBy.length > 0) {
+    parts.push(
+      `It ends ${formatSubscriberDay(total.endsOn)}, the last day ${listNames(
+        total.limitedBy.map((id) => channelNames[id] ?? 'a channel'),
+      )} ${total.limitedBy.length === 1 ? 'has' : 'have'} data.`,
+    );
+  }
+
   if (total.disconnected.length > 0) {
     parts.push(
       `Leaves out ${listNames(total.disconnected)}, disconnected and no longer measured.`,
     );
   }
 
-  if (total.channelCount > 1) {
+  // Only of a total that is drawn: with none, there is nothing to overcount.
+  if (total.startsOn && total.channelCount > 1) {
     parts.push(
       'Someone subscribed to more than one of these channels is counted once for each.',
     );
