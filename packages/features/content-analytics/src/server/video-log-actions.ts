@@ -81,6 +81,11 @@ export interface VideoLogRow {
   avgViewDurationSeconds: number;
   avgViewPercentage: number;
   revenueCents: number;
+  /**
+   * The video's analytics note (FILM-1610), from Postgres. Never synced to
+   * ClickHouse: free text does not belong in a store that cannot delete it.
+   */
+  analyticsNote: string | null;
 }
 
 /**
@@ -130,7 +135,7 @@ export const getVideoLogAction = enhanceAction(
     // The id list is one page wide, so these stay well inside the limits
     // that made FILM-1612 necessary — but revenue is one row per publish
     // per day per category, so it is still chunked and paged.
-    const [quality, channels, revenueByPublish] = await Promise.all([
+    const [quality, channels, revenueByPublish, notesByPublish] = await Promise.all([
       // Lifetime, deliberately unbounded by the publish-date filter.
       // publishedFrom/To select *which videos* appear; passing them here
       // would have bounded *which metric days* count, so a row would carry
@@ -143,6 +148,7 @@ export const getVideoLogAction = enhanceAction(
         ? listProjectChannels(input.projectId, client)
         : listAccountChannels(input.accountId!, client),
       fetchRevenueByPublish(client, videoIds),
+      fetchNotesByPublish(client, videoIds),
     ]);
 
     const channelNameById = new Map(
@@ -178,6 +184,7 @@ export const getVideoLogAction = enhanceAction(
         avgViewDurationSeconds: metrics?.avgViewDurationSeconds ?? 0,
         avgViewPercentage: metrics?.avgViewPercentage ?? 0,
         revenueCents: revenueByPublish.get(row.videoId) ?? 0,
+        analyticsNote: notesByPublish.get(row.videoId) ?? null,
       };
     });
   },
@@ -221,4 +228,37 @@ async function fetchRevenueByPublish(
   }
 
   return byPublish;
+}
+
+/**
+ * Analytics notes for one page of videos. One row per publish, bounded by
+ * the page, but read through the same chunked pager as revenue so a raised
+ * page size cannot quietly outgrow it.
+ */
+async function fetchNotesByPublish(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  publishIds: string[],
+): Promise<Map<string, string>> {
+  const rows = await fetchAllByIds<{
+    id: string;
+    analytics_note: string | null;
+  }>(
+    publishIds,
+    (chunk, from, to) =>
+      client
+        .from('publishes')
+        .select('id, analytics_note')
+        .in('id', chunk)
+        .not('analytics_note', 'is', null)
+        .order('id')
+        .range(from, to),
+    'video log notes',
+  );
+
+  return new Map(
+    rows
+      .filter((row) => row.analytics_note !== null)
+      .map((row) => [row.id, row.analytics_note as string]),
+  );
 }

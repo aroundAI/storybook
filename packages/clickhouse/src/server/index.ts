@@ -33,11 +33,15 @@ export {
   insertRetentionCurves,
   insertVideoAudience,
   queryAudienceRows,
+  queryNetSubscribersForVideos,
   queryQualityMetricsForVideos,
   queryRetentionCurve,
   queryTrafficSources,
 } from '../queries-detail';
-export type { VideoQualityMetrics } from '../queries-detail';
+export type {
+  VideoQualityMetrics,
+  VideoSubscriberTotals,
+} from '../queries-detail';
 
 export {
   insertVideoDims,

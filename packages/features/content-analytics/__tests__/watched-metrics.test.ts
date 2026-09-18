@@ -1,0 +1,233 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  WATCHED_METRICS,
+  WATCHED_METRIC_KEYS,
+  baselineWindow,
+  daysBetween,
+  foldCtr,
+  foldNetSubscribers,
+  foldTrafficShare,
+  foldViewWeighted,
+  foldViewsAtAge,
+  isWatchedMetricKey,
+  resultWindow,
+  stampFold,
+} from '../src/lib/watched-metrics';
+
+describe('the watched-metric registry', () => {
+  it('defines every key, and nothing else resolves as one', () => {
+    expect(Object.keys(WATCHED_METRICS).sort()).toEqual(
+      [...WATCHED_METRIC_KEYS].sort(),
+    );
+    expect(isWatchedMetricKey('ctr')).toBe(true);
+    expect(isWatchedMetricKey('retired_metric')).toBe(false);
+    // Prototype keys must not pass: `in` would accept these.
+    expect(isWatchedMetricKey('constructor')).toBe(false);
+    expect(isWatchedMetricKey('toString')).toBe(false);
+  });
+
+  it('leaves only views at 30 days unwindowed', () => {
+    const unwindowed = WATCHED_METRIC_KEYS.filter(
+      (key) => !WATCHED_METRICS[key].windowed,
+    );
+
+    expect(unwindowed).toEqual(['views_at_30d']);
+  });
+});
+
+describe('foldViewsAtAge', () => {
+  it('takes the median of mature videos, ignoring immature ones', () => {
+    const fold = foldViewsAtAge([
+      { views: 100, mature: true },
+      { views: 900, mature: true },
+      { views: 300, mature: true },
+      { views: 0, mature: false },
+    ]);
+
+    expect(fold).toEqual({ status: 'measured', value: 300, coveredVideos: 3 });
+  });
+
+  it('averages the middle pair for an even count', () => {
+    const fold = foldViewsAtAge([
+      { views: 100, mature: true },
+      { views: 400, mature: true },
+    ]);
+
+    expect(fold).toMatchObject({ value: 250 });
+  });
+
+  it('is not swayed by one breakout video, as a mean would be', () => {
+    const fold = foldViewsAtAge([
+      { views: 100, mature: true },
+      { views: 120, mature: true },
+      { views: 50_000, mature: true },
+    ]);
+
+    expect(fold).toMatchObject({ value: 120 });
+  });
+
+  it('says none are mature rather than reporting zero', () => {
+    expect(foldViewsAtAge([{ views: 40, mature: false }])).toEqual({
+      status: 'unmeasured',
+      reason: 'none_mature',
+    });
+  });
+
+  it('says there is no data when there are no rows at all', () => {
+    expect(foldViewsAtAge([])).toEqual({ status: 'unmeasured', reason: 'no_data' });
+  });
+});
+
+describe('foldCtr', () => {
+  it('weights by impressions, not by views', () => {
+    // 1,000 impressions at 10% and 9,000 at 2%: 280 clicks in 10,000
+    // impressions is 2.8%. A plain mean of the two rates would say 6%.
+    const fold = foldCtr([
+      { impressions: 1_000, impressionsCtr: 0.1 },
+      { impressions: 9_000, impressionsCtr: 0.02 },
+    ]);
+
+    expect(fold.status).toBe('measured');
+    expect(fold.status === 'measured' && fold.value).toBeCloseTo(0.028, 10);
+  });
+
+  it('counts only videos that had impressions as covered', () => {
+    const fold = foldCtr([
+      { impressions: 500, impressionsCtr: 0.05 },
+      { impressions: 0, impressionsCtr: 0 },
+    ]);
+
+    expect(fold).toMatchObject({ coveredVideos: 1 });
+  });
+
+  it('is unmeasured, not 0%, when nothing had an impression', () => {
+    expect(foldCtr([{ impressions: 0, impressionsCtr: 0 }])).toEqual({
+      status: 'unmeasured',
+      reason: 'no_data',
+    });
+  });
+});
+
+describe('foldViewWeighted', () => {
+  it('weights each video by its views in the window', () => {
+    // 90 views at 30s and 10 at 130s: 4,000s over 100 views is 40s.
+    const fold = foldViewWeighted([
+      { value: 30, views: 90 },
+      { value: 130, views: 10 },
+    ]);
+
+    expect(fold).toEqual({ status: 'measured', value: 40, coveredVideos: 2 });
+  });
+
+  it('is unmeasured when the videos had no views in the window', () => {
+    expect(foldViewWeighted([{ value: 0, views: 0 }])).toEqual({
+      status: 'unmeasured',
+      reason: 'no_data',
+    });
+  });
+});
+
+describe('foldTrafficShare', () => {
+  const rows = [
+    { source: 'RELATED_VIDEO', videoId: 'a', views: 60 },
+    { source: 'SUBSCRIBER', videoId: 'a', views: 20 },
+    { source: 'YT_SEARCH', videoId: 'b', views: 15 },
+    // END_SCREEN is deliberately not browse+suggested (FILM-1605).
+    { source: 'END_SCREEN', videoId: 'b', views: 5 },
+  ];
+
+  it('shares a group of the pooled views, through the FILM-1605 taxonomy', () => {
+    expect(foldTrafficShare(rows, 'browse_suggested')).toEqual({
+      status: 'measured',
+      value: 0.8,
+      coveredVideos: 2,
+    });
+    expect(foldTrafficShare(rows, 'search')).toMatchObject({ value: 0.15 });
+  });
+
+  it('is unmeasured when the videos have no traffic rows', () => {
+    expect(foldTrafficShare([], 'search')).toEqual({
+      status: 'unmeasured',
+      reason: 'no_data',
+    });
+  });
+});
+
+describe('foldNetSubscribers', () => {
+  it('sums gained minus lost across the videos with data', () => {
+    expect(
+      foldNetSubscribers([
+        { gained: 30, lost: 4 },
+        { gained: 2, lost: 5 },
+      ]),
+    ).toEqual({ status: 'measured', value: 23, coveredVideos: 2 });
+  });
+
+  it('can be negative, which is a result and not an error', () => {
+    expect(foldNetSubscribers([{ gained: 1, lost: 6 }])).toMatchObject({ value: -5 });
+  });
+
+  it('is unmeasured when no video has data, rather than a net of zero', () => {
+    expect(foldNetSubscribers([])).toEqual({ status: 'unmeasured', reason: 'no_data' });
+  });
+});
+
+describe('stampFold', () => {
+  it('stamps a measured fold with its unit, window and coverage', () => {
+    const window = { start: '2026-07-01', end: '2026-08-29' };
+
+    expect(
+      stampFold('ctr', { status: 'measured', value: 0.04, coveredVideos: 3 }, window, 5),
+    ).toEqual({
+      status: 'measured',
+      metric: 'ctr',
+      value: 0.04,
+      unit: 'ratio',
+      window,
+      coveredVideos: 3,
+      totalVideos: 5,
+    });
+  });
+
+  it('carries the reason through for an unmeasured fold', () => {
+    expect(
+      stampFold('views_at_30d', { status: 'unmeasured', reason: 'none_mature' }, null, 2),
+    ).toEqual({
+      status: 'unmeasured',
+      metric: 'views_at_30d',
+      reason: 'none_mature',
+      window: null,
+    });
+  });
+});
+
+describe('snapshot windows', () => {
+  it('puts the baseline in the days before the start, excluding the start day', () => {
+    expect(baselineWindow('2026-07-01', 60)).toEqual({
+      start: '2026-05-02',
+      end: '2026-06-30',
+    });
+  });
+
+  it('gives the baseline exactly windowDays days', () => {
+    const window = baselineWindow('2026-03-01', 30);
+
+    expect(daysBetween(window.start, window.end) + 1).toBe(30);
+  });
+
+  it('puts the result from the start day to the end day', () => {
+    expect(resultWindow('2026-07-01', '2026-09-13')).toEqual({
+      start: '2026-07-01',
+      end: '2026-09-13',
+    });
+  });
+
+  it('reports the days that actually elapsed, not the planned window', () => {
+    expect(daysBetween('2026-07-01', '2026-09-13')).toBe(74);
+  });
+
+  it('is not thrown by a daylight-saving change', () => {
+    expect(daysBetween('2026-03-01', '2026-04-01')).toBe(31);
+  });
+});
