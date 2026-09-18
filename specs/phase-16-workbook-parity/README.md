@@ -41,7 +41,7 @@ FILM-1616 (weekly diagnostics + retention drill-down) — needs FILM-1602 ✅;
           duration from FILM-1710, or ship without one (below)
 ```
 
-**FILM-1611 (PR #260) and FILM-1617 (PR #262) shipped.**
+**FILM-1611 (PR #260), FILM-1617 (PR #262) and FILM-1610 (PR #264) shipped.**
 
 **FILM-1610 before FILM-1615.** Not a hard dependency, but the two specs
 handed the note editor to each other: FILM-1610 §7 left the editable cell to
@@ -80,6 +80,7 @@ Both remaining specs — FILM-1615 and 1616 — can start today and are independ
 | FILM-1608 | PR #257 |
 | FILM-1611 | PR #260 |
 | FILM-1617 | PR #262 |
+| FILM-1610 | PR #264 |
 
 Specified and not yet built:
 
