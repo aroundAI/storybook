@@ -115,6 +115,16 @@ test.describe('Failed reads', () => {
       ).toHaveCount(0);
     }
 
+    // The chart above them reads the time series, which this abort also
+    // matches (both bodies carry `startDate`), and printed "No revenue data
+    // for this period" from it.
+    await expect(
+      page.locator('[data-test="revenue-summary-error-time-series"]'),
+    ).toBeVisible(ERROR_STATE);
+    await expect(page.getByText('No revenue data for this period')).toHaveCount(
+      0,
+    );
+
     // And the same failed summary one tab across, which printed "No revenue
     // data by platform" — a measurement, off a read that never landed.
     await page.locator('[role="tab"]', { hasText: 'By Platform' }).click();
@@ -163,9 +173,7 @@ test.describe('Failed reads', () => {
     await expect(page.getByText('No upload cohorts yet.')).toHaveCount(0);
   });
 
-  test('a failed refetch keeps the channel filter', async ({
-    page,
-  }) => {
+  test('a failed refetch keeps the channel filter', async ({ page }) => {
     const deepDive = new DeepDivePageObject(page);
 
     // Installed before the page loads: the refetch below only happens once
