@@ -74,7 +74,20 @@ export type {
   SubscriberPoint,
   SubscriberSource,
 } from './lib/subscriber-series';
+export {
+  buildLatestLevel,
+  buildSubscriberSeries,
+} from './lib/subscriber-levels-core';
 export type {
   ConnectionSubscriberSeries,
   LatestSubscriberLevel,
-} from './subscriber-levels';
+  SubscriberInputs,
+} from './lib/subscriber-levels-core';
+export {
+  SUBSCRIBER_LEVEL_FRESH_DAYS,
+  SUBSCRIBER_SOURCE_LABEL,
+  SUBSCRIBER_TRACKED_PLATFORMS,
+  isLevelOutdated,
+  isSubscriberTracked,
+} from './lib/subscriber-vocabulary';
+export type { SubscriberTrackedPlatform } from './lib/subscriber-vocabulary';

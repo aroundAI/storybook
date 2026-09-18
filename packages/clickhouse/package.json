@@ -16,7 +16,8 @@
   "prettier": "@kit/prettier-config",
   "exports": {
     ".": "./src/index.ts",
-    "./server": "./src/server/index.ts"
+    "./server": "./src/server/index.ts",
+    "./testing": "./src/testing/subscriber-scenarios.ts"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",

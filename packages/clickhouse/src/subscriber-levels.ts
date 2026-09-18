@@ -9,68 +9,23 @@
  * composes: callers resolve and authorise the ids in Postgres first.
  */
 import {
-  type SubscriberPoint,
-  reconstructSeries,
-} from './lib/subscriber-series';
+  type ConnectionSubscriberSeries,
+  type LatestSubscriberLevel,
+  buildLatestLevel,
+  buildSubscriberSeries,
+} from './lib/subscriber-levels-core';
 import {
   querySubscriberAnchors,
   querySubscriberDeltas,
 } from './queries-advanced';
 
-export interface ConnectionSubscriberSeries {
-  connectionId: string;
-  points: SubscriberPoint[];
-  /**
-   * The widest rounding step among the anchors behind this series; 0 when
-   * every anchor was exact. A rounded seed offsets every reconstructed day by
-   * up to `roundingStep - 1`, so the curve's shape is exact and its height is
-   * not — surfaces must say so.
-   */
-  roundingStep: number;
-  /**
-   * The newest date with any measurement, in the window or not; null when
-   * the connection has never been measured. Tells "history that ended
-   * before this window" apart from "no count yet" when `points` is empty.
-   */
-  lastDataDate: string | null;
-}
-
-export interface LatestSubscriberLevel extends SubscriberPoint {
-  roundingStep: number;
-}
+export type { ConnectionSubscriberSeries, LatestSubscriberLevel };
 
 /**
  * The lower bound for the anchor read: ClickHouse `Date`'s minimum, so every
  * snapshot a connection has ever had comes back.
  */
 const EARLIEST_DATE = '1970-01-01';
-
-function widestStep(anchors: Array<{ roundingStep: number }>): number {
-  return anchors.reduce((widest, a) => Math.max(widest, a.roundingStep), 0);
-}
-
-/**
- * The newest date this connection has any measurement for.
- *
- * `reconstructSeries` carries a level forward over days with no delta, so a
- * walk read to today always ends today — flat, and labelled as reconstructed
- * from movement nobody measured. Anything past this date is that invention.
- */
-function lastEvidenceDate(
-  anchors: Array<{ snapshotDate: string }>,
-  deltas: Array<{ metricDate: string }>,
-): string | null {
-  let last: string | null = null;
-
-  for (const date of [
-    ...anchors.map((a) => a.snapshotDate),
-    ...deltas.map((d) => d.metricDate),
-  ]) {
-    if (last === null || date > last) last = date;
-  }
-
-  return last;
-}
 
 /**
  * Anchors and deltas grouped per connection, seeded from the earliest
@@ -133,20 +88,9 @@ export async function querySubscriberSeries(input: {
 }): Promise<ConnectionSubscriberSeries[]> {
   if (input.connectionIds.length === 0) return [];
 
-  return (await readInputs(input)).map(({ connectionId, anchors, deltas }) => {
-    const last = lastEvidenceDate(anchors, deltas);
-
-    return {
-      connectionId,
-      // Stops where the data stops: a disconnected channel's line ends when
-      // capture ended, and an active one's ends before its ingest lag.
-      points: reconstructSeries(anchors, deltas, input).filter(
-        (point) => last !== null && point.date <= last,
-      ),
-      roundingStep: widestStep(anchors),
-      lastDataDate: last,
-    };
-  });
+  return (await readInputs(input)).map((inputs) =>
+    buildSubscriberSeries(inputs, input),
+  );
 }
 
 /**
@@ -170,24 +114,10 @@ export async function queryLatestSubscriberLevels(
 
   const entries = await readInputs({ connectionIds, from: today, to: today });
 
-  for (const { connectionId, anchors, deltas } of entries) {
-    const lastEvidence = lastEvidenceDate(anchors, deltas);
+  for (const inputs of entries) {
+    const latest = buildLatestLevel(inputs);
 
-    if (anchors.length === 0 || lastEvidence === null) continue;
-
-    // Re-walk only up to the evidence, so the returned point is dated by it.
-    const points = reconstructSeries(anchors, deltas, {
-      from: lastEvidence,
-      to: lastEvidence,
-    });
-    const latest = points.at(-1);
-
-    if (latest) {
-      levels.set(connectionId, {
-        ...latest,
-        roundingStep: widestStep(anchors),
-      });
-    }
+    if (latest) levels.set(inputs.connectionId, latest);
   }
 
   return levels;
