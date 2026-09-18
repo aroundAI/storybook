@@ -157,10 +157,16 @@ async function linkedPublishIds(
   client: Client,
   experimentId: string,
 ): Promise<string[]> {
-  const { data } = await client
+  const { data, error } = await client
     .from('experiment_publishes')
     .select('publish_id, publishes!inner(id)')
     .eq('experiment_id', experimentId);
+
+  // A failed read must not become an empty list: that would snapshot zero
+  // videos and report "no linked videos", a false statement about the data.
+  if (error) {
+    throw new Error(`Failed to read linked videos: ${error.message}`);
+  }
 
   return (data ?? []).map((row) => row.publish_id);
 }
@@ -198,7 +204,22 @@ async function assertPublishesInAccount(
   }
 }
 
-/** Unpaged for the same reason as `linkedPublishIds`: capped at 200. */
+/** PostgREST reports a refused or failed write as a value, not a throw. */
+function throwIfFailed(
+  result: { error: { message: string } | null },
+  what: string,
+): void {
+  if (result.error) {
+    throw new Error(`Failed to ${what}: ${result.error.message}`);
+  }
+}
+
+/**
+ * Unpaged for the same reason as `linkedPublishIds`: capped at 200.
+ *
+ * Every write is checked. These results used to be discarded, so a refused
+ * insert left an experiment with no videos behind a "logged" toast.
+ */
 async function replaceLinks(
   client: Client,
   experimentId: string,
@@ -206,33 +227,45 @@ async function replaceLinks(
   tagIds?: string[],
 ): Promise<void> {
   if (publishIds) {
-    await client
-      .from('experiment_publishes')
-      .delete()
-      .eq('experiment_id', experimentId);
+    throwIfFailed(
+      await client
+        .from('experiment_publishes')
+        .delete()
+        .eq('experiment_id', experimentId),
+      'clear linked videos',
+    );
 
     if (publishIds.length > 0) {
-      await client.from('experiment_publishes').insert(
-        publishIds.map((publishId) => ({
-          experiment_id: experimentId,
-          publish_id: publishId,
-        })),
+      throwIfFailed(
+        await client.from('experiment_publishes').insert(
+          publishIds.map((publishId) => ({
+            experiment_id: experimentId,
+            publish_id: publishId,
+          })),
+        ),
+        'link videos',
       );
     }
   }
 
   if (tagIds) {
-    await client
-      .from('experiment_tags')
-      .delete()
-      .eq('experiment_id', experimentId);
+    throwIfFailed(
+      await client
+        .from('experiment_tags')
+        .delete()
+        .eq('experiment_id', experimentId),
+      'clear linked tags',
+    );
 
     if (tagIds.length > 0) {
-      await client.from('experiment_tags').insert(
-        tagIds.map((tagId) => ({
-          experiment_id: experimentId,
-          tag_id: tagId,
-        })),
+      throwIfFailed(
+        await client.from('experiment_tags').insert(
+          tagIds.map((tagId) => ({
+            experiment_id: experimentId,
+            tag_id: tagId,
+          })),
+        ),
+        'link tags',
       );
     }
   }
@@ -267,7 +300,18 @@ export const createExperimentAction = enhanceAction(
       throw new Error(`Failed to create experiment: ${error?.message}`);
     }
 
-    await replaceLinks(client, experiment.id, data.publishIds, data.tagIds);
+    try {
+      await replaceLinks(client, experiment.id, data.publishIds, data.tagIds);
+    } catch (linkError) {
+      // PostgREST has no transaction across these writes, so undo the one
+      // that landed. Left in place, a retry would log the experiment twice —
+      // once with no videos.
+      await client
+        .from('analytics_experiments')
+        .delete()
+        .eq('id', experiment.id);
+      throw linkError;
+    }
 
     return { id: experiment.id };
   },
@@ -536,7 +580,7 @@ export const getExperimentAction = enhanceAction(
       throw new Error('Experiment not found or access denied');
     }
 
-    const [{ data: publishes }, { data: tags }] = await Promise.all([
+    const [publishesResult, tagsResult] = await Promise.all([
       client
         .from('experiment_publishes')
         .select('publish_id, publishes!inner(title, platform, published_at)')
@@ -546,6 +590,13 @@ export const getExperimentAction = enhanceAction(
         .select('tag_id, content_tags!inner(dimension, slug, label)')
         .eq('experiment_id', experimentId),
     ]);
+
+    // A failed read would otherwise render as an experiment with no videos.
+    throwIfFailed(publishesResult, 'read linked videos');
+    throwIfFailed(tagsResult, 'read linked tags');
+
+    const publishes = publishesResult.data;
+    const tags = tagsResult.data;
 
     return {
       ...experiment,
