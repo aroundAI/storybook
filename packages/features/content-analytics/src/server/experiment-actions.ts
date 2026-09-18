@@ -10,6 +10,11 @@ import type { Json } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
+  assertCanConclude,
+  assertCanStart,
+  assertEditable,
+} from '../lib/experiment-transitions';
+import {
   AbandonExperimentSchema,
   ConcludeExperimentSchema,
   CreateExperimentSchema,
@@ -61,11 +66,12 @@ const today = () => new Date().toISOString().slice(0, 10);
  * An optional text field left empty is no value, not an empty string: the
  * detail view shows "Not recorded" for null and a blank box for ''.
  */
-const blankToNull = (value?: string) => (value?.trim() ? value : null);
+const blankToNull = (value?: string | null) => (value?.trim() ? value : null);
 
 /** The experiment fields a snapshot needs, read before it is taken. */
 interface SnapshotContext {
   account_id: string;
+  status: string;
   started_at: string | null;
   review_window_days: number;
   metric_watched: string | null;
@@ -77,7 +83,9 @@ async function readSnapshotContext(
 ): Promise<SnapshotContext> {
   const { data, error } = await client
     .from('analytics_experiments')
-    .select('account_id, started_at, review_window_days, metric_watched')
+    .select(
+      'account_id, status, started_at, review_window_days, metric_watched',
+    )
     .eq('id', experimentId)
     .single();
 
@@ -227,6 +235,9 @@ async function replaceLinks(
   tagIds?: string[],
 ): Promise<void> {
   if (publishIds) {
+    // A repeated id would hit the primary key and fail the whole insert.
+    const unique = Array.from(new Set(publishIds));
+
     throwIfFailed(
       await client
         .from('experiment_publishes')
@@ -235,10 +246,10 @@ async function replaceLinks(
       'clear linked videos',
     );
 
-    if (publishIds.length > 0) {
+    if (unique.length > 0) {
       throwIfFailed(
         await client.from('experiment_publishes').insert(
-          publishIds.map((publishId) => ({
+          unique.map((publishId) => ({
             experiment_id: experimentId,
             publish_id: publishId,
           })),
@@ -324,23 +335,33 @@ export const updateExperimentAction = enhanceAction(
 
     const updates: Record<string, unknown> = {};
     if (fields.title !== undefined) updates.title = fields.title;
-    if (fields.hypothesis !== undefined) updates.hypothesis = fields.hypothesis;
+    if (fields.hypothesis !== undefined)
+      updates.hypothesis = blankToNull(fields.hypothesis);
     if (fields.changeDescription !== undefined)
       updates.change_description = fields.changeDescription;
     if (fields.expectedOutcome !== undefined)
-      updates.expected_outcome = fields.expectedOutcome;
+      updates.expected_outcome = blankToNull(fields.expectedOutcome);
     if (fields.category !== undefined) updates.category = fields.category;
     if (fields.metricWatched !== undefined)
       updates.metric_watched = fields.metricWatched;
     if (fields.reviewWindowDays !== undefined)
       updates.review_window_days = fields.reviewWindowDays;
-    if (fields.notes !== undefined) updates.notes = fields.notes;
+    if (fields.notes !== undefined) updates.notes = blankToNull(fields.notes);
     if (fields.connectionId !== undefined)
       updates.connection_id = fields.connectionId;
 
-    if (publishIds) {
-      const { account_id } = await readSnapshotContext(client, experimentId);
-      await assertPublishesInAccount(client, account_id, publishIds);
+    const edited = Object.entries({ ...fields, publishIds })
+      .filter(([, value]) => value !== undefined)
+      .map(([field]) => field);
+
+    if (edited.length > 0) {
+      const context = await readSnapshotContext(client, experimentId);
+
+      assertEditable(context.status, edited);
+
+      if (publishIds) {
+        await assertPublishesInAccount(client, context.account_id, publishIds);
+      }
     }
 
     if (Object.keys(updates).length > 0) {
@@ -371,6 +392,8 @@ export const startExperimentAction = enhanceAction(
     const started = startedAt ?? today();
 
     const context = await readSnapshotContext(client, experimentId);
+    assertCanStart(context.status);
+
     const publishIds = await linkedPublishIds(client, experimentId);
     const baseline = await captureSnapshot(publishIds, {
       metric: context.metric_watched,
@@ -406,21 +429,21 @@ export const concludeExperimentAction = enhanceAction(
     const ended = endedAt ?? today();
 
     const context = await readSnapshotContext(client, experimentId);
+    assertCanConclude(context.status, context.started_at, ended);
 
-    if (!context.started_at) {
-      throw new Error('An experiment must be started before it is concluded');
-    }
+    // assertCanConclude has established this; the type cannot see it.
+    const startedAt = context.started_at!;
 
     const publishIds = await linkedPublishIds(client, experimentId);
     const result = await captureSnapshot(publishIds, {
       metric: context.metric_watched,
       accountId: context.account_id,
-      window: resultWindow(context.started_at, ended),
+      window: resultWindow(startedAt, ended),
     });
 
     // What elapsed, not what was planned: a review on day 74 of a 60-day
     // experiment is labelled 74.
-    result.resultAfterDays = daysBetween(context.started_at, ended);
+    result.resultAfterDays = daysBetween(startedAt, ended);
 
     const { error } = await client
       .from('analytics_experiments')
@@ -472,7 +495,7 @@ export const abandonExperimentAction = enhanceAction(
  * file that grows with how long an account has used the log.
  */
 export const listExperimentsDueForReviewAction = enhanceAction(
-  async ({ accountId }) => {
+  async ({ accountId, asOf }) => {
     const client = getSupabaseServerClient();
 
     // Both dates are nullable in the table; the filter guarantees them here,
@@ -490,7 +513,7 @@ export const listExperimentsDueForReviewAction = enhanceAction(
           .select('id, title, started_at, review_due_at, metric_watched')
           .eq('account_id', accountId)
           .eq('status', 'running')
-          .lte('review_due_at', today())
+          .lte('review_due_at', asOf ?? today())
           .order('review_due_at', { ascending: true })
           .order('id', { ascending: true })
           .range(from, to),

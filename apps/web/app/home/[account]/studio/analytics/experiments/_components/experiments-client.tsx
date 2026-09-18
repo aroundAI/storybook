@@ -34,6 +34,15 @@ import { Input } from '@kit/ui/input';
 import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 
+/**
+ * The user's calendar date, `YYYY-MM-DD`. Experiment dates are calendar
+ * dates in the user's day; the server's UTC clock would record a start just
+ * after local midnight on the previous day for anyone east of UTC.
+ */
+function localToday(): string {
+  return new Date().toLocaleDateString('en-CA');
+}
+
 interface ExperimentsClientProps {
   /** Account whose experiment log is shown */
   accountId: string;
@@ -65,7 +74,8 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
 
   const dueQuery = useQuery({
     queryKey: ['experiments-due', accountId],
-    queryFn: () => listExperimentsDueForReviewAction({ accountId }),
+    queryFn: () =>
+      listExperimentsDueForReviewAction({ accountId, asOf: localToday() }),
   });
 
   const channelsQuery = useQuery({
@@ -225,7 +235,10 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
                   onClick={() =>
                     runAction(
                       () =>
-                        startExperimentAction({ experimentId: experiment.id }),
+                        startExperimentAction({
+                          experimentId: experiment.id,
+                          startedAt: localToday(),
+                        }),
                       'Experiment started — baseline captured',
                     )
                   }
@@ -260,6 +273,7 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
                                   experimentId: experiment.id,
                                   actualOutcome: outcome,
                                   outcomeStatus: status,
+                                  endedAt: localToday(),
                                 }),
                               'Experiment concluded',
                             );

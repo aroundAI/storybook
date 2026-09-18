@@ -13,6 +13,7 @@ import {
   foldViewsAtAge,
   formatWatchedValue,
   isWatchedMetricKey,
+  perDay,
   resultWindow,
   stampFold,
 } from '../src/lib/watched-metrics';
@@ -41,10 +42,10 @@ describe('the watched-metric registry', () => {
 describe('foldViewsAtAge', () => {
   it('takes the median of mature videos, ignoring immature ones', () => {
     const fold = foldViewsAtAge([
-      { views: 100, mature: true },
-      { views: 900, mature: true },
-      { views: 300, mature: true },
-      { views: 0, mature: false },
+      { views: 100, mature: true, predatesIngest: false },
+      { views: 900, mature: true, predatesIngest: false },
+      { views: 300, mature: true, predatesIngest: false },
+      { views: 0, mature: false, predatesIngest: false },
     ]);
 
     expect(fold).toEqual({ status: 'measured', value: 300, coveredVideos: 3 });
@@ -52,8 +53,8 @@ describe('foldViewsAtAge', () => {
 
   it('averages the middle pair for an even count', () => {
     const fold = foldViewsAtAge([
-      { views: 100, mature: true },
-      { views: 400, mature: true },
+      { views: 100, mature: true, predatesIngest: false },
+      { views: 400, mature: true, predatesIngest: false },
     ]);
 
     expect(fold).toMatchObject({ value: 250 });
@@ -61,16 +62,18 @@ describe('foldViewsAtAge', () => {
 
   it('is not swayed by one breakout video, as a mean would be', () => {
     const fold = foldViewsAtAge([
-      { views: 100, mature: true },
-      { views: 120, mature: true },
-      { views: 50_000, mature: true },
+      { views: 100, mature: true, predatesIngest: false },
+      { views: 120, mature: true, predatesIngest: false },
+      { views: 50_000, mature: true, predatesIngest: false },
     ]);
 
     expect(fold).toMatchObject({ value: 120 });
   });
 
   it('says none are mature rather than reporting zero', () => {
-    expect(foldViewsAtAge([{ views: 40, mature: false }])).toEqual({
+    expect(
+      foldViewsAtAge([{ views: 40, mature: false, predatesIngest: false }]),
+    ).toEqual({
       status: 'unmeasured',
       reason: 'none_mature',
     });
@@ -193,6 +196,7 @@ describe('stampFold', () => {
         { status: 'measured', value: 0.04, coveredVideos: 3 },
         window,
         5,
+        12,
       ),
     ).toEqual({
       status: 'measured',
@@ -202,6 +206,9 @@ describe('stampFold', () => {
       window,
       coveredVideos: 3,
       totalVideos: 5,
+      daysWithData: 12,
+      // 2026-07-01 to 2026-08-29 inclusive.
+      windowDays: 60,
     });
   });
 
@@ -212,6 +219,7 @@ describe('stampFold', () => {
         { status: 'unmeasured', reason: 'none_mature' },
         null,
         2,
+        null,
       ),
     ).toEqual({
       status: 'unmeasured',
@@ -273,5 +281,57 @@ describe('UNMEASURED_REASON_TEXT', () => {
     ] as const) {
       expect(UNMEASURED_REASON_TEXT[reason].length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('coverage is stated, not implied (C1-C3)', () => {
+  it('leaves out a video whose 30 days closed before ingest began', () => {
+    // Its 0 is not a measured zero: no data exists for that window at all.
+    const fold = foldViewsAtAge([
+      { views: 400, mature: true, predatesIngest: false },
+      { views: 600, mature: true, predatesIngest: false },
+      { views: 0, mature: true, predatesIngest: true },
+    ]);
+
+    expect(fold).toEqual({ status: 'measured', value: 500, coveredVideos: 2 });
+  });
+
+  it('says so when every mature video predates ingest', () => {
+    expect(
+      foldViewsAtAge([{ views: 0, mature: true, predatesIngest: true }]),
+    ).toEqual({ status: 'unmeasured', reason: 'predates_ingest' });
+  });
+
+  it('explains the new reason in words', () => {
+    expect(UNMEASURED_REASON_TEXT.predates_ingest.length).toBeGreaterThan(0);
+  });
+
+  it('marks sums and rates, so a sum is never compared across unequal windows unmarked', () => {
+    expect(WATCHED_METRICS.subscribers_net.kind).toBe('sum');
+    for (const key of WATCHED_METRIC_KEYS.filter(
+      (k) => k !== 'subscribers_net',
+    )) {
+      expect(WATCHED_METRICS[key].kind).toBe('rate');
+    }
+  });
+
+  it('gives a sum per day of data, keeping the raw sum', () => {
+    expect(perDay(30, 12)).toBeCloseTo(2.5, 10);
+  });
+
+  it('has no per-day value without days of data', () => {
+    expect(perDay(30, 0)).toBeNull();
+  });
+
+  it('records no day coverage for an age-bounded metric', () => {
+    expect(
+      stampFold(
+        'views_at_30d',
+        { status: 'measured', value: 500, coveredVideos: 2 },
+        null,
+        3,
+        null,
+      ),
+    ).toMatchObject({ daysWithData: null, windowDays: null });
   });
 });

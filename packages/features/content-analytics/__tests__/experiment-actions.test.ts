@@ -18,6 +18,7 @@ import {
 const state: {
   experiment: {
     account_id: string;
+    status: string;
     started_at: string | null;
     review_window_days: number;
     metric_watched: string | null;
@@ -35,6 +36,7 @@ const state: {
 } = {
   experiment: {
     account_id: 'a1',
+    status: 'planned',
     started_at: null,
     review_window_days: 60,
     metric_watched: 'ctr',
@@ -142,6 +144,7 @@ vi.mock('@kit/supabase/server-client', () => ({
 beforeEach(() => {
   state.experiment = {
     account_id: 'a1',
+    status: 'planned',
     started_at: null,
     review_window_days: 60,
     metric_watched: 'ctr',
@@ -243,6 +246,7 @@ describe('startExperimentAction', () => {
 
 describe('concludeExperimentAction', () => {
   it('measures from the start day to the end day', async () => {
+    state.experiment.status = 'running';
     state.experiment.started_at = '2026-07-01';
 
     await concludeExperimentAction({
@@ -260,6 +264,7 @@ describe('concludeExperimentAction', () => {
   });
 
   it('records the days that elapsed, not the 60 that were planned', async () => {
+    state.experiment.status = 'running';
     state.experiment.started_at = '2026-07-01';
 
     await concludeExperimentAction({
@@ -282,7 +287,7 @@ describe('concludeExperimentAction', () => {
         actualOutcome: 'n/a',
         outcomeStatus: 'inconclusive',
       }),
-    ).rejects.toThrow('must be started');
+    ).rejects.toThrow(/only a running experiment/i);
 
     expect(state.updates).toHaveLength(0);
   });
@@ -374,5 +379,108 @@ describe('linking videos', () => {
     expect(state.inserts[0]).toMatchObject({
       payload: { hypothesis: null, expected_outcome: null, notes: null },
     });
+  });
+});
+
+describe('the comparison stays comparable (B1-B3, B6)', () => {
+  it('refuses to start an experiment that is already running', async () => {
+    state.experiment.status = 'running';
+    state.experiment.started_at = '2026-07-01';
+
+    await expect(
+      startExperimentAction({ experimentId: 'e1', startedAt: '2026-08-01' }),
+    ).rejects.toThrow(/only a planned experiment/i);
+    expect(state.updates).toHaveLength(0);
+  });
+
+  it('refuses to conclude an abandoned experiment', async () => {
+    state.experiment.status = 'abandoned';
+    state.experiment.started_at = '2026-07-01';
+
+    await expect(
+      concludeExperimentAction({
+        experimentId: 'e1',
+        actualOutcome: 'x',
+        outcomeStatus: 'confirmed',
+        endedAt: '2026-08-01',
+      }),
+    ).rejects.toThrow(/only a running experiment/i);
+    expect(state.updates).toHaveLength(0);
+  });
+
+  it('refuses an end date before the start', async () => {
+    state.experiment.status = 'running';
+    state.experiment.started_at = '2026-07-01';
+
+    await expect(
+      concludeExperimentAction({
+        experimentId: 'e1',
+        actualOutcome: 'x',
+        outcomeStatus: 'confirmed',
+        endedAt: '2026-06-01',
+      }),
+    ).rejects.toThrow('before it started');
+    expect(state.updates).toHaveLength(0);
+  });
+
+  it('refuses to change the watched metric once running', async () => {
+    state.experiment.status = 'running';
+
+    await expect(
+      updateExperimentAction({
+        experimentId: 'e1',
+        metricWatched: 'search_share',
+      }),
+    ).rejects.toThrow('metricWatched');
+    expect(state.updates).toHaveLength(0);
+  });
+
+  it('refuses to relink videos once running', async () => {
+    state.experiment.status = 'running';
+    state.inAccount = ['p9'];
+
+    await expect(
+      updateExperimentAction({ experimentId: 'e1', publishIds: ['p9'] }),
+    ).rejects.toThrow('publishIds');
+    expect(state.inserts).toHaveLength(0);
+  });
+
+  it('still lets a running experiment change its wording', async () => {
+    state.experiment.status = 'running';
+
+    await updateExperimentAction({ experimentId: 'e1', title: 'Renamed' });
+
+    expect(state.updates).toEqual([{ title: 'Renamed' }]);
+  });
+
+  it('links a repeated video once', async () => {
+    state.inAccount = ['p1'];
+
+    await createExperimentAction({
+      accountId: 'a1',
+      title: 'Dupes',
+      changeDescription: 'x',
+      reviewWindowDays: 60,
+      publishIds: ['p1', 'p1'],
+      tagIds: [],
+    });
+
+    const links = state.inserts.find((i) => i.table === 'experiment_publishes');
+    expect(links?.payload).toEqual([{ experiment_id: 'e1', publish_id: 'p1' }]);
+  });
+});
+
+describe('updateExperimentAction normalises blank text like create (E3)', () => {
+  it('stores blank optional text as null', async () => {
+    await updateExperimentAction({
+      experimentId: 'e1',
+      hypothesis: '  ',
+      expectedOutcome: '',
+      notes: ' ',
+    });
+
+    expect(state.updates).toEqual([
+      { hypothesis: null, expected_outcome: null, notes: null },
+    ]);
   });
 });

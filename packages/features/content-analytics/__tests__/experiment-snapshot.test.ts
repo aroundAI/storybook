@@ -108,6 +108,7 @@ describe('experiment snapshot totals', () => {
   });
 
   it('start writes a baseline whose totals are unchanged by FILM-1610', async () => {
+    experimentRow.status = 'planned';
     await startExperimentAction({ experimentId: 'e1' });
 
     const baseline = updates[0]!.baseline_metrics as {
@@ -122,6 +123,7 @@ describe('experiment snapshot totals', () => {
   });
 
   it('conclude writes a result whose totals are unchanged by FILM-1610', async () => {
+    experimentRow.status = 'running';
     await concludeExperimentAction({
       experimentId: 'e1',
       actualOutcome: 'Retention held',
@@ -134,6 +136,7 @@ describe('experiment snapshot totals', () => {
   });
 
   it('totals stay lifetime: the query is called with no date window', async () => {
+    experimentRow.status = 'planned';
     await startExperimentAction({ experimentId: 'e1' });
 
     expect(totalsByVideoIds).toHaveBeenCalledWith(['p1', 'p2']);
