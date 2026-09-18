@@ -267,6 +267,7 @@ Choosing the wrong layer is why four rounds missed the same bug.
 | Unit (pure functions) | Arithmetic, rules, edge cases | The DOM, a real server, the second interaction |
 | Mocked-client tests | Call shapes, branching | **SQL a real server rejects** |
 | `pnpm --filter @kit/clickhouse verify` | Real SQL against real ClickHouse | Correctness beyond the fixtures |
+| Evidence specs on a `local.env` server | A known ClickHouse input reaching the page as the right figure | Production data; CI (no ClickHouse there) |
 | Supabase DB job | RLS, migrations, PostgREST row caps | Anything rendered |
 | **E2E (Playwright)** | DOM ↔ form-state drift, **the second submission**, timezone and locale | Anything not driven |
 | Screenshots | What a person notices instantly | Anything not captured |
@@ -278,6 +279,58 @@ Two rules of thumb earned the hard way:
   Every UI bug in FILM-1609 was of this kind.
 - **A mocked client cannot reject your SQL.** Anything that talks to ClickHouse
   or Postgres needs a run against the real thing before it is believed.
+
+---
+
+## Local environment: Supabase *and* ClickHouse
+
+**Both run on this machine. `CLICKHOUSE_ENABLED=false` describes production,
+not your laptop.** Specs say "the numbers cannot be verified" because
+production has no ClickHouse; that sentence is true of CI and false locally,
+and reading it as a local fact is how FILM-1610 first shipped a PR saying no
+watched value had been checked — while a ClickHouse container sat running.
+
+```bash
+./scripts/local-env.sh up       # supabase start + ClickHouse 24.8 (CI's version) + CH migrations
+./scripts/local-env.sh verify   # every ClickHouse query and insert, for real
+./scripts/local-env.sh status
+./scripts/local-env.sh down
+```
+
+`up` writes `deployment/config/local.env` (no secrets; regenerated on demand)
+with `CLICKHOUSE_ENABLED=true`. **The app only reads ClickHouse if that file is
+in the server's environment** — `apps/web/.env*` does not enable it, so a plain
+`pnpm dev` still behaves like production and every analytics read returns `[]`:
+
+```bash
+# a dev server that reads the local ClickHouse
+set -a; . deployment/config/local.env; set +a
+cd apps/web && npx next dev --turbo -p 3100
+
+# evidence specs that seed ClickHouse rows and read real figures off the page
+set -a; . deployment/config/local.env; set +a
+cd apps/e2e && CAPTURE_EVIDENCE=1 CLICKHOUSE_EVIDENCE=1 EVIDENCE_DIR=/tmp/evidence \
+  PLAYWRIGHT_BASE_URL=http://localhost:3100 npx playwright test <name>-evidence
+```
+
+Check it before believing it: `./scripts/local-env.sh status` prints the
+ClickHouse version, and a page that still shows "no data" for rows you just
+inserted means the server was started without `local.env`.
+
+| Question | Local ClickHouse answers it? |
+|---|---|
+| Does the SQL run at all? | Yes — `local-env.sh verify` |
+| Does a known input produce the right figure *on the page*? | Yes — seed rows, drive the UI, assert the value (`experiments-evidence.spec.ts`, `subscriber-evidence.spec.ts`) |
+| Are production's figures right? | No — production has no instance yet |
+
+The pattern for a measured-value check: seed rows whose right answer you
+computed by hand, and pick them so the plausible *wrong* implementation gives a
+different number. FILM-1610 seeds 1,000 impressions at 10% and 9,000 at 2%:
+impression-weighted is 2.8%, a plain mean is 6.0%, and the page says which one
+shipped.
+
+CI does not run these — its E2E job has no ClickHouse — so they are evidence
+for the PR, gated behind `CLICKHOUSE_EVIDENCE`, not guards.
 
 ---
 

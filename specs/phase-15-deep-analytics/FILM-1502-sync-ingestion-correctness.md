@@ -69,6 +69,8 @@ Update the `ageCategory` union in `server/types.ts` and `getSyncPriority`.
 
 ## 4. Postgres Indexes
 
+> ⚠️ **Superseded instruction.** This spec predates the rule against `supabase db diff` (root `CLAUDE.md`, "Do not run `supabase db diff` in this repo"). Migrations here are written by hand and mirrored into `schemas/`; do not follow the `db diff` step below if you reuse this spec.
+
 New Supabase migration (edit `apps/web/supabase/schemas/30-film-studio.sql`, then `db diff` + typegen):
 
 ```sql

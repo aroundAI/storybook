@@ -481,8 +481,11 @@ This starts:
 # Start local Supabase
 pnpm supabase:web:start
 
-# Create a migration
-pnpm --filter web supabase db diff -f my-feature
+# Create a migration — by hand. Never `supabase db diff`: schemas/ is
+# missing tables the migrations create, so a diff proposes dropping them.
+# See "Database Workflow" in CLAUDE.md.
+timestamp=$(date -u +"%Y%m%d%H%M%S")
+$EDITOR "apps/web/supabase/migrations/${timestamp}_my-feature.sql"
 
 # Apply migrations
 pnpm --filter web supabase migration up

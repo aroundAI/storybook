@@ -132,8 +132,27 @@ Data associates with accounts via foreign keys for proper access control.
 
 ```bash
 pnpm dev                    # Start all apps
-pnpm --filter web dev       # Main app (port 3000)
+pnpm --filter web dev       # Main app (port 3000) — ClickHouse OFF, like production
 ```
+
+### Local Supabase + ClickHouse — both exist, use them
+
+```bash
+./scripts/local-env.sh up       # Supabase + ClickHouse 24.8 (CI's version) + CH migrations
+./scripts/local-env.sh status   # confirm both are up
+./scripts/local-env.sh verify   # every ClickHouse query, against the real server
+
+# a server that actually reads ClickHouse (plain `pnpm dev` does not)
+set -a; . deployment/config/local.env; set +a
+cd apps/web && npx next dev --turbo -p 3100
+```
+
+**`CLICKHOUSE_ENABLED=false` is production's state, not your machine's.** When a
+spec says analytics figures "cannot be verified", it means in production and CI.
+Locally, seed ClickHouse rows with a hand-computed answer and read the figure
+off the page — see "Local environment" in `docs/ENGINEERING-WORKFLOW.md` and
+`apps/e2e/tests/experiments/experiments-evidence.spec.ts`. Reporting a value as
+unverified while the container is running is a gap, not a limit.
 
 ### Database Operations
 

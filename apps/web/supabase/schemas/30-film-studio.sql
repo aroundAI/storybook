@@ -243,8 +243,9 @@ create table if not exists public.platform_connections (
   -- copy of the definition. This file and 32-platform-connections.sql both
   -- declare the table with `if not exists`, so this one wins on ordering and
   -- the other is a silent no-op — meaning the columns absent *here* are the
-  -- ones `db diff` would generate a DROP for. See the note below about the
-  -- duplication itself.
+  -- ones a reader of this file would wrongly believe do not exist (and that
+  -- `db diff`, which this repo does not use, would try to DROP). See the note
+  -- below about the duplication itself.
   metadata jsonb default '{}'::jsonb,
   language varchar(5) default 'en' not null,
   is_active boolean default true not null,
@@ -553,7 +554,8 @@ create table if not exists public.publishes (
   -- Language of this specific publish, and the dubbed version it came from.
   -- Both are live (migration 20251224180000_add_multi_language_analytics.sql)
   -- and both feed analytics: `language` is what dim-sync writes to
-  -- video_dim.language. Declared here so `db diff` does not emit a DROP.
+  -- video_dim.language. Declared here so this file matches the database it
+  -- documents; migrations remain the source of truth.
   --
   -- Note the `default 'en'`: it means an unset language is indistinguishable
   -- from a deliberate English one, so "English" doubles as the unknown bucket

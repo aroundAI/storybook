@@ -246,8 +246,9 @@ supabase db reset
 # Apply migrations
 supabase migration up
 
-# Verify table is gone
-supabase db diff
+# Verify table is gone (not `supabase db diff` — in this repo it diffs
+# against an incomplete schemas/ and proposes dropping live tables)
+psql "$SUPABASE_DB_URL" -c '\dt public.legacy_sessions'
 
 # Test application
 npm run dev

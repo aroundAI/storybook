@@ -206,7 +206,7 @@ export class ScriptsTool {
         category: 'database',
         description: 'Access Supabase CLI commands via web project',
         usage:
-          'Use with: pnpm --filter web supabase <command>. Examples: db diff, db push, gen types, etc.',
+          'Use with: pnpm --filter web supabase <command>. Examples: migration up, migration list, gen types. Never db diff: migrations are hand-written, and schemas/ is incomplete, so a diff proposes dropping tables.',
         importance: 'high',
       },
     };

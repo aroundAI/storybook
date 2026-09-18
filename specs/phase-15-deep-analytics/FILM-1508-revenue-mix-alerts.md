@@ -14,6 +14,8 @@ Revenue tracking today distinguishes only `api` vs `manual` source; `getRevenueS
 
 ## 2. Migration (edit `apps/web/supabase/schemas/38-revenue-tracking.sql` + `db diff`)
 
+> ⚠️ **Superseded instruction.** This spec predates the rule against `supabase db diff` (root `CLAUDE.md`, "Do not run `supabase db diff` in this repo"). Migrations here are written by hand and mirrored into `schemas/`; do not follow the `db diff` step below if you reuse this spec.
+
 - `revenue_records` gains `category varchar(30) not null default 'ads'`, `check (category in ('ads','premium','sponsorship','product','affiliate','other'))`.
 - `publish_id` becomes **nullable**; new nullable `account_id uuid references accounts(id)`; `check (publish_id is not null or account_id is not null)` — sponsorship/product revenue is often channel-level (locked decision).
 - Replace `unique(publish_id, record_date)` with a unique index on `(coalesce(publish_id, account_id), record_date, category)`.
