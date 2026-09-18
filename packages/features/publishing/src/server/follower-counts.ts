@@ -85,14 +85,43 @@ function resolveOne(
 }
 
 /**
- * A badge is decoration on the Publish Hub, so an analytics outage degrades
- * it to the stored figure rather than failing the page that publishes.
+ * How long the publish pages wait for a subscriber level before falling back
+ * to the stored count. The read reaches back 400 days and joins per-video
+ * metrics, and these pages are about publishing, not analytics.
+ */
+const LEVEL_READ_TIMEOUT_MS = 2_000;
+
+/**
+ * A follower count is decoration on the publish pages, so an analytics
+ * outage — an error, or a read too slow to wait for — degrades it to the
+ * stored figure rather than holding up the page that publishes.
+ *
+ * On timeout the query is abandoned, not cancelled: it still runs to
+ * completion on the server. Aborting it through the ClickHouse client is a
+ * separate change.
  */
 async function readLevels(
   connectionIds: string[],
 ): Promise<Map<string, LatestSubscriberLevel>> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () =>
+        reject(
+          new Error(
+            `Subscriber levels took longer than ${LEVEL_READ_TIMEOUT_MS}ms`,
+          ),
+        ),
+      LEVEL_READ_TIMEOUT_MS,
+    );
+  });
+
   try {
-    return await queryLatestSubscriberLevels(connectionIds);
+    return await Promise.race([
+      queryLatestSubscriberLevels(connectionIds),
+      timeout,
+    ]);
   } catch (error) {
     const logger = await getLogger();
 
@@ -102,5 +131,7 @@ async function readLevels(
     );
 
     return new Map();
+  } finally {
+    clearTimeout(timer);
   }
 }
