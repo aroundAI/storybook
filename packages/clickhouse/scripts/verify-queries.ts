@@ -31,8 +31,11 @@ import {
   queryDailyStats,
   queryDailyTimeSeries,
   queryDailyTimeSeriesByPlatform,
+  queryDataDaysForVideos,
   queryLatestSnapshots,
+  queryLatestSubscriberLevels,
   queryMedianViewsPerVideo,
+  queryNetSubscribersForVideos,
   queryPerVideoTotals,
   queryPlatformBreakdown,
   queryQualityMetricsForVideos,
@@ -42,6 +45,7 @@ import {
   querySegmentPerformance,
   querySubscriberAnchors,
   querySubscriberDeltas,
+  querySubscriberSeries,
   queryTotals,
   queryTotalsByVideoIds,
   queryTrafficSourceBreakdown,
@@ -766,6 +770,110 @@ async function assertions() {
   });
 }
 
+/**
+ * Queries that CI never ran until `verify-coverage.test.ts` made a missing
+ * entry fail (FILM-1610 review, D1, D2). Each asserts a value the fixture
+ * determines, not merely that the SQL parsed.
+ */
+async function watchedMetricSteps() {
+  const ids = [NORMAL, PRE_INGEST, ZERO];
+
+  await step('queryNetSubscribersForVideos', async () => {
+    const perVideo = await queryNetSubscribersForVideos({
+      videoIds: ids,
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+    });
+    const normal = perVideo.get(NORMAL);
+
+    // NORMAL: +1 on 01-11, +2/-1 on 01-20.
+    if (normal?.gained !== 3 || normal.lost !== 1) {
+      throw new Error(`expected NORMAL +3/-1, got ${JSON.stringify(normal)}`);
+    }
+    // ZERO has no metric rows at all: absent, not present with zeros.
+    if (perVideo.has(ZERO)) {
+      throw new Error('a video with no rows must be absent, not zero');
+    }
+    return `NORMAL +${normal.gained}/-${normal.lost}`;
+  });
+
+  await step('queryDataDaysForVideos', async () => {
+    const full = { startDate: '2026-01-01', endDate: '2026-12-31' };
+    const counts = {
+      daily: await queryDataDaysForVideos({
+        videoIds: ids,
+        source: 'daily',
+        ...full,
+      }),
+      reach: await queryDataDaysForVideos({
+        videoIds: ids,
+        source: 'reach',
+        ...full,
+      }),
+      traffic: await queryDataDaysForVideos({
+        videoIds: ids,
+        source: 'traffic',
+        ...full,
+      }),
+      // Only 01-20 falls in this window.
+      narrow: await queryDataDaysForVideos({
+        videoIds: ids,
+        source: 'daily',
+        startDate: '2026-01-15',
+        endDate: '2026-01-31',
+      }),
+    };
+
+    const expected = { daily: 2, reach: 1, traffic: 1, narrow: 1 };
+
+    if (JSON.stringify(counts) !== JSON.stringify(expected)) {
+      throw new Error(
+        `expected ${JSON.stringify(expected)}, got ${JSON.stringify(counts)}`,
+      );
+    }
+    return JSON.stringify(counts);
+  });
+
+  await step('queryVideoViewsAtAge (videoIds)', async () => {
+    // The chunked path views_at_30d uses; the scoped path is covered above.
+    const rows = await queryVideoViewsAtAge({
+      scope: { projectId: PROJECT },
+      videoIds: [NORMAL, ZERO],
+      checkpoints: [30],
+    });
+    const found = rows.map((row) => row.videoId).sort();
+
+    if (JSON.stringify(found) !== JSON.stringify([NORMAL, ZERO].sort())) {
+      throw new Error(`expected NORMAL and ZERO, got ${JSON.stringify(found)}`);
+    }
+    return `${rows.length} row(s)`;
+  });
+
+  await step('querySubscriberSeries', async () => {
+    const series = await querySubscriberSeries({
+      connectionIds: [CHANNEL],
+      from: '2026-01-01',
+      to: '2026-01-31',
+    });
+
+    if (series.length !== 1) {
+      throw new Error(`expected one channel's series, got ${series.length}`);
+    }
+    return `${series.length} series`;
+  });
+
+  await step('queryLatestSubscriberLevels', async () => {
+    // The 2029-01-01 snapshot written by the re-insert assertion is the
+    // latest evidence for CHANNEL.
+    const levels = await queryLatestSubscriberLevels([CHANNEL], '2029-01-02');
+
+    if (!levels.has(CHANNEL)) {
+      throw new Error('expected a latest level for the seeded channel');
+    }
+    return JSON.stringify(levels.get(CHANNEL)).slice(0, 80);
+  });
+}
+
 async function main() {
   if (!isClickHouseEnabled()) {
     console.error(
@@ -777,6 +885,7 @@ async function main() {
   await seed();
   await queries();
   await assertions();
+  await watchedMetricSteps();
 
   const failed = results.filter((r) => !r.ok);
 

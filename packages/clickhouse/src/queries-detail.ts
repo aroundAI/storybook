@@ -3,6 +3,7 @@
  * retention curves, audience breakdowns, and traffic sources.
  */
 import {
+  chunkVideoIds,
   concatByChunk,
   fitsOneChunk,
   mergeMapsByChunk,
@@ -388,6 +389,69 @@ async function queryNetSubscribersForVideosSingle(input: {
   }
 
   return result;
+}
+
+/**
+ * Tables a coverage count may read, keyed by what they hold (FILM-1610
+ * review, C3). A fixed map rather than a parameter: a table name cannot be a
+ * bound query parameter, so it must never come from a caller.
+ */
+const DATA_DAY_TABLES = {
+  reach: 'video_reach_daily FINAL',
+  daily: 'video_daily_stats',
+  traffic: 'video_traffic_sources FINAL',
+} as const;
+
+export type DataDaySource = keyof typeof DATA_DAY_TABLES;
+
+/**
+ * Distinct days in a window on which any of the videos has a row.
+ *
+ * A windowed figure computed from ten days of a thirty-day window is a
+ * figure about ten days. This is the count that lets it say so.
+ */
+export async function queryDataDaysForVideos(input: {
+  videoIds: string[];
+  source: DataDaySource;
+  startDate: string;
+  endDate: string;
+}): Promise<number> {
+  if (input.videoIds.length === 0 || !isClickHouseEnabled()) return 0;
+
+  // Object.hasOwn, as in traffic-groups: a prototype key must not resolve.
+  if (!Object.hasOwn(DATA_DAY_TABLES, input.source)) {
+    throw new Error(`Unknown data-day source: ${input.source}`);
+  }
+
+  const table = DATA_DAY_TABLES[input.source];
+  const client = getClickHouseClient();
+  const days = new Set<string>();
+
+  // Chunked like the other video-id reads; a date seen in two chunks is one
+  // day, so the chunks' dates are unioned, not their counts summed.
+  for (const chunk of chunkVideoIds(input.videoIds)) {
+    const response = await client.query({
+      query: `
+        SELECT DISTINCT toString(metric_date) as day
+        FROM ${table}
+        WHERE video_id IN {videoIds: Array(String)}
+          AND metric_date >= {startDate: Date}
+          AND metric_date <= {endDate: Date}
+      `,
+      query_params: {
+        videoIds: chunk,
+        startDate: input.startDate,
+        endDate: input.endDate,
+      },
+      format: 'JSONEachRow',
+    });
+
+    for (const row of await response.json<{ day: string }>()) {
+      days.add(row.day);
+    }
+  }
+
+  return days.size;
 }
 
 /**
