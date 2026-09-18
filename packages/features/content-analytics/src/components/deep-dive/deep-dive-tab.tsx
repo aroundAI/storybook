@@ -9,6 +9,7 @@ import {
   Layers,
   PieChart,
   TrendingUp,
+  Users,
 } from 'lucide-react';
 
 import { TRAFFIC_SOURCE_GROUPS } from '@kit/clickhouse';
@@ -23,6 +24,7 @@ import {
   getTrafficBreakdownAction,
   getYppProgressAction,
 } from '../../server/deep-dive-actions';
+import { getSubscriberSeriesAction } from '../../server/subscriber-series-actions';
 import { AnalyticsCard } from '../overview/analytics-card';
 import { BackCatalogCard, BackCatalogCardSkeleton } from './back-catalog-card';
 import { ChannelFilter } from './channel-filter';
@@ -32,6 +34,10 @@ import {
 } from './cohort-curves-chart';
 import type { CohortEntry } from './cohort-curves-chart';
 import { MedianViewsCard, MedianViewsCardSkeleton } from './median-views-card';
+import {
+  SubscriberSeriesCard,
+  SubscriberSeriesCardSkeleton,
+} from './subscriber-series-card';
 import {
   TrafficBreakdownCard,
   TrafficShareCard,
@@ -84,6 +90,9 @@ const TRAFFIC_WINDOW_WEEKS = 52;
  * stopped asking for.
  */
 const TRAFFIC_WINDOW_LABEL = `the last ${TRAFFIC_WINDOW_WEEKS} complete weeks`;
+
+/** Days of subscriber history the curve shows — a year, like YPP's window. */
+const SUBSCRIBER_WINDOW_DAYS = 365;
 
 export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
   const [medianMode, setMedianMode] = useState<MedianMode>(
@@ -285,6 +294,40 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
       }),
   });
 
+  const subscriberWindowFrom = useMemo(() => {
+    const from = new Date(`${today}T00:00:00.000Z`);
+
+    from.setUTCDate(from.getUTCDate() - SUBSCRIBER_WINDOW_DAYS);
+
+    return from.toISOString().slice(0, 10);
+  }, [today]);
+
+  const subscriberSeriesQuery = useQuery({
+    queryKey: [
+      'deep-dive-subscriber-series',
+      projectId,
+      filters.connectionId,
+      today,
+    ],
+    queryFn: () =>
+      getSubscriberSeriesAction({
+        scope,
+        from: subscriberWindowFrom,
+        to: today,
+      }),
+  });
+
+  const channelNames = useMemo(
+    () =>
+      Object.fromEntries(
+        (channelsQuery.data ?? []).map((channel) => [
+          channel.connectionId,
+          channel.name,
+        ]),
+      ),
+    [channelsQuery.data],
+  );
+
   const yppQuery = useQuery({
     queryKey: ['deep-dive-ypp', accountId, filters.connectionId],
     // Spread, not `connectionId: filters.connectionId`: an undefined property
@@ -456,6 +499,28 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
             <CohortCurvesChart
               cohorts={(cohortQuery.data ?? []) as CohortEntry[]}
               bucket={'quarter'}
+            />
+          </QueryState>
+        </AnalyticsCard>
+
+        <AnalyticsCard
+          title={'Subscribers'}
+          icon={Users}
+          description={
+            'Each channel’s subscriber count over the last year, rebuilt from dated snapshots and daily movement. Per channel by default: channels connected at different times cannot be added up before every one of them has a count.'
+          }
+          colSpan={2}
+          className={'h-auto'}
+        >
+          <QueryState
+            query={subscriberSeriesQuery}
+            skeleton={<SubscriberSeriesCardSkeleton />}
+            message={'Subscriber history could not be loaded.'}
+            dataTest={'subscriber-series-error'}
+          >
+            <SubscriberSeriesCard
+              series={subscriberSeriesQuery.data ?? []}
+              channelNames={channelNames}
             />
           </QueryState>
         </AnalyticsCard>
