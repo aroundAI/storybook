@@ -420,7 +420,7 @@ fits in one PostgREST response.
 - [x] The action returns one series per connection and never sums across channels
 - [x] The shortfall alert is measured against eligible-and-attempted connections, and does not fire while `CLICKHOUSE_ENABLED` is false
 - [x] Days preceding the first anchor are reconstructed backwards wherever a delta exists, and only pre-delta days are omitted
-- [ ] The rounded-seed level bias is disclosed wherever the number is shown, not just the calendar and fast-growth caveats — **deferred to FILM-1611**, which owns every surface that shows the number; §7 already defers presentation there
+- [x] The rounded-seed level bias is disclosed wherever the number is shown, not just the calendar and fast-growth caveats — delivered by FILM-1617 (the subscriber card and the YPP count), which took over the surfaces FILM-1611 was to own
 - [x] `getSubscriberSeriesAction` calls `assertScopeAccess` before any query, and a caller passing another account's slug is refused
 - [x] A day with an exact anchor reports `snapshot`; a day with a rounded anchor reports `constrained` or `clamped`, never `interpolated`
 - [x] `querySubscriberAnchors` returns per-connection rows and never sums across channels

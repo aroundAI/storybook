@@ -79,7 +79,7 @@ Specified and not yet built:
 | FILM-1610 | DRAFT | M | Watched metrics, review windows, and per-video notes on `publishes` |
 | FILM-1615 | DRAFT | M | The Video Log table — FILM-1603 built the query and action, not the screen |
 | FILM-1616 | DRAFT | M | `WeeklyDiagnosticsTable` and `RetentionCurveChart`, both of which need actions built |
-| FILM-1617 | DRAFT | S | Subscriber series card, YPP absolute count, Publish Hub badge |
+| FILM-1617 | ✅ DONE | S | Subscriber series card, YPP absolute count, follower count on the publish screen |
 
 ## Testing precedent set by this phase
 
