@@ -99,7 +99,11 @@ export function RevenueDashboard({
   });
 
   // Fetch time series data
-  const { data: timeSeries, isLoading: timeSeriesLoading } = useQuery({
+  const {
+    data: timeSeries,
+    isLoading: timeSeriesLoading,
+    isError: timeSeriesIsError,
+  } = useQuery({
     queryKey: ['revenue-timeseries', accountId, startDate, endDate] as const,
     queryFn: () =>
       getRevenueTimeSeriesAction({
@@ -141,6 +145,10 @@ export function RevenueDashboard({
   const topContentUnavailable = isUnavailable({
     isError: topContentIsError,
     data: topContent,
+  });
+  const timeSeriesUnavailable = isUnavailable({
+    isError: timeSeriesIsError,
+    data: timeSeries,
   });
 
   const handleManualRevenueSuccess = () => {
@@ -311,10 +319,14 @@ export function RevenueDashboard({
               <CardTitle>Revenue Over Time</CardTitle>
             </CardHeader>
             <CardContent>
-              <RevenueChart
-                data={timeSeries ?? []}
-                isLoading={timeSeriesLoading}
-              />
+              {timeSeriesUnavailable ? (
+                <SummaryUnavailable tile="time-series" />
+              ) : (
+                <RevenueChart
+                  data={timeSeries ?? []}
+                  isLoading={timeSeriesLoading}
+                />
+              )}
             </CardContent>
           </Card>
 
