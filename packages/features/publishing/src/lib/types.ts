@@ -59,6 +59,7 @@ export interface PlatformConnection {
   followerCount?: number | null;
   followerCountSource?: FollowerCountSource | null;
   followerCountAsOf?: string | null;
+  followerCountRoundingStep?: number;
   scopes?: string[] | null;
   language: string; // Target language for this channel (en, hi, es, pt)
   // Unified fields for compatibility with Settings page
@@ -89,6 +90,7 @@ export interface PlatformPublishConfig {
   followerCount?: number | null;
   followerCountSource?: FollowerCountSource | null;
   followerCountAsOf?: string | null;
+  followerCountRoundingStep?: number;
   tokenValid?: boolean;
   accounts?: Array<{
     id: string;

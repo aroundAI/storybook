@@ -13,6 +13,8 @@ export interface ResolvedFollowerCount {
   followerCountSource: FollowerCountSource | null;
   /** The date the figure describes: its newest data, or the connection's. */
   followerCountAsOf: string | null;
+  /** 0 when exact; otherwise the true count may be up to this minus one higher. */
+  followerCountRoundingStep: number;
 }
 
 interface ConnectionForFollowers {
@@ -53,9 +55,13 @@ function resolveOne(
   if (level) {
     return {
       followerCount: level.level,
+      // `constrained` and `clamped` are set only on days with an anchor, so
+      // they are measured days whose figure was rounded — YouTube's every
+      // snapshot above 1,000. Only `interpolated` is reconstructed.
       followerCountSource:
-        level.source === 'snapshot' ? 'snapshot' : 'reconstructed',
+        level.source === 'interpolated' ? 'reconstructed' : 'snapshot',
       followerCountAsOf: level.date,
+      followerCountRoundingStep: level.roundingStep,
     };
   }
 
@@ -66,6 +72,7 @@ function resolveOne(
       followerCount: stored,
       followerCountSource: 'metadata',
       followerCountAsOf: connection.created_at?.slice(0, 10) ?? null,
+      followerCountRoundingStep: 0,
     };
   }
 
@@ -73,6 +80,7 @@ function resolveOne(
     followerCount: null,
     followerCountSource: null,
     followerCountAsOf: null,
+    followerCountRoundingStep: 0,
   };
 }
 

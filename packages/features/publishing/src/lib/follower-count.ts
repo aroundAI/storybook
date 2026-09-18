@@ -38,6 +38,8 @@ export function describeFollowerCount(input: {
   count: number;
   source: FollowerCountSource | null | undefined;
   asOf: string | null | undefined;
+  /** 0 or absent when exact. */
+  roundingStep?: number;
 }): FollowerCountDisplay {
   const stale = input.source === 'metadata';
   const day = input.asOf ? formatDay(input.asOf) : null;
@@ -49,11 +51,22 @@ export function describeFollowerCount(input: {
     .filter(Boolean)
     .join(', ');
 
+  // YouTube rounds down, so the true count is at most step − 1 higher. The
+  // short form cannot carry this: `formatFollowers` rounds to one decimal and
+  // can round up, so a "+" there would be wrong as often as right.
+  const shortfall = Math.max(0, (input.roundingStep ?? 0) - 1);
+  const rounding =
+    shortfall > 0
+      ? ` Rounded down by the platform — the true count may be up to ${shortfall.toLocaleString(
+          'en-US',
+        )} higher.`
+      : '';
+
   return {
     short: `${formatFollowers(input.count)}${stale && day ? ` · ${day}` : ''}`,
     detail: `${input.count.toLocaleString('en-US')} followers${
       qualifier ? ` — ${qualifier}` : ''
-    }`,
+    }${rounding ? `.${rounding}` : ''}`,
     stale,
   };
 }
