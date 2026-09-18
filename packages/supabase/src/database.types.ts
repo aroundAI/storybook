@@ -251,16 +251,22 @@ export type Database = {
           account_id: string
           actual_outcome: string | null
           baseline_metrics: Json
+          category: string | null
           change_description: string
+          connection_id: string | null
           created_at: string
           created_by: string | null
           ended_at: string | null
           expected_outcome: string | null
           hypothesis: string | null
           id: string
+          metric_watched: string | null
+          notes: string | null
           outcome_status: string
           project_id: string | null
           result_metrics: Json
+          review_due_at: string | null
+          review_window_days: number
           started_at: string | null
           status: string
           title: string
@@ -270,16 +276,22 @@ export type Database = {
           account_id: string
           actual_outcome?: string | null
           baseline_metrics?: Json
+          category?: string | null
           change_description: string
+          connection_id?: string | null
           created_at?: string
           created_by?: string | null
           ended_at?: string | null
           expected_outcome?: string | null
           hypothesis?: string | null
           id?: string
+          metric_watched?: string | null
+          notes?: string | null
           outcome_status?: string
           project_id?: string | null
           result_metrics?: Json
+          review_due_at?: string | null
+          review_window_days?: number
           started_at?: string | null
           status?: string
           title: string
@@ -289,16 +301,22 @@ export type Database = {
           account_id?: string
           actual_outcome?: string | null
           baseline_metrics?: Json
+          category?: string | null
           change_description?: string
+          connection_id?: string | null
           created_at?: string
           created_by?: string | null
           ended_at?: string | null
           expected_outcome?: string | null
           hypothesis?: string | null
           id?: string
+          metric_watched?: string | null
+          notes?: string | null
           outcome_status?: string
           project_id?: string | null
           result_metrics?: Json
+          review_due_at?: string | null
+          review_window_days?: number
           started_at?: string | null
           status?: string
           title?: string
@@ -325,6 +343,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "user_accounts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_experiments_connection_account_fkey"
+            columns: ["connection_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "platform_connections"
+            referencedColumns: ["id", "account_id"]
           },
           {
             foreignKeyName: "analytics_experiments_project_id_fkey"
@@ -4128,6 +4153,9 @@ export type Database = {
       }
       publishes: {
         Row: {
+          analytics_note: string | null
+          analytics_note_updated_at: string | null
+          analytics_note_updated_by: string | null
           content_type: string
           created_at: string
           description: string | null
@@ -4148,6 +4176,9 @@ export type Database = {
           title: string | null
         }
         Insert: {
+          analytics_note?: string | null
+          analytics_note_updated_at?: string | null
+          analytics_note_updated_by?: string | null
           content_type?: string
           created_at?: string
           description?: string | null
@@ -4168,6 +4199,9 @@ export type Database = {
           title?: string | null
         }
         Update: {
+          analytics_note?: string | null
+          analytics_note_updated_at?: string | null
+          analytics_note_updated_by?: string | null
           content_type?: string
           created_at?: string
           description?: string | null

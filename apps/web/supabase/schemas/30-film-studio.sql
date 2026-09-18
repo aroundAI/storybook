@@ -564,6 +564,11 @@ create table if not exists public.publishes (
   -- foreign key is added just after that table instead.
   language varchar(5) default 'en' not null,
   dubbed_version_id uuid,
+  -- Per-video analytics note (FILM-1610, migration 20260918184818). Its own
+  -- columns, not a key in `metadata`, which the publish pipeline writes.
+  analytics_note text,
+  analytics_note_updated_at timestamp with time zone,
+  analytics_note_updated_by uuid references auth.users(id) on delete set null,
   created_at timestamp with time zone default now() not null,
   check (platform in ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin')),
   check (content_type in ('full', 'short', 'teaser', 'trailer')),
@@ -575,6 +580,7 @@ comment on column public.publishes.platform is 'Platform: youtube, tiktok, insta
 comment on column public.publishes.content_type is 'Content variant: full, short, teaser, trailer';
 comment on column public.publishes.status is 'Publish status: draft, scheduled, queued, publishing, published, failed, unlisted, deleted';
 comment on column public.publishes.platform_content_id is 'Platform video/post ID';
+comment on column public.publishes.analytics_note is 'Free-text analytics note for this video; never synced to ClickHouse';
 
 -- Indexes for publishes
 create index if not exists idx_publishes_episode_id on public.publishes(episode_id);
