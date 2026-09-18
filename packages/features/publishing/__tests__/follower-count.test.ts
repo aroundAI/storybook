@@ -25,7 +25,7 @@ describe('describeFollowerCount', () => {
         asOf: '2026-09-15',
       }).detail,
     ).toBe(
-      '1,200 followers — Reconstructed from daily movement, as of Sep 15, 2026',
+      '1,200 followers — Reconstructed from daily movement, no snapshot that day, as of Sep 15, 2026',
     );
   });
 

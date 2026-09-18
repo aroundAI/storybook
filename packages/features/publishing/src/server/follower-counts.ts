@@ -13,7 +13,7 @@ export interface ResolvedFollowerCount {
   followerCountSource: FollowerCountSource | null;
   /** The date the figure describes: its newest data, or the connection's. */
   followerCountAsOf: string | null;
-  /** 0 when exact; otherwise the true count may be up to this minus one higher. */
+  /** 0 when exact; otherwise the count may be off by up to this minus one, either way. */
   followerCountRoundingStep: number;
 }
 
