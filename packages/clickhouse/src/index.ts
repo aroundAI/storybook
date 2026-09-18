@@ -70,3 +70,11 @@ export type {
   TrafficSourceGroup,
   TrafficSourceRow,
 } from './lib/traffic-groups';
+export type {
+  SubscriberPoint,
+  SubscriberSource,
+} from './lib/subscriber-series';
+export type {
+  ConnectionSubscriberSeries,
+  LatestSubscriberLevel,
+} from './subscriber-levels';
