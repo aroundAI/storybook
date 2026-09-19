@@ -119,6 +119,20 @@ def run_code_mutation(entry, base_env):
         os.remove(backup)
 
 
+def pgtap_setup_files():
+    """The suite's setup files (`00000-*.sql`), which register the test
+    helpers extension every test file needs.
+
+    They run first only when the whole directory runs. A single file on a
+    fresh database — which is what CI's Supabase DB job has — fails on
+    "extension basejump-supabase_test_helpers is not available". It passed
+    locally only because a database that had once run the full suite kept
+    the extension; the runner's first CI run caught the difference.
+    They are safe to run repeatedly.
+    """
+    return sorted(glob.glob(os.path.join(PGTAP_DIR, '00000-*.sql')))
+
+
 def run_pgtap_mutation(entry):
     """Runs a pgTAP file with SQL applied first, inside its own transaction.
 
@@ -128,8 +142,9 @@ def run_pgtap_mutation(entry):
     test_path = os.path.join(ROOT, entry['test'])
     source = open(test_path).read()
 
-    code, output = run(supabase_cli() + ['test', 'db', test_path],
-                       os.path.join(ROOT, 'apps/web'))
+    code, output = run(
+        supabase_cli() + ['test', 'db', *pgtap_setup_files(), test_path],
+        os.path.join(ROOT, 'apps/web'))
     if code != 0:
         return 'NOT GREEN', output
 
@@ -142,8 +157,9 @@ def run_pgtap_mutation(entry):
     with open(temp, 'w') as handle:
         handle.write(mutated)
     try:
-        code, output = run(supabase_cli() + ['test', 'db', temp],
-                           os.path.join(ROOT, 'apps/web'))
+        code, output = run(
+            supabase_cli() + ['test', 'db', *pgtap_setup_files(), temp],
+            os.path.join(ROOT, 'apps/web'))
         return ('RED' if code != 0 else 'STAYED GREEN'), output
     finally:
         os.remove(temp)
