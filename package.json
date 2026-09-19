@@ -23,7 +23,7 @@
     "db:push:prod": "cd apps/web && npx supabase db push",
     "db:link:prod": "cd apps/web && npx supabase link --project-ref kkyeoxowawvmnretoyak",
     "format": "turbo format --cache-dir=.turbo --continue -- --cache --cache-location=\"node_modules/.cache/.prettiercache\" --ignore-path=\"../../.gitignore\" --ignore-path=\"../../.prettierignore\"",
-    "format:fix": "turbo format --cache-dir=.turbo --continue -- --write --cache --cache-location=\"node_modules/.cache/.prettiercache\" --ignore-path=\"../../.gitignore\" --ignore-path=\"../../.prettierignore\"",
+    "format:fix": "turbo format --cache-dir=.turbo --force --continue -- --write --cache --cache-location=\"node_modules/.cache/.prettiercache\" --ignore-path=\"../../.gitignore\" --ignore-path=\"../../.prettierignore\"",
     "lint": "turbo lint --cache-dir=.turbo --affected --continue -- --cache --cache-location \"node_modules/.cache/.eslintcache\" && manypkg check",
     "lint:fix": "turbo lint --cache-dir=.turbo --affected --continue -- --fix --cache --cache-location \"node_modules/.cache/.eslintcache\" && manypkg fix",
     "typecheck": "turbo typecheck --affected --cache-dir=.turbo",

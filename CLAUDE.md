@@ -237,6 +237,25 @@ pnpm typecheck
 - Run the typecheck command regularly to ensure your code is type-safe.
 - Run the linter and the formatter when your task is complete.
 
+**Run `pnpm format:fix` before every push.** CI's 💅 Format job fails a PR
+with any file Prettier would change, so an unformatted push is a red build.
+
+- **Rebasing an older branch onto `main`:** run `pnpm format:fix` on the
+  branch *first*, commit, then rebase. A branch written before a reformat
+  conflicts with `main` on every line both sides touched, often only in
+  formatting (a reordered Tailwind class list). Formatted first, its lines
+  already match `main`'s, and most of those conflicts disappear. If a
+  rebase still stops on conflicts, resolve them, then run it again.
+- **Use the script, not a bare `npx prettier`.** The script runs each
+  package's own `format` with the shared config; a one-off run from one
+  directory is how formatting used to differ by which file a run started
+  with.
+- **`format:fix` runs turbo with `--force`**, and must keep it. Turbo caches
+  only Prettier's cache file, not the files it formats, so a cache hit
+  replayed "done" and left files unformatted — reproduced: the same
+  misformatted file was formatted on one run and left as it was on the
+  next.
+
 ## Testing
 
 ### Overview
@@ -1056,7 +1075,7 @@ git push origin feat/feature-name
 After implementation:
 1. **Run `pnpm typecheck`** - Must pass without errors
 2. **Run `pnpm lint:fix`** - Auto-fix issues
-3. **Run `pnpm format:fix`** - Format code
+3. **Run `pnpm format:fix`** - Required before pushing: CI's 💅 Format job fails otherwise
 4. **Verify spec compliance** - If implementing a feature from `specs/`, ensure the spec document is updated to match any implementation changes
 5. **Screenshot every UI change in the PR** - Required, not optional. See
    [Screenshots are required for UI changes](#screenshots-are-required-for-ui-changes)
