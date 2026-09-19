@@ -104,7 +104,8 @@ FILM-1714 + FILM-1715 ─→ FILM-1718 (diagnosis) ← not the genome
 FILM-1715 + FILM-1716 ─→ FILM-1717 (genome v1 → v2) ← also FILM-1606 ✅, FILM-1610
 
 FILM-1715 + FILM-1716 ─→ FILM-1724 (channel experiments) ← also FILM-1610 ✅;
-   after the Hook Lab (FILM-1510) review
+   hook tests also need FILM-1710. Replaces Hook Lab (FILM-1510; reviewed,
+   FILM-CC-04 KB-9/KB-10)
 
 FILM-1717 + FILM-1718 ─→ FILM-1719 (surfaces) ← also FILM-1706
 
