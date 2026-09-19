@@ -53,12 +53,14 @@ async function onAction(
 }
 
 /**
- * The account-scoped reads: the log, the channels and the videos send
- * `{ accountId }`; the due list also sends the caller's `asOf` date.
+ * The account-scoped reads: the log, the due list, the channels and the
+ * videos. Matched as "has accountId, is not about one experiment" rather
+ * than by listing each read's keys: that list broke twice, each time a read
+ * gained a parameter (the due list's `asOf`, the picker's `search`) and
+ * silently stopped being aborted.
  */
 const accountRead = (args: Record<string, unknown>) =>
-  'accountId' in args &&
-  Object.keys(args).every((key) => key === 'accountId' || key === 'asOf');
+  'accountId' in args && !('experimentId' in args);
 
 /**
  * The start action, told apart by its `startedAt`. Matching on

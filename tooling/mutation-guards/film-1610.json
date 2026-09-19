@@ -367,6 +367,58 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
       "pattern": "never ends before it started"
+    },
+    {
+      "name": "F5 picker loads everything",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": ".limit(LINKABLE_PAGE_SIZE + 1);",
+      "replace": ".limit(100_000);",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/linkable-publishes.test.ts"
+    },
+    {
+      "name": "F5e search not sent to the server",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/analytics/experiments/_components/experiments-client.tsx",
+      "find": "listLinkablePublishesAction({ accountId, search: videoSearch.fetched })",
+      "replace": "listLinkablePublishesAction({ accountId })",
+      "spec": "tests/experiments/experiments.spec.ts",
+      "grep": "beyond the newest 50"
+    },
+    {
+      "name": "F6 channel label not tied to its control",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/experiments/experiment-form.tsx",
+      "edits": [
+        {
+          "find": "                  <FormControl>\n                    <ChannelFilter",
+          "replace": "                  <>\n                    <ChannelFilter"
+        },
+        {
+          "find": "                      allLabel={'No specific channel'}\n                    />\n                  </FormControl>",
+          "replace": "                      allLabel={'No specific channel'}\n                    />\n                  </>"
+        }
+      ],
+      "spec": "tests/experiments/experiments.spec.ts",
+      "grep": "named by their labels"
+    },
+    {
+      "name": "F10 due date captured at render",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/analytics/experiments/_components/experiments-client.tsx",
+      "edits": [
+        {
+          "find": "  const dueQuery = useQuery({\n",
+          "replace": "  const renderDate = localToday();\n  const dueQuery = useQuery({\n"
+        },
+        {
+          "find": "listExperimentsDueForReviewAction({ accountId, asOf: localToday() })",
+          "replace": "listExperimentsDueForReviewAction({ accountId, asOf: renderDate })"
+        }
+      ],
+      "spec": "tests/experiments/experiments.spec.ts",
+      "grep": "past midnight"
     }
   ]
 }

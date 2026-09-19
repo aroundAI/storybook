@@ -19,7 +19,11 @@ import type { ChannelRef } from '../../server/channels';
  */
 const ALL_CHANNELS = 'all';
 
-interface ChannelFilterProps {
+interface ChannelFilterProps
+  extends Pick<
+    React.ComponentPropsWithoutRef<'button'>,
+    'id' | 'aria-describedby' | 'aria-invalid'
+  > {
   channels: ChannelRef[];
   /** `undefined` is "All channels" */
   value: string | undefined;
@@ -52,6 +56,7 @@ export function ChannelFilter({
   isLoading = false,
   isError = false,
   allLabel = 'All channels',
+  ...triggerProps
 }: ChannelFilterProps) {
   if (isLoading) {
     return <Skeleton className={'h-9 w-56'} />;
@@ -80,8 +85,12 @@ export function ChannelFilter({
     >
       <SelectTrigger
         className={'w-64'}
-        aria-label={'Channel'}
+        // A visible label, when there is one, names the trigger through
+        // FormControl's id; this is the fallback for the Deep Dive, which
+        // has none.
+        aria-label={triggerProps.id ? undefined : 'Channel'}
         data-test={'channel-filter-trigger'}
+        {...triggerProps}
       >
         <SelectValue />
       </SelectTrigger>

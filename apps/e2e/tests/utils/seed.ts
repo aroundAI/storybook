@@ -497,3 +497,71 @@ export async function readRows<T>(table: string, query: string): Promise<T[]> {
 
   return JSON.parse(text) as T[];
 }
+
+/**
+ * Many published videos on one channel, oldest first, with titles
+ * (FILM-1610 review 3). Batched: two requests however many videos, since a
+ * test of "more than a page" should not spend a minute seeding.
+ */
+export async function seedPublishedVideos(
+  projectId: string,
+  connectionId: string,
+  titles: string[],
+): Promise<string[]> {
+  const auth = { key: SERVICE_ROLE_KEY };
+
+  const episodes = await insertRows<{ id: string }>(
+    'episodes',
+    titles.map((title, index) => ({
+      project_id: projectId,
+      number: 100 + index,
+      title,
+    })),
+    auth,
+  );
+
+  // Published a day apart, the first title oldest.
+  const start = Date.UTC(2026, 0, 1);
+  const publishes = await insertRows<{ id: string }>(
+    'publishes',
+    episodes.map((episode, index) => ({
+      episode_id: episode.id,
+      platform_connection_id: connectionId,
+      platform: 'youtube',
+      status: 'published',
+      title: titles[index],
+      published_at: new Date(start + index * 86_400_000).toISOString(),
+    })),
+    auth,
+  );
+
+  return publishes.map((publish) => publish.id);
+}
+
+/** Inserts several rows in one PostgREST request and returns them, in order. */
+async function insertRows<T>(
+  table: string,
+  rows: Array<Record<string, unknown>>,
+  auth: { key: string },
+): Promise<T[]> {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: {
+      apikey: auth.key,
+      Authorization: `Bearer ${auth.key}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify(rows),
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(
+      `insert into ${table} failed (${response.status}): ${text}`,
+    );
+  }
+
+  return JSON.parse(text) as T[];
+}
