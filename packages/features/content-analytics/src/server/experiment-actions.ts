@@ -501,11 +501,21 @@ export const concludeExperimentAction = enhanceAction(
 );
 
 export const abandonExperimentAction = enhanceAction(
-  async ({ experimentId, reason }) => {
+  async ({ experimentId, reason, endedAt }) => {
     const client = getSupabaseServerClient();
 
     const context = await readSnapshotContext(client, experimentId);
     assertCanAbandon(context.status);
+
+    // A calendar date, like the start. The server's UTC date can be the day
+    // before a start the user made just after their local midnight, and an
+    // end before its start is not a date anyone chose. Dates are
+    // YYYY-MM-DD, so string order is date order.
+    const requested = endedAt ?? today();
+    const ended =
+      context.started_at && requested < context.started_at
+        ? context.started_at
+        : requested;
 
     await updateIfStatus(
       client,
@@ -513,7 +523,7 @@ export const abandonExperimentAction = enhanceAction(
       ['planned', 'running'],
       {
         status: 'abandoned',
-        ended_at: today(),
+        ended_at: ended,
         actual_outcome: reason ?? null,
         outcome_status: 'inconclusive',
       },

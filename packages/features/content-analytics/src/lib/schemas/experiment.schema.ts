@@ -121,6 +121,11 @@ export const ConcludeExperimentSchema = z.object({
 export const AbandonExperimentSchema = z.object({
   experimentId: z.string().uuid(),
   reason: z.string().max(2000).optional(),
+  /** The caller's local date; defaults to today, never before the start. */
+  endedAt: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 
 export const ListExperimentsSchema = z.object({
