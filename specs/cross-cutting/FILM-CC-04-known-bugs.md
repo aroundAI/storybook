@@ -179,6 +179,113 @@ reads it.
 
 ---
 
+## KB-6 — Server-action error messages are replaced in production
+
+**Severity:** Medium. **Found:** FILM-1610 review, round 4 (#264).
+
+A production build replaces the message of an error *thrown* from a
+server action with "An error occurred in the Server Components render.
+The specific message is omitted in production builds…". Only a dev
+server passes the real message through, so every E2E run shows the right
+text, and so does any manual check on `pnpm dev`.
+
+Reproduced on `pnpm --filter web build:test`: the experiment log's
+stale-tab refusal ("Only a planned experiment can be started…") reached
+the page as that sentence. #264 fixes the experiment log and the video
+note: mutations *return* `{ ok: false, error }` (`withRefusals` and
+`unwrap` in `@kit/content-analytics`), and the stale-tab spec asserts the
+text on ⚫️ Test's production build.
+
+Everywhere else is unchanged. These 48 client files show
+`error.message` from a caught error. Not all of those errors come from a
+server action (some are `fetch` or client-only), so each one needs
+triage:
+
+- `apps/web/app/home/(user)/_components/delete-project-dialog.tsx`
+- `apps/web/app/home/[account]/_components/delete-project-dialog.tsx`
+- `apps/web/app/home/[account]/settings/_components/api-keys-settings.tsx`
+- `apps/web/app/home/[account]/settings/platforms/youtube/select-channel/_components/channel-picker.tsx`
+- `apps/web/app/home/[account]/social-posts/[postId]/_components/social-post-detail.tsx`
+- `apps/web/app/home/[account]/social-posts/_components/social-posts-dashboard.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/batch-generate-dialog.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/generate-audio-dialog.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/upload-audio-dialog.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/quick-actions-menu.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/add-event-dialog.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/add-thread-dialog.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/frame-uploader.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-details-sidebar.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/bulk-generate/assets-phase.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/bulk-generate/ideation-phase.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/bulk-generate/shots-phase.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/bulk-generate/story-phase.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/create-episode-dialog.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/create-episode-wizard.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/export-content-dialog.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/generate-all-sound-modal.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-header.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/audio-settings-form.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/canon-settings-form.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/studio-settings-form.tsx`
+- `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx`
+- `packages/features/assets/src/components/asset-gallery.tsx`
+- `packages/features/assets/src/components/character-editor/CharacterEditor.tsx`
+- `packages/features/assets/src/components/location-editor.tsx`
+- `packages/features/audio-generation/src/components/LipSyncEditor.tsx`
+- `packages/features/audio-generation/src/components/VoiceCloningEditor.tsx`
+- `packages/features/auth/src/components/auth-error-alert.tsx`
+- `packages/features/content-analytics/src/components/export-reports.tsx`
+- `packages/features/content-analytics/src/components/manual-revenue-form.tsx`
+- `packages/features/content-analytics/src/components/scheduled-reports-manager.tsx`
+- `packages/features/content-analytics/src/components/taxonomy/tag-manager.tsx`
+- `packages/features/edit-suite/src/components/export/export-dialog.tsx`
+- `packages/features/episodes/src/components/batch-episode-creator/batch-episode-creator.tsx`
+- `packages/features/episodes/src/components/continuity-checker.tsx`
+- `packages/features/episodes/src/components/refinement-chat.tsx`
+- `packages/features/projects/src/components/add-project-member-form.tsx`
+- `packages/features/projects/src/components/create-project-form.tsx`
+- `packages/features/projects/src/components/update-project-form.tsx`
+- `packages/features/publishing/src/components/upload-only-mode.tsx`
+
+**Fix, per surface:** return expected refusals as values, the repo's
+existing `{ success: false, error }` pattern (71 actions already do).
+Assert the message *text* in an E2E test that runs on a production build.
+A test that only checks that an error is visible passes on the generic
+sentence too.
+
+---
+
+## KB-7 — No UI to abandon, edit or delete an experiment
+
+**Severity:** Low. **Found:** FILM-1610 review, round 4.
+
+`abandonExperimentAction`, `updateExperimentAction` and
+`deleteExperimentAction` exist, are tested, and are exported, but the
+experiment log page calls none of them. That predates FILM-1610. An
+experiment logged by mistake can only be started and concluded. The
+table and the actions already hold the rules (the lifecycle trigger,
+`assertEditable`), so a UI needs no new server work.
+
+---
+
+## KB-8 — An experiment's baseline misses days not yet ingested
+
+**Severity:** Low, and disclosed. **Found:** FILM-1610 review, round 4.
+
+The baseline is measured when the experiment starts, over the
+`review_window_days` before the start. YouTube's reporting data arrives
+days late, so the last days of that window usually have no rows yet, and
+the baseline never picks them up later. The page says so ("data on N of
+M days"), so nothing is misreported, but the figure is less complete than
+it could be. Option: measure the baseline window again at conclusion,
+when it is fully ingested, and keep both. That changes what the baseline
+means, so it needs a decision first.
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
@@ -186,3 +293,5 @@ reads it.
 | — | `analytics_experiments`, `content_tags`, `hook_tests` authors blocked user deletion | #264 |
 | — | GitHub deploy workflows never applied migrations; tests could not stop a deploy | #264 |
 | — | CI tested `@kit/mailers-core`, which does not exist; `@kit/mailers` never ran | #264 |
+| — | The experiment lifecycle was held only by the actions; a direct API call could reopen, back-date or forge an experiment | #264 (round 4) |
+| KB-6 (part) | Experiment log and note refusals replaced in production | #264 (round 4) |
