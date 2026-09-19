@@ -5,7 +5,7 @@
   "scripts": {
     "clean": "git clean -xdf .next .turbo node_modules",
     "dev": "next dev --turbo --port=3010 | pino-pretty -c",
-    "format": "prettier --check --write \"**/*.{js,cjs,mjs,ts,tsx,md,json}\""
+    "format": "prettier --check \"**/*.{js,cjs,mjs,ts,tsx,md,json}\""
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.30",
