@@ -564,7 +564,7 @@ All workbook-parity scope is now specified. FILM-1611 was split — what the bac
 
 It must not read `video_dim.duration_seconds` either way. This is the only reason FILM-1710 is ordered ahead of the rest of phase 17.
 
-### Phase 17: Analytics Provenance and Signal (23 specs)
+### Phase 17: Analytics Provenance and Signal (24 specs)
 
 See [phase-17-analytics-provenance/README.md](./phase-17-analytics-provenance/README.md) for the dependency graph, locked decisions, known limits and open product questions.
 
@@ -595,6 +595,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1721 | [platform-capability-reference](./phase-17-analytics-provenance/FILM-1721-platform-capability-reference.md) | DRAFT | L | - |
 | FILM-1722 | [view-definition-registry](./phase-17-analytics-provenance/FILM-1722-view-definition-registry.md) | DRAFT | M | FILM-1721 |
 | FILM-1723 | [api-version-consolidation](./phase-17-analytics-provenance/FILM-1723-api-version-consolidation.md) | DRAFT | M | - |
+| FILM-1724 | [channel-experiments](./phase-17-analytics-provenance/FILM-1724-channel-experiments.md) | DRAFT | L | FILM-1610, FILM-1715, FILM-1716 |
 
 Three parts. **Provenance** (1701–1709) answers *where did this number come from*. **Signal** (1710–1720) answers *what is it telling me*, which differs per platform. **Reference** (1721–1723) is the researched vendor truth the other two are built on.
 
