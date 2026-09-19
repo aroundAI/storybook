@@ -317,6 +317,18 @@ Check it before believing it: `./scripts/local-env.sh status` prints the
 ClickHouse version, and a page that still shows "no data" for rows you just
 inserted means the server was started without `local.env`.
 
+**Reset the local database before taking a pgTAP baseline.** Every E2E run
+seeds accounts and never removes them, and a pgTAP suite that took 3 seconds
+on a fresh database took over 13 minutes on one with thousands of seeded
+accounts — slow enough to look like a hang, and slow enough to starve the
+auth server so E2E sign-ups time out while it runs. `pnpm supabase:web:reset`
+rebuilds from migrations, which is also what CI does.
+
+**Format with `pnpm format:fix`, not `npx prettier --write <directory>`.** Run
+from the root, `npx prettier` resolves a different plugin set and re-sorted
+Tailwind classes in two dozen files nobody had touched. A formatter's diff
+belongs to the files you changed.
+
 | Question | Local ClickHouse answers it? |
 |---|---|
 | Does the SQL run at all? | Yes — `local-env.sh verify` |
