@@ -179,10 +179,20 @@ test.describe('Experiment log (FILM-1610)', () => {
     const log = new ExperimentsPageObject(page);
     const team = await log.setup();
 
+    // Published long before the baseline window, so the video could have
+    // had data in it. `setup`'s videos are published today, and a baseline
+    // for those says so instead (published_after_window, round 5).
+    const [older] = await seedPublishedVideos(
+      team.projectId,
+      team.connectionId,
+      ['Older video'],
+    );
+    await log.goTo(team.slug);
+
     await log.field('experiment-title').fill('CTR test');
     await log.field('experiment-change').fill('New thumbnail');
     await log.choose('experiment-metric', 'experiment-metric-option-ctr');
-    await log.linkVideo(team.publishIds[0]);
+    await log.linkVideo(older!);
     await log.submitAndWaitForReset();
 
     const [row] = await readRows<{ id: string }>(
@@ -193,7 +203,7 @@ test.describe('Experiment log (FILM-1610)', () => {
     await page
       .locator(`[data-test="experiment-row-${row!.id}"]:visible`)
       .click();
-    await page.getByRole('button', { name: 'Start experiment' }).click();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
 
     // ClickHouse is off here, so the linked video has no reach data: the
     // baseline must name that, and must not render a 0.0%.
@@ -229,8 +239,8 @@ test.describe('An experiment runs its whole course (FILM-1610 review 4, G9)', ()
     await page
       .locator(`[data-test="experiment-row-${created!.id}"]:visible`)
       .click();
-    await page.getByRole('button', { name: 'Start experiment' }).click();
-    await expect(page.getByText('Experiment started')).toBeVisible();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await expect(page.getByText('Started — baseline captured')).toBeVisible();
 
     // Concluding needs what happened, typed into the labelled field (G8).
     const outcome = page.getByLabel('What actually happened?');
@@ -239,12 +249,12 @@ test.describe('An experiment runs its whole course (FILM-1610 review 4, G9)', ()
     await expect(confirm).toBeDisabled();
     await outcome.fill('CTR held steady');
     await confirm.click();
-    await expect(page.getByText('Experiment concluded')).toBeVisible();
+    await expect(page.getByText('Concluded', { exact: true })).toBeVisible();
 
     // Nothing left to press: a concluded experiment has no lifecycle step.
     await expect(outcome).toHaveCount(0);
     await expect(
-      page.getByRole('button', { name: 'Start experiment' }),
+      page.getByRole('button', { name: 'Start', exact: true }),
     ).toHaveCount(0);
     await expect(
       page.locator('[data-test="experiment-result-after-days"]'),
@@ -308,8 +318,8 @@ test.describe("Experiment dates are the user's own (FILM-1610 review, E1)", () =
     await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
 
     await page.locator(`[data-test="experiment-row-${id}"]:visible`).click();
-    await page.getByRole('button', { name: 'Start experiment' }).click();
-    await expect(page.getByText('Experiment started')).toBeVisible();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+    await expect(page.getByText('Started — baseline captured')).toBeVisible();
 
     const [row] = await readRows<{ started_at: string }>(
       'analytics_experiments',
@@ -382,9 +392,10 @@ test.describe('Video picker at scale, and labels (FILM-1610 review 3, F5 F6)', (
 
     // FormControl ties each label to its control, so assistive technology
     // can name it — and so can this locator.
-    await expect(
-      log.form().getByLabel('Videos this experiment runs on'),
-    ).toHaveAttribute('data-test', 'video-picker-trigger');
+    await expect(log.form().getByLabel('Videos you changed')).toHaveAttribute(
+      'data-test',
+      'video-picker-trigger',
+    );
     await expect(log.form().getByLabel('Channel (optional)')).toHaveAttribute(
       'data-test',
       'channel-filter-trigger',

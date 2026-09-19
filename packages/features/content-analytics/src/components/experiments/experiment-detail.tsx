@@ -5,11 +5,16 @@ import { ArrowDown, ArrowRight, ArrowUp } from 'lucide-react';
 import { Badge } from '@kit/ui/badge';
 import { Skeleton } from '@kit/ui/skeleton';
 
-import { categoryLabel } from '../../lib/schemas/experiment.schema';
+import {
+  BAKED_IN_CATEGORIES,
+  BAKED_IN_NOTE,
+  categoryLabel,
+} from '../../lib/schemas/experiment.schema';
 import {
   type DateWindow,
   UNMEASURED_REASON_TEXT,
   WATCHED_METRICS,
+  WATCHED_METRIC_NOTES,
   type WatchedValue,
   formatWatchedValue,
   isWatchedMetricKey,
@@ -254,6 +259,14 @@ export function ExperimentDetail({
             </Badge>
           </div>
         ) : null}
+        {experiment.category && BAKED_IN_CATEGORIES.has(experiment.category) ? (
+          <p
+            className={'text-muted-foreground text-xs'}
+            data-test={'experiment-detail-category-note'}
+          >
+            {BAKED_IN_NOTE}
+          </p>
+        ) : null}
       </div>
 
       <section className={'flex flex-col gap-3'}>
@@ -296,6 +309,16 @@ export function ExperimentDetail({
           data-test={'experiment-watched'}
         >
           <h3 className={'text-sm font-medium'}>Watched: {metricLabel}</h3>
+          {metric &&
+          isWatchedMetricKey(metric) &&
+          WATCHED_METRIC_NOTES[metric] ? (
+            <p
+              className={'text-muted-foreground text-xs'}
+              data-test={'experiment-watched-note'}
+            >
+              {WATCHED_METRIC_NOTES[metric]}
+            </p>
+          ) : null}
           {mismatched ? (
             <p
               className={'text-destructive text-sm'}
@@ -311,13 +334,13 @@ export function ExperimentDetail({
               label={'Before the change'}
               watched={experiment.baseline_metrics?.watched}
               testId={'experiment-watched-baseline'}
-              notYet={'Measured when the experiment starts.'}
+              notYet={'Measured at the start.'}
             />
             <WatchedSide
               label={'Since the change'}
               watched={experiment.result_metrics?.watched}
               testId={'experiment-watched-result'}
-              notYet={'Measured when the experiment is concluded.'}
+              notYet={'Measured when concluded.'}
             />
           </div>
         </section>
@@ -342,8 +365,7 @@ export function ExperimentDetail({
         </section>
       ) : (
         <p className={'text-muted-foreground text-sm'}>
-          Metric deltas appear once the experiment has been started and
-          concluded.
+          Metric deltas appear once the change has been started and concluded.
         </p>
       )}
 
@@ -351,7 +373,7 @@ export function ExperimentDetail({
         <section className={'flex flex-col gap-1'}>
           <h3 className={'text-sm font-medium'}>Notes</h3>
           <p
-            className={'text-muted-foreground whitespace-pre-wrap text-sm'}
+            className={'text-muted-foreground text-sm whitespace-pre-wrap'}
             data-test={'experiment-detail-notes'}
           >
             {experiment.notes}

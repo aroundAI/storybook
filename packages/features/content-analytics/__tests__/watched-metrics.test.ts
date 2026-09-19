@@ -4,6 +4,7 @@ import {
   UNMEASURED_REASON_TEXT,
   WATCHED_METRICS,
   WATCHED_METRIC_KEYS,
+  allPublishedAfter,
   baselineWindow,
   daysBetween,
   foldCtr,
@@ -333,5 +334,38 @@ describe('coverage is stated, not implied (C1-C3)', () => {
         null,
       ),
     ).toMatchObject({ daysWithData: null, windowDays: null });
+  });
+});
+
+describe('allPublishedAfter (FILM-1610 review 5)', () => {
+  const window = { start: '2026-06-01', end: '2026-06-30' };
+
+  it('is true when every video was published after the window', () => {
+    expect(
+      allPublishedAfter(
+        ['2026-07-01T00:30:00Z', '2026-07-09T12:00:00Z'],
+        window,
+      ),
+    ).toBe(true);
+  });
+
+  it('is false when any video existed within or before the window', () => {
+    expect(
+      allPublishedAfter(
+        ['2026-07-01T00:30:00Z', '2026-06-30T23:00:00Z'],
+        window,
+      ),
+    ).toBe(false);
+    expect(allPublishedAfter(['2026-01-01T00:00:00Z'], window)).toBe(false);
+  });
+
+  it('does not assume a video with no publish time is late', () => {
+    expect(allPublishedAfter(['2026-07-01T00:00:00Z', null], window)).toBe(
+      false,
+    );
+  });
+
+  it('is false with no videos, which has its own reason', () => {
+    expect(allPublishedAfter([], window)).toBe(false);
   });
 });

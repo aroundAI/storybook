@@ -7,9 +7,9 @@ import { withI18n } from '~/lib/i18n/with-i18n';
 import { ExperimentsClient } from './_components/experiments-client';
 
 export const metadata = {
-  title: 'Experiment Log | Film Studio',
+  title: 'Change Log | Film Studio',
   description:
-    'Record what you changed, what you expected, and what actually happened',
+    'Record a change to published videos, what you expected, and what happened',
 };
 
 interface PageProps {
@@ -39,11 +39,11 @@ async function ExperimentsPage({ params }: PageProps) {
   return (
     <div className={'container mx-auto flex flex-col gap-6 py-8'}>
       <div className={'flex flex-col gap-1'}>
-        <Heading level={2}>Experiment log</Heading>
+        <Heading level={2}>Change log</Heading>
         <p className={'text-muted-foreground text-sm'}>
-          Analytics tell you what the numbers did, not what you changed. Log
-          each deliberate change with its expected result — metric baselines are
-          captured automatically so the comparison is honest.
+          Record a change to published videos, usually a new thumbnail or title,
+          and see those videos before and after it. Each video is compared with
+          its own past.
         </p>
       </div>
 

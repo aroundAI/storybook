@@ -96,7 +96,7 @@ async function readSnapshotContext(
     .single();
 
   if (error || !data) {
-    throw new ActionRefusal('Experiment not found or access denied');
+    throw new ActionRefusal('Change not found or access denied');
   }
 
   return data as SnapshotContext;
@@ -111,9 +111,11 @@ async function readSnapshotContext(
  * pins them — so snapshots written before and after FILM-1610 compare.
  */
 async function captureSnapshot(
-  publishIds: string[],
+  linked: LinkedPublish[],
   watched?: { metric: string | null; accountId: string; window: DateWindow },
 ): Promise<ExperimentSnapshot> {
+  const publishIds = linked.map((publish) => publish.id);
+
   const totals = {
     views: 0,
     likes: 0,
@@ -148,6 +150,7 @@ async function captureSnapshot(
           metric: watched.metric,
           accountId: watched.accountId,
           publishIds,
+          publishedAt: linked.map((publish) => publish.publishedAt),
           window: watched.window,
         })
       : null;
@@ -167,13 +170,13 @@ async function captureSnapshot(
  * Unpaged, and safe only because the schemas cap `publishIds` at 200, well
  * under the 1,000-row PostgREST cap. Raising that cap means paging this.
  */
-async function linkedPublishIds(
+async function linkedPublishes(
   client: Client,
   experimentId: string,
-): Promise<string[]> {
+): Promise<LinkedPublish[]> {
   const { data, error } = await client
     .from('experiment_publishes')
-    .select('publish_id, publishes!inner(id)')
+    .select('publish_id, publishes!inner(published_at)')
     .eq('experiment_id', experimentId);
 
   // A failed read must not become an empty list: that would snapshot zero
@@ -182,7 +185,23 @@ async function linkedPublishIds(
     throw new Error(`Failed to read linked videos: ${error.message}`);
   }
 
-  return (data ?? []).map((row) => row.publish_id);
+  // `publishes` is a many-to-one embed, so PostgREST returns one object;
+  // the untyped client cannot know that and infers an array.
+  return ((data ?? []) as unknown as LinkedPublishRow[]).map((row) => ({
+    id: row.publish_id,
+    publishedAt: row.publishes?.published_at ?? null,
+  }));
+}
+
+/** A linked publish, with its publish time for the "published after" rule. */
+interface LinkedPublish {
+  id: string;
+  publishedAt: string | null;
+}
+
+interface LinkedPublishRow {
+  publish_id: string;
+  publishes: { published_at: string | null } | null;
 }
 
 /**
@@ -261,7 +280,7 @@ async function updateIfStatus(
 
   if (!data || data.length === 0) {
     throw new ActionRefusal(
-      `This experiment was changed by someone else before it could ${what}. Reload and try again.`,
+      `This change was edited by someone else before it could ${what}. Reload and try again.`,
     );
   }
 }
@@ -314,7 +333,7 @@ async function replaceLinks(
 }
 
 export const createExperimentAction = withRefusals(
-  'log the experiment',
+  'log the change',
   enhanceAction(
     async (data) => {
       const client = getSupabaseServerClient();
@@ -371,7 +390,7 @@ export const createExperimentAction = withRefusals(
           );
 
           throw new ActionRefusal(
-            'The videos could not be linked, and the experiment saved without them could not be removed. It is in the list without its videos.',
+            'The videos could not be linked, and the change saved without them could not be removed. It is in the list without its videos.',
           );
         }
 
@@ -385,7 +404,7 @@ export const createExperimentAction = withRefusals(
 );
 
 export const updateExperimentAction = withRefusals(
-  'save the experiment',
+  'save the change',
   enhanceAction(
     async ({ experimentId, publishIds, tagIds, ...fields }) => {
       const client = getSupabaseServerClient();
@@ -440,7 +459,7 @@ export const updateExperimentAction = withRefusals(
 
         if (!updated || updated.length === 0) {
           throw new ActionRefusal(
-            'This change was not saved: the experiment was not found, or you cannot edit it.',
+            'This change was not saved: it was not found, or you cannot edit it.',
           );
         }
       }
@@ -458,7 +477,7 @@ export const updateExperimentAction = withRefusals(
  * as the baseline to compare against later.
  */
 export const startExperimentAction = withRefusals(
-  'start the experiment',
+  'start the change',
   enhanceAction(
     async ({ experimentId, startedAt }) => {
       const client = getSupabaseServerClient();
@@ -468,8 +487,8 @@ export const startExperimentAction = withRefusals(
       const context = await readSnapshotContext(client, experimentId);
       assertCanStart(context.status);
 
-      const publishIds = await linkedPublishIds(client, experimentId);
-      const baseline = await captureSnapshot(publishIds, {
+      const linked = await linkedPublishes(client, experimentId);
+      const baseline = await captureSnapshot(linked, {
         metric: context.metric_watched,
         accountId: context.account_id,
         window: baselineWindow(started, context.review_window_days),
@@ -502,7 +521,7 @@ export const startExperimentAction = withRefusals(
  * required — an experiment without a recorded result teaches nothing.
  */
 export const concludeExperimentAction = withRefusals(
-  'conclude the experiment',
+  'conclude the change',
   enhanceAction(
     async ({ experimentId, actualOutcome, outcomeStatus, endedAt }) => {
       const client = getSupabaseServerClient();
@@ -515,8 +534,8 @@ export const concludeExperimentAction = withRefusals(
       // assertCanConclude has established this; the type cannot see it.
       const startedAt = context.started_at!;
 
-      const publishIds = await linkedPublishIds(client, experimentId);
-      const result = await captureSnapshot(publishIds, {
+      const linked = await linkedPublishes(client, experimentId);
+      const result = await captureSnapshot(linked, {
         metric: context.metric_watched,
         accountId: context.account_id,
         window: resultWindow(startedAt, ended),
@@ -547,7 +566,7 @@ export const concludeExperimentAction = withRefusals(
 );
 
 export const abandonExperimentAction = withRefusals(
-  'abandon the experiment',
+  'abandon the change',
   enhanceAction(
     async ({ experimentId, reason, endedAt }) => {
       const client = getSupabaseServerClient();
@@ -733,7 +752,7 @@ export const getExperimentAction = enhanceAction(
       .single();
 
     if (error || !experiment) {
-      throw new Error('Experiment not found or access denied');
+      throw new Error('Change not found or access denied');
     }
 
     const [publishesResult, tagsResult] = await Promise.all([
@@ -764,7 +783,7 @@ export const getExperimentAction = enhanceAction(
 );
 
 export const deleteExperimentAction = withRefusals(
-  'delete the experiment',
+  'delete the change',
   enhanceAction(
     async ({ experimentId }) => {
       const client = getSupabaseServerClient();
@@ -782,7 +801,7 @@ export const deleteExperimentAction = withRefusals(
       // As with an update: a refused delete removes nothing and says nothing.
       if (!deleted || deleted.length === 0) {
         throw new ActionRefusal(
-          'Nothing was deleted: the experiment was not found, or you cannot delete it.',
+          'Nothing was deleted: the change was not found, or you cannot delete it.',
         );
       }
 

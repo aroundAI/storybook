@@ -138,6 +138,12 @@ export type UnmeasuredReason =
    * began, so their figures hold no data from their own window (FILM-1603).
    */
   | 'predates_ingest'
+  /**
+   * Every linked video was published after the window ended, so the window
+   * holds no "before" for any of them (FILM-1610 review 5). Not "no data":
+   * there was nothing to have data about.
+   */
+  | 'published_after_window'
   /** The stored metric name is not one this code knows. */
   | 'unknown_metric';
 
@@ -397,6 +403,8 @@ export const UNMEASURED_REASON_TEXT: Record<UnmeasuredReason, string> = {
     'No linked video is 30 days old yet, so views at 30 days are not knowable.',
   predates_ingest:
     "The linked videos' first 30 days ended before analytics collection began, so there is no data for them.",
+  published_after_window:
+    'The linked videos were published after this window, so there is no "before" for them. This log compares videos with their own past; comparing new videos with earlier ones is what channel experiments (coming) are for.',
   unknown_metric:
     'This metric is no longer recognised, so it was not measured.',
 };
@@ -418,3 +426,34 @@ export function formatWatchedValue(value: number, unit: WatchedUnit): string {
       return Math.round(value).toLocaleString('en-US');
   }
 }
+
+/**
+ * Whether every linked video was published after the window ended, so the
+ * window cannot hold any of their data (FILM-1610 review 5).
+ *
+ * Publish times are timestamps and windows are calendar days; a video counts
+ * as in the window from the UTC day it was published, the calendar the
+ * metric tables are keyed by. A video with no publish time is not assumed
+ * late: its data, if any, decides.
+ */
+export function allPublishedAfter(
+  publishedAt: Array<string | null>,
+  window: DateWindow,
+): boolean {
+  return (
+    publishedAt.length > 0 &&
+    publishedAt.every(
+      (timestamp) => timestamp !== null && timestamp.slice(0, 10) > window.end,
+    )
+  );
+}
+
+/**
+ * What a metric can and cannot show here, where it needs saying. Views at
+ * 30 days is a fixed figure per video once the video is 30 days old, so on
+ * the same videos it reads the same before and after.
+ */
+export const WATCHED_METRIC_NOTES: Partial<Record<WatchedMetricKey, string>> = {
+  views_at_30d:
+    "Each video's views in its first 30 days. For a video already 30 days old it is the same before and after, so it shows a change only between different videos.",
+};

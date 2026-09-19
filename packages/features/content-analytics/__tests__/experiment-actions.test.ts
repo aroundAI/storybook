@@ -170,7 +170,10 @@ vi.mock('@kit/supabase/server-client', () => ({
               state.linkReadError
                 ? { data: null, error: state.linkReadError }
                 : {
-                    data: state.linked.map((id) => ({ publish_id: id })),
+                    data: state.linked.map((id) => ({
+                      publish_id: id,
+                      publishes: { published_at: '2026-01-01T12:00:00Z' },
+                    })),
                     error: null,
                   },
           }),
@@ -280,7 +283,7 @@ describe('failures are reported, never swallowed (A1, A2)', () => {
         publishIds: ['p1'],
         tagIds: [],
       }),
-    ).rejects.toThrow('Could not log the experiment');
+    ).rejects.toThrow('Could not log the change');
   });
 
   it('removes the experiment it just created when linking fails, so a retry cannot duplicate it', async () => {
@@ -314,7 +317,7 @@ describe('failures are reported, never swallowed (A1, A2)', () => {
 
     await expect(
       startExperimentAction({ experimentId: 'e1', startedAt: '2026-07-01' }),
-    ).rejects.toThrow('Could not start the experiment');
+    ).rejects.toThrow('Could not start the change');
 
     expect(state.updates).toHaveLength(0);
     expect(resolveWatchedMetric).not.toHaveBeenCalled();
@@ -332,6 +335,7 @@ describe('startExperimentAction', () => {
       metric: 'ctr',
       accountId: 'a1',
       publishIds: ['p1', 'p2'],
+      publishedAt: ['2026-01-01T12:00:00Z', '2026-01-01T12:00:00Z'],
       window: { start: '2026-05-02', end: '2026-06-30' },
     });
   });
@@ -394,7 +398,7 @@ describe('concludeExperimentAction', () => {
         actualOutcome: 'n/a',
         outcomeStatus: 'inconclusive',
       }),
-    ).rejects.toThrow(/only a running experiment/i);
+    ).rejects.toThrow(/only a running change/i);
 
     expect(state.updates).toHaveLength(0);
   });
@@ -499,7 +503,7 @@ describe('the comparison stays comparable (B1-B3, B6)', () => {
 
     await expect(
       startExperimentAction({ experimentId: 'e1', startedAt: '2026-08-01' }),
-    ).rejects.toThrow(/only a planned experiment/i);
+    ).rejects.toThrow(/only a planned change/i);
     expect(state.updates).toHaveLength(0);
   });
 
@@ -514,7 +518,7 @@ describe('the comparison stays comparable (B1-B3, B6)', () => {
         outcomeStatus: 'confirmed',
         endedAt: '2026-08-01',
       }),
-    ).rejects.toThrow(/only a running experiment/i);
+    ).rejects.toThrow(/only a running change/i);
     expect(state.updates).toHaveLength(0);
   });
 
@@ -617,7 +621,7 @@ describe('lifecycle writes are atomic, and abandon has rules too (R1, R2)', () =
 
     await expect(
       startExperimentAction({ experimentId: 'e1', startedAt: '2026-07-01' }),
-    ).rejects.toThrow(/changed by someone else/i);
+    ).rejects.toThrow(/edited by someone else/i);
   });
 
   it('concludes only if the row is still running at the moment of writing', async () => {
@@ -639,7 +643,7 @@ describe('lifecycle writes are atomic, and abandon has rules too (R1, R2)', () =
 
     await expect(
       abandonExperimentAction({ experimentId: 'e1', reason: 'oops' }),
-    ).rejects.toThrow(/only a planned or running experiment/i);
+    ).rejects.toThrow(/only a planned or running change/i);
     expect(state.updates).toHaveLength(0);
   });
 
@@ -715,7 +719,7 @@ describe('refusals reach the page as values, not throws (G1)', () => {
       await startAction({ experimentId: 'e1', startedAt: '2026-08-01' }),
     ).toEqual({
       ok: false,
-      error: 'Only a planned experiment can be started; this one is running.',
+      error: 'Only a planned change can be started; this one is running.',
     });
   });
 
@@ -730,12 +734,12 @@ describe('refusals reach the page as values, not throws (G1)', () => {
     expect(result).toEqual({
       ok: false,
       error:
-        'Could not start the experiment. Try again; if it keeps failing, reload the page.',
+        'Could not start the change. Try again; if it keeps failing, reload the page.',
     });
     expect(JSON.stringify(result)).not.toContain('secret_table');
     expect(logged).toHaveBeenCalledWith(
-      expect.objectContaining({ what: 'start the experiment' }),
-      'Could not start the experiment',
+      expect.objectContaining({ what: 'start the change' }),
+      'Could not start the change',
     );
   });
 
@@ -830,7 +834,7 @@ describe('a write that changed nothing is not reported as done (round 5, H8)', (
     ).toEqual({
       ok: false,
       error:
-        'This change was not saved: the experiment was not found, or you cannot edit it.',
+        'This change was not saved: it was not found, or you cannot edit it.',
     });
   });
 
@@ -840,7 +844,7 @@ describe('a write that changed nothing is not reported as done (round 5, H8)', (
     expect(await deleteAction({ experimentId: 'e1' })).toEqual({
       ok: false,
       error:
-        'Nothing was deleted: the experiment was not found, or you cannot delete it.',
+        'Nothing was deleted: the change was not found, or you cannot delete it.',
     });
   });
 
@@ -861,10 +865,10 @@ describe('a failure is logged with what it concerned (round 5, H7)', () => {
 
     expect(logged).toHaveBeenCalledWith(
       expect.objectContaining({
-        what: 'start the experiment',
+        what: 'start the change',
         experimentId: 'e1',
       }),
-      'Could not start the experiment',
+      'Could not start the change',
     );
   });
 });

@@ -451,6 +451,8 @@ export async function seedExperiment(
     startedAt?: string;
     reviewWindowDays?: number;
     metricWatched?: string;
+    /** A fixed creation time, for date-display tests; defaults to now. */
+    createdAt?: string;
   },
 ): Promise<string> {
   const row = await insertRow<{ id: string }>(
@@ -463,6 +465,7 @@ export async function seedExperiment(
       started_at: options.startedAt ?? null,
       review_window_days: options.reviewWindowDays ?? 60,
       metric_watched: options.metricWatched ?? null,
+      ...(options.createdAt ? { created_at: options.createdAt } : {}),
     },
     { key: SERVICE_ROLE_KEY },
   );
@@ -507,6 +510,8 @@ export async function seedPublishedVideos(
   projectId: string,
   connectionId: string,
   titles: string[],
+  /** When the first is published (ISO); the rest follow a day apart. */
+  firstPublishedAt = new Date(Date.UTC(2026, 0, 1)).toISOString(),
 ): Promise<string[]> {
   const auth = { key: SERVICE_ROLE_KEY };
 
@@ -521,7 +526,7 @@ export async function seedPublishedVideos(
   );
 
   // Published a day apart, the first title oldest.
-  const start = Date.UTC(2026, 0, 1);
+  const start = Date.parse(firstPublishedAt);
   const publishes = await insertRows<{ id: string }>(
     'publishes',
     episodes.map((episode, index) => ({

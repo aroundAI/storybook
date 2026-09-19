@@ -13,9 +13,7 @@ describe('assertCanStart', () => {
 
     for (const status of ['running', 'concluded', 'abandoned']) {
       // Starting again would overwrite the baseline the result is compared to.
-      expect(() => assertCanStart(status)).toThrow(
-        /only a planned experiment/i,
-      );
+      expect(() => assertCanStart(status)).toThrow(/only a planned change/i);
     }
   });
 });
@@ -29,7 +27,7 @@ describe('assertCanConclude', () => {
     for (const status of ['planned', 'concluded', 'abandoned']) {
       expect(() =>
         assertCanConclude(status, '2026-07-01', '2026-09-13'),
-      ).toThrow(/only a running experiment/i);
+      ).toThrow(/only a running change/i);
     }
   });
 
@@ -100,7 +98,7 @@ describe('assertCanAbandon', () => {
     for (const status of ['concluded', 'abandoned']) {
       // A concluded experiment's result would be overwritten.
       expect(() => assertCanAbandon(status)).toThrow(
-        /only a planned or running experiment/i,
+        /only a planned or running change/i,
       );
     }
   });

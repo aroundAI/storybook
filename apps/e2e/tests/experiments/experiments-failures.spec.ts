@@ -91,7 +91,7 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
       page.locator('[data-test="experiments-due-error"]:visible'),
     ).toBeVisible(ERROR_STATE);
 
-    await expect(page.getByText('No experiments logged yet')).toHaveCount(0);
+    await expect(page.getByText('No changes logged yet')).toHaveCount(0);
     await expect(
       page.locator('[data-test="experiments-due-empty"]'),
     ).toHaveCount(0);
@@ -110,7 +110,7 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
     await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
     await page.locator(`[data-test="experiment-row-${id}"]:visible`).click();
 
-    const start = page.getByRole('button', { name: 'Start experiment' });
+    const start = page.getByRole('button', { name: 'Start', exact: true });
     await expect(start).toBeVisible();
 
     await onAction(page, startAction, 'abort');
@@ -119,7 +119,7 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
     await expect(
       page.locator('[data-test="experiment-action-error"]'),
     ).toBeVisible();
-    await expect(page.getByText('Experiment started')).toHaveCount(0);
+    await expect(page.getByText('Started — baseline captured')).toHaveCount(0);
     await expect(start).toBeEnabled();
   });
 
@@ -131,14 +131,14 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
     await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
     await page.locator(`[data-test="experiment-row-${id}"]:visible`).click();
 
-    const start = page.getByRole('button', { name: 'Start experiment' });
+    const start = page.getByRole('button', { name: 'Start', exact: true });
     await expect(start).toBeVisible();
 
     const seen: string[] = [];
     await onAction(page, startAction, { delayMs: 1500, seen });
     await start.dblclick();
 
-    await expect(page.getByText('Experiment started')).toBeVisible();
+    await expect(page.getByText('Started — baseline captured')).toBeVisible();
 
     // Every request `seen` is a start; the double click must send one.
     expect(seen).toHaveLength(1);
@@ -156,7 +156,7 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
     await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
     await page.locator(`[data-test="experiment-row-${id}"]:visible`).click();
 
-    const start = page.getByRole('button', { name: 'Start experiment' });
+    const start = page.getByRole('button', { name: 'Start', exact: true });
     await expect(start).toBeVisible();
 
     const seen: string[] = [];
@@ -167,7 +167,7 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
       (button as HTMLButtonElement).click();
     });
 
-    await expect(page.getByText('Experiment started')).toBeVisible();
+    await expect(page.getByText('Started — baseline captured')).toBeVisible();
     expect(seen).toHaveLength(1);
   });
 
@@ -188,12 +188,12 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
       await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
       await page.locator(`[data-test="experiment-row-${id}"]:visible`).click();
       await expect(
-        page.getByRole('button', { name: 'Start experiment' }),
+        page.getByRole('button', { name: 'Start', exact: true }),
       ).toBeVisible();
     }
 
-    await first!.getByRole('button', { name: 'Start experiment' }).click();
-    await expect(first!.getByText('Experiment started')).toBeVisible();
+    await first!.getByRole('button', { name: 'Start', exact: true }).click();
+    await expect(first!.getByText('Started — baseline captured')).toBeVisible();
 
     const [before] = await readRows<{
       started_at: string;
@@ -205,16 +205,14 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
 
     // The second tab still shows Start. Pressing it must not restart the
     // experiment or replace the baseline the first tab captured.
-    await second!.getByRole('button', { name: 'Start experiment' }).click();
+    await second!.getByRole('button', { name: 'Start', exact: true }).click();
     // The wording, not only that something appeared: a production build
     // replaces a *thrown* server-action message with "An error occurred in
     // the Server Components render…", which is visible too (review 4, G1).
     // ⚫️ Test runs this against a production build, where that shows.
     await expect(
       second!.locator('[data-test="experiment-action-error"]'),
-    ).toHaveText(
-      'Only a planned experiment can be started; this one is running.',
-    );
+    ).toHaveText('Only a planned change can be started; this one is running.');
 
     const [after] = await readRows<{
       started_at: string;

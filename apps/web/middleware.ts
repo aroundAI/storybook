@@ -272,6 +272,18 @@ function getPatterns() {
 
         // If user is not logged in, redirect to sign in page.
         if (!data?.claims) {
+          // Except a server action. Its client cannot follow a redirect
+          // answered here, and showed "An unexpected response was received
+          // from the server" instead of the sign-in page (FILM-1610 review
+          // 5, H11). The action's own check — `enhanceAction`'s
+          // requireUser — redirects in a way the client does follow, and
+          // an action with `auth: false` is public by its own declaration.
+          // This opens nothing: an action can be posted to any path,
+          // public ones included, so this redirect never guarded actions.
+          if (isServerAction(req)) {
+            return;
+          }
+
           const signIn = pathsConfig.auth.signIn;
           const redirectPath = `${signIn}?next=${next}`;
 

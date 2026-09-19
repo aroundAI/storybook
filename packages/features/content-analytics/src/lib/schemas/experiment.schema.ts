@@ -44,6 +44,24 @@ export const EXPERIMENT_CATEGORY_LABELS: Record<ExperimentCategoryKey, string> =
     other: 'Other',
   };
 
+/**
+ * Categories that are part of the video itself, or of when it went out.
+ * None of them can be changed on a video already published, so comparing
+ * the same videos before and after cannot measure them (FILM-1610 review 5).
+ * A thumbnail or title (`packaging`) can be, and is what this log measures.
+ */
+export const BAKED_IN_CATEGORIES: ReadonlySet<string> =
+  new Set<ExperimentCategoryKey>([
+    'hook',
+    'length',
+    'format',
+    'topic',
+    'schedule',
+  ]);
+
+export const BAKED_IN_NOTE =
+  'This kind of change is part of the video itself (or, for schedule, of when it went out), so it cannot be made to videos already published. The before and after figures compare the same videos, so they will not measure it. Comparing styles across new videos is what channel experiments (coming) are for.';
+
 /** A stored category's label; an unrecognised one shows as stored. */
 export function categoryLabel(category: string): string {
   return Object.hasOwn(EXPERIMENT_CATEGORY_LABELS, category)
