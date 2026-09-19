@@ -236,6 +236,106 @@ test.describe('Experiment log — evidence', () => {
       path: `${OUT}/04-measured-against-clickhouse.png`,
       fullPage: true,
     });
+
+    // Round 5, pass 9: conclude with data in the result window, then check
+    // §8 against what was stored and what the page shows — not the code.
+    const [started] = await readRows<{ started_at: string }>(
+      'analytics_experiments',
+      `select=started_at&id=eq.${row!.id}`,
+    );
+    await insertClickHouse('video_reach_daily', [
+      {
+        project_id: team.projectId,
+        video_id: first,
+        platform: 'youtube',
+        metric_date: started!.started_at,
+        impressions: 4000,
+        impressions_ctr: 0.05,
+        engaged_views: 0,
+      },
+    ]);
+
+    await page.getByLabel('What actually happened?').fill('CTR rose to 5%');
+    await page.getByRole('button', { name: 'confirmed' }).click();
+    await expect(page.getByText('Concluded', { exact: true })).toBeVisible();
+    await expect(
+      page.locator('[data-test="experiment-watched-result-value"]'),
+    ).toHaveText('5.0%');
+
+    const [stored] = await readRows<{
+      status: string;
+      started_at: string;
+      ended_at: string;
+      review_due_at: string;
+      baseline_metrics: Record<string, unknown> & {
+        totals: Record<string, number>;
+        watched: Record<string, unknown>;
+      };
+      result_metrics: Record<string, unknown> & {
+        totals: Record<string, number>;
+        watched: Record<string, unknown>;
+        resultAfterDays: number;
+      };
+    }>(
+      'analytics_experiments',
+      `select=status,started_at,ended_at,review_due_at,baseline_metrics,result_metrics&id=eq.${row!.id}`,
+    );
+    console.log('STORED_SNAPSHOTS', JSON.stringify(stored));
+
+    const addDays = (date: string, days: number) => {
+      const d = new Date(`${date}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + days);
+      return d.toISOString().slice(0, 10);
+    };
+    const start = stored!.started_at;
+
+    // §8: the totals block is the six fields that shipped before — no more,
+    // no fewer. As a set: jsonb stores keys in its own order, so the order
+    // the action wrote is not observable here (experiment-snapshot.test.ts
+    // pins the object the action writes, byte for byte).
+    const TOTALS = [
+      'comments',
+      'likes',
+      'revenueCents',
+      'shares',
+      'views',
+      'watchTimeSeconds',
+    ];
+    expect(Object.keys(stored!.baseline_metrics.totals).sort()).toEqual(TOTALS);
+    expect(Object.keys(stored!.result_metrics.totals).sort()).toEqual(TOTALS);
+
+    // §8: a recognised metric carries a watched value with its unit; the
+    // baseline covers the window *before* the start, the result start → end.
+    expect(stored!.baseline_metrics.watched).toMatchObject({
+      status: 'measured',
+      metric: 'ctr',
+      unit: 'ratio',
+      window: { start: addDays(start, -30), end: addDays(start, -1) },
+      coveredVideos: 2,
+      totalVideos: 2,
+      daysWithData: 1,
+      windowDays: 30,
+    });
+    expect(stored!.baseline_metrics.watched.value).toBeCloseTo(0.028, 6);
+    expect(stored!.result_metrics.watched).toMatchObject({
+      status: 'measured',
+      metric: 'ctr',
+      unit: 'ratio',
+      window: { start, end: stored!.ended_at },
+      coveredVideos: 1,
+      totalVideos: 2,
+    });
+    expect(stored!.result_metrics.watched.value).toBeCloseTo(0.05, 6);
+
+    // §8: the days that elapsed, and the review date from the window.
+    expect(stored!.result_metrics.resultAfterDays).toBe(0);
+    expect(stored!.review_due_at).toBe(addDays(start, 30));
+    expect(stored!.status).toBe('concluded');
+
+    await page.screenshot({
+      path: `${OUT}/04b-concluded-against-clickhouse.png`,
+      fullPage: true,
+    });
   });
 
   /**
