@@ -5,6 +5,7 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
@@ -15,8 +16,10 @@
     "zod": "^3.25.74"
   },
   "devDependencies": {
+    "@kit/prettier-config": "workspace:*",
     "@types/node": "^24.5.0",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
-  }
+  },
+  "prettier": "@kit/prettier-config"
 }

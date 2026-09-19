@@ -11,6 +11,7 @@
         "./workers": "./src/workers/index.ts"
     },
     "scripts": {
+        "format": "prettier --check \"**/*.{ts,tsx}\"",
         "clean": "rm -rf .turbo node_modules",
         "lint": "eslint .",
         "test": "vitest",
@@ -25,9 +26,11 @@
         "server-only": "^0.0.1"
     },
     "devDependencies": {
+        "@kit/prettier-config": "workspace:*",
         "@types/node": "^24.5.0",
         "eslint": "^9.35.0",
         "typescript": "^5.9.2",
         "vitest": "^3.2.4"
-    }
+    },
+    "prettier": "@kit/prettier-config"
 }
