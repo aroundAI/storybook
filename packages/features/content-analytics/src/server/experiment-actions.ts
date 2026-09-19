@@ -426,13 +426,22 @@ export const updateExperimentAction = withRefusals(
       }
 
       if (Object.keys(updates).length > 0) {
-        const { error } = await client
+        // RLS refusing an update matches no row and reports no error, so
+        // the rows written are what says it happened.
+        const { data: updated, error } = await client
           .from('analytics_experiments')
           .update(updates)
-          .eq('id', experimentId);
+          .eq('id', experimentId)
+          .select('id');
 
         if (error) {
           throw new Error(`Failed to update experiment: ${error.message}`);
+        }
+
+        if (!updated || updated.length === 0) {
+          throw new ActionRefusal(
+            'This change was not saved: the experiment was not found, or you cannot edit it.',
+          );
         }
       }
 
@@ -760,13 +769,21 @@ export const deleteExperimentAction = withRefusals(
     async ({ experimentId }) => {
       const client = getSupabaseServerClient();
 
-      const { error } = await client
+      const { data: deleted, error } = await client
         .from('analytics_experiments')
         .delete()
-        .eq('id', experimentId);
+        .eq('id', experimentId)
+        .select('id');
 
       if (error) {
         throw new Error(`Failed to delete experiment: ${error.message}`);
+      }
+
+      // As with an update: a refused delete removes nothing and says nothing.
+      if (!deleted || deleted.length === 0) {
+        throw new ActionRefusal(
+          'Nothing was deleted: the experiment was not found, or you cannot delete it.',
+        );
       }
 
       return { success: true };

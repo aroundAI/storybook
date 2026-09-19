@@ -10,13 +10,18 @@
 import { ActionRefusal } from './action-result';
 
 /**
- * Fields the baseline is measured over. Changing one after the start would
- * compare a baseline of one thing with a result of another.
+ * Fields fixed once the experiment starts. The first three are what the
+ * baseline is measured over: changing one would compare a baseline of one
+ * thing with a result of another. The last two are the expectation, which
+ * is recorded before the result is known so hindsight cannot rewrite it
+ * (round 5, H3). The table holds the same rule.
  */
 const FROZEN_AFTER_START = [
   'metricWatched',
   'reviewWindowDays',
   'publishIds',
+  'hypothesis',
+  'expectedOutcome',
 ] as const;
 
 /** Starting again would overwrite the baseline and the start date. */
@@ -75,7 +80,7 @@ export function assertEditable(status: string, fields: string[]): void {
 
   if (frozen.length > 0) {
     throw new ActionRefusal(
-      `${frozen.join(', ')} cannot change once the experiment has started: the baseline was measured over them.`,
+      `${frozen.join(', ')} cannot change once the experiment has started: the baseline was measured over them, and the expectation was recorded before the result.`,
     );
   }
 }

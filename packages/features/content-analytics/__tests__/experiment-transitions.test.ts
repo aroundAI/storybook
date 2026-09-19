@@ -71,8 +71,24 @@ describe('assertEditable', () => {
 
   it('still lets a started experiment change its wording', () => {
     expect(() =>
-      assertEditable('running', ['title', 'notes', 'hypothesis', 'category']),
+      assertEditable('running', [
+        'title',
+        'notes',
+        'changeDescription',
+        'category',
+      ]),
     ).not.toThrow();
+  });
+
+  // Round 5 (H3). This test used to list `hypothesis` as wording, which
+  // contradicted the form: "recorded before the result is known, so
+  // hindsight cannot rewrite it".
+  it('refuses a new hypothesis or expected outcome once started', () => {
+    for (const field of ['hypothesis', 'expectedOutcome']) {
+      expect(() => assertEditable('running', [field])).toThrow(field);
+      expect(() => assertEditable('concluded', [field])).toThrow(field);
+      expect(() => assertEditable('planned', [field])).not.toThrow();
+    }
   });
 });
 

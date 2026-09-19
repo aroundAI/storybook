@@ -503,6 +503,52 @@
       "replace": "outcomeStatus: 'inconclusive',",
       "spec": "tests/experiments/experiments.spec.ts",
       "grep": "logged, started and concluded"
+    },
+    {
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "name": "H7 failure logged without its ids",
+      "file": "packages/features/content-analytics/src/server/with-refusals.ts",
+      "find": "{ error, what, ...idsOf(input) }",
+      "replace": "{ error, what }",
+      "pattern": "logs the experiment the failed start was for"
+    },
+    {
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "name": "H8 update that matched nothing reported as saved",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "if (!updated || updated.length === 0) {",
+      "replace": "if (updated === undefined) {",
+      "pattern": "refuses an update that matched no row"
+    },
+    {
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "name": "H8b delete that removed nothing reported as done",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "if (!deleted || deleted.length === 0) {",
+      "replace": "if (deleted === undefined) {",
+      "pattern": "refuses a delete that removed no row"
+    },
+    {
+      "name": "H3 expectation rewritable after start (table)",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/experiments-lifecycle.test.sql",
+      "sql": "drop trigger analytics_experiments_guard_lifecycle on public.analytics_experiments;\ncreate trigger analytics_experiments_guard_lifecycle before insert or update of status, started_at, ended_at, baseline_metrics, result_metrics on public.analytics_experiments for each row execute function public.guard_experiment_lifecycle();"
+    },
+    {
+      "name": "H3b expectation rewritable after start (action)",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/experiment-transitions.ts",
+      "find": "  'hypothesis',\n  'expectedOutcome',\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "refuses a new expected outcome or hypothesis"
     }
   ]
 }
