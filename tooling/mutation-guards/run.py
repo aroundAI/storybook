@@ -1,0 +1,249 @@
+#!/usr/bin/env python3
+"""Mutation guards: prove that each test still catches the bug it was written for.
+
+A test that passed once can stop guarding after a later change — FILM-1610's
+double-click test kept passing after the thing it guarded was removed, and
+only a re-run with the fix taken out showed it. This runner makes that check
+repeatable: for each entry it breaks the code on purpose, runs the guard, and
+requires the guard to FAIL. It restores every file afterwards, whatever
+happens.
+
+    python3 tooling/mutation-guards/run.py --kind unit      # CI: Unit Tests job
+    python3 tooling/mutation-guards/run.py --kind pgtap     # CI: Supabase DB job
+    python3 tooling/mutation-guards/run.py --kind e2e       # by hand; needs a server
+    python3 tooling/mutation-guards/run.py --self-test      # the runner's own red check
+
+Outcomes per entry:
+  RED           the guard failed under its mutation — it guards
+  STAYED GREEN  the guard passed with its fix removed — a finding
+  MISSING       the mutation's target text is gone — the code moved; update
+                the entry with it, or the guard is guarding nothing
+  NOT GREEN     the guard fails even without the mutation, so a failure under
+                the mutation would prove nothing
+
+Any outcome other than RED fails the run. See README.md.
+"""
+import argparse
+import glob
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+HERE = os.path.dirname(os.path.abspath(__file__))
+PGTAP_DIR = os.path.join(ROOT, 'apps/web/supabase/tests/database')
+
+
+def load_env_file(path):
+    env = {}
+    if not os.path.exists(path):
+        return env
+    for line in open(path):
+        line = line.strip()
+        if line and not line.startswith('#') and '=' in line:
+            key, value = line.split('=', 1)
+            env[key] = value
+    return env
+
+
+def supabase_cli():
+    # CI installs the pinned CLI on PATH; locally it comes through npx.
+    return ['supabase'] if shutil.which('supabase') else ['npx', 'supabase']
+
+
+def run(cmd, cwd, env=None, timeout=900):
+    result = subprocess.run(cmd, cwd=cwd, env=env, capture_output=True,
+                            text=True, timeout=timeout)
+    return result.returncode, result.stdout + result.stderr
+
+
+def edits_of(entry):
+    if 'edits' in entry:
+        return entry['edits']
+    return [{'find': entry['find'], 'replace': entry['replace']}]
+
+
+def guard_command(entry, base_env):
+    kind = entry['kind']
+    env = dict(base_env)
+
+    if kind == 'unit':
+        cmd = ['npx', 'vitest', 'run', entry['test']]
+        if entry.get('pattern'):
+            cmd += ['-t', entry['pattern']]
+        return cmd, os.path.join(ROOT, entry['cwd']), env
+
+    if kind == 'e2e':
+        env.update(load_env_file(os.path.join(ROOT, 'deployment/config/local.env')))
+        env.setdefault('PLAYWRIGHT_BASE_URL', 'http://localhost:3100')
+        env.update(entry.get('env', {}))
+        cmd = ['npx', 'playwright', 'test', entry['spec'], '--project=chromium',
+               '--reporter=line', '--retries=0', '-g', entry['grep']]
+        return cmd, os.path.join(ROOT, 'apps/e2e'), env
+
+    raise ValueError(f'no guard command for kind {kind}')
+
+
+def run_code_mutation(entry, base_env):
+    path = os.path.join(ROOT, entry['file'])
+    source = open(path).read()
+
+    # Baseline: the guard must pass on the real code, or its failure under
+    # the mutation would be counted as detection when it is not.
+    cmd, cwd, env = guard_command(entry, base_env)
+    code, output = run(cmd, cwd, env)
+    if code != 0:
+        return 'NOT GREEN', output
+
+    mutated = source
+    for edit in edits_of(entry):
+        if mutated.count(edit['find']) < 1:
+            return 'MISSING', ''
+        mutated = mutated.replace(edit['find'], edit['replace'], 1)
+
+    backup = path + '.mutation-guard.bak'
+    shutil.copyfile(path, backup)
+    try:
+        with open(path, 'w') as handle:
+            handle.write(mutated)
+        if entry['kind'] == 'e2e':
+            time.sleep(4)  # let the dev server pick the change up
+        cmd, cwd, env = guard_command(entry, base_env)
+        code, output = run(cmd, cwd, env)
+        return ('RED' if code != 0 else 'STAYED GREEN'), output
+    finally:
+        shutil.copyfile(backup, path)
+        os.remove(backup)
+
+
+def run_pgtap_mutation(entry):
+    """Runs a pgTAP file with SQL applied first, inside its own transaction.
+
+    Every pgTAP file here begins a transaction and rolls back, so the
+    mutation never outlives the run.
+    """
+    test_path = os.path.join(ROOT, entry['test'])
+    source = open(test_path).read()
+
+    code, output = run(supabase_cli() + ['test', 'db', test_path],
+                       os.path.join(ROOT, 'apps/web'))
+    if code != 0:
+        return 'NOT GREEN', output
+
+    marker = source[source.index('select plan('):]
+    marker = marker[:marker.index(';') + 1]
+    mutated = source.replace(
+        marker, marker + '\nset local role postgres;\n' + entry['sql'] + '\n', 1)
+
+    temp = os.path.join(PGTAP_DIR, 'zz-mutation-guard.test.sql')
+    with open(temp, 'w') as handle:
+        handle.write(mutated)
+    try:
+        code, output = run(supabase_cli() + ['test', 'db', temp],
+                           os.path.join(ROOT, 'apps/web'))
+        return ('RED' if code != 0 else 'STAYED GREEN'), output
+    finally:
+        os.remove(temp)
+
+
+def run_entry(entry, base_env):
+    if entry['kind'] == 'pgtap':
+        return run_pgtap_mutation(entry)
+    return run_code_mutation(entry, base_env)
+
+
+def load_entries():
+    entries = []
+    for path in sorted(glob.glob(os.path.join(HERE, '*.json'))):
+        data = json.load(open(path))
+        for entry in data['mutations']:
+            entry['feature'] = data['feature']
+            entries.append(entry)
+    return entries
+
+
+def self_test(base_env):
+    """The runner's own red check: a mutation that changes nothing must be
+    reported as STAYED GREEN. If it came back RED, the runner would be
+    counting any failure — a broken command, a missing tool — as a guard
+    doing its job."""
+    toothless = {
+        'name': 'self-test: a no-op mutation',
+        'kind': 'unit',
+        'file': 'packages/features/content-analytics/src/lib/watched-metrics.ts',
+        'find': 'export const WATCHED_METRIC_KEYS',
+        'replace': 'export const WATCHED_METRIC_KEYS',
+        'cwd': 'packages/features/content-analytics',
+        'test': '__tests__/watched-metrics.test.ts',
+    }
+    status, output = run_entry(toothless, base_env)
+    if status != 'STAYED GREEN':
+        print(f'SELF-TEST FAILED: a no-op mutation came back {status}')
+        print(output[-2000:])
+        return 1
+    print('self-test passed: a no-op mutation is reported as STAYED GREEN')
+    return 0
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--kind', choices=['unit', 'pgtap', 'e2e'],
+                        action='append', help='run only these kinds')
+    parser.add_argument('--only', action='append',
+                        help='run only entries whose name contains this')
+    parser.add_argument('--self-test', action='store_true')
+    args = parser.parse_args()
+
+    base_env = dict(os.environ)
+
+    if args.self_test:
+        return self_test(base_env)
+
+    # Only the files entries mutate can have a backup; a whole-repo glob
+    # would walk node_modules for nothing.
+    leftovers = sorted({
+        os.path.join(ROOT, entry['file']) + '.mutation-guard.bak'
+        for entry in load_entries() if 'file' in entry
+    })
+    leftovers = [path for path in leftovers if os.path.exists(path)]
+    if leftovers:
+        print('Refusing to run: a previous run left backups behind:', *leftovers, sep='\n  ')
+        return 1
+
+    entries = [
+        entry for entry in load_entries()
+        if (not args.kind or entry['kind'] in args.kind)
+        and (not args.only or any(o in entry['name'] for o in args.only))
+    ]
+
+    if not entries:
+        print('No mutation guards selected.')
+        return 1
+
+    failures = []
+    for entry in entries:
+        status, output = run_entry(entry, base_env)
+        print(f'{status:13} [{entry["kind"]}] {entry["feature"]}: {entry["name"]}', flush=True)
+        if status != 'RED':
+            failures.append((entry, status, output))
+
+    print(f'\n{len(entries) - len(failures)} of {len(entries)} guards went red under their mutation')
+    for entry, status, output in failures:
+        print(f'\n--- {status}: {entry["name"]}')
+        if status == 'STAYED GREEN':
+            print('The guard passed with its fix removed. Tail of its output:')
+            print(output[-1500:])
+        elif status == 'NOT GREEN':
+            print('The guard fails on the real code. Tail of its output:')
+            print(output[-1500:])
+        else:
+            print(f'Target text not found in {entry.get("file")}. Update the entry.')
+
+    return 1 if failures else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

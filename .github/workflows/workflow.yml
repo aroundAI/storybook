@@ -197,6 +197,12 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           pnpm --filter @kit/supabase verify
 
+      # The database half of tooling/mutation-guards: each entry weakens a
+      # policy, trigger or constraint inside a pgTAP file's own rolled-back
+      # transaction and requires that file to fail. See the unit step.
+      - name: Mutation guards - database
+        run: python3 tooling/mutation-guards/run.py --kind pgtap
+
       - name: Stop Supabase
         # Cleanup, and it cannot succeed when the CLI failed to install — which
         # is exactly when it reported a second failure and buried the first.
@@ -269,6 +275,18 @@ jobs:
           pnpm --filter @kit/clickhouse test
           pnpm --filter @kit/content-analytics test
           pnpm --filter @kit/publishing test
+
+      # A test that passed once can stop guarding after a later change:
+      # FILM-1610's double-click test kept passing after the thing it guarded
+      # was removed, and only re-running it with the fix taken out showed it.
+      # Each entry in tooling/mutation-guards/*.json breaks the code on
+      # purpose and requires its test to fail. The self-test proves the
+      # runner reports a mutation that changes nothing as uncaught, so a
+      # broken command cannot pass for a guard doing its job.
+      - name: Mutation guards - unit
+        run: |
+          python3 tooling/mutation-guards/run.py --self-test
+          python3 tooling/mutation-guards/run.py --kind unit
 
       - name: Generate Coverage Report
         run: pnpm --filter web test:coverage

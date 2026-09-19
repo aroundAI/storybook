@@ -1,0 +1,338 @@
+{
+  "feature": "FILM-1610",
+  "mutations": [
+    {
+      "name": "A1 link write errors ignored",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "  if (result.error) {\n    throw new Error(`Failed to ${what}: ${result.error.message}`);\n  }",
+      "replace": "  void result; void what;",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "failed link write fails the create"
+    },
+    {
+      "name": "A2 link read error ignored",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "  if (error) {\n    throw new Error(`Failed to read linked videos: ${error.message}`);\n  }",
+      "replace": "  void error;",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "failed link read fails the start"
+    },
+    {
+      "name": "A1b no cleanup after failed link",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "      const cleanup = await client\n        .from('analytics_experiments')\n        .delete()\n        .eq('id', experiment.id);",
+      "replace": "      const cleanup = { error: null as { message: string } | null };",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "removes the experiment it just created"
+    },
+    {
+      "name": "A3 double-click guard removed",
+      "file": "apps/web/app/home/[account]/studio/analytics/experiments/_components/experiments-client.tsx",
+      "find": "    if (inFlight.current) return false;\n",
+      "replace": "",
+      "kind": "e2e",
+      "spec": "tests/experiments/experiments-failures.spec.ts",
+      "grep": "same instant"
+    },
+    {
+      "name": "A4 list error state removed",
+      "file": "apps/web/app/home/[account]/studio/analytics/experiments/_components/experiments-client.tsx",
+      "find": ") : listQuery.isError ? (",
+      "replace": ") : false ? (",
+      "kind": "e2e",
+      "spec": "tests/experiments/experiments-failures.spec.ts",
+      "grep": "failed reads"
+    },
+    {
+      "name": "B1 frozen fields editable (action)",
+      "file": "packages/features/content-analytics/src/lib/experiment-transitions.ts",
+      "find": "  if (status === 'planned') return;",
+      "replace": "  return;",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "watched metric once running"
+    },
+    {
+      "name": "B2 restart allowed (action)",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "    assertCanStart(context.status);\n",
+      "replace": "",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "already running"
+    },
+    {
+      "name": "B3 conclude rules removed",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "    assertCanConclude(context.status, context.started_at, ended);\n",
+      "replace": "",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "end date before the start"
+    },
+    {
+      "name": "B4 label from current setting",
+      "file": "packages/features/content-analytics/src/components/experiments/experiment-detail.tsx",
+      "find": "baselineMetric ?? resultMetric ?? experiment.metric_watched ?? null",
+      "replace": "experiment.metric_watched ?? baselineMetric ?? resultMetric ?? null",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-detail.test.tsx",
+      "pattern": "metric the snapshots recorded"
+    },
+    {
+      "name": "C1 pre-ingest windows counted",
+      "file": "packages/features/content-analytics/src/server/watched-metric-snapshot.ts",
+      "find": "predatesIngest: checkpointPredatesIngest(row.ingestLagDays, 30),",
+      "replace": "predatesIngest: false,",
+      "kind": "e2e",
+      "spec": "tests/experiments/experiments-evidence.spec.ts",
+      "grep": "pre-ingest",
+      "env": {
+        "CAPTURE_EVIDENCE": "1",
+        "CLICKHOUSE_EVIDENCE": "1",
+        "EVIDENCE_DIR": "/tmp/red-sweep-evidence"
+      }
+    },
+    {
+      "name": "C1u pre-ingest in the fold",
+      "file": "packages/features/content-analytics/src/lib/watched-metrics.ts",
+      "find": "    .filter((row) => !row.predatesIngest)\n",
+      "replace": "",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/watched-metrics.test.ts",
+      "pattern": "leaves out a video whose 30 days"
+    },
+    {
+      "name": "CTR view-weighted",
+      "file": "packages/features/content-analytics/src/lib/watched-metrics.ts",
+      "find": "value: clicks / impressions,",
+      "replace": "value: rows.filter((r) => r.impressions > 0).reduce((a, r) => a + r.impressionsCtr, 0) / covered,",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/watched-metrics.test.ts",
+      "pattern": "weights by impressions"
+    },
+    {
+      "name": "C3 coverage note removed",
+      "file": "packages/features/content-analytics/src/components/experiments/experiment-detail.tsx",
+      "find": "      {partial ? (",
+      "replace": "      {false ? (",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-detail.test.tsx",
+      "pattern": "how much of the window"
+    },
+    {
+      "name": "Pinned totals reordered",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "  const totals = {\n    views: 0,\n    likes: 0,",
+      "replace": "  const totals = {\n    likes: 0,\n    views: 0,",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-snapshot.test.ts"
+    },
+    {
+      "name": "D1 verify step missing",
+      "file": "packages/clickhouse/scripts/verify-queries.ts",
+      "find": "await step('queryNetSubscribersForVideos', async () => {\n    const perVideo = await queryNetSubscribersForVideos({",
+      "replace": "await step('queryNetSubscribersForVideos', async () => {\n    const perVideo = await (async (_: unknown) => new Map())({",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/verify-coverage.test.ts"
+    },
+    {
+      "name": "D3 note join dropped",
+      "file": "packages/features/content-analytics/src/server/video-log-actions.ts",
+      "find": "analyticsNote: notesByPublish.get(row.videoId)?.note ?? null,",
+      "replace": "analyticsNote: null,",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-notes.test.ts",
+      "pattern": "its own note"
+    },
+    {
+      "name": "E1 server date for start",
+      "file": "apps/web/app/home/[account]/studio/analytics/experiments/_components/experiments-client.tsx",
+      "find": "                          startedAt: localToday(),\n",
+      "replace": "",
+      "kind": "e2e",
+      "spec": "tests/experiments/experiments.spec.ts",
+      "grep": "local midnight"
+    },
+    {
+      "name": "E2 canEditNote constant",
+      "file": "packages/features/content-analytics/src/server/video-log-actions.ts",
+      "find": "canEdit: editableIds.has(row.id)",
+      "replace": "canEdit: false",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-notes.test.ts",
+      "pattern": "may edit its note"
+    },
+    {
+      "name": "Note refusal reported as save",
+      "file": "packages/features/content-analytics/src/server/publish-notes-actions.ts",
+      "find": "    if (!saved) {",
+      "replace": "    if (false) {",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/publish-notes-actions.test.ts",
+      "pattern": "refused write"
+    },
+    {
+      "name": "Form select uncontrolled",
+      "file": "packages/features/content-analytics/src/components/experiments/experiment-form.tsx",
+      "find": "                <Select\n                  value={field.value ?? NONE}\n                  onValueChange={(next) =>\n                    field.onChange(next === NONE ? undefined : next)\n                  }\n                >\n                  <FormControl>\n                    <SelectTrigger data-test={'experiment-metric'}>",
+      "replace": "                <Select\n                  defaultValue={field.value ?? NONE}\n                  onValueChange={(next) =>\n                    field.onChange(next === NONE ? undefined : next)\n                  }\n                >\n                  <FormControl>\n                    <SelectTrigger data-test={'experiment-metric'}>",
+      "kind": "e2e",
+      "spec": "tests/experiments/experiments.spec.ts",
+      "grep": "second experiment"
+    },
+    {
+      "name": "Blank window defaults to 60",
+      "file": "packages/features/content-analytics/src/components/experiments/experiment-form.tsx",
+      "find": "? Number.NaN",
+      "replace": "? undefined",
+      "kind": "e2e",
+      "spec": "tests/experiments/experiments.spec.ts",
+      "grep": "blank review window"
+    },
+    {
+      "name": "R1 abandon a concluded experiment",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "    assertCanAbandon(context.status);\n",
+      "replace": "",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "refuses to abandon a concluded"
+    },
+    {
+      "name": "R2 write without status condition",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "from.length === 1 ? base.eq('status', from[0]!) : base.in('status', from)",
+      "replace": "base",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "at the moment of writing"
+    },
+    {
+      "name": "R3 delete-then-insert in the action",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "      await client.rpc('replace_experiment_publishes', {",
+      "replace": "      await client.from('experiment_publishes').delete().eq('experiment_id', experimentId) && await client.rpc('replace_experiment_publishes', {",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "one transaction"
+    },
+    {
+      "name": "R6 list unpaged",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "        .order('id', { ascending: true })\n        .range(from, to);\n    }, 'experiments');",
+      "replace": "        .order('id', { ascending: true })\n        .range(0, 999);\n    }, 'experiments');",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-list-paging.test.ts"
+    },
+    {
+      "name": "R7 failed cleanup swallowed",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "      if (cleanup.error) {",
+      "replace": "      if (false) {",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "failed cleanup"
+    },
+    {
+      "name": "DB composite FK -> plain FK",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/analytics-experiments-watched.test.sql",
+      "sql": "alter table public.analytics_experiments drop constraint analytics_experiments_connection_account_fkey; alter table public.analytics_experiments add foreign key (connection_id) references public.platform_connections(id) on delete set null;"
+    },
+    {
+      "name": "DB bare set null",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/analytics-experiments-watched.test.sql",
+      "sql": "alter table public.analytics_experiments drop constraint analytics_experiments_connection_account_fkey; alter table public.analytics_experiments add foreign key (connection_id, account_id) references public.platform_connections(id, account_id) on delete set null;"
+    },
+    {
+      "name": "DB note policy loosened",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/publish-analytics-note-rls.test.sql",
+      "sql": "drop policy \"publishes_update\" on public.publishes; create policy \"publishes_update\" on public.publishes for update to authenticated using (exists (select 1 from public.episodes e join public.projects p on p.id = e.project_id where e.id = publishes.episode_id and public.has_role_on_account(p.account_id)));"
+    },
+    {
+      "name": "DB B5 cross-account link",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/experiment-publishes-account-rls.test.sql",
+      "sql": "drop policy \"experiment_publishes_create\" on public.experiment_publishes; create policy \"experiment_publishes_create\" on public.experiment_publishes for insert to authenticated with check (exists (select 1 from public.analytics_experiments e where e.id = experiment_id and public.has_account_access(e.account_id)));"
+    },
+    {
+      "name": "DB D4 note length",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/publish-analytics-note-rls.test.sql",
+      "sql": "alter table public.publishes drop constraint publishes_analytics_note_length_check;"
+    },
+    {
+      "name": "DB R3 non-atomic replace",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/experiments-integrity.test.sql",
+      "sql": "create or replace function public.replace_experiment_publishes(p_experiment_id uuid, p_publish_ids uuid[]) returns void language plpgsql security invoker set search_path='' as $f$ begin delete from public.experiment_publishes where experiment_id = p_experiment_id; begin insert into public.experiment_publishes (experiment_id, publish_id) select p_experiment_id, unnest(p_publish_ids); exception when others then null; end; end; $f$;"
+    },
+    {
+      "name": "DB R4 audit triggers dropped",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/experiments-integrity.test.sql",
+      "sql": "drop trigger publishes_analytics_note_audit on public.publishes; drop trigger analytics_experiments_set_creator on public.analytics_experiments;"
+    },
+    {
+      "name": "DB R4 cascade not let through",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/publish-analytics-note-rls.test.sql",
+      "sql": "create or replace function public.set_analytics_note_audit() returns trigger language plpgsql set search_path = '' as $f$ begin if new.analytics_note is distinct from old.analytics_note then new.analytics_note_updated_at = now(); new.analytics_note_updated_by = auth.uid(); else new.analytics_note_updated_at = old.analytics_note_updated_at; new.analytics_note_updated_by = old.analytics_note_updated_by; end if; return new; end; $f$;"
+    },
+    {
+      "name": "DB R5 freeze trigger dropped",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/experiments-integrity.test.sql",
+      "sql": "drop trigger analytics_experiments_freeze_started on public.analytics_experiments;"
+    },
+    {
+      "name": "DB R11 function admits viewers",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/experiments-integrity.test.sql",
+      "sql": "create or replace function public.editable_publish_ids(p_publish_ids uuid[]) returns setof uuid language sql stable security invoker set search_path='' as $f$ select pub.id from public.publishes pub join public.episodes e on e.id = pub.episode_id where pub.id = any(p_publish_ids) and exists (select 1 from public.project_members pm where pm.project_id = e.project_id and pm.user_id = auth.uid()); $f$;"
+    },
+    {
+      "name": "R2e stale tab restart (both start guards)",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "edits": [
+        {
+          "find": "    assertCanStart(context.status);\n",
+          "replace": ""
+        },
+        {
+          "find": "      experimentId,\n      ['planned'],",
+          "replace": "      experimentId,\n      ['planned', 'running'],"
+        }
+      ],
+      "spec": "tests/experiments/experiments-failures.spec.ts",
+      "grep": "second tab"
+    }
+  ]
+}
