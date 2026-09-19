@@ -177,16 +177,6 @@ export {
   type YppChannelProgress,
 } from './deep-dive';
 
-// Hook Lab (FILM-1510)
-export {
-  HookTestList,
-  HookTestListSkeleton,
-  RetentionComparisonChart,
-  RetentionComparisonChartSkeleton,
-  type HookTestEntry,
-  type VariantRetentionEntry,
-} from './hooks';
-
 // Experiment log (FILM-1509, FILM-1610)
 export {
   ExperimentDetail,

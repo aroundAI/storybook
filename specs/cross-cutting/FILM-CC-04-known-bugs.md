@@ -297,6 +297,11 @@ means, so it needs a decision first.
 
 ## KB-9 — Hook Lab reads another account's retention (cross-tenant)
 
+> **Resolved by removal (2026-09-20).** Hook Lab's code and tables are gone,
+> so nothing reads a variant's video any more. Kept here as the record of
+> what was found; the same-account rule it lacked is a requirement of
+> FILM-1724.
+
 **Severity:** High — a data leak across accounts, though it needs the
 other account's publish id (a UUID), and Hook Lab has no page for adding
 variants, so only a direct API call reaches it. **Found:** Hook Lab review,
@@ -326,6 +331,11 @@ seen failing first.
 ---
 
 ## KB-10 — Hook Lab (FILM-1510) does not work as specified
+
+> **Resolved by removal (2026-09-20).** The route, actions, components and
+> both tables are deleted; the drop migration refuses to run if either table
+> has rows, so a production copy with data would stop there and lose
+> nothing. Hook tests are redesigned in FILM-1724.
 
 **Severity:** Medium — nobody can use it today, so nothing is misreported
 in practice, but its numbers would be wrong if anyone could. **Found:**
@@ -357,11 +367,9 @@ so 3 seconds needs a video of about 150 seconds or less (FILM-1716's short
 form). And the length has to be the published video's, which
 `video_dim.duration_seconds` is not yet (FILM-1710).
 
-**Proposed:** fix KB-9 now. Don't repair Hook Lab on its own: fold hook
-tests into FILM-1724 as experiments whose styles are hooks, measured on
-early retention for short-form videos only, once FILM-1710 and FILM-1716
-land. Until then, keep the route unlinked (as it is) and mark FILM-1510
-incomplete.
+**Decided:** removed rather than repaired. Nothing of its model carries
+over to FILM-1724, which compares groups of videos at the same age and
+reuses FILM-1610's measurement code.
 
 ---
 
@@ -374,4 +382,5 @@ incomplete.
 | — | CI tested `@kit/mailers-core`, which does not exist; `@kit/mailers` never ran | #264 |
 | — | The experiment lifecycle was held only by the actions; a direct API call could reopen, back-date or forge an experiment | #264 (round 4) |
 | KB-6 (part) | Experiment log and note refusals replaced in production | #264 (round 4) |
+| KB-9, KB-10 | Hook Lab: a cross-tenant retention read, and a feature that could not be used and measured the wrong point | #269 (removed) |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |

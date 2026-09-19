@@ -52,20 +52,6 @@ export type {
   UpdateAnalyticsSettingsResult,
 } from './settings-actions';
 
-// Hook Lab (FILM-1510)
-export {
-  addHookVariantAction,
-  createHookTestAction,
-  getHookTestAction,
-  listHookTestsAction,
-  refreshHookTestAction,
-} from './hook-actions';
-export {
-  computeVariantRetention,
-  refreshTestRetention,
-} from './hook-retention';
-export type { VariantRetention } from './hook-retention';
-
 // Experiment log actions (FILM-1509)
 export {
   abandonExperimentAction,

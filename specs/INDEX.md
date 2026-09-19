@@ -509,7 +509,7 @@ graph TD
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-1301 | [hook-testing-engine](./phase-13-hook-optimization/FILM-1301-hook-testing-engine.md) | ✅ DONE (as FILM-1510) | L | FILM-1201, FILM-716 |
+| FILM-1301 | [hook-testing-engine](./phase-13-hook-optimization/FILM-1301-hook-testing-engine.md) | 🗑️ RETIRED (with FILM-1510) | L | FILM-1201, FILM-716 |
 | FILM-1302 | [cultural-audit-workflow](./phase-13-hook-optimization/FILM-1302-cultural-audit-workflow.md) | Draft | M | FILM-1301 |
 
 ### Phase 15: Deep Analytics Discipline (11 specs)
@@ -527,7 +527,7 @@ See [phase-15-deep-analytics/README.md](./phase-15-deep-analytics/README.md) for
 | FILM-1507 | [content-taxonomy](./phase-15-deep-analytics/FILM-1507-content-taxonomy.md) | ✅ DONE | M | FILM-1506 |
 | FILM-1508 | [revenue-mix-alerts](./phase-15-deep-analytics/FILM-1508-revenue-mix-alerts.md) | ✅ DONE | M | FILM-1506 |
 | FILM-1509 | [experiment-log](./phase-15-deep-analytics/FILM-1509-experiment-log.md) | ✅ DONE | M | FILM-1502 |
-| FILM-1510 | [hook-lab](./phase-15-deep-analytics/FILM-1510-hook-lab.md) | ⚠️ INCOMPLETE (FILM-CC-04 KB-9, KB-10; folded into FILM-1724) | L | FILM-1505, FILM-1506, FILM-1507, FILM-1301 |
+| FILM-1510 | [hook-lab](./phase-15-deep-analytics/FILM-1510-hook-lab.md) | 🗑️ RETIRED (removed; FILM-CC-04 KB-9, KB-10; redesigned as FILM-1724) | L | FILM-1505, FILM-1506, FILM-1507, FILM-1301 |
 | FILM-1511 | [deep-analytics-ui-reports](./phase-15-deep-analytics/FILM-1511-deep-analytics-ui-reports.md) | ✅ DONE | L | FILM-1504, FILM-1505, FILM-1506, FILM-1507, FILM-1508 |
 
 See [phase-11-canon-integration/README.md](./phase-11-canon-integration/README.md) for full specification.

@@ -24,7 +24,6 @@
     "./server/channels-actions": "./src/server/channels-actions.ts",
     "./server/experiment-actions": "./src/server/experiment-actions.ts",
     "./server/publish-notes-actions": "./src/server/publish-notes-actions.ts",
-    "./server/hook-actions": "./src/server/hook-actions.ts",
     "./server/taxonomy-actions": "./src/server/taxonomy-actions.ts",
     "./server/segment-actions": "./src/server/segment-actions.ts",
     "./server/settings-actions": "./src/server/settings-actions.ts",

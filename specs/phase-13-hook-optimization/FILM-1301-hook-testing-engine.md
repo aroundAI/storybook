@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1301
 title: Hook Testing Engine (The "Hook Lab")
-status: ✅ DONE (implemented as FILM-1510)
+status: 🗑️ RETIRED (implemented as FILM-1510, which was removed 2026-09-20; see FILM-1724)
 effort: L
 dependencies: FILM-1201, FILM-716
 ---

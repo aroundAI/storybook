@@ -353,12 +353,6 @@
       "sql": "alter table public.content_tags drop constraint content_tags_created_by_fkey; alter table public.content_tags add constraint content_tags_created_by_fkey foreign key (created_by) references auth.users(id);"
     },
     {
-      "name": "F3c hook_tests author blocks user deletion",
-      "kind": "pgtap",
-      "test": "apps/web/supabase/tests/database/analytics-authors-deletable.test.sql",
-      "sql": "alter table public.hook_tests drop constraint hook_tests_created_by_fkey; alter table public.hook_tests add constraint hook_tests_created_by_fkey foreign key (created_by) references auth.users(id);"
-    },
-    {
       "name": "F4 abandon ends before its start",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
