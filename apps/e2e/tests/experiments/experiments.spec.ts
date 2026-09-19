@@ -207,11 +207,88 @@ test.describe('Experiment log (FILM-1610)', () => {
   });
 });
 
+test.describe('An experiment runs its whole course (FILM-1610 review 4, G9)', () => {
+  // Logging and starting had browser tests; concluding — the step the log
+  // exists for — had none. This drives all three through the page, then
+  // reads the row, so each step is shown to have written what it claims.
+  test('logged, started and concluded through the page', async ({ page }) => {
+    const log = new ExperimentsPageObject(page);
+    const team = await log.setup();
+
+    await log.field('experiment-title').fill('Whole course');
+    await log.field('experiment-change').fill('Faces on thumbnails');
+    await log.choose('experiment-metric', 'experiment-metric-option-ctr');
+    await log.linkVideo(team.publishIds[0]);
+    await log.submitAndWaitForReset();
+
+    const [created] = await readRows<{ id: string }>(
+      'analytics_experiments',
+      `select=id&account_id=eq.${team.accountId}`,
+    );
+
+    await page
+      .locator(`[data-test="experiment-row-${created!.id}"]:visible`)
+      .click();
+    await page.getByRole('button', { name: 'Start experiment' }).click();
+    await expect(page.getByText('Experiment started')).toBeVisible();
+
+    // Concluding needs what happened, typed into the labelled field (G8).
+    const outcome = page.getByLabel('What actually happened?');
+    const confirm = page.getByRole('button', { name: 'confirmed' });
+
+    await expect(confirm).toBeDisabled();
+    await outcome.fill('CTR held steady');
+    await confirm.click();
+    await expect(page.getByText('Experiment concluded')).toBeVisible();
+
+    // Nothing left to press: a concluded experiment has no lifecycle step.
+    await expect(outcome).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: 'Start experiment' }),
+    ).toHaveCount(0);
+    await expect(
+      page.locator('[data-test="experiment-result-after-days"]'),
+    ).toHaveText(' · result after 0 days');
+    await expect(
+      page.locator('[data-test="experiment-watched-result-unmeasured"]'),
+    ).toHaveAttribute('data-reason', 'no_data');
+
+    const [row] = await readRows<{
+      status: string;
+      outcome_status: string;
+      actual_outcome: string;
+      started_at: string;
+      ended_at: string;
+      baseline_metrics: { watched?: { metric: string } };
+      result_metrics: {
+        resultAfterDays?: number;
+        watched?: { metric: string };
+      };
+    }>(
+      'analytics_experiments',
+      `select=status,outcome_status,actual_outcome,started_at,ended_at,baseline_metrics,result_metrics&id=eq.${created!.id}`,
+    );
+
+    expect(row).toMatchObject({
+      status: 'concluded',
+      outcome_status: 'confirmed',
+      actual_outcome: 'CTR held steady',
+      ended_at: row!.started_at,
+      baseline_metrics: { watched: { metric: 'ctr' } },
+      result_metrics: { resultAfterDays: 0, watched: { metric: 'ctr' } },
+    });
+  });
+});
+
 test.describe("Experiment dates are the user's own (FILM-1610 review, E1)", () => {
-  // 00:30 on 2 March in Kolkata is still 1 March in UTC. A date taken from
-  // the server's UTC clock records the start a day early for anyone east of
-  // it. The fixed date is far from today on purpose: the old server-side
-  // date cannot match it by coincidence.
+  // 19:00 UTC is 00:30 the next day in Kolkata. A date taken from the
+  // server's UTC clock records the start a day early for anyone east of it.
+  //
+  // Anchored on today's UTC date, not a fixed one: the server now refuses a
+  // date that cannot be today in any time zone (review 4, G6), so the
+  // browser's clock can move only within a day of the server's. Today's
+  // 19:00 UTC is tomorrow in Kolkata, which the old server-side date could
+  // not produce.
   test.use({ timezoneId: 'Asia/Kolkata' });
 
   test('a start just after local midnight is recorded on the local date', async ({
@@ -222,8 +299,12 @@ test.describe("Experiment dates are the user's own (FILM-1610 review, E1)", () =
       title: 'Midnight start',
     });
 
+    const utcToday = new Date().toISOString().slice(0, 10);
+    const kolkataTomorrow = new Date(`${utcToday}T00:00:00Z`);
+    kolkataTomorrow.setUTCDate(kolkataTomorrow.getUTCDate() + 1);
+
     await signInAs(page, team);
-    await page.clock.setFixedTime(new Date('2026-03-01T19:00:00Z'));
+    await page.clock.setFixedTime(new Date(`${utcToday}T19:00:00Z`));
     await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
 
     await page.locator(`[data-test="experiment-row-${id}"]:visible`).click();
@@ -235,7 +316,7 @@ test.describe("Experiment dates are the user's own (FILM-1610 review, E1)", () =
       `select=started_at&id=eq.${id}`,
     );
 
-    expect(row!.started_at).toBe('2026-03-02');
+    expect(row!.started_at).toBe(kolkataTomorrow.toISOString().slice(0, 10));
   });
 });
 

@@ -24,8 +24,8 @@
     {
       "name": "A1b no cleanup after failed link",
       "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
-      "find": "      const cleanup = await client\n        .from('analytics_experiments')\n        .delete()\n        .eq('id', experiment.id);",
-      "replace": "      const cleanup = { error: null as { message: string } | null };",
+      "find": "        const cleanup = await client\n          .from('analytics_experiments')\n          .delete()\n          .eq('id', experiment.id);",
+      "replace": "        const cleanup = { error: null as { message: string } | null };",
       "kind": "unit",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
@@ -323,12 +323,12 @@
       "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
       "edits": [
         {
-          "find": "    assertCanStart(context.status);\n",
+          "find": "      assertCanStart(context.status);\n",
           "replace": ""
         },
         {
-          "find": "      experimentId,\n      ['planned'],",
-          "replace": "      experimentId,\n      ['planned', 'running'],"
+          "find": "        experimentId,\n        ['planned'],",
+          "replace": "        experimentId,\n        ['planned', 'running'],"
         }
       ],
       "spec": "tests/experiments/experiments-failures.spec.ts",
@@ -425,6 +425,84 @@
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/experiments-lifecycle.test.sql",
       "sql": "drop trigger analytics_experiments_guard_lifecycle on public.analytics_experiments;"
+    },
+    {
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/with-refusals.ts",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "name": "G1 refusal thrown again (production hides it)",
+      "find": "      if (error instanceof ActionRefusal) {\n        return { ok: false, error: error.message };\n      }",
+      "replace": "      if (error instanceof ActionRefusal) {\n        throw error;\n      }",
+      "pattern": "returns a refusal with its own wording"
+    },
+    {
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/with-refusals.ts",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "name": "G1b database detail passed to the page",
+      "find": "        error: `Could not ${what}. Try again; if it keeps failing, reload the page.`,",
+      "replace": "        error: String(error),",
+      "pattern": "without its database detail"
+    },
+    {
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/experiment-transitions.ts",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "name": "G1c transition rules throw plain errors",
+      "find": "import { ActionRefusal } from './action-result';",
+      "replace": "const ActionRefusal = Error;",
+      "pattern": "returns a refusal with its own wording"
+    },
+    {
+      "name": "G5 start write ignores a changed metric",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "          metric_watched: context.metric_watched,\n          review_window_days: context.review_window_days,\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "still read as they did"
+    },
+    {
+      "name": "G6 impossible dates accepted",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/caller-date.ts",
+      "find": "    Number.isNaN(parsed) ||\n    new Date(parsed).toISOString().slice(0, 10) !== date\n",
+      "replace": "    Number.isNaN(parsed)\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/caller-date.test.ts",
+      "pattern": "does not exist"
+    },
+    {
+      "name": "G6b start date not checked",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "      if (startedAt) assertCallerToday(startedAt);\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "checks the start, conclusion and abandon dates"
+    },
+    {
+      "name": "G8 outcome input unlabelled",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/analytics/experiments/_components/experiments-client.tsx",
+      "find": "<Label htmlFor={'experiment-outcome'}>",
+      "replace": "<Label>",
+      "spec": "tests/experiments/experiments.spec.ts",
+      "grep": "logged, started and concluded"
+    },
+    {
+      "name": "G9 conclude records another verdict",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/analytics/experiments/_components/experiments-client.tsx",
+      "find": "outcomeStatus: status,",
+      "replace": "outcomeStatus: 'inconclusive',",
+      "spec": "tests/experiments/experiments.spec.ts",
+      "grep": "logged, started and concluded"
     }
   ]
 }
