@@ -52,6 +52,14 @@ export interface NoteCellProps {
 export function NoteCell(props: NoteCellProps) {
   const { note, canEdit, title } = props;
   const [open, setOpen] = useState(false);
+  // Counts openings, and keys the editor, so each one is a new editor
+  // holding the note as it stands now. Radix keeps the content mounted for
+  // a moment after it closes, so a popover reopened quickly — which is what
+  // saving and immediately correcting a note looks like — would otherwise
+  // be the *same* editor, still holding the text and the version it first
+  // opened with. Saving that sends a version the note no longer has, and
+  // the save comes back as someone else's edit.
+  const [session, setSession] = useState(0);
   const dirty = useRef(false);
 
   if (!canEdit) {
@@ -75,7 +83,12 @@ export function NoteCell(props: NoteCellProps) {
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) dirty.current = false;
+
+        if (next) {
+          setSession((count) => count + 1);
+        } else {
+          dirty.current = false;
+        }
       }}
     >
       <PopoverTrigger asChild>
@@ -103,6 +116,7 @@ export function NoteCell(props: NoteCellProps) {
         }}
       >
         <NoteEditor
+          key={session}
           {...props}
           onDirtyChange={(value) => {
             dirty.current = value;

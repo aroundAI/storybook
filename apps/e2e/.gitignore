@@ -4,3 +4,6 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Screenshots from an evidence run (EVIDENCE_DIR defaults here)
+evidence/
