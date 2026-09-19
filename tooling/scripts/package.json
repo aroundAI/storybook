@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "format": "prettier --check \"**/*.{mjs,ts}\"",
     "dev": "node ./src/dev.mjs",
     "checks": "node ./src/checks.mjs",
     "requirements": "node ./src/requirements.mjs",
