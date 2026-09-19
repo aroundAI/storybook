@@ -411,6 +411,43 @@ S0d, S0e, each seen red.
 
 ---
 
+## KB-12 — Revenue is added across currencies
+
+**Severity:** Medium — wrong figures, quietly. **Found:** FILM-1615 EDD
+(finding F-2), 2026-09-20. **Open**, except in the Video Log.
+
+`revenue_records.currency` is a column, and a channel can be paid in more
+than one — a sponsorship in euros beside AdSense in dollars. Almost every
+reader adds `revenue_cents` without looking at it, so `$12.00` and `€5.00`
+are reported as `1700` cents of nothing in particular. Nobody notices while
+an account uses one currency, and nobody is told when it stops.
+
+**Where:** `forEachAccountRevenueRow` hands `currency` to its callers and
+none of them read it — `segment-revenue.ts` (`channelLevelCents`,
+`unattributedCents`, `revenueBySegment`), `revenue-alerts.ts`,
+`revenue-actions.ts`, `segment-actions.ts`. The same applies to the
+ClickHouse side (`aggregation-queries.ts:215`, `:427`;
+`account-dashboard-actions.ts:241`), where `video_metrics.revenue_cents`
+carries no currency at all — so there the fix is a schema question, not
+only a summing one.
+
+**Fixed here:** the Video Log only. `getVideoLogAction` now groups by
+`(publish_id, currency)` and `VideoLogRow.revenue` is a list, rendered
+`$12.00 + €5.00`. There are no exchange rates in this system, and
+inventing one to produce a single number would be worse than showing two.
+
+**Why it is not fixed everywhere in that PR:** every one of those figures
+is a total on a card or a chart, and each needs its own answer to "what
+does this show when an account has two currencies" — one card per
+currency, a selector, or a stated base currency. That is a design
+decision, not a refactor.
+
+**How to reproduce:** add two `revenue_records` for one publish with
+different `currency` values, and read the revenue mix or the account
+dashboard: one number, neither currency.
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
