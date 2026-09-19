@@ -89,7 +89,12 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
-    navigationTimeout: 15 * 1000,
+    // Raised only where the server is a dev server: it compiles each route
+    // on its first request, which took over 15s in CI and failed the first
+    // visit to three routes in the 🧬 E2E guards & evidence job.
+    navigationTimeout: Number(
+      process.env.PLAYWRIGHT_NAVIGATION_TIMEOUT ?? 15 * 1000,
+    ),
   },
   // test timeout set to 2 minutes
   timeout: 120 * 1000,
