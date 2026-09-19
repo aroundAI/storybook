@@ -49,7 +49,9 @@ function checkEnvFiles(rootPath) {
               return;
             }
 
-            console.error(`⚠️ Secret key "${secret}" found in ${file} on line ${index + 1}`);
+            console.error(
+              `⚠️ Secret key "${secret}" found in ${file} on line ${index + 1}`,
+            );
 
             hasSecrets = true;
           }
@@ -76,13 +78,15 @@ function checkEnvFiles(rootPath) {
   } else {
     const appName = rootPath.split('/').pop();
 
-    console.log(`✅ No secret keys found in staged environment files for the app ${appName}`);
+    console.log(
+      `✅ No secret keys found in staged environment files for the app ${appName}`,
+    );
   }
 }
 
 const apps = readdirSync('../../apps');
 
-apps.forEach(app => {
+apps.forEach((app) => {
   checkEnvFiles(`../../apps/${app}`);
 });
 
@@ -98,7 +102,7 @@ function isValueWhitelisted(key, value) {
   }
 
   if (Array.isArray(whiteListedValue)) {
-    return whiteListedValue.some(allowed => {
+    return whiteListedValue.some((allowed) => {
       if (allowed instanceof RegExp) {
         return allowed.test(value);
       }

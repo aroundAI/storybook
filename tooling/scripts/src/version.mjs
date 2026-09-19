@@ -49,7 +49,10 @@ function checkStoryBookVersion() {
       '⚠️  Your StoryBook version is outdated! Best to update to the latest version.',
     );
   } else {
-    console.log('\x1b[32m%s\x1b[0m', '✅ Your StoryBook version is up to date!');
+    console.log(
+      '\x1b[32m%s\x1b[0m',
+      '✅ Your StoryBook version is up to date!',
+    );
   }
 
   if (count > 0) {

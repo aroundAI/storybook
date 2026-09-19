@@ -58,7 +58,7 @@ async function checkLicense() {
     if (makerkitConfig.username) {
       searchParams.append('projectUsername', makerkitConfig.username);
     }
-  } catch { }
+  } catch {}
 
   const res = await fetch(`${endpoint}?${searchParams.toString()}`);
 

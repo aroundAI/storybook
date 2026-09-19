@@ -46,13 +46,36 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
-      # Check only. Formatting drifted while nothing checked it: Tailwind
-      # class order depended on which file a Prettier run started with, seven
-      # packages had no format script at all, and the import sorter added a
-      # duplicate header comment on every run. `pnpm format:fix` repairs a
-      # failure here.
+  format:
+    name: 💅 Format
+    # Its own job: inside ʦ TypeScript it pushed that job past its 10-minute
+    # limit. Check only. Formatting drifted while nothing checked it:
+    # Tailwind class order depended on which file a Prettier run started
+    # with, seven packages had no format script at all, and the import
+    # sorter added a duplicate header comment on every run. `pnpm
+    # format:fix` repairs a failure here.
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    env:
+      DO_NOT_TRACK: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      # --force: turbo would otherwise replay a cached result without
+      # running Prettier at all, which is how a local check once reported
+      # a settled tree that was not.
       - name: Format
-        run: pnpm turbo format --continue -- --ignore-path=../../.gitignore --ignore-path=../../.prettierignore
+        run: pnpm turbo format --force --continue -- --ignore-path=../../.gitignore --ignore-path=../../.prettierignore
 
   clickhouse-sql:
     name: 🗄️ ClickHouse SQL
