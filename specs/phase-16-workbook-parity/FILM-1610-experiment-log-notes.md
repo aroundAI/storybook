@@ -253,6 +253,29 @@ every place it occurs:
 - The experiment list is paged; a failed cleanup after a failed link is
   reported; the due list's cache key carries its date.
 
+**Round 3**, from angles the first two did not take — rollout, existing
+data, scale, accessibility, and whether each guard covers update as well as
+insert:
+
+- **Deploys push migrations first** (§11), and failing tests stop a deploy.
+- **Authors:** an experiment's creator cannot be rewritten by an update;
+  and deleting a user who created an experiment, a tag or a hook test no
+  longer fails on the author key (it nulls the author and keeps the row).
+- **Abandon never records an end before the start**, whatever the
+  server's UTC date.
+- **The video picker searches on the server**, 50 at a time, instead of
+  loading every published video on each visit.
+- **Labels reach their controls** (picker and channel), for assistive
+  technology and for error messages.
+- **The due list follows the date.** Round 2's fix, a date in the cache
+  key, did not work — nothing re-renders at midnight — and its unit test
+  passed anyway. The date is now read at fetch time, and an E2E moves the
+  clock past midnight to prove it.
+- **Mutation guards** (`tooling/mutation-guards/`): every regression test
+  here has an entry that breaks the code on purpose and requires the test
+  to fail. CI runs the unit and database entries on every PR, so a test
+  that stops guarding fails the build.
+
 ## 6. Implementation Map
 
 | File | Change |
@@ -366,3 +389,29 @@ writes on a hot path. Adding nullable columns is metadata-only in Postgres
 and takes no table rewrite, but it is the one change in this phase that
 touches a table outside analytics. It only adds columns; nothing existing
 is altered, dropped or re-typed, and no existing writer sees a new NOT NULL.
+
+*(That count was the first version's. The reviews added four more
+migrations — the account and planned-only link policies, the notes length
+checks, the integrity functions and triggers, and the author rules — for
+six in all. The additive property holds for all six.)*
+
+## 11. Rollout
+
+- **Migrations before the app.** The app reads columns and calls functions
+  only these migrations create, so an app deployed first fails every
+  experiment read. Both deploy workflows now push migrations before the
+  build (review 3, F1); they need `SUPABASE_ACCESS_TOKEN`,
+  `SUPABASE_PROJECT_REF` and `SUPABASE_DB_PASSWORD` in GitHub secrets
+  (`STAGING_`-prefixed for staging), and stop the deploy without them.
+- **The migrations are expand-only.** The app already running keeps
+  working against the new schema: it sends `created_by` (now overridden),
+  links videos at creation while an experiment is planned (still allowed),
+  and reads nothing that was removed.
+- **Experiments already running cannot get a watched metric.** The freeze
+  applies to every started experiment, including those started before this
+  shipped, because their baselines were taken without one. They keep their
+  six totals; a watched metric starts with the next experiment.
+- **Links made before the account rule are not rewritten.** The policy
+  governs new links; snapshots read only linked videos the reader can see,
+  so an old cross-account link can no longer report another tenant's
+  figures either way.
