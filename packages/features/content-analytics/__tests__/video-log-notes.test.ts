@@ -12,12 +12,24 @@ const state: {
   notes: Array<{
     id: string;
     analytics_note: string | null;
+    analytics_note_updated_at?: string | null;
+  }>;
+  revenue: Array<{
+    publish_id: string | null;
+    revenue_cents: number | null;
+    currency: string | null;
   }>;
   notesError: { message: string } | null;
   /** What `editable_publish_ids` returns for the caller. */
   editableIds: string[];
   rpcCalls: string[];
-} = { notes: [], notesError: null, editableIds: [], rpcCalls: [] };
+} = {
+  notes: [],
+  revenue: [],
+  notesError: null,
+  editableIds: [],
+  rpcCalls: [],
+};
 
 vi.mock('@kit/next/actions', () => ({
   enhanceAction:
@@ -81,7 +93,9 @@ vi.mock('@kit/supabase/server-client', () => ({
     from: (table: string) =>
       table === 'publishes'
         ? pageOf(state.notes, state.notesError)
-        : pageOf([]),
+        : table === 'revenue_records'
+          ? pageOf(state.revenue)
+          : pageOf([]),
   }),
 }));
 
@@ -90,6 +104,7 @@ beforeEach(() => {
     { id: 'p1', analytics_note: null },
     { id: 'p2', analytics_note: null },
   ];
+  state.revenue = [];
   state.notesError = null;
   state.editableIds = [];
   state.rpcCalls = [];
@@ -135,5 +150,50 @@ describe('getVideoLogAction — analytics notes', () => {
       ['p1', true],
       ['p2', false],
     ]);
+  });
+});
+
+describe('getVideoLogAction — FILM-1615', () => {
+  it('reports revenue per currency, never one sum across currencies (EDD F-2)', async () => {
+    state.revenue = [
+      { publish_id: 'p1', revenue_cents: 1000, currency: 'USD' },
+      { publish_id: 'p1', revenue_cents: 200, currency: 'USD' },
+      { publish_id: 'p1', revenue_cents: 500, currency: 'EUR' },
+      { publish_id: 'p2', revenue_cents: 300, currency: null },
+    ];
+
+    const rows = await getVideoLogAction(input);
+
+    expect(rows.map((row) => [row.videoId, row.revenue])).toEqual([
+      [
+        'p1',
+        [
+          { currency: 'USD', cents: 1200 },
+          { currency: 'EUR', cents: 500 },
+        ],
+      ],
+      ['p2', [{ currency: null, cents: 300 }]],
+    ]);
+  });
+
+  it('reports no revenue as an empty list, not a zero', async () => {
+    const rows = await getVideoLogAction(input);
+
+    expect(rows[0]!.revenue).toEqual([]);
+  });
+
+  it("passes the note's last-changed time through exactly, microseconds included", async () => {
+    // A Date would round this to milliseconds, and the editor's
+    // compare-and-save would then see every note as changed by someone else.
+    state.notes[0]!.analytics_note = 'Note';
+    state.notes[0]!.analytics_note_updated_at =
+      '2026-09-20T10:00:00.123456+00:00';
+
+    const rows = await getVideoLogAction(input);
+
+    expect(rows[0]!.analyticsNoteUpdatedAt).toBe(
+      '2026-09-20T10:00:00.123456+00:00',
+    );
+    expect(rows[1]!.analyticsNoteUpdatedAt).toBeNull();
   });
 });

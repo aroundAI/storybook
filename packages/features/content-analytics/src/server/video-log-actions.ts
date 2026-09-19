@@ -80,12 +80,26 @@ export interface VideoLogRow {
   ctr: number;
   avgViewDurationSeconds: number;
   avgViewPercentage: number;
-  revenueCents: number;
+  /**
+   * Lifetime revenue per currency, largest first (FILM-1615). Never one
+   * summed figure: revenue can be recorded in any currency, and adding
+   * dollars to euros produces a number that is neither (EDD F-2). Empty when
+   * nothing is recorded. `currency` is null only for a row written without
+   * one.
+   */
+  revenue: Array<{ currency: string | null; cents: number }>;
   /**
    * The video's analytics note (FILM-1610), from Postgres. Never synced to
    * ClickHouse: free text does not belong in a store that cannot delete it.
    */
   analyticsNote: string | null;
+  /**
+   * When the note last changed, exactly as Postgres returned it. The note
+   * editor sends it back so a save can tell whether someone else changed
+   * the note in between (FILM-1615) — passed through untouched, because a
+   * `Date` would drop the microseconds and every save would look stale.
+   */
+  analyticsNoteUpdatedAt: string | null;
   /**
    * Whether the caller may write this video's note: the `publishes_update`
    * rule, an owner, admin or member of its project. A note is readable more
@@ -190,8 +204,10 @@ export const getVideoLogAction = enhanceAction(
         ctr: metrics?.impressionsCtr ?? 0,
         avgViewDurationSeconds: metrics?.avgViewDurationSeconds ?? 0,
         avgViewPercentage: metrics?.avgViewPercentage ?? 0,
-        revenueCents: revenueByPublish.get(row.videoId) ?? 0,
+        revenue: revenueByPublish.get(row.videoId) ?? [],
         analyticsNote: notesByPublish.get(row.videoId)?.note ?? null,
+        analyticsNoteUpdatedAt:
+          notesByPublish.get(row.videoId)?.updatedAt ?? null,
         canEditNote: notesByPublish.get(row.videoId)?.canEdit ?? false,
       };
     });
@@ -200,42 +216,55 @@ export const getVideoLogAction = enhanceAction(
 );
 
 /**
- * Lifetime revenue per publish, in cents.
+ * Lifetime revenue per publish, per currency, in cents.
  *
  * Publish-scoped only: channel-level revenue has no video to attribute to,
- * and spreading it across the log would invent per-video figures.
+ * and spreading it across the log would invent per-video figures. Grouped
+ * by currency rather than summed (EDD F-2): there are no exchange rates to
+ * convert with, and a sum across currencies is not an amount of anything.
  */
 async function fetchRevenueByPublish(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   publishIds: string[],
-): Promise<Map<string, number>> {
+): Promise<Map<string, Array<{ currency: string | null; cents: number }>>> {
   const rows = await fetchAllByIds<{
     publish_id: string | null;
     revenue_cents: number | null;
+    currency: string | null;
   }>(
     publishIds,
     (chunk, from, to) =>
       client
         .from('revenue_records')
-        .select('publish_id, revenue_cents')
+        .select('publish_id, revenue_cents, currency')
         .in('publish_id', chunk)
         .order('id')
         .range(from, to),
     'video log revenue',
   );
 
-  const byPublish = new Map<string, number>();
+  const byPublish = new Map<string, Map<string | null, number>>();
 
   for (const row of rows) {
     if (!row.publish_id) continue;
-    byPublish.set(
-      row.publish_id,
-      (byPublish.get(row.publish_id) ?? 0) + (row.revenue_cents ?? 0),
+
+    const byCurrency = byPublish.get(row.publish_id) ?? new Map();
+    byCurrency.set(
+      row.currency,
+      (byCurrency.get(row.currency) ?? 0) + (row.revenue_cents ?? 0),
     );
+    byPublish.set(row.publish_id, byCurrency);
   }
 
-  return byPublish;
+  return new Map(
+    [...byPublish].map(([publishId, byCurrency]) => [
+      publishId,
+      [...byCurrency]
+        .map(([currency, cents]) => ({ currency, cents }))
+        .sort((a, b) => b.cents - a.cents),
+    ]),
+  );
 }
 
 /**
@@ -251,14 +280,23 @@ async function fetchNotesByPublish(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   publishIds: string[],
-): Promise<Map<string, { note: string | null; canEdit: boolean }>> {
+): Promise<
+  Map<
+    string,
+    { note: string | null; updatedAt: string | null; canEdit: boolean }
+  >
+> {
   const [rows, editable] = await Promise.all([
-    fetchAllByIds<{ id: string; analytics_note: string | null }>(
+    fetchAllByIds<{
+      id: string;
+      analytics_note: string | null;
+      analytics_note_updated_at: string | null;
+    }>(
       publishIds,
       (chunk, from, to) =>
         client
           .from('publishes')
-          .select('id, analytics_note')
+          .select('id, analytics_note, analytics_note_updated_at')
           .in('id', chunk)
           .order('id')
           .range(from, to),
@@ -278,7 +316,11 @@ async function fetchNotesByPublish(
   return new Map(
     rows.map((row) => [
       row.id,
-      { note: row.analytics_note, canEdit: editableIds.has(row.id) },
+      {
+        note: row.analytics_note,
+        updatedAt: row.analytics_note_updated_at,
+        canEdit: editableIds.has(row.id),
+      },
     ]),
   );
 }
