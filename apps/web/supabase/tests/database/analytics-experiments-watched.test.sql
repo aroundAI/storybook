@@ -69,9 +69,18 @@ select is(
 -- generated from started_at whatever the status, and a *running*
 -- experiment's window is frozen (experiments-integrity.test.sql), so the
 -- window cases below need one that has not started.
+--
+-- No user can produce that state — only the start sets started_at, and it
+-- sets the status with it (experiments-lifecycle.test.sql) — so it is
+-- written the way a seed would, as the service role.
+select tests.clear_authentication();
+set local role service_role;
+
 update public.analytics_experiments
    set started_at = '2026-07-01'
  where id = 'e0e0e0e0-0000-4000-8000-00000000000a';
+
+select makerkit.authenticate_as('member');
 
 select is(
   (select review_due_at from public.analytics_experiments

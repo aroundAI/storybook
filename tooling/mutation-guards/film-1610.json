@@ -419,6 +419,12 @@
       ],
       "spec": "tests/experiments/experiments.spec.ts",
       "grep": "past midnight"
+    },
+    {
+      "name": "G2 lifecycle not held by the table",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/experiments-lifecycle.test.sql",
+      "sql": "drop trigger analytics_experiments_guard_lifecycle on public.analytics_experiments;"
     }
   ]
 }
