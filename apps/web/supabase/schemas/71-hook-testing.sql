@@ -15,7 +15,8 @@ create table if not exists public.hook_tests (
   hypothesis text,
   status text not null default 'draft',
   viral_threshold numeric not null default 0.75,
-  created_by uuid references auth.users(id),
+  -- on delete set null: migration 20260919061806; the row outlives its author.
+  created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (status in ('draft', 'generating', 'rendering', 'live', 'completed', 'archived')),

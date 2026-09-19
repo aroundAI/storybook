@@ -11,7 +11,8 @@ create table if not exists public.content_tags (
   dimension varchar(30) not null,
   slug varchar(80) not null,
   label varchar(120) not null,
-  created_by uuid references auth.users(id),
+  -- on delete set null: migration 20260919061806; the row outlives its author.
+  created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   unique (account_id, dimension, slug),
   check (dimension in ('topic', 'format', 'thumbnail_style', 'hook_type'))
