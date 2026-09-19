@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * useVideoUpload Hook
  *
@@ -5,29 +7,10 @@
  * Extracts first frame as thumbnail using browser-side canvas.
  * Uses XMLHttpRequest for upload progress events.
  */
-
-'use client';
-
 import { useCallback, useRef, useState } from 'react';
 
 import { PROJECT_ASSETS_BUCKET } from '@kit/assets/lib';
 import { sanitizeFilename } from '@kit/assets/upload-validation';
-
-/**
- * useVideoUpload Hook
- *
- * Custom hook for handling video uploads with progress tracking.
- * Extracts first frame as thumbnail using browser-side canvas.
- * Uses XMLHttpRequest for upload progress events.
- */
-
-/**
- * useVideoUpload Hook
- *
- * Custom hook for handling video uploads with progress tracking.
- * Extracts first frame as thumbnail using browser-side canvas.
- * Uses XMLHttpRequest for upload progress events.
- */
 
 // Video constraints
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB

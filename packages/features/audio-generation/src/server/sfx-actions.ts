@@ -1,12 +1,11 @@
+'use server';
+
 /**
  * SFX Generation Actions
  *
  * Server actions for generating sound effects using ElevenLabs.
  * Includes asset library integration for reuse.
  */
-
-'use server';
-
 import { z } from 'zod';
 
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
@@ -20,27 +19,6 @@ import {
   updateAudioAssetAction,
 } from './audio-asset-actions';
 import { getProjectElevenLabsApiKey } from './project-audio-settings';
-
-/**
- * SFX Generation Actions
- *
- * Server actions for generating sound effects using ElevenLabs.
- * Includes asset library integration for reuse.
- */
-
-/**
- * SFX Generation Actions
- *
- * Server actions for generating sound effects using ElevenLabs.
- * Includes asset library integration for reuse.
- */
-
-/**
- * SFX Generation Actions
- *
- * Server actions for generating sound effects using ElevenLabs.
- * Includes asset library integration for reuse.
- */
 
 // =============================================================================
 // Schemas

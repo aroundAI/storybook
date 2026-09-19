@@ -1,12 +1,11 @@
+'use server';
+
 /**
  * Canon Server Actions
  * Phase 10: FILM-1005
  *
  * Server actions for Canon Management System CRUD operations.
  */
-
-'use server';
-
 import { revalidatePath } from 'next/cache';
 
 import { z } from 'zod';
@@ -29,48 +28,6 @@ import type {
   UpdateCharacterStateInput,
 } from '../lib/canon/types';
 import { DEFAULT_CANON_SETTINGS } from '../lib/canon/types';
-
-/**
- * Canon Server Actions
- * Phase 10: FILM-1005
- *
- * Server actions for Canon Management System CRUD operations.
- */
-
-/**
- * Canon Server Actions
- * Phase 10: FILM-1005
- *
- * Server actions for Canon Management System CRUD operations.
- */
-
-/**
- * Canon Server Actions
- * Phase 10: FILM-1005
- *
- * Server actions for Canon Management System CRUD operations.
- */
-
-/**
- * Canon Server Actions
- * Phase 10: FILM-1005
- *
- * Server actions for Canon Management System CRUD operations.
- */
-
-/**
- * Canon Server Actions
- * Phase 10: FILM-1005
- *
- * Server actions for Canon Management System CRUD operations.
- */
-
-/**
- * Canon Server Actions
- * Phase 10: FILM-1005
- *
- * Server actions for Canon Management System CRUD operations.
- */
 
 type Json = Database['public']['Tables']['immutable_events']['Row']['metadata'];
 

@@ -1,12 +1,11 @@
+'use client';
+
 /**
  * ImageUploader Component (FILM-207)
  *
  * Main image uploader component that orchestrates the upload flow.
  * Displays dropzone, progress, or preview based on upload state.
  */
-
-'use client';
-
 import { useCallback, useState } from 'react';
 
 import { cn } from '@kit/ui/utils';
@@ -16,62 +15,6 @@ import { ImagePreview } from './ImagePreview';
 import { ImageUploadProgress } from './ImageUploadProgress';
 import type { ImageUploaderProps } from './types';
 import { useImageUpload } from './use-image-upload';
-
-/**
- * ImageUploader Component (FILM-207)
- *
- * Main image uploader component that orchestrates the upload flow.
- * Displays dropzone, progress, or preview based on upload state.
- */
-
-/**
- * ImageUploader Component (FILM-207)
- *
- * Main image uploader component that orchestrates the upload flow.
- * Displays dropzone, progress, or preview based on upload state.
- */
-
-/**
- * ImageUploader Component (FILM-207)
- *
- * Main image uploader component that orchestrates the upload flow.
- * Displays dropzone, progress, or preview based on upload state.
- */
-
-/**
- * ImageUploader Component (FILM-207)
- *
- * Main image uploader component that orchestrates the upload flow.
- * Displays dropzone, progress, or preview based on upload state.
- */
-
-/**
- * ImageUploader Component (FILM-207)
- *
- * Main image uploader component that orchestrates the upload flow.
- * Displays dropzone, progress, or preview based on upload state.
- */
-
-/**
- * ImageUploader Component (FILM-207)
- *
- * Main image uploader component that orchestrates the upload flow.
- * Displays dropzone, progress, or preview based on upload state.
- */
-
-/**
- * ImageUploader Component (FILM-207)
- *
- * Main image uploader component that orchestrates the upload flow.
- * Displays dropzone, progress, or preview based on upload state.
- */
-
-/**
- * ImageUploader Component (FILM-207)
- *
- * Main image uploader component that orchestrates the upload flow.
- * Displays dropzone, progress, or preview based on upload state.
- */
 
 export function ImageUploader({
   projectId,

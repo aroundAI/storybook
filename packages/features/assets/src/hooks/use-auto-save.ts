@@ -1,76 +1,12 @@
-/**
- * Auto-Save Hook (FILM-205)
- *
- * Hook for auto-saving form data to localStorage periodically.
- * Used by CharacterEditor to save drafts.
- */
-
 'use client';
 
+/**
+ * Auto-Save Hook (FILM-205)
+ *
+ * Hook for auto-saving form data to localStorage periodically.
+ * Used by CharacterEditor to save drafts.
+ */
 import { useCallback, useEffect, useRef } from 'react';
-
-/**
- * Auto-Save Hook (FILM-205)
- *
- * Hook for auto-saving form data to localStorage periodically.
- * Used by CharacterEditor to save drafts.
- */
-
-/**
- * Auto-Save Hook (FILM-205)
- *
- * Hook for auto-saving form data to localStorage periodically.
- * Used by CharacterEditor to save drafts.
- */
-
-/**
- * Auto-Save Hook (FILM-205)
- *
- * Hook for auto-saving form data to localStorage periodically.
- * Used by CharacterEditor to save drafts.
- */
-
-/**
- * Auto-Save Hook (FILM-205)
- *
- * Hook for auto-saving form data to localStorage periodically.
- * Used by CharacterEditor to save drafts.
- */
-
-/**
- * Auto-Save Hook (FILM-205)
- *
- * Hook for auto-saving form data to localStorage periodically.
- * Used by CharacterEditor to save drafts.
- */
-
-/**
- * Auto-Save Hook (FILM-205)
- *
- * Hook for auto-saving form data to localStorage periodically.
- * Used by CharacterEditor to save drafts.
- */
-
-/**
- * Auto-Save Hook (FILM-205)
- *
- * Hook for auto-saving form data to localStorage periodically.
- * Used by CharacterEditor to save drafts.
- */
-
-/**
- * Auto-Save Hook (FILM-205)
- *
- * Hook for auto-saving form data to localStorage periodically.
- * Used by CharacterEditor to save drafts.
- */
-
-/**
- * Auto-Save Hook (FILM-205)
- *
- * Hook for auto-saving form data to localStorage periodically.
- * Used by CharacterEditor to save drafts.
- */
 
 interface UseAutoSaveOptions<T> {
   /** Unique key for localStorage */

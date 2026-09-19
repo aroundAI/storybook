@@ -1,11 +1,10 @@
+'use client';
+
 /**
  * ImageDropzone Component (FILM-207)
  *
  * Drag-and-drop zone for image uploads with visual feedback.
  */
-
-'use client';
-
 import { useCallback, useState } from 'react';
 
 import { AlertCircle, ImageIcon, Upload } from 'lucide-react';
@@ -17,54 +16,6 @@ import {
 } from '@kit/assets/upload-validation';
 import { Button } from '@kit/ui/button';
 import { cn } from '@kit/ui/utils';
-
-/**
- * ImageDropzone Component (FILM-207)
- *
- * Drag-and-drop zone for image uploads with visual feedback.
- */
-
-/**
- * ImageDropzone Component (FILM-207)
- *
- * Drag-and-drop zone for image uploads with visual feedback.
- */
-
-/**
- * ImageDropzone Component (FILM-207)
- *
- * Drag-and-drop zone for image uploads with visual feedback.
- */
-
-/**
- * ImageDropzone Component (FILM-207)
- *
- * Drag-and-drop zone for image uploads with visual feedback.
- */
-
-/**
- * ImageDropzone Component (FILM-207)
- *
- * Drag-and-drop zone for image uploads with visual feedback.
- */
-
-/**
- * ImageDropzone Component (FILM-207)
- *
- * Drag-and-drop zone for image uploads with visual feedback.
- */
-
-/**
- * ImageDropzone Component (FILM-207)
- *
- * Drag-and-drop zone for image uploads with visual feedback.
- */
-
-/**
- * ImageDropzone Component (FILM-207)
- *
- * Drag-and-drop zone for image uploads with visual feedback.
- */
 
 interface ImageDropzoneProps {
   /** Callback when a file is dropped */

@@ -1,11 +1,10 @@
+'use client';
+
 /**
  * Character Basic Info Section (FILM-205)
  *
  * Form fields for character name and description.
  */
-
-'use client';
-
 import type { UseFormReturn } from 'react-hook-form';
 
 import {
@@ -20,60 +19,6 @@ import { Input } from '@kit/ui/input';
 import { Textarea } from '@kit/ui/textarea';
 
 import type { CharacterFormData } from '../../../lib/schemas/character.schema';
-
-/**
- * Character Basic Info Section (FILM-205)
- *
- * Form fields for character name and description.
- */
-
-/**
- * Character Basic Info Section (FILM-205)
- *
- * Form fields for character name and description.
- */
-
-/**
- * Character Basic Info Section (FILM-205)
- *
- * Form fields for character name and description.
- */
-
-/**
- * Character Basic Info Section (FILM-205)
- *
- * Form fields for character name and description.
- */
-
-/**
- * Character Basic Info Section (FILM-205)
- *
- * Form fields for character name and description.
- */
-
-/**
- * Character Basic Info Section (FILM-205)
- *
- * Form fields for character name and description.
- */
-
-/**
- * Character Basic Info Section (FILM-205)
- *
- * Form fields for character name and description.
- */
-
-/**
- * Character Basic Info Section (FILM-205)
- *
- * Form fields for character name and description.
- */
-
-/**
- * Character Basic Info Section (FILM-205)
- *
- * Form fields for character name and description.
- */
 
 interface CharacterBasicInfoProps {
   form: UseFormReturn<CharacterFormData>;

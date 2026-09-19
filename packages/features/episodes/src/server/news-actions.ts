@@ -1,20 +1,14 @@
+'use server';
+
 /**
  * News Server Actions
  * Phase 11: FILM-1132
  */
-
-'use server';
-
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 
 import { NewsStoryService } from '../lib/server/services/news-story-service';
-
-/**
- * News Server Actions
- * Phase 11: FILM-1132
- */
 
 let _service: NewsStoryService | null = null;
 

@@ -1,12 +1,11 @@
+'use server';
+
 /**
  * Episode Audio Generation Actions
  *
  * Generates music and SFX for an episode based on shot/scene data.
  * Integrates with screenplay and shot-list data to extract audio requirements.
  */
-
-'use server';
-
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
@@ -16,20 +15,6 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { generateMusicElevenLabsAction } from './elevenlabs-music-actions';
 import { generateSfxAction } from './sfx-actions';
-
-/**
- * Episode Audio Generation Actions
- *
- * Generates music and SFX for an episode based on shot/scene data.
- * Integrates with screenplay and shot-list data to extract audio requirements.
- */
-
-/**
- * Episode Audio Generation Actions
- *
- * Generates music and SFX for an episode based on shot/scene data.
- * Integrates with screenplay and shot-list data to extract audio requirements.
- */
 
 // =============================================================================
 // Schemas

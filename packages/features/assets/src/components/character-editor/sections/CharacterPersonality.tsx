@@ -1,11 +1,10 @@
+'use client';
+
 /**
  * Character Personality Section (FILM-205)
  *
  * Form fields for character personality traits.
  */
-
-'use client';
-
 import type { UseFormReturn } from 'react-hook-form';
 
 import {
@@ -20,60 +19,6 @@ import { Input } from '@kit/ui/input';
 import { Textarea } from '@kit/ui/textarea';
 
 import type { CharacterFormData } from '../../../lib/schemas/character.schema';
-
-/**
- * Character Personality Section (FILM-205)
- *
- * Form fields for character personality traits.
- */
-
-/**
- * Character Personality Section (FILM-205)
- *
- * Form fields for character personality traits.
- */
-
-/**
- * Character Personality Section (FILM-205)
- *
- * Form fields for character personality traits.
- */
-
-/**
- * Character Personality Section (FILM-205)
- *
- * Form fields for character personality traits.
- */
-
-/**
- * Character Personality Section (FILM-205)
- *
- * Form fields for character personality traits.
- */
-
-/**
- * Character Personality Section (FILM-205)
- *
- * Form fields for character personality traits.
- */
-
-/**
- * Character Personality Section (FILM-205)
- *
- * Form fields for character personality traits.
- */
-
-/**
- * Character Personality Section (FILM-205)
- *
- * Form fields for character personality traits.
- */
-
-/**
- * Character Personality Section (FILM-205)
- *
- * Form fields for character personality traits.
- */
 
 interface CharacterPersonalityProps {
   form: UseFormReturn<CharacterFormData>;

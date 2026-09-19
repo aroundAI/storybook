@@ -1,12 +1,11 @@
+'use client';
+
 /**
  * Character Editor Form (FILM-205)
  *
  * Simplified form layout for character editing.
  * Focus on: name, description, reference image, and voice selection.
  */
-
-'use client';
-
 import type { UseFormReturn } from 'react-hook-form';
 
 import {
@@ -22,20 +21,6 @@ import {
   CharacterImageUpload,
   CharacterVoiceSelector,
 } from './sections';
-
-/**
- * Character Editor Form (FILM-205)
- *
- * Simplified form layout for character editing.
- * Focus on: name, description, reference image, and voice selection.
- */
-
-/**
- * Character Editor Form (FILM-205)
- *
- * Simplified form layout for character editing.
- * Focus on: name, description, reference image, and voice selection.
- */
 
 interface CharacterEditorFormProps {
   form: UseFormReturn<CharacterFormData>;

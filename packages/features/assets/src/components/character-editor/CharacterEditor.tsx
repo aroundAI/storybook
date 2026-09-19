@@ -1,12 +1,11 @@
+'use client';
+
 /**
  * Character Editor (FILM-205)
  *
  * Main editor component for creating and editing characters.
  * Features: auto-save, draft restoration, unsaved changes warning.
  */
-
-'use client';
-
 import { useCallback, useEffect, useState, useTransition } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,69 +35,6 @@ import {
 } from '../../lib/server/character.mutations';
 import type { CharacterWithDetails } from '../../lib/types';
 import { CharacterEditorForm } from './CharacterEditorForm';
-
-/**
- * Character Editor (FILM-205)
- *
- * Main editor component for creating and editing characters.
- * Features: auto-save, draft restoration, unsaved changes warning.
- */
-
-/**
- * Character Editor (FILM-205)
- *
- * Main editor component for creating and editing characters.
- * Features: auto-save, draft restoration, unsaved changes warning.
- */
-
-/**
- * Character Editor (FILM-205)
- *
- * Main editor component for creating and editing characters.
- * Features: auto-save, draft restoration, unsaved changes warning.
- */
-
-/**
- * Character Editor (FILM-205)
- *
- * Main editor component for creating and editing characters.
- * Features: auto-save, draft restoration, unsaved changes warning.
- */
-
-/**
- * Character Editor (FILM-205)
- *
- * Main editor component for creating and editing characters.
- * Features: auto-save, draft restoration, unsaved changes warning.
- */
-
-/**
- * Character Editor (FILM-205)
- *
- * Main editor component for creating and editing characters.
- * Features: auto-save, draft restoration, unsaved changes warning.
- */
-
-/**
- * Character Editor (FILM-205)
- *
- * Main editor component for creating and editing characters.
- * Features: auto-save, draft restoration, unsaved changes warning.
- */
-
-/**
- * Character Editor (FILM-205)
- *
- * Main editor component for creating and editing characters.
- * Features: auto-save, draft restoration, unsaved changes warning.
- */
-
-/**
- * Character Editor (FILM-205)
- *
- * Main editor component for creating and editing characters.
- * Features: auto-save, draft restoration, unsaved changes warning.
- */
 
 interface CharacterEditorProps {
   /** Project ID for new characters */

@@ -1,12 +1,11 @@
+'use server';
+
 /**
  * Audio Cue Actions
  *
  * Process audioCues from screenplay scenes into audio_cues table
  * and trigger generation for SFX/ambient, display prompts for music.
  */
-
-'use server';
-
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
@@ -14,41 +13,6 @@ import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { generateSfxAction } from './sfx-actions';
-
-/**
- * Audio Cue Actions
- *
- * Process audioCues from screenplay scenes into audio_cues table
- * and trigger generation for SFX/ambient, display prompts for music.
- */
-
-/**
- * Audio Cue Actions
- *
- * Process audioCues from screenplay scenes into audio_cues table
- * and trigger generation for SFX/ambient, display prompts for music.
- */
-
-/**
- * Audio Cue Actions
- *
- * Process audioCues from screenplay scenes into audio_cues table
- * and trigger generation for SFX/ambient, display prompts for music.
- */
-
-/**
- * Audio Cue Actions
- *
- * Process audioCues from screenplay scenes into audio_cues table
- * and trigger generation for SFX/ambient, display prompts for music.
- */
-
-/**
- * Audio Cue Actions
- *
- * Process audioCues from screenplay scenes into audio_cues table
- * and trigger generation for SFX/ambient, display prompts for music.
- */
 
 // =============================================================================
 // Schemas

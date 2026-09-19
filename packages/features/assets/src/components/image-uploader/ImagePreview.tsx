@@ -1,11 +1,10 @@
+'use client';
+
 /**
  * ImagePreview Component (FILM-207)
  *
  * Displays uploaded image with remove and zoom actions.
  */
-
-'use client';
-
 import { X, ZoomIn } from 'lucide-react';
 
 import { formatFileSize } from '@kit/assets/upload-validation';
@@ -17,54 +16,6 @@ import {
   DialogTitle,
 } from '@kit/ui/dialog';
 import { cn } from '@kit/ui/utils';
-
-/**
- * ImagePreview Component (FILM-207)
- *
- * Displays uploaded image with remove and zoom actions.
- */
-
-/**
- * ImagePreview Component (FILM-207)
- *
- * Displays uploaded image with remove and zoom actions.
- */
-
-/**
- * ImagePreview Component (FILM-207)
- *
- * Displays uploaded image with remove and zoom actions.
- */
-
-/**
- * ImagePreview Component (FILM-207)
- *
- * Displays uploaded image with remove and zoom actions.
- */
-
-/**
- * ImagePreview Component (FILM-207)
- *
- * Displays uploaded image with remove and zoom actions.
- */
-
-/**
- * ImagePreview Component (FILM-207)
- *
- * Displays uploaded image with remove and zoom actions.
- */
-
-/**
- * ImagePreview Component (FILM-207)
- *
- * Displays uploaded image with remove and zoom actions.
- */
-
-/**
- * ImagePreview Component (FILM-207)
- *
- * Displays uploaded image with remove and zoom actions.
- */
 
 interface ImagePreviewProps {
   /** Full-size image URL */
