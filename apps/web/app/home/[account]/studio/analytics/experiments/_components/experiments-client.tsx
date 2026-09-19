@@ -14,6 +14,7 @@ import {
   ExperimentsDueList,
 } from '@kit/content-analytics/components';
 import { unwrap } from '@kit/content-analytics/lib/action-result';
+import { localToday } from '@kit/content-analytics/lib/local-date';
 import { listChannelsAction } from '@kit/content-analytics/server/channels-actions';
 import {
   concludeExperimentAction,
@@ -35,23 +36,6 @@ import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
-
-/**
- * The user's calendar date, `YYYY-MM-DD`. Experiment dates are calendar
- * dates in the user's day; the server's UTC clock would record a start just
- * after local midnight on the previous day for anyone east of UTC.
- *
- * Built from the date's parts rather than a locale's format: `en-CA`
- * happens to print `YYYY-MM-DD`, but that is locale data, not a contract,
- * and the server refuses anything else (review 4, G7).
- */
-function localToday(): string {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-
-  return `${now.getFullYear()}-${month}-${day}`;
-}
 
 interface ExperimentsClientProps {
   /** Account whose experiment log is shown */
@@ -165,7 +149,7 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
   return (
     <div className={'flex flex-col gap-8'}>
       <section className={'flex flex-col gap-3'}>
-        <h3 className={'text-sm font-medium'}>Log a new experiment</h3>
+        <h3 className={'text-sm font-medium'}>Log a change</h3>
         <ExperimentForm
           accountId={accountId}
           channels={channelsQuery.data ?? []}
@@ -194,7 +178,7 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
             className={'text-muted-foreground text-sm'}
             data-test={'experiments-due-error'}
           >
-            Experiments due for review could not be loaded.
+            Changes due for review could not be loaded.
           </p>
         ) : (
           <ExperimentsDueList
@@ -205,7 +189,7 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
       </section>
 
       <section className={'flex flex-col gap-3'}>
-        <h3 className={'text-sm font-medium'}>Experiments</h3>
+        <h3 className={'text-sm font-medium'}>Changes</h3>
 
         {listQuery.isLoading ? (
           <ExperimentListSkeleton />
@@ -216,7 +200,7 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
             className={'text-muted-foreground text-sm'}
             data-test={'experiment-list-error'}
           >
-            Experiments could not be loaded.
+            Changes could not be loaded.
           </p>
         ) : (
           <ExperimentList
@@ -238,7 +222,7 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
       >
         <DialogContent className={'max-h-[85vh] overflow-y-auto sm:max-w-2xl'}>
           <DialogHeader>
-            <DialogTitle>Experiment</DialogTitle>
+            <DialogTitle>Change</DialogTitle>
           </DialogHeader>
 
           {detailQuery.isLoading || !experiment ? (
@@ -275,12 +259,12 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
                             startedAt: localToday(),
                           }),
                         ),
-                      'Experiment started — baseline captured',
+                      'Started — baseline captured',
                     )
                   }
                   className={'self-start'}
                 >
-                  Start experiment
+                  Start
                 </Button>
               ) : null}
 
@@ -320,7 +304,7 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
                                     endedAt: localToday(),
                                   }),
                                 ),
-                              'Experiment concluded',
+                              'Concluded',
                             );
                             // Kept on failure, so the outcome is not retyped.
                             if (concluded) setOutcome('');

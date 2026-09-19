@@ -27,6 +27,8 @@ import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
 
 import {
+  BAKED_IN_CATEGORIES,
+  BAKED_IN_NOTE,
   CreateExperimentSchema,
   DEFAULT_REVIEW_WINDOW_DAYS,
   EXPERIMENT_CATEGORY_LABELS,
@@ -35,6 +37,7 @@ import {
 import {
   WATCHED_METRICS,
   WATCHED_METRIC_KEYS,
+  WATCHED_METRIC_NOTES,
 } from '../../lib/watched-metrics';
 import type { ChannelRef } from '../../server/channels';
 import { ChannelFilter } from '../deep-dive/channel-filter';
@@ -133,14 +136,12 @@ export function ExperimentForm({
   const handleSubmit = form.handleSubmit(async (values) => {
     try {
       await onSubmit(values);
-      toast.success('Experiment logged');
+      toast.success('Change logged');
       form.reset(emptyValues(accountId, projectId));
       onSuccess?.();
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Could not save the experiment',
+        error instanceof Error ? error.message : 'Could not save the change',
       );
     }
   });
@@ -160,7 +161,7 @@ export function ExperimentForm({
               <FormLabel>Title</FormLabel>
               <FormControl>
                 <Input
-                  placeholder={'e.g. Shorter cold-open on process videos'}
+                  placeholder={'e.g. Faces on thumbnails'}
                   data-test={'experiment-title'}
                   {...field}
                 />
@@ -180,7 +181,7 @@ export function ExperimentForm({
                 <Textarea
                   rows={3}
                   placeholder={
-                    'Cut the intro from 20s to 5s on the next six uploads'
+                    'New thumbnails on these five videos: a face instead of text'
                   }
                   data-test={'experiment-change'}
                   {...field}
@@ -222,6 +223,14 @@ export function ExperimentForm({
                     ))}
                   </SelectContent>
                 </Select>
+                {field.value && BAKED_IN_CATEGORIES.has(field.value) ? (
+                  <p
+                    className={'text-muted-foreground text-xs'}
+                    data-test={'experiment-category-note'}
+                  >
+                    {BAKED_IN_NOTE}
+                  </p>
+                ) : null}
                 <FormMessage />
               </FormItem>
             )}
@@ -261,6 +270,14 @@ export function ExperimentForm({
                   Measured on the linked videos only, before and after the
                   start.
                 </FormDescription>
+                {field.value && WATCHED_METRIC_NOTES[field.value] ? (
+                  <p
+                    className={'text-muted-foreground text-xs'}
+                    data-test={'experiment-metric-note'}
+                  >
+                    {WATCHED_METRIC_NOTES[field.value]}
+                  </p>
+                ) : null}
                 <FormMessage />
               </FormItem>
             )}
@@ -272,7 +289,7 @@ export function ExperimentForm({
           name={'publishIds'}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Videos this experiment runs on</FormLabel>
+              <FormLabel>Videos you changed</FormLabel>
               {/* FormControl ties the label and error message to the
                   picker's trigger (it forwards id and aria attributes). */}
               <FormControl>
@@ -289,7 +306,8 @@ export function ExperimentForm({
                 />
               </FormControl>
               <FormDescription>
-                Snapshots measure these videos, not the whole channel.
+                Published videos only. Each is compared with its own past: the
+                days before the start against the days since.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -368,7 +386,7 @@ export function ExperimentForm({
                 <Textarea
                   rows={2}
                   placeholder={
-                    'The 0:45 retention cliff is caused by intro length'
+                    'A face gets more clicks than text on these videos'
                   }
                   {...field}
                 />
@@ -387,9 +405,7 @@ export function ExperimentForm({
               <FormControl>
                 <Textarea
                   rows={2}
-                  placeholder={
-                    'Retention at 0:45 improves by 10 points; views unchanged'
-                  }
+                  placeholder={'Click-through rate up by a point; views follow'}
                   {...field}
                 />
               </FormControl>
@@ -425,7 +441,7 @@ export function ExperimentForm({
           {isSubmitting ? (
             <Loader2 className={'mr-2 h-4 w-4 animate-spin'} />
           ) : null}
-          Log experiment
+          Log change
         </Button>
       </form>
     </Form>

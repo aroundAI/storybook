@@ -95,7 +95,7 @@ export class ExperimentsPageObject {
   /** Waits for the save to land: the form resets its title when it does. */
   async submitAndWaitForReset() {
     await this.submit();
-    await expect(this.page.getByText('Experiment logged')).toBeVisible();
+    await expect(this.page.getByText('Change logged')).toBeVisible();
     await expect(this.field('experiment-title')).toHaveValue('');
   }
 }

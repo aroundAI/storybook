@@ -28,7 +28,7 @@ const FROZEN_AFTER_START = [
 export function assertCanStart(status: string): void {
   if (status !== 'planned') {
     throw new ActionRefusal(
-      `Only a planned experiment can be started; this one is ${status}.`,
+      `Only a planned change can be started; this one is ${status}.`,
     );
   }
 }
@@ -40,20 +40,18 @@ export function assertCanConclude(
 ): void {
   if (status !== 'running') {
     throw new ActionRefusal(
-      `Only a running experiment can be concluded; this one is ${status}.`,
+      `Only a running change can be concluded; this one is ${status}.`,
     );
   }
 
   if (!startedAt) {
-    throw new ActionRefusal(
-      'An experiment must be started before it is concluded.',
-    );
+    throw new ActionRefusal('A change must be started before it is concluded.');
   }
 
   // Dates are YYYY-MM-DD, so string order is date order.
   if (endedAt < startedAt) {
     throw new ActionRefusal(
-      `An experiment cannot end (${endedAt}) before it started (${startedAt}).`,
+      `A change cannot end (${endedAt}) before it started (${startedAt}).`,
     );
   }
 }
@@ -65,12 +63,12 @@ export function assertCanConclude(
 export function assertCanAbandon(status: string): void {
   if (status !== 'planned' && status !== 'running') {
     throw new ActionRefusal(
-      `Only a planned or running experiment can be abandoned; this one is ${status}.`,
+      `Only a planned or running change can be abandoned; this one is ${status}.`,
     );
   }
 }
 
-/** Refuses an edit to a frozen field once the experiment has started. */
+/** Refuses an edit to a frozen field once the change has started. */
 export function assertEditable(status: string, fields: string[]): void {
   if (status === 'planned') return;
 
@@ -80,7 +78,7 @@ export function assertEditable(status: string, fields: string[]): void {
 
   if (frozen.length > 0) {
     throw new ActionRefusal(
-      `${frozen.join(', ')} cannot change once the experiment has started: the baseline was measured over them, and the expectation was recorded before the result.`,
+      `${frozen.join(', ')} cannot change once the change has started: the baseline was measured over them, and the expectation was recorded before the result.`,
     );
   }
 }

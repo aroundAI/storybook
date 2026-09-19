@@ -16,6 +16,7 @@ import {
   WATCHED_METRICS,
   type WatchedMetricKey,
   type WatchedValue,
+  allPublishedAfter,
   foldCtr,
   foldNetSubscribers,
   foldTrafficShare,
@@ -37,6 +38,8 @@ export async function resolveWatchedMetric(input: {
   metric: string;
   accountId: string;
   publishIds: string[];
+  /** Each linked video's publish time, in `publishIds` order. */
+  publishedAt: Array<string | null>;
   window: DateWindow;
 }): Promise<WatchedValue> {
   const { metric, publishIds } = input;
@@ -66,6 +69,19 @@ export async function resolveWatchedMetric(input: {
         })
       : Promise.resolve(null),
   ]);
+
+  // No data, and none of the videos existed in the window: say that,
+  // rather than "no data", which suggests they could have had some. Only
+  // ever a better explanation of an absence — measured data always wins,
+  // so a wrong publish time can never hide real figures.
+  if (
+    fold.status === 'unmeasured' &&
+    fold.reason === 'no_data' &&
+    window &&
+    allPublishedAfter(input.publishedAt, window)
+  ) {
+    return unmeasured(metric, 'published_after_window', window);
+  }
 
   return stampFold(metric, fold, window, publishIds.length, daysWithData);
 }

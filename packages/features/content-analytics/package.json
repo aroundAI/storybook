@@ -43,6 +43,7 @@
     "./lib/ypp-targets": "./src/lib/ypp-targets.ts",
     "./lib/watched-metrics": "./src/lib/watched-metrics.ts",
     "./lib/action-result": "./src/lib/action-result.ts",
+    "./lib/local-date": "./src/lib/local-date.ts",
     "./lib/query-state": "./src/lib/query-state.ts"
   },
   "dependencies": {

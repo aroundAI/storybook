@@ -5,6 +5,8 @@ import { CalendarClock, FlaskConical } from 'lucide-react';
 import { Badge } from '@kit/ui/badge';
 import { Skeleton } from '@kit/ui/skeleton';
 
+import { localDateOf } from '../../lib/local-date';
+
 /** Row shape returned by listExperimentsAction. */
 export interface ExperimentListEntry {
   id: string;
@@ -61,10 +63,10 @@ export function ExperimentList({
     return (
       <div className={'flex flex-col items-center gap-2 py-12 text-center'}>
         <FlaskConical className={'text-muted-foreground h-8 w-8'} />
-        <p className={'text-sm font-medium'}>No experiments logged yet</p>
+        <p className={'text-sm font-medium'}>No changes logged yet</p>
         <p className={'text-muted-foreground max-w-md text-sm'}>
-          Record what you tried and what you expected. In six months the
-          analytics alone will not tell you which changes caused what.
+          Record a change to published videos and what you expected. In six
+          months the analytics alone will not tell you what you changed.
         </p>
       </div>
     );
@@ -107,7 +109,8 @@ export function ExperimentList({
           <p className={'text-muted-foreground text-xs'}>
             {experiment.started_at
               ? `Started ${experiment.started_at}`
-              : `Created ${experiment.created_at.slice(0, 10)}`}
+              : // The user's day, not the timestamp's UTC day (review 5, H6).
+                `Created ${localDateOf(experiment.created_at)}`}
             {experiment.ended_at ? ` · Ended ${experiment.ended_at}` : ''}
           </p>
         </button>

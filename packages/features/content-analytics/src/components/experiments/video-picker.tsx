@@ -16,6 +16,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@kit/ui/popover';
 import { Skeleton } from '@kit/ui/skeleton';
 
+import { localDateOf } from '../../lib/local-date';
+
 /** A published video that can be linked to an experiment. */
 export interface LinkableVideo {
   id: string;
@@ -141,7 +143,9 @@ export function VideoPicker({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className={'w-[--radix-popover-trigger-width] p-0'}>
+      {/* `var()` spelled out: Tailwind 4 reads `w-[--x]` as no width at
+          all, and the list grew to its widest title (review 5, H5). */}
+      <PopoverContent className={'w-[var(--radix-popover-trigger-width)] p-0'}>
         {/* Filtering is the server's: cmdk's own would hide results the
             server returned for a match cmdk does not see. */}
         <Command shouldFilter={false}>
@@ -173,6 +177,13 @@ export function VideoPicker({
                     disabled={!checked && atCap}
                     data-test={`video-picker-option-${video.id}`}
                   >
+                    {/* The state, for assistive technology. cmdk's own
+                        aria-selected means "highlighted", and the box below
+                        is hidden, so without this nothing says which videos
+                        are linked (review 5, H4). */}
+                    <span className={'sr-only'}>
+                      {checked ? 'Linked: ' : 'Not linked: '}
+                    </span>
                     {/* Display only: the row's onSelect is the one toggle,
                         so a click on the box cannot toggle it twice. */}
                     <Checkbox
@@ -187,7 +198,7 @@ export function VideoPicker({
                     <span className={'text-muted-foreground ml-2 text-xs'}>
                       {video.platform}
                       {video.publishedAt
-                        ? ` · ${video.publishedAt.slice(0, 10)}`
+                        ? ` · ${localDateOf(video.publishedAt)}`
                         : ''}
                     </span>
                   </CommandItem>

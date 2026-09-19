@@ -123,7 +123,7 @@ test.describe('Experiment log — evidence', () => {
     await page
       .locator(`[data-test="experiment-row-${first!.id}"]:visible`)
       .click();
-    await page.getByRole('button', { name: 'Start experiment' }).click();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
     await expect(
       page.locator('[data-test="experiment-watched-baseline-unmeasured"]'),
     ).toBeVisible();
@@ -143,7 +143,7 @@ test.describe('Experiment log — evidence', () => {
     });
 
     await page.getByRole('button', { name: 'inconclusive' }).click();
-    await expect(page.getByText('Experiment concluded')).toBeVisible();
+    await expect(page.getByText('Concluded', { exact: true })).toBeVisible();
     await expect(
       page.locator('[data-test="experiment-result-after-days"]'),
     ).toBeVisible();
@@ -217,7 +217,7 @@ test.describe('Experiment log — evidence', () => {
     await page
       .locator(`[data-test="experiment-row-${row!.id}"]:visible`)
       .click();
-    await page.getByRole('button', { name: 'Start experiment' }).click();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
 
     const value = page.locator(
       '[data-test="experiment-watched-baseline-value"]',
@@ -341,7 +341,7 @@ test.describe('Experiment log — evidence', () => {
       await page
         .locator(`[data-test="experiment-row-${row!.id}"]:visible`)
         .click();
-      await page.getByRole('button', { name: 'Start experiment' }).click();
+      await page.getByRole('button', { name: 'Start', exact: true }).click();
 
       const side = page.locator('[data-test="experiment-watched-baseline"]');
       await expect(

@@ -549,6 +549,79 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
       "pattern": "refuses a new expected outcome or hypothesis"
+    },
+    {
+      "name": "H1 late videos reported as no data",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/server/watched-metric-snapshot.ts",
+      "find": "    allPublishedAfter(input.publishedAt, window)\n  ) {",
+      "replace": "    allPublishedAfter(input.publishedAt, window) &&\n    false\n  ) {",
+      "spec": "tests/experiments/change-log-details.spec.ts",
+      "grep": "published after its window"
+    },
+    {
+      "name": "H4 linked state hidden from assistive technology",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/experiments/video-picker.tsx",
+      "find": "{checked ? 'Linked: ' : 'Not linked: '}",
+      "replace": "{null}",
+      "spec": "tests/experiments/change-log-details.spec.ts",
+      "grep": "says whether it is linked"
+    },
+    {
+      "name": "H5 popover width in Tailwind 3 syntax",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/experiments/video-picker.tsx",
+      "find": "w-[var(--radix-popover-trigger-width)] p-0",
+      "replace": "w-[--radix-popover-trigger-width] p-0",
+      "spec": "tests/experiments/change-log-details.spec.ts",
+      "grep": "as wide as the field"
+    },
+    {
+      "name": "H6 created date as the UTC day",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/experiments/experiment-list.tsx",
+      "find": "`Created ${localDateOf(experiment.created_at)}`",
+      "replace": "`Created ${experiment.created_at.slice(0, 10)}`",
+      "spec": "tests/experiments/change-log-details.spec.ts",
+      "grep": "after local midnight show the local day"
+    },
+    {
+      "name": "H11 signed-out action redirected by middleware",
+      "kind": "e2e",
+      "file": "apps/web/middleware.ts",
+      "find": "if (isServerAction(req)) {\n            return;\n          }",
+      "replace": "if (isServerAction(req) && false) {\n            return;\n          }",
+      "spec": "tests/experiments/change-log-details.spec.ts",
+      "grep": "session ended"
+    },
+    {
+      "name": "A baked-in category unexplained",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/experiments/experiment-form.tsx",
+      "find": "field.value && BAKED_IN_CATEGORIES.has(field.value)",
+      "replace": "false",
+      "spec": "tests/experiments/change-log-details.spec.ts",
+      "grep": "baked into the video"
+    },
+    {
+      "name": "H2 views at 30 days unexplained",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/experiments/experiment-form.tsx",
+      "find": "field.value && WATCHED_METRIC_NOTES[field.value]",
+      "replace": "false",
+      "spec": "tests/experiments/change-log-details.spec.ts",
+      "grep": "views at 30 days explains"
+    },
+    {
+      "name": "H1u late-video rule",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/watched-metrics.ts",
+      "find": "timestamp !== null && timestamp.slice(0, 10) > window.end",
+      "replace": "timestamp !== null && timestamp.slice(0, 10) >= window.end",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/watched-metrics.test.ts",
+      "pattern": "within or before the window"
     }
   ]
 }
