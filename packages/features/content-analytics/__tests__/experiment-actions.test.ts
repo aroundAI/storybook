@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   abandonExperimentAction,
@@ -615,5 +615,37 @@ describe('a failed cleanup is reported, not swallowed (R7)', () => {
         tagIds: [],
       }),
     ).rejects.toThrow(/could not be removed/);
+  });
+});
+
+describe('an abandoned experiment never ends before it started (F4)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("uses the start date when the server's UTC date is still the day before", async () => {
+    // Started at 00:30 on 2 March in Kolkata; the server's UTC clock still
+    // says 1 March when the experiment is abandoned a minute later.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-01T19:01:00Z'));
+    state.experiment.status = 'running';
+    state.experiment.started_at = '2026-03-02';
+
+    await abandonExperimentAction({ experimentId: 'e1', reason: 'Paused' });
+
+    expect(state.updates[0]).toMatchObject({ ended_at: '2026-03-02' });
+  });
+
+  it("takes the caller's local end date when one is sent", async () => {
+    state.experiment.status = 'running';
+    state.experiment.started_at = '2026-03-02';
+
+    await abandonExperimentAction({
+      experimentId: 'e1',
+      reason: 'Paused',
+      endedAt: '2026-03-05',
+    });
+
+    expect(state.updates[0]).toMatchObject({ ended_at: '2026-03-05' });
   });
 });

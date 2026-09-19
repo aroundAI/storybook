@@ -357,6 +357,16 @@
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/analytics-authors-deletable.test.sql",
       "sql": "alter table public.hook_tests drop constraint hook_tests_created_by_fkey; alter table public.hook_tests add constraint hook_tests_created_by_fkey foreign key (created_by) references auth.users(id);"
+    },
+    {
+      "name": "F4 abandon ends before its start",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "context.started_at && requested < context.started_at",
+      "replace": "false",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "never ends before it started"
     }
   ]
 }
