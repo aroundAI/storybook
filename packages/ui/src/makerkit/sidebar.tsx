@@ -144,7 +144,7 @@ export function SidebarGroup({
     }
 
     return (
-      <span className={'text-muted-foreground text-xs font-semibold uppercase'}>
+      <span className={'text-xs font-semibold text-muted-foreground uppercase'}>
         {props.children}
       </span>
     );
@@ -232,7 +232,7 @@ export function SidebarItem({
           <Button
             asChild
             className={cn(
-              'active:bg-secondary/60 flex w-full text-sm shadow-none',
+              'flex w-full text-sm shadow-none active:bg-secondary/60',
               {
                 'justify-start space-x-2.5': !collapsed,
                 'hover:bg-initial': active,
@@ -275,7 +275,7 @@ function getClassNameBuilder(className: string) {
 
 function getSidebarSizeClassName(collapsed: boolean, isExpanded: boolean) {
   return cn(['z-50 flex w-full flex-col'], {
-    'dark:shadow-primary/20 lg:w-[17rem]': !collapsed,
+    'lg:w-[17rem] dark:shadow-primary/20': !collapsed,
     'lg:w-[4rem]': collapsed,
     shadow: isExpanded,
   });

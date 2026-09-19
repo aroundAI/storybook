@@ -35,7 +35,7 @@ export function CompanyPage({ company, projects }: CompanyPageProps) {
   return (
     <GradientBackground>
       {/* Hero Section with Cover */}
-      <HeroBackground imageUrl={coverImageUrl} className="pb-32 pt-20">
+      <HeroBackground imageUrl={coverImageUrl} className="pt-20 pb-32">
         <div className="container mx-auto px-4">
           <div className="flex flex-col items-center gap-6 md:flex-row md:items-end">
             {/* Avatar */}
@@ -123,7 +123,7 @@ export function CompanyPage({ company, projects }: CompanyPageProps) {
       </HeroBackground>
 
       {/* Projects Grid */}
-      <section className="container relative z-10 mx-auto -mt-20 px-4 pb-16">
+      <section className="relative z-10 container mx-auto -mt-20 px-4 pb-16">
         <h2 className="mb-8 text-2xl font-bold text-slate-900 dark:text-white">
           Shows
           <span className="ml-2 text-lg font-normal text-slate-600 dark:text-slate-400">

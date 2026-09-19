@@ -132,7 +132,7 @@ export function MemoryContextPreview({
           </Button>
         </div>
         {!isExpanded && (
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Click to see what the AI knows about canon
           </p>
         )}
@@ -141,12 +141,12 @@ export function MemoryContextPreview({
       {isExpanded && (
         <CardContent className="space-y-4 pt-0">
           {isLoading ? (
-            <p className="text-muted-foreground text-sm">Loading context...</p>
+            <p className="text-sm text-muted-foreground">Loading context...</p>
           ) : context ? (
             <>
               {/* Immutable Facts */}
               <div>
-                <h4 className="text-muted-foreground mb-2 flex items-center gap-1 text-xs font-semibold uppercase">
+                <h4 className="mb-2 flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase">
                   <Clock className="h-3 w-3" />
                   Immutable Facts ({context.immutableEvents.length})
                 </h4>
@@ -166,7 +166,7 @@ export function MemoryContextPreview({
 
               {/* Active Threads */}
               <div>
-                <h4 className="text-muted-foreground mb-2 flex items-center gap-1 text-xs font-semibold uppercase">
+                <h4 className="mb-2 flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase">
                   <GitBranch className="h-3 w-3" />
                   Active Threads ({context.activeThreads.length})
                 </h4>
@@ -181,7 +181,7 @@ export function MemoryContextPreview({
 
               {/* Character States */}
               <div>
-                <h4 className="text-muted-foreground mb-2 flex items-center gap-1 text-xs font-semibold uppercase">
+                <h4 className="mb-2 flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase">
                   <Users className="h-3 w-3" />
                   Character States ({context.characterStates.length})
                 </h4>
@@ -196,12 +196,12 @@ export function MemoryContextPreview({
 
               {/* Token Budget */}
               <div>
-                <h4 className="text-muted-foreground mb-2 text-xs font-semibold uppercase">
+                <h4 className="mb-2 text-xs font-semibold text-muted-foreground uppercase">
                   Token Budget: {context.tokenBudget.used.toLocaleString()} /{' '}
                   {context.tokenBudget.max.toLocaleString()} ({tokenPercentage}
                   %)
                 </h4>
-                <div className="bg-muted h-2 w-full rounded-full">
+                <div className="h-2 w-full rounded-full bg-muted">
                   <div
                     className={`h-2 rounded-full ${
                       tokenPercentage > 80
@@ -216,7 +216,7 @@ export function MemoryContextPreview({
               </div>
             </>
           ) : (
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Unable to load memory context.
             </p>
           )}

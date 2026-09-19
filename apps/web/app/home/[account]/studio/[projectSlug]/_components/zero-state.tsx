@@ -18,17 +18,17 @@ export function ZeroState() {
                 d="M13 10V3L4 14h7v7l9-11h-7z"
               />
             </svg>
-            <h2 className="text-foreground text-lg font-semibold">
+            <h2 className="text-lg font-semibold text-foreground">
               Choose Your Genesis
             </h2>
           </div>
-          <p className="text-muted-foreground mb-8 text-sm">
+          <p className="mb-8 text-sm text-muted-foreground">
             Your studio is set up. How would you like to begin your first
             episode?
           </p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {/* Template */}
-            <button className="group border-border bg-muted hover:bg-card flex h-full flex-col items-start rounded-xl border p-5 text-left transition-all duration-200 hover:border-indigo-300 hover:shadow-md dark:hover:border-indigo-500">
+            <button className="group flex h-full flex-col items-start rounded-xl border border-border bg-muted p-5 text-left transition-all duration-200 hover:border-indigo-300 hover:bg-card hover:shadow-md dark:hover:border-indigo-500">
               <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 transition-transform group-hover:scale-110 dark:bg-blue-900/40 dark:text-blue-400">
                 <svg
                   className="h-5 w-5"
@@ -44,16 +44,16 @@ export function ZeroState() {
                   />
                 </svg>
               </div>
-              <h3 className="text-foreground mb-1 font-semibold">
+              <h3 className="mb-1 font-semibold text-foreground">
                 Use a Template
               </h3>
-              <p className="text-muted-foreground text-xs leading-relaxed">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 Start with a proven structure for 11min or 22min animated
                 episodes.
               </p>
             </button>
             {/* Import */}
-            <button className="group border-border bg-muted hover:bg-card flex h-full flex-col items-start rounded-xl border p-5 text-left transition-all duration-200 hover:border-indigo-300 hover:shadow-md dark:hover:border-indigo-500">
+            <button className="group flex h-full flex-col items-start rounded-xl border border-border bg-muted p-5 text-left transition-all duration-200 hover:border-indigo-300 hover:bg-card hover:shadow-md dark:hover:border-indigo-500">
               <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-transform group-hover:scale-110 dark:bg-emerald-900/40 dark:text-emerald-400">
                 <svg
                   className="h-5 w-5"
@@ -69,15 +69,15 @@ export function ZeroState() {
                   />
                 </svg>
               </div>
-              <h3 className="text-foreground mb-1 font-semibold">
+              <h3 className="mb-1 font-semibold text-foreground">
                 Import Script
               </h3>
-              <p className="text-muted-foreground text-xs leading-relaxed">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 Upload a Final Draft (.fdx) or PDF file to auto-generate scenes.
               </p>
             </button>
             {/* AI Brainstorm */}
-            <button className="group border-border bg-muted hover:bg-card flex h-full flex-col items-start rounded-xl border p-5 text-left transition-all duration-200 hover:border-indigo-300 hover:shadow-md dark:hover:border-indigo-500">
+            <button className="group flex h-full flex-col items-start rounded-xl border border-border bg-muted p-5 text-left transition-all duration-200 hover:border-indigo-300 hover:bg-card hover:shadow-md dark:hover:border-indigo-500">
               <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100 text-purple-600 transition-transform group-hover:scale-110 dark:bg-purple-900/40 dark:text-purple-400">
                 <svg
                   className="h-5 w-5"
@@ -93,10 +93,10 @@ export function ZeroState() {
                   />
                 </svg>
               </div>
-              <h3 className="text-foreground mb-1 font-semibold">
+              <h3 className="mb-1 font-semibold text-foreground">
                 Brainstorm with AI
               </h3>
-              <p className="text-muted-foreground text-xs leading-relaxed">
+              <p className="text-xs leading-relaxed text-muted-foreground">
                 Collaborate with our creative AI to develop a concept from
                 scratch.
               </p>
@@ -106,7 +106,7 @@ export function ZeroState() {
       </div>
       {/* Production Health Empty */}
       <div className="lg:col-span-1">
-        <div className="border-border bg-card flex h-full flex-col rounded-xl border p-6 shadow-sm">
+        <div className="flex h-full flex-col rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <svg
@@ -122,15 +122,15 @@ export function ZeroState() {
                   d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
                 />
               </svg>
-              <h2 className="text-foreground text-sm font-semibold">
+              <h2 className="text-sm font-semibold text-foreground">
                 Production Health
               </h2>
             </div>
           </div>
           <div className="flex flex-1 flex-col items-center justify-center py-12 text-center">
-            <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
               <svg
-                className="text-muted-foreground h-8 w-8"
+                className="h-8 w-8 text-muted-foreground"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -143,10 +143,10 @@ export function ZeroState() {
                 />
               </svg>
             </div>
-            <h3 className="text-foreground mb-1 text-sm font-medium">
+            <h3 className="mb-1 text-sm font-medium text-foreground">
               No episodes yet
             </h3>
-            <p className="text-muted-foreground max-w-[200px] text-xs">
+            <p className="max-w-[200px] text-xs text-muted-foreground">
               Once you start creating, your production metrics will appear here.
             </p>
           </div>

@@ -129,12 +129,12 @@ export function PasswordSignInForm({
           </If>
 
           <If condition={!redirecting && !loading}>
-            <span className={'animate-out fade-out flex items-center'}>
+            <span className={'flex items-center animate-out fade-out'}>
               <Trans i18nKey={'auth:signInWithEmail'} />
 
               <ArrowRight
                 className={
-                  'zoom-in animate-in slide-in-from-left-2 fill-mode-both h-4 delay-500 duration-500'
+                  'h-4 delay-500 duration-500 animate-in fill-mode-both slide-in-from-left-2 zoom-in'
                 }
               />
             </span>

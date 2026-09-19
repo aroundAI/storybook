@@ -379,7 +379,7 @@ export function AlertStory() {
             <AlertTitle>System Status</AlertTitle>
             <AlertDescription>
               <div className="mt-2">
-                <code className="bg-muted rounded px-2 py-1 text-sm">
+                <code className="rounded bg-muted px-2 py-1 text-sm">
                   npm install @kit/ui
                 </code>
               </div>
@@ -415,11 +415,11 @@ export function AlertStory() {
           {/* Alert */}
           <div>
             <h4 className="mb-3 text-lg font-semibold">Alert</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               The root container component for alert messages.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -461,11 +461,11 @@ export function AlertStory() {
             <h4 className="mb-3 text-lg font-semibold">
               AlertTitle & AlertDescription
             </h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               Semantic components for alert titles and descriptions.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Component</th>
@@ -543,7 +543,7 @@ export function AlertStory() {
                   Critical (Destructive)
                 </h4>
               </div>
-              <p className="text-muted-foreground ml-6 text-sm">
+              <p className="ml-6 text-sm text-muted-foreground">
                 System errors, failed operations, security issues
               </p>
             </div>
@@ -552,7 +552,7 @@ export function AlertStory() {
                 <AlertTriangle className="h-4 w-4 text-yellow-500" />
                 <h4 className="text-sm font-semibold">Warning</h4>
               </div>
-              <p className="text-muted-foreground ml-6 text-sm">
+              <p className="ml-6 text-sm text-muted-foreground">
                 Actions needed, potential issues, expiring items
               </p>
             </div>
@@ -561,7 +561,7 @@ export function AlertStory() {
                 <CheckCircle className="h-4 w-4 text-green-500" />
                 <h4 className="text-sm font-semibold">Success</h4>
               </div>
-              <p className="text-muted-foreground ml-6 text-sm">
+              <p className="ml-6 text-sm text-muted-foreground">
                 Successful operations, confirmations
               </p>
             </div>
@@ -570,7 +570,7 @@ export function AlertStory() {
                 <Info className="h-4 w-4 text-blue-500" />
                 <h4 className="text-sm font-semibold">Information</h4>
               </div>
-              <p className="text-muted-foreground ml-6 text-sm">
+              <p className="ml-6 text-sm text-muted-foreground">
                 General information, tips, status updates
               </p>
             </div>
@@ -602,7 +602,7 @@ export function AlertStory() {
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Provide Next Steps</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               When possible, include actionable steps the user can take to
               resolve the issue or continue their workflow.
             </p>
@@ -618,21 +618,21 @@ export function AlertStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">ARIA Attributes</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               The Alert component automatically includes appropriate ARIA
               attributes for screen readers.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Color and Icons</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Always pair colors with icons and descriptive text. Don't rely
               solely on color to convey meaning.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Focus Management</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               For dynamic alerts (appearing after user actions), consider
               managing focus appropriately to announce changes to screen
               readers.

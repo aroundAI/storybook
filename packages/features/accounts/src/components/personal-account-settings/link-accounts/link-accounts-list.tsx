@@ -79,11 +79,11 @@ export function LinkAccountsList(props: { providers: Provider[] }) {
       <If condition={connectedIdentities.length > 0}>
         <div className="space-y-3">
           <div>
-            <h3 className="text-foreground text-sm font-medium">
+            <h3 className="text-sm font-medium text-foreground">
               <Trans i18nKey={'account:linkedAccounts'} />
             </h3>
 
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               <Trans i18nKey={'account:alreadyLinkedAccountsDescription'} />
             </p>
           </div>
@@ -92,7 +92,7 @@ export function LinkAccountsList(props: { providers: Provider[] }) {
             {connectedIdentities.map((identity) => (
               <div
                 key={identity.id}
-                className="bg-muted/50 flex h-14 items-center justify-between rounded-lg border p-3"
+                className="flex h-14 items-center justify-between rounded-lg border bg-muted/50 p-3"
               >
                 <div className="flex items-center gap-3">
                   <OauthProviderLogoImage providerId={identity.provider} />
@@ -105,7 +105,7 @@ export function LinkAccountsList(props: { providers: Provider[] }) {
                     </span>
 
                     <If condition={identity.identity_data?.email}>
-                      <span className="text-muted-foreground text-xs">
+                      <span className="text-xs text-muted-foreground">
                         {identity.identity_data?.email as string}
                       </span>
                     </If>
@@ -168,11 +168,11 @@ export function LinkAccountsList(props: { providers: Provider[] }) {
 
         <div className="space-y-3">
           <div>
-            <h3 className="text-foreground text-sm font-medium">
+            <h3 className="text-sm font-medium text-foreground">
               <Trans i18nKey={'account:availableAccounts'} />
             </h3>
 
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               <Trans i18nKey={'account:availableAccountsDescription'} />
             </p>
           </div>
@@ -181,7 +181,7 @@ export function LinkAccountsList(props: { providers: Provider[] }) {
             {availableProviders.map((provider) => (
               <button
                 key={provider}
-                className="hover:bg-muted/50 flex h-14 items-center justify-between rounded-lg border p-3 transition-colors"
+                className="flex h-14 items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
                 onClick={() => handleLinkAccount(provider)}
               >
                 <div className="flex items-center gap-3">
@@ -202,7 +202,7 @@ export function LinkAccountsList(props: { providers: Provider[] }) {
           connectedIdentities.length === 0 && availableProviders.length === 0
         }
       >
-        <div className="text-muted-foreground py-8 text-center">
+        <div className="py-8 text-center text-muted-foreground">
           <Trans i18nKey={'account:noAccountsAvailable'} />
         </div>
       </If>

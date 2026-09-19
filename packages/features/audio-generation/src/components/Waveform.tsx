@@ -176,10 +176,10 @@ export const Waveform = React.forwardRef<HTMLDivElement, WaveformProps>(
       >
         {isLoading ? (
           <div
-            className="bg-muted/50 absolute inset-0 flex animate-pulse items-center justify-center rounded"
+            className="absolute inset-0 flex animate-pulse items-center justify-center rounded bg-muted/50"
             aria-label="Loading waveform"
           >
-            <div className="bg-muted h-1/2 w-full rounded" />
+            <div className="h-1/2 w-full rounded bg-muted" />
           </div>
         ) : (
           <canvas

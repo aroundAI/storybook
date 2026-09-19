@@ -103,30 +103,30 @@ export function ImageDropzone({
       <div className="flex flex-col items-center gap-3 text-center">
         {hasError ? (
           <AlertCircle
-            className="text-destructive h-10 w-10"
+            className="h-10 w-10 text-destructive"
             aria-hidden="true"
           />
         ) : isDragActive || isDragging ? (
           <Upload
-            className="text-primary h-10 w-10 animate-bounce"
+            className="h-10 w-10 animate-bounce text-primary"
             aria-hidden="true"
           />
         ) : (
           <ImageIcon
-            className="text-muted-foreground h-10 w-10"
+            className="h-10 w-10 text-muted-foreground"
             aria-hidden="true"
           />
         )}
 
         <div className="space-y-1">
-          <p className="text-foreground text-sm font-medium">
+          <p className="text-sm font-medium text-foreground">
             {isDragActive
               ? 'Drop image here'
               : 'Drag and drop an image, or click to browse'}
           </p>
           <p
             id="dropzone-description"
-            className="text-muted-foreground text-xs"
+            className="text-xs text-muted-foreground"
           >
             PNG, JPG, JPEG, or WebP up to {formatFileSize(maxSize)}
           </p>
@@ -134,7 +134,7 @@ export function ImageDropzone({
 
         {error && (
           <div className="mt-2 space-y-2">
-            <p className="text-destructive text-sm" role="alert">
+            <p className="text-sm text-destructive" role="alert">
               {error}
             </p>
             {onRetry && (

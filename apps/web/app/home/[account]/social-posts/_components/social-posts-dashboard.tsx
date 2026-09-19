@@ -173,7 +173,7 @@ export function SocialPostsDashboard({
         </div>
         <div>
           <h2 className="text-lg font-semibold">LinkedIn Posts</h2>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             Paste your notes, generate variants, review, and publish.
           </p>
         </div>

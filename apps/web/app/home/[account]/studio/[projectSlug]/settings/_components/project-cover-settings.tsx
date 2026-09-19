@@ -127,7 +127,7 @@ export function ProjectCoverSettings({
           <label
             className={cn(
               'relative flex h-48 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed',
-              'bg-muted/30 hover:bg-muted/50 overflow-hidden transition-colors',
+              'overflow-hidden bg-muted/30 transition-colors hover:bg-muted/50',
               isPending && 'cursor-wait opacity-70',
               error && 'border-destructive',
             )}
@@ -156,12 +156,12 @@ export function ProjectCoverSettings({
                 )}
               </div>
             ) : (
-              <div className="text-muted-foreground flex flex-col items-center gap-2">
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
                 {isPending ? (
                   <Loader2 className="h-8 w-8 animate-spin" />
                 ) : (
                   <>
-                    <div className="bg-muted rounded-full p-4">
+                    <div className="rounded-full bg-muted p-4">
                       <Upload className="h-8 w-8" />
                     </div>
                     <div className="text-center">
@@ -177,7 +177,7 @@ export function ProjectCoverSettings({
           </label>
 
           {/* Error Message */}
-          {error && <p className="text-destructive text-sm">{error}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
 
           {/* Actions */}
           {currentUrl && !isPending && (

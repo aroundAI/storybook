@@ -6,7 +6,7 @@
  */
 
 export {
-    uploadWithPresignedUrl,
-    uploadAvatar,
-    uploadProjectCover,
+  uploadWithPresignedUrl,
+  uploadAvatar,
+  uploadProjectCover,
 } from './client/presigned-upload';

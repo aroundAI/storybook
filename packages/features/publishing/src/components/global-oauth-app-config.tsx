@@ -219,7 +219,7 @@ function GlobalPlatformCredentialsCard({
 
         {/* Redirect URI */}
         <div>
-          <Label className="text-muted-foreground text-xs">
+          <Label className="text-xs text-muted-foreground">
             Redirect URI (copy this)
           </Label>
           <div className="mt-1 flex items-center gap-2">
@@ -267,7 +267,7 @@ function GlobalPlatformCredentialsCard({
               <button
                 type="button"
                 onClick={() => setShowSecret(!showSecret)}
-                className="text-muted-foreground hover:text-foreground absolute right-2 top-1/2 -translate-y-1/2"
+                className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 {showSecret ? (
                   <EyeOff className="h-4 w-4" />

@@ -62,16 +62,16 @@ export function DocsSidebar({
   };
 
   return (
-    <div className="bg-muted/30 flex h-screen w-80 flex-col overflow-hidden border-r">
+    <div className="flex h-screen w-80 flex-col overflow-hidden border-r bg-muted/30">
       {/* Header */}
       <div className="flex-shrink-0 border-b p-4">
         <div className="mb-2 flex items-center gap-2">
-          <Code2 className="text-primary h-6 w-6" />
+          <Code2 className="h-6 w-6 text-primary" />
 
           <h1 className="text-xl font-bold">Components</h1>
         </div>
 
-        <p className="text-muted-foreground text-sm">
+        <p className="text-sm text-muted-foreground">
           This is the documentation for the components of the UI Kit.
         </p>
       </div>
@@ -140,7 +140,7 @@ export function DocsSidebar({
         {/* Search Input */}
         <div className="space-y-2">
           <div className="relative">
-            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
             <Input
               placeholder={'Search for a component'}
@@ -173,7 +173,7 @@ export function DocsSidebar({
           <div className="px-4 pb-4">
             <div className="space-y-1">
               {filteredComponents.length === 0 ? (
-                <div className="text-muted-foreground py-8 text-center">
+                <div className="py-8 text-center text-muted-foreground">
                   <p className="text-sm">No components found</p>
                   <p className="mt-1 text-xs">
                     Try adjusting your search or category filter

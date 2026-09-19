@@ -154,10 +154,10 @@ export function PlanPicker(
                                   htmlFor={interval}
                                   key={interval}
                                   className={cn(
-                                    'focus-within:border-primary flex items-center gap-x-2.5 rounded-md border px-2.5 py-2 transition-colors',
+                                    'flex items-center gap-x-2.5 rounded-md border px-2.5 py-2 transition-colors focus-within:border-primary',
                                     {
-                                      ['bg-muted border-input']: selected,
-                                      ['hover:border-input border-transparent']:
+                                      ['border-input bg-muted']: selected,
+                                      ['border-transparent hover:border-input']:
                                         !selected,
                                     },
                                   )}
@@ -322,7 +322,7 @@ export function PlanPicker(
 
                             <div
                               className={
-                                'flex flex-col gap-y-3 lg:flex-row lg:items-center lg:space-x-4 lg:space-y-0 lg:text-right'
+                                'flex flex-col gap-y-3 lg:flex-row lg:items-center lg:space-y-0 lg:space-x-4 lg:text-right'
                               }
                             >
                               <div>
@@ -427,7 +427,7 @@ function PlanDetails({
     <div
       key={key}
       className={
-        'fade-in animate-in zoom-in-95 flex w-full flex-col space-y-4 py-2 lg:px-8'
+        'flex w-full flex-col space-y-4 py-2 animate-in fade-in zoom-in-95 lg:px-8'
       }
     >
       <div className={'flex flex-col space-y-0.5'}>
@@ -444,7 +444,7 @@ function PlanDetails({
         </span>
 
         <p>
-          <span className={'text-muted-foreground text-sm'}>
+          <span className={'text-sm text-muted-foreground'}>
             <Trans
               i18nKey={`billing:plans.${selectedProduct.id}.description`}
               defaults={selectedProduct.description}
@@ -496,7 +496,7 @@ function Price(props: React.PropsWithChildren) {
   return (
     <span
       className={
-        'animate-in slide-in-from-left-4 fade-in text-xl font-semibold tracking-tight duration-500'
+        'text-xl font-semibold tracking-tight duration-500 animate-in fade-in slide-in-from-left-4'
       }
     >
       {props.children}

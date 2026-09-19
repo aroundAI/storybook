@@ -253,14 +253,14 @@ function IssueCard({
               {issue.type.replace(/_/g, ' ')}
             </Badge>
           </div>
-          <p className="text-muted-foreground line-clamp-1 text-sm">
+          <p className="line-clamp-1 text-sm text-muted-foreground">
             {issue.description}
           </p>
         </div>
         {isExpanded ? (
-          <ChevronUp className="text-muted-foreground h-4 w-4 flex-shrink-0" />
+          <ChevronUp className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
         ) : (
-          <ChevronDown className="text-muted-foreground h-4 w-4 flex-shrink-0" />
+          <ChevronDown className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
         )}
       </button>
 
@@ -272,14 +272,14 @@ function IssueCard({
           {/* Locations */}
           {issue.locations.length > 0 && (
             <div className="space-y-1">
-              <span className="text-muted-foreground text-xs font-medium">
+              <span className="text-xs font-medium text-muted-foreground">
                 Found in:
               </span>
               {issue.locations.map((loc, i) => (
                 <button
                   key={i}
                   onClick={() => onNavigate?.(loc)}
-                  className="bg-background hover:bg-muted block w-full rounded p-2 text-left text-sm transition-colors"
+                  className="block w-full rounded bg-background p-2 text-left text-sm transition-colors hover:bg-muted"
                   type="button"
                   disabled={!onNavigate}
                 >
@@ -288,7 +288,7 @@ function IssueCard({
                     ` - Scene ${loc.sceneNumber}`}
                   {loc.shotNumber !== undefined && ` - Shot ${loc.shotNumber}`}
                   {loc.excerpt && (
-                    <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                       &quot;{loc.excerpt}&quot;
                     </p>
                   )}

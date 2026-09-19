@@ -70,7 +70,7 @@ export function AnalyticsCard({
         </div>
         <div className="flex items-center gap-2">
           {badge && (
-            <span className="rounded border border-indigo-100 bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
+            <span className="rounded border border-indigo-100 bg-white px-2 py-0.5 text-[10px] font-bold tracking-wider text-indigo-700 uppercase dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
               {badge}
             </span>
           )}

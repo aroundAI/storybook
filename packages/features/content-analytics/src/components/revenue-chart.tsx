@@ -53,7 +53,7 @@ export function RevenueChart({ data, isLoading }: RevenueChartProps) {
 
   if (chartData.length === 0) {
     return (
-      <div className="text-muted-foreground flex h-[300px] items-center justify-center">
+      <div className="flex h-[300px] items-center justify-center text-muted-foreground">
         No revenue data for this period
       </div>
     );

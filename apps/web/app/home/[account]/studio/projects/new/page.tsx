@@ -34,7 +34,7 @@ async function NewFilmProjectPage({ params }: PageProps) {
         </Button>
 
         <Heading level={2}>Create New Project</Heading>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           Set up your Film Studio project with custom settings for video and
           audio generation.
         </p>
@@ -52,10 +52,10 @@ function FormSkeleton() {
     <div className="animate-pulse space-y-8">
       {[1, 2, 3, 4].map((i) => (
         <div key={i} className="rounded-lg border p-6">
-          <div className="bg-muted mb-4 h-6 w-48 rounded" />
+          <div className="mb-4 h-6 w-48 rounded bg-muted" />
           <div className="space-y-4">
-            <div className="bg-muted h-10 w-full rounded" />
-            <div className="bg-muted h-10 w-full rounded" />
+            <div className="h-10 w-full rounded bg-muted" />
+            <div className="h-10 w-full rounded bg-muted" />
           </div>
         </div>
       ))}

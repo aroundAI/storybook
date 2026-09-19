@@ -206,7 +206,7 @@ export function AddThreadDialog({
                         <SelectItem key={type.value} value={type.value}>
                           <div className="flex flex-col">
                             <span>{type.label}</span>
-                            <span className="text-muted-foreground text-xs">
+                            <span className="text-xs text-muted-foreground">
                               {type.description}
                             </span>
                           </div>

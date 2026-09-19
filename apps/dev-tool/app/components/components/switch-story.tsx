@@ -221,11 +221,11 @@ export function SwitchStory() {
           )}
           {controls.labelText}
           {controls.required && (
-            <span className="text-destructive ml-1">*</span>
+            <span className="ml-1 text-destructive">*</span>
           )}
         </Label>
         {controls.withDescription && (
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             {controls.description}
           </p>
         )}
@@ -527,7 +527,7 @@ export function SwitchStory() {
                   <Bell className="mr-2 h-4 w-4" />
                   Push Notifications
                 </Label>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Get notified about important updates
                 </p>
               </div>
@@ -542,7 +542,7 @@ export function SwitchStory() {
                   <Mail className="mr-2 h-4 w-4" />
                   Email Notifications
                 </Label>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Receive updates via email
                 </p>
               </div>
@@ -557,7 +557,7 @@ export function SwitchStory() {
                   <Moon className="mr-2 h-4 w-4" />
                   Dark Mode
                 </Label>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Switch to dark theme
                 </p>
               </div>
@@ -572,7 +572,7 @@ export function SwitchStory() {
                   <Shield className="mr-2 h-4 w-4" />
                   Two-Factor Authentication
                 </Label>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Add an extra layer of security
                 </p>
               </div>
@@ -593,7 +593,7 @@ export function SwitchStory() {
               <div className="flex items-center justify-between">
                 <Label htmlFor="terms">
                   Accept Terms & Conditions
-                  <span className="text-destructive ml-1">*</span>
+                  <span className="ml-1 text-destructive">*</span>
                 </Label>
                 <Switch id="terms" />
               </div>
@@ -604,7 +604,7 @@ export function SwitchStory() {
                 <Label htmlFor="marketing">Subscribe to marketing emails</Label>
                 <Switch id="marketing" defaultChecked />
               </div>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-muted-foreground">
                 You can unsubscribe at any time
               </p>
             </div>
@@ -619,7 +619,7 @@ export function SwitchStory() {
                   className="data-[state=checked]:bg-destructive"
                 />
               </div>
-              <p className="text-destructive text-sm">
+              <p className="text-sm text-destructive">
                 This feature is currently unavailable
               </p>
             </div>
@@ -641,12 +641,12 @@ export function SwitchStory() {
         <div className="space-y-6">
           <div>
             <h4 className="mb-3 text-lg font-semibold">Switch</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               A toggle switch component for boolean states. Built on Radix UI
               Switch primitive.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -790,7 +790,7 @@ export function SwitchStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Keyboard Navigation</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               • Tab to focus the switch
               <br />
               • Space or Enter to toggle state
@@ -799,14 +799,14 @@ export function SwitchStory() {
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Screen Reader Support</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Always provide clear labels and descriptions. Use ARIA attributes
               appropriately.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Visual Design</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Ensure sufficient color contrast and provide visual feedback for
               all states.
             </p>
@@ -824,20 +824,20 @@ export function SwitchStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Settings Panel</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Group related switches with descriptive labels and help text.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Feature Toggles</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Enable/disable application features with immediate visual
               feedback.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Permission Controls</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Control user permissions and privacy settings with clear labeling.
             </p>
           </div>

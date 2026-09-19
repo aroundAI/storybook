@@ -198,9 +198,9 @@ export function CardStory() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold">1,234</p>
-                <p className="text-muted-foreground text-sm">Total Users</p>
+                <p className="text-sm text-muted-foreground">Total Users</p>
               </div>
-              <User className="text-muted-foreground h-8 w-8" />
+              <User className="h-8 w-8 text-muted-foreground" />
             </div>
           )}
 
@@ -211,7 +211,7 @@ export function CardStory() {
               </Avatar>
               <div>
                 <h3 className="font-semibold">John Doe</h3>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Software Developer
                 </p>
               </div>
@@ -222,7 +222,7 @@ export function CardStory() {
             <div className="space-y-2">
               <Badge variant="secondary">New</Badge>
               <h3 className="font-semibold">Amazing Feature</h3>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-muted-foreground">
                 This feature will revolutionize your workflow.
               </p>
             </div>
@@ -241,7 +241,7 @@ export function CardStory() {
                 </Button>
               </div>
             ) : (
-              <p className="text-muted-foreground text-sm">Footer text</p>
+              <p className="text-sm text-muted-foreground">Footer text</p>
             )}
           </CardFooter>
         )}
@@ -385,13 +385,13 @@ export function CardStory() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-2xl font-bold">2,847</p>
-                  <p className="text-muted-foreground text-sm">Active Users</p>
+                  <p className="text-sm text-muted-foreground">Active Users</p>
                 </div>
-                <User className="text-muted-foreground h-8 w-8" />
+                <User className="h-8 w-8 text-muted-foreground" />
               </div>
               <div className="mt-4">
                 <Progress value={75} className="h-2" />
-                <p className="text-muted-foreground mt-2 text-xs">
+                <p className="mt-2 text-xs text-muted-foreground">
                   75% of goal
                 </p>
               </div>
@@ -406,7 +406,7 @@ export function CardStory() {
                 </Avatar>
                 <div className="flex-1">
                   <h3 className="font-semibold">Sarah Anderson</h3>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-sm text-muted-foreground">
                     Product Manager
                   </p>
                   <div className="mt-2 flex gap-1">
@@ -429,16 +429,16 @@ export function CardStory() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Badge variant="secondary">Featured</Badge>
-                  <Heart className="text-muted-foreground h-4 w-4" />
+                  <Heart className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <h3 className="font-semibold">Advanced Analytics</h3>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Get detailed insights into your application performance with
                   our advanced analytics dashboard.
                 </p>
                 <div className="flex items-center gap-2">
-                  <Eye className="text-muted-foreground h-4 w-4" />
-                  <span className="text-muted-foreground text-sm">
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
                     1.2k views
                   </span>
                 </div>
@@ -454,12 +454,12 @@ export function CardStory() {
     <div className="space-y-6">
       <div>
         <h4 className="mb-3 text-lg font-semibold">Card</h4>
-        <p className="text-muted-foreground mb-3 text-sm">
+        <p className="mb-3 text-sm text-muted-foreground">
           Container component for grouping related content with optional header
           and footer.
         </p>
         <div className="overflow-x-auto">
-          <table className="border-border w-full border-collapse border">
+          <table className="w-full border-collapse border border-border">
             <thead>
               <tr className="border-b">
                 <th className="p-3 text-left font-medium">Prop</th>
@@ -488,7 +488,7 @@ export function CardStory() {
 
       <div>
         <h4 className="mb-3 text-lg font-semibold">CardHeader</h4>
-        <p className="text-muted-foreground mb-3 text-sm">
+        <p className="mb-3 text-sm text-muted-foreground">
           Optional header section for the card, typically containing title and
           description.
         </p>
@@ -496,28 +496,28 @@ export function CardStory() {
 
       <div>
         <h4 className="mb-3 text-lg font-semibold">CardTitle</h4>
-        <p className="text-muted-foreground mb-3 text-sm">
+        <p className="mb-3 text-sm text-muted-foreground">
           Main heading for the card header.
         </p>
       </div>
 
       <div>
         <h4 className="mb-3 text-lg font-semibold">CardDescription</h4>
-        <p className="text-muted-foreground mb-3 text-sm">
+        <p className="mb-3 text-sm text-muted-foreground">
           Descriptive text that appears below the card title.
         </p>
       </div>
 
       <div>
         <h4 className="mb-3 text-lg font-semibold">CardContent</h4>
-        <p className="text-muted-foreground mb-3 text-sm">
+        <p className="mb-3 text-sm text-muted-foreground">
           Main content area of the card.
         </p>
       </div>
 
       <div>
         <h4 className="mb-3 text-lg font-semibold">CardFooter</h4>
-        <p className="text-muted-foreground mb-3 text-sm">
+        <p className="mb-3 text-sm text-muted-foreground">
           Optional footer section, typically containing actions or additional
           information.
         </p>
@@ -563,21 +563,21 @@ export function CardStory() {
         <div className="space-y-3">
           <div>
             <h5 className="text-sm font-semibold">Header</h5>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Keep titles concise and descriptive. Use descriptions for
               additional context when needed.
             </p>
           </div>
           <div>
             <h5 className="text-sm font-semibold">Content</h5>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Focus on the most important information. Use visual hierarchy to
               guide the user's attention.
             </p>
           </div>
           <div>
             <h5 className="text-sm font-semibold">Footer</h5>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Include primary actions or supplementary information. Limit to 1-2
               primary actions.
             </p>
@@ -590,13 +590,13 @@ export function CardStory() {
         <div className="space-y-2">
           <div>
             <h5 className="text-sm font-semibold">Semantic Structure</h5>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Use proper heading hierarchy (h1-h6) for card titles and sections.
             </p>
           </div>
           <div>
             <h5 className="text-sm font-semibold">Interactive Cards</h5>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               If the entire card is clickable, ensure it has proper focus states
               and keyboard navigation support.
             </p>

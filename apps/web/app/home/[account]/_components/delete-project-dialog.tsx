@@ -79,7 +79,7 @@ export function DeleteProjectDialog({
 
           <div className="mt-4 space-y-2">
             <div className="font-semibold">{projectName}</div>
-            <div className="text-destructive text-sm">
+            <div className="text-sm text-destructive">
               <Trans i18nKey={'projects:deleteProjectWarning'} />
             </div>
           </div>

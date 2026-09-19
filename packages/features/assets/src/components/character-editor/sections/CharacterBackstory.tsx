@@ -54,7 +54,7 @@ export function CharacterBackstory({
                 The character&apos;s history, background, and important life
                 events.
               </FormDescription>
-              <span className="text-muted-foreground text-xs">
+              <span className="text-xs text-muted-foreground">
                 {backstory.length}/5000
               </span>
             </div>

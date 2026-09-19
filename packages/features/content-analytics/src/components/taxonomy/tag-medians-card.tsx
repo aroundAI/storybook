@@ -86,13 +86,13 @@ export function TagMediansCard({
     // than a second case here that nothing can reach.
     return (
       <div className={'flex flex-col gap-3'}>
-        <p className={'text-muted-foreground text-sm'}>
+        <p className={'text-sm text-muted-foreground'}>
           Tag-level medians unlock once {required} videos are tagged — below
           that, per-tag samples are too small to separate a real format effect
           from luck.
         </p>
         <Progress value={(taggedCount / required) * 100} />
-        <p className={'text-muted-foreground text-xs'}>
+        <p className={'text-xs text-muted-foreground'}>
           {taggedCount} of {required} videos tagged
         </p>
       </div>
@@ -102,7 +102,7 @@ export function TagMediansCard({
   if (rows.length === 0) {
     return (
       <p
-        className={'text-muted-foreground text-sm'}
+        className={'text-sm text-muted-foreground'}
         data-test={'tag-medians-empty'}
       >
         No {segmentNoun} has enough videos yet for a reliable median.
@@ -128,21 +128,21 @@ export function TagMediansCard({
             <span className={'truncate text-sm font-medium'}>
               {tagLabel(row.segment)}
             </span>
-            <span className={'text-muted-foreground shrink-0 text-xs'}>
+            <span className={'shrink-0 text-xs text-muted-foreground'}>
               {formatViews(row.medianViews)} median · {row.matureVideoCount} of{' '}
               {row.videoCount} videos
             </span>
           </div>
 
-          <div className={'bg-muted h-2 w-full overflow-hidden rounded-full'}>
+          <div className={'h-2 w-full overflow-hidden rounded-full bg-muted'}>
             <div
-              className={'bg-primary h-full rounded-full'}
+              className={'h-full rounded-full bg-primary'}
               style={{ width: `${(row.medianViews / maxMedian) * 100}%` }}
             />
           </div>
 
           <div
-            className={'text-muted-foreground flex flex-wrap gap-x-2 text-xs'}
+            className={'flex flex-wrap gap-x-2 text-xs text-muted-foreground'}
           >
             {row.confidence !== 'reportable' ? (
               <span>

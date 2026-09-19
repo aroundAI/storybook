@@ -17,15 +17,15 @@ export function SceneContent({ scene, isActive = false }: SceneContentProps) {
     <div
       id={`scene-${scene.number}`}
       className={cn(
-        'border-border/30 screenplay-format scroll-mt-4 border-b pb-8 last:border-b-0',
-        isActive && 'bg-accent/10 -mx-2 rounded-lg px-6 py-4',
+        'screenplay-format scroll-mt-4 border-b border-border/30 pb-8 last:border-b-0',
+        isActive && '-mx-2 rounded-lg bg-accent/10 px-6 py-4',
       )}
     >
       {/* Scene Heading - Slug Line (uppercase, bold) */}
       <div className="slug-line text-sm">{scene.heading}</div>
 
       {/* Scene metadata - using mono for timecodes */}
-      <div className="text-muted-foreground mono-data mb-4 flex gap-4 text-xs">
+      <div className="mono-data mb-4 flex gap-4 text-xs text-muted-foreground">
         <span>{scene.location}</span>
         <span>•</span>
         <span>{scene.timeOfDay}</span>
@@ -34,7 +34,7 @@ export function SceneContent({ scene, isActive = false }: SceneContentProps) {
       </div>
 
       {/* Action/Description Block */}
-      <div className="action whitespace-pre-wrap text-sm">
+      <div className="action text-sm whitespace-pre-wrap">
         {scene.description}
       </div>
 

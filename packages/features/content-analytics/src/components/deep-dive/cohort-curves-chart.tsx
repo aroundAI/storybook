@@ -87,7 +87,7 @@ export function CohortCurvesChart({
 
   if (cohorts.length === 0) {
     return (
-      <p className={'text-muted-foreground text-sm'}>No upload cohorts yet.</p>
+      <p className={'text-sm text-muted-foreground'}>No upload cohorts yet.</p>
     );
   }
 
@@ -127,7 +127,7 @@ export function CohortCurvesChart({
       <div className={'overflow-x-auto'}>
         <table className={'w-full min-w-[420px] text-sm'}>
           <thead>
-            <tr className={'text-muted-foreground text-xs'}>
+            <tr className={'text-xs text-muted-foreground'}>
               <th className={'py-1 pr-3 text-left font-medium'}>Cohort</th>
               {checkpointAges.map((age) => (
                 <th key={age} className={'px-2 py-1 text-right font-medium'}>
@@ -143,7 +143,7 @@ export function CohortCurvesChart({
                   <span className={'font-medium'}>
                     {formatCohort(cohort.cohort, bucket)}
                   </span>
-                  <span className={'text-muted-foreground ml-2 text-xs'}>
+                  <span className={'ml-2 text-xs text-muted-foreground'}>
                     {cohort.videoCount} videos
                   </span>
                 </td>
@@ -179,7 +179,7 @@ export function CohortCurvesChart({
                           <span>{formatViews(point.medianViews)}</span>
 
                           <span
-                            className={'bg-primary/70 h-1 rounded-full'}
+                            className={'h-1 rounded-full bg-primary/70'}
                             style={{
                               // Clamped: a point excluded from the ruler
                               // can exceed it, and an unclamped bar would
@@ -210,7 +210,7 @@ export function CohortCurvesChart({
                             </span>
                           ) : point.growthSuppressedBecause ? (
                             <span
-                              className={'text-muted-foreground/70 text-xs'}
+                              className={'text-xs text-muted-foreground/70'}
                               title={
                                 SUPPRESSION_TITLE[point.growthSuppressedBecause]
                               }
@@ -220,7 +220,7 @@ export function CohortCurvesChart({
                           ) : null}
                         </span>
                       ) : (
-                        <span className={'text-muted-foreground text-xs'}>
+                        <span className={'text-xs text-muted-foreground'}>
                           —
                         </span>
                       )}
@@ -233,7 +233,7 @@ export function CohortCurvesChart({
         </table>
       </div>
 
-      <p className={'text-muted-foreground text-xs'}>
+      <p className={'text-xs text-muted-foreground'}>
         Median views per video at each age, with growth against the previous
         cohort. Compare down a column — same age, different upload period.
         Dashes mark cohorts too young to have reached that checkpoint; dimmed

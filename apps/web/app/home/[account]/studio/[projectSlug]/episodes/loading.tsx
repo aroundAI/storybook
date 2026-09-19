@@ -6,7 +6,7 @@ export default function EpisodesLoading() {
   return (
     <div className="flex h-full flex-col">
       {/* Header skeleton */}
-      <header className="bg-card border-b border-gray-200 px-6 py-4">
+      <header className="border-b border-gray-200 bg-card px-6 py-4">
         <div className="mb-2">
           <Skeleton className="h-4 w-32" />
         </div>

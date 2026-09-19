@@ -94,8 +94,8 @@ export function AudioAssetCard({
     <Card
       className={cn(
         'group relative overflow-hidden transition-all hover:shadow-md',
-        isSelectable && 'hover:ring-primary/50 cursor-pointer hover:ring-2',
-        isSelected && 'ring-primary ring-2',
+        isSelectable && 'cursor-pointer hover:ring-2 hover:ring-primary/50',
+        isSelected && 'ring-2 ring-primary',
       )}
       onClick={() => isSelectable && onSelect?.(asset)}
     >
@@ -133,7 +133,7 @@ export function AudioAssetCard({
                 <Badge variant="secondary" className="text-xs capitalize">
                   {asset.audioType}
                 </Badge>
-                <span className="text-muted-foreground text-xs">
+                <span className="text-xs text-muted-foreground">
                   {formatDuration(asset.durationSeconds)}
                 </span>
               </div>
@@ -184,7 +184,7 @@ export function AudioAssetCard({
         </div>
 
         {/* Waveform / Play Area */}
-        <div className="bg-muted/50 relative mb-3 flex h-12 items-center justify-center rounded-lg">
+        <div className="relative mb-3 flex h-12 items-center justify-center rounded-lg bg-muted/50">
           {asset.status === 'completed' && asset.fileUrl ? (
             <>
               {/* Simple waveform placeholder */}
@@ -232,7 +232,7 @@ export function AudioAssetCard({
         </div>
 
         {/* Footer */}
-        <div className="text-muted-foreground flex items-center justify-between text-xs">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>Used {asset.usageCount}x</span>
           <span>{new Date(asset.createdAt).toLocaleDateString()}</span>
         </div>

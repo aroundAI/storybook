@@ -100,7 +100,7 @@ export function LanguageTrendChart({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             No trend data available. Publish content to see language trends.
           </p>
         </CardContent>

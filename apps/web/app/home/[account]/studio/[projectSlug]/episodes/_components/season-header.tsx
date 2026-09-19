@@ -273,7 +273,7 @@ export function SeasonHeader({
               {totalEpisodes} {totalEpisodes === 1 ? 'episode' : 'episodes'}
             </p>
             {seasonDescription && (
-              <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
+              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                 {seasonDescription}
               </p>
             )}
@@ -352,7 +352,7 @@ export function SeasonHeader({
                     }}
                   >
                     Reset to Story
-                    <span className="text-muted-foreground ml-auto text-xs">
+                    <span className="ml-auto text-xs text-muted-foreground">
                       Clears screenplay, shots, audio
                     </span>
                   </DropdownMenuItem>
@@ -363,7 +363,7 @@ export function SeasonHeader({
                     }}
                   >
                     Reset to Screenplay
-                    <span className="text-muted-foreground ml-auto text-xs">
+                    <span className="ml-auto text-xs text-muted-foreground">
                       Clears shots, audio
                     </span>
                   </DropdownMenuItem>
@@ -376,7 +376,7 @@ export function SeasonHeader({
                     }}
                   >
                     Reset to Draft
-                    <span className="text-muted-foreground ml-auto text-xs">
+                    <span className="ml-auto text-xs text-muted-foreground">
                       Clears everything
                     </span>
                   </DropdownMenuItem>

@@ -98,7 +98,7 @@ export function PlatformFilter({
             {platforms.map((platform) => (
               <label
                 key={platform.id}
-                className="hover:bg-muted flex cursor-pointer items-center gap-3 rounded-md p-2"
+                className="flex cursor-pointer items-center gap-3 rounded-md p-2 hover:bg-muted"
               >
                 <Checkbox
                   checked={selected.includes(platform.id)}

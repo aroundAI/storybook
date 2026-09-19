@@ -102,13 +102,13 @@ export function StudioProjectsGrid({
           <h1 className="text-3xl font-bold sm:text-4xl">
             Film Studio Projects
           </h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="mt-2 text-muted-foreground">
             Your AI-generated video projects, organized by creation date.
           </p>
         </div>
         <div className="flex items-center gap-4">
           <div className="relative w-48">
-            <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search projects..."
               value={searchQuery}
@@ -119,7 +119,7 @@ export function StudioProjectsGrid({
           </div>
           <Link
             href={`${basePath}/projects/new`}
-            className="bg-primary hover:bg-primary/90 inline-flex items-center rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors"
+            className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary/90"
             data-test="new-project-button"
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -179,18 +179,18 @@ function NewProjectCard({ href }: { href: string }) {
           'relative cursor-pointer overflow-hidden rounded-xl',
           'aspect-[4/3] min-h-[160px]',
           'bg-muted/50 dark:bg-muted/20',
-          'border-border border-2 border-dashed',
+          'border-2 border-dashed border-border',
           'hover:border-muted-foreground/50 hover:shadow-lg',
           'transition-all duration-200',
           'flex flex-col items-center justify-center p-4 text-center',
         )}
         data-test="new-project-card"
       >
-        <div className="bg-muted mb-3 flex h-16 w-16 items-center justify-center rounded-full">
-          <Plus className="text-muted-foreground h-8 w-8" />
+        <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+          <Plus className="h-8 w-8 text-muted-foreground" />
         </div>
         <h3 className="text-lg font-medium">New Project</h3>
-        <p className="text-muted-foreground mt-1 text-sm">
+        <p className="mt-1 text-sm text-muted-foreground">
           Start a new video series
         </p>
       </div>

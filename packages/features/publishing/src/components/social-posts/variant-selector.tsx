@@ -54,8 +54,8 @@ export function VariantSelector({
     return (
       <Card>
         <CardContent className="py-8 text-center">
-          <Type className="text-muted-foreground mx-auto mb-3 h-8 w-8" />
-          <p className="text-muted-foreground text-sm">
+          <Type className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
             No variants generated yet. Paste your notes above and click
             &quot;Generate&quot;.
           </p>
@@ -144,7 +144,7 @@ export function VariantSelector({
             />
           ) : (
             <div className="max-h-96 overflow-y-auto rounded-md border bg-white p-4 dark:bg-zinc-950">
-              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+              <pre className="font-sans text-sm leading-relaxed whitespace-pre-wrap">
                 {finalText}
               </pre>
             </div>

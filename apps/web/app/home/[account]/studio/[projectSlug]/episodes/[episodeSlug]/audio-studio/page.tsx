@@ -16,7 +16,7 @@ export default function AudioStudioPage() {
   if (!hasDialogue) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-8">
-        <div className="bg-card rounded-2xl border border-gray-200 p-12 text-center shadow-sm">
+        <div className="rounded-2xl border border-gray-200 bg-card p-12 text-center shadow-sm">
           <div className="mb-4 text-4xl">🔒</div>
           <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
             Audio Studio Locked

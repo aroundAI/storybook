@@ -103,7 +103,7 @@ function DeleteTeamContainer(props: {
           <Trans i18nKey={'teams:deleteTeam'} />
         </span>
 
-        <p className={'text-muted-foreground text-sm'}>
+        <p className={'text-sm text-muted-foreground'}>
           <Trans
             i18nKey={'teams:deleteTeamDescription'}
             values={{
@@ -206,7 +206,7 @@ function DeleteTeamConfirmationForm({
           <div className={'flex flex-col space-y-2'}>
             <div
               className={
-                'border-destructive text-destructive my-4 flex flex-col space-y-2 rounded-md border-2 p-4 text-sm'
+                'my-4 flex flex-col space-y-2 rounded-md border-2 border-destructive p-4 text-sm text-destructive'
               }
             >
               <div>
@@ -276,7 +276,7 @@ function LeaveTeamContainer(props: {
 
   return (
     <div className={'flex flex-col space-y-4'}>
-      <p className={'text-muted-foreground text-sm'}>
+      <p className={'text-sm text-muted-foreground'}>
         <Trans
           i18nKey={'teams:leaveTeamDescription'}
           values={{
@@ -429,7 +429,7 @@ function DeleteTeamErrorAlert() {
 
 function DangerZoneCard({ children }: React.PropsWithChildren) {
   return (
-    <Card className={'border-destructive border'}>
+    <Card className={'border border-destructive'}>
       <CardHeader>
         <CardTitle>
           <Trans i18nKey={'teams:settings.dangerZone'} />

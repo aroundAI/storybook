@@ -50,7 +50,7 @@ export function MultiImageUploader({
           {images.map((url, index) => (
             <div
               key={`${url}-${index}`}
-              className="bg-muted group relative aspect-video overflow-hidden rounded-md border"
+              className="group relative aspect-video overflow-hidden rounded-md border bg-muted"
             >
               {/* Image */}
               <Image
@@ -102,7 +102,7 @@ export function MultiImageUploader({
           className="h-32 w-full"
         />
         {images.length > 0 && (
-          <p className="text-muted-foreground mt-2 text-xs">
+          <p className="mt-2 text-xs text-muted-foreground">
             Upload additional reference images.
           </p>
         )}
@@ -123,7 +123,7 @@ export function MultiImageUploader({
               className="max-h-[85vh] max-w-[85vw] rounded-md object-contain shadow-2xl"
             />
             <Button
-              className="absolute right-2 top-2 rounded-full bg-black/50 text-white hover:bg-black/70"
+              className="absolute top-2 right-2 rounded-full bg-black/50 text-white hover:bg-black/70"
               size="icon"
               variant="ghost"
               onClick={() => setPreviewImage(null)}

@@ -15,7 +15,7 @@ export function RecurringElement() {
     <div className="flex w-full max-w-sm items-center justify-between rounded-md border px-3 py-2">
       <div>
         <p className="text-sm font-medium">Cold open recap</p>
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           Repeat across every episode in this season
         </p>
       </div>

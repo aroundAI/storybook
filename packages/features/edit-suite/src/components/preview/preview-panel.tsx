@@ -204,7 +204,7 @@ export function PreviewPanel() {
 
           {/* Speed overlay */}
           {speedLabel && (
-            <div className="absolute right-2 top-2 rounded bg-black/70 px-2 py-0.5 text-xs font-medium text-amber-400">
+            <div className="absolute top-2 right-2 rounded bg-black/70 px-2 py-0.5 text-xs font-medium text-amber-400">
               {speedLabel}
             </div>
           )}

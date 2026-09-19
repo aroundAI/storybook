@@ -43,7 +43,7 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
           <p className="text-2xl font-bold text-green-600">
             ${(data.totalRevenueCents / 100).toFixed(2)}
           </p>
-          <p className="text-muted-foreground text-sm">Total Revenue</p>
+          <p className="text-sm text-muted-foreground">Total Revenue</p>
         </div>
       </div>
 
@@ -69,7 +69,7 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
                       {platform.percentage.toFixed(1)}%)
                     </span>
                   </div>
-                  <div className="bg-muted h-3 overflow-hidden rounded-full">
+                  <div className="h-3 overflow-hidden rounded-full bg-muted">
                     <div
                       className={`h-full transition-all ${
                         platform.platform === 'youtube'
@@ -84,7 +84,7 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
                 </div>
               ))
             ) : (
-              <p className="text-muted-foreground py-8 text-center">
+              <p className="py-8 text-center text-muted-foreground">
                 No platform data available yet.
               </p>
             )}
@@ -101,7 +101,7 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-muted-foreground border-b text-left text-sm">
+                <tr className="border-b text-left text-sm text-muted-foreground">
                   <th className="pb-3 font-medium">Season</th>
                   <th className="pb-3 text-right font-medium">Episodes</th>
                   <th className="pb-3 text-right font-medium">Views</th>
@@ -116,7 +116,7 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
                       className="border-b last:border-0"
                     >
                       <td className="py-3 font-medium">{season.title}</td>
-                      <td className="text-muted-foreground py-3 text-right">
+                      <td className="py-3 text-right text-muted-foreground">
                         {season.episodes}
                       </td>
                       <td className="py-3 text-right">
@@ -131,7 +131,7 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
                   <tr>
                     <td
                       colSpan={4}
-                      className="text-muted-foreground py-8 text-center"
+                      className="py-8 text-center text-muted-foreground"
                     >
                       No seasons with analytics yet.
                     </td>
@@ -176,7 +176,7 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">{data.contentCount}</p>
-            <p className="text-muted-foreground text-sm">episodes</p>
+            <p className="text-sm text-muted-foreground">episodes</p>
           </CardContent>
         </Card>
 

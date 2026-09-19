@@ -949,43 +949,43 @@ export default function FormStory() {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">Form</td>
                     <td className="p-2">Form provider component</td>
                     <td className="p-2">Wrap your form with this component</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">FormField</td>
                     <td className="p-2">Controller for form fields</td>
                     <td className="p-2">Use with render prop pattern</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">FormItem</td>
                     <td className="p-2">Container for form field elements</td>
                     <td className="p-2">
                       Wraps label, control, description, message
                     </td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">FormLabel</td>
                     <td className="p-2">Accessible form label</td>
                     <td className="p-2">
                       Automatically associates with form control
                     </td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">FormControl</td>
                     <td className="p-2">Form control wrapper</td>
                     <td className="p-2">
                       Wraps input elements with accessibility attributes
                     </td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">FormDescription</td>
                     <td className="p-2">Help text for form fields</td>
                     <td className="p-2">Provides additional context</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">FormMessage</td>
                     <td className="p-2">Validation error messages</td>
                     <td className="p-2">Automatically displays field errors</td>
@@ -1007,7 +1007,7 @@ export default function FormStory() {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">useFormField</td>
                     <td className="p-2">Access field state and IDs</td>
                     <td className="p-2">
@@ -1021,7 +1021,7 @@ export default function FormStory() {
 
           <div>
             <h3 className="mb-4 text-lg font-semibold">Form Field Pattern</h3>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`<FormField
   control={form.control}
@@ -1048,11 +1048,11 @@ export default function FormStory() {
         <div className="space-y-8">
           <div>
             <h3 className="mb-4 text-lg font-semibold">Basic Setup</h3>
-            <p className="text-muted-foreground mb-4 text-sm">
+            <p className="mb-4 text-sm text-muted-foreground">
               Forms use React Hook Form with Zod validation for type-safe form
               handling.
             </p>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';

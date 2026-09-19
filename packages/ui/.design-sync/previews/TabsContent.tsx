@@ -12,7 +12,7 @@ export function Default() {
         >
           <Calendar className="h-3 w-3 shrink-0" />
           Events
-          <span className="bg-primary/15 text-primary ml-auto rounded px-1 text-[10px] font-medium">
+          <span className="ml-auto rounded bg-primary/15 px-1 text-[10px] font-medium text-primary">
             12
           </span>
         </TabsTrigger>
@@ -22,7 +22,7 @@ export function Default() {
         >
           <GitBranch className="h-3 w-3 shrink-0" />
           Threads
-          <span className="bg-primary/15 text-primary ml-auto rounded px-1 text-[10px] font-medium">
+          <span className="ml-auto rounded bg-primary/15 px-1 text-[10px] font-medium text-primary">
             4
           </span>
         </TabsTrigger>
@@ -30,17 +30,17 @@ export function Default() {
       <TabsContent value="events" className="space-y-2 p-1">
         <div className="rounded-md border p-3 text-sm">
           <p className="font-medium">Detective discovers the hidden ledger</p>
-          <p className="text-muted-foreground text-xs">Episode 3 · Scene 7</p>
+          <p className="text-xs text-muted-foreground">Episode 3 · Scene 7</p>
         </div>
         <div className="rounded-md border p-3 text-sm">
           <p className="font-medium">Mara confronts her brother</p>
-          <p className="text-muted-foreground text-xs">Episode 4 · Scene 2</p>
+          <p className="text-xs text-muted-foreground">Episode 4 · Scene 2</p>
         </div>
       </TabsContent>
       <TabsContent value="threads" className="space-y-2 p-1">
         <div className="rounded-md border p-3 text-sm">
           <p className="font-medium">Who set the warehouse fire?</p>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Opened in Episode 1 · Unresolved
           </p>
         </div>

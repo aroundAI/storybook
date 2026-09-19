@@ -296,7 +296,7 @@ function ToolbarButton({
   return (
     <button
       className={cn(
-        'inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2.5 py-1 text-xs transition-all',
+        'inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs whitespace-nowrap transition-all',
         variant === 'primary'
           ? 'border-violet-700 bg-violet-600 text-white hover:bg-violet-700'
           : active

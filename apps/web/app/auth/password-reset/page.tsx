@@ -28,7 +28,7 @@ function PasswordResetPage() {
           <Trans i18nKey={'auth:passwordResetLabel'} />
         </Heading>
 
-        <p className={'text-muted-foreground text-sm'}>
+        <p className={'text-sm text-muted-foreground'}>
           <Trans i18nKey={'auth:passwordResetSubheading'} />
         </p>
       </div>

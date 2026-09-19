@@ -331,11 +331,11 @@ function FactorQrCode({
   return (
     <div
       className={
-        'dark:bg-secondary flex flex-col space-y-4 rounded-lg border p-4'
+        'flex flex-col space-y-4 rounded-lg border p-4 dark:bg-secondary'
       }
     >
       <p>
-        <span className={'text-muted-foreground text-sm'}>
+        <span className={'text-sm text-muted-foreground'}>
           <Trans i18nKey={'account:multiFactorModalHeading'} />
         </span>
       </p>

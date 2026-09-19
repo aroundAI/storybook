@@ -85,7 +85,7 @@ async function FactsPage({ params, searchParams }: FactsPageProps) {
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <BookCheck className="text-primary h-6 w-6" />
+          <BookCheck className="h-6 w-6 text-primary" />
           <Heading level={3}>
             <Trans i18nKey="projects:factLibrary" defaults="Fact Library" />
           </Heading>

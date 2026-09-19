@@ -434,9 +434,9 @@ export function StudioSettingsForm({
                           type="button"
                           onClick={() => field.onChange(style.value)}
                           className={cn(
-                            'border-input hover:bg-accent flex flex-col items-center gap-2 rounded-lg border p-4 transition-colors',
+                            'flex flex-col items-center gap-2 rounded-lg border border-input p-4 transition-colors hover:bg-accent',
                             field.value === style.value &&
-                              'bg-primary/10 border-primary ring-primary/20 ring-2',
+                              'border-primary bg-primary/10 ring-2 ring-primary/20',
                           )}
                         >
                           <StyleIcon
@@ -450,7 +450,7 @@ export function StudioSettingsForm({
                           <span className="text-sm font-medium">
                             {style.label}
                           </span>
-                          <span className="text-muted-foreground text-center text-xs">
+                          <span className="text-center text-xs text-muted-foreground">
                             {style.description}
                           </span>
                         </button>
@@ -478,9 +478,9 @@ export function StudioSettingsForm({
                         type="button"
                         onClick={() => field.onChange(preset.value)}
                         className={cn(
-                          'border-input hover:bg-accent rounded-md border px-3 py-1.5 text-sm transition-colors',
+                          'rounded-md border border-input px-3 py-1.5 text-sm transition-colors hover:bg-accent',
                           field.value === preset.value &&
-                            'bg-primary text-primary-foreground border-primary',
+                            'border-primary bg-primary text-primary-foreground',
                         )}
                       >
                         {preset.label}
@@ -566,7 +566,7 @@ export function StudioSettingsForm({
 
           {fields.length === 0 && (
             <CardContent>
-              <div className="text-muted-foreground flex flex-col items-center gap-2 rounded-lg border border-dashed py-8 text-center text-sm">
+              <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
                 <RefreshCw className="h-8 w-8 opacity-40" />
                 <p>No recurring elements configured.</p>
                 <p className="text-xs">
@@ -631,10 +631,10 @@ function RecurringElementCard({
               className="flex min-w-0 flex-1 items-center gap-2 text-left"
             >
               <span className="truncate text-sm font-medium">{name}</span>
-              <span className="bg-muted text-muted-foreground shrink-0 rounded px-1.5 py-0.5 text-xs capitalize">
+              <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground capitalize">
                 {placement ?? 'end'}
               </span>
-              <ChevronDown className="text-muted-foreground ml-auto h-4 w-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+              <ChevronDown className="ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
             </button>
           </CollapsibleTrigger>
 
@@ -642,7 +642,7 @@ function RecurringElementCard({
             type="button"
             variant="ghost"
             size="icon"
-            className="text-muted-foreground hover:text-destructive h-8 w-8 shrink-0"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
             onClick={onRemove}
           >
             <Trash2 className="h-4 w-4" />
@@ -684,15 +684,15 @@ function RecurringElementCard({
                         type="button"
                         onClick={() => field.onChange(option.value)}
                         className={cn(
-                          'border-input hover:bg-accent flex flex-col items-start rounded-md border px-3 py-2 text-left transition-colors',
+                          'flex flex-col items-start rounded-md border border-input px-3 py-2 text-left transition-colors hover:bg-accent',
                           field.value === option.value &&
-                            'bg-primary/10 border-primary ring-primary/20 ring-1',
+                            'border-primary bg-primary/10 ring-1 ring-primary/20',
                         )}
                       >
                         <span className="text-sm font-medium">
                           {option.label}
                         </span>
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-xs text-muted-foreground">
                           {option.description}
                         </span>
                       </button>

@@ -103,7 +103,7 @@ export async function renderInviteEmail(props: Props) {
                 </Section>
               )}
 
-              <Section className="mb-[32px] mt-[32px] text-center">
+              <Section className="mt-[32px] mb-[32px] text-center">
                 <CtaButton href={props.link}>{joinTeam}</CtaButton>
               </Section>
 

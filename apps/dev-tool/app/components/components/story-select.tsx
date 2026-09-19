@@ -50,7 +50,7 @@ export function StorySelect<T extends string = string>({
                 <span className="text-sm leading-none font-medium">
                   {selectedOption.label}
                 </span>
-                <span className="text-muted-foreground text-xs leading-tight">
+                <span className="text-xs leading-tight text-muted-foreground">
                   {selectedOption.description}
                 </span>
               </div>
@@ -87,7 +87,7 @@ export function StorySelect<T extends string = string>({
                   <span className="text-sm leading-none font-medium">
                     {option.label}
                   </span>
-                  <span className="text-muted-foreground text-xs leading-tight">
+                  <span className="text-xs leading-tight text-muted-foreground">
                     {option.description}
                   </span>
                 </div>
@@ -131,7 +131,7 @@ export function SimpleStorySelect<T extends string = string>({
                 {selectedOption.label}
               </span>
 
-              <span className="text-muted-foreground text-xs leading-tight">
+              <span className="text-xs leading-tight text-muted-foreground">
                 {selectedOption.description}
               </span>
             </div>
@@ -153,7 +153,7 @@ export function SimpleStorySelect<T extends string = string>({
                 {option.label}
               </span>
 
-              <span className="text-muted-foreground text-xs leading-tight">
+              <span className="text-xs leading-tight text-muted-foreground">
                 {option.description}
               </span>
             </div>

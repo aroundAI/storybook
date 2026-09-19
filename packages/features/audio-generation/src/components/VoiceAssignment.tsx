@@ -362,7 +362,7 @@ export function VoiceAssignmentPanel({
       {/* Header with bulk actions */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Mic className="text-muted-foreground h-5 w-5" />
+          <Mic className="h-5 w-5 text-muted-foreground" />
           <span className="font-medium">Voice Assignment</span>
         </div>
 
@@ -410,7 +410,7 @@ export function VoiceAssignmentPanel({
 
       {/* Bulk mode header */}
       {isBulkMode && (
-        <div className="bg-muted/50 flex items-center justify-between rounded-lg border p-3">
+        <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-3">
           <div className="flex items-center gap-3">
             <Checkbox
               checked={isAllSelected}
@@ -452,7 +452,7 @@ export function VoiceAssignmentPanel({
               tabIndex={0}
               className={cn(
                 'flex w-full cursor-pointer items-center gap-3 rounded-lg border p-3 text-left transition-colors',
-                'hover:bg-accent focus:ring-ring focus:outline-none focus:ring-2',
+                'hover:bg-accent focus:ring-2 focus:ring-ring focus:outline-none',
                 isSelected && 'border-primary bg-primary/5',
               )}
               role="listitem"
@@ -470,7 +470,7 @@ export function VoiceAssignmentPanel({
 
               {/* Avatar */}
               <div
-                className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-cover bg-center"
+                className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted bg-cover bg-center"
                 style={
                   character.thumbnailUrl
                     ? { backgroundImage: `url(${character.thumbnailUrl})` }
@@ -480,7 +480,7 @@ export function VoiceAssignmentPanel({
                 aria-label={character.name}
               >
                 {!character.thumbnailUrl && (
-                  <span className="text-muted-foreground text-sm font-medium">
+                  <span className="text-sm font-medium text-muted-foreground">
                     {character.name.charAt(0).toUpperCase()}
                   </span>
                 )}
@@ -509,7 +509,7 @@ export function VoiceAssignmentPanel({
         })}
 
         {characters.length === 0 && (
-          <div className="text-muted-foreground py-8 text-center text-sm">
+          <div className="py-8 text-center text-sm text-muted-foreground">
             No characters in this project
           </div>
         )}

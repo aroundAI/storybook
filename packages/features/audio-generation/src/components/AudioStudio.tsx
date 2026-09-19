@@ -246,7 +246,7 @@ export function AudioStudio({
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Audio Studio</h1>
-            <p className="text-muted-foreground text-sm">{episodeTitle}</p>
+            <p className="text-sm text-muted-foreground">{episodeTitle}</p>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm">
@@ -358,7 +358,7 @@ export function AudioStudio({
               <div className="max-w-2xl space-y-8">
                 <div>
                   <h3 className="text-lg font-semibold">Audio Settings</h3>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-sm text-muted-foreground">
                     Configure default voice settings and audio preferences for
                     this episode.
                   </p>
@@ -367,7 +367,7 @@ export function AudioStudio({
                 {/* Voice Defaults Section */}
                 <div className="space-y-6 rounded-lg border p-6">
                   <h4 className="font-medium">Default Voice Settings</h4>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-sm text-muted-foreground">
                     These settings apply to all new voice generations.
                   </p>
 
@@ -375,7 +375,7 @@ export function AudioStudio({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="stability">Stability</Label>
-                      <span className="text-muted-foreground text-sm">
+                      <span className="text-sm text-muted-foreground">
                         {Math.round(voiceSettings.stability * 100)}%
                       </span>
                     </div>
@@ -392,7 +392,7 @@ export function AudioStudio({
                         }))
                       }
                     />
-                    <p className="text-muted-foreground text-xs">
+                    <p className="text-xs text-muted-foreground">
                       Higher values make the voice more consistent but less
                       expressive.
                     </p>
@@ -402,7 +402,7 @@ export function AudioStudio({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="similarity">Similarity Boost</Label>
-                      <span className="text-muted-foreground text-sm">
+                      <span className="text-sm text-muted-foreground">
                         {Math.round(voiceSettings.similarityBoost * 100)}%
                       </span>
                     </div>
@@ -419,7 +419,7 @@ export function AudioStudio({
                         }))
                       }
                     />
-                    <p className="text-muted-foreground text-xs">
+                    <p className="text-xs text-muted-foreground">
                       Higher values make the output more similar to the original
                       voice.
                     </p>
@@ -429,7 +429,7 @@ export function AudioStudio({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="speed">Speed</Label>
-                      <span className="text-muted-foreground text-sm">
+                      <span className="text-sm text-muted-foreground">
                         {voiceSettings.speed.toFixed(2)}x
                       </span>
                     </div>
@@ -446,7 +446,7 @@ export function AudioStudio({
                         }))
                       }
                     />
-                    <p className="text-muted-foreground text-xs">
+                    <p className="text-xs text-muted-foreground">
                       Adjust the playback speed of generated audio.
                     </p>
                   </div>
@@ -457,7 +457,7 @@ export function AudioStudio({
                       <Label htmlFor="speaker-boost" className="font-medium">
                         Speaker Boost
                       </Label>
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-sm text-muted-foreground">
                         Enhance voice clarity and presence
                       </p>
                     </div>

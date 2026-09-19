@@ -9,7 +9,7 @@ export default async function TeamsLayout({
   await requireUserInServerComponent();
 
   return (
-    <div className="from-background to-muted/20 min-h-screen bg-gradient-to-br">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       {children}
     </div>
   );

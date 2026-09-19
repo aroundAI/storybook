@@ -19,7 +19,7 @@ const ComingSoonText: React.FC<React.HTMLAttributes<HTMLParagraphElement>> = ({
   ...props
 }) => (
   <GradientSecondaryText
-    className={cn('text-muted-foreground text-lg md:text-xl', className)}
+    className={cn('text-lg text-muted-foreground md:text-xl', className)}
     {...props}
   />
 );

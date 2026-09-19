@@ -442,7 +442,7 @@ export function CreateEpisodeWizard({
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-medium">Verified Facts</h3>
-                    <p className="text-muted-foreground text-xs">
+                    <p className="text-xs text-muted-foreground">
                       Select facts that this episode should be built around.
                     </p>
                   </div>
@@ -455,7 +455,7 @@ export function CreateEpisodeWizard({
 
                 {/* Search */}
                 <div className="relative">
-                  <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+                  <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder="Search facts by claim, category, or source..."
                     value={factSearchQuery}
@@ -467,18 +467,18 @@ export function CreateEpisodeWizard({
                 {/* Facts list */}
                 {factsLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
-                    <span className="text-muted-foreground ml-2 text-sm">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">
                       Loading facts...
                     </span>
                   </div>
                 ) : facts.length === 0 ? (
                   <div className="rounded-lg border border-dashed py-8 text-center">
-                    <BookOpen className="text-muted-foreground mx-auto h-8 w-8" />
-                    <p className="text-muted-foreground mt-2 text-sm">
+                    <BookOpen className="mx-auto h-8 w-8 text-muted-foreground" />
+                    <p className="mt-2 text-sm text-muted-foreground">
                       No verified facts found for this project.
                     </p>
-                    <p className="text-muted-foreground mt-1 text-xs">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Upload research documents in the Research Hub to extract
                       facts first.
                     </p>
@@ -495,7 +495,7 @@ export function CreateEpisodeWizard({
                             <button
                               type="button"
                               onClick={() => selectAllInCategory(category)}
-                              className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-xs font-medium tracking-wider uppercase"
+                              className="flex items-center gap-2 text-xs font-medium tracking-wider text-muted-foreground uppercase hover:text-foreground"
                             >
                               <Checkbox
                                 checked={allSelected}
@@ -513,7 +513,7 @@ export function CreateEpisodeWizard({
                                     'flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors',
                                     selectedFactIds.has(fact.id)
                                       ? 'border-primary bg-primary/5'
-                                      : 'hover:bg-muted/50 border-transparent',
+                                      : 'border-transparent hover:bg-muted/50',
                                   )}
                                 >
                                   <Checkbox
@@ -525,7 +525,7 @@ export function CreateEpisodeWizard({
                                       {fact.claim}
                                     </p>
                                     {fact.sourceTitle && (
-                                      <p className="text-muted-foreground text-xs">
+                                      <p className="text-xs text-muted-foreground">
                                         Source: {fact.sourceTitle}
                                       </p>
                                     )}
@@ -566,7 +566,7 @@ export function CreateEpisodeWizard({
                     rows={3}
                     maxLength={500}
                   />
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     This becomes the premise and logline for story generation.
                   </p>
                 </div>
@@ -636,12 +636,12 @@ export function CreateEpisodeWizard({
                 <div className="divide-y rounded-lg border">
                   {/* Basics */}
                   <div className="p-4">
-                    <div className="text-muted-foreground mb-1 text-xs font-medium tracking-wider uppercase">
+                    <div className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">
                       Basics
                     </div>
                     <p className="font-medium">{title}</p>
                     {description && (
-                      <p className="text-muted-foreground mt-1 text-sm">
+                      <p className="mt-1 text-sm text-muted-foreground">
                         {description}
                       </p>
                     )}
@@ -657,7 +657,7 @@ export function CreateEpisodeWizard({
 
                   {/* Facts */}
                   <div className="p-4">
-                    <div className="text-muted-foreground mb-1 text-xs font-medium tracking-wider uppercase">
+                    <div className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">
                       Facts & Sources
                     </div>
                     {selectedFactIds.size > 0 ? (
@@ -691,7 +691,7 @@ export function CreateEpisodeWizard({
                         </div>
                       </div>
                     ) : (
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-sm text-muted-foreground">
                         No facts linked
                       </p>
                     )}
@@ -699,7 +699,7 @@ export function CreateEpisodeWizard({
 
                   {/* Creative Direction */}
                   <div className="p-4">
-                    <div className="text-muted-foreground mb-1 text-xs font-medium tracking-wider uppercase">
+                    <div className="mb-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">
                       Creative Direction
                     </div>
                     {hook && (
@@ -718,7 +718,7 @@ export function CreateEpisodeWizard({
                       )}
                     </div>
                     {toneNotes && (
-                      <p className="text-muted-foreground mt-2 text-xs italic">
+                      <p className="mt-2 text-xs text-muted-foreground italic">
                         {toneNotes}
                       </p>
                     )}

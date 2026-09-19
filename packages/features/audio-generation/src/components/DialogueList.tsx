@@ -411,7 +411,7 @@ export function DialogueList({
       {/* Header with summary */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-muted-foreground text-sm">
+          <span className="text-sm text-muted-foreground">
             {summary.total} lines:
           </span>
           <Badge variant="success">{summary.completed} completed</Badge>
@@ -450,7 +450,7 @@ export function DialogueList({
       <div className="flex flex-wrap items-center gap-3">
         {/* Search */}
         <div className="relative min-w-[200px] flex-1">
-          <Search className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search dialogue..."
             value={searchText}
@@ -512,7 +512,7 @@ export function DialogueList({
       {/* Dialogue lines list */}
       <div className="rounded-md border">
         {/* Table header */}
-        <div className="bg-muted/50 flex items-center gap-4 border-b px-4 py-3">
+        <div className="flex items-center gap-4 border-b bg-muted/50 px-4 py-3">
           <Checkbox
             checked={
               isSelectAllIndeterminate ? 'indeterminate' : isSelectAllChecked
@@ -521,26 +521,26 @@ export function DialogueList({
             aria-label="Select all dialogue lines"
             data-test="select-all-checkbox"
           />
-          <span className="text-muted-foreground w-12 text-sm font-medium">
+          <span className="w-12 text-sm font-medium text-muted-foreground">
             #
           </span>
-          <span className="text-muted-foreground flex-1 text-sm font-medium">
+          <span className="flex-1 text-sm font-medium text-muted-foreground">
             Dialogue
           </span>
-          <span className="text-muted-foreground w-32 text-sm font-medium">
+          <span className="w-32 text-sm font-medium text-muted-foreground">
             Character
           </span>
-          <span className="text-muted-foreground w-28 text-sm font-medium">
+          <span className="w-28 text-sm font-medium text-muted-foreground">
             Status
           </span>
-          <span className="text-muted-foreground w-32 text-sm font-medium">
+          <span className="w-32 text-sm font-medium text-muted-foreground">
             Actions
           </span>
         </div>
 
         {/* Dialogue lines */}
         {filteredLines.length === 0 ? (
-          <div className="text-muted-foreground flex items-center justify-center py-8">
+          <div className="flex items-center justify-center py-8 text-muted-foreground">
             No dialogue lines found
           </div>
         ) : (
@@ -565,7 +565,7 @@ export function DialogueList({
                 />
 
                 {/* Sequence number */}
-                <span className="text-muted-foreground w-12 text-sm tabular-nums">
+                <span className="w-12 text-sm text-muted-foreground tabular-nums">
                   {line.sequenceNumber}
                 </span>
 
@@ -574,14 +574,14 @@ export function DialogueList({
                   <p className="truncate text-sm">{line.text}</p>
                   {line.status === 'failed' &&
                     line.generationMetadata?.error && (
-                      <p className="text-destructive mt-1 truncate text-xs">
+                      <p className="mt-1 truncate text-xs text-destructive">
                         {line.generationMetadata.error}
                       </p>
                     )}
                 </div>
 
                 {/* Character name */}
-                <span className="text-muted-foreground w-32 truncate text-sm">
+                <span className="w-32 truncate text-sm text-muted-foreground">
                   {getCharacterName(line.characterAssetId, characters)}
                 </span>
 
@@ -652,7 +652,7 @@ export function DialogueList({
 
       {/* Selection actions */}
       {selectedLines.size > 0 && (
-        <div className="bg-muted/50 flex items-center justify-between rounded-md border px-4 py-3">
+        <div className="flex items-center justify-between rounded-md border bg-muted/50 px-4 py-3">
           <span className="text-sm">
             {selectedLines.size} line{selectedLines.size !== 1 ? 's' : ''}{' '}
             selected

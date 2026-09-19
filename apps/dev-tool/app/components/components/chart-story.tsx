@@ -509,7 +509,7 @@ export default function ChartStory() {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">config</td>
                     <td className="p-2 font-mono">ChartConfig</td>
                     <td className="p-2">-</td>
@@ -517,13 +517,13 @@ export default function ChartStory() {
                       Chart configuration object defining colors and labels
                     </td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">children</td>
                     <td className="p-2 font-mono">ReactNode</td>
                     <td className="p-2">-</td>
                     <td className="p-2">Recharts chart components to render</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">className</td>
                     <td className="p-2 font-mono">string</td>
                     <td className="p-2">-</td>
@@ -547,19 +547,19 @@ export default function ChartStory() {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">indicator</td>
                     <td className="p-2 font-mono">'line' | 'dot' | 'dashed'</td>
                     <td className="p-2">'dot'</td>
                     <td className="p-2">Visual indicator style</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">hideLabel</td>
                     <td className="p-2 font-mono">boolean</td>
                     <td className="p-2">false</td>
                     <td className="p-2">Hide the tooltip label</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">hideIndicator</td>
                     <td className="p-2 font-mono">boolean</td>
                     <td className="p-2">false</td>
@@ -572,11 +572,11 @@ export default function ChartStory() {
 
           <div>
             <h3 className="mb-4 text-lg font-semibold">ChartConfig</h3>
-            <p className="text-muted-foreground mb-4 text-sm">
+            <p className="mb-4 text-sm text-muted-foreground">
               Chart configuration object that defines colors, labels, and icons
               for data series.
             </p>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`const chartConfig = {
   desktop: {
@@ -598,11 +598,11 @@ export default function ChartStory() {
         <div className="space-y-8">
           <div>
             <h3 className="mb-4 text-lg font-semibold">Basic Setup</h3>
-            <p className="text-muted-foreground mb-4 text-sm">
+            <p className="mb-4 text-sm text-muted-foreground">
               Charts require a configuration object and data to visualize.
               Always wrap chart components with ChartContainer.
             </p>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@kit/ui/chart';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from 'recharts';
@@ -644,7 +644,7 @@ const config = {
                 <Badge variant="secondary">ScatterChart</Badge>
                 <Badge variant="secondary">ComposedChart</Badge>
               </div>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-muted-foreground">
                 All Recharts chart types are supported. Import the chart
                 components from 'recharts' and use them within ChartContainer.
               </p>
@@ -653,11 +653,11 @@ const config = {
 
           <div>
             <h3 className="mb-4 text-lg font-semibold">Responsive Design</h3>
-            <p className="text-muted-foreground mb-4 text-sm">
+            <p className="mb-4 text-sm text-muted-foreground">
               Charts automatically adapt to their container size. Use CSS
               classes to control chart dimensions.
             </p>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`<ChartContainer config={config} className="h-[400px] w-full">
   <LineChart data={data}>

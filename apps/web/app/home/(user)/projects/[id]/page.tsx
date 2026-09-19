@@ -95,13 +95,13 @@ async function UserProjectPage({ params }: UserProjectPageProps) {
             <div>
               <h1 className="text-3xl font-bold">{project.name}</h1>
               {project.description && (
-                <p className="text-muted-foreground mt-2">
+                <p className="mt-2 text-muted-foreground">
                   {project.description}
                 </p>
               )}
               {userRole && (
                 <div className="mt-2">
-                  <span className="bg-muted text-muted-foreground rounded-md px-2 py-1 text-sm font-medium capitalize">
+                  <span className="rounded-md bg-muted px-2 py-1 text-sm font-medium text-muted-foreground capitalize">
                     {userRole}
                   </span>
                 </div>
@@ -135,21 +135,21 @@ async function UserProjectPage({ params }: UserProjectPageProps) {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <dt className="text-muted-foreground text-sm font-medium">
+                  <dt className="text-sm font-medium text-muted-foreground">
                     <Trans i18nKey={'projects:statusLabel'} />
                   </dt>
                   <dd className="mt-1 text-sm capitalize">{project.status}</dd>
                 </div>
                 {project.slug && (
                   <div>
-                    <dt className="text-muted-foreground text-sm font-medium">
+                    <dt className="text-sm font-medium text-muted-foreground">
                       <Trans i18nKey={'projects:slug'} />
                     </dt>
                     <dd className="mt-1 font-mono text-sm">{project.slug}</dd>
                   </div>
                 )}
                 <div>
-                  <dt className="text-muted-foreground text-sm font-medium">
+                  <dt className="text-sm font-medium text-muted-foreground">
                     <Trans i18nKey={'common:createdAt'} />
                   </dt>
                   <dd className="mt-1 text-sm">
@@ -157,7 +157,7 @@ async function UserProjectPage({ params }: UserProjectPageProps) {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground text-sm font-medium">
+                  <dt className="text-sm font-medium text-muted-foreground">
                     <Trans i18nKey={'common:updatedAt'} />
                   </dt>
                   <dd className="mt-1 text-sm">

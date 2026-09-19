@@ -297,7 +297,7 @@ const examples = [
                   className={`h-2 ${variantClasses[download.variant]}`}
                 />
 
-                <div className="text-muted-foreground flex items-center justify-between text-xs">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>
                     {download.progress === 100
                       ? 'Completed'
@@ -650,7 +650,7 @@ ${fullExample}`;
           }
           disabled={controls.indeterminate}
         />
-        <div className="text-muted-foreground mt-1 flex justify-between text-xs">
+        <div className="mt-1 flex justify-between text-xs text-muted-foreground">
           <span>0</span>
           <span>{controls.value}</span>
           <span>{controls.max}</span>
@@ -667,7 +667,7 @@ ${fullExample}`;
           value={[controls.max]}
           onValueChange={([max]) => setControls((prev) => ({ ...prev, max }))}
         />
-        <div className="text-muted-foreground mt-1 flex justify-between text-xs">
+        <div className="mt-1 flex justify-between text-xs text-muted-foreground">
           <span>50</span>
           <span>{controls.max}</span>
           <span>200</span>
@@ -809,7 +809,7 @@ ${fullExample}`;
           {examples.map((example, index) => (
             <div key={index}>
               <h3 className="mb-4 text-lg font-semibold">{example.title}</h3>
-              <p className="text-muted-foreground mb-4 text-sm">
+              <p className="mb-4 text-sm text-muted-foreground">
                 {example.description}
               </p>
               <div className="flex justify-center">
@@ -823,7 +823,7 @@ ${fullExample}`;
         <div className="space-y-8">
           <div>
             <h3 className="mb-4 text-lg font-semibold">{apiReference.title}</h3>
-            <p className="text-muted-foreground mb-6 text-sm">
+            <p className="mb-6 text-sm text-muted-foreground">
               {apiReference.description}
             </p>
 
@@ -839,7 +839,7 @@ ${fullExample}`;
                 </thead>
                 <tbody className="text-sm">
                   {apiReference.props.map((prop, index) => (
-                    <tr key={index} className="border-border/50 border-b">
+                    <tr key={index} className="border-b border-border/50">
                       <td className="p-2 font-mono">{prop.name}</td>
                       <td className="p-2 font-mono">{prop.type}</td>
                       <td className="p-2">{(prop as any).default || '-'}</td>
@@ -856,7 +856,7 @@ ${fullExample}`;
             {apiReference.examples.map((example, index) => (
               <div key={index}>
                 <h4 className="mb-2 text-base font-medium">{example.title}</h4>
-                <div className="bg-muted/50 rounded-lg p-4">
+                <div className="rounded-lg bg-muted/50 p-4">
                   <pre className="overflow-x-auto text-sm">
                     <code>{example.code}</code>
                   </pre>
@@ -872,7 +872,7 @@ ${fullExample}`;
             <h3 className="mb-4 text-lg font-semibold">
               {usageGuidelines.title}
             </h3>
-            <p className="text-muted-foreground mb-6 text-sm">
+            <p className="mb-6 text-sm text-muted-foreground">
               {usageGuidelines.description}
             </p>
           </div>

@@ -71,7 +71,7 @@ async function PublicProfileSettingsPage(props: PageProps) {
                 defaults="Public Sharing Settings"
               />
             </h2>
-            <p className="text-muted-foreground mb-6 text-sm">
+            <p className="mb-6 text-sm text-muted-foreground">
               <Trans
                 i18nKey="teams:publicProfile.description"
                 defaults="Configure how your company appears on public pages"

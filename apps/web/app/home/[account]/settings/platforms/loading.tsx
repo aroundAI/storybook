@@ -6,7 +6,7 @@ export default function PlatformsLoading() {
   return (
     <div className="flex h-full flex-col">
       {/* Page header skeleton */}
-      <header className="bg-card border-b px-6 py-4">
+      <header className="border-b bg-card px-6 py-4">
         <div className="mb-1">
           <Skeleton className="h-4 w-40" />
         </div>

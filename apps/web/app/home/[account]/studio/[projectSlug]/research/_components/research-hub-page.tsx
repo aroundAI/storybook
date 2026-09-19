@@ -135,7 +135,7 @@ export function ResearchHubPage({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Research Hub</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
+          <p className="mt-1 text-sm text-muted-foreground">
             Manage external sources and verified facts for your content
           </p>
         </div>
@@ -160,7 +160,7 @@ export function ResearchHubPage({
             </div>
             <div>
               <p className="text-2xl font-bold">{counts.sources}</p>
-              <p className="text-muted-foreground text-xs">Active Sources</p>
+              <p className="text-xs text-muted-foreground">Active Sources</p>
             </div>
           </CardContent>
         </Card>
@@ -171,7 +171,7 @@ export function ResearchHubPage({
             </div>
             <div>
               <p className="text-2xl font-bold">{counts.facts}</p>
-              <p className="text-muted-foreground text-xs">Verified Facts</p>
+              <p className="text-xs text-muted-foreground">Verified Facts</p>
             </div>
           </CardContent>
         </Card>
@@ -189,9 +189,9 @@ export function ResearchHubPage({
           {sources.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <Database className="text-muted-foreground mb-3 h-10 w-10" />
+                <Database className="mb-3 h-10 w-10 text-muted-foreground" />
                 <h3 className="font-medium">No sources configured</h3>
-                <p className="text-muted-foreground mt-1 max-w-sm text-sm">
+                <p className="mt-1 max-w-sm text-sm text-muted-foreground">
                   Add external data sources to enrich your content with
                   real-world facts and research.
                 </p>
@@ -206,7 +206,7 @@ export function ResearchHubPage({
               {sources.map((source) => (
                 <Card key={source.id}>
                   <CardContent className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
-                    <div className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
                       {CATEGORY_ICONS[source.category] ?? (
                         <Globe className="h-4 w-4" />
                       )}
@@ -227,7 +227,7 @@ export function ResearchHubPage({
                         )}
                       </div>
                       {source.description && (
-                        <p className="text-muted-foreground mt-0.5 truncate text-sm">
+                        <p className="mt-0.5 truncate text-sm text-muted-foreground">
                           {source.description}
                         </p>
                       )}
@@ -250,7 +250,7 @@ export function ResearchHubPage({
                         onClick={() => handleDeleteSource(source.id)}
                         disabled={isPending}
                       >
-                        <Trash2 className="text-destructive h-4 w-4" />
+                        <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
                   </CardContent>

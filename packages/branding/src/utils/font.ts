@@ -3,7 +3,6 @@
  *
  * Helper functions for font handling and validation.
  */
-
 import { SUPPORTED_FONTS } from '../constants';
 import type { FontSubset, FontWeight } from '../types';
 
@@ -54,7 +53,12 @@ export function isValidWeight(weight: number): weight is FontWeight {
  * Gets fallback fonts for a given font
  */
 export function getFallbackFonts(fontName: string): string[] {
-  const isSerif = ['Playfair Display', 'Lora', 'Merriweather', 'Cormorant'].includes(fontName);
+  const isSerif = [
+    'Playfair Display',
+    'Lora',
+    'Merriweather',
+    'Cormorant',
+  ].includes(fontName);
   const isMono = ['JetBrains Mono'].includes(fontName);
 
   if (isSerif) {

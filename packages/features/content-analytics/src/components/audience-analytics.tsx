@@ -56,9 +56,9 @@ export function AudienceAnalytics({
     return (
       <Card>
         <CardContent className="py-12 text-center">
-          <Users className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
+          <Users className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
           <h3 className="text-lg font-semibold">No Audience Data Available</h3>
-          <p className="text-muted-foreground mt-2">
+          <p className="mt-2 text-muted-foreground">
             Audience demographics will appear here once your content gets more
             views and the platforms provide demographic data.
           </p>

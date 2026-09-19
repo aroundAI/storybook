@@ -34,11 +34,11 @@ export function GradientBackground({
       {/* Ambient glow orbs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div
-          className="absolute -left-40 top-20 h-80 w-80 rounded-full bg-gradient-to-br from-indigo-500/10 to-blue-500/5 blur-3xl dark:from-indigo-500/20 dark:to-blue-500/10"
+          className="absolute top-20 -left-40 h-80 w-80 rounded-full bg-gradient-to-br from-indigo-500/10 to-blue-500/5 blur-3xl dark:from-indigo-500/20 dark:to-blue-500/10"
           style={{ animation: 'pulse 8s ease-in-out infinite' }}
         />
         <div
-          className="absolute -right-40 top-60 h-96 w-96 rounded-full bg-gradient-to-br from-violet-500/10 to-purple-500/5 blur-3xl dark:from-violet-500/15 dark:to-purple-500/10"
+          className="absolute top-60 -right-40 h-96 w-96 rounded-full bg-gradient-to-br from-violet-500/10 to-purple-500/5 blur-3xl dark:from-violet-500/15 dark:to-purple-500/10"
           style={{
             animation: 'pulse 10s ease-in-out infinite',
             animationDelay: '2s',

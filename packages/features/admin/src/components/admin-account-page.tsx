@@ -93,7 +93,7 @@ async function PersonalAccountPage(props: { account: Account }) {
                 variant={'secondary'}
                 data-test={'admin-ban-account-button'}
               >
-                <Ban className={'text-destructive mr-1 h-3'} />
+                <Ban className={'mr-1 h-3 text-destructive'} />
                 Ban
               </Button>
             </AdminBanUserDialog>
@@ -274,7 +274,7 @@ async function SubscriptionsTable(props: { accountId: string }) {
       <If
         condition={subscription}
         fallback={
-          <span className={'text-muted-foreground text-sm'}>
+          <span className={'text-sm text-muted-foreground'}>
             This account does not currently have a subscription.
           </span>
         }

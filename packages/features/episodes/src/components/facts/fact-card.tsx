@@ -56,13 +56,13 @@ export function FactCard({
           <div className="min-w-0 flex-1">
             <Link
               href={`${basePath}/${fact.id}`}
-              className="text-foreground line-clamp-2 font-medium hover:underline"
+              className="line-clamp-2 font-medium text-foreground hover:underline"
             >
               {fact.claim}
             </Link>
 
             {fact.sourceCitation && (
-              <p className="text-muted-foreground mt-1.5 line-clamp-1 text-sm">
+              <p className="mt-1.5 line-clamp-1 text-sm text-muted-foreground">
                 {fact.sourceCitation}
               </p>
             )}
@@ -91,12 +91,12 @@ export function FactCard({
             </Badge>
 
             {fact.confidenceScore != null && (
-              <span className="text-muted-foreground text-xs">
+              <span className="text-xs text-muted-foreground">
                 {Math.round(fact.confidenceScore * 100)}% confident
               </span>
             )}
 
-            <span className="text-muted-foreground text-xs">
+            <span className="text-xs text-muted-foreground">
               Used {fact.timesUsed}×
             </span>
           </div>

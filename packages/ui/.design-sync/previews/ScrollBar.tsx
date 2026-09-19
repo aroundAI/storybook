@@ -12,7 +12,7 @@ export function Default() {
         {shots.map((shot) => (
           <div
             key={shot.id}
-            className="bg-muted flex h-16 w-24 flex-shrink-0 items-center justify-center rounded-md text-sm font-medium"
+            className="flex h-16 w-24 flex-shrink-0 items-center justify-center rounded-md bg-muted text-sm font-medium"
           >
             {shot.label}
           </div>

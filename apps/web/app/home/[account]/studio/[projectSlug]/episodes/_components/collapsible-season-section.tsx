@@ -137,7 +137,7 @@ export function CollapsibleSeasonSection({
 
       {/* Episode list - collapsible */}
       {!isCollapsed && (
-        <div className="animate-in fade-in slide-in-from-top-2 space-y-3 duration-200">
+        <div className="space-y-3 duration-200 animate-in fade-in slide-in-from-top-2">
           {episodes.map((episode, index) => (
             <EpisodeListItem
               key={episode.id}

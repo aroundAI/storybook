@@ -457,7 +457,7 @@ function TooltipStory() {
                   </TooltipContent>
                 </Tooltip>
                 <div className="flex items-center justify-center">
-                  <span className="text-muted-foreground text-sm">Center</span>
+                  <span className="text-sm text-muted-foreground">Center</span>
                 </div>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -527,7 +527,7 @@ function TooltipStory() {
                     <p className="font-semibold">Keyboard Shortcut</p>
                     <p className="text-xs">
                       Press{' '}
-                      <kbd className="bg-muted rounded px-1 py-0.5 text-xs">
+                      <kbd className="rounded bg-muted px-1 py-0.5 text-xs">
                         Ctrl+Shift+S
                       </kbd>{' '}
                       to open
@@ -543,7 +543,7 @@ function TooltipStory() {
                     Delete Account
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent className="border-destructive bg-destructive text-destructive-foreground max-w-xs">
+                <TooltipContent className="max-w-xs border-destructive bg-destructive text-destructive-foreground">
                   <div className="space-y-1">
                     <p className="font-semibold">⚠️ Destructive Action</p>
                     <p className="text-xs">
@@ -650,12 +650,12 @@ function TooltipStory() {
         <div className="space-y-6">
           <div>
             <h4 className="mb-3 text-lg font-semibold">TooltipProvider</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               Provides context for tooltip behavior. Wrap your app or section
               using tooltips.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -696,11 +696,11 @@ function TooltipStory() {
 
           <div>
             <h4 className="mb-3 text-lg font-semibold">TooltipContent</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               The content area of the tooltip with positioning options.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -854,7 +854,7 @@ function TooltipStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Keyboard Support</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               • Tooltips appear on focus and disappear on blur
               <br />
               • Escape key dismisses tooltips
@@ -863,7 +863,7 @@ function TooltipStory() {
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Screen Reader Support</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Tooltips are announced to screen readers when their trigger
               elements receive focus. Essential information should not rely
               solely on tooltips.
@@ -871,7 +871,7 @@ function TooltipStory() {
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Mobile Considerations</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Tooltips may not work reliably on touch devices. Consider
               alternative approaches like expandable sections or inline help
               text for mobile interfaces.
@@ -890,27 +890,27 @@ function TooltipStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Icon Button Tooltips</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Always provide tooltips for icon-only buttons to clarify their
               function.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Form Field Help</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Use tooltips to provide format requirements, examples, or
               validation rules.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Status Indicators</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Explain status badges, progress indicators, or system states.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Truncated Content</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Show full content when text is truncated due to space constraints.
             </p>
           </div>

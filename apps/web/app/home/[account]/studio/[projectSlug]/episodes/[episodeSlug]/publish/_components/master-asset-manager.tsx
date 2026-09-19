@@ -502,14 +502,14 @@ function TitleCardsSection({
         ))}
 
         {/* Upload Area */}
-        <div className="hover:bg-muted/50 relative flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 transition-colors">
+        <div className="relative flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 transition-colors hover:bg-muted/50">
           {isUploading ? (
             <div className="w-full max-w-xs text-center">
-              <Loader2 className="text-primary mx-auto mb-2 h-6 w-6 animate-spin" />
+              <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-primary" />
               <p className="text-sm font-medium">Uploading...</p>
-              <div className="bg-secondary mt-2 h-1 w-full overflow-hidden rounded-full">
+              <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-secondary">
                 <div
-                  className="bg-primary h-full transition-all duration-300"
+                  className="h-full bg-primary transition-all duration-300"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -594,9 +594,9 @@ function AssetCard({
   isPending: boolean;
 }) {
   return (
-    <div className="bg-muted/30 flex items-center justify-between rounded-lg border p-3">
+    <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
       <div className="flex items-center gap-3">
-        <div className="bg-background rounded-md border p-2 shadow-sm">
+        <div className="rounded-md border bg-background p-2 shadow-sm">
           {asset.contentType?.startsWith('video') ? (
             <FileVideo className="h-5 w-5 text-blue-500" />
           ) : (
@@ -607,7 +607,7 @@ function AssetCard({
           <p className="max-w-[200px] truncate text-sm font-medium">
             {asset.name}
           </p>
-          <div className="text-muted-foreground flex gap-3 text-xs">
+          <div className="flex gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Database className="h-3 w-3" />
               {((asset.fileSizeBytes || 0) / 1024 / 1024).toFixed(2)} MB
@@ -632,7 +632,7 @@ function AssetCard({
         <Button
           variant="ghost"
           size="icon"
-          className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"
+          className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
           onClick={onRemove}
           disabled={isPending}
         >
@@ -657,14 +657,14 @@ function UploadDropzone({
   isPending: boolean;
 }) {
   return (
-    <div className="hover:bg-muted/50 relative flex cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border-2 border-dashed p-8 transition-colors">
+    <div className="relative flex cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border-2 border-dashed p-8 transition-colors hover:bg-muted/50">
       {isUploading ? (
         <div className="w-full max-w-xs text-center">
-          <Loader2 className="text-primary mx-auto mb-2 h-8 w-8 animate-spin" />
+          <Loader2 className="mx-auto mb-2 h-8 w-8 animate-spin text-primary" />
           <p className="text-sm font-medium">Uploading & Hashing...</p>
-          <div className="bg-secondary mt-2 h-1.5 w-full overflow-hidden rounded-full">
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
             <div
-              className="bg-primary h-full transition-all duration-300"
+              className="h-full bg-primary transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -679,12 +679,12 @@ function UploadDropzone({
             disabled={isPending}
           />
           <div className="pointer-events-none flex flex-col items-center">
-            <div className="bg-muted mb-4 rounded-full p-3">
-              <FileVideo className="text-muted-foreground h-6 w-6" />
+            <div className="mb-4 rounded-full bg-muted p-3">
+              <FileVideo className="h-6 w-6 text-muted-foreground" />
             </div>
             <div className="mb-4 text-center">
               <p className="text-sm font-medium">Click to upload {title}</p>
-              <p className="text-muted-foreground mt-1 text-xs">
+              <p className="mt-1 text-xs text-muted-foreground">
                 SHA-256 deduplication enabled
               </p>
             </div>

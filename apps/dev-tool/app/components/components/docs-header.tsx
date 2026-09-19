@@ -20,7 +20,7 @@ export function DocsHeader({ selectedComponent }: DocsHeaderProps) {
   }
 
   return (
-    <div className="bg-muted/30 border-b p-4">
+    <div className="border-b bg-muted/30 p-4">
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
@@ -37,11 +37,11 @@ export function DocsHeader({ selectedComponent }: DocsHeaderProps) {
             </div>
           </div>
 
-          <p className="text-muted-foreground max-w-2xl">
+          <p className="max-w-2xl text-muted-foreground">
             {component.description}
           </p>
 
-          <div className="text-muted-foreground flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <Settings className="h-4 w-4" />
               {component.props.length} props

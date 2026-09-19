@@ -214,7 +214,7 @@ export function ExportReports({ accountId }: ExportReportsProps) {
                 >
                   <FileText className="mx-auto mb-2 h-8 w-8" />
                   <p className="font-medium">PDF Report</p>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     Visual charts, branded document
                   </p>
                 </button>
@@ -229,7 +229,7 @@ export function ExportReports({ accountId }: ExportReportsProps) {
                 >
                   <Table className="mx-auto mb-2 h-8 w-8" />
                   <p className="font-medium">CSV Export</p>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     Raw data for spreadsheets
                   </p>
                 </button>

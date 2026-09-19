@@ -55,7 +55,7 @@ export function FloatingDocumentationNavigation(
         <div
           className={
             'fixed top-0 left-0 z-10 h-screen w-full p-4' +
-            ' dark:bg-background flex flex-col space-y-4 overflow-auto bg-white'
+            ' flex flex-col space-y-4 overflow-auto bg-white dark:bg-background'
           }
         >
           {props.children}

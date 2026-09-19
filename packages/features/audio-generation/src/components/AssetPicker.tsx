@@ -134,7 +134,7 @@ export function AssetPicker({
       <DialogContent className="flex max-h-[80vh] flex-col sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Music className="text-primary h-5 w-5" />
+            <Music className="h-5 w-5 text-primary" />
             {title}
           </DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -144,7 +144,7 @@ export function AssetPicker({
           {/* Search and Filter */}
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
-              <Search className="text-muted-foreground absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2" />
+              <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search by name or prompt..."
                 value={search}
@@ -170,18 +170,18 @@ export function AssetPicker({
           <ScrollArea className="-mx-6 flex-1 px-6">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : filteredAssets.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="bg-muted mb-4 flex h-12 w-12 items-center justify-center rounded-full">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
                   {activeTab === 'sfx' ? (
-                    <Volume2 className="text-muted-foreground h-6 w-6" />
+                    <Volume2 className="h-6 w-6 text-muted-foreground" />
                   ) : (
-                    <Music className="text-muted-foreground h-6 w-6" />
+                    <Music className="h-6 w-6 text-muted-foreground" />
                   )}
                 </div>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   {search
                     ? 'No matching assets found'
                     : 'No audio assets in library yet'}
@@ -197,7 +197,7 @@ export function AssetPicker({
                       'flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors',
                       selectedId === asset.id
                         ? 'border-primary bg-primary/5'
-                        : 'bg-muted/50 hover:bg-muted border-transparent',
+                        : 'border-transparent bg-muted/50 hover:bg-muted',
                     )}
                   >
                     {/* Icon */}
@@ -221,7 +221,7 @@ export function AssetPicker({
                       <p className="truncate font-medium">
                         {asset.name || asset.prompt.slice(0, 40)}
                       </p>
-                      <div className="text-muted-foreground flex items-center gap-2 text-xs">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Badge
                           variant="secondary"
                           className="text-xs capitalize"
@@ -236,7 +236,7 @@ export function AssetPicker({
 
                     {/* Selected Check */}
                     {selectedId === asset.id && (
-                      <Check className="text-primary h-5 w-5 shrink-0" />
+                      <Check className="h-5 w-5 shrink-0 text-primary" />
                     )}
                   </button>
                 ))}

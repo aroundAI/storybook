@@ -11,7 +11,7 @@ export function LoadingFallback({
 }: LoadingFallbackProps) {
   return (
     <div className={className}>
-      <div className="text-muted-foreground flex items-center gap-2">
+      <div className="flex items-center gap-2 text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         <span>{message}</span>
       </div>

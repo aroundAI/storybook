@@ -13,7 +13,7 @@ export function DocsTableOfContents(props: { data: NavItem[] }) {
   const navData = props.data;
 
   return (
-    <div className="bg-background sticky inset-y-0 hidden h-svh max-h-full min-w-[14em] border-l p-4 lg:block">
+    <div className="sticky inset-y-0 hidden h-svh max-h-full min-w-[14em] border-l bg-background p-4 lg:block">
       <ol
         role="list"
         className="relative text-sm text-gray-600 dark:text-gray-400"

@@ -77,7 +77,7 @@ function RenewInvitationForm({
   return (
     <form action={inInvitationRenewed}>
       <div className={'flex flex-col space-y-6'}>
-        <p className={'text-muted-foreground text-sm'}>
+        <p className={'text-sm text-muted-foreground'}>
           <Trans i18nKey={'common:modalConfirmationQuestion'} />
         </p>
 

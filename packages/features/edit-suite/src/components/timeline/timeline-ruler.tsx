@@ -80,7 +80,7 @@ export function TimelineRuler({
             />
             {/* Label (major ticks only) */}
             {tick.isMajor && (
-              <span className="absolute left-0.5 top-2.5 select-none whitespace-nowrap text-[9px] text-zinc-500">
+              <span className="absolute top-2.5 left-0.5 text-[9px] whitespace-nowrap text-zinc-500 select-none">
                 {formatTime(tick.seconds)}
               </span>
             )}

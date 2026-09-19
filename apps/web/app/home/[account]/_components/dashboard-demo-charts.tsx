@@ -47,7 +47,7 @@ export default function DashboardDemo() {
   return (
     <div
       className={
-        'animate-in fade-in flex flex-col space-y-4 pb-36 duration-500'
+        'flex flex-col space-y-4 pb-36 duration-500 animate-in fade-in'
       }
     >
       <div
@@ -423,7 +423,7 @@ function CustomersTable() {
           <TableRow key={customer.name}>
             <TableCell className={'flex flex-col'}>
               <span>{customer.name}</span>
-              <span className={'text-muted-foreground text-sm'}>
+              <span className={'text-sm text-muted-foreground'}>
                 {customer.email}
               </span>
             </TableCell>
@@ -482,7 +482,7 @@ function Trend(
       case 'up':
         return <ArrowUp className={'h-3 w-3 text-green-500'} />;
       case 'down':
-        return <ArrowDown className={'text-destructive h-3 w-3'} />;
+        return <ArrowDown className={'h-3 w-3 text-destructive'} />;
       case 'stale':
         return <Menu className={'h-3 w-3 text-orange-500'} />;
     }
@@ -688,7 +688,7 @@ export function VisitorsChart() {
             <div className="flex items-center gap-2 leading-none font-medium">
               Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
             </div>
-            <div className="text-muted-foreground flex items-center gap-2 leading-none">
+            <div className="flex items-center gap-2 leading-none text-muted-foreground">
               January - June 2024
             </div>
           </div>
@@ -837,10 +837,10 @@ export function PageViewsChart() {
               <button
                 key={chart}
                 data-active={activeChart === chart}
-                className="data-[active=true]:bg-muted/50 relative z-30 flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l sm:border-t-0 sm:border-l sm:px-8 sm:py-6"
+                className="relative z-30 flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l data-[active=true]:bg-muted/50 sm:border-t-0 sm:border-l sm:px-8 sm:py-6"
                 onClick={() => setActiveChart(chart)}
               >
-                <span className="text-muted-foreground text-xs">
+                <span className="text-xs text-muted-foreground">
                   {chartConfig[chart].label}
                 </span>
                 <span className="text-lg leading-none font-bold sm:text-3xl">

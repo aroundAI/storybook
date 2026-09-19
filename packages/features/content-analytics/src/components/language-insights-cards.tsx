@@ -109,7 +109,7 @@ export function GeographyHeatmapCard({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             No geographic data available. Publish content to see regional
             distribution.
           </p>
@@ -125,7 +125,7 @@ export function GeographyHeatmapCard({
           <Globe className="h-4 w-4" />
           Geographic Heatmap
         </CardTitle>
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           Color intensity shows view concentration
         </p>
       </CardHeader>
@@ -152,7 +152,7 @@ export function GeographyHeatmapCard({
 
         {/* Legend */}
         <div className="border-t pt-4">
-          <div className="text-muted-foreground flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>Low</span>
             <div className="flex gap-1">
               {HEAT_COLORS.map((color, i) => (
@@ -219,9 +219,9 @@ export function LanguageInsightsCard({ projectId }: LanguageInsightsCardProps) {
     return (
       <Card className="border-dashed">
         <CardContent className="flex flex-col items-center justify-center py-8">
-          <Sparkles className="text-muted-foreground mb-3 h-8 w-8" />
+          <Sparkles className="mb-3 h-8 w-8 text-muted-foreground" />
           <h3 className="mb-2 font-medium">AI Language Insights</h3>
-          <p className="text-muted-foreground mb-4 max-w-sm text-center text-sm">
+          <p className="mb-4 max-w-sm text-center text-sm text-muted-foreground">
             Get AI-powered recommendations for your multi-language content
             strategy
           </p>
@@ -260,10 +260,10 @@ export function LanguageInsightsCard({ projectId }: LanguageInsightsCardProps) {
       <CardHeader className="flex-row items-start justify-between">
         <div>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="text-primary h-4 w-4" />
+            <Sparkles className="h-4 w-4 text-primary" />
             AI Language Insights
           </CardTitle>
-          <p className="text-muted-foreground mt-1 text-sm">
+          <p className="mt-1 text-sm text-muted-foreground">
             {insights.summary}
           </p>
         </div>
@@ -306,7 +306,7 @@ export function LanguageInsightsCard({ projectId }: LanguageInsightsCardProps) {
               <Lightbulb className="h-4 w-4 text-yellow-500" />
               Language Strategy
             </div>
-            <ul className="text-muted-foreground space-y-1 text-sm">
+            <ul className="space-y-1 text-sm text-muted-foreground">
               {insights.recommendations.slice(0, 3).map((rec, i) => (
                 <li key={i} className="flex gap-2">
                   <span className="text-primary">•</span>
@@ -324,7 +324,7 @@ export function LanguageInsightsCard({ projectId }: LanguageInsightsCardProps) {
               <TrendingUp className="h-4 w-4 text-green-500" />
               Platform Optimization
             </div>
-            <ul className="text-muted-foreground space-y-1 text-sm">
+            <ul className="space-y-1 text-sm text-muted-foreground">
               {insights.platformInsights.slice(0, 2).map((insight, i) => (
                 <li key={i} className="flex gap-2">
                   <span className="text-primary">•</span>
@@ -342,7 +342,7 @@ export function LanguageInsightsCard({ projectId }: LanguageInsightsCardProps) {
               <Globe className="h-4 w-4 text-blue-500" />
               Geographic Opportunities
             </div>
-            <ul className="text-muted-foreground space-y-1 text-sm">
+            <ul className="space-y-1 text-sm text-muted-foreground">
               {insights.geographyInsights.slice(0, 2).map((insight, i) => (
                 <li key={i} className="flex gap-2">
                   <span className="text-primary">•</span>

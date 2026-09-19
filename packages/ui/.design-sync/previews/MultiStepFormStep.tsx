@@ -43,7 +43,7 @@ export function Default() {
       schema={EpisodeWizardSchema}
       form={form}
       onSubmit={() => {}}
-      className="bg-card min-h-[360px] rounded-lg border p-6"
+      className="min-h-[360px] rounded-lg border bg-card p-6"
     >
       <MultiStepFormHeader>
         <MultiStepFormContextProvider>

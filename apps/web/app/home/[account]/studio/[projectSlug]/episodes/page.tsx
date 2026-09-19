@@ -332,10 +332,10 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                   {unassignedEpisodes.length > 0 && (
                     <div>
                       <div className="mb-6">
-                        <h2 className="text-muted-foreground text-lg font-semibold">
+                        <h2 className="text-lg font-semibold text-muted-foreground">
                           Standalone Episodes
                         </h2>
-                        <p className="text-muted-foreground text-sm">
+                        <p className="text-sm text-muted-foreground">
                           Episodes not assigned to any season
                         </p>
                       </div>

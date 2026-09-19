@@ -76,7 +76,7 @@ export function Playhead({
     >
       {/* Triangle handle (pointer-events enabled) */}
       <div
-        className="pointer-events-auto absolute -left-[5px] top-0 cursor-col-resize"
+        className="pointer-events-auto absolute top-0 -left-[5px] cursor-col-resize"
         onMouseDown={handleMouseDown}
       >
         {/* Triangle using CSS borders */}
@@ -93,7 +93,7 @@ export function Playhead({
 
       {/* Vertical line */}
       <div
-        className="absolute left-0 top-0 w-px"
+        className="absolute top-0 left-0 w-px"
         style={{ height: '100%', backgroundColor: PLAYHEAD_COLOR }}
       />
     </div>

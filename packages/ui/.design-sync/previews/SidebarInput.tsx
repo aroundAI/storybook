@@ -18,7 +18,7 @@ export function Default() {
         <Sidebar collapsible="none">
           <SidebarHeader className="gap-2 border-b p-2">
             <div className="relative">
-              <Search className="text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2" />
+              <Search className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <SidebarInput placeholder="Search episodes..." className="pl-8" />
             </div>
           </SidebarHeader>

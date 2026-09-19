@@ -152,7 +152,7 @@ export function VideoUploader({
     >
       <div
         className={cn(
-          'bg-muted text-muted-foreground flex items-center justify-center rounded-full',
+          'flex items-center justify-center rounded-full bg-muted text-muted-foreground',
           compact ? 'h-10 w-10' : 'h-12 w-12',
         )}
       >
@@ -205,7 +205,7 @@ function UploadingState({
   return (
     <div
       className={cn(
-        'bg-muted/30 flex flex-col items-center justify-center rounded-lg border',
+        'flex flex-col items-center justify-center rounded-lg border bg-muted/30',
         compact ? 'gap-2 p-4' : 'gap-3 p-6',
         className,
       )}
@@ -213,7 +213,7 @@ function UploadingState({
       <div className="flex items-center gap-2">
         <Loader2
           className={cn(
-            'text-primary animate-spin',
+            'animate-spin text-primary',
             compact ? 'h-5 w-5' : 'h-6 w-6',
           )}
         />
@@ -225,7 +225,7 @@ function UploadingState({
       {state === 'uploading' && (
         <div className="w-full max-w-xs">
           <Progress value={progress.percentage} className="h-2" />
-          <p className="text-muted-foreground mt-1 text-center text-xs">
+          <p className="mt-1 text-center text-xs text-muted-foreground">
             {formatBytes(progress.loaded)} / {formatBytes(progress.total)}
           </p>
         </div>
@@ -269,7 +269,7 @@ function SuccessState({
         </span>
       </div>
 
-      <div className="text-muted-foreground flex items-center gap-2 text-sm">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Film className="h-4 w-4" />
         <span>{videoInfo.name}</span>
         <span>•</span>
@@ -299,19 +299,19 @@ function ErrorState({
   return (
     <div
       className={cn(
-        'border-destructive/30 bg-destructive/5 flex flex-col items-center justify-center rounded-lg border',
+        'flex flex-col items-center justify-center rounded-lg border border-destructive/30 bg-destructive/5',
         compact ? 'gap-2 p-4' : 'gap-3 p-6',
         className,
       )}
     >
-      <div className="text-destructive flex items-center gap-2">
+      <div className="flex items-center gap-2 text-destructive">
         <AlertCircle className={compact ? 'h-5 w-5' : 'h-6 w-6'} />
         <span className={cn('font-medium', compact ? 'text-sm' : 'text-base')}>
           Upload failed
         </span>
       </div>
 
-      <p className="text-muted-foreground text-center text-sm">
+      <p className="text-center text-sm text-muted-foreground">
         {error.message}
       </p>
 

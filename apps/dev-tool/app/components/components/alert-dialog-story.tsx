@@ -350,7 +350,7 @@ export function AlertDialogStory() {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <div className="flex items-center gap-3">
-                    <div className="bg-destructive/15 text-destructive flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/15 text-destructive">
                       <Trash2 className="h-5 w-5" />
                     </div>
                     <AlertDialogTitle>Delete Item</AlertDialogTitle>
@@ -406,7 +406,7 @@ export function AlertDialogStory() {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <div className="flex items-center gap-3">
-                    <div className="bg-destructive/15 text-destructive flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/15 text-destructive">
                       <UserX className="h-5 w-5" />
                     </div>
                     <AlertDialogTitle>Remove User Access</AlertDialogTitle>
@@ -544,7 +544,7 @@ export function AlertDialogStory() {
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <div className="flex items-center gap-3">
-                      <div className="bg-destructive/15 text-destructive flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/15 text-destructive">
                         <Trash2 className="h-5 w-5" />
                       </div>
                       <AlertDialogTitle>Permanent Deletion</AlertDialogTitle>
@@ -671,12 +671,12 @@ export function AlertDialogStory() {
         <div className="space-y-6">
           <div>
             <h4 className="mb-3 text-lg font-semibold">AlertDialog</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               Root container for alert dialogs. Always modal and requires
               explicit user action.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -705,12 +705,12 @@ export function AlertDialogStory() {
 
           <div>
             <h4 className="mb-3 text-lg font-semibold">AlertDialogAction</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               The button that performs the primary action. Closes the dialog
               when clicked.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -735,7 +735,7 @@ export function AlertDialogStory() {
 
           <div>
             <h4 className="mb-3 text-lg font-semibold">AlertDialogCancel</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               The button that cancels the action. Always closes the dialog
               without performing the action.
             </p>
@@ -848,7 +848,7 @@ export function AlertDialogStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Focus Management</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               • Focus moves to Cancel button by default
               <br />
               • Tab navigation between Cancel and Action
@@ -859,7 +859,7 @@ export function AlertDialogStory() {
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Content Guidelines</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               • Use clear, specific titles and descriptions
               <br />
               • Explain consequences of the action
@@ -870,7 +870,7 @@ export function AlertDialogStory() {
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Visual Design</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               • Use appropriate icons and colors for severity
               <br />
               • Make destructive actions visually distinct
@@ -890,7 +890,7 @@ export function AlertDialogStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Title Guidelines</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               • Be specific about the action (not just "Are you sure?")
               <br />
               • Use active voice ("Delete account" not "Account deletion")
@@ -899,7 +899,7 @@ export function AlertDialogStory() {
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Description Guidelines</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               • Explain what will happen
               <br />
               • Mention if the action is irreversible
@@ -910,7 +910,7 @@ export function AlertDialogStory() {
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Button Labels</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               • Use specific verbs ("Delete", "Save", "Continue")
               <br />
               • Match the action being performed

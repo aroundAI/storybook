@@ -20,7 +20,7 @@ export function Default() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-sm text-muted-foreground">
           You have 4 members in this workspace.
         </p>
       </CardContent>
@@ -44,7 +44,7 @@ export function WithBadgeAndActions() {
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Key className="h-4 w-4" />
             <span>{'••••••' + 'a1b2'}</span>
           </div>

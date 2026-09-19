@@ -112,7 +112,7 @@ function WatchedCoverage({
       : null;
 
   return (
-    <span className={'text-muted-foreground text-xs'}>
+    <span className={'text-xs text-muted-foreground'}>
       {formatWindow(watched.window)} · {watched.coveredVideos} of{' '}
       {watched.totalVideos} videos had data
       {partial ? (
@@ -140,10 +140,10 @@ function WatchedSide({
 }) {
   return (
     <div className={'flex flex-col gap-1'} data-test={testId}>
-      <span className={'text-muted-foreground text-xs'}>{label}</span>
+      <span className={'text-xs text-muted-foreground'}>{label}</span>
 
       {!watched ? (
-        <span className={'text-muted-foreground text-sm'}>{notYet}</span>
+        <span className={'text-sm text-muted-foreground'}>{notYet}</span>
       ) : watched.status === 'measured' ? (
         <>
           <span
@@ -158,7 +158,7 @@ function WatchedSide({
         // A reason, never a zero: "no data" and "measured zero" are different
         // facts, and a 0 here would say the second when it means the first.
         <span
-          className={'text-muted-foreground text-sm'}
+          className={'text-sm text-muted-foreground'}
           data-test={`${testId}-unmeasured`}
           data-reason={watched.reason}
         >
@@ -235,7 +235,7 @@ export function ExperimentDetail({
             <Badge variant={'outline'}>{experiment.outcome_status}</Badge>
           ) : null}
         </div>
-        <p className={'text-muted-foreground text-xs'}>
+        <p className={'text-xs text-muted-foreground'}>
           {experiment.started_at
             ? `Started ${experiment.started_at}`
             : 'Not started'}
@@ -261,7 +261,7 @@ export function ExperimentDetail({
         ) : null}
         {experiment.category && BAKED_IN_CATEGORIES.has(experiment.category) ? (
           <p
-            className={'text-muted-foreground text-xs'}
+            className={'text-xs text-muted-foreground'}
             data-test={'experiment-detail-category-note'}
           >
             {BAKED_IN_NOTE}
@@ -272,7 +272,7 @@ export function ExperimentDetail({
       <section className={'flex flex-col gap-3'}>
         <div className={'flex flex-col gap-1'}>
           <h3 className={'text-sm font-medium'}>What changed</h3>
-          <p className={'text-muted-foreground text-sm'}>
+          <p className={'text-sm text-muted-foreground'}>
             {experiment.change_description}
           </p>
         </div>
@@ -280,7 +280,7 @@ export function ExperimentDetail({
         {experiment.hypothesis?.trim() ? (
           <div className={'flex flex-col gap-1'}>
             <h3 className={'text-sm font-medium'}>Hypothesis</h3>
-            <p className={'text-muted-foreground text-sm'}>
+            <p className={'text-sm text-muted-foreground'}>
               {experiment.hypothesis}
             </p>
           </div>
@@ -289,14 +289,14 @@ export function ExperimentDetail({
         <div className={'grid gap-3 sm:grid-cols-2'}>
           <div className={'flex flex-col gap-1 rounded-lg border p-3'}>
             <h3 className={'text-sm font-medium'}>Expected</h3>
-            <p className={'text-muted-foreground text-sm'}>
+            <p className={'text-sm text-muted-foreground'}>
               {textOr(experiment.expected_outcome, 'Not recorded')}
             </p>
           </div>
 
           <div className={'flex flex-col gap-1 rounded-lg border p-3'}>
             <h3 className={'text-sm font-medium'}>What actually happened</h3>
-            <p className={'text-muted-foreground text-sm'}>
+            <p className={'text-sm text-muted-foreground'}>
               {textOr(experiment.actual_outcome, 'Not concluded yet')}
             </p>
           </div>
@@ -313,7 +313,7 @@ export function ExperimentDetail({
           isWatchedMetricKey(metric) &&
           WATCHED_METRIC_NOTES[metric] ? (
             <p
-              className={'text-muted-foreground text-xs'}
+              className={'text-xs text-muted-foreground'}
               data-test={'experiment-watched-note'}
             >
               {WATCHED_METRIC_NOTES[metric]}
@@ -321,7 +321,7 @@ export function ExperimentDetail({
           ) : null}
           {mismatched ? (
             <p
-              className={'text-destructive text-sm'}
+              className={'text-sm text-destructive'}
               data-test={'experiment-watched-mismatch'}
             >
               The baseline measured {metricLabelOf(baselineMetric!)} and the
@@ -364,7 +364,7 @@ export function ExperimentDetail({
           </div>
         </section>
       ) : (
-        <p className={'text-muted-foreground text-sm'}>
+        <p className={'text-sm text-muted-foreground'}>
           Metric deltas appear once the change has been started and concluded.
         </p>
       )}
@@ -373,7 +373,7 @@ export function ExperimentDetail({
         <section className={'flex flex-col gap-1'}>
           <h3 className={'text-sm font-medium'}>Notes</h3>
           <p
-            className={'text-muted-foreground text-sm whitespace-pre-wrap'}
+            className={'text-sm whitespace-pre-wrap text-muted-foreground'}
             data-test={'experiment-detail-notes'}
           >
             {experiment.notes}

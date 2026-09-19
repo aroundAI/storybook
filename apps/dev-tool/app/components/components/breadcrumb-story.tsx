@@ -341,35 +341,35 @@ export default function BreadcrumbStory() {
               </tr>
             </thead>
             <tbody className="text-sm">
-              <tr className="border-border/50 border-b">
+              <tr className="border-b border-border/50">
                 <td className="p-2 font-mono">Breadcrumb</td>
                 <td className="p-2">
                   Root component that provides nav element
                 </td>
               </tr>
-              <tr className="border-border/50 border-b">
+              <tr className="border-b border-border/50">
                 <td className="p-2 font-mono">BreadcrumbList</td>
                 <td className="p-2">
                   Ordered list container for breadcrumb items
                 </td>
               </tr>
-              <tr className="border-border/50 border-b">
+              <tr className="border-b border-border/50">
                 <td className="p-2 font-mono">BreadcrumbItem</td>
                 <td className="p-2">Individual breadcrumb item container</td>
               </tr>
-              <tr className="border-border/50 border-b">
+              <tr className="border-b border-border/50">
                 <td className="p-2 font-mono">BreadcrumbLink</td>
                 <td className="p-2">Navigable breadcrumb link</td>
               </tr>
-              <tr className="border-border/50 border-b">
+              <tr className="border-b border-border/50">
                 <td className="p-2 font-mono">BreadcrumbPage</td>
                 <td className="p-2">Current page (non-navigable)</td>
               </tr>
-              <tr className="border-border/50 border-b">
+              <tr className="border-b border-border/50">
                 <td className="p-2 font-mono">BreadcrumbSeparator</td>
                 <td className="p-2">Separator between breadcrumb items</td>
               </tr>
-              <tr className="border-border/50 border-b">
+              <tr className="border-b border-border/50">
                 <td className="p-2 font-mono">BreadcrumbEllipsis</td>
                 <td className="p-2">Ellipsis indicator for collapsed items</td>
               </tr>
@@ -380,7 +380,7 @@ export default function BreadcrumbStory() {
 
       <div>
         <h3 className="mb-4 text-lg font-semibold">Component Hierarchy</h3>
-        <div className="bg-muted/50 rounded-lg p-4">
+        <div className="rounded-lg bg-muted/50 p-4">
           <pre className="overflow-x-auto text-sm">
             {`<Breadcrumb>
   <BreadcrumbList>
@@ -423,11 +423,11 @@ export default function BreadcrumbStory() {
     <div className="space-y-8">
       <div>
         <h3 className="mb-4 text-lg font-semibold">Basic Usage</h3>
-        <p className="text-muted-foreground mb-4 text-sm">
+        <p className="mb-4 text-sm text-muted-foreground">
           Breadcrumbs provide navigation context and help users understand their
           location within a site hierarchy.
         </p>
-        <div className="bg-muted/50 rounded-lg p-4">
+        <div className="rounded-lg bg-muted/50 p-4">
           <pre className="overflow-x-auto text-sm">
             {`import {
   Breadcrumb,
@@ -463,7 +463,7 @@ function Navigation() {
 
       <div>
         <h3 className="mb-4 text-lg font-semibold">With Custom Separator</h3>
-        <div className="bg-muted/50 rounded-lg p-4">
+        <div className="rounded-lg bg-muted/50 p-4">
           <pre className="overflow-x-auto text-sm">
             {`import { SlashIcon } from 'lucide-react';
 
@@ -486,7 +486,7 @@ function Navigation() {
 
       <div>
         <h3 className="mb-4 text-lg font-semibold">With Ellipsis</h3>
-        <div className="bg-muted/50 rounded-lg p-4">
+        <div className="rounded-lg bg-muted/50 p-4">
           <pre className="overflow-x-auto text-sm">
             {`import { BreadcrumbEllipsis } from '@kit/ui/breadcrumb';
 

@@ -60,7 +60,7 @@ export function ThumbnailSelector({
 
       <div className="flex gap-3">
         {/* Thumbnail Preview */}
-        <div className="bg-muted relative aspect-video w-32 overflow-hidden rounded-lg border">
+        <div className="relative aspect-video w-32 overflow-hidden rounded-lg border bg-muted">
           {currentUrl ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -72,7 +72,7 @@ export function ThumbnailSelector({
               <Button
                 variant="destructive"
                 size="icon"
-                className="absolute right-1 top-1 h-6 w-6"
+                className="absolute top-1 right-1 h-6 w-6"
                 onClick={handleRemove}
               >
                 <X className="h-3 w-3" />
@@ -80,7 +80,7 @@ export function ThumbnailSelector({
             </>
           ) : (
             <div className="flex h-full items-center justify-center">
-              <ImageIcon className="text-muted-foreground h-8 w-8" />
+              <ImageIcon className="h-8 w-8 text-muted-foreground" />
             </div>
           )}
         </div>
@@ -105,7 +105,7 @@ export function ThumbnailSelector({
             {isUploading ? 'Uploading...' : 'Upload'}
           </Button>
 
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Recommended: 1280x720 (16:9)
           </p>
         </div>

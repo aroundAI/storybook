@@ -25,8 +25,8 @@ export function Default() {
         <Sidebar collapsible="none">
           <SidebarHeader className="h-14 justify-center border-b px-3">
             <div className="flex items-center gap-2">
-              <div className="bg-muted flex h-7 w-7 items-center justify-center rounded-md">
-                <FolderOpen className="text-muted-foreground h-4 w-4" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted">
+                <FolderOpen className="h-4 w-4 text-muted-foreground" />
               </div>
               <span className="text-sm font-semibold">Lumen Pictures</span>
             </div>
@@ -67,7 +67,7 @@ export function Default() {
             <SidebarTrigger />
             <span className="text-sm font-medium">Episodes</span>
           </div>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             SidebarInset wraps the main content area so it sits flush next to
             the sidebar with matching rounded corners and background.
           </p>

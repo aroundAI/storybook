@@ -4,7 +4,6 @@
  * TypeScript type definitions for the branding configuration system.
  * These types are inferred from the Zod schemas in config.ts.
  */
-
 import type { z } from 'zod';
 
 import type {

@@ -185,7 +185,7 @@ export function EpisodeVisibilitySettings({
                             <option.icon className="h-4 w-4" />
                             <div>
                               <div>{option.label}</div>
-                              <div className="text-muted-foreground text-xs">
+                              <div className="text-xs text-muted-foreground">
                                 {option.description}
                               </div>
                             </div>
@@ -217,7 +217,7 @@ export function EpisodeVisibilitySettings({
                     </FormControl>
                     <FormDescription>
                       Episode URL:{' '}
-                      <code className="bg-muted rounded px-1 text-xs">
+                      <code className="rounded bg-muted px-1 text-xs">
                         /@{accountSlug}/{projectSlug}/e/{publicSlug || 'slug'}
                       </code>
                     </FormDescription>

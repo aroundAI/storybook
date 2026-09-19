@@ -70,7 +70,7 @@ const GlobalErrorContent = ({
                 </Heading>
               </div>
 
-              <p className={'text-muted-foreground text-lg'}>
+              <p className={'text-lg text-muted-foreground'}>
                 <Trans i18nKey={'common:genericErrorSubHeading'} />
               </p>
             </div>

@@ -35,7 +35,7 @@ export function CompanyDashboard({
   const platforms = data.platformBreakdown.map((p) => p.platform);
 
   return (
-    <div className="animate-in fade-in flex flex-col gap-6 pb-16 duration-500">
+    <div className="flex flex-col gap-6 pb-16 duration-500 animate-in fade-in">
       {/* Hero Metrics */}
       <MetricCards
         data={data.totals}
@@ -62,7 +62,7 @@ export function CompanyDashboard({
                   height={300}
                 />
               ) : (
-                <div className="text-muted-foreground flex h-[300px] items-center justify-center">
+                <div className="flex h-[300px] items-center justify-center text-muted-foreground">
                   No analytics data yet. Published content will appear here.
                 </div>
               )}
@@ -160,7 +160,7 @@ const ProductionStatusCard = React.memo(function ProductionStatusCard({
 
         {total > 0 && (
           <div className="pt-2">
-            <div className="text-muted-foreground mb-1 text-xs">
+            <div className="mb-1 text-xs text-muted-foreground">
               Published {publishedPercent.toFixed(0)}%
             </div>
             <Progress value={publishedPercent} className="h-2" />
@@ -220,7 +220,7 @@ const PlatformBreakdownCard = React.memo(function PlatformBreakdownCard({
       </CardHeader>
       <CardContent className="space-y-3">
         {breakdown.length === 0 ? (
-          <div className="text-muted-foreground text-sm">
+          <div className="text-sm text-muted-foreground">
             No platform data yet.
           </div>
         ) : (
@@ -234,7 +234,7 @@ const PlatformBreakdownCard = React.memo(function PlatformBreakdownCard({
                   {platform.percentage.toFixed(1)}%
                 </span>
               </div>
-              <div className="bg-muted h-2 overflow-hidden rounded-full">
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
                 <div
                   className={`h-full ${platformColors[platform.platform] || 'bg-primary'}`}
                   style={{ width: `${platform.percentage}%` }}
@@ -269,7 +269,7 @@ const TopContentCard = React.memo(function TopContentCard({
       </CardHeader>
       <CardContent>
         {content.length === 0 ? (
-          <div className="text-muted-foreground text-sm">
+          <div className="text-sm text-muted-foreground">
             No published content yet.
           </div>
         ) : (
@@ -284,20 +284,20 @@ const TopContentCard = React.memo(function TopContentCard({
                     className="h-10 w-16 rounded object-cover"
                   />
                 ) : (
-                  <div className="bg-muted flex h-10 w-16 items-center justify-center rounded">
-                    <PlayCircle className="text-muted-foreground h-5 w-5" />
+                  <div className="flex h-10 w-16 items-center justify-center rounded bg-muted">
+                    <PlayCircle className="h-5 w-5 text-muted-foreground" />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium">
                     {item.title}
                   </div>
-                  <div className="text-muted-foreground text-xs">
+                  <div className="text-xs text-muted-foreground">
                     {formatNumber(item.views)} views •{' '}
                     {item.engagementRate.toFixed(1)}% engagement
                   </div>
                 </div>
-                <span className="text-muted-foreground text-xs capitalize">
+                <span className="text-xs text-muted-foreground capitalize">
                   {item.platform}
                 </span>
               </div>
@@ -324,9 +324,9 @@ const SummaryCard = React.memo(function SummaryCard({
   return (
     <Card>
       <CardContent className="flex items-center gap-4 py-4">
-        <div className="bg-primary/10 text-primary rounded-lg p-2">{icon}</div>
+        <div className="rounded-lg bg-primary/10 p-2 text-primary">{icon}</div>
         <div>
-          <div className="text-muted-foreground text-xs">{title}</div>
+          <div className="text-xs text-muted-foreground">{title}</div>
           <div className="text-2xl font-semibold">{value}</div>
         </div>
       </CardContent>
@@ -344,7 +344,7 @@ export function CompanyDashboardSkeleton() {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
         {Array.from({ length: 7 }).map((_, i) => (
           <Card key={i}>
-            <CardContent className="space-y-2 px-4 pb-3 pt-4">
+            <CardContent className="space-y-2 px-4 pt-4 pb-3">
               <Skeleton className="h-4 w-16" />
               <Skeleton className="h-8 w-24" />
             </CardContent>

@@ -79,7 +79,7 @@ function NavItem({
         'flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm transition-colors',
         'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
         isActive
-          ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+          ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
           : 'text-sidebar-foreground',
       )}
     >
@@ -94,7 +94,7 @@ function NavItem({
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-muted-foreground mb-1 px-2 text-xs font-medium tracking-wide uppercase">
+    <h3 className="mb-1 px-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
       {children}
     </h3>
   );
@@ -133,14 +133,14 @@ export function MobileStudioHeader({
   const closeSheet = () => setIsOpen(false);
 
   return (
-    <div className="bg-sidebar flex items-center justify-between border-b p-4 md:hidden">
+    <div className="flex items-center justify-between border-b bg-sidebar p-4 md:hidden">
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetTrigger asChild>
-          <button className="hover:bg-sidebar-accent rounded-md p-2 transition-colors">
+          <button className="rounded-md p-2 transition-colors hover:bg-sidebar-accent">
             <Menu className="h-5 w-5" />
           </button>
         </SheetTrigger>
-        <SheetContent side="left" className="bg-sidebar w-[280px] p-0">
+        <SheetContent side="left" className="w-[280px] bg-sidebar p-0">
           <div className="flex h-full flex-col">
             {/* Header */}
             <div className="flex flex-col gap-2 border-b p-3">
@@ -148,7 +148,7 @@ export function MobileStudioHeader({
               <Link
                 href={`/home/${account}/studio`}
                 onClick={closeSheet}
-                className="text-sidebar-foreground hover:text-sidebar-accent-foreground flex items-center text-sm transition-colors"
+                className="flex items-center text-sm text-sidebar-foreground transition-colors hover:text-sidebar-accent-foreground"
               >
                 <ArrowLeft className="mr-1 h-4 w-4" />
                 Projects
@@ -160,23 +160,23 @@ export function MobileStudioHeader({
                 onOpenChange={setIsProjectSwitcherOpen}
               >
                 <DropdownMenuTrigger asChild>
-                  <button className="hover:bg-sidebar-accent flex w-full items-center justify-between rounded-md p-2 transition-colors">
+                  <button className="flex w-full items-center justify-between rounded-md p-2 transition-colors hover:bg-sidebar-accent">
                     <div className="flex items-center gap-2">
-                      <div className="bg-muted flex h-8 w-8 items-center justify-center rounded-md">
-                        <FolderOpen className="text-muted-foreground h-4 w-4" />
+                      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
+                        <FolderOpen className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="text-left">
-                        <h2 className="text-sidebar-foreground max-w-[140px] truncate text-sm leading-tight font-semibold">
+                        <h2 className="max-w-[140px] truncate text-sm leading-tight font-semibold text-sidebar-foreground">
                           {project.name}
                         </h2>
-                        <p className="text-muted-foreground text-xs">
+                        <p className="text-xs text-muted-foreground">
                           Switch Project
                         </p>
                       </div>
                     </div>
                     <ChevronDown
                       className={cn(
-                        'text-muted-foreground h-4 w-4 shrink-0 transition-transform',
+                        'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
                         isProjectSwitcherOpen && 'rotate-180',
                       )}
                     />
@@ -189,7 +189,7 @@ export function MobileStudioHeader({
                 >
                   <div className="p-2">
                     <div className="relative">
-                      <Search className="text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2" />
+                      <Search className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         placeholder="Search projects..."
                         value={search}
@@ -211,10 +211,10 @@ export function MobileStudioHeader({
                           p.id === project.id ? 'bg-muted' : 'cursor-pointer'
                         }
                       >
-                        <FolderOpen className="text-muted-foreground mr-2 h-4 w-4" />
+                        <FolderOpen className="mr-2 h-4 w-4 text-muted-foreground" />
                         <span className="flex-1 truncate">{p.name}</span>
                         {p.id === project.id && (
-                          <Check className="text-primary ml-2 h-4 w-4" />
+                          <Check className="ml-2 h-4 w-4 text-primary" />
                         )}
                       </DropdownMenuItem>
                     ))}
@@ -316,7 +316,7 @@ export function MobileStudioHeader({
       </h1>
 
       {/* User Avatar - simplified for mobile */}
-      <div className="bg-muted flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium">
+      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-sm font-medium">
         {user.email?.[0]?.toUpperCase() || 'U'}
       </div>
     </div>

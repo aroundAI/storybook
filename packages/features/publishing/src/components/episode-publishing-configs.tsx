@@ -255,7 +255,7 @@ export function EpisodePublishingConfigs({
                         connection.platform.charAt(0).toUpperCase() +
                           connection.platform.slice(1)}
                     </p>
-                    <p className="text-xs capitalize text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-gray-500 capitalize dark:text-gray-400">
                       {connection.platform}
                     </p>
                   </div>

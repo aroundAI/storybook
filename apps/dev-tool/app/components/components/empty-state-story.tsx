@@ -290,7 +290,7 @@ export function EmptyStateStory() {
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <EmptyState className="min-h-[200px]">
-            <Package className="text-muted-foreground mb-4 h-12 w-12" />
+            <Package className="mb-4 h-12 w-12 text-muted-foreground" />
             <EmptyStateHeading>No products</EmptyStateHeading>
             <EmptyStateText>
               Add your first product to start selling.
@@ -299,7 +299,7 @@ export function EmptyStateStory() {
           </EmptyState>
 
           <EmptyState className="min-h-[200px]">
-            <FileText className="text-muted-foreground mb-4 h-12 w-12" />
+            <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
             <EmptyStateHeading>No documents</EmptyStateHeading>
             <EmptyStateText>
               Upload or create your first document.
@@ -317,7 +317,7 @@ export function EmptyStateStory() {
           <CardDescription>Various empty state presentations</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <EmptyState className="bg-muted/10 min-h-[150px] border-2 border-dashed">
+          <EmptyState className="min-h-[150px] border-2 border-dashed bg-muted/10">
             <EmptyStateHeading>Drag and drop files here</EmptyStateHeading>
             <EmptyStateText>Or click to browse your computer</EmptyStateText>
             <EmptyStateButton variant="secondary">
@@ -365,12 +365,12 @@ export function EmptyStateStory() {
           {/* EmptyState */}
           <div>
             <h4 className="mb-3 text-lg font-semibold">EmptyState</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               Container component that renders child components in a centered
               layout with dashed border.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -403,11 +403,11 @@ export function EmptyStateStory() {
           {/* EmptyStateHeading */}
           <div>
             <h4 className="mb-3 text-lg font-semibold">EmptyStateHeading</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               Heading text for the empty state. Renders as an h3 element.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -434,12 +434,12 @@ export function EmptyStateStory() {
           {/* EmptyStateText */}
           <div>
             <h4 className="mb-3 text-lg font-semibold">EmptyStateText</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               Descriptive text explaining the empty state. Renders as a
               paragraph element.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -466,12 +466,12 @@ export function EmptyStateStory() {
           {/* EmptyStateButton */}
           <div>
             <h4 className="mb-3 text-lg font-semibold">EmptyStateButton</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               Call-to-action button. Extends the Button component with all its
               props.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -561,26 +561,26 @@ export function EmptyStateStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Be Helpful</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Explain why the area is empty and what the user can do about it.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Be Positive</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Frame the message positively. Focus on what users can do, not
               what's missing.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Provide Clear Actions</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Include a primary call-to-action that helps users move forward.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Keep It Brief</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Use concise language. Users should understand the state at a
               glance.
             </p>
@@ -596,21 +596,21 @@ export function EmptyStateStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Use Appropriate Imagery</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Icons or illustrations can make empty states more engaging and
               help communicate the message.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Maintain Visual Hierarchy</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               The heading should be prominent, followed by descriptive text,
               then the action button.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Consider Context</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               The empty state should feel integrated with the surrounding
               interface, not jarring or out of place.
             </p>

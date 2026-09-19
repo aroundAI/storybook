@@ -68,7 +68,7 @@ export function ChannelFilter({
   if (isError) {
     return (
       <p
-        className={'text-muted-foreground text-sm'}
+        className={'text-sm text-muted-foreground'}
         data-test={'channel-filter-error'}
       >
         Channels could not be loaded.

@@ -51,7 +51,7 @@ export function RetentionComparisonChart({
 
   if (variants.length === 0) {
     return (
-      <p className={'text-muted-foreground text-sm'}>
+      <p className={'text-sm text-muted-foreground'}>
         Add variants and publish them to compare retention.
       </p>
     );
@@ -71,11 +71,11 @@ export function RetentionComparisonChart({
               <div className={'flex items-baseline justify-between gap-2'}>
                 <span className={'truncate text-sm font-medium'}>
                   {variant.label}
-                  <span className={'text-muted-foreground ml-2 font-normal'}>
+                  <span className={'ml-2 font-normal text-muted-foreground'}>
                     {HOOK_TYPE_LABELS[variant.hookType] ?? variant.hookType}
                   </span>
                 </span>
-                <span className={'text-muted-foreground shrink-0 text-xs'}>
+                <span className={'shrink-0 text-xs text-muted-foreground'}>
                   {pct(value)} at 3s · {pct(variant.retentionFull)} full
                   {variant.isWinner ? ' · winner' : ''}
                 </span>
@@ -83,19 +83,19 @@ export function RetentionComparisonChart({
 
               <div
                 className={
-                  'bg-muted relative h-2.5 w-full overflow-hidden rounded-full'
+                  'relative h-2.5 w-full overflow-hidden rounded-full bg-muted'
                 }
               >
                 <div
                   className={
                     clears
-                      ? 'bg-primary h-full'
-                      : 'bg-muted-foreground/50 h-full'
+                      ? 'h-full bg-primary'
+                      : 'h-full bg-muted-foreground/50'
                   }
                   style={{ width: `${Math.min(100, (value ?? 0) * 100)}%` }}
                 />
                 <div
-                  className={'bg-foreground/60 absolute top-0 h-full w-0.5'}
+                  className={'absolute top-0 h-full w-0.5 bg-foreground/60'}
                   style={{ left: `${viralThreshold * 100}%` }}
                   title={`Viral threshold ${pct(viralThreshold)}`}
                 />
@@ -105,7 +105,7 @@ export function RetentionComparisonChart({
         })}
       </div>
 
-      <p className={'text-muted-foreground text-xs'}>
+      <p className={'text-xs text-muted-foreground'}>
         Threshold {pct(viralThreshold)} at 3 seconds.{' '}
         {measured.length === 0
           ? 'No retention data yet — variants need published videos and a completed analytics sync.'

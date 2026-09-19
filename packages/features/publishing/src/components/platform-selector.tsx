@@ -191,7 +191,7 @@ function PlatformRow({
           {isConnected && platform ? (
             <AccountInfo platform={platform} />
           ) : (
-            <span className="text-muted-foreground text-sm">
+            <span className="text-sm text-muted-foreground">
               {config.description}
             </span>
           )}
@@ -245,7 +245,7 @@ function AccountInfo({ platform }: { platform: PlatformPublishConfig }) {
           </AvatarFallback>
         </Avatar>
       )}
-      <span className="text-muted-foreground text-sm">
+      <span className="text-sm text-muted-foreground">
         {platform.platformAccountName}
       </span>
       {platform.followerCount != null && (
@@ -283,7 +283,7 @@ function FollowerBadge({
         <Badge
           variant={display.stale ? 'outline' : 'secondary'}
           className={
-            display.stale ? 'text-muted-foreground text-xs' : 'text-xs'
+            display.stale ? 'text-xs text-muted-foreground' : 'text-xs'
           }
           data-test={'follower-badge'}
         >

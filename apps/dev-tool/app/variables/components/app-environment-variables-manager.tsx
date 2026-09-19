@@ -69,10 +69,10 @@ function EnvListDisplay({
     <div className={cn(className)}>
       <div
         className={
-          'text-muted-foreground relative flex h-full flex-col rounded-lg font-mono text-xs'
+          'relative flex h-full flex-col rounded-lg font-mono text-xs text-muted-foreground'
         }
       >
-        <div className="bg-muted/50 sticky top-0 flex flex-col gap-y-1 rounded-lg p-4">
+        <div className="sticky top-0 flex flex-col gap-y-1 rounded-lg bg-muted/50 p-4">
           <div className={'sticky top-0 h-full overflow-auto pb-16 break-all'}>
             {groups.map((group) => (
               <div className="mb-4" key={group.category}>
@@ -197,7 +197,7 @@ function EnvList({ appState }: { appState: AppEnvState }) {
       <div
         id={`var_${varState.key.toLowerCase()}`}
         key={varState.key}
-        className={cn('animate-in fade-in py-6 transition-all', {
+        className={cn('py-6 transition-all animate-in fade-in', {
           hidden: !varState.isVisible,
         })}
       >
@@ -256,7 +256,7 @@ function EnvList({ appState }: { appState: AppEnvState }) {
               <If condition={model}>
                 {(model) => (
                   <div className="flex items-center gap-2 py-1">
-                    <span className="text-muted-foreground text-xs font-normal">
+                    <span className="text-xs font-normal text-muted-foreground">
                       {model.description}
                     </span>
                   </div>
@@ -267,7 +267,7 @@ function EnvList({ appState }: { appState: AppEnvState }) {
                 <If
                   condition={isValueVisible || !varState.effectiveValue}
                   fallback={
-                    <div className="max-w-auto bg-muted text-muted-foreground flex h-9 w-auto flex-1 items-center overflow-x-auto rounded border px-2 py-2 font-mono text-xs">
+                    <div className="max-w-auto flex h-9 w-auto flex-1 items-center overflow-x-auto rounded border bg-muted px-2 py-2 font-mono text-xs text-muted-foreground">
                       {renderValue(varState.effectiveValue, isValueVisible)}
                     </div>
                   }
@@ -307,7 +307,7 @@ function EnvList({ appState }: { appState: AppEnvState }) {
               <If condition={model?.hint}>
                 {(hint) => (
                   <div className="mt-2 flex items-center gap-2">
-                    <span className="text-muted-foreground text-xs font-normal">
+                    <span className="text-xs font-normal text-muted-foreground">
                       {hint}
                     </span>
                   </div>
@@ -655,7 +655,7 @@ function EnvList({ appState }: { appState: AppEnvState }) {
 
               <If condition={groups.length === 0}>
                 <div className="flex h-full flex-1 flex-col items-center justify-center gap-y-4 py-16">
-                  <div className="text-muted-foreground text-sm">
+                  <div className="text-sm text-muted-foreground">
                     No variables found
                   </div>
                 </div>
@@ -720,7 +720,7 @@ function FilterSwitcher(props: {
         <Button variant="outline" className="font-normal">
           {buttonLabel()}
 
-          <ChevronsUpDownIcon className="text-muted-foreground ml-1 h-3 w-3" />
+          <ChevronsUpDownIcon className="ml-1 h-3 w-3 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
 

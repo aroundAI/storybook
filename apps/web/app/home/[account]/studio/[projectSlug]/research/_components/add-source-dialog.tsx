@@ -193,7 +193,7 @@ export function AddSourceDialog({
                 value={apiEndpoint}
                 onChange={(e) => setApiEndpoint(e.target.value)}
               />
-              <p className="text-muted-foreground text-xs">
+              <p className="text-xs text-muted-foreground">
                 The API endpoint used to fetch content from this source
               </p>
             </div>

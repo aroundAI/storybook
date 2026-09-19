@@ -102,7 +102,7 @@ async function FactDetailPage({ params }: FactDetailPageProps) {
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <BookCheck className="text-primary h-5 w-5" />
+        <BookCheck className="h-5 w-5 text-primary" />
         <Heading level={4}>Fact Details</Heading>
       </div>
 
@@ -135,7 +135,7 @@ async function FactDetailPage({ params }: FactDetailPageProps) {
           {/* Tags */}
           {fact.tags && fact.tags.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
-              <Tag className="text-muted-foreground h-4 w-4" />
+              <Tag className="h-4 w-4 text-muted-foreground" />
               {fact.tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="text-xs">
                   {tag}
@@ -195,14 +195,14 @@ async function FactDetailPage({ params }: FactDetailPageProps) {
 
           {fact.source_authors && fact.source_authors.length > 0 && (
             <div className="flex items-center gap-1">
-              <User className="text-muted-foreground h-3.5 w-3.5" />
+              <User className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-muted-foreground">Authors:</span>{' '}
               {fact.source_authors.join(', ')}
             </div>
           )}
 
           {fact.source_citation && (
-            <div className="bg-muted/50 rounded-md p-3 text-sm italic">
+            <div className="rounded-md bg-muted/50 p-3 text-sm italic">
               {fact.source_citation}
             </div>
           )}
@@ -251,7 +251,7 @@ async function FactDetailPage({ params }: FactDetailPageProps) {
 
           {fact.verified_at && (
             <div className="flex items-center gap-1">
-              <Calendar className="text-muted-foreground h-3.5 w-3.5" />
+              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-muted-foreground">Verified:</span>{' '}
               {new Date(fact.verified_at).toLocaleDateString()}
             </div>
@@ -279,7 +279,7 @@ async function FactDetailPage({ params }: FactDetailPageProps) {
           )}
 
           {fact.created_at && (
-            <div className="text-muted-foreground border-t pt-2 text-xs">
+            <div className="border-t pt-2 text-xs text-muted-foreground">
               Created: {new Date(fact.created_at).toLocaleString()}
               {fact.updated_at &&
                 ` · Updated: ${new Date(fact.updated_at).toLocaleString()}`}

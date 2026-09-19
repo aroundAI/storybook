@@ -7,7 +7,7 @@ const Table: React.FC<React.HTMLAttributes<HTMLTableElement>> = ({
   ...props
 }) => (
   <div
-    className={cn('bg-background relative flex flex-1 flex-col overflow-auto')}
+    className={cn('relative flex flex-1 flex-col overflow-auto bg-background')}
   >
     <table
       className={cn('w-full caption-bottom text-sm', className)}
@@ -34,7 +34,7 @@ const TableFooter: React.FC<React.HTMLAttributes<HTMLTableSectionElement>> = ({
 }) => (
   <tfoot
     className={cn(
-      'bg-muted/50 border-t font-medium [&>tr]:last:border-b-0',
+      'border-t bg-muted/50 font-medium [&>tr]:last:border-b-0',
       className,
     )}
     {...props}
@@ -47,7 +47,7 @@ const TableRow: React.FC<React.HTMLAttributes<HTMLTableRowElement>> = ({
 }) => (
   <tr
     className={cn(
-      'hover:bg-muted/50 data-[state=selected]:bg-muted group/row border-b transition-colors',
+      'group/row border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted',
       className,
     )}
     {...props}
@@ -60,7 +60,7 @@ const TableHead: React.FC<React.ThHTMLAttributes<HTMLTableCellElement>> = ({
 }) => (
   <th
     className={cn(
-      'text-muted-foreground h-8 px-2 text-left align-middle font-medium [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
+      'h-8 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
       className,
     )}
     {...props}
@@ -85,7 +85,7 @@ const TableCaption: React.FC<React.HTMLAttributes<HTMLTableCaptionElement>> = ({
   ...props
 }) => (
   <caption
-    className={cn('text-muted-foreground mt-4 text-sm', className)}
+    className={cn('mt-4 text-sm text-muted-foreground', className)}
     {...props}
   />
 );

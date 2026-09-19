@@ -62,7 +62,7 @@ function App() {
 
     return (
       <div
-        className={`bg-background animate-in fade-in zoom-in-95 slide-in-from-bottom-16 fixed z-50 w-full max-w-lg border p-6 shadow-2xl ${
+        className={`fixed z-50 w-full max-w-lg border bg-background p-6 shadow-2xl animate-in fade-in slide-in-from-bottom-16 zoom-in-95 ${
           controls.position === 'bottom-left'
             ? 'bottom-4 left-4 rounded-lg'
             : controls.position === 'bottom-center'
@@ -97,10 +97,10 @@ function App() {
   };
 
   const renderPreview = () => (
-    <div className="bg-muted/20 relative h-64 overflow-hidden rounded-lg border">
+    <div className="relative h-64 overflow-hidden rounded-lg border bg-muted/20">
       <div className="p-4">
         <h3 className="mb-2 font-semibold">Preview Area</h3>
-        <p className="text-muted-foreground mb-4 text-sm">
+        <p className="mb-4 text-sm text-muted-foreground">
           This simulates how the cookie banner appears on your site.
         </p>
 
@@ -222,9 +222,9 @@ function App() {
               </div>
             </div>
 
-            <div className="bg-muted/20 rounded-lg border p-4">
+            <div className="rounded-lg border bg-muted/20 p-4">
               <h4 className="mb-2 font-semibold">Conditional Content</h4>
-              <p className="text-muted-foreground mb-2 text-sm">
+              <p className="mb-2 text-sm text-muted-foreground">
                 This content only shows when cookies are accepted:
               </p>
               {cookieConsent.status === 'accepted' ? (
@@ -253,7 +253,7 @@ function App() {
             <div className="grid gap-4 md:grid-cols-3">
               <div className="rounded-lg border p-4 text-center">
                 <h4 className="mb-2 font-semibold">Unknown</h4>
-                <p className="text-muted-foreground mb-2 text-xs">
+                <p className="mb-2 text-xs text-muted-foreground">
                   First visit or cleared consent
                 </p>
                 <div className="text-2xl">❓</div>
@@ -262,7 +262,7 @@ function App() {
 
               <div className="rounded-lg border p-4 text-center">
                 <h4 className="mb-2 font-semibold">Accepted</h4>
-                <p className="text-muted-foreground mb-2 text-xs">
+                <p className="mb-2 text-xs text-muted-foreground">
                   User accepted cookies
                 </p>
                 <div className="text-2xl">✅</div>
@@ -271,7 +271,7 @@ function App() {
 
               <div className="rounded-lg border p-4 text-center">
                 <h4 className="mb-2 font-semibold">Rejected</h4>
-                <p className="text-muted-foreground mb-2 text-xs">
+                <p className="mb-2 text-xs text-muted-foreground">
                   User rejected cookies
                 </p>
                 <div className="text-2xl">❌</div>
@@ -296,12 +296,12 @@ function App() {
         <div className="space-y-6">
           <div>
             <h4 className="mb-3 text-lg font-semibold">CookieBanner</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               A modal-style cookie consent banner that appears when consent
               status is unknown.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Feature</th>
@@ -343,12 +343,12 @@ function App() {
             <h4 className="mb-3 text-lg font-semibold">
               useCookieConsent Hook
             </h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               Hook for managing cookie consent state throughout your
               application.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Property</th>
@@ -467,7 +467,7 @@ function App() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Text Customization</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Customize banner text through i18n keys: cookieBanner.title,
               cookieBanner.description, cookieBanner.accept,
               cookieBanner.reject.
@@ -475,14 +475,14 @@ function App() {
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Styling</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               The banner automatically adapts to your theme colors and spacing.
               Override CSS classes for custom styling if needed.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Advanced Features</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               For granular cookie control, extend the component to support
               different cookie categories with individual accept/reject options.
             </p>

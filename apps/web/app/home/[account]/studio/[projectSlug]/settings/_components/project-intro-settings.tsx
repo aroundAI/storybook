@@ -95,7 +95,7 @@ export function ProjectIntroSettings({ projectId }: ProjectIntroSettingsProps) {
           <CardDescription>Loading intro videos...</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </CardContent>
       </Card>
     );
@@ -135,8 +135,8 @@ export function ProjectIntroSettings({ projectId }: ProjectIntroSettingsProps) {
       <CardContent>
         {intros.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Video className="text-muted-foreground mb-4 h-12 w-12" />
-            <p className="text-muted-foreground text-sm">
+            <Video className="mb-4 h-12 w-12 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
               No intro videos uploaded yet. Click &quot;Add Language&quot; to
               upload your first intro.
             </p>
@@ -218,7 +218,7 @@ function IntroCard({
   return (
     <div className="flex items-center gap-4 rounded-lg border p-4">
       {/* Preview Thumbnail */}
-      <div className="bg-muted relative h-20 w-32 flex-shrink-0 overflow-hidden rounded">
+      <div className="relative h-20 w-32 flex-shrink-0 overflow-hidden rounded bg-muted">
         {intro.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -228,7 +228,7 @@ function IntroCard({
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
-            <Video className="text-muted-foreground h-8 w-8" />
+            <Video className="h-8 w-8 text-muted-foreground" />
           </div>
         )}
       </div>
@@ -237,11 +237,11 @@ function IntroCard({
       <div className="min-w-0 flex-1">
         <h4 className="font-medium">
           {intro.languageLabel || intro.language}
-          <span className="text-muted-foreground ml-2 text-xs">
+          <span className="ml-2 text-xs text-muted-foreground">
             ({intro.language})
           </span>
         </h4>
-        <div className="text-muted-foreground mt-1 flex flex-wrap gap-2 text-sm">
+        <div className="mt-1 flex flex-wrap gap-2 text-sm text-muted-foreground">
           {intro.fileName && (
             <span className="max-w-[200px] truncate">{intro.fileName}</span>
           )}
@@ -453,7 +453,7 @@ function AddIntroDialog({
               disabled={isReplacing}
               maxLength={10}
             />
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               Use ISO 639-1 codes (en, hi, es) or custom codes
             </p>
           </div>
@@ -485,12 +485,12 @@ function AddIntroDialog({
               />
             </div>
             {selectedFile && (
-              <p className="text-muted-foreground text-xs">
+              <p className="text-xs text-muted-foreground">
                 Selected: {selectedFile.name} (
                 {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB)
               </p>
             )}
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               Max 60 seconds, 100MB. MP4 recommended.
             </p>
           </div>
@@ -498,13 +498,13 @@ function AddIntroDialog({
           {/* Upload Progress */}
           {isUploading && (
             <div className="space-y-2">
-              <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                 <div
-                  className="bg-primary h-full transition-all duration-300"
+                  className="h-full bg-primary transition-all duration-300"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
-              <p className="text-muted-foreground text-center text-xs">
+              <p className="text-center text-xs text-muted-foreground">
                 Uploading... {uploadProgress}%
               </p>
             </div>

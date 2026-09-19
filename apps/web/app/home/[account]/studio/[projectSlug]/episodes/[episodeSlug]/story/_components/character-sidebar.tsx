@@ -73,7 +73,7 @@ export function CharacterSidebar({ characters }: CharacterSidebarProps) {
               {characters.map((character, index) => (
                 <div
                   key={index}
-                  className="hover:border-border rounded-xl border border-gray-100 bg-gray-50 p-4 transition-colors dark:bg-gray-800/50 dark:hover:border-gray-600"
+                  className="rounded-xl border border-gray-100 bg-gray-50 p-4 transition-colors hover:border-border dark:bg-gray-800/50 dark:hover:border-gray-600"
                 >
                   <div className="mb-2 flex items-start justify-between">
                     <h4 className="font-semibold text-gray-900 dark:text-white">

@@ -247,7 +247,7 @@ export function VideoLinkManager({
         )}
 
         {usedLanguages.length === 0 && (
-          <p className="text-muted-foreground py-4 text-center">
+          <p className="py-4 text-center text-muted-foreground">
             No video links added yet. Add a language to get started.
           </p>
         )}

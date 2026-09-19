@@ -138,7 +138,7 @@ export function UploadOnlyMode({ episodeId, platform }: UploadOnlyModeProps) {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-lg">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
               {PLATFORM_ICONS[platform]}
             </div>
             <div>
@@ -163,12 +163,12 @@ export function UploadOnlyMode({ episodeId, platform }: UploadOnlyModeProps) {
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div className="flex items-center gap-3">
-              <FileText className="text-muted-foreground h-5 w-5" />
+              <FileText className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">
                   {exportPackage.video.filename}
                 </p>
-                <p className="text-muted-foreground text-xs">
+                <p className="text-xs text-muted-foreground">
                   {exportPackage.video.resolution} •{' '}
                   {Math.round(exportPackage.video.duration)}s
                 </p>
@@ -185,12 +185,12 @@ export function UploadOnlyMode({ episodeId, platform }: UploadOnlyModeProps) {
           {exportPackage.thumbnail && (
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div className="flex items-center gap-3">
-                <ImageIcon className="text-muted-foreground h-5 w-5" />
+                <ImageIcon className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium">
                     {exportPackage.thumbnail.filename}
                   </p>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     {exportPackage.thumbnail.dimensions.width}x
                     {exportPackage.thumbnail.dimensions.height}
                   </p>
@@ -312,7 +312,7 @@ export function UploadOnlyMode({ episodeId, platform }: UploadOnlyModeProps) {
               <div className="flex-1">
                 <p className="text-sm font-medium">{instruction.action}</p>
                 {instruction.details && (
-                  <p className="text-muted-foreground mt-1 text-xs">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {instruction.details}
                   </p>
                 )}

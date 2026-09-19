@@ -68,7 +68,7 @@ export function RevenueTopContent({ data, isLoading }: RevenueTopContentProps) {
           <CardTitle>Top Performing Content</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-muted-foreground flex h-32 items-center justify-center">
+          <div className="flex h-32 items-center justify-center text-muted-foreground">
             No revenue data for this period
           </div>
         </CardContent>
@@ -97,7 +97,7 @@ export function RevenueTopContent({ data, isLoading }: RevenueTopContentProps) {
               <TableRow key={item.publishId}>
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <span className="text-muted-foreground text-sm font-medium">
+                    <span className="text-sm font-medium text-muted-foreground">
                       #{index + 1}
                     </span>
                     {item.thumbnailUrl ? (
@@ -110,8 +110,8 @@ export function RevenueTopContent({ data, isLoading }: RevenueTopContentProps) {
                         className="h-9 w-16 rounded object-cover"
                       />
                     ) : (
-                      <div className="bg-muted flex h-9 w-16 items-center justify-center rounded">
-                        <span className="text-muted-foreground text-xs">
+                      <div className="flex h-9 w-16 items-center justify-center rounded bg-muted">
+                        <span className="text-xs text-muted-foreground">
                           No img
                         </span>
                       </div>

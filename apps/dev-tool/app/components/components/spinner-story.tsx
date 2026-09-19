@@ -79,19 +79,19 @@ export function SpinnerStory() {
           <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
             <div className="flex flex-col items-center space-y-2">
               <Spinner className="h-4 w-4" />
-              <span className="text-muted-foreground text-xs">Small</span>
+              <span className="text-xs text-muted-foreground">Small</span>
             </div>
             <div className="flex flex-col items-center space-y-2">
               <Spinner className="h-6 w-6" />
-              <span className="text-muted-foreground text-xs">Medium</span>
+              <span className="text-xs text-muted-foreground">Medium</span>
             </div>
             <div className="flex flex-col items-center space-y-2">
               <Spinner className="h-8 w-8" />
-              <span className="text-muted-foreground text-xs">Large</span>
+              <span className="text-xs text-muted-foreground">Large</span>
             </div>
             <div className="flex flex-col items-center space-y-2">
               <Spinner className="h-12 w-12" />
-              <span className="text-muted-foreground text-xs">Extra Large</span>
+              <span className="text-xs text-muted-foreground">Extra Large</span>
             </div>
           </div>
         </CardContent>
@@ -105,7 +105,7 @@ export function SpinnerStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Button Loading</h4>
-            <button className="bg-primary text-primary-foreground inline-flex items-center rounded-md px-4 py-2">
+            <button className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-primary-foreground">
               <Spinner className="mr-2 h-4 w-4" />
               Loading...
             </button>
@@ -116,7 +116,7 @@ export function SpinnerStory() {
             <div className="flex items-center justify-center rounded-lg border p-6">
               <div className="space-y-2 text-center">
                 <Spinner className="mx-auto h-6 w-6" />
-                <p className="text-muted-foreground text-sm">Loading data...</p>
+                <p className="text-sm text-muted-foreground">Loading data...</p>
               </div>
             </div>
           </div>
@@ -147,11 +147,11 @@ export function SpinnerStory() {
         <div className="space-y-6">
           <div>
             <h4 className="mb-3 text-lg font-semibold">Spinner</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               A spinning loading indicator with accessible markup.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -227,25 +227,25 @@ export function SpinnerStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Small (h-4 w-4)</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Button loading states, inline loading indicators
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Medium (h-6 w-6)</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Card loading, component-level loading states
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Large (h-8 w-8)</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Page-level loading, important loading states
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Extra Large (h-12 w-12)</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Full-page loading screens, splash screens
             </p>
           </div>

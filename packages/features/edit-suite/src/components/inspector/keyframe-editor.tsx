@@ -256,7 +256,7 @@ export function KeyframeEditor({
     <div className="flex flex-col gap-2">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+        <span className="text-[10px] font-semibold tracking-wider text-zinc-400 uppercase">
           Keyframes
         </span>
         <span className="text-[9px] text-zinc-500">

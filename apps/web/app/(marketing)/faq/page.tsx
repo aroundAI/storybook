@@ -135,7 +135,7 @@ function FaqItem({
         </div>
       </summary>
 
-      <div className={'text-muted-foreground flex flex-col gap-y-3 py-1'}>
+      <div className={'flex flex-col gap-y-3 py-1 text-muted-foreground'}>
         <Trans i18nKey={item.answer} defaults={item.answer} />
       </div>
     </details>

@@ -24,7 +24,7 @@ class PreviewErrorBoundary extends Component<
   render() {
     if (this.state.error) {
       return (
-        <div className="text-destructive text-xs">
+        <div className="text-xs text-destructive">
           ⚠ {this.state.error.message}
         </div>
       );
@@ -110,7 +110,7 @@ export function PreviewBackground({ children }: { children?: ReactNode }) {
   return (
     <PreviewErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <div className="bg-background text-foreground min-h-[80px] rounded-md p-6">
+        <div className="min-h-[80px] rounded-md bg-background p-6 text-foreground">
           {children}
         </div>
       </QueryClientProvider>

@@ -341,7 +341,7 @@ export function BatchEpisodeCreator({
                   <FormItem>
                     <div className="flex items-center justify-between">
                       <FormLabel>Number of Episodes</FormLabel>
-                      <span className="text-muted-foreground text-sm font-medium">
+                      <span className="text-sm font-medium text-muted-foreground">
                         {field.value} episodes
                       </span>
                     </div>

@@ -102,7 +102,7 @@ export function AccountSelector({
             role="combobox"
             aria-expanded={open}
             className={cn(
-              'dark:shadow-primary/10 group mr-1 w-full min-w-0 px-2 lg:w-auto lg:max-w-fit',
+              'group mr-1 w-full min-w-0 px-2 lg:w-auto lg:max-w-fit dark:shadow-primary/10',
               {
                 'justify-start': !collapsed,
                 'm-auto justify-center px-2 lg:w-full': collapsed,
@@ -138,11 +138,11 @@ export function AccountSelector({
                     'gap-x-2': !collapsed,
                   })}
                 >
-                  <Avatar className={'rounded-xs h-6 w-6'}>
+                  <Avatar className={'h-6 w-6 rounded-xs'}>
                     <AvatarImage src={account.image ?? undefined} />
 
                     <AvatarFallback
-                      className={'group-hover:bg-background rounded-xs'}
+                      className={'rounded-xs group-hover:bg-background'}
                     >
                       {account.label ? account.label[0] : ''}
                     </AvatarFallback>
@@ -226,7 +226,7 @@ export function AccountSelector({
                       }}
                     >
                       <div className={'flex items-center'}>
-                        <Avatar className={'rounded-xs mr-2 h-6 w-6'}>
+                        <Avatar className={'mr-2 h-6 w-6 rounded-xs'}>
                           <AvatarImage src={account.image ?? undefined} />
 
                           <AvatarFallback
@@ -290,7 +290,7 @@ export function AccountSelector({
 
 function UserAvatar(props: { pictureUrl?: string }) {
   return (
-    <Avatar className={'rounded-xs h-6 w-6'}>
+    <Avatar className={'h-6 w-6 rounded-xs'}>
       <AvatarImage src={props.pictureUrl} />
     </Avatar>
   );

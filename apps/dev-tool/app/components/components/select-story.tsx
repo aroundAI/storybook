@@ -207,7 +207,7 @@ export function SelectStory() {
           <Label htmlFor="select">
             {controls.labelText}
             {controls.required && (
-              <span className="text-destructive ml-1">*</span>
+              <span className="ml-1 text-destructive">*</span>
             )}
           </Label>
         )}
@@ -304,7 +304,7 @@ export function SelectStory() {
         <Label htmlFor="placeholder">Placeholder</Label>
         <input
           id="placeholder"
-          className="border-input ring-offset-background placeholder:text-muted-foreground focus:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-2xs focus:ring-1 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-2xs ring-offset-background placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
           value={controls.placeholder}
           onChange={(e) => updateControl('placeholder', e.target.value)}
           placeholder="Enter placeholder text"
@@ -315,7 +315,7 @@ export function SelectStory() {
         <Label htmlFor="helperText">Helper Text</Label>
         <input
           id="helperText"
-          className="border-input ring-offset-background placeholder:text-muted-foreground focus:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-2xs focus:ring-1 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-2xs ring-offset-background placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
           value={controls.helperText}
           onChange={(e) => updateControl('helperText', e.target.value)}
           placeholder="Enter helper text"
@@ -338,7 +338,7 @@ export function SelectStory() {
           <Label htmlFor="labelText">Label Text</Label>
           <input
             id="labelText"
-            className="border-input ring-offset-background placeholder:text-muted-foreground focus:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-2xs focus:ring-1 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-2xs ring-offset-background placeholder:text-muted-foreground focus:ring-1 focus:ring-ring focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
             value={controls.labelText}
             onChange={(e) => updateControl('labelText', e.target.value)}
             placeholder="Enter label text"
@@ -443,7 +443,7 @@ export function SelectStory() {
                     <SelectItem key={priority.value} value={priority.value}>
                       <div className="flex flex-col">
                         <span>{priority.label}</span>
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-xs text-muted-foreground">
                           {priority.description}
                         </span>
                       </div>
@@ -546,7 +546,7 @@ export function SelectStory() {
                   <SelectItem value="option2">Option 2</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-destructive text-sm">This field is required</p>
+              <p className="text-sm text-destructive">This field is required</p>
             </div>
 
             <div className="space-y-2">
@@ -560,7 +560,7 @@ export function SelectStory() {
                   <SelectItem value="option2">Option 2</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-muted-foreground text-sm">Field is disabled</p>
+              <p className="text-sm text-muted-foreground">Field is disabled</p>
             </div>
 
             <div className="space-y-2">
@@ -606,12 +606,12 @@ export function SelectStory() {
         <div className="space-y-6">
           <div>
             <h4 className="mb-3 text-lg font-semibold">Select</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               Root container for the select component. Contains all other select
               parts.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -652,12 +652,12 @@ export function SelectStory() {
 
           <div>
             <h4 className="mb-3 text-lg font-semibold">SelectTrigger</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               The button that triggers the select dropdown. Shows the selected
               value.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -686,11 +686,11 @@ export function SelectStory() {
 
           <div>
             <h4 className="mb-3 text-lg font-semibold">SelectContent</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               The dropdown content that contains the selectable items.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -761,7 +761,7 @@ export function SelectStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Keyboard Navigation</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               • Space/Enter opens the select
               <br />
               • Arrow keys navigate options
@@ -772,14 +772,14 @@ export function SelectStory() {
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Screen Readers</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Use clear labels and provide helpful descriptions. Group related
               options with SelectLabel.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Error Handling</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Provide clear error messages and visual indicators when validation
               fails.
             </p>
@@ -797,28 +797,28 @@ export function SelectStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Simple Select</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Basic selection from a flat list of options. Best for
               straightforward choices.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Grouped Select</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Organize related options into groups with labels and optional
               separators.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Rich Options</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Include icons, descriptions, or other metadata to help users make
               informed choices.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Searchable Select</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               For long lists, implement search/filtering to help users find
               options quickly.
             </p>

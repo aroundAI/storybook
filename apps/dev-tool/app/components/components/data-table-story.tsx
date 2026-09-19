@@ -416,7 +416,7 @@ export function DataTableStory() {
 
         {/* Minimal Selection Status at bottom */}
         {controls.enableSelection && (
-          <div className="text-muted-foreground flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>
               Selected:{' '}
               {
@@ -538,7 +538,7 @@ export function DataTableStory() {
       {controls.enableSelection && (
         <div className="space-y-2 border-t pt-4">
           <div className="text-sm font-medium">Selection Info</div>
-          <div className="text-muted-foreground text-xs">
+          <div className="text-xs text-muted-foreground">
             Selected:{' '}
             {Object.keys(rowSelection).filter((k) => rowSelection[k]).length}{' '}
             rows
@@ -558,7 +558,7 @@ export function DataTableStory() {
       {controls.enableColumnPinning && (
         <div className="space-y-2 border-t pt-4">
           <div className="text-sm font-medium">Column Pinning</div>
-          <div className="text-muted-foreground mb-2 text-xs">
+          <div className="mb-2 text-xs text-muted-foreground">
             Click buttons to pin columns left (L) or right (R)
           </div>
 
@@ -728,7 +728,7 @@ export function DataTableStory() {
                   console.log('Cell clicked:', cell);
                 }}
               />
-              <div className="text-muted-foreground text-xs">
+              <div className="text-xs text-muted-foreground">
                 💡 Click on any row to see the onClick handler in action. In a
                 real application, this might navigate to a user detail page or
                 open a modal.
@@ -818,7 +818,7 @@ export function DataTableStory() {
                     cell: ({ row }) => (
                       <Badge
                         variant="outline"
-                        className="hover:bg-accent cursor-pointer"
+                        className="cursor-pointer hover:bg-accent"
                         onClick={(e) => {
                           e.stopPropagation(); // Prevent row click
                           alert(`Filter by role: ${row.getValue('role')}`);
@@ -869,7 +869,7 @@ export function DataTableStory() {
                   alert(`Row click: Viewing details for ${row.original.name}`);
                 }}
               />
-              <div className="text-muted-foreground space-y-1 text-xs">
+              <div className="space-y-1 text-xs text-muted-foreground">
                 <p>💡 This example demonstrates multiple click handlers:</p>
                 <ul className="ml-4 list-disc space-y-1">
                   <li>
@@ -938,7 +938,7 @@ export function DataTableStory() {
                 sticky={true}
               />
             </div>
-            <p className="text-muted-foreground mt-2 text-xs">
+            <p className="mt-2 text-xs text-muted-foreground">
               📄 Try scrolling • Header stays visible while content scrolls
             </p>
           </CardContent>
@@ -955,7 +955,7 @@ export function DataTableStory() {
           <CardContent>
             <div className="flex h-80 flex-col rounded-lg border">
               {/* Simulated header */}
-              <div className="bg-muted/30 flex items-center justify-between border-b p-3">
+              <div className="flex items-center justify-between border-b bg-muted/30 p-3">
                 <h3 className="text-sm font-semibold">Dashboard Table</h3>
                 <div className="flex gap-2">
                   <Button
@@ -1082,7 +1082,7 @@ export function DataTableStory() {
                 />
               </div>
             </div>
-            <div className="text-muted-foreground mt-2 space-y-1 text-xs">
+            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
               <p>💻 This example shows common dashboard patterns:</p>
               <ul className="ml-4 list-disc space-y-1">
                 <li>Export button shows selected count dynamically</li>
@@ -1127,7 +1127,7 @@ export function DataTableStory() {
                 sticky={true}
               />
             </div>
-            <p className="text-muted-foreground mt-2 text-xs">
+            <p className="mt-2 text-xs text-muted-foreground">
               📱 Resize window to see responsive behavior
             </p>
           </CardContent>
@@ -1184,7 +1184,7 @@ export function DataTableStory() {
                             ⭐
                           </span>
                         ))}
-                        <span className="text-muted-foreground ml-1 text-xs">
+                        <span className="ml-1 text-xs text-muted-foreground">
                           ({rating}/5)
                         </span>
                       </div>
@@ -1204,7 +1204,7 @@ export function DataTableStory() {
                     style={style}
                     className={cn(
                       className,
-                      'group hover:bg-accent/30 relative transition-all duration-200',
+                      'group relative transition-all duration-200 hover:bg-accent/30',
                       // Add special styling for salary column
                       cell.column.id === 'salary' && 'font-mono',
                       // Add padding for rating column
@@ -1214,7 +1214,7 @@ export function DataTableStory() {
                   >
                     <div className="relative">
                       {/* Add a subtle border indicator on hover */}
-                      <div className="bg-primary/20 absolute top-0 -left-2 h-full w-1 scale-y-0 transform rounded transition-transform duration-200 group-hover:scale-y-100" />
+                      <div className="absolute top-0 -left-2 h-full w-1 scale-y-0 transform rounded bg-primary/20 transition-transform duration-200 group-hover:scale-y-100" />
                       <div className="relative z-10">
                         {flexRender(
                           cell.column.columnDef.cell,
@@ -1226,7 +1226,7 @@ export function DataTableStory() {
                 );
               }}
             />
-            <div className="text-muted-foreground mt-3 space-y-2 text-xs">
+            <div className="mt-3 space-y-2 text-xs text-muted-foreground">
               <p>💡 This example shows renderCell usage:</p>
               <ul className="ml-4 list-disc space-y-1">
                 <li>Adds custom hover effects to all cells</li>
@@ -1463,7 +1463,7 @@ export function DataTableStory() {
                 <h4 className="text-sm font-semibold">
                   Force Pagination (3 items, but pagination shown)
                 </h4>
-                <p className="text-muted-foreground text-xs">
+                <p className="text-xs text-muted-foreground">
                   Using `forcePagination={true}` to show pagination controls
                   even with few items
                 </p>
@@ -1488,7 +1488,7 @@ export function DataTableStory() {
               </div>
             </div>
 
-            <div className="text-muted-foreground mt-6 space-y-2 text-xs">
+            <div className="mt-6 space-y-2 text-xs text-muted-foreground">
               <p>💡 Pagination examples demonstrate:</p>
               <ul className="ml-4 list-disc space-y-1">
                 <li>Different page sizes (5, 10, 15 per page)</li>
@@ -1527,7 +1527,7 @@ export function DataTableStory() {
 
               <ServerSideSortingExample data={data.slice(0, 10)} />
 
-              <div className="text-muted-foreground space-y-2 text-xs">
+              <div className="space-y-2 text-xs text-muted-foreground">
                 <p>💡 Server-side sorting pattern:</p>
                 <ul className="ml-4 list-disc space-y-1">
                   <li>
@@ -1844,7 +1844,7 @@ export function MyDataTable() {${controls.enableSelection ? '\n  const [rowSelec
 </div>`}
               </code>
             </div>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               Best for cards, modals, or sections with known height constraints
             </p>
           </div>
@@ -1868,7 +1868,7 @@ export function MyDataTable() {${controls.enableSelection ? '\n  const [rowSelec
 </div>`}
               </code>
             </div>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               For dashboard pages where table should fill available space
             </p>
           </div>
@@ -1887,7 +1887,7 @@ export function MyDataTable() {${controls.enableSelection ? '\n  const [rowSelec
 </div>`}
               </code>
             </div>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               Adapts table height based on screen size for optimal experience
             </p>
           </div>
@@ -1907,7 +1907,7 @@ export function MyDataTable() {${controls.enableSelection ? '\n  const [rowSelec
 </div>`}
               </code>
             </div>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               Let table grow with content but constrain to screen height
             </p>
           </div>

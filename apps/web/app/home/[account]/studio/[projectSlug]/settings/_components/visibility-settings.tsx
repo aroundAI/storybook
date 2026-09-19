@@ -172,7 +172,7 @@ export function ProjectVisibilitySettings({
                             <option.icon className="h-4 w-4" />
                             <div>
                               <div>{option.label}</div>
-                              <div className="text-muted-foreground text-xs">
+                              <div className="text-xs text-muted-foreground">
                                 {option.description}
                               </div>
                             </div>
@@ -203,7 +203,7 @@ export function ProjectVisibilitySettings({
                           href={`/@${accountSlug}/${publicSlug || 'your-slug'}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="bg-muted hover:bg-muted/80 text-primary inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs transition-colors hover:underline"
+                          className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs text-primary transition-colors hover:bg-muted/80 hover:underline"
                         >
                           /@{accountSlug}/{publicSlug || 'your-slug'}
                           <ExternalLink className="h-3 w-3" />

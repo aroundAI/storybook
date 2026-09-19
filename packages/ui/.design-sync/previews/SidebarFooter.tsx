@@ -42,7 +42,7 @@ export function Default() {
               </SidebarMenuItem>
             </SidebarMenu>
             <div className="flex items-center gap-2 p-1 pt-2">
-              <div className="bg-muted flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium">
                 S
               </div>
               <span className="text-muted-foreground">shaurya@example.com</span>

@@ -15,8 +15,8 @@ export function JumpBackInSection({
   baseUrl,
 }: JumpBackInSectionProps) {
   return (
-    <div className="border-border bg-card flex flex-col rounded-xl border shadow-sm lg:col-span-2">
-      <div className="border-border flex items-center justify-between border-b p-5">
+    <div className="flex flex-col rounded-xl border border-border bg-card shadow-sm lg:col-span-2">
+      <div className="flex items-center justify-between border-b border-border p-5">
         <div className="flex items-center gap-2">
           <svg
             className="h-5 w-5 text-indigo-500"
@@ -31,7 +31,7 @@ export function JumpBackInSection({
               d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <h2 className="text-foreground text-lg font-semibold">
+          <h2 className="text-lg font-semibold text-foreground">
             Jump Back In
           </h2>
         </div>
@@ -66,7 +66,7 @@ export function JumpBackInSection({
             <Link
               key={episode.id}
               href={`${baseUrl}/episodes/${episode.id}`}
-              className="group hover:border-border hover:bg-muted flex cursor-pointer items-center gap-4 rounded-lg border border-transparent p-3 transition-colors"
+              className="group flex cursor-pointer items-center gap-4 rounded-lg border border-transparent p-3 transition-colors hover:border-border hover:bg-muted"
             >
               {/* Thumbnail */}
               <div
@@ -93,16 +93,16 @@ export function JumpBackInSection({
               {/* Content */}
               <div className="min-w-0 flex-1">
                 <div className="mb-0.5 flex items-start justify-between">
-                  <h3 className="text-foreground truncate font-semibold">
+                  <h3 className="truncate font-semibold text-foreground">
                     {episode.title || `Episode ${episode.number}`}
                   </h3>
-                  <span className="text-muted-foreground ml-2 text-xs whitespace-nowrap">
+                  <span className="ml-2 text-xs whitespace-nowrap text-muted-foreground">
                     {formatDistanceToNow(new Date(episode.updated_at), {
                       addSuffix: false,
                     })}
                   </span>
                 </div>
-                <p className="text-muted-foreground mb-2 text-xs">
+                <p className="mb-2 text-xs text-muted-foreground">
                   EP{String(episode.number).padStart(2, '0')}{' '}
                   {episode.seasonNumber
                     ? `• Season ${episode.seasonNumber}`
@@ -114,7 +114,7 @@ export function JumpBackInSection({
                   >
                     {stage.charAt(0).toUpperCase() + stage.slice(1)}
                   </span>
-                  <div className="bg-muted h-1 max-w-[100px] flex-1 overflow-hidden rounded-full">
+                  <div className="h-1 max-w-[100px] flex-1 overflow-hidden rounded-full bg-muted">
                     <div
                       className={`h-full rounded-full ${colors.bar}`}
                       style={{ width: `${progress}%` }}

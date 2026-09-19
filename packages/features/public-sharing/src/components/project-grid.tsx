@@ -21,7 +21,7 @@ interface ProjectGridProps {
 export function ProjectGrid({ projects, companySlug }: ProjectGridProps) {
   if (projects.length === 0) {
     return (
-      <div className="text-muted-foreground py-12 text-center">
+      <div className="py-12 text-center text-muted-foreground">
         <Film className="mx-auto mb-4 h-12 w-12 opacity-50" />
         <p>No public projects yet.</p>
       </div>
@@ -37,7 +37,7 @@ export function ProjectGrid({ projects, companySlug }: ProjectGridProps) {
           <Link key={project.id} href={projectUrl} className="group block">
             <Card className="overflow-hidden transition-all hover:-translate-y-1 hover:shadow-lg">
               {/* Cover Image */}
-              <div className="bg-muted relative aspect-video overflow-hidden">
+              <div className="relative aspect-video overflow-hidden bg-muted">
                 {project.cover_image_url ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
@@ -46,23 +46,23 @@ export function ProjectGrid({ projects, companySlug }: ProjectGridProps) {
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 ) : (
-                  <div className="from-primary/20 to-primary/5 flex h-full w-full items-center justify-center bg-gradient-to-br">
-                    <Film className="text-primary/50 h-12 w-12" />
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                    <Film className="h-12 w-12 text-primary/50" />
                   </div>
                 )}
               </div>
 
               <CardContent className="p-4">
-                <h3 className="group-hover:text-primary truncate font-semibold transition-colors">
+                <h3 className="truncate font-semibold transition-colors group-hover:text-primary">
                   {project.name}
                 </h3>
                 {project.description && (
-                  <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
+                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                     {project.description}
                   </p>
                 )}
                 {project.episode_count !== undefined && (
-                  <p className="text-muted-foreground mt-2 text-xs">
+                  <p className="mt-2 text-xs text-muted-foreground">
                     {project.episode_count} episode
                     {project.episode_count !== 1 ? 's' : ''}
                   </p>

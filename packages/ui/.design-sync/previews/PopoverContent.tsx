@@ -39,7 +39,7 @@ export function Default() {
         </div>
         <Separator />
         <div className="px-4 py-3">
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Some narrative threads have gone stale — they haven&apos;t been
             progressed or resolved in several episodes.
           </p>

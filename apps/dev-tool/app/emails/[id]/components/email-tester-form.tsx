@@ -45,7 +45,7 @@ export function EmailTesterForm(props: {
 
   return (
     <div className={'flex flex-col space-y-8'}>
-      <p className="text-muted-foreground text-sm">
+      <p className="text-sm text-muted-foreground">
         The settings below were filled from your environment variables. You can
         change them to test different scenarios.{' '}
         <Link className={'underline'} href={'https://www.nodemailer.com'}>

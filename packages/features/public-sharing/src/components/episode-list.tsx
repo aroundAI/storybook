@@ -52,7 +52,7 @@ export function EpisodeList({
 
   if (episodes.length === 0) {
     return (
-      <div className="text-muted-foreground py-12 text-center">
+      <div className="py-12 text-center text-muted-foreground">
         <p>No episodes available yet.</p>
       </div>
     );
@@ -67,7 +67,7 @@ export function EpisodeList({
           <div key={seasonNum}>
             <h3 className="mb-4 text-lg font-semibold">
               Season {seasonNum}{' '}
-              <span className="text-muted-foreground font-normal">
+              <span className="font-normal text-muted-foreground">
                 ({seasonEpisodes.length} episodes)
               </span>
             </h3>
@@ -79,13 +79,13 @@ export function EpisodeList({
                 return (
                   <Link key={episode.id} href={episodeUrl} className="block">
                     <Card
-                      className={`hover:bg-accent transition-colors ${
+                      className={`transition-colors hover:bg-accent ${
                         isCurrent ? 'border-primary bg-accent' : ''
                       }`}
                     >
                       <CardContent className="flex gap-4 p-4">
                         {/* Thumbnail */}
-                        <div className="bg-muted relative h-20 w-32 flex-shrink-0 overflow-hidden rounded-md">
+                        <div className="relative h-20 w-32 flex-shrink-0 overflow-hidden rounded-md bg-muted">
                           {episode.thumbnail_url ? (
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img
@@ -95,11 +95,11 @@ export function EpisodeList({
                             />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center">
-                              <Play className="text-muted-foreground h-8 w-8" />
+                              <Play className="h-8 w-8 text-muted-foreground" />
                             </div>
                           )}
                           {episode.duration_seconds && (
-                            <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1.5 py-0.5 text-xs text-white">
+                            <span className="absolute right-1 bottom-1 rounded bg-black/80 px-1.5 py-0.5 text-xs text-white">
                               {formatDuration(episode.duration_seconds)}
                             </span>
                           )}
@@ -108,11 +108,11 @@ export function EpisodeList({
                         {/* Info */}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground text-xs">
+                            <span className="text-xs text-muted-foreground">
                               S{seasonNum}E{episode.number}
                             </span>
                             {isCurrent && (
-                              <span className="bg-primary text-primary-foreground rounded px-2 py-0.5 text-xs">
+                              <span className="rounded bg-primary px-2 py-0.5 text-xs text-primary-foreground">
                                 Now Playing
                               </span>
                             )}
@@ -121,7 +121,7 @@ export function EpisodeList({
                             {episode.title}
                           </h4>
                           {episode.description && (
-                            <p className="text-muted-foreground line-clamp-2 text-sm">
+                            <p className="line-clamp-2 text-sm text-muted-foreground">
                               {episode.description}
                             </p>
                           )}

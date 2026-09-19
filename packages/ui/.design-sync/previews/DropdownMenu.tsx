@@ -63,13 +63,13 @@ export function WithSubmenu() {
           <DropdownMenuSubContent forceMount>
             <DropdownMenuItem>
               Reset to Story
-              <span className="text-muted-foreground ml-auto text-xs">
+              <span className="ml-auto text-xs text-muted-foreground">
                 Clears screenplay, shots
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem>
               Reset to Screenplay
-              <span className="text-muted-foreground ml-auto text-xs">
+              <span className="ml-auto text-xs text-muted-foreground">
                 Clears shots, audio
               </span>
             </DropdownMenuItem>

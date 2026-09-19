@@ -155,7 +155,7 @@ export function PasswordSignUpForm({
 
                 <ArrowRight
                   className={
-                    'zoom-in animate-in slide-in-from-left-2 fill-mode-both h-4 delay-500 duration-500'
+                    'h-4 delay-500 duration-500 animate-in fill-mode-both slide-in-from-left-2 zoom-in'
                   }
                 />
               </>

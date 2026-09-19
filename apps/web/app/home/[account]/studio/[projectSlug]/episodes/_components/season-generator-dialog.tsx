@@ -844,7 +844,7 @@ export function SeasonGeneratorDialog({
                     </div>
                   </div>
                 ) : (
-                  <p className="text-muted-foreground mt-2 text-xs">
+                  <p className="mt-2 text-xs text-muted-foreground">
                     Verified facts from your research will be considered during
                     generation.
                   </p>

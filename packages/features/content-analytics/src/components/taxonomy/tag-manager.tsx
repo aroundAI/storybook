@@ -205,14 +205,14 @@ export function TagManager({
               </h3>
 
               {dimensionTags.length === 0 ? (
-                <p className={'text-muted-foreground text-sm'}>No tags yet.</p>
+                <p className={'text-sm text-muted-foreground'}>No tags yet.</p>
               ) : (
                 <div className={'flex flex-wrap gap-2'}>
                   {dimensionTags.map((tag) => (
                     <Badge
                       key={tag.id}
                       variant={'secondary'}
-                      className={'gap-1 py-1 pl-2 pr-1'}
+                      className={'gap-1 py-1 pr-1 pl-2'}
                     >
                       {tag.label}
                       <Button

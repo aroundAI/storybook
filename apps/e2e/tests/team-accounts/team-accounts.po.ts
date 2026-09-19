@@ -1,9 +1,9 @@
 import { Page, expect } from '@playwright/test';
 
 import { AuthPageObject } from '../authentication/auth.po';
+import { OtpPo } from '../utils/otp.po';
 import { seedTeamAccount } from '../utils/seed';
 import { signInAs } from '../utils/session';
-import { OtpPo } from '../utils/otp.po';
 
 export class TeamAccountsPageObject {
   private readonly page: Page;
@@ -110,11 +110,11 @@ export class TeamAccountsPageObject {
   async tryCreateTeam(teamName: string) {
     await this.page.locator('[data-test="create-team-form"] input').fill('');
     await this.page.waitForTimeout(200);
-    await this.page.locator('[data-test="create-team-form"] input').fill(teamName);
+    await this.page
+      .locator('[data-test="create-team-form"] input')
+      .fill(teamName);
 
-    return this.page.click(
-      '[data-test="create-team-form"] button:last-child',
-    );
+    return this.page.click('[data-test="create-team-form"] button:last-child');
   }
 
   async createTeam({ teamName, slug } = this.createTeamName()) {

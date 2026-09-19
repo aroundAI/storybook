@@ -132,9 +132,9 @@ export function PostsList({
     return (
       <Card>
         <CardContent className="py-12 text-center">
-          <Linkedin className="text-muted-foreground mx-auto mb-4 h-12 w-12 opacity-20" />
+          <Linkedin className="mx-auto mb-4 h-12 w-12 text-muted-foreground opacity-20" />
           <h3 className="mb-1 text-lg font-semibold">No posts yet</h3>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             Create your first LinkedIn post by pasting your notes above.
           </p>
         </CardContent>
@@ -168,7 +168,7 @@ export function PostsList({
                       {statusConfig.icon}
                       {statusConfig.label}
                     </Badge>
-                    <span className="text-muted-foreground text-xs">
+                    <span className="text-xs text-muted-foreground">
                       {formatRelativeTime(post.created_at)}
                     </span>
                     {post.generated_variants.length > 0 && (

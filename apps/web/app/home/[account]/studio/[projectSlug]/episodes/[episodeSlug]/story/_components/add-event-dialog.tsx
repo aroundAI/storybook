@@ -188,7 +188,7 @@ export function AddEventDialog({
                         <SelectItem key={type.value} value={type.value}>
                           <div className="flex flex-col">
                             <span>{type.label}</span>
-                            <span className="text-muted-foreground text-xs">
+                            <span className="text-xs text-muted-foreground">
                               {type.description}
                             </span>
                           </div>
@@ -242,8 +242,8 @@ export function AddEventDialog({
               )}
             />
 
-            <div className="bg-muted/50 flex items-center gap-2 rounded-lg p-3 text-sm">
-              <Calendar className="text-muted-foreground h-4 w-4" />
+            <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3 text-sm">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
               <span className="text-muted-foreground">
                 Season {season}, Episode {episodeNumber}
               </span>

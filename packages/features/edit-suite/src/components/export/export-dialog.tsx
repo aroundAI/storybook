@@ -399,7 +399,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                     {exportState.progress}%
                   </span>
                 </div>
-                <span className="text-[10px] capitalize text-zinc-500">
+                <span className="text-[10px] text-zinc-500 capitalize">
                   {exportState.stage}
                 </span>
               </div>

@@ -24,8 +24,8 @@ export function Default() {
         <Sidebar collapsible="none">
           <SidebarHeader className="h-14 justify-center border-b px-3">
             <div className="flex items-center gap-2">
-              <div className="bg-muted flex h-7 w-7 items-center justify-center rounded-md">
-                <FolderOpen className="text-muted-foreground h-4 w-4" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted">
+                <FolderOpen className="h-4 w-4 text-muted-foreground" />
               </div>
               <span className="text-sm font-semibold">Lumen Pictures</span>
             </div>
@@ -62,7 +62,7 @@ export function Default() {
 
           <SidebarFooter className="border-t p-2 text-xs">
             <div className="flex items-center gap-2 p-1">
-              <div className="bg-muted flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium">
                 S
               </div>
               <span className="text-muted-foreground">shaurya@example.com</span>
@@ -70,8 +70,8 @@ export function Default() {
           </SidebarFooter>
         </Sidebar>
 
-        <div className="bg-background flex-1 p-4">
-          <p className="text-muted-foreground text-sm">Main content area</p>
+        <div className="flex-1 bg-background p-4">
+          <p className="text-sm text-muted-foreground">Main content area</p>
         </div>
       </div>
     </SidebarProvider>

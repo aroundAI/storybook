@@ -3,9 +3,8 @@
  *
  * Functions for building CSS gradient strings and applying preset gradients.
  */
-
+import { GLOW_INTENSITY_PRESETS, GRADIENT_PRESETS } from '../constants';
 import type { HexColor } from '../types';
-import { GRADIENT_PRESETS, GLOW_INTENSITY_PRESETS } from '../constants';
 
 /**
  * Gradient configuration type (matching Zod schema)
@@ -81,7 +80,10 @@ export function buildGradientString(config: GradientConfig): string {
  * @param fallbackColor - Fallback color if not specified in config
  * @returns CSS text-shadow string (e.g., '0 0 10px #fff, 0 0 20px #fff')
  */
-export function buildGlowShadow(config: GlowConfig, fallbackColor: HexColor): string {
+export function buildGlowShadow(
+  config: GlowConfig,
+  fallbackColor: HexColor,
+): string {
   if (!config.enabled) {
     return '';
   }
@@ -159,6 +161,8 @@ export function getGradientPresetDescription(
  *
  * @returns Array of preset names
  */
-export function getAvailableGradientPresets(): Array<keyof typeof GRADIENT_PRESETS> {
+export function getAvailableGradientPresets(): Array<
+  keyof typeof GRADIENT_PRESETS
+> {
   return Object.keys(GRADIENT_PRESETS) as Array<keyof typeof GRADIENT_PRESETS>;
 }

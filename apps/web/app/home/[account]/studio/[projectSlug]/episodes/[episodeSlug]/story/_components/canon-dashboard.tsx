@@ -84,9 +84,9 @@ export function CanonDashboard({
   if (!canonEnabled) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <Shield className="text-muted-foreground mb-3 h-10 w-10 opacity-40" />
+        <Shield className="mb-3 h-10 w-10 text-muted-foreground opacity-40" />
         <h3 className="text-sm font-medium">Canon Management Disabled</h3>
-        <p className="text-muted-foreground mt-1.5 max-w-[200px] text-xs leading-relaxed">
+        <p className="mt-1.5 max-w-[200px] text-xs leading-relaxed text-muted-foreground">
           Enable Canon Management in Project Settings to track story continuity
         </p>
       </div>
@@ -109,7 +109,7 @@ export function CanonDashboard({
         <Button
           variant="ghost"
           size="icon"
-          className="text-muted-foreground h-7 w-7"
+          className="h-7 w-7 text-muted-foreground"
           onClick={loadData}
           disabled={isPending}
         >
@@ -131,7 +131,7 @@ export function CanonDashboard({
             <Calendar className="h-3 w-3 shrink-0" />
             Events
             {events.length > 0 && (
-              <span className="bg-primary/15 text-primary ml-auto rounded px-1 text-[10px] font-medium">
+              <span className="ml-auto rounded bg-primary/15 px-1 text-[10px] font-medium text-primary">
                 {events.length}
               </span>
             )}
@@ -143,7 +143,7 @@ export function CanonDashboard({
             <GitBranch className="h-3 w-3 shrink-0" />
             Threads
             {threads.length > 0 && (
-              <span className="bg-primary/15 text-primary ml-auto rounded px-1 text-[10px] font-medium">
+              <span className="ml-auto rounded bg-primary/15 px-1 text-[10px] font-medium text-primary">
                 {threads.length}
               </span>
             )}
@@ -155,7 +155,7 @@ export function CanonDashboard({
             <User className="h-3 w-3 shrink-0" />
             Characters
             {characterStates.length > 0 && (
-              <span className="bg-primary/15 text-primary ml-auto rounded px-1 text-[10px] font-medium">
+              <span className="ml-auto rounded bg-primary/15 px-1 text-[10px] font-medium text-primary">
                 {characterStates.length}
               </span>
             )}
@@ -167,7 +167,7 @@ export function CanonDashboard({
             <FileText className="h-3 w-3 shrink-0" />
             Facts
             {factsCount !== null && factsCount > 0 && (
-              <span className="bg-primary/15 text-primary ml-auto rounded px-1 text-[10px] font-medium">
+              <span className="ml-auto rounded bg-primary/15 px-1 text-[10px] font-medium text-primary">
                 {factsCount}
               </span>
             )}
@@ -198,17 +198,17 @@ export function CanonDashboard({
               {events.map((event) => (
                 <div
                   key={event.id}
-                  className="border-border/60 bg-card/60 flex items-start gap-2 rounded-lg border p-2.5"
+                  className="flex items-start gap-2 rounded-lg border border-border/60 bg-card/60 p-2.5"
                 >
                   <EventIcon eventType={event.eventType} />
                   <div className="min-w-0 flex-1">
                     <p className="text-xs leading-snug font-medium">
                       {event.description}
                     </p>
-                    <p className="text-muted-foreground/40 mt-0.5 font-mono text-[9px]">
+                    <p className="mt-0.5 font-mono text-[9px] text-muted-foreground/40">
                       {event.eventKey}
                     </p>
-                    <p className="text-muted-foreground/50 mt-1 text-[10px]">
+                    <p className="mt-1 text-[10px] text-muted-foreground/50">
                       {new Date(event.createdAt).toLocaleDateString()}
                     </p>
                   </div>
@@ -253,7 +253,7 @@ export function CanonDashboard({
               {threads.map((thread) => (
                 <div
                   key={thread.id}
-                  className="border-border/60 bg-card/60 flex items-start gap-2.5 rounded-lg border p-2.5"
+                  className="flex items-start gap-2.5 rounded-lg border border-border/60 bg-card/60 p-2.5"
                 >
                   <GitBranch className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
                   <div className="min-w-0 flex-1">
@@ -261,7 +261,7 @@ export function CanonDashboard({
                       {thread.threadName}
                     </p>
                     {thread.description && (
-                      <p className="text-muted-foreground mt-0.5 text-[11px] leading-relaxed">
+                      <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
                         {thread.description}
                       </p>
                     )}
@@ -304,18 +304,18 @@ export function CanonDashboard({
             characterStates.map((state) => (
               <div
                 key={state.id}
-                className="border-border/60 bg-card/60 flex items-start gap-2.5 rounded-lg border p-2.5"
+                className="flex items-start gap-2.5 rounded-lg border border-border/60 bg-card/60 p-2.5"
               >
                 <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-medium">
                     {state.characters?.name ?? state.character_id}
                   </p>
-                  <p className="text-muted-foreground text-[11px]">
+                  <p className="text-[11px] text-muted-foreground">
                     {formatStateType(state.state_type)}
                   </p>
                   {state.trigger_event && (
-                    <p className="text-muted-foreground/60 mt-0.5 text-[10px]">
+                    <p className="mt-0.5 text-[10px] text-muted-foreground/60">
                       {formatTrigger(state.trigger_event)}
                     </p>
                   )}
@@ -353,9 +353,9 @@ function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center py-8 text-center">
-      <div className="text-muted-foreground/40 mb-2">{icon}</div>
-      <p className="text-muted-foreground text-xs font-medium">{title}</p>
-      <p className="text-muted-foreground/60 mt-1 max-w-[200px] text-[11px] leading-relaxed">
+      <div className="mb-2 text-muted-foreground/40">{icon}</div>
+      <p className="text-xs font-medium text-muted-foreground">{title}</p>
+      <p className="mt-1 max-w-[200px] text-[11px] leading-relaxed text-muted-foreground/60">
         {description}
       </p>
       {children && <div className="mt-3">{children}</div>}

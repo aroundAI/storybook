@@ -54,7 +54,7 @@ function BlurryBackdrop() {
   return (
     <div
       className={
-        'bg-background/30 fixed top-0 left-0 w-full backdrop-blur-sm' +
+        'fixed top-0 left-0 w-full bg-background/30 backdrop-blur-sm' +
         ' !m-0 h-full'
       }
     />

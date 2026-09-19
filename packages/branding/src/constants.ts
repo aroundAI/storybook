@@ -3,12 +3,7 @@
  *
  * Default values, color palettes, and constants for the branding system.
  */
-
-import type {
-  AppCategory,
-  BrandPersonality,
-  HexColor,
-} from './types';
+import type { AppCategory, BrandPersonality, HexColor } from './types';
 
 /**
  * Default Colors
@@ -87,7 +82,8 @@ export const CATEGORY_COLOR_PALETTES: Record<
     primary: '#6366f1',
     secondary: '#06b6d4',
     accent: '#f97316',
-    description: 'Purple for innovation, cyan for technology, orange for action',
+    description:
+      'Purple for innovation, cyan for technology, orange for action',
   },
   ecommerce: {
     primary: '#dc2626',
@@ -111,7 +107,8 @@ export const CATEGORY_COLOR_PALETTES: Record<
     primary: '#ec4899',
     secondary: '#8b5cf6',
     accent: '#06b6d4',
-    description: 'Pink for connection, purple for creativity, cyan for communication',
+    description:
+      'Pink for connection, purple for creativity, cyan for communication',
   },
 };
 

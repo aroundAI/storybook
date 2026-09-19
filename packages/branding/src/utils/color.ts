@@ -3,7 +3,6 @@
  *
  * Helper functions for color validation and manipulation.
  */
-
 import type { HexColor } from '../types';
 
 /**
@@ -16,7 +15,9 @@ export function isValidHexColor(color: string): color is HexColor {
 /**
  * Converts hex color to RGB values
  */
-export function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+export function hexToRgb(
+  hex: string,
+): { r: number; g: number; b: number } | null {
   if (!isValidHexColor(hex)) {
     return null;
   }
@@ -109,9 +110,18 @@ export function lightenColor(hex: string, percent: number): HexColor {
   }
 
   const factor = percent / 100;
-  const r = Math.max(0, Math.min(255, Math.round(rgb.r + (255 - rgb.r) * factor)));
-  const g = Math.max(0, Math.min(255, Math.round(rgb.g + (255 - rgb.g) * factor)));
-  const b = Math.max(0, Math.min(255, Math.round(rgb.b + (255 - rgb.b) * factor)));
+  const r = Math.max(
+    0,
+    Math.min(255, Math.round(rgb.r + (255 - rgb.r) * factor)),
+  );
+  const g = Math.max(
+    0,
+    Math.min(255, Math.round(rgb.g + (255 - rgb.g) * factor)),
+  );
+  const b = Math.max(
+    0,
+    Math.min(255, Math.round(rgb.b + (255 - rgb.b) * factor)),
+  );
 
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}` as HexColor;
 }

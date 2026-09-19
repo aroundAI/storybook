@@ -145,7 +145,7 @@ export function SidebarAssetList({
     <>
       {/* Characters section */}
       {characters.length > 0 && (
-        <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+        <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
             <Users className="h-4 w-4" />
             Characters
@@ -179,7 +179,7 @@ export function SidebarAssetList({
 
       {/* Locations section */}
       {locations.length > 0 && (
-        <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+        <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
             <MapPin className="h-4 w-4" />
             Locations
@@ -323,7 +323,7 @@ function SidebarAssetItem({
         <button
           type="button"
           onClick={onCreateClick}
-          className="rounded p-1 text-gray-400 opacity-0 transition-opacity hover:bg-gray-100 hover:text-emerald-600 group-hover:opacity-100 dark:hover:bg-gray-700 dark:hover:text-emerald-400"
+          className="rounded p-1 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-gray-100 hover:text-emerald-600 dark:hover:bg-gray-700 dark:hover:text-emerald-400"
           title="Create in library"
         >
           <Plus className="h-3.5 w-3.5" />

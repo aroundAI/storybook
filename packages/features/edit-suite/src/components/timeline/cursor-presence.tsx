@@ -35,18 +35,18 @@ export function CursorPresence() {
         return (
           <div
             key={cursor.userId}
-            className="absolute bottom-0 top-0"
+            className="absolute top-0 bottom-0"
             style={{ left: `${xPos}px` }}
           >
             {/* Vertical cursor line */}
             <div
-              className="absolute left-0 top-0 h-full w-[2px] opacity-70"
+              className="absolute top-0 left-0 h-full w-[2px] opacity-70"
               style={{ backgroundColor: cursor.color }}
             />
 
             {/* User badge at top */}
             <div
-              className="absolute -left-3 -top-1 flex items-center gap-1 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[9px] font-medium text-white shadow-lg"
+              className="absolute -top-1 -left-3 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-medium whitespace-nowrap text-white shadow-lg"
               style={{ backgroundColor: cursor.color }}
             >
               <span className="max-w-[60px] truncate">
@@ -57,7 +57,7 @@ export function CursorPresence() {
             {/* Active clip highlight */}
             {cursor.activeClipId && (
               <div
-                className="absolute -left-1 top-6 h-1 w-2 rounded-full opacity-50"
+                className="absolute top-6 -left-1 h-1 w-2 rounded-full opacity-50"
                 style={{ backgroundColor: cursor.color }}
               />
             )}

@@ -294,7 +294,7 @@ function CustomTooltip({ active, payload, label }: TooltipProps) {
   if (!active || !payload?.length) return null;
 
   return (
-    <div className="bg-popover rounded-lg border p-3 shadow-lg">
+    <div className="rounded-lg border bg-popover p-3 shadow-lg">
       <p className="mb-2 font-medium">
         {label ? formatDate(new Date(label), 'MMMM d, yyyy') : ''}
       </p>
@@ -305,7 +305,7 @@ function CustomTooltip({ active, payload, label }: TooltipProps) {
               className="h-3 w-3 rounded-full"
               style={{ backgroundColor: entry.color }}
             />
-            <span className="text-muted-foreground text-sm">{entry.name}</span>
+            <span className="text-sm text-muted-foreground">{entry.name}</span>
           </div>
           <span className="font-medium tabular-nums">
             {formatNumber(entry.value)}

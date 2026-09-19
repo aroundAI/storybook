@@ -49,7 +49,7 @@ export function VoiceCard({ voice, isSelected, onSelect }: VoiceCardProps) {
   return (
     <Card
       className={`cursor-pointer transition-all ${
-        isSelected ? 'ring-primary ring-2' : 'hover:border-primary'
+        isSelected ? 'ring-2 ring-primary' : 'hover:border-primary'
       }`}
       onClick={onSelect}
     >
@@ -57,19 +57,19 @@ export function VoiceCard({ voice, isSelected, onSelect }: VoiceCardProps) {
         <div className="mb-2 flex items-start justify-between">
           <div className="flex-1">
             <h4 className="text-sm font-semibold">{voice.name}</h4>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               {[voice.gender, voice.age, voice.accent]
                 .filter(Boolean)
                 .join(' • ')}
             </p>
           </div>
           {isSelected && (
-            <Check className="text-primary h-5 w-5 flex-shrink-0" />
+            <Check className="h-5 w-5 flex-shrink-0 text-primary" />
           )}
         </div>
 
         {voice.description && (
-          <p className="text-muted-foreground mb-3 line-clamp-2 text-xs">
+          <p className="mb-3 line-clamp-2 text-xs text-muted-foreground">
             {voice.description}
           </p>
         )}

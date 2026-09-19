@@ -88,7 +88,7 @@ export function RevenuePlatformBreakdown({
   if (platforms.length === 0) {
     return (
       <Card>
-        <CardContent className="text-muted-foreground flex h-32 items-center justify-center">
+        <CardContent className="flex h-32 items-center justify-center text-muted-foreground">
           No revenue data by platform
         </CardContent>
       </Card>
@@ -117,7 +117,7 @@ export function RevenuePlatformBreakdown({
               </div>
               <div className="mt-2 space-y-1">
                 <Progress value={percentage} className="h-2" />
-                <p className="text-muted-foreground text-xs">
+                <p className="text-xs text-muted-foreground">
                   {percentage.toFixed(1)}% of total
                 </p>
               </div>

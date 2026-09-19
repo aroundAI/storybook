@@ -165,11 +165,11 @@ export function MetricCard({ metric }: { metric: MetricConfig }) {
 
   return (
     <Card>
-      <CardContent className="px-4 pb-3 pt-4">
+      <CardContent className="px-4 pt-4 pb-3">
         <div className="mb-2 flex items-start justify-between">
           <div className="flex items-center gap-1.5">
-            <Icon className="text-muted-foreground h-4 w-4" />
-            <span className="text-muted-foreground text-sm font-medium">
+            <Icon className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-muted-foreground">
               {label}
             </span>
           </div>
@@ -210,7 +210,7 @@ export function MetricCard({ metric }: { metric: MetricConfig }) {
 export function MetricCardSkeleton() {
   return (
     <Card>
-      <CardContent className="space-y-2 px-4 pb-3 pt-4">
+      <CardContent className="space-y-2 px-4 pt-4 pb-3">
         <Skeleton className="h-4 w-16" />
         <Skeleton className="h-8 w-24" />
       </CardContent>
@@ -234,7 +234,7 @@ export function CompactMetric({ label, value, change }: CompactMetricProps) {
 
   return (
     <div className="flex items-center justify-between py-2">
-      <span className="text-muted-foreground text-sm">{label}</span>
+      <span className="text-sm text-muted-foreground">{label}</span>
       <div className="flex items-center gap-2">
         <span className="font-medium tabular-nums">{value}</span>
         {change !== undefined && (

@@ -56,7 +56,7 @@ export function EpisodeTabs() {
                 'flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors',
                 isActive
                   ? 'border-primary text-primary'
-                  : 'text-muted-foreground hover:border-border hover:text-foreground border-transparent',
+                  : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
               )}
               aria-current={isActive ? 'page' : undefined}
             >

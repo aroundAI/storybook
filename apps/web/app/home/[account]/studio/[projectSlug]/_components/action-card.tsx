@@ -114,10 +114,10 @@ export function ActionCard({
           <div className="flex items-center justify-between">
             <CardTitle className="text-2xl">{title}</CardTitle>
             {makeCardClickable && (
-              <ArrowRight className="text-muted-foreground h-5 w-5 transition-transform group-hover:translate-x-1" />
+              <ArrowRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
             )}
           </div>
-          <p className="text-muted-foreground text-sm leading-relaxed">
+          <p className="text-sm leading-relaxed text-muted-foreground">
             {description}
           </p>
         </div>
@@ -127,7 +127,7 @@ export function ActionCard({
         {/* Stats or Empty State */}
         {isEmpty ? (
           <div className="space-y-3">
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Get started by creating your first {title.toLowerCase()}.
             </p>
             {primaryAction && (

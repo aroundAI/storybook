@@ -230,7 +230,7 @@ export function MusicTrackList({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Music Tracks</h3>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             {tracks.length} track{tracks.length !== 1 ? 's' : ''}
             {processingCount > 0 && (
               <span className="ml-2 text-blue-500">
@@ -337,7 +337,7 @@ export function MusicTrackList({
       {/* Track List */}
       <div className="space-y-2">
         {tracks.length === 0 ? (
-          <div className="text-muted-foreground py-12 text-center">
+          <div className="py-12 text-center text-muted-foreground">
             <Music className="mx-auto mb-3 h-12 w-12 opacity-40" />
             <p className="font-medium">No music tracks yet</p>
             <p className="mt-1 text-sm">
@@ -380,7 +380,7 @@ export function MusicTrackList({
                 <p className="truncate font-medium">
                   {track.name || 'Untitled Track'}
                 </p>
-                <div className="text-muted-foreground flex items-center gap-2 text-xs">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span>{formatDuration(track.durationSeconds)}</span>
                   {track.metadata?.genre && (
                     <>

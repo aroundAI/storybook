@@ -56,7 +56,7 @@ function LastAuthMethodHintImpl({ className }: LastAuthMethodHintProps) {
   return (
     <div
       data-test="last-auth-method-hint"
-      className={`text-muted-foreground/80 flex items-center justify-center gap-2 text-xs ${className || ''}`}
+      className={`flex items-center justify-center gap-2 text-xs text-muted-foreground/80 ${className || ''}`}
     >
       <Lightbulb className="h-3 w-3" />
 
@@ -67,12 +67,12 @@ function LastAuthMethodHintImpl({ className }: LastAuthMethodHintProps) {
             i18nKey="auth:methodOauthWithProvider"
             values={{ provider: providerName }}
             components={{
-              provider: <span className="text-muted-foreground font-medium" />,
+              provider: <span className="font-medium text-muted-foreground" />,
             }}
           />
         </If>
         <If condition={!isOAuth || !providerName}>
-          <span className="text-muted-foreground font-medium">
+          <span className="font-medium text-muted-foreground">
             <Trans i18nKey={methodKey} />
           </span>
         </If>

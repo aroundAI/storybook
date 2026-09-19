@@ -132,16 +132,16 @@ test.describe('Team Accounts', () => {
     await teamAccounts.tryCreateTeam('Test,Name');
     await expectError();
 
-    await teamAccounts.tryCreateTeam('Test Name/')
+    await teamAccounts.tryCreateTeam('Test Name/');
     await expectError();
 
-    await teamAccounts.tryCreateTeam('Test Name\\')
+    await teamAccounts.tryCreateTeam('Test Name\\');
     await expectError();
 
-    await teamAccounts.tryCreateTeam('Test Name:')
+    await teamAccounts.tryCreateTeam('Test Name:');
     await expectError();
 
-    await teamAccounts.tryCreateTeam('Test Name;')
+    await teamAccounts.tryCreateTeam('Test Name;');
     await expectError();
 
     await teamAccounts.tryCreateTeam('Test Name=');

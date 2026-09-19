@@ -109,7 +109,7 @@ export function InlineViolationWarning({
         <span>
           Canon Validation{' '}
           {isValidating ? (
-            <span className="text-muted-foreground text-sm">(checking...)</span>
+            <span className="text-sm text-muted-foreground">(checking...)</span>
           ) : (
             <span className="text-sm font-normal">
               ({errorCount} error{errorCount !== 1 ? 's' : ''}, {warningCount}{' '}
@@ -136,7 +136,7 @@ export function InlineViolationWarning({
               {getIcon(v.severity)}
               <div>
                 <span className="font-medium">[{v.code}]</span> {v.message}
-                <p className="text-muted-foreground mt-0.5 text-xs">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   💡 {v.suggestion}
                 </p>
               </div>

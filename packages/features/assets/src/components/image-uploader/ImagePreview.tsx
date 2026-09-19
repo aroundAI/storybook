@@ -58,7 +58,7 @@ export function ImagePreview({
     <>
       <div
         className={cn(
-          'bg-muted/30 group relative overflow-hidden rounded-lg border',
+          'group relative overflow-hidden rounded-lg border bg-muted/30',
           className,
         )}
         data-test="image-preview"
@@ -100,7 +100,7 @@ export function ImagePreview({
 
         {/* Image info */}
         {(width || height || size) && (
-          <div className="text-muted-foreground flex items-center justify-between p-2 text-xs">
+          <div className="flex items-center justify-between p-2 text-xs text-muted-foreground">
             {width && height && (
               <span>
                 {width} x {height}px

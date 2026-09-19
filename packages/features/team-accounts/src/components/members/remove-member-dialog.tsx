@@ -77,7 +77,7 @@ function RemoveMemberForm({
   return (
     <form action={onMemberRemoved}>
       <div className={'flex flex-col space-y-6'}>
-        <p className={'text-muted-foreground text-sm'}>
+        <p className={'text-sm text-muted-foreground'}>
           <Trans i18nKey={'common:modalConfirmationQuestion'} />
         </p>
 

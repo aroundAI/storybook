@@ -116,7 +116,7 @@ export function ConsentDialog({
                       defaultValue={field.value}
                       className="flex flex-col space-y-2"
                     >
-                      <FormItem className="flex items-center space-x-3 space-y-0">
+                      <FormItem className="flex items-center space-y-0 space-x-3">
                         <FormControl>
                           <RadioGroupItem value="self" />
                         </FormControl>
@@ -124,7 +124,7 @@ export function ConsentDialog({
                           This is my own voice
                         </FormLabel>
                       </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0">
+                      <FormItem className="flex items-center space-y-0 space-x-3">
                         <FormControl>
                           <RadioGroupItem value="other_authorized" />
                         </FormControl>

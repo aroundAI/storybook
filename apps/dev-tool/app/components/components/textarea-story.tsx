@@ -203,7 +203,7 @@ export default function TextareaStory() {
         </div>
 
         {controls.showCharCount && (
-          <div className="bg-muted/50 rounded-lg p-3">
+          <div className="rounded-lg bg-muted/50 p-3">
             <p className="mb-1 text-sm font-medium">Character Count:</p>
             <p className="font-mono text-sm">
               {textValue.length} / {controls.maxLength}
@@ -241,12 +241,12 @@ export default function TextareaStory() {
               />
 
               {controls.showCharCount && (
-                <div className="text-muted-foreground text-right text-xs">
+                <div className="text-right text-xs text-muted-foreground">
                   {textValue.length} / {controls.maxLength}
                 </div>
               )}
 
-              <div className="text-muted-foreground text-sm">
+              <div className="text-sm text-muted-foreground">
                 <p>
                   <strong>State:</strong>{' '}
                   {controls.disabled
@@ -342,7 +342,7 @@ export default function TextareaStory() {
                     placeholder="Enter description..."
                     maxLength={200}
                   />
-                  <div className="text-muted-foreground text-right text-xs">
+                  <div className="text-right text-xs text-muted-foreground">
                     0 / 200
                   </div>
                 </CardContent>
@@ -364,7 +364,7 @@ export default function TextareaStory() {
                       <input
                         type="text"
                         id="name"
-                        className="border-input placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-1 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
                         placeholder="Your name"
                         required
                       />
@@ -374,7 +374,7 @@ export default function TextareaStory() {
                       <input
                         type="email"
                         id="email"
-                        className="border-input placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-1 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
                         placeholder="your@email.com"
                         required
                       />
@@ -385,7 +385,7 @@ export default function TextareaStory() {
                     <input
                       type="text"
                       id="subject"
-                      className="border-input placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-1 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
                       placeholder="Subject line"
                     />
                   </div>
@@ -419,7 +419,7 @@ export default function TextareaStory() {
                           className="h-5 w-5 fill-yellow-400 text-yellow-400"
                         />
                       ))}
-                      <span className="text-muted-foreground ml-2 text-sm">
+                      <span className="ml-2 text-sm text-muted-foreground">
                         5/5 stars
                       </span>
                     </div>
@@ -530,7 +530,7 @@ export default function TextareaStory() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-start space-x-3">
-                  <div className="bg-primary/10 flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-medium">
                     U
                   </div>
                   <div className="flex-1 space-y-2">
@@ -541,7 +541,7 @@ export default function TextareaStory() {
                       className="min-h-[80px] resize-none"
                     />
                     <div className="flex items-center justify-between">
-                      <div className="text-muted-foreground text-xs">
+                      <div className="text-xs text-muted-foreground">
                         {commentValue.length > 0 &&
                           `${commentValue.length} characters`}
                       </div>
@@ -565,11 +565,11 @@ export default function TextareaStory() {
                     </div>
                     <div className="flex-1">
                       <div className="text-sm font-medium">John Doe</div>
-                      <div className="text-muted-foreground mt-1 text-sm">
+                      <div className="mt-1 text-sm text-muted-foreground">
                         Great article! Really helped me understand the concept
                         better.
                       </div>
-                      <div className="text-muted-foreground mt-1 text-xs">
+                      <div className="mt-1 text-xs text-muted-foreground">
                         2 hours ago
                       </div>
                     </div>
@@ -581,11 +581,11 @@ export default function TextareaStory() {
                     </div>
                     <div className="flex-1">
                       <div className="text-sm font-medium">Sarah Miller</div>
-                      <div className="text-muted-foreground mt-1 text-sm">
+                      <div className="mt-1 text-sm text-muted-foreground">
                         Thanks for sharing! I have a question about the
                         implementation details...
                       </div>
-                      <div className="text-muted-foreground mt-1 text-xs">
+                      <div className="mt-1 text-xs text-muted-foreground">
                         4 hours ago
                       </div>
                     </div>
@@ -610,7 +610,7 @@ export default function TextareaStory() {
                   <input
                     type="text"
                     id="article-title"
-                    className="border-input placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-1 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="Enter article title..."
                   />
                 </div>
@@ -622,7 +622,7 @@ export default function TextareaStory() {
                     className="min-h-[60px] resize-y"
                     maxLength={200}
                   />
-                  <div className="text-muted-foreground text-right text-xs">
+                  <div className="text-right text-xs text-muted-foreground">
                     Max 200 characters
                   </div>
                 </div>
@@ -666,7 +666,7 @@ export default function TextareaStory() {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">Textarea</td>
                     <td className="p-2 font-mono">
                       All HTMLTextAreaElement props
@@ -691,13 +691,13 @@ export default function TextareaStory() {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">value</td>
                     <td className="p-2 font-mono">string</td>
                     <td className="p-2">-</td>
                     <td className="p-2">Controlled value</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">onChange</td>
                     <td className="p-2 font-mono">
                       (e: ChangeEvent) ={'>'} void
@@ -705,49 +705,49 @@ export default function TextareaStory() {
                     <td className="p-2">-</td>
                     <td className="p-2">Change event handler</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">placeholder</td>
                     <td className="p-2 font-mono">string</td>
                     <td className="p-2">-</td>
                     <td className="p-2">Placeholder text</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">disabled</td>
                     <td className="p-2 font-mono">boolean</td>
                     <td className="p-2">false</td>
                     <td className="p-2">Disable the textarea</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">readOnly</td>
                     <td className="p-2 font-mono">boolean</td>
                     <td className="p-2">false</td>
                     <td className="p-2">Make textarea read-only</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">required</td>
                     <td className="p-2 font-mono">boolean</td>
                     <td className="p-2">false</td>
                     <td className="p-2">Mark as required field</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">rows</td>
                     <td className="p-2 font-mono">number</td>
                     <td className="p-2">-</td>
                     <td className="p-2">Number of visible rows</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">cols</td>
                     <td className="p-2 font-mono">number</td>
                     <td className="p-2">-</td>
                     <td className="p-2">Number of visible columns</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">maxLength</td>
                     <td className="p-2 font-mono">number</td>
                     <td className="p-2">-</td>
                     <td className="p-2">Maximum character limit</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">minLength</td>
                     <td className="p-2 font-mono">number</td>
                     <td className="p-2">-</td>
@@ -778,7 +778,7 @@ export default function TextareaStory() {
                   <Badge variant="secondary">resize (both)</Badge>
                 </div>
               </div>
-              <div className="bg-muted/50 rounded-lg p-4">
+              <div className="rounded-lg bg-muted/50 p-4">
                 <pre className="overflow-x-auto text-sm">
                   {`// Size variants
 <Textarea className="min-h-[50px] text-sm" />    // Small
@@ -805,11 +805,11 @@ export default function TextareaStory() {
         <div className="space-y-8">
           <div>
             <h3 className="mb-4 text-lg font-semibold">Basic Usage</h3>
-            <p className="text-muted-foreground mb-4 text-sm">
+            <p className="mb-4 text-sm text-muted-foreground">
               The Textarea component is used for multi-line text input,
               supporting all standard HTML textarea attributes and properties.
             </p>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`import { Textarea } from '@kit/ui/textarea';
 
@@ -835,7 +835,7 @@ function CommentForm() {
 
           <div>
             <h3 className="mb-4 text-lg font-semibold">Form Integration</h3>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -883,7 +883,7 @@ function MessageForm() {
 
           <div>
             <h3 className="mb-4 text-lg font-semibold">Character Counting</h3>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`function TextareaWithCount() {
   const [text, setText] = useState('');

@@ -17,13 +17,15 @@ export class StripePageObject {
     }).toPass();
   }
 
-  async fillForm(params: {
-    billingName?: string;
-    cardNumber?: string;
-    expiry?: string;
-    cvc?: string;
-    billingCountry?: string;
-  } = {}) {
+  async fillForm(
+    params: {
+      billingName?: string;
+      cardNumber?: string;
+      expiry?: string;
+      cvc?: string;
+      billingCountry?: string;
+    } = {},
+  ) {
     const billingName = this.billingName();
     const cardNumber = this.cardNumber();
     const expiry = this.expiry();
@@ -38,7 +40,9 @@ export class StripePageObject {
   }
 
   submitForm() {
-    return this.getStripeCheckoutIframe().getByTestId('hosted-payment-submit-button').click();
+    return this.getStripeCheckoutIframe()
+      .getByTestId('hosted-payment-submit-button')
+      .click();
   }
 
   cardNumber() {

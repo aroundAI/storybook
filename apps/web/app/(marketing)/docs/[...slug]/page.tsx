@@ -63,11 +63,11 @@ async function DocumentationPage({ params }: DocumentationPageProps) {
       <div className={'flex overflow-y-hidden'}>
         <article className={cn('gap-y-12 overflow-y-auto px-6')}>
           <section className={'flex flex-col gap-y-2.5'}>
-            <h1 className={'text-foreground text-3xl font-semibold'}>
+            <h1 className={'text-3xl font-semibold text-foreground'}>
               {page.title}
             </h1>
 
-            <h2 className={'text-muted-foreground text-lg'}>{description}</h2>
+            <h2 className={'text-lg text-muted-foreground'}>{description}</h2>
           </section>
 
           <div className={'markdoc'}>

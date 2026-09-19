@@ -92,7 +92,7 @@ function getClassNameBuilder() {
         default: `flex h-[2.5px] w-full flex-col transition-all duration-500`,
         numbers:
           'flex h-9 w-9 items-center justify-center rounded-full border text-sm font-bold',
-        dots: 'bg-muted h-2.5 w-2.5 rounded-full transition-colors',
+        dots: 'h-2.5 w-2.5 rounded-full bg-muted transition-colors',
       },
       selected: {
         true: '',
@@ -183,7 +183,7 @@ function StepDivider({
   complete: boolean;
 }>) {
   const spanClassName = cn('min-w-max text-sm font-medium', {
-    ['text-muted-foreground hidden sm:flex']: !selected,
+    ['hidden text-muted-foreground sm:flex']: !selected,
     ['text-secondary-foreground']: selected || complete,
     ['font-medium']: selected,
   });
@@ -200,7 +200,7 @@ function StepDivider({
       <div
         className={
           'divider h-[1px] w-full bg-gray-200 transition-colors' +
-          ' dark:bg-border hidden group-last:hidden sm:flex'
+          ' hidden group-last:hidden sm:flex dark:bg-border'
         }
       />
     </div>

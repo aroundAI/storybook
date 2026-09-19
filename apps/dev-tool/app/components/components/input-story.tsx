@@ -199,7 +199,7 @@ export function InputStory() {
     const inputElement = (
       <div className="relative">
         {controls.withIcon && controls.iconPosition === 'left' && (
-          <IconComponent className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+          <IconComponent className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         )}
 
         <Input
@@ -237,7 +237,7 @@ export function InputStory() {
               )}
             </Button>
           ) : (
-            <IconComponent className="text-muted-foreground absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2" />
+            <IconComponent className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           ))}
       </div>
     );
@@ -248,7 +248,7 @@ export function InputStory() {
           <Label htmlFor="input">
             {controls.labelText}
             {controls.required && (
-              <span className="text-destructive ml-1">*</span>
+              <span className="ml-1 text-destructive">*</span>
             )}
           </Label>
         )}
@@ -471,7 +471,7 @@ export function InputStory() {
             <div className="space-y-2">
               <Label htmlFor="user-input">Username</Label>
               <div className="relative">
-                <User className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+                <User className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="user-input"
                   className="pl-9"
@@ -482,7 +482,7 @@ export function InputStory() {
             <div className="space-y-2">
               <Label htmlFor="search-input">Search</Label>
               <div className="relative">
-                <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="search-input"
                   className="pl-9"
@@ -493,7 +493,7 @@ export function InputStory() {
             <div className="space-y-2">
               <Label htmlFor="email-icon-input">Email with Icon</Label>
               <div className="relative">
-                <Mail className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+                <Mail className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="email-icon-input"
                   type="email"
@@ -505,7 +505,7 @@ export function InputStory() {
             <div className="space-y-2">
               <Label htmlFor="phone-input">Phone Number</Label>
               <div className="relative">
-                <Phone className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+                <Phone className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="phone-input"
                   type="tel"
@@ -541,12 +541,12 @@ export function InputStory() {
                 placeholder="Invalid input"
                 className="border-destructive focus-visible:ring-destructive"
               />
-              <p className="text-destructive text-sm">This field is required</p>
+              <p className="text-sm text-destructive">This field is required</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="disabled-input">Disabled State</Label>
               <Input id="disabled-input" placeholder="Cannot edit" disabled />
-              <p className="text-muted-foreground text-sm">Field is disabled</p>
+              <p className="text-sm text-muted-foreground">Field is disabled</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="readonly-input">Read-only</Label>
@@ -556,7 +556,7 @@ export function InputStory() {
                 readOnly
                 className="bg-muted"
               />
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-muted-foreground">
                 Value cannot be changed
               </p>
             </div>
@@ -578,12 +578,12 @@ export function InputStory() {
         <div className="space-y-6">
           <div>
             <h4 className="mb-3 text-lg font-semibold">Input</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               A form input element for collecting user data with various types
               and states.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -696,21 +696,21 @@ export function InputStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Labels and Descriptions</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Always provide clear labels and helper text. Use required
               indicators for mandatory fields.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Error Handling</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Provide clear error messages that explain what went wrong and how
               to fix it.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Keyboard Navigation</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Ensure inputs are keyboard accessible and follow logical tab
               order.
             </p>

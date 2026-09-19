@@ -88,7 +88,7 @@ export function MediaBin() {
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+        <h3 className="text-xs font-semibold tracking-wider text-zinc-400 uppercase">
           Media
         </h3>
         <span className="text-[10px] text-zinc-500">{totalCount} assets</span>
@@ -101,7 +101,7 @@ export function MediaBin() {
           placeholder="Search assets…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-md border border-zinc-700 bg-zinc-800/50 px-2.5 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-500 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500/30"
+          className="w-full rounded-md border border-zinc-700 bg-zinc-800/50 px-2.5 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 focus:outline-none"
         />
       </div>
 

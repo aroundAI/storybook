@@ -293,7 +293,7 @@ function OverriddenNotice({ overridden }: { overridden: OverriddenTarget[] }) {
 
   return (
     <p
-      className={'text-muted-foreground border-l-2 pl-3 text-xs'}
+      className={'border-l-2 pl-3 text-xs text-muted-foreground'}
       data-test={'channel-overridden-notice'}
     >
       {overridden

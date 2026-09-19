@@ -36,12 +36,12 @@ export function WithContentAndFooter() {
           <CardButtonTitle>Season 1</CardButtonTitle>
         </CardButtonHeader>
         <CardButtonContent>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             12 episodes &middot; Documentary &middot; In production
           </p>
         </CardButtonContent>
         <CardButtonFooter className="h-auto py-3">
-          <span className="text-muted-foreground text-xs">
+          <span className="text-xs text-muted-foreground">
             Last edited 2 hours ago
           </span>
         </CardButtonFooter>

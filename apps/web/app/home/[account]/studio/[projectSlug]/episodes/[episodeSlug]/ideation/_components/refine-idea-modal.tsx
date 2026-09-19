@@ -125,7 +125,7 @@ function EditableThemes({
       {themes.map((theme, index) => (
         <span
           key={`${theme}-${index}`}
-          className="group/tag animate-in fade-in-0 inline-flex items-center gap-1.5 rounded-md bg-[#252525] px-2.5 py-1 text-xs text-[#A3A3A3] transition-colors hover:bg-[#2a2a2a] dark:bg-[#252525] dark:text-[#A3A3A3]"
+          className="group/tag inline-flex items-center gap-1.5 rounded-md bg-[#252525] px-2.5 py-1 text-xs text-[#A3A3A3] transition-colors animate-in fade-in-0 hover:bg-[#2a2a2a] dark:bg-[#252525] dark:text-[#A3A3A3]"
         >
           {theme}
           <button

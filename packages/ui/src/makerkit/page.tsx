@@ -46,7 +46,7 @@ function PageWithSidebar(props: PageProps) {
       >
         {MobileNavigation}
 
-        <div className={'bg-background flex flex-1 flex-col px-4 lg:px-0'}>
+        <div className={'flex flex-1 flex-col bg-background px-4 lg:px-0'}>
           {Children}
         </div>
       </div>
@@ -83,7 +83,7 @@ function PageWithHeader(props: PageProps) {
       >
         <div
           className={cn(
-            'bg-muted/40 dark:border-border dark:shadow-primary/10 flex h-14 items-center justify-between px-4 lg:justify-start lg:shadow-xs',
+            'flex h-14 items-center justify-between bg-muted/40 px-4 lg:justify-start lg:shadow-xs dark:border-border dark:shadow-primary/10',
             {
               'sticky top-0 z-10 backdrop-blur-md': props.sticky ?? true,
             },
@@ -121,7 +121,7 @@ export function PageNavigation(props: React.PropsWithChildren) {
 export function PageDescription(props: React.PropsWithChildren) {
   return (
     <div className={'flex h-6 items-center'}>
-      <div className={'text-muted-foreground text-xs leading-none font-normal'}>
+      <div className={'text-xs leading-none font-normal text-muted-foreground'}>
         {props.children}
       </div>
     </div>
@@ -166,7 +166,7 @@ export function PageHeader({
       <div className={'flex flex-col gap-y-2'}>
         <div className="flex items-center gap-x-2.5">
           {displaySidebarTrigger ? (
-            <SidebarTrigger className="text-muted-foreground hover:text-secondary-foreground hidden h-4.5 w-4.5 cursor-pointer lg:inline-flex" />
+            <SidebarTrigger className="hidden h-4.5 w-4.5 cursor-pointer text-muted-foreground hover:text-secondary-foreground lg:inline-flex" />
           ) : null}
 
           <If condition={description}>

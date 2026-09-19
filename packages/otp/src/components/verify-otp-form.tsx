@@ -122,7 +122,7 @@ export function VerifyOtpForm({
             onSubmit={emailForm.handleSubmit(handleSendOtp)}
           >
             <div className="flex flex-col gap-y-2">
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-muted-foreground">
                 <Trans
                   i18nKey="common:otp.requestVerificationCodeDescription"
                   values={{ email }}
@@ -165,7 +165,7 @@ export function VerifyOtpForm({
       ) : (
         <Form {...otpForm}>
           <div className="flex w-full flex-col items-center gap-y-8">
-            <div className="text-muted-foreground text-sm">
+            <div className="text-sm text-muted-foreground">
               <Trans i18nKey="common:otp.codeSentToEmail" values={{ email }} />
             </div>
 

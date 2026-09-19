@@ -151,14 +151,14 @@ function EpisodeCard({
           )}
 
           {/* Episode number badge */}
-          <div className="absolute left-2 top-2 rounded bg-black/70 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
+          <div className="absolute top-2 left-2 rounded bg-black/70 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
             {episode.season_number ? `S${episode.season_number}` : ''}E
             {episode.number}
           </div>
 
           {/* Duration badge */}
           {episode.duration_seconds && (
-            <div className="absolute bottom-2 right-2 rounded bg-black/70 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
+            <div className="absolute right-2 bottom-2 rounded bg-black/70 px-2 py-1 text-xs font-medium text-white backdrop-blur-sm">
               {formatDuration(episode.duration_seconds)}
             </div>
           )}
@@ -172,7 +172,7 @@ function EpisodeCard({
 
           {/* Now Playing indicator */}
           {isCurrent && (
-            <div className="absolute right-2 top-2 rounded bg-indigo-500 px-2 py-1 text-xs font-medium text-white">
+            <div className="absolute top-2 right-2 rounded bg-indigo-500 px-2 py-1 text-xs font-medium text-white">
               Now Playing
             </div>
           )}

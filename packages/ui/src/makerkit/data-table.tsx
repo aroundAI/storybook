@@ -298,7 +298,7 @@ export function DataTable<RecordData extends DataItem>({
         data-testid="data-table"
         {...tableProps}
         className={cn(
-          'bg-background border-collapse border-spacing-0',
+          'border-collapse border-spacing-0 bg-background',
           className,
           {
             'h-full': data.length === 0,
@@ -307,7 +307,7 @@ export function DataTable<RecordData extends DataItem>({
       >
         <TableHeader
           className={cn(headerClassName, {
-            ['bg-background/20 outline-border sticky top-[0px] z-10 outline backdrop-blur-sm']:
+            ['sticky top-[0px] z-10 bg-background/20 outline outline-border backdrop-blur-sm']:
               sticky,
           })}
         >
@@ -338,10 +338,10 @@ export function DataTable<RecordData extends DataItem>({
                 return (
                   <TableHead
                     className={cn(
-                      'text-muted-foreground bg-background/80 border-transparent font-sans font-medium',
+                      'border-transparent bg-background/80 font-sans font-medium text-muted-foreground',
                       {
-                        ['border-r-background border-r']: isPinned === 'left',
-                        ['border-l-background border-l']: isPinned === 'right',
+                        ['border-r border-r-background']: isPinned === 'left',
+                        ['border-l border-l-background']: isPinned === 'right',
                         ['sticky top-0 z-10 opacity-95 backdrop-blur-sm']:
                           isPinned,
                         ['relative z-0']: !isPinned,
@@ -361,7 +361,7 @@ export function DataTable<RecordData extends DataItem>({
                         className={cn(
                           'flex items-center gap-2',
                           header.column.getCanSort()
-                            ? 'hover:bg-accent/50 -mx-3 cursor-pointer rounded px-3 py-1 select-none'
+                            ? '-mx-3 cursor-pointer rounded px-3 py-1 select-none hover:bg-accent/50'
                             : '',
                         )}
                       >
@@ -433,9 +433,9 @@ export function DataTable<RecordData extends DataItem>({
                 [],
                 'border-transparent',
                 {
-                  ['bg-background/90 border-r-border group-hover/row:bg-muted/50 sticky z-[1] border-r opacity-95 backdrop-blur-sm']:
+                  ['sticky z-[1] border-r border-r-border bg-background/90 opacity-95 backdrop-blur-sm group-hover/row:bg-muted/50']:
                     isPinned === 'left',
-                  ['bg-background/90 border-l-border group-hover/row:bg-muted/50 sticky z-[1] border-l opacity-95 backdrop-blur-sm']:
+                  ['sticky z-[1] border-l border-l-border bg-background/90 opacity-95 backdrop-blur-sm group-hover/row:bg-muted/50']:
                     isPinned === 'right',
                   ['relative z-0']: !isPinned,
                 },
@@ -483,7 +483,7 @@ export function DataTable<RecordData extends DataItem>({
 
       <If condition={rows.length === 0}>
         <div className={'flex flex-1 flex-col items-center p-8'}>
-          <span className="text-muted-foreground text-center text-sm">
+          <span className="text-center text-sm text-muted-foreground">
             {noResultsMessage || <Trans i18nKey={'common:noData'} />}
           </span>
         </div>
@@ -492,7 +492,7 @@ export function DataTable<RecordData extends DataItem>({
       <If condition={displayPagination}>
         <div
           className={cn(
-            'bg-background/80 sticky bottom-0 z-10 border-t backdrop-blur-sm',
+            'sticky bottom-0 z-10 border-t bg-background/80 backdrop-blur-sm',
             {
               ['sticky bottom-0 z-10 max-w-full rounded-none']: sticky,
             },
@@ -533,7 +533,7 @@ function Pagination<T>({
 
   return (
     <div className="flex items-center space-x-4">
-      <span className="text-muted-foreground flex items-center text-xs">
+      <span className="flex items-center text-xs text-muted-foreground">
         <Trans
           i18nKey={'common:pageOfPages'}
           values={{
@@ -590,7 +590,7 @@ function Pagination<T>({
       </div>
 
       <If condition={totalCount && rows.length > 0}>
-        <span className="text-muted-foreground flex items-center text-xs">
+        <span className="flex items-center text-xs text-muted-foreground">
           Showing {startRecord} to {endRecord} of {totalCount} rows
         </span>
       </If>

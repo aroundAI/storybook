@@ -27,7 +27,7 @@ export function PostHeader({ post }: { post: Cms.ContentItem }) {
           </div>
 
           <h2
-            className={'text-muted-foreground text-base xl:text-lg'}
+            className={'text-base text-muted-foreground xl:text-lg'}
             dangerouslySetInnerHTML={{ __html: description ?? '' }}
           ></h2>
         </div>

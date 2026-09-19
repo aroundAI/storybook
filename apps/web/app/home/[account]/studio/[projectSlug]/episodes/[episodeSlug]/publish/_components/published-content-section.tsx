@@ -115,7 +115,7 @@ export function PublishedContentSection({
           {sortedPublishes.map((pub) => (
             <div
               key={pub.id}
-              className="bg-card flex items-center justify-between rounded-lg border p-3"
+              className="flex items-center justify-between rounded-lg border bg-card p-3"
             >
               <div className="flex items-center gap-3">
                 <PlatformIcon platform={pub.platform} size="lg" />
@@ -174,14 +174,14 @@ export function PublishedContentSection({
                   )}
                   {/* Show scheduled time for scheduled posts */}
                   {pub.status === 'scheduled' && pub.scheduledAt && (
-                    <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />
                       Scheduled for {format(new Date(pub.scheduledAt), 'PPp')}
                     </p>
                   )}
                   {/* Show published time for published posts */}
                   {pub.status === 'published' && pub.publishedAt && (
-                    <p className="text-muted-foreground mt-1 text-xs">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Published {format(new Date(pub.publishedAt), 'PPp')}
                     </p>
                   )}

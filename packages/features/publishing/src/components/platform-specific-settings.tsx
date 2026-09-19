@@ -89,7 +89,7 @@ function YouTubeSettings({ settings, onChange }: SettingsProps) {
       <div className="flex items-center justify-between">
         <div>
           <Label htmlFor="made-for-kids">Made for kids</Label>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Content made specifically for children
           </p>
         </div>
@@ -109,7 +109,7 @@ function TikTokSettings({ settings, onChange }: SettingsProps) {
       <div className="flex items-center justify-between">
         <div>
           <Label>Allow Duet</Label>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Let others create Duets with this video
           </p>
         </div>
@@ -122,7 +122,7 @@ function TikTokSettings({ settings, onChange }: SettingsProps) {
       <div className="flex items-center justify-between">
         <div>
           <Label>Allow Stitch</Label>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Let others create Stitches with this video
           </p>
         </div>
@@ -135,7 +135,7 @@ function TikTokSettings({ settings, onChange }: SettingsProps) {
       <div className="flex items-center justify-between">
         <div>
           <Label>Allow Comments</Label>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Let viewers comment on this video
           </p>
         </div>
@@ -154,7 +154,7 @@ function InstagramSettings({ settings, onChange }: SettingsProps) {
       <div className="flex items-center justify-between">
         <div>
           <Label>Share to Feed</Label>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Also show on your profile grid
           </p>
         </div>
@@ -173,7 +173,7 @@ function FacebookSettings({ settings, onChange }: SettingsProps) {
       <div className="flex items-center justify-between">
         <div>
           <Label>Post as Reel</Label>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Short-form vertical video format
           </p>
         </div>

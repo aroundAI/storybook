@@ -133,7 +133,7 @@ async function AssetLibraryPage({
       <div className="px-6 pt-6">
         <Link
           href={`/home/${account}/studio/${project.slug}`}
-          className="text-muted-foreground hover:text-foreground inline-flex items-center text-sm transition-colors"
+          className="inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Project

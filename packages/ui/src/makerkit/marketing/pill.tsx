@@ -14,7 +14,7 @@ export const Pill: React.FC<
   return (
     <Comp
       className={cn(
-        'bg-muted/50 flex items-center gap-x-1.5 rounded-full border px-2 py-1 pr-2 text-center text-sm font-medium text-transparent',
+        'flex items-center gap-x-1.5 rounded-full border bg-muted/50 px-2 py-1 pr-2 text-center text-sm font-medium text-transparent',
         className,
       )}
       {...props}
@@ -22,7 +22,7 @@ export const Pill: React.FC<
       {props.label && (
         <span
           className={
-            'text-primary-foreground bg-primary rounded-2xl border px-1.5 py-0.5 text-xs font-bold tracking-tight'
+            'rounded-2xl border bg-primary px-1.5 py-0.5 text-xs font-bold tracking-tight text-primary-foreground'
           }
         >
           {props.label}
@@ -50,7 +50,7 @@ export const PillActionButton: React.FC<
     <Comp
       {...props}
       className={
-        'text-secondary-foreground bg-input active:bg-primary active:text-primary-foreground hover:ring-muted-foreground/50 rounded-full px-1.5 py-1.5 text-center text-sm font-medium ring ring-transparent transition-colors'
+        'rounded-full bg-input px-1.5 py-1.5 text-center text-sm font-medium text-secondary-foreground ring ring-transparent transition-colors hover:ring-muted-foreground/50 active:bg-primary active:text-primary-foreground'
       }
     >
       {props.children}

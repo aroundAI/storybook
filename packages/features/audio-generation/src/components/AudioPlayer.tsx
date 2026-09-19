@@ -197,7 +197,7 @@ export const AudioPlayer = React.forwardRef<HTMLDivElement, AudioPlayerProps>(
         <div
           ref={ref}
           className={cn(
-            'bg-destructive/10 text-destructive flex items-center justify-center rounded-lg border p-4',
+            'flex items-center justify-center rounded-lg border bg-destructive/10 p-4 text-destructive',
             className,
           )}
           data-test="audio-player-error"
@@ -211,7 +211,7 @@ export const AudioPlayer = React.forwardRef<HTMLDivElement, AudioPlayerProps>(
       <div
         ref={ref}
         className={cn(
-          'bg-card flex flex-col gap-3 rounded-lg border p-4',
+          'flex flex-col gap-3 rounded-lg border bg-card p-4',
           className,
         )}
         data-test="audio-player"
@@ -251,7 +251,7 @@ export const AudioPlayer = React.forwardRef<HTMLDivElement, AudioPlayerProps>(
 
           {/* Time display */}
           <span
-            className="text-muted-foreground min-w-[80px] text-sm tabular-nums"
+            className="min-w-[80px] text-sm text-muted-foreground tabular-nums"
             data-test="audio-player-time"
           >
             {formatTime(currentTime)} / {formatTime(duration)}

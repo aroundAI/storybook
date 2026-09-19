@@ -771,7 +771,7 @@ const examples = [
                   />
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 flex items-center gap-2">
-                      <IconComponent className="text-muted-foreground h-4 w-4" />
+                      <IconComponent className="h-4 w-4 text-muted-foreground" />
                       <Label
                         htmlFor={feature.key}
                         className="cursor-pointer font-medium"
@@ -784,7 +784,7 @@ const examples = [
                         </Badge>
                       )}
                     </div>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-sm text-muted-foreground">
                       {feature.description}
                     </p>
                     <div className="mt-1 flex items-center gap-2">
@@ -875,7 +875,7 @@ const examples = [
 
             <div className="space-y-3">
               <h4 className="text-sm font-medium">Usage Guidelines:</h4>
-              <ul className="text-muted-foreground space-y-2 text-sm">
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center gap-2">
                   <div className="h-1 w-1 rounded-full bg-current" />
                   Small: Dense data tables, list items with many options
@@ -1267,7 +1267,7 @@ export default function CheckboxStory() {
           {examples.map((example, index) => (
             <div key={index}>
               <h3 className="mb-4 text-lg font-semibold">{example.title}</h3>
-              <p className="text-muted-foreground mb-4 text-sm">
+              <p className="mb-4 text-sm text-muted-foreground">
                 {example.description}
               </p>
               <div className="flex justify-center">
@@ -1281,7 +1281,7 @@ export default function CheckboxStory() {
         <div className="space-y-8">
           <div>
             <h3 className="mb-4 text-lg font-semibold">{apiReference.title}</h3>
-            <p className="text-muted-foreground mb-6 text-sm">
+            <p className="mb-6 text-sm text-muted-foreground">
               {apiReference.description}
             </p>
 
@@ -1297,7 +1297,7 @@ export default function CheckboxStory() {
                 </thead>
                 <tbody className="text-sm">
                   {apiReference.props.map((prop, index) => (
-                    <tr key={index} className="border-border/50 border-b">
+                    <tr key={index} className="border-b border-border/50">
                       <td className="p-2 font-mono">{prop.name}</td>
                       <td className="p-2 font-mono">{prop.type}</td>
                       <td className="p-2">{(prop as any).default || '-'}</td>
@@ -1314,7 +1314,7 @@ export default function CheckboxStory() {
             {apiReference.examples.map((example, index) => (
               <div key={index}>
                 <h4 className="mb-2 text-base font-medium">{example.title}</h4>
-                <div className="bg-muted/50 rounded-lg p-4">
+                <div className="rounded-lg bg-muted/50 p-4">
                   <pre className="overflow-x-auto text-sm">
                     <code>{example.code}</code>
                   </pre>
@@ -1330,7 +1330,7 @@ export default function CheckboxStory() {
             <h3 className="mb-4 text-lg font-semibold">
               {usageGuidelines.title}
             </h3>
-            <p className="text-muted-foreground mb-6 text-sm">
+            <p className="mb-6 text-sm text-muted-foreground">
               {usageGuidelines.description}
             </p>
           </div>
