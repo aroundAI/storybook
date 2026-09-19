@@ -206,9 +206,15 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
     // The second tab still shows Start. Pressing it must not restart the
     // experiment or replace the baseline the first tab captured.
     await second!.getByRole('button', { name: 'Start experiment' }).click();
+    // The wording, not only that something appeared: a production build
+    // replaces a *thrown* server-action message with "An error occurred in
+    // the Server Components render…", which is visible too (review 4, G1).
+    // ⚫️ Test runs this against a production build, where that shows.
     await expect(
       second!.locator('[data-test="experiment-action-error"]'),
-    ).toBeVisible();
+    ).toHaveText(
+      'Only a planned experiment can be started; this one is running.',
+    );
 
     const [after] = await readRows<{
       started_at: string;

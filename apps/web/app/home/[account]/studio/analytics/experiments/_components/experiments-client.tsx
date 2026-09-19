@@ -13,6 +13,7 @@ import {
   ExperimentListSkeleton,
   ExperimentsDueList,
 } from '@kit/content-analytics/components';
+import { unwrap } from '@kit/content-analytics/lib/action-result';
 import { listChannelsAction } from '@kit/content-analytics/server/channels-actions';
 import {
   concludeExperimentAction,
@@ -31,6 +32,7 @@ import {
   DialogTitle,
 } from '@kit/ui/dialog';
 import { Input } from '@kit/ui/input';
+import { Label } from '@kit/ui/label';
 import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 
@@ -38,9 +40,17 @@ import { toast } from '@kit/ui/sonner';
  * The user's calendar date, `YYYY-MM-DD`. Experiment dates are calendar
  * dates in the user's day; the server's UTC clock would record a start just
  * after local midnight on the previous day for anyone east of UTC.
+ *
+ * Built from the date's parts rather than a locale's format: `en-CA`
+ * happens to print `YYYY-MM-DD`, but that is locale data, not a contract,
+ * and the server refuses anything else (review 4, G7).
  */
 function localToday(): string {
-  return new Date().toLocaleDateString('en-CA');
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  return `${now.getFullYear()}-${month}-${day}`;
 }
 
 interface ExperimentsClientProps {
@@ -168,7 +178,7 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
           videosLoading={videosQuery.isLoading}
           videosError={videosQuery.isError}
           onSubmit={async (values) => {
-            await createExperimentAction(values);
+            await unwrap(createExperimentAction(values));
           }}
           onSuccess={refresh}
         />
@@ -259,10 +269,12 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
                   onClick={() =>
                     runAction(
                       () =>
-                        startExperimentAction({
-                          experimentId: experiment.id,
-                          startedAt: localToday(),
-                        }),
+                        unwrap(
+                          startExperimentAction({
+                            experimentId: experiment.id,
+                            startedAt: localToday(),
+                          }),
+                        ),
                       'Experiment started — baseline captured',
                     )
                   }
@@ -274,10 +286,17 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
 
               {experiment.status === 'running' ? (
                 <div className={'flex flex-col gap-2'}>
+                  {/* A visible label: a placeholder is gone once typing
+                      starts, and names nothing to a screen reader. */}
+                  <Label htmlFor={'experiment-outcome'}>
+                    What actually happened?
+                  </Label>
                   <Input
+                    id={'experiment-outcome'}
                     value={outcome}
                     onChange={(event) => setOutcome(event.target.value)}
-                    placeholder={'What actually happened?'}
+                    placeholder={'e.g. CTR rose from 4.1% to 5.0%'}
+                    data-test={'experiment-outcome'}
                   />
                   <div className={'flex gap-2'}>
                     {(['confirmed', 'rejected', 'inconclusive'] as const).map(
@@ -293,12 +312,14 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
                           onClick={async () => {
                             const concluded = await runAction(
                               () =>
-                                concludeExperimentAction({
-                                  experimentId: experiment.id,
-                                  actualOutcome: outcome,
-                                  outcomeStatus: status,
-                                  endedAt: localToday(),
-                                }),
+                                unwrap(
+                                  concludeExperimentAction({
+                                    experimentId: experiment.id,
+                                    actualOutcome: outcome,
+                                    outcomeStatus: status,
+                                    endedAt: localToday(),
+                                  }),
+                                ),
                               'Experiment concluded',
                             );
                             // Kept on failure, so the outcome is not retyped.

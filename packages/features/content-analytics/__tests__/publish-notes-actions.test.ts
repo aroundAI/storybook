@@ -66,9 +66,8 @@ describe('updatePublishNoteAction', () => {
     // (publishes_analytics_note_audit), so a caller cannot claim either.
     expect(state.written).toEqual({ analytics_note: 'Swapped thumbnail' });
     expect(result).toEqual({
-      publishId: PUBLISH,
-      note: 'Swapped thumbnail',
-      updatedAt: 't',
+      ok: true,
+      data: { publishId: PUBLISH, note: 'Swapped thumbnail', updatedAt: 't' },
     });
   });
 
@@ -76,9 +75,15 @@ describe('updatePublishNoteAction', () => {
     // RLS refusing an update matches zero rows and returns 200 with no error.
     state.matched = [];
 
-    await expect(
-      updatePublishNoteAction({ publishId: PUBLISH, note: 'Hello' }),
-    ).rejects.toThrow('You cannot edit notes on this video');
+    // Returned, not thrown: a production build would replace a thrown
+    // message with a generic sentence (FILM-1610 review 4, G1).
+    expect(
+      await updatePublishNoteAction({ publishId: PUBLISH, note: 'Hello' }),
+    ).toEqual({
+      ok: false,
+      error:
+        'You cannot edit notes on this video. Notes can be changed by members of its project.',
+    });
   });
 });
 

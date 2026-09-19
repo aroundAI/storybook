@@ -10,6 +10,8 @@ import { fetchAllRows } from '@kit/shared/pagination';
 import type { Json } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { ActionRefusal } from '../lib/action-result';
+import { assertCallerToday } from '../lib/caller-date';
 import {
   assertCanAbandon,
   assertCanConclude,
@@ -37,6 +39,7 @@ import {
   resultWindow,
 } from '../lib/watched-metrics';
 import { resolveWatchedMetric } from './watched-metric-snapshot';
+import { withRefusals } from './with-refusals';
 
 // Use generic SupabaseClient type to avoid strict type checking issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -93,7 +96,7 @@ async function readSnapshotContext(
     .single();
 
   if (error || !data) {
-    throw new Error('Experiment not found or access denied');
+    throw new ActionRefusal('Experiment not found or access denied');
   }
 
   return data as SnapshotContext;
@@ -211,7 +214,7 @@ async function assertPublishesInAccount(
   const missing = publishIds.filter((id) => !found.has(id));
 
   if (missing.length > 0) {
-    throw new Error('Some linked videos are not in this account');
+    throw new ActionRefusal('Some linked videos are not in this account');
   }
 }
 
@@ -224,6 +227,11 @@ async function assertPublishesInAccount(
  * second overwriting the first's baseline. The status condition on the
  * update itself is what makes it atomic; zero rows matched means someone
  * else moved the experiment first.
+ *
+ * `unchanged` holds columns that must still read what the action read. The
+ * start measures a baseline over the metric and window it read; an edit
+ * landing between that read and this write would otherwise freeze a metric
+ * the baseline never measured (review 4, G5).
  */
 async function updateIfStatus(
   client: Client,
@@ -231,22 +239,28 @@ async function updateIfStatus(
   from: string[],
   payload: Record<string, unknown>,
   what: string,
+  unchanged: Record<string, string | number | null> = {},
 ): Promise<void> {
-  const base = client
+  let query = client
     .from('analytics_experiments')
     .update(payload)
     .eq('id', experimentId);
 
-  const { data, error } = await (
-    from.length === 1 ? base.eq('status', from[0]!) : base.in('status', from)
-  ).select('id');
+  query =
+    from.length === 1 ? query.eq('status', from[0]!) : query.in('status', from);
+
+  for (const [column, value] of Object.entries(unchanged)) {
+    query = value === null ? query.is(column, null) : query.eq(column, value);
+  }
+
+  const { data, error } = await query.select('id');
 
   if (error) {
     throw new Error(`Failed to ${what}: ${error.message}`);
   }
 
   if (!data || data.length === 0) {
-    throw new Error(
+    throw new ActionRefusal(
       `This experiment was changed by someone else before it could ${what}. Reload and try again.`,
     );
   }
@@ -299,241 +313,267 @@ async function replaceLinks(
   }
 }
 
-export const createExperimentAction = enhanceAction(
-  async (data) => {
-    const client = getSupabaseServerClient();
+export const createExperimentAction = withRefusals(
+  'log the experiment',
+  enhanceAction(
+    async (data) => {
+      const client = getSupabaseServerClient();
 
-    await assertPublishesInAccount(client, data.accountId, data.publishIds);
+      await assertPublishesInAccount(client, data.accountId, data.publishIds);
 
-    const { data: experiment, error } = await client
-      .from('analytics_experiments')
-      .insert({
-        account_id: data.accountId,
-        project_id: data.projectId ?? null,
-        title: data.title,
-        hypothesis: blankToNull(data.hypothesis),
-        change_description: data.changeDescription,
-        expected_outcome: blankToNull(data.expectedOutcome),
-        category: data.category ?? null,
-        metric_watched: data.metricWatched ?? null,
-        review_window_days: data.reviewWindowDays,
-        notes: blankToNull(data.notes),
-        connection_id: data.connectionId ?? null,
-        // created_by is set by the database (analytics_experiments_set_creator).
-      })
-      .select('id')
-      .single();
-
-    if (error || !experiment) {
-      throw new Error(`Failed to create experiment: ${error?.message}`);
-    }
-
-    try {
-      await replaceLinks(client, experiment.id, data.publishIds, data.tagIds);
-    } catch (linkError) {
-      // The experiment row and its links are separate requests, so undo the
-      // row that landed. Left in place, a retry would log the experiment
-      // twice — once with no videos.
-      const cleanup = await client
+      const { data: experiment, error } = await client
         .from('analytics_experiments')
-        .delete()
-        .eq('id', experiment.id);
+        .insert({
+          account_id: data.accountId,
+          project_id: data.projectId ?? null,
+          title: data.title,
+          hypothesis: blankToNull(data.hypothesis),
+          change_description: data.changeDescription,
+          expected_outcome: blankToNull(data.expectedOutcome),
+          category: data.category ?? null,
+          metric_watched: data.metricWatched ?? null,
+          review_window_days: data.reviewWindowDays,
+          notes: blankToNull(data.notes),
+          connection_id: data.connectionId ?? null,
+          // created_by is set by the database (analytics_experiments_set_creator).
+        })
+        .select('id')
+        .single();
 
-      if (cleanup.error) {
-        const reason =
-          linkError instanceof Error ? linkError.message : String(linkError);
-
-        // Both failed: say so, rather than let the orphan pass unnoticed.
-        const logger = await getLogger();
-        logger.error(
-          {
-            experimentId: experiment.id,
-            reason,
-            cleanup: cleanup.error.message,
-          },
-          'Experiment left without its links',
-        );
-
-        throw new Error(
-          `${reason}. The experiment (${experiment.id}) could not be removed afterwards (${cleanup.error.message}); delete it before retrying.`,
-        );
+      if (error || !experiment) {
+        throw new Error(`Failed to create experiment: ${error?.message}`);
       }
 
-      throw linkError;
-    }
+      try {
+        await replaceLinks(client, experiment.id, data.publishIds, data.tagIds);
+      } catch (linkError) {
+        // The experiment row and its links are separate requests, so undo the
+        // row that landed. Left in place, a retry would log the experiment
+        // twice — once with no videos.
+        const cleanup = await client
+          .from('analytics_experiments')
+          .delete()
+          .eq('id', experiment.id);
 
-    return { id: experiment.id };
-  },
-  { schema: CreateExperimentSchema, auth: true },
+        if (cleanup.error) {
+          const reason =
+            linkError instanceof Error ? linkError.message : String(linkError);
+
+          // Both failed: say so, rather than let the orphan pass unnoticed.
+          const logger = await getLogger();
+          logger.error(
+            {
+              experimentId: experiment.id,
+              reason,
+              cleanup: cleanup.error.message,
+            },
+            'Experiment left without its links',
+          );
+
+          throw new ActionRefusal(
+            'The videos could not be linked, and the experiment saved without them could not be removed. It is in the list without its videos.',
+          );
+        }
+
+        throw linkError;
+      }
+
+      return { id: experiment.id };
+    },
+    { schema: CreateExperimentSchema, auth: true },
+  ),
 );
 
-export const updateExperimentAction = enhanceAction(
-  async ({ experimentId, publishIds, tagIds, ...fields }) => {
-    const client = getSupabaseServerClient();
+export const updateExperimentAction = withRefusals(
+  'save the experiment',
+  enhanceAction(
+    async ({ experimentId, publishIds, tagIds, ...fields }) => {
+      const client = getSupabaseServerClient();
 
-    const updates: Record<string, unknown> = {};
-    if (fields.title !== undefined) updates.title = fields.title;
-    if (fields.hypothesis !== undefined)
-      updates.hypothesis = blankToNull(fields.hypothesis);
-    if (fields.changeDescription !== undefined)
-      updates.change_description = fields.changeDescription;
-    if (fields.expectedOutcome !== undefined)
-      updates.expected_outcome = blankToNull(fields.expectedOutcome);
-    if (fields.category !== undefined) updates.category = fields.category;
-    if (fields.metricWatched !== undefined)
-      updates.metric_watched = fields.metricWatched;
-    if (fields.reviewWindowDays !== undefined)
-      updates.review_window_days = fields.reviewWindowDays;
-    if (fields.notes !== undefined) updates.notes = blankToNull(fields.notes);
-    if (fields.connectionId !== undefined)
-      updates.connection_id = fields.connectionId;
+      const updates: Record<string, unknown> = {};
+      if (fields.title !== undefined) updates.title = fields.title;
+      if (fields.hypothesis !== undefined)
+        updates.hypothesis = blankToNull(fields.hypothesis);
+      if (fields.changeDescription !== undefined)
+        updates.change_description = fields.changeDescription;
+      if (fields.expectedOutcome !== undefined)
+        updates.expected_outcome = blankToNull(fields.expectedOutcome);
+      if (fields.category !== undefined) updates.category = fields.category;
+      if (fields.metricWatched !== undefined)
+        updates.metric_watched = fields.metricWatched;
+      if (fields.reviewWindowDays !== undefined)
+        updates.review_window_days = fields.reviewWindowDays;
+      if (fields.notes !== undefined) updates.notes = blankToNull(fields.notes);
+      if (fields.connectionId !== undefined)
+        updates.connection_id = fields.connectionId;
 
-    const edited = Object.entries({ ...fields, publishIds })
-      .filter(([, value]) => value !== undefined)
-      .map(([field]) => field);
+      const edited = Object.entries({ ...fields, publishIds })
+        .filter(([, value]) => value !== undefined)
+        .map(([field]) => field);
 
-    if (edited.length > 0) {
-      const context = await readSnapshotContext(client, experimentId);
+      if (edited.length > 0) {
+        const context = await readSnapshotContext(client, experimentId);
 
-      assertEditable(context.status, edited);
+        assertEditable(context.status, edited);
 
-      if (publishIds) {
-        await assertPublishesInAccount(client, context.account_id, publishIds);
+        if (publishIds) {
+          await assertPublishesInAccount(
+            client,
+            context.account_id,
+            publishIds,
+          );
+        }
       }
-    }
 
-    if (Object.keys(updates).length > 0) {
-      const { error } = await client
-        .from('analytics_experiments')
-        .update(updates)
-        .eq('id', experimentId);
+      if (Object.keys(updates).length > 0) {
+        const { error } = await client
+          .from('analytics_experiments')
+          .update(updates)
+          .eq('id', experimentId);
 
-      if (error) {
-        throw new Error(`Failed to update experiment: ${error.message}`);
+        if (error) {
+          throw new Error(`Failed to update experiment: ${error.message}`);
+        }
       }
-    }
 
-    await replaceLinks(client, experimentId, publishIds, tagIds);
+      await replaceLinks(client, experimentId, publishIds, tagIds);
 
-    return { success: true };
-  },
-  { schema: UpdateExperimentSchema, auth: true },
+      return { success: true };
+    },
+    { schema: UpdateExperimentSchema, auth: true },
+  ),
 );
 
 /**
  * Marks an experiment running and snapshots the linked content's metrics
  * as the baseline to compare against later.
  */
-export const startExperimentAction = enhanceAction(
-  async ({ experimentId, startedAt }) => {
-    const client = getSupabaseServerClient();
-    const started = startedAt ?? today();
+export const startExperimentAction = withRefusals(
+  'start the experiment',
+  enhanceAction(
+    async ({ experimentId, startedAt }) => {
+      const client = getSupabaseServerClient();
+      if (startedAt) assertCallerToday(startedAt);
+      const started = startedAt ?? today();
 
-    const context = await readSnapshotContext(client, experimentId);
-    assertCanStart(context.status);
+      const context = await readSnapshotContext(client, experimentId);
+      assertCanStart(context.status);
 
-    const publishIds = await linkedPublishIds(client, experimentId);
-    const baseline = await captureSnapshot(publishIds, {
-      metric: context.metric_watched,
-      accountId: context.account_id,
-      window: baselineWindow(started, context.review_window_days),
-    });
+      const publishIds = await linkedPublishIds(client, experimentId);
+      const baseline = await captureSnapshot(publishIds, {
+        metric: context.metric_watched,
+        accountId: context.account_id,
+        window: baselineWindow(started, context.review_window_days),
+      });
 
-    await updateIfStatus(
-      client,
-      experimentId,
-      ['planned'],
-      {
-        status: 'running',
-        started_at: started,
-        baseline_metrics: baseline as unknown as Json,
-      },
-      'start',
-    );
+      await updateIfStatus(
+        client,
+        experimentId,
+        ['planned'],
+        {
+          status: 'running',
+          started_at: started,
+          baseline_metrics: baseline as unknown as Json,
+        },
+        'start',
+        {
+          metric_watched: context.metric_watched,
+          review_window_days: context.review_window_days,
+        },
+      );
 
-    return { success: true, baseline };
-  },
-  { schema: StartExperimentSchema, auth: true },
+      return { success: true, baseline };
+    },
+    { schema: StartExperimentSchema, auth: true },
+  ),
 );
 
 /**
  * Concludes an experiment, snapshotting results. The actual outcome is
  * required — an experiment without a recorded result teaches nothing.
  */
-export const concludeExperimentAction = enhanceAction(
-  async ({ experimentId, actualOutcome, outcomeStatus, endedAt }) => {
-    const client = getSupabaseServerClient();
-    const ended = endedAt ?? today();
+export const concludeExperimentAction = withRefusals(
+  'conclude the experiment',
+  enhanceAction(
+    async ({ experimentId, actualOutcome, outcomeStatus, endedAt }) => {
+      const client = getSupabaseServerClient();
+      if (endedAt) assertCallerToday(endedAt);
+      const ended = endedAt ?? today();
 
-    const context = await readSnapshotContext(client, experimentId);
-    assertCanConclude(context.status, context.started_at, ended);
+      const context = await readSnapshotContext(client, experimentId);
+      assertCanConclude(context.status, context.started_at, ended);
 
-    // assertCanConclude has established this; the type cannot see it.
-    const startedAt = context.started_at!;
+      // assertCanConclude has established this; the type cannot see it.
+      const startedAt = context.started_at!;
 
-    const publishIds = await linkedPublishIds(client, experimentId);
-    const result = await captureSnapshot(publishIds, {
-      metric: context.metric_watched,
-      accountId: context.account_id,
-      window: resultWindow(startedAt, ended),
-    });
+      const publishIds = await linkedPublishIds(client, experimentId);
+      const result = await captureSnapshot(publishIds, {
+        metric: context.metric_watched,
+        accountId: context.account_id,
+        window: resultWindow(startedAt, ended),
+      });
 
-    // What elapsed, not what was planned: a review on day 74 of a 60-day
-    // experiment is labelled 74.
-    result.resultAfterDays = daysBetween(startedAt, ended);
+      // What elapsed, not what was planned: a review on day 74 of a 60-day
+      // experiment is labelled 74.
+      result.resultAfterDays = daysBetween(startedAt, ended);
 
-    await updateIfStatus(
-      client,
-      experimentId,
-      ['running'],
-      {
-        status: 'concluded',
-        ended_at: ended,
-        actual_outcome: actualOutcome,
-        outcome_status: outcomeStatus,
-        result_metrics: result as unknown as Json,
-      },
-      'conclude',
-    );
+      await updateIfStatus(
+        client,
+        experimentId,
+        ['running'],
+        {
+          status: 'concluded',
+          ended_at: ended,
+          actual_outcome: actualOutcome,
+          outcome_status: outcomeStatus,
+          result_metrics: result as unknown as Json,
+        },
+        'conclude',
+      );
 
-    return { success: true, result };
-  },
-  { schema: ConcludeExperimentSchema, auth: true },
+      return { success: true, result };
+    },
+    { schema: ConcludeExperimentSchema, auth: true },
+  ),
 );
 
-export const abandonExperimentAction = enhanceAction(
-  async ({ experimentId, reason, endedAt }) => {
-    const client = getSupabaseServerClient();
+export const abandonExperimentAction = withRefusals(
+  'abandon the experiment',
+  enhanceAction(
+    async ({ experimentId, reason, endedAt }) => {
+      const client = getSupabaseServerClient();
 
-    const context = await readSnapshotContext(client, experimentId);
-    assertCanAbandon(context.status);
+      const context = await readSnapshotContext(client, experimentId);
+      assertCanAbandon(context.status);
 
-    // A calendar date, like the start. The server's UTC date can be the day
-    // before a start the user made just after their local midnight, and an
-    // end before its start is not a date anyone chose. Dates are
-    // YYYY-MM-DD, so string order is date order.
-    const requested = endedAt ?? today();
-    const ended =
-      context.started_at && requested < context.started_at
-        ? context.started_at
-        : requested;
+      // A calendar date, like the start. The server's UTC date can be the day
+      // before a start the user made just after their local midnight, and an
+      // end before its start is not a date anyone chose. Dates are
+      // YYYY-MM-DD, so string order is date order.
+      if (endedAt) assertCallerToday(endedAt);
+      const requested = endedAt ?? today();
+      const ended =
+        context.started_at && requested < context.started_at
+          ? context.started_at
+          : requested;
 
-    await updateIfStatus(
-      client,
-      experimentId,
-      ['planned', 'running'],
-      {
-        status: 'abandoned',
-        ended_at: ended,
-        actual_outcome: reason ?? null,
-        outcome_status: 'inconclusive',
-      },
-      'abandon',
-    );
+      await updateIfStatus(
+        client,
+        experimentId,
+        ['planned', 'running'],
+        {
+          status: 'abandoned',
+          ended_at: ended,
+          actual_outcome: reason ?? null,
+          outcome_status: 'inconclusive',
+        },
+        'abandon',
+      );
 
-    return { success: true };
-  },
-  { schema: AbandonExperimentSchema, auth: true },
+      return { success: true };
+    },
+    { schema: AbandonExperimentSchema, auth: true },
+  ),
 );
 
 /**
@@ -714,20 +754,23 @@ export const getExperimentAction = enhanceAction(
   { schema: GetExperimentSchema, auth: true },
 );
 
-export const deleteExperimentAction = enhanceAction(
-  async ({ experimentId }) => {
-    const client = getSupabaseServerClient();
+export const deleteExperimentAction = withRefusals(
+  'delete the experiment',
+  enhanceAction(
+    async ({ experimentId }) => {
+      const client = getSupabaseServerClient();
 
-    const { error } = await client
-      .from('analytics_experiments')
-      .delete()
-      .eq('id', experimentId);
+      const { error } = await client
+        .from('analytics_experiments')
+        .delete()
+        .eq('id', experimentId);
 
-    if (error) {
-      throw new Error(`Failed to delete experiment: ${error.message}`);
-    }
+      if (error) {
+        throw new Error(`Failed to delete experiment: ${error.message}`);
+      }
 
-    return { success: true };
-  },
-  { schema: DeleteExperimentSchema, auth: true },
+      return { success: true };
+    },
+    { schema: DeleteExperimentSchema, auth: true },
+  ),
 );

@@ -42,6 +42,7 @@
     "./lib/schemas/settings": "./src/lib/schemas/settings.schema.ts",
     "./lib/ypp-targets": "./src/lib/ypp-targets.ts",
     "./lib/watched-metrics": "./src/lib/watched-metrics.ts",
+    "./lib/action-result": "./src/lib/action-result.ts",
     "./lib/query-state": "./src/lib/query-state.ts"
   },
   "dependencies": {

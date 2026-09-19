@@ -1,13 +1,43 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ActionRefusal, unwrap } from '../src/lib/action-result';
 import {
-  abandonExperimentAction,
-  concludeExperimentAction,
-  createExperimentAction,
+  abandonExperimentAction as abandonAction,
+  concludeExperimentAction as concludeAction,
+  createExperimentAction as createAction,
   getExperimentAction,
-  startExperimentAction,
-  updateExperimentAction,
+  startExperimentAction as startAction,
+  updateExperimentAction as updateAction,
 } from '../src/server/experiment-actions';
+
+// Each mutation returns its refusal as a value (G1); the page reads it with
+// `unwrap`, so these tests do too — a refusal is the Error the page shows.
+const createExperimentAction = (input: Parameters<typeof createAction>[0]) =>
+  unwrap(createAction(input));
+const updateExperimentAction = (input: Parameters<typeof updateAction>[0]) =>
+  unwrap(updateAction(input));
+const startExperimentAction = (input: Parameters<typeof startAction>[0]) =>
+  unwrap(startAction(input));
+const concludeExperimentAction = (
+  input: Parameters<typeof concludeAction>[0],
+) => unwrap(concludeAction(input));
+const abandonExperimentAction = (input: Parameters<typeof abandonAction>[0]) =>
+  unwrap(abandonAction(input));
+
+const logged = vi.fn();
+
+// The date check has its own tests (caller-date.test.ts) against a fixed
+// clock; here the fixtures use fixed dates, so it is a spy, and the tests
+// below check each action sends the caller's date through it.
+const assertCallerToday = vi.fn();
+
+vi.mock('../src/lib/caller-date', () => ({
+  assertCallerToday: (date: string) => assertCallerToday(date),
+}));
+
+vi.mock('@kit/shared/logger', () => ({
+  getLogger: async () => ({ error: logged, info: vi.fn(), warn: vi.fn() }),
+}));
 
 /**
  * FILM-1610 behaviour of the experiment actions: which window each snapshot
@@ -40,6 +70,8 @@ const state: {
   linkWriteError: { message: string } | null;
   /** Status conditions each conditional update carried. */
   statusGuards: unknown[];
+  /** Every column condition on an update, in order. */
+  conditions: Array<[string, unknown]>;
   /** Whether a conditional update still finds its row (false = someone else won). */
   rowStillMatches: boolean;
 } = {
@@ -61,6 +93,7 @@ const state: {
   linkReadError: null,
   linkWriteError: null,
   statusGuards: [],
+  conditions: [],
   rowStillMatches: true,
 };
 
@@ -70,6 +103,7 @@ const state: {
  */
 interface UpdateBuilder extends PromiseLike<{ error: null }> {
   eq: (column: string, value: unknown) => UpdateBuilder;
+  is: (column: string, value: null) => UpdateBuilder;
   in: (column: string, values: unknown[]) => UpdateBuilder;
   select: () => Promise<{ data: Array<{ id: string }>; error: null }>;
 }
@@ -78,6 +112,11 @@ function updateBuilder(): UpdateBuilder {
   const builder: UpdateBuilder = {
     eq: (column, value) => {
       if (column === 'status') state.statusGuards.push(value);
+      state.conditions.push([column, value]);
+      return builder;
+    },
+    is: (column, value) => {
+      state.conditions.push([column, value]);
       return builder;
     },
     in: (column, values) => {
@@ -209,6 +248,7 @@ beforeEach(() => {
   state.linkReadError = null;
   state.linkWriteError = null;
   state.statusGuards = [];
+  state.conditions = [];
   state.rowStillMatches = true;
   resolveWatchedMetric.mockClear();
 });
@@ -227,7 +267,7 @@ describe('failures are reported, never swallowed (A1, A2)', () => {
         publishIds: ['p1'],
         tagIds: [],
       }),
-    ).rejects.toThrow('insert refused');
+    ).rejects.toThrow('Could not log the experiment');
   });
 
   it('removes the experiment it just created when linking fails, so a retry cannot duplicate it', async () => {
@@ -261,7 +301,7 @@ describe('failures are reported, never swallowed (A1, A2)', () => {
 
     await expect(
       startExperimentAction({ experimentId: 'e1', startedAt: '2026-07-01' }),
-    ).rejects.toThrow('read failed');
+    ).rejects.toThrow('Could not start the experiment');
 
     expect(state.updates).toHaveLength(0);
     expect(resolveWatchedMetric).not.toHaveBeenCalled();
@@ -647,5 +687,121 @@ describe('an abandoned experiment never ends before it started (F4)', () => {
     });
 
     expect(state.updates[0]).toMatchObject({ ended_at: '2026-03-05' });
+  });
+});
+
+describe('refusals reach the page as values, not throws (G1)', () => {
+  // A production build replaces a thrown server-action message with a
+  // generic sentence, so the wording below would never reach the user if
+  // it were thrown. It is returned instead.
+  it('returns a refusal with its own wording', async () => {
+    state.experiment.status = 'running';
+    state.experiment.started_at = '2026-07-01';
+
+    expect(
+      await startAction({ experimentId: 'e1', startedAt: '2026-08-01' }),
+    ).toEqual({
+      ok: false,
+      error: 'Only a planned experiment can be started; this one is running.',
+    });
+  });
+
+  it('returns a failure without its database detail, and logs the detail', async () => {
+    state.linkReadError = { message: 'relation "secret_table" is broken' };
+
+    const result = await startAction({
+      experimentId: 'e1',
+      startedAt: '2026-07-01',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error:
+        'Could not start the experiment. Try again; if it keeps failing, reload the page.',
+    });
+    expect(JSON.stringify(result)).not.toContain('secret_table');
+    expect(logged).toHaveBeenCalledWith(
+      expect.objectContaining({ what: 'start the experiment' }),
+      'Could not start the experiment',
+    );
+  });
+
+  it('returns what succeeded under data', async () => {
+    const result = await abandonAction({
+      experimentId: 'e1',
+      reason: 'Paused',
+    });
+
+    expect(result).toEqual({ ok: true, data: { success: true } });
+  });
+});
+
+describe('the start freezes what its baseline measured (G5)', () => {
+  it('writes only if the metric and window still read as they did', async () => {
+    state.experiment.metric_watched = 'ctr';
+    state.experiment.review_window_days = 45;
+
+    await startExperimentAction({
+      experimentId: 'e1',
+      startedAt: '2026-07-01',
+    });
+
+    expect(state.conditions).toEqual(
+      expect.arrayContaining([
+        ['metric_watched', 'ctr'],
+        ['review_window_days', 45],
+      ]),
+    );
+  });
+
+  it('matches an unwatched experiment on no metric, not on any', async () => {
+    state.experiment.metric_watched = null;
+
+    await startExperimentAction({
+      experimentId: 'e1',
+      startedAt: '2026-07-01',
+    });
+
+    expect(state.conditions).toContainEqual(['metric_watched', null]);
+  });
+});
+
+describe('dates from the device are checked (G6)', () => {
+  it('checks the start, conclusion and abandon dates the caller sent', async () => {
+    assertCallerToday.mockClear();
+
+    await startExperimentAction({
+      experimentId: 'e1',
+      startedAt: '2026-07-01',
+    });
+    expect(assertCallerToday).toHaveBeenLastCalledWith('2026-07-01');
+
+    state.experiment.status = 'running';
+    state.experiment.started_at = '2026-07-01';
+    await concludeExperimentAction({
+      experimentId: 'e1',
+      actualOutcome: 'Rose',
+      outcomeStatus: 'confirmed',
+      endedAt: '2026-08-01',
+    });
+    expect(assertCallerToday).toHaveBeenLastCalledWith('2026-08-01');
+
+    await abandonExperimentAction({
+      experimentId: 'e1',
+      reason: 'Paused',
+      endedAt: '2026-08-02',
+    });
+    expect(assertCallerToday).toHaveBeenLastCalledWith('2026-08-02');
+  });
+
+  it('refuses before touching the experiment when the check refuses', async () => {
+    assertCallerToday.mockImplementationOnce(() => {
+      throw new ActionRefusal('1999-01-01 is not today');
+    });
+
+    expect(
+      await startAction({ experimentId: 'e1', startedAt: '1999-01-01' }),
+    ).toEqual({ ok: false, error: '1999-01-01 is not today' });
+    expect(state.updates).toHaveLength(0);
   });
 });

@@ -3,7 +3,9 @@
 import { enhanceAction } from '@kit/next/actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { ActionRefusal } from '../lib/action-result';
 import { UpdatePublishNoteSchema } from '../lib/schemas/publish-note.schema';
+import { withRefusals } from './with-refusals';
 
 /**
  * Writes a video's analytics note.
@@ -20,33 +22,36 @@ import { UpdatePublishNoteSchema } from '../lib/schemas/publish-note.schema';
  * Its own columns, never `publishes.metadata`, which the publish pipeline
  * writes; a read-modify-write there would race it.
  */
-export const updatePublishNoteAction = enhanceAction(
-  async ({ publishId, note }) => {
-    const client = getSupabaseServerClient();
+export const updatePublishNoteAction = withRefusals(
+  'save the note',
+  enhanceAction(
+    async ({ publishId, note }) => {
+      const client = getSupabaseServerClient();
 
-    const { data, error } = await client
-      .from('publishes')
-      .update({ analytics_note: note })
-      .eq('id', publishId)
-      .select('id, analytics_note, analytics_note_updated_at');
+      const { data, error } = await client
+        .from('publishes')
+        .update({ analytics_note: note })
+        .eq('id', publishId)
+        .select('id, analytics_note, analytics_note_updated_at');
 
-    if (error) {
-      throw new Error(`Failed to save the note: ${error.message}`);
-    }
+      if (error) {
+        throw new Error(`Failed to save the note: ${error.message}`);
+      }
 
-    const [saved] = data ?? [];
+      const [saved] = data ?? [];
 
-    if (!saved) {
-      throw new Error(
-        'You cannot edit notes on this video. Notes can be changed by members of its project.',
-      );
-    }
+      if (!saved) {
+        throw new ActionRefusal(
+          'You cannot edit notes on this video. Notes can be changed by members of its project.',
+        );
+      }
 
-    return {
-      publishId: saved.id,
-      note: saved.analytics_note,
-      updatedAt: saved.analytics_note_updated_at,
-    };
-  },
-  { schema: UpdatePublishNoteSchema, auth: true },
+      return {
+        publishId: saved.id,
+        note: saved.analytics_note,
+        updatedAt: saved.analytics_note_updated_at,
+      };
+    },
+    { schema: UpdatePublishNoteSchema, auth: true },
+  ),
 );
