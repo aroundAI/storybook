@@ -1,7 +1,17 @@
-import { expect, test } from '@playwright/test';
+import { Page, expect, test } from '@playwright/test';
 
 import { readRows, seedExperiment, seedPublishedVideos } from '../utils/seed';
 import { ExperimentsPageObject } from './experiments.po';
+
+/** PR screenshots, only when asked for (`CAPTURE_EVIDENCE=1`). */
+async function capture(page: Page, name: string) {
+  if (!process.env.CAPTURE_EVIDENCE) return;
+
+  await page.screenshot({
+    path: `${process.env.EVIDENCE_DIR ?? 'evidence'}/${name}.png`,
+    fullPage: true,
+  });
+}
 
 /**
  * FILM-1610 review, round 5. Each test here was written to reproduce a
@@ -19,6 +29,7 @@ test.describe('Change log: what it can and cannot measure (round 5, A, H1, H2)',
 
     await log.choose('experiment-category', 'experiment-category-option-hook');
     await expect(note).toContainText('part of the video itself');
+    await capture(page, '30-baked-in-category-note');
 
     // A thumbnail or title is changed on the published video itself, so
     // before/after on the same videos measures it: no warning.
@@ -74,6 +85,7 @@ test.describe('Change log: what it can and cannot measure (round 5, A, H1, H2)',
     await expect(
       page.locator('[data-test="experiment-watched-baseline-unmeasured"]'),
     ).toHaveAttribute('data-reason', 'published_after_window');
+    await capture(page, '31-published-after-window');
   });
 });
 
@@ -119,6 +131,9 @@ test.describe('Change log: the picker and dates (round 5, H4 H5 H6)', () => {
         return Math.abs(listBox!.width - triggerBox!.width);
       })
       .toBeLessThanOrEqual(2);
+    // Captured once the width has settled: the popover's open animation is
+    // over, so the picture is the list as a user sees it.
+    await capture(page, '32-picker-width');
   });
 
   test.describe("dates are the user's calendar days", () => {
@@ -151,6 +166,7 @@ test.describe('Change log: the picker and dates (round 5, H4 H5 H6)', () => {
       await expect(
         page.locator(`[data-test="video-picker-option-${late}"]`),
       ).toContainText('2026-01-02');
+      await capture(page, '33-local-dates-kolkata');
     });
   });
 });
