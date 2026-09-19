@@ -45,9 +45,10 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # The same list CI's Unit Tests job runs, with no continue-on-error:
+      # a failing test used to be reported and then deployed anyway.
       - name: Run tests
-        run: pnpm test
-        continue-on-error: true
+        run: bash scripts/test-units.sh
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -55,6 +56,40 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
           role-session-name: GitHubActions-${{ github.run_id }}
+
+      # Migrations go out BEFORE the app (FILM-1610 review). The app reads
+      # columns and calls functions that only a migration creates, so an app
+      # deployed first fails every read that touches them. This step used to
+      # be a placeholder `echo` placed after the deploy, so migrations were
+      # never applied by this workflow at all.
+      #
+      # Migrations here are written to be expand-only — the app already
+      # running keeps working against the new schema while this job builds
+      # the next one. A migration that breaks the running app needs its own
+      # rollout plan, not this step.
+      - uses: supabase/setup-cli@v1
+        with:
+          # Pinned to the version CI's Supabase DB job applies migrations with.
+          version: 2.117.0
+
+      - name: Apply database migrations (production)
+        working-directory: apps/web
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          # Fail closed: without these the app would go live against a
+          # schema it does not match.
+          for name in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_REF SUPABASE_DB_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing secret $name — migrations cannot be applied, so the app is not deployed."
+              exit 1
+            fi
+          done
+
+          supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+          supabase db push --password "$SUPABASE_DB_PASSWORD"
 
       - name: Build for AWS
         working-directory: apps/web
@@ -133,12 +168,6 @@ jobs:
             --zip-file fileb://email-worker.zip
 
           echo "✅ Email worker deployed"
-
-      - name: Run database migrations
-        run: |
-          # Run migrations using Supabase CLI or custom migration tool
-          echo "Running database migrations..."
-          # Add your migration command here
 
       - name: Health check
         run: |
