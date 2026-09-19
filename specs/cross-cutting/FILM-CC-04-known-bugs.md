@@ -295,3 +295,4 @@ means, so it needs a decision first.
 | — | CI tested `@kit/mailers-core`, which does not exist; `@kit/mailers` never ran | #264 |
 | — | The experiment lifecycle was held only by the actions; a direct API call could reopen, back-date or forge an experiment | #264 (round 4) |
 | KB-6 (part) | Experiment log and note refusals replaced in production | #264 (round 4) |
+| — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
