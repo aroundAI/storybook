@@ -268,6 +268,159 @@ jobs:
           path: apps/web/coverage/
           retention-days: 7
 
+  e2e-guards:
+    name: 🧬 E2E guards & evidence
+    # The happy flows, driven end to end against a real ClickHouse, and the
+    # E2E mutation guards. Separate from ⚫️ Test because both need a dev
+    # server: a guard changes a source file and needs the server to recompile
+    # it, which a production build cannot do.
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    if: ${{ vars.ENABLE_E2E_JOB == 'true' }}
+    env:
+      DO_NOT_TRACK: 1
+      # The server reads ClickHouse, unlike ⚫️ Test: the evidence specs seed
+      # rows and read the resulting figures off the page.
+      CLICKHOUSE_ENABLED: 'true'
+      CLICKHOUSE_HOST: http://localhost:8123
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: verify
+      CLICKHOUSE_DB: default
+      PLAYWRIGHT_BASE_URL: http://localhost:3100
+      CAPTURE_EVIDENCE: '1'
+      CLICKHOUSE_EVIDENCE: '1'
+      EVIDENCE_DIR: ${{ github.workspace }}/evidence
+      ENABLE_BILLING_TESTS: 'false'
+
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:24.8-alpine
+        # See 🗄️ ClickHouse SQL: both must be set on the container, and the
+        # alpine image has no HTTP client for a health check.
+        env:
+          CLICKHOUSE_USER: default
+          CLICKHOUSE_PASSWORD: verify
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+        ports:
+          - 8123:8123
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same reason as ⚫️ Test: Supabase images, browsers and the monorepo
+      # install do not fit a runner's spare disk.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android \
+            /usr/local/share/boost /usr/local/share/powershell \
+            /usr/local/.ghcup "$AGENT_TOOLSDIRECTORY"
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Store Playwright's Version
+        run: |
+          PLAYWRIGHT_VERSION=$(pnpm ls @playwright/test --filter web-e2e | grep @playwright | sed 's/.*@//')
+          echo "PLAYWRIGHT_VERSION=$PLAYWRIGHT_VERSION" >> "$GITHUB_ENV"
+
+      - name: Cache Playwright Browsers for Playwright's Version
+        id: cache-playwright-browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-browsers-${{ env.PLAYWRIGHT_VERSION }}
+
+      - name: Install Playwright Browsers
+        if: steps.cache-playwright-browsers.outputs.cache-hit != 'true'
+        run: pnpm exec ./apps/e2e/node_modules/.bin/playwright install --with-deps
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.117.0
+
+      # Same exclusions as ⚫️ Test, for the same reasons.
+      - name: Supabase Server
+        working-directory: apps/web
+        run: supabase start -x studio,imgproxy,logflare,vector
+
+      - name: Wait for ClickHouse
+        run: |
+          for _ in $(seq 1 60); do
+            if curl -sf "http://localhost:8123/ping" > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo "ClickHouse did not become ready in 120s"
+          exit 1
+
+      - name: Apply ClickHouse migrations
+        run: pnpm --filter @kit/clickhouse migrate
+
+      # A dev server, on purpose (see the job comment). apps/web/.env.development
+      # points it at the local Supabase; the ClickHouse settings come from
+      # this job's env.
+      - name: Run Next.js dev server
+        working-directory: apps/web
+        run: npx next dev --turbo -p 3100 > "$RUNNER_TEMP/next-dev.log" 2>&1 &
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Wait for the server
+        run: |
+          for attempt in $(seq 1 90); do
+            if curl -sf http://localhost:3100/healthcheck > /dev/null; then
+              echo "server ready after ${attempt} attempt(s)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Next.js did not become ready in 180s"
+          tail -50 "$RUNNER_TEMP/next-dev.log"
+          exit 1
+
+      # The happy flows, with real figures: every *-evidence spec, gated on
+      # CAPTURE_EVIDENCE (and CLICKHOUSE_EVIDENCE where they seed ClickHouse),
+      # which ⚫️ Test does not set. They assert what they capture — measured
+      # values, reset forms, saved rows — so a regression fails the build,
+      # and the screenshots are uploaded for review.
+      - name: Happy-flow evidence specs
+        working-directory: apps/e2e
+        run: npx playwright test evidence --project=chromium --workers=1 --retries=2
+
+      - name: Upload evidence screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evidence-screenshots
+          path: evidence/
+          retention-days: 14
+
+      # Each E2E guard breaks the code, lets the dev server recompile, and
+      # requires its spec to fail; the unit and database guards run in their
+      # own jobs.
+      - name: Mutation guards - e2e
+        run: python3 tooling/mutation-guards/run.py --kind e2e
+
+      - name: Upload server log
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-guards-next-dev-log
+          path: ${{ runner.temp }}/next-dev.log
+          retention-days: 7
+
+      - name: Stop Supabase
+        if: always()
+        continue-on-error: true
+        working-directory: apps/web
+        run: supabase stop
+
   test:
     name: ⚫️ Test
     # Getting to the first spec costs most of a 20-minute budget on its own:
