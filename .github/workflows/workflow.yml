@@ -287,6 +287,9 @@ jobs:
       CLICKHOUSE_PASSWORD: verify
       CLICKHOUSE_DB: default
       PLAYWRIGHT_BASE_URL: http://localhost:3100
+      # A dev server compiles each route on its first visit; 15s was not
+      # enough for three of them.
+      PLAYWRIGHT_NAVIGATION_TIMEOUT: '60000'
       CAPTURE_EVIDENCE: '1'
       CLICKHOUSE_EVIDENCE: '1'
       EVIDENCE_DIR: ${{ github.workspace }}/evidence
