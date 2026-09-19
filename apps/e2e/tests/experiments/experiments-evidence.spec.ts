@@ -132,6 +132,26 @@ test.describe('Experiment log — evidence', () => {
       path: `${OUT}/03-started-watched-unmeasured.png`,
       fullPage: true,
     });
+
+    // Review 4 (G8, G9): the conclusion, typed into its labelled field.
+    await page
+      .getByLabel('What actually happened?')
+      .fill('Average percentage viewed held at 41%');
+    await page.screenshot({
+      path: `${OUT}/03b-conclude-labelled.png`,
+      fullPage: true,
+    });
+
+    await page.getByRole('button', { name: 'inconclusive' }).click();
+    await expect(page.getByText('Experiment concluded')).toBeVisible();
+    await expect(
+      page.locator('[data-test="experiment-result-after-days"]'),
+    ).toBeVisible();
+
+    await page.screenshot({
+      path: `${OUT}/03c-concluded.png`,
+      fullPage: true,
+    });
   });
 
   /**

@@ -276,6 +276,33 @@ insert:
   to fail. CI runs the unit and database entries on every PR, so a test
   that stops guarding fails the build.
 
+**Round 4** asked what none of the first three did: what does this do in a
+*production build*, and does the table hold what §8 says it holds? Each
+finding was reproduced before it was fixed.
+
+- **Refusals reach the page.** A production build replaces a thrown
+  server-action message with "An error occurred in the Server Components
+  render…" — reproduced on `build:test` with the stale-tab start. Every
+  wording rounds 1–3 wrote for the user was being replaced. Mutations now
+  *return* `{ ok: false, error }` (`withRefusals`): an `ActionRefusal`'s
+  own words, or a generic "Could not …" with the detail logged, not sent.
+  The stale-tab spec now asserts the text, and ⚫️ Test runs it on a
+  production build; it had asserted only that *an* error was visible,
+  which the generic sentence also is.
+- **The table holds the lifecycle.** Rounds 2–3 froze the metric, window
+  and links, but not the status: as a member, through PostgREST, a
+  running experiment went back to planned (lifting the freeze), was
+  concluded with an end before its start, and got a forged baseline — all
+  four reproduced. A trigger now allows only the lifecycle's moves and
+  writes each date and snapshot once (`experiments-lifecycle.test.sql`).
+- **The start measures what it freezes.** Its status write also requires
+  the metric and window it read to be unchanged.
+- **Device dates are checked.** A start or end date must be a real date
+  within a day of the server's UTC date — every time zone's today.
+- **Concluding has a browser test**: log, start and conclude through the
+  page, and the row checked after each. Before this, no browser test
+  concluded an experiment. The outcome field has a visible label.
+
 ## 6. Implementation Map
 
 | File | Change |
@@ -325,7 +352,10 @@ insert:
 - [x] A user without update rights on a publish cannot write its note — proved by a pgTAP test, not by reading the policy
 - [x] Notes are absent from every ClickHouse insert — `dim-sync.ts` selects an explicit column list and `VideoDim` has no note field, so the type is the guard
 - [x] `pnpm --filter web check:schema-drift` passes and both `database.types.ts` copies match
-- [x] An experiment starts only from planned, concludes only from running and never before its start, is abandoned only from planned or running, and once started cannot have its metric, window or videos changed — each enforced by the table as well as the action (§5a). Concluding before the review date is allowed: the date says when to look, not when you may
+- [x] An experiment starts only from planned, concludes only from running and never before its start, is abandoned only from planned or running, and once started cannot have its metric, window or videos changed — each enforced by the table as well as the action (§5a). Concluding before the review date is allowed: the date says when to look, not when you may. *(Round 4: until then the table froze the metric, window and videos but not the status, so this criterion was ticked on a claim nobody had tested. `experiments-lifecycle.test.sql` now tests each move.)*
+- [x] Start date, baseline, result and end date are each written once, by their own step, and never replaced (pgTAP, round 4)
+- [x] A refusal's wording reaches the user in a production build, not only on a dev server (E2E on ⚫️ Test's production build, round 4)
+- [x] An experiment can be logged, started and concluded through the page, with the row checked after each step (E2E, round 4)
 - [x] The table refuses a link to another account's video, for a user who belongs to both (pgTAP)
 - [x] A partially covered window says so on the page, and a sum is also shown per day (measured against local ClickHouse: +15, data on 3 of 30 days, 5.0 per day)
 - [x] A video whose 30 days predate ingest is excluded from `views_at_30d` (measured: 100 with 1 of 2 videos; 50 with 2 of 2 when the exclusion is reverted)

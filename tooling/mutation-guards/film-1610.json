@@ -221,8 +221,8 @@
     {
       "name": "R2 write without status condition",
       "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
-      "find": "from.length === 1 ? base.eq('status', from[0]!) : base.in('status', from)",
-      "replace": "base",
+      "find": "from.length === 1 ? query.eq('status', from[0]!) : query.in('status', from);",
+      "replace": "query;",
       "kind": "unit",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
