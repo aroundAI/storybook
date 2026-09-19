@@ -65,7 +65,7 @@ export function WeeklyDiagnosticsTable({
 
   if (rows.length === 0) {
     return (
-      <p className={'text-muted-foreground text-sm'}>
+      <p className={'text-sm text-muted-foreground'}>
         Nothing published recently enough to diagnose.
       </p>
     );
@@ -100,7 +100,7 @@ export function WeeklyDiagnosticsTable({
                     <span className={'block truncate font-medium'}>
                       {row.title}
                     </span>
-                    <span className={'text-muted-foreground text-xs'}>
+                    <span className={'text-xs text-muted-foreground'}>
                       {row.platform} · {row.publishedAt.slice(0, 10)}
                     </span>
                   </TableCell>
@@ -148,7 +148,7 @@ export function WeeklyDiagnosticsTable({
                         </span>
                       ) : null}
                       {!lowCtr && !row.cliff ? (
-                        <span className={'text-muted-foreground text-xs'}>
+                        <span className={'text-xs text-muted-foreground'}>
                           —
                         </span>
                       ) : null}
@@ -161,7 +161,7 @@ export function WeeklyDiagnosticsTable({
         </Table>
       </div>
 
-      <p className={'text-muted-foreground text-xs'}>
+      <p className={'text-xs text-muted-foreground'}>
         Diagnostic only. Flags point at a specific video&apos;s packaging or
         intro — they are not a reason to change the channel&apos;s strategy.
         Impressions and CTR need the YouTube bulk report ingest and appear about

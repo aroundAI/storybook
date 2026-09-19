@@ -76,8 +76,8 @@ export function Default() {
           </SidebarContent>
         </Sidebar>
 
-        <div className="bg-background flex-1 p-4">
-          <p className="text-muted-foreground text-sm">Main content area</p>
+        <div className="flex-1 bg-background p-4">
+          <p className="text-sm text-muted-foreground">Main content area</p>
         </div>
       </div>
     </SidebarProvider>

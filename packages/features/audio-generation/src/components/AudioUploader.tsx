@@ -271,8 +271,8 @@ export function AudioUploader({
         />
 
         <div className="flex flex-col items-center gap-3">
-          <div className="bg-muted rounded-full p-3">
-            <Upload className="text-muted-foreground h-6 w-6" />
+          <div className="rounded-full bg-muted p-3">
+            <Upload className="h-6 w-6 text-muted-foreground" />
           </div>
           <div className="space-y-1">
             <p className="text-sm font-medium">
@@ -287,7 +287,7 @@ export function AudioUploader({
                 browse
               </Button>
             </p>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               {ACCEPTED_EXTENSIONS.join(', ')} up to 50MB each (max {maxSamples}{' '}
               files)
             </p>
@@ -317,7 +317,7 @@ export function AudioUploader({
       {/* Sample list */}
       {value.length > 0 && (
         <div className="space-y-2">
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             {value.length} sample{value.length !== 1 ? 's' : ''} added
           </p>
           <div className="divide-y rounded-lg border">
@@ -327,8 +327,8 @@ export function AudioUploader({
                 className="flex items-center gap-3 p-3"
                 data-test="audio-sample-item"
               >
-                <div className="bg-muted flex h-10 w-10 items-center justify-center rounded">
-                  <Music className="text-muted-foreground h-5 w-5" />
+                <div className="flex h-10 w-10 items-center justify-center rounded bg-muted">
+                  <Music className="h-5 w-5 text-muted-foreground" />
                 </div>
 
                 <div className="min-w-0 flex-1">

@@ -44,7 +44,7 @@ export function RevenueMixCard({
     // something was recorded, and hiding it is what the negatives
     // disclosure below exists to stop.
     return (
-      <p className={'text-muted-foreground text-sm'}>
+      <p className={'text-sm text-muted-foreground'}>
         {negatives.length > 0
           ? `No positive revenue this period — ${negatives.length} negative ${
               negatives.length === 1 ? 'adjustment' : 'adjustments'
@@ -56,7 +56,7 @@ export function RevenueMixCard({
 
   return (
     <div className={'flex flex-col gap-4'}>
-      <div className={'bg-muted flex h-3 w-full overflow-hidden rounded-full'}>
+      <div className={'flex h-3 w-full overflow-hidden rounded-full bg-muted'}>
         {entries.map(([category, cents]) => (
           <div
             key={category}
@@ -90,14 +90,14 @@ export function RevenueMixCard({
         ))}
       </div>
 
-      <p className={'text-muted-foreground text-xs'}>
+      <p className={'text-xs text-muted-foreground'}>
         {Math.round(adShare * 100)}% of revenue comes from platform payouts (ads
         and Premium). A falling share means other income is growing faster than
         what the platform pays out.
       </p>
 
       {negatives.length > 0 ? (
-        <p className={'text-muted-foreground text-xs'}>
+        <p className={'text-xs text-muted-foreground'}>
           Excludes {negatives.length} negative{' '}
           {negatives.length === 1 ? 'adjustment' : 'adjustments'} — this mix
           covers positive revenue only, so it will not match the period total.

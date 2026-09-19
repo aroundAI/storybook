@@ -175,7 +175,7 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
           <Skeleton className={'h-12 w-full rounded-lg'} />
         ) : dueQuery.isError ? (
           <p
-            className={'text-muted-foreground text-sm'}
+            className={'text-sm text-muted-foreground'}
             data-test={'experiments-due-error'}
           >
             Changes due for review could not be loaded.
@@ -197,7 +197,7 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
           // A failed read, not an empty log: the empty state would claim
           // that no experiments exist.
           <p
-            className={'text-muted-foreground text-sm'}
+            className={'text-sm text-muted-foreground'}
             data-test={'experiment-list-error'}
           >
             Changes could not be loaded.
@@ -239,7 +239,7 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
 
               {action.error ? (
                 <p
-                  className={'text-destructive text-sm'}
+                  className={'text-sm text-destructive'}
                   role={'alert'}
                   data-test={'experiment-action-error'}
                 >

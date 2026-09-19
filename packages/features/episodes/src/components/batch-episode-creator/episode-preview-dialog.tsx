@@ -197,7 +197,7 @@ export function EpisodePreviewDialog({
                         className="min-h-[60px] resize-none text-sm"
                       />
                     ) : (
-                      <span className="text-muted-foreground line-clamp-2 text-sm">
+                      <span className="line-clamp-2 text-sm text-muted-foreground">
                         {episode.premise}
                       </span>
                     )}
@@ -266,7 +266,7 @@ export function EpisodePreviewDialog({
                             onClick={() => handleDelete(index)}
                             disabled={episodes.length <= 1}
                           >
-                            <Trash2 className="text-destructive h-4 w-4" />
+                            <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </>
                       )}

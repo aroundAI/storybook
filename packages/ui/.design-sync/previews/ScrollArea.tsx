@@ -18,17 +18,17 @@ export function Default() {
         {threads.map((thread) => (
           <div
             key={thread.name}
-            className="hover:bg-accent flex items-center justify-between rounded-md px-2 py-2"
+            className="flex items-center justify-between rounded-md px-2 py-2 hover:bg-accent"
           >
             <div>
               <p className="text-sm font-medium">{thread.name}</p>
-              <p className="text-muted-foreground text-xs">{thread.episode}</p>
+              <p className="text-xs text-muted-foreground">{thread.episode}</p>
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-[10px]">
                 {thread.type}
               </Badge>
-              <ChevronRight className="text-muted-foreground h-3.5 w-3.5" />
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
           </div>
         ))}

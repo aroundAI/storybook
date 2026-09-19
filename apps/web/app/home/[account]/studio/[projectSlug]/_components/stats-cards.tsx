@@ -19,10 +19,10 @@ export function StatsCards({
       <Link href={`${baseUrl}/episodes`} className="group cinema-panel p-6">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-muted-foreground mb-1 text-sm font-medium">
+            <p className="mb-1 text-sm font-medium text-muted-foreground">
               Total Episodes
             </p>
-            <h3 className="text-foreground text-4xl font-semibold tracking-tight">
+            <h3 className="text-4xl font-semibold tracking-tight text-foreground">
               {episodeCount}
             </h3>
           </div>
@@ -48,10 +48,10 @@ export function StatsCards({
       <Link href={`${baseUrl}/assets`} className="group cinema-panel p-6">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-muted-foreground mb-1 text-sm font-medium">
+            <p className="mb-1 text-sm font-medium text-muted-foreground">
               Characters
             </p>
-            <h3 className="text-foreground text-4xl font-semibold tracking-tight">
+            <h3 className="text-4xl font-semibold tracking-tight text-foreground">
               {characterCount}
             </h3>
           </div>
@@ -71,7 +71,7 @@ export function StatsCards({
             </svg>
           </div>
         </div>
-        <div className="bg-muted mt-4 h-1.5 w-full overflow-hidden rounded-full">
+        <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div className="h-full w-[70%] rounded-full bg-purple-500" />
         </div>
       </Link>
@@ -80,10 +80,10 @@ export function StatsCards({
       <Link href={`${baseUrl}/assets`} className="group cinema-panel p-6">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-muted-foreground mb-1 text-sm font-medium">
+            <p className="mb-1 text-sm font-medium text-muted-foreground">
               Locations
             </p>
-            <h3 className="text-foreground text-4xl font-semibold tracking-tight">
+            <h3 className="text-4xl font-semibold tracking-tight text-foreground">
               {locationCount}
             </h3>
           </div>
@@ -110,10 +110,10 @@ export function StatsCards({
           </div>
         </div>
         <div className="mt-4 flex -space-x-2 overflow-hidden">
-          <div className="ring-card inline-block h-6 w-6 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 ring-2" />
-          <div className="ring-card inline-block h-6 w-6 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 ring-2" />
-          <div className="ring-card inline-block h-6 w-6 rounded-full bg-gradient-to-br from-pink-400 to-rose-500 ring-2" />
-          <div className="bg-muted text-muted-foreground ring-card flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium ring-2">
+          <div className="inline-block h-6 w-6 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 ring-2 ring-card" />
+          <div className="inline-block h-6 w-6 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 ring-2 ring-card" />
+          <div className="inline-block h-6 w-6 rounded-full bg-gradient-to-br from-pink-400 to-rose-500 ring-2 ring-card" />
+          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground ring-2 ring-card">
             +{Math.max(0, locationCount - 3)}
           </div>
         </div>

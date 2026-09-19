@@ -482,7 +482,7 @@ export function DialogStory() {
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
                       <Label>Dark Mode</Label>
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-sm text-muted-foreground">
                         Switch to dark theme
                       </p>
                     </div>
@@ -491,7 +491,7 @@ export function DialogStory() {
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
                       <Label>Notifications</Label>
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-sm text-muted-foreground">
                         Receive push notifications
                       </p>
                     </div>
@@ -601,13 +601,13 @@ export function DialogStory() {
                   <DialogTitle>Image Preview</DialogTitle>
                 </DialogHeader>
                 <div className="py-4">
-                  <div className="bg-muted flex aspect-video items-center justify-center rounded-lg">
-                    <Image className="text-muted-foreground h-12 w-12" />
+                  <div className="flex aspect-video items-center justify-center rounded-lg bg-muted">
+                    <Image className="h-12 w-12 text-muted-foreground" />
                   </div>
                   <div className="mt-4 flex items-center justify-between">
                     <div>
                       <p className="font-medium">landscape.jpg</p>
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-sm text-muted-foreground">
                         2.4 MB • 1920x1080
                       </p>
                     </div>
@@ -645,7 +645,7 @@ export function DialogStory() {
                     <Label htmlFor="feedback-type">Type of Feedback</Label>
                     <select
                       id="feedback-type"
-                      className="border-input focus-visible:ring-ring flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-2xs transition-colors focus-visible:ring-1 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-2xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <option value="bug">Bug Report</option>
                       <option value="feature">Feature Request</option>
@@ -696,11 +696,11 @@ export function DialogStory() {
         <div className="space-y-6">
           <div>
             <h4 className="mb-3 text-lg font-semibold">Dialog</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               Root container for the dialog. Contains all dialog parts.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -735,7 +735,7 @@ export function DialogStory() {
 
           <div>
             <h4 className="mb-3 text-lg font-semibold">DialogTrigger</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               The element that opens the dialog. Use asChild prop to render as
               child element.
             </p>
@@ -743,11 +743,11 @@ export function DialogStory() {
 
           <div>
             <h4 className="mb-3 text-lg font-semibold">DialogContent</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               The main dialog content container with overlay and animations.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -838,7 +838,7 @@ export function DialogStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Focus Management</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               • Focus moves to dialog when opened
               <br />
               • Focus returns to trigger when closed
@@ -849,14 +849,14 @@ export function DialogStory() {
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Screen Reader Support</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Always include DialogTitle for screen reader users. Use
               DialogDescription for additional context.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Keyboard Navigation</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               All interactive elements should be keyboard accessible with clear
               focus indicators.
             </p>
@@ -874,28 +874,28 @@ export function DialogStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Form Dialog</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Use for complex forms that benefit from focused attention without
               page navigation.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Information Dialog</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Present detailed information, help content, or explanatory
               material.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Preview Dialog</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Show larger versions of content, image galleries, or detailed
               previews.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Settings Dialog</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Organize application preferences and configuration options.
             </p>
           </div>

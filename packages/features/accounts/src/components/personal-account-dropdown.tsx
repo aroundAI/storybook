@@ -87,18 +87,18 @@ export function PersonalAccountDropdown({
         aria-label="Open your profile menu"
         data-test={'account-dropdown-trigger'}
         className={cn(
-          'animate-in group/trigger fade-in focus:outline-primary flex cursor-pointer items-center group-data-[minimized=true]/sidebar:px-0',
+          'group/trigger flex cursor-pointer items-center animate-in fade-in group-data-[minimized=true]/sidebar:px-0 focus:outline-primary',
           className ?? '',
           {
-            ['active:bg-secondary/50 items-center gap-4 rounded-md' +
-            ' hover:bg-secondary border border-dashed p-2 transition-colors']:
+            ['items-center gap-4 rounded-md active:bg-secondary/50' +
+            ' border border-dashed p-2 transition-colors hover:bg-secondary']:
               showProfileName,
           },
         )}
       >
         <ProfileAvatar
           className={
-            'group-hover/trigger:border-background/50 rounded-md border border-transparent transition-colors'
+            'rounded-md border border-transparent transition-colors group-hover/trigger:border-background/50'
           }
           fallbackClassName={'rounded-md border'}
           displayName={displayName ?? user?.email ?? ''}
@@ -108,7 +108,7 @@ export function PersonalAccountDropdown({
         <If condition={showProfileName}>
           <div
             className={
-              'fade-in animate-in flex w-full flex-col truncate text-left group-data-[minimized=true]/sidebar:hidden'
+              'flex w-full flex-col truncate text-left animate-in fade-in group-data-[minimized=true]/sidebar:hidden'
             }
           >
             <span
@@ -120,7 +120,7 @@ export function PersonalAccountDropdown({
 
             <span
               data-test={'account-dropdown-email'}
-              className={'text-muted-foreground truncate text-xs'}
+              className={'truncate text-xs text-muted-foreground'}
             >
               {signedInAsLabel}
             </span>
@@ -128,7 +128,7 @@ export function PersonalAccountDropdown({
 
           <ChevronsUpDown
             className={
-              'text-muted-foreground mr-1 h-8 group-data-[minimized=true]/sidebar:hidden'
+              'mr-1 h-8 text-muted-foreground group-data-[minimized=true]/sidebar:hidden'
             }
           />
         </If>

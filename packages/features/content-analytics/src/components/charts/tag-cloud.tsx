@@ -94,7 +94,7 @@ export function TagCloudWithAffinity({
       <TagCloud tags={normalizedTags} />
       {affinity && (
         <div className="mt-6">
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          <h4 className="mb-2 text-xs font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400">
             Content Affinity
           </h4>
           <div className="flex items-center gap-3">

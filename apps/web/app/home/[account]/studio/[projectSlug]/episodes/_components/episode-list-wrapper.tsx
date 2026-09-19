@@ -172,7 +172,7 @@ export function EpisodeListWrapper({
 
       {/* Bulk action bar */}
       {selectionMode && (
-        <div className="animate-in fade-in slide-in-from-top-2 sticky top-0 z-30 mb-4 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-900/90 px-4 py-3 shadow-lg backdrop-blur-md duration-200">
+        <div className="sticky top-0 z-30 mb-4 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-900/90 px-4 py-3 shadow-lg backdrop-blur-md duration-200 animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-slate-300">
               {selectedIds.size} selected

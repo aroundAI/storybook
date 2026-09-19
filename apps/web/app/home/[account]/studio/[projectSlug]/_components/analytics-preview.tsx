@@ -77,7 +77,7 @@ export function AnalyticsPreview({
                   <p className="text-lg font-bold">
                     {formatNumber(totalViews)}
                   </p>
-                  <p className="text-muted-foreground text-xs">views (7d)</p>
+                  <p className="text-xs text-muted-foreground">views (7d)</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -88,7 +88,7 @@ export function AnalyticsPreview({
                   <p className="text-lg font-bold">
                     {engagementRate.toFixed(1)}%
                   </p>
-                  <p className="text-muted-foreground text-xs">engagement</p>
+                  <p className="text-xs text-muted-foreground">engagement</p>
                 </div>
               </div>
             </div>
@@ -96,10 +96,10 @@ export function AnalyticsPreview({
             {/* Platform Breakdown */}
             {platformBreakdown.length > 0 && (
               <div className="space-y-2">
-                <p className="text-muted-foreground text-xs font-medium">
+                <p className="text-xs font-medium text-muted-foreground">
                   Platform Distribution
                 </p>
-                <div className="bg-muted flex h-2 overflow-hidden rounded-full">
+                <div className="flex h-2 overflow-hidden rounded-full bg-muted">
                   {platformBreakdown.map((p) => (
                     <div
                       key={p.platform}
@@ -140,11 +140,11 @@ export function AnalyticsPreview({
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-6 text-center">
-            <BarChart3 className="text-muted-foreground/50 mb-2 h-8 w-8" />
-            <p className="text-muted-foreground text-sm">
+            <BarChart3 className="mb-2 h-8 w-8 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">
               No analytics data yet
             </p>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               Publish content to start tracking performance
             </p>
           </div>

@@ -177,7 +177,7 @@ export function BatchGenerateDialog({
       <DialogContent className="flex max-h-[80vh] flex-col sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="text-primary h-5 w-5" />
+            <Sparkles className="h-5 w-5 text-primary" />
             Batch Generate
           </DialogTitle>
           <DialogDescription>
@@ -297,12 +297,12 @@ export function BatchGenerateDialog({
                             )}
                             {item.status}
                           </Badge>
-                          <span className="text-muted-foreground text-xs">
+                          <span className="text-xs text-muted-foreground">
                             {item.duration}s
                           </span>
                         </div>
                         {item.error && (
-                          <p className="text-destructive mt-1 text-xs">
+                          <p className="mt-1 text-xs text-destructive">
                             {item.error}
                           </p>
                         )}
@@ -334,7 +334,7 @@ export function BatchGenerateDialog({
           )}
 
           {/* Error */}
-          {error && <p className="text-destructive text-sm">{error}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
 
         <DialogFooter>

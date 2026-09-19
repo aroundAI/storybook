@@ -56,7 +56,7 @@ export function PostPreview({
         </div>
 
         <p
-          className="text-muted-foreground mb-4 text-sm leading-relaxed"
+          className="mb-4 text-sm leading-relaxed text-muted-foreground"
           dangerouslySetInnerHTML={{ __html: description ?? '' }}
         />
       </div>

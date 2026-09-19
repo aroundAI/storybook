@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getBrandingConfig, BrandingConfigSchema } from '../src/config';
+
+import { BrandingConfigSchema, getBrandingConfig } from '../src/config';
 
 describe('Branding Configuration', () => {
   // Store original environment

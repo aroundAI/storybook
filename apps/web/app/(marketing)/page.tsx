@@ -97,7 +97,7 @@ function Home() {
                 />
               </h1>
 
-              <p className="text-muted-foreground max-w-2xl text-lg leading-relaxed">
+              <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground">
                 From undefined concept to Season 1 Greenlight. StoryBook helps
                 studios, writers, and producers manage characters, locations,
                 and storylines with generative AI.
@@ -127,7 +127,7 @@ function Home() {
               <div className="relative grid grid-cols-2 gap-3">
                 {/* Glass card 1 */}
                 <div className="group relative overflow-hidden rounded-2xl border border-slate-200/50 bg-white/80 p-5 shadow-sm backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-slate-300/50 hover:shadow-md dark:border-white/[0.08] dark:bg-white/[0.03] dark:backdrop-blur-md dark:hover:border-white/[0.12] dark:hover:bg-white/[0.05] dark:hover:shadow-lg">
-                  <div className="animate-glow absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br from-slate-400 to-slate-300 blur-2xl dark:from-slate-400 dark:to-slate-300" />
+                  <div className="absolute -top-8 -right-8 h-24 w-24 animate-glow rounded-full bg-gradient-to-br from-slate-400 to-slate-300 blur-2xl dark:from-slate-400 dark:to-slate-300" />
                   <div className="relative flex h-[120px] flex-col justify-between">
                     <div>
                       <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100/70 dark:bg-slate-500/10 dark:ring-1 dark:ring-white/5">
@@ -146,7 +146,7 @@ function Home() {
                 {/* Glass card 2 */}
                 <div className="group relative overflow-hidden rounded-2xl border border-slate-200/50 bg-white/80 p-5 shadow-sm backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-slate-300/50 hover:shadow-md dark:border-white/[0.08] dark:bg-white/[0.03] dark:backdrop-blur-md dark:hover:border-white/[0.12] dark:hover:bg-white/[0.05] dark:hover:shadow-lg">
                   <div
-                    className="animate-glow absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br from-indigo-400 to-blue-300 blur-2xl dark:from-indigo-400 dark:to-blue-400"
+                    className="absolute -top-8 -right-8 h-24 w-24 animate-glow rounded-full bg-gradient-to-br from-indigo-400 to-blue-300 blur-2xl dark:from-indigo-400 dark:to-blue-400"
                     style={{ animationDelay: '0.5s' }}
                   />
                   <div className="relative flex h-[120px] flex-col justify-between">
@@ -167,7 +167,7 @@ function Home() {
                 {/* Glass card 3 */}
                 <div className="group relative overflow-hidden rounded-2xl border border-slate-200/50 bg-white/80 p-5 shadow-sm backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-slate-300/50 hover:shadow-md dark:border-white/[0.08] dark:bg-white/[0.03] dark:backdrop-blur-md dark:hover:border-white/[0.12] dark:hover:bg-white/[0.05] dark:hover:shadow-lg">
                   <div
-                    className="animate-glow absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-gradient-to-br from-violet-400 to-purple-300 blur-2xl dark:from-violet-400 dark:to-purple-400"
+                    className="absolute -bottom-8 -left-8 h-24 w-24 animate-glow rounded-full bg-gradient-to-br from-violet-400 to-purple-300 blur-2xl dark:from-violet-400 dark:to-purple-400"
                     style={{ animationDelay: '1s' }}
                   />
                   <div className="relative flex h-[120px] flex-col justify-between">
@@ -188,7 +188,7 @@ function Home() {
                 {/* Glass card 4 */}
                 <div className="group relative overflow-hidden rounded-2xl border border-slate-200/50 bg-white/80 p-5 shadow-sm backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-slate-300/50 hover:shadow-md dark:border-white/[0.08] dark:bg-white/[0.03] dark:backdrop-blur-md dark:hover:border-white/[0.12] dark:hover:bg-white/[0.05] dark:hover:shadow-lg">
                   <div
-                    className="animate-glow absolute -right-8 -bottom-8 h-24 w-24 rounded-full bg-gradient-to-br from-teal-400 to-emerald-300 blur-2xl dark:from-teal-400 dark:to-emerald-400"
+                    className="absolute -right-8 -bottom-8 h-24 w-24 animate-glow rounded-full bg-gradient-to-br from-teal-400 to-emerald-300 blur-2xl dark:from-teal-400 dark:to-emerald-400"
                     style={{ animationDelay: '1.5s' }}
                   />
                   <div className="relative flex h-[120px] flex-col justify-between">
@@ -221,7 +221,7 @@ function Home() {
                   Your Virtual Writer&apos;s Room
                 </b>
                 .{' '}
-                <span className="text-muted-foreground font-normal tracking-tighter">
+                <span className="font-normal tracking-tighter text-muted-foreground">
                   Everything you need to showrun your next hit series.
                   Centralize your creative truth and let AI handle the heavy
                   lifting.
@@ -244,7 +244,7 @@ function Home() {
                 description={`Turn loose roadmaps or paragraphs into structured episode guides with one click. Automatically extracts characters and locations.`}
               >
                 <div
-                  className="animate-glow absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gradient-to-br from-slate-400 to-slate-300 blur-3xl dark:from-slate-400 dark:to-slate-300"
+                  className="absolute -top-12 -right-12 h-32 w-32 animate-glow rounded-full bg-gradient-to-br from-slate-400 to-slate-300 blur-3xl dark:from-slate-400 dark:to-slate-300"
                   style={{ animationDelay: '0.2s' }}
                 />
               </FeatureCard>
@@ -257,7 +257,7 @@ function Home() {
                 description={`Centralized character and location management. Track relationships, voice profiles, and settings with RAG-powered consistency.`}
               >
                 <div
-                  className="animate-glow absolute -bottom-12 -left-12 h-32 w-32 rounded-full bg-gradient-to-br from-indigo-400 to-blue-300 blur-3xl dark:from-indigo-400 dark:to-blue-400"
+                  className="absolute -bottom-12 -left-12 h-32 w-32 animate-glow rounded-full bg-gradient-to-br from-indigo-400 to-blue-300 blur-3xl dark:from-indigo-400 dark:to-blue-400"
                   style={{ animationDelay: '0.7s' }}
                 />
               </FeatureCard>
@@ -270,7 +270,7 @@ function Home() {
                 description={`Deepseek-powered premise development and plot structuring. Refine loglines, beats, and scenes collaboratively.`}
               >
                 <div
-                  className="animate-glow absolute -right-12 -bottom-12 h-32 w-32 rounded-full bg-gradient-to-br from-violet-400 to-purple-300 blur-3xl dark:from-violet-400 dark:to-purple-400"
+                  className="absolute -right-12 -bottom-12 h-32 w-32 animate-glow rounded-full bg-gradient-to-br from-violet-400 to-purple-300 blur-3xl dark:from-violet-400 dark:to-purple-400"
                   style={{ animationDelay: '1.2s' }}
                 />
               </FeatureCard>
@@ -283,7 +283,7 @@ function Home() {
                 description={`Built for teams. Assign Showrunners, Writers, and Producers with granular permissions. Manage multiple Shows in one workspace.`}
               >
                 <div
-                  className="animate-glow absolute -top-12 -right-20 h-40 w-40 rounded-full bg-gradient-to-br from-teal-400 to-emerald-300 blur-3xl dark:from-teal-400 dark:to-emerald-400"
+                  className="absolute -top-12 -right-20 h-40 w-40 animate-glow rounded-full bg-gradient-to-br from-teal-400 to-emerald-300 blur-3xl dark:from-teal-400 dark:to-emerald-400"
                   style={{ animationDelay: '1.7s' }}
                 />
               </FeatureCard>
@@ -296,7 +296,7 @@ function Home() {
                 description={`Collaborative script editor with AI co-pilot. Auto-format to standard industry screenplay format.`}
               >
                 <div
-                  className="animate-glow absolute -top-12 -left-12 h-32 w-32 rounded-full bg-gradient-to-br from-indigo-400 to-violet-300 blur-3xl dark:from-indigo-400 dark:to-violet-400"
+                  className="absolute -top-12 -left-12 h-32 w-32 animate-glow rounded-full bg-gradient-to-br from-indigo-400 to-violet-300 blur-3xl dark:from-indigo-400 dark:to-violet-400"
                   style={{ animationDelay: '2.2s' }}
                 />
               </FeatureCard>
@@ -320,7 +320,7 @@ function Home() {
             />
 
             <div className={'max-w-4xl space-y-4 text-center'}>
-              <p className="text-muted-foreground text-lg">
+              <p className="text-lg text-muted-foreground">
                 StoryBook brings the power of generative AI to every stage of
                 production. From ideation to final cut, we help you maintain
                 consistency and accelerate your creative workflow.
@@ -329,13 +329,13 @@ function Home() {
               <div className="grid grid-cols-1 gap-8 pt-12 md:grid-cols-2">
                 <div className="group relative rounded-2xl border border-slate-200/50 bg-white/80 p-6 text-left backdrop-blur-sm hover:border-slate-300/50 dark:border-white/[0.08] dark:bg-white/[0.03] dark:backdrop-blur-md dark:hover:border-white/[0.12]">
                   <div
-                    className="animate-glow absolute -top-16 -left-16 h-32 w-32 rounded-full bg-gradient-to-br from-indigo-400 to-blue-300 blur-3xl dark:from-indigo-400 dark:to-blue-400"
+                    className="absolute -top-16 -left-16 h-32 w-32 animate-glow rounded-full bg-gradient-to-br from-indigo-400 to-blue-300 blur-3xl dark:from-indigo-400 dark:to-blue-400"
                     style={{ animationDelay: '0.3s' }}
                   />
                   <h3 className="relative z-10 mb-3 text-xl font-semibold">
                     For Writers
                   </h3>
-                  <ul className="text-muted-foreground relative z-10 space-y-3">
+                  <ul className="relative z-10 space-y-3 text-muted-foreground">
                     <li className="flex items-start">
                       <Palette className="mt-0.5 mr-3 h-4 w-4 text-indigo-600" />
                       <span>AI-assisted story development</span>
@@ -353,13 +353,13 @@ function Home() {
 
                 <div className="group relative rounded-2xl border border-slate-200/50 bg-white/80 p-6 text-left backdrop-blur-sm hover:border-slate-300/50 dark:border-white/[0.08] dark:bg-white/[0.03] dark:backdrop-blur-md dark:hover:border-white/[0.12]">
                   <div
-                    className="animate-glow absolute -right-16 -bottom-16 h-32 w-32 rounded-full bg-gradient-to-br from-violet-400 to-purple-300 blur-3xl dark:from-violet-400 dark:to-purple-400"
+                    className="absolute -right-16 -bottom-16 h-32 w-32 animate-glow rounded-full bg-gradient-to-br from-violet-400 to-purple-300 blur-3xl dark:from-violet-400 dark:to-purple-400"
                     style={{ animationDelay: '0.8s' }}
                   />
                   <h3 className="relative z-10 mb-3 text-xl font-semibold">
                     For Producers
                   </h3>
-                  <ul className="text-muted-foreground relative z-10 space-y-3">
+                  <ul className="relative z-10 space-y-3 text-muted-foreground">
                     <li className="flex items-start">
                       <Palette className="mt-0.5 mr-3 h-4 w-4 text-violet-600" />
                       <span>Visual shot lists for production</span>
@@ -400,8 +400,8 @@ function MainCallToActionButton() {
             </span>
             <ArrowRightIcon
               className={
-                'animate-in fade-in slide-in-from-left-8 h-4' +
-                ' zoom-in fill-mode-both delay-1000 duration-1000'
+                'h-4 animate-in fade-in slide-in-from-left-8' +
+                ' delay-1000 duration-1000 fill-mode-both zoom-in'
               }
             />
           </span>

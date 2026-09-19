@@ -51,7 +51,7 @@ export function MedianViewsCard({
 
   if (buckets.length === 0) {
     return (
-      <p className={'text-muted-foreground text-sm'}>
+      <p className={'text-sm text-muted-foreground'}>
         Not enough published videos yet to compute a median.
       </p>
     );
@@ -75,7 +75,7 @@ export function MedianViewsCard({
         <span className={'text-2xl font-semibold'}>
           {formatViews(latest.medianViews)}
         </span>
-        <span className={'text-muted-foreground text-sm'}>median</span>
+        <span className={'text-sm text-muted-foreground'}>median</span>
         {change !== null ? (
           <span
             className={`text-sm ${change >= 0 ? 'text-emerald-600' : 'text-red-600'}`}
@@ -95,14 +95,14 @@ export function MedianViewsCard({
           >
             {/* p25–p75 band shows the spread the median summarizes */}
             <div
-              className={'bg-primary/20 relative w-full rounded-sm'}
+              className={'relative w-full rounded-sm bg-primary/20'}
               style={{
                 height: `${((bucket.p75Views - bucket.p25Views) / max) * 100}%`,
                 marginBottom: `${(bucket.p25Views / max) * 100}%`,
               }}
             >
               <div
-                className={'bg-primary absolute left-0 right-0 h-0.5'}
+                className={'absolute right-0 left-0 h-0.5 bg-primary'}
                 style={{
                   bottom: `${
                     bucket.p75Views > bucket.p25Views
@@ -118,12 +118,12 @@ export function MedianViewsCard({
         ))}
       </div>
 
-      <div className={'text-muted-foreground flex justify-between text-xs'}>
+      <div className={'flex justify-between text-xs text-muted-foreground'}>
         <span>{formatBucket(buckets[0]!.bucket)}</span>
         <span>{formatBucket(latest.bucket)}</span>
       </div>
 
-      <p className={'text-muted-foreground text-xs'}>
+      <p className={'text-xs text-muted-foreground'}>
         {mode === 'cohort_views_to_date'
           ? 'Views to date for videos uploaded each month. A rising line means newer uploads outperform older ones.'
           : 'Views accrued within each month across the whole catalog.'}

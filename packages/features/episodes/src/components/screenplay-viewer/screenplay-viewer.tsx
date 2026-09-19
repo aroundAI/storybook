@@ -131,9 +131,9 @@ export function ScreenplayViewer({
         </CardHeader>
         <CardContent>
           <div className="py-8 text-center">
-            <Film className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
+            <Film className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
             <p className="text-muted-foreground">No screenplay generated yet</p>
-            <p className="text-muted-foreground mt-2 text-sm">
+            <p className="mt-2 text-sm text-muted-foreground">
               Screenplay conversion will be available in FILM-306
             </p>
           </div>
@@ -147,7 +147,7 @@ export function ScreenplayViewer({
       <div className="flex items-center justify-between px-2">
         <div className="flex items-center gap-2">
           {/* Minimal Header */}
-          <div className="text-muted-foreground text-sm font-medium">
+          <div className="text-sm font-medium text-muted-foreground">
             {screenplay.metadata.totalScenes} Scenes • ~
             {Math.round(screenplay.metadata.estimatedDuration / 60)} min
           </div>
@@ -183,8 +183,8 @@ export function ScreenplayViewer({
 
       <div className="grid gap-8 lg:grid-cols-[140px_1fr]">
         {/* Scene Navigation Sidebar - Narrower & Quieter */}
-        <div className="border-border/40 hidden border-r pr-4 lg:block">
-          <div className="text-muted-foreground/50 mb-4 text-xs font-semibold uppercase tracking-wider">
+        <div className="hidden border-r border-border/40 pr-4 lg:block">
+          <div className="mb-4 text-xs font-semibold tracking-wider text-muted-foreground/50 uppercase">
             Scene Index
           </div>
           <SceneNavigation

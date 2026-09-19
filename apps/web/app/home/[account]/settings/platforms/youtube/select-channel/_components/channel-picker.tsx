@@ -82,7 +82,7 @@ export function ChannelPicker({ channels, accountSlug }: ChannelPickerProps) {
             key={channel.id}
             className={`cursor-pointer transition-all ${
               selectedChannelId === channel.id
-                ? 'ring-primary ring-2'
+                ? 'ring-2 ring-primary'
                 : 'hover:border-primary/50'
             }`}
             onClick={() => handleSelectChannel(channel.id)}
@@ -97,20 +97,20 @@ export function ChannelPicker({ channels, accountSlug }: ChannelPickerProps) {
                   className="rounded-full"
                 />
               ) : (
-                <div className="bg-muted flex h-12 w-12 items-center justify-center rounded-full">
-                  <Youtube className="text-muted-foreground h-6 w-6" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <Youtube className="h-6 w-6 text-muted-foreground" />
                 </div>
               )}
               <div className="flex-1">
                 <div className="font-medium">{channel.title}</div>
                 {channel.subscriberCount && (
-                  <div className="text-muted-foreground text-sm">
+                  <div className="text-sm text-muted-foreground">
                     {formatSubscribers(channel.subscriberCount)}
                   </div>
                 )}
               </div>
               {selectedChannelId === channel.id && (
-                <Check className="text-primary h-5 w-5" />
+                <Check className="h-5 w-5 text-primary" />
               )}
             </CardContent>
           </Card>

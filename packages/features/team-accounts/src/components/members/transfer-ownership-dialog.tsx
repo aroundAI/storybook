@@ -133,8 +133,8 @@ function TransferOrganizationOwnershipForm({
           <TransferOwnershipErrorAlert />
         </If>
 
-        <div className="border-destructive rounded-md border p-4">
-          <p className="text-destructive text-sm">
+        <div className="rounded-md border border-destructive p-4">
+          <p className="text-sm text-destructive">
             <Trans
               i18nKey={'teams:transferOwnershipDisclaimer'}
               values={{

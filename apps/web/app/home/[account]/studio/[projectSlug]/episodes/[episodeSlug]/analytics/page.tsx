@@ -72,7 +72,7 @@ export default function EpisodeAnalyticsPage() {
             <p className="text-muted-foreground">
               No analytics data available yet.
             </p>
-            <p className="text-muted-foreground mt-2 text-sm">
+            <p className="mt-2 text-sm text-muted-foreground">
               Publish this episode and sync analytics to see performance
               metrics.
             </p>

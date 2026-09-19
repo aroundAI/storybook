@@ -102,7 +102,7 @@ export function DurationSelector({
     return (
       <div className={cn('flex items-center gap-3', className)}>
         <div className="flex items-center gap-2">
-          <Clock className="text-muted-foreground h-4 w-4" />
+          <Clock className="h-4 w-4 text-muted-foreground" />
           <Select
             value={duration.toString()}
             onValueChange={(v) => onDurationChange(Number(v))}
@@ -116,7 +116,7 @@ export function DurationSelector({
                 <SelectItem key={preset.value} value={preset.value.toString()}>
                   {preset.label}
                   {projectDefault === preset.value && (
-                    <span className="text-muted-foreground ml-1 text-xs">
+                    <span className="ml-1 text-xs text-muted-foreground">
                       (default)
                     </span>
                   )}
@@ -128,7 +128,7 @@ export function DurationSelector({
 
         <div className="flex items-center gap-2">
           {currentStyleInfo && (
-            <currentStyleInfo.icon className="text-muted-foreground h-4 w-4" />
+            <currentStyleInfo.icon className="h-4 w-4 text-muted-foreground" />
           )}
           <Select
             value={contentStyle}
@@ -148,7 +148,7 @@ export function DurationSelector({
           </Select>
         </div>
 
-        <span className="text-muted-foreground text-xs">{preview}</span>
+        <span className="text-xs text-muted-foreground">{preview}</span>
       </div>
     );
   }
@@ -157,7 +157,7 @@ export function DurationSelector({
     <div className={cn('space-y-4', className)}>
       {/* Duration Selection */}
       <div className="space-y-2">
-        <Label className="text-muted-foreground text-xs font-normal">
+        <Label className="text-xs font-normal text-muted-foreground">
           Target Duration
         </Label>
         <div className="flex flex-wrap gap-2">
@@ -214,7 +214,7 @@ export function DurationSelector({
           </Select>
         </div>
         {currentPreset && (
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             {currentPreset.description}
           </p>
         )}
@@ -222,7 +222,7 @@ export function DurationSelector({
 
       {/* Content Style Selection */}
       <div className="space-y-2">
-        <Label className="text-muted-foreground text-xs font-normal">
+        <Label className="text-xs font-normal text-muted-foreground">
           Content Style
         </Label>
         <div className="grid grid-cols-3 gap-2">
@@ -255,7 +255,7 @@ export function DurationSelector({
           })}
         </div>
         {currentStyleInfo && (
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             {currentStyleInfo.description}
           </p>
         )}
@@ -263,15 +263,15 @@ export function DurationSelector({
 
       {/* Scaling Preview */}
       {showPreview && (
-        <div className="bg-muted/50 rounded-lg p-3">
+        <div className="rounded-lg bg-muted/50 p-3">
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground text-xs">
+            <span className="text-xs text-muted-foreground">
               Expected output:
             </span>
             <button
               type="button"
               onClick={() => setShowPreview(false)}
-              className="text-muted-foreground hover:text-foreground text-xs"
+              className="text-xs text-muted-foreground hover:text-foreground"
             >
               Hide
             </button>
@@ -284,7 +284,7 @@ export function DurationSelector({
         <button
           type="button"
           onClick={() => setShowPreview(true)}
-          className="text-muted-foreground hover:text-foreground text-xs underline"
+          className="text-xs text-muted-foreground underline hover:text-foreground"
         >
           Show scaling preview
         </button>

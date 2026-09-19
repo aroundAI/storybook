@@ -18,7 +18,7 @@ export function Default() {
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" side="bottom" className="w-[320px]">
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           Some narrative threads have gone stale — they haven&apos;t been
           progressed or resolved in several episodes.
         </p>

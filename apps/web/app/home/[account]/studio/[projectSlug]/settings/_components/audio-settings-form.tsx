@@ -125,7 +125,7 @@ export function AudioSettingsForm({
       <CardContent className="space-y-6">
         {/* ElevenLabs Connection Status */}
         {isLoadingConnection ? (
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Checking ElevenLabs connection...
           </div>
@@ -166,7 +166,7 @@ export function AudioSettingsForm({
         {/* Voice (TTS) Settings */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <Speaker className="text-muted-foreground h-4 w-4" />
+            <Speaker className="h-4 w-4 text-muted-foreground" />
             <Label className="font-medium">Voice (Text-to-Speech)</Label>
           </div>
 
@@ -237,7 +237,7 @@ export function AudioSettingsForm({
                 </SelectContent>
               </Select>
               {currentModelInfo?.description && (
-                <p className="text-muted-foreground text-xs">
+                <p className="text-xs text-muted-foreground">
                   {currentModelInfo.description}
                 </p>
               )}
@@ -250,7 +250,7 @@ export function AudioSettingsForm({
         {/* SFX Settings */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <Volume2 className="text-muted-foreground h-4 w-4" />
+            <Volume2 className="h-4 w-4 text-muted-foreground" />
             <Label className="font-medium">Sound Effects</Label>
           </div>
 
@@ -274,7 +274,7 @@ export function AudioSettingsForm({
                     <SelectItem key={model.model_id} value={model.model_id}>
                       <div className="flex flex-col">
                         <span>{model.name}</span>
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-xs text-muted-foreground">
                           {model.description}
                         </span>
                       </div>
@@ -291,7 +291,7 @@ export function AudioSettingsForm({
         {/* Music Settings */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <Music className="text-muted-foreground h-4 w-4" />
+            <Music className="h-4 w-4 text-muted-foreground" />
             <Label className="font-medium">Music Generation</Label>
           </div>
 
@@ -315,7 +315,7 @@ export function AudioSettingsForm({
                     <SelectItem key={model.model_id} value={model.model_id}>
                       <div className="flex flex-col">
                         <span>{model.name}</span>
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-xs text-muted-foreground">
                           {model.description}
                         </span>
                       </div>

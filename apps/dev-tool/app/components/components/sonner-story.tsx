@@ -299,7 +299,7 @@ export default function SonnerStory() {
                 Show {controls.variant} Toast
               </Button>
 
-              <div className="text-muted-foreground text-sm">
+              <div className="text-sm text-muted-foreground">
                 <p>
                   <strong>Position:</strong> {controls.position}
                 </p>
@@ -757,14 +757,14 @@ export default function SonnerStory() {
                     </tr>
                   </thead>
                   <tbody className="text-sm">
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">Toaster</td>
                       <td className="p-2 font-mono">
                         position, theme, richColors, expand
                       </td>
                       <td className="p-2">Toast container component</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">toast</td>
                       <td className="p-2 font-mono">message, options</td>
                       <td className="p-2">Function to trigger toasts</td>
@@ -786,42 +786,42 @@ export default function SonnerStory() {
                     </tr>
                   </thead>
                   <tbody className="text-sm">
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">toast()</td>
                       <td className="p-2 font-mono">message, options?</td>
                       <td className="p-2">Basic toast notification</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">toast.success()</td>
                       <td className="p-2 font-mono">message, options?</td>
                       <td className="p-2">Success toast with green styling</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">toast.error()</td>
                       <td className="p-2 font-mono">message, options?</td>
                       <td className="p-2">Error toast with red styling</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">toast.warning()</td>
                       <td className="p-2 font-mono">message, options?</td>
                       <td className="p-2">Warning toast with yellow styling</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">toast.info()</td>
                       <td className="p-2 font-mono">message, options?</td>
                       <td className="p-2">Info toast with blue styling</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">toast.loading()</td>
                       <td className="p-2 font-mono">message, options?</td>
                       <td className="p-2">Loading toast with spinner</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">toast.promise()</td>
                       <td className="p-2 font-mono">promise, messages</td>
                       <td className="p-2">Promise-based toast states</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">toast.dismiss()</td>
                       <td className="p-2 font-mono">id?</td>
                       <td className="p-2">Dismiss toast(s)</td>
@@ -844,43 +844,43 @@ export default function SonnerStory() {
                     </tr>
                   </thead>
                   <tbody className="text-sm">
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">description</td>
                       <td className="p-2 font-mono">string</td>
                       <td className="p-2">-</td>
                       <td className="p-2">Additional description text</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">duration</td>
                       <td className="p-2 font-mono">number</td>
                       <td className="p-2">4000</td>
                       <td className="p-2">Auto dismiss time in milliseconds</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">dismissible</td>
                       <td className="p-2 font-mono">boolean</td>
                       <td className="p-2">true</td>
                       <td className="p-2">Allow manual dismissal</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">action</td>
                       <td className="p-2 font-mono">ActionButton</td>
                       <td className="p-2">-</td>
                       <td className="p-2">Primary action button</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">cancel</td>
                       <td className="p-2 font-mono">ActionButton</td>
                       <td className="p-2">-</td>
                       <td className="p-2">Cancel action button</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">id</td>
                       <td className="p-2 font-mono">string | number</td>
                       <td className="p-2">auto</td>
                       <td className="p-2">Unique identifier for updates</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">className</td>
                       <td className="p-2 font-mono">string</td>
                       <td className="p-2">-</td>
@@ -904,13 +904,13 @@ export default function SonnerStory() {
                     </tr>
                   </thead>
                   <tbody className="text-sm">
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">position</td>
                       <td className="p-2 font-mono">Position</td>
                       <td className="p-2">'bottom-right'</td>
                       <td className="p-2">Toast container position</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">theme</td>
                       <td className="p-2 font-mono">
                         'light' | 'dark' | 'system'
@@ -918,19 +918,19 @@ export default function SonnerStory() {
                       <td className="p-2">'system'</td>
                       <td className="p-2">Theme preference</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">richColors</td>
                       <td className="p-2 font-mono">boolean</td>
                       <td className="p-2">false</td>
                       <td className="p-2">Enable colored backgrounds</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">expand</td>
                       <td className="p-2 font-mono">boolean</td>
                       <td className="p-2">false</td>
                       <td className="p-2">Expand toasts by default</td>
                     </tr>
-                    <tr className="border-border/50 border-b">
+                    <tr className="border-b border-border/50">
                       <td className="p-2 font-mono">visibleToasts</td>
                       <td className="p-2 font-mono">number</td>
                       <td className="p-2">3</td>
@@ -948,12 +948,12 @@ export default function SonnerStory() {
               <h3 className="mb-4 text-lg font-semibold">
                 Setup & Basic Usage
               </h3>
-              <p className="text-muted-foreground mb-4 text-sm">
+              <p className="mb-4 text-sm text-muted-foreground">
                 Sonner provides a simple and powerful toast notification system.
                 Add the Toaster component to your app root and use the toast
                 function to trigger notifications.
               </p>
-              <div className="bg-muted/50 rounded-lg p-4">
+              <div className="rounded-lg bg-muted/50 p-4">
                 <pre className="overflow-x-auto text-sm">
                   {`import { Toaster, toast } from '@kit/ui/sonner';
 
@@ -990,7 +990,7 @@ function MyComponent() {
               <h3 className="mb-4 text-lg font-semibold">
                 Promise Integration
               </h3>
-              <div className="bg-muted/50 rounded-lg p-4">
+              <div className="rounded-lg bg-muted/50 p-4">
                 <pre className="overflow-x-auto text-sm">
                   {`// Automatic loading/success/error states
 const handleAsync = () => {
@@ -1019,7 +1019,7 @@ const handleUpload = async (file: File) => {
 
             <div>
               <h3 className="mb-4 text-lg font-semibold">Interactive Toasts</h3>
-              <div className="bg-muted/50 rounded-lg p-4">
+              <div className="rounded-lg bg-muted/50 p-4">
                 <pre className="overflow-x-auto text-sm">
                   {`// With action buttons
 toast('File uploaded', {

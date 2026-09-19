@@ -95,7 +95,7 @@ export function ContentCard({
         )}
         {/* Platform Badge */}
         <div
-          className={`absolute right-3 top-3 flex items-center rounded-full px-2 py-1 text-[10px] font-bold shadow-lg ${platformStyle.bg}`}
+          className={`absolute top-3 right-3 flex items-center rounded-full px-2 py-1 text-[10px] font-bold shadow-lg ${platformStyle.bg}`}
         >
           <span
             className={`mr-1.5 h-1.5 w-1.5 rounded-full ${platformStyle.dot}`}

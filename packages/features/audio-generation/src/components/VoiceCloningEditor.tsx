@@ -278,7 +278,7 @@ export function VoiceCloningEditor({
           <div className="space-y-4">
             <div>
               <h4 className="text-sm font-medium">Voice Samples</h4>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-muted-foreground">
                 Upload at least 1 minute of clear audio. More samples improve
                 quality.
               </p>

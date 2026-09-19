@@ -200,7 +200,7 @@ export function RevenueDashboard({
         <Card data-test="revenue-tile-total">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="text-muted-foreground h-4 w-4" />
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {summaryLoading ? (
@@ -227,7 +227,7 @@ export function RevenueDashboard({
         <Card data-test="revenue-tile-daily">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Daily Average</CardTitle>
-            <TrendingUp className="text-muted-foreground h-4 w-4" />
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {summaryLoading ? (
@@ -241,7 +241,7 @@ export function RevenueDashboard({
                     (summary?.averageDailyRevenueCents ?? 0) / 100,
                   )}
                 </div>
-                <p className="text-muted-foreground text-xs">per day</p>
+                <p className="text-xs text-muted-foreground">per day</p>
               </>
             )}
           </CardContent>
@@ -250,7 +250,7 @@ export function RevenueDashboard({
         <Card data-test="revenue-tile-rpm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">RPM</CardTitle>
-            <PieChart className="text-muted-foreground h-4 w-4" />
+            <PieChart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {summaryLoading ? (
@@ -262,7 +262,7 @@ export function RevenueDashboard({
                 <div className="text-2xl font-bold">
                   {formatCurrency((summary?.rpm ?? 0) / 100)}
                 </div>
-                <p className="text-muted-foreground text-xs">per 1,000 views</p>
+                <p className="text-xs text-muted-foreground">per 1,000 views</p>
               </>
             )}
           </CardContent>
@@ -273,7 +273,7 @@ export function RevenueDashboard({
             <CardTitle className="text-sm font-medium">
               Monthly Projection
             </CardTitle>
-            <TrendingUp className="text-muted-foreground h-4 w-4" />
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {projectionLoading ? (
@@ -287,7 +287,7 @@ export function RevenueDashboard({
                     (projection?.estimatedMonthlyRevenueCents ?? 0) / 100,
                   )}
                 </div>
-                <p className="text-muted-foreground text-xs">
+                <p className="text-xs text-muted-foreground">
                   {projection?.confidenceLevel} confidence
                 </p>
               </>
@@ -347,7 +347,7 @@ export function RevenueDashboard({
               */}
               {summaryUnavailable ? (
                 <p
-                  className="text-destructive text-sm"
+                  className="text-sm text-destructive"
                   data-test="revenue-mix-error"
                 >
                   Revenue could not be loaded.
@@ -441,7 +441,7 @@ export function RevenueDashboardSkeleton() {
 function SummaryUnavailable({ tile }: { tile: string }) {
   return (
     <p
-      className="text-destructive text-sm"
+      className="text-sm text-destructive"
       data-test={`revenue-summary-error-${tile}`}
     >
       Revenue could not be loaded.

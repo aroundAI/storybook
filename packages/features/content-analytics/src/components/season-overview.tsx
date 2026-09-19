@@ -52,7 +52,7 @@ export function SeasonOverview({ data }: SeasonOverviewProps) {
           <p className="text-2xl font-bold">
             {data.totalViews.toLocaleString()}
           </p>
-          <p className="text-muted-foreground text-sm">Total Views</p>
+          <p className="text-sm text-muted-foreground">Total Views</p>
         </div>
       </div>
 
@@ -85,7 +85,7 @@ export function SeasonOverview({ data }: SeasonOverviewProps) {
                         {episode.views.toLocaleString()} views
                       </span>
                     </div>
-                    <div className="bg-muted h-4 overflow-hidden rounded">
+                    <div className="h-4 overflow-hidden rounded bg-muted">
                       <div
                         className={`h-full transition-all ${
                           isTop
@@ -101,7 +101,7 @@ export function SeasonOverview({ data }: SeasonOverviewProps) {
                 );
               })
             ) : (
-              <p className="text-muted-foreground py-8 text-center">
+              <p className="py-8 text-center text-muted-foreground">
                 No episodes with analytics yet.
               </p>
             )}

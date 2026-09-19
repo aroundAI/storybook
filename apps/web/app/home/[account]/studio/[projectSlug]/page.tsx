@@ -273,7 +273,7 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
     }) ?? [];
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl p-8">
         <OverviewContent
           project={{

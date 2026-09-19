@@ -140,7 +140,7 @@ export default function SkeletonStory() {
         </div>
 
         {controls.showDemo && (
-          <div className="bg-muted/50 rounded-lg p-3">
+          <div className="rounded-lg bg-muted/50 p-3">
             <div className="mb-2 flex items-center justify-between">
               <p className="text-sm font-medium">Loading Demo:</p>
               <Button
@@ -173,7 +173,7 @@ export default function SkeletonStory() {
               <Skeleton
                 className={` ${sizeClasses[controls.size].width} ${sizeClasses[controls.size].height} ${variantClasses[controls.variant]} ${!controls.animating ? 'animate-none' : ''} `}
               />
-              <div className="text-muted-foreground text-sm">
+              <div className="text-sm text-muted-foreground">
                 {controls.variant} variant, {controls.size} size
               </div>
             </div>
@@ -197,12 +197,12 @@ export default function SkeletonStory() {
                     </div>
                   ) : (
                     <div className="flex items-center space-x-4">
-                      <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-full">
-                        <UserIcon className="text-primary h-6 w-6" />
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                        <UserIcon className="h-6 w-6 text-primary" />
                       </div>
                       <div className="flex-1 space-y-1">
                         <p className="text-sm font-medium">John Doe</p>
-                        <p className="text-muted-foreground text-sm">
+                        <p className="text-sm text-muted-foreground">
                           Software Engineer
                         </p>
                       </div>
@@ -409,7 +409,7 @@ export default function SkeletonStory() {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">Skeleton</td>
                     <td className="p-2 font-mono">
                       className, ...HTMLDivElement props
@@ -434,13 +434,13 @@ export default function SkeletonStory() {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">className</td>
                     <td className="p-2 font-mono">string</td>
                     <td className="p-2">-</td>
                     <td className="p-2">Additional CSS classes</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">...props</td>
                     <td className="p-2 font-mono">HTMLDivElement</td>
                     <td className="p-2">-</td>
@@ -462,7 +462,7 @@ export default function SkeletonStory() {
                   <Badge variant="secondary">bg-primary/10 (background)</Badge>
                 </div>
               </div>
-              <div className="bg-muted/50 rounded-lg p-4">
+              <div className="rounded-lg bg-muted/50 p-4">
                 <pre className="overflow-x-auto text-sm">
                   {`// Default animated
 <Skeleton className="h-4 w-32" />
@@ -491,7 +491,7 @@ export default function SkeletonStory() {
                   <Badge variant="secondary">aspect-square (square)</Badge>
                 </div>
               </div>
-              <div className="bg-muted/50 rounded-lg p-4">
+              <div className="rounded-lg bg-muted/50 p-4">
                 <pre className="overflow-x-auto text-sm">
                   {`// Text skeleton
 <Skeleton className="h-4 w-64" />
@@ -514,12 +514,12 @@ export default function SkeletonStory() {
         <div className="space-y-8">
           <div>
             <h3 className="mb-4 text-lg font-semibold">Basic Usage</h3>
-            <p className="text-muted-foreground mb-4 text-sm">
+            <p className="mb-4 text-sm text-muted-foreground">
               Skeleton components provide visual placeholders during content
               loading states, maintaining layout structure and improving
               perceived performance.
             </p>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`import { Skeleton } from '@kit/ui/skeleton';
 
@@ -540,7 +540,7 @@ function LoadingCard() {
             <h3 className="mb-4 text-lg font-semibold">
               Loading State Patterns
             </h3>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`function ProfileCard({ isLoading, user }) {
   if (isLoading) {
@@ -579,7 +579,7 @@ function LoadingCard() {
 
           <div>
             <h3 className="mb-4 text-lg font-semibold">List Loading</h3>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`function SkeletonList({ count = 5 }) {
   return (

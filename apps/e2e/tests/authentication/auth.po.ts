@@ -74,7 +74,8 @@ export class AuthPageObject {
 
     console.log(`OTP ${otp} code`, {
       period,
-      secondsLeftWhenGenerated: period - (Math.floor(Date.now() / 1000) % period),
+      secondsLeftWhenGenerated:
+        period - (Math.floor(Date.now() / 1000) % period),
     });
 
     await this.page.fill('[data-input-otp]', otp);

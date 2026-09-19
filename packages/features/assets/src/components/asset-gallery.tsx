@@ -375,7 +375,7 @@ export function AssetGallery({
 
         {supportingCast.length > 0 && (
           <div className="space-y-4">
-            <h3 className="text-muted-foreground border-l-4 border-transparent pl-3 text-lg font-semibold tracking-tight">
+            <h3 className="border-l-4 border-transparent pl-3 text-lg font-semibold tracking-tight text-muted-foreground">
               Supporting Cast
             </h3>
             <AssetGrid>
@@ -397,7 +397,7 @@ export function AssetGallery({
 
         {others.length > 0 && (
           <div className="space-y-4">
-            <h3 className="text-muted-foreground border-l-4 border-transparent pl-3 text-lg font-semibold tracking-tight">
+            <h3 className="border-l-4 border-transparent pl-3 text-lg font-semibold tracking-tight text-muted-foreground">
               {hasCreatures ? 'Creatures & Others' : 'Other Characters'}
             </h3>
             <AssetGrid>
@@ -542,7 +542,7 @@ export function AssetGallery({
           {activeTab === 'character' && (
             <button
               onClick={clearFilters}
-              className="text-primary mt-2 text-sm underline underline-offset-4"
+              className="mt-2 text-sm text-primary underline underline-offset-4"
             >
               Clear all filters
             </button>

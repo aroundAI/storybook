@@ -23,7 +23,7 @@ export function DocsNavLink({
         asChild
         isActive={isCurrent}
         className={cn('transition-background font-normal!', {
-          'text-secondary-foreground font-bold': isCurrent,
+          'font-bold text-secondary-foreground': isCurrent,
         })}
       >
         <Link href={url}>

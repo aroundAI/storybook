@@ -40,19 +40,19 @@ export function AssetSearchBar({
 
   return (
     <div className="relative">
-      <Search className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+      <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         type="text"
         placeholder={placeholder}
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
-        className="pl-9 pr-9"
+        className="pr-9 pl-9"
       />
       {localValue && (
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2"
+          className="absolute top-1/2 right-1 h-6 w-6 -translate-y-1/2"
           onClick={() => {
             setLocalValue('');
             onChange('');

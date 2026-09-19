@@ -1,16 +1,16 @@
 // Server exports for @kit/shorts
 export {
-    generateShortAction,
-    generateAllShortsAction,
+  generateShortAction,
+  generateAllShortsAction,
 } from './generate-short-action';
 
 export {
-    getShortsCandidates,
-    getShortsForEpisode,
-    getShortById,
-    type ShortCandidate,
-    type Short,
-    type ShortPublication,
+  getShortsCandidates,
+  getShortsForEpisode,
+  getShortById,
+  type ShortCandidate,
+  type Short,
+  type ShortPublication,
 } from './shorts-queries';
 
 export { publishShortAction } from './publish-short-action';

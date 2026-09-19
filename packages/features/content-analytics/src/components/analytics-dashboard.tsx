@@ -352,7 +352,7 @@ export function AnalyticsDashboard({
             {projectData?.projectName ?? 'Analytics'}
           </h1>
           {dataUpdatedAt > 0 && (
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Last updated {formatDistanceToNow(dataUpdatedAt)} ago
             </p>
           )}
@@ -529,7 +529,7 @@ function PlatformBreakdownCard({ data }: PlatformBreakdownCardProps) {
               </div>
             </div>
             <Progress value={percentage} className="h-2" />
-            <div className="text-muted-foreground flex justify-between text-xs">
+            <div className="flex justify-between text-xs text-muted-foreground">
               <span>{formatNumber(platform.likes)} likes</span>
               <span>{formatNumber(platform.comments)} comments</span>
               <span>{formatNumber(platform.shares)} shares</span>

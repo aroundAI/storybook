@@ -142,11 +142,11 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
   return (
     <>
       {/* Fixed Header */}
-      <header className="bg-card border-border border-b px-6 py-4">
+      <header className="border-b border-border bg-card px-6 py-4">
         <div className="mb-2">
           <Link
             href={`/home/${account}/studio/${project.slug}`}
-            className="text-muted-foreground hover:text-foreground inline-flex items-center text-sm transition-colors"
+            className="inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Project
@@ -154,8 +154,8 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Settings className="text-muted-foreground h-5 w-5" />
-            <h1 className="text-foreground text-xl font-bold">
+            <Settings className="h-5 w-5 text-muted-foreground" />
+            <h1 className="text-xl font-bold text-foreground">
               Project Settings
             </h1>
             {permissions.role && (
@@ -187,7 +187,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
           <section className="space-y-6">
             <div>
               <h2 className="text-lg font-semibold">Overview</h2>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-muted-foreground">
                 Basic project information and branding.
               </p>
             </div>
@@ -204,7 +204,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
               <CardContent>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
                   <div>
-                    <dt className="text-muted-foreground text-xs font-medium">
+                    <dt className="text-xs font-medium text-muted-foreground">
                       <Trans i18nKey={'projects:statusLabel'} />
                     </dt>
                     <dd className="mt-0.5 text-sm capitalize">
@@ -213,7 +213,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                   </div>
                   {project.slug && (
                     <div>
-                      <dt className="text-muted-foreground text-xs font-medium">
+                      <dt className="text-xs font-medium text-muted-foreground">
                         <Trans i18nKey={'projects:slug'} />
                       </dt>
                       <dd className="mt-0.5 font-mono text-sm">
@@ -222,7 +222,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                     </div>
                   )}
                   <div>
-                    <dt className="text-muted-foreground text-xs font-medium">
+                    <dt className="text-xs font-medium text-muted-foreground">
                       <Trans i18nKey={'common:createdAt'} />
                     </dt>
                     <dd className="mt-0.5 text-sm">
@@ -230,7 +230,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground text-xs font-medium">
+                    <dt className="text-xs font-medium text-muted-foreground">
                       <Trans i18nKey={'common:updatedAt'} />
                     </dt>
                     <dd className="mt-0.5 text-sm">
@@ -257,7 +257,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
             <section className="border-t pt-8">
               <div className="mb-6">
                 <h2 className="text-lg font-semibold">Content Generation</h2>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   AI story generation, visual style, and recurring story
                   elements.
                 </p>
@@ -342,7 +342,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
             <section className="border-t pt-8">
               <div className="mb-6">
                 <h2 className="text-lg font-semibold">Audio Generation</h2>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Voice, sound effects, and music generation settings.
                 </p>
               </div>
@@ -373,7 +373,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
             <section className="border-t pt-8">
               <div className="mb-6">
                 <h2 className="text-lg font-semibold">Story Continuity</h2>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Canon management and episode-to-episode consistency.
                 </p>
               </div>
@@ -389,15 +389,15 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
               {/* Fact Library link */}
               <Link
                 href={`/home/${account}/studio/${project.slug}/settings/facts`}
-                className="border-border bg-card hover:bg-accent mt-4 flex items-center justify-between rounded-lg border px-5 py-4 transition-colors"
+                className="mt-4 flex items-center justify-between rounded-lg border border-border bg-card px-5 py-4 transition-colors hover:bg-accent"
               >
                 <div>
                   <p className="text-sm font-medium">Fact Library</p>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     Manage verified facts and sources for documentary content.
                   </p>
                 </div>
-                <ArrowRight className="text-muted-foreground h-4 w-4" />
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </Link>
             </section>
           </If>
@@ -407,7 +407,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
             <section className="border-t pt-8">
               <div className="mb-6">
                 <h2 className="text-lg font-semibold">Visibility & Sharing</h2>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Control who can access this project.
                 </p>
               </div>
@@ -428,7 +428,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
             <section className="space-y-6 border-t pt-8">
               <div>
                 <h2 className="text-lg font-semibold">Publishing & Branding</h2>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Intro videos and publishing destinations.
                 </p>
               </div>
@@ -461,7 +461,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
           <section className="space-y-6 border-t pt-8">
             <div>
               <h2 className="text-lg font-semibold">Team</h2>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-muted-foreground">
                 Project members and collaboration.
               </p>
             </div>
@@ -499,7 +499,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                       className="flex items-center justify-between"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="bg-muted flex h-10 w-10 items-center justify-center rounded-full">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
                           {member.user.name?.[0]?.toUpperCase() || '?'}
                         </div>
                         <div>
@@ -507,7 +507,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                             {member.user.name || member.user.email || 'Unknown'}
                           </div>
                           {member.user.email && (
-                            <div className="text-muted-foreground text-xs">
+                            <div className="text-xs text-muted-foreground">
                               {member.user.email}
                             </div>
                           )}

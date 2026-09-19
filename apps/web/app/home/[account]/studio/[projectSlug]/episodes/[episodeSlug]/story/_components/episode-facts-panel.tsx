@@ -87,9 +87,9 @@ export function EpisodeFactsPanel({
   if (facts.length === 0 && !isPending) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
-        <BookOpen className="text-muted-foreground mb-3 h-8 w-8" />
+        <BookOpen className="mb-3 h-8 w-8 text-muted-foreground" />
         <h3 className="text-sm font-medium">No facts linked</h3>
-        <p className="text-muted-foreground mt-1 max-w-xs text-xs">
+        <p className="mt-1 max-w-xs text-xs text-muted-foreground">
           Link verified facts from your project&apos;s research to ensure
           accuracy in this episode.
         </p>
@@ -117,7 +117,7 @@ export function EpisodeFactsPanel({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           {facts.length} fact{facts.length !== 1 ? 's' : ''} linked
         </p>
         <Button
@@ -152,7 +152,7 @@ export function EpisodeFactsPanel({
                       </Badge>
                     )}
                     {data.source_citation && (
-                      <span className="text-muted-foreground truncate text-xs">
+                      <span className="truncate text-xs text-muted-foreground">
                         {data.source_citation}
                       </span>
                     )}
@@ -171,7 +171,7 @@ export function EpisodeFactsPanel({
                   onClick={() => handleUnlink(fact.fact_id)}
                   disabled={isPending}
                 >
-                  <Unlink className="text-destructive h-3 w-3" />
+                  <Unlink className="h-3 w-3 text-destructive" />
                 </Button>
               </CardContent>
             </Card>

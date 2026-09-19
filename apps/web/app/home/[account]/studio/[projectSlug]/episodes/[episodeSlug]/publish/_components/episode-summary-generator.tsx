@@ -219,7 +219,7 @@ export function EpisodeSummaryGenerator({
         <div className="flex items-center gap-4">
           <span className="text-sm font-medium">Tone:</span>
           <Badge className={sentiment.color}>{sentiment.label}</Badge>
-          <span className="text-muted-foreground text-xs">
+          <span className="text-xs text-muted-foreground">
             ({Math.round(sentimentScore * 100)}% positive)
           </span>
         </div>
@@ -235,7 +235,7 @@ export function EpisodeSummaryGenerator({
               {extractedEvents.map((event) => (
                 <li
                   key={event.id}
-                  className="bg-muted flex items-center justify-between rounded p-2 text-sm"
+                  className="flex items-center justify-between rounded bg-muted p-2 text-sm"
                 >
                   <span>
                     <Badge variant="outline" className="mr-2">
@@ -271,7 +271,7 @@ export function EpisodeSummaryGenerator({
               {extractedThreads.map((thread, idx) => (
                 <li
                   key={`${thread.threadName}-${idx}`}
-                  className="bg-muted group relative rounded p-3 text-sm"
+                  className="group relative rounded bg-muted p-3 text-sm"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -296,7 +296,7 @@ export function EpisodeSummaryGenerator({
                           </Badge>
                         )}
                       </div>
-                      <p className="text-muted-foreground mt-1 text-xs">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {thread.description}
                       </p>
                       {thread.promises && thread.promises.length > 0 && (
@@ -347,7 +347,7 @@ export function EpisodeSummaryGenerator({
         )}
 
         {!hasExtracted && !isExtracting && (
-          <p className="text-muted-foreground py-4 text-center text-sm">
+          <p className="py-4 text-center text-sm text-muted-foreground">
             Click &quot;Analyze&quot; to extract canon changes from the episode
             story.
           </p>

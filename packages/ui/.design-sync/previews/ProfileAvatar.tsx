@@ -15,7 +15,7 @@ export function FallbackInitial() {
       <ProfileAvatar displayName="Theo Marsh" pictureUrl={null} />
       <div>
         <p className="text-sm font-medium">Theo Marsh</p>
-        <p className="text-muted-foreground text-xs">theo@storybook.studio</p>
+        <p className="text-xs text-muted-foreground">theo@storybook.studio</p>
       </div>
     </div>
   );

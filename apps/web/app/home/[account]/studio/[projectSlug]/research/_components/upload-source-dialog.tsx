@@ -420,11 +420,11 @@ export function UploadSourceDialog({
                     htmlFor="file-upload"
                     className="flex cursor-pointer flex-col items-center gap-2"
                   >
-                    <Upload className="text-muted-foreground h-8 w-8" />
-                    <span className="text-muted-foreground text-sm">
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
                       {fileName || 'Click to select a file'}
                     </span>
-                    <span className="text-muted-foreground text-xs">
+                    <span className="text-xs text-muted-foreground">
                       Supports: TXT, MD, CSV, PDF, DOCX
                     </span>
                     <input
@@ -438,7 +438,7 @@ export function UploadSourceDialog({
                   </label>
                 </div>
                 {fileContent && !isServerExtracting && (
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     Loaded {fileContent.length.toLocaleString()} characters
                   </p>
                 )}

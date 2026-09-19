@@ -175,13 +175,13 @@ ${formattedProps}
       />
 
       {uploadedFiles.length > 0 && (
-        <div className="bg-muted/20 mt-6 rounded-lg border p-4">
+        <div className="mt-6 rounded-lg border bg-muted/20 p-4">
           <h4 className="mb-2 font-semibold">Successfully Uploaded Files:</h4>
           <ul className="space-y-1">
             {uploadedFiles.map((file, index) => (
               <li
                 key={index}
-                className="text-muted-foreground flex items-center text-sm"
+                className="flex items-center text-sm text-muted-foreground"
               >
                 <span className="mr-2 inline-block h-2 w-2 rounded-full bg-green-500"></span>
                 {file}
@@ -324,12 +324,12 @@ ${formattedProps}
         <div className="space-y-6">
           <div>
             <h4 className="mb-3 text-lg font-semibold">FileUploader</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               A drag-and-drop file uploader with preview, progress tracking, and
               Supabase integration.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>

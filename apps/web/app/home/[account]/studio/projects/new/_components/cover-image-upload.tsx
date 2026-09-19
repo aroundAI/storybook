@@ -69,7 +69,7 @@ export function CoverImageUpload({
       <label
         className={cn(
           'relative flex h-48 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed',
-          'bg-muted/30 hover:bg-muted/50 transition-colors',
+          'bg-muted/30 transition-colors hover:bg-muted/50',
           disabled && 'cursor-not-allowed opacity-50',
           error && 'border-destructive',
         )}
@@ -107,8 +107,8 @@ export function CoverImageUpload({
             </Button>
           </div>
         ) : (
-          <div className="text-muted-foreground flex flex-col items-center gap-2">
-            <div className="bg-muted rounded-full p-4">
+          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+            <div className="rounded-full bg-muted p-4">
               <ImageIcon className="h-8 w-8" />
             </div>
             <div className="text-center">
@@ -120,7 +120,7 @@ export function CoverImageUpload({
       </label>
 
       {/* Error Message */}
-      {error && <p className="text-destructive text-sm">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );
 }

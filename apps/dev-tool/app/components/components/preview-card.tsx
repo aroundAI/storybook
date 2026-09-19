@@ -32,7 +32,7 @@ export function PreviewCard({
       </CardHeader>
       <CardContent>
         <div
-          className={cn('bg-muted/30 rounded-lg border p-6', contentClassName)}
+          className={cn('rounded-lg border bg-muted/30 p-6', contentClassName)}
         >
           {children}
         </div>

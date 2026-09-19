@@ -62,9 +62,9 @@ export function ExperimentList({
   if (experiments.length === 0) {
     return (
       <div className={'flex flex-col items-center gap-2 py-12 text-center'}>
-        <FlaskConical className={'text-muted-foreground h-8 w-8'} />
+        <FlaskConical className={'h-8 w-8 text-muted-foreground'} />
         <p className={'text-sm font-medium'}>No changes logged yet</p>
-        <p className={'text-muted-foreground max-w-md text-sm'}>
+        <p className={'max-w-md text-sm text-muted-foreground'}>
           Record a change to published videos and what you expected. In six
           months the analytics alone will not tell you what you changed.
         </p>
@@ -81,7 +81,7 @@ export function ExperimentList({
           onClick={() => onSelect?.(experiment.id)}
           data-test={`experiment-row-${experiment.id}`}
           className={
-            'hover:bg-accent flex flex-col gap-2 rounded-lg border p-4 text-left transition-colors'
+            'flex flex-col gap-2 rounded-lg border p-4 text-left transition-colors hover:bg-accent'
           }
         >
           <div className={'flex items-start justify-between gap-3'}>
@@ -101,12 +101,12 @@ export function ExperimentList({
           </div>
 
           {experiment.hypothesis ? (
-            <p className={'text-muted-foreground line-clamp-2 text-sm'}>
+            <p className={'line-clamp-2 text-sm text-muted-foreground'}>
               {experiment.hypothesis}
             </p>
           ) : null}
 
-          <p className={'text-muted-foreground text-xs'}>
+          <p className={'text-xs text-muted-foreground'}>
             {experiment.started_at
               ? `Started ${experiment.started_at}`
               : // The user's day, not the timestamp's UTC day (review 5, H6).
@@ -152,7 +152,7 @@ export function ExperimentsDueList({
   if (experiments.length === 0) {
     return (
       <p
-        className={'text-muted-foreground text-sm'}
+        className={'text-sm text-muted-foreground'}
         data-test={'experiments-due-empty'}
       >
         Nothing is due for review.
@@ -168,7 +168,7 @@ export function ExperimentsDueList({
           type={'button'}
           onClick={() => onSelect?.(experiment.id)}
           className={
-            'hover:bg-accent flex items-center justify-between gap-3 rounded-lg border p-3 text-left transition-colors'
+            'flex items-center justify-between gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-accent'
           }
           data-test={`experiment-due-${experiment.id}`}
         >
@@ -176,7 +176,7 @@ export function ExperimentsDueList({
             <CalendarClock className={'h-4 w-4'} />
             {experiment.title}
           </span>
-          <span className={'text-muted-foreground shrink-0 text-xs'}>
+          <span className={'shrink-0 text-xs text-muted-foreground'}>
             Due {experiment.review_due_at}
           </span>
         </button>

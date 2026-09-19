@@ -226,7 +226,7 @@ function PlatformCard({
       </CardHeader>
       <CardContent>
         {connections.length === 0 ? (
-          <div className="text-muted-foreground py-6 text-center">
+          <div className="py-6 text-center text-muted-foreground">
             <p>
               <Trans
                 i18nKey="platforms:noAccountsConnected"
@@ -255,7 +255,7 @@ function PlatformCard({
         )}
 
         <div className="mt-4 border-t pt-4">
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             <strong>
               <Trans
                 i18nKey="platforms:permissionsRequested"
@@ -336,7 +336,7 @@ function ConnectionRow({
 
   return (
     <>
-      <div className="bg-muted/30 flex items-center justify-between rounded-lg border p-3">
+      <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
         <div className="flex items-center gap-3">
           <Avatar>
             <AvatarImage src={connection.profileImageUrl} />
@@ -349,7 +349,7 @@ function ConnectionRow({
               <span className="font-medium">{connection.accountName}</span>
               <ConnectionStatusBadge status={connection.status} />
             </div>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               {connection.createdAt &&
               !isNaN(new Date(connection.createdAt).getTime()) ? (
                 <Trans
@@ -422,7 +422,7 @@ function ConnectionRow({
             onClick={() => setShowDisconnect(true)}
             title="Disconnect"
           >
-            <Trash2 className="text-destructive h-4 w-4" />
+            <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
       </div>

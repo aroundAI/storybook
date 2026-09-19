@@ -26,7 +26,7 @@ export function AssetTabs({ activeTab, onTabChange, counts }: AssetTabsProps) {
           <User className="h-4 w-4" />
           Characters
           {counts?.character !== undefined && (
-            <span className="bg-muted ml-1 rounded-full px-2 py-0.5 text-xs">
+            <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs">
               {counts.character}
             </span>
           )}
@@ -35,7 +35,7 @@ export function AssetTabs({ activeTab, onTabChange, counts }: AssetTabsProps) {
           <MapPin className="h-4 w-4" />
           Locations
           {counts?.location !== undefined && (
-            <span className="bg-muted ml-1 rounded-full px-2 py-0.5 text-xs">
+            <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs">
               {counts.location}
             </span>
           )}

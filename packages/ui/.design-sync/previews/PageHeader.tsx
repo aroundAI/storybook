@@ -20,7 +20,7 @@ import { SidebarProvider } from '@kit/ui/shadcn-sidebar';
 // tailwind-merge) to a plain vertical, unconstrained-height stack.
 export function Default() {
   return (
-    <div className="bg-background overflow-hidden rounded-lg border">
+    <div className="overflow-hidden rounded-lg border bg-background">
       <SidebarProvider className="min-h-0 flex-col">
         <PageHeader
           title="Analytics"
@@ -36,15 +36,15 @@ export function Default() {
         <PageBody>
           <div className="grid grid-cols-3 gap-4 py-4">
             <div className="rounded-md border p-4">
-              <p className="text-muted-foreground text-xs">Total views</p>
+              <p className="text-xs text-muted-foreground">Total views</p>
               <p className="text-2xl font-semibold">128.4K</p>
             </div>
             <div className="rounded-md border p-4">
-              <p className="text-muted-foreground text-xs">Watch time</p>
+              <p className="text-xs text-muted-foreground">Watch time</p>
               <p className="text-2xl font-semibold">6,204 hrs</p>
             </div>
             <div className="rounded-md border p-4">
-              <p className="text-muted-foreground text-xs">Episodes live</p>
+              <p className="text-xs text-muted-foreground">Episodes live</p>
               <p className="text-2xl font-semibold">14</p>
             </div>
           </div>

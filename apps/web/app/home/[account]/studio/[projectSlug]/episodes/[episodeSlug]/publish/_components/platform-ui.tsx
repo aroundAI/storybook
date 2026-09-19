@@ -90,7 +90,7 @@ export const ChannelBadge = ({
       <Tooltip>
         <TooltipTrigger asChild>
           <div
-            className={`flex items-center gap-1.5 rounded-full border px-2 py-1 ${size === 'md' ? 'px-3 py-1.5' : ''} ${conn.tokenValid ? 'bg-card border-gray-200' : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'}`}
+            className={`flex items-center gap-1.5 rounded-full border px-2 py-1 ${size === 'md' ? 'px-3 py-1.5' : ''} ${conn.tokenValid ? 'border-gray-200 bg-card' : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'}`}
           >
             <Avatar className={size === 'md' ? 'h-5 w-5' : 'h-4 w-4'}>
               <AvatarImage src={conn.avatarUrl ?? undefined} />

@@ -130,7 +130,7 @@ export function EpisodePage({
 
               {episode.description && (
                 <div className="prose prose-slate dark:prose-invert max-w-none">
-                  <p className="whitespace-pre-wrap leading-relaxed text-slate-700 dark:text-slate-300">
+                  <p className="leading-relaxed whitespace-pre-wrap text-slate-700 dark:text-slate-300">
                     {episode.description}
                   </p>
                 </div>

@@ -103,7 +103,7 @@ export function VoicePreview({
               />
             </div>
 
-            <span className="text-muted-foreground text-sm tabular-nums">
+            <span className="text-sm text-muted-foreground tabular-nums">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
 
@@ -124,7 +124,7 @@ export function VoicePreview({
         </>
       ) : (
         <div className="py-6 text-center">
-          <p className="text-muted-foreground mb-4 text-sm">
+          <p className="mb-4 text-sm text-muted-foreground">
             Generate a preview to hear how this voice sounds
           </p>
           <Button type="button" onClick={onGenerate} disabled={isGenerating}>

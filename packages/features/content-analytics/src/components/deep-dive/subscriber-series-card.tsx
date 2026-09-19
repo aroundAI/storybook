@@ -124,7 +124,7 @@ export function SubscriberSeriesCard({
   if (withData.length === 0) {
     return (
       <div
-        className={'text-muted-foreground flex flex-col gap-1 text-sm'}
+        className={'flex flex-col gap-1 text-sm text-muted-foreground'}
         data-test={'subscriber-series-empty'}
       >
         {series.length === 0 ? (
@@ -180,7 +180,7 @@ export function SubscriberSeriesCard({
 
       {showingTotal ? (
         <ul
-          className={'text-muted-foreground flex flex-col gap-1 text-xs'}
+          className={'flex flex-col gap-1 text-xs text-muted-foreground'}
           data-test={'subscriber-series-total-note'}
         >
           {totals.map((t) => (
@@ -277,7 +277,7 @@ export function SubscriberSeriesCard({
 
       {withoutData.length > 0 && !showingTotal ? (
         <ul
-          className={'text-muted-foreground text-xs'}
+          className={'text-xs text-muted-foreground'}
           data-test={'subscriber-series-missing'}
         >
           {withoutData.map((s) => (
@@ -290,7 +290,7 @@ export function SubscriberSeriesCard({
 
       {untracked.length > 0 ? (
         <p
-          className={'text-muted-foreground text-xs'}
+          className={'text-xs text-muted-foreground'}
           data-test={'subscriber-series-untracked'}
         >
           {describeUntrackedChannels(
@@ -301,14 +301,14 @@ export function SubscriberSeriesCard({
 
       {rounding ? (
         <p
-          className={'text-muted-foreground text-xs'}
+          className={'text-xs text-muted-foreground'}
           data-test={'subscriber-seed-disclosure'}
         >
           {rounding}
         </p>
       ) : null}
 
-      <p className={'text-muted-foreground text-xs'}>
+      <p className={'text-xs text-muted-foreground'}>
         A curve starts at a channel’s first snapshot and reaches earlier only as
         far as its daily movement does.
       </p>
@@ -363,17 +363,17 @@ function PointDot(props: {
 function SourceLegend() {
   return (
     <ul
-      className={'text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs'}
+      className={'flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground'}
       data-test={'subscriber-source-legend'}
     >
       <li className={'flex items-center gap-1.5'}>
-        <span className={'bg-foreground inline-block h-0.5 w-4'} />
+        <span className={'inline-block h-0.5 w-4 bg-foreground'} />
         Solid — a snapshot that day
       </li>
       <li className={'flex items-center gap-1.5'}>
         <span
           className={
-            'border-foreground inline-block w-4 border-t border-dashed'
+            'inline-block w-4 border-t border-dashed border-foreground'
           }
         />
         Dashed — no snapshot, reconstructed from daily movement
@@ -381,13 +381,13 @@ function SourceLegend() {
       <li className={'flex items-center gap-1.5'}>
         <span
           className={
-            'border-foreground bg-background inline-block size-2 border'
+            'inline-block size-2 border border-foreground bg-background'
           }
         />
         Held to the edge of the platform’s rounded figure
       </li>
       <li className={'flex items-center gap-1.5'}>
-        <span className={'bg-foreground inline-block size-2 rounded-full'} />A
+        <span className={'inline-block size-2 rounded-full bg-foreground'} />A
         measured day with none either side
       </li>
     </ul>
@@ -410,7 +410,7 @@ function SubscriberTooltip({
   return (
     <div
       className={
-        'bg-background grid min-w-48 gap-1 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl'
+        'grid min-w-48 gap-1 rounded-lg border bg-background px-2.5 py-1.5 text-xs shadow-xl'
       }
     >
       <span className={'font-medium'}>{formatSubscriberDay(row.date)}</span>

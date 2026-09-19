@@ -1,9 +1,9 @@
 import { Page, expect } from '@playwright/test';
 
 import { AuthPageObject } from '../authentication/auth.po';
+import { OtpPo } from '../utils/otp.po';
 import { seedUser } from '../utils/seed';
 import { signInAs } from '../utils/session';
-import { OtpPo } from '../utils/otp.po';
 
 export class AccountPageObject {
   private readonly page: Page;

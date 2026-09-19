@@ -71,7 +71,7 @@ export function ImageUploader(
     <div className={'flex items-center space-x-4'}>
       <label
         className={
-          'animate-in fade-in zoom-in-50 group/label relative h-20 w-20 cursor-pointer'
+          'group/label relative h-20 w-20 cursor-pointer animate-in fade-in zoom-in-50'
         }
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -105,10 +105,10 @@ function FallbackImage(
     <div className={'flex items-center space-x-4'}>
       <label
         className={
-          'border-border animate-in fade-in zoom-in-50 hover:border-primary relative flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-full border'
+          'relative flex h-20 w-20 cursor-pointer flex-col items-center justify-center rounded-full border border-border animate-in fade-in zoom-in-50 hover:border-primary'
         }
       >
-        <ImageIcon className={'text-primary h-8'} />
+        <ImageIcon className={'h-8 text-primary'} />
 
         {props.children}
       </label>

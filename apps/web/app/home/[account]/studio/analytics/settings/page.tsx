@@ -32,7 +32,7 @@ async function AnalyticsSettingsPage({ params }: PageProps) {
       <div className={'container mx-auto py-8'}>
         <div className={'text-center'}>
           <Heading level={2}>Account not found</Heading>
-          <p className={'text-muted-foreground mt-2'}>
+          <p className={'mt-2 text-muted-foreground'}>
             The requested account could not be found.
           </p>
         </div>
@@ -48,7 +48,7 @@ async function AnalyticsSettingsPage({ params }: PageProps) {
     <div className={'container mx-auto flex max-w-3xl flex-col gap-8 py-8'}>
       <div className={'flex flex-col gap-2'}>
         <Heading level={2}>Analytics settings</Heading>
-        <p className={'text-muted-foreground text-sm'}>
+        <p className={'text-sm text-muted-foreground'}>
           The Partner Programme gate is per channel, so these targets are too. A
           channel resolves its target from its own value, then the account
           default, then the shipped default.
@@ -71,7 +71,7 @@ async function AnalyticsSettingsPage({ params }: PageProps) {
 
         {settings.channels.length === 0 ? (
           <p
-            className={'text-muted-foreground text-sm'}
+            className={'text-sm text-muted-foreground'}
             data-test={'no-channels'}
           >
             No active YouTube channels are connected to this account. Connect

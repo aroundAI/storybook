@@ -38,7 +38,7 @@ export function SceneNavigation({
                 <div className="truncate text-xs font-medium">
                   {scene.location}
                 </div>
-                <div className="text-muted-foreground truncate text-xs">
+                <div className="truncate text-xs text-muted-foreground">
                   {scene.timeOfDay} - {scene.estimatedDuration}s
                 </div>
               </div>

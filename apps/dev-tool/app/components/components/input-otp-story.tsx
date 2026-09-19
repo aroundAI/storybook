@@ -277,7 +277,7 @@ export default function InputOTPStory() {
         </div>
 
         {controls.showValue && (
-          <div className="bg-muted/50 rounded-lg p-3">
+          <div className="rounded-lg bg-muted/50 p-3">
             <p className="mb-1 text-sm font-medium">Current Value:</p>
             <p className="font-mono text-sm">
               {otpValue || 'Empty'} ({otpValue.length}/{controls.maxLength})
@@ -341,7 +341,7 @@ export default function InputOTPStory() {
             </div>
           </div>
 
-          <div className="bg-muted/50 rounded-lg p-4">
+          <div className="rounded-lg bg-muted/50 p-4">
             <h4 className="mb-2 font-semibold">Configuration:</h4>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>Length: {controls.maxLength}</div>
@@ -371,11 +371,11 @@ export default function InputOTPStory() {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <Card>
                 <CardHeader className="text-center">
-                  <LockIcon className="text-primary mx-auto mb-2 h-8 w-8" />
+                  <LockIcon className="mx-auto mb-2 h-8 w-8 text-primary" />
                   <CardTitle>Two-Factor Authentication</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center space-y-4">
-                  <p className="text-muted-foreground text-center text-sm">
+                  <p className="text-center text-sm text-muted-foreground">
                     Enter the 6-digit code from your authenticator app
                   </p>
                   <InputOTP maxLength={6}>
@@ -397,11 +397,11 @@ export default function InputOTPStory() {
 
               <Card>
                 <CardHeader className="text-center">
-                  <SmartphoneIcon className="text-primary mx-auto mb-2 h-8 w-8" />
+                  <SmartphoneIcon className="mx-auto mb-2 h-8 w-8 text-primary" />
                   <CardTitle>SMS Verification</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center space-y-4">
-                  <p className="text-muted-foreground text-center text-sm">
+                  <p className="text-center text-sm text-muted-foreground">
                     We sent a code to +1 (555) 123-****
                   </p>
                   <InputOTP maxLength={4}>
@@ -490,7 +490,7 @@ export default function InputOTPStory() {
             <h3 className="mb-4 text-lg font-semibold">Security Context</h3>
             <Card>
               <CardHeader className="text-center">
-                <ShieldIcon className="text-primary mx-auto mb-2 h-12 w-12" />
+                <ShieldIcon className="mx-auto mb-2 h-12 w-12 text-primary" />
                 <CardTitle>Secure Payment Confirmation</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -502,10 +502,10 @@ export default function InputOTPStory() {
                 </div>
 
                 <div className="space-y-2 text-center">
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-sm text-muted-foreground">
                     Payment Amount: <strong>$249.99</strong>
                   </p>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-sm text-muted-foreground">
                     Merchant: TechStore Inc.
                   </p>
                 </div>
@@ -551,24 +551,24 @@ export default function InputOTPStory() {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">InputOTP</td>
                     <td className="p-2 font-mono">
                       maxLength, value, onChange, pattern, disabled
                     </td>
                     <td className="p-2">Root OTP input container</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">InputOTPGroup</td>
                     <td className="p-2 font-mono">className</td>
                     <td className="p-2">Groups OTP slots together</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">InputOTPSlot</td>
                     <td className="p-2 font-mono">index, className</td>
                     <td className="p-2">Individual character input slot</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">InputOTPSeparator</td>
                     <td className="p-2 font-mono">className</td>
                     <td className="p-2">Visual separator between groups</td>
@@ -591,19 +591,19 @@ export default function InputOTPStory() {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">maxLength</td>
                     <td className="p-2 font-mono">number</td>
                     <td className="p-2">6</td>
                     <td className="p-2">Maximum number of characters</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">value</td>
                     <td className="p-2 font-mono">string</td>
                     <td className="p-2">''</td>
                     <td className="p-2">Current OTP value</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">onChange</td>
                     <td className="p-2 font-mono">
                       (value: string) ={'>'} void
@@ -611,19 +611,19 @@ export default function InputOTPStory() {
                     <td className="p-2">-</td>
                     <td className="p-2">Callback when value changes</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">pattern</td>
                     <td className="p-2 font-mono">RegExp</td>
                     <td className="p-2">/^[0-9]+$/</td>
                     <td className="p-2">Pattern for input validation</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">disabled</td>
                     <td className="p-2 font-mono">boolean</td>
                     <td className="p-2">false</td>
                     <td className="p-2">Disable the input</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">autoFocus</td>
                     <td className="p-2 font-mono">boolean</td>
                     <td className="p-2">false</td>
@@ -646,7 +646,7 @@ export default function InputOTPStory() {
                   <Badge variant="secondary">Custom pattern</Badge>
                 </div>
               </div>
-              <div className="bg-muted/50 rounded-lg p-4">
+              <div className="rounded-lg bg-muted/50 p-4">
                 <pre className="overflow-x-auto text-sm">
                   {`// Numbers only (default)
 pattern={/^[0-9]+$/}
@@ -669,11 +669,11 @@ pattern={/^[0-9-]+$/}`}
         <div className="space-y-8">
           <div>
             <h3 className="mb-4 text-lg font-semibold">Basic Usage</h3>
-            <p className="text-muted-foreground mb-4 text-sm">
+            <p className="mb-4 text-sm text-muted-foreground">
               OTP inputs are commonly used for two-factor authentication, SMS
               verification, and secure confirmations.
             </p>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`import {
   InputOTP,
@@ -711,7 +711,7 @@ function OTPForm() {
 
           <div>
             <h3 className="mb-4 text-lg font-semibold">Form Integration</h3>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`import { useForm } from 'react-hook-form';
 

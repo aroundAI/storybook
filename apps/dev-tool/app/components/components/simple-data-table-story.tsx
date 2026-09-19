@@ -83,7 +83,7 @@ export function SimpleDataTableStory() {
     <div className="rounded-md border">
       <Table>
         {controls.showCaption && (
-          <caption className="text-muted-foreground mt-4 text-sm">
+          <caption className="mt-4 text-sm text-muted-foreground">
             A list of {data.length} users
           </caption>
         )}
@@ -384,7 +384,7 @@ interface User {
 
         <div>
           <h4 className="mb-2 text-sm font-semibold">Usage Notes</h4>
-          <ul className="text-muted-foreground space-y-1 text-sm">
+          <ul className="space-y-1 text-sm text-muted-foreground">
             <li>• These are basic styled HTML table components</li>
             <li>• No built-in sorting, filtering, or pagination logic</li>
             <li>• Use with manual state management for interactive features</li>
@@ -443,7 +443,7 @@ interface User {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Basic Structure</h4>
-            <pre className="bg-muted text-muted-foreground rounded p-2 text-sm">
+            <pre className="rounded bg-muted p-2 text-sm text-muted-foreground">
               {`<Table>
   <TableHeader>
     <TableRow>
@@ -464,7 +464,7 @@ interface User {
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">With Border Styling</h4>
-            <pre className="bg-muted text-muted-foreground rounded p-2 text-sm">
+            <pre className="rounded bg-muted p-2 text-sm text-muted-foreground">
               {`<div className="rounded-md border">
   <Table>
     {/* table content */}

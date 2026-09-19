@@ -50,14 +50,14 @@ export function SettingsSection() {
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="text-muted-foreground space-y-2 border-t px-4 py-3 text-sm">
+        <div className="space-y-2 border-t px-4 py-3 text-sm text-muted-foreground">
           <div className="flex items-center justify-between">
             <span>Default scene count</span>
-            <span className="text-foreground font-medium">7</span>
+            <span className="font-medium text-foreground">7</span>
           </div>
           <div className="flex items-center justify-between">
             <span>Dialogue density</span>
-            <span className="text-foreground font-medium">Balanced</span>
+            <span className="font-medium text-foreground">Balanced</span>
           </div>
         </div>
       </CollapsibleContent>

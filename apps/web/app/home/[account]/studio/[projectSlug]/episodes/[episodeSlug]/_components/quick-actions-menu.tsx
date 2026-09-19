@@ -200,7 +200,7 @@ export function QuickActionsMenu({
                 }
               >
                 Reset to Story
-                <span className="text-muted-foreground ml-auto text-xs">
+                <span className="ml-auto text-xs text-muted-foreground">
                   Clears screenplay, shots, audio
                 </span>
               </DropdownMenuItem>
@@ -223,7 +223,7 @@ export function QuickActionsMenu({
                 }
               >
                 Reset to Screenplay
-                <span className="text-muted-foreground ml-auto text-xs">
+                <span className="ml-auto text-xs text-muted-foreground">
                   Clears shots, audio
                 </span>
               </DropdownMenuItem>
@@ -239,7 +239,7 @@ export function QuickActionsMenu({
                 }
               >
                 Reset to Draft
-                <span className="text-muted-foreground ml-auto text-xs">
+                <span className="ml-auto text-xs text-muted-foreground">
                   Clears everything
                 </span>
               </DropdownMenuItem>

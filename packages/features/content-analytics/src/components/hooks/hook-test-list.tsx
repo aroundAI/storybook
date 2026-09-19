@@ -40,9 +40,9 @@ export function HookTestList({
   if (tests.length === 0) {
     return (
       <div className={'flex flex-col items-center gap-2 py-12 text-center'}>
-        <Zap className={'text-muted-foreground h-8 w-8'} />
+        <Zap className={'h-8 w-8 text-muted-foreground'} />
         <p className={'text-sm font-medium'}>No hook tests yet</p>
-        <p className={'text-muted-foreground max-w-md text-sm'}>
+        <p className={'max-w-md text-sm text-muted-foreground'}>
           Test several openings for the same topic and compare how many viewers
           are still watching at three seconds.
         </p>
@@ -58,7 +58,7 @@ export function HookTestList({
           type={'button'}
           onClick={() => onSelect?.(test.id)}
           className={
-            'hover:bg-accent flex flex-col gap-1.5 rounded-lg border p-4 text-left transition-colors'
+            'flex flex-col gap-1.5 rounded-lg border p-4 text-left transition-colors hover:bg-accent'
           }
         >
           <div className={'flex items-start justify-between gap-3'}>
@@ -68,9 +68,9 @@ export function HookTestList({
             </Badge>
           </div>
 
-          <p className={'text-muted-foreground text-sm'}>{test.topic}</p>
+          <p className={'text-sm text-muted-foreground'}>{test.topic}</p>
 
-          <p className={'text-muted-foreground text-xs'}>
+          <p className={'text-xs text-muted-foreground'}>
             Threshold {Math.round(test.viral_threshold * 100)}% at 3s
           </p>
         </button>

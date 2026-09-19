@@ -248,7 +248,7 @@ export default function RadioGroupStory() {
         </div>
 
         {controls.showValue && selectedValue && (
-          <div className="bg-muted/50 rounded-lg p-3">
+          <div className="rounded-lg bg-muted/50 p-3">
             <p className="mb-1 text-sm font-medium">Selected Value:</p>
             <p className="font-mono text-sm">{selectedValue}</p>
           </div>
@@ -290,10 +290,10 @@ export default function RadioGroupStory() {
                         className={sizeClasses[controls.size]}
                       />
                       <div className="flex items-center gap-3">
-                        <method.icon className="text-muted-foreground h-5 w-5" />
+                        <method.icon className="h-5 w-5 text-muted-foreground" />
                         <div>
                           <p className="font-medium">{method.label}</p>
-                          <p className="text-muted-foreground text-sm">
+                          <p className="text-sm text-muted-foreground">
                             {method.description}
                           </p>
                         </div>
@@ -405,10 +405,10 @@ export default function RadioGroupStory() {
                     <RadioGroupItemLabel key={method.value} selected={false}>
                       <RadioGroupItem value={method.value} />
                       <div className="flex items-center gap-3">
-                        <method.icon className="text-muted-foreground h-5 w-5" />
+                        <method.icon className="h-5 w-5 text-muted-foreground" />
                         <div>
                           <p className="font-medium">{method.label}</p>
-                          <p className="text-muted-foreground text-sm">
+                          <p className="text-sm text-muted-foreground">
                             {method.description}
                           </p>
                         </div>
@@ -433,10 +433,10 @@ export default function RadioGroupStory() {
                       <RadioGroupItem value={option.value} />
                       <div className="flex w-full items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <option.icon className="text-muted-foreground h-5 w-5" />
+                          <option.icon className="h-5 w-5 text-muted-foreground" />
                           <div>
                             <p className="font-medium">{option.label}</p>
-                            <p className="text-muted-foreground text-sm">
+                            <p className="text-sm text-muted-foreground">
                               {option.description}
                             </p>
                           </div>
@@ -523,19 +523,19 @@ export default function RadioGroupStory() {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">RadioGroup</td>
                     <td className="p-2 font-mono">
                       value, onValueChange, disabled, name
                     </td>
                     <td className="p-2">Root radio group container</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">RadioGroupItem</td>
                     <td className="p-2 font-mono">value, disabled, id</td>
                     <td className="p-2">Individual radio button</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">RadioGroupItemLabel</td>
                     <td className="p-2 font-mono">selected, className</td>
                     <td className="p-2">Enhanced label with styling</td>
@@ -558,13 +558,13 @@ export default function RadioGroupStory() {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">value</td>
                     <td className="p-2 font-mono">string</td>
                     <td className="p-2">-</td>
                     <td className="p-2">Currently selected value</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">onValueChange</td>
                     <td className="p-2 font-mono">
                       (value: string) ={'>'} void
@@ -572,19 +572,19 @@ export default function RadioGroupStory() {
                     <td className="p-2">-</td>
                     <td className="p-2">Callback when selection changes</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">defaultValue</td>
                     <td className="p-2 font-mono">string</td>
                     <td className="p-2">-</td>
                     <td className="p-2">Default selected value</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">disabled</td>
                     <td className="p-2 font-mono">boolean</td>
                     <td className="p-2">false</td>
                     <td className="p-2">Disable the entire group</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">name</td>
                     <td className="p-2 font-mono">string</td>
                     <td className="p-2">-</td>
@@ -592,13 +592,13 @@ export default function RadioGroupStory() {
                       HTML name attribute for form submission
                     </td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">required</td>
                     <td className="p-2 font-mono">boolean</td>
                     <td className="p-2">false</td>
                     <td className="p-2">Mark as required field</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">dir</td>
                     <td className="p-2 font-mono">'ltr' | 'rtl'</td>
                     <td className="p-2">'ltr'</td>
@@ -606,7 +606,7 @@ export default function RadioGroupStory() {
                       Text direction for internationalization
                     </td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">loop</td>
                     <td className="p-2 font-mono">boolean</td>
                     <td className="p-2">true</td>
@@ -632,19 +632,19 @@ export default function RadioGroupStory() {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">value</td>
                     <td className="p-2 font-mono">string</td>
                     <td className="p-2">-</td>
                     <td className="p-2">Value when this item is selected</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">disabled</td>
                     <td className="p-2 font-mono">boolean</td>
                     <td className="p-2">false</td>
                     <td className="p-2">Disable this specific item</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">id</td>
                     <td className="p-2 font-mono">string</td>
                     <td className="p-2">-</td>
@@ -667,7 +667,7 @@ export default function RadioGroupStory() {
                   <Badge variant="secondary">Enhanced labels</Badge>
                 </div>
               </div>
-              <div className="bg-muted/50 rounded-lg p-4">
+              <div className="rounded-lg bg-muted/50 p-4">
                 <pre className="overflow-x-auto text-sm">
                   {`// Vertical (default)
 <RadioGroup className="space-y-2">
@@ -693,11 +693,11 @@ export default function RadioGroupStory() {
         <div className="space-y-8">
           <div>
             <h3 className="mb-4 text-lg font-semibold">Basic Usage</h3>
-            <p className="text-muted-foreground mb-4 text-sm">
+            <p className="mb-4 text-sm text-muted-foreground">
               Radio groups allow users to select a single option from a list of
               mutually exclusive choices.
             </p>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`import { RadioGroup, RadioGroupItem } from '@kit/ui/radio-group';
 import { Label } from '@kit/ui/label';
@@ -728,7 +728,7 @@ function PaymentForm() {
 
           <div>
             <h3 className="mb-4 text-lg font-semibold">Form Integration</h3>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`import { useForm } from 'react-hook-form';
 
@@ -782,7 +782,7 @@ function SettingsForm() {
 
           <div>
             <h3 className="mb-4 text-lg font-semibold">Enhanced Labels</h3>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`import { RadioGroupItemLabel } from '@kit/ui/radio-group';
 

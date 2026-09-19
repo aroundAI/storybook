@@ -132,7 +132,7 @@ export function ScheduledReportsManager({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-medium">Scheduled Reports</h3>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             Automatically generate and email reports on a schedule
           </p>
         </div>
@@ -156,9 +156,9 @@ export function ScheduledReportsManager({
       {reports.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <Calendar className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
+            <Calendar className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
             <p className="text-muted-foreground">No scheduled reports yet</p>
-            <p className="text-muted-foreground mt-1 text-sm">
+            <p className="mt-1 text-sm text-muted-foreground">
               Create a schedule to automatically receive reports via email
             </p>
           </CardContent>
@@ -188,7 +188,7 @@ export function ScheduledReportsManager({
                       </Badge>
                     </div>
 
-                    <div className="text-muted-foreground flex flex-wrap gap-4 text-sm">
+                    <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Clock className="h-4 w-4" />
                         <span>

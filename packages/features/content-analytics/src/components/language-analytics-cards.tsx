@@ -104,7 +104,7 @@ export function LanguagePerformanceCard({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             No language data available yet. Publish content in different
             languages to see performance breakdown.
           </p>
@@ -170,7 +170,7 @@ export function LanguagePerformanceCard({
                 </div>
               </div>
               <Progress value={percentage} className="h-2" />
-              <div className="text-muted-foreground flex justify-between text-xs">
+              <div className="flex justify-between text-xs text-muted-foreground">
                 <span>{formatPercent(percentage)} of total</span>
                 <span>{formatPercent(lang.engagement)} engagement</span>
               </div>
@@ -234,7 +234,7 @@ export function PlatformLanguageMatrix({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             No cross-platform data available yet.
           </p>
         </CardContent>
@@ -305,7 +305,7 @@ export function PlatformLanguageMatrix({
                             <div className="font-medium tabular-nums">
                               {formatNumber(entry.views)}
                             </div>
-                            <div className="text-muted-foreground text-xs">
+                            <div className="text-xs text-muted-foreground">
                               {formatPercent(entry.engagementRate)}
                             </div>
                           </div>
@@ -364,7 +364,7 @@ export function ContentTypeCard({ data, isLoading }: ContentTypeCardProps) {
           <CardTitle className="text-base">Shorts vs Long-form</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             No content type data available.
           </p>
         </CardContent>
@@ -414,13 +414,13 @@ export function ContentTypeCard({ data, isLoading }: ContentTypeCardProps) {
                 <th className="py-2 text-left font-medium">Metric</th>
                 <th className="py-2 text-center font-medium">
                   📺 Long-form
-                  <span className="text-muted-foreground ml-1 text-xs">
+                  <span className="ml-1 text-xs text-muted-foreground">
                     ({longForm.contentCount})
                   </span>
                 </th>
                 <th className="py-2 text-center font-medium">
                   🎬 Shorts
-                  <span className="text-muted-foreground ml-1 text-xs">
+                  <span className="ml-1 text-xs text-muted-foreground">
                     ({shorts.contentCount})
                   </span>
                 </th>

@@ -39,12 +39,12 @@ export const Footer: React.FC<FooterProps> = ({
 
               <div className="flex flex-col gap-y-4">
                 <div>
-                  <p className="text-muted-foreground text-sm tracking-tight">
+                  <p className="text-sm tracking-tight text-muted-foreground">
                     {description}
                   </p>
                 </div>
 
-                <div className="text-muted-foreground flex text-xs">
+                <div className="flex text-xs text-muted-foreground">
                   <p>{copyright}</p>
                 </div>
               </div>
@@ -91,7 +91,7 @@ function FooterLink({
   children,
 }: React.PropsWithChildren<{ href: string }>) {
   return (
-    <li className="text-muted-foreground text-sm tracking-tight hover:underline [&>a]:transition-colors">
+    <li className="text-sm tracking-tight text-muted-foreground hover:underline [&>a]:transition-colors">
       <a href={href}>{children}</a>
     </li>
   );

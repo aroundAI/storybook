@@ -95,7 +95,7 @@ export function TransitionPicker({
       onClick={(e) => e.stopPropagation()}
     >
       {/* Header */}
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+      <div className="mb-2 text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
         Transition
       </div>
 

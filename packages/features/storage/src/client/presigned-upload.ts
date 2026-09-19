@@ -8,15 +8,15 @@
  */
 
 interface PresignedUploadResult {
-    url: string;
-    path: string;
+  url: string;
+  path: string;
 }
 
 interface PresignedUrlResponse {
-    uploadUrl: string;
-    publicUrl: string;
-    expiresIn: number;
-    error?: string;
+  uploadUrl: string;
+  publicUrl: string;
+  expiresIn: number;
+  error?: string;
 }
 
 /**
@@ -33,50 +33,50 @@ interface PresignedUrlResponse {
  * @returns Upload result with URL and path
  */
 export async function uploadWithPresignedUrl(
-    file: File,
-    bucket: string,
-    path: string,
+  file: File,
+  bucket: string,
+  path: string,
 ): Promise<PresignedUploadResult> {
-    // Step 1: Get presigned URL from our API
-    const presignResponse = await fetch('/api/storage/presign', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            bucket,
-            path,
-            contentType: file.type,
-            expiresIn: 900, // 15 minutes
-        }),
-    });
+  // Step 1: Get presigned URL from our API
+  const presignResponse = await fetch('/api/storage/presign', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      bucket,
+      path,
+      contentType: file.type,
+      expiresIn: 900, // 15 minutes
+    }),
+  });
 
-    const presignData: PresignedUrlResponse = await presignResponse.json();
+  const presignData: PresignedUrlResponse = await presignResponse.json();
 
-    if (!presignResponse.ok || presignData.error) {
-        throw new Error(presignData.error || 'Failed to get presigned URL');
-    }
+  if (!presignResponse.ok || presignData.error) {
+    throw new Error(presignData.error || 'Failed to get presigned URL');
+  }
 
-    // Step 2: Upload file directly to R2 using presigned URL
-    const uploadResponse = await fetch(presignData.uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {
-            'Content-Type': file.type,
-        },
-    });
+  // Step 2: Upload file directly to R2 using presigned URL
+  const uploadResponse = await fetch(presignData.uploadUrl, {
+    method: 'PUT',
+    body: file,
+    headers: {
+      'Content-Type': file.type,
+    },
+  });
 
-    if (!uploadResponse.ok) {
-        throw new Error(
-            `Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`,
-        );
-    }
+  if (!uploadResponse.ok) {
+    throw new Error(
+      `Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`,
+    );
+  }
 
-    // Step 3: Return public URL
-    return {
-        url: presignData.publicUrl,
-        path,
-    };
+  // Step 3: Return public URL
+  return {
+    url: presignData.publicUrl,
+    path,
+  };
 }
 
 /**
@@ -88,15 +88,15 @@ export async function uploadWithPresignedUrl(
  * @returns Upload result
  */
 export async function uploadAvatar(
-    file: File,
-    accountId: string,
-    bucket: string = 'account_image',
+  file: File,
+  accountId: string,
+  bucket: string = 'account_image',
 ): Promise<PresignedUploadResult> {
-    const ext = file.name.split('.').pop() || 'jpg';
-    const timestamp = Date.now();
-    const path = `${accountId}/avatar-${timestamp}.${ext}`;
+  const ext = file.name.split('.').pop() || 'jpg';
+  const timestamp = Date.now();
+  const path = `${accountId}/avatar-${timestamp}.${ext}`;
 
-    return uploadWithPresignedUrl(file, bucket, path);
+  return uploadWithPresignedUrl(file, bucket, path);
 }
 
 /**
@@ -107,12 +107,12 @@ export async function uploadAvatar(
  * @returns Upload result
  */
 export async function uploadProjectCover(
-    file: File,
-    projectId: string,
+  file: File,
+  projectId: string,
 ): Promise<PresignedUploadResult> {
-    const ext = file.name.split('.').pop() || 'jpg';
-    const timestamp = Date.now();
-    const path = `projects/${projectId}/assets/covers/cover-${timestamp}.${ext}`;
+  const ext = file.name.split('.').pop() || 'jpg';
+  const timestamp = Date.now();
+  const path = `projects/${projectId}/assets/covers/cover-${timestamp}.${ext}`;
 
-    return uploadWithPresignedUrl(file, 'project-assets', path);
+  return uploadWithPresignedUrl(file, 'project-assets', path);
 }

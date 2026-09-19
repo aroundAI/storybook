@@ -289,7 +289,7 @@ export function LipSyncEditor({
       <CardContent className="space-y-6">
         {/* Current Job Status */}
         {existingJob && (
-          <div className="bg-muted/50 space-y-3 rounded-lg p-4">
+          <div className="space-y-3 rounded-lg bg-muted/50 p-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Current Job</span>
               <LipSyncStatusBadge status={existingJob.status} />
@@ -299,7 +299,7 @@ export function LipSyncEditor({
             {isProcessing && (
               <div className="space-y-2">
                 <Progress value={existingJob.progress ?? 0} className="h-2" />
-                <p className="text-muted-foreground text-xs">
+                <p className="text-xs text-muted-foreground">
                   {existingJob.progress
                     ? `${existingJob.progress}% complete`
                     : 'Processing...'}
@@ -363,7 +363,7 @@ export function LipSyncEditor({
             </SelectContent>
           </Select>
           {readyDialogues.length === 0 && (
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               Generate dialogue audio first before using lip sync.
             </p>
           )}
@@ -392,7 +392,7 @@ export function LipSyncEditor({
         {videoUrl && (
           <div className="space-y-2">
             <label className="text-sm font-medium">Input Video</label>
-            <div className="bg-muted aspect-video overflow-hidden rounded-lg">
+            <div className="aspect-video overflow-hidden rounded-lg bg-muted">
               <video
                 src={videoUrl}
                 className="h-full w-full object-contain"

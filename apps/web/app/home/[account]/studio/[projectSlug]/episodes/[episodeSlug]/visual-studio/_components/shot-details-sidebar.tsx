@@ -394,7 +394,7 @@ export function ShotDetailsSidebar({
   }, []);
 
   return (
-    <div className="bg-card/50 ring-border flex h-full w-96 flex-col border-l border-white/20 shadow-2xl ring-1 backdrop-blur-2xl backdrop-saturate-150 ring-inset dark:ring-white/10">
+    <div className="flex h-full w-96 flex-col border-l border-white/20 bg-card/50 shadow-2xl ring-1 ring-border backdrop-blur-2xl backdrop-saturate-150 ring-inset dark:ring-white/10">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/20 p-4 dark:border-white/10">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -1340,7 +1340,7 @@ export function ShotDetailsSidebar({
               value={editedPrompt}
               onChange={(e) => setEditedPrompt(e.target.value)}
               rows={8}
-              className="bg-card/50 resize-none text-sm"
+              className="resize-none bg-card/50 text-sm"
               placeholder="Describe the visual for this shot..."
             />
           </div>

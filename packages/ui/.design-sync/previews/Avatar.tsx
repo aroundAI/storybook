@@ -17,7 +17,7 @@ export function FallbackOnly() {
       </Avatar>
       <div>
         <p className="text-sm font-medium">Midnight Frequency</p>
-        <p className="text-muted-foreground text-xs">Season 1 · 8 episodes</p>
+        <p className="text-xs text-muted-foreground">Season 1 · 8 episodes</p>
       </div>
     </div>
   );
@@ -33,7 +33,7 @@ export function TeamStack() {
   return (
     <div className="flex -space-x-2">
       {members.map((member) => (
-        <Avatar key={member.name} className="border-background border-2">
+        <Avatar key={member.name} className="border-2 border-background">
           {member.img ? (
             <AvatarImage src={member.img} alt={member.name} />
           ) : null}

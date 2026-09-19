@@ -76,7 +76,9 @@ export class Mailbox {
     });
 
     if (email !== json.To[0]!.Address) {
-      throw new Error(`Email address mismatch. Expected ${email}, got ${json.To[0]!.Address}`);
+      throw new Error(
+        `Email address mismatch. Expected ${email}, got ${json.To[0]!.Address}`,
+      );
     }
 
     const el = parse(json.HTML);
@@ -115,7 +117,9 @@ export class Mailbox {
     }
 
     if (email !== json.To[0]!.Address) {
-      throw new Error(`Email address mismatch. Expected ${email}, got ${json.To[0]!.Address}`);
+      throw new Error(
+        `Email address mismatch. Expected ${email}, got ${json.To[0]!.Address}`,
+      );
     }
 
     const text = json.HTML.match(
@@ -156,8 +160,8 @@ export class Mailbox {
 
     const message = params.subject
       ? (() => {
-          const filtered = messagesResponse.messages.filter(
-            (item) => item.Subject.includes(params.subject!),
+          const filtered = messagesResponse.messages.filter((item) =>
+            item.Subject.includes(params.subject!),
           );
 
           console.log(

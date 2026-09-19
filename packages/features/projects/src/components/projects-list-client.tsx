@@ -34,9 +34,9 @@ export function ProjectsListClient({
       <div className="flex flex-col items-center justify-center py-16 text-center">
         {/* Animated icon */}
         <div className="relative mb-6">
-          <div className="bg-primary/20 absolute inset-0 animate-pulse rounded-full blur-xl" />
-          <div className="from-primary/20 to-primary/5 border-primary/20 relative flex h-20 w-20 items-center justify-center rounded-full border bg-gradient-to-br">
-            <Film className="text-primary h-10 w-10" />
+          <div className="absolute inset-0 animate-pulse rounded-full bg-primary/20 blur-xl" />
+          <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-primary/20 bg-gradient-to-br from-primary/20 to-primary/5">
+            <Film className="h-10 w-10 text-primary" />
           </div>
         </div>
 
@@ -47,7 +47,7 @@ export function ProjectsListClient({
           />
         </h3>
 
-        <p className="text-muted-foreground mb-8 max-w-md">
+        <p className="mb-8 max-w-md text-muted-foreground">
           <Trans
             i18nKey="projects:emptyStateDescription"
             defaults="Start your creative journey by setting up a new film project. Add characters, locations, and bring your stories to life with AI."
@@ -68,11 +68,11 @@ export function ProjectsListClient({
     <div className="space-y-4">
       {/* View toggle header */}
       <div className="flex items-center justify-between">
-        <div className="text-muted-foreground text-sm">
+        <div className="text-sm text-muted-foreground">
           {projects.length} project{projects.length !== 1 ? 's' : ''}
         </div>
 
-        <div className="bg-muted/50 flex items-center gap-1 rounded-lg p-1">
+        <div className="flex items-center gap-1 rounded-lg bg-muted/50 p-1">
           <Button
             variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
             size="sm"

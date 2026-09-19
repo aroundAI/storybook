@@ -318,11 +318,11 @@ export function ButtonStory() {
         <div className="space-y-6">
           <div>
             <h4 className="mb-3 text-lg font-semibold">Button</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               A clickable element that triggers an action or event.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -415,7 +415,7 @@ export function ButtonStory() {
                 <Button size="sm">Primary</Button>
                 <h4 className="text-sm font-semibold">Default (Primary)</h4>
               </div>
-              <p className="text-muted-foreground ml-16 text-sm">
+              <p className="ml-16 text-sm text-muted-foreground">
                 Main actions, form submissions, primary CTAs
               </p>
             </div>
@@ -426,7 +426,7 @@ export function ButtonStory() {
                 </Button>
                 <h4 className="text-sm font-semibold">Outline (Secondary)</h4>
               </div>
-              <p className="text-muted-foreground ml-16 text-sm">
+              <p className="ml-16 text-sm text-muted-foreground">
                 Secondary actions, cancel buttons, alternative options
               </p>
             </div>
@@ -437,7 +437,7 @@ export function ButtonStory() {
                 </Button>
                 <h4 className="text-sm font-semibold">Ghost (Tertiary)</h4>
               </div>
-              <p className="text-muted-foreground ml-16 text-sm">
+              <p className="ml-16 text-sm text-muted-foreground">
                 Subtle actions, toolbar buttons, optional actions
               </p>
             </div>
@@ -448,7 +448,7 @@ export function ButtonStory() {
                 </Button>
                 <h4 className="text-sm font-semibold">Destructive</h4>
               </div>
-              <p className="text-muted-foreground ml-16 text-sm">
+              <p className="ml-16 text-sm text-muted-foreground">
                 Delete actions, dangerous operations, permanent changes
               </p>
             </div>
@@ -464,21 +464,21 @@ export function ButtonStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Keyboard Navigation</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Buttons are focusable and can be activated with Enter or Space
               keys.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Screen Readers</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Use descriptive button text. Avoid generic text like "Click here"
               or "Read more".
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Loading States</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               When buttons show loading states, ensure they communicate the
               current status to screen readers.
             </p>

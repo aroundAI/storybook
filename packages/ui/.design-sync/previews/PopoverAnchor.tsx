@@ -20,7 +20,7 @@ export function Default() {
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="text-muted-foreground text-xs underline"
+              className="text-xs text-muted-foreground underline"
             >
               View details
             </button>
@@ -28,7 +28,7 @@ export function Default() {
         </div>
       </PopoverAnchor>
       <PopoverContent align="start" side="bottom" className="w-[320px]">
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           The anchor pins the popover to the badge instead of the trigger link,
           so the panel stays aligned with the status indicator.
         </p>

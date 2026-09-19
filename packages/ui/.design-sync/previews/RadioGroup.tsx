@@ -11,7 +11,7 @@ export function Default() {
         <RadioGroupItem value="dialogue-heavy" id="dialogue-heavy" />
         <div>
           <p className="text-sm font-medium">Dialogue-heavy</p>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             More scenes driven by character conversation.
           </p>
         </div>
@@ -20,7 +20,7 @@ export function Default() {
         <RadioGroupItem value="balanced" id="balanced" />
         <div>
           <p className="text-sm font-medium">Balanced</p>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             An even mix of dialogue and visual storytelling.
           </p>
         </div>
@@ -29,7 +29,7 @@ export function Default() {
         <RadioGroupItem value="action-heavy" id="action-heavy" />
         <div>
           <p className="text-sm font-medium">Action-heavy</p>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Favors visual sequences over spoken lines.
           </p>
         </div>

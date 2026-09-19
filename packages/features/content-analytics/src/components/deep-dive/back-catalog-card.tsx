@@ -37,7 +37,7 @@ export function BackCatalogCard({
 
   if (buckets.length === 0) {
     return (
-      <p className={'text-muted-foreground text-sm'}>
+      <p className={'text-sm text-muted-foreground'}>
         Not enough history yet to separate back catalog from new uploads.
       </p>
     );
@@ -53,7 +53,7 @@ export function BackCatalogCard({
         <span className={'text-2xl font-semibold'}>
           {Math.round(latest.share * 100)}%
         </span>
-        <span className={'text-muted-foreground text-sm'}>
+        <span className={'text-sm text-muted-foreground'}>
           from videos over {ageDays} days old
         </span>
       </div>
@@ -62,19 +62,19 @@ export function BackCatalogCard({
         {buckets.map((bucket) => (
           <div
             key={bucket.bucket}
-            className={'bg-muted flex flex-1 flex-col justify-end rounded-sm'}
+            className={'flex flex-1 flex-col justify-end rounded-sm bg-muted'}
             style={{ height: '100%' }}
             title={`${bucket.bucket}: ${Math.round(bucket.share * 100)}% of ${bucket.totalViews.toLocaleString()} views`}
           >
             <div
-              className={'bg-primary/70 w-full rounded-sm'}
+              className={'w-full rounded-sm bg-primary/70'}
               style={{ height: `${Math.max(2, bucket.share * 100)}%` }}
             />
           </div>
         ))}
       </div>
 
-      <p className={'text-muted-foreground text-xs'}>
+      <p className={'text-xs text-muted-foreground'}>
         {buckets.length < 3
           ? 'Needs a few more months before the trend means anything.'
           : trend > 0.05

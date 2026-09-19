@@ -31,7 +31,7 @@ export function Default() {
           </AlertDialogDescription>
           <div className="mt-4 space-y-2">
             <div className="font-semibold">Midnight Frequency</div>
-            <div className="text-destructive text-sm">
+            <div className="text-sm text-destructive">
               All 12 episodes and their renders will be lost.
             </div>
           </div>

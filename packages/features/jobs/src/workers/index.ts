@@ -3,9 +3,9 @@
  */
 
 export {
-    startWorker,
-    startWorkers,
-    stopWorker,
-    stopWorkers,
-    getWorkerStatus,
+  startWorker,
+  startWorkers,
+  stopWorker,
+  stopWorkers,
+  getWorkerStatus,
 } from './manager';

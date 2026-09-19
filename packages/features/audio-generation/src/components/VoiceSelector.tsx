@@ -183,7 +183,7 @@ export function VoiceSelector({
 
       {/* Search */}
       <div className="relative">
-        <Search className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+        <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Search voices..."
           value={filters.search}
@@ -196,12 +196,12 @@ export function VoiceSelector({
       {/* Voice List */}
       <div className="max-h-96 space-y-2 overflow-y-auto" role="listbox">
         {isLoading ? (
-          <div className="text-muted-foreground py-8 text-center text-sm">
+          <div className="py-8 text-center text-sm text-muted-foreground">
             <div className="mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent" />
             Loading voices...
           </div>
         ) : filteredVoices.length === 0 ? (
-          <div className="text-muted-foreground py-8 text-center text-sm">
+          <div className="py-8 text-center text-sm text-muted-foreground">
             No voices found matching your criteria
           </div>
         ) : (
@@ -217,7 +217,7 @@ export function VoiceSelector({
                 aria-selected={isSelected}
                 className={cn(
                   'flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors',
-                  'hover:bg-accent focus:ring-ring focus:outline-none focus:ring-2',
+                  'hover:bg-accent focus:ring-2 focus:ring-ring focus:outline-none',
                   isSelected && 'border-primary bg-primary/5',
                 )}
                 data-test={`voice-item-${voice.id}`}
@@ -239,12 +239,12 @@ export function VoiceSelector({
                   <div className="flex items-center gap-2">
                     <span className="truncate font-medium">{voice.name}</span>
                     {voice.isCloned && (
-                      <span className="bg-secondary text-secondary-foreground rounded px-1.5 py-0.5 text-xs">
+                      <span className="rounded bg-secondary px-1.5 py-0.5 text-xs text-secondary-foreground">
                         Cloned
                       </span>
                     )}
                   </div>
-                  <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     {voice.gender && (
                       <span className="capitalize">{voice.gender}</span>
                     )}
@@ -287,7 +287,7 @@ export function VoiceSelector({
 
       {/* Voice count */}
       {!isLoading && (
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           {filteredVoices.length} voice{filteredVoices.length !== 1 ? 's' : ''}{' '}
           available
         </p>

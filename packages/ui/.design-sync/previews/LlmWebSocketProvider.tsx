@@ -29,7 +29,7 @@ export function Default() {
           </div>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             Waiting for screenplay and shot-list jobs to report progress.
           </p>
         </CardContent>

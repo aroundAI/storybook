@@ -89,7 +89,7 @@ export function AudioAssetGrid({
 
         <div className="flex items-center gap-2">
           <div className="relative flex-1 sm:w-64">
-            <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
+            <Search className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by name or prompt..."
               value={search}
@@ -109,24 +109,24 @@ export function AudioAssetGrid({
       {/* Loading State */}
       {isLoading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       )}
 
       {/* Empty State */}
       {!isLoading && filteredAssets.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
             {activeTab === 'sfx' ? (
-              <Volume2 className="text-muted-foreground h-8 w-8" />
+              <Volume2 className="h-8 w-8 text-muted-foreground" />
             ) : (
-              <Music className="text-muted-foreground h-8 w-8" />
+              <Music className="h-8 w-8 text-muted-foreground" />
             )}
           </div>
           <h3 className="mb-1 text-lg font-semibold">
             {search ? 'No matching assets' : 'No audio assets yet'}
           </h3>
-          <p className="text-muted-foreground mb-4 max-w-sm text-sm">
+          <p className="mb-4 max-w-sm text-sm text-muted-foreground">
             {search
               ? 'Try a different search term'
               : 'Generate AI music & SFX or upload your own audio files'}

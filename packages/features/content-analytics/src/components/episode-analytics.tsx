@@ -43,7 +43,7 @@ export function EpisodeAnalytics({ data }: EpisodeAnalyticsProps) {
           <p className="text-2xl font-bold text-green-600">
             ${(data.totalRevenueCents / 100).toFixed(2)}
           </p>
-          <p className="text-muted-foreground text-sm">Revenue</p>
+          <p className="text-sm text-muted-foreground">Revenue</p>
         </div>
       </div>
 
@@ -74,13 +74,13 @@ export function EpisodeAnalytics({ data }: EpisodeAnalyticsProps) {
                         {percentage.toFixed(1)}%)
                       </span>
                     </div>
-                    <div className="bg-muted h-2 overflow-hidden rounded-full">
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
                       <div
-                        className="bg-primary h-full transition-all"
+                        className="h-full bg-primary transition-all"
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
-                    <div className="text-muted-foreground flex gap-4 text-sm">
+                    <div className="flex gap-4 text-sm text-muted-foreground">
                       <span>❤️ {platform.likes.toLocaleString()}</span>
                       <span>💬 {platform.comments.toLocaleString()}</span>
                       <span>🔗 {platform.shares.toLocaleString()}</span>
@@ -89,7 +89,7 @@ export function EpisodeAnalytics({ data }: EpisodeAnalyticsProps) {
                 );
               })
             ) : (
-              <p className="text-muted-foreground py-8 text-center">
+              <p className="py-8 text-center text-muted-foreground">
                 No platform data available yet.
                 <br />
                 <span className="text-sm">
@@ -128,7 +128,7 @@ export function EpisodeAnalytics({ data }: EpisodeAnalyticsProps) {
             <CardTitle>Performance Over Time</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-muted-foreground flex h-[200px] items-center justify-center">
+            <div className="flex h-[200px] items-center justify-center text-muted-foreground">
               {/* Would integrate with PerformanceChart component */}
               <p>30-day trend: {data.dailyTrend.length} data points</p>
             </div>

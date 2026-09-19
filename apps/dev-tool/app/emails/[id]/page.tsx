@@ -56,7 +56,7 @@ export default async function EmailPage(props: EmailPageProps) {
       </PageHeader>
 
       <PageBody className={'flex flex-1 flex-col gap-y-4'}>
-        <p className={'text-muted-foreground py-1 text-xs'}>
+        <p className={'py-1 text-xs text-muted-foreground'}>
           Remember that the below is an approximation of the email. Always test
           it in your inbox.{' '}
           <Dialog>

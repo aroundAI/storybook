@@ -15,7 +15,7 @@ export function ScreenplayPaper({
   return (
     <div className="mx-auto max-w-3xl">
       {/* Screenplay Paper Container */}
-      <div className="bg-card rounded-lg border border-gray-200 shadow-lg">
+      <div className="rounded-lg border border-gray-200 bg-card shadow-lg">
         {/* Paper Content */}
         <div className="p-12">
           {scenes.map((scene) => (

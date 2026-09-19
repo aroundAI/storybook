@@ -17,7 +17,7 @@ export function InspectorPanel() {
   return (
     <div className="flex h-full flex-col bg-zinc-900">
       <div className="border-b border-zinc-800 px-3 py-2.5">
-        <h3 className="m-0 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+        <h3 className="m-0 text-xs font-semibold tracking-wider text-zinc-400 uppercase">
           Inspector
         </h3>
       </div>

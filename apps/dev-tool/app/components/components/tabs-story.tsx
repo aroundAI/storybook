@@ -152,7 +152,7 @@ function TabsPlayground({
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Enable Notifications</Label>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-sm text-muted-foreground">
                     Receive notifications about important events
                   </p>
                 </div>
@@ -177,7 +177,7 @@ function TabsPlayground({
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div>
                   <p className="font-medium">Pro Plan</p>
-                  <p className="text-muted-foreground text-sm">$29/month</p>
+                  <p className="text-sm text-muted-foreground">$29/month</p>
                 </div>
                 <Badge>Active</Badge>
               </div>
@@ -258,7 +258,7 @@ const examples = [
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Two-Factor Authentication</Label>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-sm text-muted-foreground">
                       Add an extra layer of security to your account
                     </p>
                   </div>
@@ -273,7 +273,7 @@ const examples = [
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label>Email Notifications</Label>
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-sm text-muted-foreground">
                         Receive notifications via email
                       </p>
                     </div>
@@ -283,7 +283,7 @@ const examples = [
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label>Push Notifications</Label>
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-sm text-muted-foreground">
                         Receive push notifications on your devices
                       </p>
                     </div>
@@ -293,7 +293,7 @@ const examples = [
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label>Marketing Emails</Label>
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-sm text-muted-foreground">
                         Receive updates about new features and promotions
                       </p>
                     </div>
@@ -319,7 +319,7 @@ const examples = [
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label>Dark Mode</Label>
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-sm text-muted-foreground">
                         Use dark theme across the application
                       </p>
                     </div>
@@ -380,7 +380,7 @@ const examples = [
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <h3 className="text-lg font-semibold">Installation</h3>
-                      <code className="bg-muted block rounded-md p-3 text-sm">
+                      <code className="block rounded-md bg-muted p-3 text-sm">
                         npm install my-awesome-package
                       </code>
                     </div>
@@ -413,13 +413,13 @@ const examples = [
                       <div className="space-y-2">
                         <div className="rounded-md border p-3">
                           <code className="font-mono">getData()</code>
-                          <p className="text-muted-foreground mt-1 text-sm">
+                          <p className="mt-1 text-sm text-muted-foreground">
                             Fetches data from the API endpoint
                           </p>
                         </div>
                         <div className="rounded-md border p-3">
                           <code className="font-mono">updateData(data)</code>
-                          <p className="text-muted-foreground mt-1 text-sm">
+                          <p className="mt-1 text-sm text-muted-foreground">
                             Updates existing data with new values
                           </p>
                         </div>
@@ -443,7 +443,7 @@ const examples = [
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <h3 className="text-lg font-semibold">Basic Usage</h3>
-                      <code className="bg-muted block rounded-md p-3 text-sm">
+                      <code className="block rounded-md bg-muted p-3 text-sm">
                         {`import { MyComponent } from 'my-package';
 
 function App() {
@@ -471,7 +471,7 @@ function App() {
                       <div className="border-l-2 border-green-500 pl-4">
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary">v2.1.0</Badge>
-                          <span className="text-muted-foreground text-sm">
+                          <span className="text-sm text-muted-foreground">
                             2024-01-15
                           </span>
                         </div>
@@ -483,7 +483,7 @@ function App() {
                       <div className="border-l-2 border-blue-500 pl-4">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">v2.0.0</Badge>
-                          <span className="text-muted-foreground text-sm">
+                          <span className="text-sm text-muted-foreground">
                             2024-01-01
                           </span>
                         </div>
@@ -517,7 +517,7 @@ function App() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="bg-background rounded-lg border p-1">
+              <TabsList className="rounded-lg border bg-background p-1">
                 <TabsTrigger value="write" className="rounded-md">
                   <FileText className="mr-2 h-4 w-4" />
                   Write
@@ -606,7 +606,7 @@ function App() {
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label>Allow Comments</Label>
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-sm text-muted-foreground">
                         Let readers comment on this article
                       </p>
                     </div>
@@ -616,7 +616,7 @@ function App() {
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label>Featured Article</Label>
-                      <p className="text-muted-foreground text-sm">
+                      <p className="text-sm text-muted-foreground">
                         Show this article prominently on the homepage
                       </p>
                     </div>
@@ -632,7 +632,7 @@ function App() {
                   <h3 className="mb-2 text-lg font-semibold">
                     Ready to Publish
                   </h3>
-                  <p className="text-muted-foreground mb-4">
+                  <p className="mb-4 text-muted-foreground">
                     Review your article details before publishing. Once
                     published, your article will be visible to all readers.
                   </p>
@@ -683,28 +683,28 @@ function App() {
               <TabsList className="h-auto rounded-none border-b bg-transparent p-0">
                 <TabsTrigger
                   value="overview"
-                  className="data-[state=active]:border-primary rounded-none border-b-2 border-transparent data-[state=active]:bg-transparent"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
                 >
                   <BarChart3 className="mr-2 h-4 w-4" />
                   Overview
                 </TabsTrigger>
                 <TabsTrigger
                   value="users"
-                  className="data-[state=active]:border-primary rounded-none border-b-2 border-transparent data-[state=active]:bg-transparent"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
                 >
                   <User className="mr-2 h-4 w-4" />
                   Users
                 </TabsTrigger>
                 <TabsTrigger
                   value="revenue"
-                  className="data-[state=active]:border-primary rounded-none border-b-2 border-transparent data-[state=active]:bg-transparent"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
                 >
                   <CreditCard className="mr-2 h-4 w-4" />
                   Revenue
                 </TabsTrigger>
                 <TabsTrigger
                   value="reports"
-                  className="data-[state=active]:border-primary rounded-none border-b-2 border-transparent data-[state=active]:bg-transparent"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
                 >
                   <FileText className="mr-2 h-4 w-4" />
                   Reports
@@ -716,7 +716,7 @@ function App() {
                   <Card>
                     <CardContent className="p-4">
                       <div className="space-y-2">
-                        <p className="text-muted-foreground text-sm font-medium">
+                        <p className="text-sm font-medium text-muted-foreground">
                           Total Revenue
                         </p>
                         <p className="text-2xl font-bold">$45,231</p>
@@ -730,7 +730,7 @@ function App() {
                   <Card>
                     <CardContent className="p-4">
                       <div className="space-y-2">
-                        <p className="text-muted-foreground text-sm font-medium">
+                        <p className="text-sm font-medium text-muted-foreground">
                           Active Users
                         </p>
                         <p className="text-2xl font-bold">2,350</p>
@@ -744,7 +744,7 @@ function App() {
                   <Card>
                     <CardContent className="p-4">
                       <div className="space-y-2">
-                        <p className="text-muted-foreground text-sm font-medium">
+                        <p className="text-sm font-medium text-muted-foreground">
                           New Signups
                         </p>
                         <p className="text-2xl font-bold">573</p>
@@ -758,7 +758,7 @@ function App() {
                   <Card>
                     <CardContent className="p-4">
                       <div className="space-y-2">
-                        <p className="text-muted-foreground text-sm font-medium">
+                        <p className="text-sm font-medium text-muted-foreground">
                           Conversion Rate
                         </p>
                         <p className="text-2xl font-bold">12.5%</p>
@@ -777,7 +777,7 @@ function App() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-muted-foreground flex h-64 items-center justify-center">
+                    <div className="flex h-64 items-center justify-center text-muted-foreground">
                       Chart visualization would go here
                     </div>
                   </CardContent>
@@ -791,7 +791,7 @@ function App() {
                       <CardTitle className="text-lg">User Growth</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-muted-foreground flex h-48 items-center justify-center">
+                      <div className="flex h-48 items-center justify-center text-muted-foreground">
                         User growth chart
                       </div>
                     </CardContent>
@@ -804,7 +804,7 @@ function App() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-muted-foreground flex h-48 items-center justify-center">
+                      <div className="flex h-48 items-center justify-center text-muted-foreground">
                         Demographics breakdown
                       </div>
                     </CardContent>
@@ -818,7 +818,7 @@ function App() {
                     <CardTitle className="text-lg">Revenue Analytics</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-muted-foreground flex h-64 items-center justify-center">
+                    <div className="flex h-64 items-center justify-center text-muted-foreground">
                       Revenue charts and analysis
                     </div>
                   </CardContent>
@@ -1239,7 +1239,7 @@ export default function TabsStory() {
           {examples.map((example, index) => (
             <div key={index}>
               <h3 className="mb-4 text-lg font-semibold">{example.title}</h3>
-              <p className="text-muted-foreground mb-4 text-sm">
+              <p className="mb-4 text-sm text-muted-foreground">
                 {example.description}
               </p>
               <div className="flex justify-center">
@@ -1253,7 +1253,7 @@ export default function TabsStory() {
         <div className="space-y-8">
           <div>
             <h3 className="mb-4 text-lg font-semibold">{apiReference.title}</h3>
-            <p className="text-muted-foreground mb-6 text-sm">
+            <p className="mb-6 text-sm text-muted-foreground">
               {apiReference.description}
             </p>
 
@@ -1269,7 +1269,7 @@ export default function TabsStory() {
                 </thead>
                 <tbody className="text-sm">
                   {apiReference.props.map((prop, index) => (
-                    <tr key={index} className="border-border/50 border-b">
+                    <tr key={index} className="border-b border-border/50">
                       <td className="p-2 font-mono">{prop.name}</td>
                       <td className="p-2 font-mono">{prop.type}</td>
                       <td className="p-2">{(prop as any).default || '-'}</td>
@@ -1286,7 +1286,7 @@ export default function TabsStory() {
             {apiReference.examples.map((example, index) => (
               <div key={index}>
                 <h4 className="mb-2 text-base font-medium">{example.title}</h4>
-                <div className="bg-muted/50 rounded-lg p-4">
+                <div className="rounded-lg bg-muted/50 p-4">
                   <pre className="overflow-x-auto text-sm">
                     <code>{example.code}</code>
                   </pre>
@@ -1302,7 +1302,7 @@ export default function TabsStory() {
             <h3 className="mb-4 text-lg font-semibold">
               {usageGuidelines.title}
             </h3>
-            <p className="text-muted-foreground mb-6 text-sm">
+            <p className="mb-6 text-sm text-muted-foreground">
               {usageGuidelines.description}
             </p>
           </div>

@@ -68,7 +68,7 @@ export function LoadingOverlayStory() {
     }
 
     return (
-      <div className="bg-muted/20 flex h-48 items-center justify-center rounded-md border">
+      <div className="flex h-48 items-center justify-center rounded-md border bg-muted/20">
         <div className="space-y-4 text-center">
           <p className="text-muted-foreground">Content loaded!</p>
           <Button onClick={() => setDemoLoading(true)}>
@@ -193,11 +193,11 @@ export function LoadingOverlayStory() {
         <div className="space-y-6">
           <div>
             <h4 className="mb-3 text-lg font-semibold">LoadingOverlay</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               A loading overlay component with spinner and optional message.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -281,19 +281,19 @@ export function LoadingOverlayStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Provide Context</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Always include a meaningful message about what's loading.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Use Appropriate Size</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               fullPage for navigation, container-scoped for component loading.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Timeout Handling</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Consider showing error states for long-running operations.
             </p>
           </div>

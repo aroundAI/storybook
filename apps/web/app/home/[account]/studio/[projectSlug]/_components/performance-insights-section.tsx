@@ -12,7 +12,7 @@ export function PerformanceInsightsSection({
     <>
       {/* Performance Insights Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-foreground text-lg font-semibold">
+        <h2 className="text-lg font-semibold text-foreground">
           Performance Insights
         </h2>
         <button className="flex items-center gap-1 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
@@ -36,13 +36,13 @@ export function PerformanceInsightsSection({
       {/* Performance Insights Cards */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {/* Total Views */}
-        <div className="border-border bg-card rounded-2xl border p-6 shadow-sm">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <div className="mb-8 flex items-start justify-between">
             <div>
-              <p className="text-muted-foreground text-sm font-medium">
+              <p className="text-sm font-medium text-muted-foreground">
                 Total Views
               </p>
-              <p className="text-foreground mt-1 text-3xl font-bold">
+              <p className="mt-1 text-3xl font-bold text-foreground">
                 {formatNumber(analytics?.totalViews ?? 0)}
               </p>
             </div>
@@ -56,23 +56,23 @@ export function PerformanceInsightsSection({
         </div>
 
         {/* Avg Engagement */}
-        <div className="border-border bg-card rounded-2xl border p-6 shadow-sm">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <div className="mb-8 flex items-start justify-between">
             <div>
-              <p className="text-muted-foreground text-sm font-medium">
+              <p className="text-sm font-medium text-muted-foreground">
                 Avg. Engagement
               </p>
-              <p className="text-foreground mt-1 text-3xl font-bold">
+              <p className="mt-1 text-3xl font-bold text-foreground">
                 {analytics?.avgEngagementRate
                   ? `${analytics.avgEngagementRate.toFixed(0)}%`
                   : '0%'}
               </p>
             </div>
-            <span className="bg-muted text-muted-foreground rounded-md px-2 py-1 text-xs font-bold">
+            <span className="rounded-md bg-muted px-2 py-1 text-xs font-bold text-muted-foreground">
               0%
             </span>
           </div>
-          <div className="bg-muted h-1.5 w-full rounded-full">
+          <div className="h-1.5 w-full rounded-full bg-muted">
             <div
               className="h-1.5 rounded-full bg-green-500"
               style={{ width: `${analytics?.avgEngagementRate ?? 0}%` }}
@@ -81,13 +81,13 @@ export function PerformanceInsightsSection({
         </div>
 
         {/* Content Published */}
-        <div className="border-border bg-card rounded-2xl border p-6 shadow-sm">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <div className="mb-8 flex items-start justify-between">
             <div>
-              <p className="text-muted-foreground text-sm font-medium">
+              <p className="text-sm font-medium text-muted-foreground">
                 Content Published
               </p>
-              <p className="text-foreground mt-1 text-3xl font-bold">
+              <p className="mt-1 text-3xl font-bold text-foreground">
                 {analytics?.contentCount ?? 0}
               </p>
             </div>

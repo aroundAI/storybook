@@ -371,7 +371,7 @@ export function CreateFilmProjectForm({
                         <SelectItem key={type.value} value={type.value}>
                           <div className="flex flex-col">
                             <span>{type.label}</span>
-                            <span className="text-muted-foreground text-xs">
+                            <span className="text-xs text-muted-foreground">
                               {type.description}
                             </span>
                           </div>
@@ -444,7 +444,7 @@ export function CreateFilmProjectForm({
                         <SelectItem key={style.value} value={style.value}>
                           <div className="flex flex-col">
                             <span>{style.label}</span>
-                            <span className="text-muted-foreground text-xs">
+                            <span className="text-xs text-muted-foreground">
                               {style.description}
                             </span>
                           </div>
@@ -493,7 +493,7 @@ export function CreateFilmProjectForm({
                           <SelectItem key={ratio.value} value={ratio.value}>
                             <div className="flex flex-col">
                               <span>{ratio.label}</span>
-                              <span className="text-muted-foreground text-xs">
+                              <span className="text-xs text-muted-foreground">
                                 {ratio.description}
                               </span>
                             </div>
@@ -557,7 +557,7 @@ export function CreateFilmProjectForm({
                           >
                             <div className="flex flex-col">
                               <span>{provider.label}</span>
-                              <span className="text-muted-foreground text-xs">
+                              <span className="text-xs text-muted-foreground">
                                 {provider.description}
                               </span>
                             </div>
@@ -594,7 +594,7 @@ export function CreateFilmProjectForm({
                           >
                             <div className="flex flex-col">
                               <span>{provider.label}</span>
-                              <span className="text-muted-foreground text-xs">
+                              <span className="text-xs text-muted-foreground">
                                 {provider.description}
                               </span>
                             </div>

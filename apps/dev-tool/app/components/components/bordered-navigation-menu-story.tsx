@@ -108,9 +108,9 @@ const pathname = usePathname();
         ))}
       </BorderedNavigationMenu>
 
-      <div className="bg-muted/20 mt-8 rounded-lg border p-4">
+      <div className="mt-8 rounded-lg border bg-muted/20 p-4">
         <h3 className="mb-2 font-semibold">Simulated Navigation</h3>
-        <p className="text-muted-foreground mb-4 text-sm">
+        <p className="mb-4 text-sm text-muted-foreground">
           Click tabs above to see active state changes:
         </p>
         <div className="flex flex-wrap gap-2">
@@ -260,8 +260,8 @@ const pathname = usePathname();
               <h4 className="mb-2 text-sm font-semibold">
                 Mobile View (Simulated)
               </h4>
-              <div className="bg-muted/20 rounded-lg border p-2">
-                <p className="text-muted-foreground text-xs">
+              <div className="rounded-lg border bg-muted/20 p-2">
+                <p className="text-xs text-muted-foreground">
                   On smaller screens, only active and adjacent items are
                   typically shown, with overflow handled by the navigation
                   system.
@@ -288,12 +288,12 @@ const pathname = usePathname();
             <h4 className="mb-3 text-lg font-semibold">
               BorderedNavigationMenu
             </h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               Container component for navigation menu items with bordered active
               state.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -320,12 +320,12 @@ const pathname = usePathname();
             <h4 className="mb-3 text-lg font-semibold">
               BorderedNavigationMenuItem
             </h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               Individual navigation menu item with automatic active state
               detection.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -430,7 +430,7 @@ const pathname = usePathname();
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Active State Indication</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               The bordered bottom line clearly indicates the current active
               section. Use consistent active state styling across your
               application.
@@ -438,14 +438,14 @@ const pathname = usePathname();
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Label Clarity</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Use clear, concise labels that accurately describe the
               destination. Consider adding icons for better visual recognition.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Responsive Behavior</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               On smaller screens, non-active items may be hidden to save space.
               Plan your navigation hierarchy accordingly.
             </p>
@@ -461,21 +461,21 @@ const pathname = usePathname();
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Keyboard Navigation</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Full keyboard support with Tab navigation and Enter/Space
               activation.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Screen Reader Support</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Proper ARIA attributes and semantic HTML for assistive
               technologies.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Focus Management</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Clear focus indicators and proper focus management during
               navigation.
             </p>

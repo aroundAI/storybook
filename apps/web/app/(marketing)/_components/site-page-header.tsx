@@ -26,7 +26,7 @@ export function SitePageHeader({
 
         <h2
           className={
-            'text-muted-foreground text-lg tracking-tight 2xl:text-2xl'
+            'text-lg tracking-tight text-muted-foreground 2xl:text-2xl'
           }
         >
           {subtitle}

@@ -42,9 +42,9 @@ export function AIInsightCard({
                 className="flex items-start text-xs text-gray-700 dark:text-gray-300"
               >
                 {insight.type === 'success' ? (
-                  <CheckCircle className="mr-1.5 mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                  <CheckCircle className="mt-0.5 mr-1.5 h-4 w-4 flex-shrink-0 text-green-500" />
                 ) : (
-                  <Lightbulb className="mr-1.5 mt-0.5 h-4 w-4 flex-shrink-0 text-orange-500" />
+                  <Lightbulb className="mt-0.5 mr-1.5 h-4 w-4 flex-shrink-0 text-orange-500" />
                 )}
                 {insight.text}
               </li>

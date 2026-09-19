@@ -19,7 +19,7 @@ export function Default() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-sm text-muted-foreground">
           12 episodes · 4 seasons · last edited 3 days ago
         </p>
       </CardContent>

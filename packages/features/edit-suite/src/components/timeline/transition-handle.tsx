@@ -125,7 +125,7 @@ export const TransitionHandle = memo(
             currentType !== 'cut'
               ? 'bg-violet-500/80 text-white shadow-lg shadow-violet-500/30'
               : 'bg-zinc-700/60 text-zinc-400 opacity-0 hover:opacity-100'
-          } hover:scale-110 group-hover:opacity-100`}
+          } group-hover:opacity-100 hover:scale-110`}
           onClick={() => setIsPickerOpen(!isPickerOpen)}
           title={`Transition: ${currentType}`}
         >

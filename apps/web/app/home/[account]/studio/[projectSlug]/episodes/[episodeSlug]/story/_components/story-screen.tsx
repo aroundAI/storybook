@@ -332,7 +332,7 @@ export function StoryScreen({
         <button
           onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
           className={cn(
-            'bg-card/70 hover:bg-card/90 fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl border border-r-0 border-white/30 p-3 shadow-lg backdrop-blur-xl transition-all dark:hover:bg-gray-800/90',
+            'fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl border border-r-0 border-white/30 bg-card/70 p-3 shadow-lg backdrop-blur-xl transition-all hover:bg-card/90 dark:hover:bg-gray-800/90',
             isSidebarExpanded && 'right-80',
           )}
         >
@@ -350,7 +350,7 @@ export function StoryScreen({
         {/* Sidebar Panel */}
         <div
           className={cn(
-            'bg-card/60 fixed top-0 right-0 z-30 h-full w-80 transform border-l border-white/20 shadow-2xl backdrop-blur-xl transition-transform duration-300',
+            'fixed top-0 right-0 z-30 h-full w-80 transform border-l border-white/20 bg-card/60 shadow-2xl backdrop-blur-xl transition-transform duration-300',
             isSidebarExpanded ? 'translate-x-0' : 'translate-x-full',
           )}
         >
@@ -408,7 +408,7 @@ export function StoryScreen({
               {sidebarTab === 'info' ? (
                 <div className="space-y-4">
                   {/* Story Details */}
-                  <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                  <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
                     <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
                       Story Details
                     </h3>
@@ -458,7 +458,7 @@ export function StoryScreen({
 
                   {/* Act Breakdown */}
                   {storyData.actBreakdown && (
-                    <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                    <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
                       <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
                         Act Breakdown
                       </h3>
@@ -493,7 +493,7 @@ export function StoryScreen({
 
                   {/* Themes */}
                   {storyData.themes && storyData.themes.length > 0 && (
-                    <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                    <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
                       <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
                         Themes
                       </h3>
@@ -530,7 +530,7 @@ export function StoryScreen({
                   {(storyData.episodeSummary ||
                     (storyData.keyEvents && storyData.keyEvents.length > 0) ||
                     storyData.sentimentScore != null) && (
-                    <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                    <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
                       <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
                         <BookOpen className="h-4 w-4" />
                         Continuity

@@ -98,18 +98,18 @@ export function CardButtonStory() {
         onClick={
           controls.clickable ? () => handleCardClick('Preview Card') : undefined
         }
-        className={selectedCard === 'Preview Card' ? 'ring-primary ring-2' : ''}
+        className={selectedCard === 'Preview Card' ? 'ring-2 ring-primary' : ''}
       >
         <CardButtonHeader displayArrow={controls.showArrow}>
           <div className="flex items-center space-x-2">
-            <Settings className="text-primary h-5 w-5" />
+            <Settings className="h-5 w-5 text-primary" />
             <CardButtonTitle>Settings</CardButtonTitle>
             {controls.showBadge && <Badge variant="secondary">New</Badge>}
           </div>
         </CardButtonHeader>
 
         <CardButtonContent>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             Configure your application settings and preferences.
           </p>
         </CardButtonContent>
@@ -176,7 +176,7 @@ export function CardButtonStory() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <CardButton
               onClick={() => handleCardClick('Users')}
-              className={selectedCard === 'Users' ? 'ring-primary ring-2' : ''}
+              className={selectedCard === 'Users' ? 'ring-2 ring-primary' : ''}
             >
               <CardButtonHeader>
                 <div className="flex items-center space-x-2">
@@ -185,7 +185,7 @@ export function CardButtonStory() {
                 </div>
               </CardButtonHeader>
               <CardButtonContent>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Manage users, roles, and permissions across your application.
                 </p>
               </CardButtonContent>
@@ -194,7 +194,7 @@ export function CardButtonStory() {
             <CardButton
               onClick={() => handleCardClick('Billing')}
               className={
-                selectedCard === 'Billing' ? 'ring-primary ring-2' : ''
+                selectedCard === 'Billing' ? 'ring-2 ring-primary' : ''
               }
             >
               <CardButtonHeader>
@@ -204,7 +204,7 @@ export function CardButtonStory() {
                 </div>
               </CardButtonHeader>
               <CardButtonContent>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Configure payment methods, invoicing, and subscription plans.
                 </p>
               </CardButtonContent>
@@ -213,7 +213,7 @@ export function CardButtonStory() {
             <CardButton
               onClick={() => handleCardClick('Security')}
               className={
-                selectedCard === 'Security' ? 'ring-primary ring-2' : ''
+                selectedCard === 'Security' ? 'ring-2 ring-primary' : ''
               }
             >
               <CardButtonHeader>
@@ -226,7 +226,7 @@ export function CardButtonStory() {
                 </div>
               </CardButtonHeader>
               <CardButtonContent>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Set up two-factor authentication and security policies.
                 </p>
               </CardButtonContent>
@@ -247,7 +247,7 @@ export function CardButtonStory() {
             <CardButton
               onClick={() => handleCardClick('Reports')}
               className={
-                selectedCard === 'Reports' ? 'ring-primary ring-2' : ''
+                selectedCard === 'Reports' ? 'ring-2 ring-primary' : ''
               }
             >
               <CardButtonHeader>
@@ -257,7 +257,7 @@ export function CardButtonStory() {
                 </div>
               </CardButtonHeader>
               <CardButtonContent>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Generate and view detailed analytics reports.
                 </p>
               </CardButtonContent>
@@ -269,7 +269,7 @@ export function CardButtonStory() {
             <CardButton
               onClick={() => handleCardClick('Calendar')}
               className={
-                selectedCard === 'Calendar' ? 'ring-primary ring-2' : ''
+                selectedCard === 'Calendar' ? 'ring-2 ring-primary' : ''
               }
             >
               <CardButtonHeader>
@@ -279,7 +279,7 @@ export function CardButtonStory() {
                 </div>
               </CardButtonHeader>
               <CardButtonContent>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Schedule meetings and manage appointments.
                 </p>
               </CardButtonContent>
@@ -305,11 +305,11 @@ export function CardButtonStory() {
         <div className="space-y-6">
           <div>
             <h4 className="mb-3 text-lg font-semibold">CardButton</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               The main card button container component.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -346,11 +346,11 @@ export function CardButtonStory() {
 
           <div>
             <h4 className="mb-3 text-lg font-semibold">CardButtonHeader</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               Header section with optional arrow indicator.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -419,21 +419,21 @@ export function CardButtonStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Visual Hierarchy</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Use icons, colors, and typography to create clear visual
               distinction.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Content Structure</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Keep titles concise, provide meaningful descriptions, use footers
               for status.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Interactive States</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Provide clear hover, active, and selected state feedback.
             </p>
           </div>
@@ -448,19 +448,19 @@ export function CardButtonStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Grid Layout</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Use CSS Grid for equal-height cards in responsive layouts.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Vertical Stack</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Stack cards vertically for settings pages or step-by-step flows.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Mixed Sizes</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Vary card sizes based on content importance and hierarchy.
             </p>
           </div>

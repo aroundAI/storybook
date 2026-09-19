@@ -228,12 +228,12 @@ function ProviderCard({ provider, savedKey, onEdit }: ProviderCardProps) {
       <CardContent>
         <div className="flex items-center justify-between">
           {savedKey ? (
-            <div className="text-muted-foreground flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Key className="h-4 w-4" />
               <span>{'••••••' + savedKey.lastFourChars}</span>
             </div>
           ) : (
-            <span className="text-muted-foreground text-sm">No key saved</span>
+            <span className="text-sm text-muted-foreground">No key saved</span>
           )}
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" asChild>
@@ -408,7 +408,7 @@ function ApiKeyDialog({
             </Alert>
           )}
 
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Your API key is encrypted before storage. We never share your keys
             with third parties.
             <a

@@ -110,7 +110,7 @@ export function LanguageComparisonChart({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             No language data available. Publish content to see language
             performance comparison.
           </p>
@@ -217,7 +217,7 @@ export function ShortsROICard({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             No shorts data available. Publish shorts to see ROI analysis.
           </p>
         </CardContent>
@@ -251,23 +251,23 @@ export function ShortsROICard({
       <CardContent className="space-y-4">
         {/* Views per content piece */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-muted/50 rounded-lg p-4">
-            <div className="text-muted-foreground mb-1 text-xs">
+          <div className="rounded-lg bg-muted/50 p-4">
+            <div className="mb-1 text-xs text-muted-foreground">
               Views/Short
             </div>
             <div className="text-2xl font-bold">
               {formatNumber(viewsPerShort)}
             </div>
-            <div className="text-muted-foreground mt-1 text-xs">
+            <div className="mt-1 text-xs text-muted-foreground">
               {shorts.contentCount} shorts published
             </div>
           </div>
-          <div className="bg-muted/50 rounded-lg p-4">
-            <div className="text-muted-foreground mb-1 text-xs">Views/Long</div>
+          <div className="rounded-lg bg-muted/50 p-4">
+            <div className="mb-1 text-xs text-muted-foreground">Views/Long</div>
             <div className="text-2xl font-bold">
               {formatNumber(viewsPerLongForm)}
             </div>
-            <div className="text-muted-foreground mt-1 text-xs">
+            <div className="mt-1 text-xs text-muted-foreground">
               {longForm.contentCount} long-form published
             </div>
           </div>
@@ -275,20 +275,20 @@ export function ShortsROICard({
 
         {/* ROI Insights */}
         <div className="space-y-2">
-          <div className="bg-muted/30 flex items-center justify-between rounded-lg p-2">
+          <div className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
             <span className="text-sm">Shorts reach multiplier</span>
             <Badge variant={shortsMultiplier > 1 ? 'default' : 'secondary'}>
               {shortsMultiplier > 0 ? `${shortsMultiplier.toFixed(1)}x` : 'N/A'}
             </Badge>
           </div>
-          <div className="bg-muted/30 flex items-center justify-between rounded-lg p-2">
+          <div className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
             <span className="text-sm">Engagement difference</span>
             <Badge variant={engagementDiff > 0 ? 'default' : 'secondary'}>
               {engagementDiff > 0 ? '+' : ''}
               {engagementDiff.toFixed(1)}%
             </Badge>
           </div>
-          <div className="bg-muted/30 flex items-center justify-between rounded-lg p-2">
+          <div className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
             <span className="text-sm">Revenue/view (shorts)</span>
             <Badge variant="outline">
               ${(revenuePerView.shorts / 100).toFixed(4)}
@@ -395,7 +395,7 @@ export function BestEpisodesToClipCard({
   // Default recommendation if none generated
   if (recommendations.length === 0) {
     recommendations.push({
-      icon: <Scissors className="text-muted-foreground h-4 w-4" />,
+      icon: <Scissors className="h-4 w-4 text-muted-foreground" />,
       title: 'Start publishing shorts',
       description:
         'Publish shorts from your best episodes to unlock clipping insights and recommendations.',
@@ -415,7 +415,7 @@ export function BestEpisodesToClipCard({
         {recommendations.map((rec, index) => (
           <div
             key={index}
-            className="bg-muted/30 flex items-start gap-3 rounded-lg p-3"
+            className="flex items-start gap-3 rounded-lg bg-muted/30 p-3"
           >
             <div className="mt-0.5">{rec.icon}</div>
             <div className="min-w-0 flex-1">
@@ -434,7 +434,7 @@ export function BestEpisodesToClipCard({
                   {rec.priority}
                 </Badge>
               </div>
-              <p className="text-muted-foreground mt-1 text-xs">
+              <p className="mt-1 text-xs text-muted-foreground">
                 {rec.description}
               </p>
             </div>

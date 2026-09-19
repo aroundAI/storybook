@@ -12,7 +12,7 @@ export function WithMessage() {
   return (
     <div className="relative h-48 overflow-hidden rounded-lg border">
       <GlobalLoader displayTopLoadingBar={false}>
-        <p className="text-muted-foreground mt-4 text-sm">
+        <p className="mt-4 text-sm text-muted-foreground">
           Generating shot list for Scene 4...
         </p>
       </GlobalLoader>

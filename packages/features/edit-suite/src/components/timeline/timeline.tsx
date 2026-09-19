@@ -157,7 +157,7 @@ export function Timeline() {
     <div className="flex h-full flex-col overflow-hidden bg-[#0d0d0f]">
       {/* Toolbar bar */}
       <div className="flex items-center gap-3 border-b border-zinc-800 px-3 py-1.5">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+        <h3 className="text-xs font-semibold tracking-wider text-zinc-400 uppercase">
           Timeline
         </h3>
 

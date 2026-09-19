@@ -23,7 +23,7 @@ export function Default() {
 export function ThreadList() {
   return (
     <div className="w-[360px] space-y-2">
-      <div className="border-primary/30 bg-primary/5 flex items-start gap-2.5 rounded-lg border p-3">
+      <div className="flex items-start gap-2.5 rounded-lg border border-primary/30 bg-primary/5 p-3">
         <Checkbox checked className="mt-0.5 shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -43,13 +43,13 @@ export function ThreadList() {
               open
             </Badge>
           </div>
-          <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             The keeper&apos;s hidden ledger ties Mara to the missing crew.
           </p>
         </div>
       </div>
 
-      <div className="border-border/50 hover:border-border flex items-start gap-2.5 rounded-lg border p-3">
+      <div className="flex items-start gap-2.5 rounded-lg border border-border/50 p-3 hover:border-border">
         <Checkbox className="mt-0.5 shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -74,11 +74,11 @@ export function DisabledStates() {
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
         <Checkbox disabled />
-        <span className="text-muted-foreground text-sm">Locked episode</span>
+        <span className="text-sm text-muted-foreground">Locked episode</span>
       </div>
       <div className="flex items-center gap-2">
         <Checkbox disabled checked />
-        <span className="text-muted-foreground text-sm">Already published</span>
+        <span className="text-sm text-muted-foreground">Already published</span>
       </div>
     </div>
   );

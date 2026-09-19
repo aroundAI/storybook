@@ -128,7 +128,7 @@ export function PublicProfileSettingsForm({
             <CardTitle>Public Visibility</CardTitle>
             <CardDescription>
               Make your company profile visible at{' '}
-              <code className="bg-muted rounded px-1">/@{accountSlug}</code>
+              <code className="rounded bg-muted px-1">/@{accountSlug}</code>
             </CardDescription>
           </CardHeader>
           <CardContent>

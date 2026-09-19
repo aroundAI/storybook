@@ -107,7 +107,11 @@ test.describe('Failed reads', () => {
     await abortActionMatching(page, (body) => {
       try {
         const [args] = JSON.parse(body) as Array<Record<string, unknown>>;
-        return Object.keys(args ?? {}).sort().join() === 'from,scope,to';
+        return (
+          Object.keys(args ?? {})
+            .sort()
+            .join() === 'from,scope,to'
+        );
       } catch {
         return false;
       }

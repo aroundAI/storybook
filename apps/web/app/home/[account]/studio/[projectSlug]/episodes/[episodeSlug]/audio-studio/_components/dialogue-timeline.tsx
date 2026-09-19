@@ -362,7 +362,7 @@ export function DialogueTimeline({
 
   if (isLoading) {
     return (
-      <div className="bg-background flex h-full flex-col">
+      <div className="flex h-full flex-col bg-background">
         <div className="h-10 border-b bg-gray-100 dark:bg-black/20" />
         <div className="flex-1 space-y-4 p-4">
           {[...Array(5)].map((_, i) => (
@@ -394,7 +394,7 @@ export function DialogueTimeline({
   );
 
   return (
-    <div className="bg-card relative flex h-full flex-col">
+    <div className="relative flex h-full flex-col bg-card">
       {/* Playhead - fixed position */}
       <div className="pointer-events-none absolute top-0 bottom-0 left-[20px] z-20 flex w-0.5 flex-col items-center bg-black dark:bg-white">
         <div className="-mt-1.5 h-3 w-3 rotate-45 rounded-sm bg-black dark:bg-white" />

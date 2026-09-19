@@ -196,7 +196,7 @@ export function MetadataEditor({
                 <Label htmlFor={`${platform.platform}-title`}>
                   {titleLabel}
                 </Label>
-                <span className="text-muted-foreground text-sm">
+                <span className="text-sm text-muted-foreground">
                   {platform.title.length}/{limits.titleMax}
                 </span>
               </div>
@@ -231,7 +231,7 @@ export function MetadataEditor({
                   <Label htmlFor={`${platform.platform}-description`}>
                     Description
                   </Label>
-                  <span className="text-muted-foreground text-sm">
+                  <span className="text-sm text-muted-foreground">
                     {platform.description.length}/{limits.descriptionMax}
                   </span>
                 </div>

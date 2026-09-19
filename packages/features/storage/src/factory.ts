@@ -5,7 +5,6 @@
  * Supports multiple providers: local, supabase, r2, b2
  * Supports smart routing based on content type.
  */
-
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -15,9 +14,9 @@ import { LocalStorageAdapter } from './adapters/local';
 import { R2StorageAdapter } from './adapters/r2';
 import { SupabaseStorageAdapter } from './adapters/supabase';
 import {
-    getProviderForContentType,
-    getProviderForPath,
-    isSmartRoutingEnabled,
+  getProviderForContentType,
+  getProviderForPath,
+  isSmartRoutingEnabled,
 } from './routing';
 import type { StorageAdapter } from './types';
 
@@ -30,50 +29,50 @@ export type StorageProvider = 'local' | 'supabase' | 'r2' | 'b2';
  * Get the configured storage provider from environment
  */
 export function getStorageProvider(): StorageProvider {
-    const provider = process.env.STORAGE_PROVIDER?.toLowerCase();
+  const provider = process.env.STORAGE_PROVIDER?.toLowerCase();
 
-    switch (provider) {
-        case 'local':
-            return 'local';
-        case 'r2':
-            return 'r2';
-        case 'b2':
-            return 'b2';
-        case 'supabase':
-        default:
-            // Default to supabase for backward compatibility
-            return 'supabase';
-    }
+  switch (provider) {
+    case 'local':
+      return 'local';
+    case 'r2':
+      return 'r2';
+    case 'b2':
+      return 'b2';
+    case 'supabase':
+    default:
+      // Default to supabase for backward compatibility
+      return 'supabase';
+  }
 }
 
 /**
  * Create a storage adapter for a specific provider
  */
 function createAdapterForProvider(
-    provider: StorageProvider,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    supabaseClient?: SupabaseClient<any, any, any>,
+  provider: StorageProvider,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabaseClient?: SupabaseClient<any, any, any>,
 ): StorageAdapter {
-    switch (provider) {
-        case 'local':
-            return new LocalStorageAdapter();
+  switch (provider) {
+    case 'local':
+      return new LocalStorageAdapter();
 
-        case 'r2':
-            return new R2StorageAdapter();
+    case 'r2':
+      return new R2StorageAdapter();
 
-        case 'b2':
-            return new B2StorageAdapter();
+    case 'b2':
+      return new B2StorageAdapter();
 
-        case 'supabase':
-        default:
-            if (!supabaseClient) {
-                throw new Error(
-                    'Supabase client is required for supabase storage provider. ' +
-                    'Either pass a client or set STORAGE_PROVIDER to local, r2, or b2.',
-                );
-            }
-            return new SupabaseStorageAdapter(supabaseClient);
-    }
+    case 'supabase':
+    default:
+      if (!supabaseClient) {
+        throw new Error(
+          'Supabase client is required for supabase storage provider. ' +
+            'Either pass a client or set STORAGE_PROVIDER to local, r2, or b2.',
+        );
+      }
+      return new SupabaseStorageAdapter(supabaseClient);
+  }
 }
 
 /**
@@ -95,12 +94,12 @@ function createAdapterForProvider(
  * ```
  */
 export function getStorageAdapter(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    supabaseClient?: SupabaseClient<any, any, any>,
-    options?: { provider?: StorageProvider },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabaseClient?: SupabaseClient<any, any, any>,
+  options?: { provider?: StorageProvider },
 ): StorageAdapter {
-    const provider = options?.provider ?? getStorageProvider();
-    return createAdapterForProvider(provider, supabaseClient);
+  const provider = options?.provider ?? getStorageProvider();
+  return createAdapterForProvider(provider, supabaseClient);
 }
 
 /**
@@ -124,17 +123,17 @@ export function getStorageAdapter(
  * ```
  */
 export function getStorageAdapterForContentType(
-    contentType: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    supabaseClient?: SupabaseClient<any, any, any>,
+  contentType: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabaseClient?: SupabaseClient<any, any, any>,
 ): StorageAdapter {
-    // Only use smart routing if enabled
-    if (!isSmartRoutingEnabled()) {
-        return getStorageAdapter(supabaseClient);
-    }
+  // Only use smart routing if enabled
+  if (!isSmartRoutingEnabled()) {
+    return getStorageAdapter(supabaseClient);
+  }
 
-    const provider = getProviderForContentType(contentType);
-    return createAdapterForProvider(provider, supabaseClient);
+  const provider = getProviderForContentType(contentType);
+  return createAdapterForProvider(provider, supabaseClient);
 }
 
 /**
@@ -151,36 +150,36 @@ export function getStorageAdapterForContentType(
  * @returns Storage adapter for the appropriate provider
  */
 export function getStorageAdapterForPath(
-    path: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    supabaseClient?: SupabaseClient<any, any, any>,
+  path: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabaseClient?: SupabaseClient<any, any, any>,
 ): StorageAdapter {
-    // Only use smart routing if enabled
-    if (!isSmartRoutingEnabled()) {
-        return getStorageAdapter(supabaseClient);
-    }
+  // Only use smart routing if enabled
+  if (!isSmartRoutingEnabled()) {
+    return getStorageAdapter(supabaseClient);
+  }
 
-    const provider = getProviderForPath(path);
-    return createAdapterForProvider(provider, supabaseClient);
+  const provider = getProviderForPath(path);
+  return createAdapterForProvider(provider, supabaseClient);
 }
 
 /**
  * Check if local storage is enabled
  */
 export function isLocalStorageEnabled(): boolean {
-    return getStorageProvider() === 'local';
+  return getStorageProvider() === 'local';
 }
 
 /**
  * Check if R2 storage is enabled
  */
 export function isR2StorageEnabled(): boolean {
-    return getStorageProvider() === 'r2';
+  return getStorageProvider() === 'r2';
 }
 
 /**
  * Check if B2 storage is enabled
  */
 export function isB2StorageEnabled(): boolean {
-    return getStorageProvider() === 'b2';
+  return getStorageProvider() === 'b2';
 }

@@ -61,7 +61,7 @@ export function RetentionCurveChart({
 
   if (points.length === 0) {
     return (
-      <p className={'text-muted-foreground text-sm'}>
+      <p className={'text-sm text-muted-foreground'}>
         No retention curve available for this video yet.
       </p>
     );
@@ -72,7 +72,7 @@ export function RetentionCurveChart({
       <svg
         viewBox={'0 0 100 100'}
         preserveAspectRatio={'none'}
-        className={'bg-muted/30 h-40 w-full rounded-md'}
+        className={'h-40 w-full rounded-md bg-muted/30'}
         role={'img'}
         aria-label={'Audience retention curve'}
       >
@@ -103,7 +103,7 @@ export function RetentionCurveChart({
         ) : null}
       </svg>
 
-      <p className={'text-muted-foreground text-xs'}>
+      <p className={'text-xs text-muted-foreground'}>
         {cliff
           ? `Sharp drop of ${Math.round(cliff.drop * 100)} points${
               cliff.seconds !== undefined

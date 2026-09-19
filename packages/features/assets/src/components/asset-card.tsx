@@ -217,7 +217,7 @@ export function AssetCard({
                 <div className="flex flex-col items-center gap-2">
                   <div
                     className={cn(
-                      'rounded-xl bg-white p-3 shadow-sm ring-1 ring-inset ring-black/5 dark:bg-black/10',
+                      'rounded-xl bg-white p-3 shadow-sm ring-1 ring-black/5 ring-inset dark:bg-black/10',
                     )}
                   >
                     <Icon className={cn('h-8 w-8', colors.icon)} />
@@ -226,7 +226,7 @@ export function AssetCard({
                   {!isLandscape && (
                     <span
                       className={cn(
-                        'select-none text-4xl font-black opacity-20',
+                        'text-4xl font-black opacity-20 select-none',
                         colors.text,
                       )}
                     >
@@ -238,7 +238,7 @@ export function AssetCard({
 
               {/* Selection Checkbox (when in selection mode) */}
               {selectionMode && (
-                <div className="absolute left-2 top-2 z-10">
+                <div className="absolute top-2 left-2 z-10">
                   <div
                     className={cn(
                       'flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors',
@@ -254,7 +254,7 @@ export function AssetCard({
 
               {/* Actions Menu (Absolute) — hidden in selection mode */}
               {!selectionMode && (
-                <div className="absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover:opacity-100">
+                <div className="absolute top-2 right-2 z-10 opacity-0 transition-opacity group-hover:opacity-100">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -293,14 +293,14 @@ export function AssetCard({
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-1">
-                  <h3 className="line-clamp-1 text-lg font-semibold leading-tight">
+                  <h3 className="line-clamp-1 text-lg leading-tight font-semibold">
                     {asset.name}
                   </h3>
                   {role && (
                     <Badge
                       variant="secondary"
                       className={cn(
-                        'border-0 text-[10px] font-bold uppercase tracking-wider',
+                        'border-0 text-[10px] font-bold tracking-wider uppercase',
                         colors.badge,
                       )}
                     >
@@ -312,7 +312,7 @@ export function AssetCard({
 
               {/* Description */}
               {asset.description && (
-                <p className="text-muted-foreground mt-3 line-clamp-2 text-xs leading-relaxed">
+                <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                   {asset.description}
                 </p>
               )}

@@ -31,7 +31,7 @@ async function ContentTagsPage({ params }: PageProps) {
       <div className={'container mx-auto py-8'}>
         <div className={'text-center'}>
           <Heading level={2}>Account not found</Heading>
-          <p className={'text-muted-foreground mt-2'}>
+          <p className={'mt-2 text-muted-foreground'}>
             The requested account could not be found.
           </p>
         </div>
@@ -58,7 +58,7 @@ async function ContentTagsPage({ params }: PageProps) {
     <div className={'container mx-auto flex flex-col gap-6 py-8'}>
       <div className={'flex flex-col gap-1'}>
         <Heading level={2}>Content tags</Heading>
-        <p className={'text-muted-foreground text-sm'}>
+        <p className={'text-sm text-muted-foreground'}>
           Tag videos by topic, format and thumbnail style to compare median
           performance across your library. Individual videos are mostly luck;
           tag medians across 30+ videos are signal.

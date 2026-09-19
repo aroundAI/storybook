@@ -206,8 +206,8 @@ export function CanonDashboard({ threads, projectName }: CanonDashboardProps) {
 
       {/* Filter Tabs */}
       <div className="flex items-center gap-2">
-        <Filter className="text-muted-foreground h-4 w-4" />
-        <div className="bg-muted/50 flex gap-1 rounded-lg p-1">
+        <Filter className="h-4 w-4 text-muted-foreground" />
+        <div className="flex gap-1 rounded-lg bg-muted/50 p-1">
           {STATUS_TABS.map((tab) => {
             const isActive = activeFilter === tab.value;
             const count =
@@ -223,7 +223,7 @@ export function CanonDashboard({ threads, projectName }: CanonDashboardProps) {
                   'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200',
                   isActive
                     ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50',
+                    : 'text-muted-foreground hover:bg-background/50 hover:text-foreground',
                 )}
               >
                 {tab.label}
@@ -275,7 +275,7 @@ function StatsCard({
   valueClass?: string;
 }) {
   return (
-    <Card className="from-card to-card/80 relative overflow-hidden border-0 bg-gradient-to-br">
+    <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/80">
       <div
         className={cn(
           'absolute inset-0 bg-gradient-to-br opacity-60',
@@ -285,12 +285,12 @@ function StatsCard({
       <CardContent className="relative p-4">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-muted-foreground text-xs font-medium">{label}</p>
+            <p className="text-xs font-medium text-muted-foreground">{label}</p>
             <p className={cn('text-2xl font-bold tabular-nums', valueClass)}>
               {value}
             </p>
           </div>
-          <div className="bg-background/50 rounded-lg p-2 backdrop-blur-sm">
+          <div className="rounded-lg bg-background/50 p-2 backdrop-blur-sm">
             {icon}
           </div>
         </div>
@@ -313,7 +313,7 @@ function ThreadCard({ thread }: { thread: NarrativeThread }) {
   });
 
   return (
-    <Card className="group hover:border-border/80 relative overflow-hidden border transition-all duration-200 hover:shadow-md">
+    <Card className="group relative overflow-hidden border transition-all duration-200 hover:border-border/80 hover:shadow-md">
       {/* Status accent bar */}
       <div
         className={cn(
@@ -356,7 +356,7 @@ function ThreadCard({ thread }: { thread: NarrativeThread }) {
             {typeConfig.label}
           </Badge>
 
-          <span className="text-muted-foreground text-[11px]">
+          <span className="text-[11px] text-muted-foreground">
             {createdDate}
           </span>
         </div>
@@ -366,7 +366,7 @@ function ThreadCard({ thread }: { thread: NarrativeThread }) {
         {/* Episode Origin */}
         {thread.openedEpisode && (
           <div className="flex items-center gap-1.5 text-xs">
-            <BookOpen className="text-muted-foreground h-3 w-3 shrink-0" />
+            <BookOpen className="h-3 w-3 shrink-0 text-muted-foreground" />
             <span className="text-muted-foreground">Opened in</span>
             <span className="font-medium">
               Ep {thread.openedEpisode.number}: {thread.openedEpisode.title}
@@ -387,7 +387,7 @@ function ThreadCard({ thread }: { thread: NarrativeThread }) {
 
         {/* Description */}
         {thread.description && (
-          <p className="text-muted-foreground line-clamp-2 text-xs leading-relaxed">
+          <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
             {thread.description}
           </p>
         )}
@@ -403,14 +403,14 @@ function ThreadCard({ thread }: { thread: NarrativeThread }) {
               {thread.promises.slice(0, 3).map((promise, i) => (
                 <li
                   key={i}
-                  className="text-muted-foreground flex items-start gap-1.5 text-xs"
+                  className="flex items-start gap-1.5 text-xs text-muted-foreground"
                 >
                   <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-400/60" />
                   <span className="line-clamp-1">{promise}</span>
                 </li>
               ))}
               {thread.promises.length > 3 && (
-                <li className="text-muted-foreground text-[11px]">
+                <li className="text-[11px] text-muted-foreground">
                   +{thread.promises.length - 3} more
                 </li>
               )}
@@ -429,14 +429,14 @@ function ThreadCard({ thread }: { thread: NarrativeThread }) {
               {thread.payoffs.slice(0, 3).map((payoff, i) => (
                 <li
                   key={i}
-                  className="text-muted-foreground flex items-start gap-1.5 text-xs"
+                  className="flex items-start gap-1.5 text-xs text-muted-foreground"
                 >
                   <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400/60" />
                   <span className="line-clamp-1">{payoff}</span>
                 </li>
               ))}
               {thread.payoffs.length > 3 && (
-                <li className="text-muted-foreground text-[11px]">
+                <li className="text-[11px] text-muted-foreground">
                   +{thread.payoffs.length - 3} more
                 </li>
               )}
@@ -464,11 +464,11 @@ function EmptyState({
   return (
     <Card className="border-dashed">
       <CardContent className="flex flex-col items-center justify-center py-16">
-        <div className="bg-muted/50 mb-4 rounded-full p-4">
+        <div className="mb-4 rounded-full bg-muted/50 p-4">
           {isFiltered ? (
-            <AlertTriangle className="text-muted-foreground h-8 w-8" />
+            <AlertTriangle className="h-8 w-8 text-muted-foreground" />
           ) : (
-            <ScrollText className="text-muted-foreground h-8 w-8" />
+            <ScrollText className="h-8 w-8 text-muted-foreground" />
           )}
         </div>
         <CardTitle className="mb-2 text-lg">

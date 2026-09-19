@@ -247,7 +247,7 @@ export function SocialPostDetail({
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -372,7 +372,7 @@ export function SocialPostDetail({
                 </SelectContent>
               </Select>
             ) : (
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-muted-foreground">
                 No LinkedIn accounts connected.{' '}
                 <a
                   href={`/home/${accountSlug}/settings`}
@@ -402,7 +402,7 @@ export function SocialPostDetail({
           <CardTitle className="text-base">Original Notes</CardTitle>
         </CardHeader>
         <CardContent>
-          <pre className="text-muted-foreground max-h-40 overflow-y-auto text-sm whitespace-pre-wrap">
+          <pre className="max-h-40 overflow-y-auto text-sm whitespace-pre-wrap text-muted-foreground">
             {post.raw_notes}
           </pre>
         </CardContent>

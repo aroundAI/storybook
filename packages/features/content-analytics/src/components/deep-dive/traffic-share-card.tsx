@@ -85,7 +85,7 @@ export function TrafficShareCard({
   // ever arrived, which is the check that matters.
   if (isError) {
     return (
-      <p className={'text-muted-foreground text-sm'}>
+      <p className={'text-sm text-muted-foreground'}>
         Traffic-source data could not be loaded. This is a fetch failure, not an
         absence of data — retry, or check the project scope.
       </p>
@@ -94,7 +94,7 @@ export function TrafficShareCard({
 
   if (buckets.length === 0) {
     return (
-      <p className={'text-muted-foreground text-sm'}>
+      <p className={'text-sm text-muted-foreground'}>
         No traffic-source data in {windowLabel}. Anything older falls outside
         this window; new data arrives with the YouTube bulk report ingest.
       </p>
@@ -136,7 +136,7 @@ export function TrafficShareCard({
         <span className={'text-2xl font-semibold'}>
           {hasViews ? `${shownPercent}%` : '—'}
         </span>
-        <span className={'text-muted-foreground text-sm'}>
+        <span className={'text-sm text-muted-foreground'}>
           Browse + Suggested — {bucketNoun} of {latest.bucket}
         </span>
       </div>
@@ -180,14 +180,14 @@ export function TrafficShareCard({
 
           <div
             className={
-              'border-foreground/40 pointer-events-none absolute left-0 right-0 border-t border-dashed'
+              'pointer-events-none absolute right-0 left-0 border-t border-dashed border-foreground/40'
             }
             style={{ bottom: `${RECOMMENDED_CHANNEL_THRESHOLD * 100}%` }}
           />
         </div>
       </div>
 
-      <p className={'text-muted-foreground text-xs'}>
+      <p className={'text-xs text-muted-foreground'}>
         {!windowHasViews
           ? `No views in ${windowLabel}, so there is no traffic mix to report.`
           : !hasViews
@@ -327,7 +327,7 @@ export function TrafficBreakdownCard({
   // fills every week in the window.
   if (isError) {
     return (
-      <p className={'text-muted-foreground text-sm'}>
+      <p className={'text-sm text-muted-foreground'}>
         Traffic-source data could not be loaded. This is a fetch failure, not an
         absence of data — retry, or check the project scope.
       </p>
@@ -336,7 +336,7 @@ export function TrafficBreakdownCard({
 
   if (buckets.length === 0) {
     return (
-      <p className={'text-muted-foreground text-sm'}>
+      <p className={'text-sm text-muted-foreground'}>
         No traffic-source data in {windowLabel}. Anything older falls outside
         this window; new data arrives with the YouTube bulk report ingest.
       </p>
@@ -360,7 +360,7 @@ export function TrafficBreakdownCard({
 
   if (windowViews === 0) {
     return (
-      <p className={'text-muted-foreground text-sm'}>
+      <p className={'text-sm text-muted-foreground'}>
         No views in {windowLabel}, so there is no traffic mix to report.
       </p>
     );
@@ -451,7 +451,7 @@ export function TrafficBreakdownCard({
         })}
       </div>
 
-      <p className={'text-muted-foreground text-xs'}>
+      <p className={'text-xs text-muted-foreground'}>
         Percentages are the share across the whole window shown. Shares cover
         videos published through this platform. Views on channel videos that
         never matched a publish are not counted, so these percentages will not

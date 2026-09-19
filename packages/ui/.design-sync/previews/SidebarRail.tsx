@@ -24,8 +24,8 @@ export function Default() {
         <Sidebar collapsible="icon">
           <SidebarHeader className="h-14 justify-center border-b px-3">
             <div className="flex items-center gap-2">
-              <div className="bg-muted flex h-7 w-7 items-center justify-center rounded-md">
-                <FolderOpen className="text-muted-foreground h-4 w-4" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted">
+                <FolderOpen className="h-4 w-4 text-muted-foreground" />
               </div>
               <span className="text-sm font-semibold">Lumen Pictures</span>
             </div>
@@ -63,8 +63,8 @@ export function Default() {
           <SidebarRail />
         </Sidebar>
 
-        <div className="bg-background flex-1 p-4">
-          <p className="text-muted-foreground text-sm">
+        <div className="flex-1 bg-background p-4">
+          <p className="text-sm text-muted-foreground">
             Drag the rail on the sidebar edge to resize, or click to toggle.
           </p>
         </div>

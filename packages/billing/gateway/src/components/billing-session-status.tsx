@@ -22,9 +22,9 @@ export function BillingSessionStatus({
     <section
       data-test={'payment-return-success'}
       className={
-        'fade-in dark:border-border mx-auto max-w-xl rounded-xl border border-transparent p-16 xl:drop-shadow-2xl' +
-        ' bg-background animate-in slide-in-from-bottom-8 ease-out' +
-        ' zoom-in-50 dark:shadow-primary/20 duration-1000 dark:shadow-2xl'
+        'mx-auto max-w-xl rounded-xl border border-transparent p-16 fade-in xl:drop-shadow-2xl dark:border-border' +
+        ' bg-background ease-out animate-in slide-in-from-bottom-8' +
+        ' duration-1000 zoom-in-50 dark:shadow-2xl dark:shadow-primary/20'
       }
     >
       <div
@@ -46,7 +46,7 @@ export function BillingSessionStatus({
           🎉
         </Heading>
 
-        <div className={'text-muted-foreground flex flex-col space-y-4'}>
+        <div className={'flex flex-col space-y-4 text-muted-foreground'}>
           <p>
             <Trans
               i18nKey={'billing:checkoutSuccessDescription'}

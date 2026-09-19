@@ -225,7 +225,7 @@ export function ExperimentForm({
                 </Select>
                 {field.value && BAKED_IN_CATEGORIES.has(field.value) ? (
                   <p
-                    className={'text-muted-foreground text-xs'}
+                    className={'text-xs text-muted-foreground'}
                     data-test={'experiment-category-note'}
                   >
                     {BAKED_IN_NOTE}
@@ -272,7 +272,7 @@ export function ExperimentForm({
                 </FormDescription>
                 {field.value && WATCHED_METRIC_NOTES[field.value] ? (
                   <p
-                    className={'text-muted-foreground text-xs'}
+                    className={'text-xs text-muted-foreground'}
                     data-test={'experiment-metric-note'}
                   >
                     {WATCHED_METRIC_NOTES[field.value]}

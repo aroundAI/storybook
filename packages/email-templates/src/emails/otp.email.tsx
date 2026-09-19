@@ -69,9 +69,9 @@ export async function renderOtpEmail(props: Props) {
 
               <Text className="text-[16px] text-[#242424]">{otpText}</Text>
 
-              <Section className="mb-[16px] mt-[16px] text-center">
+              <Section className="mt-[16px] mb-[16px] text-center">
                 <Button className={'w-full rounded bg-neutral-950 text-center'}>
-                  <Text className="text-[16px] font-medium font-semibold leading-[16px] text-white">
+                  <Text className="text-[16px] leading-[16px] font-medium font-semibold text-white">
                     {props.otp}
                   </Text>
                 </Button>

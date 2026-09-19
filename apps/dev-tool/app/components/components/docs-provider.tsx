@@ -79,7 +79,7 @@ export function DocsProvider() {
   }
 
   return (
-    <div className="bg-background flex h-screen">
+    <div className="flex h-screen bg-background">
       <DocsSidebar
         selectedComponent={selectedComponent.id}
         selectedCategory={selectedCategory}

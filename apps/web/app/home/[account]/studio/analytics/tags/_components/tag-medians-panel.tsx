@@ -100,7 +100,7 @@ export function TagMediansPanel({
       <div className={'flex items-center justify-between gap-4'}>
         <div className={'flex flex-col gap-1'}>
           <h3 className={'text-base font-medium'}>Median performance</h3>
-          <p className={'text-muted-foreground text-sm'}>
+          <p className={'text-sm text-muted-foreground'}>
             Median views per video at {CHECKPOINT_DAYS} days, by segment.
           </p>
         </div>
@@ -132,7 +132,7 @@ export function TagMediansPanel({
       </div>
 
       {isUnavailable(query) ? (
-        <p className={'text-destructive text-sm'}>
+        <p className={'text-sm text-destructive'}>
           Medians could not be loaded.
         </p>
       ) : (

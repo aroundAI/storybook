@@ -20,7 +20,7 @@ interface PublishStatusRowProps {
 
 export function PublishStatusRow({ result, onRetry }: PublishStatusRowProps) {
   const icons = {
-    pending: <Clock className="text-muted-foreground h-4 w-4" />,
+    pending: <Clock className="h-4 w-4 text-muted-foreground" />,
     publishing: <Loader2 className="h-4 w-4 animate-spin text-blue-500" />,
     completed: <CheckCircle className="h-4 w-4 text-green-500" />,
     failed: <XCircle className="h-4 w-4 text-red-500" />,
@@ -61,7 +61,7 @@ export function PublishStatusRow({ result, onRetry }: PublishStatusRowProps) {
           </Button>
         )}
         {result.error && (
-          <span className="text-destructive max-w-[200px] truncate text-sm">
+          <span className="max-w-[200px] truncate text-sm text-destructive">
             {result.error}
           </span>
         )}

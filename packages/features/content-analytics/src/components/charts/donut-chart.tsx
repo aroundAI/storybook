@@ -97,7 +97,7 @@ export function DonutChart({
               </span>
             )}
             {centerSublabel && (
-              <span className="text-[10px] font-semibold uppercase text-gray-500 dark:text-gray-400">
+              <span className="text-[10px] font-semibold text-gray-500 uppercase dark:text-gray-400">
                 {centerSublabel}
               </span>
             )}

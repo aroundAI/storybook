@@ -81,7 +81,7 @@ function StatusFilter<T extends StatusFilterValue>({
 
   return (
     <div className="space-y-2">
-      <label className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
+      <label className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
         {label}
       </label>
       <div className="flex items-center gap-1">
@@ -155,7 +155,7 @@ export function AssetFilterToolbar({
             variant="ghost"
             size="sm"
             onClick={onClearFilters}
-            className="text-muted-foreground shrink-0"
+            className="shrink-0 text-muted-foreground"
           >
             <X className="mr-1 h-3.5 w-3.5" />
             Clear
@@ -165,10 +165,10 @@ export function AssetFilterToolbar({
 
       {/* Expanded Filter Panel */}
       {isExpanded && (
-        <div className="bg-muted/50 animate-in fade-in slide-in-from-top-2 space-y-4 rounded-lg border p-4 duration-200">
+        <div className="space-y-4 rounded-lg border bg-muted/50 p-4 duration-200 animate-in fade-in slide-in-from-top-2">
           {/* Role Filter */}
           <div className="space-y-2">
-            <label className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
+            <label className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
               Role
             </label>
             <div className="flex flex-wrap gap-1.5">
@@ -227,7 +227,7 @@ export function AssetFilterToolbar({
           {/* Sort + Result Count */}
           <div className="flex items-center justify-between border-t pt-3">
             <div className="flex items-center gap-2">
-              <label className="text-muted-foreground text-xs font-medium">
+              <label className="text-xs font-medium text-muted-foreground">
                 Sort by
               </label>
               <Select
@@ -247,9 +247,9 @@ export function AssetFilterToolbar({
               </Select>
             </div>
 
-            <span className="text-muted-foreground text-xs">
+            <span className="text-xs text-muted-foreground">
               Showing{' '}
-              <span className="text-foreground font-medium">{resultCount}</span>{' '}
+              <span className="font-medium text-foreground">{resultCount}</span>{' '}
               of {totalCount} characters
             </span>
           </div>
@@ -258,10 +258,10 @@ export function AssetFilterToolbar({
 
       {/* Collapsed Summary */}
       {!isExpanded && activeFilterCount > 0 && (
-        <div className="text-muted-foreground flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>
             Showing{' '}
-            <span className="text-foreground font-medium">{resultCount}</span>{' '}
+            <span className="font-medium text-foreground">{resultCount}</span>{' '}
             of {totalCount} characters
           </span>
           <span>·</span>

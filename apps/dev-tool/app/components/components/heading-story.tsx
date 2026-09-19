@@ -119,9 +119,9 @@ export default function HeadingStory() {
         <div className="space-y-3">
           <p className="text-sm font-medium">Heading Level Descriptions:</p>
           {Object.entries(levelDescriptions).map(([level, description]) => (
-            <div key={level} className="bg-muted/50 rounded-lg p-3">
+            <div key={level} className="rounded-lg bg-muted/50 p-3">
               <p className="text-sm font-medium">Level {level}:</p>
-              <p className="text-muted-foreground text-sm">{description}</p>
+              <p className="text-sm text-muted-foreground">{description}</p>
             </div>
           ))}
         </div>
@@ -140,7 +140,7 @@ export default function HeadingStory() {
             <div key={level} className="space-y-3">
               <div className="mb-2 flex items-center gap-2">
                 <Badge variant="outline">H{level}</Badge>
-                <span className="text-muted-foreground text-xs">
+                <span className="text-xs text-muted-foreground">
                   {levelDescriptions[level as keyof typeof levelDescriptions]}
                 </span>
               </div>
@@ -149,7 +149,7 @@ export default function HeadingStory() {
                 level={level as 1 | 2 | 3 | 4 | 5 | 6}
                 className={
                   controls.customClass
-                    ? 'text-primary border-primary/20 border-b-2 pb-2'
+                    ? 'border-b-2 border-primary/20 pb-2 text-primary'
                     : undefined
                 }
               >
@@ -158,7 +158,7 @@ export default function HeadingStory() {
                   : `Heading Level ${level}`}
               </Heading>
 
-              <div className="bg-muted/50 rounded-lg p-3 text-xs">
+              <div className="rounded-lg bg-muted/50 p-3 text-xs">
                 <code>
                   {`<h${level} className="font-heading scroll-m-20 ${
                     level === 1
@@ -224,23 +224,23 @@ export default function HeadingStory() {
                 </p>
 
                 <Heading level={2}>Installation</Heading>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Before we begin, you'll need to set up your development
                   environment.
                 </p>
 
                 <Heading level={3}>Prerequisites</Heading>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Make sure you have Node.js installed on your system.
                 </p>
 
                 <Heading level={4}>Node.js Version</Heading>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   We recommend using Node.js version 18 or higher.
                 </p>
 
                 <Heading level={3}>Creating Your Project</Heading>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Use Create React App to bootstrap your new project.
                 </p>
               </CardContent>
@@ -264,14 +264,14 @@ export default function HeadingStory() {
 
                 <Heading
                   level={3}
-                  className="bg-muted rounded-lg py-3 text-center"
+                  className="rounded-lg bg-muted py-3 text-center"
                 >
                   Centered with Background
                 </Heading>
 
                 <Heading
                   level={4}
-                  className="text-muted-foreground tracking-wider uppercase"
+                  className="tracking-wider text-muted-foreground uppercase"
                 >
                   Uppercase Heading
                 </Heading>
@@ -285,31 +285,31 @@ export default function HeadingStory() {
               <CardContent className="space-y-6 pt-6">
                 <div>
                   <Heading level={1}>The Future of Web Development</Heading>
-                  <p className="text-muted-foreground mt-2 text-sm">
+                  <p className="mt-2 text-sm text-muted-foreground">
                     Published on March 15, 2024 • 5 min read
                   </p>
                 </div>
 
                 <div className="space-y-4">
                   <Heading level={2}>Introduction</Heading>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-sm text-muted-foreground">
                     Web development continues to evolve at a rapid pace...
                   </p>
 
                   <Heading level={2}>Key Technologies</Heading>
                   <div className="space-y-3">
                     <Heading level={3}>Frontend Frameworks</Heading>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-sm text-muted-foreground">
                       Modern frameworks are becoming more powerful...
                     </p>
 
                     <Heading level={4}>React and Next.js</Heading>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-sm text-muted-foreground">
                       React continues to dominate the frontend landscape...
                     </p>
 
                     <Heading level={4}>Vue and Nuxt</Heading>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-sm text-muted-foreground">
                       Vue.js offers a progressive approach to building UIs...
                     </p>
                   </div>
@@ -334,19 +334,19 @@ export default function HeadingStory() {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">level</td>
                     <td className="p-2 font-mono">1 | 2 | 3 | 4 | 5 | 6</td>
                     <td className="p-2">1</td>
                     <td className="p-2">Semantic heading level (h1-h6)</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">children</td>
                     <td className="p-2 font-mono">React.ReactNode</td>
                     <td className="p-2">-</td>
                     <td className="p-2">Heading content</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">className</td>
                     <td className="p-2 font-mono">string</td>
                     <td className="p-2">-</td>
@@ -370,37 +370,37 @@ export default function HeadingStory() {
                   </tr>
                 </thead>
                 <tbody className="text-sm">
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">1</td>
                     <td className="p-2 font-mono">h1</td>
                     <td className="p-2 font-mono">text-3xl lg:text-4xl</td>
                     <td className="p-2">Page titles, main headings</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">2</td>
                     <td className="p-2 font-mono">h2</td>
                     <td className="p-2 font-mono">text-2xl lg:text-3xl</td>
                     <td className="p-2">Major section headings</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">3</td>
                     <td className="p-2 font-mono">h3</td>
                     <td className="p-2 font-mono">text-xl lg:text-2xl</td>
                     <td className="p-2">Subsection headings</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">4</td>
                     <td className="p-2 font-mono">h4</td>
                     <td className="p-2 font-mono">text-lg lg:text-xl</td>
                     <td className="p-2">Component titles, cards</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">5</td>
                     <td className="p-2 font-mono">h5</td>
                     <td className="p-2 font-mono">text-base lg:text-lg</td>
                     <td className="p-2">Minor headings, labels</td>
                   </tr>
-                  <tr className="border-border/50 border-b">
+                  <tr className="border-b border-border/50">
                     <td className="p-2 font-mono">6</td>
                     <td className="p-2 font-mono">h6</td>
                     <td className="p-2 font-mono">text-base</td>
@@ -450,11 +450,11 @@ export default function HeadingStory() {
         <div className="space-y-8">
           <div>
             <h3 className="mb-4 text-lg font-semibold">Basic Usage</h3>
-            <p className="text-muted-foreground mb-4 text-sm">
+            <p className="mb-4 text-sm text-muted-foreground">
               Use semantic heading levels to create proper document structure
               and accessibility.
             </p>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`import { Heading } from '@kit/ui/heading';
 
@@ -473,7 +473,7 @@ function Page() {
 
           <div>
             <h3 className="mb-4 text-lg font-semibold">Custom Styling</h3>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 {`<Heading 
   level={2} 

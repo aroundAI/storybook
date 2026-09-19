@@ -4,11 +4,11 @@ export function Default() {
   return (
     <div className="w-[360px] space-y-1">
       <h4 className="text-sm font-semibold">Audio Generation Settings</h4>
-      <p className="text-muted-foreground text-xs">
+      <p className="text-xs text-muted-foreground">
         Configure the voice and SFX providers for this project.
       </p>
       <Separator className="my-4" />
-      <p className="text-muted-foreground text-xs">
+      <p className="text-xs text-muted-foreground">
         Changes apply to all future episode renders.
       </p>
     </div>

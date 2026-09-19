@@ -328,7 +328,7 @@ export default function CalendarStory() {
               </tr>
             </thead>
             <tbody className="text-sm">
-              <tr className="border-border/50 border-b">
+              <tr className="border-b border-border/50">
                 <td className="p-2 font-mono">mode</td>
                 <td className="p-2 font-mono">
                   'single' | 'multiple' | 'range'
@@ -336,7 +336,7 @@ export default function CalendarStory() {
                 <td className="p-2">'single'</td>
                 <td className="p-2">Selection mode</td>
               </tr>
-              <tr className="border-border/50 border-b">
+              <tr className="border-b border-border/50">
                 <td className="p-2 font-mono">selected</td>
                 <td className="p-2 font-mono">
                   Date | Date[] | {'{'} from?: Date, to?: Date {'}'}
@@ -344,13 +344,13 @@ export default function CalendarStory() {
                 <td className="p-2">-</td>
                 <td className="p-2">Selected date(s)</td>
               </tr>
-              <tr className="border-border/50 border-b">
+              <tr className="border-b border-border/50">
                 <td className="p-2 font-mono">onSelect</td>
                 <td className="p-2 font-mono">function</td>
                 <td className="p-2">-</td>
                 <td className="p-2">Date selection handler</td>
               </tr>
-              <tr className="border-border/50 border-b">
+              <tr className="border-b border-border/50">
                 <td className="p-2 font-mono">captionLayout</td>
                 <td className="p-2 font-mono">
                   'label' | 'dropdown' | 'dropdown-months' | 'dropdown-years'
@@ -358,31 +358,31 @@ export default function CalendarStory() {
                 <td className="p-2">'label'</td>
                 <td className="p-2">Month/year caption style</td>
               </tr>
-              <tr className="border-border/50 border-b">
+              <tr className="border-b border-border/50">
                 <td className="p-2 font-mono">numberOfMonths</td>
                 <td className="p-2 font-mono">number</td>
                 <td className="p-2">1</td>
                 <td className="p-2">Number of months to display</td>
               </tr>
-              <tr className="border-border/50 border-b">
+              <tr className="border-b border-border/50">
                 <td className="p-2 font-mono">showOutsideDays</td>
                 <td className="p-2 font-mono">boolean</td>
                 <td className="p-2">true</td>
                 <td className="p-2">Show days outside current month</td>
               </tr>
-              <tr className="border-border/50 border-b">
+              <tr className="border-b border-border/50">
                 <td className="p-2 font-mono">showWeekNumber</td>
                 <td className="p-2 font-mono">boolean</td>
                 <td className="p-2">false</td>
                 <td className="p-2">Show week numbers</td>
               </tr>
-              <tr className="border-border/50 border-b">
+              <tr className="border-b border-border/50">
                 <td className="p-2 font-mono">disabled</td>
                 <td className="p-2 font-mono">boolean | Matcher</td>
                 <td className="p-2">false</td>
                 <td className="p-2">Disable dates</td>
               </tr>
-              <tr className="border-border/50 border-b">
+              <tr className="border-b border-border/50">
                 <td className="p-2 font-mono">buttonVariant</td>
                 <td className="p-2 font-mono">
                   'ghost' | 'outline' | 'secondary'
@@ -400,7 +400,7 @@ export default function CalendarStory() {
         <div className="space-y-6">
           <div>
             <h4 className="mb-2 text-base font-medium">Basic Single Date</h4>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 <code>{`import { Calendar } from '@kit/ui/calendar';
 
@@ -422,7 +422,7 @@ function DatePicker() {
 
           <div>
             <h4 className="mb-2 text-base font-medium">Date Range Selection</h4>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 <code>{`import { Calendar } from '@kit/ui/calendar';
 
@@ -447,7 +447,7 @@ function DateRangePicker() {
             <h4 className="mb-2 text-base font-medium">
               Multiple Date Selection
             </h4>
-            <div className="bg-muted/50 rounded-lg p-4">
+            <div className="rounded-lg bg-muted/50 p-4">
               <pre className="overflow-x-auto text-sm">
                 <code>{`import { Calendar } from '@kit/ui/calendar';
 
@@ -476,7 +476,7 @@ function MultiDatePicker() {
     <div className="space-y-8">
       <div>
         <h3 className="mb-4 text-lg font-semibold">When to Use Calendar</h3>
-        <p className="text-muted-foreground mb-4 text-sm">
+        <p className="mb-4 text-sm text-muted-foreground">
           Use Calendar component when users need to select dates with visual
           context of months and relationships between dates.
         </p>

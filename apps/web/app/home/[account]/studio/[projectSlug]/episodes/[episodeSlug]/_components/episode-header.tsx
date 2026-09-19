@@ -31,20 +31,20 @@ export function EpisodeHeader({
         </div>
 
         {episode.description && (
-          <p className="text-muted-foreground max-w-2xl text-sm">
+          <p className="max-w-2xl text-sm text-muted-foreground">
             {episode.description}
           </p>
         )}
 
         <div className="flex items-center gap-4">
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             Episode {episode.number}
             {episode.season && ` • Season ${episode.season.number}`}
           </p>
 
           {(characterIds.length > 0 || locationIds.length > 0) && (
             <div className="flex items-center gap-2">
-              <span className="text-muted-foreground text-xs">Tagged:</span>
+              <span className="text-xs text-muted-foreground">Tagged:</span>
               <TaggedAssets
                 characterIds={characterIds}
                 locationIds={locationIds}
@@ -53,7 +53,7 @@ export function EpisodeHeader({
           )}
         </div>
 
-        <p className="text-muted-foreground flex items-center gap-1 text-xs">
+        <p className="flex items-center gap-1 text-xs text-muted-foreground">
           <Calendar className="h-3 w-3" />
           Last updated: {new Date(episode.updatedAt).toLocaleString()}
         </p>

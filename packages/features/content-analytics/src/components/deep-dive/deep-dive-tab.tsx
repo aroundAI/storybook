@@ -571,7 +571,7 @@ function QueryState({
 
   if (isUnavailable(query)) {
     return (
-      <p className={'text-destructive text-sm'} data-test={dataTest}>
+      <p className={'text-sm text-destructive'} data-test={dataTest}>
         {message}
       </p>
     );
@@ -594,7 +594,7 @@ function YppProgressSection({
   if (!applies) {
     return (
       <p
-        className={'text-muted-foreground text-sm'}
+        className={'text-sm text-muted-foreground'}
         data-test={'ypp-not-applicable'}
       >
         Partner Programme progress applies to active YouTube channels.
@@ -608,7 +608,7 @@ function YppProgressSection({
 
   if (isError) {
     return (
-      <p className={'text-destructive text-sm'} data-test={'ypp-error'}>
+      <p className={'text-sm text-destructive'} data-test={'ypp-error'}>
         Partner Programme progress could not be loaded.
       </p>
     );
@@ -617,7 +617,7 @@ function YppProgressSection({
   if (progress.length === 0) {
     return (
       <p
-        className={'text-muted-foreground text-sm'}
+        className={'text-sm text-muted-foreground'}
         data-test={'ypp-no-channels'}
       >
         No active YouTube channel publishes in this project.

@@ -242,7 +242,7 @@ function Tiers({
     const isIncluded = tier.cost === 0;
 
     return (
-      <span className={'text-secondary-foreground text-xs'} key={index}>
+      <span className={'text-xs text-secondary-foreground'} key={index}>
         <span>-</span>{' '}
         <If condition={isLastTier}>
           <span className={'font-bold'}>

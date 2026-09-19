@@ -140,7 +140,7 @@ export function ThreadCandidatesSelector({
               {activeThreads.length}
             </Badge>
             {selectedCount > 0 && (
-              <Badge className="bg-primary/15 text-primary border-primary/25 ml-0.5 border px-1.5 py-0 text-[10px] font-semibold">
+              <Badge className="ml-0.5 border border-primary/25 bg-primary/15 px-1.5 py-0 text-[10px] font-semibold text-primary">
                 {selectedCount} selected
               </Badge>
             )}
@@ -154,7 +154,7 @@ export function ThreadCandidatesSelector({
           </Button>
         </div>
         {!isExpanded && (
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Select threads to progress or resolve in the next story
           </p>
         )}
@@ -211,7 +211,7 @@ export function ThreadCandidatesSelector({
 
                       {/* Description */}
                       {thread.description && (
-                        <p className="text-muted-foreground mt-1 line-clamp-2 text-xs leading-relaxed">
+                        <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                           {thread.description}
                         </p>
                       )}
@@ -219,18 +219,18 @@ export function ThreadCandidatesSelector({
                       {/* Promises */}
                       {thread.promises && thread.promises.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-1">
-                          <BookOpen className="text-muted-foreground mt-px h-3 w-3 shrink-0" />
+                          <BookOpen className="mt-px h-3 w-3 shrink-0 text-muted-foreground" />
                           {thread.promises.slice(0, 4).map((promise, idx) => (
                             <Badge
                               key={idx}
                               variant="outline"
-                              className="text-muted-foreground border-border/40 max-w-[180px] truncate px-1.5 py-0 text-[10px] font-normal"
+                              className="max-w-[180px] truncate border-border/40 px-1.5 py-0 text-[10px] font-normal text-muted-foreground"
                             >
                               {promise}
                             </Badge>
                           ))}
                           {thread.promises.length > 4 && (
-                            <span className="text-muted-foreground self-center text-[10px]">
+                            <span className="self-center text-[10px] text-muted-foreground">
                               +{thread.promises.length - 4} more
                             </span>
                           )}
@@ -240,7 +240,7 @@ export function ThreadCandidatesSelector({
                       {/* Action toggle – only when selected */}
                       {isSelected && (
                         <div className="mt-2.5 flex items-center gap-1">
-                          <span className="text-muted-foreground mr-1 text-[10px] tracking-wider uppercase">
+                          <span className="mr-1 text-[10px] tracking-wider text-muted-foreground uppercase">
                             Action:
                           </span>
                           <button

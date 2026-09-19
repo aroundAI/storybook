@@ -9,29 +9,34 @@
  */
 
 // Types
-export type { SignedUploadResult, StorageAdapter, UploadOptions, UploadResult } from './types';
+export type {
+  SignedUploadResult,
+  StorageAdapter,
+  UploadOptions,
+  UploadResult,
+} from './types';
 export type { StorageProvider } from './factory';
 export type { AssetType } from './routing';
 
 // Factory functions
 export {
-    getStorageAdapter,
-    getStorageAdapterForContentType,
-    getStorageAdapterForPath,
-    getStorageProvider,
-    isB2StorageEnabled,
-    isLocalStorageEnabled,
-    isR2StorageEnabled,
+  getStorageAdapter,
+  getStorageAdapterForContentType,
+  getStorageAdapterForPath,
+  getStorageProvider,
+  isB2StorageEnabled,
+  isLocalStorageEnabled,
+  isR2StorageEnabled,
 } from './factory';
 
 // Routing utilities
 export {
-    getAssetTypeFromContentType,
-    getAssetTypeFromPath,
-    getProviderForAssetType,
-    getProviderForContentType,
-    getProviderForPath,
-    isSmartRoutingEnabled,
+  getAssetTypeFromContentType,
+  getAssetTypeFromPath,
+  getProviderForAssetType,
+  getProviderForContentType,
+  getProviderForPath,
+  isSmartRoutingEnabled,
 } from './routing';
 
 // Adapters (for direct instantiation if needed)

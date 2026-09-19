@@ -130,7 +130,7 @@ export function GenerateAudioDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="text-primary h-5 w-5" />
+            <Sparkles className="h-5 w-5 text-primary" />
             Generate Audio
           </DialogTitle>
           <DialogDescription>
@@ -183,7 +183,7 @@ export function GenerateAudioDialog({
               onChange={(e) => setPrompt(e.target.value)}
               rows={3}
             />
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               Describe the {audioType === 'music' ? 'music' : 'sound'} you want
               to generate
             </p>
@@ -229,7 +229,7 @@ export function GenerateAudioDialog({
           <div className="space-y-2">
             <Label htmlFor="duration">
               Duration (seconds)
-              <span className="text-muted-foreground ml-1">
+              <span className="ml-1 text-muted-foreground">
                 {audioType === 'music' ? '(max 300)' : '(max 22)'}
               </span>
             </Label>
@@ -245,7 +245,7 @@ export function GenerateAudioDialog({
           </div>
 
           {/* Error */}
-          {error && <p className="text-destructive text-sm">{error}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
 
         <DialogFooter>

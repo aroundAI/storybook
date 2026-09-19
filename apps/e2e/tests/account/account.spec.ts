@@ -1,7 +1,7 @@
 import { Page, expect, test } from '@playwright/test';
 
+import { AuthPageObject } from '../authentication/auth.po';
 import { AccountPageObject } from './account.po';
-import {AuthPageObject} from "../authentication/auth.po";
 
 test.describe('Account Settings', () => {
   let page: Page;
@@ -68,6 +68,8 @@ test.describe('Account Deletion', () => {
     // fails whether or not the account was deleted, and proves nothing.
     await auth.signIn({ email, password });
 
-    await expect(page.locator('[data-test="auth-error-message"]')).toBeVisible();
+    await expect(
+      page.locator('[data-test="auth-error-message"]'),
+    ).toBeVisible();
   });
 });

@@ -51,7 +51,7 @@ export function CodeCard({
         </div>
       </CardHeader>
       <CardContent>
-        <pre className="bg-muted overflow-x-auto rounded-lg p-4 text-sm">
+        <pre className="overflow-x-auto rounded-lg bg-muted p-4 text-sm">
           <code>{code}</code>
         </pre>
       </CardContent>

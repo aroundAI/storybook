@@ -37,7 +37,7 @@ export function ImageUploadProgress({
   return (
     <div
       className={cn(
-        'border-primary/50 bg-primary/5 flex min-h-[200px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-6',
+        'flex min-h-[200px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 p-6',
         className,
       )}
       role="status"
@@ -49,13 +49,13 @@ export function ImageUploadProgress({
     >
       <div className="flex w-full max-w-xs flex-col items-center gap-3">
         <Loader2
-          className="text-primary h-8 w-8 animate-spin"
+          className="h-8 w-8 animate-spin text-primary"
           aria-hidden="true"
         />
 
         <div className="w-full space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-foreground font-medium">
+            <span className="font-medium text-foreground">
               {isValidating ? 'Validating...' : 'Uploading...'}
             </span>
             {isUploading && (
@@ -72,7 +72,7 @@ export function ImageUploadProgress({
                 className="h-2"
                 aria-label={`Upload progress: ${progress.percentage}%`}
               />
-              <p className="text-muted-foreground text-center text-xs">
+              <p className="text-center text-xs text-muted-foreground">
                 {formatFileSize(progress.loaded)} of{' '}
                 {formatFileSize(progress.total)}
               </p>

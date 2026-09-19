@@ -32,7 +32,7 @@ async function RevenueAnalyticsPage({ params }: PageProps) {
       <div className="container mx-auto py-8">
         <div className="text-center">
           <Heading level={2}>Account not found</Heading>
-          <p className="text-muted-foreground mt-2">
+          <p className="mt-2 text-muted-foreground">
             The requested account could not be found.
           </p>
         </div>

@@ -53,13 +53,13 @@ export function FormDialog() {
         <div className="space-y-3 py-2">
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Event title</label>
-            <div className="text-muted-foreground rounded-md border px-3 py-2 text-sm">
+            <div className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
               Mara discovers the ledger
             </div>
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Event type</label>
-            <div className="text-muted-foreground rounded-md border px-3 py-2 text-sm">
+            <div className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
               Reveal
             </div>
           </div>

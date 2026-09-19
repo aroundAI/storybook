@@ -229,7 +229,7 @@ export function ProjectPublishingConfigs({
                     <p className="truncate text-sm font-medium text-gray-900 dark:text-white">
                       {connection.platformAccountName ?? connection.platform}
                     </p>
-                    <p className="text-xs capitalize text-gray-500">
+                    <p className="text-xs text-gray-500 capitalize">
                       {connection.platform}
                     </p>
                   </div>

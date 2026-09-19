@@ -47,12 +47,12 @@ export function ProjectCard({ project, href }: ProjectCardProps) {
         data-test={`project-card-${project.id}`}
       >
         {/* Gradient overlay on hover */}
-        <div className="from-primary/5 absolute inset-0 bg-gradient-to-br to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 
         <CardHeader className="relative pb-2">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <CardTitle className="group-hover:text-primary truncate text-lg font-semibold transition-colors">
+              <CardTitle className="truncate text-lg font-semibold transition-colors group-hover:text-primary">
                 {project.name}
               </CardTitle>
               {project.description && (
@@ -68,14 +68,14 @@ export function ProjectCard({ project, href }: ProjectCardProps) {
                   <Trans i18nKey={`projects:role.${project.user_role}`} />
                 </Badge>
               )}
-              <ArrowRight className="text-muted-foreground h-4 w-4 opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
+              <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="relative pt-0">
           {/* Quick stats row */}
-          <div className="text-muted-foreground mb-3 flex items-center gap-4 text-xs">
+          <div className="mb-3 flex items-center gap-4 text-xs text-muted-foreground">
             {metadata.episode_count !== undefined && (
               <span className="flex items-center gap-1">
                 <Film className="h-3 w-3" />
@@ -99,7 +99,7 @@ export function ProjectCard({ project, href }: ProjectCardProps) {
           {/* Status and metadata row */}
           <div className="flex items-center justify-between">
             {metadata.genre && (
-              <span className="text-muted-foreground text-xs">
+              <span className="text-xs text-muted-foreground">
                 {metadata.genre}
               </span>
             )}

@@ -103,7 +103,7 @@ export function HookLabClient({ accountId, projectId }: HookLabClientProps) {
           ) : (
             <div className={'flex flex-col gap-4'}>
               {test.hypothesis ? (
-                <p className={'text-muted-foreground text-sm'}>
+                <p className={'text-sm text-muted-foreground'}>
                   {test.hypothesis}
                 </p>
               ) : null}

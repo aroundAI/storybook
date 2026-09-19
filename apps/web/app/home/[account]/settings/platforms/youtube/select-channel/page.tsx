@@ -50,7 +50,7 @@ export default async function SelectChannelPage({ params }: Props) {
       <div className="space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Select YouTube Channel</h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="mt-2 text-muted-foreground">
             Choose which channel you want to connect to your account
           </p>
         </div>

@@ -86,7 +86,7 @@ export function VideoPicker({
   if (isError) {
     return (
       <p
-        className={'text-muted-foreground text-sm'}
+        className={'text-sm text-muted-foreground'}
         data-test={'video-picker-error'}
       >
         Videos could not be loaded.
@@ -97,7 +97,7 @@ export function VideoPicker({
   if (videos.length === 0 && search.trim() === '' && value.length === 0) {
     return (
       <p
-        className={'text-muted-foreground text-sm'}
+        className={'text-sm text-muted-foreground'}
         data-test={'video-picker-empty'}
       >
         This account has no published videos to link yet.
@@ -159,7 +159,7 @@ export function VideoPicker({
           <CommandList>
             {rows.length === 0 ? (
               <p
-                className={'text-muted-foreground p-3 text-sm'}
+                className={'p-3 text-sm text-muted-foreground'}
                 data-test={'video-picker-no-match'}
               >
                 No video matches.
@@ -195,7 +195,7 @@ export function VideoPicker({
                     <span className={'flex-1 truncate'}>
                       {video.title ?? 'Untitled'}
                     </span>
-                    <span className={'text-muted-foreground ml-2 text-xs'}>
+                    <span className={'ml-2 text-xs text-muted-foreground'}>
                       {video.platform}
                       {video.publishedAt
                         ? ` · ${localDateOf(video.publishedAt)}`
@@ -210,7 +210,7 @@ export function VideoPicker({
 
         {hasMore ? (
           <p
-            className={'text-muted-foreground border-t p-2 text-xs'}
+            className={'border-t p-2 text-xs text-muted-foreground'}
             data-test={'video-picker-has-more'}
           >
             {search.trim()
@@ -220,7 +220,7 @@ export function VideoPicker({
         ) : null}
 
         {atCap ? (
-          <p className={'text-muted-foreground border-t p-2 text-xs'}>
+          <p className={'border-t p-2 text-xs text-muted-foreground'}>
             At most {max} videos can be linked to one experiment.
           </p>
         ) : null}

@@ -442,7 +442,7 @@ export const ClipBlock = memo(
           tabIndex={0}
         >
           {/* Left trim handle indicator */}
-          <div className="absolute left-0 top-0 h-full w-1 bg-white/0 transition-colors hover:bg-white/30" />
+          <div className="absolute top-0 left-0 h-full w-1 bg-white/0 transition-colors hover:bg-white/30" />
 
           {/* Thumbnail strip for video clips */}
           {showThumbnails && (
@@ -499,7 +499,7 @@ export const ClipBlock = memo(
 
           {/* Speed badge */}
           {clip.speed !== 1 && widthPx > 50 && (
-            <span className="absolute bottom-0.5 right-1 z-[1] rounded bg-black/60 px-1 py-px text-[8px] font-bold text-amber-300">
+            <span className="absolute right-1 bottom-0.5 z-[1] rounded bg-black/60 px-1 py-px text-[8px] font-bold text-amber-300">
               {clip.speed}×
             </span>
           )}
@@ -544,7 +544,7 @@ export const ClipBlock = memo(
           )}
 
           {/* Right trim handle indicator */}
-          <div className="absolute right-0 top-0 h-full w-1 bg-white/0 transition-colors hover:bg-white/30" />
+          <div className="absolute top-0 right-0 h-full w-1 bg-white/0 transition-colors hover:bg-white/30" />
         </div>
 
         {/* Snap indicator line */}

@@ -34,7 +34,7 @@ export function AccountDangerZone() {
           <Trans i18nKey={'account:deleteAccount'} />
         </span>
 
-        <p className={'text-muted-foreground text-sm'}>
+        <p className={'text-sm text-muted-foreground'}>
           <Trans i18nKey={'account:deleteAccountDescription'} />
         </p>
       </div>
@@ -113,7 +113,7 @@ function DeleteAccountForm(props: { email: string }) {
         <div className={'flex flex-col space-y-6'}>
           <div
             className={
-              'border-destructive text-destructive rounded-md border p-4 text-sm'
+              'rounded-md border border-destructive p-4 text-sm text-destructive'
             }
           >
             <div className={'flex flex-col space-y-2'}>

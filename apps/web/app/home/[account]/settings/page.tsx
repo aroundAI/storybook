@@ -87,7 +87,7 @@ async function TeamAccountSettingsPage(props: TeamAccountSettingsPageProps) {
             <h2 className="mb-2 text-xl font-semibold">
               <Trans i18nKey="teams:apiKeys.pageTitle" defaults="API Keys" />
             </h2>
-            <p className="text-muted-foreground mb-6 text-sm">
+            <p className="mb-6 text-sm text-muted-foreground">
               <Trans
                 i18nKey="teams:apiKeys.pageDescription"
                 defaults="Manage API keys for external services like ElevenLabs"

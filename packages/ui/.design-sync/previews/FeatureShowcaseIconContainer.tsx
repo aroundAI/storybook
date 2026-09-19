@@ -17,7 +17,7 @@ export function Default() {
               Your Virtual Writer&apos;s Room
             </b>
             .{' '}
-            <span className="text-muted-foreground font-normal tracking-tighter">
+            <span className="font-normal tracking-tighter text-muted-foreground">
               Everything you need to showrun your next hit series.
             </span>
           </>

@@ -35,10 +35,10 @@ export function Default() {
               <li>
                 <NavigationMenuLink
                   href="/docs"
-                  className="hover:bg-accent block rounded-md p-2 text-sm"
+                  className="block rounded-md p-2 text-sm hover:bg-accent"
                 >
                   <div className="font-medium">Documentation</div>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     Guides for the episode generation pipeline.
                   </p>
                 </NavigationMenuLink>
@@ -46,10 +46,10 @@ export function Default() {
               <li>
                 <NavigationMenuLink
                   href="/changelog"
-                  className="hover:bg-accent block rounded-md p-2 text-sm"
+                  className="block rounded-md p-2 text-sm hover:bg-accent"
                 >
                   <div className="font-medium">Changelog</div>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     See what shipped in the latest release.
                   </p>
                 </NavigationMenuLink>

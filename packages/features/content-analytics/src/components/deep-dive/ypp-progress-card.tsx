@@ -91,7 +91,7 @@ export function YppProgressCard({
   // progress toward it would be reporting on a race it has finished.
   if (progress.alreadyJoined) {
     return (
-      <p className={'text-muted-foreground text-sm'} data-test={'ypp-joined'}>
+      <p className={'text-sm text-muted-foreground'} data-test={'ypp-joined'}>
         In the Partner Programme
         {progress.joinedYppAt ? ` since ${progress.joinedYppAt}` : ''}.
       </p>
@@ -121,7 +121,7 @@ export function YppProgressCard({
         basis={progress.subscribersBasis}
       />
 
-      <p className={'text-muted-foreground text-xs'}>
+      <p className={'text-xs text-muted-foreground'}>
         {bothMet
           ? `Both thresholds met over the trailing ${progress.windowDays} days.`
           : `Trailing ${progress.windowDays} days, channel-wide.`}
@@ -156,7 +156,7 @@ function SubscriberLevelRow({ progress }: { progress: YppChannelProgress }) {
             Unavailable
           </span>
         </div>
-        <p className={'text-muted-foreground text-xs'}>{reason}</p>
+        <p className={'text-xs text-muted-foreground'}>{reason}</p>
       </div>
     );
   }
@@ -179,7 +179,7 @@ function SubscriberLevelRow({ progress }: { progress: YppChannelProgress }) {
           {progress.subscribers.toLocaleString()}
         </span>
       </div>
-      <p className={'text-muted-foreground text-xs'}>
+      <p className={'text-xs text-muted-foreground'}>
         {asOf
           ? outdated
             ? `No newer data since ${formatSubscriberDay(asOf)}`

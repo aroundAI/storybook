@@ -81,12 +81,12 @@ export function FactVerificationDialog({
         <div className="space-y-4 py-2">
           <div>
             <Label className="text-sm font-medium">Claim</Label>
-            <p className="text-muted-foreground mt-1 text-sm">{fact.claim}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{fact.claim}</p>
           </div>
 
           <div>
             <Label className="text-sm font-medium">Source Citation</Label>
-            <p className="text-muted-foreground mt-1 text-sm">
+            <p className="mt-1 text-sm text-muted-foreground">
               {fact.sourceCitation ?? 'None provided'}
             </p>
             {fact.sourceUrl && (

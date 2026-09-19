@@ -199,7 +199,7 @@ function PricingItem(
           <div className={'flex items-center space-x-6'}>
             <b
               className={
-                'text-secondary-foreground font-heading text-xl font-medium tracking-tight'
+                'font-heading text-xl font-medium tracking-tight text-secondary-foreground'
               }
             >
               <Trans
@@ -233,7 +233,7 @@ function PricingItem(
           <If condition={props.plan.name}>
             <span
               className={cn(
-                `animate-in slide-in-from-left-4 fade-in text-muted-foreground flex items-center gap-x-1 text-xs capitalize`,
+                `flex items-center gap-x-1 text-xs text-muted-foreground capitalize animate-in fade-in slide-in-from-left-4`,
               )}
             >
               <span>
@@ -252,7 +252,7 @@ function PricingItem(
 
                 <span
                   className={cn(
-                    `animate-in slide-in-from-left-4 fade-in text-sm capitalize`,
+                    `text-sm capitalize animate-in fade-in slide-in-from-left-4`,
                   )}
                 >
                   <If condition={lineItem?.type === 'per_seat'}>
@@ -296,7 +296,7 @@ function PricingItem(
           </If>
         </If>
 
-        <span className={cn(`text-muted-foreground text-base tracking-tight`)}>
+        <span className={cn(`text-base tracking-tight text-muted-foreground`)}>
           <Trans
             i18nKey={props.product.description}
             defaults={props.product.description}
@@ -361,18 +361,18 @@ function Price({
 }>) {
   return (
     <div
-      className={`animate-in slide-in-from-left-4 fade-in flex items-end gap-1 duration-500`}
+      className={`flex items-end gap-1 duration-500 animate-in fade-in slide-in-from-left-4`}
     >
       <span
         className={
-          'font-heading flex items-center text-4xl font-medium tracking-tighter'
+          'flex items-center font-heading text-4xl font-medium tracking-tighter'
         }
       >
         {children}
       </span>
 
       <If condition={isMonthlyPrice && displayBillingPeriod}>
-        <span className={'text-muted-foreground text-sm leading-loose'}>
+        <span className={'text-sm leading-loose text-muted-foreground'}>
           <span>/</span>
 
           <Trans i18nKey={'billing:perMonth'} />
@@ -422,10 +422,10 @@ function PlanIntervalSwitcher(
         const selected = plan === props.interval;
 
         const className = cn(
-          'animate-in fade-in !outline-hidden rounded-full transition-all focus:!ring-0',
+          'rounded-full !outline-hidden transition-all animate-in fade-in focus:!ring-0',
           {
             'border-r-transparent': index === 0,
-            ['hover:text-primary text-muted-foreground']: !selected,
+            ['text-muted-foreground hover:text-primary']: !selected,
             ['cursor-default font-semibold']: selected,
             ['hover:bg-initial']: !selected,
           },
@@ -441,7 +441,7 @@ function PlanIntervalSwitcher(
           >
             <span className={'flex items-center'}>
               <CheckCircle
-                className={cn('animate-in fade-in zoom-in-95 h-3.5', {
+                className={cn('h-3.5 animate-in fade-in zoom-in-95', {
                   hidden: !selected,
                   'slide-in-from-left-4': index === 0,
                   'slide-in-from-right-4': index === props.intervals.length - 1,

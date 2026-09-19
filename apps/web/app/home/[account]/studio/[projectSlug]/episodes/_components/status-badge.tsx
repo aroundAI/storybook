@@ -156,7 +156,7 @@ export function StageIndicator({
   return (
     <div className={cn('flex items-center gap-1.5', className)}>
       <StatusDot status={status} size="sm" />
-      <span className="text-muted-foreground text-xs">{stage}</span>
+      <span className="text-xs text-muted-foreground">{stage}</span>
     </div>
   );
 }

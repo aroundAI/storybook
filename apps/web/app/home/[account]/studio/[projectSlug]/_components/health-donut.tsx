@@ -12,7 +12,7 @@ export function HealthDonut({
   overallPercent,
 }: HealthDonutProps) {
   return (
-    <div className="border-border bg-card flex flex-col justify-between rounded-2xl border p-6 shadow-sm">
+    <div className="flex flex-col justify-between rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="mb-4 flex items-start justify-between">
         <div className="flex items-center gap-2">
           <svg
@@ -28,7 +28,7 @@ export function HealthDonut({
               d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
             />
           </svg>
-          <h2 className="text-foreground font-semibold">Health</h2>
+          <h2 className="font-semibold text-foreground">Health</h2>
         </div>
         <button className="text-muted-foreground hover:text-foreground">
           <svg
@@ -59,11 +59,11 @@ export function HealthDonut({
             )`,
           }}
         >
-          <div className="bg-card z-10 flex h-24 w-24 flex-col items-center justify-center rounded-full shadow-sm">
-            <span className="text-foreground text-2xl font-bold">
+          <div className="z-10 flex h-24 w-24 flex-col items-center justify-center rounded-full bg-card shadow-sm">
+            <span className="text-2xl font-bold text-foreground">
               {overallPercent}%
             </span>
-            <span className="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+            <span className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
               Complete
             </span>
           </div>
@@ -76,14 +76,14 @@ export function HealthDonut({
             <span className="h-2 w-2 rounded-full bg-yellow-500" />
             <span className="text-muted-foreground">Scripting</span>
           </div>
-          <span className="text-foreground font-medium">{scriptPercent}%</span>
+          <span className="font-medium text-foreground">{scriptPercent}%</span>
         </div>
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-purple-500" />
             <span className="text-muted-foreground">Storyboards</span>
           </div>
-          <span className="text-foreground font-medium">
+          <span className="font-medium text-foreground">
             {storyboardPercent}%
           </span>
         </div>
@@ -92,7 +92,7 @@ export function HealthDonut({
             <span className="h-2 w-2 rounded-full bg-blue-500" />
             <span className="text-muted-foreground">Animation</span>
           </div>
-          <span className="text-foreground font-medium">{visualPercent}%</span>
+          <span className="font-medium text-foreground">{visualPercent}%</span>
         </div>
       </div>
     </div>

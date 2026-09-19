@@ -77,7 +77,7 @@ export function TagPicker({
                 </Badge>
               ))}
               {selectedTags.length > 2 ? (
-                <span className={'text-muted-foreground text-xs'}>
+                <span className={'text-xs text-muted-foreground'}>
                   +{selectedTags.length - 2}
                 </span>
               ) : null}
@@ -91,7 +91,7 @@ export function TagPicker({
       <PopoverContent className={'w-64 p-0'} align={'start'}>
         <ScrollArea className={'max-h-72'}>
           {tags.length === 0 ? (
-            <p className={'text-muted-foreground p-4 text-sm'}>
+            <p className={'p-4 text-sm text-muted-foreground'}>
               No tags defined yet.
             </p>
           ) : (
@@ -100,7 +100,7 @@ export function TagPicker({
                 <div key={dimension} className={'flex flex-col gap-1'}>
                   <p
                     className={
-                      'text-muted-foreground px-1 text-xs font-medium uppercase'
+                      'px-1 text-xs font-medium text-muted-foreground uppercase'
                     }
                   >
                     {DIMENSION_LABELS[dimension] ?? dimension}
@@ -112,7 +112,7 @@ export function TagPicker({
                       type={'button'}
                       onClick={() => toggle(tag.id)}
                       className={cn(
-                        'hover:bg-accent flex items-center justify-between rounded-sm px-2 py-1.5 text-sm',
+                        'flex items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-accent',
                         selected.has(tag.id) && 'font-medium',
                       )}
                     >

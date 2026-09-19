@@ -167,7 +167,7 @@ export function LinkFactsDialog({
         <div className="space-y-4">
           {/* Search */}
           <div className="relative">
-            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search facts..."
               value={search}
@@ -183,7 +183,7 @@ export function LinkFactsDialog({
                 <Loader2 className="h-5 w-5 animate-spin" />
               </div>
             ) : availableFacts.length === 0 ? (
-              <div className="text-muted-foreground py-6 text-center text-sm">
+              <div className="py-6 text-center text-sm text-muted-foreground">
                 {search
                   ? 'No matching facts found'
                   : 'No facts available. Add facts in the Research Hub first.'}
@@ -192,7 +192,7 @@ export function LinkFactsDialog({
               availableFacts.map((fact) => (
                 <label
                   key={fact.id}
-                  className="hover:bg-muted flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors"
+                  className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-muted"
                 >
                   <Checkbox
                     checked={selectedIds.has(fact.id)}
@@ -205,7 +205,7 @@ export function LinkFactsDialog({
                     </p>
                     <div className="mt-1 flex items-center gap-2">
                       {fact.source_citation && (
-                        <span className="text-muted-foreground truncate text-xs">
+                        <span className="truncate text-xs text-muted-foreground">
                           {fact.source_citation}
                         </span>
                       )}

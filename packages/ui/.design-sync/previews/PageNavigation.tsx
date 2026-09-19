@@ -21,7 +21,7 @@ export function Default() {
   ];
 
   return (
-    <div className="bg-background h-[420px] overflow-hidden rounded-lg border">
+    <div className="h-[420px] overflow-hidden rounded-lg border bg-background">
       <SidebarProvider>
         <Page>
           <PageNavigation>
@@ -29,7 +29,7 @@ export function Default() {
               {navItems.map(({ label, icon: Icon }) => (
                 <div
                   key={label}
-                  className="text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2 rounded-md px-2 py-1.5 text-sm"
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   <Icon className="h-4 w-4" />
                   {label}
@@ -45,7 +45,7 @@ export function Default() {
           <PageBody>
             <div className="p-6">
               <h2 className="text-lg font-semibold">Episode 4: Static</h2>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-muted-foreground">
                 Visual Studio · 12 shots generated
               </p>
             </div>

@@ -443,7 +443,7 @@ export function ScheduleReleasePanel({
     return (
       <Card className="border-dashed">
         <CardContent className="py-8">
-          <div className="text-muted-foreground flex flex-col items-center text-center">
+          <div className="flex flex-col items-center text-center text-muted-foreground">
             <AlertCircle className="mb-2 h-8 w-8" />
             <p className="font-medium">No videos to schedule</p>
             <p className="text-sm">
@@ -500,10 +500,10 @@ export function ScheduleReleasePanel({
           <div className="space-y-2">
             <Label>Start Time</Label>
             <div className="flex items-center gap-2">
-              <Clock className="text-muted-foreground h-4 w-4" />
+              <Clock className="h-4 w-4 text-muted-foreground" />
               <TimePicker value={time} onChange={setTime} minTime={minTime} />
             </div>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               🌐 Times shown in your local timezone (
               {timezoneShort || userTimezone})
             </p>
@@ -517,7 +517,7 @@ export function ScheduleReleasePanel({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <AlertCircle className="text-muted-foreground h-4 w-4" />
+                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p>
@@ -539,7 +539,7 @@ export function ScheduleReleasePanel({
               }
               className="w-24"
             />
-            <span className="text-muted-foreground text-sm">minutes</span>
+            <span className="text-sm text-muted-foreground">minutes</span>
             {staggerMinutes === 0 && (
               <span className="text-xs text-amber-500">
                 ⚠️ Simultaneous upload may trigger spam detection
@@ -550,13 +550,13 @@ export function ScheduleReleasePanel({
 
         {/* Summary */}
         {date && (
-          <div className="bg-muted/50 rounded-lg p-4">
+          <div className="rounded-lg bg-muted/50 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">
                   {totalVideos} video{totalVideos !== 1 ? 's' : ''} scheduled
                 </p>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   {format(schedulePreview[0]?.scheduledAt ?? date, 'PPp')} →{' '}
                   {format(
                     schedulePreview[schedulePreview.length - 1]?.scheduledAt ??
@@ -597,28 +597,28 @@ export function ScheduleReleasePanel({
                   return (
                     <div
                       key={`${item.type}-${item.groupId ?? ''}-${item.language}`}
-                      className="bg-background flex items-center justify-between rounded-md px-3 py-2"
+                      className="flex items-center justify-between rounded-md bg-background px-3 py-2"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-muted-foreground w-6 text-xs">
+                        <span className="w-6 text-xs text-muted-foreground">
                           {index + 1}.
                         </span>
                         {item.type === 'full' ? (
-                          <Film className="text-primary h-4 w-4" />
+                          <Film className="h-4 w-4 text-primary" />
                         ) : (
                           <Smartphone className="h-4 w-4 text-pink-500" />
                         )}
                         <span className="text-lg">{langInfo.flag}</span>
                         <div>
                           <span className="font-medium">{langInfo.name}</span>
-                          <span className="text-muted-foreground ml-2 text-xs">
+                          <span className="ml-2 text-xs text-muted-foreground">
                             {item.type === 'full'
                               ? 'Full Video'
                               : `Short: ${item.groupName}`}
                           </span>
                         </div>
                       </div>
-                      <span className="text-muted-foreground text-sm">
+                      <span className="text-sm text-muted-foreground">
                         {format(item.scheduledAt, 'h:mm a')}
                       </span>
                     </div>
@@ -631,7 +631,7 @@ export function ScheduleReleasePanel({
 
         {/* Confirmation Panel - Step 2 */}
         {showConfirmation && (
-          <div className="bg-muted/50 rounded-lg p-4">
+          <div className="rounded-lg bg-muted/50 p-4">
             <div className="mb-4 flex items-center gap-2">
               <Languages className="h-5 w-5" />
               <h4 className="font-medium">Translation Status</h4>
@@ -648,7 +648,7 @@ export function ScheduleReleasePanel({
             ) : (
               <div className="mb-4 space-y-2">
                 {itemsToTranslate.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-sm text-muted-foreground">
                     Only English videos - no translation needed.
                   </p>
                 ) : (
@@ -659,21 +659,21 @@ export function ScheduleReleasePanel({
                     return (
                       <div
                         key={item.id}
-                        className="bg-background flex items-center gap-3 rounded-md p-3"
+                        className="flex items-center gap-3 rounded-md bg-background p-3"
                       >
                         <span className="text-lg">{langInfo.flag}</span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-medium">
                             {translated?.title || baseMetadata.title}
                           </p>
-                          <p className="text-muted-foreground text-xs">
+                          <p className="text-xs text-muted-foreground">
                             {item.label} · {langInfo.name}
                           </p>
                         </div>
                         {isReady ? (
                           <Check className="h-4 w-4 text-green-500" />
                         ) : (
-                          <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                         )}
                       </div>
                     );

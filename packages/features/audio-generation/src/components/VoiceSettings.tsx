@@ -72,7 +72,7 @@ export function VoiceSettingsPanel({
           <Label className="text-sm" htmlFor="stability-slider">
             Stability
           </Label>
-          <span className="text-muted-foreground text-sm">
+          <span className="text-sm text-muted-foreground">
             {(settings.stability ?? DEFAULT_VOICE_SETTINGS.stability).toFixed(
               2,
             )}
@@ -92,7 +92,7 @@ export function VoiceSettingsPanel({
           aria-valuenow={settings.stability ?? DEFAULT_VOICE_SETTINGS.stability}
           data-test="stability-slider"
         />
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           {SETTING_DESCRIPTIONS.stability}
         </p>
       </div>
@@ -103,7 +103,7 @@ export function VoiceSettingsPanel({
           <Label className="text-sm" htmlFor="similarity-slider">
             Similarity Boost
           </Label>
-          <span className="text-muted-foreground text-sm">
+          <span className="text-sm text-muted-foreground">
             {(
               settings.similarityBoost ?? DEFAULT_VOICE_SETTINGS.similarityBoost
             ).toFixed(2)}
@@ -127,7 +127,7 @@ export function VoiceSettingsPanel({
           }
           data-test="similarity-slider"
         />
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           {SETTING_DESCRIPTIONS.similarityBoost}
         </p>
       </div>
@@ -138,7 +138,7 @@ export function VoiceSettingsPanel({
           <Label className="text-sm" htmlFor="style-slider">
             Style
           </Label>
-          <span className="text-muted-foreground text-sm">
+          <span className="text-sm text-muted-foreground">
             {(settings.style ?? DEFAULT_VOICE_SETTINGS.style).toFixed(2)}
           </span>
         </div>
@@ -156,7 +156,7 @@ export function VoiceSettingsPanel({
           aria-valuenow={settings.style ?? DEFAULT_VOICE_SETTINGS.style}
           data-test="style-slider"
         />
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           {SETTING_DESCRIPTIONS.style}
         </p>
       </div>
@@ -167,7 +167,7 @@ export function VoiceSettingsPanel({
           <Label className="text-sm" htmlFor="speed-slider">
             Speed
           </Label>
-          <span className="text-muted-foreground text-sm">
+          <span className="text-sm text-muted-foreground">
             {(settings.speed ?? DEFAULT_VOICE_SETTINGS.speed).toFixed(2)}x
           </span>
         </div>
@@ -185,7 +185,7 @@ export function VoiceSettingsPanel({
           aria-valuenow={settings.speed ?? DEFAULT_VOICE_SETTINGS.speed}
           data-test="speed-slider"
         />
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           {SETTING_DESCRIPTIONS.speed}
         </p>
       </div>

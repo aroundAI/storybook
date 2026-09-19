@@ -132,7 +132,7 @@ export function ContentTable({
 
   if (!data || data.length === 0) {
     return (
-      <div className="text-muted-foreground py-8 text-center">
+      <div className="py-8 text-center text-muted-foreground">
         No content published yet.
       </div>
     );
@@ -233,13 +233,13 @@ export function ContentTable({
                       />
                     </div>
                   ) : (
-                    <div className="bg-muted h-10 w-16 rounded" />
+                    <div className="h-10 w-16 rounded bg-muted" />
                   )}
                   <div className="min-w-0">
                     <div className="truncate font-medium">
                       {item.publishTitle}
                     </div>
-                    <div className="text-muted-foreground truncate text-sm">
+                    <div className="truncate text-sm text-muted-foreground">
                       {item.episodeTitle}
                     </div>
                   </div>

@@ -219,7 +219,7 @@ export function ManualRevenueForm({
                         publishes.map((publish) => (
                           <SelectItem key={publish.id} value={publish.id}>
                             <span className="flex items-center gap-2">
-                              <span className="text-muted-foreground text-xs capitalize">
+                              <span className="text-xs text-muted-foreground capitalize">
                                 [{publish.platform}]
                               </span>
                               {publish.title}
@@ -313,7 +313,7 @@ export function ManualRevenueForm({
                     <FormLabel>Amount (USD)</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <span className="text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2">
+                        <span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">
                           $
                         </span>
                         {/*

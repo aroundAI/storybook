@@ -18,11 +18,11 @@ export function SiteFooter() {
             <div className="group relative overflow-hidden rounded-xl border border-slate-200/50 bg-white/80 p-6 backdrop-blur-sm dark:border-white/[0.08] dark:bg-white/[0.03] dark:backdrop-blur-md">
               {/* Animated gradient orbs */}
               <div
-                className="animate-glow absolute -top-16 -left-16 h-32 w-32 rounded-full bg-gradient-to-br from-violet-400/20 to-purple-300/20 blur-3xl dark:from-violet-400/10 dark:to-purple-400/10"
+                className="absolute -top-16 -left-16 h-32 w-32 animate-glow rounded-full bg-gradient-to-br from-violet-400/20 to-purple-300/20 blur-3xl dark:from-violet-400/10 dark:to-purple-400/10"
                 style={{ animationDelay: '0s' }}
               />
               <div
-                className="animate-glow absolute -right-16 -bottom-16 h-36 w-36 rounded-full bg-gradient-to-br from-indigo-400/20 to-blue-300/20 blur-3xl dark:from-indigo-400/10 dark:to-blue-400/10"
+                className="absolute -right-16 -bottom-16 h-36 w-36 animate-glow rounded-full bg-gradient-to-br from-indigo-400/20 to-blue-300/20 blur-3xl dark:from-indigo-400/10 dark:to-blue-400/10"
                 style={{ animationDelay: '1.5s' }}
               />
 
@@ -82,7 +82,7 @@ export function SiteFooter() {
             href="https://youtube.com/@storybook"
             target="_blank"
             rel="noopener noreferrer"
-            className="group text-muted-foreground relative transition-all hover:text-red-600 dark:hover:text-red-400"
+            className="group relative text-muted-foreground transition-all hover:text-red-600 dark:hover:text-red-400"
             aria-label="Subscribe to our YouTube channel"
           >
             <Youtube className="h-5 w-5 transition-transform group-hover:scale-110" />
@@ -92,7 +92,7 @@ export function SiteFooter() {
             href="https://x.com/storybook"
             target="_blank"
             rel="noopener noreferrer"
-            className="group text-muted-foreground relative transition-all hover:text-sky-600 dark:hover:text-sky-400"
+            className="group relative text-muted-foreground transition-all hover:text-sky-600 dark:hover:text-sky-400"
             aria-label="Follow us on X (Twitter)"
           >
             <Twitter className="h-5 w-5 transition-transform group-hover:scale-110" />

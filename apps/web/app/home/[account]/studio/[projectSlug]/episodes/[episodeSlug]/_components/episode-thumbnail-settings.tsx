@@ -112,7 +112,7 @@ export function EpisodeThumbnailSettings({
           <CardDescription>Loading thumbnails...</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </CardContent>
       </Card>
     );
@@ -148,8 +148,8 @@ export function EpisodeThumbnailSettings({
       <CardContent>
         {thumbnails.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <ImageIcon className="text-muted-foreground mb-4 h-12 w-12" />
-            <p className="text-muted-foreground text-sm">
+            <ImageIcon className="mb-4 h-12 w-12 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
               No thumbnails uploaded yet. Click &quot;Add Thumbnail&quot; to
               upload your first one.
             </p>
@@ -254,7 +254,7 @@ function ThumbnailCard({
   return (
     <div className="group relative overflow-hidden rounded-lg border">
       {/* Thumbnail Preview */}
-      <div className="bg-muted aspect-video w-full overflow-hidden">
+      <div className="aspect-video w-full overflow-hidden bg-muted">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={thumbnail.thumbnailUrl}
@@ -265,7 +265,7 @@ function ThumbnailCard({
 
       {/* Default Badge */}
       {thumbnail.isDefault && (
-        <div className="bg-primary text-primary-foreground absolute top-2 left-2 flex items-center gap-1 rounded px-2 py-1 text-xs font-medium">
+        <div className="absolute top-2 left-2 flex items-center gap-1 rounded bg-primary px-2 py-1 text-xs font-medium text-primary-foreground">
           <Star className="h-3 w-3" />
           Default
         </div>
@@ -330,11 +330,11 @@ function ThumbnailCard({
       <div className="p-3">
         <h4 className="font-medium">
           {thumbnail.languageLabel || thumbnail.language}
-          <span className="text-muted-foreground ml-2 text-xs">
+          <span className="ml-2 text-xs text-muted-foreground">
             ({thumbnail.language})
           </span>
         </h4>
-        <div className="text-muted-foreground mt-1 flex flex-wrap gap-2 text-xs">
+        <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
           {thumbnail.width && thumbnail.height && (
             <span>
               {thumbnail.width}×{thumbnail.height}
@@ -522,7 +522,7 @@ function AddThumbnailDialog({
               disabled={isReplacing}
               maxLength={10}
             />
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               Use ISO 639-1 codes (en, hi, es) or custom codes
             </p>
           </div>
@@ -551,7 +551,7 @@ function AddThumbnailDialog({
               onChange={handleFileChange}
               disabled={isUploading}
             />
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               Recommended: 1280×720 (16:9). Max 5MB. PNG/JPG/WebP.
             </p>
           </div>
@@ -560,7 +560,7 @@ function AddThumbnailDialog({
           {previewUrl && (
             <div className="space-y-2">
               <Label>Preview</Label>
-              <div className="bg-muted relative aspect-video overflow-hidden rounded-lg border">
+              <div className="relative aspect-video overflow-hidden rounded-lg border bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={previewUrl}
@@ -569,7 +569,7 @@ function AddThumbnailDialog({
                 />
               </div>
               {imageDimensions && (
-                <p className="text-muted-foreground text-xs">
+                <p className="text-xs text-muted-foreground">
                   {imageDimensions.width}×{imageDimensions.height} •{' '}
                   {(selectedFile!.size / 1024).toFixed(1)} KB
                 </p>
@@ -580,13 +580,13 @@ function AddThumbnailDialog({
           {/* Upload Progress */}
           {isUploading && (
             <div className="space-y-2">
-              <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                 <div
-                  className="bg-primary h-full transition-all duration-300"
+                  className="h-full bg-primary transition-all duration-300"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
-              <p className="text-muted-foreground text-center text-xs">
+              <p className="text-center text-xs text-muted-foreground">
                 Uploading... {uploadProgress}%
               </p>
             </div>

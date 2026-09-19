@@ -15,7 +15,7 @@ import {
 // behavior is to return the key itself, which is exactly the label text here.
 export function Default() {
   return (
-    <div className="bg-background flex h-14 items-center border-b px-6">
+    <div className="flex h-14 items-center border-b bg-background px-6">
       <BorderedNavigationMenu>
         <BorderedNavigationMenuItem
           path="/home/midnight-frequency"

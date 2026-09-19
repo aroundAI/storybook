@@ -208,9 +208,9 @@ test.describe('Deep Dive subscribers (FILM-1617)', () => {
 
     const ypp = deepDive.yppCards().first();
 
-    await expect(
-      ypp.locator('[data-test="ypp-subscribers-value"]'),
-    ).toHaveText('Unavailable');
+    await expect(ypp.locator('[data-test="ypp-subscribers-value"]')).toHaveText(
+      'Unavailable',
+    );
 
     // The net figure stays, under a label that says it is movement.
     await expect(ypp).toContainText('Net subscriber movement (365 days)');

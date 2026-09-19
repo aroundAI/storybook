@@ -2,9 +2,8 @@ import { expect, test } from '@playwright/test';
 
 import { AuthPageObject } from '../authentication/auth.po';
 import { InvitationsPageObject } from '../invitations/invitations.po';
-import { TeamAccountsPageObject } from './team-accounts.po';
 import { SUPER_ADMIN } from '../utils/super-admin';
-
+import { TeamAccountsPageObject } from './team-accounts.po';
 
 test.describe('Team Invitation with MFA Flow', () => {
   test('complete flow: test@storybook.dev creates team, invites super-admin@storybook.dev who accepts after MFA', async ({

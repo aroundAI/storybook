@@ -87,7 +87,7 @@ export function StepperStory() {
       />
 
       {controls.variant === 'numbers' && (
-        <div className="text-muted-foreground text-center text-sm">
+        <div className="text-center text-sm text-muted-foreground">
           Step {controls.currentStep + 1} of {steps.length}:{' '}
           {steps[controls.currentStep]}
         </div>
@@ -195,7 +195,7 @@ export function StepperStory() {
           />
 
           <div className="space-y-2 text-center">
-            <div className="text-muted-foreground text-sm">
+            <div className="text-sm text-muted-foreground">
               Step {interactiveStep + 1} of 5:{' '}
               {
                 ['Account', 'Profile', 'Settings', 'Review', 'Done'][
@@ -277,12 +277,12 @@ export function StepperStory() {
         <div className="space-y-6">
           <div>
             <h4 className="mb-3 text-lg font-semibold">Stepper</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               A step indicator component for multi-step processes with various
               visual styles.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -363,14 +363,14 @@ export function StepperStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Default (Progress Bar)</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Best for linear progress indication with clear visual completion.
               Good for forms and simple workflows.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Numbers</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Ideal for complex multi-step processes where step labels are
               important. Shows clear progression and allows easy reference to
               specific steps.
@@ -378,7 +378,7 @@ export function StepperStory() {
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Dots</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Perfect for compact spaces and when step sequence is more
               important than labels. Great for onboarding screens and quick
               setup flows.
@@ -395,28 +395,28 @@ export function StepperStory() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Clear Labels</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Use concise, descriptive labels that clearly indicate what each
               step contains.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Optimal Step Count</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Keep steps between 3-7 for optimal user comprehension. Break down
               complex flows.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Progress Indication</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Show completion status and allow users to understand their
               position in the flow.
             </p>
           </div>
           <div className="space-y-2">
             <h4 className="text-sm font-semibold">Navigation Support</h4>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Consider allowing backward navigation to previously completed
               steps.
             </p>

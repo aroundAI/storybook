@@ -73,10 +73,10 @@ export function ShortsSection({
           shortsGroups.map((group, groupIndex) => (
             <div
               key={group.id}
-              className="border-border overflow-hidden rounded-lg border"
+              className="overflow-hidden rounded-lg border border-border"
             >
               {/* Group Header */}
-              <div className="border-border border-b bg-gradient-to-r from-pink-50 to-purple-50 p-3 dark:from-pink-900/20 dark:to-purple-900/20">
+              <div className="border-b border-border bg-gradient-to-r from-pink-50 to-purple-50 p-3 dark:from-pink-900/20 dark:to-purple-900/20">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-pink-600 dark:text-pink-400">
@@ -132,7 +132,7 @@ export function ShortsSection({
                         description: e.target.value,
                       })
                     }
-                    className="border-border bg-card min-h-[60px] w-full rounded-md border p-2 text-sm"
+                    className="min-h-[60px] w-full rounded-md border border-border bg-card p-2 text-sm"
                     placeholder="Description for this group (will be translated per language)"
                   />
                 </div>
@@ -146,7 +146,7 @@ export function ShortsSection({
                       url && (
                         <div
                           key={lang}
-                          className="border-border group/video relative overflow-hidden rounded-lg border"
+                          className="group/video relative overflow-hidden rounded-lg border border-border"
                         >
                           <video
                             src={url}

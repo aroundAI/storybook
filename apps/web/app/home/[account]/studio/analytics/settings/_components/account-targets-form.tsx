@@ -159,7 +159,7 @@ export function AccountTargetsForm({
               </Button>
 
               <span
-                className={'text-muted-foreground text-xs'}
+                className={'text-xs text-muted-foreground'}
                 data-test={'account-targets-saved'}
               >
                 {describeSaved(saved)}

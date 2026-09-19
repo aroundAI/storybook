@@ -35,7 +35,7 @@ async function HookLabPage({ params }: PageProps) {
     <div className={'container mx-auto flex flex-col gap-6 py-8'}>
       <div className={'flex flex-col gap-1'}>
         <Heading level={2}>Hook Lab</Heading>
-        <p className={'text-muted-foreground text-sm'}>
+        <p className={'text-sm text-muted-foreground'}>
           Compare openings for the same topic on how many viewers are still
           watching at three seconds. A variant wins by clearing the threshold,
           not merely by beating its siblings.

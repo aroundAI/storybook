@@ -25,7 +25,7 @@ export function VoiceSettings({ settings, onChange }: VoiceSettingsProps) {
       <div className="space-y-2">
         <div className="flex justify-between">
           <Label>Stability</Label>
-          <span className="text-muted-foreground text-sm">
+          <span className="text-sm text-muted-foreground">
             {Math.round(settings.stability * 100)}%
           </span>
         </div>
@@ -38,7 +38,7 @@ export function VoiceSettings({ settings, onChange }: VoiceSettingsProps) {
           max={1}
           step={0.01}
         />
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           Higher values make the voice more consistent but less expressive
         </p>
       </div>
@@ -47,7 +47,7 @@ export function VoiceSettings({ settings, onChange }: VoiceSettingsProps) {
       <div className="space-y-2">
         <div className="flex justify-between">
           <Label>Similarity Boost</Label>
-          <span className="text-muted-foreground text-sm">
+          <span className="text-sm text-muted-foreground">
             {Math.round(settings.similarityBoost * 100)}%
           </span>
         </div>
@@ -60,7 +60,7 @@ export function VoiceSettings({ settings, onChange }: VoiceSettingsProps) {
           max={1}
           step={0.01}
         />
-        <p className="text-muted-foreground text-xs">
+        <p className="text-xs text-muted-foreground">
           Higher values make the voice closer to the original
         </p>
       </div>
@@ -70,7 +70,7 @@ export function VoiceSettings({ settings, onChange }: VoiceSettingsProps) {
         <div className="space-y-2">
           <div className="flex justify-between">
             <Label>Style Exaggeration</Label>
-            <span className="text-muted-foreground text-sm">
+            <span className="text-sm text-muted-foreground">
               {Math.round((settings.style ?? 0) * 100)}%
             </span>
           </div>
@@ -83,7 +83,7 @@ export function VoiceSettings({ settings, onChange }: VoiceSettingsProps) {
             max={1}
             step={0.01}
           />
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Amplifies the style of the voice (requires ElevenLabs Pro)
           </p>
         </div>
@@ -93,7 +93,7 @@ export function VoiceSettings({ settings, onChange }: VoiceSettingsProps) {
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
           <Label>Speaker Boost</Label>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Enhance voice clarity and quality
           </p>
         </div>

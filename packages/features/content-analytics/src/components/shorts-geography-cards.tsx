@@ -94,7 +94,7 @@ export function TopShortsCard({ data, isLoading }: TopShortsCardProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             No shorts data available. Publish shorts to see which clips perform
             best.
           </p>
@@ -114,14 +114,14 @@ export function TopShortsCard({ data, isLoading }: TopShortsCardProps) {
       <CardContent className="space-y-3">
         {data.slice(0, 5).map((short, index) => (
           <div key={short.publishId} className="flex items-center gap-3">
-            <div className="bg-muted text-muted-foreground flex h-10 w-10 items-center justify-center rounded-lg font-bold">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted font-bold text-muted-foreground">
               #{index + 1}
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium">
                 {short.publishTitle}
               </div>
-              <div className="text-muted-foreground flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 {short.sourceEpisodeTitle && (
                   <>
                     <Film className="h-3 w-3" />
@@ -139,7 +139,7 @@ export function TopShortsCard({ data, isLoading }: TopShortsCardProps) {
                   {getLanguageFlag(short.language)}
                 </span>
               </div>
-              <div className="text-muted-foreground text-xs">
+              <div className="text-xs text-muted-foreground">
                 {short.engagement.toFixed(1)}% eng
               </div>
             </div>
@@ -213,7 +213,7 @@ export function LanguageGeographyCard({ data, isLoading }: GeographyCardProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             No geographic data available yet.
           </p>
         </CardContent>
@@ -241,7 +241,7 @@ export function LanguageGeographyCard({ data, isLoading }: GeographyCardProps) {
             <div className="space-y-2">
               {langData.countries.slice(0, 5).map((country) => (
                 <div key={country.country} className="flex items-center gap-2">
-                  <MapPin className="text-muted-foreground h-3 w-3" />
+                  <MapPin className="h-3 w-3 text-muted-foreground" />
                   <span className="flex-1 truncate text-sm">
                     {country.country}
                   </span>

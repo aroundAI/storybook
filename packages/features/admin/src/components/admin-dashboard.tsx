@@ -82,7 +82,7 @@ export async function AdminDashboard() {
       </Card>
 
       <div>
-        <p className={'text-muted-foreground w-max text-xs'}>
+        <p className={'w-max text-xs text-muted-foreground'}>
           The above data is estimated and may not be 100% accurate.
         </p>
       </div>

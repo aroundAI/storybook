@@ -268,7 +268,7 @@ export function VoiceProfileEditor({
             />
           )}
           {form.formState.errors.voiceId && (
-            <p className="text-destructive text-sm">
+            <p className="text-sm text-destructive">
               {form.formState.errors.voiceId.message}
             </p>
           )}

@@ -121,7 +121,7 @@ export function CharacterVoiceSelector({
                     <div className="flex items-center gap-2">
                       <span>{voice.name}</span>
                       {voice.isCloned && (
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-xs text-muted-foreground">
                           (cloned)
                         </span>
                       )}

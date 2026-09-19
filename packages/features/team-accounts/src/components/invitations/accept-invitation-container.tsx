@@ -51,7 +51,7 @@ export function AcceptInvitationContainer(props: {
         )}
       </If>
 
-      <div className={'text-muted-foreground text-center text-sm'}>
+      <div className={'text-center text-sm text-muted-foreground'}>
         <Trans
           i18nKey={'teams:acceptInvitationDescription'}
           values={{
@@ -84,7 +84,7 @@ export function AcceptInvitationContainer(props: {
 
         <SignOutInvitationButton nextPath={props.paths.signOutNext} />
 
-        <span className={'text-muted-foreground text-center text-xs'}>
+        <span className={'text-center text-xs text-muted-foreground'}>
           <Trans i18nKey={'teams:signInWithDifferentAccountDescription'} />
         </span>
       </div>

@@ -278,7 +278,7 @@ function FactorsListContainer({
   const verifiedFactors = factors?.totp ?? [];
 
   return (
-    <div className={'animate-in fade-in flex flex-col space-y-4 duration-500'}>
+    <div className={'flex flex-col space-y-4 duration-500 animate-in fade-in'}>
       <div>
         <span className={'font-medium'}>
           <Trans i18nKey={'account:selectFactor'} />

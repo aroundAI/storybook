@@ -292,11 +292,11 @@ export function BadgeStory() {
         <div className="space-y-6">
           <div>
             <h4 className="mb-3 text-lg font-semibold">Badge</h4>
-            <p className="text-muted-foreground mb-3 text-sm">
+            <p className="mb-3 text-sm text-muted-foreground">
               A small labeled status indicator or category tag.
             </p>
             <div className="overflow-x-auto">
-              <table className="border-border w-full border-collapse border">
+              <table className="w-full border-collapse border border-border">
                 <thead>
                   <tr className="border-b">
                     <th className="p-3 text-left font-medium">Prop</th>
@@ -380,7 +380,7 @@ export function BadgeStory() {
                 <Badge>Default</Badge>
                 <h4 className="text-sm font-semibold">Primary</h4>
               </div>
-              <p className="text-muted-foreground ml-16 text-sm">
+              <p className="ml-16 text-sm text-muted-foreground">
                 Important status, featured items, primary categories
               </p>
             </div>
@@ -389,7 +389,7 @@ export function BadgeStory() {
                 <Badge variant="secondary">Secondary</Badge>
                 <h4 className="text-sm font-semibold">Secondary</h4>
               </div>
-              <p className="text-muted-foreground ml-16 text-sm">
+              <p className="ml-16 text-sm text-muted-foreground">
                 Supporting information, metadata, less prominent labels
               </p>
             </div>
@@ -398,7 +398,7 @@ export function BadgeStory() {
                 <Badge variant="outline">Outline</Badge>
                 <h4 className="text-sm font-semibold">Neutral</h4>
               </div>
-              <p className="text-muted-foreground ml-16 text-sm">
+              <p className="ml-16 text-sm text-muted-foreground">
                 Subtle labels, optional information, inactive states
               </p>
             </div>
@@ -407,7 +407,7 @@ export function BadgeStory() {
                 <Badge variant="destructive">Destructive</Badge>
                 <h4 className="text-sm font-semibold">Critical</h4>
               </div>
-              <p className="text-muted-foreground ml-16 text-sm">
+              <p className="ml-16 text-sm text-muted-foreground">
                 Errors, warnings, urgent status, deprecated items
               </p>
             </div>

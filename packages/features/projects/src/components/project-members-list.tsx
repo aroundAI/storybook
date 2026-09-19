@@ -15,7 +15,7 @@ export async function ProjectMembersList({
 
   if (members.length === 0) {
     return (
-      <div className="text-muted-foreground py-8 text-center">
+      <div className="py-8 text-center text-muted-foreground">
         <Trans i18nKey="projects:noMembers" />
       </div>
     );
@@ -47,7 +47,7 @@ export async function ProjectMembersList({
                 {member.user.name || member.user.email}
               </div>
               {member.user.name && member.user.email && (
-                <div className="text-muted-foreground text-sm">
+                <div className="text-sm text-muted-foreground">
                   {member.user.email}
                 </div>
               )}

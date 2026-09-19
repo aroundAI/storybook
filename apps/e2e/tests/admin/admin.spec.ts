@@ -10,7 +10,6 @@ import {
 } from '../utils/seed';
 import { SUPER_ADMIN_STORAGE_STATE } from '../utils/super-admin';
 
-
 test.describe('Admin Auth flow without MFA', () => {
   test('will return a 404 for non-admin users', async ({ page }) => {
     const auth = new AuthPageObject(page);

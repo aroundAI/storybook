@@ -164,7 +164,7 @@ export function UploadAudioDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Upload className="text-primary h-5 w-5" />
+            <Upload className="h-5 w-5 text-primary" />
             Upload Audio
           </DialogTitle>
           <DialogDescription>
@@ -218,7 +218,7 @@ export function UploadAudioDialog({
                 <FileAudio className="h-8 w-8 text-green-600" />
                 <div className="text-left">
                   <p className="text-sm font-medium">{file.name}</p>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     {(file.size / 1024 / 1024).toFixed(2)} MB
                   </p>
                 </div>
@@ -236,11 +236,11 @@ export function UploadAudioDialog({
               </div>
             ) : (
               <>
-                <Upload className="text-muted-foreground mb-2 h-8 w-8" />
+                <Upload className="mb-2 h-8 w-8 text-muted-foreground" />
                 <p className="text-sm font-medium">
                   Drop audio file here or click to browse
                 </p>
-                <p className="text-muted-foreground text-xs">
+                <p className="text-xs text-muted-foreground">
                   MP3, WAV, M4A • Max 50MB
                 </p>
               </>
@@ -261,7 +261,7 @@ export function UploadAudioDialog({
           </div>
 
           {/* Error */}
-          {error && <p className="text-destructive text-sm">{error}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
 
         <DialogFooter>

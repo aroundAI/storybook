@@ -38,7 +38,7 @@ export function VoiceSelector({
     <div className="space-y-4">
       {/* Search */}
       <div className="relative">
-        <Search className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+        <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="text"
           placeholder="Search voices..."
@@ -61,7 +61,7 @@ export function VoiceSelector({
       </div>
 
       {filteredVoices.length === 0 && (
-        <div className="text-muted-foreground py-8 text-center">
+        <div className="py-8 text-center text-muted-foreground">
           No voices found matching &quot;{searchQuery}&quot;
         </div>
       )}

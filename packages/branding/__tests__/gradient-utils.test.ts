@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
+
 import {
+  type GlowConfig,
+  type GradientConfig,
   applyGradientPreset,
   buildGlowShadow,
   buildGradientString,
   getAvailableGradientPresets,
   getGradientPresetDescription,
-  type GlowConfig,
-  type GradientConfig,
   isValidGradientConfig,
 } from '../src/utils/gradient';
 
@@ -55,7 +56,9 @@ describe('Gradient Utilities', () => {
         ],
       };
       const result = buildGradientString(config);
-      expect(result).toBe('linear-gradient(to right, #FF0000 0%, #0000FF 100%)');
+      expect(result).toBe(
+        'linear-gradient(to right, #FF0000 0%, #0000FF 100%)',
+      );
     });
 
     it('should build gradient with multiple color stops', () => {
@@ -217,7 +220,14 @@ describe('Gradient Utilities', () => {
     });
 
     it('should apply all available presets', () => {
-      const presets = ['sunset', 'ocean', 'neon', 'forest', 'fire', 'purple-blue'] as const;
+      const presets = [
+        'sunset',
+        'ocean',
+        'neon',
+        'forest',
+        'fire',
+        'purple-blue',
+      ] as const;
 
       presets.forEach((preset) => {
         const result = applyGradientPreset(preset);
@@ -312,7 +322,14 @@ describe('Gradient Utilities', () => {
 
   describe('getGradientPresetDescription', () => {
     it('should return description for valid presets', () => {
-      const presets = ['sunset', 'ocean', 'neon', 'forest', 'fire', 'purple-blue'] as const;
+      const presets = [
+        'sunset',
+        'ocean',
+        'neon',
+        'forest',
+        'fire',
+        'purple-blue',
+      ] as const;
 
       presets.forEach((preset) => {
         const description = getGradientPresetDescription(preset);
@@ -338,7 +355,14 @@ describe('Gradient Utilities', () => {
 
     it('should include all expected presets', () => {
       const presets = getAvailableGradientPresets();
-      const expected = ['sunset', 'ocean', 'neon', 'forest', 'fire', 'purple-blue'];
+      const expected = [
+        'sunset',
+        'ocean',
+        'neon',
+        'forest',
+        'fire',
+        'purple-blue',
+      ];
       expected.forEach((preset) => {
         expect(presets).toContain(preset);
       });
@@ -375,8 +399,12 @@ describe('Gradient Utilities', () => {
     });
 
     it('should generate different gradients for different presets', () => {
-      const sunset = buildGradientString(applyGradientPreset('sunset') as GradientConfig);
-      const ocean = buildGradientString(applyGradientPreset('ocean') as GradientConfig);
+      const sunset = buildGradientString(
+        applyGradientPreset('sunset') as GradientConfig,
+      );
+      const ocean = buildGradientString(
+        applyGradientPreset('ocean') as GradientConfig,
+      );
       expect(sunset).not.toBe(ocean);
     });
   });

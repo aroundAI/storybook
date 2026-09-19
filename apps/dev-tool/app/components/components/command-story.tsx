@@ -102,7 +102,7 @@ const examples = [
             <CardTitle className="text-base">Command Palette</CardTitle>
             <CardDescription>
               Press{' '}
-              <kbd className="bg-muted text-muted-foreground pointer-events-none inline-flex h-5 items-center gap-1 rounded border px-1.5 font-mono text-[10px] font-medium opacity-100 select-none">
+              <kbd className="pointer-events-none inline-flex h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100 select-none">
                 <span className="text-xs">⌘</span>K
               </kbd>{' '}
               to open the command palette
@@ -234,7 +234,7 @@ const examples = [
             </Command>
 
             {selectedItem && (
-              <div className="bg-muted mt-4 rounded-md p-3">
+              <div className="mt-4 rounded-md bg-muted p-3">
                 <p className="text-sm">
                   <strong>Selected:</strong> {selectedItem}
                 </p>
@@ -346,7 +346,7 @@ const examples = [
                           </Avatar>
                           <div
                             className={cn(
-                              'border-background absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2',
+                              'absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-background',
                               getStatusColor(member.status),
                             )}
                           />
@@ -355,7 +355,7 @@ const examples = [
                           <p className="truncate text-sm font-medium">
                             {member.name}
                           </p>
-                          <p className="text-muted-foreground truncate text-xs">
+                          <p className="truncate text-xs text-muted-foreground">
                             {member.role}
                           </p>
                         </div>
@@ -375,7 +375,7 @@ const examples = [
             </Command>
 
             {selectedMember && (
-              <div className="bg-muted mt-4 rounded-md p-3">
+              <div className="mt-4 rounded-md bg-muted p-3">
                 <p className="text-sm">
                   <strong>Selected member:</strong> {selectedMember}
                 </p>
@@ -485,7 +485,7 @@ const examples = [
             </Command>
 
             {lastAction && (
-              <div className="bg-muted mt-4 rounded-md p-3">
+              <div className="mt-4 rounded-md bg-muted p-3">
                 <p className="text-sm">
                   <strong>Action executed:</strong> {lastAction}
                 </p>
@@ -578,11 +578,11 @@ const examples = [
                             <p className="text-sm font-medium">
                               {contact.name}
                             </p>
-                            <div className="text-muted-foreground flex items-center gap-1 text-xs">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Phone className="h-3 w-3" />
                               <span>{contact.phone}</span>
                             </div>
-                            <div className="text-muted-foreground flex items-center gap-1 text-xs">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
                               <AtSign className="h-3 w-3" />
                               <span>{contact.email}</span>
                             </div>
@@ -614,7 +614,7 @@ const examples = [
             </Command>
 
             {selectedContact && (
-              <div className="bg-muted mt-4 rounded-md p-3">
+              <div className="mt-4 rounded-md bg-muted p-3">
                 <p className="text-sm">
                   <strong>Selected contact:</strong> {selectedContact}
                 </p>
@@ -984,7 +984,7 @@ export default function CommandStory() {
           {examples.map((example, index) => (
             <div key={index}>
               <h3 className="mb-4 text-lg font-semibold">{example.title}</h3>
-              <p className="text-muted-foreground mb-4 text-sm">
+              <p className="mb-4 text-sm text-muted-foreground">
                 {example.description}
               </p>
               <div className="flex justify-center">
@@ -998,7 +998,7 @@ export default function CommandStory() {
         <div className="space-y-8">
           <div>
             <h3 className="mb-4 text-lg font-semibold">{apiReference.title}</h3>
-            <p className="text-muted-foreground mb-6 text-sm">
+            <p className="mb-6 text-sm text-muted-foreground">
               {apiReference.description}
             </p>
 
@@ -1014,7 +1014,7 @@ export default function CommandStory() {
                 </thead>
                 <tbody className="text-sm">
                   {apiReference.props.map((prop, index) => (
-                    <tr key={index} className="border-border/50 border-b">
+                    <tr key={index} className="border-b border-border/50">
                       <td className="p-2 font-mono">{prop.name}</td>
                       <td className="p-2 font-mono">{prop.type}</td>
                       <td className="p-2">{(prop as any).default || '-'}</td>
@@ -1031,7 +1031,7 @@ export default function CommandStory() {
             {apiReference.examples.map((example, index) => (
               <div key={index}>
                 <h4 className="mb-2 text-base font-medium">{example.title}</h4>
-                <div className="bg-muted/50 rounded-lg p-4">
+                <div className="rounded-lg bg-muted/50 p-4">
                   <pre className="overflow-x-auto text-sm">
                     <code>{example.code}</code>
                   </pre>
@@ -1047,7 +1047,7 @@ export default function CommandStory() {
             <h3 className="mb-4 text-lg font-semibold">
               {usageGuidelines.title}
             </h3>
-            <p className="text-muted-foreground mb-6 text-sm">
+            <p className="mb-6 text-sm text-muted-foreground">
               {usageGuidelines.description}
             </p>
           </div>

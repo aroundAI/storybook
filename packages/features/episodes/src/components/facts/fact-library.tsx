@@ -140,7 +140,7 @@ export function FactLibrary({
       {/* Search and Filters */}
       <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search facts..."
             value={searchQuery}
@@ -191,13 +191,13 @@ export function FactLibrary({
       </form>
 
       {/* Results count */}
-      <p className="text-muted-foreground text-sm">
+      <p className="text-sm text-muted-foreground">
         {total} fact{total !== 1 ? 's' : ''} found
       </p>
 
       {/* Fact List */}
       {facts.length === 0 ? (
-        <div className="text-muted-foreground py-12 text-center">
+        <div className="py-12 text-center text-muted-foreground">
           <p className="mb-2 text-lg">No facts yet</p>
           <p className="text-sm">
             Add verified facts to build your documentary&apos;s knowledge base.

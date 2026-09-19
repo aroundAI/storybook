@@ -116,7 +116,7 @@ export function NotificationsPopover(params: {
 
           <span
             className={cn(
-              `fade-in animate-in zoom-in absolute right-1 top-1 mt-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[0.65rem] text-white`,
+              `absolute top-1 right-1 mt-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[0.65rem] text-white animate-in fade-in zoom-in`,
               {
                 hidden: !notifications.length,
               },
@@ -166,7 +166,7 @@ export function NotificationsPopover(params: {
                 case 'warning':
                   return <TriangleAlert className={'h-4 text-yellow-500'} />;
                 case 'error':
-                  return <CircleAlert className={'text-destructive h-4'} />;
+                  return <CircleAlert className={'h-4 text-destructive'} />;
                 default:
                   return <Info className={'h-4 text-blue-500'} />;
               }
@@ -176,7 +176,7 @@ export function NotificationsPopover(params: {
               <div
                 key={notification.id.toString()}
                 className={cn(
-                  'min-h-18 flex flex-col items-start justify-center gap-y-1 px-3 py-2',
+                  'flex min-h-18 flex-col items-start justify-center gap-y-1 px-3 py-2',
                 )}
                 onClick={() => {
                   if (params.onClick) {
@@ -203,7 +203,7 @@ export function NotificationsPopover(params: {
                         </If>
                       </div>
 
-                      <span className={'text-muted-foreground text-xs'}>
+                      <span className={'text-xs text-muted-foreground'}>
                         {timeAgo(notification.created_at)}
                       </span>
                     </div>

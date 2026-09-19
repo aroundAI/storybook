@@ -102,7 +102,7 @@ function NavItem({
         'flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm transition-colors',
         'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
         isActive
-          ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+          ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
           : 'text-sidebar-foreground',
         isCollapsed && 'justify-center',
       )}
@@ -126,7 +126,7 @@ function NavItem({
         <TooltipContent side="right" className="flex items-center gap-2">
           {label}
           {count !== undefined && (
-            <span className="text-muted-foreground text-xs">({count})</span>
+            <span className="text-xs text-muted-foreground">({count})</span>
           )}
         </TooltipContent>
       </Tooltip>
@@ -145,7 +145,7 @@ function SectionHeader({
 }) {
   if (isCollapsed) return null;
   return (
-    <h3 className="text-muted-foreground mb-1 px-2 text-xs font-medium">
+    <h3 className="mb-1 px-2 text-xs font-medium text-muted-foreground">
       {children}
     </h3>
   );
@@ -204,7 +204,7 @@ export function StudioSidebar({
     <TooltipProvider>
       <aside
         className={cn(
-          'bg-sidebar flex h-screen shrink-0 flex-col border-r transition-all duration-300',
+          'flex h-screen shrink-0 flex-col border-r bg-sidebar transition-all duration-300',
           isCollapsed ? 'w-[60px]' : 'w-[225px]',
         )}
       >
@@ -216,7 +216,7 @@ export function StudioSidebar({
               <TooltipTrigger asChild>
                 <Link
                   href={`/home/${account}/studio`}
-                  className="hover:bg-sidebar-accent flex items-center justify-center rounded-md p-2 transition-colors"
+                  className="flex items-center justify-center rounded-md p-2 transition-colors hover:bg-sidebar-accent"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Link>
@@ -227,7 +227,7 @@ export function StudioSidebar({
             <div className="px-1 pt-2 pb-1">
               <Link
                 href={`/home/${account}/studio`}
-                className="text-sidebar-foreground hover:text-sidebar-accent-foreground flex items-center text-sm transition-colors"
+                className="flex items-center text-sm text-sidebar-foreground transition-colors hover:text-sidebar-accent-foreground"
               >
                 <ArrowLeft className="mr-1 h-4 w-4" />
                 Projects
@@ -244,9 +244,9 @@ export function StudioSidebar({
                   onOpenChange={setIsProjectSwitcherOpen}
                 >
                   <DropdownMenuTrigger asChild>
-                    <button className="hover:bg-sidebar-accent flex items-center justify-center rounded-md p-2 transition-colors">
-                      <div className="bg-muted flex h-8 w-8 items-center justify-center rounded-md">
-                        <FolderOpen className="text-muted-foreground h-4 w-4" />
+                    <button className="flex items-center justify-center rounded-md p-2 transition-colors hover:bg-sidebar-accent">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
+                        <FolderOpen className="h-4 w-4 text-muted-foreground" />
                       </div>
                     </button>
                   </DropdownMenuTrigger>
@@ -259,7 +259,7 @@ export function StudioSidebar({
                     {/* Search */}
                     <div className="p-2">
                       <div className="relative">
-                        <Search className="text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2" />
+                        <Search className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                           placeholder="Search projects..."
                           value={search}
@@ -287,15 +287,15 @@ export function StudioSidebar({
                                 : 'cursor-pointer'
                             }
                           >
-                            <FolderOpen className="text-muted-foreground mr-2 h-4 w-4" />
+                            <FolderOpen className="mr-2 h-4 w-4 text-muted-foreground" />
                             <span className="flex-1 truncate">{p.name}</span>
                             {p.id === project.id && (
-                              <Check className="text-primary ml-2 h-4 w-4" />
+                              <Check className="ml-2 h-4 w-4 text-primary" />
                             )}
                           </DropdownMenuItem>
                         ))
                       ) : (
-                        <div className="text-muted-foreground px-2 py-4 text-center text-sm">
+                        <div className="px-2 py-4 text-center text-sm text-muted-foreground">
                           {search ? 'No projects found' : 'No projects'}
                         </div>
                       )}
@@ -307,7 +307,7 @@ export function StudioSidebar({
                     <DropdownMenuItem asChild>
                       <Link
                         href={`/home/${account}/studio`}
-                        className="text-primary flex items-center justify-center font-medium"
+                        className="flex items-center justify-center font-medium text-primary"
                       >
                         View All Projects
                       </Link>
@@ -323,23 +323,23 @@ export function StudioSidebar({
               onOpenChange={setIsProjectSwitcherOpen}
             >
               <DropdownMenuTrigger asChild>
-                <button className="group hover:bg-sidebar-accent flex w-full items-center justify-between rounded-md p-2 transition-colors">
+                <button className="group flex w-full items-center justify-between rounded-md p-2 transition-colors hover:bg-sidebar-accent">
                   <div className="flex items-center gap-2">
-                    <div className="bg-muted flex h-8 w-8 items-center justify-center rounded-md">
-                      <FolderOpen className="text-muted-foreground h-4 w-4" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
+                      <FolderOpen className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div className="text-left">
-                      <h2 className="text-sidebar-foreground max-w-[120px] truncate text-sm leading-tight font-semibold">
+                      <h2 className="max-w-[120px] truncate text-sm leading-tight font-semibold text-sidebar-foreground">
                         {project.name}
                       </h2>
-                      <p className="text-muted-foreground text-xs">
+                      <p className="text-xs text-muted-foreground">
                         Switch Project
                       </p>
                     </div>
                   </div>
                   <ChevronDown
                     className={cn(
-                      'text-muted-foreground h-4 w-4 shrink-0 transition-transform',
+                      'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
                       isProjectSwitcherOpen && 'rotate-180',
                     )}
                   />
@@ -354,7 +354,7 @@ export function StudioSidebar({
                 {/* Search */}
                 <div className="p-2">
                   <div className="relative">
-                    <Search className="text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2" />
+                    <Search className="absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       placeholder="Search projects..."
                       value={search}
@@ -380,15 +380,15 @@ export function StudioSidebar({
                           p.id === project.id ? 'bg-muted' : 'cursor-pointer'
                         }
                       >
-                        <FolderOpen className="text-muted-foreground mr-2 h-4 w-4" />
+                        <FolderOpen className="mr-2 h-4 w-4 text-muted-foreground" />
                         <span className="flex-1 truncate">{p.name}</span>
                         {p.id === project.id && (
-                          <Check className="text-primary ml-2 h-4 w-4" />
+                          <Check className="ml-2 h-4 w-4 text-primary" />
                         )}
                       </DropdownMenuItem>
                     ))
                   ) : (
-                    <div className="text-muted-foreground px-2 py-4 text-center text-sm">
+                    <div className="px-2 py-4 text-center text-sm text-muted-foreground">
                       {search ? 'No projects found' : 'No projects'}
                     </div>
                   )}
@@ -400,7 +400,7 @@ export function StudioSidebar({
                 <DropdownMenuItem asChild>
                   <Link
                     href={`/home/${account}/studio`}
-                    className="text-primary flex items-center justify-center font-medium"
+                    className="flex items-center justify-center font-medium text-primary"
                   >
                     View All Projects
                   </Link>
@@ -536,7 +536,7 @@ export function StudioSidebar({
             <TooltipTrigger asChild>
               <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="hover:bg-sidebar-accent text-muted-foreground hover:text-sidebar-accent-foreground flex items-center justify-center rounded-md p-2 transition-colors"
+                className="flex items-center justify-center rounded-md p-2 text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
               >
                 {isCollapsed ? (

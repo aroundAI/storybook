@@ -18,7 +18,7 @@ const BreadcrumbList: React.FC<React.ComponentPropsWithRef<'ol'>> = ({
 }) => (
   <ol
     className={cn(
-      'text-muted-foreground flex flex-wrap items-center gap-1.5 text-sm break-words',
+      'flex flex-wrap items-center gap-1.5 text-sm break-words text-muted-foreground',
       className,
     )}
     {...props}
@@ -64,7 +64,7 @@ const BreadcrumbPage: React.FC<React.ComponentPropsWithoutRef<'span'>> = ({
     role="link"
     aria-disabled="true"
     aria-current="page"
-    className={cn('text-foreground font-normal', className)}
+    className={cn('font-normal text-foreground', className)}
     {...props}
   />
 );
