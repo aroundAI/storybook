@@ -309,13 +309,14 @@ graph TD
 | FILM-110 | [project-extension](./phase-1-foundation/packages/FILM-110-project-extension.md) | ✅ DONE | M | FILM-104 |
 | FILM-111 | [project-templates](./phase-1-foundation/packages/FILM-111-project-templates.md) | ✅ DONE | M | FILM-110 |
 
-### Cross-Cutting Concerns (3 specs)
+### Cross-Cutting Concerns (4 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
 | FILM-CC-01 | [file-upload-validation](./cross-cutting/FILM-CC-01-file-upload-validation.md) | ✅ DONE | M | - |
 | FILM-CC-02 | [webhook-security](./cross-cutting/FILM-CC-02-webhook-security.md) | ✅ DONE | M | - |
 | FILM-CC-03 | [oauth-token-refresh](./cross-cutting/FILM-CC-03-oauth-token-refresh.md) | ✅ DONE | M | - |
+| FILM-CC-04 | [known-bugs](./cross-cutting/FILM-CC-04-known-bugs.md) | OPEN | M | - |
 
 ### Design System (5 specs)
 
