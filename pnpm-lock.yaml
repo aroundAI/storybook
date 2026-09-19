@@ -2826,6 +2826,9 @@ importers:
       '@kit/tsconfig':
         specifier: workspace:*
         version: link:../typescript
+      '@types/node':
+        specifier: ^24.5.0
+        version: 24.5.0
       typescript:
         specifier: ^5.9.2
         version: 5.9.2

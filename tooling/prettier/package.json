@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "@kit/tsconfig": "workspace:*",
+    "@types/node": "^24.5.0",
     "typescript": "^5.9.2"
   },
   "prettier": "./index.mjs"
