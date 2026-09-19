@@ -33,7 +33,9 @@ cd apps/web && npx next dev --turbo -p 3100
 
 In CI, E2E entries run in the `🧬 E2E guards & evidence` job, which runs a
 dev server (a production build cannot recompile after a mutation) against a
-real ClickHouse, next to the happy-flow evidence specs.
+real ClickHouse, next to the happy-flow evidence specs. It runs as three
+parallel shards (`--shard 1/3` … `3/3`): the E2E guards together outgrew a
+45-minute job.
 
 ## What each outcome means
 
