@@ -25,7 +25,8 @@ Nothing in the product does this today.
   Reviewed 2026-09-20: it cannot be used (no way to create a test), reads
   retention at the wrong place in the video, and can read another
   account's data ([FILM-CC-04](../cross-cutting/FILM-CC-04-known-bugs.md)
-  KB-9, KB-10). Hook tests move here (§6).
+  KB-9, KB-10). It was removed, code and tables. Hook tests are designed
+  here (§6), from scratch.
 - **Self-benchmarking (FILM-1715)** compares a video with the channel's own
   history at a comparable age. That is exactly the comparison a style needs,
   but it answers "how did this video do?", not "which of my styles does
@@ -152,8 +153,8 @@ in a busy month is not flattered by the calendar:
 ## 9. Before building
 
 1. ~~Review Hook Lab (FILM-1510).~~ Done 2026-09-20 (FILM-CC-04 KB-9,
-   KB-10): folded into this spec as hook tests (§6). Its cross-tenant read
-   (KB-9) is fixed separately, before this spec.
+   KB-10), and Hook Lab removed. Hook tests are designed here (§6); its
+   missing same-account check is a requirement here (§3).
 2. **Settle the verdict threshold and the band method** with FILM-1715,
    which owns them.
 
