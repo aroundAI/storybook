@@ -274,6 +274,14 @@ jobs:
     # E2E mutation guards. Separate from ⚫️ Test because both need a dev
     # server: a guard changes a source file and needs the server to recompile
     # it, which a production build cannot do.
+    #
+    # Sharded: each E2E guard runs its spec twice (real code, then mutated),
+    # with retries, and one job over all of them outgrew 45 minutes. Shard 1
+    # also runs the evidence specs.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     timeout-minutes: 45
     runs-on: ubuntu-latest
     if: ${{ vars.ENABLE_E2E_JOB == 'true' }}
@@ -393,12 +401,13 @@ jobs:
       # values, reset forms, saved rows — so a regression fails the build,
       # and the screenshots are uploaded for review.
       - name: Happy-flow evidence specs
+        if: matrix.shard == 1
         working-directory: apps/e2e
         run: npx playwright test evidence --project=chromium --workers=1 --retries=2
 
       - name: Upload evidence screenshots
         uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && matrix.shard == 1
         with:
           name: evidence-screenshots
           path: evidence/
@@ -408,13 +417,13 @@ jobs:
       # requires its spec to fail; the unit and database guards run in their
       # own jobs.
       - name: Mutation guards - e2e
-        run: python3 tooling/mutation-guards/run.py --kind e2e
+        run: python3 tooling/mutation-guards/run.py --kind e2e --shard ${{ matrix.shard }}/3
 
       - name: Upload server log
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: e2e-guards-next-dev-log
+          name: e2e-guards-next-dev-log-${{ matrix.shard }}
           path: ${{ runner.temp }}/next-dev.log
           retention-days: 7
 

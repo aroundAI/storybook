@@ -215,6 +215,9 @@ def main():
     parser.add_argument('--only', action='append',
                         help='run only entries whose name contains this')
     parser.add_argument('--self-test', action='store_true')
+    parser.add_argument('--shard', metavar='I/N',
+                        help='run every Nth selected entry, starting at I (1-based), '
+                             'so parallel CI jobs split the E2E guards')
     args = parser.parse_args()
 
     base_env = dict(os.environ)
@@ -238,6 +241,13 @@ def main():
         if (not args.kind or entry['kind'] in args.kind)
         and (not args.only or any(o in entry['name'] for o in args.only))
     ]
+
+    if args.shard:
+        index, count = (int(part) for part in args.shard.split('/'))
+        if not 1 <= index <= count:
+            print(f'--shard {args.shard}: I must be between 1 and N')
+            return 1
+        entries = entries[index - 1::count]
 
     if not entries:
         print('No mutation guards selected.')
