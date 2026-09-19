@@ -28,7 +28,8 @@ create table if not exists public.analytics_experiments (
   notes text,
   connection_id uuid,
   review_due_at date generated always as (started_at + review_window_days) stored,
-  created_by uuid references auth.users(id),
+  -- on delete set null: migration 20260919061806; the experiment outlives its author.
+  created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (outcome_status in ('pending', 'confirmed', 'rejected', 'inconclusive')),
@@ -261,3 +262,23 @@ $$;
 create trigger analytics_experiments_set_creator
   before insert on public.analytics_experiments
   for each row execute function public.set_experiment_creator();
+
+-- The creator cannot be rewritten (migration 20260919061806).
+create or replace function public.keep_experiment_creator()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if pg_trigger_depth() > 1 then
+    return new;
+  end if;
+
+  new.created_by = old.created_by;
+  return new;
+end;
+$$;
+
+create trigger analytics_experiments_keep_creator
+  before update of created_by on public.analytics_experiments
+  for each row execute function public.keep_experiment_creator();

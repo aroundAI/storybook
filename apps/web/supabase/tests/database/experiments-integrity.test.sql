@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(19);
+select plan(22);
 
 -- FILM-1610 review, round 2. What the table itself guarantees, so none of it
 -- depends on a request having gone through the server actions:
@@ -218,6 +218,24 @@ select is(
   'An experiment''s creator is the caller, not the one claimed'
 );
 
+-- F3: and it stays theirs. The update policy allows any column, so without
+-- a guard on update a member could rewrite who created an experiment later.
+select makerkit.authenticate_as('member');
+
+update public.analytics_experiments
+   set created_by = current_setting('ix.outsider')::uuid
+ where id = 'a2a2a2a2-0000-4000-8000-000000000033';
+
+set local role postgres;
+
+select is(
+  (select created_by from public.analytics_experiments
+    where id = 'a2a2a2a2-0000-4000-8000-000000000033'),
+  current_setting('ix.member')::uuid,
+  'An experiment''s creator cannot be rewritten by a later update'
+);
+
+
 -- ==================================
 -- R11: editable_publish_ids agrees with publishes_update
 -- ==================================
@@ -254,6 +272,25 @@ select ok(pg_temp.agrees(), 'Account member off the project: they agree (cannot 
 
 select makerkit.authenticate_as('outsider');
 select ok(pg_temp.agrees(), 'Outsider: they agree (cannot edit)');
+
+-- ==================================
+-- Last, because it removes a user the tests above sign in as
+-- ==================================
+
+set local role postgres;
+-- Deleting the user who created an experiment must still work, and keep the
+-- experiment: it belongs to the account, not to whoever typed it in.
+select lives_ok(
+  $$ delete from auth.users where id = current_setting('ix.member')::uuid $$,
+  'The creator of an experiment can still be deleted'
+);
+
+select is(
+  (select created_by from public.analytics_experiments
+    where id = 'a2a2a2a2-0000-4000-8000-000000000033'),
+  null,
+  'and the experiment stays, with no creator'
+);
 
 select * from finish();
 
