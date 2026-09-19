@@ -32,7 +32,7 @@ export function withRefusals<Input, T>(
       }
 
       const logger = await getLogger();
-      logger.error({ error, what }, `Could not ${what}`);
+      logger.error({ error, what, ...idsOf(input) }, `Could not ${what}`);
 
       return {
         ok: false,
@@ -40,4 +40,19 @@ export function withRefusals<Input, T>(
       };
     }
   };
+}
+
+/**
+ * The ids in an action's input — `experimentId`, `accountId`, `publishId` —
+ * so a failure in the log says which record it concerned. Ids only: titles,
+ * notes and outcomes are the user's words and stay out of the log.
+ */
+function idsOf(input: unknown): Record<string, string> {
+  if (!input || typeof input !== 'object') return {};
+
+  return Object.fromEntries(
+    Object.entries(input).filter(
+      ([key, value]) => key.endsWith('Id') && typeof value === 'string',
+    ),
+  );
 }

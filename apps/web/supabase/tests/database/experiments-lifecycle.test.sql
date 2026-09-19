@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(19);
+select plan(22);
 
 -- FILM-1610 review, round 4 (G2). The lifecycle the actions follow, held by
 -- the table: a member going straight to PostgREST could move a running
@@ -38,9 +38,9 @@ select throws_ok(
 );
 
 select lives_ok(
-  $$ insert into public.analytics_experiments (id, account_id, title, change_description)
-     values ('c4c4c4c4-0000-4000-8000-000000000001', current_setting('lc.story')::uuid, 'Lifecycle', 'x'),
-            ('c4c4c4c4-0000-4000-8000-000000000002', current_setting('lc.story')::uuid, 'Abandoned early', 'x') $$,
+  $$ insert into public.analytics_experiments (id, account_id, title, change_description, hypothesis, expected_outcome)
+     values ('c4c4c4c4-0000-4000-8000-000000000001', current_setting('lc.story')::uuid, 'Lifecycle', 'x', 'Faces lift CTR', 'CTR +1 point'),
+            ('c4c4c4c4-0000-4000-8000-000000000002', current_setting('lc.story')::uuid, 'Abandoned early', 'x', null, null) $$,
   'A planned experiment is created'
 );
 
@@ -54,6 +54,12 @@ select throws_ok(
   'P0001',
   null,
   'A planned experiment cannot skip straight to concluded'
+);
+
+select lives_ok(
+  $$ update public.analytics_experiments set expected_outcome = 'CTR +1.5 points'
+      where id = 'c4c4c4c4-0000-4000-8000-000000000001' $$,
+  'While planned, the expectation can still be refined'
 );
 
 select lives_ok(
@@ -145,6 +151,25 @@ select lives_ok(
         set title = 'Lifecycle, renamed', actual_outcome = 'CTR rose 0.4 points'
       where id = 'c4c4c4c4-0000-4000-8000-000000000001' $$,
   'Its wording and outcome text are still editable'
+);
+
+-- Round 5 (H3): the form says the expectation is "recorded before the
+-- result is known, so hindsight cannot rewrite it". Rewriting it after the
+-- result — to match the result — was allowed.
+select throws_ok(
+  $$ update public.analytics_experiments set expected_outcome = 'CTR held'
+      where id = 'c4c4c4c4-0000-4000-8000-000000000001' $$,
+  'P0001',
+  null,
+  'The expected outcome cannot be rewritten once the experiment has started'
+);
+
+select throws_ok(
+  $$ update public.analytics_experiments set hypothesis = 'Faces do nothing'
+      where id = 'c4c4c4c4-0000-4000-8000-000000000001' $$,
+  'P0001',
+  null,
+  'nor the hypothesis'
 );
 
 -- ==================================

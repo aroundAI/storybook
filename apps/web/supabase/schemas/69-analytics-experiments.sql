@@ -308,6 +308,16 @@ begin
     raise exception 'The end date is recorded once, when the experiment ends';
   end if;
 
+  -- Round 5 (H3): the expectation is recorded before the result is known.
+  -- Once the experiment has started, rewriting it would let hindsight
+  -- match it to the result.
+  if old.status <> 'planned'
+     and (new.hypothesis is distinct from old.hypothesis
+          or new.expected_outcome is distinct from old.expected_outcome) then
+    raise exception
+      'The hypothesis and expected outcome cannot change once the experiment has started';
+  end if;
+
   if (new.started_at is distinct from old.started_at
       or new.ended_at is distinct from old.ended_at)
      and new.ended_at < new.started_at then
@@ -320,7 +330,8 @@ end;
 $$;
 
 create trigger analytics_experiments_guard_lifecycle
-  before insert or update of status, started_at, ended_at, baseline_metrics, result_metrics
+  before insert or update of status, started_at, ended_at, baseline_metrics,
+    result_metrics, hypothesis, expected_outcome
   on public.analytics_experiments
   for each row execute function public.guard_experiment_lifecycle();
 

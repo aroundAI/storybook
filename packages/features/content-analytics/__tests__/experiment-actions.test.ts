@@ -5,6 +5,7 @@ import {
   abandonExperimentAction as abandonAction,
   concludeExperimentAction as concludeAction,
   createExperimentAction as createAction,
+  deleteExperimentAction as deleteAction,
   getExperimentAction,
   startExperimentAction as startAction,
   updateExperimentAction as updateAction,
@@ -219,9 +220,21 @@ vi.mock('@kit/supabase/server-client', () => ({
           return updateBuilder();
         },
         delete: () => ({
-          eq: async (_: string, id: string) => {
+          // Awaitable for the cleanup after a failed link, and `select`-able
+          // for the delete action, which checks that a row went (H8).
+          eq: (_: string, id: string) => {
             state.deletedExperiments.push(id);
-            return { error: state.cleanupError };
+            const result = { error: state.cleanupError };
+            return {
+              select: async () => ({
+                data: state.rowStillMatches ? [{ id }] : [],
+                error: null,
+              }),
+              then: (
+                resolve: (value: typeof result) => unknown,
+                reject?: (reason: unknown) => unknown,
+              ) => Promise.resolve(result).then(resolve, reject),
+            };
           },
         }),
       };
@@ -803,5 +816,81 @@ describe('dates from the device are checked (G6)', () => {
       await startAction({ experimentId: 'e1', startedAt: '1999-01-01' }),
     ).toEqual({ ok: false, error: '1999-01-01 is not today' });
     expect(state.updates).toHaveLength(0);
+  });
+});
+
+describe('a write that changed nothing is not reported as done (round 5, H8)', () => {
+  // RLS refusing an update or delete matches zero rows and returns 200 with
+  // no error, so success has to be read from the rows written.
+  it('refuses an update that matched no row', async () => {
+    state.rowStillMatches = false;
+
+    expect(
+      await updateAction({ experimentId: 'e1', title: 'Renamed' }),
+    ).toEqual({
+      ok: false,
+      error:
+        'This change was not saved: the experiment was not found, or you cannot edit it.',
+    });
+  });
+
+  it('refuses a delete that removed no row', async () => {
+    state.rowStillMatches = false;
+
+    expect(await deleteAction({ experimentId: 'e1' })).toEqual({
+      ok: false,
+      error:
+        'Nothing was deleted: the experiment was not found, or you cannot delete it.',
+    });
+  });
+
+  it('still reports a delete that removed the row', async () => {
+    expect(await deleteAction({ experimentId: 'e1' })).toEqual({
+      ok: true,
+      data: { success: true },
+    });
+  });
+});
+
+describe('a failure is logged with what it concerned (round 5, H7)', () => {
+  it('logs the experiment the failed start was for', async () => {
+    logged.mockClear();
+    state.linkReadError = { message: 'boom' };
+
+    await startAction({ experimentId: 'e1', startedAt: '2026-07-01' });
+
+    expect(logged).toHaveBeenCalledWith(
+      expect.objectContaining({
+        what: 'start the experiment',
+        experimentId: 'e1',
+      }),
+      'Could not start the experiment',
+    );
+  });
+});
+
+describe('the expectation is fixed once started (round 5, H3)', () => {
+  it('refuses a new expected outcome or hypothesis on a running experiment', async () => {
+    state.experiment.status = 'running';
+    state.experiment.started_at = '2026-07-01';
+
+    const result = await updateAction({
+      experimentId: 'e1',
+      expectedOutcome: 'Whatever happened',
+      hypothesis: 'Something else',
+    });
+
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.error).toContain('expectedOutcome');
+    expect(!result.ok && result.error).toContain('hypothesis');
+    expect(state.updates).toHaveLength(0);
+  });
+
+  it('still takes a new title on a running experiment', async () => {
+    state.experiment.status = 'running';
+
+    expect(
+      await updateAction({ experimentId: 'e1', title: 'Renamed' }),
+    ).toEqual({ ok: true, data: { success: true } });
   });
 });
