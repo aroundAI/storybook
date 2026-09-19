@@ -10,7 +10,7 @@ happens.
 
     python3 tooling/mutation-guards/run.py --kind unit      # CI: Unit Tests job
     python3 tooling/mutation-guards/run.py --kind pgtap     # CI: Supabase DB job
-    python3 tooling/mutation-guards/run.py --kind e2e       # by hand; needs a server
+    python3 tooling/mutation-guards/run.py --kind e2e       # CI: E2E guards job; needs a dev server
     python3 tooling/mutation-guards/run.py --self-test      # the runner's own red check
 
 Outcomes per entry:
@@ -81,7 +81,11 @@ def guard_command(entry, base_env):
         env.setdefault('PLAYWRIGHT_BASE_URL', 'http://localhost:3100')
         env.update(entry.get('env', {}))
         cmd = ['npx', 'playwright', 'test', entry['spec'], '--project=chromium',
-               '--reporter=line', '--retries=0', '-g', entry['grep']]
+               # Two retries on both runs: the baseline passes if any
+               # attempt does, and a mutation counts as caught only if every
+               # attempt fails — a single flaky failure proves nothing
+               # either way.
+               '--reporter=line', '--retries=2', '-g', entry['grep']]
         return cmd, os.path.join(ROOT, 'apps/e2e'), env
 
     raise ValueError(f'no guard command for kind {kind}')

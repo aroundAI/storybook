@@ -31,8 +31,9 @@ set -a; . deployment/config/local.env; set +a
 cd apps/web && npx next dev --turbo -p 3100
 ```
 
-E2E entries are not in CI: each needs a server that recompiles after the
-mutation, which CI's production build cannot do.
+In CI, E2E entries run in the `🧬 E2E guards & evidence` job, which runs a
+dev server (a production build cannot recompile after a mutation) against a
+real ClickHouse, next to the happy-flow evidence specs.
 
 ## What each outcome means
 
