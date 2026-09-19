@@ -17,6 +17,8 @@ import type { AggregatedTotals } from '@kit/clickhouse/server';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { assertProjectAccess } from './scope-access';
+
 /**
  * Episode analytics summary
  */
@@ -494,6 +496,13 @@ export async function getProjectAnalytics(
 ): Promise<ProjectAnalytics | null> {
   const client = getSupabaseServerClient();
 
+  // Membership, not row visibility: a public project's row is readable by
+  // anyone signed in, and the platform breakdown below reads ClickHouse by
+  // project id (FILM-1615 EDD, F-0).
+  if (!(await canAccessProject(client, projectId))) {
+    return null;
+  }
+
   const { data: project, error: projectError } = await client
     .from('projects')
     .select('id, name')
@@ -622,15 +631,12 @@ export async function getProjectDailyMetrics(
   projectId: string,
   options?: { startDate?: Date; endDate?: Date },
 ): Promise<ProjectDailyMetric[]> {
-  // Verify project access through Supabase RLS before querying ClickHouse
+  // Verify membership before querying ClickHouse by project id. The row
+  // alone is not enough: public projects are readable by any signed-in
+  // user (FILM-1615 EDD, F-0).
   const client = getSupabaseServerClient();
-  const { data: project, error: projectError } = await client
-    .from('projects')
-    .select('id')
-    .eq('id', projectId)
-    .single();
 
-  if (projectError || !project) {
+  if (!(await canAccessProject(client, projectId))) {
     return [];
   }
 
@@ -890,4 +896,21 @@ export async function getContentList(
       engagementRate,
     };
   });
+}
+
+/**
+ * Whether the caller may read a project's analytics. These two readers
+ * answer "no access" with an empty result, as they always have, rather
+ * than throwing like the scope-checked actions.
+ */
+async function canAccessProject(
+  client: Parameters<typeof assertProjectAccess>[0],
+  projectId: string,
+): Promise<boolean> {
+  try {
+    await assertProjectAccess(client, projectId);
+    return true;
+  } catch {
+    return false;
+  }
 }
