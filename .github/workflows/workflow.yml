@@ -46,6 +46,14 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
+      # Check only. Formatting drifted while nothing checked it: Tailwind
+      # class order depended on which file a Prettier run started with, seven
+      # packages had no format script at all, and the import sorter added a
+      # duplicate header comment on every run. `pnpm format:fix` repairs a
+      # failure here.
+      - name: Format
+        run: pnpm turbo format --continue -- --ignore-path=../../.gitignore --ignore-path=../../.prettierignore
+
   clickhouse-sql:
     name: 🗄️ ClickHouse SQL
     timeout-minutes: 15
