@@ -1,12 +1,11 @@
+'use server';
+
 /**
  * ElevenLabs Music Generation Actions
  *
  * Server actions for generating music using ElevenLabs Eleven Music.
  * Includes asset library integration for reuse.
  */
-
-'use server';
-
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
@@ -20,20 +19,6 @@ import {
   updateAudioAssetAction,
 } from './audio-asset-actions';
 import { getProjectElevenLabsApiKey } from './project-audio-settings';
-
-/**
- * ElevenLabs Music Generation Actions
- *
- * Server actions for generating music using ElevenLabs Eleven Music.
- * Includes asset library integration for reuse.
- */
-
-/**
- * ElevenLabs Music Generation Actions
- *
- * Server actions for generating music using ElevenLabs Eleven Music.
- * Includes asset library integration for reuse.
- */
 
 // =============================================================================
 // Schemas

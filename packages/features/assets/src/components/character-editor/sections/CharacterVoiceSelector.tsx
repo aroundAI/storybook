@@ -1,12 +1,11 @@
+'use client';
+
 /**
  * Character Voice Selector Section
  *
  * Dropdown to select an ElevenLabs voice for the character.
  * Fetches voices directly from the ElevenLabs API.
  */
-
-'use client';
-
 import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, Volume2 } from 'lucide-react';
 import type { UseFormReturn } from 'react-hook-form';
@@ -34,20 +33,6 @@ import {
   type ElevenLabsVoice,
   getElevenLabsVoicesAction,
 } from '../../../lib/server/voice.actions';
-
-/**
- * Character Voice Selector Section
- *
- * Dropdown to select an ElevenLabs voice for the character.
- * Fetches voices directly from the ElevenLabs API.
- */
-
-/**
- * Character Voice Selector Section
- *
- * Dropdown to select an ElevenLabs voice for the character.
- * Fetches voices directly from the ElevenLabs API.
- */
 
 interface CharacterVoiceSelectorProps {
   form: UseFormReturn<CharacterFormData>;

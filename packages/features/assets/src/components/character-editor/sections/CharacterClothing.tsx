@@ -1,11 +1,10 @@
+'use client';
+
 /**
  * Character Clothing Section (FILM-205)
  *
  * Form fields for character clothing and style.
  */
-
-'use client';
-
 import type { UseFormReturn } from 'react-hook-form';
 
 import {
@@ -27,60 +26,6 @@ import {
 import { Textarea } from '@kit/ui/textarea';
 
 import type { CharacterFormData } from '../../../lib/schemas/character.schema';
-
-/**
- * Character Clothing Section (FILM-205)
- *
- * Form fields for character clothing and style.
- */
-
-/**
- * Character Clothing Section (FILM-205)
- *
- * Form fields for character clothing and style.
- */
-
-/**
- * Character Clothing Section (FILM-205)
- *
- * Form fields for character clothing and style.
- */
-
-/**
- * Character Clothing Section (FILM-205)
- *
- * Form fields for character clothing and style.
- */
-
-/**
- * Character Clothing Section (FILM-205)
- *
- * Form fields for character clothing and style.
- */
-
-/**
- * Character Clothing Section (FILM-205)
- *
- * Form fields for character clothing and style.
- */
-
-/**
- * Character Clothing Section (FILM-205)
- *
- * Form fields for character clothing and style.
- */
-
-/**
- * Character Clothing Section (FILM-205)
- *
- * Form fields for character clothing and style.
- */
-
-/**
- * Character Clothing Section (FILM-205)
- *
- * Form fields for character clothing and style.
- */
 
 interface CharacterClothingProps {
   form: UseFormReturn<CharacterFormData>;

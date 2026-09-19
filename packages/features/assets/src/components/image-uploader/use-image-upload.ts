@@ -1,12 +1,11 @@
+'use client';
+
 /**
  * useImageUpload Hook (FILM-207)
  *
  * Custom hook for handling image uploads with progress tracking.
  * Uses XMLHttpRequest for upload progress events.
  */
-
-'use client';
-
 import { useCallback, useRef, useState } from 'react';
 
 import { validateUpload } from '@kit/assets/upload-validation';
@@ -22,28 +21,7 @@ import type {
 } from './types';
 
 /**
- * useImageUpload Hook (FILM-207)
- *
- * Custom hook for handling image uploads with progress tracking.
- * Uses XMLHttpRequest for upload progress events.
- */
-
-/**
- * useImageUpload Hook (FILM-207)
- *
- * Custom hook for handling image uploads with progress tracking.
- * Uses XMLHttpRequest for upload progress events.
- */
-
-/**
  * Hook for uploading images with progress tracking
- */
-
-/**
- * useImageUpload Hook (FILM-207)
- *
- * Custom hook for handling image uploads with progress tracking.
- * Uses XMLHttpRequest for upload progress events.
  */
 
 /**

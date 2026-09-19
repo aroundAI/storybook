@@ -1,12 +1,11 @@
+'use server';
+
 /**
  * External Context Server Actions
  * Phase 11: FILM-1135
  *
  * Server actions for searching, listing, and managing external content sources.
  */
-
-'use server';
-
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
@@ -23,27 +22,6 @@ import type {
   SourceCategory,
 } from '../types/external-context';
 import { SOURCE_CATEGORIES } from '../types/external-context';
-
-/**
- * External Context Server Actions
- * Phase 11: FILM-1135
- *
- * Server actions for searching, listing, and managing external content sources.
- */
-
-/**
- * External Context Server Actions
- * Phase 11: FILM-1135
- *
- * Server actions for searching, listing, and managing external content sources.
- */
-
-/**
- * External Context Server Actions
- * Phase 11: FILM-1135
- *
- * Server actions for searching, listing, and managing external content sources.
- */
 
 // =============================================================================
 // SCHEMAS

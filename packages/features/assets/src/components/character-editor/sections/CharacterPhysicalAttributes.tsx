@@ -1,11 +1,10 @@
+'use client';
+
 /**
  * Character Physical Attributes Section (FILM-205)
  *
  * Form fields for character physical appearance.
  */
-
-'use client';
-
 import type { UseFormReturn } from 'react-hook-form';
 
 import {
@@ -25,60 +24,6 @@ import {
 } from '@kit/ui/select';
 
 import type { CharacterFormData } from '../../../lib/schemas/character.schema';
-
-/**
- * Character Physical Attributes Section (FILM-205)
- *
- * Form fields for character physical appearance.
- */
-
-/**
- * Character Physical Attributes Section (FILM-205)
- *
- * Form fields for character physical appearance.
- */
-
-/**
- * Character Physical Attributes Section (FILM-205)
- *
- * Form fields for character physical appearance.
- */
-
-/**
- * Character Physical Attributes Section (FILM-205)
- *
- * Form fields for character physical appearance.
- */
-
-/**
- * Character Physical Attributes Section (FILM-205)
- *
- * Form fields for character physical appearance.
- */
-
-/**
- * Character Physical Attributes Section (FILM-205)
- *
- * Form fields for character physical appearance.
- */
-
-/**
- * Character Physical Attributes Section (FILM-205)
- *
- * Form fields for character physical appearance.
- */
-
-/**
- * Character Physical Attributes Section (FILM-205)
- *
- * Form fields for character physical appearance.
- */
-
-/**
- * Character Physical Attributes Section (FILM-205)
- *
- * Form fields for character physical appearance.
- */
 
 interface CharacterPhysicalAttributesProps {
   form: UseFormReturn<CharacterFormData>;

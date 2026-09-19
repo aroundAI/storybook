@@ -1,12 +1,11 @@
+'use server';
+
 /**
  * Audio Asset Library Actions
  *
  * Server actions for managing reusable music/SFX assets with deduplication.
  * Assets are stored in the audio_assets table with prompt hashing for reuse.
  */
-
-'use server';
-
 import crypto from 'crypto';
 import { z } from 'zod';
 
@@ -16,20 +15,6 @@ import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { getProjectElevenLabsApiKey } from './project-audio-settings';
-
-/**
- * Audio Asset Library Actions
- *
- * Server actions for managing reusable music/SFX assets with deduplication.
- * Assets are stored in the audio_assets table with prompt hashing for reuse.
- */
-
-/**
- * Audio Asset Library Actions
- *
- * Server actions for managing reusable music/SFX assets with deduplication.
- * Assets are stored in the audio_assets table with prompt hashing for reuse.
- */
 
 // =============================================================================
 // Types

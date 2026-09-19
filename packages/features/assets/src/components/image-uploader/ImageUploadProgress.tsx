@@ -1,11 +1,10 @@
+'use client';
+
 /**
  * ImageUploadProgress Component (FILM-207)
  *
  * Displays upload progress with progress bar and cancel option.
  */
-
-'use client';
-
 import { Loader2, X } from 'lucide-react';
 
 import { formatFileSize } from '@kit/assets/upload-validation';
@@ -14,54 +13,6 @@ import { Progress } from '@kit/ui/progress';
 import { cn } from '@kit/ui/utils';
 
 import type { UploadProgress, UploadState } from './types';
-
-/**
- * ImageUploadProgress Component (FILM-207)
- *
- * Displays upload progress with progress bar and cancel option.
- */
-
-/**
- * ImageUploadProgress Component (FILM-207)
- *
- * Displays upload progress with progress bar and cancel option.
- */
-
-/**
- * ImageUploadProgress Component (FILM-207)
- *
- * Displays upload progress with progress bar and cancel option.
- */
-
-/**
- * ImageUploadProgress Component (FILM-207)
- *
- * Displays upload progress with progress bar and cancel option.
- */
-
-/**
- * ImageUploadProgress Component (FILM-207)
- *
- * Displays upload progress with progress bar and cancel option.
- */
-
-/**
- * ImageUploadProgress Component (FILM-207)
- *
- * Displays upload progress with progress bar and cancel option.
- */
-
-/**
- * ImageUploadProgress Component (FILM-207)
- *
- * Displays upload progress with progress bar and cancel option.
- */
-
-/**
- * ImageUploadProgress Component (FILM-207)
- *
- * Displays upload progress with progress bar and cancel option.
- */
 
 interface ImageUploadProgressProps {
   /** Upload progress information */

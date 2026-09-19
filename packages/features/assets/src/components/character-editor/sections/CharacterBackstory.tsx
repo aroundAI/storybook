@@ -1,11 +1,10 @@
+'use client';
+
 /**
  * Character Backstory Section (FILM-205)
  *
  * Form fields for character backstory and element prompt.
  */
-
-'use client';
-
 import type { UseFormReturn } from 'react-hook-form';
 
 import {
@@ -19,60 +18,6 @@ import {
 import { Textarea } from '@kit/ui/textarea';
 
 import type { CharacterFormData } from '../../../lib/schemas/character.schema';
-
-/**
- * Character Backstory Section (FILM-205)
- *
- * Form fields for character backstory and element prompt.
- */
-
-/**
- * Character Backstory Section (FILM-205)
- *
- * Form fields for character backstory and element prompt.
- */
-
-/**
- * Character Backstory Section (FILM-205)
- *
- * Form fields for character backstory and element prompt.
- */
-
-/**
- * Character Backstory Section (FILM-205)
- *
- * Form fields for character backstory and element prompt.
- */
-
-/**
- * Character Backstory Section (FILM-205)
- *
- * Form fields for character backstory and element prompt.
- */
-
-/**
- * Character Backstory Section (FILM-205)
- *
- * Form fields for character backstory and element prompt.
- */
-
-/**
- * Character Backstory Section (FILM-205)
- *
- * Form fields for character backstory and element prompt.
- */
-
-/**
- * Character Backstory Section (FILM-205)
- *
- * Form fields for character backstory and element prompt.
- */
-
-/**
- * Character Backstory Section (FILM-205)
- *
- * Form fields for character backstory and element prompt.
- */
 
 interface CharacterBackstoryProps {
   form: UseFormReturn<CharacterFormData>;

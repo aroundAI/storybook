@@ -1,11 +1,10 @@
+'use client';
+
 /**
  * Character Image Upload Section (FILM-205)
  *
  * Image upload fields for character reference images.
  */
-
-'use client';
-
 import type { UseFormReturn } from 'react-hook-form';
 
 import {
@@ -20,24 +19,6 @@ import { Input } from '@kit/ui/input';
 
 import type { CharacterFormData } from '../../../lib/schemas/character.schema';
 import { ImageUploader } from '../../image-uploader/ImageUploader';
-
-/**
- * Character Image Upload Section (FILM-205)
- *
- * Image upload fields for character reference images.
- */
-
-/**
- * Character Image Upload Section (FILM-205)
- *
- * Image upload fields for character reference images.
- */
-
-/**
- * Character Image Upload Section (FILM-205)
- *
- * Image upload fields for character reference images.
- */
 
 interface CharacterImageUploadProps {
   form: UseFormReturn<CharacterFormData>;

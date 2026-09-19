@@ -1,12 +1,11 @@
+'use client';
+
 /**
  * VideoUploader Component
  *
  * Dropzone component for uploading videos to shots.
  * Supports drag-and-drop, click-to-upload, and progress tracking.
  */
-
-'use client';
-
 import { useCallback, useState } from 'react';
 
 import { AlertCircle, CheckCircle, Film, Loader2, Upload } from 'lucide-react';
@@ -21,27 +20,6 @@ import {
   type VideoUploadState,
   useVideoUpload,
 } from '../hooks/use-video-upload';
-
-/**
- * VideoUploader Component
- *
- * Dropzone component for uploading videos to shots.
- * Supports drag-and-drop, click-to-upload, and progress tracking.
- */
-
-/**
- * VideoUploader Component
- *
- * Dropzone component for uploading videos to shots.
- * Supports drag-and-drop, click-to-upload, and progress tracking.
- */
-
-/**
- * VideoUploader Component
- *
- * Dropzone component for uploading videos to shots.
- * Supports drag-and-drop, click-to-upload, and progress tracking.
- */
 
 interface VideoUploaderProps {
   projectId: string;

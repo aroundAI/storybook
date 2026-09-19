@@ -1,12 +1,11 @@
+'use server';
+
 /**
  * Character Server Actions (FILM-202)
  *
  * Server actions for creating, updating, and deleting characters with atomic operations.
  * Characters require both an asset record and a character_details record.
  */
-
-'use server';
-
 import { revalidatePath } from 'next/cache';
 
 import { enhanceAction } from '@kit/next/actions';
@@ -26,83 +25,6 @@ import {
 import type { CharacterRow, CharacterWithDetails } from '../types';
 import { mapRowToCharacterWithDetails } from '../types';
 import { isAssetInUse } from './asset.queries';
-
-/**
- * Character Server Actions (FILM-202)
- *
- * Server actions for creating, updating, and deleting characters with atomic operations.
- * Characters require both an asset record and a character_details record.
- */
-
-/**
- * Character Server Actions (FILM-202)
- *
- * Server actions for creating, updating, and deleting characters with atomic operations.
- * Characters require both an asset record and a character_details record.
- */
-
-/**
- * Character Server Actions (FILM-202)
- *
- * Server actions for creating, updating, and deleting characters with atomic operations.
- * Characters require both an asset record and a character_details record.
- */
-
-/**
- * Character Server Actions (FILM-202)
- *
- * Server actions for creating, updating, and deleting characters with atomic operations.
- * Characters require both an asset record and a character_details record.
- */
-
-/**
- * Character Server Actions (FILM-202)
- *
- * Server actions for creating, updating, and deleting characters with atomic operations.
- * Characters require both an asset record and a character_details record.
- */
-
-/**
- * Character Server Actions (FILM-202)
- *
- * Server actions for creating, updating, and deleting characters with atomic operations.
- * Characters require both an asset record and a character_details record.
- */
-
-/**
- * Character Server Actions (FILM-202)
- *
- * Server actions for creating, updating, and deleting characters with atomic operations.
- * Characters require both an asset record and a character_details record.
- */
-
-/**
- * Character Server Actions (FILM-202)
- *
- * Server actions for creating, updating, and deleting characters with atomic operations.
- * Characters require both an asset record and a character_details record.
- */
-
-/**
- * Character Server Actions (FILM-202)
- *
- * Server actions for creating, updating, and deleting characters with atomic operations.
- * Characters require both an asset record and a character_details record.
- */
-
-/**
- * Character Server Actions (FILM-202)
- *
- * Server actions for creating, updating, and deleting characters with atomic operations.
- * Characters require both an asset record and a character_details record.
- */
-
-/**
- * Character Server Actions (FILM-202)
- *
- * Server actions for creating, updating, and deleting characters with atomic operations.
- * Characters require both an asset record and a character_details record.
- */
 
 /**
  * Create a new character with atomic insert into assets + character_details
