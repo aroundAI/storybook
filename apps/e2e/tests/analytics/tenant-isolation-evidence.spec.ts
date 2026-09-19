@@ -66,27 +66,44 @@ async function makePublic(projectId: string) {
   expect(response.status).toBe(204);
 }
 
+interface ActionResponse {
+  /** The `next-action` id: which action answered, not merely how many did. */
+  action: string;
+  body: string;
+}
+
 /**
- * Collects the bodies of every server-action response whose request named
- * `projectId`. The caller polls the returned array.
+ * Collects every server-action response whose request named `projectId`,
+ * keeping the action each one came from.
+ *
+ * The action id is what makes the negative assertion below safe. Counting
+ * responses cannot: the read that leaks is one of several the page makes,
+ * and on a slow machine it can answer *after* a count is satisfied — so
+ * "none of the bodies carried the figure" would be measuring the responses
+ * that happened to have arrived. Waiting for the same actions that carried
+ * it for the victim measures the read under test.
  */
 function collectActionResponses(page: Page, projectId: string) {
-  const bodies: string[] = [];
+  const responses: ActionResponse[] = [];
 
   page.on('response', async (response) => {
     const request = response.request();
+    const action = request.headers()['next-action'];
 
     if (
       request.method() === 'POST' &&
-      request.headers()['next-action'] &&
+      action &&
       (request.postData() ?? '').includes(projectId)
     ) {
-      bodies.push(await response.text().catch(() => ''));
+      responses.push({ action, body: await response.text().catch(() => '') });
     }
   });
 
-  return bodies;
+  return responses;
 }
+
+const leaking = (responses: ActionResponse[]) =>
+  responses.filter((response) => response.body.includes(String(B_VIEWS)));
 
 test.describe('Analytics tenant isolation (FILM-1615 Step 0)', () => {
   test.skip(
@@ -154,17 +171,25 @@ test.describe('Analytics tenant isolation (FILM-1615 Step 0)', () => {
     // Positive control: the victim's own owner sees the figure, so the
     // attacker seeing nothing below means refusal, not missing data.
     const victimPage = await (await browser.newContext()).newPage();
-    const victimBodies = collectActionResponses(victimPage, victimProject.id);
+    const victimResponses = collectActionResponses(
+      victimPage,
+      victimProject.id,
+    );
     await signInAs(victimPage, victim);
     await victimPage.goto(
       `/home/${victim.slug}/studio/${victimProject.slug}/analytics`,
     );
     await victimPage.locator('[data-test="analytics-tab-deep-dive"]').click();
     await expect
-      .poll(() => victimBodies.some((body) => body.includes(String(B_VIEWS))), {
-        timeout: 30_000,
-      })
-      .toBe(true);
+      .poll(() => leaking(victimResponses).length, { timeout: 30_000 })
+      .toBeGreaterThan(0);
+
+    // The reads that actually carry the figure. The attacker must be shown
+    // to have run *these* and got nothing, not merely to have run several
+    // reads of some kind.
+    const carrying = [
+      ...new Set(leaking(victimResponses).map((response) => response.action)),
+    ];
 
     // The attacker opens their own dashboard and Deep Dive, with every
     // server-action request rewritten to name the victim's public project —
@@ -189,21 +214,25 @@ test.describe('Analytics tenant isolation (FILM-1615 Step 0)', () => {
       await route.continue();
     });
 
-    const attackerBodies = collectActionResponses(page, victimProject.id);
+    const attackerResponses = collectActionResponses(page, victimProject.id);
     await signInAs(page, attacker);
     await page.goto(
       `/home/${attacker.slug}/studio/${attackerProject.slug}/analytics`,
     );
     await page.locator('[data-test="analytics-tab-deep-dive"]').click();
 
-    // Wait until the rewritten requests — dashboard and Deep Dive — have
-    // all been answered, then look for the victim's figure in any of them.
+    // Wait until every read that carried the figure for the victim has
+    // answered the attacker too, then look for the figure in any response.
     await expect
-      .poll(() => attackerBodies.length, { timeout: 30_000 })
-      .toBeGreaterThanOrEqual(5);
+      .poll(
+        () =>
+          carrying.filter((action) =>
+            attackerResponses.some((response) => response.action === action),
+          ).length,
+        { timeout: 30_000 },
+      )
+      .toBe(carrying.length);
 
-    expect(
-      attackerBodies.filter((body) => body.includes(String(B_VIEWS))),
-    ).toEqual([]);
+    expect(leaking(attackerResponses)).toEqual([]);
   });
 });
