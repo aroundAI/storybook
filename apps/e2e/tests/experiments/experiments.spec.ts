@@ -3,8 +3,11 @@ import { expect, test } from '@playwright/test';
 import {
   readRows,
   seedExperiment,
+  seedProject,
+  seedPublishedVideos,
   seedRunningExperiment,
   seedTeamAccount,
+  seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
 import { ExperimentsPageObject } from './experiments.po';
@@ -233,5 +236,112 @@ test.describe("Experiment dates are the user's own (FILM-1610 review, E1)", () =
     );
 
     expect(row!.started_at).toBe('2026-03-02');
+  });
+});
+
+test.describe('Video picker at scale, and labels (FILM-1610 review 3, F5 F6)', () => {
+  test('finds a video beyond the newest 50 by searching, and links it', async ({
+    page,
+  }) => {
+    const team = await seedTeamAccount();
+    const connectionId = await seedYouTubeConnection(team.accountId);
+    const project = await seedProject(team);
+
+    // 60 videos; the first is the oldest, so it is not in the newest 50.
+    const titles = [
+      'Needle in the haystack',
+      ...Array.from({ length: 59 }, (_, index) => `Filler video ${index + 1}`),
+    ];
+    const [needle] = await seedPublishedVideos(
+      project.id,
+      connectionId,
+      titles,
+    );
+
+    await signInAs(page, team);
+    await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
+
+    const log = new ExperimentsPageObject(page);
+    await expect(log.field('video-picker-trigger')).toBeVisible();
+    await log.field('video-picker-trigger').click();
+
+    // Only a page is loaded, and the picker says so.
+    await expect(
+      page.locator('[data-test="video-picker-has-more"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator(`[data-test="video-picker-option-${needle}"]`),
+    ).toHaveCount(0);
+
+    await page.locator('[data-test="video-picker-search"]').fill('Needle');
+    await page.locator(`[data-test="video-picker-option-${needle}"]`).click();
+    await page.keyboard.press('Escape');
+
+    await log.field('experiment-title').fill('Found by search');
+    await log.field('experiment-change').fill('x');
+    await log.submitAndWaitForReset();
+
+    const [row] = await readRows<{ id: string }>(
+      'analytics_experiments',
+      `select=id&account_id=eq.${team.accountId}`,
+    );
+    const links = await readRows<{ publish_id: string }>(
+      'experiment_publishes',
+      `select=publish_id&experiment_id=eq.${row!.id}`,
+    );
+
+    expect(links.map((link) => link.publish_id)).toEqual([needle]);
+  });
+
+  test('the picker and the channel are named by their labels', async ({
+    page,
+  }) => {
+    const log = new ExperimentsPageObject(page);
+    await log.setup();
+
+    // FormControl ties each label to its control, so assistive technology
+    // can name it — and so can this locator.
+    await expect(
+      log.form().getByLabel('Videos this experiment runs on'),
+    ).toHaveAttribute('data-test', 'video-picker-trigger');
+    await expect(log.form().getByLabel('Channel (optional)')).toHaveAttribute(
+      'data-test',
+      'channel-filter-trigger',
+    );
+  });
+});
+
+test.describe('The due list follows the date (FILM-1610 review 3, F10)', () => {
+  test('a tab left open past midnight shows what became due today', async ({
+    page,
+  }) => {
+    const team = await seedTeamAccount();
+
+    // Due on 2 March: started 1 February on a 29-day window.
+    const id = await seedRunningExperiment(team.accountId, {
+      title: 'Due tomorrow',
+      startedAt: '2026-02-01',
+      reviewWindowDays: 29,
+    });
+
+    await signInAs(page, team);
+    await page.clock.setFixedTime(new Date('2026-03-01T12:00:00Z'));
+    await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
+
+    await expect(
+      page.locator('[data-test="experiments-due-empty"]:visible'),
+    ).toBeVisible();
+
+    // The next day, the tab regains focus. The cached list was for 1 March;
+    // a key without the date would keep serving it.
+    await page.clock.setFixedTime(new Date('2026-03-02T12:00:00Z'));
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event('visibilitychange'));
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    await expect(
+      page.locator(`[data-test="experiment-due-${id}"]:visible`),
+    ).toBeVisible();
   });
 });

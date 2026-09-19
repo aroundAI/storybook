@@ -34,8 +34,6 @@ import { Input } from '@kit/ui/input';
 import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 
-import { dueQueryKey } from '../_lib/due-query';
-
 /**
  * The user's calendar date, `YYYY-MM-DD`. Experiment dates are calendar
  * dates in the user's day; the server's UTC clock would record a start just
@@ -68,16 +66,34 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
   // The guard itself is a ref: two clicks can land before React re-renders
   // the disabled button, and both would read `pending` as false.
   const inFlight = useRef(false);
+  // The picker's search: what is typed shows at once; what is fetched waits
+  // until typing pauses, so each keystroke is not a request.
+  const [videoSearch, setVideoSearch] = useState({ typed: '', fetched: '' });
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const onVideoSearchChange = (typed: string) => {
+    setVideoSearch((current) => ({ ...current, typed }));
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(
+      () => setVideoSearch((current) => ({ ...current, fetched: typed })),
+      250,
+    );
+  };
 
   const listQuery = useQuery({
     queryKey: ['experiments', accountId],
     queryFn: () => listExperimentsAction({ accountId }),
   });
 
-  const asOf = localToday();
   const dueQuery = useQuery({
-    queryKey: dueQueryKey(accountId, asOf),
-    queryFn: () => listExperimentsDueForReviewAction({ accountId, asOf }),
+    queryKey: ['experiments-due', accountId],
+    // The date is read when the fetch runs, not when the page rendered.
+    // "Due" is a calendar question, and a tab left open past midnight
+    // refetches on focus without re-rendering first — a date captured at
+    // render would ask about yesterday again. (Putting the date in the query
+    // key did not fix that: nothing re-renders to produce the new key.)
+    queryFn: () =>
+      listExperimentsDueForReviewAction({ accountId, asOf: localToday() }),
   });
 
   const channelsQuery = useQuery({
@@ -86,8 +102,11 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
   });
 
   const videosQuery = useQuery({
-    queryKey: ['experiment-linkable-videos', accountId],
-    queryFn: () => listLinkablePublishesAction({ accountId }),
+    queryKey: ['experiment-linkable-videos', accountId, videoSearch.fetched],
+    queryFn: () =>
+      listLinkablePublishesAction({ accountId, search: videoSearch.fetched }),
+    // Keep the last results on screen while the next search loads.
+    placeholderData: (previous) => previous,
   });
 
   const detailQuery = useQuery({
@@ -142,7 +161,10 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
           channels={channelsQuery.data ?? []}
           channelsLoading={channelsQuery.isLoading}
           channelsError={channelsQuery.isError}
-          videos={videosQuery.data ?? []}
+          videos={videosQuery.data?.videos ?? []}
+          videosHaveMore={videosQuery.data?.hasMore ?? false}
+          videoSearch={videoSearch.typed}
+          onVideoSearchChange={onVideoSearchChange}
           videosLoading={videosQuery.isLoading}
           videosError={videosQuery.isError}
           onSubmit={async (values) => {

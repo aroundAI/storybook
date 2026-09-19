@@ -154,6 +154,11 @@ export const ListExperimentsDueSchema = z.object({
     .optional(),
 });
 
+/** Videos the picker shows at once; more are found by searching. */
+export const LINKABLE_PAGE_SIZE = 50;
+
 export const ListLinkablePublishesSchema = z.object({
   accountId: z.string().uuid(),
+  /** Matched against the title, case-insensitively, anywhere in it. */
+  search: z.string().max(200).optional(),
 });

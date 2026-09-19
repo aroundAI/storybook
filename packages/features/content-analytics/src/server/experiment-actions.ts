@@ -22,6 +22,7 @@ import {
   CreateExperimentSchema,
   DeleteExperimentSchema,
   GetExperimentSchema,
+  LINKABLE_PAGE_SIZE,
   ListExperimentsDueSchema,
   ListExperimentsSchema,
   ListLinkablePublishesSchema,
@@ -570,42 +571,62 @@ export const listExperimentsDueForReviewAction = enhanceAction(
   { schema: ListExperimentsDueSchema, auth: true },
 );
 
+/** `%` and `_` are ilike wildcards; a search for "50%" means those characters. */
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (character) => `\\${character}`);
+}
+
 /**
- * The account's published videos, for linking to an experiment.
+ * The account's published videos matching a title search, newest first, at
+ * most LINKABLE_PAGE_SIZE of them.
  *
- * Paged: an account can publish far more than 1,000 videos, and a picker
- * silently missing the oldest ones would look complete.
+ * Searched on the server rather than loaded whole: loading every published
+ * video on each visit, and rendering each as a picker row, grows without
+ * bound with the account. One extra row is asked for so `hasMore` can say
+ * "refine the search" without a count.
  */
 export const listLinkablePublishesAction = enhanceAction(
-  async ({ accountId }) => {
+  async ({ accountId, search }) => {
     const client = getSupabaseServerClient();
 
-    const rows = await fetchAllRows<{
+    let query = client
+      .from('publishes')
+      .select(
+        'id, title, platform, published_at, episodes!inner(projects!inner(account_id))',
+      )
+      .eq('episodes.projects.account_id', accountId)
+      .eq('status', 'published');
+
+    const term = search?.trim();
+    if (term) {
+      query = query.ilike('title', `%${escapeLike(term)}%`);
+    }
+
+    const { data, error } = await query
+      .order('published_at', { ascending: false, nullsFirst: false })
+      .order('id', { ascending: true })
+      .limit(LINKABLE_PAGE_SIZE + 1);
+
+    if (error) {
+      throw new Error(`Failed to list videos: ${error.message}`);
+    }
+
+    const rows = (data ?? []) as Array<{
       id: string;
       title: string | null;
       platform: string;
       published_at: string | null;
-    }>(
-      (from, to) =>
-        client
-          .from('publishes')
-          .select(
-            'id, title, platform, published_at, episodes!inner(projects!inner(account_id))',
-          )
-          .eq('episodes.projects.account_id', accountId)
-          .eq('status', 'published')
-          .order('published_at', { ascending: false, nullsFirst: false })
-          .order('id', { ascending: true })
-          .range(from, to),
-      'linkable publishes',
-    );
+    }>;
 
-    return rows.map(({ id, title, platform, published_at }) => ({
-      id,
-      title,
-      platform,
-      publishedAt: published_at,
-    }));
+    return {
+      videos: rows.slice(0, LINKABLE_PAGE_SIZE).map((row) => ({
+        id: row.id,
+        title: row.title,
+        platform: row.platform,
+        publishedAt: row.published_at,
+      })),
+      hasMore: rows.length > LINKABLE_PAGE_SIZE,
+    };
   },
   { schema: ListLinkablePublishesSchema, auth: true },
 );

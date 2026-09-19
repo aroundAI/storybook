@@ -60,8 +60,11 @@ interface ExperimentFormProps {
   channels: ChannelRef[];
   channelsLoading?: boolean;
   channelsError?: boolean;
-  /** The account's published videos, for linking */
+  /** The current title search's videos, for linking (at most one page) */
   videos: LinkableVideo[];
+  videosHaveMore: boolean;
+  videoSearch: string;
+  onVideoSearchChange: (search: string) => void;
   videosLoading?: boolean;
   videosError?: boolean;
   /** Persists the experiment */
@@ -112,6 +115,9 @@ export function ExperimentForm({
   channelsLoading = false,
   channelsError = false,
   videos,
+  videosHaveMore,
+  videoSearch,
+  onVideoSearchChange,
   videosLoading = false,
   videosError = false,
   onSubmit,
@@ -267,14 +273,21 @@ export function ExperimentForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Videos this experiment runs on</FormLabel>
-              <VideoPicker
-                videos={videos}
-                value={field.value ?? []}
-                onChange={field.onChange}
-                max={MAX_LINKED_VIDEOS}
-                isLoading={videosLoading}
-                isError={videosError}
-              />
+              {/* FormControl ties the label and error message to the
+                  picker's trigger (it forwards id and aria attributes). */}
+              <FormControl>
+                <VideoPicker
+                  videos={videos}
+                  hasMore={videosHaveMore}
+                  search={videoSearch}
+                  onSearchChange={onVideoSearchChange}
+                  value={field.value ?? []}
+                  onChange={field.onChange}
+                  max={MAX_LINKED_VIDEOS}
+                  isLoading={videosLoading}
+                  isError={videosError}
+                />
+              </FormControl>
               <FormDescription>
                 Snapshots measure these videos, not the whole channel.
               </FormDescription>
@@ -291,14 +304,16 @@ export function ExperimentForm({
               <FormItem>
                 <FormLabel>Channel (optional)</FormLabel>
                 <div data-test={'experiment-channel'}>
-                  <ChannelFilter
-                    channels={channels}
-                    value={field.value}
-                    onChange={field.onChange}
-                    isLoading={channelsLoading}
-                    isError={channelsError}
-                    allLabel={'No specific channel'}
-                  />
+                  <FormControl>
+                    <ChannelFilter
+                      channels={channels}
+                      value={field.value}
+                      onChange={field.onChange}
+                      isLoading={channelsLoading}
+                      isError={channelsError}
+                      allLabel={'No specific channel'}
+                    />
+                  </FormControl>
                 </div>
                 <FormMessage />
               </FormItem>
