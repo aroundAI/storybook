@@ -3,7 +3,7 @@ spec_id: FILM-1724
 title: Channel Experiments — Which Styles Work
 status: DRAFT
 effort: L
-dependencies: FILM-1610, FILM-1715, FILM-1716
+dependencies: FILM-1610, FILM-1715, FILM-1716; FILM-1710 for hook tests
 ---
 
 # Channel Experiments — Which Styles Work
@@ -22,8 +22,10 @@ Nothing in the product does this today.
   as a thumbnail or title, and cannot measure anything baked into the video.
   A new upload has no "before" of its own.
 - **Hook Lab (FILM-1510)** maps one published video to each hook variant.
-  It has been reported as not working properly and is being reviewed
-  separately. This spec does not build on it until that review is done (§9).
+  Reviewed 2026-09-20: it cannot be used (no way to create a test), reads
+  retention at the wrong place in the video, and can read another
+  account's data ([FILM-CC-04](../cross-cutting/FILM-CC-04-known-bugs.md)
+  KB-9, KB-10). Hook tests move here (§6).
 - **Self-benchmarking (FILM-1715)** compares a video with the channel's own
   history at a comparable age. That is exactly the comparison a style needs,
   but it answers "how did this video do?", not "which of my styles does
@@ -113,9 +115,17 @@ in a busy month is not flattered by the calendar:
 - **FILM-1717 Content genome:** concluded channel experiments are the
   strongest evidence it can use, because the styles were varied on purpose.
   How it consumes them is decided there.
-- **Hook Lab (FILM-1510):** if the review keeps it, a hook test could become
-  a channel experiment whose styles are hooks, measured on early retention.
-  That's decided after the review, not here.
+- **Hook tests (replacing FILM-1510's Hook Lab):** an experiment whose
+  styles are hooks, measured on early retention. Two limits the review
+  measured decide where that is allowed:
+  - YouTube's retention curve is 1% steps of the video's length, so a
+    10-minute video's first point is at 6 seconds and "retention at 3s"
+    does not exist for it. Early-retention measures are offered only for
+    short-form videos (FILM-1716), where the curve resolves them: about
+    150 seconds or less for a 3-second point.
+  - The length must be the published video's. `video_dim.duration_seconds`
+    is the episode's until FILM-1710, and Hook Lab also used the hook's
+    own length in its place (KB-10 H-2).
 
 ## 7. Out of scope
 
@@ -141,10 +151,9 @@ in a busy month is not flattered by the calendar:
 
 ## 9. Before building
 
-1. **Review Hook Lab (FILM-1510)** the same systematic way FILM-1610 was
-   reviewed: reproduce what doesn't work, and record it in FILM-CC-04.
-   Decide then whether Hook Lab is folded into this spec, kept alongside it,
-   or retired.
+1. ~~Review Hook Lab (FILM-1510).~~ Done 2026-09-20 (FILM-CC-04 KB-9,
+   KB-10): folded into this spec as hook tests (§6). Its cross-tenant read
+   (KB-9) is fixed separately, before this spec.
 2. **Settle the verdict threshold and the band method** with FILM-1715,
    which owns them.
 

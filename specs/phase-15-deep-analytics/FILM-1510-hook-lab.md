@@ -1,12 +1,20 @@
 ---
 spec_id: FILM-1510
 title: Hook Lab Implementation (FILM-1301 folded in)
-status: ✅ DONE
+status: ⚠️ INCOMPLETE
 effort: L
 dependencies: FILM-1505, FILM-1506, FILM-1507, FILM-1301
 ---
 
 # Hook Lab Implementation (FILM-1301 folded in)
+
+> **Reviewed 2026-09-20: not done.** It was marked ✅ DONE with none of its
+> acceptance criteria ticked. A test cannot be created from the product,
+> retention is read at the wrong place in the video, and a variant can read
+> another account's data. See
+> [FILM-CC-04 KB-9 and KB-10](../cross-cutting/FILM-CC-04-known-bugs.md).
+> Hook tests move into
+> [FILM-1724 channel experiments](../phase-17-analytics-provenance/FILM-1724-channel-experiments.md).
 
 ## 1. Overview
 

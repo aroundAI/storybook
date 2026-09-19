@@ -196,8 +196,11 @@ note: mutations *return* `{ ok: false, error }` (`withRefusals` and
 `unwrap` in `@kit/content-analytics`), and the stale-tab spec asserts the
 text on ⚫️ Test's production build.
 
-Everywhere else is unchanged. These 48 client files show
-`error.message` from a caught error. Not all of those errors come from a
+Everywhere else is unchanged. These 54 client files show
+`error.message` from a caught error. (Corrected 2026-09-20: the first count
+of 48 searched one line at a time and missed six files that split the
+expression across lines, Hook Lab's among them. The experiment log's two
+files also match, and are fixed: they show a message `unwrap` returned.) Not all of those errors come from a
 server action (some are `fetch` or client-only), so each one needs
 triage:
 
@@ -249,6 +252,12 @@ triage:
 - `packages/features/projects/src/components/create-project-form.tsx`
 - `packages/features/projects/src/components/update-project-form.tsx`
 - `packages/features/publishing/src/components/upload-only-mode.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/add-music-cue-dialog.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/generate-scene-music-dialog.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/bulk-generate/screenplay-phase.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/hooks/_components/hook-lab-client.tsx`
+- `apps/web/app/home/[account]/studio/[projectSlug]/research/_components/upload-source-dialog.tsx`
+- `packages/features/assets/src/components/voice-profile-editor.tsx`
 
 **Fix, per surface:** return expected refusals as values, the repo's
 existing `{ success: false, error }` pattern (71 actions already do).
@@ -283,6 +292,76 @@ M days"), so nothing is misreported, but the figure is less complete than
 it could be. Option: measure the baseline window again at conclusion,
 when it is fully ingested, and keep both. That changes what the baseline
 means, so it needs a decision first.
+
+---
+
+## KB-9 — Hook Lab reads another account's retention (cross-tenant)
+
+**Severity:** High — a data leak across accounts, though it needs the
+other account's publish id (a UUID), and Hook Lab has no page for adding
+variants, so only a direct API call reaches it. **Found:** Hook Lab review,
+2026-09-20. **Fix it on its own, before anything else here.**
+
+`hook_variants_create` checks that the caller can reach the *test*, never
+that `publish_id` belongs to the test's account. `queryRetentionCurve`
+then reads ClickHouse by `video_id` alone, and ClickHouse has no row-level
+security. The refresh writes that curve into the caller's variant.
+
+**Reproduced** on a production build, as account A's owner through
+PostgREST: a variant linked to account B's video was accepted (201), and
+"Refresh retention" on the page stored B's retention (0.4242, a value only
+B's curve had) and showed it in A's test.
+
+`hook_tests` has the same shape of gap: `project_id` is not checked to be
+in `account_id` (the FILM-1608 composite-key pattern). Neither table has a
+pgTAP test.
+
+**Proposed fix:** the FILM-1610 same-account rule. The variant insert and
+update policies require the publish's project to be in the test's account;
+`hook_tests` gets a composite `(project_id, account_id)` key; the retention
+read goes through a publish the caller can see, as FILM-1610's
+`linkedPublishes` does. pgTAP for each, including a user in two accounts,
+seen failing first.
+
+---
+
+## KB-10 — Hook Lab (FILM-1510) does not work as specified
+
+**Severity:** Medium — nobody can use it today, so nothing is misreported
+in practice, but its numbers would be wrong if anyone could. **Found:**
+Hook Lab review, 2026-09-20, twelve passes; every finding below was
+reproduced on a production build (a throwaway spec seeding a 10-minute
+video with a known curve, 1 − 0.8x in 1% steps), or confirmed absent by
+searching the code.
+
+| # | What happens | How it was shown |
+|---|---|---|
+| H-1 | **A test cannot be created or a variant added from the product.** `createHookTestAction` and `addHookVariantAction` exist; no page calls them. The page lists tests, which can only ever be empty | No create or add control on the page; no caller in the code |
+| H-2 | **Retention is read at the wrong place in the video.** The variant's `duration_seconds` (default 5 — the hook's length) is used as the *video's* length, so "at 3s" reads 3/5 = 60% through the video, and "at 5s" reads the end. The comment says it falls back to the video's duration; no code does | Same video: 52% "at 3s" with the default, 99% with 600. The true value at 3s is 99.2% |
+| H-3 | **Three seconds cannot be measured on a long video.** YouTube's curve is 1% steps of the video's length: the first point of a 10-minute video is at 6s, so 1s, 3s and 5s all read that one point, and a winner is declared on it | With the correct 600s: 1s, 3s and 5s all 0.992; "99% at 3s · winner" |
+| H-4 | **No way to reach it.** The spec calls for a sidebar entry; neither the team nor the project navigation links to `/hooks` | 0 links on the project page |
+| H-5 | **Page not found for a user in two accounts** whose projects share a slug. The page looks the project up by slug alone; slugs are unique per account, and every other studio page also filters by account | "Sorry, this page does not exist" on the user's own project |
+| H-6 | **Two acceptance criteria were never built:** a queryable archive of winning hooks, and `hook_type` tag medians beside the results. The spec is marked ✅ DONE with none of its five criteria ticked | Not in the code |
+| H-7 | A refusal's wording is lost in production (KB-6); the page is now on KB-6's list | KB-6 class, reproduced in FILM-1610 |
+
+Not reproduced, so not recorded as a finding: two refreshes at once could
+race on the one-winner index (clear, then set) and report a winner that was
+not stored; `refreshTestRetention` ignores its write errors.
+
+**What this means for the design.** A hook is part of the video, so a hook
+test is a comparison between *different* videos — exactly what
+[FILM-1724 channel experiments](../phase-17-analytics-provenance/FILM-1724-channel-experiments.md)
+is for. Early retention is measurable only where the curve resolves the
+first seconds: a 1%-step curve places its first point at 1% of the length,
+so 3 seconds needs a video of about 150 seconds or less (FILM-1716's short
+form). And the length has to be the published video's, which
+`video_dim.duration_seconds` is not yet (FILM-1710).
+
+**Proposed:** fix KB-9 now. Don't repair Hook Lab on its own: fold hook
+tests into FILM-1724 as experiments whose styles are hooks, measured on
+early retention for short-form videos only, once FILM-1710 and FILM-1716
+land. Until then, keep the route unlinked (as it is) and mark FILM-1510
+incomplete.
 
 ---
 
