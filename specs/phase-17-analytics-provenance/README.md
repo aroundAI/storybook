@@ -103,6 +103,9 @@ FILM-1714 + FILM-1715 ─→ FILM-1718 (diagnosis) ← not the genome
 
 FILM-1715 + FILM-1716 ─→ FILM-1717 (genome v1 → v2) ← also FILM-1606 ✅, FILM-1610
 
+FILM-1715 + FILM-1716 ─→ FILM-1724 (channel experiments) ← also FILM-1610 ✅;
+   after the Hook Lab (FILM-1510) review
+
 FILM-1717 + FILM-1718 ─→ FILM-1719 (surfaces) ← also FILM-1706
 
 FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook + X)
@@ -125,6 +128,7 @@ FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook + X)
 | [FILM-1721](./FILM-1721-platform-capability-reference.md) | DRAFT | L | **The researched truth table.** Per platform × metric × API surface × field name × scope × window, cited to vendor docs |
 | [FILM-1722](./FILM-1722-view-definition-registry.md) | DRAFT | M | What "a view" means per platform, with effective dates and the YouTube discontinuity |
 | [FILM-1723](./FILM-1723-api-version-consolidation.md) | DRAFT | M | One pinned version per vendor; the Graph v18 token-refresh risk; X onto `api.x.com` |
+| [FILM-1724](./FILM-1724-channel-experiments.md) | DRAFT | L | Which styles work: groups of new videos, one per style, compared at the same age; no verdict on thin samples |
 
 **Two independent paths, deliberately.** `metrics → diagnosis` (FILM-1718)
 works without the genome, so a creator gets a usable diagnosis immediately;

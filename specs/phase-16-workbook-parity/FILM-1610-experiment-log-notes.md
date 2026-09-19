@@ -10,6 +10,14 @@ dependencies: FILM-1602, FILM-1603, FILM-1605
 
 ## 1. Overview
 
+> **Renamed in review round 5: this is the Change log.** It compares the
+> same videos before and after a start date, which measures a change made
+> to videos already published (a thumbnail, a title), not anything baked
+> into a video. "Experiments", in the sense of styles compared across new
+> videos, is [FILM-1724](../phase-17-analytics-provenance/FILM-1724-channel-experiments.md).
+> Tables, actions and the route keep their `experiment` names; only what a
+> user reads changed.
+
 FILM-1509 shipped an experiment log that records *what was changed* and
 *what happened overall*. The workbook's Experiment Log asks two further
 questions it cannot answer.
@@ -127,7 +135,8 @@ A second hand-written migration, mirrored into
 alter table public.publishes
   add column if not exists analytics_note text,
   add column if not exists analytics_note_updated_at timestamptz,
-  add column if not exists analytics_note_updated_by uuid references auth.users(id);
+  add column if not exists analytics_note_updated_by uuid references auth.users(id)
+    on delete set null;  -- added in review 3: a deleted author must not block the delete
 ```
 
 **Not `metadata`.** `publishes.metadata` is a shared jsonb written by the
@@ -158,8 +167,8 @@ unchanged `totals`. `null` means the experiment watches no metric.
 `WatchedValue` is a discriminated union
 (`lib/watched-metrics.ts`): `measured`, with the value, its unit, the
 window and how many of the linked videos had data; or `unmeasured`, with
-the reason — `no_linked_videos`, `no_data`, `none_mature` or
-`unknown_metric`. **A metric that cannot be measured is never a zero**,
+the reason — `no_linked_videos`, `no_data`, `none_mature`, `predates_ingest`
+(§5a), `published_after_window` (§5a, round 5) or `unknown_metric`. **A metric that cannot be measured is never a zero**,
 and the type makes one impossible to construct without a value.
 
 **Every metric is measured over the experiment's linked videos only.**
@@ -303,6 +312,39 @@ finding was reproduced before it was fixed.
   page, and the row checked after each. Before this, no browser test
   concluded an experiment. The outcome field has a visible label.
 
+**Round 5** followed a twelve-pass method: file, category, requirement,
+data, scale, accessibility, build, production, §8 against stored output,
+reproduction, regression and a final pass. Each finding was reproduced
+before it was fixed; three candidates were not reproduced and were left
+alone (focus after Start, the note-permission RPC's shape, search speed at
+10,041 videos: ~170 ms under RLS).
+
+- **What it is for.** The log compares the same videos before and after,
+  so it measures packaging changes on published videos — and the form's
+  own example ("…on the next six uploads") was one it could never measure.
+  Renamed the Change log; the examples, help text and a note on
+  categories baked into the video say so. Styles across new videos became
+  FILM-1724.
+- **`published_after_window`.** A baseline with no data for videos all
+  published after its window says that, not "no data". Only ever a better
+  reason for an absence: measured data wins, so a wrong publish time
+  cannot hide real figures.
+- **Views at 30 days** is kept, with a note that on the same videos it
+  reads the same before and after.
+- **The expectation is fixed once started** (table and action). The form
+  promised "hindsight cannot rewrite it"; a member could.
+- **A write that changed nothing is not reported as done** (update and
+  delete, which no page calls yet).
+- **Assistive technology hears which videos are linked**; the picker is as
+  wide as its field (a Tailwind 4 syntax change had made it ~996px wider);
+  dates are the user's calendar days.
+- **Signed out mid-session**, a Start showed "An unexpected response was
+  received from the server": middleware redirected the action's request,
+  which Next's client cannot follow. Server actions now reach their own
+  sign-in check, which redirects properly — for every action under
+  `/home`.
+- **Failures are logged with the ids they concerned.**
+
 ## 6. Implementation Map
 
 | File | Change |
@@ -356,6 +398,13 @@ finding was reproduced before it was fixed.
 - [x] Start date, baseline, result and end date are each written once, by their own step, and never replaced (pgTAP, round 4)
 - [x] A refusal's wording reaches the user in a production build, not only on a dev server (E2E on ⚫️ Test's production build, round 4)
 - [x] An experiment can be logged, started and concluded through the page, with the row checked after each step (E2E, round 4)
+- [x] The stored baseline and result carry exactly the six totals fields and a watched value with unit, window, coverage and value — checked against the stored row after a conclusion with real ClickHouse data, on a production build (round 5)
+- [x] The hypothesis and expected outcome cannot change once started (pgTAP and unit, round 5)
+- [x] A baseline for videos published after its window says so rather than "no data", and never overrides measured data (unit and E2E, round 5)
+- [x] The page says what before/after can measure: packaging on published videos, not changes baked into a video (E2E, round 5)
+- [x] The picker states each video's linked state to assistive technology, and its list is as wide as its field (E2E on a production build, round 5)
+- [x] Created and publish dates are shown on the user's calendar (E2E in Asia/Kolkata, round 5)
+- [x] A signed-out Start goes to sign-in and changes nothing (E2E on a production build, round 5)
 - [x] The table refuses a link to another account's video, for a user who belongs to both (pgTAP)
 - [x] A partially covered window says so on the page, and a sum is also shown per day (measured against local ClickHouse: +15, data on 3 of 30 days, 5.0 per day)
 - [x] A video whose 30 days predate ingest is excluded from `views_at_30d` (measured: 100 with 1 of 2 videos; 50 with 2 of 2 when the exclusion is reverted)
