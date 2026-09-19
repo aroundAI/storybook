@@ -16,7 +16,6 @@ import { TRAFFIC_SOURCE_GROUPS } from '@kit/clickhouse';
 import type { TrafficGroupBucket } from '@kit/clickhouse';
 
 import { isUnavailable } from '../../lib/query-state';
-import { listChannelsAction } from '../../server/channels-actions';
 import {
   getBackCatalogAction,
   getCohortCurvesAction,
@@ -26,6 +25,7 @@ import {
 } from '../../server/deep-dive-actions';
 import { getSubscriberSeriesAction } from '../../server/subscriber-series-actions';
 import { AnalyticsCard } from '../overview/analytics-card';
+import { useProjectChannels } from '../use-project-channels';
 import { BackCatalogCard, BackCatalogCardSkeleton } from './back-catalog-card';
 import { ChannelFilter } from './channel-filter';
 import {
@@ -49,20 +49,17 @@ interface DeepDiveTabProps {
   /** Project the deep-dive analysis is scoped to */
   projectId: string;
   /**
+   * The channel filter. It lives in the dashboard so this tab and the Video
+   * Log show the same channel: two pickers with their own state on one page
+   * is how the tabs start disagreeing about what is selected.
+   */
+  connectionId: string | undefined;
+  onConnectionChange: (connectionId: string | undefined) => void;
+  /**
    * The project's account. `getYppProgressAction` is per account, so the tab
    * narrows its answer to the project's channels itself.
    */
   accountId: string;
-}
-
-/**
- * View filters narrowing the project scope. One object, so adding a filter
- * is a field here rather than another `useState`. Only channel has a
- * control today; `ScopeSchema` also accepts platform, content type and
- * language, which are added here when they get one.
- */
-interface DeepDiveFilters {
-  connectionId?: string;
 }
 
 type MedianMode = 'cohort_views_to_date' | 'views_in_period';
@@ -94,12 +91,22 @@ const TRAFFIC_WINDOW_LABEL = `the last ${TRAFFIC_WINDOW_WEEKS} complete weeks`;
 /** Days of subscriber history the curve shows — a year, like YPP's window. */
 const SUBSCRIBER_WINDOW_DAYS = 365;
 
-export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
+export function DeepDiveTab({
+  projectId,
+  accountId,
+  connectionId,
+  onConnectionChange,
+}: DeepDiveTabProps) {
   const [medianMode, setMedianMode] = useState<MedianMode>(
     'cohort_views_to_date',
   );
 
-  const [filters, setFilters] = useState<DeepDiveFilters>({});
+  /**
+   * The filters this tab narrows its scope by. Channel comes from the
+   * dashboard; `ScopeSchema` also accepts platform, content type and
+   * language, which join this object when they get a control.
+   */
+  const filters = { connectionId };
 
   // "All channels" leaves `connectionId` out of the scope entirely rather
   // than sending a sentinel, so the actions see exactly today's scope.
@@ -111,10 +118,7 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
     [projectId, filters.connectionId],
   );
 
-  const channelsQuery = useQuery({
-    queryKey: ['deep-dive-channels', projectId],
-    queryFn: () => listChannelsAction({ projectId }),
-  });
+  const channelsQuery = useProjectChannels(projectId);
 
   const selectedChannel = channelsQuery.data?.find(
     (channel) => channel.connectionId === filters.connectionId,
@@ -366,9 +370,7 @@ export function DeepDiveTab({ projectId, accountId }: DeepDiveTabProps) {
         <ChannelFilter
           channels={channelsQuery.data ?? []}
           value={filters.connectionId}
-          onChange={(connectionId) =>
-            setFilters((current) => ({ ...current, connectionId }))
-          }
+          onChange={onConnectionChange}
           isLoading={channelsQuery.isLoading}
           isError={isUnavailable(channelsQuery)}
         />

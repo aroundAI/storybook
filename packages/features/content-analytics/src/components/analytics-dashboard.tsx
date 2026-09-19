@@ -53,6 +53,7 @@ import { OverviewGrid } from './overview';
 import { PerformanceChart } from './performance-chart';
 import type { Platform } from './platform-filter';
 import { PlatformFilter } from './platform-filter';
+import { VideoLogTab } from './video-log';
 
 export interface AnalyticsDashboardProps {
   projectId: string;
@@ -79,6 +80,10 @@ export function AnalyticsDashboard({
     'instagram',
   ]);
   const [activeTab, setActiveTab] = useState('overview');
+  // The channel filter, shared by the Deep Dive and the Video Log: picking a
+  // channel in one is picking it in the other (FILM-1615 D-U1). Undefined is
+  // every channel.
+  const [connectionId, setConnectionId] = useState<string | undefined>();
   const [showExportDialog, setShowExportDialog] = useState(false);
 
   // Fetch project analytics with 5-minute auto-refresh
@@ -382,6 +387,9 @@ export function AnalyticsDashboard({
           <TabsTrigger value="deep-dive" data-test="analytics-tab-deep-dive">
             Deep Dive
           </TabsTrigger>
+          <TabsTrigger value="video-log" data-test="analytics-tab-video-log">
+            Video Log
+          </TabsTrigger>
           <TabsTrigger value="language">Language</TabsTrigger>
           <TabsTrigger value="insights">AI Insights</TabsTrigger>
         </TabsList>
@@ -441,7 +449,20 @@ export function AnalyticsDashboard({
         </TabsContent>
 
         <TabsContent value="deep-dive" className="mt-6">
-          <DeepDiveTab projectId={projectId} accountId={accountId} />
+          <DeepDiveTab
+            projectId={projectId}
+            accountId={accountId}
+            connectionId={connectionId}
+            onConnectionChange={setConnectionId}
+          />
+        </TabsContent>
+
+        <TabsContent value="video-log" className="mt-6">
+          <VideoLogTab
+            projectId={projectId}
+            connectionId={connectionId}
+            onConnectionChange={setConnectionId}
+          />
         </TabsContent>
 
         <TabsContent value="insights" className="mt-6">
