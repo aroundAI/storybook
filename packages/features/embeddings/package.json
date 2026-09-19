@@ -7,10 +7,14 @@
         ".": "./src/index.ts",
         "./voyage-client": "./src/voyage-client.ts"
     },
-    "scripts": {},
+    "scripts": {
+        "format": "prettier --check \"**/*.{ts,tsx}\""
+    },
     "dependencies": {},
     "devDependencies": {
+        "@kit/prettier-config": "workspace:*",
         "@kit/supabase": "workspace:*",
         "@types/node": "^24.5.0"
-    }
+    },
+    "prettier": "@kit/prettier-config"
 }

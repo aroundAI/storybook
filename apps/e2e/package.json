@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
     "report": "playwright show-report",
     "test": "playwright test --max-failures=1",
     "test:prod": "pnpm --filter web build:test && PLAYWRIGHT_BASE_URL='http://localhost:3010' PLAYWRIGHT_SERVER_COMMAND='PORT=3010 pnpm --filter web start:test' playwright test",
@@ -13,10 +14,12 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@kit/prettier-config": "workspace:*",
     "@playwright/test": "^1.55.0",
     "@types/node": "^24.5.0",
     "dotenv": "17.2.2",
     "node-html-parser": "^7.0.1",
     "totp-generator": "^2.0.0"
-  }
+  },
+  "prettier": "@kit/prettier-config"
 }

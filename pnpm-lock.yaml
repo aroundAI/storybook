@@ -41,6 +41,9 @@ importers:
       sst:
         specifier: 3.17.19
         version: 3.17.19
+      tailwindcss:
+        specifier: 4.1.13
+        version: 4.1.13
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -147,6 +150,9 @@ importers:
 
   apps/e2e:
     devDependencies:
+      '@kit/prettier-config':
+        specifier: workspace:*
+        version: link:../../tooling/prettier
       '@playwright/test':
         specifier: ^1.55.0
         version: 1.55.0
@@ -777,6 +783,9 @@ importers:
         specifier: ^3.25.74
         version: 3.25.76
     devDependencies:
+      '@kit/prettier-config':
+        specifier: workspace:*
+        version: link:../../tooling/prettier
       '@types/node':
         specifier: ^24.5.0
         version: 24.5.0
@@ -1557,6 +1566,9 @@ importers:
 
   packages/features/embeddings:
     devDependencies:
+      '@kit/prettier-config':
+        specifier: workspace:*
+        version: link:../../../tooling/prettier
       '@kit/supabase':
         specifier: workspace:*
         version: link:../../supabase
@@ -1721,6 +1733,9 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1
     devDependencies:
+      '@kit/prettier-config':
+        specifier: workspace:*
+        version: link:../../../tooling/prettier
       '@types/node':
         specifier: ^24.5.0
         version: 24.5.0
@@ -2069,6 +2084,9 @@ importers:
         specifier: ^3.25.74
         version: 3.25.76
     devDependencies:
+      '@kit/prettier-config':
+        specifier: workspace:*
+        version: link:../../../tooling/prettier
       '@types/node':
         specifier: ^24.5.0
         version: 24.5.0
@@ -2097,6 +2115,9 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1
     devDependencies:
+      '@kit/prettier-config':
+        specifier: workspace:*
+        version: link:../../../tooling/prettier
       '@supabase/supabase-js':
         specifier: 2.57.4
         version: 2.57.4
@@ -2809,7 +2830,11 @@ importers:
         specifier: ^5.9.2
         version: 5.9.2
 
-  tooling/scripts: {}
+  tooling/scripts:
+    devDependencies:
+      '@kit/prettier-config':
+        specifier: workspace:*
+        version: link:../prettier
 
   tooling/typescript: {}
 

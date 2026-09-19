@@ -3,9 +3,14 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
     "dev": "node ./src/dev.mjs",
     "checks": "node ./src/checks.mjs",
     "requirements": "node ./src/requirements.mjs",
     "license": "node ./src/license.mjs"
-  }
+  },
+  "devDependencies": {
+    "@kit/prettier-config": "workspace:*"
+  },
+  "prettier": "@kit/prettier-config"
 }
