@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1615
 title: Video Log Table
-status: DRAFT
+status: ✅ DONE
 effort: M
 dependencies: FILM-1603, FILM-1611; FILM-1610 soft (the note column, §4)
 ---
@@ -28,19 +28,34 @@ The CSV export already ships the columns
 downloading a file. What is missing is the view the workbook is actually
 organised around.
 
-## 2. Three States Per Cell, Not Two
+## 2. Four States Per Cell, Not Three
 
 This is the whole reason the table is a spec rather than a ticket. A
-`viewsAt[30]` cell has **three** distinct meanings, and the row already
-carries the flags to tell them apart:
+`viewsAt[30]` cell has **four** distinct meanings, and the row already
+carries the flags to tell them apart. The order below is the precedence,
+and `checkpointState()` in `lib/video-log-cells.ts` is its only owner:
 
-| state | condition | must render as |
-|---|---|---|
-| **a real figure** | `matureAt[30]` and not `predatesIngestAt[30]` | the number |
-| **not yet knowable** | `matureAt[30] === false` | greyed, not a number — the video is younger than 30 days |
-| **unknowable** | `predatesIngestAt[30] === true` | distinct from both — the window closed before this channel's ingest began, and no API can recover it |
+| state | condition | renders as | `data-test` |
+|---|---|---|---|
+| **not yet knowable** | `matureAt[30] === false` | `in N days`, muted — the video is younger than 30 days, so there is no answer yet whatever else is true | `checkpoint-immature` |
+| **never collected** | `ingestLagDays === null` | `—` — no metrics have ever arrived for this video | `checkpoint-no-data` |
+| **unknowable** | `predatesIngestAt[30] === true` | `n/a` — the window closed before this channel's ingest began, and no API can recover it | `checkpoint-predates` |
+| **a real figure** | otherwise | the number, `0` included | `checkpoint-figure` |
 
-Rendering any of the three as `0` is the failure this table exists to
+**The fourth state was missing from this spec** (EDD finding F-1) and is
+the one that would have shipped the bug the other three exist to prevent.
+A video with no metrics at all has `ingestLagDays === null`, so
+`predatesIngestAt` is false for every checkpoint, and once the video is old
+enough `matureAt` is true — which lands it on "a real figure" with
+`viewsAtAge[30]` absent, i.e. **0**. The spec's own criterion, "a real zero
+renders `0`", would have rendered missing data as a measured zero.
+
+The lifetime columns have the same shape (`qualityStates()`): a CTR over no
+impressions and an average view duration over no views are not
+measurements of zero, and render as `—` with the reason attached
+(finding F-3).
+
+Rendering any of the other three as `0` is the failure this table exists to
 prevent, and it is a comfortable failure to ship: a zero looks like data,
 sorts like data, and averages like data. FILM-1603 §2 and FILM-1604 §2 both
 fixed this at the query layer; the table is where it becomes visible or is
@@ -48,8 +63,10 @@ thrown away.
 
 The CSV solved the same problem by emitting an **empty cell**
 (`checkpointCell`, `raw-export-generator.ts:53-56`) rather than a zero. The
-table must be at least as honest, and it has more room to explain itself —
-a tooltip saying *why* a cell is empty, which the CSV cannot carry.
+table is at least as honest, and it has more room to explain itself — each
+non-figure carries *why*, which the CSV cannot. The explanation hangs on a
+focusable `<button>`, not on hover: a hover-only tooltip hides the reason
+from everyone not using a mouse, and the reason is the point of the cell.
 
 `ingestLagDays > 1` flags the whole row: the video's early life was
 partially missed, so even a mature, non-predating `@30d` is truncated. This
@@ -71,6 +88,24 @@ affects **every historical video**.
 - **Project-level with a channel filter** — the locked decision (phase
   README). The action accepts `accountId`, but an account-scale log needs
   `publishedFrom` enforced, which is an open question, not this spec.
+- **Revenue is listed per currency, never summed across them** (EDD
+  decision D-U2, finding F-2). `getVideoLogAction` used to add
+  `revenue_cents` across every currency on the row, which produces a number
+  that is neither dollars nor euros; `VideoLogRow.revenue` is now
+  `Array<{currency, cents}>` and the cell renders `$12.00 + €5.00`. The
+  same summing still happens elsewhere in the repo — recorded as a
+  known-issue entry, not fixed here.
+- **One channel selection for the whole dashboard** (D-U1). The Deep Dive
+  and the Video Log share it: the selection lives in
+  `analytics-dashboard.tsx`, and the list behind it in
+  `useProjectChannels`, one query key. Two pickers with their own state on
+  one page is how the tabs start disagreeing about what is selected.
+- **A note is saved against the version it was read at** (D-U4). The write
+  is conditional on `analytics_note_updated_at` still holding the value the
+  editor loaded. A save that matches no row is a conflict, not a silent
+  overwrite: the editor stays open, shows the other edit, and offers to
+  take it. The timestamp is passed back and forth **verbatim** — through a
+  `Date` it loses its microseconds and every save looks stale.
 - **Quality metrics are lifetime, and the checkpoints are not.** CTR and
   average view duration come from `queryQualityMetricsForVideos`
   deliberately unbounded (`video-log-actions.ts:135-141`), while
@@ -82,11 +117,15 @@ affects **every historical video**.
 | File | Change |
 |------|--------|
 | `packages/features/content-analytics/src/components/video-log/video-log-table.tsx` | New. Renders `VideoLogRow[]` with the three-state checkpoint cells of §2, a row-level ingest-lag flag, sortable headers **only** for the three whitelisted columns, and explicit pagination controls. Horizontal overflow scrolls inside its own container — sixteen columns will not fit, and the page body must not scroll sideways. |
-| `packages/features/content-analytics/src/components/video-log/checkpoint-cell.tsx` | New, small, and separate on purpose: one component owns the three-state decision so the four checkpoint columns cannot disagree about it. Give it `data-test` hooks per state — this is the behaviour most worth an E2E assertion in the phase. |
+| `packages/features/content-analytics/src/lib/video-log-cells.ts` | New. The decision itself, pure and outside React: `checkpointState`, `qualityStates`, `isPartial`, `parseUtcTimestamp`. One owner, so the four checkpoint columns cannot disagree — and exhaustively unit-testable without rendering. |
+| `packages/features/content-analytics/src/lib/video-log-paging.ts` | New, pure: the page request (one row past the page, which is how "is there another page" is answered without a count), the page slice, and the sort cycle. |
+| `packages/features/content-analytics/src/components/video-log/cells.tsx` | New. Draws what those functions return, with `data-test` per state and the explanation on a focusable trigger. |
 | `packages/features/content-analytics/src/components/video-log/index.ts` | Barrel, matching `deep-dive/index.ts`. |
 | `packages/features/content-analytics/src/components/analytics-dashboard.tsx` | New "Video Log" tab beside the existing six (`:371-378`). |
 | ↑ | Reuse the `ChannelFilter` built in FILM-1611 rather than adding a second selector — two channel pickers with independent state on one dashboard is how the tabs start disagreeing about what is selected. |
-| `packages/features/content-analytics/src/server/video-log-actions.ts` | No signature change. If FILM-1610 has landed, `VideoLogRow.analyticsNote` renders as an editable cell; if it has not, the column is simply absent — FILM-1603 already establishes that the action "leaves the field out entirely rather than" faking one. |
+| `packages/features/content-analytics/src/server/video-log-actions.ts` | Two additive changes, not none as first written (finding F-6): `revenueCents` becomes `revenue` per currency, and `analyticsNoteUpdatedAt` is carried so a save can be conditional on it. No consumer outside this tab. |
+| `packages/features/content-analytics/src/server/publish-notes-actions.ts` | The conditional write of D-U4, returning `saved` or `conflict`, and a refusal as a **value** — a production build replaces a thrown message with a generic one. |
+| `packages/features/content-analytics/src/components/use-project-channels.ts` | New. The shared channel list, one query key for both tabs. |
 | `packages/features/content-analytics/src/components/video-log/note-cell.tsx` | New, only if FILM-1610 has landed. **This spec owns the note editor**: FILM-1610 §7 ships the column and `updatePublishNoteAction` and leaves the cell here. `react-hook-form` + `@kit/ui/form`, per the root `CLAUDE.md`, with `data-test` on the input and the save control. Land FILM-1610 first so this ships in one piece. **Editable only where `VideoLogRow.canEditNote` is true** (FILM-1610 computes it from the `publishes_update` roles); elsewhere the note renders read-only. The E2E must assert both: a project member gets an editor, and an account member who is not on the project gets read-only text — that is what proves `canEditNote` agrees with the policy. |
 
 ## 5. Bounding
@@ -107,59 +146,67 @@ it is summing the page.
 
 ## 7. Acceptance Criteria
 
-- [ ] A "Video Log" tab renders one row per video for the selected project
-- [ ] An immature checkpoint renders greyed and is visually distinct from zero
-- [ ] A checkpoint that predates the channel's ingest renders distinctly from both a figure and an immature cell
-- [ ] A video with a real zero at a mature checkpoint renders `0`, not an empty cell
-- [ ] Rows with `ingestLagDays > 1` are flagged, with an explanation available
-- [ ] Sorting is offered only on published date, lifetime views and title
-- [ ] Sorting re-queries the server and does not reorder the current page client-side
-- [ ] Pagination is explicit and respects the 500-row cap
-- [ ] The channel filter is the same component the Deep Dive tab uses
-- [ ] Column headers distinguish age-bounded checkpoints from lifetime CTR and duration
-- [ ] The table scrolls horizontally within its own container; the page body does not
-- [ ] Any footer total states that it covers the current page only
-- [ ] A loading state renders while the action is in flight
-- [ ] If FILM-1610 has landed, a note saved from a row survives a re-query, and a second edit to the same row saves the second value, not the first
-- [ ] The note is editable only where `canEditNote` is true; an account member who is not on the video's project sees it read-only
-- [ ] If FILM-1610 has not landed, the note column is absent rather than rendered empty
+- [x] A "Video Log" tab renders one row per video for the selected project
+- [x] An immature checkpoint renders as `in N days` and is visually distinct from zero
+- [x] A checkpoint that predates the channel's ingest renders distinctly from both a figure and an immature cell
+- [x] A video with **no metrics at all** renders `—`, not `0` — the fourth state of §2
+- [x] A video with a real zero at a mature checkpoint renders `0`, not an empty cell
+- [x] Rows with `ingestLagDays > 1` are flagged, with an explanation available
+- [x] Every non-figure carries its reason, reachable by keyboard and screen reader
+- [x] Sorting is offered only on published date, lifetime views and title
+- [x] Sorting re-queries the server and does not reorder the current page client-side
+- [x] Pagination is explicit and respects the 500-row cap
+- [x] The channel filter is the same component the Deep Dive tab uses, **and the same selection** (D-U1)
+- [x] Revenue is shown per currency and never summed across currencies (D-U2)
+- [x] Column headers distinguish age-bounded checkpoints from lifetime CTR and duration
+- [x] The table scrolls horizontally within its own container; the page body does not
+- [x] There is no footer total; the scope note says the table holds one page
+- [x] A loading state renders while the action is in flight, and a failed read says so rather than rendering as an empty log
+- [x] A note saved from a row survives a re-query, and a second edit to the same row saves the second value, not the first
+- [x] A note saved against a version someone else has already changed is refused and shown, never silently overwritten (D-U4)
+- [x] The note is editable only where `canEditNote` is true; an account member who is not on the video's project sees it read-only
+- [x] Published dates render on the reader's own calendar, not the UTC day (finding F-4)
 
 ## 8. Verification
 
 ```bash
-pnpm --filter @kit/content-analytics test
+pnpm --filter @kit/content-analytics test        # 693 unit + component tests
 pnpm typecheck && pnpm lint
-npx playwright test video-log        # from apps/e2e; the guard half
+npx playwright test analytics/video-log          # from apps/e2e; the guard half
+python3 tooling/mutation-guards/run.py --kind unit   # every guard seen red
 ```
 
 **Playwright is required**, not optional — the table is interactive
-(server-side sort, pagination, and the note editor if FILM-1610 has landed),
-and the root `CLAUDE.md` requires a spec before an interactive component's
-criteria are ticked. It comes in the two halves FILM-1617 used in
-`apps/e2e/tests/deep-dive/`, because with ClickHouse off the table has no
-rows to sort, page or annotate:
+(server-side sort, pagination, the note editor), and the root `CLAUDE.md`
+requires a spec before an interactive component's criteria are ticked. It
+comes in two halves, because with ClickHouse off the table has no rows to
+sort, page or annotate:
 
-- **A guard spec that runs in CI, with ClickHouse off**: the tab mounts,
-  the empty state renders, the loading state appears, and the note column
-  is absent or present according to whether FILM-1610 has landed. Seed
-  through the API (`tests/utils/seed.ts`).
-- **An evidence spec, gated on `CAPTURE_EVIDENCE` and
-  `CLICKHOUSE_EVIDENCE`** as `subscriber-evidence.spec.ts` is, that seeds
-  real rows and drives the table: the three checkpoint-cell states, a
-  server-side sort, a page turn, and a note saved *twice* on one row with
-  the second value surviving a re-query. Its screenshots and DOM readings
-  go in the PR.
+- **`tests/analytics/video-log.spec.ts`** — the guard half, ClickHouse off,
+  on the production build: the tab mounts, the request carries the page and
+  sort the UI claims, the empty and channel-empty states, the loading
+  state, a failed read reported rather than rendered as an empty log, and
+  the channel selection shared with the Deep Dive in both directions.
+- **`tests/analytics/video-log-evidence.spec.ts`** — gated on
+  `CLICKHOUSE_EVIDENCE`: seeds `video_dim` and `video_metrics` and drives
+  the table. One video per cell state, the Partial badge, a sort proven to
+  be the server's (page 2's first row is the 101st of the whole log, so
+  sorting the visible page could not have produced it), the page past the
+  end, revenue in two currencies, the local date from a Kolkata context,
+  and the notes: saved, saved again, reloaded, cleared, refused over the
+  limit, conflicting across two sessions, read-only for a non-member, and
+  driven from the keyboard.
 
-The second half cannot run in CI. Say so in the PR rather than letting a
-green guard spec imply the editor was exercised.
+**Correction to the earlier draft** (finding F-5): the evidence half *does*
+run in CI. The `🧬 E2E guards & evidence` job runs a ClickHouse container
+next to Supabase, so both halves and the e2e mutation guards run on every
+pull request. The claim that it "cannot run in CI" was stale.
 
-Then run the app and open the tab. The three-state cell logic is a pure
-function of `matureAt` / `predatesIngestAt` and is unit-testable now — do
-that, because it is the part that matters and the part a green typecheck
-says nothing about.
+The evidence half earned its keep on its first run: saving a note and
+immediately reopening it reported a conflict with nobody else involved.
+Radix keeps a popover's content mounted briefly after it closes, so an
+editor reopened quickly is the same component instance, still holding the
+version — and the text — it first opened with. A unit test could not see
+it; it lives between the DOM and component state. The editor is keyed per
+opening, and a mutation guard holds the fix.
 
-What cannot be verified: every actual number. `CLICKHOUSE_ENABLED=false`,
-so `getVideoLogAction` returns an empty array and the table renders its
-empty state. Confirming that immature and pre-ingest cells look different
-from zero therefore needs seeded fixture rows in the component test, not a
-running app.
