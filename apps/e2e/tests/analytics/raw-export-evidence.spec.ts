@@ -7,6 +7,7 @@ import {
   seedVideoMetrics,
 } from '../utils/clickhouse';
 import {
+  readRows,
   seedProject,
   seedPublishedVideos,
   seedScheduledReport,
@@ -160,7 +161,10 @@ test.describe('FILM-1615 — the scheduled raw export', () => {
 
     const recipient = `raw-export-${team.accountId}@storybook.dev`;
 
-    await seedScheduledReport({ accountId: team.accountId, recipient });
+    const reportId = await seedScheduledReport({
+      accountId: team.accountId,
+      recipient,
+    });
 
     const response = await request.get('/api/reports/scheduled', {
       headers: { Authorization: `Bearer ${CRON_SECRET}` },
@@ -168,11 +172,26 @@ test.describe('FILM-1615 — the scheduled raw export', () => {
     });
 
     expect(response.status(), await response.text()).toBe(200);
-    expect(await response.json()).toMatchObject({
-      success: true,
-      succeeded: 1,
-      failed: 0,
-    });
+
+    // This report's own outcome, not the job's totals. The endpoint runs
+    // every report that is due, so `succeeded: 1, failed: 0` was really an
+    // assertion that the database held exactly one due report — true of a
+    // fresh CI database, false on the second local run, and order-dependent
+    // the day any other spec seeds one.
+    //
+    // The row also says *why* when it fails, which the totals never could.
+    const [row] = await readRows<{
+      last_run_status: string | null;
+      last_error: string | null;
+    }>(
+      'scheduled_reports',
+      `id=eq.${reportId}&select=last_run_status,last_error`,
+    );
+
+    expect(row, 'the seeded report still exists').toBeTruthy();
+    expect(row!.last_run_status, row!.last_error ?? 'no error recorded').toBe(
+      'success',
+    );
 
     const csv = await fetchDeliveredCsv(recipient);
 
