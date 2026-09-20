@@ -156,6 +156,24 @@ export interface VideoQualityMetrics {
  */
 export async function queryQualityMetricsForVideos(input: {
   videoIds: string[];
+  /**
+   * The projects those videos belong to, when the caller knows them.
+   *
+   * Purely a read-volume bound, never a correctness filter: `video_id` is
+   * the publish UUID and unique per tenant, so the id list already decides
+   * *which* rows are returned. But `video_metrics` and `video_reach_daily`
+   * are both `ORDER BY (project_id, platform, video_id, metric_date)`, so
+   * filtering on `video_id` alone matches no primary-key prefix and reads
+   * the whole table — with FINAL — for every call.
+   *
+   * Opt-in rather than derived from `video_dim`, which is
+   * `ORDER BY (video_id)` and so remembers only a video's *current*
+   * project: deriving it would silently drop the history of a publish that
+   * moved between projects, which is the error `verify-queries.ts` records
+   * under "videoId-only reads span project_id by design". A caller passes
+   * this only where it knows the scope it asked for.
+   */
+  projectIds?: string[];
   startDate?: string;
   endDate?: string;
 }): Promise<Map<string, VideoQualityMetrics>> {
@@ -218,6 +236,7 @@ export async function queryTrafficSources(input: {
 
 async function queryQualityMetricsForVideosSingle(input: {
   videoIds: string[];
+  projectIds?: string[];
   startDate?: string;
   endDate?: string;
 }): Promise<Map<string, VideoQualityMetrics>> {
@@ -228,6 +247,15 @@ async function queryQualityMetricsForVideosSingle(input: {
   const client = getClickHouseClient();
   const params: Record<string, unknown> = { videoIds: input.videoIds };
   const bounds: string[] = [];
+
+  // Both tables this query reads are ORDER BY (project_id, …), so this is
+  // the predicate that turns a full scan into a range read. See
+  // `projectIds` on the exported function for why it bounds what is read
+  // and not what is returned.
+  if (input.projectIds?.length) {
+    bounds.push('project_id IN {projectIds: Array(UUID)}');
+    params.projectIds = input.projectIds;
+  }
 
   if (input.startDate) {
     bounds.push('metric_date >= {startDate: Date}');

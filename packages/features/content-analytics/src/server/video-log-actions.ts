@@ -164,7 +164,14 @@ export const getVideoLogAction = enhanceAction(
         // slice of the window that video happened to overlap — two different
         // windows in one row, with nothing saying so. A bounded quality
         // window would need its own explicitly named inputs.
-        queryQualityMetricsForVideos({ videoIds }),
+        queryQualityMetricsForVideos({
+          videoIds,
+          // The rows above came from this project, so bounding the read to
+          // it changes nothing about what comes back and stops the scan
+          // covering every other tenant's metrics. Omitted for an
+          // account-wide scope, which has no single project to name.
+          ...(input.projectId ? { projectIds: [input.projectId] } : {}),
+        }),
         input.projectId
           ? listProjectChannels(input.projectId, client)
           : listAccountChannels(input.accountId!, client),
