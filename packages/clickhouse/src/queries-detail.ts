@@ -19,6 +19,29 @@ import type {
 /**
  * Insert retention curve points (latest fetch wins per point).
  */
+/**
+ * Bounds a read to the projects the caller named, when it named any.
+ *
+ * Every metrics table here is `ORDER BY (project_id, platform, video_id,
+ * …)`, so a filter on `video_id` alone matches no primary-key prefix and
+ * the read scans the table — with FINAL — however few videos were asked
+ * for. This is the predicate that makes it a range read.
+ *
+ * It bounds what is *read*, never what is *returned*: `video_id` is the
+ * publish UUID and unique per tenant, so the id list already decides the
+ * rows. That is also why it is opt-in — see `queryQualityMetricsForVideos`.
+ */
+function pushProjectScope(
+  conditions: string[],
+  params: Record<string, unknown>,
+  projectIds: string[] | undefined,
+): void {
+  if (!projectIds?.length) return;
+
+  conditions.push('project_id IN {projectIds: Array(UUID)}');
+  params.projectIds = projectIds;
+}
+
 export async function insertRetentionCurves(
   points: RetentionCurvePoint[],
 ): Promise<void> {
@@ -55,10 +78,20 @@ export async function insertVideoAudience(
  */
 export async function queryRetentionCurve(input: {
   videoId: string;
+  /**
+   * The project the video belongs to, when the caller knows it. See
+   * `queryQualityMetricsForVideos` for why this bounds what is read and
+   * never what is returned, and why it is opt-in rather than derived.
+   */
+  projectIds?: string[];
 }): Promise<Array<{ elapsedRatio: number; audienceWatchRatio: number }>> {
   if (!isClickHouseEnabled()) return [];
 
   const client = getClickHouseClient();
+  const params: Record<string, unknown> = { videoId: input.videoId };
+  const conditions = ['video_id = {videoId: String}'];
+
+  pushProjectScope(conditions, params, input.projectIds);
 
   const result = await client.query({
     query: `
@@ -66,11 +99,11 @@ export async function queryRetentionCurve(input: {
         elapsed_ratio,
         argMax(audience_watch_ratio, fetched_at) as audience_watch_ratio
       FROM video_retention_curves
-      WHERE video_id = {videoId: String}
+      WHERE ${conditions.join(' AND ')}
       GROUP BY elapsed_ratio
       ORDER BY elapsed_ratio ASC
     `,
-    query_params: { videoId: input.videoId },
+    query_params: params,
     format: 'JSONEachRow',
   });
 
@@ -92,6 +125,7 @@ export async function queryRetentionCurve(input: {
  */
 async function queryAudienceRowsSingle(input: {
   videoIds: string[];
+  projectIds?: string[];
   dimension: AudienceDimension;
 }): Promise<
   Array<{ videoId: string; key: string; views: number; percentage: number }>
@@ -99,6 +133,16 @@ async function queryAudienceRowsSingle(input: {
   if (input.videoIds.length === 0 || !isClickHouseEnabled()) return [];
 
   const client = getClickHouseClient();
+  const params: Record<string, unknown> = {
+    videoIds: input.videoIds,
+    dimension: input.dimension,
+  };
+  const conditions = [
+    'video_id IN {videoIds: Array(String)}',
+    'dimension = {dimension: String}',
+  ];
+
+  pushProjectScope(conditions, params, input.projectIds);
 
   const result = await client.query({
     query: `
@@ -108,11 +152,10 @@ async function queryAudienceRowsSingle(input: {
         argMax(views, fetched_at) as views,
         argMax(percentage, fetched_at) as percentage
       FROM video_audience
-      WHERE video_id IN {videoIds: Array(String)}
-        AND dimension = {dimension: String}
+      WHERE ${conditions.join(' AND ')}
       GROUP BY video_id, key
     `,
-    query_params: { videoIds: input.videoIds, dimension: input.dimension },
+    query_params: params,
     format: 'JSONEachRow',
   });
 
@@ -156,6 +199,24 @@ export interface VideoQualityMetrics {
  */
 export async function queryQualityMetricsForVideos(input: {
   videoIds: string[];
+  /**
+   * The projects those videos belong to, when the caller knows them.
+   *
+   * Purely a read-volume bound, never a correctness filter: `video_id` is
+   * the publish UUID and unique per tenant, so the id list already decides
+   * *which* rows are returned. But `video_metrics` and `video_reach_daily`
+   * are both `ORDER BY (project_id, platform, video_id, metric_date)`, so
+   * filtering on `video_id` alone matches no primary-key prefix and reads
+   * the whole table — with FINAL — for every call.
+   *
+   * Opt-in rather than derived from `video_dim`, which is
+   * `ORDER BY (video_id)` and so remembers only a video's *current*
+   * project: deriving it would silently drop the history of a publish that
+   * moved between projects, which is the error `verify-queries.ts` records
+   * under "videoId-only reads span project_id by design". A caller passes
+   * this only where it knows the scope it asked for.
+   */
+  projectIds?: string[];
   startDate?: string;
   endDate?: string;
 }): Promise<Map<string, VideoQualityMetrics>> {
@@ -175,6 +236,12 @@ export async function queryQualityMetricsForVideos(input: {
  */
 export async function queryAudienceRows(input: {
   videoIds: string[];
+  /**
+   * The projects those videos belong to, when the caller knows them. See
+   * `queryQualityMetricsForVideos` for why this bounds what is read and
+   * never what is returned, and why it is opt-in rather than derived.
+   */
+  projectIds?: string[];
   dimension: AudienceDimension;
 }): Promise<
   Array<{ videoId: string; key: string; views: number; percentage: number }>
@@ -194,6 +261,12 @@ export async function queryAudienceRows(input: {
  */
 export async function queryTrafficSources(input: {
   videoIds: string[];
+  /**
+   * The projects those videos belong to, when the caller knows them. See
+   * `queryQualityMetricsForVideos` for why this bounds what is read and
+   * never what is returned, and why it is opt-in rather than derived.
+   */
+  projectIds?: string[];
   startDate?: string;
   endDate?: string;
   byDate?: boolean;
@@ -218,6 +291,7 @@ export async function queryTrafficSources(input: {
 
 async function queryQualityMetricsForVideosSingle(input: {
   videoIds: string[];
+  projectIds?: string[];
   startDate?: string;
   endDate?: string;
 }): Promise<Map<string, VideoQualityMetrics>> {
@@ -228,6 +302,8 @@ async function queryQualityMetricsForVideosSingle(input: {
   const client = getClickHouseClient();
   const params: Record<string, unknown> = { videoIds: input.videoIds };
   const bounds: string[] = [];
+
+  pushProjectScope(bounds, params, input.projectIds);
 
   if (input.startDate) {
     bounds.push('metric_date >= {startDate: Date}');
@@ -325,6 +401,13 @@ export interface VideoSubscriberTotals {
  */
 export async function queryNetSubscribersForVideos(input: {
   videoIds: string[];
+  /**
+   * The projects those videos belong to, when the caller knows them. See
+   * `queryQualityMetricsForVideos` for why this bounds what is read and
+   * never what is returned, and why it is opt-in rather than derived.
+   */
+  projectIds?: string[];
+
   startDate?: string;
   endDate?: string;
 }): Promise<Map<string, VideoSubscriberTotals>> {
@@ -339,6 +422,7 @@ export async function queryNetSubscribersForVideos(input: {
 
 async function queryNetSubscribersForVideosSingle(input: {
   videoIds: string[];
+  projectIds?: string[];
   startDate?: string;
   endDate?: string;
 }): Promise<Map<string, VideoSubscriberTotals>> {
@@ -349,6 +433,8 @@ async function queryNetSubscribersForVideosSingle(input: {
   const client = getClickHouseClient();
   const params: Record<string, unknown> = { videoIds: input.videoIds };
   const conditions = ['video_id IN {videoIds: Array(String)}'];
+
+  pushProjectScope(conditions, params, input.projectIds);
 
   if (input.startDate) {
     conditions.push('metric_date >= {startDate: Date}');
@@ -412,6 +498,12 @@ export type DataDaySource = keyof typeof DATA_DAY_TABLES;
  */
 export async function queryDataDaysForVideos(input: {
   videoIds: string[];
+  /**
+   * The projects those videos belong to, when the caller knows them. See
+   * `queryQualityMetricsForVideos` for why this bounds what is read and
+   * never what is returned, and why it is opt-in rather than derived.
+   */
+  projectIds?: string[];
   source: DataDaySource;
   startDate: string;
   endDate: string;
@@ -430,19 +522,26 @@ export async function queryDataDaysForVideos(input: {
   // Chunked like the other video-id reads; a date seen in two chunks is one
   // day, so the chunks' dates are unioned, not their counts summed.
   for (const chunk of chunkVideoIds(input.videoIds)) {
+    const params: Record<string, unknown> = {
+      videoIds: chunk,
+      startDate: input.startDate,
+      endDate: input.endDate,
+    };
+    const conditions = [
+      'video_id IN {videoIds: Array(String)}',
+      'metric_date >= {startDate: Date}',
+      'metric_date <= {endDate: Date}',
+    ];
+
+    pushProjectScope(conditions, params, input.projectIds);
+
     const response = await client.query({
       query: `
         SELECT DISTINCT toString(metric_date) as day
         FROM ${table}
-        WHERE video_id IN {videoIds: Array(String)}
-          AND metric_date >= {startDate: Date}
-          AND metric_date <= {endDate: Date}
+        WHERE ${conditions.join(' AND ')}
       `,
-      query_params: {
-        videoIds: chunk,
-        startDate: input.startDate,
-        endDate: input.endDate,
-      },
+      query_params: params,
       format: 'JSONEachRow',
     });
 
@@ -462,6 +561,7 @@ export async function queryDataDaysForVideos(input: {
  */
 async function queryTrafficSourcesSingle(input: {
   videoIds: string[];
+  projectIds?: string[];
   startDate?: string;
   endDate?: string;
   byDate?: boolean;
@@ -480,6 +580,8 @@ async function queryTrafficSourcesSingle(input: {
   const client = getClickHouseClient();
   const params: Record<string, unknown> = { videoIds: input.videoIds };
   const conditions = ['video_id IN {videoIds: Array(String)}'];
+
+  pushProjectScope(conditions, params, input.projectIds);
 
   if (input.startDate) {
     conditions.push('metric_date >= {startDate: Date}');

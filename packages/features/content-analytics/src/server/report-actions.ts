@@ -197,9 +197,13 @@ async function fetchAnalyticsData(
     queryTotalsByVideoIds(publishIds, {
       startDate: startDateStr,
       endDate: endDateStr,
+      ...(projectIds?.length ? { projectIds } : {}),
     }),
     queryQualityMetricsForVideos({
       videoIds: publishIds,
+      // Only when the report names its projects; a report over a whole
+      // account has no single set to bound by.
+      ...(projectIds?.length ? { projectIds } : {}),
       startDate: startDateStr,
       endDate: endDateStr,
     }),
@@ -220,7 +224,13 @@ async function fetchAnalyticsData(
     for (const batch of chunkIds(withMetrics, RETENTION_CONCURRENCY)) {
       await Promise.all(
         batch.map(async (publishId) => {
-          const points = await queryRetentionCurve({ videoId: publishId });
+          const points = await queryRetentionCurve({
+            videoId: publishId,
+            // One query per video, up to MAX_RETENTION_VIDEOS of them, so
+            // this is the read that most needs bounding — unscoped it
+            // scans video_retention_curves once per video in the report.
+            ...(projectIds?.length ? { projectIds } : {}),
+          });
 
           if (points.length > 0) {
             retentionByPublish.set(

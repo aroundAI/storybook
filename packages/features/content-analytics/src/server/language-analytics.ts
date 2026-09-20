@@ -219,10 +219,12 @@ export async function getLanguagePerformance(
     queryTotalsByVideoIds(publishIds, {
       startDate: startDateStr,
       endDate: endDateStr,
+      projectIds: [projectId],
     }),
     queryTotalsByVideoIds(publishIds, {
       startDate: prevStartStr,
       endDate: prevEndStr,
+      projectIds: [projectId],
     }),
   ]);
 
@@ -334,6 +336,7 @@ export async function getPlatformLanguageMatrix(
   const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
     startDate: startDateStr,
     endDate: endDateStr,
+    projectIds: [projectId],
   });
 
   // Aggregate by platform-language
@@ -436,6 +439,7 @@ export async function getContentTypeComparison(
   const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
     startDate: startDateStr,
     endDate: endDateStr,
+    projectIds: [projectId],
   });
 
   // Aggregate by content type
@@ -652,6 +656,7 @@ export async function getShortsSourcePerformance(
   const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
     startDate: startDateStr,
     endDate: endDateStr,
+    projectIds: [projectId],
   });
 
   // Build results
@@ -730,8 +735,13 @@ export async function getGeographyByLanguage(
     queryTotalsByVideoIds(publishIds, {
       startDate: startDateStr,
       endDate: endDateStr,
+      projectIds: [projectId],
     }),
-    queryAudienceRows({ videoIds: publishIds, dimension: 'country' }),
+    queryAudienceRows({
+      videoIds: publishIds,
+      projectIds: [projectId],
+      dimension: 'country',
+    }),
   ]);
 
   // language → country → weighted views

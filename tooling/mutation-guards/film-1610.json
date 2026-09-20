@@ -145,11 +145,19 @@
     {
       "name": "D1 verify step missing",
       "file": "packages/clickhouse/scripts/verify-queries.ts",
-      "find": "await step('queryNetSubscribersForVideos', async () => {\n    const perVideo = await queryNetSubscribersForVideos({",
-      "replace": "await step('queryNetSubscribersForVideos', async () => {\n    const perVideo = await (async (_: unknown) => new Map())({",
       "kind": "unit",
       "cwd": "packages/clickhouse",
-      "test": "__tests__/verify-coverage.test.ts"
+      "test": "__tests__/verify-coverage.test.ts",
+      "edits": [
+        {
+          "find": "await step('queryNetSubscribersForVideos', async () => {\n    const perVideo = await queryNetSubscribersForVideos({",
+          "replace": "await step('queryNetSubscribersForVideos', async () => {\n    const perVideo = await (async (_: unknown) => new Map())({"
+        },
+        {
+          "find": "queryNetSubscribersForVideos({ videoIds, projectIds }),",
+          "replace": "(async (_: unknown) => new Map())({ videoIds, projectIds }),"
+        }
+      ]
     },
     {
       "name": "D3 note join dropped",

@@ -67,7 +67,6 @@ const EPISODE = 'aaaaaaaa-0000-0000-0000-000000000001';
  * else here. Its rows exist to be *not* read.
  */
 const NOISE_PROJECT = '22222222-2222-2222-2222-222222222222';
-const NOISE_VIDEO = 'vid-noise';
 
 /**
  * Enough rows to clear several index granules (8192 apiece), so "read the
@@ -913,33 +912,131 @@ async function watchedMetricSteps() {
  * Video Log rendered as an empty table (PR #272).
  */
 async function scanScopeSteps() {
-  const scopedRead = () =>
-    readRowsOf(() => queryVideoViewsAtAge({ scope: { projectId: PROJECT } }));
+  // Each read, and the string that finds its entry in system.query_log.
+  const videoIds = [NORMAL, PRE_INGEST, ZERO];
+  const projectIds = [PROJECT];
+
+  const reads = {
+    'dim-join': () =>
+      readRowsOf('views_at_30', () =>
+        queryVideoViewsAtAge({ scope: { projectId: PROJECT } }),
+      ),
+    quality: () =>
+      readRowsOf('ctr_weighted', () =>
+        queryQualityMetricsForVideos({ videoIds, projectIds }),
+      ),
+    totals: () =>
+      readRowsOf('video_id, sum(views)', () =>
+        queryTotalsByVideoIds(videoIds, { projectIds }),
+      ),
+    audience: () =>
+      readRowsOf('video_audience', () =>
+        queryAudienceRows({ videoIds, projectIds, dimension: 'country' }),
+      ),
+    traffic: () =>
+      readRowsOf('video_traffic_sources', () =>
+        queryTrafficSources({ videoIds, projectIds }),
+      ),
+    subs: () =>
+      readRowsOf('subscribers_gained', () =>
+        queryNetSubscribersForVideos({ videoIds, projectIds }),
+      ),
+    retention: () =>
+      readRowsOf('audience_watch_ratio', () =>
+        queryRetentionCurve({ videoId: NORMAL, projectIds }),
+      ),
+    'data-days': () =>
+      readRowsOf('DISTINCT toString(metric_date)', () =>
+        queryDataDaysForVideos({
+          videoIds,
+          projectIds,
+          source: 'daily',
+          // Wide enough to include the noise era. Bounded to 2020 this read
+          // excluded every noise row on its own date filter, so it reported
+          // +0 whatever its project predicate did.
+          startDate: '1989-01-01',
+          endDate: '2030-12-31',
+        }),
+      ),
+  };
 
   await step(
-    "assert: another project's rows do not enlarge this read",
+    "assert: another project's rows do not enlarge these reads",
     async () => {
-      // Differential, not a threshold on the absolute figure: this runs against
-      // a clean container in CI and against whatever a developer's ClickHouse
-      // already holds, and only the difference means the same thing in both.
-      // The property is exactly the one that broke — a tenant's read must not
-      // grow when an unrelated tenant's data does.
-      const before = await scopedRead();
+      // Differential, not a threshold on the absolute figure: this runs
+      // against a clean container in CI and against whatever a developer's
+      // ClickHouse already holds, and only the difference means the same
+      // thing in both. The property is exactly the one that broke — a
+      // tenant's read must not grow when an unrelated tenant's data does.
+      const before: Record<string, number> = {};
+      for (const [name, read] of Object.entries(reads)) {
+        before[name] = await read();
+      }
 
+      // The *same* video ids, under another project. That is the whole
+      // point: a read filtered on `video_id` alone still prunes granules by
+      // video_id, so noise under unrelated ids is excluded without any
+      // project predicate and the assertion passes on the unscoped query —
+      // measured, with a guard that stayed green when the bound under test
+      // was deleted. Sharing the ids leaves `project_id` as the only thing
+      // that can exclude these rows.
+      //
       // One row per (video, day), all distinct: `video_metrics` is a
       // ReplacingMergeTree keyed on (project_id, platform, video_id,
       // metric_date), so a generator that repeats a pair collapses it at
       // insert. Two moduli over the same index did exactly that — 50,000
       // rows became 1,400, and this went green against noise that was not
       // there.
-      await insertVideoMetrics(
-        Array.from({ length: NOISE_ROWS }, (_, index) => ({
+      const noiseIds = [NORMAL, PRE_INGEST, ZERO];
+      const noisePlatforms = ['youtube', 'tiktok', 'instagram'] as const;
+      const perDay = noiseIds.length * noisePlatforms.length;
+
+      // Which video and platform row `index` is, and the day it falls on.
+      // One day per full (video × platform) round keeps the block inside
+      // few enough months to satisfy ClickHouse's 100-partitions-per-INSERT
+      // limit on the tables that are partitioned by month.
+      const at = (index: number) => ({
+        video_id: noiseIds[index % noiseIds.length]!,
+        platform:
+          noisePlatforms[
+            Math.floor(index / noiseIds.length) % noisePlatforms.length
+          ]!,
+        metric_date: new Date(
+          Date.UTC(1990, 0, 1) + Math.floor(index / perDay) * 86_400_000,
+        )
+          .toISOString()
+          .slice(0, 10),
+      });
+
+      /** Inserts in slices, so a partitioned table never sees >100 months. */
+      const inSlices = async <T>(
+        rows: T[],
+        insert: (slice: T[]) => Promise<void>,
+      ) => {
+        for (let from = 0; from < rows.length; from += 4_000) {
+          await insert(rows.slice(from, from + 4_000));
+        }
+      };
+
+      const range = Array.from({ length: NOISE_ROWS }, (_, index) => index);
+
+      // Nothing else removes these, and the count below is exact. A run of
+      // an older generator leaves rows whose keys the current one does not
+      // reuse, so ReplacingMergeTree keeps both and the count comes out at
+      // a multiple of NOISE_ROWS — which fails against the *generator*
+      // rather than against the leftovers. CI never sees it (fresh service
+      // container); every developer with a persistent ClickHouse does.
+      await clearNoise();
+
+      // Every table a scoped read touches, not just video_metrics. A read
+      // of video_audience cannot be enlarged by noise in video_metrics, so
+      // a guard that seeded only the latter reported +0 for the audience,
+      // traffic and retention reads whatever their SQL said — three
+      // assertions about nothing.
+      await inSlices(
+        range.map((index) => ({
           project_id: NOISE_PROJECT,
-          video_id: `${NOISE_VIDEO}-${Math.floor(index / 28)}`,
-          platform: 'youtube' as const,
-          // The same month the scoped rows live in, so partition pruning
-          // cannot stand in for the predicate under test.
-          metric_date: `2026-01-${String((index % 28) + 1).padStart(2, '0')}`,
+          ...at(index),
           views: 1,
           likes: 0,
           comments: 0,
@@ -951,58 +1048,167 @@ async function scanScopeSteps() {
           subscribers_lost: 0,
           extra_metrics: '{}',
         })),
+        insertVideoMetrics,
       );
 
-      const landed = await countNoiseRows();
+      await inSlices(
+        range.map((index) => ({
+          project_id: NOISE_PROJECT,
+          ...at(index),
+          impressions: 1,
+          impressions_ctr: 0,
+          engaged_views: 0,
+        })),
+        insertVideoReachDaily,
+      );
 
-      if (landed !== NOISE_ROWS) {
+      await inSlices(
+        range.map((index) => ({
+          project_id: NOISE_PROJECT,
+          ...at(index),
+          source: `SRC_${index % 7}`,
+          views: 1,
+          watch_time_minutes: 0,
+        })),
+        insertVideoTrafficSources,
+      );
+
+      // Unpartitioned, and keyed on (…, dimension, key) / (…, elapsed_ratio)
+      // rather than a date, so these vary that last column instead.
+      await inSlices(
+        range.map((index) => ({
+          project_id: NOISE_PROJECT,
+          video_id: noiseIds[index % noiseIds.length]!,
+          platform: 'youtube' as const,
+          dimension: 'country' as const,
+          key: `NOISE_${index}`,
+          views: 1,
+          percentage: 0,
+        })),
+        insertVideoAudience,
+      );
+
+      // All on NORMAL, because that is the single video the retention read
+      // asks for. Spread over three ids it saw a third of the noise and had
+      // the thinnest margin over NOISE_TOLERANCE of the eight reads.
+      await inSlices(
+        range.map((index) => ({
+          project_id: NOISE_PROJECT,
+          video_id: NORMAL,
+          platform: 'youtube' as const,
+          elapsed_ratio: index / NOISE_ROWS,
+          audience_watch_ratio: 0,
+        })),
+        insertRetentionCurves,
+      );
+
+      // Every table, not just video_daily_stats: a generator whose key
+      // tuple repeats collapses at insert, and a read of a table whose
+      // noise collapsed reports +0 while guarding nothing.
+      for (const [table, landed] of Object.entries(await countNoiseRows())) {
+        if (landed !== NOISE_ROWS) {
+          throw new Error(
+            `seeded ${NOISE_ROWS} noise rows into ${table} but ${landed} ` +
+              `are there: reads of it would be measured against noise that ` +
+              `does not exist`,
+          );
+        }
+      }
+
+      const grown: string[] = [];
+      const growth: Record<string, number> = {};
+
+      for (const [name, read] of Object.entries(reads)) {
+        const after = await read();
+        const grew = after - before[name]!;
+
+        growth[name] = grew;
+
+        if (grew > NOISE_TOLERANCE) {
+          grown.push(`${name} +${grew}`);
+        }
+      }
+
+      if (grown.length > 0) {
         throw new Error(
-          `seeded ${NOISE_ROWS} noise rows but ${landed} are there: what ` +
-            `follows would be measured against noise that does not exist`,
+          `+${NOISE_ROWS} rows under another project enlarged: ` +
+            `${grown.join(', ')} — not bounded by project_id`,
         );
       }
 
-      const after = await scopedRead();
-      const grew = after - before;
+      // `step` truncates its detail, so report the shape rather than every
+      // figure: the number of reads checked and the worst one.
+      const worst = Math.max(...Object.values(growth));
 
-      if (grew > NOISE_TOLERANCE) {
-        throw new Error(
-          `${NOISE_ROWS} rows under another project added ${grew} rows to this ` +
-            `project's read (${before} → ${after}): the metric side of the ` +
-            `join is unscoped`,
-        );
-      }
-
-      return `+${grew} row(s) read for +${NOISE_ROWS} rows elsewhere`;
+      return `${Object.keys(reads).length} reads, worst +${worst} for +${NOISE_ROWS} rows elsewhere`;
     },
   );
 }
 
-/** How much of the noise survived the ReplacingMergeTree's key. */
-async function countNoiseRows(): Promise<number> {
-  const result = await getClickHouseClient().query({
-    query: `
-      SELECT count() AS rows
-      FROM video_daily_stats
-      WHERE project_id = {noiseProject: UUID}
-    `,
-    query_params: { noiseProject: NOISE_PROJECT },
-    format: 'JSONEachRow',
-  });
+/** The tables the scan-scope step seeds, and reads back. */
+const NOISE_TABLES = [
+  'video_metrics',
+  'video_reach_daily',
+  'video_traffic_sources',
+  'video_audience',
+  'video_retention_curves',
+] as const;
 
-  const rows = await result.json<{ rows: string }>();
+/** Removes any earlier run's noise, and waits for the removal to apply. */
+async function clearNoise(): Promise<void> {
+  const client = getClickHouseClient();
 
-  return Number(rows[0]?.rows ?? 0);
+  for (const table of NOISE_TABLES) {
+    await client.command({
+      query: `ALTER TABLE ${table} DELETE WHERE project_id = {noiseProject: UUID}`,
+      query_params: { noiseProject: NOISE_PROJECT },
+      clickhouse_settings: { mutations_sync: '2' },
+    });
+  }
+}
+
+/** How much of the noise survived the ReplacingMergeTree's key, per table. */
+async function countNoiseRows(): Promise<Record<string, number>> {
+  const client = getClickHouseClient();
+  const counts: Record<string, number> = {};
+
+  for (const table of NOISE_TABLES) {
+    const result = await client.query({
+      query: `
+        SELECT count() AS rows
+        FROM ${table}
+        WHERE project_id = {noiseProject: UUID}
+      `,
+      query_params: { noiseProject: NOISE_PROJECT },
+      format: 'JSONEachRow',
+    });
+
+    const rows = await result.json<{ rows: string }>();
+
+    counts[table] = Number(rows[0]?.rows ?? 0);
+  }
+
+  return counts;
 }
 
 /**
  * `read_rows` for the query a call made, out of `system.query_log`.
  *
- * Matched on the checkpoint alias rather than a query id: passing one would
- * mean threading it through the query function's signature for a test's
- * benefit, and this script runs its steps one at a time.
+ * Matched on a string unique to the query's SQL rather than a query id:
+ * passing one would mean threading it through the query function's
+ * signature for a test's benefit, and this script runs its steps one at a
+ * time.
+ *
+ * The marker must survive ClickHouse's normalisation: `system.query_log`
+ * stores the query reformatted — whitespace collapsed, keywords upper-cased
+ * — so `sum(x) as x` is logged as `sum(x) AS x` and a marker carrying a
+ * lowercase ` as ` matches nothing. Prefer a bare identifier or an
+ * expression without aliases.
  */
-async function readRowsOf(run: () => Promise<unknown>): Promise<number> {
+async function readRowsOf(
+  marker: string,
+  run: () => Promise<unknown>,
+): Promise<number> {
   const client = getClickHouseClient();
 
   await run();
@@ -1013,18 +1219,22 @@ async function readRowsOf(run: () => Promise<unknown>): Promise<number> {
       SELECT read_rows
       FROM system.query_log
       WHERE type = 'QueryFinish'
-        AND query LIKE '%views_at_30%'
+        AND query LIKE {marker: String}
         AND query NOT LIKE '%system.query_log%'
       ORDER BY event_time_microseconds DESC
       LIMIT 1
     `,
+    query_params: { marker: `%${marker}%` },
     format: 'JSONEachRow',
   });
 
   const rows = await result.json<{ read_rows: string }>();
 
   if (rows.length === 0) {
-    throw new Error('no query_log entry for the checkpoint query');
+    throw new Error(
+      `no query_log entry matching ${JSON.stringify(marker)} — either the ` +
+        `query did not run or its SQL no longer contains that string`,
+    );
   }
 
   return Number(rows[0]!.read_rows);

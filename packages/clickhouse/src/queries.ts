@@ -188,6 +188,7 @@ async function queryLatestSnapshotsSingle(input: {
 function assertScopedFilters(filters: QueryFilters): void {
   if (
     !filters.projectId &&
+    (!filters.projectIds || filters.projectIds.length === 0) &&
     (!filters.videoIds || filters.videoIds.length === 0)
   ) {
     throw new Error(
@@ -207,9 +208,24 @@ function buildWhereClause(filters: QueryFilters): {
   const conditions: string[] = [];
   const params: Record<string, unknown> = {};
 
+  // Both would be ANDed — `project_id = A AND project_id IN (B)` — which is
+  // empty for any A not in B and reports as "no data" rather than as the
+  // mistake it is. They mean the same thing, so asking for both is a caller
+  // bug worth naming.
+  if (filters.projectId && filters.projectIds?.length) {
+    throw new Error(
+      'ClickHouse query received both projectId and projectIds; pass one',
+    );
+  }
+
   if (filters.projectId) {
     conditions.push('project_id = {projectId: UUID}');
     params.projectId = filters.projectId;
+  }
+
+  if (filters.projectIds && filters.projectIds.length > 0) {
+    conditions.push('project_id IN {projectIds: Array(UUID)}');
+    params.projectIds = filters.projectIds;
   }
 
   if (filters.videoIds && filters.videoIds.length > 0) {
@@ -792,7 +808,18 @@ async function queryDailyTimeSeriesByPlatformSingle(
  */
 export async function queryTotalsByVideoIds(
   videoIds: string[],
-  options?: { startDate?: string; endDate?: string },
+  options?: {
+    startDate?: string;
+    endDate?: string;
+    /**
+     * The projects those videos belong to, when the caller knows them.
+     * Bounds what is read, never what is returned — `video_metrics` is
+     * `ORDER BY (project_id, …)`, so a `video_id`-only filter scans the
+     * table. Opt-in, for the reason the "videoId-only reads span
+     * project_id by design" note in `verify-queries.ts` records.
+     */
+    projectIds?: string[];
+  },
 ): Promise<Map<string, AggregatedTotals>> {
   if (videoIds.length === 0 || !isClickHouseEnabled()) return new Map();
 
@@ -800,6 +827,7 @@ export async function queryTotalsByVideoIds(
     videoIds,
     startDate: options?.startDate,
     endDate: options?.endDate,
+    ...(options?.projectIds?.length ? { projectIds: options.projectIds } : {}),
   };
 
   return queryPerVideoTotals(filters);

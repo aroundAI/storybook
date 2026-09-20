@@ -412,6 +412,9 @@ export const getReturningViewerProxyAction = enhanceAction(
 
     const rows = await queryAudienceRows({
       videoIds: publishIds,
+      // Only under a project scope; the account branch above has no single
+      // project to name.
+      ...(scope.projectId ? { projectIds: [scope.projectId] } : {}),
       dimension: 'follower_status',
     });
 
