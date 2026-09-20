@@ -53,39 +53,48 @@ test.describe('Change log: what it can and cannot measure (round 5, A, H1, H2)',
     ).toContainText('same before and after');
   });
 
-  test('a baseline for videos published after its window says so, not "no data"', async ({
-    page,
-  }) => {
-    const log = new ExperimentsPageObject(page);
-    const team = await log.setup();
+  test.describe('in UTC', () => {
+    // Pinned: the start is the browser's local day, and the rule compares
+    // with the UTC day ClickHouse keys metrics by. East of UTC, between
+    // local and UTC midnight, "published now" is still inside yesterday's
+    // window in UTC, and the right answer is then "no data". CI runs in UTC;
+    // a local run in India failed on exactly that boundary.
+    test.use({ timezoneId: 'UTC' });
 
-    const [fresh] = await seedPublishedVideos(
-      team.projectId,
-      team.connectionId,
-      ['Published today'],
-      new Date().toISOString(),
-    );
-    await log.goTo(team.slug);
+    test('a baseline for videos published after its window says so, not "no data"', async ({
+      page,
+    }) => {
+      const log = new ExperimentsPageObject(page);
+      const team = await log.setup();
 
-    await log.field('experiment-title').fill('Fresh thumbnail');
-    await log.field('experiment-change').fill('New thumbnail');
-    await log.choose('experiment-metric', 'experiment-metric-option-ctr');
-    await log.linkVideo(fresh!);
-    await log.submitAndWaitForReset();
+      const [fresh] = await seedPublishedVideos(
+        team.projectId,
+        team.connectionId,
+        ['Published today'],
+        new Date().toISOString(),
+      );
+      await log.goTo(team.slug);
 
-    const [row] = await readRows<{ id: string }>(
-      'analytics_experiments',
-      `select=id&account_id=eq.${team.accountId}`,
-    );
-    await page
-      .locator(`[data-test="experiment-row-${row!.id}"]:visible`)
-      .click();
-    await page.getByRole('button', { name: 'Start', exact: true }).click();
+      await log.field('experiment-title').fill('Fresh thumbnail');
+      await log.field('experiment-change').fill('New thumbnail');
+      await log.choose('experiment-metric', 'experiment-metric-option-ctr');
+      await log.linkVideo(fresh!);
+      await log.submitAndWaitForReset();
 
-    await expect(
-      page.locator('[data-test="experiment-watched-baseline-unmeasured"]'),
-    ).toHaveAttribute('data-reason', 'published_after_window');
-    await capture(page, '31-published-after-window');
+      const [row] = await readRows<{ id: string }>(
+        'analytics_experiments',
+        `select=id&account_id=eq.${team.accountId}`,
+      );
+      await page
+        .locator(`[data-test="experiment-row-${row!.id}"]:visible`)
+        .click();
+      await page.getByRole('button', { name: 'Start', exact: true }).click();
+
+      await expect(
+        page.locator('[data-test="experiment-watched-baseline-unmeasured"]'),
+      ).toHaveAttribute('data-reason', 'published_after_window');
+      await capture(page, '31-published-after-window');
+    });
   });
 });
 

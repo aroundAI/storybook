@@ -1,0 +1,45 @@
+{
+  "feature": "FILM-1615",
+  "mutations": [
+    {
+      "name": "S0 project access by row visibility only (F-0)",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/scope-access.ts",
+      "find": "if (!data?.account_id || !(await hasAccountAccess(client, data.account_id))) {",
+      "replace": "if (!data?.account_id) {",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/scope-access.test.ts",
+      "pattern": "a public project"
+    },
+    {
+      "name": "S0b account access without membership",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/scope-access.ts",
+      "find": "if (!(await hasAccountAccess(client, accountId))) {",
+      "replace": "if (!accountId) {",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/scope-access.test.ts",
+      "pattern": "even one with a public profile"
+    },
+    {
+      "name": "S0d dashboard daily metrics by row visibility only",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "  if (!(await canAccessProject(client, projectId))) {\n    return [];\n  }",
+      "replace": "  if (false) {\n    return [];\n  }",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/dashboard-project-access.test.ts",
+      "pattern": "daily metrics"
+    },
+    {
+      "name": "S0f dashboard project analytics by row visibility only",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "  if (!(await canAccessProject(client, projectId))) {\n    return null;\n  }",
+      "replace": "  if (false) {\n    return null;\n  }",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/dashboard-project-access.test.ts",
+      "pattern": "project analytics"
+    }
+  ]
+}

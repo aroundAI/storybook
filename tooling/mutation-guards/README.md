@@ -82,3 +82,37 @@ mutation needs several changes applied together.
 A good mutation is the **smallest plausible regression** — the line someone
 might reasonably delete, not a sabotage. Reverting a whole function proves
 less than removing the one condition the test was written for.
+
+## Prefer a unit entry when the mutation is a server module
+
+An `e2e` entry mutates a file under a **running** dev server and hopes it
+recompiles before the spec runs — `run.py` waits four seconds, which is a
+sleep, not synchronisation. The entries that work this way reliably are the
+ones whose mutation shows up in the browser: a client component, a form, the
+middleware.
+
+A server module is where it stops being reliable, and the failure is the
+expensive kind: the guard passes.
+
+Measured on FILM-1615's S0e, which mutated `scope-access.ts` — the tenant
+check — and drove the leak through the analytics page:
+
+- It went **red every time locally** (5 runs), and **never once in CI**.
+- Two CI runs reported `STAYED GREEN`: the guard said the fix was
+  unnecessary while the fix was removed.
+- A third reported `NOT GREEN`, failing on the *real* code, at a sign-in
+  that exceeded a 60-second navigation timeout.
+
+That last one names the cause. All of a shard's e2e guards share one dev
+server, and every mutation makes it recompile; the guard that runs seventh
+is driving a server that six mutation cycles have already worn down. Which
+reads the page issues, and whether they finish, then varies by machine —
+and a guard whose subject varies by machine is not a guard.
+
+So: **if the line being mutated lives on the server, guard it with a unit
+entry.** S0e's check is covered by `S0`/`S0b` on `assertProjectAccess` and
+`S0d`/`S0f` on the dashboard reads, all four deterministic and red, and the
+end-to-end behaviour is still asserted on every pull request by
+`tenant-isolation-evidence.spec.ts` in the evidence step. What was lost by
+dropping the e2e entry is the proof that *removing* the fix is caught
+end-to-end; what was gained is a guard set that means what it says.

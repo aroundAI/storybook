@@ -373,6 +373,44 @@ reuses FILM-1610's measurement code.
 
 ---
 
+## KB-11 — Another account could read a public project's analytics
+
+**Severity:** High — cross-tenant data. **Found:** FILM-1615 EDD (finding
+F-0), 2026-09-20. **Fixed** in the PR that adds this entry.
+
+A project with `visibility` public or unlisted is readable by any signed-in
+user (`Allow public read of public/unlisted projects`, `{anon,
+authenticated}`), and the analytics guards accepted "the project row is
+readable" as proof of access before reading ClickHouse, which has no
+row-level security.
+
+**Reproduced** on a production build: account A's owner rewrote the project
+id in their own dashboard and Deep Dive requests to account B's public
+project and got back B's project analytics (platform totals), daily
+metrics (777,777 views) and median views (777,777). With B's project
+private, the same rewrite returned nothing.
+
+**Affected:** `assertScopeAccess` (26 call sites: Deep Dive, segments,
+subscribers, taxonomy, Video Log), `getProjectAnalytics` and
+`getProjectDailyMetrics`. Not affected, checked: every reader that finds
+its videos through `publishes` (episode, season, audience and content-list
+analytics, language analytics, reports, revenue, experiments, the account
+dashboard), since `publishes` has no public read.
+
+**Fix:** `assertProjectAccess` / `assertAccountAccess` require
+`has_account_access` — the account's owner or a role on it, the rule the
+analytics tables' own policies use. Not `has_role_on_account` alone:
+personal-account owners have no membership row (10 of 10 locally), and
+would have lost access to their own analytics. An `accounts` read is not
+proof either: public-profile accounts are readable by anyone.
+
+**Tests:** `scope-access.test.ts` (9); `tenant-isolation-evidence.spec.ts`
+(fails on the old build with all three paths leaking, passes on the fixed
+one; the owner's own control sees the figure); mutation guards S0, S0b,
+S0d, S0e, each seen red.
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
@@ -383,4 +421,5 @@ reuses FILM-1610's measurement code.
 | — | The experiment lifecycle was held only by the actions; a direct API call could reopen, back-date or forge an experiment | #264 (round 4) |
 | KB-6 (part) | Experiment log and note refusals replaced in production | #264 (round 4) |
 | KB-9, KB-10 | Hook Lab: a cross-tenant retention read, and a feature that could not be used and measured the wrong point | #269 (removed) |
+| KB-11 | Another account could read a public project's analytics | FILM-1615 Step 0 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |

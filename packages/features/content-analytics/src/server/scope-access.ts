@@ -1,11 +1,18 @@
 import 'server-only';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
  * Scope shared by the deep-dive and Video Log actions: project- or
  * account-level, with optional segment filters.
  */
+// The same loose client type the action modules use; the typed client's
+// generics do not survive being passed around.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Client = SupabaseClient<any, any, any>;
+
 export interface AnalyticsScope {
   projectId?: string;
   accountId?: string;
@@ -33,31 +40,9 @@ export async function assertScopeAccess(
 ): Promise<string | undefined> {
   const client = getSupabaseServerClient();
 
-  let scopeAccountId = scope.accountId;
-
-  if (scope.projectId) {
-    const { data } = await client
-      .from('projects')
-      .select('id, account_id')
-      .eq('id', scope.projectId)
-      .maybeSingle();
-
-    if (!data) {
-      throw new Error('Project not found or access denied');
-    }
-
-    scopeAccountId = data.account_id ?? scope.accountId;
-  } else {
-    const { data } = await client
-      .from('accounts')
-      .select('id')
-      .eq('id', scope.accountId!)
-      .maybeSingle();
-
-    if (!data) {
-      throw new Error('Account not found or access denied');
-    }
-  }
+  const scopeAccountId = scope.projectId
+    ? await assertProjectAccess(client, scope.projectId)
+    : await assertAccountAccess(client, scope.accountId!);
 
   if (!scope.connectionId) return scopeAccountId;
 
@@ -80,4 +65,65 @@ export async function assertScopeAccess(
   }
 
   return scopeAccountId;
+}
+
+/**
+ * The account a project belongs to, if the caller is a member of it — the
+ * guard every ClickHouse read by project goes through.
+ *
+ * Reading the `projects` row is not proof: a project with `visibility`
+ * public or unlisted is readable by any signed-in user, so a check that
+ * stopped there let another account's user read a public project's
+ * analytics by rewriting a request (FILM-1615 EDD, F-0 — reproduced).
+ * `has_account_access` is the account owner or anyone with a role on it,
+ * the rule the analytics tables' own policies use; `has_role_on_account`
+ * alone would shut out a personal account's owner, who has no membership
+ * row. The same message covers "no such project" and "not yours", so the
+ * answer does not reveal which.
+ */
+export async function assertProjectAccess(
+  client: Client,
+  projectId: string,
+): Promise<string> {
+  const { data } = await client
+    .from('projects')
+    .select('account_id')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (!data?.account_id || !(await hasAccountAccess(client, data.account_id))) {
+    throw new Error('Project not found or access denied');
+  }
+
+  return data.account_id;
+}
+
+/**
+ * The same guard for an account scope. An `accounts` read is not proof
+ * either: accounts with a public profile are readable by anyone.
+ */
+export async function assertAccountAccess(
+  client: Client,
+  accountId: string,
+): Promise<string> {
+  if (!(await hasAccountAccess(client, accountId))) {
+    throw new Error('Account not found or access denied');
+  }
+
+  return accountId;
+}
+
+async function hasAccountAccess(
+  client: Client,
+  accountId: string,
+): Promise<boolean> {
+  const { data, error } = await client.rpc('has_account_access', {
+    p_account_id: accountId,
+  });
+
+  if (error) {
+    throw new Error(`Failed to check account access: ${error.message}`);
+  }
+
+  return data === true;
 }
