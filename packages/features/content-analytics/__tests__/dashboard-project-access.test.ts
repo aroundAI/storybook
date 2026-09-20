@@ -18,27 +18,38 @@ import {
  * to test by hoping a tab was still open.
  */
 const state: {
-  project: { account_id: string } | null;
+  project: { account_id: string; id?: string; name?: string } | null;
   hasAccess: boolean;
   clickHouseCalls: string[];
 } = { project: null, hasAccess: false, clickHouseCalls: [] };
 
+/**
+ * A PostgREST-shaped builder: every filter returns itself, and only the
+ * terminal calls resolve. The reads under test chain different lengths —
+ * the project row ends at `single()`, the seasons list at `range()` — and a
+ * mock shaped to one of them fails the other for a reason that has nothing
+ * to do with access.
+ */
+function builder(row: unknown, rows: unknown[] = []) {
+  const chain = {
+    select: () => chain,
+    eq: () => chain,
+    is: () => chain,
+    in: () => chain,
+    not: () => chain,
+    order: () => chain,
+    range: async () => ({ data: rows, error: null }),
+    maybeSingle: async () => ({ data: row, error: null }),
+    single: async () => ({ data: row, error: null }),
+  };
+
+  return chain;
+}
+
 vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => ({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: async () => ({ data: state.project, error: null }),
-          // `single()`, used for the project row read after the check.
-          single: async () => ({ data: state.project, error: null }),
-        }),
-        is: () => ({
-          order: () => ({
-            order: () => ({ range: async () => ({ data: [], error: null }) }),
-          }),
-        }),
-      }),
-    }),
+    from: (table: string) =>
+      table === 'projects' ? builder(state.project) : builder(null, []),
     rpc: async () => ({ data: state.hasAccess, error: null }),
   }),
 }));
@@ -58,7 +69,11 @@ vi.mock('@kit/clickhouse/server', () => ({
 }));
 
 beforeEach(() => {
-  state.project = { account_id: 'account-b' };
+  state.project = {
+    account_id: 'account-b',
+    id: 'project-of-account-b',
+    name: 'Account B project',
+  };
   state.hasAccess = false;
   state.clickHouseCalls = [];
 });
@@ -85,6 +100,20 @@ describe('the dashboard reads, against a project the caller cannot access', () =
 
     expect(metrics).toEqual([{ date: '2026-09-15', views: 777_777 }]);
     expect(state.clickHouseCalls).toEqual(['queryDailyTimeSeriesByPlatform']);
+  });
+
+  it('reads the analytics for a caller who does have a role on the account', async () => {
+    // The refusal cases alone would pass just as happily against a read
+    // that always refuses, which is half the behaviour unguarded.
+    state.hasAccess = true;
+
+    const analytics = await getProjectAnalytics('project-of-account-b');
+
+    expect(analytics).toMatchObject({
+      projectId: 'project-of-account-b',
+      projectName: 'Account B project',
+    });
+    expect(state.clickHouseCalls).toContain('queryPlatformBreakdown');
   });
 
   it('refuses when the project row itself is not readable', async () => {

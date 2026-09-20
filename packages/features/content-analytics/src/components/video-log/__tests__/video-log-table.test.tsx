@@ -170,6 +170,20 @@ describe('VideoLogTable', () => {
     );
   });
 
+  it('says an average was not reported rather than showing it as zero', () => {
+    // Nobody watched zero seconds: an average of exactly 0 over views that
+    // exist is a metric the platform did not send.
+    renderTable([row({ avgViewDurationSeconds: 0, avgViewPercentage: 0 })]);
+
+    expect(testId('avg-duration-value')).toHaveLength(0);
+    expect(testId('avg-duration-none')[0]?.getAttribute('aria-label')).toBe(
+      '—: This platform did not report it for this video.',
+    );
+    expect(testId('avg-percentage-none')[0]?.getAttribute('aria-label')).toBe(
+      '—: This platform did not report it for this video.',
+    );
+  });
+
   it('lists revenue per currency and never adds them together', () => {
     renderTable([
       row({

@@ -179,13 +179,21 @@ it is summing the page.
 ## 8. Verification
 
 ```bash
-pnpm --filter @kit/content-analytics test        # 702 unit + component tests
-pnpm --filter web supabase test db               # 443 pgTAP, incl. the revenue aggregate
+pnpm --filter @kit/content-analytics test        # unit + component
+pnpm --filter web supabase test db               # pgTAP, incl. the revenue aggregate
 pnpm typecheck && pnpm lint
 npx playwright test analytics/video-log          # from apps/e2e; the guard half
-python3 tooling/mutation-guards/run.py --kind unit    # 51/51 red
-python3 tooling/mutation-guards/run.py --kind pgtap   # 16/16 red
+python3 tooling/mutation-guards/run.py --kind unit    # every guard red
+python3 tooling/mutation-guards/run.py --kind pgtap   # every guard red
 ```
+
+No counts here on purpose. The two written when this section was first
+filled in (`702` tests, `51/51` guards) were both wrong within a day —
+they are 706 and 53/53 as of this review — and a number nobody re-runs is
+worse than no number, which is the same drift the root `CLAUDE.md` records
+between its own two copies of a count. The runner prints its totals and
+fails on any outcome but RED, so "every guard red" is a claim the command
+itself checks.
 
 **Playwright is required**, not optional — the table is interactive
 (server-side sort, pagination, the note editor), and the root `CLAUDE.md`

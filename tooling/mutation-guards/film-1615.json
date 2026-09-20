@@ -280,6 +280,16 @@
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/revenue-cents-by-publish.test.sql",
       "sql": "alter function public.revenue_cents_by_publish(uuid[]) security definer;"
+    },
+    {
+      "name": "S0g dashboard project analytics refused for everyone",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "  if (!(await canAccessProject(client, projectId))) {\n    return null;\n  }",
+      "replace": "  if (true) {\n    return null;\n  }",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/dashboard-project-access.test.ts",
+      "pattern": "reads the analytics for a caller"
     }
   ]
 }
