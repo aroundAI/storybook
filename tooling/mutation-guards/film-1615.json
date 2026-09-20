@@ -40,6 +40,256 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/dashboard-project-access.test.ts",
       "pattern": "project analytics"
+    },
+    {
+      "name": "F-1 no metrics ever ingested renders as a zero",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/video-log-cells.ts",
+      "find": "  if (row.ingestLagDays === null) return { kind: 'no-data' };",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-cells.test.ts",
+      "pattern": "never shows a zero"
+    },
+    {
+      "name": "R-4 a closed pre-ingest window renders as a zero",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/video-log-cells.ts",
+      "find": "  if (row.predatesIngestAt[days]) {",
+      "replace": "  if (false) {",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-cells.test.ts",
+      "pattern": "window closed before ingest"
+    },
+    {
+      "name": "R-4 precedence: maturity checked after the data states",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/video-log-cells.ts",
+      "edits": [
+        {
+          "find": "  if (!row.matureAt[days]) {\n    const ageDays = videoAgeDays(row.publishedAt, now);\n\n    return {\n      kind: 'immature',\n      ageDays,\n      daysToGo: ageDays === null ? days : Math.max(1, days - ageDays),\n    };\n  }\n\n  if (row.ingestLagDays === null) return { kind: 'no-data' };",
+          "replace": "  if (row.ingestLagDays === null) return { kind: 'no-data' };\n\n  if (!row.matureAt[days]) {\n    const ageDays = videoAgeDays(row.publishedAt, now);\n\n    return {\n      kind: 'immature',\n      ageDays,\n      daysToGo: ageDays === null ? days : Math.max(1, days - ageDays),\n    };\n  }"
+        }
+      ],
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-cells.test.ts",
+      "pattern": "before"
+    },
+    {
+      "name": "R-6 a rate over no impressions reported as 0%",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/video-log-cells.ts",
+      "find": "    ctr:\n      row.impressions > 0 ? { kind: 'value', value: row.ctr } : noImpressions,",
+      "replace": "    ctr: { kind: 'value', value: row.ctr },",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-cells.test.ts",
+      "pattern": "CTR over no impressions"
+    },
+    {
+      "name": "F-4 ClickHouse's zoneless timestamp read as local time",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/video-log-cells.ts",
+      "find": "    return new Date(Date.UTC(y!, mo! - 1, d!, h!, mi!, s!));",
+      "replace": "    return new Date(`${y}-${mo}-${d} ${h}:${mi}:${s}`);",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-cells.test.ts",
+      "pattern": "zoneless timestamp"
+    },
+    {
+      "name": "R-2 a page asked for without the row that proves another follows",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/video-log-paging.ts",
+      "find": "    limit: VIDEO_LOG_PAGE_SIZE + 1,",
+      "replace": "    limit: VIDEO_LOG_PAGE_SIZE,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-cells.test.ts",
+      "pattern": "one row more than a page"
+    },
+    {
+      "name": "R-8 a sort change keeps the page it was on",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/video-log-paging.ts",
+      "find": "      page: 0,\n    };\n  }",
+      "replace": "      page: view.page,\n    };\n  }",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-cells.test.ts",
+      "pattern": "returns to the first page"
+    },
+    {
+      "name": "F-2 revenue summed across currencies",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/video-log-actions.ts",
+      "find": "    byCurrency.set(\n      row.currency,",
+      "replace": "    byCurrency.set(\n      'USD',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-notes.test.ts",
+      "pattern": "revenue per currency"
+    },
+    {
+      "name": "D-U4 a note saved without checking who wrote it last",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/publish-notes-actions.ts",
+      "find": "        expectedUpdatedAt === null\n          ? update.is('analytics_note_updated_at', null)\n          : update.eq('analytics_note_updated_at', expectedUpdatedAt)",
+      "replace": "        expectedUpdatedAt === null ? update : update",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/publish-notes-actions.test.ts",
+      "pattern": "still has the time the editor read"
+    },
+    {
+      "name": "D-U4 a losing save reported as a refusal rather than a conflict",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/publish-notes-actions.ts",
+      "find": "      if (current.data && canEdit) {",
+      "replace": "      if (false) {",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/publish-notes-actions.test.ts",
+      "pattern": "reports a conflict"
+    },
+    {
+      "name": "R-8 a column the server cannot order by offered as sortable",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/video-log/video-log-table.tsx",
+      "find": "            <TableHead>Channel</TableHead>",
+      "replace": "            <SortableHead\n              column={'title'}\n              label={'Channel'}\n              view={view}\n              onSort={onSort}\n            />",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/components/video-log/__tests__/video-log-table.test.tsx",
+      "pattern": "server-sortable"
+    },
+    {
+      "name": "R-8 the sorted column not announced to assistive technology",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/video-log/video-log-table.tsx",
+      "find": "      aria-sort={active ? (ascending ? 'ascending' : 'descending') : 'none'}",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/components/video-log/__tests__/video-log-table.test.tsx",
+      "pattern": "assistive technology"
+    },
+    {
+      "name": "D-U1 the Video Log keeping its own channel selection",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/analytics-dashboard.tsx",
+      "edits": [
+        {
+          "find": "          <VideoLogTab\n            projectId={projectId}\n            connectionId={connectionId}",
+          "replace": "          <VideoLogTab\n            projectId={projectId}\n            connectionId={undefined}"
+        }
+      ],
+      "spec": "tests/analytics/video-log.spec.ts",
+      "grep": "picked in the Deep Dive"
+    },
+    {
+      "name": "R-13 a failed read rendered as a log with no videos",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/video-log/video-log-tab.tsx",
+      "find": "      ) : isUnavailable(query) ? (",
+      "replace": "      ) : false ? (",
+      "spec": "tests/analytics/video-log.spec.ts",
+      "grep": "failed read is reported"
+    },
+    {
+      "name": "R-15 the note editor offered to a reader who cannot save",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/video-log/note-cell.tsx",
+      "find": "  if (!canEdit) {",
+      "replace": "  if (false) {",
+      "spec": "tests/analytics/video-log-evidence.spec.ts",
+      "grep": "without offering to edit",
+      "env": {
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
+    },
+    {
+      "name": "R-8 the log sorted on screen rather than on the server",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/video-log/video-log-tab.tsx",
+      "find": "        ...videoLogRequest(view),",
+      "replace": "        ...videoLogRequest({ ...view, orderBy: 'published_at' }),",
+      "spec": "tests/analytics/video-log-evidence.spec.ts",
+      "grep": "on the server, not the page on screen",
+      "env": {
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
+    },
+    {
+      "name": "R-6 an impressions count claimed where none were recorded",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/video-log-cells.ts",
+      "find": "    impressions:\n      row.impressions > 0\n        ? { kind: 'value', value: row.impressions }\n        : noImpressions,",
+      "replace": "    impressions: { kind: 'value', value: row.impressions },",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-cells.test.ts",
+      "pattern": "impressions count when none were recorded"
+    },
+    {
+      "name": "R-6 an average of exactly zero reported as measured",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/video-log-cells.ts",
+      "find": "    return value > 0 ? { kind: 'value', value } : notReported;",
+      "replace": "    return { kind: 'value', value };",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-cells.test.ts",
+      "pattern": "average of exactly zero"
+    },
+    {
+      "name": "CSV a missing checkpoint exported as a zero",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/video-log-cells.ts",
+      "find": "  return state.kind === 'figure' ? state.value : null;",
+      "replace": "  return row.matureAt[days] ? (row.viewsAtAge[days] ?? null) : null;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-cells.test.ts",
+      "pattern": "checkpointFigure"
+    },
+    {
+      "name": "F-2 revenue read row by row rather than summed in the database",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/video-log-actions.ts",
+      "find": "        .rpc('revenue_cents_by_publish', { p_publish_ids: chunk })",
+      "replace": "        .from('revenue_records')",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-notes.test.ts",
+      "pattern": "sums revenue in the database"
+    },
+    {
+      "name": "A channel change discards the sort the reader chose",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/video-log/video-log-tab.tsx",
+      "find": "      : {\n          orderBy: state.orderBy,\n          orderDirection: state.orderDirection,\n          page: 0,\n        };",
+      "replace": "      : { ...DEFAULT_VIDEO_LOG_VIEW };",
+      "spec": "tests/analytics/video-log-evidence.spec.ts",
+      "grep": "keeps the sort",
+      "env": {
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
+    },
+    {
+      "name": "The row range announced from the click rather than the data",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/video-log/video-log-tab.tsx",
+      "find": "  if (!query.isPlaceholderData) {\n    settled.current = { page: view.page, count: rows.length };\n  }",
+      "replace": "  settled.current = { page: view.page, count: rows.length };",
+      "spec": "tests/analytics/video-log-evidence.spec.ts",
+      "grep": "never announces a row range",
+      "env": {
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
+    },
+    {
+      "name": "DB the revenue aggregate run as its definer, not its caller",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/revenue-cents-by-publish.test.sql",
+      "sql": "alter function public.revenue_cents_by_publish(uuid[]) security definer;"
+    },
+    {
+      "name": "S0g dashboard project analytics refused for everyone",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "  if (!(await canAccessProject(client, projectId))) {\n    return null;\n  }",
+      "replace": "  if (true) {\n    return null;\n  }",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/dashboard-project-access.test.ts",
+      "pattern": "reads the analytics for a caller"
     }
   ]
 }

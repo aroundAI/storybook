@@ -570,3 +570,31 @@ async function insertRows<T>(
 
   return JSON.parse(text) as T[];
 }
+
+/**
+ * One day's revenue for a published video.
+ *
+ * `currency` is a column, not a setting: a channel can be paid in more than
+ * one, and the Video Log lists each rather than adding them (FILM-1615).
+ * One row per publish per day, so two currencies need two dates.
+ */
+export async function seedRevenueRecord(input: {
+  publishId: string;
+  revenueCents: number;
+  recordDate: string;
+  currency?: string;
+  platform?: string;
+}): Promise<void> {
+  await insertRow(
+    'revenue_records',
+    {
+      publish_id: input.publishId,
+      platform: input.platform ?? 'youtube',
+      record_date: input.recordDate,
+      revenue_cents: input.revenueCents,
+      currency: input.currency ?? 'USD',
+      source: 'api',
+    },
+    { key: SERVICE_ROLE_KEY },
+  );
+}

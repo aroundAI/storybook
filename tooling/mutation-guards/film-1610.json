@@ -183,8 +183,8 @@
     {
       "name": "Note refusal reported as save",
       "file": "packages/features/content-analytics/src/server/publish-notes-actions.ts",
-      "find": "    if (!saved) {",
-      "replace": "    if (false) {",
+      "find": "      if (saved) {",
+      "replace": "      if (saved || true) {",
       "kind": "unit",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/publish-notes-actions.test.ts",

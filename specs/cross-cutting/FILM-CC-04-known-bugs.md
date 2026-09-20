@@ -411,6 +411,82 @@ S0d, S0e, each seen red.
 
 ---
 
+## KB-12 — Revenue is added across currencies
+
+**Severity:** Medium — wrong figures, quietly. **Found:** FILM-1615 EDD
+(finding F-2), 2026-09-20. **Open**, except in the Video Log.
+
+`revenue_records.currency` is a column, and a channel can be paid in more
+than one — a sponsorship in euros beside AdSense in dollars. Almost every
+reader adds `revenue_cents` without looking at it, so `$12.00` and `€5.00`
+are reported as `1700` cents of nothing in particular. Nobody notices while
+an account uses one currency, and nobody is told when it stops.
+
+**Where:** `forEachAccountRevenueRow` hands `currency` to its callers and
+none of them read it — `segment-revenue.ts` (`channelLevelCents`,
+`unattributedCents`, `revenueBySegment`), `revenue-alerts.ts`,
+`revenue-actions.ts`, `segment-actions.ts`. The same applies to the
+ClickHouse side (`aggregation-queries.ts:215`, `:427`;
+`account-dashboard-actions.ts:241`), where `video_metrics.revenue_cents`
+carries no currency at all — so there the fix is a schema question, not
+only a summing one.
+
+**Fixed here:** the Video Log only. `getVideoLogAction` now groups by
+`(publish_id, currency)` and `VideoLogRow.revenue` is a list, rendered
+`$12.00 + €5.00`. There are no exchange rates in this system, and
+inventing one to produce a single number would be worse than showing two.
+
+**Why it is not fixed everywhere in that PR:** every one of those figures
+is a total on a card or a chart, and each needs its own answer to "what
+does this show when an account has two currencies" — one card per
+currency, a selector, or a stated base currency. That is a design
+decision, not a refactor.
+
+**Said out loud in one place:** the scheduled raw export's column header
+is literally `Revenue (USD)` (`raw-export-generator.ts`), over a figure
+taken from ClickHouse, which carries no currency at all. Left as it is on
+purpose — that header is a column name in files recipients already parse,
+and renaming it in a bug-fix PR breaks their spreadsheets to make a caveat
+that this entry records instead.
+
+**How to reproduce:** add two `revenue_records` for one publish with
+different `currency` values, and read the revenue mix or the account
+dashboard: one number, neither currency.
+
+---
+
+## KB-13 — Row-level security costs a second on a page of revenue
+
+**Severity:** Low — slow, not wrong. **Found:** FILM-1615 review,
+2026-09-20. **Open.**
+
+`revenue_records_read` decides each row with an `exists` over
+publishes → episodes → projects. That is per row, before any aggregation,
+so summing a page of the Video Log's revenue — 100 videos with a year of
+daily rows, 36,500 of them — spends **~1.1s** in the policy. The same
+aggregate with RLS off is **11ms**. Measured with `\timing` on the local
+database, against seeded rows.
+
+It is the dominant remaining cost of a Video Log page read. Measured end to
+end on a production build, one page of 100 videos:
+
+| That page's revenue | Cold | Warm |
+|---|---|---|
+| none | 932 ms | ~480 ms |
+| a year of daily rows (36,500) | 4,224 ms | ~3,550 ms |
+
+So the phase's 2-second budget holds for the data these accounts have today
+and is missed by a page where every video has a year of daily revenue. It is
+the price of the policy being the single thing that decides who may read a
+revenue row — a `security definer` aggregate would be ~100× faster and would
+have to re-derive that policy by hand, which is how KB-11 happened.
+
+**If it needs fixing:** a rollup the sync writes (per publish per currency)
+would make this an indexed lookup, at the cost of a second place revenue
+can be wrong. Not worth it until someone has a real account that is slow.
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
