@@ -598,3 +598,36 @@ export async function seedRevenueRecord(input: {
     { key: SERVICE_ROLE_KEY },
   );
 }
+
+/**
+ * A scheduled report that is already due.
+ *
+ * `next_run_at` in the past is what makes the cron endpoint pick it up on
+ * the next call, so a test can drive the whole delivery rather than wait
+ * for a schedule.
+ */
+export async function seedScheduledReport(input: {
+  accountId: string;
+  recipient: string;
+  reportType?: string;
+  frequency?: string;
+  platforms?: string[];
+}): Promise<string> {
+  const row = await insertRow<{ id: string }>(
+    'scheduled_reports',
+    {
+      account_id: input.accountId,
+      name: `Seeded ${input.reportType ?? 'raw_csv'} report`,
+      report_type: input.reportType ?? 'raw_csv',
+      frequency: input.frequency ?? 'weekly',
+      metrics: ['views'],
+      platforms: input.platforms ?? ['youtube'],
+      recipients: [input.recipient],
+      next_run_at: new Date(Date.now() - 60_000).toISOString(),
+      is_active: true,
+    },
+    { key: SERVICE_ROLE_KEY },
+  );
+
+  return row.id;
+}
