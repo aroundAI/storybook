@@ -119,6 +119,7 @@ const NONE_EXPLANATIONS: Record<
 > = {
   'no-impressions': 'No impressions recorded.',
   'no-views': 'No views recorded.',
+  'not-reported': 'This platform did not report it for this video.',
 };
 
 /** A lifetime cell: a formatted value, or why there is none. */

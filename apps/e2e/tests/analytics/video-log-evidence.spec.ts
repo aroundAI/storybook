@@ -185,6 +185,77 @@ test.describe('FILM-1615 — the Video Log with data', () => {
     await expect(videoLog.rangeLabel()).toHaveText('Rows 1–100');
   });
 
+  test('keeps the sort when the channel changes, and the page does not', async ({
+    page,
+  }) => {
+    const videoLog = new VideoLogPageObject(page);
+    const fixture = await videoLog.setup();
+
+    await seedManyVideos(fixture, 3);
+
+    await videoLog.goToAnalytics(fixture.team.slug, fixture.project.slug);
+    await videoLog.openVideoLog();
+    await expect(videoLog.rows()).toHaveCount(3);
+
+    await videoLog.sortBy('lifetime_views');
+
+    const sorted = page.locator('th[aria-sort="descending"]');
+
+    await expect(sorted).toHaveText(/Lifetime views/);
+
+    // Filtering is not a request to be re-sorted. Resetting the sort here
+    // reorders the list for no reason the reader can see.
+    await videoLog.chooseChannel(fixture.connectionId);
+    await expect(videoLog.rows()).toHaveCount(3);
+
+    await expect(page.locator('th[aria-sort="descending"]')).toHaveText(
+      /Lifetime views/,
+    );
+  });
+
+  test('never announces a row range the rows on screen do not match', async ({
+    page,
+  }) => {
+    const videoLog = new VideoLogPageObject(page);
+    const fixture = await videoLog.setup();
+
+    await seedManyVideos(fixture, 105);
+
+    await videoLog.goToAnalytics(fixture.team.slug, fixture.project.slug);
+    await videoLog.openVideoLog();
+    await expect(videoLog.rangeLabel()).toHaveText('Rows 1–100');
+
+    // Hold the next page's read. The previous page stays on screen while it
+    // is in flight, so the label must stay with it: built from the click it
+    // read "Rows 101–200" over rows 1–100, and over a page that holds 5.
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    await page.route('**/*', async (route) => {
+      const request = route.request();
+
+      if (
+        request.method() === 'POST' &&
+        request.headers()['next-action'] &&
+        (request.postData() ?? '').includes('checkpoints')
+      ) {
+        await held;
+      }
+
+      await route.continue();
+    });
+
+    await videoLog.next().click();
+    await expect(videoLog.rows()).toHaveCount(100);
+    await expect(videoLog.rangeLabel()).toHaveText('Rows 1–100');
+
+    release();
+    await expect(videoLog.rangeLabel()).toHaveText('Rows 101–105');
+    await page.unroute('**/*');
+  });
+
   test('says the log ended rather than showing an empty table past its end', async ({
     page,
   }) => {

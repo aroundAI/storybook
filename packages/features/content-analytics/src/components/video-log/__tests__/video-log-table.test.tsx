@@ -161,6 +161,15 @@ describe('VideoLogTable', () => {
     );
   });
 
+  it('never shows an impressions count the data cannot support', () => {
+    renderTable([row({ impressions: 0, ctr: 0 })]);
+
+    expect(testId('impressions-value')).toHaveLength(0);
+    expect(testId('impressions-none')[0]?.getAttribute('aria-label')).toContain(
+      'No impressions recorded.',
+    );
+  });
+
   it('lists revenue per currency and never adds them together', () => {
     renderTable([
       row({

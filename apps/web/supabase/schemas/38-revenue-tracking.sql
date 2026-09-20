@@ -418,3 +418,35 @@ create policy "revenue_alerts_delete" on public.revenue_alerts for delete
   to authenticated using (
     public.has_account_access(account_id)
   );
+
+-- Lifetime revenue per publish per currency, summed in the database
+-- (FILM-1615). Reading the rows instead made one page of the Video Log take
+-- 98 seconds: revenue is a row per publish per day per category, so 100
+-- videos with a year of it is 36,500 rows for 200 sums.
+--
+-- `security invoker`, so `revenue_records_read` decides what is in each sum
+-- rather than the function re-deriving that policy by hand.
+create or replace function public.revenue_cents_by_publish(
+  p_publish_ids uuid[]
+)
+returns table (
+  publish_id uuid,
+  currency text,
+  cents bigint
+)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select
+    r.publish_id,
+    r.currency::text,
+    sum(r.revenue_cents)::bigint
+  from public.revenue_records r
+  where r.publish_id = any(p_publish_ids)
+  group by r.publish_id, r.currency::text
+$$;
+
+grant execute on function public.revenue_cents_by_publish(uuid[])
+  to authenticated, service_role;

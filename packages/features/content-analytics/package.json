@@ -35,6 +35,7 @@
     "./lib/schemas/report": "./src/lib/schemas/report.schema.ts",
     "./lib/csv-generator": "./src/lib/csv-generator.ts",
     "./lib/raw-export-generator": "./src/lib/raw-export-generator.ts",
+    "./lib/video-log-cells": "./src/lib/video-log-cells.ts",
     "./lib/pdf-generator": "./src/lib/pdf-generator.tsx",
     "./lib/types/revenue": "./src/lib/types/revenue.ts",
     "./lib/schemas/revenue": "./src/lib/schemas/revenue.schema.ts",

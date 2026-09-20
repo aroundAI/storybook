@@ -34,6 +34,16 @@ export type CheckpointState =
   | { kind: 'predates'; lagDays: number }
   | { kind: 'figure'; value: number };
 
+/** What deciding a checkpoint needs; the quality columns are not part of it. */
+export type CheckpointRow = Pick<
+  VideoLogCellRow,
+  | 'publishedAt'
+  | 'viewsAtAge'
+  | 'matureAt'
+  | 'predatesIngestAt'
+  | 'ingestLagDays'
+>;
+
 /**
  * Decides one checkpoint cell. The order is the precedence:
  *
@@ -43,7 +53,7 @@ export type CheckpointState =
  * 4. otherwise the figure, zero included.
  */
 export function checkpointState(
-  row: VideoLogCellRow,
+  row: CheckpointRow,
   days: number,
   now: Date = new Date(),
 ): CheckpointState {
@@ -69,13 +79,29 @@ export function checkpointState(
 /** A lifetime quality cell: a value, or why there is none. */
 export type QualityState =
   | { kind: 'value'; value: number }
-  | { kind: 'none'; reason: 'no-data' | 'no-impressions' | 'no-views' };
+  | {
+      kind: 'none';
+      reason: 'no-data' | 'no-impressions' | 'no-views' | 'not-reported';
+    };
 
 /**
  * The lifetime cells. Quality metrics default to 0 when there is nothing
  * behind them (EDD F-3); a CTR over no impressions, or an average view
  * duration over no views, is not a measurement of zero. The CSV blanks the
  * same cases.
+ *
+ * Impressions are the same absence as the CTR built from them, and must say
+ * so. Reach lives in its own table, filled only from YouTube's reach
+ * reports: a TikTok or Instagram video has no row there, and neither does a
+ * YouTube video whose report has not arrived. The quality query sums those
+ * absent rows to 0, so "no impressions recorded" and "0 impressions
+ * recorded" are the same number and cannot be told apart — which means the
+ * cell must not claim the measurement. Shipped reading `0` beside a CTR of
+ * "—: No impressions recorded", two contradictory answers to one question.
+ *
+ * An average over views that is exactly 0 is the same story: viewers who
+ * watched zero seconds did not watch, so that is a metric the platform did
+ * not report rather than one it measured.
  */
 export function qualityStates(row: VideoLogCellRow): {
   lifetimeViews: QualityState;
@@ -97,22 +123,28 @@ export function qualityStates(row: VideoLogCellRow): {
   }
 
   const noViews: QualityState = { kind: 'none', reason: 'no-views' };
+  const noImpressions: QualityState = {
+    kind: 'none',
+    reason: 'no-impressions',
+  };
+  const notReported: QualityState = { kind: 'none', reason: 'not-reported' };
+
+  const overViews = (value: number): QualityState => {
+    if (row.lifetimeViews === 0) return noViews;
+
+    return value > 0 ? { kind: 'value', value } : notReported;
+  };
 
   return {
     lifetimeViews: { kind: 'value', value: row.lifetimeViews },
-    impressions: { kind: 'value', value: row.impressions },
-    ctr:
+    impressions:
       row.impressions > 0
-        ? { kind: 'value', value: row.ctr }
-        : { kind: 'none', reason: 'no-impressions' },
-    avgViewDuration:
-      row.lifetimeViews > 0
-        ? { kind: 'value', value: row.avgViewDurationSeconds }
-        : noViews,
-    avgViewPercentage:
-      row.lifetimeViews > 0
-        ? { kind: 'value', value: row.avgViewPercentage }
-        : noViews,
+        ? { kind: 'value', value: row.impressions }
+        : noImpressions,
+    ctr:
+      row.impressions > 0 ? { kind: 'value', value: row.ctr } : noImpressions,
+    avgViewDuration: overViews(row.avgViewDurationSeconds),
+    avgViewPercentage: overViews(row.avgViewPercentage),
   };
 }
 
@@ -158,4 +190,22 @@ function videoAgeDays(publishedAt: string, now: Date): number | null {
     0,
     Math.floor((now.getTime() - published.getTime()) / 86_400_000),
   );
+}
+
+/**
+ * The number for a checkpoint, or null when there is none to report.
+ *
+ * For a surface with nowhere to put the reason — a CSV cell — where the
+ * only honest alternatives are the figure or a blank. Blank for all three
+ * non-figures: an empty cell says "not this one", while a `0` says viewers
+ * did not watch, and the difference is the whole point of the column.
+ */
+export function checkpointFigure(
+  row: CheckpointRow,
+  days: number,
+  now: Date = new Date(),
+): number | null {
+  const state = checkpointState(row, days, now);
+
+  return state.kind === 'figure' ? state.value : null;
 }

@@ -79,7 +79,7 @@
       "name": "R-6 a rate over no impressions reported as 0%",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/lib/video-log-cells.ts",
-      "find": "    ctr:\n      row.impressions > 0\n        ? { kind: 'value', value: row.ctr }\n        : { kind: 'none', reason: 'no-impressions' },",
+      "find": "    ctr:\n      row.impressions > 0 ? { kind: 'value', value: row.ctr } : noImpressions,",
       "replace": "    ctr: { kind: 'value', value: row.ctr },",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/video-log-cells.test.ts",
@@ -222,6 +222,76 @@
       "env": {
         "CLICKHOUSE_EVIDENCE": "1"
       }
+    },
+    {
+      "name": "R-6 an impressions count claimed where none were recorded",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/video-log-cells.ts",
+      "find": "    impressions:\n      row.impressions > 0\n        ? { kind: 'value', value: row.impressions }\n        : noImpressions,",
+      "replace": "    impressions: { kind: 'value', value: row.impressions },",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-cells.test.ts",
+      "pattern": "impressions count when none were recorded"
+    },
+    {
+      "name": "R-6 an average of exactly zero reported as measured",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/video-log-cells.ts",
+      "find": "    return value > 0 ? { kind: 'value', value } : notReported;",
+      "replace": "    return { kind: 'value', value };",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-cells.test.ts",
+      "pattern": "average of exactly zero"
+    },
+    {
+      "name": "CSV a missing checkpoint exported as a zero",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/video-log-cells.ts",
+      "find": "  return state.kind === 'figure' ? state.value : null;",
+      "replace": "  return row.matureAt[days] ? (row.viewsAtAge[days] ?? null) : null;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-cells.test.ts",
+      "pattern": "checkpointFigure"
+    },
+    {
+      "name": "F-2 revenue read row by row rather than summed in the database",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/video-log-actions.ts",
+      "find": "        .rpc('revenue_cents_by_publish', { p_publish_ids: chunk })",
+      "replace": "        .from('revenue_records')",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/video-log-notes.test.ts",
+      "pattern": "sums revenue in the database"
+    },
+    {
+      "name": "A channel change discards the sort the reader chose",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/video-log/video-log-tab.tsx",
+      "find": "      : {\n          orderBy: state.orderBy,\n          orderDirection: state.orderDirection,\n          page: 0,\n        };",
+      "replace": "      : { ...DEFAULT_VIDEO_LOG_VIEW };",
+      "spec": "tests/analytics/video-log-evidence.spec.ts",
+      "grep": "keeps the sort",
+      "env": {
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
+    },
+    {
+      "name": "The row range announced from the click rather than the data",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/video-log/video-log-tab.tsx",
+      "find": "  if (!query.isPlaceholderData) {\n    settled.current = { page: view.page, count: rows.length };\n  }",
+      "replace": "  settled.current = { page: view.page, count: rows.length };",
+      "spec": "tests/analytics/video-log-evidence.spec.ts",
+      "grep": "never announces a row range",
+      "env": {
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
+    },
+    {
+      "name": "DB the revenue aggregate run as its definer, not its caller",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/revenue-cents-by-publish.test.sql",
+      "sql": "alter function public.revenue_cents_by_publish(uuid[]) security definer;"
     }
   ]
 }

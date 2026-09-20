@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   type VideoLogCellRow,
+  checkpointFigure,
   checkpointState,
   isPartial,
   parseUtcTimestamp,
@@ -117,6 +118,44 @@ describe('checkpointState — the four states, in order (FILM-1615)', () => {
   });
 });
 
+describe('checkpointFigure — the CSV cell', () => {
+  // The scheduled raw export has nowhere to put a reason, so its only
+  // honest options are the figure or a blank. It used to test `matureAt`
+  // alone, which let two kinds of missing data through as `0`: measured
+  // against real rows, "no views", "nothing was ever collected" and "this
+  // can never be known" all exported the same 0.
+  it('gives the figure when there is one, zero included', () => {
+    expect(checkpointFigure(row(), 30, NOW)).toBe(500);
+    expect(checkpointFigure(row({ viewsAtAge: { 30: 0 } }), 30, NOW)).toBe(0);
+  });
+
+  it('blanks a video that has never had a metric ingested', () => {
+    expect(
+      checkpointFigure(
+        row({ ingestLagDays: null, viewsAtAge: { 30: 0 } }),
+        30,
+        NOW,
+      ),
+    ).toBeNull();
+  });
+
+  it('blanks a window that closed before ingest began', () => {
+    expect(
+      checkpointFigure(
+        row({ ingestLagDays: 40, predatesIngestAt: { 30: true } }),
+        30,
+        NOW,
+      ),
+    ).toBeNull();
+  });
+
+  it('blanks a checkpoint the video is not old enough for', () => {
+    expect(
+      checkpointFigure(row({ matureAt: { 30: false } }), 30, NOW),
+    ).toBeNull();
+  });
+});
+
 describe('qualityStates (EDD F-3)', () => {
   it('returns values when there is data behind them', () => {
     const states = qualityStates(row());
@@ -130,6 +169,45 @@ describe('qualityStates (EDD F-3)', () => {
     expect(qualityStates(row({ impressions: 0, ctr: 0 })).ctr).toEqual({
       kind: 'none',
       reason: 'no-impressions',
+    });
+  });
+
+  it('refuses an impressions count when none were recorded, as its CTR does', () => {
+    // Reach lives in its own table and is filled only from YouTube's reach
+    // reports, so "none recorded" and "zero recorded" sum to the same 0 and
+    // cannot be told apart. Shipped as `0` beside a CTR reading "No
+    // impressions recorded" — one absence, two contradictory answers.
+    expect(qualityStates(row({ impressions: 0, ctr: 0 })).impressions).toEqual({
+      kind: 'none',
+      reason: 'no-impressions',
+    });
+  });
+
+  it('keeps a measured impressions count', () => {
+    expect(qualityStates(row({ impressions: 20_000 })).impressions).toEqual({
+      kind: 'value',
+      value: 20_000,
+    });
+  });
+
+  it('refuses an average of exactly zero over views that exist', () => {
+    // Viewers who watched zero seconds did not watch: the platform did not
+    // report the metric, which is not a measurement of nothing.
+    const states = qualityStates(
+      row({
+        lifetimeViews: 5_000,
+        avgViewDurationSeconds: 0,
+        avgViewPercentage: 0,
+      }),
+    );
+
+    expect(states.avgViewDuration).toEqual({
+      kind: 'none',
+      reason: 'not-reported',
+    });
+    expect(states.avgViewPercentage).toEqual({
+      kind: 'none',
+      reason: 'not-reported',
     });
   });
 

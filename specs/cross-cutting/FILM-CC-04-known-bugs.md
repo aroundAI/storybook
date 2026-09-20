@@ -442,9 +442,48 @@ does this show when an account has two currencies" — one card per
 currency, a selector, or a stated base currency. That is a design
 decision, not a refactor.
 
+**Said out loud in one place:** the scheduled raw export's column header
+is literally `Revenue (USD)` (`raw-export-generator.ts`), over a figure
+taken from ClickHouse, which carries no currency at all. Left as it is on
+purpose — that header is a column name in files recipients already parse,
+and renaming it in a bug-fix PR breaks their spreadsheets to make a caveat
+that this entry records instead.
+
 **How to reproduce:** add two `revenue_records` for one publish with
 different `currency` values, and read the revenue mix or the account
 dashboard: one number, neither currency.
+
+---
+
+## KB-13 — Row-level security costs a second on a page of revenue
+
+**Severity:** Low — slow, not wrong. **Found:** FILM-1615 review,
+2026-09-20. **Open.**
+
+`revenue_records_read` decides each row with an `exists` over
+publishes → episodes → projects. That is per row, before any aggregation,
+so summing a page of the Video Log's revenue — 100 videos with a year of
+daily rows, 36,500 of them — spends **~1.1s** in the policy. The same
+aggregate with RLS off is **11ms**. Measured with `\timing` on the local
+database, against seeded rows.
+
+It is the dominant remaining cost of a Video Log page read. Measured end to
+end on a production build, one page of 100 videos:
+
+| That page's revenue | Cold | Warm |
+|---|---|---|
+| none | 932 ms | ~480 ms |
+| a year of daily rows (36,500) | 4,224 ms | ~3,550 ms |
+
+So the phase's 2-second budget holds for the data these accounts have today
+and is missed by a page where every video has a year of daily revenue. It is
+the price of the policy being the single thing that decides who may read a
+revenue row — a `security definer` aggregate would be ~100× faster and would
+have to re-derive that policy by hand, which is how KB-11 happened.
+
+**If it needs fixing:** a rollup the sync writes (per publish per currency)
+would make this an indexed lookup, at the cost of a second place revenue
+can be wrong. Not worth it until someone has a real account that is slow.
 
 ---
 

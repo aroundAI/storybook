@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import {
   keepPreviousData,
@@ -62,10 +62,18 @@ export function VideoLogTab({
     VideoLogView & { forConnection: string | undefined }
   >({ ...DEFAULT_VIDEO_LOG_VIEW, forConnection: connectionId });
 
+  // A channel change starts again at the first page, and keeps the sort:
+  // filtering is not a request to be re-sorted, and silently dropping the
+  // column a reader chose makes the list reorder itself for no visible
+  // reason.
   const view: VideoLogView =
     state.forConnection === connectionId
       ? state
-      : { ...DEFAULT_VIDEO_LOG_VIEW };
+      : {
+          orderBy: state.orderBy,
+          orderDirection: state.orderDirection,
+          page: 0,
+        };
 
   const queryKey = [
     'video-log',
@@ -95,6 +103,20 @@ export function VideoLogTab({
     setView(nextVideoLogSort(view, column));
 
   const { rows, hasMore } = videoLogPage(query.data ?? []);
+
+  // Which page the rows on screen actually are. While the next page is
+  // being read the previous one is still shown (`keepPreviousData`), and
+  // `view.page` has already moved — so a label built from it announced
+  // "Rows 101–200" over rows 1–100. The label follows the data instead,
+  // and the paging controls wait for it rather than letting a second click
+  // skip the page being fetched.
+  const settled = useRef({ page: view.page, count: rows.length });
+
+  if (!query.isPlaceholderData) {
+    settled.current = { page: view.page, count: rows.length };
+  }
+
+  const stale = query.isPlaceholderData;
 
   return (
     <div className={'flex flex-col gap-4'} data-test={'video-log-tab'}>
@@ -177,14 +199,14 @@ export function VideoLogTab({
               className={'text-sm text-muted-foreground'}
               data-test={'video-log-range'}
             >
-              {videoLogRangeLabel(view.page, rows.length)}
+              {videoLogRangeLabel(settled.current.page, settled.current.count)}
             </span>
 
             <span className={'flex gap-2'}>
               <Button
                 variant={'outline'}
                 size={'sm'}
-                disabled={view.page === 0}
+                disabled={view.page === 0 || stale}
                 onClick={() => setView({ ...view, page: view.page - 1 })}
                 data-test={'video-log-previous'}
               >
@@ -193,7 +215,7 @@ export function VideoLogTab({
               <Button
                 variant={'outline'}
                 size={'sm'}
-                disabled={!hasMore}
+                disabled={!hasMore || stale}
                 onClick={() => setView({ ...view, page: view.page + 1 })}
                 data-test={'video-log-next'}
               >

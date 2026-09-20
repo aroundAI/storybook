@@ -5997,6 +5997,14 @@ export type Database = {
         Returns: undefined
       }
       reset_monthly_usage: { Args: never; Returns: number }
+      revenue_cents_by_publish: {
+        Args: { p_publish_ids: string[] }
+        Returns: {
+          cents: number
+          currency: string
+          publish_id: string
+        }[]
+      }
       revoke_nonce: {
         Args: { p_id: string; p_reason?: string }
         Returns: boolean

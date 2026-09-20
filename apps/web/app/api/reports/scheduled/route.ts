@@ -436,7 +436,12 @@ async function processScheduledReport(
     // Views-at-age are per-video lifetime figures, so they cannot be
     // derived from `dailyRows` — those cover only the report window, and a
     // video published a year ago has none of its first 30 days in it.
-    const { queryVideoViewsAtAge } = await import('@kit/clickhouse/server');
+    const { queryVideoViewsAtAge, checkpointPredatesIngest } = await import(
+      '@kit/clickhouse/server'
+    );
+    const { checkpointFigure } = await import(
+      '@kit/content-analytics/lib/video-log-cells'
+    );
     const { listAccountChannels } = await import(
       '@kit/content-analytics/server'
     );
@@ -460,11 +465,35 @@ async function processScheduledReport(
       channels.map((channel) => [channel.connectionId, channel.name]),
     );
 
-    /** Blank unless the checkpoint has actually elapsed for this video. */
+    /**
+     * Blank unless the checkpoint is a figure — the same decision the Video
+     * Log's cells make, from the same function.
+     *
+     * Testing `matureAt` alone was not enough, and quietly. A video with no
+     * metrics ever ingested is mature and has no lag, so `viewsAtAge` came
+     * back `0` and the export wrote `0`; so did a video whose window closed
+     * before its channel's ingest began. Measured against real rows, three
+     * videos meaning "no views", "nothing was ever collected" and "this can
+     * never be known" all exported the same `0`, which is precisely the
+     * reading FILM-1603 added these flags to prevent.
+     */
     const checkpoint = (videoId: string, days: number): number | null => {
       const age = ageByVideo.get(videoId);
-      if (!age || !age.matureAt[days]) return null;
-      return age.viewsAtAge[days] ?? null;
+
+      if (!age) return null;
+
+      return checkpointFigure(
+        {
+          publishedAt: age.publishedAt,
+          viewsAtAge: age.viewsAtAge,
+          matureAt: age.matureAt,
+          predatesIngestAt: {
+            [days]: checkpointPredatesIngest(age.ingestLagDays, days),
+          },
+          ingestLagDays: age.ingestLagDays,
+        },
+        days,
+      );
     };
 
     const rawRows = dailyRows.map((row) => {

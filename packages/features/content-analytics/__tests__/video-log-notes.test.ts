@@ -14,21 +14,24 @@ const state: {
     analytics_note: string | null;
     analytics_note_updated_at?: string | null;
   }>;
+  /** Already grouped, as `revenue_cents_by_publish` returns it. */
   revenue: Array<{
     publish_id: string | null;
-    revenue_cents: number | null;
     currency: string | null;
+    cents: number | null;
   }>;
   notesError: { message: string } | null;
   /** What `editable_publish_ids` returns for the caller. */
   editableIds: string[];
   rpcCalls: string[];
+  tablesRead: string[];
 } = {
   notes: [],
   revenue: [],
   notesError: null,
   editableIds: [],
   rpcCalls: [],
+  tablesRead: [],
 };
 
 vi.mock('@kit/next/actions', () => ({
@@ -86,16 +89,22 @@ function pageOf(rows: unknown[], error: { message: string } | null = null) {
 
 vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => ({
-    rpc: async (name: string) => {
+    // PostgREST's rpc builder is thenable *and* chainable: one caller here
+    // awaits it directly, the other pages it.
+    rpc: (name: string) => {
       state.rpcCalls.push(name);
-      return { data: state.editableIds, error: null };
+
+      return name === 'revenue_cents_by_publish'
+        ? pageOf(state.revenue)
+        : Promise.resolve({ data: state.editableIds, error: null });
     },
-    from: (table: string) =>
-      table === 'publishes'
+    from: (table: string) => {
+      state.tablesRead.push(table);
+
+      return table === 'publishes'
         ? pageOf(state.notes, state.notesError)
-        : table === 'revenue_records'
-          ? pageOf(state.revenue)
-          : pageOf([]),
+        : pageOf([]);
+    },
   }),
 }));
 
@@ -108,6 +117,7 @@ beforeEach(() => {
   state.notesError = null;
   state.editableIds = [];
   state.rpcCalls = [];
+  state.tablesRead = [];
 });
 
 const input = {
@@ -144,7 +154,7 @@ describe('getVideoLogAction — analytics notes', () => {
 
     const rows = await getVideoLogAction(input);
 
-    expect(state.rpcCalls).toEqual(['editable_publish_ids']);
+    expect(state.rpcCalls).toContain('editable_publish_ids');
 
     expect(rows.map((row) => [row.videoId, row.canEditNote])).toEqual([
       ['p1', true],
@@ -156,10 +166,9 @@ describe('getVideoLogAction — analytics notes', () => {
 describe('getVideoLogAction — FILM-1615', () => {
   it('reports revenue per currency, never one sum across currencies (EDD F-2)', async () => {
     state.revenue = [
-      { publish_id: 'p1', revenue_cents: 1000, currency: 'USD' },
-      { publish_id: 'p1', revenue_cents: 200, currency: 'USD' },
-      { publish_id: 'p1', revenue_cents: 500, currency: 'EUR' },
-      { publish_id: 'p2', revenue_cents: 300, currency: null },
+      { publish_id: 'p1', currency: 'USD', cents: 1200 },
+      { publish_id: 'p1', currency: 'EUR', cents: 500 },
+      { publish_id: 'p2', currency: null, cents: 300 },
     ];
 
     const rows = await getVideoLogAction(input);
@@ -174,6 +183,18 @@ describe('getVideoLogAction — FILM-1615', () => {
       ],
       ['p2', [{ currency: null, cents: 300 }]],
     ]);
+  });
+
+  it('sums revenue in the database rather than reading every row', async () => {
+    // Revenue is a row per publish per day per category. Read row by row,
+    // one page of the log measured 98.5 seconds against a year of daily
+    // revenue; grouped in Postgres it is ~200 rows and ~1.1s.
+    state.revenue = [{ publish_id: 'p1', currency: 'USD', cents: 25 }];
+
+    await getVideoLogAction(input);
+
+    expect(state.rpcCalls).toContain('revenue_cents_by_publish');
+    expect(state.tablesRead).not.toContain('revenue_records');
   });
 
   it('reports no revenue as an empty list, not a zero', async () => {

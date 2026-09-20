@@ -55,6 +55,15 @@ impressions and an average view duration over no views are not
 measurements of zero, and render as `—` with the reason attached
 (finding F-3).
 
+**Impressions were the exception, and shipped wrong.** The first version
+rendered a hard `0` in the Impressions column while the CTR beside it, from
+the same absent data, read "— No impressions recorded": one absence, two
+contradictory answers, on the same row. Reach lives in its own table and is
+filled only from YouTube's reach reports, so every TikTok and Instagram
+video had it. Found by the review, reproduced from the rendered DOM, fixed,
+and guarded. An average of exactly zero over views that exist is the same
+thing — nobody watched zero seconds — and now reads "not reported".
+
 Rendering any of the other three as `0` is the failure this table exists to
 prevent, and it is a comfortable failure to ship: a zero looks like data,
 sorts like data, and averages like data. FILM-1603 §2 and FILM-1604 §2 both
@@ -170,10 +179,12 @@ it is summing the page.
 ## 8. Verification
 
 ```bash
-pnpm --filter @kit/content-analytics test        # 693 unit + component tests
+pnpm --filter @kit/content-analytics test        # 702 unit + component tests
+pnpm --filter web supabase test db               # 443 pgTAP, incl. the revenue aggregate
 pnpm typecheck && pnpm lint
 npx playwright test analytics/video-log          # from apps/e2e; the guard half
-python3 tooling/mutation-guards/run.py --kind unit   # every guard seen red
+python3 tooling/mutation-guards/run.py --kind unit    # 51/51 red
+python3 tooling/mutation-guards/run.py --kind pgtap   # 16/16 red
 ```
 
 **Playwright is required**, not optional — the table is interactive
@@ -201,6 +212,28 @@ sort, page or annotate:
 run in CI. The `🧬 E2E guards & evidence` job runs a ClickHouse container
 next to Supabase, so both halves and the e2e mutation guards run on every
 pull request. The claim that it "cannot run in CI" was stale.
+
+**What a systematic review found afterwards**, none of which the tests
+above had caught:
+
+- **Revenue read row by row.** A page of 100 videos with a year of daily
+  revenue is 36,500 rows, read 1,000 at a time: **98.5 seconds** for one
+  page. The performance figure originally reported here was measured on a
+  fixture with no revenue rows at all, so it timed everything except the
+  dominant cost. Now summed in the database by
+  `public.revenue_cents_by_publish` (`security invoker`, so the policy
+  still decides what is in each sum), with a pgTAP test and a guard —
+  **98.5s → 3.5s**. What remains is `revenue_records_read` evaluating an
+  `exists` per row before anything can be aggregated (KB-13); the same page
+  with no revenue reads in 0.5s, so the 2-second budget holds for the data
+  these accounts have and is missed by the extreme shape.
+- **The scheduled CSV exported `0` for two kinds of missing data**, which
+  is the failure this table exists to prevent, in the sibling surface
+  FILM-1603 built the flags for. Both now use one function,
+  `checkpointFigure`.
+- **The Impressions column** (§2).
+- **A channel change discarded the reader's sort**, and the row range said
+  "Rows 101–200" over the hundred rows still on screen.
 
 The evidence half earned its keep on its first run: saving a note and
 immediately reopening it reported a conflict with nobody else involved.
