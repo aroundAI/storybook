@@ -704,10 +704,25 @@ export async function getProjectAudienceData(
 
   // Per-video view totals weight the per-video percentage breakdowns
   const [perVideoTotals, ageRows, genderRows, countryRows] = await Promise.all([
-    queryTotalsByVideoIds(publishIds, dateFilters),
-    queryAudienceRows({ videoIds: publishIds, dimension: 'age_group' }),
-    queryAudienceRows({ videoIds: publishIds, dimension: 'gender' }),
-    queryAudienceRows({ videoIds: publishIds, dimension: 'country' }),
+    queryTotalsByVideoIds(publishIds, {
+      ...dateFilters,
+      projectIds: [projectId],
+    }),
+    queryAudienceRows({
+      videoIds: publishIds,
+      projectIds: [projectId],
+      dimension: 'age_group',
+    }),
+    queryAudienceRows({
+      videoIds: publishIds,
+      projectIds: [projectId],
+      dimension: 'gender',
+    }),
+    queryAudienceRows({
+      videoIds: publishIds,
+      projectIds: [projectId],
+      dimension: 'country',
+    }),
   ]);
 
   const weightFor = (videoId: string) =>

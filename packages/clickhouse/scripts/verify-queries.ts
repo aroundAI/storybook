@@ -913,16 +913,49 @@ async function watchedMetricSteps() {
  */
 async function scanScopeSteps() {
   // Each read, and the string that finds its entry in system.query_log.
+  const videoIds = [NORMAL, PRE_INGEST, ZERO];
+  const projectIds = [PROJECT];
+
   const reads = {
-    'the dim join': () =>
+    'dim-join': () =>
       readRowsOf('views_at_30', () =>
         queryVideoViewsAtAge({ scope: { projectId: PROJECT } }),
       ),
-    'the quality read': () =>
+    quality: () =>
       readRowsOf('ctr_weighted', () =>
-        queryQualityMetricsForVideos({
-          videoIds: [NORMAL, PRE_INGEST, ZERO],
-          projectIds: [PROJECT],
+        queryQualityMetricsForVideos({ videoIds, projectIds }),
+      ),
+    totals: () =>
+      readRowsOf('video_id, sum(views)', () =>
+        queryTotalsByVideoIds(videoIds, { projectIds }),
+      ),
+    audience: () =>
+      readRowsOf('video_audience', () =>
+        queryAudienceRows({ videoIds, projectIds, dimension: 'country' }),
+      ),
+    traffic: () =>
+      readRowsOf('video_traffic_sources', () =>
+        queryTrafficSources({ videoIds, projectIds }),
+      ),
+    subs: () =>
+      readRowsOf('subscribers_gained', () =>
+        queryNetSubscribersForVideos({ videoIds, projectIds }),
+      ),
+    retention: () =>
+      readRowsOf('audience_watch_ratio', () =>
+        queryRetentionCurve({ videoId: NORMAL, projectIds }),
+      ),
+    'data-days': () =>
+      readRowsOf('DISTINCT toString(metric_date)', () =>
+        queryDataDaysForVideos({
+          videoIds,
+          projectIds,
+          source: 'daily',
+          // Wide enough to include the noise era. Bounded to 2020 this read
+          // excluded every noise row on its own date filter, so it reported
+          // +0 whatever its project predicate did.
+          startDate: '1989-01-01',
+          endDate: '2030-12-31',
         }),
       ),
   };
@@ -958,42 +991,105 @@ async function scanScopeSteps() {
       const noisePlatforms = ['youtube', 'tiktok', 'instagram'] as const;
       const perDay = noiseIds.length * noisePlatforms.length;
 
-      const noise = Array.from({ length: NOISE_ROWS }, (_, index) => ({
-        project_id: NOISE_PROJECT,
+      // Which video and platform row `index` is, and the day it falls on.
+      // One day per full (video × platform) round keeps the block inside
+      // few enough months to satisfy ClickHouse's 100-partitions-per-INSERT
+      // limit on the tables that are partitioned by month.
+      const at = (index: number) => ({
         video_id: noiseIds[index % noiseIds.length]!,
-        // The key's third column, so three platforms give three distinct
-        // rows per video-day and the whole block fits in far fewer months.
         platform:
           noisePlatforms[
             Math.floor(index / noiseIds.length) % noisePlatforms.length
           ]!,
-        // One day per full (video × platform) round, walked forward from an
-        // era no fixture uses, so the rows stay distinct and nothing above
-        // shares a partition with them.
         metric_date: new Date(
           Date.UTC(1990, 0, 1) + Math.floor(index / perDay) * 86_400_000,
         )
           .toISOString()
           .slice(0, 10),
-        views: 1,
-        likes: 0,
-        comments: 0,
-        shares: 0,
-        saves: 0,
-        watch_time_seconds: 0,
-        revenue_cents: 0,
-        subscribers_gained: 0,
-        subscribers_lost: 0,
-        extra_metrics: '{}',
-      }));
+      });
 
-      // `video_metrics` is PARTITION BY toYYYYMM(metric_date) and ClickHouse
-      // refuses an INSERT block spanning more than 100 partitions. These
-      // rows walk forward a day at a time, so a slice this size never
-      // reaches that many months.
-      for (let at = 0; at < noise.length; at += 4_000) {
-        await insertVideoMetrics(noise.slice(at, at + 4_000));
-      }
+      /** Inserts in slices, so a partitioned table never sees >100 months. */
+      const inSlices = async <T>(
+        rows: T[],
+        insert: (slice: T[]) => Promise<void>,
+      ) => {
+        for (let from = 0; from < rows.length; from += 4_000) {
+          await insert(rows.slice(from, from + 4_000));
+        }
+      };
+
+      const range = Array.from({ length: NOISE_ROWS }, (_, index) => index);
+
+      // Every table a scoped read touches, not just video_metrics. A read
+      // of video_audience cannot be enlarged by noise in video_metrics, so
+      // a guard that seeded only the latter reported +0 for the audience,
+      // traffic and retention reads whatever their SQL said — three
+      // assertions about nothing.
+      await inSlices(
+        range.map((index) => ({
+          project_id: NOISE_PROJECT,
+          ...at(index),
+          views: 1,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+          saves: 0,
+          watch_time_seconds: 0,
+          revenue_cents: 0,
+          subscribers_gained: 0,
+          subscribers_lost: 0,
+          extra_metrics: '{}',
+        })),
+        insertVideoMetrics,
+      );
+
+      await inSlices(
+        range.map((index) => ({
+          project_id: NOISE_PROJECT,
+          ...at(index),
+          impressions: 1,
+          impressions_ctr: 0,
+          engaged_views: 0,
+        })),
+        insertVideoReachDaily,
+      );
+
+      await inSlices(
+        range.map((index) => ({
+          project_id: NOISE_PROJECT,
+          ...at(index),
+          source: `SRC_${index % 7}`,
+          views: 1,
+          watch_time_minutes: 0,
+        })),
+        insertVideoTrafficSources,
+      );
+
+      // Unpartitioned, and keyed on (…, dimension, key) / (…, elapsed_ratio)
+      // rather than a date, so these vary that last column instead.
+      await inSlices(
+        range.map((index) => ({
+          project_id: NOISE_PROJECT,
+          video_id: noiseIds[index % noiseIds.length]!,
+          platform: 'youtube' as const,
+          dimension: 'country' as const,
+          key: `NOISE_${index}`,
+          views: 1,
+          percentage: 0,
+        })),
+        insertVideoAudience,
+      );
+
+      await inSlices(
+        range.map((index) => ({
+          project_id: NOISE_PROJECT,
+          video_id: noiseIds[index % noiseIds.length]!,
+          platform: 'youtube' as const,
+          elapsed_ratio: index / NOISE_ROWS,
+          audience_watch_ratio: 0,
+        })),
+        insertRetentionCurves,
+      );
 
       const landed = await countNoiseRows();
 
@@ -1005,29 +1101,31 @@ async function scanScopeSteps() {
       }
 
       const grown: string[] = [];
-      const summary: string[] = [];
+      const growth: Record<string, number> = {};
 
       for (const [name, read] of Object.entries(reads)) {
         const after = await read();
         const grew = after - before[name]!;
 
-        summary.push(`${name} +${grew}`);
+        growth[name] = grew;
 
         if (grew > NOISE_TOLERANCE) {
-          grown.push(
-            `${name} grew by ${grew} rows (${before[name]} → ${after})`,
-          );
+          grown.push(`${name} +${grew}`);
         }
       }
 
       if (grown.length > 0) {
         throw new Error(
-          `${NOISE_ROWS} rows under another project enlarged a scoped read: ` +
-            `${grown.join('; ')} — that read is not bounded by project_id`,
+          `+${NOISE_ROWS} rows under another project enlarged: ` +
+            `${grown.join(', ')} — not bounded by project_id`,
         );
       }
 
-      return `${summary.join(', ')} for +${NOISE_ROWS} rows elsewhere`;
+      // `step` truncates its detail, so report the shape rather than every
+      // figure: the number of reads checked and the worst one.
+      const worst = Math.max(...Object.values(growth));
+
+      return `${Object.keys(reads).length} reads, worst +${worst} for +${NOISE_ROWS} rows elsewhere`;
     },
   );
 }
@@ -1056,6 +1154,12 @@ async function countNoiseRows(): Promise<number> {
  * passing one would mean threading it through the query function's
  * signature for a test's benefit, and this script runs its steps one at a
  * time.
+ *
+ * The marker must survive ClickHouse's normalisation: `system.query_log`
+ * stores the query reformatted — whitespace collapsed, keywords upper-cased
+ * — so `sum(x) as x` is logged as `sum(x) AS x` and a marker carrying a
+ * lowercase ` as ` matches nothing. Prefer a bare identifier or an
+ * expression without aliases.
  */
 async function readRowsOf(
   marker: string,
@@ -1083,7 +1187,10 @@ async function readRowsOf(
   const rows = await result.json<{ read_rows: string }>();
 
   if (rows.length === 0) {
-    throw new Error('no query_log entry for the checkpoint query');
+    throw new Error(
+      `no query_log entry matching ${JSON.stringify(marker)} — either the ` +
+        `query did not run or its SQL no longer contains that string`,
+    );
   }
 
   return Number(rows[0]!.read_rows);

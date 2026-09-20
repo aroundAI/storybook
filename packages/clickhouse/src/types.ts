@@ -265,6 +265,12 @@ export interface PlatformBreakdown {
  */
 export interface QueryFilters {
   projectId?: string;
+  /**
+   * Several projects, where one is not enough — a report may name a set.
+   * Same purpose as `projectId`: it leads every metrics table's sort key,
+   * so it is what keeps a `videoIds` read from scanning the table.
+   */
+  projectIds?: string[];
   videoIds?: string[];
   platforms?: AnalyticsPlatform[];
   startDate?: string;
