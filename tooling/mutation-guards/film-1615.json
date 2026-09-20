@@ -35,15 +35,23 @@
     },
     {
       "name": "S0d dashboard daily metrics by row visibility only",
-      "kind": "e2e",
+      "kind": "unit",
       "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
       "find": "  if (!(await canAccessProject(client, projectId))) {\n    return [];\n  }",
       "replace": "  if (false) {\n    return [];\n  }",
-      "spec": "tests/analytics/tenant-isolation-evidence.spec.ts",
-      "grep": "cannot read a public project",
-      "env": {
-        "CLICKHOUSE_EVIDENCE": "1"
-      }
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/dashboard-project-access.test.ts",
+      "pattern": "daily metrics"
+    },
+    {
+      "name": "S0f dashboard project analytics by row visibility only",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "  if (!(await canAccessProject(client, projectId))) {\n    return null;\n  }",
+      "replace": "  if (false) {\n    return null;\n  }",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/dashboard-project-access.test.ts",
+      "pattern": "project analytics"
     }
   ]
 }

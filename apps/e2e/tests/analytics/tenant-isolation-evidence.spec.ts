@@ -69,7 +69,37 @@ async function makePublic(projectId: string) {
 interface ActionResponse {
   /** The `next-action` id: which action answered, not merely how many did. */
   action: string;
+  status: number;
   body: string;
+}
+
+/**
+ * The data a server-action response carried, or null when it carried none.
+ *
+ * The two refusals look nothing alike and both have to count as "nothing".
+ * A scope-checked read throws, which is a 500 whose flight payload is an
+ * `E{...}` error; the dashboard reads return 200 with `null` or `[]`,
+ * indistinguishable from a project that really is empty. Asserting on the
+ * figure instead of on this is what let the guards below pass in CI: which
+ * reads happen to produce a given number varies by environment, so a
+ * mutation that opened one path leaked nothing the assertion was looking
+ * at. Any 200 carrying a payload is a leak here, because every request
+ * being watched names the victim's project.
+ */
+function payloadOf(response: ActionResponse): string | null {
+  if (response.status !== 200) return null;
+
+  const line = response.body
+    .split('\n')
+    .find((candidate) => candidate.startsWith('1:'));
+
+  if (!line) return null;
+
+  const data = line.slice(2).trim();
+
+  if (data.startsWith('E{')) return null;
+
+  return ['', 'null', '[]', '{}'].includes(data) ? null : data;
 }
 
 /**
@@ -95,15 +125,19 @@ function collectActionResponses(page: Page, projectId: string) {
       action &&
       (request.postData() ?? '').includes(projectId)
     ) {
-      responses.push({ action, body: await response.text().catch(() => '') });
+      responses.push({
+        action,
+        status: response.status(),
+        body: await response.text().catch(() => ''),
+      });
     }
   });
 
   return responses;
 }
 
-const leaking = (responses: ActionResponse[]) =>
-  responses.filter((response) => response.body.includes(String(B_VIEWS)));
+const carryingData = (responses: ActionResponse[]) =>
+  responses.filter((response) => payloadOf(response) !== null);
 
 test.describe('Analytics tenant isolation (FILM-1615 Step 0)', () => {
   test.skip(
@@ -181,14 +215,20 @@ test.describe('Analytics tenant isolation (FILM-1615 Step 0)', () => {
     );
     await victimPage.locator('[data-test="analytics-tab-deep-dive"]').click();
     await expect
-      .poll(() => leaking(victimResponses).length, { timeout: 30_000 })
-      .toBeGreaterThan(0);
+      .poll(
+        () =>
+          victimResponses.some((response) =>
+            response.body.includes(String(B_VIEWS)),
+          ),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
 
-    // The reads that actually carry the figure. The attacker must be shown
-    // to have run *these* and got nothing, not merely to have run several
-    // reads of some kind.
+    // The reads that answered the owner with data. The attacker must be
+    // shown to have run *these* and got nothing back, not merely to have
+    // run several reads of some kind.
     const carrying = [
-      ...new Set(leaking(victimResponses).map((response) => response.action)),
+      ...new Set(carryingData(victimResponses).map((one) => one.action)),
     ];
 
     // The attacker opens their own dashboard and Deep Dive, with every
@@ -233,6 +273,14 @@ test.describe('Analytics tenant isolation (FILM-1615 Step 0)', () => {
       )
       .toBe(carrying.length);
 
-    expect(leaking(attackerResponses)).toEqual([]);
+    // Not "no response contained 777777": every one of these requests names
+    // the victim's project, so a payload of any kind is data this caller
+    // may not have.
+    expect(
+      carryingData(attackerResponses).map((one) => ({
+        action: one.action,
+        payload: payloadOf(one)!.slice(0, 200),
+      })),
+    ).toEqual([]);
   });
 });
