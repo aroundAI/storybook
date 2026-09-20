@@ -97,6 +97,36 @@ export interface SeededVideo {
   publishedAt: Date;
 }
 
+function videoDimRow(video: SeededVideo) {
+  return {
+    video_id: video.videoId,
+    project_id: video.projectId,
+    account_id: video.accountId,
+    connection_id: video.connectionId,
+    episode_id: '00000000-0000-0000-0000-000000000000',
+    platform: 'youtube',
+    content_type: 'long',
+    language: 'en',
+    title: video.title,
+    published_at: clickHouseDateTime(video.publishedAt),
+    duration_seconds: 600,
+    tags: [],
+    updated_at: clickHouseDateTime(new Date()),
+  };
+}
+
+/**
+ * Several videos in the dimension table, in one request.
+ *
+ * One request rather than one per video, because ClickHouse writes a part
+ * per INSERT: a spec seeding a hundred videos a row at a time leaves two
+ * hundred one-row parts behind for every later read to merge through, and
+ * pays a round trip for each.
+ */
+export async function seedVideoDims(videos: SeededVideo[]) {
+  await insertClickHouse('video_dim', videos.map(videoDimRow));
+}
+
 /**
  * One video in the dimension table, as the publish-success hook writes it.
  *
@@ -104,23 +134,7 @@ export interface SeededVideo {
  * not in the table however complete its Postgres row is.
  */
 export async function seedVideoDim(video: SeededVideo) {
-  await insertClickHouse('video_dim', [
-    {
-      video_id: video.videoId,
-      project_id: video.projectId,
-      account_id: video.accountId,
-      connection_id: video.connectionId,
-      episode_id: '00000000-0000-0000-0000-000000000000',
-      platform: 'youtube',
-      content_type: 'long',
-      language: 'en',
-      title: video.title,
-      published_at: clickHouseDateTime(video.publishedAt),
-      duration_seconds: 600,
-      tags: [],
-      updated_at: clickHouseDateTime(new Date()),
-    },
-  ]);
+  await seedVideoDims([video]);
 }
 
 export interface DailyMetric {
@@ -132,6 +146,40 @@ export interface DailyMetric {
   avgViewPercentage?: number;
 }
 
+function videoMetricRow(video: SeededVideo, day: DailyMetric) {
+  return {
+    project_id: video.projectId,
+    video_id: video.videoId,
+    platform: 'youtube',
+    metric_date: clickHouseDate(
+      new Date(video.publishedAt.getTime() + day.ageDays * 86_400_000),
+    ),
+    views: day.views,
+    likes: 0,
+    comments: 0,
+    shares: 0,
+    saves: 0,
+    watch_time_seconds: day.views * 60,
+    revenue_cents: day.revenueCents ?? 0,
+    subscribers_gained: 0,
+    avg_view_duration_seconds: day.avgViewDurationSeconds ?? 120,
+    avg_view_percentage: day.avgViewPercentage ?? 40,
+    dislikes: 0,
+  };
+}
+
+/** Daily rows for several videos, in one request. See `seedVideoDims`. */
+export async function seedVideoMetricsBatch(
+  entries: Array<{ video: SeededVideo; days: DailyMetric[] }>,
+) {
+  await insertClickHouse(
+    'video_metrics',
+    entries.flatMap(({ video, days }) =>
+      days.map((day) => videoMetricRow(video, day)),
+    ),
+  );
+}
+
 /**
  * Daily rows for a video. Inserted into `video_metrics`, because
  * `video_daily_stats` is a view over it.
@@ -140,28 +188,7 @@ export async function seedVideoMetrics(
   video: SeededVideo,
   days: DailyMetric[],
 ) {
-  await insertClickHouse(
-    'video_metrics',
-    days.map((day) => ({
-      project_id: video.projectId,
-      video_id: video.videoId,
-      platform: 'youtube',
-      metric_date: clickHouseDate(
-        new Date(video.publishedAt.getTime() + day.ageDays * 86_400_000),
-      ),
-      views: day.views,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      saves: 0,
-      watch_time_seconds: day.views * 60,
-      revenue_cents: day.revenueCents ?? 0,
-      subscribers_gained: 0,
-      avg_view_duration_seconds: day.avgViewDurationSeconds ?? 120,
-      avg_view_percentage: day.avgViewPercentage ?? 40,
-      dislikes: 0,
-    })),
-  );
+  await seedVideoMetricsBatch([{ video, days }]);
 }
 
 /** Impressions and click-through rate, which live in their own table. */

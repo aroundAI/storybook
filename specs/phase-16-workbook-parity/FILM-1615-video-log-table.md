@@ -216,6 +216,22 @@ sort, page or annotate:
   limit, conflicting across two sessions, read-only for a non-member, and
   driven from the keyboard.
 
+- **`tests/analytics/raw-export-evidence.spec.ts`** — the scheduled export,
+  driven end to end: it seeds the states, calls the cron endpoint with its
+  secret, follows the signed link out of the delivered mail, and asserts the
+  `Views @30d` column in the file a recipient would open. Added by the third
+  review, because until then nothing in the repository executed that route —
+  the cell's decision had unit tests and the code calling it had none.
+
+  Two things that execution settled and reading had not. The file is built
+  from the daily rows inside the report's window, so **a video with no
+  metrics at all cannot appear in it**: the states reachable there are a
+  figure, a measured zero, predates-ingest and not-yet-mature, and the bug's
+  real reach was the predates case — the phase README's "most important
+  caveat in the workbook", which affects every historical video. And the
+  report is not attached to the mail; it is uploaded to storage and linked,
+  so "delivered" means following the link.
+
 **Correction to the earlier draft** (finding F-5): the evidence half *does*
 run in CI. The `🧬 E2E guards & evidence` job runs a ClickHouse container
 next to Supabase, so both halves and the e2e mutation guards run on every
