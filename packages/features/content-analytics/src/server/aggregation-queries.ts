@@ -871,7 +871,9 @@ export async function getContentList(
 
   // Get per-publish metrics from ClickHouse
   const publishIds = publishes.map((p) => p.id);
-  const latestAnalytics = await queryTotalsByVideoIds(publishIds);
+  const latestAnalytics = await queryTotalsByVideoIds(publishIds, {
+    projectIds: [projectId],
+  });
 
   // Build content list
   return publishes.map((publish) => {

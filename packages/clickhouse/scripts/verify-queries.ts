@@ -1020,6 +1020,14 @@ async function scanScopeSteps() {
 
       const range = Array.from({ length: NOISE_ROWS }, (_, index) => index);
 
+      // Nothing else removes these, and the count below is exact. A run of
+      // an older generator leaves rows whose keys the current one does not
+      // reuse, so ReplacingMergeTree keeps both and the count comes out at
+      // a multiple of NOISE_ROWS — which fails against the *generator*
+      // rather than against the leftovers. CI never sees it (fresh service
+      // container); every developer with a persistent ClickHouse does.
+      await clearNoise();
+
       // Every table a scoped read touches, not just video_metrics. A read
       // of video_audience cannot be enlarged by noise in video_metrics, so
       // a guard that seeded only the latter reported +0 for the audience,
@@ -1080,10 +1088,13 @@ async function scanScopeSteps() {
         insertVideoAudience,
       );
 
+      // All on NORMAL, because that is the single video the retention read
+      // asks for. Spread over three ids it saw a third of the noise and had
+      // the thinnest margin over NOISE_TOLERANCE of the eight reads.
       await inSlices(
         range.map((index) => ({
           project_id: NOISE_PROJECT,
-          video_id: noiseIds[index % noiseIds.length]!,
+          video_id: NORMAL,
           platform: 'youtube' as const,
           elapsed_ratio: index / NOISE_ROWS,
           audience_watch_ratio: 0,
@@ -1091,13 +1102,17 @@ async function scanScopeSteps() {
         insertRetentionCurves,
       );
 
-      const landed = await countNoiseRows();
-
-      if (landed !== NOISE_ROWS) {
-        throw new Error(
-          `seeded ${NOISE_ROWS} noise rows but ${landed} are there: what ` +
-            `follows would be measured against noise that does not exist`,
-        );
+      // Every table, not just video_daily_stats: a generator whose key
+      // tuple repeats collapses at insert, and a read of a table whose
+      // noise collapsed reports +0 while guarding nothing.
+      for (const [table, landed] of Object.entries(await countNoiseRows())) {
+        if (landed !== NOISE_ROWS) {
+          throw new Error(
+            `seeded ${NOISE_ROWS} noise rows into ${table} but ${landed} ` +
+              `are there: reads of it would be measured against noise that ` +
+              `does not exist`,
+          );
+        }
       }
 
       const grown: string[] = [];
@@ -1130,21 +1145,50 @@ async function scanScopeSteps() {
   );
 }
 
-/** How much of the noise survived the ReplacingMergeTree's key. */
-async function countNoiseRows(): Promise<number> {
-  const result = await getClickHouseClient().query({
-    query: `
-      SELECT count() AS rows
-      FROM video_daily_stats
-      WHERE project_id = {noiseProject: UUID}
-    `,
-    query_params: { noiseProject: NOISE_PROJECT },
-    format: 'JSONEachRow',
-  });
+/** The tables the scan-scope step seeds, and reads back. */
+const NOISE_TABLES = [
+  'video_metrics',
+  'video_reach_daily',
+  'video_traffic_sources',
+  'video_audience',
+  'video_retention_curves',
+] as const;
 
-  const rows = await result.json<{ rows: string }>();
+/** Removes any earlier run's noise, and waits for the removal to apply. */
+async function clearNoise(): Promise<void> {
+  const client = getClickHouseClient();
 
-  return Number(rows[0]?.rows ?? 0);
+  for (const table of NOISE_TABLES) {
+    await client.command({
+      query: `ALTER TABLE ${table} DELETE WHERE project_id = {noiseProject: UUID}`,
+      query_params: { noiseProject: NOISE_PROJECT },
+      clickhouse_settings: { mutations_sync: '2' },
+    });
+  }
+}
+
+/** How much of the noise survived the ReplacingMergeTree's key, per table. */
+async function countNoiseRows(): Promise<Record<string, number>> {
+  const client = getClickHouseClient();
+  const counts: Record<string, number> = {};
+
+  for (const table of NOISE_TABLES) {
+    const result = await client.query({
+      query: `
+        SELECT count() AS rows
+        FROM ${table}
+        WHERE project_id = {noiseProject: UUID}
+      `,
+      query_params: { noiseProject: NOISE_PROJECT },
+      format: 'JSONEachRow',
+    });
+
+    const rows = await result.json<{ rows: string }>();
+
+    counts[table] = Number(rows[0]?.rows ?? 0);
+  }
+
+  return counts;
 }
 
 /**

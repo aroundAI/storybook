@@ -208,6 +208,16 @@ function buildWhereClause(filters: QueryFilters): {
   const conditions: string[] = [];
   const params: Record<string, unknown> = {};
 
+  // Both would be ANDed — `project_id = A AND project_id IN (B)` — which is
+  // empty for any A not in B and reports as "no data" rather than as the
+  // mistake it is. They mean the same thing, so asking for both is a caller
+  // bug worth naming.
+  if (filters.projectId && filters.projectIds?.length) {
+    throw new Error(
+      'ClickHouse query received both projectId and projectIds; pass one',
+    );
+  }
+
   if (filters.projectId) {
     conditions.push('project_id = {projectId: UUID}');
     params.projectId = filters.projectId;
