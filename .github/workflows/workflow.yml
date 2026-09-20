@@ -300,19 +300,28 @@ jobs:
           retention-days: 7
 
   e2e-guards:
-    name: 🧬 E2E guards & evidence
-    # The happy flows, driven end to end against a real ClickHouse, and the
-    # E2E mutation guards. Separate from ⚫️ Test because both need a dev
-    # server: a guard changes a source file and needs the server to recompile
-    # it, which a production build cannot do.
+    name: 🧬 E2E guards
+    # The E2E mutation guards, and only those. They need a *dev* server: a
+    # guard rewrites a source file and requires the running server to pick
+    # the change up, which a production build cannot do. The evidence specs
+    # mutate nothing, so they run against a production build in
+    # 🧬 E2E evidence below — see that job for why.
     #
-    # Sharded: each E2E guard runs its spec twice (real code, then mutated),
-    # with retries, and one job over all of them outgrew 45 minutes. Shard 1
-    # also runs the evidence specs.
+    # Sharded: each guard runs its spec twice (real code, then mutated), with
+    # retries, and one job over all of them outgrew 45 minutes.
+    #
+    # Five shards, not three. The 🧬 runner hosts Supabase's containers,
+    # ClickHouse, Turbopack and Chromium on two shared cores, and stalls
+    # under that load: in one measured run a `has_account_access` RPC that
+    # normally takes 12ms took 35s, and a Video Log read that normally takes
+    # under a second took 65s. The stalls are sporadic rather than
+    # cumulative — the median request time is flat across a job's life — so
+    # what decides whether a shard survives is how many assertions it runs
+    # on that runner. Shorter shards, fewer chances to land on one.
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4, 5]
     timeout-minutes: 45
     runs-on: ubuntu-latest
     if: ${{ vars.ENABLE_E2E_JOB == 'true' }}
@@ -426,29 +435,11 @@ jobs:
           tail -50 "$RUNNER_TEMP/next-dev.log"
           exit 1
 
-      # The happy flows, with real figures: every *-evidence spec, gated on
-      # CAPTURE_EVIDENCE (and CLICKHOUSE_EVIDENCE where they seed ClickHouse),
-      # which ⚫️ Test does not set. They assert what they capture — measured
-      # values, reset forms, saved rows — so a regression fails the build,
-      # and the screenshots are uploaded for review.
-      - name: Happy-flow evidence specs
-        if: matrix.shard == 1
-        working-directory: apps/e2e
-        run: npx playwright test evidence --project=chromium --workers=1 --retries=2
-
-      - name: Upload evidence screenshots
-        uses: actions/upload-artifact@v4
-        if: always() && matrix.shard == 1
-        with:
-          name: evidence-screenshots
-          path: evidence/
-          retention-days: 14
-
       # Each E2E guard breaks the code, lets the dev server recompile, and
       # requires its spec to fail; the unit and database guards run in their
       # own jobs.
       - name: Mutation guards - e2e
-        run: python3 tooling/mutation-guards/run.py --kind e2e --shard ${{ matrix.shard }}/3
+        run: python3 tooling/mutation-guards/run.py --kind e2e --shard ${{ matrix.shard }}/5
 
       - name: Upload server log
         uses: actions/upload-artifact@v4
@@ -457,6 +448,158 @@ jobs:
           name: e2e-guards-next-dev-log-${{ matrix.shard }}
           path: ${{ runner.temp }}/next-dev.log
           retention-days: 7
+
+      - name: Stop Supabase
+        if: always()
+        continue-on-error: true
+        working-directory: apps/web
+        run: supabase stop
+
+  e2e-evidence:
+    name: 🧬 E2E evidence
+    # The happy flows, with real figures: every *-evidence spec, gated on
+    # CAPTURE_EVIDENCE (and CLICKHOUSE_EVIDENCE where they seed ClickHouse),
+    # which ⚫️ Test does not set. They assert what they capture — measured
+    # values, reset forms, saved rows — so a regression fails the build, and
+    # the screenshots are uploaded for review.
+    #
+    # A production build, not the dev server these used to share with
+    # 🧬 E2E guards. Measured on the same machine against the same local
+    # Supabase and ClickHouse: 22 specs in 1.5 minutes with nothing flaky,
+    # against 10.7 minutes and two flaky on the dev server. A dev server
+    # compiles each route on its first visit — which is what
+    # PLAYWRIGHT_NAVIGATION_TIMEOUT=60000 exists for over there — and does
+    # it while sharing two cores with Supabase, ClickHouse and Chromium.
+    #
+    # Splitting them also makes the guard shards symmetric. The evidence
+    # step used to run on shard 1 only, so that shard did ~11 minutes of
+    # extra work before its guards began, and it is the shard that kept
+    # failing.
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    if: ${{ vars.ENABLE_E2E_JOB == 'true' }}
+    env:
+      DO_NOT_TRACK: 1
+      # The server reads ClickHouse, unlike ⚫️ Test: the evidence specs seed
+      # rows and read the resulting figures off the page.
+      CLICKHOUSE_ENABLED: 'true'
+      CLICKHOUSE_HOST: http://localhost:8123
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: verify
+      CLICKHOUSE_DB: default
+      PLAYWRIGHT_BASE_URL: http://localhost:3000
+      CAPTURE_EVIDENCE: '1'
+      CLICKHOUSE_EVIDENCE: '1'
+      EVIDENCE_DIR: ${{ github.workspace }}/evidence
+      ENABLE_BILLING_TESTS: 'false'
+
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:24.8-alpine
+        # See 🗄️ ClickHouse SQL: both must be set on the container, and the
+        # alpine image has no HTTP client for a health check.
+        env:
+          CLICKHOUSE_USER: default
+          CLICKHOUSE_PASSWORD: verify
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+        ports:
+          - 8123:8123
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same reason as ⚫️ Test: Supabase images, browsers and the monorepo
+      # install do not fit a runner's spare disk.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android \
+            /usr/local/share/boost /usr/local/share/powershell \
+            /usr/local/.ghcup "$AGENT_TOOLSDIRECTORY"
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Store Playwright's Version
+        run: |
+          PLAYWRIGHT_VERSION=$(pnpm ls @playwright/test --filter web-e2e | grep @playwright | sed 's/.*@//')
+          echo "PLAYWRIGHT_VERSION=$PLAYWRIGHT_VERSION" >> "$GITHUB_ENV"
+
+      - name: Cache Playwright Browsers for Playwright's Version
+        id: cache-playwright-browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-browsers-${{ env.PLAYWRIGHT_VERSION }}
+
+      - name: Install Playwright Browsers
+        if: steps.cache-playwright-browsers.outputs.cache-hit != 'true'
+        run: pnpm exec ./apps/e2e/node_modules/.bin/playwright install --with-deps
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.117.0
+
+      # Same exclusions as ⚫️ Test, for the same reasons.
+      - name: Supabase Server
+        working-directory: apps/web
+        run: supabase start -x studio,imgproxy,logflare,vector
+
+      - name: Wait for ClickHouse
+        run: |
+          for _ in $(seq 1 60); do
+            if curl -sf "http://localhost:8123/ping" > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo "ClickHouse did not become ready in 120s"
+          exit 1
+
+      - name: Apply ClickHouse migrations
+        run: pnpm --filter @kit/clickhouse migrate
+
+      # See ⚫️ Test for why the heap ceiling is 4096 and not larger.
+      - name: Run Next.js Production Build (test env)
+        run: pnpm --filter web build:test
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      # NODE_ENV=test, via the script, so .env.test is what the server reads.
+      # Starting it with a bare `next start` after a `build:test` loads
+      # .env.production instead, which has no EMAIL_TLS and no CRON_SECRET —
+      # the mailer then tries TLS against a plaintext Mailpit and the cron
+      # routes answer "Server configuration error".
+      - name: Run Next.js Server
+        run: pnpm --filter web start:test &
+
+      - name: Wait for the server
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl -sf http://localhost:3000/healthcheck > /dev/null; then
+              echo "server ready after ${attempt} attempt(s)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Next.js did not become ready in 120s"
+          exit 1
+
+      - name: Happy-flow evidence specs
+        working-directory: apps/e2e
+        run: npx playwright test evidence --project=chromium --workers=1 --retries=2
+
+      - name: Upload evidence screenshots
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evidence-screenshots
+          path: evidence/
+          retention-days: 14
 
       - name: Stop Supabase
         if: always()
