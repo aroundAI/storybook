@@ -273,6 +273,21 @@ test.describe('Analytics tenant isolation (FILM-1615 Step 0)', () => {
       )
       .toBe(carrying.length);
 
+    // Printed unconditionally: when this guard's mutation was applied in CI
+    // the test kept passing, and a passing test prints nothing to explain
+    // why. One line of what each side actually got is the difference
+    // between diagnosing that and guessing at it.
+    const summarise = (one: ActionResponse) =>
+      `${one.action.slice(0, 8)} ${one.status} ${payloadOf(one) === null ? 'nothing' : `DATA ${payloadOf(one)!.slice(0, 60)}`}`;
+
+    console.log(
+      [
+        `TENANT victim carrying: ${carrying.map((a) => a.slice(0, 8)).join()}`,
+        ...victimResponses.map((one) => `TENANT victim   ${summarise(one)}`),
+        ...attackerResponses.map((one) => `TENANT attacker ${summarise(one)}`),
+      ].join('\n'),
+    );
+
     // Not "no response contained 777777": every one of these requests names
     // the victim's project, so a payload of any kind is data this caller
     // may not have.
