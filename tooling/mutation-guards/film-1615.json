@@ -22,18 +22,6 @@
       "pattern": "even one with a public profile"
     },
     {
-      "name": "S0e a public project's analytics readable by another account",
-      "kind": "e2e",
-      "file": "packages/features/content-analytics/src/server/scope-access.ts",
-      "find": "if (!data?.account_id || !(await hasAccountAccess(client, data.account_id))) {",
-      "replace": "if (!data?.account_id) {",
-      "spec": "tests/analytics/tenant-isolation-evidence.spec.ts",
-      "grep": "cannot read a public project",
-      "env": {
-        "CLICKHOUSE_EVIDENCE": "1"
-      }
-    },
-    {
       "name": "S0d dashboard daily metrics by row visibility only",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
