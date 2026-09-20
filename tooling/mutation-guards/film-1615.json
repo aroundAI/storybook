@@ -212,18 +212,6 @@
       }
     },
     {
-      "name": "D-U4 an editor reopened quickly keeps the version it first opened with",
-      "kind": "e2e",
-      "file": "packages/features/content-analytics/src/components/video-log/note-cell.tsx",
-      "find": "          key={session}\n",
-      "replace": "",
-      "spec": "tests/analytics/video-log-evidence.spec.ts",
-      "grep": "keeps the second edit",
-      "env": {
-        "CLICKHOUSE_EVIDENCE": "1"
-      }
-    },
-    {
       "name": "R-6 an impressions count claimed where none were recorded",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/lib/video-log-cells.ts",

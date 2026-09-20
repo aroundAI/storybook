@@ -116,3 +116,22 @@ end-to-end behaviour is still asserted on every pull request by
 `tenant-isolation-evidence.spec.ts` in the evidence step. What was lost by
 dropping the e2e entry is the proof that *removing* the fix is caught
 end-to-end; what was gained is a guard set that means what it says.
+
+## A guard cannot prove a race
+
+`--retries=2` on both runs, and a mutation counts as caught only if **every**
+attempt fails. That rule is what keeps one flaky failure from being read as
+detection, and it also means a defect that only appears *sometimes* cannot
+have an e2e guard.
+
+FILM-1615's note editor is the example. Reopening a popover quickly enough
+reuses the same component instance, which still holds the note version it
+first opened with, so the next save is refused as someone else's edit. Under
+its mutation in CI the first attempt failed with exactly that — the cell
+still reading the old note — and the retry passed, because the retry was
+slow enough for the popover to have unmounted. Caught once, then not, so the
+runner reported STAYED GREEN.
+
+The spec stays: it found the bug, and it passes reliably on the fixed code.
+The guard entry does not, because "removing this fix is caught" is not a
+claim this runner can make about a race.
