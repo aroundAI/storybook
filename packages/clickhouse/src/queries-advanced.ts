@@ -176,6 +176,34 @@ function dimSubquery(conditions: string): string {
 }
 
 /**
+ * The metric side of a dim join, scoped the same way the dim side is.
+ *
+ * `video_daily_stats` is `SELECT … FROM video_metrics FINAL` with no filter
+ * of its own, so a join that names it bare builds its hash side from every
+ * row in the table, for every tenant, on every read. That is the full table
+ * scan `assertDimScope` exists to prevent, arriving through the join instead
+ * of the WHERE — and it is invisible to every test that checks results,
+ * because the join predicate still discards the other tenants' rows. It
+ * costs only time, until the time exceeds the client's socket timeout.
+ *
+ * `project_id` is the table's primary-key prefix (`ORDER BY (project_id,
+ * platform, video_id, metric_date)`), so it is the predicate that turns the
+ * scan into a range read. `video_id` narrows it again for a scope that is
+ * less than a whole project. Both are derived from `video_dim`, which is
+ * where the scope's columns live — `video_metrics` has no `account_id`.
+ *
+ * `dimWhere` is built by `buildDimConditions`, never caller text.
+ */
+function scopedDailyStats(dimWhere: string, columns: string): string {
+  return `(
+      SELECT ${columns}
+      FROM video_daily_stats
+      WHERE project_id IN (SELECT project_id FROM video_dim WHERE ${dimWhere})
+        AND video_id IN (SELECT video_id FROM video_dim WHERE ${dimWhere})
+    )`;
+}
+
+/**
  * Upsert dimension rows (latest updated_at wins per video).
  */
 export async function insertVideoDims(rows: VideoDim[]): Promise<void> {
@@ -641,7 +669,10 @@ export async function queryCohortMedians(input: {
     ingest AS (
       SELECT d.connection_id as connection_id, min(m.metric_date) as ingest_start
       FROM dim d
-      INNER JOIN video_daily_stats m
+      INNER JOIN ${scopedDailyStats(
+        conditions,
+        'project_id, video_id, metric_date',
+      )} m
         ON m.video_id = d.video_id AND m.project_id = d.project_id
       GROUP BY d.connection_id
     )
@@ -660,7 +691,10 @@ export async function queryCohortMedians(input: {
         ) as ingest_lag_days,
         ${perVideoSelects}
       FROM dim d
-      LEFT JOIN video_daily_stats m
+      LEFT JOIN ${scopedDailyStats(
+        conditions,
+        'project_id, video_id, metric_date, views',
+      )} m
         ON m.video_id = d.video_id AND m.project_id = d.project_id
       LEFT JOIN ingest i ON i.connection_id = d.connection_id
       GROUP BY video_id, published_at
@@ -842,7 +876,10 @@ function segmentPerVideoSql(
     ingest AS (
       SELECT d.connection_id as connection_id, min(s.metric_date) as ingest_start
       FROM dim d
-      INNER JOIN video_daily_stats s
+      INNER JOIN ${scopedDailyStats(
+        conditions,
+        'project_id, video_id, metric_date',
+      )} s
         ON s.video_id = d.video_id AND s.project_id = d.project_id
       GROUP BY d.connection_id
     ),
@@ -1393,6 +1430,8 @@ async function queryVideoViewsAtAgeSingle(input: {
     params.videoIds = input.videoIds;
   }
 
+  const dimWhere = dimConditions.join(' AND ');
+
   // `days` is floored to an integer above, so it is safe to interpolate.
   const checkpointSelects = checkpoints
     .map(
@@ -1414,8 +1453,11 @@ async function queryVideoViewsAtAgeSingle(input: {
       sum(m.views) as lifetime_views,
       toString(min(m.metric_date)) as first_metric_date,
       countIf(m.metric_date > toDate(0)) as metric_days
-    FROM (${dimSubquery(dimConditions.join(' AND '))}) d
-    LEFT JOIN video_daily_stats m
+    FROM (${dimSubquery(dimWhere)}) d
+    LEFT JOIN ${scopedDailyStats(
+      dimWhere,
+      'project_id, video_id, metric_date, views',
+    )} m
       ON m.video_id = d.video_id AND m.project_id = d.project_id
     GROUP BY
       video_id, title, published_at, connection_id,

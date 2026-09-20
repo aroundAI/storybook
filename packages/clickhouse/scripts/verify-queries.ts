@@ -14,6 +14,7 @@
  *   pnpm --filter @kit/clickhouse verify
  */
 import {
+  getClickHouseClient,
   insertChannelDaily,
   insertRetentionCurves,
   insertSubscriberSnapshot,
@@ -60,6 +61,28 @@ const ACCOUNT = '550e8400-e29b-41d4-a716-446655440000';
 const OTHER_PROJECT = '11111111-1111-1111-1111-111111111111';
 const CHANNEL = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 const EPISODE = 'aaaaaaaa-0000-0000-0000-000000000001';
+
+/**
+ * A project the scan-scope assertion fills with noise, referenced by nothing
+ * else here. Its rows exist to be *not* read.
+ */
+const NOISE_PROJECT = '22222222-2222-2222-2222-222222222222';
+const NOISE_VIDEO = 'vid-noise';
+
+/**
+ * Enough rows to clear several index granules (8192 apiece), so "read the
+ * scoped rows" and "read the table" are separated by more than rounding. At
+ * one granule the two are indistinguishable and the assertion would pass on
+ * a full scan.
+ */
+const NOISE_ROWS = 50_000;
+
+/**
+ * How much more the scoped read may touch after the noise lands: two index
+ * granules, which is the most a range read can pick up at its boundaries.
+ * Anything above this is the noise itself being read.
+ */
+const NOISE_TOLERANCE = 2 * 8192;
 
 const NORMAL = 'vid-normal';
 const PRE_INGEST = 'vid-preingest';
@@ -874,6 +897,139 @@ async function watchedMetricSteps() {
   });
 }
 
+/**
+ * How much the Video Log's read actually reads.
+ *
+ * Every other check here asks what a query returns. This one asks what it
+ * touched to get there, because `queryVideoViewsAtAge` returned the right
+ * rows for a year while joining `video_daily_stats` — `video_metrics FINAL`
+ * entire, every tenant — as the hash side of its LEFT JOIN. Correct output,
+ * whole-table scan, and no test at any layer could tell the difference: the
+ * unit suite mocks the client, and the assertion above this one checks the
+ * join predicate, which was never the part that was wrong.
+ *
+ * It cost a CI failure before it cost a customer: the read grew with the
+ * table until it passed the client's 30s socket timeout mid-job, and the
+ * Video Log rendered as an empty table (PR #272).
+ */
+async function scanScopeSteps() {
+  const scopedRead = () =>
+    readRowsOf(() => queryVideoViewsAtAge({ scope: { projectId: PROJECT } }));
+
+  await step(
+    "assert: another project's rows do not enlarge this read",
+    async () => {
+      // Differential, not a threshold on the absolute figure: this runs against
+      // a clean container in CI and against whatever a developer's ClickHouse
+      // already holds, and only the difference means the same thing in both.
+      // The property is exactly the one that broke — a tenant's read must not
+      // grow when an unrelated tenant's data does.
+      const before = await scopedRead();
+
+      // One row per (video, day), all distinct: `video_metrics` is a
+      // ReplacingMergeTree keyed on (project_id, platform, video_id,
+      // metric_date), so a generator that repeats a pair collapses it at
+      // insert. Two moduli over the same index did exactly that — 50,000
+      // rows became 1,400, and this went green against noise that was not
+      // there.
+      await insertVideoMetrics(
+        Array.from({ length: NOISE_ROWS }, (_, index) => ({
+          project_id: NOISE_PROJECT,
+          video_id: `${NOISE_VIDEO}-${Math.floor(index / 28)}`,
+          platform: 'youtube' as const,
+          // The same month the scoped rows live in, so partition pruning
+          // cannot stand in for the predicate under test.
+          metric_date: `2026-01-${String((index % 28) + 1).padStart(2, '0')}`,
+          views: 1,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+          saves: 0,
+          watch_time_seconds: 0,
+          revenue_cents: 0,
+          subscribers_gained: 0,
+          subscribers_lost: 0,
+          extra_metrics: '{}',
+        })),
+      );
+
+      const landed = await countNoiseRows();
+
+      if (landed !== NOISE_ROWS) {
+        throw new Error(
+          `seeded ${NOISE_ROWS} noise rows but ${landed} are there: what ` +
+            `follows would be measured against noise that does not exist`,
+        );
+      }
+
+      const after = await scopedRead();
+      const grew = after - before;
+
+      if (grew > NOISE_TOLERANCE) {
+        throw new Error(
+          `${NOISE_ROWS} rows under another project added ${grew} rows to this ` +
+            `project's read (${before} → ${after}): the metric side of the ` +
+            `join is unscoped`,
+        );
+      }
+
+      return `+${grew} row(s) read for +${NOISE_ROWS} rows elsewhere`;
+    },
+  );
+}
+
+/** How much of the noise survived the ReplacingMergeTree's key. */
+async function countNoiseRows(): Promise<number> {
+  const result = await getClickHouseClient().query({
+    query: `
+      SELECT count() AS rows
+      FROM video_daily_stats
+      WHERE project_id = {noiseProject: UUID}
+    `,
+    query_params: { noiseProject: NOISE_PROJECT },
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<{ rows: string }>();
+
+  return Number(rows[0]?.rows ?? 0);
+}
+
+/**
+ * `read_rows` for the query a call made, out of `system.query_log`.
+ *
+ * Matched on the checkpoint alias rather than a query id: passing one would
+ * mean threading it through the query function's signature for a test's
+ * benefit, and this script runs its steps one at a time.
+ */
+async function readRowsOf(run: () => Promise<unknown>): Promise<number> {
+  const client = getClickHouseClient();
+
+  await run();
+  await client.command({ query: 'SYSTEM FLUSH LOGS' });
+
+  const result = await client.query({
+    query: `
+      SELECT read_rows
+      FROM system.query_log
+      WHERE type = 'QueryFinish'
+        AND query LIKE '%views_at_30%'
+        AND query NOT LIKE '%system.query_log%'
+      ORDER BY event_time_microseconds DESC
+      LIMIT 1
+    `,
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<{ read_rows: string }>();
+
+  if (rows.length === 0) {
+    throw new Error('no query_log entry for the checkpoint query');
+  }
+
+  return Number(rows[0]!.read_rows);
+}
+
 async function main() {
   if (!isClickHouseEnabled()) {
     console.error(
@@ -886,6 +1042,8 @@ async function main() {
   await queries();
   await assertions();
   await watchedMetricSteps();
+  // Last: it fills a project with noise, and nothing above should see it.
+  await scanScopeSteps();
 
   const failed = results.filter((r) => !r.ok);
 

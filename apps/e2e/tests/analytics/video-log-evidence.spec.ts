@@ -5,7 +5,9 @@ import {
   daysAgo,
   deleteClickHouse,
   seedVideoDim,
+  seedVideoDims,
   seedVideoMetrics,
+  seedVideoMetricsBatch,
   seedVideoReach,
 } from '../utils/clickhouse';
 import { seedMembership, seedRevenueRecord, seedUser } from '../utils/seed';
@@ -668,28 +670,40 @@ async function seedCellStates(fixture: VideoLogFixture) {
   return [measured, zero, young, late, none];
 }
 
-/** `count` videos with distinct lifetime views; returns those view counts. */
+/**
+ * `count` videos with distinct lifetime views; returns those view counts.
+ *
+ * Two requests, not two per video. A row-at-a-time loop made 210 round
+ * trips for a hundred videos and left 210 one-row ClickHouse parts behind,
+ * which every later read in the job then merged through — a cost that
+ * compounds across a suite rather than ending with the test that paid it.
+ */
 async function seedManyVideos(fixture: VideoLogFixture, count: number) {
-  const views: number[] = [];
   const published = daysAgo(400);
 
-  for (let index = 0; index < count; index++) {
-    const video = await seedVideo(fixture, {
-      videoId: crypto.randomUUID(),
-      // Padded so the titles sort the same way a human would read them.
-      title: `Bulk ${String(index).padStart(3, '0')}`,
-      publishedAt: new Date(published.getTime() + index * 60_000),
-    });
+  const videos = Array.from({ length: count }, (_, index) => ({
+    videoId: crypto.randomUUID(),
+    projectId: fixture.project.id,
+    accountId: fixture.team.accountId,
+    connectionId: fixture.connectionId,
+    // Padded so the titles sort the same way a human would read them.
+    title: `Bulk ${String(index).padStart(3, '0')}`,
+    publishedAt: new Date(published.getTime() + index * 60_000),
+  }));
 
-    // Views fall as publication gets newer, so "newest first" and "most
-    // watched first" are different orders. Seeded the other way round the
-    // two coincide, and a sort by date would pass a test of a sort by
-    // views — which is what happened until a mutation guard stayed green.
-    const lifetime = 1_000 + (count - 1 - index) * 37;
+  // Views fall as publication gets newer, so "newest first" and "most
+  // watched first" are different orders. Seeded the other way round the two
+  // coincide, and a sort by date would pass a test of a sort by views —
+  // which is what happened until a mutation guard stayed green.
+  const views = videos.map((_, index) => 1_000 + (count - 1 - index) * 37);
 
-    views.push(lifetime);
-    await seedVideoMetrics(video, [{ ageDays: 1, views: lifetime }]);
-  }
+  await seedVideoDims(videos);
+  await seedVideoMetricsBatch(
+    videos.map((video, index) => ({
+      video,
+      days: [{ ageDays: 1, views: views[index]! }],
+    })),
+  );
 
   return views;
 }

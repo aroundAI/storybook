@@ -41,6 +41,24 @@ function lastQuery(): QueryCall {
   return last[0];
 }
 
+/**
+ * The metrics side of a dim join: still a LEFT JOIN, so a video with no
+ * rows keeps its place in the list, and filtered to the scope rather than
+ * being the whole of `video_daily_stats`.
+ *
+ * The two used to be checked separately, and neither caught the join that
+ * named the view bare: the LEFT JOIN assertion matched the text and the
+ * scope assertion only read the ON clause, which discards the other
+ * tenants' rows *after* every one of them has been read.
+ */
+function expectScopedLeftJoin(query: string) {
+  expect(query).toMatch(/LEFT JOIN \(\s*SELECT[\s\S]*?FROM video_daily_stats/);
+  expect(query).toContain(
+    'WHERE project_id IN (SELECT project_id FROM video_dim',
+  );
+  expect(query).toContain('AND video_id IN (SELECT video_id FROM video_dim');
+}
+
 function makeAgeRow(videoId: string, publishedAt: string) {
   return {
     video_id: videoId,
@@ -389,7 +407,7 @@ describe('queries-advanced', () => {
 
       // An inner join would drop zero-view videos and shorten every
       // denominator derived from this list — the FILM-1601 defect.
-      expect(lastQuery().query).toContain('LEFT JOIN video_daily_stats');
+      expectScopedLeftJoin(lastQuery().query);
     });
 
     it('scopes the metrics join by project as well as video', async () => {
@@ -400,6 +418,10 @@ describe('queries-advanced', () => {
       expect(lastQuery().query).toContain(
         'ON m.video_id = d.video_id AND m.project_id = d.project_id',
       );
+
+      // And before the join, not only in it: the ON clause discards the
+      // other tenants' rows, but every one of them has been read by then.
+      expectScopedLeftJoin(lastQuery().query);
     });
 
     it('always paginates, and clamps an oversized limit', async () => {
@@ -708,7 +730,7 @@ describe('queries-advanced', () => {
       expect(query).toContain('GROUP BY video_id, published_at');
       expect(query).toContain('count() as video_count');
       expect(query).not.toContain('count(DISTINCT m.video_id)');
-      expect(query).toContain('LEFT JOIN video_daily_stats');
+      expectScopedLeftJoin(query);
     });
 
     it('bounds cohort_views_to_date by upload date, not metric date', async () => {
@@ -893,7 +915,7 @@ describe('queries-advanced', () => {
 
       // The original decision survives the exclusion: dropping genuine
       // zeroes would inflate the median by removing the worst performers.
-      expect(lastQuery().query).toContain('LEFT JOIN video_daily_stats');
+      expectScopedLeftJoin(lastQuery().query);
     });
 
     it('scopes the metrics join by project as well as video', async () => {
@@ -908,6 +930,7 @@ describe('queries-advanced', () => {
       expect(lastQuery().query).toContain(
         'ON m.video_id = d.video_id AND m.project_id = d.project_id',
       );
+      expectScopedLeftJoin(lastQuery().query);
     });
 
     it('aggregates per video first, so the median is over videos', async () => {
@@ -940,7 +963,7 @@ describe('queries-advanced', () => {
 
       // Dropping it would inflate the median by removing the worst
       // performers.
-      expect(lastQuery().query).toContain('LEFT JOIN video_daily_stats');
+      expectScopedLeftJoin(lastQuery().query);
     });
 
     it('buckets by quarter by default and by month on request', async () => {
