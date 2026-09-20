@@ -34,12 +34,21 @@ platform is ahead of it, and it currently ships to nobody.
 
 ## 2. The Ownership Check Is the Spec
 
-`queryRetentionCurve` takes a `videoId` and carries **no tenant predicate
-at all**. Nor does `queryQualityMetricsForVideos`. This is deliberate and
-documented: the connection-keyed and id-keyed queries in `@kit/clickhouse`
-take id lists, and the tenant check lives in the calling action
-(`queries-advanced.ts:1080-1085`). ClickHouse is outside Postgres RLS
+`queryRetentionCurve` takes a `videoId` and applies **no tenant predicate
+of its own**. Nor does `queryQualityMetricsForVideos`. This is deliberate
+and documented: the connection-keyed and id-keyed queries in
+`@kit/clickhouse` take id lists, and the tenant check lives in the calling
+action (`queries-advanced.ts:1080-1085`). ClickHouse is outside Postgres RLS
 entirely, so there is no second line of defence behind it.
+
+**Both now accept an optional `projectIds`, and it is not that defence**
+(added in #274). It exists to stop a `video_id`-only filter scanning a table
+whose sort key starts with `project_id`, and its own documentation says it
+bounds what is *read* and never what is *returned*. It is optional, so a
+caller that omits it gets no filter and no error; and it is the caller —
+the same caller whose `publishId` is in question — that would supply it.
+Passing it is worth doing for the read cost, and changes nothing about this
+section: the ownership check below is still the whole of the defence.
 
 An action that takes a caller-supplied `publishId` and hands it to
 `queryRetentionCurve` therefore returns **any tenant's retention curve** to
