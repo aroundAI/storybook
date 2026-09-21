@@ -21,6 +21,7 @@
     "./server": "./src/server/index.ts",
     "./server/types": "./src/server/types.ts",
     "./server/deep-dive-actions": "./src/server/deep-dive-actions.ts",
+    "./server/diagnostics-actions": "./src/server/diagnostics-actions.ts",
     "./server/channels-actions": "./src/server/channels-actions.ts",
     "./server/experiment-actions": "./src/server/experiment-actions.ts",
     "./server/publish-notes-actions": "./src/server/publish-notes-actions.ts",

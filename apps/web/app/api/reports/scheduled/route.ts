@@ -22,20 +22,17 @@ import type {
 import { getMailer } from '@kit/mailers';
 import { enhanceRouteHandler } from '@kit/next/routes';
 import { getLogger } from '@kit/shared/logger';
-import { chunkIds, fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
+import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-
-/** Retention curves fetched in parallel per batch. */
-const RETENTION_CONCURRENCY = 20;
 
 /**
  * Ceiling on how many videos a report fetches retention curves for.
  *
- * Each curve is its own ClickHouse round trip. Bounding the concurrency
- * caps how many run at once but not how many run in total, so a report over
- * tens of thousands of videos would still serialize thousands of waves
- * inside one Lambda invocation. Retention is an optional enrichment column,
- * so it degrades: the cap is logged rather than silently applied.
+ * The curves are one batched ClickHouse query now (FILM-1616), so the
+ * concurrency limit this used to need is gone — but the cap is not a
+ * concurrency control. It bounds the rows the query returns, which still
+ * grow with an account's video count. Retention is an optional enrichment
+ * column, so it degrades: the cap is logged rather than silently applied.
  */
 const MAX_RETENTION_VIDEOS = 500;
 
@@ -232,7 +229,7 @@ async function processScheduledReport(
   // 2. Query analytics from ClickHouse
   const {
     queryQualityMetricsForVideos,
-    queryRetentionCurve,
+    queryRetentionCurves,
     queryTotalsByVideoIds,
     queryTrafficSources,
   } = await import('@kit/clickhouse/server');
@@ -259,12 +256,11 @@ async function processScheduledReport(
   const retentionMap = new Map<string, Record<string, number>>();
 
   if (includeRetention) {
-    // One ClickHouse round trip per video, so the fan-out is bounded. The
-    // publish list is paged now and no longer implicitly capped at 1,000 by
-    // the server, and `analyticsMap.has(id)` narrows this set without
-    // bounding it — an account with tens of thousands of publishes would
-    // otherwise open that many simultaneous connections from one Lambda.
-    // A batched `queryRetentionCurves(videoIds)` would be better still.
+    // One ClickHouse round trip for the whole batch (FILM-1616), which is
+    // what the fan-out this replaced asked for. The cap stays: the publish
+    // list is paged and no longer implicitly capped at 1,000 by the server,
+    // and `analyticsMap.has(id)` narrows this set without bounding it, so
+    // the rows still grow with an account's video count.
     const eligible = videoIds.filter((id) => analyticsMap.has(id));
     const withMetrics = eligible.slice(0, MAX_RETENTION_VIDEOS);
 
@@ -279,24 +275,20 @@ async function processScheduledReport(
       );
     }
 
-    for (const batch of chunkIds(withMetrics, RETENTION_CONCURRENCY)) {
-      await Promise.all(
-        batch.map(async (videoId) => {
-          const points = await queryRetentionCurve({ videoId });
+    const curves = await queryRetentionCurves({ videoIds: withMetrics });
 
-          if (points.length > 0) {
-            retentionMap.set(
-              videoId,
-              Object.fromEntries(
-                points.map((p) => [
-                  p.elapsedRatio.toFixed(2),
-                  p.audienceWatchRatio,
-                ]),
-              ),
-            );
-          }
-        }),
-      );
+    for (const [videoId, points] of curves) {
+      if (points.length > 0) {
+        retentionMap.set(
+          videoId,
+          Object.fromEntries(
+            points.map((p) => [
+              p.elapsedRatio.toFixed(2),
+              p.audienceWatchRatio,
+            ]),
+          ),
+        );
+      }
     }
   }
 

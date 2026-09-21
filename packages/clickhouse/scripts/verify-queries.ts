@@ -41,6 +41,7 @@ import {
   queryPlatformBreakdown,
   queryQualityMetricsForVideos,
   queryRetentionCurve,
+  queryRetentionCurves,
   queryRollingViews,
   querySegmentMembership,
   querySegmentPerformance,
@@ -397,6 +398,27 @@ async function queries() {
   await step('queryRetentionCurve', () =>
     queryRetentionCurve({ videoId: NORMAL }),
   );
+
+  await step('queryRetentionCurves', async () => {
+    // The batched form must agree with the single-video one, or the two
+    // call sites it replaced would start disagreeing about the same video.
+    const batched = await queryRetentionCurves({ videoIds: [NORMAL] });
+    const single = await queryRetentionCurve({ videoId: NORMAL });
+
+    if (JSON.stringify(batched.get(NORMAL) ?? []) !== JSON.stringify(single)) {
+      throw new Error(`batched and single-video curves disagree for ${NORMAL}`);
+    }
+
+    // Absent, not empty: "no retention data" and "nobody watched" are
+    // different answers, and the callers render them differently.
+    const missing = await queryRetentionCurves({ videoIds: [ZERO] });
+
+    if (missing.has(ZERO)) {
+      throw new Error('a video with no curve must be absent from the map');
+    }
+
+    return `${batched.get(NORMAL)?.length ?? 0} point(s), matching single`;
+  });
 
   // Scoped deep-dive queries — the shapes that broke on the alias bug.
   await step('queryMedianViewsPerVideo (cohort)', () =>
@@ -944,6 +966,10 @@ async function scanScopeSteps() {
     retention: () =>
       readRowsOf('audience_watch_ratio', () =>
         queryRetentionCurve({ videoId: NORMAL, projectIds }),
+      ),
+    'retention-batch': () =>
+      readRowsOf('GROUP BY video_id, elapsed_ratio', () =>
+        queryRetentionCurves({ videoIds, projectIds }),
       ),
     'data-days': () =>
       readRowsOf('DISTINCT toString(metric_date)', () =>

@@ -1,0 +1,181 @@
+import { expect, test } from '@playwright/test';
+
+import {
+  seedProject,
+  seedPublishedEpisode,
+  seedTeamAccount,
+  seedYouTubeConnection,
+} from '../utils/seed';
+import { signInAs } from '../utils/session';
+
+/**
+ * Weekly diagnostics and the retention drill-down (FILM-1616).
+ *
+ * ClickHouse is off in CI, so every figure here is an empty state. What a
+ * browser proves is the wiring — that both surfaces mount, that the
+ * drill-down reaches an action, and that the ownership check refuses
+ * another account's publish.
+ *
+ * That last one is the reason this spec exists in CI rather than only in
+ * the evidence half: it is Postgres-only, so it runs fully with ClickHouse
+ * disabled, and it is the difference between a drill-down and a
+ * cross-tenant read. KB-9 removed the Hook Lab for exactly this, on this
+ * table.
+ */
+test.describe('FILM-1616 — weekly diagnostics', () => {
+  test('mounts the diagnostics section below the strategy cards', async ({
+    page,
+  }) => {
+    const team = await seedTeamAccount();
+    const project = await seedProject(team);
+    const connection = await seedYouTubeConnection(team.accountId, 'Channel');
+
+    await seedPublishedEpisode(project.id, connection, { number: 1 });
+    await signInAs(page, team);
+
+    await page.goto(
+      `/home/${team.slug}/studio/${project.slug}/analytics?tab=deep-dive`,
+    );
+
+    await page.locator('[data-test="analytics-tab-deep-dive"]').click();
+
+    const section = page.locator('[data-test="weekly-diagnostics-section"]');
+
+    await expect(section).toBeVisible();
+
+    // Outside the card grid, not one of its cards. The framing is the
+    // point: these cards answer "what should we make next", and a low-CTR
+    // flag read as a content verdict is the opposite of a breakage check.
+    await expect(
+      page.locator('[data-test="deep-dive-tab"] .grid'),
+    ).not.toContainText("This week's uploads");
+  });
+
+  test("refuses another account's publish where its own is allowed", async ({
+    page,
+  }) => {
+    // Two tenants. The second's publish id is a perfectly well-formed uuid
+    // — guessing one is the whole attack, and nothing about it looks wrong.
+    const mine = await seedTeamAccount();
+    const myProject = await seedProject(mine);
+    const myConnection = await seedYouTubeConnection(mine.accountId, 'Mine');
+
+    await seedPublishedEpisode(myProject.id, myConnection, { number: 1 });
+
+    const theirs = await seedTeamAccount();
+    const theirProject = await seedProject(theirs);
+    const theirConnection = await seedYouTubeConnection(
+      theirs.accountId,
+      'Theirs',
+    );
+
+    const theirVideo = await seedPublishedEpisode(
+      theirProject.id,
+      theirConnection,
+      { number: 1 },
+    );
+
+    await signInAs(page, mine);
+
+    const url = `/home/${mine.slug}/studio/${myProject.slug}/analytics?tab=deep-dive`;
+
+    /**
+     * Opens the drill-down, optionally rewriting the publish id the action
+     * receives.
+     *
+     * Rewriting the body is the attack: a server action's request body is
+     * its argument list, so swapping the id there is what a rewritten
+     * request does. Driving the UI alone could never ask for a publish the
+     * page does not know about.
+     */
+    const openDrillDown = async (swapTo?: string) => {
+      if (swapTo) {
+        await page.route('**/*', async (route) => {
+          const request = route.request();
+          const body = request.postData() ?? '';
+
+          if (
+            request.method() === 'POST' &&
+            request.headers()['next-action'] &&
+            body.includes('publishId')
+          ) {
+            await route.continue({
+              postData: body.replace(
+                /"publishId":"[^"]+"/,
+                `"publishId":"${swapTo}"`,
+              ),
+            });
+
+            return;
+          }
+
+          await route.continue();
+        });
+      }
+
+      await page.goto(url);
+      await page.locator('[data-test="analytics-tab-deep-dive"]').click();
+      await expect(
+        page.locator('[data-test="weekly-diagnostics-section"]'),
+      ).toBeVisible();
+
+      // The table lists this project's recent publishes from Postgres, so
+      // it has rows even with ClickHouse off — the figures are the zeros.
+      await page.locator('[data-test="diagnostic-row"]').first().click();
+    };
+
+    // Own publish: the curve area opens and does not report a failure. With
+    // ClickHouse off the curve itself is empty, which is the point — the
+    // difference under test is refusal, not data.
+    await openDrillDown();
+    await expect(
+      page.locator('[data-test="retention-drilldown"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-test="retention-curve-error"]'),
+    ).toHaveCount(0);
+
+    // The same click, with another tenant's publish id in the request.
+    await page.unroute('**/*');
+    await openDrillDown(theirVideo.publishId);
+
+    await expect(
+      page.locator('[data-test="retention-curve-error"]'),
+    ).toBeVisible();
+
+    await page.unroute('**/*');
+  });
+
+  test('the episode page loads its analytics through an action', async ({
+    page,
+  }) => {
+    const team = await seedTeamAccount();
+    const project = await seedProject(team);
+    const connection = await seedYouTubeConnection(team.accountId, 'Channel');
+    const video = await seedPublishedEpisode(project.id, connection, {
+      number: 1,
+    });
+
+    await signInAs(page, team);
+
+    const requests: string[] = [];
+
+    page.on('request', (request) => {
+      if (request.url().includes('/api/analytics/episode/')) {
+        requests.push(request.url());
+      }
+    });
+
+    await page.goto(
+      `/home/${team.slug}/studio/${project.slug}/episodes/${video.episodeSlug}/analytics`,
+    );
+
+    await expect(
+      page.getByRole('heading', { name: 'Episode Analytics' }),
+    ).toBeVisible();
+
+    // The route it used to fetch was never built, so every episode rendered
+    // the empty state. Nothing should ask for it again.
+    expect(requests).toEqual([]);
+  });
+});

@@ -37,10 +37,12 @@ export {
   queryNetSubscribersForVideos,
   queryQualityMetricsForVideos,
   queryRetentionCurve,
+  queryRetentionCurves,
   queryTrafficSources,
 } from '../queries-detail';
 export type {
   DataDaySource,
+  RetentionPoint,
   VideoQualityMetrics,
   VideoSubscriberTotals,
 } from '../queries-detail';

@@ -95,6 +95,7 @@ export function WeeklyDiagnosticsTable({
                   key={row.publishId}
                   className={onSelect ? 'cursor-pointer' : undefined}
                   onClick={() => onSelect?.(row.publishId)}
+                  data-test={'diagnostic-row'}
                 >
                   <TableCell className={'max-w-[220px]'}>
                     <span className={'block truncate font-medium'}>

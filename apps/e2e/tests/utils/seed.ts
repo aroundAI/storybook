@@ -318,16 +318,24 @@ export async function seedProject(
 export async function seedPublishedEpisode(
   projectId: string,
   connectionId: string,
-  options: { number?: number; platform?: string } = {},
-): Promise<{ episodeId: string; publishId: string }> {
+  options: { number?: number; platform?: string; title?: string } = {},
+): Promise<{ episodeId: string; publishId: string; episodeSlug: string }> {
   const auth = { key: SERVICE_ROLE_KEY };
+  const number = options.number ?? 1;
+  const title = options.title ?? `Seeded Episode ${number}`;
+
+  // A slug, because the episode routes resolve `[episodeSlug]` with
+  // `.eq('slug', …)` — an episode seeded without one 404s, so every episode
+  // page was unreachable from a test.
+  const episodeSlug = `seeded-episode-${number}-${crypto.randomUUID().slice(0, 8)}`;
 
   const episode = await insertRow<{ id: string }>(
     'episodes',
     {
       project_id: projectId,
-      number: options.number ?? 1,
-      title: `Seeded Episode ${options.number ?? 1}`,
+      number,
+      title,
+      slug: episodeSlug,
     },
     auth,
   );
@@ -339,12 +347,15 @@ export async function seedPublishedEpisode(
       platform_connection_id: connectionId,
       platform: options.platform ?? 'youtube',
       status: 'published',
+      // The analytics surfaces read the publish's own title, not the
+      // episode's, so a publish without one renders as "Untitled".
+      title,
       published_at: new Date().toISOString(),
     },
     auth,
   );
 
-  return { episodeId: episode.id, publishId: publish.id };
+  return { episodeId: episode.id, publishId: publish.id, episodeSlug };
 }
 
 /**
