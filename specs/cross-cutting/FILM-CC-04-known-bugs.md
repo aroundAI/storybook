@@ -1030,11 +1030,20 @@ ignored overrides at server start. These have none of that:
   current production value goes on that list. Anything else set in production
   is ignored *and logged by name at server start*, as FILM-1801 already does
   for `VENDOR_URL_*`.
-- **Before any of this ships the owner must supply the value
-  `GOOGLE_GEMINI_BASE_URL` holds in production** (the host, not a secret), and
-  where it is set. Without it the allow-list cannot be written and the change
-  would cut production off from Gemini. **This blocks the PR, and the PR must
-  say so at the top.**
+- **No production value is needed to build this, and none may be asked for**
+  (owner, 2026-09-22: *"do not use production credentials for anything"* — that
+  includes asking what a production variable is set to). So it ships in two
+  steps, and the first cannot break production whatever the value is:
+  1. **Observe.** In production the resolver *honours* the six variables exactly
+     as today, and logs once at server start which are set — by variable name
+     and destination **host only**, never a key, a path, a query string or a
+     URL carrying credentials. Behaviour is unchanged. The owner reads their own
+     log and learns what Gemini points at.
+  2. **Enforce.** A later PR turns the allow-list on. The owner adds the Gemini
+     host to it in code review, from what step 1 showed them. Until a host is
+     on the list, step 2 does not merge.
+  The three unused variables can be removed in step 1 — the owner has said they
+  are not set.
 - Extend FILM-1801's guard (`vendor-api-versions.test.ts`): a new
   `process.env.*_BASE_URL` / `*_API_URL` read for a vendor host fails the
   build, with the resolver call to use instead.
@@ -1042,8 +1051,9 @@ ignored overrides at server start. These have none of that:
 
 ### Acceptance criteria
 
-- [ ] None of the six variables changes a request's host unless the resolver's rules allow it — proven per SDK against a local listener, env var set, production settings: **0 requests arrive**
-- [ ] Gemini in production reaches the owner's declared host and no other; an undeclared value is ignored and logged by name, never by value
+- [ ] Step 2: none of the six variables changes a request's host unless the allow-list permits it — proven per SDK against a **local** listener, env var set, production settings: **0 requests arrive**. No production system, credential or value is used at any point
+- [ ] Step 1: with any of the six set under production settings, requests still reach that host (behaviour unchanged) and one start-up log line names the variable and the host — a test asserts no key, path, query or credential appears in it
+- [ ] Step 2 (separate PR, after the owner has read their log): Gemini reaches only the allow-listed host; an undeclared value is ignored and logged
 - [ ] The three unused variables are gone from source, docs and env examples
 - [ ] The guard fails on a newly introduced vendor base-URL env read — seen red
 - [ ] FILM-1803's spec updated: it planned to rely on these variables for the AI sandbox and must use `VENDOR_URL_*` instead
