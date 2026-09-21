@@ -40,7 +40,7 @@ describe('InstagramInsightsProvider', () => {
               media_product_type: 'FEED',
             }),
         })
-        // insights and account audience; a FEED video has no reach breakdown
+        // insights and account audience
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({ data: [] }),
@@ -69,6 +69,42 @@ describe('InstagramInsightsProvider', () => {
       );
     });
 
+    it('asks a Story only for the metrics documented for Stories', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              media_type: 'VIDEO',
+              media_product_type: 'STORY',
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ data: [] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ data: [] }),
+        });
+
+      await provider.getMediaInsights({ mediaId: 'a-story' });
+
+      const insights = mockFetch.mock.calls
+        .map(([url]) => new URL(url as string))
+        .find(
+          (u) =>
+            u.pathname.endsWith('/insights') && u.pathname.includes('a-story'),
+        )!;
+
+      expect(insights.searchParams.get('metric')!.split(',')).toEqual([
+        'views',
+        'reach',
+        'total_interactions',
+        'shares',
+      ]);
+    });
+
     it('should fetch insights for a Reel', async () => {
       // What Meta returns for a Reel: `media_type` is only ever
       // CAROUSEL_ALBUM / IMAGE / VIDEO. REELS lives on `media_product_type`.
@@ -91,28 +127,6 @@ describe('InstagramInsightsProvider', () => {
               { name: 'comments', values: [{ value: 25 }] },
               { name: 'saved', values: [{ value: 15 }] },
               { name: 'shares', values: [{ value: 10 }] },
-            ],
-          }),
-      });
-
-      // Mock reach breakdown response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            data: [
-              {
-                total_value: {
-                  breakdowns: [
-                    {
-                      results: [
-                        { dimension_values: ['FOLLOWER'], value: 300 },
-                        { dimension_values: ['NON_FOLLOWER'], value: 200 },
-                      ],
-                    },
-                  ],
-                },
-              },
             ],
           }),
       });
@@ -153,9 +167,6 @@ describe('InstagramInsightsProvider', () => {
       expect(result.totals.comments).toBe(25);
       expect(result.totals.saved).toBe(15);
       expect(result.totals.shares).toBe(10);
-      expect(result.reachBreakdown?.followerReach).toBe(300);
-      expect(result.reachBreakdown?.nonFollowerReach).toBe(200);
-      expect(result.reachBreakdown?.followersPercentage).toBe(60);
     });
 
     it('should fetch insights for a Video using the views metric', async () => {
@@ -182,7 +193,7 @@ describe('InstagramInsightsProvider', () => {
           }),
       });
 
-      // Mock audience response (no reach breakdown for Video)
+      // Mock audience response
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ data: [] }),
@@ -195,7 +206,6 @@ describe('InstagramInsightsProvider', () => {
       expect(result.mediaType).toBe('VIDEO');
       expect(result.totals.plays).toBe(800); // views maps into plays
       expect(result.totals.impressions).toBe(800);
-      expect(result.reachBreakdown).toBeUndefined(); // No breakdown for Videos
     });
 
     it('should throw InstagramInsightsScopeError on permission error', async () => {
@@ -236,12 +246,6 @@ describe('InstagramInsightsProvider', () => {
       });
 
       // Empty insights response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ data: [] }),
-      });
-
-      // Empty reach breakdown
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ data: [] }),

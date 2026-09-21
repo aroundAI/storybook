@@ -182,7 +182,6 @@ const insights = await provider.getMediaInsights({
 
 // Result includes:
 // - totals: plays, reach, impressions, likes, comments, saves, shares, etc.
-// - reachBreakdown: follower vs non-follower reach (Reels only)
 // - audience: countries, cities, gender/age demographics
 
 // Get account overview metrics
@@ -197,7 +196,6 @@ import type {
   InstagramInsightsInput,
   InstagramInsightsResult,
   InstagramTotals,
-  InstagramReachBreakdown,
   InstagramAudienceData,
   InstagramAccountInsights,
 } from '@kit/content-analytics/providers/instagram';
@@ -216,7 +214,7 @@ import type {
 | `InstagramInsightsScopeError` | Thrown when connection is missing insights permissions - user must reconnect |
 | `OAuthException` | Token expired - trigger re-auth |
 | Media not found | Content deleted - throws error |
-| Missing data | Returns `undefined` for optional fields (reachBreakdown, audience) |
+| Missing data | Returns `undefined` for optional fields (audience) |
 
 ### Handling Scope Errors
 

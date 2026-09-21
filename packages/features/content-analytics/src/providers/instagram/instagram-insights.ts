@@ -10,7 +10,6 @@ import type {
   InstagramInsightsResult,
   InstagramMediaProductType,
   InstagramMediaType,
-  InstagramReachBreakdown,
 } from './types';
 
 const GRAPH_API_BASE = 'https://graph.facebook.com/v23.0';
@@ -107,23 +106,26 @@ export class InstagramInsightsProvider {
 
       // Meta deprecated `plays` and `impressions` (2025-04-21, Graph v22)
       // in favor of the universal `views` metric across all media types.
-      // `shares` is documented for FEED, REELS and STORY alike.
-      const metricsForType = [
-        'views',
-        'reach',
-        'total_interactions',
-        'likes',
-        'comments',
-        'saved',
-        'shares',
-      ];
+      // `shares` is documented for FEED, REELS and STORY alike; `likes`,
+      // `comments` and `saved` are not documented for STORY.
+      const metricsForType =
+        mediaProductType === 'STORY'
+          ? ['views', 'reach', 'total_interactions', 'shares']
+          : [
+              'views',
+              'reach',
+              'total_interactions',
+              'likes',
+              'comments',
+              'saved',
+              'shares',
+            ];
 
-      // Fetch insights, reach breakdown, and audience in parallel
-      const [insightsData, reachBreakdown, audience] = await Promise.all([
+      // No follower / non-follower split here: Meta documents `follow_type`
+      // for account-level reach only. The media insights reference lists two
+      // breakdowns, neither of them for `reach`.
+      const [insightsData, audience] = await Promise.all([
         this.fetchMediaInsights(mediaId, metricsForType),
-        mediaProductType === 'REELS'
-          ? this.fetchReachBreakdown(mediaId)
-          : undefined,
         this.fetchAccountAudience(),
       ]);
 
@@ -145,7 +147,6 @@ export class InstagramInsightsProvider {
           profileVisits: metrics.profile_visits ?? 0,
           follows: metrics.follows ?? 0,
         },
-        reachBreakdown,
         audience,
       };
     } catch (error) {
@@ -186,64 +187,6 @@ export class InstagramInsightsProvider {
     }
 
     return data.data ?? [];
-  }
-
-  /**
-   * Fetches reach breakdown for Reels (follower vs non-follower)
-   */
-  private async fetchReachBreakdown(
-    mediaId: string,
-  ): Promise<InstagramReachBreakdown | undefined> {
-    try {
-      const response = await fetch(
-        `${GRAPH_API_BASE}/${mediaId}/insights?` +
-          new URLSearchParams({
-            metric: 'reach',
-            breakdown: 'follow_type',
-            access_token: this.accessToken,
-          }),
-      );
-
-      if (!response.ok) {
-        return undefined;
-      }
-
-      const data = (await response.json()) as {
-        data?: Array<{
-          total_value?: {
-            breakdowns?: Array<{
-              results?: Array<{
-                dimension_values: string[];
-                value: number;
-              }>;
-            }>;
-          };
-        }>;
-      } & GraphAPIError;
-
-      if (data.error) {
-        return undefined;
-      }
-
-      const reachData =
-        data.data?.[0]?.total_value?.breakdowns?.[0]?.results ?? [];
-
-      const followerReach =
-        reachData.find((r) => r.dimension_values[0] === 'FOLLOWER')?.value ?? 0;
-      const nonFollowerReach =
-        reachData.find((r) => r.dimension_values[0] === 'NON_FOLLOWER')
-          ?.value ?? 0;
-      const totalReach = followerReach + nonFollowerReach;
-
-      return {
-        followerReach,
-        nonFollowerReach,
-        followersPercentage:
-          totalReach > 0 ? (followerReach / totalReach) * 100 : 0,
-      };
-    } catch {
-      return undefined;
-    }
   }
 
   /**

@@ -48,7 +48,6 @@ export interface InstagramInsightsResult {
   mediaType: InstagramMediaType;
   mediaProductType: InstagramMediaProductType;
   totals: InstagramTotals;
-  reachBreakdown?: InstagramReachBreakdown;
   audience?: InstagramAudienceData;
 }
 
@@ -66,15 +65,6 @@ export interface InstagramTotals {
   shares: number;
   profileVisits: number;
   follows: number;
-}
-
-/**
- * Reach breakdown by follower type (Reels only)
- */
-export interface InstagramReachBreakdown {
-  followerReach: number;
-  nonFollowerReach: number;
-  followersPercentage: number;
 }
 
 /**
