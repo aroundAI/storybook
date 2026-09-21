@@ -809,6 +809,121 @@ nobody having been able to use it.
 
 ---
 
+## KB-19 — A failed platform connect lands on a 404, and nothing is logged
+
+**Severity:** Medium — every refused or cancelled OAuth connect, on every
+platform, ends on a "page not found" with the reason hidden in the address
+bar. It matters now: FILM-1711 (#289) starts requesting scopes a vendor may
+refuse, and its pre-deploy check is *reading that failure*. **Found:**
+FILM-1711's runbook work, 2026-09-22 (the teammate saw the 404 with `curl`
+against a local server). **Open.**
+
+All five callbacks under `apps/web/app/api/platforms/callback/` — `youtube`,
+`tiktok`, `meta`, `twitter`, `linkedin` — send every failure to
+
+```ts
+`${appUrl}/settings/platforms?error=${encodeURIComponent(errorDesc || error)}`
+```
+
+There is no `/settings/platforms` route. The page lives at
+`/home/[account]/settings/platforms`, which is where the same files send a
+*successful* connect. Three things are wrong at once, re-checked on `main`
+(dbbd5ee8):
+
+1. **The path.** Failure redirects omit `/home/${accountSlug}`. On several
+   failure branches (`missing_params`, `invalid_state`) the account slug is not
+   known yet, because it lives in the state that failed to parse — so the fix
+   is not only a string.
+2. **Nothing logs.** The `if (error)` branch redirects without a log line, so
+   a vendor refusing a scope leaves no trace server-side.
+3. **Nobody reads it.** `home/[account]/settings/platforms/page.tsx` never
+   looks at `searchParams.error`, so even a correct redirect would show
+   nothing.
+
+And one to check while there: the vendor's `error_description` is reflected
+into a URL and would be rendered. Treat it as untrusted text — map known
+codes to our own messages, show the raw string only escaped and clearly
+attributed, never as HTML.
+
+### Proposed fix
+
+- One shared helper for callback failures: logs (platform, error code, which
+  branch — never tokens or the `code`), and redirects to the account's
+  platforms page when the slug is known, else to a slug-less route that
+  resolves the user's account (or `/home`) carrying the error.
+- The platforms page reads the error and shows it: what failed, on which
+  platform, what to do. Known codes (`access_denied`, `invalid_scope`,
+  `state_expired`, `*_not_configured`) get written messages.
+- **Fix the class:** the five callbacks restate the same branches; the helper
+  is where they become one function.
+
+### Acceptance criteria
+
+- [ ] Playwright, per platform, seeded via API: a callback hit with `?error=access_denied` and one with a bad `state` both end on a real page showing a message — asserted by text; screenshots in the PR
+- [ ] Each failure branch writes one log line; a test asserts no token, `code` or secret appears in it
+- [ ] A hostile `error_description` (`<script>`, a long string) is shown inert or replaced
+- [ ] `docs/vendor-review-runbook.md` (#289) updated: the pre-deploy check reads the page, not the address bar
+
+---
+
+## KB-20 — Two vendor submissions are blocked by what the site does not say
+
+**Severity:** Medium — nothing is broken for a user; the owner cannot pass
+Meta App Review or Google's OAuth verification until these exist. Both are
+review prerequisites, and a rejection costs a week. **Found:** FILM-1711's
+runbook work, 2026-09-22, with vendor citations in
+`docs/vendor-review-runbook.md` (#289). **Open.**
+
+Re-checked on `main` (dbbd5ee8):
+
+| Vendor requirement | What we have |
+|---|---|
+| **Meta:** any app accessing user data must provide a data-deletion **callback URL or an instructions URL** | Neither. No route handles a `signed_request`; no page says how to ask. The privacy policy lists erasure as a right and not how to exercise it. `grep -r "signed_request\|data-deletion"` over `apps/web` and `packages`: nothing |
+| **YouTube API Services developer policies:** the privacy policy must link the **YouTube Terms of Service**, link the **Google Privacy Policy**, and state that users can **revoke access via Google's security settings page** | None of the three. `apps/web/app/(marketing)/(legal)/privacy-policy/page.tsx` contains no `youtube.com/t/terms`, no `policies.google.com/privacy`, no Google security-settings link |
+| **Same policies:** stored API data has retention limits and must be deleted when a user revokes (the runbook records 30-day refresh / 7-day deletion windows — **confirm the exact figures against the cited page before writing them into a policy**) | Nothing deletes or expires analytics rows when a connection is removed. Disconnect revokes the token at the vendor and deletes the `platform_connections` row; ClickHouse `video_metrics`, `video_audience`, `video_traffic_sources` and Postgres `content_analytics` / `revenue_records` (`source = 'api'`) stay |
+
+**What already works, and the page can truthfully say:** disconnecting a
+platform revokes access at the vendor (Meta: `DELETE /me/permissions`), and
+account deletion exists (and, after KB-1 (#290), succeeds).
+
+**Not needed to be the first user.** Meta grants Standard Access to anyone with
+a role on the app, so the owner can connect their own Instagram and run
+analytics today; App Review and Business Verification gate *other* users. Do
+not let this entry hold up the owner's own use.
+
+### Proposed fix — in this order
+
+1. **A data-deletion instructions page** under `(marketing)/(legal)/`, linked
+   from the privacy policy and the footer: how to disconnect a platform, how
+   to delete the account, what each removes and within what time, and a
+   contact for anything else. Cheapest thing that satisfies Meta. A
+   `signed_request` callback can follow if wanted; the runbook sketches a path.
+2. **The three YouTube items** in the privacy policy, plus a plain statement
+   of what API data we store, why, and for how long.
+3. **Make the page true:** deleting vendor-sourced analytics when a connection
+   is removed or its access revoked, within the stated window — ClickHouse and
+   Postgres both, scoped to that connection's publishes, leaving manual
+   revenue entries (the user's own data, `source != 'api'`) alone. **This is
+   the real work** and may deserve its own spec: it needs a decision on
+   whether disconnect means "forget my history" (a creator who reconnects next
+   week loses their charts) or whether deletion runs only on explicit request
+   and on expiry. Owner decision before code.
+
+**Legal text is the owner's to approve.** A teammate can draft from the vendor
+requirements and the code's actual behaviour; the PR must say DRAFT and must
+not claim a behaviour (a deletion window, a retention period) the code does
+not implement. Item 3 exists so that items 1–2 never have to.
+
+### Acceptance criteria
+
+- [ ] Data-deletion instructions page live, linked from the privacy policy and footer; every sentence on it checked against what the code does
+- [ ] Privacy policy carries the three YouTube-required items — each cited to the policy text in the PR
+- [ ] Owner has decided what disconnect deletes; the decision is recorded here before item 3 is built
+- [ ] Item 3: after a disconnect (or on request), vendor-sourced rows for that connection are gone from ClickHouse and Postgres within the stated window; manual entries untouched — pgTAP/ClickHouse test with seeded rows, red first
+- [ ] Runbook (#289) updated: the two blockers struck, with the URLs to paste into each vendor form
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
