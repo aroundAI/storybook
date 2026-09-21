@@ -6,8 +6,8 @@ import {
   REFERENCE,
   doc,
   documentedNames,
-  forbiddenNames,
 } from './helpers/capability-reference';
+import { forbiddenNames } from './helpers/forbidden-names';
 
 /**
  * FILM-1722. Every view definition traces to
