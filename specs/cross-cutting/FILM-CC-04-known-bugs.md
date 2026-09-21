@@ -903,7 +903,7 @@ Re-checked on `main` (dbbd5ee8):
 |---|---|
 | **Meta:** any app accessing user data must provide a data-deletion **callback URL or an instructions URL** | Neither. No route handles a `signed_request`; no page says how to ask. The privacy policy lists erasure as a right and not how to exercise it. `grep -r "signed_request\|data-deletion"` over `apps/web` and `packages`: nothing |
 | **YouTube API Services developer policies:** the privacy policy must link the **YouTube Terms of Service**, link the **Google Privacy Policy**, and state that users can **revoke access via Google's security settings page** | None of the three. `apps/web/app/(marketing)/(legal)/privacy-policy/page.tsx` contains no `youtube.com/t/terms`, no `policies.google.com/privacy`, no Google security-settings link |
-| **Same policies:** stored API data has retention limits and must be deleted when a user revokes (the runbook records 30-day refresh / 7-day deletion windows — **confirm the exact figures against the cited page before writing them into a policy**) | Nothing deletes or expires analytics rows when a connection is removed. Disconnect revokes the token at the vendor and deletes the `platform_connections` row; ClickHouse `video_metrics`, `video_audience`, `video_traffic_sources` and Postgres `content_analytics` / `revenue_records` (`source = 'api'`) stay |
+| **Same policies:** stored API data must be deleted after revocation (figures and clauses now quoted — see *What the vendors actually require*, below) | **Corrected 2026-09-22 — the first version of this row was wrong.** It said disconnect leaves Postgres rows in place and named `content_analytics`. That table was dropped by `20260212080000_drop_content_analytics.sql`, and disconnect does the opposite of leaving Postgres alone: see **KB-22**. ClickHouse is the side that is never deleted |
 
 **What already works, and the page can truthfully say:** disconnecting a
 platform revokes access at the vendor (Meta: `DELETE /me/permissions`), and
@@ -963,6 +963,33 @@ asked" for the revoked-at-vendor case, **stop and bring the conflict to the
 owner with the quoted text** rather than drafting around it. A retention
 window long enough for the six-month case (the owner's example) is the default
 to propose if the policies allow it.
+
+### What the vendors actually require (quoted by the KB-20 teammate, 2026-09-22)
+
+YouTube API Services Developer Policies, read from the page itself ("Last
+updated 2026-09-14 UTC"), https://developers.google.com/youtube/terms/developer-policies:
+
+| Event | Clause (III.D, III.E.4) | Window |
+|---|---|---|
+| User disconnects **inside our app** — our button *is* "this mechanism"; `oauth/youtube/disconnect.ts:43-49` revokes at Google | "you and your API Clients must delete all Authorized Data that was accessed or stored pursuant to that consent… must take place within 7 calendar days of the revocation" | **7 days** |
+| User revokes at Google's security page, **or the token cannot be refreshed** | "periodically reconfirm that its authorization tokens are still valid and delete API Data associated with users whose authorization tokens cannot be refreshed… within 30 calendar days of that revocation" | **30 days** |
+| Connection still valid | Analytics data may be stored "for as long as is necessary", but "the Client must still ensure every 30 days that it is still authorized" | **no cap**, 30-day re-check |
+| User asks us to delete, or deletes their account | "as soon as possible and within 7 calendar days" | **7 days** |
+
+**This conflicts with "keep until asked" for YouTube** — for a deliberate
+in-app disconnect (7 days) and for the owner's own token-expired case (30
+days). The policy does not distinguish a mistake from a wish to be forgotten.
+It does **not** conflict for the returning-after-five-months user *whose token
+stayed valid*. Meta (Platform Terms §3.d, "Last updated February 3, 2026")
+requires deletion "promptly" on request and sets nothing off on disconnect: no
+conflict. TikTok's terms could not be read from this network: **not verified**.
+
+**Awaiting the owner:** (A) carve YouTube out of keep-until-asked; (B) add a
+*Pause* that stops syncing without revoking, so history survives inside the
+policy, with Disconnect as the deliberate revoke-and-delete; or both
+(recommended). Whatever is chosen, item 3 becomes a spec of its own, and it
+must be built together with **KB-22**, because the two pull the same lever in
+opposite directions.
 
 **Legal text is the owner's to approve.** A teammate can draft from the vendor
 requirements and the code's actual behaviour; the PR must say DRAFT and must
@@ -1057,6 +1084,94 @@ ignored overrides at server start. These have none of that:
 - [ ] The three unused variables are gone from source, docs and env examples
 - [ ] The guard fails on a newly introduced vendor base-URL env read — seen red
 - [ ] FILM-1803's spec updated: it planned to rely on these variables for the AI sandbox and must use `VENDOR_URL_*` instead
+
+---
+
+## KB-22 — Disconnecting a platform deletes the creator's own records, and says nothing
+
+**Severity:** **High** — irreversible loss of user-entered data from one
+click, behind a dialog that describes something else. **Found:** KB-20's
+drafting (2026-09-22), when "what does disconnect remove?" turned out to have
+an answer nobody had written down. It also corrects KB-20, whose first version
+asserted the opposite. **Open.**
+
+The disconnect dialog says, in full (`platforms:disconnectDescription`):
+*"This will remove access to {{accountName}}. You won't be able to publish to
+this account until you reconnect."*
+
+What it does: every disconnect path ends in a `DELETE` on
+`platform_connections`, and the schema takes it from there
+(`pg_constraint` on the live local database, 2026-09-22):
+
+```
+platform_connections
+ └─ publishes                     ON DELETE CASCADE   (20251205125737_film-studio-tables.sql:471)
+     ├─ revenue_records           ON DELETE CASCADE   ← includes source = 'manual'
+     ├─ publish_tags              ON DELETE CASCADE   ← the creator's own tagging
+     ├─ experiment_publishes      ON DELETE CASCADE   ← experiment membership
+     └─ manual_tasks              ON DELETE CASCADE
+ ├─ episode_publishing_configs    ON DELETE CASCADE
+ ├─ project_publishing_configs    ON DELETE CASCADE
+ ├─ youtube_report_jobs           ON DELETE CASCADE
+ └─ channel_analytics_settings    ON DELETE CASCADE   ← YPP targets (FILM-1608)
+```
+
+### Reproduced (local database, rolled-back transaction, by the KB-20 teammate)
+
+Deleting one `platform_connections` row: its `publishes` went **1 → 0**, and
+`revenue_records` **162 → 158** — three `source = 'api'` rows **and one
+`source = 'manual'` row**, a figure a person typed in. Rolled back; 162 again.
+
+### And the other half is wrong in the other direction
+
+Vendor per-video data lives only in ClickHouse, in seven tables —
+`video_metrics`, `video_audience`, `video_traffic_sources`,
+`video_reach_daily`, `video_retention_curves`, `video_snapshots`, `video_dim`.
+There is no `TTL` and no `DELETE` anywhere in `packages/clickhouse/src`. So
+after a disconnect those rows **stay forever, orphaned** — the `publishes`
+rows that gave them an owner are gone, which also means nothing can later find
+them to delete on request.
+
+So one click today:
+
+| | Does | Should (owner's decision + YouTube's policy, KB-20) |
+|---|---|---|
+| Postgres — the creator's own entries (manual revenue, tags, experiment membership, YPP targets) | **deleted, silently** | kept — always. It is their data, not the vendor's |
+| Postgres — the publish record itself | deleted | kept: it is the history of what was published, and the only key to the ClickHouse rows |
+| ClickHouse — vendor analytics | **kept forever** | deleted on request; for YouTube within 7 days of an in-app disconnect, 30 of a dead token |
+
+What is **not** affected (checked): a token expiring only sets
+`is_active = false` (`token-refresh.ts:278`) and a reconnect upserts — the OAuth
+callbacks delete `oauth_states` rows, not connections. So the owner's
+"disconnected by mistake / token expired / back after five months" cases lose
+nothing **unless someone presses Disconnect**. That is the button this entry
+is about.
+
+### Proposed fix — with KB-20 item 3, as one design
+
+- **Disconnect stops deleting the row.** Revoke at the vendor, wipe the
+  encrypted tokens, mark the connection disconnected — keep the row, so
+  `publishes` and everything under it survive. A reconnect of the same platform
+  account re-attaches to it. (`publishes.platform_connection_id` becoming
+  `SET NULL` is the blunter alternative; it keeps the publish and loses which
+  channel it went to — worse for a multi-channel account.)
+- **Vendor data deletion becomes a deliberate, scoped job** — by connection,
+  across all seven ClickHouse tables and `revenue_records where source='api'`
+  — driven by the policy windows in KB-20, never by a cascade. Manual entries
+  are out of its reach by construction, not by care.
+- **The dialog tells the truth** about whatever the final behaviour is, and a
+  destructive path asks for a typed confirmation.
+- **Fix the class:** list every `ON DELETE CASCADE` whose parent is a
+  *connection/credential* row and whose child is *user-authored* — a credential
+  going away should never be able to delete something a person wrote.
+
+### Acceptance criteria
+
+- [ ] pgTAP, red first: disconnecting leaves `publishes`, manual `revenue_records`, `publish_tags`, `experiment_publishes`, `channel_analytics_settings` intact
+- [ ] Reconnecting the same platform account restores the connection to its publishes; analytics resume without duplicates
+- [ ] The deletion job removes one connection's vendor rows from all seven ClickHouse tables and `source='api'` revenue — and nothing else; tested with two connections seeded side by side, against the real local ClickHouse
+- [ ] Dialog copy matches behaviour; Playwright covers disconnect → reconnect, asserting the manual revenue figure is still there **after** reconnect; screenshots in the PR
+- [ ] No production data or credentials are used to verify any of this
 
 ---
 
