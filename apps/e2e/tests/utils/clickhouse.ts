@@ -191,6 +191,29 @@ export async function seedVideoMetrics(
   await seedVideoMetricsBatch([{ video, days }]);
 }
 
+/**
+ * An audience-retention curve, which platforms report as normalized
+ * positions through the video rather than seconds.
+ *
+ * Only YouTube feeds `video_retention_curves`, so a seeded TikTok or
+ * Instagram publish legitimately has no curve and the chart renders empty.
+ */
+export async function seedRetentionCurve(
+  video: SeededVideo,
+  points: Array<{ elapsedRatio: number; audienceWatchRatio: number }>,
+) {
+  await insertClickHouse(
+    'video_retention_curves',
+    points.map((point) => ({
+      project_id: video.projectId,
+      video_id: video.videoId,
+      platform: 'youtube',
+      elapsed_ratio: point.elapsedRatio,
+      audience_watch_ratio: point.audienceWatchRatio,
+    })),
+  );
+}
+
 /** Impressions and click-through rate, which live in their own table. */
 export async function seedVideoReach(
   video: SeededVideo,

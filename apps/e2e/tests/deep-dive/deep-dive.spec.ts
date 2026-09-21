@@ -88,12 +88,12 @@ test.describe('Deep Dive channel filter', () => {
     const deepDive = new DeepDivePageObject(page);
     const fixture = await deepDive.setup();
 
-    // The first render: five deep-dive calls with the plain project scope —
-    // median, traffic, back catalog, cohorts and the subscriber series — and
-    // a YPP call with no channel.
+    // The first render: six deep-dive calls with the plain project scope —
+    // median, traffic, back catalog, cohorts, the subscriber series and the
+    // weekly diagnostics (FILM-1616) — and a YPP call with no channel.
     await expect
       .poll(() => deepDiveCalls(calls).length)
-      .toBeGreaterThanOrEqual(5);
+      .toBeGreaterThanOrEqual(6);
     await expect.poll(() => yppCalls(calls).length).toBeGreaterThanOrEqual(1);
 
     for (const call of [...deepDiveCalls(calls), ...yppCalls(calls)]) {
@@ -107,9 +107,13 @@ test.describe('Deep Dive channel filter', () => {
     // Every action on the tab asks again, each carrying the channel. A query
     // key without the channel would have served the cached all-channel
     // answer and made no request at all.
+    //
+    // Six since FILM-1616: the weekly diagnostics is one of them, and the
+    // loop below is what holds it to carrying the channel rather than
+    // quietly answering for the whole project.
     await expect
       .poll(() => deepDiveCalls(calls.slice(beforeSelect)).length)
-      .toBe(5);
+      .toBe(6);
     await expect.poll(() => yppCalls(calls.slice(beforeSelect)).length).toBe(1);
 
     for (const call of deepDiveCalls(calls.slice(beforeSelect))) {

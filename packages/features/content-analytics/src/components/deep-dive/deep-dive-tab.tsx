@@ -14,7 +14,9 @@ import {
 
 import { TRAFFIC_SOURCE_GROUPS } from '@kit/clickhouse';
 import type { TrafficGroupBucket } from '@kit/clickhouse';
+import { Button } from '@kit/ui/button';
 
+import { unwrap } from '../../lib/action-result';
 import { isUnavailable } from '../../lib/query-state';
 import {
   getBackCatalogAction,
@@ -23,6 +25,10 @@ import {
   getTrafficBreakdownAction,
   getYppProgressAction,
 } from '../../server/deep-dive-actions';
+import {
+  getRetentionCurveAction,
+  getWeeklyDiagnosticsAction,
+} from '../../server/diagnostics-actions';
 import { getSubscriberSeriesAction } from '../../server/subscriber-series-actions';
 import { AnalyticsCard } from '../overview/analytics-card';
 import { useProjectChannels } from '../use-project-channels';
@@ -35,6 +41,10 @@ import {
 import type { CohortEntry } from './cohort-curves-chart';
 import { MedianViewsCard, MedianViewsCardSkeleton } from './median-views-card';
 import {
+  RetentionCurveChart,
+  RetentionCurveChartSkeleton,
+} from './retention-curve-chart';
+import {
   SubscriberSeriesCard,
   SubscriberSeriesCardSkeleton,
 } from './subscriber-series-card';
@@ -43,6 +53,10 @@ import {
   TrafficShareCard,
   TrafficShareCardSkeleton,
 } from './traffic-share-card';
+import {
+  WeeklyDiagnosticsTable,
+  WeeklyDiagnosticsTableSkeleton,
+} from './weekly-diagnostics-table';
 import { YppProgressCard, YppProgressCardSkeleton } from './ypp-progress-card';
 
 interface DeepDiveTabProps {
@@ -90,6 +104,20 @@ const TRAFFIC_WINDOW_LABEL = `the last ${TRAFFIC_WINDOW_WEEKS} complete weeks`;
 
 /** Days of subscriber history the curve shows — a year, like YPP's window. */
 const SUBSCRIBER_WINDOW_DAYS = 365;
+
+/**
+ * The diagnostics window. "This week's uploads" is the framing, and a
+ * window that drifted from the heading would quietly change what the table
+ * claims.
+ */
+const DIAGNOSTICS_WINDOW_DAYS = 7;
+
+/**
+ * Videos the table shows. Well under MAX_DIAGNOSTIC_VIDEOS: this is a list
+ * a person reads, so the useful bound is a screenful rather than the
+ * ceiling the query would tolerate.
+ */
+const DIAGNOSTICS_LIMIT = 25;
 
 export function DeepDiveTab({
   projectId,
@@ -543,7 +571,113 @@ export function DeepDiveTab({
           />
         </AnalyticsCard>
       </div>
+
+      <WeeklyDiagnosticsSection
+        projectId={projectId}
+        connectionId={filters.connectionId}
+      />
     </div>
+  );
+}
+
+/**
+ * The weekly breakage check, deliberately outside the card grid above.
+ *
+ * Those cards answer "what should we make next". This answers "did
+ * something break this week" — a 2% CTR means the packaging failed on that
+ * one video, not that the format is wrong. Rendered as one of the strategy
+ * cards it reads as a content verdict, which is the opposite of its point,
+ * so it sits below them behind its own heading and rule.
+ */
+function WeeklyDiagnosticsSection({
+  projectId,
+  connectionId,
+}: {
+  projectId: string;
+  connectionId: string | undefined;
+}) {
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const diagnosticsQuery = useQuery({
+    // The channel belongs in the key: without it, switching channels reads
+    // the previous channel's rows back out of the cache.
+    queryKey: ['weekly-diagnostics', projectId, connectionId ?? 'all'],
+    queryFn: () =>
+      unwrap(
+        getWeeklyDiagnosticsAction({
+          scope: { projectId, ...(connectionId ? { connectionId } : {}) },
+          sinceDays: DIAGNOSTICS_WINDOW_DAYS,
+          limit: DIAGNOSTICS_LIMIT,
+        }),
+      ),
+  });
+
+  const curveQuery = useQuery({
+    queryKey: ['retention-curve', selected],
+    queryFn: () => unwrap(getRetentionCurveAction({ publishId: selected! })),
+    enabled: selected !== null,
+  });
+
+  return (
+    <section
+      className={'mt-4 flex flex-col gap-4 border-t pt-6'}
+      data-test={'weekly-diagnostics-section'}
+    >
+      <div className={'flex flex-col gap-1'}>
+        <h3 className={'text-base font-semibold'}>This week’s uploads</h3>
+        <p className={'max-w-2xl text-sm text-muted-foreground'}>
+          A breakage check, not a strategy input. A low click-through rate means
+          the packaging failed on that video and a sharp early drop means its
+          intro did — fix the specific thing rather than generalising from one
+          upload. Follows the channel selected above.
+        </p>
+      </div>
+
+      <QueryState
+        query={diagnosticsQuery}
+        skeleton={<WeeklyDiagnosticsTableSkeleton />}
+        message={'The weekly diagnostics could not be loaded.'}
+        dataTest={'weekly-diagnostics-error'}
+      >
+        <WeeklyDiagnosticsTable
+          rows={diagnosticsQuery.data ?? []}
+          onSelect={setSelected}
+          selectedPublishId={selected}
+        />
+      </QueryState>
+
+      {selected ? (
+        <div
+          id={'retention-drilldown'}
+          className={'flex flex-col gap-2'}
+          data-test={'retention-drilldown'}
+        >
+          <div className={'flex items-center justify-between'}>
+            <h4 className={'text-sm font-medium'}>Audience retention</h4>
+            <Button
+              variant={'ghost'}
+              size={'sm'}
+              onClick={() => setSelected(null)}
+              data-test={'retention-drilldown-close'}
+            >
+              Close
+            </Button>
+          </div>
+
+          <QueryState
+            query={curveQuery}
+            skeleton={<RetentionCurveChartSkeleton />}
+            message={'That retention curve could not be loaded.'}
+            dataTest={'retention-curve-error'}
+          >
+            {/* No durationSeconds until FILM-1710: video_dim's column is the
+                episode's duration, so a Short's cliff would be labelled past
+                the end of the clip. The chart treats it as optional. */}
+            <RetentionCurveChart points={curveQuery.data?.points ?? []} />
+          </QueryState>
+        </div>
+      ) : null}
+    </section>
   );
 }
 

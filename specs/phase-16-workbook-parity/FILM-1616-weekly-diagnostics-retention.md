@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1616
 title: Weekly Diagnostics & Retention Drill-Down
-status: DRAFT
+status: ✅ DONE
 effort: M
 dependencies: FILM-1602; FILM-1710 soft (the cliff timestamp, §4)
 ---
@@ -123,18 +123,46 @@ beyond its ownership check.
 
 ## 7. Acceptance Criteria
 
-- [ ] `getWeeklyDiagnosticsAction` returns rows matching `DiagnosticRow` without changing the component's type
-- [ ] It calls `assertScopeAccess` before any query
-- [ ] Its publish read is paged and cannot be silently truncated at 1,000 rows
-- [ ] The number of retention curves fetched per call is capped, and the fan-out concurrency is bounded
-- [ ] `getRetentionCurveAction` resolves the publish through the user-scoped client and returns not-found for a publish outside the caller's accounts
-- [ ] A publish id belonging to another tenant returns no curve, and the test asserts this explicitly
-- [ ] A video with no retention rows yields `cliff: null` and an empty chart, never a flat zero curve
-- [ ] `onSelect` is passed, and selecting a row opens that video's curve
-- [ ] The retention chart also renders on the episode analytics page
-- [ ] The diagnostics table is visually distinct from the deep-dive strategy cards
-- [ ] Cliff detection reuses `detectRetentionCliff` and adds no second implementation
-- [ ] Nothing reads `video_dim.duration_seconds`; `durationSeconds` is FILM-1710's asset duration or is omitted
+- [x] `getWeeklyDiagnosticsAction` returns rows matching `DiagnosticRow` without changing the component's type
+- [x] It calls `assertScopeAccess` before any query
+- [x] Its publish read is paged and cannot be silently truncated at 1,000 rows
+- [x] The number of retention curves fetched per call is capped, and the fan-out concurrency is bounded
+- [x] `getRetentionCurveAction` resolves the publish through the user-scoped client and returns not-found for a publish outside the caller's accounts
+- [x] A publish id belonging to another tenant returns no curve, and the test asserts this explicitly
+- [x] A video with no retention rows yields `cliff: null` and an empty chart, never a flat zero curve
+- [x] `onSelect` is passed, and selecting a row opens that video's curve
+- [x] The retention chart also renders on the episode analytics page
+- [x] The diagnostics table is visually distinct from the deep-dive strategy cards
+- [x] Cliff detection reuses `detectRetentionCliff` and adds no second implementation
+- [x] Nothing reads `video_dim.duration_seconds`; `durationSeconds` is FILM-1710's asset duration or is omitted
+
+## 7b. What shipped differently from §4
+
+- **The fan-out became a batched `queryRetentionCurves`**, as the note in §4
+  suggested. `RETENTION_CONCURRENCY` went with it — the concurrency limit
+  only existed to bound the fan-out. `MAX_RETENTION_VIDEOS` stays, because
+  it bounds the rows returned rather than the requests made.
+- **`DiagnosticRow` needs three ClickHouse reads, not two.**
+  `VideoQualityMetrics` has `impressionsCtr`, not `ctr`, and carries no
+  `views` at all — those come from `queryTotalsByVideoIds`. All three are
+  project-bounded.
+- **The episode page was dead, not merely unwired.** It fetched
+  `/api/analytics/episode/{id}`, a route that was never built; the 404 was
+  swallowed by `if (response.ok)`, so every episode rendered the empty state.
+  It reads `getEpisodeAnalytics` through an action now. The curve needed a
+  second action to resolve the episode's YouTube publish, since the chart is
+  keyed on a publish and only YouTube reports a curve.
+- **§8's "the evidence half cannot run in CI" is no longer true.** The
+  🧬 E2E evidence job has a ClickHouse service container and sets
+  `CLICKHOUSE_EVIDENCE=1`, so `diagnostics-evidence.spec.ts` runs there with
+  real curves — the job went from 22 tests to 24 and printed
+  `MEASURED_DIAGNOSTICS`. That sentence described the job layout before the
+  evidence specs moved to their own production-build job.
+- **Two seeder defects surfaced.** `seedPublishedEpisode` set no `slug`, and
+  the episode routes resolve `[episodeSlug]` with `.eq('slug', …)` — so no
+  test could reach an episode page. It also never set `publishes.title`,
+  which is what the analytics surfaces read, so every row rendered
+  "Untitled".
 
 ## 8. Verification
 

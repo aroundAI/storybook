@@ -34,6 +34,8 @@ interface WeeklyDiagnosticsTableProps {
   lowCtrThreshold?: number;
   /** Opens a video's detail view */
   onSelect?: (publishId: string) => void;
+  /** Which video's curve is open, so the row's control can report it. */
+  selectedPublishId?: string | null;
   /** Loading state */
   isLoading?: boolean;
 }
@@ -57,6 +59,7 @@ export function WeeklyDiagnosticsTable({
   rows,
   lowCtrThreshold = 0.03,
   onSelect,
+  selectedPublishId = null,
   isLoading = false,
 }: WeeklyDiagnosticsTableProps) {
   if (isLoading) {
@@ -64,9 +67,14 @@ export function WeeklyDiagnosticsTable({
   }
 
   if (rows.length === 0) {
+    // Two cases, and the message must not pick one: nothing was published
+    // in the window, or something was and has no metrics yet. Saying
+    // "nothing published" in the second case sends a reader looking for a
+    // publishing bug that is not there.
     return (
       <p className={'text-sm text-muted-foreground'}>
-        Nothing published recently enough to diagnose.
+        Nothing to diagnose yet. A video appears here once its first analytics
+        sync lands, so the last day or two of uploads may be missing.
       </p>
     );
   }
@@ -94,12 +102,43 @@ export function WeeklyDiagnosticsTable({
                 <TableRow
                   key={row.publishId}
                   className={onSelect ? 'cursor-pointer' : undefined}
+                  // Click anywhere on the row as a mouse convenience. The
+                  // row keeps its own role: `role="button"` here overrode
+                  // the implicit `row`, which left the body as
+                  // rowgroup → button → cell and took the cells out of the
+                  // table's reading model — the numbers this table exists
+                  // to convey stopped being row cells at all.
                   onClick={() => onSelect?.(row.publishId)}
+                  data-test={'diagnostic-row'}
                 >
                   <TableCell className={'max-w-[220px]'}>
-                    <span className={'block truncate font-medium'}>
-                      {row.title}
-                    </span>
+                    {onSelect ? (
+                      // A real button, so it is focusable, activates on
+                      // Enter and Space without a hand-rolled key handler,
+                      // and says what it opens. `aria-expanded` reports the
+                      // panel's state rather than leaving it to be guessed.
+                      <button
+                        type={'button'}
+                        className={
+                          'block max-w-full truncate text-left font-medium underline-offset-2 hover:underline'
+                        }
+                        aria-expanded={selectedPublishId === row.publishId}
+                        aria-controls={'retention-drilldown'}
+                        onClick={(event) => {
+                          // The row handles the click too; without this the
+                          // drill-down would open and immediately reopen.
+                          event.stopPropagation();
+                          onSelect(row.publishId);
+                        }}
+                        data-test={'diagnostic-open'}
+                      >
+                        {row.title}
+                      </button>
+                    ) : (
+                      <span className={'block truncate font-medium'}>
+                        {row.title}
+                      </span>
+                    )}
                     <span className={'text-xs text-muted-foreground'}>
                       {row.platform} · {row.publishedAt.slice(0, 10)}
                     </span>

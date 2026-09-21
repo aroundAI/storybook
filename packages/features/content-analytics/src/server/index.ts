@@ -40,6 +40,14 @@ export {
   getYppProgressAction,
 } from './deep-dive-actions';
 
+// Weekly diagnostics and the retention drill-down (FILM-1616)
+export {
+  getEpisodeAnalyticsAction,
+  getEpisodeRetentionPublishAction,
+  getRetentionCurveAction,
+  getWeeklyDiagnosticsAction,
+} from './diagnostics-actions';
+
 // Analytics settings writer (FILM-1608)
 export {
   getAnalyticsSettingsAction,

@@ -76,6 +76,20 @@ export async function insertVideoAudience(
 /**
  * The latest retention curve for a video, sorted by position.
  */
+/**
+ * One point on a retention curve as it is read back.
+ *
+ * Distinct from `RetentionCurvePoint` in types.ts, which is the row shape
+ * the ingest writes: that one carries the tenant columns, this one is what a
+ * chart plots.
+ */
+export interface RetentionPoint {
+  /** Position through the video, 0..1. */
+  elapsedRatio: number;
+  /** Share of viewers who started that are still watching here. */
+  audienceWatchRatio: number;
+}
+
 export async function queryRetentionCurve(input: {
   videoId: string;
   /**
@@ -84,7 +98,7 @@ export async function queryRetentionCurve(input: {
    * never what is returned, and why it is opt-in rather than derived.
    */
   projectIds?: string[];
-}): Promise<Array<{ elapsedRatio: number; audienceWatchRatio: number }>> {
+}): Promise<RetentionPoint[]> {
   if (!isClickHouseEnabled()) return [];
 
   const client = getClickHouseClient();
@@ -116,6 +130,86 @@ export async function queryRetentionCurve(input: {
     elapsedRatio: Number(row.elapsed_ratio),
     audienceWatchRatio: Number(row.audience_watch_ratio),
   }));
+}
+
+/**
+ * Retention curves for several videos in one request.
+ *
+ * The single-video `queryRetentionCurve` above is one round trip per video,
+ * which both callers were fanning out over a capped list — the comment in
+ * `apps/web/app/api/reports/scheduled/route.ts` asks for exactly this. A
+ * week of publishes is one query now, and the cap remains because the rows
+ * still grow with the video count.
+ *
+ * Keyed by `video_id`; a video with no rows is absent from the map rather
+ * than present with an empty curve, because "no retention data" and "nobody
+ * watched" are different answers and the caller renders them differently.
+ */
+export async function queryRetentionCurves(input: {
+  videoIds: string[];
+  /**
+   * The projects those videos belong to, when the caller knows them. See
+   * `queryQualityMetricsForVideos` for why this bounds what is read and
+   * never what is returned, and why it is opt-in rather than derived.
+   */
+  projectIds?: string[];
+}): Promise<Map<string, RetentionPoint[]>> {
+  if (fitsOneChunk(input.videoIds)) {
+    return queryRetentionCurvesSingle(input);
+  }
+
+  return mergeMapsByChunk(input.videoIds, (chunk) =>
+    queryRetentionCurvesSingle({ ...input, videoIds: chunk }),
+  );
+}
+
+async function queryRetentionCurvesSingle(input: {
+  videoIds: string[];
+  projectIds?: string[];
+}): Promise<Map<string, RetentionPoint[]>> {
+  const curves = new Map<string, RetentionPoint[]>();
+
+  if (input.videoIds.length === 0 || !isClickHouseEnabled()) return curves;
+
+  const client = getClickHouseClient();
+  const params: Record<string, unknown> = { videoIds: input.videoIds };
+  const conditions = ['video_id IN {videoIds: Array(String)}'];
+
+  pushProjectScope(conditions, params, input.projectIds);
+
+  const result = await client.query({
+    query: `
+      SELECT
+        video_id,
+        elapsed_ratio,
+        argMax(audience_watch_ratio, fetched_at) as audience_watch_ratio
+      FROM video_retention_curves
+      WHERE ${conditions.join(' AND ')}
+      GROUP BY video_id, elapsed_ratio
+      ORDER BY video_id ASC, elapsed_ratio ASC
+    `,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<{
+    video_id: string;
+    elapsed_ratio: number;
+    audience_watch_ratio: number;
+  }>();
+
+  for (const row of rows) {
+    const points = curves.get(row.video_id) ?? [];
+
+    points.push({
+      elapsedRatio: Number(row.elapsed_ratio),
+      audienceWatchRatio: Number(row.audience_watch_ratio),
+    });
+
+    curves.set(row.video_id, points);
+  }
+
+  return curves;
 }
 
 /**
