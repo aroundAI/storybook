@@ -144,7 +144,7 @@ wait here. (D and E are taken by FILM-1723.)
 | **Question** | When the connect route asks for a scope the vendor has not approved for our app, does the creator get a working consent screen with the scope dropped, or an error that blocks connecting altogether? One answer per vendor: TikTok (`video.list`, `user.info.stats`), Meta (`instagram_manage_insights`), Google (`yt-analytics-monetary.readonly`) |
 | **Status today** | Unknown on all three. The callbacks record what was *granted* rather than what was asked for, so a dropped scope is recorded truthfully; an error page would break publishing connections too |
 | **Why it did not run** | Needs each vendor's app credentials and a test account. Local and CI have neither |
-| **Cost to settle** | One connect per vendor on a staging deploy, before production |
+| **Cost to settle** | One connect per vendor on a staging deploy, before production. **The steps, what to expect and the go/no-go rule are in [docs/vendor-review-runbook.md](../../docs/vendor-review-runbook.md) Part 1**; record the filled-in results table from there under this check. Owner decision 2026-09-22: FILM-1711's PR merges as it is, and this check gates the *deploy* |
 | **Blocks** | **Deploying FILM-1711's config change to production.** Tracked in [docs/vendor-review-status.md](../../docs/vendor-review-status.md) |
 
 ```bash

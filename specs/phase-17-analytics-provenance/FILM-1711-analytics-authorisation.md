@@ -255,6 +255,29 @@ a publishing scope, owned by FILM-1729.
    change breaks *connecting TikTok at all* until review passes. It must be
    settled on staging before production — `docs/vendor-review-status.md`.
 
+**Decision, 2026-09-22 (owner).** The PR merges as it is, with no per-platform
+switch. Before it is deployed, the owner checks each vendor console and tries one
+staging connect per platform; if an authorise request naming an unapproved scope is
+rejected outright on a platform, the deploy waits for that platform's review. The
+human actions in (1)–(3) above are the owner's: they are the product's first user,
+and will submit the reviews themselves.
+[docs/vendor-review-runbook.md](../../docs/vendor-review-runbook.md) is the runbook
+for both — the pre-deploy check (which is how Check F gets run) and a submission
+checklist per vendor. Writing it turned up four things the owner needs before
+submitting:
+
+- Meta's Standard Access already lets the owner, who has a role on the app, grant
+  `instagram_manage_insights` for their own accounts. App Review gates *other*
+  users, not the first one.
+- **The app has no data-deletion endpoint or instructions page**, which Meta
+  requires of any app that accesses user data. A blocker for the Meta submission.
+- **The privacy policy lacks the three items YouTube's developer policies require**
+  (YouTube ToS link, Google Privacy Policy link, the Google security-settings
+  revocation sentence). A blocker for Google verification.
+- A failed authorise redirects to `/settings/platforms?error=…`, a route that does
+  not exist, so it lands on a 404 and logs nothing. Older than this spec and not
+  fixed by it; unowned.
+
 **What an existing connection experiences.** Nothing changes until its owner
 opens Settings → Platforms. There, a YouTube connection shows what reconnecting
 would add (revenue) and a button; TikTok and Instagram connections say their

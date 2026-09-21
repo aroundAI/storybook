@@ -15,6 +15,17 @@ only when the row below says approved, with a date.
 Nobody has submitted anything yet. Submitting needs a person with access to each
 vendor's developer console; it cannot be done from the repository.
 
+**How to do each of these by hand is in
+[vendor-review-runbook.md](./vendor-review-runbook.md)**: the pre-deploy check for
+PR #289, then a submission checklist per vendor with drafted justifications and
+screencast shot lists. This file stays the tracker — what is submitted, and when.
+
+**Decision, 2026-09-22 (owner):** #289 merges as it is, with no per-platform switch.
+Before it is deployed, the owner checks each vendor console and tries one staging
+connect per platform (runbook, Part 1 — which is how FILM-1725 Check F gets run). The
+submissions below are the owner's to make; the *Owner* column says "unassigned" only
+because nothing has been started.
+
 | Vendor | What is needed | Scopes it unlocks | Status | Date | Owner | `review` in code |
 |---|---|---|---|---|---|---|
 | Meta | **App Review** (Advanced Access) | `instagram_manage_insights`; later `read_insights` for FILM-1720 | not submitted | 2026-09-22 | unassigned | `required` |
@@ -29,8 +40,8 @@ as restarting the clock.
 
 ## Before this reaches production
 
-These are consequences of requesting a scope the vendor has not approved. **None has
-been observed** — we hold no credentials for any of the three — so each is a question
+The runbook's Part 1 turns each of these into steps. These are consequences of
+requesting a scope the vendor has not approved. **None has been observed** — we hold no credentials for any of the three — so each is a question
 with an owner, not a finding. They are FILM-1725 Checks F, G and H.
 
 1. **TikTok: does the authorise page reject a request that names an unapproved
