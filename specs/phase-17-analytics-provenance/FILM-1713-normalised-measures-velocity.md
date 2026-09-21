@@ -71,9 +71,10 @@ full length if shorter), and ThruPlay (ads only, not on organic insights).
 **Instagram's `views` replaced `plays`** in 2025 — and since 2026-04-22 it has a
 **second, concurrent** denominator alongside it, aggregating boosted and
 crossposted-Facebook placements and including replays. That is the shape this
-spec attributes to Facebook alone. Its field name is unsettled (FILM-1725
-Check C), but the registry must be able to hold two live Instagram definitions,
-not one superseding another.
+spec attributes to Facebook alone. It is `total_views_count` on the Media
+node and `total_views` as an insights metric (Instagram changelog, 2026-04-22).
+The registry must be able to hold two live Instagram definitions, not one
+superseding another.
 
 **TikTok's Business-API `video_views` mixes organic and paid** inseparably.
 

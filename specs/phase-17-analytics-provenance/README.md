@@ -278,11 +278,13 @@ Recorded because each was believed at some point during this phase's planning:
   `video.upload`; `oauth/meta/config.ts:10` omits `instagram_manage_insights`.
   Only YouTube holds its analytics scope. This — not the seed fixture — is why
   `video_metrics` holds YouTube rows and nothing else.
-- **Providers request fewer fields than their own types declare.** TikTok asks
-  for five fields while declaring ten, omitting `full_video_watched_rate` —
-  its completion rate. Instagram never requests `follows` or `profile_visits`,
-  and the `reach` it *does* request is discarded at ingest for want of a
-  column. YouTube's daily query omits `averageViewPercentage`.
+- **Providers requested fewer fields than their own types declared.** TikTok
+  asked for five while declaring ten — five of which the endpoint does not have;
+  FILM-1721 removed them. Instagram never requests `follows` or `profile_visits`
+  (correct for Reels), never requests `ig_reels_avg_watch_time` or
+  `ig_reels_video_view_total_time` (documented, and discarded), and the `reach`
+  it *does* request is discarded at ingest for want of a column. YouTube's daily
+  query omits `averageViewPercentage`.
 - **`video_dim.duration_seconds` is the episode's, not the clip's**
   (`dim-sync.ts:166-168`). Short-form publishes in the live fixture average
   ~1,550 seconds, so any completion rate derived from it would be wrong.
@@ -314,7 +316,8 @@ a spec, a type or a request unless FILM-1721 documents it with a citation.**
 - **Instagram `profile_visits` and `follows` are FEED and STORY only — not
   REELS**, so Instagram's Audience stage has no per-media signal.
 - **Instagram has no replay metric, no retention graph and no completion rate.**
-  `reels_skip_rate` is the entire retention surface.
+  `reels_skip_rate` is the only curve-like surface — but average and total Reel
+  watch time are documented and simply never requested (FILM-1712).
 - **YouTube redefined `views` on 2026-08-27** across all formats (and for
   Shorts on 2025-03-31). `engagedViews` carries the previous methodology. Our
   series has a live discontinuity, which FILM-1722 exists to handle.
@@ -330,9 +333,12 @@ a spec, a type or a request unless FILM-1721 documents it with a citation.**
 
 ## Known limits — do not promise these
 
-**Four things the research asks for that no provider gives us:** "sends" as
-distinct from shares, replays and loops, stayed-to-watch and sub-second holds,
-and new-vs-returning viewers (Studio-only — FILM-1506 already records the
+**Four things the research asks for that no provider we ingest gives us:**
+"sends" as distinct from shares, replays and loops, stayed-to-watch and
+sub-second holds, and new-vs-returning viewers. *(Two qualifications:
+Instagram's `reposts_count` is a media-level pass-it-on signal beside the first,
+and Facebook's `fb_reels_replay_count` answers the second — on a platform we do
+not ingest yet.)* New-vs-returning viewers (Studio-only — FILM-1506 already records the
 subscribed-share proxy as the documented best available). Each becomes an
 `unsupported` entry with a creator-facing sentence, and an unbound stage where
 it was a platform's only candidate signal.

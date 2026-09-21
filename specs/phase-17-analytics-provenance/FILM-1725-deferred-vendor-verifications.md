@@ -15,10 +15,10 @@ checks, each able to falsify a row in the reference. One ran and resolved more
 than expected. **Two could not run, for reasons that no amount of care would
 have changed** — one needs a paid credential, the other an app registration.
 
-A third was added on 2026-09-21 (Check C), for a different reason: it is cheap,
-but we cannot run it because we never requested the permission. It is here
-because a first pass answered its question from a blog post instead, and got it
-wrong.
+A third was added on 2026-09-21 (Check C). Its original question — which
+Instagram aggregate names exist — was **settled the same day from documentation**,
+so what remains is narrower: whether our pinned Graph version returns them in
+practice.
 
 Their answers are not unknowable. They are unknown *to us, today, at a price we
 have not chosen to pay*. That is a different thing from an open research
@@ -98,34 +98,37 @@ when that spec is picked up**, since FILM-1711 has to register the scope anyway
 and will hold a working token. It is listed here so it is not lost if FILM-1711
 slips.
 
-## 3b. Check C — which Instagram aggregate-metric names exist
+## 3b. Check C — do the 2026-04-22 Instagram fields come back on our version
 
-Added 2026-09-21, and it exists because of a mistake made inside this phase.
+Added 2026-09-21, and narrowed the same day. It first asked which of two naming
+families exists, after an earlier pass took the short names from a blog post.
+The [Instagram changelog](https://developers.facebook.com/docs/instagram-platform/changelog) answers that: **both**, one number reached two ways — `*_count`
+as Media node fields, short names as insights metrics — and `facebook_views` is a
+media insights metric. Those are now in the reference's field index.
 
 | | |
 |---|---|
-| **Question** | Is it `total_views_count` / `total_like_count` / `total_comments_count` (Media node), `total_views` / `total_likes` / `total_comments` (insights page), or both? And does `facebook_views` exist at all? |
-| **Status today** | *Inferred*, both families recorded, neither requestable |
-| **Why it cannot be settled from docs** | Meta's two reference pages give different names, and the one carrying the short names **still documents `impressions` and `engagement`, removed 2025-04-21** — it is stale, so it cannot arbitrate. `facebook_views` appears only in an announcement blog |
+| **Question** | Does the pinned Graph version return `reposts_count`, `saved_count`, `shares_count` and the `total_*` aggregates for our media? |
+| **Status today** | Names documented and indexed; version behaviour *inferred* from the changelog's "applies to all versions" |
+| **Why a call is still worth making** | We pin **v23.0, released 2025-05-29**, before these fields existed. The changelog says they apply to all versions; one response confirms it, and costs nothing once we hold the permission |
 | **Why it did not run** | Needs `instagram_manage_insights`, which we have never requested |
 | **Cost to settle** | One call, once FILM-1711 lands. Effectively free at that point |
-| **Blocks** | FILM-1712 (cannot request them), FILM-1722 (cannot define the second Instagram denominator), FILM-1714 (Transmission binding) |
+| **Blocks** | Nothing outright. FILM-1712 can request the fields now; this confirms they arrive |
 
 ```bash
-# Once insights permission is held. Ask for both families and see which returns.
+# Once insights permission is held. Both should return on v23.0 if "all versions" holds.
 curl -s "https://graph.facebook.com/v23.0/<IG_MEDIA_ID>?fields=total_views_count,total_like_count,total_comments_count,reposts_count,saved_count,shares_count&access_token=$TOKEN"
 curl -s "https://graph.facebook.com/v23.0/<IG_MEDIA_ID>/insights?metric=total_views,total_likes,total_comments&access_token=$TOKEN"
 ```
 
-⚠️ **Note the version.** These fields were announced 2026-04-22; we pin **v23.0,
-released 2025-05-29**, which predates them. If both calls fail, try a current
-version before concluding the fields do not exist — that makes this check
-dependent on FILM-1723 as well as FILM-1711.
+If they do not come back on v23.0, repeat on a current version before
+concluding anything — which would make FILM-1712's Instagram work depend on
+FILM-1723 as well as FILM-1711.
 
-**The lesson is the check.** An earlier pass recorded the short names as fact on
-the strength of a blog post, which is the precise failure FILM-1721 exists to
-prevent, committed inside FILM-1721's own phase. A name is not settled until a
-reference page or a live response says so.
+**The lesson.** This check was over-corrected twice in one day: first a blog post
+was taken as fact, then two disagreeing pages were taken as proof nothing was
+known. A name is settled by a first-party reference page or a live response —
+and the changelog is a first-party reference page.
 
 ## 4. What is *not* deferred
 
@@ -156,7 +159,7 @@ Un-defer **Check A** on any of:
   access tiers again (it has done so twice since 2025)
 
 Un-defer **Check C** the moment FILM-1711 holds an Instagram token — it costs one
-call and unblocks three specs.
+call.
 
 Un-defer **Check B** on any of:
 
@@ -180,9 +183,8 @@ This spec is complete when both checks have been run and their answers recorded
       "30d from post creation" ceiling is restated per endpoint
 - [ ] Check B run, and any field the endpoint does not return is added to the
       reference's forbidden block
-- [ ] Check C run, the surviving Instagram aggregate names recorded in the field
-      index, and the losing family added to the forbidden block
-- [ ] `facebook_views` is confirmed or recorded as never having existed
+- [ ] Check C run on the pinned version, and the result recorded against the
+      2026-04-22 rows in the reference
 - [ ] `docs/platform-capability-reference.md` open-questions table no longer
       lists either check, and every row it *does* list still names an owner
 

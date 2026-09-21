@@ -360,13 +360,22 @@ And these are **genuinely undocumented** — no one may fill them with a guess:
 ## 10. Acceptance criteria
 
 - [x] Every metric named in any Phase 17 spec appears here with a citation
-- [x] Every row records the API surface, exact field name, scope, access level and data window
-- [x] Every inferred claim is in the ledger, and nothing inferred is stated as fact elsewhere
-- [x] Every genuinely undocumented item has a named owner and the question to ask
-- [x] Each row carries the date it was verified
+- [x] Every row records the API surface, exact field name, scope, access level and data window —
+      *per endpoint block and per section, not per row*: the field index gives surface
+      and exact name; scope, access and window live in the platform sections above it
+- [x] Every inferred claim is in the ledger, and nothing inferred is stated as fact elsewhere —
+      *this was ticked while three inferred claims were stated flatly (X Enterprise-only
+      twice, X user context once). Corrected in review; re-checked mechanically*
+- [x] Every genuinely undocumented item has a named owner and the question to ask —
+      *the owner is a spec, not a person*. Every open question names one; none names a
+      person, because that is a staffing decision the document cannot make
+- [x] Each row carries the date it was verified — *per section* (§11's wording), not per
+      row. A date records the last verification, not the last edit
 - [x] A spec, type or request naming a field absent from this document fails review —
-      **automated**, not left to review: the guard parses the field index out of
-      the document and fails on an undocumented request or a retired name
+      **automated** for types and requests, not for specs: the guard parses the field
+      index out of the document and fails on an undocumented request, on a request that
+      draws from another endpoint's block, or on a retired name — including one read by
+      property access. Spec prose is still checked by review
 - [x] Our own type declarations are nowhere cited as evidence of a platform's capability
 - [x] The five field names TikTok does not have are recorded, so they are not re-added —
       and removed from the code that declared them

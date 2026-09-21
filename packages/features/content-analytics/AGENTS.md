@@ -104,7 +104,7 @@ import type {
 
 ### TikTok API Limitations
 
-- Rate limit: 1000 requests/day
+- Rate limit: 600 requests/minute per endpoint (Display API)
 - Daily breakdown not available per-video
 - Some metrics only available for Creator accounts
 - Limited metrics compared to YouTube
@@ -122,8 +122,14 @@ reachable on any surface we can authorise. See
 
 ## API Rate Limits
 
-- **YouTube Analytics API**: 200 queries/day per project
-- **TikTok Creator Tools API**: 1000 requests/day
+- **YouTube Analytics API**: cost is per query with no published number — read
+  the project's own Cloud Console. The Reporting API has no meaningful quota
+- **TikTok Display API**: 600 requests/minute per endpoint, 20 video IDs per request
+- **Instagram**: `4800 × impressions` per 24h per app-and-user pair, so dormant
+  creators throttle first
+
+Sourced in [docs/platform-capability-reference.md](../../../docs/platform-capability-reference.md);
+the figures previously here (1000/day, 200/day) had no citation.
 - Batch requests where possible
 - Cache responses to reduce API calls
 

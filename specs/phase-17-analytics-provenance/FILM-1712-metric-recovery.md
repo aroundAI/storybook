@@ -23,7 +23,7 @@ very different amounts and only one of them is cheap.
 |---|---|---|
 | Requested, dropped at ingest | Instagram `reach` | a column and a mapping |
 | Not requested, same endpoint | YouTube ×3, **Instagram ×2 (watch time)** | add to a metrics string |
-| Not requested, needs the naming settled | Instagram ×3 aggregates + `reposts_count` | one call, then a request |
+| Not requested, Media node fields | Instagram `reposts_count`, `saved_count`, `shares_count` + 3 aggregates | add to the `?fields=` list |
 | **Different API entirely** | TikTok ×5 | a second integration |
 | **Does not exist for this surface** | Instagram `follows`, `profile_visits` on Reels | record as a limit |
 
@@ -93,18 +93,19 @@ known. Two groups, and they are not equally safe to act on:
 - **Confirmed on the Media node reference**, FEED and REELS: `reposts_count`,
   `saved_count`, `shares_count`. `reposts_count` is the first media-level
   transmission signal Instagram has offered, and is relevant to FILM-1714.
-- **Not settled**: the aggregate three appear as `total_views_count`,
-  `total_like_count`, `total_comments_count` on the Media node reference and as
-  `total_views`, `total_likes`, `total_comments` on the insights page — which
-  still lists `impressions` and `engagement`, removed 2025-04-21, so it cannot
-  be trusted to settle it. An earlier draft of this paragraph named only the
-  short family, on the strength of an announcement blog post. That was the
-  failure FILM-1721 exists to prevent, committed inside FILM-1721's own phase.
+- **The aggregates, both spellings documented.** The [Instagram changelog](https://developers.facebook.com/docs/instagram-platform/changelog) names each as
+  a pair — `total_views_count` / `total_views`, `total_like_count` /
+  `total_likes`, `total_comments_count` / `total_comments` — "available through
+  both the IG Media and Insights endpoints": the `*_count` spelling is a Media
+  node field, the short one an insights metric. Facebook Login only, "applies to
+  all versions". An earlier revision of this spec called the pair an unsettled
+  either-or, first from a blog post and then from two Meta pages that
+  disagreed; the changelog is the reference that settles it.
 
 The aggregates are a **different denominator** from `views` — they fold in
 boosted and crossposted-Facebook placements, and `total_views_count` explicitly
 includes **replays** — so they must not be substituted for it. FILM-1722 owns
-defining them, once FILM-1725 Check C says what they are called.
+defining them.
 
 See [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md).
 
@@ -118,9 +119,9 @@ Also worth taking while here, already returned: `total_interactions`.
 
 `reposts_count`, `saved_count` and `shares_count` (Media node, FEED and REELS,
 added 2026-04-22) are new requests rather than discards, and are confirmed by
-the field reference. The **aggregate** three are not — `total_views_count` vs
-`total_views` are two competing names across two Meta pages, one of which is
-stale. Settle the family before requesting either; FILM-1725 Check C.
+the field reference. Request the aggregates as Media node fields
+(`total_views_count`, `total_like_count`, `total_comments_count`) alongside them —
+one request, not a second insights call.
 
 ## 4. What is a second integration
 
@@ -202,7 +203,7 @@ is storage with no purpose.
 - [ ] `ig_reels_avg_watch_time` and `ig_reels_video_view_total_time` are requested for REELS, and their unit is confirmed empirically before the value is stored
 - [ ] Instagram `watch_time_seconds` is a measurement or an honest null, never a hardcoded zero
 - [ ] `reposts_count`, `saved_count` and `shares_count` are requested for FEED and REELS
-- [ ] No aggregate Instagram metric is requested under either naming family until FILM-1725 Check C settles which exists
+- [ ] The aggregates are requested as Media node fields, and none is stored in `views` or labelled as views — they include boosted and crossposted placements, and `total_views_count` includes replays
 - [ ] The five TikTok field names that do not exist are recorded as such, so they are not re-added
 - [ ] Instagram `follows`/`profile_visits` are recorded as unavailable for Reels rather than requested
 - [ ] No provider maps a never-requested field to a column as zero
