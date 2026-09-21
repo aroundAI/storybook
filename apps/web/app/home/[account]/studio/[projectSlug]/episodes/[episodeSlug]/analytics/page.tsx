@@ -99,7 +99,24 @@ export default function EpisodeAnalyticsPage() {
           </div>
         )}
 
-        {publishId ? (
+        {publishQuery.isError ? (
+          // The lookup failing is not the episode having no video. The
+          // action stopped discarding that error; discarding it here
+          // instead would put the section back to vanishing silently.
+          <section
+            className="mt-6 flex flex-col gap-2 border-t pt-6"
+            data-test="episode-retention"
+          >
+            <h3 className="text-base font-semibold">Audience retention</h3>
+            <p
+              className="text-sm text-muted-foreground"
+              role="alert"
+              data-test="episode-retention-error"
+            >
+              That episode&rsquo;s video could not be found.
+            </p>
+          </section>
+        ) : publishId ? (
           <section
             className="mt-6 flex flex-col gap-2 border-t pt-6"
             data-test="episode-retention"

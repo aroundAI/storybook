@@ -971,6 +971,10 @@ async function scanScopeSteps() {
       readRowsOf('GROUP BY video_id, elapsed_ratio', () =>
         queryRetentionCurves({ videoIds, projectIds }),
       ),
+    daily: () =>
+      readRowsOf('toString(metric_date)', () =>
+        queryDailyTimeSeries({ videoIds, projectId: PROJECT }),
+      ),
     'data-days': () =>
       readRowsOf('DISTINCT toString(metric_date)', () =>
         queryDataDaysForVideos({

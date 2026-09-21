@@ -177,6 +177,55 @@ test.describe('FILM-1616 — weekly diagnostics', () => {
     await expect(page.locator('[data-test="episode-retention"]')).toBeVisible();
   });
 
+  test('reports a failed video lookup rather than rendering nothing', async ({
+    page,
+  }) => {
+    const team = await seedTeamAccount();
+    const project = await seedProject(team);
+    const connection = await seedYouTubeConnection(team.accountId, 'Channel');
+    const video = await seedPublishedEpisode(project.id, connection, {
+      number: 1,
+    });
+
+    await signInAs(page, team);
+
+    // Corrupt the episode id the lookup receives, so the action fails. The
+    // page cannot tell one failure from another — what matters is that it
+    // does not render a failure as "this episode has no video", which is
+    // what gating solely on the resolved publish id did.
+    await page.route('**/*', async (route) => {
+      const request = route.request();
+      const body = request.postData() ?? '';
+
+      if (
+        request.method() === 'POST' &&
+        request.headers()['next-action'] &&
+        body.includes('episodeId')
+      ) {
+        await route.continue({
+          postData: body.replace(
+            /"episodeId":"[^"]+"/,
+            '"episodeId":"not-a-uuid"',
+          ),
+        });
+
+        return;
+      }
+
+      await route.continue();
+    });
+
+    await page.goto(
+      `/home/${team.slug}/studio/${project.slug}/episodes/${video.episodeSlug}/analytics`,
+    );
+
+    await expect(
+      page.locator('[data-test="episode-retention-error"]'),
+    ).toBeVisible();
+
+    await page.unroute('**/*');
+  });
+
   test('the episode page loads its analytics through an action', async ({
     page,
   }) => {

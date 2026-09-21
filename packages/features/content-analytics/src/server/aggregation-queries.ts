@@ -154,7 +154,11 @@ export async function getEpisodeAnalytics(
   // Get episode details
   const { data: episode, error: episodeError } = await client
     .from('episodes')
-    .select('id, title, number, season_id')
+    // `project_id` so the ClickHouse reads below can be bounded by it.
+    // `video_metrics` is ORDER BY (project_id, …), so filtering on
+    // `video_id` alone scans the table with FINAL — measured at 733,908
+    // rows against 121,317 for the same answer, twice per page load.
+    .select('id, title, number, season_id, project_id')
     .eq('id', episodeId)
     .single();
 
@@ -181,7 +185,10 @@ export async function getEpisodeAnalytics(
     : {};
 
   // Query ClickHouse — per-publish totals
-  const perVideoTotals = await queryTotalsByVideoIds(publishIds, dateFilters);
+  const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
+    ...dateFilters,
+    projectIds: [episode.project_id],
+  });
 
   // Calculate totals
   let totalViews = 0;
@@ -234,6 +241,9 @@ export async function getEpisodeAnalytics(
   // Daily trend from ClickHouse
   const dailyData = await queryDailyTimeSeries({
     videoIds: publishIds,
+    // `projectId`, not `projectIds`: `buildWhereClause` throws when it gets
+    // both, so each caller picks the one its query function exposes.
+    projectId: episode.project_id,
     ...dateFilters,
   });
 
