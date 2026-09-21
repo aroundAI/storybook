@@ -1,3 +1,5 @@
+import { vendorUrl } from '@kit/shared/vendors';
+
 import type {
   BraveNewsResult,
   BraveSearchOptions,
@@ -6,7 +8,7 @@ import type {
   ResearchResult,
 } from './types';
 
-const BRAVE_API_BASE = 'https://api.search.brave.com/res/v1';
+const BRAVE_API_BASE = `${vendorUrl('brave-search')}/res/v1`;
 
 /**
  * Brave Search client for enriching social post content

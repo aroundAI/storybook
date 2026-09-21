@@ -1,3 +1,5 @@
+import { vendorUrl } from './resolver';
+
 /**
  * The one Meta Graph API version this repository calls (FILM-1723).
  *
@@ -41,9 +43,9 @@ export const META_GRAPH_VERSION = 'v23.0';
 export const META_GRAPH_VERSION_RELEASED = '2025-05-29';
 export const META_GRAPH_VERSION_EXPIRES = '2027-10-08';
 
-const META_GRAPH_HOST = 'https://graph.facebook.com';
-const META_GRAPH_VIDEO_HOST = 'https://graph-video.facebook.com';
-const META_DIALOG_HOST = 'https://www.facebook.com';
+const META_GRAPH_HOST = vendorUrl('meta-graph');
+const META_GRAPH_VIDEO_HOST = vendorUrl('meta-graph-video');
+const META_DIALOG_HOST = vendorUrl('meta-oauth');
 
 export const META_GRAPH_BASE = `${META_GRAPH_HOST}/${META_GRAPH_VERSION}`;
 

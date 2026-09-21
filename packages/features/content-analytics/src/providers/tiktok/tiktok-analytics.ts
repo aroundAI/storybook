@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { SubscriberCountResult } from '@kit/shared/subscribers';
+import { vendorUrl } from '@kit/shared/vendors';
 
 import type {
   TikTokAccountAnalytics,
@@ -9,7 +10,7 @@ import type {
   TikTokVideoData,
 } from './types';
 
-const TIKTOK_API_BASE = 'https://open.tiktokapis.com/v2';
+const TIKTOK_API_BASE = `${vendorUrl('tiktok')}/v2`;
 
 /**
  * Error thrown when the TikTok connection is missing required scopes

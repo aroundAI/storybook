@@ -9,6 +9,7 @@ import {
 } from '@kit/publishing/oauth/youtube';
 import { encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
+import { vendorUrl } from '@kit/shared/vendors';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -117,7 +118,11 @@ export async function GET(request: NextRequest) {
   // Get ALL channels (including brand channels) using googleapis
   const oauth2Client = new OAuth2Client();
   oauth2Client.setCredentials({ access_token: tokens.access_token });
-  const youtube = youtubeApi({ version: 'v3', auth: oauth2Client });
+  const youtube = youtubeApi({
+    version: 'v3',
+    auth: oauth2Client,
+    rootUrl: vendorUrl('youtube-data'),
+  });
 
   interface ChannelInfo {
     id: string;

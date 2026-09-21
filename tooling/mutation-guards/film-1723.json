@@ -64,9 +64,9 @@
     {
       "name": "X goes back to the legacy API host",
       "kind": "unit",
-      "file": "packages/shared/src/vendors/x.ts",
-      "find": "const X_API_HOST = 'https://api.x.com';",
-      "replace": "const X_API_HOST = 'https://api.twitter.com';",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "  'x-api': 'https://api.x.com',",
+      "replace": "  'x-api': 'https://api.twitter.com',",
       "cwd": "packages/shared",
       "test": "__tests__/vendor-api-versions.test.ts",
       "pattern": "declares each pin exactly once"

@@ -16,6 +16,12 @@ export async function register() {
   // Initialize local jobs system (cron + workers)
   // Only runs on server-side Node.js runtime
   if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { reportIgnoredVendorOverrides } = await import(
+      './lib/vendor-overrides'
+    );
+
+    await reportIgnoredVendorOverrides();
+
     const { startCronJobs, startWorkers, isRedisAvailable } = await import(
       '@kit/jobs'
     );

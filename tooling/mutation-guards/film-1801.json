@@ -1,0 +1,215 @@
+{
+  "feature": "FILM-1801",
+  "mutations": [
+    {
+      "name": "The resolver honours an override in production",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "    (env.NODE_ENV === 'development' || env.NODE_ENV === 'test') &&\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-url-resolver.test.ts",
+      "pattern": "ignores an override in production"
+    },
+    {
+      "name": "The vendor constants follow an override in production",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "    (env.NODE_ENV === 'development' || env.NODE_ENV === 'test') &&\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-url-resolver.test.ts",
+      "pattern": "stay on the real hosts in production"
+    },
+    {
+      "name": "The NODE_ENV rule becomes anything-but-production, which an unset NODE_ENV passes",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "    (env.NODE_ENV === 'development' || env.NODE_ENV === 'test') &&\n",
+      "replace": "    env.NODE_ENV !== 'production' &&\n",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-url-resolver.test.ts",
+      "pattern": "NODE_ENV is unset or unrecognised"
+    },
+    {
+      "name": "An override no longer needs VENDOR_SANDBOX=1",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "    env.VENDOR_SANDBOX === '1' &&\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-url-resolver.test.ts",
+      "pattern": "without VENDOR_SANDBOX=1"
+    },
+    {
+      "name": "VENDOR_SANDBOX accepts any truthy value",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "    env.VENDOR_SANDBOX === '1' &&\n",
+      "replace": "    Boolean(env.VENDOR_SANDBOX) &&\n",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-url-resolver.test.ts",
+      "pattern": "without VENDOR_SANDBOX=1"
+    },
+    {
+      "name": "An override is honoured inside an AWS Lambda",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "    env.VENDOR_SANDBOX === '1' &&\n    !env.AWS_LAMBDA_FUNCTION_NAME\n",
+      "replace": "    env.VENDOR_SANDBOX === '1'\n",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-url-resolver.test.ts",
+      "pattern": "inside an AWS Lambda"
+    },
+    {
+      "name": "An override may name a public address",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "    isLocalHostname(url.hostname) &&\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-url-resolver.test.ts",
+      "pattern": "rather than sending a token there"
+    },
+    {
+      "name": "Any dotless-looking suffix counts as local",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "    hostname.endsWith('.localhost') ||",
+      "replace": "    hostname.includes('localhost') ||",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-url-resolver.test.ts",
+      "pattern": "rather than sending a token there"
+    },
+    {
+      "name": "An override may carry credentials",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "    !url.username &&\n    !url.password &&\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-url-resolver.test.ts",
+      "pattern": "rather than sending a token there"
+    },
+    {
+      "name": "A bad override falls back to the real vendor instead of throwing",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "  if (!override) {\n    throw new Error(",
+      "replace": "  if (!override) return VENDORS[vendor];\n\n  if (!override) {\n    throw new Error(",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-url-resolver.test.ts",
+      "pattern": "rather than sending a token there"
+    },
+    {
+      "name": "Production stops reporting the overrides it ignores",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "    .filter((name) => !vendorSandboxEnabled(env) || !known.has(name))",
+      "replace": "    .filter((name) => !known.has(name))",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-url-resolver.test.ts",
+      "pattern": "names every VENDOR_URL_"
+    },
+    {
+      "name": "Server start no longer logs an ignored override",
+      "kind": "unit",
+      "file": "apps/web/lib/vendor-overrides.ts",
+      "find": "  const ignored = ignoredVendorOverrides(env);",
+      "replace": "  const ignored = ignoredVendorOverrides({});",
+      "cwd": "apps/web",
+      "test": "lib/__tests__/vendor-overrides.test.ts",
+      "pattern": "logs each override present in production"
+    },
+    {
+      "name": "A provider writes a vendor host literal again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/tiktok/tiktok-provider.ts",
+      "find": "const TIKTOK_API_BASE = `${vendorUrl('tiktok')}/v2`;",
+      "replace": "const TIKTOK_API_BASE = 'https://open.tiktokapis.com/v2';",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "no vendor host or version literal"
+    },
+    {
+      "name": "A publish lambda writes a vendor host literal again",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/handlers/linkedin.ts",
+      "find": "    `${vendorUrl('linkedin-api')}/v2/ugcPosts`,",
+      "replace": "    'https://api.linkedin.com/v2/ugcPosts',",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "no vendor host or version literal"
+    },
+    {
+      "name": "An AI provider pins its own base URL again",
+      "kind": "unit",
+      "file": "packages/llm/src/providers/deepseek.ts",
+      "find": "baseURL: vendorUrl('deepseek'),",
+      "replace": "baseURL: 'https://api.deepseek.com',",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "no vendor host or version literal"
+    },
+    {
+      "name": "An OAuth dialog host is written beside a permalink, which the public-page allowance must not hide",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/linkedin/linkedin-provider.ts",
+      "find": "const LINKEDIN_API_BASE = `${vendorUrl('linkedin-api')}/v2`;",
+      "replace": "const LINKEDIN_API_BASE = `${vendorUrl('linkedin-api')}/v2`;\nconst LINKEDIN_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken';",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "no vendor host or version literal"
+    },
+    {
+      "name": "The YouTube upload drops its per-call rootUrl and goes to the real host",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/youtube/youtube-provider.ts",
+      "find": "      {\n        rootUrl: vendorUrl('youtube-data'),\n        onUploadProgress:",
+      "replace": "      {\n        onUploadProgress:",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/youtube-root-url.test.ts",
+      "pattern": "video upload and the thumbnail upload"
+    },
+    {
+      "name": "The YouTube client is built without a rootUrl",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/youtube/youtube-provider.ts",
+      "find": "      auth: oauth2Client,\n      rootUrl: vendorUrl('youtube-data'),\n    });",
+      "replace": "      auth: oauth2Client,\n    });",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/youtube-root-url.test.ts",
+      "pattern": "plain Data API call"
+    },
+    {
+      "name": "The YouTube Reporting client is built without a rootUrl",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-reporting.ts",
+      "find": "      rootUrl: vendorUrl('youtube-reporting'),\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/youtube-root-url.test.ts",
+      "pattern": "Reporting API"
+    },
+    {
+      "name": "The YouTube Analytics client is built without a rootUrl",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "      rootUrl: vendorUrl('youtube-analytics'),\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/youtube-root-url.test.ts",
+      "pattern": "Analytics API and Data API"
+    },
+    {
+      "name": "The analytics Data API client takes the Analytics host",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "      rootUrl: vendorUrl('youtube-data'),\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/youtube-root-url.test.ts",
+      "pattern": "Analytics API and Data API"
+    }
+  ]
+}
