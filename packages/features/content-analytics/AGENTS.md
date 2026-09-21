@@ -192,7 +192,7 @@ const insights = await provider.getMediaInsights({
 
 // Get account overview metrics
 const accountInsights = await provider.getAccountInsights('week');
-// Returns: views, reach, profileViews, websiteClicks, followerCount
+// Returns: views, reach (totals over the period), followerCount (null when absent)
 ```
 
 ### Types

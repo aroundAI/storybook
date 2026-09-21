@@ -58,7 +58,7 @@ interface GraphAPIError {
  * Instagram Insights Provider
  *
  * Fetches engagement and reach metrics for Reels and videos
- * on Professional Instagram accounts using Meta Graph API v18.0.
+ * on Professional Instagram accounts using Meta Graph API v23.0.
  */
 export class InstagramInsightsProvider {
   constructor(
@@ -335,7 +335,11 @@ export class InstagramInsightsProvider {
         fetch(
           `${GRAPH_API_BASE}/${this.instagramAccountId}/insights?` +
             new URLSearchParams({
-              metric: 'views,reach,profile_views,website_clicks',
+              // Account-level `views` is `total_value` only, and
+              // `profile_views` / `website_clicks` left the metrics table
+              // when their time series ended (January 2025).
+              metric: 'views,reach',
+              metric_type: 'total_value',
               period: 'day',
               since: since.toString(),
               until: now.toString(),
@@ -360,10 +364,7 @@ export class InstagramInsightsProvider {
       }
 
       const metricsData = (await metricsResponse.json()) as {
-        data?: Array<{
-          name: string;
-          values: Array<{ value: number }>;
-        }>;
+        data?: Array<{ name: string; total_value?: { value: number } }>;
       } & GraphAPIError;
 
       const accountData = (await accountResponse.json()) as {
@@ -382,14 +383,17 @@ export class InstagramInsightsProvider {
         );
       }
 
-      const metrics = this.aggregateMetrics(metricsData.data ?? []);
+      const totals = Object.fromEntries(
+        (metricsData.data ?? []).map((item) => [
+          item.name,
+          item.total_value?.value ?? 0,
+        ]),
+      );
 
       return {
-        views: metrics.views ?? 0,
-        reach: metrics.reach ?? 0,
-        profileViews: metrics.profile_views ?? 0,
-        websiteClicks: metrics.website_clicks ?? 0,
-        followerCount: accountData.followers_count ?? 0,
+        views: totals.views ?? 0,
+        reach: totals.reach ?? 0,
+        followerCount: accountData.followers_count ?? null,
       };
     } catch (error) {
       if (isPermissionError(error)) {
@@ -471,22 +475,6 @@ export class InstagramInsightsProvider {
         count: result.value ?? 0,
       }))
       .sort((a, b) => b.count - a.count);
-  }
-
-  /**
-   * Aggregates daily metrics into totals
-   */
-  private aggregateMetrics(
-    data: Array<{ name: string; values: Array<{ value: number }> }>,
-  ): Record<string, number> {
-    return data.reduce(
-      (acc, metric) => {
-        const values = metric.values ?? [];
-        acc[metric.name] = values.reduce((sum, v) => sum + (v.value ?? 0), 0);
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
   }
 }
 

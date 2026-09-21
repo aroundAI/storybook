@@ -216,40 +216,53 @@ describe('InstagramInsightsProvider', () => {
   });
 
   describe('getAccountInsights', () => {
-    it('should fetch account insights for a week', async () => {
-      // Mock metrics response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            data: [
-              {
-                name: 'views',
-                values: [{ value: 1000 }, { value: 1500 }],
-              },
-              { name: 'reach', values: [{ value: 500 }, { value: 700 }] },
-              { name: 'profile_views', values: [{ value: 50 }, { value: 60 }] },
-              {
-                name: 'website_clicks',
-                values: [{ value: 10 }, { value: 15 }],
-              },
-            ],
-          }),
-      });
+    // The documented account-insights contract, re-read 2026-09-21: `views`
+    // is `total_value` only, and `profile_views` / `website_clicks` are gone
+    // from the metrics table (their time series ended January 2025). A
+    // `total_value` item carries `total_value: { value }`, not `values[]`.
+    it('requests only documented metrics, as a total', async () => {
+      mockFetch
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ data: [] }) })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ followers_count: 5000 }) });
 
-      // Mock follower count response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ followers_count: 5000 }),
-      });
+      await provider.getAccountInsights('week');
+
+      const params = new URL(mockFetch.mock.calls[0]![0] as string).searchParams;
+
+      expect(params.get('metric')!.split(',')).toEqual(['views', 'reach']);
+      expect(params.get('metric_type')).toBe('total_value');
+      expect(params.get('period')).toBe('day');
+    });
+
+    it('reads the documented total_value response shape', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              data: [
+                { name: 'views', period: 'day', total_value: { value: 2500 } },
+                { name: 'reach', period: 'day', total_value: { value: 1200 } },
+              ],
+            }),
+        })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ followers_count: 5000 }) });
 
       const result = await provider.getAccountInsights('week');
 
-      expect(result.views).toBe(2500); // Sum of daily values
-      expect(result.reach).toBe(1200);
-      expect(result.profileViews).toBe(110);
-      expect(result.websiteClicks).toBe(25);
-      expect(result.followerCount).toBe(5000);
+      expect(result).toEqual({ views: 2500, reach: 1200, followerCount: 5000 });
+    });
+
+    it('reports an absent follower count as null, not zero', async () => {
+      mockFetch
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ data: [] }) })
+        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) });
+
+      const result = await provider.getAccountInsights('week');
+
+      // FILM-1607: an absent count is unknown, and a zero would read as a
+      // measurement.
+      expect(result.followerCount).toBeNull();
     });
 
     it('should throw InstagramInsightsScopeError on permission error', async () => {
