@@ -309,6 +309,27 @@ export async function seedProject(
 }
 
 /**
+ * A season on a project.
+ *
+ * The Overview, Content and Audience reads reach a project's publishes
+ * through `episodes → seasons → project`, with inner joins, so an episode
+ * that belongs to no season is invisible to all three however complete its
+ * publish is. A spec of those tabs needs one of these first.
+ */
+export async function seedSeason(
+  projectId: string,
+  number = 1,
+): Promise<{ seasonId: string }> {
+  const season = await insertRow<{ id: string }>(
+    'seasons',
+    { project_id: projectId, number, name: `Season ${number}` },
+    { key: SERVICE_ROLE_KEY },
+  );
+
+  return { seasonId: season.id };
+}
+
+/**
  * An episode with one published publish to a channel.
  *
  * `listProjectChannels` derives a project's channels from its *published*
@@ -318,7 +339,12 @@ export async function seedProject(
 export async function seedPublishedEpisode(
   projectId: string,
   connectionId: string,
-  options: { number?: number; platform?: string; title?: string } = {},
+  options: {
+    number?: number;
+    platform?: string;
+    title?: string;
+    seasonId?: string;
+  } = {},
 ): Promise<{ episodeId: string; publishId: string; episodeSlug: string }> {
   const auth = { key: SERVICE_ROLE_KEY };
   const number = options.number ?? 1;
@@ -336,6 +362,7 @@ export async function seedPublishedEpisode(
       number,
       title,
       slug: episodeSlug,
+      ...(options.seasonId ? { season_id: options.seasonId } : {}),
     },
     auth,
   );
