@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS fact_extraction_jobs (
     CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
   facts_extracted INTEGER NOT NULL DEFAULT 0,
   error_message TEXT,
-  created_by UUID REFERENCES auth.users(id),
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );

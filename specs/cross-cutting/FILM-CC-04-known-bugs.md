@@ -19,6 +19,17 @@ statement turned out wrong on testing, the entry says so.
 
 ## KB-1 — Deleting a user who has created anything fails
 
+> **Fixed (2026-09-21), #PRNUM.** All seventeen keys are `ON DELETE SET NULL`
+> (`20260921205124_authors-deletable.sql`). The keys were not the whole bug:
+> three BEFORE UPDATE triggers undid or refused the key's own `SET NULL`
+> (`trigger_set_user_tracking`, `kit.prevent_memberships_update`,
+> `enforce_verified_facts_update_rules`), so each now lets through a
+> foreign-key action that clears an author, and nothing else. Kept here as
+> the record of what was found. Still open, for the owner: whether
+> `immutable_events.created_by` and `verified_facts.verified_by` should keep a
+> snapshot of the author's name; and `accounts` / `accounts_memberships` now
+> diverge from the upstream kit, which a future upstream sync must not undo.
+
 **Severity:** Medium — affects account deletion for every user who has
 ever created a project, and super-admin "delete user". Few users today.
 **Found:** FILM-1610 review, round 3.
@@ -101,11 +112,15 @@ FILM-1610 (#264) already fixed the same defect on
 
 ### Acceptance criteria
 
-- [ ] pgTAP: a user who created a project, a membership, a verified fact
+- [x] pgTAP: a user who created a project, a membership, a verified fact
       and a social post can be deleted; each row stays with a null author
-- [ ] E2E: "delete user flow" runs with a user who has created a project
-      and fails if the delete is refused
-- [ ] The query above returns no rows for authorship columns
+      (`authors-deletable.test.sql`, one row per key — all seventeen)
+- [x] E2E: "delete user flow" runs with a user who has created a project
+      and fails if the delete is refused (`admin.spec.ts`; the same for a
+      user deleting their own account, in `account.spec.ts`)
+- [x] The query above returns no rows for authorship columns (no rows at
+      all; asserted by the pgTAP file, so a new key without an action fails
+      the suite)
 
 ---
 
@@ -498,4 +513,5 @@ can be wrong. Not worth it until someone has a real account that is slow.
 | KB-6 (part) | Experiment log and note refusals replaced in production | #264 (round 4) |
 | KB-9, KB-10 | Hook Lab: a cross-tenant retention read, and a feature that could not be used and measured the wrong point | #269 (removed) |
 | KB-11 | Another account could read a public project's analytics | FILM-1615 Step 0 |
+| KB-1 | Deleting a user who had created anything failed: seventeen authorship keys to `auth.users` had no ON DELETE action, and three triggers refused or undid the key's own set-null | #PRNUM |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
