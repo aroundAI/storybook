@@ -6,7 +6,6 @@ import type {
   TikTokAccountAnalytics,
   TikTokAnalyticsInput,
   TikTokAnalyticsResult,
-  TikTokAudienceData,
   TikTokVideoData,
 } from './types';
 
@@ -156,7 +155,6 @@ export class TikTokAnalyticsProvider {
       // research.data.vra) are restricted to non-profit academic researchers.
       // `research.creator_insights` was never a real scope. FILM-1711 owns
       // finding a source. See docs/platform-capability-reference.md.
-      const audience: TikTokAudienceData | undefined = undefined;
 
       return {
         videoId,
@@ -182,7 +180,7 @@ export class TikTokAnalyticsProvider {
           fullVideoWatchedRate: 0,
         },
         dailyData: [], // TikTok doesn't provide per-video daily breakdown
-        audience,
+        audience: undefined,
         // The Display API has no traffic-source field. TikTok's is
         // `impression_sources` on the Business API, which needs a separate
         // app and a TikTok Business account. The `TikTokTrafficSource` shape
@@ -287,36 +285,6 @@ export class TikTokAnalyticsProvider {
       }
       throw error;
     }
-  }
-
-  /**
-   * Parses audience data from TikTok API response
-   */
-  private parseAudienceData(data: unknown): TikTokAudienceData | undefined {
-    if (!data || typeof data !== 'object') return undefined;
-
-    const typedData = data as {
-      audience_countries?: Array<{ country: string; percentage: number }>;
-      audience_genders?: { male?: number; female?: number; other?: number };
-      audience_ages?: Array<{ age_range: string; percentage: number }>;
-    };
-
-    return {
-      countries: (typedData.audience_countries ?? []).map((c) => ({
-        country: c.country,
-        percentage: c.percentage,
-      })),
-      genderDistribution: {
-        male: typedData.audience_genders?.male ?? 0,
-        female: typedData.audience_genders?.female ?? 0,
-        other: typedData.audience_genders?.other ?? 0,
-      },
-      ageGroups: (typedData.audience_ages ?? []).map((a) => ({
-        ageGroup:
-          a.age_range as TikTokAudienceData['ageGroups'][number]['ageGroup'],
-        percentage: a.percentage,
-      })),
-    };
   }
 }
 

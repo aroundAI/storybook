@@ -323,28 +323,6 @@ describe('TikTokAnalyticsProvider', () => {
       ).rejects.toThrow('Something went wrong');
     });
 
-    it('should handle audience data fetch failure gracefully', async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                videos: [{ id: 'test-video-id', view_count: 100 }],
-              },
-            }),
-        })
-        .mockRejectedValueOnce(new Error('Audience fetch failed'));
-
-      const result = await provider.getVideoAnalytics({
-        videoId: 'test-video-id',
-      });
-
-      // Should still return result without audience data
-      expect(result.videoId).toBe('test-video-id');
-      expect(result.audience).toBeUndefined();
-    });
-
     it('should throw TikTokAnalyticsScopeError for account analytics auth errors', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,

@@ -136,6 +136,4 @@ export interface TikTokVideoData {
   like_count?: number;
   comment_count?: number;
   share_count?: number;
-  /** The published asset's duration, in seconds. FILM-1710. */
-  duration?: number;
 }
