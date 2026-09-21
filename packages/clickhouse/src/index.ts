@@ -70,6 +70,42 @@ export type {
   TrafficSourceGroup,
   TrafficSourceRow,
 } from './lib/traffic-groups';
+
+// The capability matrix (FILM-1703). Pure for the same reason as the traffic
+// groups above, and it has to stay in code: a copy in the database could not
+// be bound to the writers, which is the only thing that keeps it true.
+export {
+  ANALYTICS_PLATFORMS,
+  AUDIENCE_FAMILY_DIMENSIONS,
+  CAPABILITY_MATRIX,
+  INGESTION_MARKERS,
+  METRIC_FAMILIES,
+  TABLE_WRITERS,
+  WRITER_CALL_SITES,
+  accessFor,
+  allowedMetricSources,
+  capabilityFor,
+  coverageSummary,
+  platformsWithData,
+  unclaimedPlatforms,
+} from './lib/data-provenance';
+export type {
+  AccessState,
+  AccountTypeGate,
+  Availability,
+  CapabilityCitation,
+  CoverageCaveat,
+  CoverageSummary,
+  DataWindow,
+  DerivationMethod,
+  IngestionMarker,
+  MetricFamily,
+  OurAccessState,
+  PlatformCapability,
+  SourceTable,
+  SupportLevel,
+} from './lib/data-provenance';
+
 export type {
   SubscriberPoint,
   SubscriberSource,

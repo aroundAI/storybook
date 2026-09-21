@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1703
 title: Data Provenance Capability Model
-status: DRAFT
+status: ✅ DONE
 effort: M
 dependencies: FILM-1721
 ---
@@ -281,25 +281,25 @@ for TikTok means the matrix is wrong.
 
 ## 7. Acceptance criteria
 
-- [ ] The module imports nothing but types, and a client component can import it without pulling in the ClickHouse driver
-- [ ] Every metric family has an entry for every value of `AnalyticsPlatform`
-- [ ] Adding a platform to `AnalyticsPlatform` fails the test suite until the matrix is extended
-- [ ] `unsupported` and `not_ingested` are distinguishable by a consumer, and every `not_ingested` entry names what blocks it
-- [ ] Every non-`native` entry carries a sentence written for a creator, not for a developer
-- [ ] Adding a writer for a table in an unlisted file fails CI
-- [ ] Removing a writer from a listed file fails CI
-- [ ] The live check reports any platform present in a table but marked `unsupported` or `not_ingested`
-- [ ] The declared derivation for a platform is consistent with the `metric_source` values actually observed for it
-- [ ] No consumer restates a platform list that the matrix could have told it
-- [ ] Every entry carries capability, access, availability and window
-- [ ] `scope_missing`, `review_required` and `account_type_gated` are distinguishable, because they have different owners
-- [ ] `unknown` availability is never a default and always names its owner and question
-- [ ] `DataWindow.anchoredOn` is explicit, so a job-creation-anchored window is not confused with a publish-anchored one
-- [ ] Every entry traces to a cited row in FILM-1721
-- [ ] A metric name absent from FILM-1721 cannot be added to the matrix
-- [ ] Instagram `watch_time` is `not_ingested` with `blockedBy` naming FILM-1712 — never `unsupported`, because Instagram documents it
-- [ ] YouTube `revenue` is `scope_missing` naming FILM-1711 for a YPP creator, and `account_type_gated` for a non-YPP one — never `native` while the monetary scope is absent
-- [ ] When FILM-1712 or FILM-1711 lands, the entry moves to `native` in the same change that starts writing the data; the writer-binding test (§5b) fails a change that does one without the other
+- [x] The module imports nothing but types, and a client component can import it without pulling in the ClickHouse driver
+- [x] Every metric family has an entry for every value of `AnalyticsPlatform`
+- [x] Adding a platform to `AnalyticsPlatform` fails the test suite until the matrix is extended
+- [x] `unsupported` and `not_ingested` are distinguishable by a consumer, and every `not_ingested` entry names what blocks it
+- [x] Every non-`native` entry carries a sentence written for a creator, not for a developer
+- [x] Adding a writer for a table in an unlisted file fails CI
+- [x] Removing a writer from a listed file fails CI
+- [x] The live check reports any platform present in a table but marked `unsupported` or `not_ingested`
+- [x] The declared derivation for a platform is consistent with the `metric_source` values actually observed for it
+- [ ] No consumer restates a platform list that the matrix could have told it — **not met here, by design**: this spec ships no UI (§1, §6), so the matrix has no consumer yet. The seven hardcoded claims are FILM-1701's to remove and FILM-1705's to derive; see §10
+- [x] Every entry carries capability, access, availability and window
+- [x] `scope_missing`, `review_required` and `account_type_gated` are distinguishable, because they have different owners
+- [x] `unknown` availability is never a default and always names its owner and question
+- [x] `DataWindow.anchoredOn` is explicit, so a job-creation-anchored window is not confused with a publish-anchored one
+- [x] Every entry traces to a cited row in FILM-1721
+- [x] A metric name absent from FILM-1721 cannot be added to the matrix
+- [x] Instagram `watch_time` is `not_ingested` with `blockedBy` naming FILM-1712 — never `unsupported`, because Instagram documents it
+- [x] YouTube `revenue` is `scope_missing` naming FILM-1711 for a YPP creator, and `account_type_gated` for a non-YPP one — never `native` while the monetary scope is absent
+- [x] When FILM-1712 or FILM-1711 lands, the entry moves to `native` in the same change that starts writing the data; the writer-binding test (§5b) fails a change that does one without the other
 
 ## 8. Verification
 
@@ -331,3 +331,87 @@ The lesser risk is over-modelling: roughly eleven families times three
 platforms is thirty-three entries, most of them `unsupported` with similar
 copy. That is acceptable. Resist collapsing them with clever defaults — the
 repetition is what makes each claim individually reviewable.
+
+## 10. As built
+
+Where the implementation had to decide something this spec left open, or found
+the spec out of date. Each is a judgement call and is recorded so it can be
+disagreed with.
+
+**`account_type_gated` is resolved per creator, not stored.** §7 asks one entry
+— YouTube revenue — to be `scope_missing` for a YPP creator and
+`account_type_gated` for a non-YPP one. A static field cannot be both, and the
+matrix cannot know who is asking. So an entry's `access` is always *our* state
+(`OurAccessState`, which excludes `account_type_gated` at the type level), the
+creator's side is an optional `accountGate: { requirement, note }`, and
+`accessFor(family, platform, { meetsAccountGate })` returns the full
+`AccessState`. TikTok's Business-API entries carry the gate the same way: a
+personal account is `account_type_gated`; a Business account is
+`review_required`, because the app is still ours to register.
+
+**TikTok and Instagram are `review_required`, not `scope_missing`.** The
+reference's summary says "scope missing" for TikTok and "permission missing"
+for Instagram, and also that app review is
+mandatory for production on every TikTok scope and that Meta needs App Review
+and Business Verification. §4's table separates the two by what the user is
+told — "reconnect your account" against "a roadmap item" — and reconnecting
+today would gain a creator nothing. Only YouTube revenue is `scope_missing`.
+
+**`channel_totals` reads two tables.** §4 maps it to `channel_daily`, which only
+YouTube writes. But "subscribers" is also `channel_subscribers` (FILM-1607),
+which takes a daily follower level from all three platforms — and a subscriber
+card declaring `metricFamily: 'channel_totals'` under FILM-1706 would otherwise
+be told TikTok has nothing. So `SourceTable` gains `channel_subscribers`, and
+TikTok and Instagram are `native` there, each note saying that channel-wide
+daily views are not part of it. Instagram's is the one non-YouTube entry marked
+`authorised`: `followers_count` needs only `instagram_basic`, which we hold and
+which the connect callback exercises for every account it links.
+
+**§1's `video_audience` row is out of date for TikTok.** "3, percentage-only"
+described a provider that, since FILM-1721, returns `audience: undefined`
+unconditionally — the Display API has no demographics. The matrix records
+`demographics` as `unsupported` (no surface in the reference) and `geography` as
+`not_ingested` (`audience_countries`, Business API). The TikTok branch of
+`buildAudienceRows` is now dead code; removing it is not this spec's.
+
+**TikTok's Business-API entries name FILM-1712 as their blocker, for want of a
+better one.** FILM-1712 §4 describes that integration and recommends splitting
+it into its own spec, which does not exist yet. The suite requires `blockedBy`
+to be a spec that exists, so an invented id cannot stand in; when the spec is
+written its id replaces `FILM-1712` on those four entries.
+
+**Every entry carries a `reference`** — the `##` section of
+`docs/platform-capability-reference.md` it was read from, and for every level
+but `unsupported` the field-index block and vendor names. That is what makes
+"traces to a cited row" and "a name absent from FILM-1721 cannot be added"
+testable. The test lives in `@kit/content-analytics`
+(`capability-matrix-reference.test.ts`), beside the FILM-1721 guard, so both
+read the document through one parser.
+
+**§5b cannot see a family that shares a table**, and the last criterion in §7
+needs it to: Instagram watch time would arrive through the `insertVideoMetrics`
+call that is already listed. `INGESTION_MARKERS` closes that — per absent
+entry, the literal that starting to collect it has to introduce
+(`ig_reels_video_view_total_time`, `yt-analytics-monetary.readonly`,
+`business-api.tiktok.com`), asserted against the matrix both ways.
+
+**The live check does not probe `revenue`**, and says so in its output rather
+than skipping silently. Fixtures carry `revenue_cents` on YouTube rows to
+exercise the sums while every pipeline writer sets a literal `0`, so a probe
+would be testing the fixtures. It also excludes the scan-scope step's noise
+project, which holds TikTok and Instagram rows in tables those platforms never
+write, as rows that exist to be not read.
+
+**§8's second mutation cannot fail test (c) yet**, as §5c itself explains:
+claiming *more* than the pipeline produces is the direction that needs
+FILM-1701's multi-platform fixture. Today that mutation is caught by the
+ingestion-marker test instead. What (c) was seen to catch: `traffic_sources ×
+youtube` flipped to `not_ingested`, and `backfill` removed from the sources a
+`native` platform may carry — both red against a real ClickHouse 24.8.
+
+**`nativeSources` is set nowhere.** YouTube's raw source names live in
+`traffic-groups.ts`, which this module may not import a value from, and a second
+hand-kept copy would drift. FILM-1708 reads them from observed rows.
+
+Every guard has a recorded red check: `tooling/mutation-guards/film-1703.json`,
+which CI's Unit Tests job runs.
