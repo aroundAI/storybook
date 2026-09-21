@@ -73,6 +73,29 @@ daily query. Adding them there lets the totals call go.
 Not `annotationClickThroughRate` — annotations were retired and it returns
 zeros. Keep `cardClickRate`.
 
+### Instagram — watch time we never ask for
+
+**Added 2026-09-21, after re-verifying against Meta's live reference.** This
+spec's table above lists only `reach` as recoverable for Instagram. That is
+understated. `ig_reels_avg_watch_time` and `ig_reels_video_view_total_time` are
+both documented for REELS and both are absent from the request
+(`instagram-insights.ts` asks for `views, reach, total_interactions, likes,
+comments, saved, shares`). They belong in the "not requested, same endpoint"
+row alongside YouTube's three — the cheap kind of fix, not the second-integration
+kind.
+
+Units are still *inferred* to be milliseconds; validate before use.
+
+Also added by Meta on **2026-04-22** and not in any spec written before that was
+known: `total_views`, `total_likes`, `total_comments` (aggregated across
+Instagram, crossposted Facebook **and boosted** media), `reposts_count`,
+`saved_count`, `shares_count`. The aggregate three are a **different
+denominator** from `views` and must not be substituted for it — FILM-1722 owns
+defining them. `reposts_count` is the first media-level transmission signal
+Instagram has offered and is relevant to FILM-1714.
+
+See [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md).
+
 ### Instagram — a column for the reach we already fetch
 
 `reach` is in the request (`instagram-insights.ts:107`), read at `:139`, and

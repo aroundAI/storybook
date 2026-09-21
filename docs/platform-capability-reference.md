@@ -55,6 +55,14 @@ and valid on `dimensions=day` + `filters=video==ID`.
   require the monetary scope** (`yt-analytics-monetary.readonly`). Google groups
   them under "Revenue Metrics (special access required)".
 
+  Confirmed 2026-09-21 on the
+  [reports.query reference](https://developers.google.com/youtube/analytics/reference/reports/query):
+  `yt-analytics.readonly` "provides access to user activity metrics", while
+  `yt-analytics-monetary.readonly` "provides access to user activity metrics
+  **and to estimated revenue and ad performance metrics**". Since 2026-09-09 the
+  docs also state monetary metrics are supported for **YouTube Partner Program
+  members only**.
+
   ⚠️ `YOUTUBE_OAUTH_CONFIG` (`packages/features/publishing/src/oauth/youtube/config.ts:11-14`)
   requests `youtube.upload`, `youtube.readonly`, `youtube.force-ssl` and
   `yt-analytics.readonly` — **not** the monetary scope, while
@@ -79,8 +87,23 @@ Retention: `dimensions=elapsedVideoTimeRatio` (0.01–1.0, 100 points),
 `relativeRetentionPerformance`, `startedWatching`, `stoppedWatching`.
 **YouTube is the only platform here with a real retention curve API.**
 
-Shorts vs long-form: the `creatorContentType` dimension, with values covering
-shorts / video-on-demand / livestream / stories.
+Shorts vs long-form: the `creatorContentType` dimension. Confirmed 2026-09-21:
+values are `SHORTS`, `VIDEO_ON_DEMAND`, `LIVE_STREAM`, `STORY`, `UNSPECIFIED`,
+with data from 2019-01-01.
+
+**`views` was redefined again on 2026-08-27** — it now counts from "the moment a
+video begins to play", including autoplay, while `engagedViews` carries the
+older "past the first frame" methodology. The 2025-03-26 change had already
+redefined Shorts views as "a Short starts to play or replay". Anything comparing
+view counts across that boundary is comparing two different measures; the same
+argument FILM-1722 makes per platform applies to YouTube against its own past.
+
+**`ageGroup` expanded on 2026-03-09** to include viewers YouTube estimates to be
+under 18. Our audience buckets predate that and should be checked against it.
+
+**The city report was removed for content owners on 2026-06-25.** We query
+`ids=channel==MINE`, not a content owner, so `fetchCityGeography` is unaffected —
+recorded so nobody re-derives it.
 
 Not available at all: "viewed vs swiped away", Shorts feed impressions, and
 new-vs-returning viewers (Studio-only). **`audienceType` is a trap** — it looks like
@@ -138,6 +161,13 @@ profile views, on any API. `full_video_watched_rate` is one scalar.
 
 App review is mandatory for production on every scope including `video.list`; new
 apps default to sandbox.
+
+**Not re-verified 2026-09-21.** `developers.tiktok.com` refused connections from
+this network, so this section still rests on the 2026-09-14 research. One data
+point did come through a search index and is consistent with it: the **Research
+API's** Query Videos now returns `favorites_count` — Research API, not Display,
+exactly as recorded above. Treat this section as the oldest in the document and
+re-verify it first; FILM-1725's Check B is the live test.
 
 _Verified: 2026-09-14_
 
@@ -204,7 +234,7 @@ hours with no backfill.
 with the creator's reach, so a new or dormant creator has a near-zero budget and the
 long tail throttles first. **There is no documented way to raise it.**
 
-_Verified: 2026-09-14_
+_Verified: 2026-09-21_
 
 ---
 
@@ -226,6 +256,39 @@ Reels metrics: `blue_reels_play_count` (≥1ms, **excludes replays**),
 `post_impressions_unique` (reach, **estimated**), `post_video_avg_time_watched`,
 `post_video_view_time`, `post_video_retention_graph`, `post_video_followers`
 (follows attributed to the reel).
+
+### The inventory above is a floor, not the surface
+
+Re-checked 2026-09-21 against the
+[video_insights reference](https://developers.facebook.com/docs/graph-api/reference/video/video_insights/):
+the edge exposes **57 video metrics, 11 Reels metrics and 4 ad-break metrics**,
+not the ~16 first recorded here. What the short list omits changes how big
+FILM-1720's Facebook half is, and in which direction:
+
+- **Organic/paid splits on most view metrics**, which no other platform here
+  gives us. TikTok explicitly *cannot* separate them.
+- **`total_video_views_autoplayed` vs `total_video_views_clicked_to_play`** — an
+  intent distinction that maps onto the Hook stage better than anything YouTube
+  offers.
+- **`total_video_views_sound_on`**, and time thresholds at 10s/15s/30s/60s.
+- **`total_video_view_time_by_age_bucket_and_gender`** — demographics *weighted
+  by watch time*, not by view count.
+- **`total_video_ad_break_earnings`, `total_video_ad_break_ad_cpm`,
+  `total_video_ad_break_ad_impressions`, `creator_monetization_qualified_views`**
+  — Facebook has a **revenue** surface. FILM-1714's "no Monetisation stage"
+  decision was made on the basis that `video_metrics.revenue_cents` is literal
+  zero on all four write paths, which is true of our *writers*; it is not
+  evidence that the platforms have nothing. Revisit that decision against this
+  row, and against YouTube's monetary scope, before treating it as settled.
+  Note "only Page admins can query earnings insights by using the API".
+
+**Resolved: `post_video_retention_graph` returns 40 intervals**, the same as
+`total_video_retention_graph` ("divided into 40 equal intervals"). This was an
+open question; it is now answered and removed from that table.
+
+The required permission is `pages_manage_engagement` + `read_insights` with the
+**ANALYZE** task — the reference now states both, so the earlier "Meta's two doc
+pages disagree" hedge is narrower than it was.
 
 ### The four denominators
 
@@ -256,7 +319,7 @@ page-level `page_media_view` carries `is_from_followers`.
 Rate limits: Page tokens use BUC `4800 × engaged users` per 24h; app/user tokens use
 `200 × users` per hour. The Page throttle error code is **80001**.
 
-_Verified: 2026-09-14_
+_Verified: 2026-09-21_
 
 ---
 
@@ -482,6 +545,13 @@ media_type
 media_product_type
 followers_count
 follower_demographics
+total_views                # aggregated across IG + crossposted FB + boosted
+total_likes
+total_comments
+reposts_count              # added 2026-04-22
+saved_count                # added 2026-04-22
+shares_count               # added 2026-04-22
+facebook_views             # Feed and Stories since 2026-04-22, previously Reels-only
 ```
 
 <!-- fields: instagram/graph-account -->
@@ -513,6 +583,20 @@ post_video_view_time
 post_video_retention_graph
 post_video_followers
 page_media_view
+total_video_views_autoplayed
+total_video_views_clicked_to_play
+total_video_views_sound_on
+total_video_10s_views
+total_video_30s_views
+total_video_60s_excludes_shorter_views
+total_video_view_time_by_age_bucket_and_gender
+total_video_reactions_by_type_total
+post_video_likes_by_reaction_type
+post_video_social_actions
+total_video_ad_break_earnings
+total_video_ad_break_ad_cpm
+total_video_ad_break_ad_impressions
+creator_monetization_qualified_views
 ```
 
 <!-- fields: x/enterprise-analytics -->
@@ -599,6 +683,7 @@ inferred and must be labelled as such wherever they are used.
 | Instagram media insights ≈ 2 years, account ≈ 90 days | Two Meta pages disagree; this reconciles them | inferred |
 | TikTok app review takes 1–2 weeks | Third-party integrator reports, not TikTok | inferred |
 | Meta App Review takes 4–8 weeks | Community reports; **Meta publishes no SLA** | inferred |
+| ~~Facebook `post_video_retention_graph` segment count~~ | **Resolved 2026-09-21.** 40 equal intervals, per the video_insights reference | **documented** |
 | ~~Graph v18.0 is past end-of-life~~ | **Resolved 2026-09-21.** Meta's changelog gives the expiry as 2026-01-26, and the versioning guide documents silent substitution. See [Graph API versions](#graph-api-versions) | **documented** |
 
 _Verified: 2026-09-21_
@@ -619,7 +704,6 @@ and a question asked of the vendor.
 | How Meta's `total_cputime` is computed | Developer support ticket | *unassigned* |
 | Any path to raising Instagram BUC quotas | Developer support ticket | *unassigned* |
 | The denominator of Facebook's `total_video_avg_time_watched` | Developer support ticket | *unassigned — FILM-1720* |
-| Facebook's `post_video_retention_graph` segment count | One authorised call against a real Reel | *unassigned — FILM-1720* |
 | The TikTok Display API field list, confirmed live | A sandbox app with `video.list` granted to a test user — see below | **FILM-1725** (deferred; fold into FILM-1711) |
 
 ### Reproducible checks

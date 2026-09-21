@@ -13,6 +13,25 @@ dependencies: FILM-1711, FILM-1714, FILM-1721, FILM-1723
 > capability plainly exists, that there are **two tiers** of it, and that the
 > decisive unknown is not the price but the historical window.
 
+> **The Facebook inventory here is a floor.** Re-checked 2026-09-21 against the
+> live `video_insights` reference: the edge exposes **57 video metrics, 11 Reels
+> metrics and 4 ad-break metrics**. What the short list omitted includes
+> organic/paid splits, `total_video_views_autoplayed` vs
+> `..._clicked_to_play`, sound-on views, 10s/30s/60s thresholds,
+> `total_video_view_time_by_age_bucket_and_gender` (demographics weighted by
+> watch time), and a **revenue** surface —
+> `total_video_ad_break_earnings`, `..._ad_cpm`, `..._ad_impressions`,
+> `creator_monetization_qualified_views`, queryable by Page admins only.
+>
+> Two consequences. Facebook's half of this spec is larger and more valuable
+> than it was scoped as. And **FILM-1714's "no Monetisation stage" decision
+> should be revisited** — it rests on `video_metrics.revenue_cents` being
+> literal zero on all four write paths, which is a fact about our writers, not
+> about the platforms. `post_video_retention_graph` is also resolved at **40
+> intervals**, so that open question is closed.
+>
+> See [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md).
+
 ## 1. Where the two platforms actually stand
 
 | Layer | Facebook | X |
