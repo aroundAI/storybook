@@ -21,8 +21,8 @@ Established by reading every writer and confirming against a live ClickHouse:
 | `video_traffic_sources` | native | **not ingested** | **unsupported** |
 | `channel_daily`, `video_reach_daily`, `video_retention_curves` | native | — | — |
 | `video_metrics` | native, true daily | **derived** — snapshot delta | **derived** — snapshot delta |
-| Watch time | native | **not ingested** — Business API | **not ingested** — documented, never requested |
-| Revenue from sync | **`scope_missing`** — plumbed, unauthorised | — | — |
+| Watch time | native | **not ingested** — needs a Business API app | **not ingested** — documented, never requested; **FILM-1712** |
+| Revenue from sync | **`scope_missing`** — plumbed, unauthorised; **FILM-1711**. `account_type_gated` for non-YPP creators | — | — |
 | `video_audience` | 7 dimensions | 3, percentage-only | 3, account-level |
 
 Two rows corrected 2026-09-21, both in the same direction — *we haven't* was
@@ -297,6 +297,9 @@ for TikTok means the matrix is wrong.
 - [ ] `DataWindow.anchoredOn` is explicit, so a job-creation-anchored window is not confused with a publish-anchored one
 - [ ] Every entry traces to a cited row in FILM-1721
 - [ ] A metric name absent from FILM-1721 cannot be added to the matrix
+- [ ] Instagram `watch_time` is `not_ingested` with `blockedBy` naming FILM-1712 — never `unsupported`, because Instagram documents it
+- [ ] YouTube `revenue` is `scope_missing` naming FILM-1711 for a YPP creator, and `account_type_gated` for a non-YPP one — never `native` while the monetary scope is absent
+- [ ] When FILM-1712 or FILM-1711 lands, the entry moves to `native` in the same change that starts writing the data; the writer-binding test (§5b) fails a change that does one without the other
 
 ## 8. Verification
 
