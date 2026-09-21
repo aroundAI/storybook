@@ -82,11 +82,21 @@
       "pattern": "video_duration"
     },
     {
-      "name": "A metric list reshaped into a plain array smuggles in an undocumented name",
+      "name": "An undocumented name is smuggled into the metric list, whatever its shape",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
-      "find": "      const metricsForType =\n        mediaType === 'REELS'\n          ? [\n              'views',\n              'reach',\n              'total_interactions',\n              'likes',\n              'comments',\n              'saved',\n              'shares',\n            ]\n          : [\n              'views',\n              'reach',\n              'total_interactions',\n              'likes',\n              'comments',\n              'saved',\n            ];\n",
-      "replace": "      const metricsForType = [\n        'views',\n        'reach',\n        'total_interactions',\n        'likes',\n        'comments',\n        'saved',\n        'shares',\n        'reels_replays_total',\n      ];\n",
+      "find": "      const metricsForType =",
+      "replace": "      const metricsForType = ['views', 'reels_replays_total'] ||",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "instagram-insights.ts"
+    },
+    {
+      "name": "A per-media reach split by follow_type comes back, an account-only breakdown",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "          metric: metrics.join(','),\n",
+      "replace": "          metric: metrics.join(','),\n          breakdown: 'follow_type',\n",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/platform-field-names.test.ts",
       "pattern": "instagram-insights.ts"

@@ -58,8 +58,8 @@ The distinction that earns this module its keep is between *the platform can't*
 and *we haven't*:
 
 - **`unsupported`** — Instagram has no traffic-source concept at all. Its
-  provider type (`providers/instagram/types.ts:37-43`) has only `totals`,
-  `reachBreakdown` and `audience`. There is nothing to fetch.
+  provider type (`providers/instagram/types.ts:40-45`) has only `totals` and
+  `audience`. There is nothing to fetch.
 - **`not_ingested`** — TikTok reports traffic sources as `impression_sources`
   on the **Business API**, which needs a separate app registration and a TikTok
   Business account. We have neither, so nothing arrives. The

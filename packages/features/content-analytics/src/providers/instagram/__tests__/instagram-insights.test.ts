@@ -16,7 +16,10 @@ describe('InstagramInsightsProvider', () => {
   let provider: InstagramInsightsProvider;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    // reset, not clear: clearAllMocks leaves queued mockResolvedValueOnce
+    // values in place, so a test that consumes fewer responses than it
+    // queued feeds the leftovers to the next test.
+    mockFetch.mockReset();
     provider = createInstagramInsightsProvider(accessToken, instagramAccountId);
   });
 
@@ -47,28 +50,6 @@ describe('InstagramInsightsProvider', () => {
               { name: 'comments', values: [{ value: 25 }] },
               { name: 'saved', values: [{ value: 15 }] },
               { name: 'shares', values: [{ value: 10 }] },
-            ],
-          }),
-      });
-
-      // Mock reach breakdown response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            data: [
-              {
-                total_value: {
-                  breakdowns: [
-                    {
-                      results: [
-                        { dimension_values: ['FOLLOWER'], value: 300 },
-                        { dimension_values: ['NON_FOLLOWER'], value: 200 },
-                      ],
-                    },
-                  ],
-                },
-              },
             ],
           }),
       });
@@ -108,9 +89,6 @@ describe('InstagramInsightsProvider', () => {
       expect(result.totals.comments).toBe(25);
       expect(result.totals.saved).toBe(15);
       expect(result.totals.shares).toBe(10);
-      expect(result.reachBreakdown?.followerReach).toBe(300);
-      expect(result.reachBreakdown?.nonFollowerReach).toBe(200);
-      expect(result.reachBreakdown?.followersPercentage).toBe(60);
     });
 
     it('should fetch insights for a Video using the views metric', async () => {
@@ -136,7 +114,7 @@ describe('InstagramInsightsProvider', () => {
           }),
       });
 
-      // Mock audience response (no reach breakdown for Video)
+      // Mock audience response
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ data: [] }),
@@ -148,7 +126,6 @@ describe('InstagramInsightsProvider', () => {
 
       expect(result.mediaType).toBe('VIDEO');
       expect(result.totals.views).toBe(800);
-      expect(result.reachBreakdown).toBeUndefined(); // No breakdown for Videos
     });
 
     it('should throw InstagramInsightsScopeError on permission error', async () => {
@@ -188,12 +165,6 @@ describe('InstagramInsightsProvider', () => {
       });
 
       // Empty insights response
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ data: [] }),
-      });
-
-      // Empty reach breakdown
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ data: [] }),

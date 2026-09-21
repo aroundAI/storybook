@@ -209,9 +209,10 @@ a `follows` value read for a Reel is a structural zero, not a measurement.
 
 Also absent: **no replay metric** (`clips_replays_count` removed 2025-04-21, no
 replacement), **no retention graph**, **no completion rate**, and **no per-media
-follower/non-follower split** — that breakdown is account-level only, so our
-`video_audience.follower_status` rows for Instagram are account-level data
-attributed per media.
+follower/non-follower split** — `follow_type` is an account-level breakdown only,
+so Instagram writes no `video_audience.follower_status` rows. The provider used to
+request `reach` with `breakdown=follow_type` per Reel; that call was undocumented
+and has been removed.
 
 `reels_skip_rate` — "percentage of views from people who skipped during the first 3
 seconds" — is the only curve-like surface, but **not** the whole attention story:
@@ -227,8 +228,10 @@ owns requesting it.
 ⚠️ **Our provider branches on the wrong field.** It reads `media_type` and tests for
 `REELS`, but `media_type` is only ever `CAROUSEL_ALBUM`, `IMAGE` or `VIDEO`; `REELS`
 is a value of `media_product_type`. The Reels branch therefore never runs, so
-`shares` is never requested and no Reel reach breakdown is fetched. Fixed in its own
-PR (`fix/instagram-reels-branch`), because it changes stored data.
+`shares` is never requested. Fixed in its own PR (`fix/instagram-reels-branch`),
+because it changes stored data. That branch also gated the per-Reel reach breakdown
+above; fixing the branch would have switched on an undocumented call, so the call is
+gone rather than fixed.
 
 ### Added 2026-04-22
 
@@ -653,6 +656,14 @@ total_comments             # insights-metric name of total_comments_count
 facebook_views             # Feed, Reels and Story since 2026-04-22
 ```
 
+<!-- fields: instagram/media-insights-breakdowns source: https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/insights/ -->
+```text
+# The only two. `reach` takes no breakdown here: a per-media follower /
+# non-follower split does not exist, whatever the account endpoint offers.
+action_type                    # profile_activity only
+story_navigation_action_type   # navigation only
+```
+
 <!-- fields: instagram/user-fields source: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user -->
 ```text
 followers_count
@@ -665,10 +676,29 @@ reach                      # total_value or time_series
 accounts_engaged           # total_value only
 total_interactions         # total_value only
 profile_links_taps         # total_value only
-follower_demographics      # lifetime; breakdown age/city/country/gender
+follower_demographics      # lifetime, total_value, timeframe REQUIRED - see below
 # profile_views and website_clicks are NOT here: their time series ended
 # January 2025 and they are absent from the current metrics table.
 ```
+
+<!-- fields: instagram/user-insights-breakdowns source: https://developers.facebook.com/docs/instagram-platform/api-reference/instagram-user/insights/ -->
+```text
+follow_type                # follows_and_unfollows, reach - account level only
+media_product_type         # comments, likes, saves, shares, total_interactions, views
+contact_button_type        # profile_links_taps
+age                        # follower_demographics, engaged_audience_demographics
+city                       # same
+country                    # same
+gender                     # same
+```
+
+⚠️ **Our audience request is not the documented one.** `fetchAccountAudience` asks
+for `follower_demographics` with all four breakdowns in one call and no
+`timeframe`. Meta lists `timeframe` as required (`last_14_days` … `this_week`), and
+its examples show one demographic breakdown per request. A rejected call returns
+`undefined`, which the provider treats as "no audience", so Instagram audience rows
+have most likely never been written. Unverified against a live account; fixing it
+changes stored data, so it belongs in its own PR, like the Reels branch did.
 
 <!-- fields: facebook/video-insights source: https://developers.facebook.com/docs/graph-api/reference/video/video_insights/ -->
 ```text

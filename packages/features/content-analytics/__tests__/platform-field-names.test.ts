@@ -3,8 +3,9 @@ import { join, relative, resolve, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
- * FILM-1721. A metric name may not appear in a request or a type unless
- * `docs/platform-capability-reference.md` documents it with a vendor citation.
+ * FILM-1721. A metric name, or a breakdown value, may not appear in a request
+ * or a type unless `docs/platform-capability-reference.md` documents it with a
+ * vendor citation.
  *
  * The rule exists because the first draft of phase 17 took platform claims from
  * our own TypeScript declarations, and was wrong in five places on TikTok alone.
@@ -94,9 +95,12 @@ const FORBIDDEN = forbiddenNames();
  * endpoints it is allowed to draw from.
  *
  * Declared rather than inferred for the reason FILM-1703's writer-binding test
- * gives: a regex loose enough to find every request site on its own also finds
- * `breakdown: 'country,city,age,gender'`, which is not a metric. The detector
- * test below is what stops this list going stale.
+ * gives: a regex loose enough to find every request site on its own cannot tell
+ * which vocabulary a list belongs to. `breakdown: 'country,city,age,gender'` is
+ * not a metric, but it is still a vendor name, checked against its own block:
+ * an unchecked breakdown is how a per-Reel `follow_type` split, which Meta
+ * documents for accounts only, went unnoticed. The detector test below is what
+ * stops this list going stale.
  *
  * Each capture group delimits a region. A region containing a quote yields its
  * quoted literals; one without is a bare `fields=a,b,c` list.
@@ -182,6 +186,20 @@ const REQUEST_SITES: Array<{
         surfaces: ['instagram/user-insights'],
       },
       {
+        pattern: new RegExp(
+          String.raw`\$\{mediaId\}\/insights\?${WITHIN_CALL}\bbreakdown:\s*${LITERAL}`,
+          'g',
+        ),
+        surfaces: ['instagram/media-insights-breakdowns'],
+      },
+      {
+        pattern: new RegExp(
+          String.raw`\$\{this\.instagramAccountId\}\/insights\?${WITHIN_CALL}\bbreakdown:\s*${LITERAL}`,
+          'g',
+        ),
+        surfaces: ['instagram/user-insights-breakdowns'],
+      },
+      {
         pattern:
           /metricsForType\s*=[^;[]*?(\[[^\]]*\])(?:[^;[]*?(\[[^\]]*\]))?/g,
         surfaces: ['instagram/media-insights', 'instagram/media-insights-2026'],
@@ -200,7 +218,7 @@ const REQUEST_SITES: Array<{
  * metrics out of the guard's sight.
  */
 const REQUEST_SHAPE =
-  /\?(?:fields|metric)=|\b(?:metrics?|dimensions|fields|part)\s*:\s*['"`[]|searchParams\.set\(\s*['"](?:fields|metric)['"]|\b\w*(?:[mM]etric|[fF]ield)\w*\s*=\s*\[/g;
+  /\?(?:fields|metric|breakdown)=|\b(?:metrics?|dimensions|fields|part|breakdown)\s*:\s*['"`[]|searchParams\.set\(\s*['"](?:fields|metric|breakdown)['"]|\b\w*(?:[mM]etric|[fF]ield)\w*\s*=\s*\[/g;
 
 function namesIn(region: string) {
   if (!/['"]/.test(region)) {

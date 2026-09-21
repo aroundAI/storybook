@@ -262,14 +262,6 @@ export function buildAudienceRows(input: {
   for (const genderAge of data.audience?.genderAge ?? []) {
     push('age_group', genderAge.dimension, { views: genderAge.count });
   }
-  if (data.reachBreakdown) {
-    push('follower_status', 'subscribed', {
-      views: data.reachBreakdown.followerReach,
-    });
-    push('follower_status', 'not_subscribed', {
-      views: data.reachBreakdown.nonFollowerReach,
-    });
-  }
 
   return rows;
 }

@@ -307,7 +307,9 @@ export class InstagramInsightsProvider {
 
 - [x] Fetches Reel plays, reach, impressions
 - [x] Fetches engagement (likes, comments, saves, shares)
-- [x] Fetches reach breakdown (follower vs non-follower)
+- [x] ~~Fetches reach breakdown (follower vs non-follower)~~ — removed 2026-09-21
+  (FILM-1721): Meta documents `follow_type` for account-level reach only, and the
+  call never ran, because it was gated on a `media_type` of `REELS` that does not exist
 - [x] Fetches profile visits and follows from content
 - [x] Fetches audience demographics
 - [x] Handles different media types
