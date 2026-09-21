@@ -152,6 +152,29 @@ Not a code defect, but a local-run pitfall worth knowing.
 **Proposed fix:** look for a fixed wait or an unscoped locator in each;
 none were investigated.
 
+### A mutation guard can stay green by accident (added 2026-09-22)
+
+Seen on PR #290, run 35656659648, job "🧬 E2E guards (5)": the FILM-1610 guard
+**"F10 due date captured at render"** reported `STAYED GREEN` — its mutation
+was applied to `experiments-client.tsx` and the Playwright test still passed —
+so the job failed with `4 of 5 guards went red`. #290 touches only database
+migrations and pgTAP; nothing near the experiments client. The same guard had
+gone red correctly on seven other PRs that day, and **re-running the failed job
+on the same commit passed, 12 of 12**, with no change.
+
+This is the worse direction for a flake. A test that fails at random costs a
+re-run; a *guard* that passes at random reports that a mutation survived when
+it did not — and, read the other way, means a guard's "red" elsewhere may owe
+something to timing too. The likeliest cause, **not yet proven**: the `e2e`
+kind mutates a source file under a running dev server and starts the test
+before the recompile has landed, so the test sees the unmutated bundle.
+
+**When this entry is worked:** make the e2e guard runner wait for the mutated
+module to be served (poll the dev server for the mutated string, or a build
+id change) before starting Playwright, and fail loudly — `NOT APPLIED`, not
+`STAYED GREEN` — if it never appears. Then run the e2e guards ×10 and show none
+flips.
+
 ---
 
 ## KB-4 — `config.toml` still points `db diff` at `schemas/`
