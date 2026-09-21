@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { SubscriberCountResult } from '@kit/shared/subscribers';
+import { META_GRAPH_BASE } from '@kit/shared/vendors';
 
 import type {
   InstagramAccountInsights,
@@ -12,7 +13,7 @@ import type {
   InstagramMediaType,
 } from './types';
 
-const GRAPH_API_BASE = 'https://graph.facebook.com/v23.0';
+const GRAPH_API_BASE = META_GRAPH_BASE;
 
 /**
  * Error thrown when the Instagram connection is missing the insights scope.

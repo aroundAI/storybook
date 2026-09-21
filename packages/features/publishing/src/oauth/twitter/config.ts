@@ -1,13 +1,15 @@
+import { X_API_BASE, X_OAUTH_AUTHORIZE_URL } from '@kit/shared/vendors';
+
 /**
  * Twitter/X OAuth 2.0 Configuration
  * Uses OAuth 2.0 with PKCE for secure authentication
  */
 
 export const TWITTER_OAUTH_CONFIG = {
-  authUrl: 'https://twitter.com/i/oauth2/authorize',
-  tokenUrl: 'https://api.twitter.com/2/oauth2/token',
-  revokeUrl: 'https://api.twitter.com/2/oauth2/revoke',
-  userInfoUrl: 'https://api.twitter.com/2/users/me',
+  authUrl: X_OAUTH_AUTHORIZE_URL,
+  tokenUrl: `${X_API_BASE}/oauth2/token`,
+  revokeUrl: `${X_API_BASE}/oauth2/revoke`,
+  userInfoUrl: `${X_API_BASE}/users/me`,
   // Required scopes for video upload and tweet creation
   scopes: [
     'tweet.read',

@@ -2,6 +2,7 @@
  * Facebook Provider Types
  * Types for Facebook video upload and Page management
  */
+import { META_GRAPH_BASE, META_GRAPH_VERSION } from '@kit/shared/vendors';
 
 export interface FacebookUploadInput {
   /** Local file path or URL to the video */
@@ -85,7 +86,8 @@ export const FACEBOOK_CONSTRAINTS = {
 } as const;
 
 /**
- * Facebook Graph API version
+ * Aliases of the single Graph pin in `@kit/shared/vendors`, kept because they
+ * are part of this package's public exports.
  */
-export const FACEBOOK_API_VERSION = 'v18.0';
-export const FACEBOOK_GRAPH_API_BASE = `https://graph.facebook.com/${FACEBOOK_API_VERSION}`;
+export const FACEBOOK_API_VERSION = META_GRAPH_VERSION;
+export const FACEBOOK_GRAPH_API_BASE = META_GRAPH_BASE;
