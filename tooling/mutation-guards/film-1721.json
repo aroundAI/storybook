@@ -5,8 +5,8 @@
       "name": "A retired field name reappears on a response type",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/providers/tiktok/types.ts",
-      "find": "  share_count?: number;\n  /** The published asset's duration, in seconds. FILM-1710. */",
-      "replace": "  share_count?: number;\n  save_count?: number;\n  /** The published asset's duration, in seconds. FILM-1710. */",
+      "find": "  share_count?: number;\n}",
+      "replace": "  share_count?: number;\n  save_count?: number;\n}",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/platform-field-names.test.ts",
       "pattern": "save_count"
@@ -15,8 +15,8 @@
       "name": "A request asks for a field the reference does not document",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
-      "find": "metric: 'views,reach,profile_views,website_clicks',",
-      "replace": "metric: 'views,reach,profile_views,total_replays',",
+      "find": "metric: 'views,reach',",
+      "replace": "metric: 'views,reach,total_replays',",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/platform-field-names.test.ts",
       "pattern": "instagram-insights.ts"
@@ -25,8 +25,8 @@
       "name": "The reference loses a field a live request depends on",
       "kind": "unit",
       "file": "docs/platform-capability-reference.md",
-      "find": "profile_views\nwebsite_clicks",
-      "replace": "website_clicks",
+      "find": "views                      # total_value only\nreach                      # total_value or time_series",
+      "replace": "views                      # total_value only",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/platform-field-names.test.ts",
       "pattern": "instagram-insights.ts"
@@ -40,6 +40,26 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/platform-field-names.test.ts",
       "pattern": "cites a source"
+    },
+    {
+      "name": "A retired field is read off the response by property access",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/tiktok/tiktok-analytics.ts",
+      "find": "          saves: 0,",
+      "replace": "          saves: (video as Record<string, number>).save_count ?? 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "save_count"
+    },
+    {
+      "name": "A Display API request asks for a Business API field",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/tiktok/tiktok-analytics.ts",
+      "find": "fields=id,like_count,comment_count,share_count,view_count",
+      "replace": "fields=id,like_count,comment_count,share_count,view_count,average_time_watched",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "tiktok-analytics.ts"
     }
   ]
 }

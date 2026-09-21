@@ -26,15 +26,15 @@ the [ledger](#documented-vs-inferred-ledger). Anything nobody can answer is in
 
 | Platform | Analytics surface | Auth state today | Commercial | Data window |
 |---|---|---|---|---|
-| YouTube | Analytics API + Reporting API | authorised | included | reporting: 30d from **job creation**, unrecoverable |
+| YouTube | Analytics API + Reporting API | authorised, **except revenue** (`yt-analytics-monetary.readonly` not requested) | included | reporting: 30d from **job creation**, unrecoverable |
 | TikTok (basic) | Display API `/v2/video/query/` | **scope missing** (`video.list`) | included | unbounded backwards |
 | TikTok (deep) | **Business API** `/business/video/list/` | not implemented; separate app | included | stops updating 365d after publish |
-| Instagram | Graph `/{ig-media-id}/insights` | **permission missing** | included | media ~2y; account ~90d |
+| Instagram | Graph `/{ig-media-id}/insights` | **permission missing** | included | media ~2y; account ~90d (*inferred*) |
 | Facebook | Graph `/{video-id}/video_insights` | **permission missing** | included | 2 years |
-| X (degraded) | `media.non_public_metrics` via posts lookup | scope ordinary; not implemented | metered | **30d from post creation** |
-| X (full) | `/2/media/analytics` | scope ordinary | **tier gated — Enterprise** | **undocumented** |
+| X (degraded) | `media.non_public_metrics` via posts lookup | **held** — `tweet.read` + `users.read` are requested for publishing; no provider | metered | **30d from post creation** |
+| X (full) | `/2/media/analytics` | **held** (same scopes) | **tier gated — Enterprise** (*inferred*) | **undocumented** |
 
-_Verified: 2026-09-14_
+_Verified: 2026-09-21_
 
 ---
 
@@ -85,7 +85,7 @@ Reporting API (bulk) — the only source of thumbnail impressions and CTR:
 Retention: `dimensions=elapsedVideoTimeRatio` (0.01–1.0, 100 points),
 `filters=video==ID` required, metrics `audienceWatchRatio`,
 `relativeRetentionPerformance`, `startedWatching`, `stoppedWatching`.
-**YouTube is the only platform here with a real retention curve API.**
+**YouTube has the finest retention curve here** (100 points, per video). Facebook has one too — `total_video_retention_graph` (40 equal intervals) and `post_video_retention_graph` (segment count undocumented) — but not yet an integration (FILM-1720). TikTok, Instagram and X have none.
 
 Shorts vs long-form: the `creatorContentType` dimension. Confirmed 2026-09-21:
 values are `SHORTS`, `VIDEO_ON_DEMAND`, `LIVE_STREAM`, `STORY`, `UNSPECIFIED`,
@@ -203,7 +203,49 @@ follower/non-follower split** — that breakdown is account-level only, so our
 attributed per media.
 
 `reels_skip_rate` — "percentage of views from people who skipped during the first 3
-seconds" — is the entire retention surface.
+seconds" — is the only curve-like surface, but **not** the whole attention story:
+`ig_reels_avg_watch_time` ("the average amount of time spent playing the reel") and
+`ig_reels_video_view_total_time` ("the total amount of time the reel was played")
+are both documented for REELS.
+
+⚠️ **We request neither.** `instagram-insights.ts` asks for `views, reach,
+total_interactions, likes, comments, saved` (and `shares` only on a branch that never
+runs — see below), so Instagram watch time is documented and discarded. FILM-1712
+owns requesting it.
+
+⚠️ **Our provider branches on the wrong field.** It reads `media_type` and tests for
+`REELS`, but `media_type` is only ever `CAROUSEL_ALBUM`, `IMAGE` or `VIDEO`; `REELS`
+is a value of `media_product_type`. The Reels branch therefore never runs, so
+`shares` is never requested and no Reel reach breakdown is fetched. Fixed in its own
+PR (`fix/instagram-reels-branch`), because it changes stored data.
+
+### Added 2026-04-22
+
+Per Meta's [Instagram changelog](https://developers.facebook.com/docs/instagram-platform/changelog),
+all **Facebook Login only** and "applies to all versions":
+
+| Name | Where | What it is |
+|---|---|---|
+| `reposts_count` | Media node field, FEED + REELS | "Number of times the media has been reposted" |
+| `saved_count` | Media node field, FEED + REELS | saves; owner or accepted collaborator only |
+| `shares_count` | Media node field, FEED + REELS | shares |
+| `total_views_count` / `total_views` | Media node field / insights metric | views across **all surfaces, including boosted media and replays**; video only |
+| `total_like_count` / `total_likes` | Media node field / insights metric | likes across all surfaces, including boosted |
+| `total_comments_count` / `total_comments` | Media node field / insights metric | comments across all surfaces, including boosted |
+| `facebook_views` | media insights metric | now Feed, Reels and Story (was Reels only) |
+
+The two names for each aggregate are one number reached two ways: the `*_count`
+spelling is a field on the media object, the short spelling an insights metric. An
+earlier revision recorded them as an unsettled either-or and `facebook_views` as
+existing "on neither reference page"; the changelog settles both.
+
+**The aggregates are a different denominator from `views`** — they fold in boosted
+and crossposted placements, and `total_views_count` includes replays — so they must
+never be substituted for it. `reposts_count` is the first media-level
+pass-it-on signal Instagram has offered.
+
+We use `graph.facebook.com`, so we qualify for the Facebook-Login-only fields; the
+Instagram Login path would not.
 
 **Deprecated and enforced across all versions on 2025-04-21:** `plays`,
 `impressions`, `clips_replays_count`, `ig_reels_aggregated_all_plays_count`. Use
@@ -243,9 +285,9 @@ _Verified: 2026-09-21_
 
 `GET /{video-id}/video_insights` — Pages only, not groups or user profiles. Data is
 retained 2 years. Requires a Page token from someone with the **`ANALYZE`** task;
-Meta's own two doc pages disagree on whether the permission is
-`pages_manage_engagement` + `read_insights` or `pages_read_engagement`. Request all
-three.
+the current `video_insights` reference names `pages_manage_engagement` +
+`read_insights`. An older Meta page names `pages_read_engagement`; request all three
+until one authorised call settles it (FILM-1720 §8).
 
 Video metrics: `total_video_views` (≥3s), `total_video_views_unique`,
 `total_video_15s_views`, `total_video_avg_time_watched` (**ms**),
@@ -359,7 +401,7 @@ are pinned at once, two of them expired:
 
 | Version | Where |
 |---|---|
-| `v18.0` (expired) | `packages/features/publishing/src/providers/facebook/types.ts:90-91`, `providers/instagram/instagram-provider.ts:10`, and **`lib/token-refresh.ts:432,475`** |
+| `v18.0` (expired) | **`packages/features/publishing/src/oauth/meta/config.ts:7-9` — the OAuth dialog, token exchange and Graph base for every Meta connection**, `providers/facebook/types.ts:90-91`, `providers/instagram/instagram-provider.ts:10`, and **`lib/token-refresh.ts:432,475`** |
 | `v19.0` (expired) | `apps/web/lambda/publish-worker/handlers/{facebook,instagram}.ts` |
 | `v23.0` (current) | `packages/features/content-analytics/src/providers/instagram/instagram-insights.ts:15` |
 
@@ -382,10 +424,11 @@ _Verified: 2026-09-21_
 `hourly|daily|total`, with `start_time` and `end_time` both required.
 
 `GET /2/tweets/analytics` adds `bookmarks`, `user_profile_clicks`, `url_clicks`,
-`shares`, `quote_tweets`, `impressions`, and — uniquely among these five platforms —
-**`follows` and `unfollows` attributed to a post**.
+`shares`, `quote_tweets`, `impressions`, and **`follows` and `unfollows` attributed to
+a post**. Facebook has the follows half for Reels (`post_video_followers`); only X has
+unfollows.
 
-**Both are Enterprise-only.** Evidence: an explicit comparison table on X's
+**Both are Enterprise-only** — *inferred*, see the [ledger](#documented-vs-inferred-ledger). Evidence: an explicit comparison table on X's
 Enterprise introduction lists engagement metrics as Enterprise-only; neither endpoint
 appears as a billable line item on the pay-per-use schedule; and `/2/media/analytics`
 is absent from the published rate-limit table.
@@ -401,9 +444,10 @@ pay-per-use credits and Enterprise remain.
 
 ### Pay-per-use — the degraded path
 
-`media.non_public_metrics` via the ordinary posts lookup: `playback_0_count`,
-`playback_25_count`, `playback_50_count`, `playback_75_count`, `playback_100_count`,
-`view_count`.
+Via the ordinary posts lookup: `media.non_public_metrics` carries `playback_0_count`,
+`playback_25_count`, `playback_50_count`, `playback_75_count` and `playback_100_count`.
+`view_count` is **not** one of them — it is in `public_metrics` and
+`organic_metrics` (per the [data dictionary](https://docs.x.com/x-api/fundamentals/data-dictionary)).
 
 **The two quartile vocabularies are different** — `playback25` (analytics) versus
 `playback_25_count` (non-public metrics). Do not mix them. Both are listed
@@ -425,7 +469,7 @@ it decides whether X can be benchmarked past 30 days.
 
 Scopes: `tweet.read` for media analytics, `users.read` + `tweet.read` for post
 analytics. **There is no `media.read` scope.** **User context is required** — there is
-no app-only path, so only authorised accounts, never competitors'.
+no app-only path (*inferred* from "owned posts only"; see the ledger), so only authorised accounts, never competitors'.
 
 _Verified: 2026-09-14_
 
@@ -433,22 +477,24 @@ _Verified: 2026-09-14_
 
 ## Field index
 
-The machine-readable half of this document. Each block is one platform and one API
-surface. A name may be requested by our code only if it appears in a block for that
-platform. Comments after `#` are ignored by the parser.
+The machine-readable half of this document. **Each block is one endpoint, and its
+`source:` is the page that documents that endpoint.** Our code may request a name
+only through a request site that the guard allows to use that block, so a TikTok
+Display API request cannot ask for a Business API field, and an X request cannot
+mix the two quartile vocabularies. Comments after `#` are ignored by the parser.
 
 A name being listed here means the **vendor** documents it. It does **not** mean we
 are authorised to request it, or that the surface is implemented — see the
 per-platform sections above for that.
 
-**Every block carries a `source:` URL, and the guard fails without one.** That is
-a weak check on purpose: it cannot tell whether a name is real, only whether
-someone had a reference page open when they added it. It exists because a name
-once got in here from an announcement blog post, and nothing noticed — the
-coverage rule only checks names we *request*, so an unrequested wrong name sits
-in the index indefinitely, waiting to be trusted.
+**Every block carries a `source:` URL, and the guard fails without one.** That is a
+weak check on purpose: it proves someone had a reference page open, not that a
+name is real. It exists because a name once got in here from an announcement blog
+post, and nothing noticed — an unrequested wrong name can sit in the index
+indefinitely, waiting to be trusted. Every URL below was fetched on 2026-09-21
+except the three TikTok ones, which say so.
 
-<!-- fields: youtube/analytics-api-metrics source: https://developers.google.com/youtube/analytics/metrics -->
+<!-- fields: youtube/analytics-metrics source: https://developers.google.com/youtube/analytics/metrics -->
 ```text
 views
 engagedViews
@@ -473,11 +519,11 @@ startedWatching
 stoppedWatching
 ```
 
-<!-- fields: youtube/analytics-api-dimensions source: https://developers.google.com/youtube/analytics/dimensions -->
+<!-- fields: youtube/analytics-dimensions source: https://developers.google.com/youtube/analytics/dimensions -->
 ```text
 day
 elapsedVideoTimeRatio      # 0.01-1.0, 100 points; filters=video==ID required
-ageGroup
+ageGroup                   # includes estimated under-18 viewers since 2026-03-09
 gender
 insightTrafficSourceType
 country
@@ -485,11 +531,12 @@ city
 deviceType
 operatingSystem
 subscribedStatus           # NOT new-vs-returning; do not relabel
-creatorContentType         # shorts / video-on-demand / livestream / stories
+creatorContentType         # SHORTS / VIDEO_ON_DEMAND / LIVE_STREAM / STORY / UNSPECIFIED
 liveOrOnDemand             # incompatible with averageViewPercentage
+audienceType               # ORGANIC / AD_INSTREAM / AD_INDISPLAY, filter-only
 ```
 
-<!-- fields: youtube/reporting-api source: https://developers.google.com/youtube/reporting/v1/reports/channel_reports -->
+<!-- fields: youtube/reporting source: https://developers.google.com/youtube/reporting/v1/reports/channel_reports -->
 ```text
 channel_basic_a3
 channel_combined_a3
@@ -501,8 +548,10 @@ video_thumbnail_impressions_ctr
 engaged_views
 ```
 
-<!-- fields: tiktok/display-api source: https://developers.tiktok.com/doc/display-api-specification-v2 -->
+<!-- fields: tiktok/display-video source: https://developers.tiktok.com/doc/tiktok-api-v2-video-query -->
 ```text
+# source not fetched 2026-09-21: developers.tiktok.com refused connections from
+# this network. Names rest on the 2026-09-14 research; FILM-1725 Check B.
 id
 create_time
 cover_image_url
@@ -519,15 +568,22 @@ comment_count
 share_count
 view_count
 is_aigc
-open_id                    # /v2/user/info/
-union_id                   # /v2/user/info/
-avatar_url                 # /v2/user/info/
-display_name               # /v2/user/info/
-follower_count             # /v2/user/info/
 ```
 
-<!-- fields: tiktok/business-api source: https://business-api.tiktok.com/portal/docs -->
+<!-- fields: tiktok/display-user source: https://developers.tiktok.com/doc/tiktok-api-v2-get-user-info -->
 ```text
+# source not fetched 2026-09-21, as above.
+open_id
+union_id
+avatar_url
+display_name
+follower_count
+```
+
+<!-- fields: tiktok/business source: https://business-api.tiktok.com/portal/docs -->
+```text
+# source not fetched 2026-09-21, as above - and it is the portal root, not the
+# /business/video/list/ reference. No request site may use this block.
 video_views                # mixes organic and paid; cannot be separated
 reach
 likes
@@ -540,7 +596,19 @@ impression_sources
 audience_countries
 ```
 
-<!-- fields: instagram/graph-media source: https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/insights/ -->
+<!-- fields: instagram/media-fields source: https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/ -->
+```text
+media_type                 # CAROUSEL_ALBUM / IMAGE / VIDEO - never REELS
+media_product_type         # AD / FEED / STORY / REELS - branch on this
+reposts_count              # FEED + REELS, Facebook Login, added 2026-04-22
+saved_count                # FEED + REELS, owner or accepted collaborator
+shares_count               # FEED + REELS
+total_views_count          # all surfaces incl. boosted and replays, video only
+total_like_count           # all surfaces incl. boosted
+total_comments_count       # all surfaces incl. boosted
+```
+
+<!-- fields: instagram/media-insights source: https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/insights/ -->
 ```text
 views                      # replaces plays and impressions since 2025-04-21
 reach
@@ -549,31 +617,37 @@ likes
 comments
 saved
 shares
-profile_visits             # NOT available for REELS
-follows                    # NOT available for REELS
+profile_visits             # FEED + STORY only, NOT REELS
+follows                    # FEED + STORY only, NOT REELS
 reels_skip_rate
 ig_reels_avg_watch_time    # units undocumented; ms inferred
 ig_reels_video_view_total_time
-media_type
-media_product_type
-followers_count
-follower_demographics
-reposts_count              # added 2026-04-22, Media node, FEED + REELS
-saved_count                # added 2026-04-22, Media node, FEED + REELS
-shares_count               # added 2026-04-22, Media node, FEED + REELS
-# NOT indexed until the naming family is settled - FILM-1725 Check C:
-#   total_views_count / total_views, total_like_count / total_likes,
-#   total_comments_count / total_comments, and facebook_views
 ```
 
-<!-- fields: instagram/graph-account source: https://developers.facebook.com/docs/instagram-platform/insights/ -->
+<!-- fields: instagram/media-insights-2026 source: https://developers.facebook.com/docs/instagram-platform/changelog -->
 ```text
-views
-reach
-profile_views
-website_clicks
-follower_demographics
+# Added 2026-04-22, "applies to all versions", Facebook Login only.
+total_views                # insights-metric name of total_views_count
+total_likes                # insights-metric name of total_like_count
+total_comments             # insights-metric name of total_comments_count
+facebook_views             # Feed, Reels and Story since 2026-04-22
+```
+
+<!-- fields: instagram/user-fields source: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user -->
+```text
 followers_count
+```
+
+<!-- fields: instagram/user-insights source: https://developers.facebook.com/docs/instagram-platform/api-reference/instagram-user/insights/ -->
+```text
+views                      # total_value only
+reach                      # total_value or time_series
+accounts_engaged           # total_value only
+total_interactions         # total_value only
+profile_links_taps         # total_value only
+follower_demographics      # lifetime; breakdown age/city/country/gender
+# profile_views and website_clicks are NOT here: their time series ended
+# January 2025 and they are absent from the current metrics table.
 ```
 
 <!-- fields: facebook/video-insights source: https://developers.facebook.com/docs/graph-api/reference/video/video_insights/ -->
@@ -584,17 +658,9 @@ total_video_15s_views
 total_video_avg_time_watched
 total_video_view_total_time
 total_video_retention_graph
+total_video_impressions
 total_video_impressions_unique
 total_video_complete_views
-blue_reels_play_count
-fb_reels_replay_count
-fb_reels_total_plays
-post_impressions_unique
-post_video_avg_time_watched
-post_video_view_time
-post_video_retention_graph
-post_video_followers
-page_media_view
 total_video_views_autoplayed
 total_video_views_clicked_to_play
 total_video_views_sound_on
@@ -603,6 +669,14 @@ total_video_30s_views
 total_video_60s_excludes_shorter_views
 total_video_view_time_by_age_bucket_and_gender
 total_video_reactions_by_type_total
+blue_reels_play_count
+fb_reels_replay_count
+fb_reels_total_plays
+post_impressions_unique
+post_video_avg_time_watched
+post_video_view_time
+post_video_retention_graph
+post_video_followers
 post_video_likes_by_reaction_type
 post_video_social_actions
 total_video_ad_break_earnings
@@ -611,7 +685,12 @@ total_video_ad_break_ad_impressions
 creator_monetization_qualified_views
 ```
 
-<!-- fields: x/enterprise-analytics source: https://docs.x.com/x-api/media/analytics -->
+<!-- fields: facebook/page-insights source: https://developers.facebook.com/docs/graph-api/reference/insights/ -->
+```text
+page_media_view            # the only follower/non-follower split: is_from_followers
+```
+
+<!-- fields: x/media-analytics source: https://docs.x.com/x-api/media/get-media-analytics -->
 ```text
 video_views
 playback_start
@@ -624,6 +703,10 @@ cta_url_clicks
 cta_watch_clicks
 play_from_tap
 timestamped_metrics
+```
+
+<!-- fields: x/post-analytics source: https://docs.x.com/x-api/posts/get-post-analytics -->
+```text
 bookmarks
 user_profile_clicks
 url_clicks
@@ -634,14 +717,14 @@ follows
 unfollows
 ```
 
-<!-- fields: x/non-public-metrics source: https://docs.x.com/x-api/posts/lookup -->
+<!-- fields: x/media-object source: https://docs.x.com/x-api/fundamentals/data-dictionary -->
 ```text
-playback_0_count
+playback_0_count           # non_public_metrics and organic_metrics
 playback_25_count
 playback_50_count
 playback_75_count
 playback_100_count
-view_count
+view_count                 # public_metrics and organic_metrics - NOT non_public_metrics
 ```
 
 _Verified: 2026-09-21_
@@ -690,8 +773,9 @@ inferred and must be labelled as such wherever they are used.
 |---|---|---|
 | X analytics endpoints are uncallable on pay-per-use | Comparison table + absence from the billing schedule. The endpoint pages say nothing | inferred |
 | X app-only auth fails | "Owned posts only" semantics | inferred |
-| The Instagram aggregate-metric names (`total_views_count` vs `total_views`) | Media node reference and the insights page disagree; the latter still lists metrics removed 2025-04-21 | inferred |
-| `facebook_views` exists at all | Announcement blog only; on neither reference page | inferred |
+| ~~The Instagram aggregate-metric names~~ | **Resolved 2026-09-21.** The changelog documents both: `*_count` fields on the Media node, short names as insights metrics | **documented** |
+| ~~`facebook_views` exists at all~~ | **Resolved 2026-09-21.** A media insights metric, Feed/Reels/Story, per the changelog | **documented** |
+| Account insights accept `since`/`until` with `metric_type=total_value` | The reference neither states nor forbids it; `getAccountInsights` relies on it | inferred |
 | Instagram watch-time fields are in milliseconds | Community consensus; the reference states no unit | inferred |
 | Facebook `post_video_avg_time_watched` denominator is initial plays | Business Help Center; the API reference does not state it | inferred |
 | Instagram media insights ≈ 2 years, account ≈ 90 days | Two Meta pages disagree; this reconciles them | inferred |
@@ -705,20 +789,21 @@ _Verified: 2026-09-21_
 
 ## Open questions
 
-Genuinely undocumented. **No one may fill these with a guess.** Each needs an owner
-and a question asked of the vendor.
+Genuinely undocumented. **No one may fill these with a guess.** Each names the spec
+that owns it. **None yet names a person** — assigning people is a staffing decision
+this document cannot make.
 
 | Question | How to settle it | Owner |
 |---|---|---|
 | The `/2/media/analytics` historical window and rate limit | One call with a pay-per-use token, `start_time` beyond 30 days | **FILM-1725** (deferred; gates FILM-1727's Enterprise tier) |
 | Whether `/2/media/analytics` is callable below Enterprise | The same call. A 403 settles it; a 200 falsifies the comparison table | **FILM-1725** (deferred; gates FILM-1727's Enterprise tier) |
-| X Enterprise pricing, and any per-call analytics price | Sales contact | *unassigned — FILM-1727* |
-| Meta App Review and Business Verification timelines | Submit and measure | *unassigned — FILM-1711* |
-| How Meta's `total_cputime` is computed | Developer support ticket | *unassigned* |
-| Any path to raising Instagram BUC quotas | Developer support ticket | *unassigned* |
-| The denominator of Facebook's `total_video_avg_time_watched` | Developer support ticket | *unassigned — FILM-1720* |
-| Facebook's `post_video_retention_graph` segment count | One authorised call against a real Reel, counting the returned segments | *unassigned — FILM-1720* |
-| The Instagram aggregate-metric naming family (`total_views` vs `total_views_count`), and whether `facebook_views` exists | One call once insights permission is held | **FILM-1725** Check C |
+| X Enterprise pricing, and any per-call analytics price | Ask X sales, in writing, for the Enterprise price and any per-call analytics price | FILM-1727 |
+| Meta App Review and Business Verification timelines | Submit the app and record the elapsed time | FILM-1711 |
+| How Meta's `total_cputime` is computed | Ask Meta developer support how the BUC `total_cputime` figure is derived | FILM-1720 |
+| Any path to raising Instagram BUC quotas | Ask Meta developer support whether the `4800 × impressions` budget can be raised | FILM-1712 |
+| The denominator of Facebook's `total_video_avg_time_watched` | Ask Meta developer support whether replays count in the denominator | FILM-1720 |
+| Facebook's `post_video_retention_graph` segment count | One authorised call against a real Reel, counting the returned segments | FILM-1720 |
+| Whether our pinned Graph version returns the 2026-04-22 Instagram fields in practice | The changelog says "applies to all versions"; one call once insights permission is held confirms it | **FILM-1725** Check C |
 | The TikTok Display API field list, confirmed live | A sandbox app with `video.list` granted to a test user — see below | **FILM-1725** (deferred; fold into FILM-1711) |
 
 ### Reproducible checks
@@ -772,7 +857,7 @@ April 2025; two Graph versions expired while this repository pointed at them.
   that reddens the build on a calendar is one nobody can fix at 3am, and it would be
   disabled within a month. Staleness is a review duty, not a build failure.
 - **Re-verify at the start of any phase that reads from a new surface**, and whenever
-  a platform announces a deprecation. Update the section's date in the same commit as
-  the change, never separately.
+  a platform announces a deprecation. A section's date records its last **verification**, not its last edit; an edit that does not re-verify says so inline (as TikTok's does) and leaves the date. Update the date in the same commit as
+  the re-verification, never separately.
 
 _Verified: 2026-09-21_
