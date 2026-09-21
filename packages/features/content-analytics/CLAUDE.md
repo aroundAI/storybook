@@ -77,10 +77,11 @@ const analytics = await provider.getVideoAnalytics({
 });
 
 // Result includes:
-// - totals: views, likes, comments, shares, saves, watch time
+// - totals: views, likes, comments, shares. Saves, watch time and
+//   traffic sources are structurally zero - Business API only.
 // - dailyData: empty (TikTok doesn't provide per-video daily breakdown)
-// - audience: geographic/demographic data (optional)
-// - trafficSources: For You, Following, Sound, etc.
+// - audience: always undefined; no authorisable demographics surface
+// - trafficSources: always empty; `impression_sources` is Business API only
 
 // Get account-level analytics
 const accountStats = await provider.getAccountAnalytics();
@@ -110,10 +111,14 @@ import type {
 
 ### TikTok OAuth Scopes Required
 
-- `creator.info` - Basic creator information
-- `video.list` - List creator's videos
-- `video.query` - Query video analytics
-- `research.creator_insights` - Get audience demographics (optional)
+- `user.info.basic` - Basic creator information
+- `video.list` - List and query the creator's own videos
+
+There is **no `video.query` scope**, and `research.creator_insights` is not a
+real scope — TikTok's research scopes are restricted to non-profit academic
+researchers and carry no demographics endpoints. Audience demographics are not
+reachable on any surface we can authorise. See
+[docs/platform-capability-reference.md](../../../docs/platform-capability-reference.md).
 
 ## API Rate Limits
 
@@ -181,13 +186,13 @@ const insights = await provider.getMediaInsights({
 });
 
 // Result includes:
-// - totals: plays, reach, impressions, likes, comments, saves, shares, etc.
+// - totals: views, reach, likes, comments, saves, shares, etc.
 // - reachBreakdown: follower vs non-follower reach (Reels only)
 // - audience: countries, cities, gender/age demographics
 
 // Get account overview metrics
 const accountInsights = await provider.getAccountInsights('week');
-// Returns: impressions, reach, profileViews, websiteClicks, followerCount
+// Returns: views, reach, profileViews, websiteClicks, followerCount
 ```
 
 ### Types

@@ -16,7 +16,10 @@ describe('TikTokAnalyticsProvider', () => {
   let provider: TikTokAnalyticsProvider;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    // reset, not clear: clearAllMocks leaves queued mockResolvedValueOnce
+    // values in place, so a test that consumes one fewer response than it
+    // queued silently feeds the leftover to the next test.
+    mockFetch.mockReset();
     provider = new TikTokAnalyticsProvider('test-access-token');
   });
 
@@ -35,51 +38,23 @@ describe('TikTokAnalyticsProvider', () => {
 
   describe('getVideoAnalytics', () => {
     it('should fetch video analytics successfully', async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                videos: [
-                  {
-                    id: 'test-video-id',
-                    view_count: 1000,
-                    like_count: 50,
-                    comment_count: 25,
-                    share_count: 10,
-                    save_count: 15,
-                    average_watch_time: 45.5,
-                    total_play_time: 45500,
-                    full_video_watched_rate: 0.65,
-                    traffic_source_types: {
-                      for_you: 60,
-                      following: 25,
-                      profile: 10,
-                      search: 5,
-                    },
-                  },
-                ],
-              },
-            }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                audience_countries: [
-                  { country: 'US', percentage: 40 },
-                  { country: 'UK', percentage: 20 },
-                ],
-                audience_genders: { male: 45, female: 50, other: 5 },
-                audience_ages: [
-                  { age_range: '18-24', percentage: 35 },
-                  { age_range: '25-34', percentage: 40 },
-                ],
-              },
-            }),
-        });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: {
+              videos: [
+                {
+                  id: 'test-video-id',
+                  view_count: 1000,
+                  like_count: 50,
+                  comment_count: 25,
+                  share_count: 10,
+                },
+              ],
+            },
+          }),
+      });
 
       const result = await provider.getVideoAnalytics({
         videoId: 'test-video-id',
@@ -90,40 +65,62 @@ describe('TikTokAnalyticsProvider', () => {
       expect(result.totals.likes).toBe(50);
       expect(result.totals.comments).toBe(25);
       expect(result.totals.shares).toBe(10);
-      expect(result.totals.saves).toBe(15);
-      expect(result.totals.averageWatchTime).toBe(45.5);
-      expect(result.totals.totalPlayTime).toBe(45500);
-      expect(result.totals.fullVideoWatchedRate).toBe(0.65);
       expect(result.dailyData).toEqual([]);
     });
 
-    it('should return correct totals structure', async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                videos: [
-                  {
-                    id: 'test-video-id',
-                    view_count: 1000,
-                    like_count: 50,
-                    comment_count: 25,
-                    share_count: 10,
-                    save_count: 15,
-                    average_watch_time: 45,
-                    total_play_time: 45000,
-                    full_video_watched_rate: 0.7,
-                  },
-                ],
-              },
-            }),
-        })
-        .mockResolvedValueOnce({
-          ok: false,
-          json: () => Promise.resolve({}),
-        });
+    it('asks the Display API only for fields it has', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: { videos: [{ id: 'test-video-id', view_count: 1 }] },
+          }),
+      });
+
+      await provider.getVideoAnalytics({ videoId: 'test-video-id' });
+
+      // One request. The second call used to ask /research/creator/insights/,
+      // a surface restricted to non-profit academic researchers, inside a
+      // swallowing try/catch - so every sync made a request that could not
+      // succeed and reported nothing.
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      const url = mockFetch.mock.calls[0]![0] as string;
+      const fields = new URL(url).searchParams.get('fields')!.split(',');
+
+      expect(fields).toEqual([
+        'id',
+        'like_count',
+        'comment_count',
+        'share_count',
+        'view_count',
+      ]);
+    });
+
+    it('reports what the Display API cannot measure as zero, not as data', async () => {
+      // The endpoint has no save, watch-time or traffic-source field at all.
+      // These were once read off the response as `save_count`,
+      // `average_watch_time`, `total_play_time`, `full_video_watched_rate`
+      // and `traffic_source_types` - five names it does not have - so four
+      // metrics arrived as zero and looked measured.
+      // docs/platform-capability-reference.md
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: {
+              videos: [
+                {
+                  id: 'test-video-id',
+                  view_count: 1000,
+                  like_count: 50,
+                  comment_count: 25,
+                  share_count: 10,
+                },
+              ],
+            },
+          }),
+      });
 
       const result = await provider.getVideoAnalytics({
         videoId: 'test-video-id',
@@ -134,13 +131,15 @@ describe('TikTokAnalyticsProvider', () => {
         likes: 50,
         comments: 25,
         shares: 10,
-        saves: 15,
+        saves: 0,
         profileViews: 0,
         followersGained: 0,
-        averageWatchTime: 45,
-        totalPlayTime: 45000,
-        fullVideoWatchedRate: 0.7,
+        averageWatchTime: 0,
+        totalPlayTime: 0,
+        fullVideoWatchedRate: 0,
       });
+      expect(result.trafficSources).toEqual([]);
+      expect(result.audience).toBeUndefined();
     });
 
     it('should handle empty video response', async () => {
@@ -160,25 +159,20 @@ describe('TikTokAnalyticsProvider', () => {
     });
 
     it('should handle missing optional fields', async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                videos: [
-                  {
-                    id: 'test-video-id',
-                    // All fields missing
-                  },
-                ],
-              },
-            }),
-        })
-        .mockResolvedValueOnce({
-          ok: false,
-          json: () => Promise.resolve({}),
-        });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: {
+              videos: [
+                {
+                  id: 'test-video-id',
+                  // All fields missing
+                },
+              ],
+            },
+          }),
+      });
 
       const result = await provider.getVideoAnalytics({
         videoId: 'test-video-id',
@@ -188,135 +182,7 @@ describe('TikTokAnalyticsProvider', () => {
       expect(result.totals.likes).toBe(0);
       expect(result.totals.comments).toBe(0);
       expect(result.totals.shares).toBe(0);
-      expect(result.totals.saves).toBe(0);
-      expect(result.totals.averageWatchTime).toBe(0);
       expect(result.trafficSources).toEqual([]);
-    });
-
-    it('should parse audience data correctly', async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                videos: [{ id: 'test-video-id', view_count: 100 }],
-              },
-            }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                audience_countries: [
-                  { country: 'US', percentage: 50 },
-                  { country: 'CA', percentage: 30 },
-                ],
-                audience_genders: { male: 40, female: 55, other: 5 },
-                audience_ages: [
-                  { age_range: '18-24', percentage: 45 },
-                  { age_range: '25-34', percentage: 35 },
-                ],
-              },
-            }),
-        });
-
-      const result = await provider.getVideoAnalytics({
-        videoId: 'test-video-id',
-      });
-
-      expect(result.audience).toBeDefined();
-      expect(result.audience?.countries).toEqual([
-        { country: 'US', percentage: 50 },
-        { country: 'CA', percentage: 30 },
-      ]);
-      expect(result.audience?.genderDistribution).toEqual({
-        male: 40,
-        female: 55,
-        other: 5,
-      });
-      expect(result.audience?.ageGroups).toEqual([
-        { ageGroup: '18-24', percentage: 45 },
-        { ageGroup: '25-34', percentage: 35 },
-      ]);
-    });
-
-    it('should parse traffic sources correctly', async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                videos: [
-                  {
-                    id: 'test-video-id',
-                    view_count: 100,
-                    traffic_source_types: {
-                      for_you: 60,
-                      following: 25,
-                      sound: 5,
-                      hashtag: 5,
-                      profile: 3,
-                      search: 2,
-                    },
-                  },
-                ],
-              },
-            }),
-        })
-        .mockResolvedValueOnce({
-          ok: false,
-          json: () => Promise.resolve({}),
-        });
-
-      const result = await provider.getVideoAnalytics({
-        videoId: 'test-video-id',
-      });
-
-      expect(result.trafficSources).toEqual([
-        { source: 'For You', percentage: 60 },
-        { source: 'Following', percentage: 25 },
-        { source: 'Sound', percentage: 5 },
-        { source: 'Hashtag', percentage: 5 },
-        { source: 'Profile', percentage: 3 },
-        { source: 'Search', percentage: 2 },
-      ]);
-    });
-
-    it('should handle unknown traffic sources as Other', async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              data: {
-                videos: [
-                  {
-                    id: 'test-video-id',
-                    traffic_source_types: {
-                      for_you: 60,
-                      unknown_source: 40,
-                    },
-                  },
-                ],
-              },
-            }),
-        })
-        .mockResolvedValueOnce({
-          ok: false,
-          json: () => Promise.resolve({}),
-        });
-
-      const result = await provider.getVideoAnalytics({
-        videoId: 'test-video-id',
-      });
-
-      expect(result.trafficSources).toContainEqual({
-        source: 'Other',
-        percentage: 40,
-      });
     });
   });
 

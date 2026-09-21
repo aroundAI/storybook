@@ -102,7 +102,7 @@ describe('InstagramInsightsProvider', () => {
 
       expect(result.mediaId).toBe('test-media-id');
       expect(result.mediaType).toBe('REELS');
-      expect(result.totals.plays).toBe(1000);
+      expect(result.totals.views).toBe(1000);
       expect(result.totals.reach).toBe(500);
       expect(result.totals.likes).toBe(100);
       expect(result.totals.comments).toBe(25);
@@ -147,8 +147,7 @@ describe('InstagramInsightsProvider', () => {
       });
 
       expect(result.mediaType).toBe('VIDEO');
-      expect(result.totals.plays).toBe(800); // views maps into plays
-      expect(result.totals.impressions).toBe(800);
+      expect(result.totals.views).toBe(800);
       expect(result.reachBreakdown).toBeUndefined(); // No breakdown for Videos
     });
 
@@ -210,7 +209,7 @@ describe('InstagramInsightsProvider', () => {
         mediaId: 'test-media-id',
       });
 
-      expect(result.totals.plays).toBe(0);
+      expect(result.totals.views).toBe(0);
       expect(result.totals.reach).toBe(0);
       expect(result.totals.likes).toBe(0);
     });
@@ -225,7 +224,7 @@ describe('InstagramInsightsProvider', () => {
           Promise.resolve({
             data: [
               {
-                name: 'impressions',
+                name: 'views',
                 values: [{ value: 1000 }, { value: 1500 }],
               },
               { name: 'reach', values: [{ value: 500 }, { value: 700 }] },
@@ -246,7 +245,7 @@ describe('InstagramInsightsProvider', () => {
 
       const result = await provider.getAccountInsights('week');
 
-      expect(result.impressions).toBe(2500); // Sum of daily values
+      expect(result.views).toBe(2500); // Sum of daily values
       expect(result.reach).toBe(1200);
       expect(result.profileViews).toBe(110);
       expect(result.websiteClicks).toBe(25);
@@ -297,7 +296,7 @@ describe('InstagramInsightsProvider', () => {
         ok: true,
         json: () =>
           Promise.resolve({
-            data: [{ name: 'impressions', values: [{ value: 1000 }] }],
+            data: [{ name: 'views', values: [{ value: 1000 }] }],
           }),
       });
 
@@ -317,7 +316,7 @@ describe('InstagramInsightsProvider', () => {
         ok: true,
         json: () =>
           Promise.resolve({
-            data: [{ name: 'impressions', values: [{ value: 1000 }] }],
+            data: [{ name: 'views', values: [{ value: 1000 }] }],
           }),
       });
 

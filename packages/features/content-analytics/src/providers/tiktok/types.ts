@@ -123,15 +123,22 @@ export interface TikTokAccountAnalytics {
 /**
  * TikTok API video data structure
  */
+/**
+ * TikTok Display API `/v2/video/query/` response shape.
+ *
+ * Only fields this endpoint actually returns. It previously declared
+ * `save_count`, `average_watch_time`, `total_play_time`,
+ * `full_video_watched_rate` and `traffic_source_types`, none of which exist on
+ * it — four metrics read as zero and looked measured. The real names, where
+ * they exist at all, are on the Business API.
+ * See docs/platform-capability-reference.md.
+ */
 export interface TikTokVideoData {
   id: string;
   view_count?: number;
   like_count?: number;
   comment_count?: number;
   share_count?: number;
-  save_count?: number;
-  average_watch_time?: number;
-  total_play_time?: number;
-  full_video_watched_rate?: number;
-  traffic_source_types?: Record<string, number>;
+  /** The published asset's duration, in seconds. FILM-1710. */
+  duration?: number;
 }

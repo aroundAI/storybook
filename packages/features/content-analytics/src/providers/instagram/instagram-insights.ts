@@ -135,9 +135,8 @@ export class InstagramInsightsProvider {
         mediaId,
         mediaType,
         totals: {
-          plays: metrics.views ?? 0,
+          views: metrics.views ?? 0,
           reach: metrics.reach ?? 0,
-          impressions: metrics.views ?? metrics.reach ?? 0,
           totalInteractions: metrics.total_interactions ?? 0,
           likes: metrics.likes ?? 0,
           comments: metrics.comments ?? 0,
@@ -336,7 +335,7 @@ export class InstagramInsightsProvider {
         fetch(
           `${GRAPH_API_BASE}/${this.instagramAccountId}/insights?` +
             new URLSearchParams({
-              metric: 'impressions,reach,profile_views,website_clicks',
+              metric: 'views,reach,profile_views,website_clicks',
               period: 'day',
               since: since.toString(),
               until: now.toString(),
@@ -386,7 +385,7 @@ export class InstagramInsightsProvider {
       const metrics = this.aggregateMetrics(metricsData.data ?? []);
 
       return {
-        impressions: metrics.impressions ?? 0,
+        views: metrics.views ?? 0,
         reach: metrics.reach ?? 0,
         profileViews: metrics.profile_views ?? 0,
         websiteClicks: metrics.website_clicks ?? 0,

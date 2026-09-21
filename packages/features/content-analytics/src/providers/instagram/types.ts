@@ -2,7 +2,7 @@
  * Instagram Insights Provider Types
  *
  * Types for fetching and normalizing Instagram Insights data.
- * Uses Meta Graph API v18.0.
+ * Uses Meta Graph API v23.0.
  */
 
 /**
@@ -17,16 +17,17 @@ export interface InstagramInsightsInput {
  * Available Instagram Insights metrics
  */
 export type InstagramMetric =
-  | 'plays'
+  | 'views'
   | 'reach'
   | 'total_interactions'
   | 'likes'
   | 'comments'
   | 'saved'
   | 'shares'
+  /** FEED and STORY only. Not available for REELS. */
   | 'profile_visits'
-  | 'follows'
-  | 'impressions';
+  /** FEED and STORY only. Not available for REELS. */
+  | 'follows';
 
 /**
  * Media type returned by Instagram
@@ -48,9 +49,8 @@ export interface InstagramInsightsResult {
  * Aggregate totals for a media item
  */
 export interface InstagramTotals {
-  plays: number;
+  views: number;
   reach: number;
-  impressions: number;
   totalInteractions: number;
   likes: number;
   comments: number;
@@ -91,7 +91,7 @@ export interface InstagramAudienceData {
  * Account-level insights overview
  */
 export interface InstagramAccountInsights {
-  impressions: number;
+  views: number;
   reach: number;
   profileViews: number;
   websiteClicks: number;
