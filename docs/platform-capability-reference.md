@@ -320,7 +320,7 @@ Re-checked 2026-09-21 against the
 [video_insights reference](https://developers.facebook.com/docs/graph-api/reference/video/video_insights/):
 the edge exposes **57 video metrics, 11 Reels metrics and 4 ad-break metrics**,
 not the ~16 first recorded here. What the short list omits changes how big
-FILM-1720's Facebook half is, and in which direction:
+FILM-1720 is, and in which direction:
 
 - **Organic/paid splits on most view metrics**, which no other platform here
   gives us. TikTok explicitly *cannot* separate them.
