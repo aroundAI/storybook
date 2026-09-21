@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1703
 title: Data Provenance Capability Model
-status: ✅ DONE
+status: 🟡 PARTIAL
 effort: M
 dependencies: FILM-1721
 ---
@@ -290,7 +290,7 @@ for TikTok means the matrix is wrong.
 - [x] Removing a writer from a listed file fails CI
 - [x] The live check reports any platform present in a table but marked `unsupported` or `not_ingested`
 - [x] The declared derivation for a platform is consistent with the `metric_source` values actually observed for it
-- [ ] No consumer restates a platform list that the matrix could have told it — **not met here, by design**: this spec ships no UI (§1, §6), so the matrix has no consumer yet. The seven hardcoded claims are FILM-1701's to remove and FILM-1705's to derive; see §10
+- [ ] No consumer restates a platform list that the matrix could have told it — **not met here, by design**: this spec ships no UI (§1, §6), so the matrix has no consumer yet. The seven hardcoded claims are FILM-1701's to remove and FILM-1705's to derive; see §11
 - [x] Every entry carries capability, access, availability and window
 - [x] `scope_missing`, `review_required` and `account_type_gated` are distinguishable, because they have different owners
 - [x] `unknown` availability is never a default and always names its owner and question
@@ -374,11 +374,12 @@ unconditionally — the Display API has no demographics. The matrix records
 `not_ingested` (`audience_countries`, Business API). The TikTok branch of
 `buildAudienceRows` is now dead code; removing it is not this spec's.
 
-**TikTok's Business-API entries name FILM-1712 as their blocker, for want of a
-better one.** FILM-1712 §4 describes that integration and recommends splitting
-it into its own spec, which does not exist yet. The suite requires `blockedBy`
-to be a spec that exists, so an invented id cannot stand in; when the spec is
-written its id replaces `FILM-1712` on those four entries.
+**TikTok's Business-API entries name FILM-1712 as their blocker, as a
+placeholder.** FILM-1712 §4 describes that integration and recommends splitting
+it into its own spec. Owner decision, 2026-09-22: that spec is **FILM-1730**
+(PR #285). Its file does not exist on this branch and the suite requires
+`blockedBy` to resolve to a spec that exists, so the four entries keep
+`FILM-1712` here — see §11.
 
 **Every entry carries a `reference`** — the `##` section of
 `docs/platform-capability-reference.md` it was read from, and for every level
@@ -415,3 +416,26 @@ hand-kept copy would drift. FILM-1708 reads them from observed rows.
 
 Every guard has a recorded red check: `tooling/mutation-guards/film-1703.json`,
 which CI's Unit Tests job runs.
+
+## 11. Remaining
+
+Status is `🟡 PARTIAL`, not done, because one acceptance criterion is open.
+What is left, and who closes it:
+
+- **"No consumer restates a platform list that the matrix could have told
+  it."** The seven hardcoded claims (`overview/views-card.tsx:38-39` among
+  them; FILM-1705 §1 lists all seven) are **removed by FILM-1701** and
+  **derived from the matrix by FILM-1705**. This spec ships no UI, so it cannot
+  close the criterion itself; it closes when FILM-1705 lands.
+- **`blockedBy` on the four TikTok Business-API entries** — `watch_time`,
+  `traffic_sources`, `reach`, `geography` — moves from the placeholder
+  `FILM-1712` to **FILM-1730** in the first change made after PR #285 merges.
+  It cannot move earlier: the structural test requires the id to resolve to a
+  spec file.
+
+**For downstream authors (FILM-1705, 1711, 1726): a consumer that knows
+the creator's account type must call `accessFor(family, platform,
+{ meetsAccountGate })`, never read `.access`.** The stored `access` is only
+*our* half of the state and can never be `account_type_gated`; reading it
+directly tells a non-YPP creator, or a creator on a personal TikTok account, to
+reconnect for something reconnecting cannot give them.

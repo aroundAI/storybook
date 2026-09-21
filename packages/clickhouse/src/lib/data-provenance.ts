@@ -382,8 +382,9 @@ export const CAPABILITY_MATRIX: Record<
       },
     },
     // Same level as Instagram and not the same price: this one is a second
-    // integration. No spec owns it yet — FILM-1712 §4 describes it and
-    // recommends splitting it out; when that spec exists its id goes here.
+    // integration. FILM-1730 (TikTok Business API) will own it once #285
+    // merges; until that file exists here FILM-1712 is a placeholder, because
+    // the suite requires `blockedBy` to resolve to a spec.
     tiktok: {
       level: 'not_ingested',
       table: null,
@@ -473,7 +474,8 @@ export const CAPABILITY_MATRIX: Record<
     },
     // Our gap, not TikTok's, twice over: the Business app we have not
     // registered, and the mapping from `impression_sources` to traffic groups
-    // we have not written. As with watch time, no spec owns it yet.
+    // we have not written. As with watch time, FILM-1730 will own it once
+    // #285 merges; FILM-1712 is the placeholder until then.
     tiktok: {
       level: 'not_ingested',
       table: null,
