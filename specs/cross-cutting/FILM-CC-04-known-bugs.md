@@ -449,6 +449,25 @@ purpose — that header is a column name in files recipients already parse,
 and renaming it in a bug-fix PR breaks their spreadsheets to make a caveat
 that this entry records instead.
 
+**Decided (owner, 2026-09-22): one card per currency.** A total that spans
+currencies is shown as one figure per currency — the Video Log's
+`$12.00 + €5.00`, carried to every card and chart. No exchange rates, no
+base currency, no selector. An account with a single currency sees exactly
+what it sees today.
+
+**How a second currency gets in — there is one door.** Every API-sourced row
+is written `currency: 'USD'` (`analytics-sync-cron.ts`, `source: 'api'`):
+YouTube's Analytics API reports `estimatedRevenue` in USD unless a `currency`
+parameter is sent, and we never send one. So platform revenue cannot be
+mixed. The only way to a non-USD row is a person: the manual revenue form's
+currency select (`manual-revenue-form.tsx`), and the bulk import beside it
+(`revenue-actions.ts`, `record.currency ?? 'USD'`) — a sponsorship paid in
+euros, entered as euros. That makes this rarer than the entry's first
+paragraph suggests, and means the ClickHouse side (`video_metrics.revenue_cents`,
+no currency column) is USD **by construction today** — which the fix should
+state and guard, because it stops being true the day a provider reports in
+the channel's own currency.
+
 **How to reproduce:** add two `revenue_records` for one publish with
 different `currency` values, and read the revenue mix or the account
 dashboard: one number, neither currency.
@@ -484,6 +503,120 @@ have to re-derive that policy by hand, which is how KB-11 happened.
 **If it needs fixing:** a rollup the sync writes (per publish per currency)
 would make this an indexed lookup, at the cost of a second place revenue
 can be wrong. Not worth it until someone has a real account that is slow.
+
+---
+
+## KB-14 — The lambdas are not typechecked
+
+**Severity:** Medium — nothing is known to be broken in production, and
+nothing would tell us if it were. **Found:** FILM-1723 (#284), 2026-09-22.
+**Open.**
+
+`apps/web/tsconfig.json` includes `app`, `lib`, `components`, `config`,
+`scripts` and the root files. It does not include `lambda/`, and no other
+tsconfig does. So `pnpm typecheck`, and CI's TypeScript job, have never
+looked at the eleven workers under `apps/web/lambda/` — the code that
+publishes to every platform, refreshes tokens, renders video and runs the
+LLM pipeline. They are bundled by esbuild through SST, which strips types
+without checking them.
+
+### Reproduced (2026-09-22, `main` at dbbd5ee8)
+
+```bash
+cd apps/web
+npx tsc -p tsconfig.json --listFilesOnly | grep -c '/apps/web/lambda/'   # 0
+```
+
+With a throwaway tsconfig that extends the app's and includes
+`lambda/**/*.ts`: **82 errors**.
+
+| Code | Count | What it is here |
+|---|---|---|
+| TS2345 | 20 | Mostly job types the union does not contain: `'story-refinement'`, `'screenplay-refinement'`, `'audio_file_generation'`, `'dialogue_voice_generation'` passed as `GenerationJobType` |
+| TS2352 | 18 | Casts between shapes that do not overlap — prompt templates, `ScheduledPublish[]` |
+| TS2339 | 17 | Properties read off an array as though it were a row (`context-builder.ts`: `.id`, `.metadata` on `{…}[]`) |
+| TS7016 / TS2307 | 10 | `ws`, `@aws-sdk/client-sqs`, `@aws-sdk/client-s3` not resolvable from `apps/web` — the workers' dependencies are not the app's |
+| TS2459 | 5 | `PublishJobMessage` imported from `../index`, which declares it and does not export it: `handlers/facebook.ts`, `linkedin.ts`, `tiktok.ts`, `youtube.ts`, and `scheduled-publish/index.ts` |
+| others | 12 | TS2322 (5), TS2769 (3), TS7006, TS2739, TS2578, TS1117 |
+
+**Not every one of the 82 is a bug.** The ten module-resolution errors are
+an artefact of checking the workers with the app's config. But the TS2339s
+in `context-builder.ts` read like a real one — a Supabase join typed as an
+array and read as an object — and the job-type strings mean either the union
+is stale or the workers write values the app's types say cannot exist.
+Nobody has looked, which is the bug.
+
+### Proposed fix
+
+- A `tsconfig.json` for the lambdas (one, or one per worker, with the
+  workers' own dependency resolution), wired into `pnpm typecheck` and so
+  into CI.
+- Triage the 82: fix what is real, and leave no `@ts-expect-error` without a
+  reason beside it.
+- **Red before green:** the CI job must be seen to fail on a deliberately
+  broken handler before it is trusted.
+
+### Acceptance criteria
+
+- [ ] `tsc --listFilesOnly` under CI's typecheck lists the lambda files
+- [ ] Zero type errors under `apps/web/lambda/`, each of today's 82 fixed or explained
+- [ ] A type error introduced in a handler fails CI — demonstrated, then reverted
+
+---
+
+## KB-15 — X connections are never refreshed
+
+**Severity:** Medium — every X connection stops working two hours after it
+is made. Masked today, because X video publishing does not work for another
+reason (FILM-1729). **Found:** FILM-1723 (#284), 2026-09-22. **Open.**
+
+`TWITTER_OAUTH_CONFIG` requests `offline.access` "for refresh tokens" and
+records a two-hour access token with a 180-day refresh token
+(`oauth/twitter/config.ts`). Nothing ever uses the refresh token.
+
+`packages/features/publishing/src/lib/token-refresh.ts`:
+
+- `type Platform` is `'youtube' | 'tiktok' | 'instagram' | 'facebook' |
+  'linkedin'` — no `'twitter'` (`:36`).
+- The connection's platform is forced into it with `connection.platform as
+  Platform` (`:186`, `:243`), which is how a sixth value reaches the switch
+  without the compiler objecting.
+- `refreshTokenForPlatform` has no X case and falls to
+  `default: throw new Error(`Unknown platform: ${platform}`)` (`:303-313`).
+
+So an X token past its two hours is not refreshed: the refresh path throws
+and the connection is treated as broken. Both publish paths go through it —
+`process-scheduled-publishes.ts:222` and `connection-actions.ts` — and the
+publish lambda's own `ensureValidToken` (`lambda/publish-worker/index.ts:132`)
+does not refresh at all; it reports *"Token expired - please reconnect your
+account or wait for refresh"*, a refresh that for X never comes.
+
+**Confirmed by reading, not by running against X** — we hold no X
+credentials (FILM-1729 §2), and this entry says so rather than claiming a
+reproduction it does not have. What *can* be run locally: a unit test that
+calls `ensureValidToken` for a connection with `platform: 'twitter'` and an
+expired token, and sees `Unknown platform: twitter`.
+
+### Proposed fix
+
+- Add `'twitter'` to `Platform` and a `refreshXToken` beside the others
+  (`POST https://api.x.com/2/oauth2/token`, `grant_type=refresh_token`; host from `@kit/shared/vendors`). X is understood
+  to issue a **new refresh token on every use** — confirm against docs.x.com
+  and cite it in the capability reference before relying on it; if so, the
+  rotated token **must** be stored or the second refresh fails.
+- **Fix the class:** remove the `as Platform` casts and derive `Platform`
+  from the same source as `platform_connections.platform`, so the switch is
+  exhaustive and a seventh platform is a compile error rather than a runtime
+  throw. That cast is the actual defect; X is the instance.
+- The unit half can land now. The live half — one real refresh — waits on X
+  credentials and rides with FILM-1729 / FILM-1725 Check E.
+
+### Acceptance criteria
+
+- [ ] Unit: an expired X connection is refreshed and the **rotated** refresh token stored; seen red first with `Unknown platform: twitter`
+- [ ] `Platform` is derived, not restated; no `as Platform` cast remains; the switch is exhaustive under `tsc`
+- [ ] The publish lambda's token check agrees with the app's for X
+- [ ] One live refresh against X *(deferred with FILM-1729 — no credentials)*
 
 ---
 

@@ -60,6 +60,7 @@ FILM-1708 (drill-down + ramp) ← FILM-1605 ✅, FILM-1706
 FILM-1709 (filter completion) ← FILM-1704, FILM-1707
 FILM-1720 (Facebook) ← FILM-1711, FILM-1714, FILM-1721, FILM-1723
 FILM-1727 (X) ← the same; FILM-1725 Check A for the Enterprise tier only
+FILM-1703 + FILM-1711 ─→ FILM-1730 (TikTok Business API) ← also a Business developer app we do not hold
 FILM-1723 (API versions) ─→ FILM-1728 (Graph v26.0) ; ─→ FILM-1729 (X media.write) ⏸ needs X credentials
 ```
 
@@ -161,6 +162,7 @@ FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook) ─→
 | [FILM-1726](./FILM-1726-monetisation-stage.md) | DRAFT | M | The Monetisation stage re-argued, after its premise turned out to be a fact about our writers rather than the platforms |
 | [FILM-1728](./FILM-1728-meta-graph-v26-upgrade.md) | DRAFT | S | Move the single Meta pin from v23.0 to v26.0: read the v24–v26 changelogs against every call we make, fetch the real expiry, re-run the live refresh check. Split from FILM-1723 so the urgent pin shipped on its own |
 | [FILM-1729](./FILM-1729-x-media-write-scope.md) | ⏸️ DEFERRED | S | `/2/media/upload` needs `media.write`, which we never request, so X video publishing 403s (it never worked). Deferred until X credentials exist — the same purchase unblocks FILM-1725 Check A |
+| [FILM-1730](./FILM-1730-tiktok-business-api.md) | DRAFT | XL | TikTok's real analytics — watch time, reach, traffic sources, geography — live on the Business API: a second app, a second connection, and a creator on a Business account. Split from FILM-1712 §4. Owns the four matrix entries FILM-1703 parked on a placeholder |
 
 **Two independent paths, deliberately.** `metrics → diagnosis` (FILM-1718)
 works without the genome, so a creator gets a usable diagnosis immediately;
