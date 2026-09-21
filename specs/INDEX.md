@@ -659,6 +659,14 @@ SPIKE-01 through SPIKE-05
 
 ## Progress Tracker
 
+> **The per-phase counts have drifted from the spec files.** Before this
+> change the Phase 16 row read 11 done / 6 draft while the directory held 16
+> done / 1 draft. That row is now counted from the files (17 / 0); the others
+> are not, and the TOTAL moves only by this change's one spec. Reconciling
+> the whole table means counting the nested spec directories, which is its
+> own piece of work.
+
+
 | Phase | Total | Draft | Review | Approved | In Progress | Done |
 |-------|-------|-------|--------|----------|-------------|------|
 | 1. Foundation | 26 | 0 | 0 | 0 | 0 | 26 |
@@ -678,10 +686,10 @@ SPIKE-01 through SPIKE-05
 | 13. Hook Opt | 2 | 1 | 0 | 0 | 0 | 1 |
 | 14. Edit Suite v2 | 1 | 1 | 0 | 0 | 0 | 0 |
 | 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 11 |
-| 16. Workbook Parity | 17 | 6 | 0 | 0 | 0 | 11 |
+| 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 17 |
 | 17. Analytics Provenance | 23 | 23 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **214** | **31** | **0** | **0** | **0** | **183** |
+| **TOTAL** | **214** | **30** | **0** | **0** | **0** | **184** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
@@ -691,7 +699,7 @@ SPIKE-01 through SPIKE-05
 | Post-MVP (Ph 6-9) | 37 | 37 | 100% |
 | Canon (Ph 10-11) | 28 | 28 | 100% |
 | Scale & Hooks (Ph 12-13) | 4 | 2 | 50% |
-| Workbook Parity (Ph 16) | 17 | 11 | 65% |
+| Workbook Parity (Ph 16) | 17 | 17 | 100% |
 | Provenance & Signal (Ph 17) | 23 | 0 | 0% |
 
 Phase 14 (`edit-suite-v2`) carries an `ENGINEERING.md` with no status
