@@ -1,0 +1,35 @@
+{
+  "feature": "FILM-1721",
+  "mutations": [
+    {
+      "name": "A retired field name reappears on a response type",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/tiktok/types.ts",
+      "find": "  share_count?: number;\n  /** The published asset's duration, in seconds. FILM-1710. */",
+      "replace": "  share_count?: number;\n  save_count?: number;\n  /** The published asset's duration, in seconds. FILM-1710. */",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "save_count"
+    },
+    {
+      "name": "A request asks for a field the reference does not document",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "metric: 'views,reach,profile_views,website_clicks',",
+      "replace": "metric: 'views,reach,profile_views,total_replays',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "instagram-insights.ts"
+    },
+    {
+      "name": "The reference loses a field a live request depends on",
+      "kind": "unit",
+      "file": "docs/platform-capability-reference.md",
+      "find": "profile_views\nwebsite_clicks",
+      "replace": "website_clicks",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "instagram-insights.ts"
+    }
+  ]
+}

@@ -121,9 +121,6 @@ export interface TikTokAccountAnalytics {
 }
 
 /**
- * TikTok API video data structure
- */
-/**
  * TikTok Display API `/v2/video/query/` response shape.
  *
  * Only fields this endpoint actually returns. It previously declared

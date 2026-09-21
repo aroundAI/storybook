@@ -41,13 +41,27 @@ and *we haven't*:
 - **`unsupported`** — Instagram has no traffic-source concept at all. Its
   provider type (`providers/instagram/types.ts:37-43`) has only `totals`,
   `reachBreakdown` and `audience`. There is nothing to fetch.
-- **`not_ingested`** — TikTok's provider *does* return traffic sources
-  (`providers/tiktok/tiktok-analytics.ts:207`), but as
-  `{ source, percentage }` (`providers/tiktok/types.ts:92-95`) with
-  human labels — `'For You'`, `'Following'`, `'Sound'`. That is structurally
-  incompatible with `VideoTrafficSource`, which requires `views` and
-  `watch_time_minutes`, and lexically disjoint from `SOURCE_TO_GROUP`, so every
-  TikTok source would land in `other`. **This is our gap, not TikTok's.**
+- **`not_ingested`** — TikTok reports traffic sources as `impression_sources`
+  on the **Business API**, which needs a separate app registration and a TikTok
+  Business account. We have neither, so nothing arrives. The
+  `TikTokTrafficSource` shape (`providers/tiktok/types.ts`) is kept for that
+  integration: `{ source, percentage }` with human labels — `'For You'`,
+  `'Following'`, `'Sound'` — which is structurally incompatible with
+  `VideoTrafficSource` (it requires `views` and `watch_time_minutes`) and
+  lexically disjoint from `SOURCE_TO_GROUP`, so every TikTok source would land
+  in `other`. **This is our gap, not TikTok's**, on both counts: the app we
+  have not registered, and the mapping we have not written.
+
+  ⚠️ **The evidence for this changed under FILM-1721; the conclusion did not.**
+  This spec originally read "TikTok's provider *does* return traffic sources
+  (`tiktok-analytics.ts:207`)". It did not. The provider parsed a
+  `traffic_source_types` field that the Display API has never had — one of the
+  five fabricated names FILM-1721 found — so `parseTrafficSources` could only
+  ever receive `undefined`. The fabrication and the dead parse are gone. Read
+  the capability from
+  [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md),
+  never from our own types: that is the whole point of FILM-1721, and this
+  paragraph is what it looks like when the rule is not followed.
 - **`derived`** — TikTok and Instagram daily metrics are snapshot deltas
   attributed to the *fetch* day rather than the data day
   (`server/ingest.ts:287-299`). They occupy the same columns as YouTube's true

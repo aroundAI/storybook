@@ -61,7 +61,23 @@ FILM-1709 (filter completion) ← FILM-1704, FILM-1707
 FILM-1720 (Facebook + X) ← FILM-1711, FILM-1714, FILM-1721, FILM-1723
 ```
 
-**FILM-1721, FILM-1723 and FILM-1710 are the only true roots.** FILM-1701 is
+**FILM-1721 has shipped.** The reference is at
+[docs/platform-capability-reference.md](../../docs/platform-capability-reference.md),
+and its rule is automated rather than a review convention — a request naming a
+field the document does not carry fails the build. Two things it settled while
+being written, both of which change work downstream:
+
+- **Graph v18.0 expired 2026-01-26 and v19.0 expired 2026-05-21.** Meta defaults
+  an expired version to the next oldest usable one instead of rejecting it, so
+  `token-refresh.ts` (v18.0) and the lambda handlers (v19.0) are running on a
+  version nobody chose. FILM-1723 was written against an *inferred* EOL; it is
+  now documented, and the failure mode is worse than the spec assumed.
+- **TikTok's traffic sources were never ingested because they were never
+  returned.** The provider parsed a `traffic_source_types` field the Display API
+  does not have. This changes FILM-1703 §2's evidence, not its conclusion — see
+  the note there.
+
+**FILM-1723 and FILM-1710 are the remaining true roots.** FILM-1701 is
 independent of the reference but feeds FILM-1705. Everything else descends from
 one of them — in particular FILM-1703 now depends on FILM-1721, so it is no
 longer a starting point.
@@ -126,7 +142,7 @@ FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook + X)
 | [FILM-1718](./FILM-1718-stage-diagnosis.md) | DRAFT | M | Distribution-vs-content and the finite failure patterns. **Does not depend on the genome** |
 | [FILM-1719](./FILM-1719-signal-surfaces.md) | DRAFT | L | The five-stage strip, three depths, evidence, "model after" |
 | [FILM-1720](./FILM-1720-facebook-x-analytics.md) | DRAFT | XL | Widening the enum across eight tables; two providers that do not exist |
-| [FILM-1721](./FILM-1721-platform-capability-reference.md) | DRAFT | L | **The researched truth table.** Per platform × metric × API surface × field name × scope × window, cited to vendor docs |
+| [FILM-1721](./FILM-1721-platform-capability-reference.md) | ✅ DONE | L | **The researched truth table.** Per platform × metric × API surface × field name × scope × window, cited to vendor docs. Lives at [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md); enforced by `platform-field-names.test.ts` |
 | [FILM-1722](./FILM-1722-view-definition-registry.md) | DRAFT | M | What "a view" means per platform, with effective dates and the YouTube discontinuity |
 | [FILM-1723](./FILM-1723-api-version-consolidation.md) | DRAFT | M | One pinned version per vendor; the Graph v18 token-refresh risk; X onto `api.x.com` |
 | [FILM-1724](./FILM-1724-channel-experiments.md) | DRAFT | L | Which styles work: groups of new videos, one per style, compared at the same age; no verdict on thin samples |
