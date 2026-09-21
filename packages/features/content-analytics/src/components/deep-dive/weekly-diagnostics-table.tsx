@@ -1,7 +1,5 @@
 'use client';
 
-import type React from 'react';
-
 import { AlertTriangle } from 'lucide-react';
 
 import { Skeleton } from '@kit/ui/skeleton';
@@ -36,6 +34,8 @@ interface WeeklyDiagnosticsTableProps {
   lowCtrThreshold?: number;
   /** Opens a video's detail view */
   onSelect?: (publishId: string) => void;
+  /** Which video's curve is open, so the row's control can report it. */
+  selectedPublishId?: string | null;
   /** Loading state */
   isLoading?: boolean;
 }
@@ -59,6 +59,7 @@ export function WeeklyDiagnosticsTable({
   rows,
   lowCtrThreshold = 0.03,
   onSelect,
+  selectedPublishId = null,
   isLoading = false,
 }: WeeklyDiagnosticsTableProps) {
   if (isLoading) {
@@ -100,43 +101,44 @@ export function WeeklyDiagnosticsTable({
               return (
                 <TableRow
                   key={row.publishId}
-                  className={
-                    onSelect
-                      ? 'cursor-pointer focus-visible:bg-muted focus-visible:outline-none'
-                      : undefined
-                  }
+                  className={onSelect ? 'cursor-pointer' : undefined}
+                  // Click anywhere on the row as a mouse convenience. The
+                  // row keeps its own role: `role="button"` here overrode
+                  // the implicit `row`, which left the body as
+                  // rowgroup → button → cell and took the cells out of the
+                  // table's reading model — the numbers this table exists
+                  // to convey stopped being row cells at all.
                   onClick={() => onSelect?.(row.publishId)}
-                  // The drill-down is the only route to a video's curve, so
-                  // a row that opens on click and nothing else puts it out
-                  // of reach of anyone not using a mouse. Announced as a
-                  // button and named, because "Packaging failed" alone does
-                  // not say what activating it does.
-                  {...(onSelect
-                    ? {
-                        role: 'button' as const,
-                        tabIndex: 0,
-                        'aria-label': `Show the retention curve for ${row.title}`,
-                        onKeyDown: (
-                          event: React.KeyboardEvent<HTMLTableRowElement>,
-                        ) => {
-                          if (event.key !== 'Enter' && event.key !== ' ') {
-                            return;
-                          }
-
-                          // Space scrolls the page otherwise, which moves
-                          // the row out from under the reader who just
-                          // opened it.
-                          event.preventDefault();
-                          onSelect(row.publishId);
-                        },
-                      }
-                    : {})}
                   data-test={'diagnostic-row'}
                 >
                   <TableCell className={'max-w-[220px]'}>
-                    <span className={'block truncate font-medium'}>
-                      {row.title}
-                    </span>
+                    {onSelect ? (
+                      // A real button, so it is focusable, activates on
+                      // Enter and Space without a hand-rolled key handler,
+                      // and says what it opens. `aria-expanded` reports the
+                      // panel's state rather than leaving it to be guessed.
+                      <button
+                        type={'button'}
+                        className={
+                          'block max-w-full truncate text-left font-medium underline-offset-2 hover:underline'
+                        }
+                        aria-expanded={selectedPublishId === row.publishId}
+                        aria-controls={'retention-drilldown'}
+                        onClick={(event) => {
+                          // The row handles the click too; without this the
+                          // drill-down would open and immediately reopen.
+                          event.stopPropagation();
+                          onSelect(row.publishId);
+                        }}
+                        data-test={'diagnostic-open'}
+                      >
+                        {row.title}
+                      </button>
+                    ) : (
+                      <span className={'block truncate font-medium'}>
+                        {row.title}
+                      </span>
+                    )}
                     <span className={'text-xs text-muted-foreground'}>
                       {row.platform} · {row.publishedAt.slice(0, 10)}
                     </span>

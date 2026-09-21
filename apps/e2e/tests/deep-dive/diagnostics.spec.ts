@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import {
+  seedAdditionalPublish,
   seedProject,
   seedPublishedEpisode,
   seedTeamAccount,
@@ -146,6 +147,34 @@ test.describe('FILM-1616 — weekly diagnostics', () => {
     ).toBeVisible();
 
     await page.unroute('**/*');
+  });
+
+  test('still finds the video when an episode is on two channels', async ({
+    page,
+  }) => {
+    const team = await seedTeamAccount();
+    const project = await seedProject(team);
+    const first = await seedYouTubeConnection(team.accountId, 'First');
+    const second = await seedYouTubeConnection(team.accountId, 'Second');
+
+    const video = await seedPublishedEpisode(project.id, first, { number: 1 });
+
+    // The same episode published to a second YouTube channel. Nothing in
+    // the schema forbids it — `idx_publishes_episode_id` is not unique and
+    // there is no (episode_id, platform) constraint — and a project holding
+    // several YouTube channels is ordinary.
+    await seedAdditionalPublish(video.episodeId, second);
+
+    await signInAs(page, team);
+
+    await page.goto(
+      `/home/${team.slug}/studio/${project.slug}/episodes/${video.episodeSlug}/analytics`,
+    );
+
+    // A resolver that assumes at most one row errors here, and an error
+    // that is discarded reads as "this episode has no video" — the section
+    // disappears with nothing said.
+    await expect(page.locator('[data-test="episode-retention"]')).toBeVisible();
   });
 
   test('the episode page loads its analytics through an action', async ({

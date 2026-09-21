@@ -86,6 +86,14 @@ export const getWeeklyDiagnosticsAction = withRefusals(
           query = query.eq('episodes.projects.account_id', scope.accountId!);
         }
 
+        // The channel filter, honoured rather than accepted and dropped.
+        // `assertScopeAccess` validates a `connectionId` belongs to the
+        // caller, so without this a scoped read passed the check and then
+        // silently answered for every channel.
+        if (scope.connectionId) {
+          query = query.eq('platform_connection_id', scope.connectionId);
+        }
+
         return query
           .order('published_at', { ascending: false })
           .range(from, to);
@@ -194,6 +202,19 @@ export const getRetentionCurveAction = withRefusals(
         .maybeSingle();
 
       if (!publish) {
+        // Logged, not only refused. §9 names the risk as "a cross-tenant
+        // disclosure with no error and no log line": the disclosure is
+        // prevented above, but `withRefusals` returns a refusal as a value
+        // without logging it, so a caller walking publish ids would be
+        // refused silently and indefinitely. Logged here rather than in
+        // `withRefusals`, where most refusals are ordinary user outcomes.
+        const logger = await getLogger();
+
+        logger.warn(
+          { name: 'analytics.retention-curve', publishId },
+          'Refused a retention curve for a publish the caller cannot see',
+        );
+
         throw new ActionRefusal('That video is not in your library.');
       }
 
@@ -258,15 +279,30 @@ export const getEpisodeRetentionPublishAction = withRefusals(
     async ({ episodeId }) => {
       const client = getSupabaseServerClient();
 
-      const { data: publish } = await client
+      // Not `maybeSingle()`: it errors when the query matches more than
+      // one row, and an episode published to two YouTube channels is
+      // ordinary — `publishes.episode_id` is a plain index with no
+      // (episode_id, platform) constraint. Asserting one row turned that
+      // into a discarded error and a retention section that silently did
+      // not render.
+      const { data: publishes, error } = await client
         .from('publishes')
-        .select('id')
+        .select('id, published_at')
         .eq('episode_id', episodeId)
         .eq('platform', 'youtube')
         .eq('status', 'published')
-        .maybeSingle();
+        .order('published_at', { ascending: false })
+        .limit(1);
 
-      return { publishId: publish?.id ?? null };
+      // A failed lookup is not "this episode has no video". Saying so lets
+      // the page report a failure instead of an absence.
+      if (error) {
+        throw new Error(
+          `Failed to resolve the episode's video: ${error.message}`,
+        );
+      }
+
+      return { publishId: publishes?.[0]?.id ?? null };
     },
     { schema: EpisodeAnalyticsSchema },
   ),

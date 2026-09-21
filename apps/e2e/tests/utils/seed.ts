@@ -359,6 +359,36 @@ export async function seedPublishedEpisode(
 }
 
 /**
+ * A second publish of an episode that already exists — the same episode on
+ * another channel.
+ *
+ * `publishes.episode_id` is a plain index with no `(episode_id, platform)`
+ * constraint, and a project can hold several YouTube channels, so one
+ * episode having two published YouTube rows is ordinary rather than
+ * exotic. Any resolver that assumes at most one has to cope with it.
+ */
+export async function seedAdditionalPublish(
+  episodeId: string,
+  connectionId: string,
+  options: { platform?: string; title?: string } = {},
+): Promise<{ publishId: string }> {
+  const publish = await insertRow<{ id: string }>(
+    'publishes',
+    {
+      episode_id: episodeId,
+      platform_connection_id: connectionId,
+      platform: options.platform ?? 'youtube',
+      status: 'published',
+      title: options.title ?? 'Second channel',
+      published_at: new Date().toISOString(),
+    },
+    { key: SERVICE_ROLE_KEY },
+  );
+
+  return { publishId: publish.id };
+}
+
+/**
  * An episode with one shot, which is what unlocks its publish page — the page
  * renders "Publishing Locked" until Visual Studio has produced shots.
  */

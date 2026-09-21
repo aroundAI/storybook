@@ -15,6 +15,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { DeepDivePageObject } from './deep-dive.po';
 
 /**
  * Weekly diagnostics and the retention curve, with real figures
@@ -155,6 +156,62 @@ test.describe('FILM-1616 — diagnostics with data', () => {
       .screenshot({ path: `${OUT}/02-retention-cliff.png` });
   });
 
+  test('follows the channel filter above it', async ({ page }) => {
+    const team = await seedTeamAccount();
+    const project = await seedProject(team);
+    const kept = await seedYouTubeConnection(team.accountId, 'Kept Channel');
+    const other = await seedYouTubeConnection(team.accountId, 'Other Channel');
+
+    const seedOn = async (
+      connectionId: string,
+      title: string,
+      number: number,
+    ) => {
+      const video = await seedPublishedEpisode(project.id, connectionId, {
+        number,
+        title,
+      });
+
+      const seeded: SeededVideo = {
+        videoId: video.publishId,
+        projectId: project.id,
+        accountId: team.accountId,
+        connectionId,
+        title,
+        publishedAt: daysAgo(2),
+      };
+
+      await seedVideoDim(seeded);
+      await seedVideoMetrics(seeded, [{ ageDays: 1, views: 100 }]);
+    };
+
+    await seedOn(kept, 'On the kept channel', 1);
+    await seedOn(other, 'On the other channel', 2);
+
+    await signInAs(page, team);
+
+    await page.goto(
+      `/home/${team.slug}/studio/${project.slug}/analytics?tab=deep-dive`,
+    );
+
+    await page.locator('[data-test="analytics-tab-deep-dive"]').click();
+
+    const rows = page.locator('[data-test="diagnostic-row"]');
+
+    await expect(rows).toHaveCount(2);
+
+    // Narrow to one channel. Every card above the table does; the table
+    // sits under the same control and must not keep answering for both.
+    //
+    // Through the page object: the filter is a Radix Select whose options
+    // render in a portal, and driving it by hand raced the open animation —
+    // green on a dev server, a timeout against a production build.
+    await new DeepDivePageObject(page).chooseChannel(kept);
+
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText('On the kept channel');
+  });
+
   test('opens the drill-down from the keyboard', async ({ page }) => {
     const team = await seedTeamAccount();
     const project = await seedProject(team);
@@ -189,14 +246,37 @@ test.describe('FILM-1616 — diagnostics with data', () => {
 
     await expect(row).toBeVisible();
 
-    // The drill-down is the only way to a curve. A row that opens on click
-    // and nothing else is unreachable for anyone not using a mouse.
-    await row.focus();
+    // The row stays a row. `role="button"` on the <tr> left the body as
+    // rowgroup → button → cell, so the cells were no longer owned by a row
+    // and the numbers this table exists to convey fell out of the table's
+    // reading model. The header row kept its cells, which is what made the
+    // contrast visible in an accessibility snapshot.
+    // Asserted through the accessibility tree, not a DOM attribute: a <tr>
+    // has the implicit role `row` and carries no `role` attribute, so the
+    // only way to see the break is to ask for roles. With `role="button"`
+    // on the <tr> this section held one row — the header — and the data
+    // row was a button owning cells.
+    const section = page.locator('[data-test="weekly-diagnostics-section"]');
+
+    await expect(section.getByRole('row')).toHaveCount(2);
+    await expect(row.getByRole('cell')).not.toHaveCount(0);
+
+    // The control is a real button in a cell, named for what it opens, and
+    // it reports the panel's state.
+    const open = row.locator('[data-test="diagnostic-open"]');
+
+    await expect(open).toHaveAttribute('aria-expanded', 'false');
+
+    // Reached and activated from the keyboard, which a <tr> with an
+    // onClick never could be.
+    await open.focus();
     await page.keyboard.press('Enter');
 
     await expect(
       page.locator('[data-test="retention-drilldown"]'),
     ).toBeVisible();
+
+    await expect(open).toHaveAttribute('aria-expanded', 'true');
   });
 
   test('a video with no curve renders empty, never a flat zero', async ({

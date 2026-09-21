@@ -572,7 +572,10 @@ export function DeepDiveTab({
         </AnalyticsCard>
       </div>
 
-      <WeeklyDiagnosticsSection projectId={projectId} />
+      <WeeklyDiagnosticsSection
+        projectId={projectId}
+        connectionId={filters.connectionId}
+      />
     </div>
   );
 }
@@ -586,15 +589,23 @@ export function DeepDiveTab({
  * cards it reads as a content verdict, which is the opposite of its point,
  * so it sits below them behind its own heading and rule.
  */
-function WeeklyDiagnosticsSection({ projectId }: { projectId: string }) {
+function WeeklyDiagnosticsSection({
+  projectId,
+  connectionId,
+}: {
+  projectId: string;
+  connectionId: string | undefined;
+}) {
   const [selected, setSelected] = useState<string | null>(null);
 
   const diagnosticsQuery = useQuery({
-    queryKey: ['weekly-diagnostics', projectId],
+    // The channel belongs in the key: without it, switching channels reads
+    // the previous channel's rows back out of the cache.
+    queryKey: ['weekly-diagnostics', projectId, connectionId ?? 'all'],
     queryFn: () =>
       unwrap(
         getWeeklyDiagnosticsAction({
-          scope: { projectId },
+          scope: { projectId, ...(connectionId ? { connectionId } : {}) },
           sinceDays: DIAGNOSTICS_WINDOW_DAYS,
           limit: DIAGNOSTICS_LIMIT,
         }),
@@ -618,7 +629,7 @@ function WeeklyDiagnosticsSection({ projectId }: { projectId: string }) {
           A breakage check, not a strategy input. A low click-through rate means
           the packaging failed on that video and a sharp early drop means its
           intro did — fix the specific thing rather than generalising from one
-          upload.
+          upload. Follows the channel selected above.
         </p>
       </div>
 
@@ -631,11 +642,13 @@ function WeeklyDiagnosticsSection({ projectId }: { projectId: string }) {
         <WeeklyDiagnosticsTable
           rows={diagnosticsQuery.data ?? []}
           onSelect={setSelected}
+          selectedPublishId={selected}
         />
       </QueryState>
 
       {selected ? (
         <div
+          id={'retention-drilldown'}
           className={'flex flex-col gap-2'}
           data-test={'retention-drilldown'}
         >
