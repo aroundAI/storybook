@@ -132,6 +132,17 @@ Scope: **`video.list`**. There is **no `video.query` scope**. Maximum 20 video I
 per request. Rate limit 600 req/min per endpoint. The pagination cursor is a UTC
 Unix timestamp **in milliseconds**, a documented bug source.
 
+**Every response carries `error`, success included.** A successful call returns
+`{ "data": { … }, "error": { "code": "ok", "message": "", "log_id": "…" } }`; only a
+code other than `ok` is a failure, and the human-readable `message` does not contain
+the code (e.g. `access_token_invalid` arrives with "The access token is invalid or
+not found in the request."). *Source, stated precisely because this section is not
+re-verified:* TikTok's own `/v2/video/query/` example, seen through a search index on
+2026-09-21 while the page itself was unreachable from here, and this repo's
+publishing provider, which already relies on it (`tiktok-provider.ts` checks
+`error?.code !== 'ok'`). The analytics provider did not, until #279. FILM-1725 Check B
+confirms it live.
+
 ### Business API `/business/video/list/` — the real one
 
 Host `business-api.tiktok.com/open_api/v1.3/`. **Separate developer portal, separate

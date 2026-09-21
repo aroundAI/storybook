@@ -605,6 +605,20 @@ Three parts. **Provenance** (1701–1709) answers *where did this number come fr
 
 FILM-1710 fixes a latent write-only defect: `video_dim.duration_seconds` is the episode's duration, not the published clip's. Nothing reads the column today — the Hook Lab divides by `hook_variants.duration_seconds` — so it ships ahead of FILM-1616, the first thing that would read it, rather than ahead of the whole phase. FILM-1711 records that TikTok and Instagram analytics were never authorised. FILM-1721 exists because the first draft of the signal specs cited our own TypeScript types as evidence of platform capability and was wrong in five places on TikTok alone — its rule is that a metric name may not appear in a spec, a type or a request unless FILM-1721 documents it with a vendor citation. The declarative schema-drift repair this investigation surfaced shipped separately as PR #253.
 
+### Phase 18: Local Vendor Sandbox and Generated Guide (5 specs)
+
+See [phase-18-local-vendor-sandbox/README.md](./phase-18-local-vendor-sandbox/README.md) for the problem table, locked decisions and known limits.
+
+Local stand-ins for every social platform and AI vendor, on local ports: stateful, random per run, growing over time, faithful to the capability reference. Used for E2E flows seeding cannot reach, and for a user guide generated from those flows by persona. FILM-1801 rewrites the same host constants FILM-1723 consolidates — do those two together, or FILM-1723 first.
+
+| Task ID | Name | Status | Effort | Dependencies |
+|---------|------|--------|--------|--------------|
+| FILM-1801 | [vendor-base-url-resolver](./phase-18-local-vendor-sandbox/FILM-1801-vendor-base-url-resolver.md) | DRAFT | L | - (with or after FILM-1723) |
+| FILM-1802 | [social-platform-sandbox](./phase-18-local-vendor-sandbox/FILM-1802-social-platform-sandbox.md) | DRAFT | XL | FILM-1801, FILM-1721 |
+| FILM-1803 | [ai-generation-sandbox](./phase-18-local-vendor-sandbox/FILM-1803-ai-generation-sandbox.md) | DRAFT | L | FILM-1801 |
+| FILM-1804 | [sandbox-backed-e2e-flows](./phase-18-local-vendor-sandbox/FILM-1804-sandbox-backed-e2e-flows.md) | DRAFT | L | FILM-1802, FILM-1803 |
+| FILM-1805 | [generated-user-guide](./phase-18-local-vendor-sandbox/FILM-1805-generated-user-guide.md) | DRAFT | L | FILM-1804 |
+
 ### Spikes (5 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
@@ -691,8 +705,9 @@ SPIKE-01 through SPIKE-05
 | 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 0 | 11 |
 | 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 0 | 17 |
 | 17. Analytics Provenance | 27 | 25 | 0 | 0 | 0 | 1 | 1 |
+| 18. Vendor Sandbox | 5 | 5 | 0 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **218** | **32** | **0** | **0** | **0** | **1** | **185** |
+| **TOTAL** | **223** | **32** | **0** | **0** | **0** | **1** | **190** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
@@ -704,6 +719,7 @@ SPIKE-01 through SPIKE-05
 | Scale & Hooks (Ph 12-13) | 4 | 2 | 50% |
 | Workbook Parity (Ph 16) | 17 | 17 | 100% |
 | Provenance & Signal (Ph 17) | 27 | 1 | 4% |
+| Vendor Sandbox (Ph 18) | 5 | 0 | 0% |
 
 Phase 14 (`edit-suite-v2`) carries an `ENGINEERING.md` with no status
 frontmatter and is counted as one unstarted item.
