@@ -2852,6 +2852,7 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
+          created_by_name: string | null
           description: string
           episode_number: number
           established_in: string
@@ -2865,6 +2866,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          created_by_name?: string | null
           description: string
           episode_number: number
           established_in: string
@@ -2878,6 +2880,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by?: string | null
+          created_by_name?: string | null
           description?: string
           episode_number?: number
           established_in?: string
@@ -5241,6 +5244,7 @@ export type Database = {
           verification_status: Database["public"]["Enums"]["verification_status_enum"]
           verified_at: string | null
           verified_by: string | null
+          verified_by_name: string | null
         }
         Insert: {
           category?: string | null
@@ -5270,6 +5274,7 @@ export type Database = {
           verification_status?: Database["public"]["Enums"]["verification_status_enum"]
           verified_at?: string | null
           verified_by?: string | null
+          verified_by_name?: string | null
         }
         Update: {
           category?: string | null
@@ -5299,6 +5304,7 @@ export type Database = {
           verification_status?: Database["public"]["Enums"]["verification_status_enum"]
           verified_at?: string | null
           verified_by?: string | null
+          verified_by_name?: string | null
         }
         Relationships: [
           {
