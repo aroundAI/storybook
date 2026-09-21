@@ -222,12 +222,19 @@ describe('InstagramInsightsProvider', () => {
     // `total_value` item carries `total_value: { value }`, not `values[]`.
     it('requests only documented metrics, as a total', async () => {
       mockFetch
-        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ data: [] }) })
-        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ followers_count: 5000 }) });
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ data: [] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ followers_count: 5000 }),
+        });
 
       await provider.getAccountInsights('week');
 
-      const params = new URL(mockFetch.mock.calls[0]![0] as string).searchParams;
+      const params = new URL(mockFetch.mock.calls[0]![0] as string)
+        .searchParams;
 
       expect(params.get('metric')!.split(',')).toEqual(['views', 'reach']);
       expect(params.get('metric_type')).toBe('total_value');
@@ -246,7 +253,10 @@ describe('InstagramInsightsProvider', () => {
               ],
             }),
         })
-        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ followers_count: 5000 }) });
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ followers_count: 5000 }),
+        });
 
       const result = await provider.getAccountInsights('week');
 
@@ -255,7 +265,10 @@ describe('InstagramInsightsProvider', () => {
 
     it('reports an absent follower count as null, not zero', async () => {
       mockFetch
-        .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ data: [] }) })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ data: [] }),
+        })
         .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) });
 
       const result = await provider.getAccountInsights('week');
