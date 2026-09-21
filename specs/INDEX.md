@@ -565,7 +565,7 @@ All workbook-parity scope is now specified. FILM-1611 was split — what the bac
 
 It must not read `video_dim.duration_seconds` either way. This is the only reason FILM-1710 is ordered ahead of the rest of phase 17.
 
-### Phase 17: Analytics Provenance and Signal (27 specs)
+### Phase 17: Analytics Provenance and Signal (29 specs)
 
 See [phase-17-analytics-provenance/README.md](./phase-17-analytics-provenance/README.md) for the dependency graph, locked decisions, known limits and open product questions.
 
@@ -600,6 +600,8 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1725 | [deferred-vendor-verifications](./phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.md) | ⏸️ DEFERRED | S | FILM-1721 |
 | FILM-1726 | [monetisation-stage](./phase-17-analytics-provenance/FILM-1726-monetisation-stage.md) | DRAFT | M | FILM-1703, FILM-1711, FILM-1720 |
 | FILM-1727 | [x-analytics](./phase-17-analytics-provenance/FILM-1727-x-analytics.md) | DRAFT | L | FILM-1711, FILM-1714, FILM-1721, FILM-1723; FILM-1725 Check A for the Enterprise tier only |
+| FILM-1728 | [meta-graph-v26-upgrade](./phase-17-analytics-provenance/FILM-1728-meta-graph-v26-upgrade.md) | DRAFT | S | FILM-1723; FILM-1712 if it lands first |
+| FILM-1729 | [x-media-write-scope](./phase-17-analytics-provenance/FILM-1729-x-media-write-scope.md) | ⏸️ DEFERRED | S | FILM-1723; X pay-per-use credentials (not held) |
 
 Three parts. **Provenance** (1701–1709) answers *where did this number come from*. **Signal** (1710–1720) answers *what is it telling me*, which differs per platform. **Reference** (1721–1723) is the researched vendor truth the other two are built on.
 
@@ -703,10 +705,10 @@ SPIKE-01 through SPIKE-05
 | 14. Edit Suite v2 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 0 | 11 |
 | 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 0 | 17 |
-| 17. Analytics Provenance | 27 | 25 | 0 | 0 | 0 | 1 | 1 |
+| 17. Analytics Provenance | 29 | 26 | 0 | 0 | 0 | 2 | 1 |
 | 18. Vendor Sandbox | 4 | 4 | 0 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **222** | **29** | **0** | **0** | **0** | **1** | **192** |
+| **TOTAL** | **224** | **30** | **0** | **0** | **0** | **2** | **192** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
@@ -717,7 +719,7 @@ SPIKE-01 through SPIKE-05
 | Canon (Ph 10-11) | 28 | 28 | 100% |
 | Scale & Hooks (Ph 12-13) | 4 | 4 | 100% |
 | Workbook Parity (Ph 16) | 17 | 17 | 100% |
-| Provenance & Signal (Ph 17) | 27 | 1 | 4% |
+| Provenance & Signal (Ph 17) | 29 | 1 | 3% |
 | Vendor Sandbox (Ph 18) | 4 | 0 | 0% |
 
 Phase 14 (`edit-suite-v2`) is one `ENGINEERING.md`, counted as one item. Its
