@@ -7,8 +7,6 @@ import {
   REPO,
   doc,
   documentedNames,
-  escape,
-  forbiddenNames,
 } from './helpers/capability-reference';
 
 /**
@@ -26,6 +24,37 @@ import {
  * Everything here is parsed out of the document. Nothing is restated in this
  * file, so deleting a line from the reference must fail a request that needs it.
  */
+
+/**
+ * The `<!-- forbidden -->` block: `scope  wrong -> right  reason`.
+ *
+ * `scope` is a `|`-separated list of path segments the rule applies to. A
+ * deprecation is a fact about one vendor, not about the word: LinkedIn reports
+ * a genuine `impressions`, so Meta's 2025-04-21 removal must not reach it.
+ */
+function forbiddenNames() {
+  const body = /<!-- forbidden -->\s*```text\n([\s\S]*?)```/.exec(doc)?.[1];
+
+  if (!body) throw new Error(`No forbidden block in ${REFERENCE}`);
+
+  return body
+    .split('\n')
+    .map((line) => /^(\S+)\s+(\S+)\s*->\s*(\S+)\s+(.*)$/.exec(line.trim()))
+    .filter((match): match is RegExpExecArray => match !== null)
+    .map(([, scope, name, replacement, reason]) => ({
+      // A directory or a file stem: `…/tiktok/…`, `…/tiktok.ts`, `…/tiktok-provider.ts`.
+      scope: new RegExp(
+        `(?:^|/)(?:${scope!.split('|').map(escape).join('|')})(?:/|\\.|-)`,
+      ),
+      name: name!,
+      replacement: replacement!,
+      reason: reason!.trim(),
+    }));
+}
+
+function escape(text: string) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 const DOCUMENTED = documentedNames();
 const FORBIDDEN = forbiddenNames();

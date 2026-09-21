@@ -1,14 +1,15 @@
 ---
 spec_id: FILM-1722
 title: View Definition Registry
-status: ✅ DONE
+status: 🟡 PARTIAL
 effort: M
 dependencies: FILM-1721
 ---
 
 # View Definition Registry
 
-> **Shipped.** The registry is `packages/clickhouse/src/lib/view-definitions.ts`,
+> **Partly shipped — the registry is done, its adoption is not; see
+> [Remaining](#12-remaining).** The registry is `packages/clickhouse/src/lib/view-definitions.ts`,
 > exported from the client-safe `@kit/clickhouse` barrel. It is bound to
 > [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md)
 > by `packages/features/content-analytics/__tests__/view-definition-sources.test.ts`:
@@ -284,6 +285,19 @@ Who adopts it:
 - **FILM-1715** — cohort medians and benchmarks, including the cohort curves.
 - **FILM-1707 / FILM-1719** — the charts and the copy, per §10.
 
-The second unticked criterion closes when FILM-1713 does; the first when a
-chart first calls `viewDefinitionChangesBetween`.
+## 12. Remaining
+
+Two acceptance criteria are open, and this spec stays 🟡 PARTIAL until both
+close. Neither is work for this spec's code; each closes in the spec that owns
+the surface.
+
+| Open criterion | Closed by |
+|---|---|
+| A chart crossing a boundary marks it rather than drawing a step change | **FILM-1707 / FILM-1719** — the charts and the copy, calling `viewDefinitionChangesBetween` |
+| No rate is computed without recording which denominator definition it used | **FILM-1713** — rates, taking the denominator from `comparableAcross`'s `comparable: true` branch. Cohort growth and cohort medians are **FILM-1715** |
+
+**Owner's decision, 2026-09-22:** suppressing cohort-growth comparisons across
+the 2026-08-27 YouTube boundary **waits for those specs. It does not ship
+separately.** Until then the cohort curves go on computing growth across the
+boundary, as §11 records.
 

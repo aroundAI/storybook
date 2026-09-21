@@ -2,9 +2,10 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 /**
- * Parsers for `docs/platform-capability-reference.md`, shared by every test
- * that binds code to it. One copy, because two parsers of the same document
- * would drift and each would then be guarding a slightly different file.
+ * `docs/platform-capability-reference.md`, parsed once for every guard that
+ * reads it: the request-site check (FILM-1721) and the capability matrix's
+ * citations (FILM-1703). One parser, so the two cannot come to disagree about
+ * what the document says.
  */
 
 export const REPO = resolve(__dirname, '../../../../..');
@@ -51,6 +52,9 @@ export function documentedNames() {
  * `scope` is a `|`-separated list of path segments the rule applies to. A
  * deprecation is a fact about one vendor, not about the word: LinkedIn reports
  * a genuine `impressions`, so Meta's 2025-04-21 removal must not reach it.
+ *
+ * Here for FILM-1722, whose registry records a renamed field (`plays` →
+ * `views`) and must find it retired in this block.
  */
 export function forbiddenNames() {
   const body = /<!-- forbidden -->\s*```text\n([\s\S]*?)```/.exec(doc)?.[1];
