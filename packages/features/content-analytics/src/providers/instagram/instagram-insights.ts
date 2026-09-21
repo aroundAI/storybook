@@ -8,6 +8,7 @@ import type {
   InstagramInsightsInput,
   InstagramInsightsPeriod,
   InstagramInsightsResult,
+  InstagramMediaProductType,
   InstagramMediaType,
 } from './types';
 
@@ -76,9 +77,11 @@ export class InstagramInsightsProvider {
     const { mediaId } = input;
 
     try {
-      // Get media type first
+      // `media_type` is only ever CAROUSEL_ALBUM / IMAGE / VIDEO — a Reel is
+      // VIDEO. The surface (FEED / REELS / STORY / AD) is `media_product_type`,
+      // and it is what decides which metrics exist.
       const mediaInfoResponse = await fetch(
-        `${GRAPH_API_BASE}/${mediaId}?fields=media_type&access_token=${this.accessToken}`,
+        `${GRAPH_API_BASE}/${mediaId}?fields=media_type,media_product_type&access_token=${this.accessToken}`,
       );
 
       if (!mediaInfoResponse.ok) {
@@ -89,6 +92,7 @@ export class InstagramInsightsProvider {
 
       const mediaInfo = (await mediaInfoResponse.json()) as {
         media_type?: InstagramMediaType;
+        media_product_type?: InstagramMediaProductType;
       } & GraphAPIError;
 
       if (mediaInfo.error) {
@@ -98,20 +102,15 @@ export class InstagramInsightsProvider {
       }
 
       const mediaType = mediaInfo.media_type ?? 'VIDEO';
+      const mediaProductType = mediaInfo.media_product_type ?? 'FEED';
 
       // Meta deprecated `plays` and `impressions` (2025-04-21, Graph v22)
       // in favor of the universal `views` metric across all media types.
+      // `shares` is documented for FEED, REELS and STORY alike; `likes`,
+      // `comments` and `saved` are not documented for STORY.
       const metricsForType =
-        mediaType === 'REELS'
-          ? [
-              'views',
-              'reach',
-              'total_interactions',
-              'likes',
-              'comments',
-              'saved',
-              'shares',
-            ]
+        mediaProductType === 'STORY'
+          ? ['views', 'reach', 'total_interactions', 'shares']
           : [
               'views',
               'reach',
@@ -119,6 +118,7 @@ export class InstagramInsightsProvider {
               'likes',
               'comments',
               'saved',
+              'shares',
             ];
 
       // No follower / non-follower split here: Meta documents `follow_type`
@@ -134,6 +134,7 @@ export class InstagramInsightsProvider {
       return {
         mediaId,
         mediaType,
+        mediaProductType,
         totals: {
           views: metrics.views ?? 0,
           reach: metrics.reach ?? 0,

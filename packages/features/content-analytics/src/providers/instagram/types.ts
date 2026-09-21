@@ -30,9 +30,16 @@ export type InstagramMetric =
   | 'follows';
 
 /**
- * Media type returned by Instagram
+ * `media_type` as Instagram returns it. A Reel is `VIDEO`; the surface a media
+ * was published to is `InstagramMediaProductType`.
  */
-export type InstagramMediaType = 'REELS' | 'VIDEO';
+export type InstagramMediaType = 'CAROUSEL_ALBUM' | 'IMAGE' | 'VIDEO';
+
+/**
+ * `media_product_type`: the surface. Decides which metrics exist — REELS has
+ * watch time and skip rate, FEED and STORY have profile visits and follows.
+ */
+export type InstagramMediaProductType = 'AD' | 'FEED' | 'STORY' | 'REELS';
 
 /**
  * Complete insights result for a media item
@@ -40,6 +47,7 @@ export type InstagramMediaType = 'REELS' | 'VIDEO';
 export interface InstagramInsightsResult {
   mediaId: string;
   mediaType: InstagramMediaType;
+  mediaProductType: InstagramMediaProductType;
   totals: InstagramTotals;
   audience?: InstagramAudienceData;
 }
