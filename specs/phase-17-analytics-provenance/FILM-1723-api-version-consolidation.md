@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1723
 title: API Version Consolidation
-status: ✅ DONE
+status: 🟡 PARTIAL
 effort: M
 dependencies: none
 ---
@@ -180,7 +180,7 @@ has its own test.
 
 - **X video upload needs the `media.write` scope, and we do not request it.**
   §6 rules scope changes out and FILM-1711 covers analytics scopes only, so it
-  is unowned. Until it is added and connections re-authorised, the upload is
+  was unowned when found (now FILM-1729, see §11). Until it is added and connections re-authorised, the upload is
   refused with a 403 — which the code now names. This is not a regression: the
   v1.1 endpoint it replaces never accepted OAuth 2.0 user tokens and is retired.
 - **LinkedIn's `LinkedIn-Version: 202401`** was declared twice and is now
@@ -192,3 +192,26 @@ has its own test.
 
 **Not verified live**, per §8: a Meta token refresh and an X media upload. Both
 are FILM-1725 Checks D and E.
+
+## 11. Remaining
+
+The code is complete and its guards are in CI. Two live checks are what keep
+this spec at PARTIAL; neither can be run from a development machine.
+
+| Left | Closed by | Blocked on |
+|---|---|---|
+| Token refresh verified against a live Meta connection (the unticked criterion in §7) | FILM-1725 **Check D** — one forced refresh, `ensureValidToken(<meta connection id>, true)`, at the first deploy carrying this change | Nothing but the deploy |
+| A live X media upload against `/2/media/upload` (§8, check 3) | FILM-1725 **Check E** | X credentials we do not hold |
+
+Set the status to ✅ DONE when Check D has run and its result is recorded here.
+Check E follows FILM-1729 and does not hold this spec open on its own.
+
+### Owner decisions, 2026-09-22
+
+- **Meta stays pinned at v23.0 here.** The move to v26.0 is **FILM-1728** (PR #285).
+- **The X `media.write` scope is FILM-1729** (PR #285) — deferred, because there
+  are no X credentials to re-authorise or verify with.
+- **The two defects found while doing this work are filed in FILM-CC-04** (PR #285):
+  **KB-14**, lambdas are not typechecked — reproduced: 0 lambda files in the
+  `tsc` program, 82 errors when they are included; and **KB-15**, X connections
+  are never refreshed.
