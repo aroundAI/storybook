@@ -90,6 +90,16 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/platform-field-names.test.ts",
       "pattern": "instagram-insights.ts"
+    },
+    {
+      "name": "A per-media reach split by follow_type comes back, an account-only breakdown",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "          metric: metrics.join(','),\n",
+      "replace": "          metric: metrics.join(','),\n          breakdown: 'follow_type',\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "instagram-insights.ts"
     }
   ]
 }

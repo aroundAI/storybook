@@ -183,9 +183,9 @@ creators publish. Instagram's Audience stage therefore has no per-media signal.
 
 Also absent: **no replay metric** (`clips_replays_count` removed 2025-04-21,
 no replacement), **no retention graph**, **no completion rate**, **no per-media
-follower/non-follower split** (that breakdown is account-level only — so our
-`video_audience.follower_status` rows for Instagram are account-level data
-attributed per media).
+follower/non-follower split** (`follow_type` is an account-level breakdown only,
+so Instagram writes no `video_audience.follower_status` rows; the per-Reel request
+the provider carried was undocumented and is removed).
 
 `reels_skip_rate` — "percentage of views from people who skipped during the
 first 3 seconds" — is the entire retention surface.

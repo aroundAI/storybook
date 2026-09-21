@@ -13,7 +13,6 @@ export type {
   InstagramInsightsResult,
   InstagramMediaType,
   InstagramMetric,
-  InstagramReachBreakdown,
   InstagramTotals,
 } from './types';
 
