@@ -2,7 +2,8 @@
 
 **Source PRD:** [PRD-public-sharing.md](file:///Users/shaurya/Work/projects/storybook/specs/PRD-public-sharing.md)  
 **Created:** 2026-01-08  
-**Status:** Ready for Implementation
+**Status:** ✅ Implemented — PR #126 (2026-01-08). One item dropped and one
+requirement unmet; see the Implementation Checklist.
 
 ---
 
@@ -986,31 +987,33 @@ export function ShareButton({ canonicalUrl, youtubeUrl, facebookUrl, title }: Pr
 ## Implementation Checklist
 
 ### Phase 1: Foundation (Week 1-2)
-- [ ] Create database migrations
-- [ ] Generate TypeScript types after migrations
-- [ ] Create `@kit/public-sharing` package
-- [ ] Implement public queries (no auth)
-- [ ] Set up route structure
+- [x] Create database migrations
+- [x] Generate TypeScript types after migrations
+- [x] Create `@kit/public-sharing` package
+- [x] Implement public queries (no auth)
+- [x] Set up route structure
 
 ### Phase 2: Core Pages (Week 2-3)
-- [ ] Company page component
-- [ ] Project page component
-- [ ] Episode page with video embed
-- [ ] Language selector
-- [ ] Share button
+- [x] Company page component
+- [x] Project page component
+- [x] Episode page with video embed
+- [x] Language selector
+- [x] Share button
 
 ### Phase 3: SEO/AEO (Week 3-4)
-- [ ] Metadata generation
-- [ ] JSON-LD schemas
-- [ ] Dynamic OG images
-- [ ] Sitemap extension
-- [ ] robots.txt + llms.txt
+- [x] Metadata generation
+- [x] JSON-LD schemas
+- [ ] ~~Dynamic OG images~~ — dropped in bdb4ed01: an `opengraph-image` under
+  the `[...slug]` catch-all breaks Next.js routing. Pages set `openGraph.images`
+  from the account picture in `metadata.ts` instead.
+- [x] Sitemap extension
+- [x] robots.txt + llms.txt
 
 ### Phase 4: Settings UI (Week 4-5)
-- [ ] Public profile settings form
-- [ ] Project visibility toggle
-- [ ] Episode video link manager
-- [ ] Slug auto-generation
+- [x] Public profile settings form
+- [x] Project visibility toggle
+- [x] Episode video link manager
+- [x] Slug auto-generation
 
 ---
 
@@ -1020,5 +1023,5 @@ export function ShareButton({ canonicalUrl, youtubeUrl, facebookUrl, title }: Pr
 |-----------|----------|
 | Unit Tests | Public queries, metadata generation |
 | Integration | Route rendering, OG tag generation |
-| E2E | Full sharing flow, language switching |
+| E2E | Full sharing flow, language switching — **not written**; no spec under `apps/e2e/tests` drives the public pages or the sharing flow |
 | SEO Validation | Schema.org validator, OG debugger |

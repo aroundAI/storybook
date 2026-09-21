@@ -1,12 +1,20 @@
 ---
 spec_id: FILM-1302
 title: Cultural Audit Workflow ("The Nuance Gate")
-status: Draft
+status: 🗑️ RETIRED
 effort: M
 dependencies: FILM-1301
 ---
 
 # Cultural Audit Workflow ("The Nuance Gate")
+
+> **Retired 2026-09-22, unbuilt.** Phase 13 is closed. FILM-1301, the other
+> half of the phase, was retired with FILM-1510. Nothing in this spec was
+> implemented: no table, action, route or prompt references it. A
+> pre-publish review for non-primary languages, if it is wanted, should be
+> specified fresh against the current episode and publishing model rather
+> than revived from this draft. Its `FILM-1301` dependency was nominal;
+> nothing in the body builds on the Hook Lab.
 
 ## 1. Overview
 

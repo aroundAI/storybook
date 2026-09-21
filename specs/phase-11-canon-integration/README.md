@@ -1,7 +1,7 @@
 ---
 phase: 11
 title: Canon Management Integration & Content Type Taxonomy
-status: draft
+status: done
 priority: critical
 estimated_effort: 3-4 weeks
 ---

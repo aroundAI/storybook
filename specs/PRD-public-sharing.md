@@ -2,7 +2,7 @@
 
 **Document Version:** 1.0  
 **Created:** 2026-01-08  
-**Status:** Draft for Review
+**Status:** ✅ Implemented — see [ENGINEERING-public-sharing.md](./ENGINEERING-public-sharing.md)
 
 ---
 

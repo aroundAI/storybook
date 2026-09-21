@@ -510,7 +510,7 @@ graph TD
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
 | FILM-1301 | [hook-testing-engine](./phase-13-hook-optimization/FILM-1301-hook-testing-engine.md) | 🗑️ RETIRED (with FILM-1510) | L | FILM-1201, FILM-716 |
-| FILM-1302 | [cultural-audit-workflow](./phase-13-hook-optimization/FILM-1302-cultural-audit-workflow.md) | Draft | M | FILM-1301 |
+| FILM-1302 | [cultural-audit-workflow](./phase-13-hook-optimization/FILM-1302-cultural-audit-workflow.md) | 🗑️ RETIRED (unbuilt; phase closed) | M | FILM-1301 |
 
 ### Phase 15: Deep Analytics Discipline (11 specs)
 
@@ -551,8 +551,8 @@ See [phase-16-workbook-parity/README.md](./phase-16-workbook-parity/README.md) f
 | FILM-1609 | [revenue-mix-completion](./phase-16-workbook-parity/FILM-1609-revenue-mix-completion.md) | ✅ DONE | S | FILM-1601 |
 | FILM-1610 | [experiment-log-notes](./phase-16-workbook-parity/FILM-1610-experiment-log-notes.md) | ✅ DONE | M | FILM-1602, FILM-1603, FILM-1605 |
 | FILM-1611 | [deep-dive-channel-selector](./phase-16-workbook-parity/FILM-1611-deep-dive-channel-selector.md) | ✅ DONE | M | FILM-1606, FILM-1608, FILM-1609 |
-| FILM-1615 | [video-log-table](./phase-16-workbook-parity/FILM-1615-video-log-table.md) | DRAFT | M | FILM-1603, FILM-1611; FILM-1610 soft (note editor) |
-| FILM-1616 | [weekly-diagnostics-retention](./phase-16-workbook-parity/FILM-1616-weekly-diagnostics-retention.md) | DRAFT | M | FILM-1602; FILM-1710 or the duration-free fallback (see note) |
+| FILM-1615 | [video-log-table](./phase-16-workbook-parity/FILM-1615-video-log-table.md) | ✅ DONE | M | FILM-1603, FILM-1611; FILM-1610 soft (note editor) |
+| FILM-1616 | [weekly-diagnostics-retention](./phase-16-workbook-parity/FILM-1616-weekly-diagnostics-retention.md) | ✅ DONE | M | FILM-1602; FILM-1710 or the duration-free fallback (see note) |
 | FILM-1617 | [subscriber-surfaces](./phase-16-workbook-parity/FILM-1617-subscriber-surfaces.md) | ✅ DONE | S | FILM-1607, FILM-1611, FILM-1618 |
 | FILM-1618 | [channel-residual-subscribers](./phase-16-workbook-parity/FILM-1618-channel-residual-subscribers.md) | ✅ DONE | S | FILM-1601, FILM-1607 |
 
@@ -699,14 +699,14 @@ SPIKE-01 through SPIKE-05
 | 10. Canon Mgmt | 7 | 0 | 0 | 0 | 0 | 0 | 7 |
 | 11. Canon Integ | 21 | 0 | 0 | 0 | 0 | 0 | 21 |
 | 12. Scale | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
-| 13. Hook Opt | 2 | 1 | 0 | 0 | 0 | 0 | 1 |
-| 14. Edit Suite v2 | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| 13. Hook Opt | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
+| 14. Edit Suite v2 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 0 | 11 |
 | 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 0 | 17 |
 | 17. Analytics Provenance | 27 | 25 | 0 | 0 | 0 | 1 | 1 |
 | 18. Vendor Sandbox | 4 | 4 | 0 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **222** | **31** | **0** | **0** | **0** | **1** | **190** |
+| **TOTAL** | **222** | **29** | **0** | **0** | **0** | **1** | **192** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
@@ -715,13 +715,17 @@ SPIKE-01 through SPIKE-05
 | MVP Specs | 93 | 93 | 100% |
 | Post-MVP (Ph 6-9) | 37 | 37 | 100% |
 | Canon (Ph 10-11) | 28 | 28 | 100% |
-| Scale & Hooks (Ph 12-13) | 4 | 2 | 50% |
+| Scale & Hooks (Ph 12-13) | 4 | 4 | 100% |
 | Workbook Parity (Ph 16) | 17 | 17 | 100% |
 | Provenance & Signal (Ph 17) | 27 | 1 | 4% |
 | Vendor Sandbox (Ph 18) | 4 | 0 | 0% |
 
-Phase 14 (`edit-suite-v2`) carries an `ENGINEERING.md` with no status
-frontmatter and is counted as one unstarted item.
+Phase 14 (`edit-suite-v2`) is one `ENGINEERING.md`, counted as one item. Its
+status is in a blockquote rather than frontmatter — `✅ Done`, shipped in
+c3de1674 ("complete Phase 14").
+
+Retired specs (FILM-1301, FILM-1302, FILM-1510) sit in the Done column: the
+table has no Retired column, and none of them is outstanding work.
 
 ---
 
