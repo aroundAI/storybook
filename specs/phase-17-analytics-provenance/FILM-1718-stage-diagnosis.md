@@ -154,6 +154,11 @@ database, and it should be tested exhaustively rather than by example:
 
 - every combination of five three-valued bands (3^5 = 243, plus the unjudged
   cases) resolves to exactly one outcome — a pattern, `no_clear_pattern`, or
+  **If FILM-1726 adds a Monetisation stage this becomes 3^6 = 729.** The
+  resolution must therefore be a function over the stage list, not an
+  enumeration written against five — a constraint on the implementation, not a
+  reason to wait for that decision.
+
   the too-few-judged state
 - an all-`typical` video yields `no_clear_pattern`, not the nearest row
 - a pattern computed over two judged stages is distinguishable in the output

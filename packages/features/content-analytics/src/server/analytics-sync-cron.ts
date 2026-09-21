@@ -752,8 +752,11 @@ function normalizeAnalytics(
         likes: data.totals.likes,
         comments: data.totals.comments,
         shares: data.totals.shares,
-        saves: data.totals.saves ?? 0,
-        watch_time_seconds: data.totals.totalPlayTime ?? 0,
+        // Saves have no creator-auth surface on TikTok, and watch time is
+        // Business API only. Both are structurally zero, not measured as zero.
+        // docs/platform-capability-reference.md
+        saves: 0,
+        watch_time_seconds: 0,
         subscribers_gained: 0, // TikTok doesn't provide per-video follower gains
         revenue_cents: 0, // TikTok doesn't expose revenue
         ad_revenue_cents: 0,
@@ -772,7 +775,7 @@ function normalizeAnalytics(
       return {
         publish_id: publishId,
         snapshot_date: snapshotDate,
-        views: data.totals.plays ?? data.totals.impressions ?? 0,
+        views: data.totals.views,
         likes: data.totals.likes ?? 0,
         comments: data.totals.comments ?? 0,
         shares: data.totals.shares ?? 0,

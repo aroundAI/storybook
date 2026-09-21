@@ -26,7 +26,7 @@ ClickHouse instance:
 | `video_traffic_sources` | native | **not ingested** | **unsupported** |
 | `channel_daily`, `video_reach_daily`, retention curves | native | — | — |
 | `video_metrics` | native, true daily | derived — snapshot delta | derived — snapshot delta |
-| Revenue from sync | native | — | — |
+| Revenue from sync | **`scope_missing`** — plumbed, never authorised | — | — |
 | `video_audience` | 7 dimensions | 3, percentage-only | 3, account-level |
 
 The page presents all of this as one kind of thing.
@@ -44,7 +44,7 @@ FILM-1721 (capability reference)  ── the researched vendor truth
    │        └─→ FILM-1706 (card shell v2) ─────┤
    │                                           ├─→ FILM-1705 (surfaces)
    ├─→ FILM-1711 (authorisation) ─→ FILM-1712 (metric recovery)
-   └─→ FILM-1715, FILM-1720
+   └─→ FILM-1715, FILM-1720, FILM-1727
 
 FILM-1723 (API versions)  ── independent; check Graph v18 first
 FILM-1701 (audience truth-up) ─→ FILM-1705
@@ -58,10 +58,35 @@ FILM-1717 (genome) ← FILM-1606, FILM-1610, FILM-1715, FILM-1716
 FILM-1702 (language) ← phase-16 FILM-1606 ─→ FILM-1707
 FILM-1708 (drill-down + ramp) ← FILM-1605 ✅, FILM-1706
 FILM-1709 (filter completion) ← FILM-1704, FILM-1707
-FILM-1720 (Facebook + X) ← FILM-1711, FILM-1714, FILM-1721, FILM-1723
+FILM-1720 (Facebook) ← FILM-1711, FILM-1714, FILM-1721, FILM-1723
+FILM-1727 (X) ← the same; FILM-1725 Check A for the Enterprise tier only
 ```
 
-**FILM-1721, FILM-1723 and FILM-1710 are the only true roots.** FILM-1701 is
+**FILM-1721 has shipped.** The reference is at
+[docs/platform-capability-reference.md](../../docs/platform-capability-reference.md),
+and its rule is automated rather than a review convention — a request naming a
+field the document does not carry fails the build. Two things it settled while
+being written, both of which change work downstream:
+
+- **Graph v18.0 expired 2026-01-26 and v19.0 expired 2026-05-21.** Meta defaults
+  an expired version to the next oldest usable one instead of rejecting it, so
+  `token-refresh.ts` (v18.0) and the lambda handlers (v19.0) are running on a
+  version nobody chose. FILM-1723 was written against an *inferred* EOL; it is
+  now documented, and the failure mode is worse than the spec assumed.
+- **TikTok's traffic sources were never ingested because they were never
+  returned.** The provider parsed a `traffic_source_types` field the Display API
+  does not have. This changes FILM-1703 §2's evidence, not its conclusion — see
+  the note there.
+
+Two of FILM-1721's three empirical checks could not run: one needs a paid X
+token, the other a TikTok sandbox app. They are **deferred, not dropped** —
+[FILM-1725](./FILM-1725-deferred-vendor-verifications.md) holds the question,
+the command, what each blocks, and the event that brings it back. The X one
+gates FILM-1727's Enterprise tier and is the reason that spec should not be
+scoped against `/2/media/analytics` until it is answered. X itself is not
+blocked: it ships on the pay-per-use path.
+
+**FILM-1723 and FILM-1710 are the remaining true roots.** FILM-1723 and phase 18's [FILM-1801](../phase-18-local-vendor-sandbox/FILM-1801-vendor-base-url-resolver.md) edit the same host constants — one pins a version per vendor, the other makes each host overridable for the local sandbox. Do them together, or FILM-1723 first. FILM-1701 is
 independent of the reference but feeds FILM-1705. Everything else descends from
 one of them — in particular FILM-1703 now depends on FILM-1721, so it is no
 longer a starting point.
@@ -109,8 +134,8 @@ FILM-1715 + FILM-1716 ─→ FILM-1724 (channel experiments) ← also FILM-1610 
 
 FILM-1717 + FILM-1718 ─→ FILM-1719 (surfaces) ← also FILM-1706
 
-FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook + X)
-   ── last, and the test of whether 1714 was expandable
+FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook) ─→ FILM-1727 (X)
+   ── last, and two tests of whether 1714 was expandable
 ```
 
 | Spec | Status | Effort | Covers |
@@ -125,11 +150,14 @@ FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook + X)
 | [FILM-1717](./FILM-1717-content-genome.md) | DRAFT | XL | Creative mechanisms vs outcomes, discriminated against comparable losers. **v1 then v2** |
 | [FILM-1718](./FILM-1718-stage-diagnosis.md) | DRAFT | M | Distribution-vs-content and the finite failure patterns. **Does not depend on the genome** |
 | [FILM-1719](./FILM-1719-signal-surfaces.md) | DRAFT | L | The five-stage strip, three depths, evidence, "model after" |
-| [FILM-1720](./FILM-1720-facebook-x-analytics.md) | DRAFT | XL | Widening the enum across eight tables; two providers that do not exist |
-| [FILM-1721](./FILM-1721-platform-capability-reference.md) | DRAFT | L | **The researched truth table.** Per platform × metric × API surface × field name × scope × window, cited to vendor docs |
+| [FILM-1720](./FILM-1720-facebook-analytics.md) | DRAFT | L | Facebook's provider and enum value: 57 video, 11 Reels and 4 ad-break metrics, organic/paid splits, and the `dim-sync` fix. Split from X 2026-09-21 |
+| [FILM-1721](./FILM-1721-platform-capability-reference.md) | ✅ DONE | L | **The researched truth table.** Per platform × metric × API surface × field name × scope × window, cited to vendor docs. Lives at [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md); enforced by `platform-field-names.test.ts` |
 | [FILM-1722](./FILM-1722-view-definition-registry.md) | DRAFT | M | What "a view" means per platform, with effective dates and the YouTube discontinuity |
 | [FILM-1723](./FILM-1723-api-version-consolidation.md) | DRAFT | M | One pinned version per vendor; the Graph v18 token-refresh risk; X onto `api.x.com` |
 | [FILM-1724](./FILM-1724-channel-experiments.md) | DRAFT | L | Which styles work: groups of new videos, one per style, compared at the same age; no verdict on thin samples |
+| [FILM-1725](./FILM-1725-deferred-vendor-verifications.md) | ⏸️ DEFERRED | S | The FILM-1721 checks that need a paid X token, a TikTok sandbox app, or an Instagram insights permission we do not hold |
+| [FILM-1727](./FILM-1727-x-analytics.md) | DRAFT | L | X on the pay-per-use path, Enterprise fields declared and dark; the `x`/`twitter` vocabulary; metered cost |
+| [FILM-1726](./FILM-1726-monetisation-stage.md) | DRAFT | M | The Monetisation stage re-argued, after its premise turned out to be a fact about our writers rather than the platforms |
 
 **Two independent paths, deliberately.** `metrics → diagnosis` (FILM-1718)
 works without the genome, so a creator gets a usable diagnosis immediately;
@@ -188,9 +216,21 @@ Transmission, Audience. A total would average a dark stage as zero — exactly
 the failure the dark/weak distinction exists to prevent — and it collapses the
 diagnosis that makes the data useful.
 
-**No Monetisation stage.** `video_metrics.revenue_cents` is literal `0` on all
-four write paths. It would be dark or wrong on every platform forever. Its
-absence is a decision.
+**No Monetisation stage — but not for the reason first written.** The original
+text read: *"`video_metrics.revenue_cents` is literal `0` on all four write
+paths. It would be dark or wrong on every platform forever."* The first sentence
+is true; the second does not follow, and was retired on 2026-09-21.
+
+YouTube revenue is plumbed end to end — `analytics-sync-cron.ts:733-735` maps
+`estimatedRevenue`, `estimatedAdRevenue` and `estimatedRedPartnerRevenue`, and
+`upsertRevenueRecords` writes them to `revenue_records` with `source = 'api'`.
+It arrives as zero because `yt-analytics-monetary.readonly` is not requested.
+Facebook has its own ad-break revenue surface. So the constraint is **that we
+have not authorised revenue**, not that revenue does not exist.
+
+The stage stays absent while **FILM-1726** re-argues it from the real
+constraint. Absence is still a decision — it is now a decision with a pending
+review rather than a closed one.
 
 **A stage may be unbound, and often should be.** Five stages is a vocabulary,
 not a quota. Four honest stages beat five with one invented.
@@ -238,11 +278,13 @@ Recorded because each was believed at some point during this phase's planning:
   `video.upload`; `oauth/meta/config.ts:10` omits `instagram_manage_insights`.
   Only YouTube holds its analytics scope. This — not the seed fixture — is why
   `video_metrics` holds YouTube rows and nothing else.
-- **Providers request fewer fields than their own types declare.** TikTok asks
-  for five fields while declaring ten, omitting `full_video_watched_rate` —
-  its completion rate. Instagram never requests `follows` or `profile_visits`,
-  and the `reach` it *does* request is discarded at ingest for want of a
-  column. YouTube's daily query omits `averageViewPercentage`.
+- **Providers requested fewer fields than their own types declared.** TikTok
+  asked for five while declaring ten — five of which the endpoint does not have;
+  FILM-1721 removed them. Instagram never requests `follows` or `profile_visits`
+  (correct for Reels), never requests `ig_reels_avg_watch_time` or
+  `ig_reels_video_view_total_time` (documented, and discarded), and the `reach`
+  it *does* request is discarded at ingest for want of a column. YouTube's daily
+  query omits `averageViewPercentage`.
 - **`video_dim.duration_seconds` is the episode's, not the clip's**
   (`dim-sync.ts:166-168`). Short-form publishes in the live fixture average
   ~1,550 seconds, so any completion rate derived from it would be wrong.
@@ -274,7 +316,8 @@ a spec, a type or a request unless FILM-1721 documents it with a citation.**
 - **Instagram `profile_visits` and `follows` are FEED and STORY only — not
   REELS**, so Instagram's Audience stage has no per-media signal.
 - **Instagram has no replay metric, no retention graph and no completion rate.**
-  `reels_skip_rate` is the entire retention surface.
+  `reels_skip_rate` is the only curve-like surface — but average and total Reel
+  watch time are documented and simply never requested (FILM-1712).
 - **YouTube redefined `views` on 2026-08-27** across all formats (and for
   Shorts on 2025-03-31). `engagedViews` carries the previous methodology. Our
   series has a live discontinuity, which FILM-1722 exists to handle.
@@ -290,9 +333,12 @@ a spec, a type or a request unless FILM-1721 documents it with a citation.**
 
 ## Known limits — do not promise these
 
-**Four things the research asks for that no provider gives us:** "sends" as
-distinct from shares, replays and loops, stayed-to-watch and sub-second holds,
-and new-vs-returning viewers (Studio-only — FILM-1506 already records the
+**Four things the research asks for that no provider we ingest gives us:**
+"sends" as distinct from shares, replays and loops, stayed-to-watch and
+sub-second holds, and new-vs-returning viewers. *(Two qualifications:
+Instagram's `reposts_count` is a media-level pass-it-on signal beside the first,
+and Facebook's `fb_reels_replay_count` answers the second — on a platform we do
+not ingest yet.)* New-vs-returning viewers (Studio-only — FILM-1506 already records the
 subscribed-share proxy as the documented best available). Each becomes an
 `unsupported` entry with a creator-facing sentence, and an unbound stage where
 it was a platform's only candidate signal.

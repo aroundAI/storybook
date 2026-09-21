@@ -119,7 +119,13 @@ in a busy month is not flattered by the calendar:
 - **Hook tests (replacing FILM-1510's Hook Lab):** an experiment whose
   styles are hooks, measured on early retention. Two limits the review
   measured decide where that is allowed:
-  - YouTube's retention curve is 1% steps of the video's length, so a
+  - Facebook has a retention graph too (`post_video_retention_graph`), so "only
+  YouTube has a curve" stops being true the moment FILM-1720's Facebook leg
+  lands. **Its segment count is undocumented** — the 40-interval figure belongs
+  to `total_video_retention_graph`, a different metric — so its resolution, and
+  therefore whether an early-retention measure is even expressible on it, is an
+  open question. Do not assume it matches YouTube's.
+- YouTube's retention curve is 1% steps of the video's length, so a
     10-minute video's first point is at 6 seconds and "retention at 3s"
     does not exist for it. Early-retention measures are offered only for
     short-form videos (FILM-1716), where the curve resolves them: about

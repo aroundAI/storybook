@@ -3,7 +3,7 @@ spec_id: FILM-1714
 title: The Signal Model
 status: DRAFT
 effort: M
-dependencies: FILM-1703, FILM-1713, FILM-1716
+dependencies: FILM-1703, FILM-1713, FILM-1716; FILM-1712 for the Instagram bindings
 ---
 
 # The Signal Model
@@ -71,12 +71,32 @@ Examples, from the research and from what we can actually compute:
 | YouTube long · Hook | impressions CTR | first-30s retention |
 | YouTube long · Attention | average view duration | average % viewed, retention curve |
 | TikTok short · Attention | average watch time | `full_video_watched_rate` |
-| Instagram short · Transmission | shares per reach | saves per reach, comments per reach |
-| Instagram short · Attention | average watch time | average % viewed |
+| Instagram short · Transmission | shares per reach | saves per reach, comments per reach, **reposts per reach** |
+| Instagram short · Attention | `ig_reels_avg_watch_time` | **`reels_skip_rate`** |
 
 Treating signals as interchangeable loses the thing that makes a stage
 diagnosable: the primary says *whether* the stage is weak, the supporting
 signals say *why*.
+
+**Corrected 2026-09-21 against the capability reference.** The Instagram
+Attention row previously read `average watch time` / `average % viewed`. Both
+halves were wrong in opposite directions, which is why it is worth writing down:
+
+- The **primary is real and better-named**. `ig_reels_avg_watch_time` is
+  documented for REELS. It is simply never requested
+  (`instagram-insights.ts`), so FILM-1712 must land before this binds. Its
+  **unit is inferred to be milliseconds** and must be confirmed before a figure
+  is shown — a 1000× error here is silent and plausible-looking.
+- The **supporting signal does not exist**. Instagram has no completion rate and
+  no retention graph, so "average % viewed" cannot be computed for it.
+  `reels_skip_rate` — "the percentage of views from people who skipped during
+  the first 3 seconds" — is the real supporting signal, and it is arguably a
+  *Hook* signal being borrowed by Attention. Worth deciding deliberately rather
+  than by default.
+
+Transmission gains `reposts_count` (Media node, FEED and REELS, added
+2026-04-22) — the first media-level pass-it-on signal Instagram has offered,
+which is precisely what this stage asks for. It is subject to FILM-1712.
 
 ## 4. Support is computed, never authored
 
@@ -174,6 +194,10 @@ what keeps growth linear when Snap or Threads arrives.
 - [ ] Binding a stage to an `unsupported` input fails the test
 - [ ] Binding to a `not_ingested` input is allowed, and surfaces as dark with its blocker
 - [ ] Every `native` family feeds at least one signal or is allowlisted with a reason
+- [ ] Instagram Attention binds `ig_reels_avg_watch_time` as primary and `reels_skip_rate` as supporting; no Instagram binding uses "average % viewed", which Instagram does not report
+- [ ] Instagram Transmission includes reposts per reach, from `reposts_count`
+- [ ] Until FILM-1712 requests those fields, both Instagram bindings render dark with FILM-1712 named as the blocker — never as a zero
+- [ ] Instagram watch time is not shown until its unit (milliseconds, inferred) is confirmed against a live response
 
 ## 8. Verification
 

@@ -565,7 +565,7 @@ All workbook-parity scope is now specified. FILM-1611 was split — what the bac
 
 It must not read `video_dim.duration_seconds` either way. This is the only reason FILM-1710 is ordered ahead of the rest of phase 17.
 
-### Phase 17: Analytics Provenance and Signal (24 specs)
+### Phase 17: Analytics Provenance and Signal (27 specs)
 
 See [phase-17-analytics-provenance/README.md](./phase-17-analytics-provenance/README.md) for the dependency graph, locked decisions, known limits and open product questions.
 
@@ -592,15 +592,31 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1717 | [content-genome](./phase-17-analytics-provenance/FILM-1717-content-genome.md) | DRAFT | XL | FILM-1606, FILM-1610, FILM-1715, FILM-1716 |
 | FILM-1718 | [stage-diagnosis](./phase-17-analytics-provenance/FILM-1718-stage-diagnosis.md) | DRAFT | M | FILM-1714, FILM-1715 |
 | FILM-1719 | [signal-surfaces](./phase-17-analytics-provenance/FILM-1719-signal-surfaces.md) | DRAFT | L | FILM-1706, FILM-1717, FILM-1718 |
-| FILM-1720 | [facebook-x-analytics](./phase-17-analytics-provenance/FILM-1720-facebook-x-analytics.md) | DRAFT | XL | FILM-1711, FILM-1714, FILM-1721, FILM-1723 |
-| FILM-1721 | [platform-capability-reference](./phase-17-analytics-provenance/FILM-1721-platform-capability-reference.md) | DRAFT | L | - |
+| FILM-1720 | [facebook-analytics](./phase-17-analytics-provenance/FILM-1720-facebook-analytics.md) | DRAFT | L | FILM-1711, FILM-1714, FILM-1721, FILM-1723 |
+| FILM-1721 | [platform-capability-reference](./phase-17-analytics-provenance/FILM-1721-platform-capability-reference.md) | ✅ DONE | L | - |
 | FILM-1722 | [view-definition-registry](./phase-17-analytics-provenance/FILM-1722-view-definition-registry.md) | DRAFT | M | FILM-1721 |
 | FILM-1723 | [api-version-consolidation](./phase-17-analytics-provenance/FILM-1723-api-version-consolidation.md) | DRAFT | M | - |
 | FILM-1724 | [channel-experiments](./phase-17-analytics-provenance/FILM-1724-channel-experiments.md) | DRAFT | L | FILM-1610, FILM-1715, FILM-1716; FILM-1710 for hook tests |
+| FILM-1725 | [deferred-vendor-verifications](./phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.md) | ⏸️ DEFERRED | S | FILM-1721 |
+| FILM-1726 | [monetisation-stage](./phase-17-analytics-provenance/FILM-1726-monetisation-stage.md) | DRAFT | M | FILM-1703, FILM-1711, FILM-1720 |
+| FILM-1727 | [x-analytics](./phase-17-analytics-provenance/FILM-1727-x-analytics.md) | DRAFT | L | FILM-1711, FILM-1714, FILM-1721, FILM-1723; FILM-1725 Check A for the Enterprise tier only |
 
 Three parts. **Provenance** (1701–1709) answers *where did this number come from*. **Signal** (1710–1720) answers *what is it telling me*, which differs per platform. **Reference** (1721–1723) is the researched vendor truth the other two are built on.
 
 FILM-1710 fixes a latent write-only defect: `video_dim.duration_seconds` is the episode's duration, not the published clip's. Nothing reads the column today — the Hook Lab divides by `hook_variants.duration_seconds` — so it ships ahead of FILM-1616, the first thing that would read it, rather than ahead of the whole phase. FILM-1711 records that TikTok and Instagram analytics were never authorised. FILM-1721 exists because the first draft of the signal specs cited our own TypeScript types as evidence of platform capability and was wrong in five places on TikTok alone — its rule is that a metric name may not appear in a spec, a type or a request unless FILM-1721 documents it with a vendor citation. The declarative schema-drift repair this investigation surfaced shipped separately as PR #253.
+
+### Phase 18: Local Vendor Sandbox (4 specs)
+
+See [phase-18-local-vendor-sandbox/README.md](./phase-18-local-vendor-sandbox/README.md) for the problem table, locked decisions and known limits.
+
+Local stand-ins for every social platform and AI vendor, on local ports: stateful, random per run, growing over time, faithful to the capability reference. Used for E2E flows seeding cannot reach. FILM-1801 rewrites the same host constants FILM-1723 consolidates — do those two together, or FILM-1723 first.
+
+| Task ID | Name | Status | Effort | Dependencies |
+|---------|------|--------|--------|--------------|
+| FILM-1801 | [vendor-base-url-resolver](./phase-18-local-vendor-sandbox/FILM-1801-vendor-base-url-resolver.md) | DRAFT | L | - (with or after FILM-1723) |
+| FILM-1802 | [social-platform-sandbox](./phase-18-local-vendor-sandbox/FILM-1802-social-platform-sandbox.md) | DRAFT | XL | FILM-1801, FILM-1721 |
+| FILM-1803 | [ai-generation-sandbox](./phase-18-local-vendor-sandbox/FILM-1803-ai-generation-sandbox.md) | DRAFT | L | FILM-1801 |
+| FILM-1804 | [sandbox-backed-e2e-flows](./phase-18-local-vendor-sandbox/FILM-1804-sandbox-backed-e2e-flows.md) | DRAFT | L | FILM-1802, FILM-1803 |
 
 ### Spikes (5 specs)
 
@@ -667,29 +683,30 @@ SPIKE-01 through SPIKE-05
 > own piece of work.
 
 
-| Phase | Total | Draft | Review | Approved | In Progress | Done |
-|-------|-------|-------|--------|----------|-------------|------|
-| 1. Foundation | 26 | 0 | 0 | 0 | 0 | 26 |
-| Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 3 |
-| Design System | 5 | 0 | 0 | 0 | 0 | 5 |
-| 2. Assets | 9 | 0 | 0 | 0 | 0 | 9 |
-| 3. Episodes | 14 | 0 | 0 | 0 | 0 | 14 |
-| 4. Video Gen | 15 | 0 | 0 | 0 | 0 | 15 |
-| 5. Audio Gen | 16 | 0 | 0 | 0 | 0 | 16 |
-| 6. Edit Suite | 6 | 0 | 0 | 0 | 0 | 6 |
-| 7. Publishing | 15 | 0 | 0 | 0 | 0 | 15 |
-| 8. Analytics | 10 | 0 | 0 | 0 | 0 | 10 |
-| 9. Integration | 6 | 0 | 0 | 0 | 0 | 6 |
-| 10. Canon Mgmt | 7 | 0 | 0 | 0 | 0 | 7 |
-| 11. Canon Integ | 21 | 0 | 0 | 0 | 0 | 21 |
-| 12. Scale | 2 | 0 | 0 | 0 | 0 | 2 |
-| 13. Hook Opt | 2 | 1 | 0 | 0 | 0 | 1 |
-| 14. Edit Suite v2 | 1 | 1 | 0 | 0 | 0 | 0 |
-| 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 11 |
-| 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 17 |
-| 17. Analytics Provenance | 23 | 23 | 0 | 0 | 0 | 0 |
-| Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **214** | **30** | **0** | **0** | **0** | **184** |
+| Phase | Total | Draft | Review | Approved | In Progress | Deferred | Done |
+|-------|-------|-------|--------|----------|-------------|----------|------|
+| 1. Foundation | 26 | 0 | 0 | 0 | 0 | 0 | 26 |
+| Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
+| Design System | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
+| 2. Assets | 9 | 0 | 0 | 0 | 0 | 0 | 9 |
+| 3. Episodes | 14 | 0 | 0 | 0 | 0 | 0 | 14 |
+| 4. Video Gen | 15 | 0 | 0 | 0 | 0 | 0 | 15 |
+| 5. Audio Gen | 16 | 0 | 0 | 0 | 0 | 0 | 16 |
+| 6. Edit Suite | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
+| 7. Publishing | 15 | 0 | 0 | 0 | 0 | 0 | 15 |
+| 8. Analytics | 10 | 0 | 0 | 0 | 0 | 0 | 10 |
+| 9. Integration | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
+| 10. Canon Mgmt | 7 | 0 | 0 | 0 | 0 | 0 | 7 |
+| 11. Canon Integ | 21 | 0 | 0 | 0 | 0 | 0 | 21 |
+| 12. Scale | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
+| 13. Hook Opt | 2 | 1 | 0 | 0 | 0 | 0 | 1 |
+| 14. Edit Suite v2 | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 0 | 11 |
+| 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 0 | 17 |
+| 17. Analytics Provenance | 27 | 25 | 0 | 0 | 0 | 1 | 1 |
+| 18. Vendor Sandbox | 4 | 4 | 0 | 0 | 0 | 0 | 0 |
+| Spikes | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
+| **TOTAL** | **222** | **31** | **0** | **0** | **0** | **1** | **190** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
@@ -700,7 +717,8 @@ SPIKE-01 through SPIKE-05
 | Canon (Ph 10-11) | 28 | 28 | 100% |
 | Scale & Hooks (Ph 12-13) | 4 | 2 | 50% |
 | Workbook Parity (Ph 16) | 17 | 17 | 100% |
-| Provenance & Signal (Ph 17) | 23 | 0 | 0% |
+| Provenance & Signal (Ph 17) | 27 | 1 | 4% |
+| Vendor Sandbox (Ph 18) | 4 | 0 | 0% |
 
 Phase 14 (`edit-suite-v2`) carries an `ENGINEERING.md` with no status
 frontmatter and is counted as one unstarted item.
