@@ -125,6 +125,13 @@ const REQUEST_SITES: Array<{
         pattern: new RegExp(String.raw`\bdimensions:\s*${LITERAL}`, 'g'),
         surfaces: ['youtube/analytics-dimensions'],
       },
+      {
+        pattern: new RegExp(
+          String.raw`\bpart:\s*(\[[^\]]*\]|${LITERAL.slice(1, -1)})`,
+          'g',
+        ),
+        surfaces: ['youtube/data-api'],
+      },
     ],
   },
   {
@@ -188,7 +195,7 @@ const REQUEST_SITES: Array<{
  * inside a declared pattern's match, or the request is unchecked.
  */
 const REQUEST_SHAPE =
-  /\?(?:fields|metric)=|\b(?:metrics?|dimensions|fields)\s*:\s*['"`[]|searchParams\.set\(\s*['"](?:fields|metric)['"]/g;
+  /\?(?:fields|metric)=|\b(?:metrics?|dimensions|fields|part)\s*:\s*['"`[]|searchParams\.set\(\s*['"](?:fields|metric)['"]/g;
 
 function namesIn(region: string) {
   if (!/['"]/.test(region)) {

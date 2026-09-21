@@ -63,7 +63,7 @@ withdrawn claim. It wants its own ticket against `hook_variants`.
 | Layer | Change |
 |---|---|
 | Postgres | `publishes.duration_seconds integer` (nullable) |
-| Sync | Write it from the provider — YouTube `contentDetails.duration`, **TikTok `duration`** (confirmed on `/v2/video/query/`), Instagram `video_duration` |
+| Sync | Write it from the provider — YouTube `contentDetails.duration` (ISO 8601, e.g. `PT15M33S`), **TikTok `duration`** (on `/v2/video/query/`). **Instagram: none — see below** |
 | ClickHouse | Migration `009_video_dim_asset_duration`: add `asset_duration_seconds Nullable(UInt32)` |
 | `dim-sync.ts` | Read the publish's duration; **stop falling back to the episode** |
 
@@ -91,10 +91,21 @@ forward. So existing publishes keep a null asset duration forever unless
 something fetches it for them.
 
 That means a one-off backfill that re-reads each published asset's duration
-from its provider — YouTube `videos.list` (1 unit, batched), TikTok
-`/v2/video/query/` `duration`, Instagram `video_duration`. Until it runs, those
-rows are `duration_unknown` by §3's rules, which is correct but is *not* a
-corrected figure.
+from its provider — YouTube `videos.list` (1 unit, batched) and TikTok
+`/v2/video/query/` `duration`. Until it runs, those rows are
+`duration_unknown` by §3's rules, which is correct but is *not* a corrected
+figure.
+
+**Instagram has no asset duration to read.** An earlier draft of this spec named
+Instagram `video_duration`. Checked 2026-09-21 against Meta's IG Media reference:
+**there is no duration field on the Media node at all.** The name was assumed,
+not sourced — the failure FILM-1721 exists to prevent, sitting in a spec that
+had not been built yet. Instagram publishes are therefore `duration_unknown`
+permanently unless we record the duration of the file *we uploaded* at publish
+time, which we hold and Meta does not return. That is the honest source, and
+it belongs in the publish worker rather than the sync. `video_duration` is on
+the capability reference's forbidden list for Instagram, so nothing requests
+it.
 
 ## 3. Interim rules until it lands
 
@@ -141,7 +152,8 @@ be quietly re-read.
 - [ ] A 45-second Short reports a 45-second duration, not its episode's
 - [ ] `retention_3s` for a short-form variant is computed against the clip, and no longer reads ≈ 1.0
 - [ ] A variant whose asset duration is unknown yields `duration_unknown`, not a winner
-- [ ] Existing publishes have their asset duration backfilled from the provider, not left null
+- [ ] Existing YouTube and TikTok publishes have their asset duration backfilled from the provider, not left null
+- [ ] Instagram's duration comes from the uploaded file at publish time, or is `duration_unknown` — never requested from Meta, which has no such field
 - [ ] Existing short-form retention caches are cleared, and recomputed **where a duration is now known**; where it is not, they read `duration_unknown` rather than a stale figure
 - [ ] Any consumer that cannot get a duration returns a named reason rather than a number
 - [ ] `detectRetentionCliff` is not passed a duration it cannot trust

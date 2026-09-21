@@ -60,6 +60,26 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/platform-field-names.test.ts",
       "pattern": "tiktok-analytics.ts"
+    },
+    {
+      "name": "A YouTube Data API call asks for an unindexed part",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "part: ['snippet', 'contentDetails'],",
+      "replace": "part: ['snippet', 'contentDetails', 'fileDetails'],",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "youtube-analytics.ts"
+    },
+    {
+      "name": "Instagram code reads a duration field Meta does not have",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "      const mediaType = mediaInfo.media_type ?? 'VIDEO';",
+      "replace": "      const mediaType = mediaInfo.media_type ?? 'VIDEO';\n      const seconds = (mediaInfo as { video_duration?: number }).video_duration;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "video_duration"
     }
   ]
 }

@@ -536,6 +536,15 @@ liveOrOnDemand             # incompatible with averageViewPercentage
 audienceType               # ORGANIC / AD_INSTREAM / AD_INDISPLAY, filter-only
 ```
 
+<!-- fields: youtube/data-api source: https://developers.google.com/youtube/v3/docs/videos -->
+```text
+# videos.list `part` names we request, and the fields we read from them
+snippet
+contentDetails
+statistics
+duration                   # contentDetails.duration, ISO 8601 - FILM-1710
+```
+
 <!-- fields: youtube/reporting source: https://developers.google.com/youtube/reporting/v1/reports/channel_reports -->
 ```text
 channel_basic_a3
@@ -754,6 +763,7 @@ instagram|meta|facebook plays                               -> views            
 instagram|meta|facebook impressions                         -> views                 removed 2025-04-21, enforced across all Graph versions
 instagram|meta|facebook clips_replays_count                 -> (none)                removed 2025-04-21, no replacement
 instagram|meta|facebook ig_reels_aggregated_all_plays_count -> views                 removed 2025-04-21
+instagram|meta|facebook video_duration                      -> (none)                IG Media has no duration field (checked 2026-09-21); record the uploaded file's duration instead
 youtube                 annotationClickThroughRate          -> (none)                annotations retired; documented but dead
 ```
 
