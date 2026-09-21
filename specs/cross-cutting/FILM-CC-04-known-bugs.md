@@ -483,11 +483,13 @@ is written `currency: 'USD'` (`analytics-sync-cron.ts`, `source: 'api'`):
 YouTube's Analytics API reports `estimatedRevenue` in USD unless a `currency`
 parameter is sent, and we never send one. So platform revenue cannot be
 mixed. The only way to a non-USD row is a person: the manual revenue form's
-currency select (`manual-revenue-form.tsx`), and the bulk import beside it
-(`revenue-actions.ts`, `record.currency ?? 'USD'`) — a sponsorship paid in
-euros, entered as euros. That makes this rarer than the entry's first
+currency select (`manual-revenue-form.tsx`) — a sponsorship paid in euros,
+entered as euros. *(Corrected 2026-09-22 by the KB-12 fix, #293: this
+paragraph first also named "a bulk import beside it". There is none —
+`record.currency ?? 'USD'` in `revenue-actions.ts` is the return mapping of
+`addManualRevenueAction`. The form is the only door.)* That makes this rarer than the entry's first
 paragraph suggests, and means the ClickHouse side (`video_metrics.revenue_cents`,
-no currency column) is USD **by construction today** — which the fix should
+no currency column) is USD **by construction today** — vacuously: #293 found every ingest path writes a literal `0` there, so there is no ClickHouse revenue to mix yet — which the fix should
 state and guard, because it stops being true the day a provider reports in
 the channel's own currency.
 
@@ -1172,6 +1174,83 @@ is about.
 - [ ] The deletion job removes one connection's vendor rows from all seven ClickHouse tables and `source='api'` revenue — and nothing else; tested with two connections seeded side by side, against the real local ClickHouse
 - [ ] Dialog copy matches behaviour; Playwright covers disconnect → reconnect, asserting the manual revenue figure is still there **after** reconnect; screenshots in the PR
 - [ ] No production data or credentials are used to verify any of this
+
+---
+
+## KB-23 — A second currency for the same day overwrites the first
+
+**Severity:** Medium — silent loss of a figure the creator typed, and it only
+became reachable in practice once revenue was made per-currency (KB-12, #293).
+**Found:** KB-12 fix (#293), 2026-09-22, noted as out of scope. **Open.**
+
+`revenue_records` is unique on
+
+```sql
+(coalesce(publish_id, account_id), record_date, category, source)
+```
+
+(`idx_revenue_records_unique_scope`, read from the live index) — **currency is
+not part of the key.** `addManualRevenueAction`
+(`packages/features/content-analytics/src/server/revenue-actions.ts`) cannot
+name that expression index as an `onConflict` target, so it looks up the
+existing manual row by date, category and scope and replaces it. That lookup
+does not filter on currency either.
+
+So a creator who records a **€50** sponsorship and a **$100** sponsorship
+against the same video, on the same date, in the same category, ends up with
+whichever they entered last. No error, no warning; the form resets as for any
+successful save.
+
+**Confirmed by reading the index and the action; not yet driven through the
+form.** The reproduction is two saves and a reload.
+
+### Proposed fix
+
+- Add `currency` to the unique key (hand-written migration; check for existing
+  collisions first — there can be none today, since the key forbids them) and
+  to the action's lookup.
+- The form's "replace existing entry" behaviour then means *same currency*;
+  say so where the form tells the user an entry was updated rather than added.
+- pgTAP for the index; a Playwright spec that saves €, then $, reloads, and
+  finds **both** — asserted on the second submission, which is where form-state
+  bugs in this form have lived before (FILM-1609).
+
+### Acceptance criteria
+
+- [ ] Two manual entries differing only in currency coexist — pgTAP and E2E, red first
+- [ ] Same scope/date/category/**currency** still replaces, not duplicates
+- [ ] Types regenerated, not hand-edited; screenshots of the form after the second save
+
+---
+
+## KB-24 — The revenue projection and the entry form disagree about what day it is
+
+**Severity:** Low — a wrong-looking `0` for a few hours a day, east of UTC;
+nothing is stored wrongly. **Found:** KB-12 fix (#293), 2026-09-22; measured by
+that teammate at 03:30 IST. **Not re-run by the coordinator. Open.**
+
+`getRevenueProjectionAction`'s window ends at the **server's UTC today**; a
+manual revenue entry is dated the **browser's local today**. Between local
+midnight and UTC midnight — 00:00 to 05:30 in India — a fresh entry is dated
+"tomorrow" as far as the projection is concerned, so a just-saved €50 shows a
+`€0` projection.
+
+It is the same two-clock class FILM-1610 met in the experiment log, where
+`localToday()` was introduced for exactly this. #293 added the missing query
+invalidation on save (the projection was never refreshed at all) but left the
+window alone.
+
+### Proposed fix
+
+- One definition of "today" for revenue: the caller passes its local date
+  (`asOf`), as the experiment log's actions do, and the projection window is
+  built from it. **Fix the class:** grep the revenue and analytics actions for
+  `new Date()` used as a window boundary and list them.
+
+### Acceptance criteria
+
+- [ ] With the browser clock set east of UTC and the server at UTC just before midnight, an entry saved "today" appears in the projection — Playwright with a fixed clock, red first
+- [ ] Every server-side "today" used as an analytics window boundary is listed, each fixed or justified
 
 ---
 
