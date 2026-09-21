@@ -183,7 +183,7 @@ const REQUEST_SITES: Array<{
       },
       {
         pattern:
-          /metricsForType\s*=[\s\S]*?\?\s*(\[[^\]]*\])\s*:\s*(\[[^\]]*\])/g,
+          /metricsForType\s*=[^;[]*?(\[[^\]]*\])(?:[^;[]*?(\[[^\]]*\]))?/g,
         surfaces: ['instagram/media-insights', 'instagram/media-insights-2026'],
       },
     ],
@@ -193,9 +193,14 @@ const REQUEST_SITES: Array<{
 /**
  * Anything that looks like a literal vendor field list. Every match must fall
  * inside a declared pattern's match, or the request is unchecked.
+ *
+ * The last alternative catches a list assigned to a variable
+ * (`const metricsForType = [...]`), which is invisible to the others. Without
+ * it, reshaping a ternary into a single array silently took Instagram's media
+ * metrics out of the guard's sight.
  */
 const REQUEST_SHAPE =
-  /\?(?:fields|metric)=|\b(?:metrics?|dimensions|fields|part)\s*:\s*['"`[]|searchParams\.set\(\s*['"](?:fields|metric)['"]/g;
+  /\?(?:fields|metric)=|\b(?:metrics?|dimensions|fields|part)\s*:\s*['"`[]|searchParams\.set\(\s*['"](?:fields|metric)['"]|\b\w*(?:[mM]etric|[fF]ield)\w*\s*=\s*\[/g;
 
 function namesIn(region: string) {
   if (!/['"]/.test(region)) {
