@@ -52,9 +52,6 @@ export class TikTokRateLimitError extends Error {
 }
 
 /**
- * Checks if an error indicates an invalid token or missing scope
- */
-/**
  * TikTok v2 returns an `error` object on every response, success included:
  * `{ code: 'ok', message: '', log_id }`. Only a code other than 'ok' is a
  * failure. The code leads the message because the classifiers below match on
@@ -67,6 +64,9 @@ function tiktokFailure(error: { code: string; message: string } | undefined) {
   return error.message ? `${error.code}: ${error.message}` : error.code;
 }
 
+/**
+ * Checks if an error indicates an invalid token or missing scope
+ */
 function isAuthError(error: unknown): boolean {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
