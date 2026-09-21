@@ -19,7 +19,7 @@ statement turned out wrong on testing, the entry says so.
 
 ## KB-1 — Deleting a user who has created anything fails
 
-> **Fixed (2026-09-21), #PRNUM.** All seventeen keys are `ON DELETE SET NULL`
+> **Fixed (2026-09-21), #290.** All seventeen keys are `ON DELETE SET NULL`
 > (`20260921205124_authors-deletable.sql`). The keys were not the whole bug:
 > three BEFORE UPDATE triggers undid or refused the key's own `SET NULL`
 > (`trigger_set_user_tracking`, `kit.prevent_memberships_update`,
@@ -513,5 +513,5 @@ can be wrong. Not worth it until someone has a real account that is slow.
 | KB-6 (part) | Experiment log and note refusals replaced in production | #264 (round 4) |
 | KB-9, KB-10 | Hook Lab: a cross-tenant retention read, and a feature that could not be used and measured the wrong point | #269 (removed) |
 | KB-11 | Another account could read a public project's analytics | FILM-1615 Step 0 |
-| KB-1 | Deleting a user who had created anything failed: seventeen authorship keys to `auth.users` had no ON DELETE action, and three triggers refused or undid the key's own set-null | #PRNUM |
+| KB-1 | Deleting a user who had created anything failed: seventeen authorship keys to `auth.users` had no ON DELETE action, and three triggers refused or undid the key's own set-null | #290 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
