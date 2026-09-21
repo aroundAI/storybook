@@ -116,10 +116,12 @@ test.describe('FILM-1616 — diagnostics with data', () => {
     expect(measured.join(' ')).toContain('1.2%');
     expect(measured.join(' ')).toContain('8.0%');
 
-    await page.screenshot({
-      path: `${OUT}/01-weekly-diagnostics.png`,
-      fullPage: true,
-    });
+    // The section, not the page: it sits well below the fold, and a page
+    // capture shows the strategy cards above it rather than the table this
+    // is evidence for.
+    await page
+      .locator('[data-test="weekly-diagnostics-section"]')
+      .screenshot({ path: `${OUT}/01-weekly-diagnostics.png` });
 
     // The drill-down: the row with the cliff opens the curve that shows it.
     await rows.filter({ hasText: 'Packaging failed' }).first().click();
@@ -132,10 +134,25 @@ test.describe('FILM-1616 — diagnostics with data', () => {
       page.locator('[data-test="retention-curve-error"]'),
     ).toHaveCount(0);
 
-    await page.screenshot({
-      path: `${OUT}/02-retention-cliff.png`,
-      fullPage: true,
-    });
+    // Wait for the drawn curve, not just the panel. The first version of
+    // this screenshot caught the loading skeleton — evidence of a spinner,
+    // not of a cliff.
+    await expect(
+      page.getByRole('img', { name: 'Audience retention curve' }),
+    ).toBeVisible();
+
+    // The seeded curve drops 0.90 → 0.45 at 15% through: a 45-point drop,
+    // stated in the caption rather than left to the eye.
+    const caption = page.locator('[data-test="retention-drilldown"] p');
+
+    await expect(caption).toContainText('Sharp drop of 45 points');
+
+    // eslint-disable-next-line no-console
+    console.log('MEASURED_CLIFF', await caption.innerText());
+
+    await page
+      .locator('[data-test="weekly-diagnostics-section"]')
+      .screenshot({ path: `${OUT}/02-retention-cliff.png` });
   });
 
   test('a video with no curve renders empty, never a flat zero', async ({
@@ -182,9 +199,18 @@ test.describe('FILM-1616 — diagnostics with data', () => {
       page.locator('[data-test="retention-curve-error"]'),
     ).toHaveCount(0);
 
-    await page.screenshot({
-      path: `${OUT}/03-no-retention.png`,
-      fullPage: true,
-    });
+    await expect(
+      page.locator('[data-test="retention-drilldown"]'),
+    ).toContainText('No retention curve available');
+
+    // And no curve drawn — a zero-filled one would render as a video
+    // nobody watched.
+    await expect(
+      page.getByRole('img', { name: 'Audience retention curve' }),
+    ).toHaveCount(0);
+
+    await page
+      .locator('[data-test="weekly-diagnostics-section"]')
+      .screenshot({ path: `${OUT}/03-no-retention.png` });
   });
 });
