@@ -909,6 +909,38 @@ not let this entry hold up the owner's own use.
    week loses their charts) or whether deletion runs only on explicit request
    and on expiry. Owner decision before code.
 
+### Decided (owner, 2026-09-22): keep it until asked
+
+**Disconnecting does not delete history.** Vendor-sourced analytics are deleted
+only on an explicit request, or when a retention window runs out. The owner's
+reasoning, which the design has to honour: a connection can drop *by mistake* or
+*because a token expired*, neither of which is the creator asking to be
+forgotten; and someone who stops using the product for five months and returns
+in the sixth should find their data. A disconnect that silently wipes charts
+punishes exactly those people.
+
+**This has to be squared with the vendor's text, not assumed compatible with
+it.** YouTube's API Services policies set limits on how long stored API data
+may be kept without the user's authorisation still being valid, and require
+deletion when a user revokes access. Read against the decision above, three
+cases are genuinely different, and the drafts (items 1–2) and the mechanism
+(item 3) must treat them differently:
+
+| What happened | Is it the user asking to be forgotten? | Expected handling |
+|---|---|---|
+| Token expired / refresh failed / disconnected inside *our* app | No | Keep. Prompt to reconnect. This is the owner's case |
+| User revoked our app's access **at the vendor** (Google security settings, TikTok, Meta) | Arguably yes, and the vendor's policy says so | **Verify the policy text first.** If it requires deletion within a fixed window of revocation, that window wins over "keep until asked" for that platform's data — and the page must say so |
+| User asks us to delete (the instructions page, account deletion) | Yes | Delete within the stated window |
+
+**So the first deliverable is a citation, not a page:** the exact current
+wording and figures of YouTube's retention and revocation clauses (the runbook
+recorded 30-day and 7-day windows from a first read — *unconfirmed*), and the
+equivalent clauses for Meta and TikTok. If they conflict with "keep until
+asked" for the revoked-at-vendor case, **stop and bring the conflict to the
+owner with the quoted text** rather than drafting around it. A retention
+window long enough for the six-month case (the owner's example) is the default
+to propose if the policies allow it.
+
 **Legal text is the owner's to approve.** A teammate can draft from the vendor
 requirements and the code's actual behaviour; the PR must say DRAFT and must
 not claim a behaviour (a deletion window, a retention period) the code does
@@ -918,9 +950,80 @@ not implement. Item 3 exists so that items 1–2 never have to.
 
 - [ ] Data-deletion instructions page live, linked from the privacy policy and footer; every sentence on it checked against what the code does
 - [ ] Privacy policy carries the three YouTube-required items — each cited to the policy text in the PR
-- [ ] Owner has decided what disconnect deletes; the decision is recorded here before item 3 is built
+- [x] Owner has decided what disconnect deletes (2026-09-22: keep until asked — see above)
+- [ ] Vendor retention/revocation clauses quoted and cited for YouTube, Meta and TikTok; any conflict with the decision brought to the owner before the pages are finalised
 - [ ] Item 3: after a disconnect (or on request), vendor-sourced rows for that connection are gone from ClickHouse and Postgres within the stated window; manual entries untouched — pgTAP/ClickHouse test with seeded rows, red first
 - [ ] Runbook (#289) updated: the two blockers struck, with the URLs to paste into each vendor form
+
+---
+
+## KB-21 — Six environment variables redirect vendor traffic in production
+
+**Severity:** Medium — not exploitable from outside: it needs write access to
+the deployment's environment. But a variable that silently moves API traffic,
+*carrying the API key in its headers*, to another host is an exfiltration path
+with no log line, and FILM-1801 (#291) has just built the guarded way to do
+the same thing. These six go around it. **Found:** FILM-1801 (#291),
+2026-09-22, reported and deliberately not changed. **Open.**
+
+FILM-1801's resolver honours an override only when `NODE_ENV` is `development`
+or `test` by name, `VENDOR_SANDBOX=1`, the process is not a Lambda, and the
+value is a credential-free http(s) URL on a **local** address — and it logs
+ignored overrides at server start. These have none of that:
+
+| Variable | Read by | Re-checked on `main` |
+|---|---|---|
+| `SYNCLABS_BASE_URL` | our code | `packages/features/audio-generation/src/providers/lip-sync/factory.ts:131` |
+| `WAV2LIP_API_URL` | our code | same file `:143`; `audio-generation/src/lib/constants.ts:248` (defaults to `http://localhost:8000`) |
+| `LOCAL_API_URL` | our code | `packages/llm/src/factory.ts:79` (the `local` LLM provider) |
+| `OPENAI_BASE_URL` | the OpenAI SDK itself | no reference in our source; present only in the bundled SDK |
+| `ANTHROPIC_BASE_URL` | the Anthropic SDK itself | same |
+| `GOOGLE_GEMINI_BASE_URL` | the Google GenAI SDK itself | same |
+
+### Decided (owner, 2026-09-22): close them — with one that is in use
+
+- `SYNCLABS_BASE_URL`, `WAV2LIP_API_URL`, `LOCAL_API_URL`: **no longer used.**
+  Remove the reads; route the hosts through the resolver like every other
+  vendor. If the Wav2Lip and `local` LLM providers are themselves dead, say so
+  in the PR and ask before deleting a provider — removing an env read is in
+  scope, removing a feature is not.
+- `OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`: not used, but the providers stay
+  supported. Close the silent path.
+- **`GOOGLE_GEMINI_BASE_URL` is set in production today** (owner). It is not set
+  anywhere in `sst.config.ts` or `deployment/`, so it lives in the hosting
+  environment directly. **"Close" must not mean "break production."** Closing
+  this one means replacing a silent override with an explicit one:
+
+### Proposed fix
+
+- **Pass `baseURL` explicitly to every SDK client** from the resolver, so the
+  SDKs' own environment lookup is never what decides the host. (Check each
+  SDK: an explicit option should take precedence over its env var — verify by
+  running the real SDK against a local listener with the env var set, as
+  FILM-1801 did for YouTube's `rootUrl`. Do not assume.)
+- **A production override becomes a declared thing, not an ambient one:** an
+  allow-list in the resolver of vendor → permitted non-default production
+  hosts, https only, no credentials in the URL, exact host match. Gemini's
+  current production value goes on that list. Anything else set in production
+  is ignored *and logged by name at server start*, as FILM-1801 already does
+  for `VENDOR_URL_*`.
+- **Before any of this ships the owner must supply the value
+  `GOOGLE_GEMINI_BASE_URL` holds in production** (the host, not a secret), and
+  where it is set. Without it the allow-list cannot be written and the change
+  would cut production off from Gemini. **This blocks the PR, and the PR must
+  say so at the top.**
+- Extend FILM-1801's guard (`vendor-api-versions.test.ts`): a new
+  `process.env.*_BASE_URL` / `*_API_URL` read for a vendor host fails the
+  build, with the resolver call to use instead.
+- Depends on #291.
+
+### Acceptance criteria
+
+- [ ] None of the six variables changes a request's host unless the resolver's rules allow it — proven per SDK against a local listener, env var set, production settings: **0 requests arrive**
+- [ ] Gemini in production reaches the owner's declared host and no other; an undeclared value is ignored and logged by name, never by value
+- [ ] The three unused variables are gone from source, docs and env examples
+- [ ] The guard fails on a newly introduced vendor base-URL env read — seen red
+- [ ] FILM-1803's spec updated: it planned to rely on these variables for the AI sandbox and must use `VENDOR_URL_*` instead
 
 ---
 
