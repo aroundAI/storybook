@@ -51,7 +51,7 @@ than a comment.
 | TikTok (deep) | Business API app **+ creator on a Business account** | not implemented |
 | Instagram | `instagram_manage_insights` | **missing** |
 | Facebook | `read_insights` (plus a provider — FILM-1720) | missing |
-| X | TBD (plus a provider — FILM-1720) | missing |
+| X | `tweet.read` + `users.read` | **held** — already requested for publishing (`oauth/twitter/config.ts:13-15`). The blocker is the missing provider, FILM-1727, not authorisation |
 
 ### The monetary scope — added 2026-09-21
 
@@ -84,7 +84,7 @@ Two further consequences:
   `account_type_gated` in FILM-1703 — and the audit should return it as such
   rather than as "no revenue".
 
-Facebook and X are recorded here and built in FILM-1720; their rows exist so
+Facebook and X are recorded here and built in FILM-1720 and FILM-1727; their rows exist so
 that the audit is complete rather than silently three-platform.
 
 ## 3. The three costs, which are not the same
@@ -153,7 +153,7 @@ and nothing surfaces it.
 
 - Requesting the additional *fields* those scopes unlock — FILM-1712. This spec
   gets permission; that one uses it.
-- Facebook and X providers and the ClickHouse enum — FILM-1720.
+- Facebook and X providers and their enum values — FILM-1720 (Facebook) and FILM-1727 (X).
 - Any signal, stage or benchmark.
 
 ## 6. Acceptance criteria
@@ -171,7 +171,9 @@ and nothing surfaces it.
 - [ ] The reconnect prompt names what that specific platform's analytics will add
 - [ ] An unauthorised connection is not retried indefinitely by the sync cron
 - [ ] The audit covers all five platforms, including the two with no provider yet
-- [ ] `yt-analytics-monetary.readonly` is requested, or its absence is recorded as `scope_missing` rather than surfacing as a zero
+- [ ] `yt-analytics-monetary.readonly` is requested, and existing YouTube connections are prompted to re-consent. The only permitted non-collection is a creator outside the Partner Program, recorded as `account_type_gated`
+- [ ] Monetary metrics are fetched in a call separate from `fetchTotals`' non-monetary ones, so a monetary 403 degrades revenue only and never the totals
+- [ ] After the scope is granted, a real Partner Program channel's `revenue_records` holds non-zero `source = 'api'` rows — the end-to-end proof that the pipeline FILM-1726 describes actually delivers
 - [ ] Whether YouTube rejects a mixed monetary/non-monetary query is established by a real call, not assumed
 - [ ] YPP membership is modelled as `account_type_gated`, distinguishable from a missing scope
 
