@@ -16,10 +16,17 @@ export interface YouTubeAnalyticsInput {
 }
 
 /**
- * Available YouTube Analytics metrics
+ * Available YouTube Analytics metrics.
+ *
+ * Every name here is documented at
+ * https://developers.google.com/youtube/analytics/metrics. The three revenue
+ * metrics require the `yt-analytics-monetary.readonly` scope, which
+ * YOUTUBE_OAUTH_CONFIG does not currently request — FILM-1711.
+ * See docs/platform-capability-reference.md.
  */
 export type YouTubeMetric =
   | 'views'
+  | 'engagedViews'
   | 'likes'
   | 'dislikes'
   | 'comments'
@@ -30,7 +37,8 @@ export type YouTubeMetric =
   | 'subscribersGained'
   | 'subscribersLost'
   | 'estimatedRevenue'
-  | 'annotationClickThroughRate'
+  | 'estimatedAdRevenue'
+  | 'estimatedRedPartnerRevenue'
   | 'cardClickRate';
 
 /**

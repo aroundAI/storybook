@@ -1,12 +1,19 @@
 ---
 spec_id: FILM-1721
 title: Platform Capability Reference
-status: DRAFT
+status: ✅ DONE
 effort: L
 dependencies: none
 ---
 
 # Platform Capability Reference
+
+> **Shipped.** The reference itself lives at
+> [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md)
+> and is the living copy — it carries a re-verification cadence and is parsed by
+> `packages/features/content-analytics/__tests__/platform-field-names.test.ts`.
+> This spec is the work item, kept for its rationale and acceptance criteria;
+> **do not edit the tables below, edit the document.**
 
 ## 1. Why this exists
 
@@ -176,9 +183,9 @@ creators publish. Instagram's Audience stage therefore has no per-media signal.
 
 Also absent: **no replay metric** (`clips_replays_count` removed 2025-04-21,
 no replacement), **no retention graph**, **no completion rate**, **no per-media
-follower/non-follower split** (that breakdown is account-level only — so our
-`video_audience.follower_status` rows for Instagram are account-level data
-attributed per media).
+follower/non-follower split** (`follow_type` is an account-level breakdown only,
+so Instagram writes no `video_audience.follower_status` rows; the per-Reel request
+the provider carried was undocumented and is removed).
 
 `reels_skip_rate` — "percentage of views from people who skipped during the
 first 3 seconds" — is the entire retention surface.
@@ -352,16 +359,28 @@ And these are **genuinely undocumented** — no one may fill them with a guess:
 
 ## 10. Acceptance criteria
 
-- [ ] Every metric named in any Phase 17 spec appears here with a citation
-- [ ] Every row records the API surface, exact field name, scope, access level and data window
-- [ ] Every inferred claim is in the §8 ledger, and nothing inferred is stated as fact elsewhere
-- [ ] Every genuinely undocumented item has a named owner and the question to ask
-- [ ] Each row carries the date it was verified
-- [ ] A spec, type or request naming a field absent from this document fails review
-- [ ] Our own type declarations are nowhere cited as evidence of a platform's capability
-- [ ] The five field names TikTok does not have are recorded, so they are not re-added
-- [ ] The two X quartile vocabularies are distinguished
-- [ ] Facebook's four denominators are distinguished, and ThruPlay is marked ads-only
+- [x] Every metric named in any Phase 17 spec appears here with a citation
+- [x] Every row records the API surface, exact field name, scope, access level and data window —
+      *per endpoint block and per section, not per row*: the field index gives surface
+      and exact name; scope, access and window live in the platform sections above it
+- [x] Every inferred claim is in the ledger, and nothing inferred is stated as fact elsewhere —
+      *this was ticked while three inferred claims were stated flatly (X Enterprise-only
+      twice, X user context once). Corrected in review; re-checked mechanically*
+- [x] Every genuinely undocumented item has a named owner and the question to ask —
+      *the owner is a spec, not a person*. Every open question names one; none names a
+      person, because that is a staffing decision the document cannot make
+- [x] Each row carries the date it was verified — *per section* (§11's wording), not per
+      row. A date records the last verification, not the last edit
+- [x] A spec, type or request naming a field absent from this document fails review —
+      **automated** for types and requests, not for specs: the guard parses the field
+      index out of the document and fails on an undocumented request, on a request that
+      draws from another endpoint's block, or on a retired name — including one read by
+      property access. Spec prose is still checked by review
+- [x] Our own type declarations are nowhere cited as evidence of a platform's capability
+- [x] The five field names TikTok does not have are recorded, so they are not re-added —
+      and removed from the code that declared them
+- [x] The two X quartile vocabularies are distinguished
+- [x] Facebook's four denominators are distinguished, and ThruPlay is marked ads-only
 
 ## 11. Verification
 
@@ -370,9 +389,25 @@ from it, and its structural test requires every entry to trace to a row here.
 
 Three empirical checks, each cheap and each able to falsify a row:
 
-1. `/2/media/analytics` with a pay-per-use token — settles the Enterprise gate
-2. `/v2/video/query/` with `video.list` granted — settles the field list
-3. A Graph call on v18.0 — settles whether token refresh is already broken
+1. `/2/media/analytics` with a pay-per-use token — settles the Enterprise gate.
+   **Not run.** X has no sandbox and closed Free/Basic/Pro to new signups on
+   2026-02-06, so the question cannot be settled without a paid token.
+   **Deferred to [FILM-1725](./FILM-1725-deferred-vendor-verifications.md)**,
+   which holds the question, the command and the trigger to revisit. It gates
+   FILM-1727's Enterprise tier.
+2. `/v2/video/query/` with `video.list` granted — settles the field list.
+   **Not run**; a sandbox app is enough and the command is recorded in the
+   document. Also deferred to FILM-1725, to be folded into FILM-1711.
+3. A Graph call on v18.0 — settles whether token refresh is already broken.
+   **Run 2026-09-21, and it resolved more than expected.** Meta's changelog
+   gives v18.0's expiry as **2026-01-26** and v19.0's as **2026-05-21**, both
+   past; the versioning guide documents that calls to an expired version are
+   *"defaulted to the next oldest, usable version"* rather than rejected. An
+   unauthenticated probe confirms v18.0 still routes, which proves the version
+   string is recognised and nothing about which semantics were served. We pin
+   v18.0 in `token-refresh.ts` and v19.0 in the lambda handlers. This moves
+   "Graph v18.0 is past end-of-life" out of the inferred ledger and strengthens
+   FILM-1723, whose failure mode is substitution rather than rejection.
 
 Re-verification is not optional maintenance. YouTube redefined `views` three
 weeks before this was written, and Instagram removed four metrics in April

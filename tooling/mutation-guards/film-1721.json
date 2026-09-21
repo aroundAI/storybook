@@ -1,0 +1,105 @@
+{
+  "feature": "FILM-1721",
+  "mutations": [
+    {
+      "name": "A retired field name reappears on a response type",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/tiktok/types.ts",
+      "find": "  share_count?: number;\n}",
+      "replace": "  share_count?: number;\n  save_count?: number;\n}",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "save_count"
+    },
+    {
+      "name": "A request asks for a field the reference does not document",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "metric: 'views,reach',",
+      "replace": "metric: 'views,reach,total_replays',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "instagram-insights.ts"
+    },
+    {
+      "name": "The reference loses a field a live request depends on",
+      "kind": "unit",
+      "file": "docs/platform-capability-reference.md",
+      "find": "views                      # total_value only\nreach                      # total_value or time_series",
+      "replace": "views                      # total_value only",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "instagram-insights.ts"
+    },
+    {
+      "name": "A field block loses the source it was taken from",
+      "kind": "unit",
+      "file": "docs/platform-capability-reference.md",
+      "find": "<!-- fields: facebook/video-insights source: https://developers.facebook.com/docs/graph-api/reference/video/video_insights/ -->",
+      "replace": "<!-- fields: facebook/video-insights -->",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "cites a source"
+    },
+    {
+      "name": "A retired field is read off the response by property access",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/tiktok/tiktok-analytics.ts",
+      "find": "          saves: 0,",
+      "replace": "          saves: (video as Record<string, number>).save_count ?? 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "save_count"
+    },
+    {
+      "name": "A Display API request asks for a Business API field",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/tiktok/tiktok-analytics.ts",
+      "find": "fields=id,like_count,comment_count,share_count,view_count",
+      "replace": "fields=id,like_count,comment_count,share_count,view_count,average_time_watched",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "tiktok-analytics.ts"
+    },
+    {
+      "name": "A YouTube Data API call asks for an unindexed part",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "part: ['snippet', 'contentDetails'],",
+      "replace": "part: ['snippet', 'contentDetails', 'fileDetails'],",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "youtube-analytics.ts"
+    },
+    {
+      "name": "Instagram code reads a duration field Meta does not have",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "      const mediaType = mediaInfo.media_type ?? 'VIDEO';",
+      "replace": "      const mediaType = mediaInfo.media_type ?? 'VIDEO';\n      const seconds = (mediaInfo as { video_duration?: number }).video_duration;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "video_duration"
+    },
+    {
+      "name": "An undocumented name is smuggled into the metric list, whatever its shape",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "      const metricsForType =",
+      "replace": "      const metricsForType = ['views', 'reels_replays_total'] ||",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "instagram-insights.ts"
+    },
+    {
+      "name": "A per-media reach split by follow_type comes back, an account-only breakdown",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "          metric: metrics.join(','),\n",
+      "replace": "          metric: metrics.join(','),\n          breakdown: 'follow_type',\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "instagram-insights.ts"
+    }
+  ]
+}

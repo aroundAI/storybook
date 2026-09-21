@@ -21,8 +21,27 @@ Established by reading every writer and confirming against a live ClickHouse:
 | `video_traffic_sources` | native | **not ingested** | **unsupported** |
 | `channel_daily`, `video_reach_daily`, `video_retention_curves` | native | — | — |
 | `video_metrics` | native, true daily | **derived** — snapshot delta | **derived** — snapshot delta |
-| Revenue from sync | native | — | — |
+| Watch time | native | **not ingested** — needs a Business API app | **not ingested** — documented, never requested; **FILM-1712** |
+| Revenue from sync | **`scope_missing`** — plumbed, unauthorised; **FILM-1711**. `account_type_gated` for non-YPP creators | — | — |
 | `video_audience` | 7 dimensions | 3, percentage-only | 3, account-level |
+
+Two rows corrected 2026-09-21, both in the same direction — *we haven't* was
+being recorded as *the platform can't*:
+
+- **Watch time.** `ig_reels_avg_watch_time` and `ig_reels_video_view_total_time`
+  are documented for Instagram REELS and simply never requested, so Instagram's
+  watch-time level is `not_ingested`, not `unsupported`. TikTok's is
+  `not_ingested` too, but for a costlier reason — a separate Business API app.
+  The two share a level and not a price, which is what the `blockedBy` field is
+  for.
+- **Revenue.** This read `native` for YouTube unconditionally. YouTube revenue is
+  plumbed end to end — `analytics-sync-cron.ts:733-735` maps it and
+  `upsertRevenueRecords` writes it to `revenue_records` with `source = 'api'` —
+  but arrives as zero because `yt-analytics-monetary.readonly` is not requested.
+  That is `scope_missing`, and since 2026-09-09 the metrics are additionally
+  **YouTube Partner Program members only**, which is `account_type_gated` — the
+  same creator-resolved shape as TikTok's Business account, and its second
+  instance. Facebook has its own revenue surface; see FILM-1726.
 
 `insertVideoTrafficSources` has exactly three call sites in the repository —
 `server/reporting/report-ingest.ts:316`,
@@ -39,15 +58,29 @@ The distinction that earns this module its keep is between *the platform can't*
 and *we haven't*:
 
 - **`unsupported`** — Instagram has no traffic-source concept at all. Its
-  provider type (`providers/instagram/types.ts:37-43`) has only `totals`,
-  `reachBreakdown` and `audience`. There is nothing to fetch.
-- **`not_ingested`** — TikTok's provider *does* return traffic sources
-  (`providers/tiktok/tiktok-analytics.ts:207`), but as
-  `{ source, percentage }` (`providers/tiktok/types.ts:92-95`) with
-  human labels — `'For You'`, `'Following'`, `'Sound'`. That is structurally
-  incompatible with `VideoTrafficSource`, which requires `views` and
-  `watch_time_minutes`, and lexically disjoint from `SOURCE_TO_GROUP`, so every
-  TikTok source would land in `other`. **This is our gap, not TikTok's.**
+  provider type (`providers/instagram/types.ts:40-45`) has only `totals` and
+  `audience`. There is nothing to fetch.
+- **`not_ingested`** — TikTok reports traffic sources as `impression_sources`
+  on the **Business API**, which needs a separate app registration and a TikTok
+  Business account. We have neither, so nothing arrives. The
+  `TikTokTrafficSource` shape (`providers/tiktok/types.ts`) is kept for that
+  integration: `{ source, percentage }` with human labels — `'For You'`,
+  `'Following'`, `'Sound'` — which is structurally incompatible with
+  `VideoTrafficSource` (it requires `views` and `watch_time_minutes`) and
+  lexically disjoint from `SOURCE_TO_GROUP`, so every TikTok source would land
+  in `other`. **This is our gap, not TikTok's**, on both counts: the app we
+  have not registered, and the mapping we have not written.
+
+  ⚠️ **The evidence for this changed under FILM-1721; the conclusion did not.**
+  This spec originally read "TikTok's provider *does* return traffic sources
+  (`tiktok-analytics.ts:207`)". It did not. The provider parsed a
+  `traffic_source_types` field that the Display API has never had — one of the
+  five fabricated names FILM-1721 found — so `parseTrafficSources` could only
+  ever receive `undefined`. The fabrication and the dead parse are gone. Read
+  the capability from
+  [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md),
+  never from our own types: that is the whole point of FILM-1721, and this
+  paragraph is what it looks like when the rule is not followed.
 - **`derived`** — TikTok and Instagram daily metrics are snapshot deltas
   attributed to the *fetch* day rather than the data day
   (`server/ingest.ts:287-299`). They occupy the same columns as YouTube's true
@@ -264,6 +297,9 @@ for TikTok means the matrix is wrong.
 - [ ] `DataWindow.anchoredOn` is explicit, so a job-creation-anchored window is not confused with a publish-anchored one
 - [ ] Every entry traces to a cited row in FILM-1721
 - [ ] A metric name absent from FILM-1721 cannot be added to the matrix
+- [ ] Instagram `watch_time` is `not_ingested` with `blockedBy` naming FILM-1712 — never `unsupported`, because Instagram documents it
+- [ ] YouTube `revenue` is `scope_missing` naming FILM-1711 for a YPP creator, and `account_type_gated` for a non-YPP one — never `native` while the monetary scope is absent
+- [ ] When FILM-1712 or FILM-1711 lands, the entry moves to `native` in the same change that starts writing the data; the writer-binding test (§5b) fails a change that does one without the other
 
 ## 8. Verification
 

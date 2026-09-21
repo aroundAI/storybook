@@ -2,7 +2,7 @@
  * Instagram Insights Provider Types
  *
  * Types for fetching and normalizing Instagram Insights data.
- * Uses Meta Graph API v18.0.
+ * Uses Meta Graph API v23.0.
  */
 
 /**
@@ -17,16 +17,17 @@ export interface InstagramInsightsInput {
  * Available Instagram Insights metrics
  */
 export type InstagramMetric =
-  | 'plays'
+  | 'views'
   | 'reach'
   | 'total_interactions'
   | 'likes'
   | 'comments'
   | 'saved'
   | 'shares'
+  /** FEED and STORY only. Not available for REELS. */
   | 'profile_visits'
-  | 'follows'
-  | 'impressions';
+  /** FEED and STORY only. Not available for REELS. */
+  | 'follows';
 
 /**
  * Media type returned by Instagram
@@ -40,7 +41,6 @@ export interface InstagramInsightsResult {
   mediaId: string;
   mediaType: InstagramMediaType;
   totals: InstagramTotals;
-  reachBreakdown?: InstagramReachBreakdown;
   audience?: InstagramAudienceData;
 }
 
@@ -48,9 +48,8 @@ export interface InstagramInsightsResult {
  * Aggregate totals for a media item
  */
 export interface InstagramTotals {
-  plays: number;
+  views: number;
   reach: number;
-  impressions: number;
   totalInteractions: number;
   likes: number;
   comments: number;
@@ -58,15 +57,6 @@ export interface InstagramTotals {
   shares: number;
   profileVisits: number;
   follows: number;
-}
-
-/**
- * Reach breakdown by follower type (Reels only)
- */
-export interface InstagramReachBreakdown {
-  followerReach: number;
-  nonFollowerReach: number;
-  followersPercentage: number;
 }
 
 /**
@@ -91,10 +81,8 @@ export interface InstagramAudienceData {
  * Account-level insights overview
  */
 export interface InstagramAccountInsights {
-  impressions: number;
+  views: number;
   reach: number;
-  profileViews: number;
-  websiteClicks: number;
   /** null when the API omitted it; not zero. See FILM-1607 §2. */
   followerCount: number | null;
 }

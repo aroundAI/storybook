@@ -59,7 +59,7 @@ ORDER BY (project_id, platform, video_id, dimension, key);
 | File | Change |
 |------|--------|
 | `packages/features/content-analytics/src/server/ingest.ts` | `buildRetentionPoints` + `buildAudienceRows` pure builders (unit-tested); YouTube daily rows carry per-day `avg_view_duration_seconds`. |
-| `packages/features/content-analytics/src/server/analytics-sync-cron.ts` | YouTube ingest writes retention curves + audience rows; TikTok/Instagram ingest writes audience rows (incl. IG follower-reach as follower_status). |
+| `packages/features/content-analytics/src/server/analytics-sync-cron.ts` | YouTube ingest writes retention curves + audience rows; TikTok/Instagram ingest writes audience rows. (IG follower-reach as follower_status never ran and was removed in FILM-1721: the breakdown is account-level only.) |
 | `packages/features/content-analytics/src/server/reporting/csv-parsers.ts` | channel_basic rows gain dislikes + view-weighted avg view duration/percentage, populated onto Reporting-API metric rows. |
 | `packages/clickhouse/src/queries-detail.ts` | New: `insertRetentionCurves`, `insertVideoAudience`, `queryRetentionCurve({ videoId })`, `queryAudienceRows({ videoIds, dimension })`, `queryTrafficSources({ videoIds, … })`. |
 | `packages/features/content-analytics/src/server/aggregation-queries.ts` | Un-dead `getProjectAudienceData` (view-weighted aggregation over `queryAudienceRows` actually runs). |

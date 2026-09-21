@@ -16,7 +16,7 @@ analytics cannot authenticate.**
 
 | Platform | Scopes requested | Analytics scope |
 |---|---|---|
-| YouTube (`oauth/youtube/config.ts:10`) | `youtube.upload`, `youtube.readonly`, `youtube.force-ssl`, `yt-analytics.readonly` | **present** |
+| YouTube (`oauth/youtube/config.ts:10`) | `youtube.upload`, `youtube.readonly`, `youtube.force-ssl`, `yt-analytics.readonly` | **present** — but see the monetary scope below |
 | TikTok (`oauth/tiktok/config.ts:11`) | `user.info.basic`, `video.upload` | **absent** |
 | Instagram (`oauth/meta/config.ts:10`) | `instagram_basic`, `instagram_content_publish`, `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, `business_management` | **absent** |
 
@@ -46,13 +46,45 @@ than a comment.
 | Platform | Needs | Status |
 |---|---|---|
 | YouTube | `yt-analytics.readonly` | held |
+| YouTube (revenue) | **`yt-analytics-monetary.readonly`** | **missing** |
 | TikTok (basic) | `video.list` | **missing** |
 | TikTok (deep) | Business API app **+ creator on a Business account** | not implemented |
 | Instagram | `instagram_manage_insights` | **missing** |
 | Facebook | `read_insights` (plus a provider — FILM-1720) | missing |
-| X | TBD (plus a provider — FILM-1720) | missing |
+| X | `tweet.read` + `users.read` | **held** — already requested for publishing (`oauth/twitter/config.ts:13-15`). The blocker is the missing provider, FILM-1727, not authorisation |
 
-Facebook and X are recorded here and built in FILM-1720; their rows exist so
+### The monetary scope — added 2026-09-21
+
+`fetchTotals` (`youtube-analytics.ts:151-165`) requests `estimatedRevenue`,
+`estimatedAdRevenue` and `estimatedRedPartnerRevenue` **in the same query** as
+the non-monetary metrics, on a token that does not carry
+`yt-analytics-monetary.readonly`. The reference is explicit that
+`yt-analytics.readonly` covers "user activity metrics" while the monetary scope
+covers those "**and** estimated revenue and ad performance metrics".
+
+This is the first live instance of this spec's own criterion — *"a test fails if
+a provider calls an endpoint whose scope the OAuth config does not request"*.
+It was written as a guard against future drift; it is already violated.
+
+**One thing to establish before designing the fix**, because it changes how much
+is broken: does YouTube reject the *whole* query for want of the scope, or
+return the non-monetary metrics and omit the rest? If the former, `fetchTotals`
+has been failing outright on every sync while `fetchDailyMetrics` — which
+requests no revenue — keeps working, which would explain YouTube daily rows
+sitting beside zero revenue. **This is a hypothesis.** One authorised call
+settles it, and this spec is the one that will hold a token.
+
+Two further consequences:
+
+- **Splitting the query** is the safer shape regardless of the answer, so a
+  monetary failure degrades revenue rather than all totals.
+- **YPP membership is an access state, not an absence.** Since 2026-09-09 the
+  monetary metrics are documented as YouTube Partner Program members only. That
+  is the same creator-resolved shape as TikTok's Business-account gate —
+  `account_type_gated` in FILM-1703 — and the audit should return it as such
+  rather than as "no revenue".
+
+Facebook and X are recorded here and built in FILM-1720 and FILM-1727; their rows exist so
 that the audit is complete rather than silently three-platform.
 
 ## 3. The three costs, which are not the same
@@ -121,7 +153,7 @@ and nothing surfaces it.
 
 - Requesting the additional *fields* those scopes unlock — FILM-1712. This spec
   gets permission; that one uses it.
-- Facebook and X providers and the ClickHouse enum — FILM-1720.
+- Facebook and X providers and their enum values — FILM-1720 (Facebook) and FILM-1727 (X).
 - Any signal, stage or benchmark.
 
 ## 6. Acceptance criteria
@@ -139,6 +171,11 @@ and nothing surfaces it.
 - [ ] The reconnect prompt names what that specific platform's analytics will add
 - [ ] An unauthorised connection is not retried indefinitely by the sync cron
 - [ ] The audit covers all five platforms, including the two with no provider yet
+- [ ] `yt-analytics-monetary.readonly` is requested, and existing YouTube connections are prompted to re-consent. The only permitted non-collection is a creator outside the Partner Program, recorded as `account_type_gated`
+- [ ] Monetary metrics are fetched in a call separate from `fetchTotals`' non-monetary ones, so a monetary 403 degrades revenue only and never the totals
+- [ ] After the scope is granted, a real Partner Program channel's `revenue_records` holds non-zero `source = 'api'` rows — the end-to-end proof that the pipeline FILM-1726 describes actually delivers
+- [ ] Whether YouTube rejects a mixed monetary/non-monetary query is established by a real call, not assumed
+- [ ] YPP membership is modelled as `account_type_gated`, distinguishable from a missing scope
 
 ## 7. Verification
 

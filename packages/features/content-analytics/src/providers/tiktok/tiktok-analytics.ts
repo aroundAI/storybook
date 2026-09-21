@@ -6,9 +6,6 @@ import type {
   TikTokAccountAnalytics,
   TikTokAnalyticsInput,
   TikTokAnalyticsResult,
-  TikTokAudienceData,
-  TikTokTrafficSource,
-  TikTokTrafficSourceType,
   TikTokVideoData,
 } from './types';
 
@@ -152,37 +149,12 @@ export class TikTokAnalyticsProvider {
         throw new TikTokVideoNotFoundError(videoId);
       }
 
-      // Fetch creator insights (for audience data)
-      let audience: TikTokAudienceData | undefined;
-      try {
-        const insightsResponse = await fetch(
-          `${TIKTOK_API_BASE}/research/creator/insights/?fields=audience_countries,audience_genders,audience_ages`,
-          {
-            headers: {
-              Authorization: `Bearer ${this.accessToken}`,
-            },
-          },
-        );
-
-        if (insightsResponse.ok) {
-          const insightsData =
-            (await insightsResponse.json()) as TikTokApiResponse<{
-              audience_countries?: Array<{
-                country: string;
-                percentage: number;
-              }>;
-              audience_genders?: {
-                male: number;
-                female: number;
-                other: number;
-              };
-              audience_ages?: Array<{ age_range: string; percentage: number }>;
-            }>;
-          audience = this.parseAudienceData(insightsData.data);
-        }
-      } catch {
-        // Audience data is optional - may not be available for all accounts
-      }
+      // Audience demographics are not reachable. The Display API has no
+      // demographics fields, and TikTok's research scopes
+      // (research.adlib.basic, research.data.basic, research.data.u18eu,
+      // research.data.vra) are restricted to non-profit academic researchers.
+      // `research.creator_insights` was never a real scope. FILM-1711 owns
+      // finding a source. See docs/platform-capability-reference.md.
 
       return {
         videoId,
@@ -195,16 +167,26 @@ export class TikTokAnalyticsProvider {
           likes: video.like_count ?? 0,
           comments: video.comment_count ?? 0,
           shares: video.share_count ?? 0,
-          saves: video.save_count ?? 0,
-          profileViews: 0, // Not available per-video
-          followersGained: 0, // Not available per-video
-          averageWatchTime: video.average_watch_time ?? 0,
-          totalPlayTime: video.total_play_time ?? 0,
-          fullVideoWatchedRate: video.full_video_watched_rate ?? 0,
+          // Everything below is structurally zero on this endpoint, not
+          // measured as zero. The Display API returns none of it; saves have no
+          // creator-auth surface at all, and the rest live on the Business API,
+          // which needs a separate app and a TikTok Business account.
+          // docs/platform-capability-reference.md
+          saves: 0,
+          profileViews: 0,
+          followersGained: 0,
+          averageWatchTime: 0,
+          totalPlayTime: 0,
+          fullVideoWatchedRate: 0,
         },
         dailyData: [], // TikTok doesn't provide per-video daily breakdown
-        audience,
-        trafficSources: this.parseTrafficSources(video.traffic_source_types),
+        audience: undefined,
+        // The Display API has no traffic-source field. TikTok's is
+        // `impression_sources` on the Business API, which needs a separate
+        // app and a TikTok Business account. The `TikTokTrafficSource` shape
+        // is kept for that integration - see FILM-1703 and
+        // docs/platform-capability-reference.md.
+        trafficSources: [],
       };
     } catch (error) {
       if (error instanceof TikTokVideoNotFoundError) {
@@ -303,59 +285,6 @@ export class TikTokAnalyticsProvider {
       }
       throw error;
     }
-  }
-
-  /**
-   * Parses audience data from TikTok API response
-   */
-  private parseAudienceData(data: unknown): TikTokAudienceData | undefined {
-    if (!data || typeof data !== 'object') return undefined;
-
-    const typedData = data as {
-      audience_countries?: Array<{ country: string; percentage: number }>;
-      audience_genders?: { male?: number; female?: number; other?: number };
-      audience_ages?: Array<{ age_range: string; percentage: number }>;
-    };
-
-    return {
-      countries: (typedData.audience_countries ?? []).map((c) => ({
-        country: c.country,
-        percentage: c.percentage,
-      })),
-      genderDistribution: {
-        male: typedData.audience_genders?.male ?? 0,
-        female: typedData.audience_genders?.female ?? 0,
-        other: typedData.audience_genders?.other ?? 0,
-      },
-      ageGroups: (typedData.audience_ages ?? []).map((a) => ({
-        ageGroup:
-          a.age_range as TikTokAudienceData['ageGroups'][number]['ageGroup'],
-        percentage: a.percentage,
-      })),
-    };
-  }
-
-  /**
-   * Parses traffic source data from TikTok API response
-   */
-  private parseTrafficSources(
-    sources: Record<string, number> | undefined,
-  ): TikTokTrafficSource[] {
-    if (!sources) return [];
-
-    const sourceMap: Record<string, TikTokTrafficSourceType> = {
-      for_you: 'For You',
-      following: 'Following',
-      sound: 'Sound',
-      hashtag: 'Hashtag',
-      profile: 'Profile',
-      search: 'Search',
-    };
-
-    return Object.entries(sources).map(([key, value]) => ({
-      source: sourceMap[key] ?? 'Other',
-      percentage: value,
-    }));
   }
 }
 
