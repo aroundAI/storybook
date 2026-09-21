@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1711
 title: Analytics Authorisation
-status: DRAFT
+status: 🟡 PARTIAL
 effort: L
 dependencies: FILM-1721
 ---
@@ -132,7 +132,18 @@ connection produces a thrown `*ScopeError` in a cron job and an empty tab.
 **The detection machinery is half-built and should be finished here.**
 `platform_connections.scopes TEXT[]` exists and is *read*
 (`connection-actions.ts:77,321`) — and **nothing writes it**, so it is empty on
-every row. Writing the granted scopes at OAuth callback makes a missing scope
+every row.
+
+> **Corrected 2026-09-22, during implementation.** Every callback *did* write the
+> column — since 2025-12-07 — but three of the five wrote **the scopes we asked
+> for**, not the scopes that were granted (`[...YOUTUBE_OAUTH_CONFIG.scopes]`, the
+> same for Meta, and a hard-coded pair for Instagram), and TikTok and X fell back
+> to the requested list when the vendor sent none. That is worse than empty: the
+> moment this spec added the analytics scopes to the configs, every new row would
+> have *claimed* them. The callbacks now record the grant — Google's and TikTok's
+> `scope`, Meta's `/me/permissions` — and nothing when the vendor says nothing.
+> Existing rows are still usable for detection, because none of them can name a
+> scope that was never requested. Writing the granted scopes at OAuth callback makes a missing scope
 detectable immediately, instead of only after a sync fails. Separately, the
 provider `*ScopeError`s *are* already caught and mapped
 (`analytics-sync-cron.ts:443-470`) to `last_sync_status: 'scope_error'` and
@@ -158,24 +169,24 @@ and nothing surfaces it.
 
 ## 6. Acceptance criteria
 
-- [ ] Every platform's analytics scope requirement is declared in code, beside the config that requests it, not only in documentation
-- [ ] A test fails if a provider calls an endpoint whose scope the OAuth config does not request
-- [ ] TikTok requests `video.list`; no spec or config references a `video.query` scope, which does not exist
-- [ ] Instagram requests the correct permission pair **for the login path in use**
-- [ ] Meta App Review **and** Business Verification are both submitted, and both statuses are tracked where a reader can find them
-- [ ] `platform_connections.scopes` is written at OAuth callback, so a gap is detectable before a sync fails
-- [ ] `account_type_gated` is distinguishable from `scope_missing`, because the creator resolves one and we resolve the other
-- [ ] Graph v18.0's liveness is checked before this spec concludes scopes were the cause
-- [ ] An existing connection missing a scope is detectable without waiting for a sync to fail
-- [ ] `not_authorised` is distinguishable from `no_data_in_window` everywhere both can appear
-- [ ] The reconnect prompt names what that specific platform's analytics will add
-- [ ] An unauthorised connection is not retried indefinitely by the sync cron
-- [ ] The audit covers all five platforms, including the two with no provider yet
-- [ ] `yt-analytics-monetary.readonly` is requested, and existing YouTube connections are prompted to re-consent. The only permitted non-collection is a creator outside the Partner Program, recorded as `account_type_gated`
-- [ ] Monetary metrics are fetched in a call separate from `fetchTotals`' non-monetary ones, so a monetary 403 degrades revenue only and never the totals
-- [ ] After the scope is granted, a real Partner Program channel's `revenue_records` holds non-zero `source = 'api'` rows — the end-to-end proof that the pipeline FILM-1726 describes actually delivers
-- [ ] Whether YouTube rejects a mixed monetary/non-monetary query is established by a real call, not assumed
-- [ ] YPP membership is modelled as `account_type_gated`, distinguishable from a missing scope
+- [x] Every platform's analytics scope requirement is declared in code, beside the config that requests it, not only in documentation — `publishing/src/oauth/analytics-scopes.ts`
+- [x] A test fails if a provider calls an endpoint whose scope the OAuth config does not request — `content-analytics/__tests__/analytics-scope-binding.test.ts`. Seen red on the unchanged configs for all four gaps, and it found a fifth this spec had not: `follower_count` needs `user.info.stats`
+- [x] TikTok requests `video.list`; no spec or config references a `video.query` scope, which does not exist
+- [x] Instagram requests the correct permission pair **for the login path in use** — Facebook Login, so the triple: `instagram_basic` + `instagram_manage_insights` + `pages_read_engagement`
+- [ ] Meta App Review **and** Business Verification are both submitted, and both statuses are tracked where a reader can find them — **tracked** in `docs/vendor-review-status.md`, bound to the `review` field in code by a test; **not submitted**. Submitting needs a person with access to the Meta developer console
+- [x] `platform_connections.scopes` is written at OAuth callback, so a gap is detectable before a sync fails — it was already written, with the wrong thing; see the correction in §4
+- [x] `account_type_gated` is distinguishable from `scope_missing`, because the creator resolves one and we resolve the other
+- [x] Graph v18.0's liveness is checked before this spec concludes scopes were the cause — probed 2026-09-21T20:28Z: `/v18.0/oauth/access_token` and `/v23.0/oauth/access_token` return the same `OAuthException` code 101, `/v99.0/` returns code 1. v18.0 is still routed, so token refresh is not being rejected for its version. That rules out a hard failure, not a semantic difference; FILM-1723 still owns the pin
+- [x] An existing connection missing a scope is detectable without waiting for a sync to fail — `resolveAnalyticsAccess`, read by the Platform Connections page and by the sync job
+- [ ] `not_authorised` is distinguishable from `no_data_in_window` everywhere both can appear — `AnalyticsAccess.summary` carries `not_authorised` and the Platform Connections page renders it. **`no_data_in_window` does not exist in code yet**: it arrives with FILM-1704's coverage query and FILM-1705's strip, which is where the two first share a surface. Open until then
+- [x] The reconnect prompt names what that specific platform's analytics will add
+- [x] An unauthorised connection is not retried indefinitely by the sync cron — it is not tried at all, and takes no slot in the batch. The inverse is fixed too: a publish flagged `requires_reauth` used to stay skipped forever *after* the creator reconnected
+- [x] The audit covers all five platforms, including the two with no provider yet
+- [x] `yt-analytics-monetary.readonly` is requested, and existing YouTube connections are prompted to re-consent. The only permitted non-collection is a creator outside the Partner Program, recorded as `account_type_gated` — the recording is built and tested; **what YouTube actually returns to a non-partner channel is a hypothesis** (a non-quota 403), FILM-1725 Check G
+- [x] Monetary metrics are fetched in a call separate from `fetchTotals`' non-monetary ones, so a monetary 403 degrades revenue only and never the totals
+- [ ] After the scope is granted, a real Partner Program channel's `revenue_records` holds non-zero `source = 'api'` rows — the end-to-end proof that the pipeline FILM-1726 describes actually delivers — **deferred: FILM-1725 Check G**. Needs a monetised channel's token
+- [ ] Whether YouTube rejects a mixed monetary/non-monetary query is established by a real call, not assumed — **deferred: FILM-1725 Check G**. The query is split either way, so the answer no longer changes what we ship; it changes what we believe about the last nine months of totals
+- [x] YPP membership is modelled as `account_type_gated`, distinguishable from a missing scope
 
 ## 7. Verification
 
@@ -219,3 +230,34 @@ its stages and that has to be recorded as a limit rather than worked around.
 **The estimate for FILM-1712 depends on this spec's findings.** If TikTok's
 analytics scopes turn out to need a higher app tier, "add four fields to a URL"
 becomes a much longer piece of work. Verify before committing to that estimate.
+
+## 10. What shipped, and what is still open (2026-09-22)
+
+**Scopes added to the OAuth configs:** YouTube `yt-analytics-monetary.readonly`;
+TikTok `video.list` and `user.info.stats`; Meta `instagram_manage_insights`.
+**Removed:** none. **Deliberately not added:** Facebook `read_insights` — a
+permission no code uses cannot be justified to App Review, so it is declared as
+planned in FILM-1720 and requested when that provider lands; and X `media.write`,
+a publishing scope, owned by FILM-1729.
+
+**`PARTIAL`, not `DONE`, for three reasons:**
+
+1. Meta App Review, Business Verification and TikTok app review are **not
+   submitted**. They need a person with each vendor's console. Until they pass,
+   `review: 'required'` keeps the reconnect prompt off for TikTok and Instagram —
+   a creator cannot grant a scope the vendor has not approved, and asking them to
+   is a loop.
+2. **Nothing here has touched a live vendor.** §7's verification — real TikTok
+   and Instagram accounts returning data — is FILM-1725 Check H; the YouTube
+   revenue questions are Check G.
+3. **Whether requesting an unapproved scope breaks the consent screen is
+   unknown** (Check F). If TikTok rejects the authorise request outright, this
+   change breaks *connecting TikTok at all* until review passes. It must be
+   settled on staging before production — `docs/vendor-review-status.md`.
+
+**What an existing connection experiences.** Nothing changes until its owner
+opens Settings → Platforms. There, a YouTube connection shows what reconnecting
+would add (revenue) and a button; TikTok and Instagram connections say their
+analytics are waiting on the vendor, with no button. Publishing is untouched:
+old tokens keep their old scopes and keep working. The sync job stops calling
+TikTok and Instagram for connections it knows lack the scope.

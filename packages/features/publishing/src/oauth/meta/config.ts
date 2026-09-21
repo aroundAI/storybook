@@ -16,6 +16,8 @@ export const META_OAUTH_CONFIG = {
     // Instagram
     'instagram_basic',
     'instagram_content_publish',
+    // Media and account insights on the Facebook Login path
+    'instagram_manage_insights',
 
     // Business features
     'business_management',

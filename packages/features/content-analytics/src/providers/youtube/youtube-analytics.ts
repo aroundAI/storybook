@@ -15,6 +15,7 @@ import type {
   YouTubeAnalyticsInput,
   YouTubeAnalyticsResult,
   YouTubeDailyMetrics,
+  YouTubeRevenueAccess,
   YouTubeTotals,
   YouTubeVideoInfo,
 } from './types';
@@ -52,6 +53,29 @@ function isScopeMissingError(error: unknown): boolean {
 }
 
 /**
+ * Google reports quota exhaustion as a 403 too. It says nothing about access.
+ */
+function isQuotaError(error: unknown): boolean {
+  return error instanceof Error && /quota|rate ?limit/i.test(error.message);
+}
+
+type RevenueTotals = Pick<
+  YouTubeTotals,
+  'estimatedRevenue' | 'estimatedAdRevenue' | 'estimatedRedPartnerRevenue'
+>;
+
+function noRevenue(access: Exclude<YouTubeRevenueAccess, 'authorised'>) {
+  return {
+    access,
+    totals: {
+      estimatedRevenue: 0,
+      estimatedAdRevenue: 0,
+      estimatedRedPartnerRevenue: 0,
+    },
+  };
+}
+
+/**
  * YouTube Analytics Provider
  *
  * Fetches comprehensive analytics data from YouTube Analytics API v2
@@ -81,7 +105,7 @@ export class YouTubeAnalyticsProvider {
   async getVideoAnalytics(
     input: YouTubeAnalyticsInput,
   ): Promise<YouTubeAnalyticsResult> {
-    const { videoId, startDate, endDate } = input;
+    const { videoId, startDate, endDate, includeRevenue = false } = input;
     const startDateStr = formatDate(startDate);
     const endDateStr = formatDate(endDate);
 
@@ -89,6 +113,7 @@ export class YouTubeAnalyticsProvider {
       // Fetch metrics in parallel for optimal performance
       const [
         totals,
+        revenue,
         dailyData,
         retention,
         demographics,
@@ -100,6 +125,9 @@ export class YouTubeAnalyticsProvider {
         subscribedStatus,
       ] = await Promise.all([
         this.fetchTotals(videoId, startDateStr, endDateStr),
+        includeRevenue
+          ? this.fetchRevenue(videoId, startDateStr, endDateStr)
+          : Promise.resolve(noRevenue('scope_missing')),
         this.fetchDailyMetrics(videoId, startDateStr, endDateStr),
         this.fetchRetention(videoId),
         this.fetchDemographics(videoId, startDateStr, endDateStr),
@@ -114,7 +142,8 @@ export class YouTubeAnalyticsProvider {
       return {
         videoId,
         period: { startDate: startDateStr, endDate: endDateStr },
-        totals,
+        totals: { ...totals, ...revenue.totals },
+        revenueAccess: revenue.access,
         dailyData,
         retention,
         demographics,
@@ -137,13 +166,15 @@ export class YouTubeAnalyticsProvider {
   }
 
   /**
-   * Fetches aggregate totals for the date range
+   * Fetches aggregate totals for the date range. No revenue: those metrics
+   * need a different scope and are fetched by `fetchRevenue`, so that a
+   * channel without it keeps its totals.
    */
   private async fetchTotals(
     videoId: string,
     startDate: string,
     endDate: string,
-  ): Promise<YouTubeTotals> {
+  ): Promise<Omit<YouTubeTotals, keyof RevenueTotals>> {
     const response = await this.youtubeAnalytics.reports.query({
       ids: 'channel==MINE',
       startDate,
@@ -159,9 +190,6 @@ export class YouTubeAnalyticsProvider {
         'averageViewPercentage',
         'subscribersGained',
         'subscribersLost',
-        'estimatedRevenue',
-        'estimatedAdRevenue',
-        'estimatedRedPartnerRevenue',
       ].join(','),
       filters: `video==${videoId}`,
     });
@@ -179,10 +207,55 @@ export class YouTubeAnalyticsProvider {
       averageViewPercentage: row[7] ?? 0,
       subscribersGained: row[8] ?? 0,
       subscribersLost: row[9] ?? 0,
-      estimatedRevenue: Math.round((row[10] ?? 0) * 100), // Convert to cents
-      estimatedAdRevenue: Math.round((row[11] ?? 0) * 100), // Ad revenue in cents
-      estimatedRedPartnerRevenue: Math.round((row[12] ?? 0) * 100), // YouTube Premium in cents
     };
+  }
+
+  /**
+   * Fetches the revenue metrics, which need `yt-analytics-monetary.readonly`.
+   *
+   * Never throws. A refusal here says something about revenue and nothing
+   * about views, so it must not take the rest of the sync down with it.
+   *
+   * A 403 is read as `account_type_gated` because the caller only asks when
+   * the scope is held, and the documented reason left is a channel outside
+   * the Partner Program. That reading has not been confirmed against a live
+   * non-partner channel — FILM-1725 Check G.
+   */
+  private async fetchRevenue(
+    videoId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<{ access: YouTubeRevenueAccess; totals: RevenueTotals }> {
+    try {
+      const response = await this.youtubeAnalytics.reports.query({
+        ids: 'channel==MINE',
+        startDate,
+        endDate,
+        metrics: [
+          'estimatedRevenue',
+          'estimatedAdRevenue',
+          'estimatedRedPartnerRevenue',
+        ].join(','),
+        filters: `video==${videoId}`,
+      });
+
+      const row = (response.data.rows?.[0] as number[] | undefined) ?? [];
+
+      return {
+        access: 'authorised',
+        totals: {
+          estimatedRevenue: Math.round((row[0] ?? 0) * 100), // cents
+          estimatedAdRevenue: Math.round((row[1] ?? 0) * 100),
+          estimatedRedPartnerRevenue: Math.round((row[2] ?? 0) * 100),
+        },
+      };
+    } catch (error) {
+      return noRevenue(
+        isScopeMissingError(error) && !isQuotaError(error)
+          ? 'account_type_gated'
+          : 'unavailable',
+      );
+    }
   }
 
   /**

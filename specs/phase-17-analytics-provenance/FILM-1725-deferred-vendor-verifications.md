@@ -130,6 +130,62 @@ was taken as fact, then two disagreeing pages were taken as proof nothing was
 known. A name is settled by a first-party reference page or a live response —
 and the changelog is a first-party reference page.
 
+## 3c. Checks F, G and H — what FILM-1711 could not run
+
+Added 2026-09-22 by [FILM-1711](./FILM-1711-analytics-authorisation.md), which
+requested the analytics scopes and built everything that can be built without a
+vendor credential. It holds none, so the criteria below stayed open there and
+wait here. (D and E are taken by FILM-1723.)
+
+### Check F — do the newly requested scopes survive each vendor's consent screen?
+
+| | |
+|---|---|
+| **Question** | When the connect route asks for a scope the vendor has not approved for our app, does the creator get a working consent screen with the scope dropped, or an error that blocks connecting altogether? One answer per vendor: TikTok (`video.list`, `user.info.stats`), Meta (`instagram_manage_insights`), Google (`yt-analytics-monetary.readonly`) |
+| **Status today** | Unknown on all three. The callbacks record what was *granted* rather than what was asked for, so a dropped scope is recorded truthfully; an error page would break publishing connections too |
+| **Why it did not run** | Needs each vendor's app credentials and a test account. Local and CI have neither |
+| **Cost to settle** | One connect per vendor on a staging deploy, before production |
+| **Blocks** | **Deploying FILM-1711's config change to production.** Tracked in [docs/vendor-review-status.md](../../docs/vendor-review-status.md) |
+
+```bash
+# After connecting a test account on staging, read what was recorded:
+select platform, scopes, metadata->>'scopes_granted_at'
+from platform_connections order by updated_at desc limit 5;
+```
+
+### Check G — what does YouTube return for revenue, with and without the scope?
+
+| | |
+|---|---|
+| **Question** | (1) Did the old mixed query — revenue metrics beside `views` on a token without `yt-analytics-monetary.readonly` — fail outright, or return without the revenue columns? (2) With the scope held, what does a channel **outside** the Partner Program get: a 403, or zero rows? (3) Does a Partner Program channel's sync write non-zero `revenue_records` rows with `source = 'api'`? |
+| **Status today** | (1) and (2) are *hypotheses*. The provider reads a non-quota 403 on the revenue query as `account_type_gated`; if non-partner channels get zero rows instead, they will read as `authorised` with no revenue, which is wrong in the quiet direction |
+| **Why it did not run** | Needs a real YouTube token, and for (3) a monetised channel |
+| **Cost to settle** | Three calls |
+| **Blocks** | FILM-1711's last three criteria; [FILM-1726](./FILM-1726-monetisation-stage.md)'s premise that the pipeline delivers |
+
+```bash
+# (1) on a token WITHOUT the monetary scope — the old shape:
+curl -s -H "Authorization: Bearer $YT_TOKEN" \
+  "https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&startDate=2026-08-01&endDate=2026-09-01&metrics=views,estimatedRevenue&filters=video==$VIDEO_ID"
+# (2) and (3) on a token WITH it — the new shape:
+curl -s -H "Authorization: Bearer $YT_MONETARY_TOKEN" \
+  "https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&startDate=2026-08-01&endDate=2026-09-01&metrics=estimatedRevenue,estimatedAdRevenue,estimatedRedPartnerRevenue&filters=video==$VIDEO_ID"
+```
+
+If (2) is zero rows rather than a 403, `fetchRevenue` needs another signal for the
+gate — `channels.list?part=status` or the monetisation details — and FILM-1703's
+`account_type_gated` entry for YouTube revenue needs the same correction.
+
+### Check H — do TikTok and Instagram analytics return data once authorised?
+
+| | |
+|---|---|
+| **Question** | With `video.list` granted, does `getVideoAnalytics` return data rather than `TikTokAnalyticsScopeError`? With `instagram_manage_insights` granted, does `getMediaInsights`? |
+| **Status today** | Never observed. Until it is, no claim about either platform's numbers is verified |
+| **Why it did not run** | Needs the two vendor reviews in [docs/vendor-review-status.md](../../docs/vendor-review-status.md), or a sandbox app (TikTok) and a role account (Meta) |
+| **Cost to settle** | One sync each. Folds in Checks B and C, which need the same tokens |
+| **Blocks** | FILM-1711 §7; [FILM-1712](./FILM-1712-metric-recovery.md)'s estimate |
+
 ## 4. What is *not* deferred
 
 This spec covers questions we cannot answer. It does **not** cover work we simply
@@ -185,6 +241,11 @@ This spec is complete when both checks have been run and their answers recorded
       reference's forbidden block
 - [ ] Check C run on the pinned version, and the result recorded against the
       2026-04-22 rows in the reference
+- [ ] Check F run per vendor before FILM-1711's scopes reach production, and the
+      result recorded in `docs/vendor-review-status.md`
+- [ ] Check G run; if a non-partner channel gets zero rows rather than a 403,
+      `fetchRevenue`'s reading of the gate is corrected
+- [ ] Check H run for TikTok and Instagram, with the date recorded
 - [ ] `docs/platform-capability-reference.md` open-questions table no longer
       lists either check, and every row it *does* list still names an owner
 

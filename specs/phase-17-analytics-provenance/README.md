@@ -141,7 +141,7 @@ FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook) ─→
 | Spec | Status | Effort | Covers |
 |------|--------|--------|--------|
 | [FILM-1710](./FILM-1710-asset-duration.md) | DRAFT | M | The published clip's real duration. A **latent** defect — `video_dim.duration_seconds` is the episode's, and today nothing reads it |
-| [FILM-1711](./FILM-1711-analytics-authorisation.md) | DRAFT | L | TikTok and Instagram analytics were never authorised; scope audit across all five platforms |
+| [FILM-1711](./FILM-1711-analytics-authorisation.md) | 🟡 PARTIAL | L | TikTok and Instagram analytics were never authorised; scope audit across all five platforms |
 | [FILM-1712](./FILM-1712-metric-recovery.md) | DRAFT | L | Request the fields we already have access to; give Instagram `reach` a column |
 | [FILM-1713](./FILM-1713-normalised-measures-velocity.md) | DRAFT | M | One definition per rate; bucketed velocity, acceleration, `growth_state` |
 | [FILM-1714](./FILM-1714-signal-model.md) | DRAFT | M | Five funnel stages, primary/supporting signals, unbound stages, the expandability test |

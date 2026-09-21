@@ -1,0 +1,204 @@
+{
+  "feature": "FILM-1711",
+  "mutations": [
+    {
+      "name": "A1 TikTok stops requesting video.list",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/tiktok/config.ts",
+      "find": "    'video.list',\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/analytics-scope-binding.test.ts",
+      "pattern": "requests every scope those endpoints need"
+    },
+    {
+      "name": "A2 TikTok stops requesting user.info.stats",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/tiktok/config.ts",
+      "find": "    'user.info.stats',\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/analytics-scope-binding.test.ts",
+      "pattern": "requests every scope those endpoints need"
+    },
+    {
+      "name": "A3 Meta stops requesting instagram_manage_insights",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/meta/config.ts",
+      "find": "    'instagram_manage_insights',\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/analytics-scope-binding.test.ts",
+      "pattern": "requests every scope those endpoints need"
+    },
+    {
+      "name": "A4 YouTube stops requesting the monetary scope",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/youtube/config.ts",
+      "find": "    'https://www.googleapis.com/auth/yt-analytics-monetary.readonly',\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/analytics-scope-binding.test.ts",
+      "pattern": "scope-gated metric a provider names"
+    },
+    {
+      "name": "A5 A provider calls an endpoint no requirement declares",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/tiktok/tiktok-analytics.ts",
+      "find": "`${TIKTOK_API_BASE}/user/info/?fields=follower_count`",
+      "replace": "`${TIKTOK_API_BASE}/video/list/?fields=id`",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/analytics-scope-binding.test.ts",
+      "pattern": "has a requirement for each endpoint"
+    },
+    {
+      "name": "A6 A revenue metric rejoins the totals query",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "        'subscribersLost',\n      ].join(','),",
+      "replace": "        'subscribersLost',\n        'estimatedRevenue',\n      ].join(','),",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/analytics-scope-binding.test.ts",
+      "pattern": "travels alone"
+    },
+    {
+      "name": "A7 A requirement names a scope the reference does not document",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/analytics-scopes.ts",
+      "find": "      scopes: ['video.list'],",
+      "replace": "      scopes: ['video.list', 'video.insights'],",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/analytics-scope-binding.test.ts",
+      "pattern": "names only scopes the capability reference documents"
+    },
+    {
+      "name": "B1 Revenue is asked for without the monetary scope",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "includeRevenue = false }",
+      "replace": "includeRevenue = true }",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/youtube-analytics.test.ts",
+      "pattern": "does not ask for revenue"
+    },
+    {
+      "name": "B2 A forbidden revenue query takes the totals down with it",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "    } catch (error) {\n      return noRevenue(",
+      "replace": "    } catch (error) {\n      if (error) throw error;\n      return noRevenue(",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/youtube-analytics.test.ts",
+      "pattern": "keeps the totals"
+    },
+    {
+      "name": "B3 A quota 403 on revenue is recorded as an account gate",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "isScopeMissingError(error) && !isQuotaError(error)",
+      "replace": "isScopeMissingError(error)",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/youtube-analytics.test.ts",
+      "pattern": "quota 403"
+    },
+    {
+      "name": "C1 The sync job tries connections it knows are unauthorised",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/analytics-sync-cron.ts",
+      "find": "    if (eligibility === 'not_authorised') {\n      notAuthorised++;\n      continue;\n    }\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/sync-unauthorised-connections.test.ts",
+      "pattern": "leaves unauthorised connections alone"
+    },
+    {
+      "name": "C2 Reconnecting never revives a publish the schedule gave up on",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/sync-authorisation.ts",
+      "find": "return reauthorisedSince ? 'eligible' : 'suppressed';",
+      "replace": "return 'suppressed';",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/sync-unauthorised-connections.test.ts",
+      "pattern": "picks a flagged publish back up"
+    },
+    {
+      "name": "C3 A failure after the reconnect is forgiven forever",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/sync-authorisation.ts",
+      "find": "(sync?.last_failed_at == null || grant.grantedAt > sync.last_failed_at)",
+      "replace": "true",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/sync-authorisation.test.ts",
+      "pattern": "suppressed again"
+    },
+    {
+      "name": "D1 A connection with no recorded grant is reported as missing its scopes",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/analytics-scopes.ts",
+      "find": "    if (granted.size === 0) {\n      return { ...base, missingScopes: [], state: 'unknown' };\n    }\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/analytics-scopes.test.ts",
+      "pattern": "no recorded grant"
+    },
+    {
+      "name": "D2 An account gate is no longer told from a missing scope",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/analytics-scopes.ts",
+      "find": "if (requirement.accountGate && gated.has(requirement.id)) {",
+      "replace": "if (requirement.accountGate && gated.has('')) {",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/analytics-scopes.test.ts",
+      "pattern": "Partner Program"
+    },
+    {
+      "name": "D3 A reconnect is offered for a scope the vendor has not approved",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/analytics-scopes.ts",
+      "find": "    requirement.review === 'approved' || requirement.review === 'not_required'",
+      "replace": "    requirement.review !== 'denied'",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/analytics-scopes.test.ts",
+      "pattern": "offers no reconnect"
+    },
+    {
+      "name": "D4 A callback records the scopes it asked for as the grant",
+      "kind": "unit",
+      "file": "apps/web/app/api/platforms/callback/tiktok/route.ts",
+      "find": "        scopes: parseGrantedScopes(tokens.scope),",
+      "replace": "        scopes: [...TIKTOK_OAUTH_CONFIG.scopes],",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/analytics-scopes.test.ts",
+      "pattern": "callback/tiktok"
+    },
+    {
+      "name": "D5 A declined Meta permission is recorded as granted",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/analytics-scopes.ts",
+      "find": "return typeof permission === 'string' && status === 'granted'",
+      "replace": "return typeof permission === 'string' && status !== 'expired'",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/analytics-scopes.test.ts",
+      "pattern": "drops declined"
+    },
+    {
+      "name": "D6 Code marks a vendor review approved while the tracker says it is not",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/analytics-scopes.ts",
+      "find": "      gains: 'Views, likes, comments and shares for each TikTok video',\n      provider: 'implemented',\n      review: 'required',",
+      "replace": "      gains: 'Views, likes, comments and shares for each TikTok video',\n      provider: 'implemented',\n      review: 'approved',",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/analytics-scopes.test.ts",
+      "pattern": "agrees with docs"
+    },
+    {
+      "name": "E1 The reconnect button is offered where reconnecting changes nothing",
+      "kind": "e2e",
+      "file": "packages/features/publishing/src/components/platform-connections.tsx",
+      "find": "{access.canReconnect && (",
+      "replace": "{access.entries.length > 0 && (",
+      "spec": "tests/platform-connections/analytics-access.spec.ts",
+      "grep": "outside the Partner Program is not told to reconnect"
+    }
+  ]
+}

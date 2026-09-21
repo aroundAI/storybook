@@ -15,5 +15,20 @@
     "connected": "Connected",
     "expired": "Expired",
     "error": "Error"
+  },
+  "analyticsAccess": {
+    "title": {
+      "not_authorised": "Some analytics are not authorised on this connection",
+      "unknown": "We have no record of what this connection may read"
+    },
+    "reason": {
+      "scope_missing": "This connection was made before we asked {{platform}} for it. Reconnect to grant it.",
+      "review_pending": "{{platform}} has to approve our app before anyone can grant this. Nothing for you to do, and reconnecting will not change it.",
+      "unknown": "Reconnect and we will record what {{platform}} allows."
+    },
+    "reconnect": {
+      "not_authorised": "Reconnect {{platform}} to grant access",
+      "unknown": "Reconnect {{platform}}"
+    }
   }
 }

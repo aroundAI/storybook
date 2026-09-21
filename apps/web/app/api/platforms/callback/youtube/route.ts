@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { youtube as youtubeApi } from '@googleapis/youtube';
 import { OAuth2Client } from 'google-auth-library';
 
+import { parseGrantedScopes } from '@kit/publishing/oauth/analytics-scopes';
 import {
   YOUTUBE_OAUTH_CONFIG,
   YouTubeOAuthState,
@@ -179,6 +180,7 @@ export async function GET(request: NextRequest) {
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       expiresIn: tokens.expires_in,
+      grantedScopes: parseGrantedScopes(tokens.scope),
       channels,
       returnUrl: state.returnUrl,
       nonce: state.nonce,
@@ -224,8 +226,11 @@ export async function GET(request: NextRequest) {
         token_expires_at: new Date(
           Date.now() + tokens.expires_in * 1000,
         ).toISOString(),
-        scopes: [...YOUTUBE_OAUTH_CONFIG.scopes],
+        // What Google granted, not what we asked for: a user can untick a
+        // scope on the consent screen, and the token response says so.
+        scopes: parseGrantedScopes(tokens.scope),
         metadata: {
+          scopes_granted_at: new Date().toISOString(),
           thumbnail_url: channel.thumbnailUrl,
           // No subscriber_count. It was written here and read nowhere — a
           // level captured once, at a date nobody recorded, then left to

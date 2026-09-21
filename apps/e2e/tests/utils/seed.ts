@@ -197,6 +197,8 @@ export async function seedYouTubeConnection(
     metadata?: Record<string, unknown>;
     /** Defaults to YouTube; the Deep Dive total is per platform. */
     platform?: string;
+    /** The grant the OAuth callback would have recorded (FILM-1711). */
+    scopes?: string[];
   } = {},
 ): Promise<string> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/platform_connections`, {
@@ -217,6 +219,7 @@ export async function seedYouTubeConnection(
       // must still list it — which needs one to exist.
       is_active: options.isActive ?? true,
       ...(options.metadata ? { metadata: options.metadata } : {}),
+      ...(options.scopes ? { scopes: options.scopes } : {}),
     }),
   });
 

@@ -14,6 +14,7 @@ import type { PlatformConnection as DBPlatformConnection } from '../lib/database
 import { GetConnectedPlatformsSchema } from '../lib/schemas/publish.schema';
 import { ensureValidToken } from '../lib/token-refresh';
 import type { Platform } from '../lib/types';
+import { resolveAnalyticsAccess } from '../oauth/analytics-scopes';
 import { disconnectMetaAction } from '../oauth/meta/disconnect';
 import { disconnectTikTokAction } from '../oauth/tiktok/disconnect';
 import { disconnectYouTubeAction } from '../oauth/youtube/disconnect';
@@ -78,6 +79,11 @@ export const getConnectionsAction = enhanceAction(
                   | undefined)
               : undefined,
           scopes: conn.scopes ?? [],
+          analyticsAccess: resolveAnalyticsAccess({
+            platform: conn.platform,
+            grantedScopes: conn.scopes,
+            metadata: conn.metadata,
+          }),
           tokenExpiresAt: conn.token_expires_at,
           createdAt: conn.created_at,
           updatedAt: conn.updated_at,
