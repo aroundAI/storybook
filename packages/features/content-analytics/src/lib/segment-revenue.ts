@@ -27,11 +27,14 @@
  */
 import { pooledRpmCents } from '@kit/clickhouse';
 
+import type { CurrencyAmount, MoneyByCurrency } from './money';
+import { createMoneyFold } from './money';
+
 /** The only fields of a revenue row this fold reads. */
 export interface FoldableRevenueRow {
   publish_id: string | null;
   record_date: string;
-  revenue_cents: number;
+  amount: CurrencyAmount;
 }
 
 /** A video's segments and the window its views were measured over. */
@@ -43,20 +46,24 @@ export interface MembershipEntry {
   windowEnd: string;
 }
 
+/**
+ * Every bucket is per currency (KB-12). "Every cent is accounted for" holds
+ * within each: a euro lands in exactly one of the three, as euros.
+ */
 export interface SegmentRevenueTotals {
-  revenueBySegment: Map<string, number>;
+  revenueBySegment: Map<string, MoneyByCurrency>;
   /**
    * Revenue scoped to an account rather than a publish: real income that
    * belongs to no video, and therefore to no segment.
    */
-  channelLevelCents: number;
+  channelLevel: MoneyByCurrency;
   /**
    * Revenue on a publish that is not in the membership, or is but falls
    * outside its checkpoint window. Neither attributable nor channel-level
    * — reported so the difference against a total shown elsewhere can be
    * explained rather than discovered.
    */
-  unattributedCents: number;
+  unattributed: MoneyByCurrency;
 }
 
 /** Day the video's checkpoint window opens and closes, as date strings. */
@@ -116,30 +123,45 @@ export function retainSurvivingSegments(
  * ordinary, and rendering it as "$0.00 RPM" states a finding about the
  * content that the data cannot support.
  */
-export function segmentRpmCents(
-  revenueBySegment: Map<string, number>,
+export function segmentRpm(
+  revenueBySegment: Map<string, MoneyByCurrency>,
   segment: string,
   totalViews: number,
-): number | null {
-  if (!revenueBySegment.has(segment)) return null;
+): MoneyByCurrency | null {
+  const revenue = revenueBySegment.get(segment);
 
-  // Delegated, never re-derived: an inline `(cents / views) * 1000` here
-  // would be a second definition of the pooled rate, which is the drift
-  // lib/segment-stats.ts exists to prevent.
-  return pooledRpmCents(revenueBySegment.get(segment)!, totalViews);
+  if (!revenue) return null;
+
+  // One rate per currency, over the same views: a segment paid $12 and €5
+  // earned both per thousand views, and 1700 "cents" per thousand of
+  // neither. The division is monotonic, so the amounts keep their order.
+  const rates: MoneyByCurrency = [];
+
+  for (const { currency, cents } of revenue) {
+    // Delegated, never re-derived: an inline `(cents / views) * 1000` here
+    // would be a second definition of the pooled rate, which is the drift
+    // lib/segment-stats.ts exists to prevent.
+    const rate = pooledRpmCents(cents, totalViews);
+
+    if (rate === null) return null;
+
+    rates.push({ currency, cents: rate });
+  }
+
+  return rates;
 }
 
 export function createSegmentRevenueFold(
   membership: Map<string, MembershipEntry>,
 ) {
-  const revenueBySegment = new Map<string, number>();
-  let channelLevelCents = 0;
-  let unattributedCents = 0;
+  const bySegment = new Map<string, ReturnType<typeof createMoneyFold>>();
+  const channelLevel = createMoneyFold();
+  const unattributed = createMoneyFold();
 
   return {
     add(row: FoldableRevenueRow): void {
       if (!row.publish_id) {
-        channelLevelCents += row.revenue_cents;
+        channelLevel.add(row.amount);
         return;
       }
 
@@ -150,7 +172,7 @@ export function createSegmentRevenueFold(
       // views are not in any denominator, so its revenue must not be in
       // any numerator — but it is still money, so it is still counted.
       if (!entry) {
-        unattributedCents += row.revenue_cents;
+        unattributed.add(row.amount);
         return;
       }
 
@@ -160,7 +182,7 @@ export function createSegmentRevenueFold(
       // 30-day checkpoint covers days 0-29 — the `< N` convention the rest
       // of the phase uses.
       if (day < entry.windowStart || day >= entry.windowEnd) {
-        unattributedCents += row.revenue_cents;
+        unattributed.add(row.amount);
         return;
       }
 
@@ -169,15 +191,21 @@ export function createSegmentRevenueFold(
       // totals therefore do not sum to the account total, which is a
       // property of overlapping segments and not double-counting.
       for (const name of entry.segments) {
-        revenueBySegment.set(
-          name,
-          (revenueBySegment.get(name) ?? 0) + row.revenue_cents,
-        );
+        const fold = bySegment.get(name) ?? createMoneyFold();
+
+        fold.add(row.amount);
+        bySegment.set(name, fold);
       }
     },
 
     result(): SegmentRevenueTotals {
-      return { revenueBySegment, channelLevelCents, unattributedCents };
+      return {
+        revenueBySegment: new Map(
+          [...bySegment].map(([name, fold]) => [name, fold.result()]),
+        ),
+        channelLevel: channelLevel.result(),
+        unattributed: unattributed.result(),
+      };
     },
   };
 }

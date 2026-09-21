@@ -37,6 +37,16 @@ export interface VideoMetric {
   shares: number;
   saves: number;
   watch_time_seconds: number;
+  /**
+   * **US dollars, or zero** — this table has no currency column (KB-12).
+   * Every reader prints it as dollars, which holds only because every
+   * writer writes USD-sourced figures: today a literal 0 on every ingest
+   * path, and YouTube's estimate (requested without a `currency`, so USD)
+   * if that ever changes. Revenue in any other currency is entered by a
+   * person and lives in Postgres `revenue_records`, beside its currency.
+   * `revenue-writers.test.ts` in @kit/content-analytics binds this to the
+   * writers, so a new one cannot make it quietly untrue.
+   */
   revenue_cents: number;
   subscribers_gained: number;
   /** Gross losses. Net movement is gained - lost. */

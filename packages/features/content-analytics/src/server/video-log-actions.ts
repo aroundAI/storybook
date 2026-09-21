@@ -11,6 +11,8 @@ import { enhanceAction } from '@kit/next/actions';
 import { fetchAllByIds } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import type { MoneyByCurrency } from '../lib/money';
+import { createMoneyFold } from '../lib/money';
 import { listAccountChannels, listProjectChannels } from './channels';
 import { assertScopeAccess } from './scope-access';
 
@@ -85,9 +87,10 @@ export interface VideoLogRow {
    * summed figure: revenue can be recorded in any currency, and adding
    * dollars to euros produces a number that is neither (EDD F-2). Empty when
    * nothing is recorded. `currency` is null only for a row written without
-   * one.
+   * one. The same `MoneyByCurrency` every other revenue total now is
+   * (KB-12) — this was the first of them.
    */
-  revenue: Array<{ currency: string | null; cents: number }>;
+  revenue: MoneyByCurrency;
   /**
    * The video's analytics note (FILM-1610), from Postgres. Never synced to
    * ClickHouse: free text does not belong in a store that cannot delete it.
@@ -242,7 +245,7 @@ async function fetchRevenueByPublish(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   publishIds: string[],
-): Promise<Map<string, Array<{ currency: string | null; cents: number }>>> {
+): Promise<Map<string, MoneyByCurrency>> {
   const rows = await fetchAllByIds<{
     publish_id: string | null;
     currency: string | null;
@@ -261,29 +264,22 @@ async function fetchRevenueByPublish(
     'video log revenue',
   );
 
-  const byPublish = new Map<string, Map<string | null, number>>();
+  const byPublish = new Map<string, ReturnType<typeof createMoneyFold>>();
 
   for (const row of rows) {
     if (!row.publish_id) continue;
 
-    const byCurrency = byPublish.get(row.publish_id) ?? new Map();
+    const fold = byPublish.get(row.publish_id) ?? createMoneyFold();
 
-    // Already one row per currency; the add keeps the fold correct if a
-    // publish were ever split across chunks.
-    byCurrency.set(
-      row.currency,
-      (byCurrency.get(row.currency) ?? 0) + (row.cents ?? 0),
-    );
-    byPublish.set(row.publish_id, byCurrency);
+    // Already one row per currency; the fold keeps the total correct if a
+    // publish were ever split across chunks, and is the one every other
+    // revenue total uses (lib/money.ts).
+    fold.add({ currency: row.currency, cents: row.cents ?? 0 });
+    byPublish.set(row.publish_id, fold);
   }
 
   return new Map(
-    [...byPublish].map(([publishId, byCurrency]) => [
-      publishId,
-      [...byCurrency]
-        .map(([currency, cents]) => ({ currency, cents }))
-        .sort((a, b) => b.cents - a.cents),
-    ]),
+    [...byPublish].map(([publishId, fold]) => [publishId, fold.result()]),
   );
 }
 

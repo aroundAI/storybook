@@ -8,6 +8,7 @@ import {
   TooltipTrigger,
 } from '@kit/ui/tooltip';
 
+import { type MoneyByCurrency, formatMoney } from '../../lib/money';
 import {
   type CheckpointState,
   type QualityState,
@@ -166,11 +167,7 @@ export function formatSeconds(value: number): string {
  * Lifetime revenue, one amount per currency (EDD F-2). Different
  * currencies are listed, never added: there are no rates to convert with.
  */
-export function RevenueCell({
-  revenue,
-}: {
-  revenue: Array<{ currency: string | null; cents: number }>;
-}) {
+export function RevenueCell({ revenue }: { revenue: MoneyByCurrency }) {
   if (revenue.length === 0) {
     return (
       <ExplainedValue
@@ -184,29 +181,9 @@ export function RevenueCell({
 
   return (
     <span className={'whitespace-nowrap tabular-nums'} data-test={'revenue'}>
-      {revenue.map(formatAmount).join(' + ')}
+      {formatMoney(revenue)}
     </span>
   );
-}
-
-function formatAmount({
-  currency,
-  cents,
-}: {
-  currency: string | null;
-  cents: number;
-}): string {
-  if (!currency) return `${(cents / 100).toFixed(2)} (currency not recorded)`;
-
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-    }).format(cents / 100);
-  } catch {
-    // An unrecognised code still shows its amount and its code.
-    return `${(cents / 100).toFixed(2)} ${currency}`;
-  }
 }
 
 /** The row-level flag for a video whose early days were missed. */

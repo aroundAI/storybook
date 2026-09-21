@@ -414,7 +414,8 @@ S0d, S0e, each seen red.
 ## KB-12 — Revenue is added across currencies
 
 **Severity:** Medium — wrong figures, quietly. **Found:** FILM-1615 EDD
-(finding F-2), 2026-09-20. **Open**, except in the Video Log.
+(finding F-2), 2026-09-20. **Fixed** in #PR_NUMBER — see *Fixed* at the end of
+this entry for what changed and what was proven rather than changed.
 
 `revenue_records.currency` is a column, and a channel can be paid in more
 than one — a sponsorship in euros beside AdSense in dollars. Almost every
@@ -449,9 +450,70 @@ purpose — that header is a column name in files recipients already parse,
 and renaming it in a bug-fix PR breaks their spreadsheets to make a caveat
 that this entry records instead.
 
+**Decided (owner, 2026-09-22): one card per currency.** A total that spans
+currencies is shown as one figure per currency — the Video Log's
+`$12.00 + €5.00`, carried to every card and chart. No exchange rates, no
+base currency, no selector. An account with a single currency sees exactly
+what it sees today.
+
 **How to reproduce:** add two `revenue_records` for one publish with
 different `currency` values, and read the revenue mix or the account
 dashboard: one number, neither currency.
+
+### Fixed (#PR_NUMBER)
+
+**One primitive** — `lib/money.ts` in `@kit/content-analytics`:
+`CurrencyAmount`, `MoneyByCurrency`, `createMoneyFold` / `foldMoney`,
+`createCurrencyPartition`, `formatCurrencyAmount` / `formatMoney`. The Video
+Log's own fold and formatter were replaced by it, so the rule lives once.
+`forEachAccountRevenueRow` now hands its callers `amount: { currency, cents }`
+and no bare `revenue_cents`, so adding two rows of unknown currency no longer
+typechecks (`money.test.ts` holds the type with `@ts-expect-error`).
+
+**Every Postgres reader folds per currency:** the summary, trend, daily
+average, RPM, revenue mix and ad share, platform shares, chart series,
+projection and top-content ranking (`lib/revenue-by-currency.ts`, drawn by
+`revenue-dashboard.tsx` as one row of tiles, one chart, one mix and one
+ranking per currency); the segment fold and its RPM (`segment-revenue.ts`,
+`segment-actions.ts`); the stored revenue report (`summary_data` schema
+version 3). A share, a trend and an RPM are computed **within** a currency —
+a mixed sum is never divided.
+
+**Alerts are evaluated per currency** (`revenue-alerts.ts`): each currency
+against its own trailing days, month-to-date and milestones. Summed, a euro
+sponsorship tripped a dollar spike, steady euro income hid a real one, and
+$95 + €20 "passed $100". The milestone ladder is the same nominal ladder in
+every currency (100, 500, 1,000 …), because one that meant the same *value*
+would need the exchange rates this system does not have. No UI reads
+`revenue_alerts` yet, so this is covered by unit tests, not a screenshot.
+
+**ClickHouse is USD by construction, and now bound to it.**
+`video_metrics.revenue_cents` has no currency column and did not get one.
+Measured: every ingest path writes a literal `0` there, the only platform
+revenue we fetch is YouTube's — requested without a `currency` parameter, so
+USD — and it goes to `revenue_records` stamped `currency: 'USD'`. No path
+copies a manual (possibly non-USD) record into ClickHouse. So the ClickHouse
+figures (`aggregation-queries.ts`, `account-dashboard-actions.ts`, the
+language, experiment and report reads, and the raw export's `Revenue (USD)`
+column, which keeps its name) are dollars. `revenue-writers.test.ts` reads
+the source and fails on any new, moved or changed `revenue_cents` write until
+it is listed with its store and currency.
+
+**Tests:** `money.test.ts`, `revenue-by-currency.test.ts`,
+`revenue-alerts.test.ts` (seen red on the old evaluator: 4 of 5 failed, the
+single-currency case passed), `revenue-writers.test.ts`,
+`segment-revenue.test.ts`; `revenue-currency.spec.ts` (seen red: the total
+tile read `$2,400` for $1,600 + €800; its single-currency case was written
+against the old build and passes unchanged on the new one);
+`revenue-currency-evidence.spec.ts`; mutation guards `kb-12.json`, each seen
+red.
+
+**Not part of this, noticed while here:** `idx_revenue_records_unique_scope`
+keys on scope, date, category and source — not currency — so a euro and a
+dollar sponsorship for the same scope on the same day are one slot, and the
+second entry replaces the first (the form's standing note says a save for
+the same date and category replaces the last one). That is a
+limit on what can be recorded, not a wrong sum.
 
 ---
 
@@ -498,4 +560,5 @@ can be wrong. Not worth it until someone has a real account that is slow.
 | KB-6 (part) | Experiment log and note refusals replaced in production | #264 (round 4) |
 | KB-9, KB-10 | Hook Lab: a cross-tenant retention read, and a feature that could not be used and measured the wrong point | #269 (removed) |
 | KB-11 | Another account could read a public project's analytics | FILM-1615 Step 0 |
+| KB-12 | Revenue was added across currencies | #PR_NUMBER |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |

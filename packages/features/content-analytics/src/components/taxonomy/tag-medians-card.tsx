@@ -8,6 +8,9 @@ import { Progress } from '@kit/ui/progress';
 import { Skeleton } from '@kit/ui/skeleton';
 import { cn } from '@kit/ui/utils';
 
+import type { MoneyByCurrency } from '../../lib/money';
+import { formatMoney } from '../../lib/money';
+
 /** One segment's aggregated performance, from getMedianByTagAction. */
 export interface TagMedianEntry {
   segment: string;
@@ -19,8 +22,11 @@ export interface TagMedianEntry {
   /** maxViews / medianViews, or null when the median is zero. */
   spread: number | null;
   confidence: SegmentConfidence;
-  /** Pooled revenue per thousand views, when revenue was requested. */
-  rpmCents?: number | null;
+  /**
+   * Pooled revenue per thousand views, when revenue was requested — one
+   * rate per currency the segment was paid in (KB-12).
+   */
+  rpm?: MoneyByCurrency | null;
 }
 
 interface TagMediansCardProps {
@@ -33,7 +39,7 @@ interface TagMediansCardProps {
   /** Videos required before medians are shown */
   required?: number;
   /**
-   * True when `rpmCents` covers only publish-attributed revenue, which it
+   * True when `rpm` covers only publish-attributed revenue, which it
    * always does — channel-level income belongs to no segment.
    */
   attributedRevenueOnly?: boolean;
@@ -59,8 +65,8 @@ function tagLabel(tag: string): string {
   return separator >= 0 ? tag.slice(separator + 1) : tag;
 }
 
-function formatRpm(cents: number): string {
-  return `$${(cents / 100).toFixed(2)} RPM`;
+function formatRpm(rpm: MoneyByCurrency): string {
+  return `${formatMoney(rpm, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RPM`;
 }
 
 /**
@@ -162,9 +168,9 @@ export function TagMediansCard({
               </span>
             ) : null}
 
-            {typeof row.rpmCents === 'number' ? (
-              <span>
-                {formatRpm(row.rpmCents)}
+            {row.rpm && row.rpm.length > 0 ? (
+              <span data-test={'segment-rpm'}>
+                {formatRpm(row.rpm)}
                 {attributedRevenueOnly ? ' (per-video revenue only)' : ''}
               </span>
             ) : null}

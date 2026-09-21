@@ -18,13 +18,20 @@ import {
 } from '@kit/ui/chart';
 import { Skeleton } from '@kit/ui/skeleton';
 
-import { formatCurrency } from '../lib/format';
+import { DEFAULT_CURRENCY, formatCurrencyAmount } from '../lib/money';
 import type { RevenueDataPoint } from '../lib/types/revenue';
 
 interface RevenueChartProps {
   data: RevenueDataPoint[];
+  /**
+   * The currency of every point. One chart draws one currency (KB-12): two
+   * cannot share an axis without an exchange rate.
+   */
+  currency?: string | null;
   isLoading?: boolean;
 }
+
+const WHOLE_UNITS = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
 
 const chartConfig = {
   revenue: {
@@ -33,7 +40,18 @@ const chartConfig = {
   },
 };
 
-export function RevenueChart({ data, isLoading }: RevenueChartProps) {
+export function RevenueChart({
+  data,
+  currency = DEFAULT_CURRENCY,
+  isLoading,
+}: RevenueChartProps) {
+  const formatUnits = (units: number) =>
+    formatCurrencyAmount({ currency, cents: units * 100 }, WHOLE_UNITS);
+
+  // Unique per chart: two charts on one page sharing an id would both
+  // paint with whichever gradient the document defined first.
+  const gradientId = `revenueGradient-${currency ?? 'unrecorded'}`;
+
   const chartData = useMemo(
     () =>
       data.map((point) => ({
@@ -67,7 +85,7 @@ export function RevenueChart({ data, isLoading }: RevenueChartProps) {
           margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
         >
           <defs>
-            <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
               <stop
                 offset="5%"
                 stopColor="var(--color-revenue)"
@@ -92,13 +110,13 @@ export function RevenueChart({ data, isLoading }: RevenueChartProps) {
             tickLine={false}
             axisLine={false}
             tickMargin={8}
-            tickFormatter={(value) => formatCurrency(value)}
+            tickFormatter={(value) => formatUnits(value)}
             className="text-xs"
           />
           <ChartTooltip
             content={
               <ChartTooltipContent
-                formatter={(value) => formatCurrency(value as number)}
+                formatter={(value) => formatUnits(value as number)}
                 labelFormatter={(label) => label}
               />
             }
@@ -108,7 +126,7 @@ export function RevenueChart({ data, isLoading }: RevenueChartProps) {
             dataKey="revenue"
             stroke="var(--color-revenue)"
             strokeWidth={2}
-            fill="url(#revenueGradient)"
+            fill={`url(#${gradientId})`}
           />
         </AreaChart>
       </ResponsiveContainer>
