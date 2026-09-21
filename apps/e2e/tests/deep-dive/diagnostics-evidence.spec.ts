@@ -15,7 +15,6 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
-import { DeepDivePageObject } from './deep-dive.po';
 
 /**
  * Weekly diagnostics and the retention curve, with real figures
@@ -154,62 +153,6 @@ test.describe('FILM-1616 — diagnostics with data', () => {
     await page
       .locator('[data-test="weekly-diagnostics-section"]')
       .screenshot({ path: `${OUT}/02-retention-cliff.png` });
-  });
-
-  test('follows the channel filter above it', async ({ page }) => {
-    const team = await seedTeamAccount();
-    const project = await seedProject(team);
-    const kept = await seedYouTubeConnection(team.accountId, 'Kept Channel');
-    const other = await seedYouTubeConnection(team.accountId, 'Other Channel');
-
-    const seedOn = async (
-      connectionId: string,
-      title: string,
-      number: number,
-    ) => {
-      const video = await seedPublishedEpisode(project.id, connectionId, {
-        number,
-        title,
-      });
-
-      const seeded: SeededVideo = {
-        videoId: video.publishId,
-        projectId: project.id,
-        accountId: team.accountId,
-        connectionId,
-        title,
-        publishedAt: daysAgo(2),
-      };
-
-      await seedVideoDim(seeded);
-      await seedVideoMetrics(seeded, [{ ageDays: 1, views: 100 }]);
-    };
-
-    await seedOn(kept, 'On the kept channel', 1);
-    await seedOn(other, 'On the other channel', 2);
-
-    await signInAs(page, team);
-
-    await page.goto(
-      `/home/${team.slug}/studio/${project.slug}/analytics?tab=deep-dive`,
-    );
-
-    await page.locator('[data-test="analytics-tab-deep-dive"]').click();
-
-    const rows = page.locator('[data-test="diagnostic-row"]');
-
-    await expect(rows).toHaveCount(2);
-
-    // Narrow to one channel. Every card above the table does; the table
-    // sits under the same control and must not keep answering for both.
-    //
-    // Through the page object: the filter is a Radix Select whose options
-    // render in a portal, and driving it by hand raced the open animation —
-    // green on a dev server, a timeout against a production build.
-    await new DeepDivePageObject(page).chooseChannel(kept);
-
-    await expect(rows).toHaveCount(1);
-    await expect(rows.first()).toContainText('On the kept channel');
   });
 
   test('opens the drill-down from the keyboard', async ({ page }) => {

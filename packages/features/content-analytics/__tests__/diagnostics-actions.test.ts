@@ -24,6 +24,7 @@ import {
 
 const PUBLISH = '0b6f5a4e-3c1d-4e2f-9a8b-7c6d5e4f3a2b';
 const PROJECT = '550e8400-e29b-41d4-a716-446655440000';
+const CONNECTION = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 
 const state: {
   /** What the RLS-scoped `publishes` read returns. `null` = not visible. */
@@ -46,6 +47,8 @@ const state: {
     string,
     Array<{ elapsedRatio: number; audienceWatchRatio: number }>
   >;
+  /** `.eq()` filters the publish query received, as [column, value]. */
+  filters: Array<[string, unknown]>;
 } = {
   publish: null,
   curveCalls: [],
@@ -54,6 +57,7 @@ const state: {
   totals: new Map(),
   quality: new Map(),
   curves: new Map(),
+  filters: [],
 };
 
 vi.mock('@kit/next/actions', () => ({
@@ -88,22 +92,52 @@ vi.mock('@kit/clickhouse/server', () => ({
 }));
 
 vi.mock('@kit/shared/pagination', () => ({
-  fetchAllRows: async () => state.publishes,
+  // Runs the builder the action hands over, against a recorder, so the
+  // filters that actually reach Postgres can be asserted. Mocking the whole
+  // read away would leave the channel filter untested — and accepting a
+  // `connectionId` and then not filtering on it was the defect.
+  fetchAllRows: async (
+    build: (from: number, to: number) => unknown,
+  ): Promise<unknown[]> => {
+    build(0, 999);
+
+    return state.publishes;
+  },
 }));
 
 vi.mock('../src/server/scope-access', () => ({
   assertScopeAccess: async () => 'account-1',
 }));
 
+/** A chainable recorder: every filter is kept, every call returns itself. */
+function queryRecorder() {
+  const chain: Record<string, unknown> = {};
+
+  for (const method of [
+    'select',
+    'eq',
+    'not',
+    'gte',
+    'order',
+    'range',
+    'limit',
+  ]) {
+    chain[method] = (...args: unknown[]) => {
+      if (method === 'eq') state.filters.push([args[0] as string, args[1]]);
+
+      return chain;
+    };
+  }
+
+  chain.maybeSingle = async () => ({ data: state.publish, error: null });
+  chain.then = undefined;
+
+  return chain;
+}
+
 vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => ({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: async () => ({ data: state.publish, error: null }),
-        }),
-      }),
-    }),
+    from: () => queryRecorder(),
   }),
 }));
 
@@ -138,6 +172,7 @@ describe('getRetentionCurveAction', () => {
     state.totals = new Map();
     state.quality = new Map();
     state.curves = new Map();
+    state.filters = [];
   });
 
   it('refuses a publish the caller cannot see, and never reads ClickHouse', async () => {
@@ -244,5 +279,40 @@ describe('getWeeklyDiagnosticsAction', () => {
     const result = await call();
 
     expect(result.ok && result.data[0]!.cliff).toBeNull();
+  });
+});
+
+describe('getWeeklyDiagnosticsAction — the channel filter', () => {
+  beforeEach(() => {
+    state.publishes = [];
+    state.filters = [];
+  });
+
+  it('filters the publish read by the channel the scope names', async () => {
+    // `assertScopeAccess` validates that a connectionId belongs to the
+    // caller, so a scope carrying one passed the check and then answered
+    // for every channel — scoped in appearance only.
+    await getWeeklyDiagnosticsAction({
+      scope: { projectId: PROJECT, connectionId: CONNECTION },
+      sinceDays: 7,
+      limit: 25,
+    });
+
+    expect(state.filters).toContainEqual([
+      'platform_connection_id',
+      CONNECTION,
+    ]);
+  });
+
+  it('does not filter by channel when the scope names none', async () => {
+    await getWeeklyDiagnosticsAction({
+      scope: { projectId: PROJECT },
+      sinceDays: 7,
+      limit: 25,
+    });
+
+    expect(state.filters.map(([column]) => column)).not.toContain(
+      'platform_connection_id',
+    );
   });
 });
