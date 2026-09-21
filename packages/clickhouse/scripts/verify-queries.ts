@@ -125,7 +125,8 @@ async function seed() {
         language: 'en',
         title: 'Normal video',
         published_at: '2026-01-10 00:00:00',
-        duration_seconds: 600,
+        episode_duration_seconds: 600,
+        asset_duration_seconds: null,
         tags: ['topic:a'],
       },
       {
@@ -139,7 +140,8 @@ async function seed() {
         language: 'en',
         title: 'Back catalogue',
         published_at: '2024-03-01 00:00:00',
-        duration_seconds: 600,
+        episode_duration_seconds: 600,
+        asset_duration_seconds: null,
         tags: ['topic:a'],
       },
       {
@@ -153,7 +155,8 @@ async function seed() {
         language: 'es',
         title: 'Never watched',
         published_at: '2026-01-12 00:00:00',
-        duration_seconds: 60,
+        episode_duration_seconds: 1320,
+        asset_duration_seconds: 45,
         tags: ['topic:b'],
       },
     ]),
@@ -537,6 +540,49 @@ async function queries() {
  */
 async function assertions() {
   const scope = { projectId: PROJECT };
+
+  await step(
+    'assert: an unknown asset duration is null, not zero (FILM-1710)',
+    async () => {
+      // The Short was cut from a 22-minute episode. Its own duration is 45s,
+      // and the two fulls have never been measured. `UInt32` would have
+      // stored those as 0 — a measured zero — which is how the episode's
+      // duration passed for the clip's.
+      const result = await getClickHouseClient().query({
+        query: `
+          SELECT video_id, episode_duration_seconds, asset_duration_seconds
+          FROM video_dim FINAL
+          WHERE project_id = {projectId:UUID}
+            AND video_id IN ({ids:Array(String)})
+          ORDER BY video_id`,
+        query_params: { projectId: PROJECT, ids: [NORMAL, ZERO] },
+        format: 'JSONEachRow',
+      });
+      const rows = await result.json<{
+        video_id: string;
+        episode_duration_seconds: number;
+        asset_duration_seconds: number | null;
+      }>();
+
+      const got = JSON.stringify(rows);
+      const want = JSON.stringify([
+        {
+          video_id: NORMAL,
+          episode_duration_seconds: 600,
+          asset_duration_seconds: null,
+        },
+        {
+          video_id: ZERO,
+          episode_duration_seconds: 1320,
+          asset_duration_seconds: 45,
+        },
+      ]);
+
+      if (got !== want) throw new Error(`expected ${want}, got ${got}`);
+
+      return rows;
+    },
+  );
 
   await step('assert: a same-day re-insert collapses to one row', async () => {
     // ReplacingMergeTree collapses on merge, at ClickHouse's discretion, so

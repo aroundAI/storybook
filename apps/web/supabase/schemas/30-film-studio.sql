@@ -573,6 +573,14 @@ create table if not exists public.publishes (
   analytics_note_updated_by uuid references auth.users(id) on delete set null,
   constraint publishes_analytics_note_length_check
     check (char_length(analytics_note) <= 5000),
+  -- The published asset's duration in whole seconds, as the platform reports
+  -- it (FILM-1710, migration 20260921200942). Null is `duration_unknown` —
+  -- never the episode's duration, and never 0. Written only by the analytics
+  -- asset-duration sync; `publishes_keep_asset_duration` (same migration)
+  -- keeps an end-user session from changing it.
+  duration_seconds integer,
+  constraint publishes_duration_seconds_positive_check
+    check (duration_seconds > 0),
   created_at timestamp with time zone default now() not null,
   check (platform in ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin')),
   check (content_type in ('full', 'short', 'teaser', 'trailer')),
