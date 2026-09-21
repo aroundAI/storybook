@@ -95,6 +95,12 @@ sandbox, is created with a randomly drawn **performance profile**:
 Objects that already exist in the local database — the seeded publishes — are
 adopted on first request and given a profile the same way.
 
+**Everything on screen looks real** (the phase README's "Looks real, is
+fictional"). Channel names, handles, video titles, captions, comments and follower
+names come from the shared corpus — never `Test channel`, `Seeded video 3` or a
+counter suffix. Figures are long-tailed, non-round and consistent with each other.
+Randomness picks *which* realistic name and number, not whether it looks real.
+
 **Time.** The app server's clock is real and cannot be accelerated: its date
 windows, 30-day walls and `snapshot_date` all use real dates. So
 `SANDBOX_SPEED` (simulated seconds per real second; default `1440`, one simulated
@@ -110,7 +116,7 @@ day per real minute) accelerates each object's growth, not the calendar:
 default speed has sixty simulated days of growth, all in today's daily row. This
 is fit for exercising sync, snapshots, deltas and dashboards. It is not a
 realistic shape for a single calendar day, and anything that shows it to a person
-must label it as simulated.
+must present it as an example, never as a benchmark.
 
 ## 5. Publishing and state
 
@@ -166,6 +172,8 @@ with `CRON_SECRET` — the same path production takes, not a shortcut.
 - [ ] Cumulative totals never decrease, and daily series sum to totals, at any `SANDBOX_SPEED`
 - [ ] The ledger records every request and response
 - [ ] The sandbox binds to loopback and is never part of a production build or deploy
+- [ ] No generated name matches a placeholder pattern (`test`, `seed`, `example`, `sample`, `dummy`, `lorem`, `foo`, or a trailing counter) — enforced by a test over a large sample of runs
+- [ ] No generated figure is a round sentinel, and each object's figures are mutually consistent
 
 ## 10. Verification
 

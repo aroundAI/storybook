@@ -79,6 +79,19 @@ daily series stay on real dates with each day holding the curve's increase withi
 it. Totals stay monotonic and dailies still sum to totals. The visible cost —
 history concentrated into recent real days — is stated, not hidden.
 
+**Looks real, is fictional.** Everything the sandbox invents must read like a real
+creator's account, never like a fixture. Channel names, handles, show and episode
+titles, video titles, captions, comments, character names and figures are drawn
+from one checked-in corpus of plausible creator content, not generated as
+`Seeded project 1`, `Example channel 2`, `Test video`, `Lorem ipsum`, `foo`, or a
+name with a counter on the end. Figures look like real ones: long-tailed,
+non-round, internally consistent (likes below views, shares below likes), never a
+sentinel like `1000` or `12345`. The same corpus serves both sandboxes and, later,
+the user guide, so a screenshot from any of them looks like the product in use. A
+test fails any generated name that matches a placeholder pattern. Test accounts
+that must be unique per run (`seedUser`'s `<prefix>-<uuid>` emails) are exempt;
+anything that can appear on screen is not.
+
 **It cannot reach production.** Overrides resolve only when
 `NODE_ENV !== 'production'` **and** `VENDOR_SANDBOX=1`. A production build fails
 closed on a loopback vendor URL. The sandbox app is never deployed.
@@ -104,8 +117,18 @@ closed on a loopback vendor URL. The sandbox app is never deployed.
 Once this phase is done, the user guide is a one-time pass by an AI agent that
 discovers the product's flows, runs them locally against the sandbox, and writes the
 guide — flows, personas (`specs/PRD.md` §3) and screenshots. It is deliberately not
-specified here. Two constraints carry over to whenever it happens: sandbox figures
-are simulated and must be captioned as such, and advice on succeeding on social makes
-no causal claim that an experiment in the product has not supported. The stale
+specified here. Three constraints carry over to whenever it happens:
+
+- **The guide is an example, the way CRMs use Acme Inc.** It follows one fictional
+  company through the product, with realistic names and figures from the sandbox's
+  corpus — the PRD's own personas (Alex, Studio Spark, Maria) are the natural cast,
+  once each name is checked against real studios and channels. It says once, up
+  front, that the company and its data are fictional; screenshots are not captioned
+  one by one.
+- **Example figures are not benchmarks.** They illustrate how to read the product,
+  never what "good" looks like on a real platform.
+- **No causal advice without an experiment.** How to succeed on social is explained
+  through what the product measures, and no claim is made that an experiment in the
+  product has not supported. The stale
 `docs/PRODUCT_DOCUMENTATION.md` and `apps/web/content/documentation/*` are what that
 pass replaces.

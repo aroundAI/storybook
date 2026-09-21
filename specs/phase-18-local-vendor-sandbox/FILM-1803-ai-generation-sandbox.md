@@ -45,6 +45,14 @@ None of the nine without a machine-readable schema has an `example_output` to fa
 back on, so the templates are real work: nine small generators, each checked by
 feeding its output through the same parsing path the app uses.
 
+**Shape from the schema, values from the corpus.** A schema says a field is a string;
+filled naively, it becomes a random token. So the schema decides the *shape* and the
+shared corpus fills the *values*, matched by field name and enum — a `title` gets a
+realistic show title, a `characterName` a character name, `dialogue` a line of
+dialogue, an enum one of its members. A string field the corpus cannot place is
+logged, so coverage of the corpus grows with the schemas rather than decaying into
+tokens.
+
 **Identifying the prompt.** The request carries the rendered prompt, not the slug.
 The sandbox loads the same prompt files at start and matches a request to a slug by
 its system prompt, before variable substitution. A request that matches nothing is
@@ -55,7 +63,10 @@ generator is noticed rather than silently fed nonsense.
 the requested structure — character names consistent within one generated story,
 scene counts matching what the screenplay asked for. It needs to be coherent enough
 for the next stage to consume and for a screenshot to look like the product. It
-does not need to be good writing, and it is labelled as sandbox output.
+does not need to be good writing, but it must **read like a real creator's work**:
+realistic show titles, character names, locations and dialogue from the shared
+corpus (the phase README's "Looks real, is fictional"), never `Character 1`,
+`Scene A`, `Lorem ipsum` or `Generated story 4`.
 
 ## 3. Audio and embeddings
 
@@ -100,6 +111,7 @@ does not need to be good writing, and it is labelled as sandbox output.
 - [ ] Audio responses are valid files of roughly the requested duration
 - [ ] Embeddings have the real model's dimension, and identical input gives the identical vector within a run
 - [ ] The inline-vs-enqueued list per studio stage exists and is linked from FILM-1804
+- [ ] No generated title, character, location or line of dialogue matches a placeholder pattern — the same test as FILM-1802's, over a large sample
 
 ## 7. Verification
 
