@@ -687,7 +687,7 @@ for `follower_demographics` with all four breakdowns in one call and no
 its examples show one demographic breakdown per request. A rejected call returns
 `undefined`, which the provider treats as "no audience", so Instagram audience rows
 have most likely never been written. Unverified against a live account; fixing it
-changes stored data, so it belongs in its own PR, like the Reels branch did.
+changes stored data, so it is not fixed here. FILM-1712 owns it.
 
 <!-- fields: facebook/video-insights source: https://developers.facebook.com/docs/graph-api/reference/video/video_insights/ -->
 ```text

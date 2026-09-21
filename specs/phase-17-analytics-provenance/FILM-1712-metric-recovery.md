@@ -22,6 +22,7 @@ very different amounts and only one of them is cheap.
 | Kind | Platform | Fix |
 |---|---|---|
 | Requested, dropped at ingest | Instagram `reach` | a column and a mapping |
+| **Requested wrongly, most likely rejected** | Instagram `follower_demographics` | add the required `timeframe`; one breakdown per call |
 | Not requested, same endpoint | YouTube ×3, **Instagram ×2 (watch time)** | add to a metrics string |
 | Not requested, Media node fields | Instagram `reposts_count`, `saved_count`, `shares_count` + 3 aggregates | add to the `?fields=` list |
 | **Different API entirely** | TikTok ×5 | a second integration |
@@ -209,6 +210,7 @@ is storage with no purpose.
 - [ ] No provider maps a never-requested field to a column as zero
 - [ ] A metric we do not have is distinguishable from one that is genuinely zero
 - [ ] `input.metrics` on the Instagram provider is honoured or removed
+- [ ] Instagram's audience request sends `timeframe` and one demographic breakdown per call, as Meta documents; whether the current four-breakdown, no-`timeframe` call is rejected is confirmed against a live account first, and recorded in FILM-1721
 - [ ] `extra_metrics` gains a reader or stops being written
 - [ ] The capability matrix is updated in the same PR as each newly-ingested field, per FILM-1703's writer-binding test
 
