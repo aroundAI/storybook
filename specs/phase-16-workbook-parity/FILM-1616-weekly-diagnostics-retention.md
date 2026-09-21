@@ -152,6 +152,12 @@ beyond its ownership check.
   It reads `getEpisodeAnalytics` through an action now. The curve needed a
   second action to resolve the episode's YouTube publish, since the chart is
   keyed on a publish and only YouTube reports a curve.
+- **§8's "the evidence half cannot run in CI" is no longer true.** The
+  🧬 E2E evidence job has a ClickHouse service container and sets
+  `CLICKHOUSE_EVIDENCE=1`, so `diagnostics-evidence.spec.ts` runs there with
+  real curves — the job went from 22 tests to 24 and printed
+  `MEASURED_DIAGNOSTICS`. That sentence described the job layout before the
+  evidence specs moved to their own production-build job.
 - **Two seeder defects surfaced.** `seedPublishedEpisode` set no `slug`, and
   the episode routes resolve `[episodeSlug]` with `.eq('slug', …)` — so no
   test could reach an episode page. It also never set `publishes.title`,
