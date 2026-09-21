@@ -70,7 +70,7 @@ Documented behaviour the sandbox must reproduce, each with a sandbox test:
 | Vendor | Behaviour |
 |---|---|
 | TikTok | Every response carries `error`; success is `error.code: "ok"`. Max 20 IDs per `/v2/video/query/`. Data stops updating 365 days after publish. No retention curve, no saves, no watch time on the Display API |
-| Instagram | `media_type` is `CAROUSEL_ALBUM`, `IMAGE` or `VIDEO` only; the surface is `media_product_type`. `profile_visits` and `follows` absent for Reels. Missing data is an empty data set, not `0`. Account `views` is `total_value`-only; time-series `profile_views` and `website_clicks` are rejected. Removed metrics (`plays`, `impressions`, …) return the vendor's error |
+| Instagram | `media_type` is `CAROUSEL_ALBUM`, `IMAGE` or `VIDEO` only; the surface is `media_product_type`. `profile_visits` and `follows` absent for Reels. Missing data is an empty data set, not `0`. Account `views` is `total_value`-only; time-series `profile_views` and `website_clicks` are rejected. Removed metrics (`plays`, `impressions`, …), and a `breakdown` not documented for the endpoint (`follow_type` on media insights), return the vendor's error |
 | Facebook | Four denominators kept distinct; `post_video_avg_time_watched` may exceed duration; Page tokens for insights |
 | YouTube | Analytics metrics valid with `dimensions=day`; 48–72 hour processing delay; revenue metrics require `yt-analytics-monetary.readonly`; Reporting jobs only backfill 30 days from job creation; `creatorContentType` distinguishes Shorts |
 | X | Non-public metrics only for posts under 30 days old, gated on creation date; the two quartile vocabularies on their own endpoints; Enterprise-only endpoints return the tier error |
