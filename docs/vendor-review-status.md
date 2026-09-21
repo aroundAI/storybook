@@ -44,14 +44,15 @@ with an owner, not a finding. They are FILM-1725 Checks F, G and H.
    is recorded truthfully — but an error page would block the connection.
 3. **Google: is the monetary scope on the OAuth consent screen?** `review` is set to
    `approved` for it because a Google user *can* grant a scope the consent screen
-   does not list — but may be shown an unverified-app warning. That belief is from
-   Google's general OAuth documentation, not from our project's console. If the
+   does not list — but may be shown an unverified-app warning. That belief is
+   uncited, and says nothing about our project's console. If the
    warning appears, set `review: 'pending'` for `youtube.revenue` until verification
    passes, which also withdraws the reconnect prompt.
 
 ## What an App Review submission will need
 
-Each permission has to be shown in use, by an account with a role on the app, which
+*Uncited — general knowledge of these reviews, not a page read for this document:*
+each permission is expected to be shown in use, by an account with a role on the app, which
 is why the configs request the scopes before review rather than after:
 
 - `instagram_manage_insights` — Instagram media and account insights in the analytics

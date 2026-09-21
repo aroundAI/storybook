@@ -236,7 +236,7 @@ becomes a much longer piece of work. Verify before committing to that estimate.
 **Scopes added to the OAuth configs:** YouTube `yt-analytics-monetary.readonly`;
 TikTok `video.list` and `user.info.stats`; Meta `instagram_manage_insights`.
 **Removed:** none. **Deliberately not added:** Facebook `read_insights` — a
-permission no code uses cannot be justified to App Review, so it is declared as
+permission no code uses has nothing to show a reviewer or a creator, so it is declared as
 planned in FILM-1720 and requested when that provider lands; and X `media.write`,
 a publishing scope, owned by FILM-1729.
 
