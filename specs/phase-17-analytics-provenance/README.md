@@ -86,7 +86,7 @@ gates FILM-1727's Enterprise tier and is the reason that spec should not be
 scoped against `/2/media/analytics` until it is answered. X itself is not
 blocked: it ships on the pay-per-use path.
 
-**FILM-1723 and FILM-1710 are the remaining true roots.** FILM-1701 is
+**FILM-1723 and FILM-1710 are the remaining true roots.** FILM-1723 and phase 18's [FILM-1801](../phase-18-local-vendor-sandbox/FILM-1801-vendor-base-url-resolver.md) edit the same host constants — one pins a version per vendor, the other makes each host overridable for the local sandbox. Do them together, or FILM-1723 first. FILM-1701 is
 independent of the reference but feeds FILM-1705. Everything else descends from
 one of them — in particular FILM-1703 now depends on FILM-1721, so it is no
 longer a starting point.

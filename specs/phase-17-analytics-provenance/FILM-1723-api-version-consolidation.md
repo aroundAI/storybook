@@ -8,6 +8,8 @@ dependencies: none
 
 # API Version Consolidation
 
+
+> **Coordinate with phase 18's [FILM-1801](../phase-18-local-vendor-sandbox/FILM-1801-vendor-base-url-resolver.md)**, which routes every vendor host through one resolver so the local sandbox can stand in for it. Both edit the same constants; doing them apart edits the same lines twice.
 ## 1. Four Meta Graph versions, and the oldest is on the critical path
 
 | Pin | Where |
