@@ -676,6 +676,139 @@ and then make it pass — not to patch seven lines.
 
 ---
 
+## KB-17 — `immutable_events` are not immutable
+
+**Severity:** Medium — an integrity hole inside an account, not across
+accounts. Any member of a team can silently rewrite or remove the canon
+record the continuity validator treats as fixed, and put someone else's
+name on it. **Found:** KB-1 (#290), 2026-09-22, while adding the author-name
+snapshot: the brief asked that "any immutability guard still refuse ordinary
+edits", and there was no guard to ask. **Open.**
+
+The table has one policy and, before #290, no triggers:
+
+```sql
+create policy "immutable_events_project_access" on public.immutable_events
+  for all to authenticated using (... has_role_on_account(p.account_id));
+```
+
+`FOR ALL` with only a `USING` clause grants SELECT, INSERT, UPDATE and DELETE
+alike to every member of the account, and with no `WITH CHECK` nothing
+constrains what a row is changed *to*.
+
+### Reproduced (local database, 2026-09-22, in a rolled-back transaction)
+
+As an ordinary `authenticated` account member (JWT `sub` set, `set local role
+authenticated`), against an event they did not need to have created:
+
+| Statement | Result |
+|---|---|
+| `update immutable_events set description = 'REWRITTEN canon', created_by = '<another user>'` | **UPDATE 1** — description changed, `created_by` now names the other user |
+| `delete from immutable_events where id = …` | **DELETE 1** |
+
+With #290's snapshot trigger in place the forged row's `created_by_name`
+follows the forged id — the name always matches the id, but the id is only as
+trustworthy as this policy. That is the one place KB-1's snapshot guarantee
+has nothing to stand on.
+
+The application only ever inserts and deletes these rows
+(`packages/features/episodes` canon actions), so nothing in the product needs
+UPDATE.
+
+### Proposed fix
+
+- Split the policy: SELECT for members; INSERT `WITH CHECK (created_by =
+  auth.uid())`; **no UPDATE policy for `authenticated`**; DELETE limited to the
+  roles the canon UI actually offers it to (decide: owner/admin, or the event's
+  author). `revenue_records` is the precedent for pinning an author column.
+- A `BEFORE UPDATE` trigger that refuses any change except the nested
+  (`pg_trigger_depth() > 1`) clearing of `created_by` that KB-1 relies on for
+  user deletion — so immutability does not depend on the policy alone.
+- **Fix the class:** grep for every other `for all … using (` policy without a
+  `WITH CHECK` in `apps/web/supabase/migrations/` — the canon migration
+  (`20260128225704_canon_management.sql`) wrote several tables in one sitting.
+  List them in the PR; fix those with an authorship or immutability claim.
+
+### Acceptance criteria
+
+- [ ] pgTAP, red first: a member cannot UPDATE an immutable event, cannot insert one naming another author, and can delete one only if their role allows it
+- [ ] User deletion (KB-1) still succeeds against a user who authored an immutable event, name snapshot intact
+- [ ] Every `FOR ALL` policy lacking `WITH CHECK` is listed, with a decision beside each
+- [ ] Canon UI still creates and removes events — existing E2E green
+
+---
+
+## KB-18 — Verifying or disputing a fact is always refused
+
+**Severity:** Medium — a whole feature that cannot work: no fact can ever
+reach `verified` or `disputed` through the app, for any user, owner included.
+Nothing is corrupted, and nothing downstream can trust a status the UI cannot
+set. **Found:** KB-1 (#290), 2026-09-22, reported as a lead from reading;
+reproduced below. **Open.**
+
+`verifyFactAction` and `disputeFactAction`
+(`packages/features/episodes/src/server/fact-actions.ts`) check that the
+caller is an owner or admin, then write with the **user's** client
+(`getSupabaseServerClient()`):
+
+```ts
+.update({ verification_status: 'verified', verified_by: user?.id, verified_at: … })
+```
+
+The UPDATE policy on `verified_facts` lets owners, admins and members through
+its `USING` clause, and then its `WITH CHECK` demands of the **new** row:
+
+```sql
+verification_status in ('unverified', 'pending_review')
+and verified_by is null and verified_at is null
+```
+
+So the policy permits editing a fact only into a state that is not verified —
+exactly the states these two actions exist to leave. It reads as a guard
+against members self-verifying that was never paired with a privileged path
+for the people who may verify.
+
+### Reproduced (local database, 2026-09-22, in a rolled-back transaction)
+
+As an `authenticated` member of the project's account, on a fresh
+`unverified` fact:
+
+| Statement (what the action sends) | Result |
+|---|---|
+| `update … set verification_status='verified', verified_by=<self>, verified_at=now()` | `ERROR: new row violates row-level security policy for table "verified_facts"` |
+| `update … set verification_status='disputed'` | same error |
+
+Not yet driven through the UI. Per KB-6, a thrown server-action error is
+replaced by a generic sentence in production builds, so what a user most
+likely sees is "something went wrong" — confirm when fixing. The local
+database holds **0** `verified_facts` rows in any status, consistent with
+nobody having been able to use it.
+
+### Proposed fix
+
+- **Do not loosen the member policy.** Its refusal is correct for members, and
+  KB-1's tests rely on members being unable to forge a verifier.
+- Give verification its own path: a `security definer` function (or a
+  role-scoped policy) that checks owner/admin on the project, sets
+  `verified_by = auth.uid()` itself — never from the caller — and moves the
+  status. The actions call that instead of a bare UPDATE. It must coexist with
+  `enforce_verified_facts_update` and #290's name-snapshot trigger: a verified
+  fact ends up with `verified_by_name` set.
+- Return refusals **as values** with their text asserted in a production-build
+  E2E (KB-6).
+- FILM-1123 (fact-checker role) and FILM-1121 (fact management UI) are marked
+  done. When this is fixed, check their acceptance criteria against what
+  actually runs — a form needs driving, not reading.
+
+### Acceptance criteria
+
+- [ ] pgTAP, red first: owner and admin can verify and dispute; a member cannot; nobody can set `verified_by` to another user
+- [ ] Playwright: verify a fact, reload, it is still verified and shows who verified it; dispute another — asserted on the **second** action as well as the first; screenshots in the PR
+- [ ] A refusal reaches the user as a readable message in a production build
+- [ ] FILM-1121 / FILM-1123 criteria re-checked against the running feature, corrections noted in those specs
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
