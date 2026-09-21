@@ -113,6 +113,14 @@ export const getWeeklyDiagnosticsAction = withRefusals(
 
       // Views live in the daily metrics, not the quality read — that one
       // carries impressions, CTR and the duration averages.
+      //
+      // `totals` is also the gate on which videos appear at all. A publish
+      // with no daily rows has not been measured, and every number on its
+      // row would be a zero standing in for "not known" — `views` renders
+      // as "0", which reads as nobody watched. §3 forbids exactly that for
+      // the curve; it is no better for the row. The scheduled report
+      // narrows the same way (`analyticsMap.has(id)`), and it is why §8
+      // says the table renders no rows with ClickHouse off.
       const [quality, curves, totals] = await Promise.all([
         queryQualityMetricsForVideos({
           videoIds,
@@ -122,28 +130,30 @@ export const getWeeklyDiagnosticsAction = withRefusals(
         queryTotalsByVideoIds(videoIds, { ...(projectIds && { projectIds }) }),
       ]);
 
-      return recent.map((publish) => {
-        const metrics = quality.get(publish.id);
-        const points = curves.get(publish.id);
+      return recent
+        .filter((publish) => totals.has(publish.id))
+        .map((publish) => {
+          const metrics = quality.get(publish.id);
+          const points = curves.get(publish.id);
 
-        return {
-          publishId: publish.id,
-          title: publish.title ?? 'Untitled',
-          platform: publish.platform,
-          // Never null in practice — the query filters it out — but the
-          // column is nullable and the row type says so.
-          publishedAt: publish.published_at ?? '',
-          views: totals.get(publish.id)?.views ?? 0,
-          impressions: metrics?.impressions ?? 0,
-          ctr: metrics?.impressionsCtr ?? 0,
-          avgViewDurationSeconds: metrics?.avgViewDurationSeconds ?? 0,
-          // Detected, never stored: nothing writes a `has_cliff` column
-          // that could go stale against a re-fetched curve. A video with no
-          // curve is `null` — not a flat zero, which would render as a
-          // video nobody watched.
-          cliff: points ? detectRetentionCliff(points) : null,
-        };
-      });
+          return {
+            publishId: publish.id,
+            title: publish.title ?? 'Untitled',
+            platform: publish.platform,
+            // Never null in practice — the query filters it out — but the
+            // column is nullable and the row type says so.
+            publishedAt: publish.published_at ?? '',
+            views: totals.get(publish.id)?.views ?? 0,
+            impressions: metrics?.impressions ?? 0,
+            ctr: metrics?.impressionsCtr ?? 0,
+            avgViewDurationSeconds: metrics?.avgViewDurationSeconds ?? 0,
+            // Detected, never stored: nothing writes a `has_cliff` column
+            // that could go stale against a re-fetched curve. A video with
+            // no curve is `null` — not a flat zero, which would render as a
+            // video nobody watched.
+            cliff: points ? detectRetentionCliff(points) : null,
+          };
+        });
     },
     { schema: WeeklyDiagnosticsSchema },
   ),

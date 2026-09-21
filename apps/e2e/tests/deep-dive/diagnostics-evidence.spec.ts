@@ -155,6 +155,50 @@ test.describe('FILM-1616 — diagnostics with data', () => {
       .screenshot({ path: `${OUT}/02-retention-cliff.png` });
   });
 
+  test('opens the drill-down from the keyboard', async ({ page }) => {
+    const team = await seedTeamAccount();
+    const project = await seedProject(team);
+    const connection = await seedYouTubeConnection(team.accountId, 'Channel');
+
+    const video = await seedPublishedEpisode(project.id, connection, {
+      number: 1,
+      title: 'Keyboard reachable',
+    });
+
+    const seeded: SeededVideo = {
+      videoId: video.publishId,
+      projectId: project.id,
+      accountId: team.accountId,
+      connectionId: connection,
+      title: 'Keyboard reachable',
+      publishedAt: daysAgo(2),
+    };
+
+    await seedVideoDim(seeded);
+    await seedVideoMetrics(seeded, [{ ageDays: 1, views: 300 }]);
+
+    await signInAs(page, team);
+
+    await page.goto(
+      `/home/${team.slug}/studio/${project.slug}/analytics?tab=deep-dive`,
+    );
+
+    await page.locator('[data-test="analytics-tab-deep-dive"]').click();
+
+    const row = page.locator('[data-test="diagnostic-row"]').first();
+
+    await expect(row).toBeVisible();
+
+    // The drill-down is the only way to a curve. A row that opens on click
+    // and nothing else is unreachable for anyone not using a mouse.
+    await row.focus();
+    await page.keyboard.press('Enter');
+
+    await expect(
+      page.locator('[data-test="retention-drilldown"]'),
+    ).toBeVisible();
+  });
+
   test('a video with no curve renders empty, never a flat zero', async ({
     page,
   }) => {

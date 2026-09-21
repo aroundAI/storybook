@@ -43,6 +43,12 @@ test.describe('FILM-1616 — weekly diagnostics', () => {
 
     await expect(section).toBeVisible();
 
+    // §8: with ClickHouse off the table renders no rows. A row here would
+    // carry `views: 0` for a video nobody has measured, which reads as
+    // nobody watched.
+    await expect(page.locator('[data-test="diagnostic-row"]')).toHaveCount(0);
+    await expect(section).toContainText('Nothing to diagnose yet');
+
     // Outside the card grid, not one of its cards. The framing is the
     // point: these cards answer "what should we make next", and a low-CTR
     // flag read as a content verdict is the opposite of a breakage check.
@@ -59,8 +65,9 @@ test.describe('FILM-1616 — weekly diagnostics', () => {
     const mine = await seedTeamAccount();
     const myProject = await seedProject(mine);
     const myConnection = await seedYouTubeConnection(mine.accountId, 'Mine');
-
-    await seedPublishedEpisode(myProject.id, myConnection, { number: 1 });
+    const myVideo = await seedPublishedEpisode(myProject.id, myConnection, {
+      number: 1,
+    });
 
     const theirs = await seedTeamAccount();
     const theirProject = await seedProject(theirs);
@@ -68,7 +75,6 @@ test.describe('FILM-1616 — weekly diagnostics', () => {
       theirs.accountId,
       'Theirs',
     );
-
     const theirVideo = await seedPublishedEpisode(
       theirProject.id,
       theirConnection,
@@ -77,18 +83,21 @@ test.describe('FILM-1616 — weekly diagnostics', () => {
 
     await signInAs(page, mine);
 
-    const url = `/home/${mine.slug}/studio/${myProject.slug}/analytics?tab=deep-dive`;
+    // The episode page, not the Deep Dive drill-down: it resolves its
+    // publish from Postgres, so the retention section renders with
+    // ClickHouse off — where the diagnostics table has no rows to click
+    // (§8).
+    const url = `/home/${mine.slug}/studio/${myProject.slug}/episodes/${myVideo.episodeSlug}/analytics`;
 
     /**
-     * Opens the drill-down, optionally rewriting the publish id the action
-     * receives.
+     * Loads the page, optionally rewriting the publish id the retention
+     * action receives.
      *
-     * Rewriting the body is the attack: a server action's request body is
-     * its argument list, so swapping the id there is what a rewritten
-     * request does. Driving the UI alone could never ask for a publish the
-     * page does not know about.
+     * A server action's request body is its argument list, so swapping the
+     * id there is what a rewritten request does. Driving the UI alone could
+     * never ask for a publish the page does not know about.
      */
-    const openDrillDown = async (swapTo?: string) => {
+    const load = async (swapTo?: string) => {
       if (swapTo) {
         await page.route('**/*', async (route) => {
           const request = route.request();
@@ -114,33 +123,26 @@ test.describe('FILM-1616 — weekly diagnostics', () => {
       }
 
       await page.goto(url);
-      await page.locator('[data-test="analytics-tab-deep-dive"]').click();
-      await expect(
-        page.locator('[data-test="weekly-diagnostics-section"]'),
-      ).toBeVisible();
 
-      // The table lists this project's recent publishes from Postgres, so
-      // it has rows even with ClickHouse off — the figures are the zeros.
-      await page.locator('[data-test="diagnostic-row"]').first().click();
+      await expect(
+        page.locator('[data-test="episode-retention"]'),
+      ).toBeVisible();
     };
 
-    // Own publish: the curve area opens and does not report a failure. With
+    // Own publish: the curve area renders and reports no failure. With
     // ClickHouse off the curve itself is empty, which is the point — the
     // difference under test is refusal, not data.
-    await openDrillDown();
-    await expect(
-      page.locator('[data-test="retention-drilldown"]'),
-    ).toBeVisible();
-    await expect(
-      page.locator('[data-test="retention-curve-error"]'),
-    ).toHaveCount(0);
+    await load();
+    await expect(page.locator('[data-test="episode-retention"]')).toContainText(
+      'No retention curve available',
+    );
 
-    // The same click, with another tenant's publish id in the request.
+    // The same page, with another tenant's publish id in the request.
     await page.unroute('**/*');
-    await openDrillDown(theirVideo.publishId);
+    await load(theirVideo.publishId);
 
     await expect(
-      page.locator('[data-test="retention-curve-error"]'),
+      page.locator('[data-test="episode-retention-error"]'),
     ).toBeVisible();
 
     await page.unroute('**/*');

@@ -75,6 +75,16 @@ export default function EpisodeAnalyticsPage() {
       <PageBody>
         {analyticsQuery.isLoading ? (
           <AnalyticsSkeleton />
+        ) : analyticsQuery.isError ? (
+          <div
+            className="flex flex-col items-center justify-center py-12 text-center"
+            role="alert"
+            data-test="episode-analytics-error"
+          >
+            <p className="text-muted-foreground">
+              Episode analytics could not be loaded.
+            </p>
+          </div>
         ) : analyticsQuery.data ? (
           <EpisodeAnalytics data={analyticsQuery.data as never} />
         ) : (
@@ -98,6 +108,18 @@ export default function EpisodeAnalyticsPage() {
 
             {curveQuery.isLoading ? (
               <RetentionCurveChartSkeleton />
+            ) : curveQuery.isError ? (
+              // A failed read is not an absent curve. `data ?? []` would
+              // render the two identically, so a refused or broken request
+              // would show as "no retention curve available" — the mistake
+              // `QueryState` exists to prevent on the Deep Dive tab.
+              <p
+                className="text-sm text-muted-foreground"
+                role="alert"
+                data-test="episode-retention-error"
+              >
+                That retention curve could not be loaded.
+              </p>
             ) : (
               // No durationSeconds until FILM-1710 lands a real asset
               // duration: video_dim's column is the episode's, so a Short's

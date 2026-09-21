@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getRetentionCurveAction } from '../src/server/diagnostics-actions';
+import {
+  getRetentionCurveAction,
+  getWeeklyDiagnosticsAction,
+} from '../src/server/diagnostics-actions';
 
 /**
  * FILM-1616 §2. `getRetentionCurveAction` is the first action in this
@@ -29,10 +32,28 @@ const state: {
   curveCalls: Array<{ videoId: string; projectIds?: string[] }>;
   /** Tables read through the admin client, which this action must not use. */
   adminReads: string[];
+  /** Publishes the paged Postgres read returns. */
+  publishes: Array<{
+    id: string;
+    title: string | null;
+    platform: string;
+    published_at: string | null;
+  }>;
+  /** What ClickHouse answers. Empty maps are `CLICKHOUSE_ENABLED=false`. */
+  totals: Map<string, { views: number }>;
+  quality: Map<string, { impressions: number; impressionsCtr: number }>;
+  curves: Map<
+    string,
+    Array<{ elapsedRatio: number; audienceWatchRatio: number }>
+  >;
 } = {
   publish: null,
   curveCalls: [],
   adminReads: [],
+  publishes: [],
+  totals: new Map(),
+  quality: new Map(),
+  curves: new Map(),
 };
 
 vi.mock('@kit/next/actions', () => ({
@@ -61,8 +82,17 @@ vi.mock('@kit/clickhouse/server', () => ({
       { elapsedRatio: 0.1, audienceWatchRatio: 0.5 },
     ];
   },
-  queryRetentionCurves: async () => new Map(),
-  queryQualityMetricsForVideos: async () => new Map(),
+  queryRetentionCurves: async () => state.curves,
+  queryQualityMetricsForVideos: async () => state.quality,
+  queryTotalsByVideoIds: async () => state.totals,
+}));
+
+vi.mock('@kit/shared/pagination', () => ({
+  fetchAllRows: async () => state.publishes,
+}));
+
+vi.mock('../src/server/scope-access', () => ({
+  assertScopeAccess: async () => 'account-1',
 }));
 
 vi.mock('@kit/supabase/server-client', () => ({
@@ -104,6 +134,10 @@ describe('getRetentionCurveAction', () => {
     state.publish = null;
     state.curveCalls = [];
     state.adminReads = [];
+    state.publishes = [];
+    state.totals = new Map();
+    state.quality = new Map();
+    state.curves = new Map();
   });
 
   it('refuses a publish the caller cannot see, and never reads ClickHouse', async () => {
@@ -146,5 +180,69 @@ describe('getRetentionCurveAction', () => {
     expect(state.curveCalls).toEqual([
       { videoId: PUBLISH, projectIds: [PROJECT] },
     ]);
+  });
+});
+
+describe('getWeeklyDiagnosticsAction', () => {
+  const scope = { projectId: PROJECT };
+  const call = () =>
+    getWeeklyDiagnosticsAction({ scope, sinceDays: 7, limit: 25 });
+
+  beforeEach(() => {
+    state.publishes = [
+      {
+        id: 'pub-measured',
+        title: 'Measured',
+        platform: 'youtube',
+        published_at: '2026-09-20T00:00:00Z',
+      },
+      {
+        id: 'pub-unmeasured',
+        title: 'Never measured',
+        platform: 'youtube',
+        published_at: '2026-09-20T00:00:00Z',
+      },
+    ];
+    state.totals = new Map();
+    state.quality = new Map();
+    state.curves = new Map();
+  });
+
+  it('renders no rows when ClickHouse is off (§8)', async () => {
+    // Every query returns empty. A row here would carry `views: 0` for a
+    // video nobody has measured, which reads as "nobody watched" — the
+    // error §3 forbids for the curve, and no better for the row.
+    const result = await call();
+
+    expect(result.ok && result.data).toEqual([]);
+  });
+
+  it('omits a publish with no daily metrics, keeps one that has them', async () => {
+    state.totals = new Map([['pub-measured', { views: 500 }]]);
+
+    const result = await call();
+
+    expect(result.ok && result.data.map((row) => row.publishId)).toEqual([
+      'pub-measured',
+    ]);
+  });
+
+  it('reports a measured zero, which is a figure and belongs', async () => {
+    // Distinct from the case above: this video *was* measured and earned
+    // nothing. Dropping it would hide a real result.
+    state.totals = new Map([['pub-measured', { views: 0 }]]);
+
+    const result = await call();
+
+    expect(result.ok && result.data).toHaveLength(1);
+    expect(result.ok && result.data[0]!.views).toBe(0);
+  });
+
+  it('leaves cliff null for a measured video with no curve', async () => {
+    state.totals = new Map([['pub-measured', { views: 500 }]]);
+
+    const result = await call();
+
+    expect(result.ok && result.data[0]!.cliff).toBeNull();
   });
 });

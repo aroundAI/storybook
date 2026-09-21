@@ -1,5 +1,7 @@
 'use client';
 
+import type React from 'react';
+
 import { AlertTriangle } from 'lucide-react';
 
 import { Skeleton } from '@kit/ui/skeleton';
@@ -64,9 +66,14 @@ export function WeeklyDiagnosticsTable({
   }
 
   if (rows.length === 0) {
+    // Two cases, and the message must not pick one: nothing was published
+    // in the window, or something was and has no metrics yet. Saying
+    // "nothing published" in the second case sends a reader looking for a
+    // publishing bug that is not there.
     return (
       <p className={'text-sm text-muted-foreground'}>
-        Nothing published recently enough to diagnose.
+        Nothing to diagnose yet. A video appears here once its first analytics
+        sync lands, so the last day or two of uploads may be missing.
       </p>
     );
   }
@@ -93,8 +100,37 @@ export function WeeklyDiagnosticsTable({
               return (
                 <TableRow
                   key={row.publishId}
-                  className={onSelect ? 'cursor-pointer' : undefined}
+                  className={
+                    onSelect
+                      ? 'cursor-pointer focus-visible:bg-muted focus-visible:outline-none'
+                      : undefined
+                  }
                   onClick={() => onSelect?.(row.publishId)}
+                  // The drill-down is the only route to a video's curve, so
+                  // a row that opens on click and nothing else puts it out
+                  // of reach of anyone not using a mouse. Announced as a
+                  // button and named, because "Packaging failed" alone does
+                  // not say what activating it does.
+                  {...(onSelect
+                    ? {
+                        role: 'button' as const,
+                        tabIndex: 0,
+                        'aria-label': `Show the retention curve for ${row.title}`,
+                        onKeyDown: (
+                          event: React.KeyboardEvent<HTMLTableRowElement>,
+                        ) => {
+                          if (event.key !== 'Enter' && event.key !== ' ') {
+                            return;
+                          }
+
+                          // Space scrolls the page otherwise, which moves
+                          // the row out from under the reader who just
+                          // opened it.
+                          event.preventDefault();
+                          onSelect(row.publishId);
+                        },
+                      }
+                    : {})}
                   data-test={'diagnostic-row'}
                 >
                   <TableCell className={'max-w-[220px]'}>
