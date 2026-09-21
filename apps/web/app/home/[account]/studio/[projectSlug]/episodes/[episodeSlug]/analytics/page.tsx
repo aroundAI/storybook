@@ -108,10 +108,17 @@ export default function EpisodeAnalyticsPage() {
             data-test="episode-retention"
           >
             <h3 className="text-base font-semibold">Audience retention</h3>
+            {/* A distinct id from the curve's error below. The two are
+                different failures — no video found, versus a curve that
+                could not be read — and a guard asserting one should not be
+                satisfiable by the other. They are not confusable today,
+                because this branch runs only when no publish id resolved
+                and the curve section needs one, but sharing an id invites
+                exactly that the next time a failure state is added here. */}
             <p
               className="text-sm text-muted-foreground"
               role="alert"
-              data-test="episode-retention-error"
+              data-test="episode-video-error"
             >
               That episode&rsquo;s video could not be found.
             </p>

@@ -220,7 +220,7 @@ test.describe('FILM-1616 — weekly diagnostics', () => {
     );
 
     await expect(
-      page.locator('[data-test="episode-retention-error"]'),
+      page.locator('[data-test="episode-video-error"]'),
     ).toBeVisible();
 
     await page.unroute('**/*');
