@@ -620,6 +620,62 @@ expired token, and sees `Unknown platform: twitter`.
 
 ---
 
+## KB-16 — The Overview tab shows figures nobody measured
+
+**Severity:** High — invented numbers presented as a creator's own data, on
+the first screen they see. Not a leak and not a crash, which is how it has
+survived; by this product's own standard (never render a default as a
+measurement) it is the worst kind of wrong. **Found:** FILM-1701 (#288),
+2026-09-22, which fixed the same defect on the Audience tab and listed these
+as outside its file map. **Open.**
+
+Every line below was re-read on `main` (dbbd5ee8) before being written down.
+
+| Where | What the creator sees | Why it is invented |
+|---|---|---|
+| `overview/shares-card.tsx:23` | A donut: 83% direct, 17% copy link | `breakdown \|\| { direct: 83, copyLink: 17 }` — commented "from prototype". `analytics-dashboard.tsx` never passes `shareBreakdown` to `OverviewGrid`, so the donut is 83/17 for **every account, always** |
+| `overview/revenue-card.tsx:33-36,55,68` | Ad Revenue and Sponsorships, with bars | `revenue * 0.7` and `revenue * 0.3`; bars fixed at 70/30. `revenueBreakdown` is never passed either. The real split exists — FILM-1609's revenue mix — and is not used |
+| `overview/revenue-card.tsx:43` | "Projection: $10k by month end" | A string literal |
+| `overview/shares-card.tsx:30` | "Viral coefficient is rising" | A string literal. Nothing computes a viral coefficient |
+| `overview/platform-split-card.tsx:30` | "Dominant performance on short-form" | A string literal |
+| `overview/comments-card.tsx:41` | "*X* generated the most discussion" | Rendered with 0 comments |
+| `metric-cards.tsx` + `lib/format.ts:79-83` | **+100.0%** beside every non-zero metric | `calculateChange` returns 100% "up" when `previous === 0`, and three of the four callers pass `previousData={null}` (`analytics-dashboard.tsx:379`, `project-dashboard.tsx:51`, `episode-analytics.tsx:51`), which the card reads as 0. Only `company-dashboard.tsx` passes a real previous period. "No comparison available" is being drawn as "doubled" |
+
+**The class, not the instances.** These are one defect seven times: a
+component that accepts optional data and, when it is absent, draws something
+anyway. FILM-1701 added `no-literal-fallbacks.test.ts` for the Audience
+components. The fix here is to widen that guard to every analytics component
+and then make it pass — not to patch seven lines.
+
+### Proposed fix
+
+- **Remove, do not replace with a nicer guess.** No breakdown → no donut; an
+  empty state in the manner of FILM-1701's `NotCollectedCard`. We do not
+  collect a share breakdown at all, so that card says so.
+- **Revenue card:** plumb the real mix from FILM-1609's revenue queries, per
+  currency (KB-12 — one figure per currency; coordinate with that fix, it
+  touches the same card). No mix → no bars.
+- **Footers:** delete all four literals. A footer earns its place by stating
+  a denominator or a caveat (FILM-1701's Device card is the pattern), not by
+  sounding insightful.
+- **The +100%:** `previousData: null` must mean "no comparison" — no arrow,
+  no percentage. `calculateChange` should return a no-baseline result for
+  `previous === 0` rather than `100`; a change from nothing is not a
+  percentage. Then either pass a real previous period to the three callers
+  (`company-dashboard` shows how) or show nothing.
+- **Invariant in the type:** the cards take a discriminated
+  `measured | absent` prop, so "absent" cannot fall through to a default.
+
+### Acceptance criteria
+
+- [ ] `no-literal-fallbacks` guard covers every component under `content-analytics/src/components`, seen red on today's code for each row above
+- [ ] No share donut, revenue split, projection or canned footer renders without data behind it
+- [ ] Revenue split comes from recorded revenue, per currency, or is absent
+- [ ] A metric with no previous period shows no change indicator; `calculateChange(n, 0)` no longer reports 100%
+- [ ] Playwright evidence: Overview for an account with no breakdown data, and one with real revenue mix — screenshots of both, values read from the DOM
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
