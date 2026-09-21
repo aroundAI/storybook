@@ -71,12 +71,32 @@ Examples, from the research and from what we can actually compute:
 | YouTube long · Hook | impressions CTR | first-30s retention |
 | YouTube long · Attention | average view duration | average % viewed, retention curve |
 | TikTok short · Attention | average watch time | `full_video_watched_rate` |
-| Instagram short · Transmission | shares per reach | saves per reach, comments per reach |
-| Instagram short · Attention | average watch time | average % viewed |
+| Instagram short · Transmission | shares per reach | saves per reach, comments per reach, **reposts per reach** |
+| Instagram short · Attention | `ig_reels_avg_watch_time` per reach | **`reels_skip_rate`** |
 
 Treating signals as interchangeable loses the thing that makes a stage
 diagnosable: the primary says *whether* the stage is weak, the supporting
 signals say *why*.
+
+**Corrected 2026-09-21 against the capability reference.** The Instagram
+Attention row previously read `average watch time` / `average % viewed`. Both
+halves were wrong in opposite directions, which is why it is worth writing down:
+
+- The **primary is real and better-named**. `ig_reels_avg_watch_time` is
+  documented for REELS. It is simply never requested
+  (`instagram-insights.ts`), so FILM-1712 must land before this binds. Its
+  **unit is inferred to be milliseconds** and must be confirmed before a figure
+  is shown — a 1000× error here is silent and plausible-looking.
+- The **supporting signal does not exist**. Instagram has no completion rate and
+  no retention graph, so "average % viewed" cannot be computed for it.
+  `reels_skip_rate` — "the percentage of views from people who skipped during
+  the first 3 seconds" — is the real supporting signal, and it is arguably a
+  *Hook* signal being borrowed by Attention. Worth deciding deliberately rather
+  than by default.
+
+Transmission gains `reposts_count` (Media node, FEED and REELS, added
+2026-04-22) — the first media-level pass-it-on signal Instagram has offered,
+which is precisely what this stage asks for. It is subject to FILM-1712.
 
 ## 4. Support is computed, never authored
 

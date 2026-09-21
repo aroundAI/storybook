@@ -15,6 +15,11 @@ checks, each able to falsify a row in the reference. One ran and resolved more
 than expected. **Two could not run, for reasons that no amount of care would
 have changed** — one needs a paid credential, the other an app registration.
 
+A third was added on 2026-09-21 (Check C), for a different reason: it is cheap,
+but we cannot run it because we never requested the permission. It is here
+because a first pass answered its question from a blog post instead, and got it
+wrong.
+
 Their answers are not unknowable. They are unknown *to us, today, at a price we
 have not chosen to pay*. That is a different thing from an open research
 question, and it deserves to be tracked rather than reasoned around. This spec
@@ -93,6 +98,35 @@ when that spec is picked up**, since FILM-1711 has to register the scope anyway
 and will hold a working token. It is listed here so it is not lost if FILM-1711
 slips.
 
+## 3b. Check C — which Instagram aggregate-metric names exist
+
+Added 2026-09-21, and it exists because of a mistake made inside this phase.
+
+| | |
+|---|---|
+| **Question** | Is it `total_views_count` / `total_like_count` / `total_comments_count` (Media node), `total_views` / `total_likes` / `total_comments` (insights page), or both? And does `facebook_views` exist at all? |
+| **Status today** | *Inferred*, both families recorded, neither requestable |
+| **Why it cannot be settled from docs** | Meta's two reference pages give different names, and the one carrying the short names **still documents `impressions` and `engagement`, removed 2025-04-21** — it is stale, so it cannot arbitrate. `facebook_views` appears only in an announcement blog |
+| **Why it did not run** | Needs `instagram_manage_insights`, which we have never requested |
+| **Cost to settle** | One call, once FILM-1711 lands. Effectively free at that point |
+| **Blocks** | FILM-1712 (cannot request them), FILM-1722 (cannot define the second Instagram denominator), FILM-1714 (Transmission binding) |
+
+```bash
+# Once insights permission is held. Ask for both families and see which returns.
+curl -s "https://graph.facebook.com/v23.0/<IG_MEDIA_ID>?fields=total_views_count,total_like_count,total_comments_count,reposts_count,saved_count,shares_count&access_token=$TOKEN"
+curl -s "https://graph.facebook.com/v23.0/<IG_MEDIA_ID>/insights?metric=total_views,total_likes,total_comments&access_token=$TOKEN"
+```
+
+⚠️ **Note the version.** These fields were announced 2026-04-22; we pin **v23.0,
+released 2025-05-29**, which predates them. If both calls fail, try a current
+version before concluding the fields do not exist — that makes this check
+dependent on FILM-1723 as well as FILM-1711.
+
+**The lesson is the check.** An earlier pass recorded the short names as fact on
+the strength of a blog post, which is the precise failure FILM-1721 exists to
+prevent, committed inside FILM-1721's own phase. A name is not settled until a
+reference page or a live response says so.
+
 ## 4. What is *not* deferred
 
 This spec covers questions we cannot answer. It does **not** cover work we simply
@@ -121,6 +155,9 @@ Un-defer **Check A** on any of:
 - X publishes tier information for the analytics endpoints, or changes its
   access tiers again (it has done so twice since 2025)
 
+Un-defer **Check C** the moment FILM-1711 holds an Instagram token — it costs one
+call and unblocks three specs.
+
 Un-defer **Check B** on any of:
 
 - FILM-1711 starts — fold it in rather than running it separately
@@ -143,6 +180,9 @@ This spec is complete when both checks have been run and their answers recorded
       "30d from post creation" ceiling is restated per endpoint
 - [ ] Check B run, and any field the endpoint does not return is added to the
       reference's forbidden block
+- [ ] Check C run, the surviving Instagram aggregate names recorded in the field
+      index, and the losing family added to the forbidden block
+- [ ] `facebook_views` is confirmed or recorded as never having existed
 - [ ] `docs/platform-capability-reference.md` open-questions table no longer
       lists either check, and every row it *does* list still names an owner
 

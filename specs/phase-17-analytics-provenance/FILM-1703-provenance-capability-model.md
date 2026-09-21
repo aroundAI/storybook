@@ -21,8 +21,27 @@ Established by reading every writer and confirming against a live ClickHouse:
 | `video_traffic_sources` | native | **not ingested** | **unsupported** |
 | `channel_daily`, `video_reach_daily`, `video_retention_curves` | native | — | — |
 | `video_metrics` | native, true daily | **derived** — snapshot delta | **derived** — snapshot delta |
-| Revenue from sync | native | — | — |
+| Watch time | native | **not ingested** — Business API | **not ingested** — documented, never requested |
+| Revenue from sync | **`scope_missing`** — plumbed, unauthorised | — | — |
 | `video_audience` | 7 dimensions | 3, percentage-only | 3, account-level |
+
+Two rows corrected 2026-09-21, both in the same direction — *we haven't* was
+being recorded as *the platform can't*:
+
+- **Watch time.** `ig_reels_avg_watch_time` and `ig_reels_video_view_total_time`
+  are documented for Instagram REELS and simply never requested, so Instagram's
+  watch-time level is `not_ingested`, not `unsupported`. TikTok's is
+  `not_ingested` too, but for a costlier reason — a separate Business API app.
+  The two share a level and not a price, which is what the `blockedBy` field is
+  for.
+- **Revenue.** This read `native` for YouTube unconditionally. YouTube revenue is
+  plumbed end to end — `analytics-sync-cron.ts:733-735` maps it and
+  `upsertRevenueRecords` writes it to `revenue_records` with `source = 'api'` —
+  but arrives as zero because `yt-analytics-monetary.readonly` is not requested.
+  That is `scope_missing`, and since 2026-09-09 the metrics are additionally
+  **YouTube Partner Program members only**, which is `account_type_gated` — the
+  same creator-resolved shape as TikTok's Business account, and its second
+  instance. Facebook has its own revenue surface; see FILM-1726.
 
 `insertVideoTrafficSources` has exactly three call sites in the repository —
 `server/reporting/report-ingest.ts:316`,

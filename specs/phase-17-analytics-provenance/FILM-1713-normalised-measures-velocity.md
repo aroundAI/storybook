@@ -52,9 +52,14 @@ Before any rate can be defined, the thing it divides by has to be pinned down �
 and `views` is not one metric.
 
 **YouTube redefined it on 2026-08-27**, three weeks before this spec was
-written: `views` now counts plays from the first frame with no minimum watch
-time, for all formats. Shorts changed the same way on 2025-03-31. The previous
-methodology moved to **`engagedViews`**.
+written: `views` now counts from the moment playback begins, **including
+autoplay**, for all formats. Shorts changed the same way on 2025-03-31. The
+previous methodology moved to **`engagedViews`** (introduced 2025-04-24).
+
+The autoplay clause matters to a *rate*, not only to a count: it enlarges the
+denominator without enlarging the numerator of any engagement ratio, so every
+per-view rate steps **down** at that date by an amount that varies with how
+much of a channel's traffic autoplays.
 
 So `video_metrics.views` for YouTube holds two different metrics either side of
 that date, and every rate computed from it inherits the discontinuity.
@@ -63,8 +68,14 @@ that date, and every rate computed from it inherits the discontinuity.
 no playback, estimated), play (≥1ms, replays excluded), 3-second view (≥3s *or*
 full length if shorter), and ThruPlay (ads only, not on organic insights).
 
-**Instagram's `views` replaced `plays`** in 2025, and **TikTok's Business-API
-`video_views` mixes organic and paid** inseparably.
+**Instagram's `views` replaced `plays`** in 2025 — and since 2026-04-22 it has a
+**second, concurrent** denominator alongside it, aggregating boosted and
+crossposted-Facebook placements and including replays. That is the shape this
+spec attributes to Facebook alone. Its field name is unsettled (FILM-1725
+Check C), but the registry must be able to hold two live Instagram definitions,
+not one superseding another.
+
+**TikTok's Business-API `video_views` mixes organic and paid** inseparably.
 
 Every measure therefore records **which view definition produced it**, read
 from FILM-1722's registry, and a measure computed across a definition change is
@@ -75,7 +86,7 @@ continuous across the YouTube change and should back anything historical.
 
 | Platform | Preferred denominator | Fallback |
 |---|---|---|
-| Instagram | `reach` | `views`, with the substitution recorded |
+| Instagram | `reach` | `views`, with the substitution recorded. **Never the aggregate** — it spans placements and includes replays, so a rate over it is not a rate over this media's organic performance |
 | YouTube | `views` | — |
 | TikTok | `views` | — |
 

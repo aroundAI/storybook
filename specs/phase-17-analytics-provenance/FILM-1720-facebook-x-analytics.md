@@ -27,8 +27,15 @@ dependencies: FILM-1711, FILM-1714, FILM-1721, FILM-1723
 > than it was scoped as. And **FILM-1714's "no Monetisation stage" decision
 > should be revisited** — it rests on `video_metrics.revenue_cents` being
 > literal zero on all four write paths, which is a fact about our writers, not
-> about the platforms. `post_video_retention_graph` is also resolved at **40
-> intervals**, so that open question is closed.
+> about the platforms.
+>
+> **§4 below is right and this note was briefly wrong**: `post_video_retention_graph`
+> names no segment count. The 40 intervals belong to `total_video_retention_graph`.
+> That open question stays open.
+>
+> The Monetisation decision lives in the phase `README.md:215`, not in FILM-1714
+> — corrected here, since this spec is where it is challenged. It is re-argued
+> in **FILM-1726**.
 >
 > See [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md).
 
@@ -129,6 +136,32 @@ metric, per FILM-1721 §8), an explicit **replay count**
 (`fb_reels_replay_count`), and **follows attributed to a reel**
 (`post_video_followers`).
 
+**And four more things, added 2026-09-21 after re-reading the live reference.**
+The list above was drawn from an eight-metric summary; the edge carries 57 video
+metrics, 11 Reels metrics and 4 ad-break metrics. What that omitted is not
+filler:
+
+- **Organic/paid splits on most view metrics.** No other platform here offers
+  this — TikTok's `video_views` explicitly *cannot* be separated. It is the only
+  place in the product where "did this do well, or was it boosted" is answerable
+  from the platform rather than inferred.
+- **`total_video_views_autoplayed` vs `total_video_views_clicked_to_play`.** An
+  intent distinction, and a better Hook signal than anything YouTube exposes —
+  particularly now that YouTube's own `views` folds autoplay in and stops
+  distinguishing them.
+- **`total_video_view_time_by_age_bucket_and_gender`** — demographics weighted
+  by watch time rather than by view count. FILM-1703 models the `demographics`
+  family as counts; this does not fit that shape and needs a decision.
+- **A revenue surface**: `total_video_ad_break_earnings`,
+  `total_video_ad_break_ad_cpm`, `total_video_ad_break_ad_impressions`,
+  `creator_monetization_qualified_views`. Page admins only. This is what puts
+  the "no Monetisation stage" decision back in play — **FILM-1726**.
+
+**Effort.** This spec is `XL` for reasons that predate the correction (an enum
+widening across eight tables, two providers that do not exist). The Facebook
+half is now larger still, and the sensible response is to **split it**: a
+Facebook leg that can ship, and an X leg blocked behind FILM-1725 Check A.
+
 ### Four denominators, none of them a YouTube view
 
 1. **Impression** — entered the screen, no playback, **estimated**
@@ -211,6 +244,9 @@ diff rather than by a test.
 - [ ] The two X quartile vocabularies are never mixed
 - [ ] X's 30-day wall is expressed as a `DataWindow` anchored on publish date
 - [ ] The `/2/media/analytics` window is recorded as `unknown` with a named owner until X answers in writing
+- [ ] Facebook's organic/paid split is preserved, not summed away
+- [ ] `total_video_views_autoplayed` and `total_video_views_clicked_to_play` are distinguishable, and neither is labelled simply "views"
+- [ ] Facebook's ad-break revenue metrics are either ingested or recorded as deliberately out of scope with a reason
 - [ ] Facebook's four denominators are distinguishable, and `total_video_15s_views` is never labelled ThruPlay
 - [ ] `post_video_avg_time_watched` is not presented as comparable to YouTube's average view duration
 - [ ] Facebook's absence of follower/non-follower reach is recorded, not worked around

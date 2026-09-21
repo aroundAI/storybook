@@ -22,7 +22,8 @@ very different amounts and only one of them is cheap.
 | Kind | Platform | Fix |
 |---|---|---|
 | Requested, dropped at ingest | Instagram `reach` | a column and a mapping |
-| Not requested, same endpoint | YouTube ×3 | add to a metrics string |
+| Not requested, same endpoint | YouTube ×3, **Instagram ×2 (watch time)** | add to a metrics string |
+| Not requested, needs the naming settled | Instagram ×3 aggregates + `reposts_count` | one call, then a request |
 | **Different API entirely** | TikTok ×5 | a second integration |
 | **Does not exist for this surface** | Instagram `follows`, `profile_visits` on Reels | record as a limit |
 
@@ -87,12 +88,23 @@ kind.
 Units are still *inferred* to be milliseconds; validate before use.
 
 Also added by Meta on **2026-04-22** and not in any spec written before that was
-known: `total_views`, `total_likes`, `total_comments` (aggregated across
-Instagram, crossposted Facebook **and boosted** media), `reposts_count`,
-`saved_count`, `shares_count`. The aggregate three are a **different
-denominator** from `views` and must not be substituted for it — FILM-1722 owns
-defining them. `reposts_count` is the first media-level transmission signal
-Instagram has offered and is relevant to FILM-1714.
+known. Two groups, and they are not equally safe to act on:
+
+- **Confirmed on the Media node reference**, FEED and REELS: `reposts_count`,
+  `saved_count`, `shares_count`. `reposts_count` is the first media-level
+  transmission signal Instagram has offered, and is relevant to FILM-1714.
+- **Not settled**: the aggregate three appear as `total_views_count`,
+  `total_like_count`, `total_comments_count` on the Media node reference and as
+  `total_views`, `total_likes`, `total_comments` on the insights page — which
+  still lists `impressions` and `engagement`, removed 2025-04-21, so it cannot
+  be trusted to settle it. An earlier draft of this paragraph named only the
+  short family, on the strength of an announcement blog post. That was the
+  failure FILM-1721 exists to prevent, committed inside FILM-1721's own phase.
+
+The aggregates are a **different denominator** from `views` — they fold in
+boosted and crossposted-Facebook placements, and `total_views_count` explicitly
+includes **replays** — so they must not be substituted for it. FILM-1722 owns
+defining them, once FILM-1725 Check C says what they are called.
 
 See [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md).
 
@@ -102,8 +114,13 @@ See [docs/platform-capability-reference.md](../../docs/platform-capability-refer
 discarded because no column exists. It is the denominator the growth research
 recommends for nearly every Instagram ratio. Give it one.
 
-Also worth taking while here, all already returned: `total_interactions`,
-`reposts`.
+Also worth taking while here, already returned: `total_interactions`.
+
+`reposts_count`, `saved_count` and `shares_count` (Media node, FEED and REELS,
+added 2026-04-22) are new requests rather than discards, and are confirmed by
+the field reference. The **aggregate** three are not — `total_views_count` vs
+`total_views` are two competing names across two Meta pages, one of which is
+stale. Settle the family before requesting either; FILM-1725 Check C.
 
 ## 4. What is a second integration
 
@@ -140,10 +157,17 @@ first draft made.
 The rule this spec establishes, independent of platform: **a field we do not
 have is null or absent, never zero.**
 
-Today `saves: 0` for TikTok, `watch_time_seconds: 0` for Instagram, and
-`revenue_cents: 0` everywhere are indistinguishable from genuine zeros. Several
-of those exist *because* a never-requested field was mapped into a column — the
-first draft would have added more.
+Today `saves: 0` for TikTok and `revenue_cents: 0` everywhere are
+indistinguishable from genuine zeros. Several of those exist *because* a
+never-requested field was mapped into a column — the first draft would have
+added more.
+
+`watch_time_seconds: 0` for Instagram belonged on that list when it was written
+and no longer does: it is zero because **we do not ask**, not because Instagram
+cannot answer. Requesting `ig_reels_avg_watch_time` and
+`ig_reels_video_view_total_time` turns it into a measurement; until then it is a
+`scope_missing`-shaped gap, not an unmeasurable one. The distinction is the
+whole point of FILM-1703's four levels.
 
 Where a column cannot be made nullable cheaply, the capability matrix carries
 the fact and the UI reads it from there. The default is to represent absence.
@@ -175,6 +199,10 @@ is storage with no purpose.
 - [ ] A test fails when a provider type declares a field the request does not ask for **and** when a request asks for a field FILM-1721 does not document
 - [ ] YouTube's daily query returns average view percentage, and the separate totals call is removed or justified
 - [ ] Instagram's `reach` reaches a column instead of `extra_metrics`
+- [ ] `ig_reels_avg_watch_time` and `ig_reels_video_view_total_time` are requested for REELS, and their unit is confirmed empirically before the value is stored
+- [ ] Instagram `watch_time_seconds` is a measurement or an honest null, never a hardcoded zero
+- [ ] `reposts_count`, `saved_count` and `shares_count` are requested for FEED and REELS
+- [ ] No aggregate Instagram metric is requested under either naming family until FILM-1725 Check C settles which exists
 - [ ] The five TikTok field names that do not exist are recorded as such, so they are not re-added
 - [ ] Instagram `follows`/`profile_visits` are recorded as unavailable for Reels rather than requested
 - [ ] No provider maps a never-requested field to a column as zero

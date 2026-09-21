@@ -11,10 +11,17 @@ dependencies: FILM-1703, FILM-1713, FILM-1716, FILM-1721
 ## 1. Overview
 
 Platform view definitions differ enough that cross-platform percentages are not
-comparable — X counts a view at two seconds with half the player visible,
-YouTube distinguishes engaged views from swipes, TikTok reports several
-different play-time measures. The only defensible benchmark is **the channel's
-own history at a comparable age**.
+comparable — YouTube's `views` counts from the moment playback begins including
+autoplay, while `engagedViews` carries the older past-the-first-frame
+methodology; TikTok's Business-API `video_views` mixes organic and paid
+inseparably; Facebook has four concurrent denominators at once. The only
+defensible benchmark is **the channel's own history at a comparable age**.
+
+*(An earlier draft asserted "X counts a view at two seconds with half the player
+visible". That claim appears nowhere in the capability reference and had no
+citation, so it is removed rather than repeated — the rule FILM-1721 sets applies
+to this spec's prose too, not only to request code. If someone has the vendor
+source, it belongs in the reference first.)*
 
 That is already 90% built and has never been wired together:
 

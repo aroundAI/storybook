@@ -16,7 +16,7 @@ before this spec was written**.
 
 | Platform | What `views` counts |
 |---|---|
-| YouTube (from 2026-08-27) | plays from the first frame, **no minimum watch time** |
+| YouTube (from 2026-08-27) | from the moment playback begins — **includes autoplay**, hover-to-play and click/tap. No minimum watch time |
 | YouTube (before) | played past the first frame, or clicked/tapped to play |
 | Instagram | "times the media has been played" — replaced `plays` in 2025 |
 | TikTok Display API | `view_count` |
@@ -30,11 +30,22 @@ defensible only if something records what each one means.
 ## 2. The YouTube discontinuity is live
 
 - **2025-03-31** — YouTube changed Shorts view counting: `views` counts plays
-  or replays with no minimum watch time.
-- **2026-04-24** — `engagedViews` introduced, carrying the *previous*
-  methodology.
-- **2026-08-27** — **YouTube unified view counting across all formats.**
-  `views` now counts from the first frame for everything, not just Shorts.
+  or replays with no minimum watch time. (Announced 2025-03-26; the effective
+  date is the one that matters to a registry, and it is the one recorded here.)
+- **2025-04-24** — `engagedViews` introduced, carrying the *previous*
+  methodology. **Corrected 2026-09-21: this spec previously dated it 2026-04-24,
+  a year late.** The revision history reads *"A new metric, `engagedViews`, will
+  reflect the previous view-counting methodology"* under 2025-04-24. A registry
+  keyed on effective dates is worth less with a wrong date than with none, so
+  this is a correctness fix, not a typo.
+- **2026-08-27** — **YouTube unified view counting across all formats.** Verbatim:
+  *"YouTube will count public views the moment a video begins to play"*,
+  *"(includes autoplay, hold the pointer over, and click/tap to play)"*.
+
+  **The autoplay clause is the part with teeth.** An autoplayed impression now
+  counts as a view where it previously did not, so the step change at this date
+  is upward by an amount that varies with surface mix. A channel whose traffic
+  shifted toward browse/suggested will show growth that is partly definitional.
 
 So `video_metrics.views` for YouTube contains **two different metrics either
 side of 2026-08-27**, and for Shorts, either side of 2025-03-31 as well. Any

@@ -26,7 +26,7 @@ ClickHouse instance:
 | `video_traffic_sources` | native | **not ingested** | **unsupported** |
 | `channel_daily`, `video_reach_daily`, retention curves | native | — | — |
 | `video_metrics` | native, true daily | derived — snapshot delta | derived — snapshot delta |
-| Revenue from sync | native | — | — |
+| Revenue from sync | **`scope_missing`** — plumbed, never authorised | — | — |
 | `video_audience` | 7 dimensions | 3, percentage-only | 3, account-level |
 
 The page presents all of this as one kind of thing.
@@ -153,7 +153,8 @@ FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook + X)
 | [FILM-1722](./FILM-1722-view-definition-registry.md) | DRAFT | M | What "a view" means per platform, with effective dates and the YouTube discontinuity |
 | [FILM-1723](./FILM-1723-api-version-consolidation.md) | DRAFT | M | One pinned version per vendor; the Graph v18 token-refresh risk; X onto `api.x.com` |
 | [FILM-1724](./FILM-1724-channel-experiments.md) | DRAFT | L | Which styles work: groups of new videos, one per style, compared at the same age; no verdict on thin samples |
-| [FILM-1725](./FILM-1725-deferred-vendor-verifications.md) | ⏸️ DEFERRED | S | The two FILM-1721 checks that need a paid X token and a TikTok sandbox app. Tracked, with the trigger that brings each back |
+| [FILM-1725](./FILM-1725-deferred-vendor-verifications.md) | ⏸️ DEFERRED | S | The FILM-1721 checks that need a paid X token, a TikTok sandbox app, or an Instagram insights permission we do not hold |
+| [FILM-1726](./FILM-1726-monetisation-stage.md) | DRAFT | M | The Monetisation stage re-argued, after its premise turned out to be a fact about our writers rather than the platforms |
 
 **Two independent paths, deliberately.** `metrics → diagnosis` (FILM-1718)
 works without the genome, so a creator gets a usable diagnosis immediately;
@@ -212,9 +213,21 @@ Transmission, Audience. A total would average a dark stage as zero — exactly
 the failure the dark/weak distinction exists to prevent — and it collapses the
 diagnosis that makes the data useful.
 
-**No Monetisation stage.** `video_metrics.revenue_cents` is literal `0` on all
-four write paths. It would be dark or wrong on every platform forever. Its
-absence is a decision.
+**No Monetisation stage — but not for the reason first written.** The original
+text read: *"`video_metrics.revenue_cents` is literal `0` on all four write
+paths. It would be dark or wrong on every platform forever."* The first sentence
+is true; the second does not follow, and was retired on 2026-09-21.
+
+YouTube revenue is plumbed end to end — `analytics-sync-cron.ts:733-735` maps
+`estimatedRevenue`, `estimatedAdRevenue` and `estimatedRedPartnerRevenue`, and
+`upsertRevenueRecords` writes them to `revenue_records` with `source = 'api'`.
+It arrives as zero because `yt-analytics-monetary.readonly` is not requested.
+Facebook has its own ad-break revenue surface. So the constraint is **that we
+have not authorised revenue**, not that revenue does not exist.
+
+The stage stays absent while **FILM-1726** re-argues it from the real
+constraint. Absence is still a decision — it is now a decision with a pending
+review rather than a closed one.
 
 **A stage may be unbound, and often should be.** Five stages is a vocabulary,
 not a quota. Four honest stages beat five with one invented.
