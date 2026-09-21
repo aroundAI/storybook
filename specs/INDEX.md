@@ -565,7 +565,7 @@ All workbook-parity scope is now specified. FILM-1611 was split — what the bac
 
 It must not read `video_dim.duration_seconds` either way. This is the only reason FILM-1710 is ordered ahead of the rest of phase 17.
 
-### Phase 17: Analytics Provenance and Signal (26 specs)
+### Phase 17: Analytics Provenance and Signal (27 specs)
 
 See [phase-17-analytics-provenance/README.md](./phase-17-analytics-provenance/README.md) for the dependency graph, locked decisions, known limits and open product questions.
 
@@ -592,13 +592,14 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1717 | [content-genome](./phase-17-analytics-provenance/FILM-1717-content-genome.md) | DRAFT | XL | FILM-1606, FILM-1610, FILM-1715, FILM-1716 |
 | FILM-1718 | [stage-diagnosis](./phase-17-analytics-provenance/FILM-1718-stage-diagnosis.md) | DRAFT | M | FILM-1714, FILM-1715 |
 | FILM-1719 | [signal-surfaces](./phase-17-analytics-provenance/FILM-1719-signal-surfaces.md) | DRAFT | L | FILM-1706, FILM-1717, FILM-1718 |
-| FILM-1720 | [facebook-x-analytics](./phase-17-analytics-provenance/FILM-1720-facebook-x-analytics.md) | DRAFT | XL | FILM-1711, FILM-1714, FILM-1721, FILM-1723 |
+| FILM-1720 | [facebook-analytics](./phase-17-analytics-provenance/FILM-1720-facebook-analytics.md) | DRAFT | L | FILM-1711, FILM-1714, FILM-1721, FILM-1723 |
 | FILM-1721 | [platform-capability-reference](./phase-17-analytics-provenance/FILM-1721-platform-capability-reference.md) | ✅ DONE | L | - |
 | FILM-1722 | [view-definition-registry](./phase-17-analytics-provenance/FILM-1722-view-definition-registry.md) | DRAFT | M | FILM-1721 |
 | FILM-1723 | [api-version-consolidation](./phase-17-analytics-provenance/FILM-1723-api-version-consolidation.md) | DRAFT | M | - |
 | FILM-1724 | [channel-experiments](./phase-17-analytics-provenance/FILM-1724-channel-experiments.md) | DRAFT | L | FILM-1610, FILM-1715, FILM-1716; FILM-1710 for hook tests |
 | FILM-1725 | [deferred-vendor-verifications](./phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.md) | ⏸️ DEFERRED | S | FILM-1721 |
 | FILM-1726 | [monetisation-stage](./phase-17-analytics-provenance/FILM-1726-monetisation-stage.md) | DRAFT | M | FILM-1703, FILM-1711, FILM-1720 |
+| FILM-1727 | [x-analytics](./phase-17-analytics-provenance/FILM-1727-x-analytics.md) | DRAFT | L | FILM-1711, FILM-1714, FILM-1721, FILM-1723; FILM-1725 Check A for the Enterprise tier only |
 
 Three parts. **Provenance** (1701–1709) answers *where did this number come from*. **Signal** (1710–1720) answers *what is it telling me*, which differs per platform. **Reference** (1721–1723) is the researched vendor truth the other two are built on.
 
@@ -689,9 +690,9 @@ SPIKE-01 through SPIKE-05
 | 14. Edit Suite v2 | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 0 | 11 |
 | 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 0 | 17 |
-| 17. Analytics Provenance | 26 | 24 | 0 | 0 | 0 | 1 | 1 |
+| 17. Analytics Provenance | 27 | 25 | 0 | 0 | 0 | 1 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **217** | **31** | **0** | **0** | **0** | **1** | **185** |
+| **TOTAL** | **218** | **32** | **0** | **0** | **0** | **1** | **185** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
@@ -702,7 +703,7 @@ SPIKE-01 through SPIKE-05
 | Canon (Ph 10-11) | 28 | 28 | 100% |
 | Scale & Hooks (Ph 12-13) | 4 | 2 | 50% |
 | Workbook Parity (Ph 16) | 17 | 17 | 100% |
-| Provenance & Signal (Ph 17) | 26 | 1 | 4% |
+| Provenance & Signal (Ph 17) | 27 | 1 | 4% |
 
 Phase 14 (`edit-suite-v2`) carries an `ENGINEERING.md` with no status
 frontmatter and is counted as one unstarted item.

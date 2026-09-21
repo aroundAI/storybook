@@ -44,7 +44,7 @@ FILM-1721 (capability reference)  ── the researched vendor truth
    │        └─→ FILM-1706 (card shell v2) ─────┤
    │                                           ├─→ FILM-1705 (surfaces)
    ├─→ FILM-1711 (authorisation) ─→ FILM-1712 (metric recovery)
-   └─→ FILM-1715, FILM-1720
+   └─→ FILM-1715, FILM-1720, FILM-1727
 
 FILM-1723 (API versions)  ── independent; check Graph v18 first
 FILM-1701 (audience truth-up) ─→ FILM-1705
@@ -58,7 +58,8 @@ FILM-1717 (genome) ← FILM-1606, FILM-1610, FILM-1715, FILM-1716
 FILM-1702 (language) ← phase-16 FILM-1606 ─→ FILM-1707
 FILM-1708 (drill-down + ramp) ← FILM-1605 ✅, FILM-1706
 FILM-1709 (filter completion) ← FILM-1704, FILM-1707
-FILM-1720 (Facebook + X) ← FILM-1711, FILM-1714, FILM-1721, FILM-1723
+FILM-1720 (Facebook) ← FILM-1711, FILM-1714, FILM-1721, FILM-1723
+FILM-1727 (X) ← the same; FILM-1725 Check A for the Enterprise tier only
 ```
 
 **FILM-1721 has shipped.** The reference is at
@@ -81,8 +82,9 @@ Two of FILM-1721's three empirical checks could not run: one needs a paid X
 token, the other a TikTok sandbox app. They are **deferred, not dropped** —
 [FILM-1725](./FILM-1725-deferred-vendor-verifications.md) holds the question,
 the command, what each blocks, and the event that brings it back. The X one
-gates FILM-1720's X half and is the reason that spec should not be scoped
-against `/2/media/analytics` until it is answered.
+gates FILM-1727's Enterprise tier and is the reason that spec should not be
+scoped against `/2/media/analytics` until it is answered. X itself is not
+blocked: it ships on the pay-per-use path.
 
 **FILM-1723 and FILM-1710 are the remaining true roots.** FILM-1701 is
 independent of the reference but feeds FILM-1705. Everything else descends from
@@ -132,8 +134,8 @@ FILM-1715 + FILM-1716 ─→ FILM-1724 (channel experiments) ← also FILM-1610 
 
 FILM-1717 + FILM-1718 ─→ FILM-1719 (surfaces) ← also FILM-1706
 
-FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook + X)
-   ── last, and the test of whether 1714 was expandable
+FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook) ─→ FILM-1727 (X)
+   ── last, and two tests of whether 1714 was expandable
 ```
 
 | Spec | Status | Effort | Covers |
@@ -148,12 +150,13 @@ FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook + X)
 | [FILM-1717](./FILM-1717-content-genome.md) | DRAFT | XL | Creative mechanisms vs outcomes, discriminated against comparable losers. **v1 then v2** |
 | [FILM-1718](./FILM-1718-stage-diagnosis.md) | DRAFT | M | Distribution-vs-content and the finite failure patterns. **Does not depend on the genome** |
 | [FILM-1719](./FILM-1719-signal-surfaces.md) | DRAFT | L | The five-stage strip, three depths, evidence, "model after" |
-| [FILM-1720](./FILM-1720-facebook-x-analytics.md) | DRAFT | XL | Widening the enum across eight tables; two providers that do not exist |
+| [FILM-1720](./FILM-1720-facebook-analytics.md) | DRAFT | L | Facebook's provider and enum value: 57 video, 11 Reels and 4 ad-break metrics, organic/paid splits, and the `dim-sync` fix. Split from X 2026-09-21 |
 | [FILM-1721](./FILM-1721-platform-capability-reference.md) | ✅ DONE | L | **The researched truth table.** Per platform × metric × API surface × field name × scope × window, cited to vendor docs. Lives at [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md); enforced by `platform-field-names.test.ts` |
 | [FILM-1722](./FILM-1722-view-definition-registry.md) | DRAFT | M | What "a view" means per platform, with effective dates and the YouTube discontinuity |
 | [FILM-1723](./FILM-1723-api-version-consolidation.md) | DRAFT | M | One pinned version per vendor; the Graph v18 token-refresh risk; X onto `api.x.com` |
 | [FILM-1724](./FILM-1724-channel-experiments.md) | DRAFT | L | Which styles work: groups of new videos, one per style, compared at the same age; no verdict on thin samples |
 | [FILM-1725](./FILM-1725-deferred-vendor-verifications.md) | ⏸️ DEFERRED | S | The FILM-1721 checks that need a paid X token, a TikTok sandbox app, or an Instagram insights permission we do not hold |
+| [FILM-1727](./FILM-1727-x-analytics.md) | DRAFT | L | X on the pay-per-use path, Enterprise fields declared and dark; the `x`/`twitter` vocabulary; metered cost |
 | [FILM-1726](./FILM-1726-monetisation-stage.md) | DRAFT | M | The Monetisation stage re-argued, after its premise turned out to be a fact about our writers rather than the platforms |
 
 **Two independent paths, deliberately.** `metrics → diagnosis` (FILM-1718)

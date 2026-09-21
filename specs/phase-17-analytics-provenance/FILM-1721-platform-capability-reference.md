@@ -385,7 +385,7 @@ Three empirical checks, each cheap and each able to falsify a row:
    2026-02-06, so the question cannot be settled without a paid token.
    **Deferred to [FILM-1725](./FILM-1725-deferred-vendor-verifications.md)**,
    which holds the question, the command and the trigger to revisit. It gates
-   FILM-1720's X half.
+   FILM-1727's Enterprise tier.
 2. `/v2/video/query/` with `video.list` granted — settles the field list.
    **Not run**; a sandbox app is enough and the command is recorded in the
    document. Also deferred to FILM-1725, to be folded into FILM-1711.

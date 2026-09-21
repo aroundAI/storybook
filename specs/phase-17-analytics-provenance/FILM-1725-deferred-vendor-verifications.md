@@ -49,7 +49,7 @@ signal model at all.
 | **Evidence against** | Both endpoints live in the standard `docs.x.com/x-api/` namespace and their own reference pages state **no tier requirement** |
 | **Why it cannot be settled now** | X has no sandbox, and closed Free/Basic/Pro to new signups on **2026-02-06**. Only pay-per-use credits and Enterprise remain. The question *is* whether a non-Enterprise token works, so only a real token answers it |
 | **Cost to settle** | One pay-per-use credit purchase. Enterprise pricing is unpublished; the widely-cited ~$42k/month figure is third-party, not X |
-| **Blocks** | [FILM-1720](./FILM-1720-facebook-x-analytics.md) — the X half. Not the Facebook half |
+| **Blocks** | [FILM-1727](./FILM-1727-x-analytics.md)'s Enterprise tier and its >30-day window — **not** X itself, which ships on the pay-per-use path, and not Facebook ([FILM-1720](./FILM-1720-facebook-analytics.md)) |
 
 ```bash
 # Settles the tier gate and, with a start_time beyond 30 days, the window.
@@ -68,7 +68,7 @@ not a fact**, and it must not be written down as one.
 
 **If the answer is Enterprise-only**, X's ceiling is `playback_0_count` …
 `playback_100_count` and `view_count` on posts under 30 days old, with no watch
-time and no time series. FILM-1720 should be planned against that, not against
+time and no time series. FILM-1727 should be planned against that, not against
 the hope of the richer endpoint.
 
 ## 3. Check B — the TikTok Display API field list, confirmed live
@@ -141,7 +141,7 @@ owned elsewhere:
 | TikTok requests `user.info.basic` + `video.upload`, but the analytics code calls `/v2/video/query/` and `/v2/user/info/` | FILM-1711 |
 | Meta requests `instagram_basic` + `instagram_content_publish`, but the insights code calls `/{media-id}/insights` | FILM-1711 |
 | YouTube requests `yt-analytics.readonly` but not `yt-analytics-monetary.readonly`, while `fetchTotals` asks for three revenue metrics | FILM-1711 |
-| No Facebook or X analytics provider exists in code at all | FILM-1720 |
+| No Facebook or X analytics provider exists in code at all | FILM-1720 (Facebook), FILM-1727 (X) |
 | Graph v18.0 (expired 2026-01-26) and v19.0 (expired 2026-05-21) are both pinned in live code | FILM-1723 |
 
 None of those needs a vendor answer. They need a decision and an afternoon.
@@ -150,7 +150,7 @@ None of those needs a vendor answer. They need a decision and an afternoon.
 
 Un-defer **Check A** on any of:
 
-- FILM-1720 is scheduled, and its X half needs a plan that is not a guess
+- FILM-1727 is scheduled, and its Enterprise tier needs a plan that is not a guess
 - Someone buys X pay-per-use credits for any reason — the check costs one call
 - X publishes tier information for the analytics endpoints, or changes its
   access tiers again (it has done so twice since 2025)

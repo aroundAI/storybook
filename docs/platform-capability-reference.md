@@ -93,8 +93,9 @@ with data from 2019-01-01.
 
 **`views` was redefined again on 2026-08-27** — it now counts from "the moment a
 video begins to play", including autoplay, while `engagedViews` carries the
-older "past the first frame" methodology. The 2025-03-26 change had already
-redefined Shorts views as "a Short starts to play or replay". Anything comparing
+older "past the first frame" methodology. The 2025-03-31 change (announced
+2025-03-26) had already redefined Shorts views as "a Short starts to play or
+replay". Anything comparing
 view counts across that boundary is comparing two different measures; the same
 argument FILM-1722 makes per platform applies to YouTube against its own past.
 
@@ -709,9 +710,9 @@ and a question asked of the vendor.
 
 | Question | How to settle it | Owner |
 |---|---|---|
-| The `/2/media/analytics` historical window and rate limit | One call with a pay-per-use token, `start_time` beyond 30 days | **FILM-1725** (deferred; gates FILM-1720's X half) |
-| Whether `/2/media/analytics` is callable below Enterprise | The same call. A 403 settles it; a 200 falsifies the comparison table | **FILM-1725** (deferred; gates FILM-1720's X half) |
-| X Enterprise pricing, and any per-call analytics price | Sales contact | *unassigned — FILM-1720* |
+| The `/2/media/analytics` historical window and rate limit | One call with a pay-per-use token, `start_time` beyond 30 days | **FILM-1725** (deferred; gates FILM-1727's Enterprise tier) |
+| Whether `/2/media/analytics` is callable below Enterprise | The same call. A 403 settles it; a 200 falsifies the comparison table | **FILM-1725** (deferred; gates FILM-1727's Enterprise tier) |
+| X Enterprise pricing, and any per-call analytics price | Sales contact | *unassigned — FILM-1727* |
 | Meta App Review and Business Verification timelines | Submit and measure | *unassigned — FILM-1711* |
 | How Meta's `total_cputime` is computed | Developer support ticket | *unassigned* |
 | Any path to raising Instagram BUC quotas | Developer support ticket | *unassigned* |

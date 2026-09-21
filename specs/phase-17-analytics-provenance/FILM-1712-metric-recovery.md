@@ -190,7 +190,7 @@ is storage with no purpose.
 - The TikTok Business API integration, per §4's recommendation.
 - Graph API version consolidation — FILM-1723, though it touches the same
   Instagram files and should be sequenced with this.
-- Facebook and X — FILM-1720.
+- Facebook — FILM-1720. X — FILM-1727.
 - Any ratio or signal computed from these fields — FILM-1713 onward.
 
 ## 8. Acceptance criteria

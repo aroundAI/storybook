@@ -99,14 +99,14 @@ const VIEW_DEFINITIONS: readonly ViewDefinition[];
 
 **`platform` is deliberately not `AnalyticsPlatform`.** That union is
 `'youtube' | 'tiktok' | 'instagram'` (`packages/clickhouse/src/types.ts:11`)
-until FILM-1720 widens it, but §1 and §3 require Facebook and X rows *now* —
+until FILM-1720 and FILM-1727 widen it, but §1 and §3 require Facebook and X rows *now* —
 Facebook's four denominators are the clearest example in the whole registry and
 would be lost if the type forbade them.
 
 So the registry is keyed on a wider `PlatformId`, and an entry for a platform
 not yet in `AnalyticsPlatform` is **inert**: recorded, testable, and unreachable
-by any query until FILM-1720 lands. That keeps this spec off FILM-1720's
-critical path while letting it document what it learned.
+by any query until FILM-1720 (Facebook) or FILM-1727 (X) lands. That keeps
+this spec off both critical paths while letting it document what it learned.
 
 Two functions are the point of it:
 
