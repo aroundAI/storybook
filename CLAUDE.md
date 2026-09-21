@@ -8,6 +8,27 @@ This file provides guidance to Claude Code when working with code in this reposi
 - **Tailwind CSS 4** and Shadcn UI
 - **Turborepo** monorepo structure
 
+## Communication
+
+- Before starting a task, briefly state in one line what you are about to do.
+- While working, provide brief progress updates when useful so the user can follow along.
+- End every task with a short, self-contained recap covering:
+  - What you found
+  - What you changed
+  - What happens next, if anything
+
+## Tool Output
+
+- Tool/command output is not necessarily visible to the user.
+- If command output contains information the user needs to see, include the relevant information explicitly in your response.
+- Do not assume the user can see tool output.
+
+## File Editing
+
+- Minimize the amount of text/tokens changed when editing files.
+- Prefer surgical edits over rewriting an entire file when doing so does not affect the final result.
+- Preserve existing formatting and unrelated content.
+
 ## Deployment & Infrastructure
 
 ### Deployment Options
