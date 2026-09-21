@@ -1,12 +1,11 @@
-# Phase 18: Local Vendor Sandbox and a Generated Product Guide
+# Phase 18: Local Vendor Sandbox
 
 Local development can reach Supabase and ClickHouse and nothing else. Every
 social platform, OAuth provider and AI vendor the product depends on is a
 hardcoded `https://` host, so on a laptop those flows either hit the real vendor
 with real credentials or do not run at all. This phase puts a faithful, stateful,
-randomized stand-in for each of them on local ports, and uses it for two things:
-end-to-end tests that drive the flows seeding cannot reach, and a user guide
-generated from those same flows, organised by persona.
+randomized stand-in for each of them on local ports, and uses it for end-to-end
+tests that drive the flows seeding cannot reach.
 
 ## The problem, in one table
 
@@ -35,7 +34,6 @@ FILM-1801 (base-URL resolver) ── prerequisite; coordinate with phase-17 FILM
    └─→ FILM-1803 (AI generation sandbox)
             │
 FILM-1802 + FILM-1803 ─→ FILM-1804 (sandbox-backed E2E flows)
-                              └─→ FILM-1805 (generated user guide)
 ```
 
 | Spec | Status | Effort | Covers |
@@ -44,7 +42,6 @@ FILM-1802 + FILM-1803 ─→ FILM-1804 (sandbox-backed E2E flows)
 | [FILM-1802](./FILM-1802-social-platform-sandbox.md) | DRAFT | XL | YouTube, TikTok, Meta (Facebook + Instagram), X, LinkedIn: OAuth, refresh, publishing, analytics — stateful, randomized, growing over time |
 | [FILM-1803](./FILM-1803-ai-generation-sandbox.md) | DRAFT | L | LLM (OpenAI, Anthropic, Gemini), audio (ElevenLabs, PlayHT, Suno, Udio, Sync Labs), embeddings (Voyage, OpenAI) |
 | [FILM-1804](./FILM-1804-sandbox-backed-e2e-flows.md) | DRAFT | L | Connect, publish, sync-to-dashboard, token refresh, and one pass through the studio pipeline — asserted against the sandbox's ledger |
-| [FILM-1805](./FILM-1805-generated-user-guide.md) | DRAFT | L | Flow catalog, personas, and a markdown + screenshot guide generated from real flows |
 
 **Scheduling.** This phase touches the same provider files as phase 17's FILM-1711,
 FILM-1712, FILM-1720 and FILM-1723. FILM-1801 in particular rewrites the host
@@ -86,10 +83,6 @@ history concentrated into recent real days — is stated, not hidden.
 `NODE_ENV !== 'production'` **and** `VENDOR_SANDBOX=1`. A production build fails
 closed on a loopback vendor URL. The sandbox app is never deployed.
 
-**The guide does not overclaim.** Sandbox numbers are illustrative and labelled so.
-"How to succeed on social" advice is tied to what the product measures — phase 17's
-five funnel stages — and makes no causal claim no experiment has supported.
-
 ## Known limits — do not promise these
 
 - **Vendor acceptance.** The sandbox proves our side of each contract against the
@@ -105,3 +98,14 @@ five funnel stages — and makes no causal claim no experiment has supported.
 - **Real-world benchmarks.** Sandbox numbers are random draws from invented curves.
   They are fit for exercising the product, never for telling a creator what "good"
   looks like.
+
+## Later, not a spec: the user guide
+
+Once this phase is done, the user guide is a one-time pass by an AI agent that
+discovers the product's flows, runs them locally against the sandbox, and writes the
+guide — flows, personas (`specs/PRD.md` §3) and screenshots. It is deliberately not
+specified here. Two constraints carry over to whenever it happens: sandbox figures
+are simulated and must be captioned as such, and advice on succeeding on social makes
+no causal claim that an experiment in the product has not supported. The stale
+`docs/PRODUCT_DOCUMENTATION.md` and `apps/web/content/documentation/*` are what that
+pass replaces.

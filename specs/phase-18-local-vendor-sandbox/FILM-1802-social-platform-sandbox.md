@@ -109,7 +109,8 @@ day per real minute) accelerates each object's growth, not the calendar:
 **The visible cost**, stated rather than hidden: an object an hour old at the
 default speed has sixty simulated days of growth, all in today's daily row. This
 is fit for exercising sync, snapshots, deltas and dashboards. It is not a
-realistic shape for a single calendar day, and FILM-1805 labels it as illustrative.
+realistic shape for a single calendar day, and anything that shows it to a person
+must label it as simulated.
 
 ## 5. Publishing and state
 
