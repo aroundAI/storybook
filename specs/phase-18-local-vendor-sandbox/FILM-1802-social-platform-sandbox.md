@@ -44,6 +44,12 @@ it. `deployment/config/local.env` gains `VENDOR_SANDBOX=1` and one
 the sandbox when started with that file in its environment; a plain `pnpm dev`
 still behaves like production.
 
+`deployment/config` is a git submodule (`aroundAI/storybook-deployment-config`,
+private), so the `local.env` lines land as a PR in that repository plus a
+submodule bump here, not as part of this one. CI does not check the submodule out:
+anything CI needs from these settings goes in the workflow's own `env:`, not in
+`local.env`.
+
 **OAuth app credentials** for local use are seeded, not entered: the sandbox
 accepts one fixed client id and secret per platform, and the local seed writes
 them where the app reads them — the `oauth_app_credentials` table for YouTube and

@@ -45,7 +45,9 @@ A failing run prints the sandbox seed, so `SANDBOX_SEED=<n>` replays it exactly.
 ## 4. Two regression tests that must exist
 
 - **Instagram Reels (#278).** A Reel synced from the sandbox stores its real share
-  count and its reach breakdown. Against the code before #278 this fails.
+  count, and the sandbox's ledger shows no `/insights` call with a `breakdown`
+  Meta does not document for media (it answers one with Meta's error, per
+  FILM-1802 §3). Against the code before #278 this fails.
 - **TikTok success envelope (#279).** A TikTok video synced from the sandbox stores
   its counts and records no error. Against the code before #279 this fails.
 
@@ -68,7 +70,9 @@ From `apps/e2e/README.md` and `docs/ENGINEERING-WORKFLOW.md`:
 
 Locally, with `local.env` loaded and the sandbox up. **CI**: the sandbox is a plain
 Node process, so the E2E jobs can start it the way they start ClickHouse today — a
-step before the app server. Whether to add it to CI, and to which job, is decided
+step before the app server. CI has no `local.env` (it lives in the private
+`deployment/config` submodule, which CI does not check out), so the job sets
+`VENDOR_SANDBOX` and the `VENDOR_URL_*` values in its own `env:`. Whether to add it to CI, and to which job, is decided
 when the first flow lands; until then these are gated behind `SANDBOX_E2E=1`, the
 way ClickHouse evidence is gated behind `CLICKHOUSE_EVIDENCE`.
 
