@@ -173,6 +173,30 @@ be a recommendation not to build it. **Find out what share of connected TikTok
 accounts are Business accounts before committing the XL.** If the Display API
 cannot tell us, ask.
 
+**Planning assumption (owner, 2026-09-22): treat it as 50-50.** Two kinds of
+TikTok channel are expected on this product. One is a **marketing channel for a
+business** — a Business account is natural there, and this integration serves it.
+The other is a **content channel** — shorts in the manner of "explained in one
+minute", which needs to reach monetisation, and is likelier to be a personal or
+creator account that *cannot grant these metrics at all*. So neither half is an
+edge case, and the consequences are design requirements rather than risks:
+
+- The **Display API path stays first-class**, not a fallback to be deprecated.
+  Half the channels will never leave it. Nothing in the signal model
+  (FILM-1714) or the diagnosis (FILM-1718) may *require* a Business-only metric
+  for TikTok; a TikTok stage bound only to Business fields is an unbound stage
+  for a content channel, and must say so.
+- The **account-type sentence (§3, §4.9) is a main path**, seen by roughly every
+  second TikTok channel — so it is designed, tested and screenshotted like one,
+  and it never reads as an upsell or an error.
+- The integration is **worth building** at 50%, which was the open question.
+  It is not worth building *first*: FILM-1711's Display scopes unblock every
+  TikTok channel, this unblocks half.
+- The owner is the product's first end-to-end user; the first live verification
+  (§6, last criterion) is the owner's own Business-account channel. Replace
+  this assumption with the measured share once there are enough connected
+  accounts to measure.
+
 The engineering risk is the 7-day window: a sync outage longer than a week loses
 those fields for every video active in it, permanently, and nothing can backfill
 them. The sync's alerting has to treat that as data loss, not as lateness.
