@@ -49,6 +49,19 @@ export class TikTokRateLimitError extends Error {
 }
 
 /**
+ * TikTok v2 returns an `error` object on every response, success included:
+ * `{ code: 'ok', message: '', log_id }`. Only a code other than 'ok' is a
+ * failure. The code leads the message because the classifiers below match on
+ * codes (`access_token_invalid`, `spam_risk_too_many_pending`), and TikTok's
+ * human message does not contain them.
+ */
+function tiktokFailure(error: { code: string; message: string } | undefined) {
+  if (!error || error.code === 'ok') return null;
+
+  return error.message ? `${error.code}: ${error.message}` : error.code;
+}
+
+/**
  * Checks if an error indicates an invalid token or missing scope
  */
 function isAuthError(error: unknown): boolean {
@@ -139,8 +152,10 @@ export class TikTokAnalyticsProvider {
         videos: TikTokVideoData[];
       }>;
 
-      if (metricsData.error) {
-        throw new Error(metricsData.error.message);
+      const videoFailure = tiktokFailure(metricsData.error);
+
+      if (videoFailure) {
+        throw new Error(videoFailure);
       }
 
       const video = metricsData.data?.videos?.[0];
@@ -266,8 +281,10 @@ export class TikTokAnalyticsProvider {
         user: { follower_count?: number };
       }>;
 
-      if (data.error) {
-        throw new Error(data.error.message);
+      const accountFailure = tiktokFailure(data.error);
+
+      if (accountFailure) {
+        throw new Error(accountFailure);
       }
 
       return {

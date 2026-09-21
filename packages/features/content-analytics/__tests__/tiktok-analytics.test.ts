@@ -36,6 +36,80 @@ describe('TikTokAnalyticsProvider', () => {
     });
   });
 
+  describe("TikTok's response envelope", () => {
+    // TikTok v2 returns an `error` object on EVERY response, success included:
+    // `{ data, error: { code: 'ok', message: '', log_id } }`. Only a code other
+    // than 'ok' is an error. The publishing provider already knows this
+    // (tiktok-provider.ts checks `error?.code !== 'ok'`); analytics did not.
+    const ok = { code: 'ok', message: '', log_id: '202609211234' };
+
+    it('treats a successful response as a success', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: { videos: [{ id: 'v1', view_count: 1000, like_count: 50 }] },
+            error: ok,
+          }),
+      });
+
+      const result = await provider.getVideoAnalytics({ videoId: 'v1' });
+
+      expect(result.totals.views).toBe(1000);
+      expect(result.totals.likes).toBe(50);
+    });
+
+    it('reports a real error with its code, never as an empty message', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            error: { code: 'invalid_params', message: '', log_id: 'x' },
+          }),
+      });
+
+      await expect(
+        provider.getVideoAnalytics({ videoId: 'v1' }),
+      ).rejects.toThrow('invalid_params');
+    });
+
+    it('classifies an invalid token as a scope error by its code', async () => {
+      // TikTok's human message ("The access token is invalid") does not
+      // contain the code the classifier looks for; the code must reach it.
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            error: {
+              code: 'access_token_invalid',
+              message:
+                'The access token is invalid or not found in the request.',
+              log_id: 'x',
+            },
+          }),
+      });
+
+      await expect(
+        provider.getVideoAnalytics({ videoId: 'v1' }),
+      ).rejects.toBeInstanceOf(TikTokAnalyticsScopeError);
+    });
+
+    it('reads account analytics from a successful envelope', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: { user: { follower_count: 42 } },
+            error: ok,
+          }),
+      });
+
+      const result = await provider.getAccountAnalytics();
+
+      expect(result.followers).toBe(42);
+    });
+  });
+
   describe('getVideoAnalytics', () => {
     it('should fetch video analytics successfully', async () => {
       mockFetch.mockResolvedValueOnce({
