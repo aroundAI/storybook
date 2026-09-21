@@ -414,7 +414,7 @@ S0d, S0e, each seen red.
 ## KB-12 — Revenue is added across currencies
 
 **Severity:** Medium — wrong figures, quietly. **Found:** FILM-1615 EDD
-(finding F-2), 2026-09-20. **Fixed** in #PR_NUMBER — see *Fixed* at the end of
+(finding F-2), 2026-09-20. **Fixed** in #293 — see *Fixed* at the end of
 this entry for what changed and what was proven rather than changed.
 
 `revenue_records.currency` is a column, and a channel can be paid in more
@@ -460,7 +460,7 @@ what it sees today.
 different `currency` values, and read the revenue mix or the account
 dashboard: one number, neither currency.
 
-### Fixed (#PR_NUMBER)
+### Fixed (#293)
 
 **One primitive** — `lib/money.ts` in `@kit/content-analytics`:
 `CurrencyAmount`, `MoneyByCurrency`, `createMoneyFold` / `foldMoney`,
@@ -560,5 +560,5 @@ can be wrong. Not worth it until someone has a real account that is slow.
 | KB-6 (part) | Experiment log and note refusals replaced in production | #264 (round 4) |
 | KB-9, KB-10 | Hook Lab: a cross-tenant retention read, and a feature that could not be used and measured the wrong point | #269 (removed) |
 | KB-11 | Another account could read a public project's analytics | FILM-1615 Step 0 |
-| KB-12 | Revenue was added across currencies | #PR_NUMBER |
+| KB-12 | Revenue was added across currencies | #293 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
