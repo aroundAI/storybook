@@ -565,7 +565,7 @@ All workbook-parity scope is now specified. FILM-1611 was split — what the bac
 
 It must not read `video_dim.duration_seconds` either way. This is the only reason FILM-1710 is ordered ahead of the rest of phase 17.
 
-### Phase 17: Analytics Provenance and Signal (24 specs)
+### Phase 17: Analytics Provenance and Signal (25 specs)
 
 See [phase-17-analytics-provenance/README.md](./phase-17-analytics-provenance/README.md) for the dependency graph, locked decisions, known limits and open product questions.
 
@@ -597,6 +597,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1722 | [view-definition-registry](./phase-17-analytics-provenance/FILM-1722-view-definition-registry.md) | DRAFT | M | FILM-1721 |
 | FILM-1723 | [api-version-consolidation](./phase-17-analytics-provenance/FILM-1723-api-version-consolidation.md) | DRAFT | M | - |
 | FILM-1724 | [channel-experiments](./phase-17-analytics-provenance/FILM-1724-channel-experiments.md) | DRAFT | L | FILM-1610, FILM-1715, FILM-1716; FILM-1710 for hook tests |
+| FILM-1725 | [deferred-vendor-verifications](./phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.md) | ⏸️ DEFERRED | S | FILM-1721 |
 
 Three parts. **Provenance** (1701–1709) answers *where did this number come from*. **Signal** (1710–1720) answers *what is it telling me*, which differs per platform. **Reference** (1721–1723) is the researched vendor truth the other two are built on.
 
@@ -667,29 +668,29 @@ SPIKE-01 through SPIKE-05
 > own piece of work.
 
 
-| Phase | Total | Draft | Review | Approved | In Progress | Done |
-|-------|-------|-------|--------|----------|-------------|------|
-| 1. Foundation | 26 | 0 | 0 | 0 | 0 | 26 |
-| Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 3 |
-| Design System | 5 | 0 | 0 | 0 | 0 | 5 |
-| 2. Assets | 9 | 0 | 0 | 0 | 0 | 9 |
-| 3. Episodes | 14 | 0 | 0 | 0 | 0 | 14 |
-| 4. Video Gen | 15 | 0 | 0 | 0 | 0 | 15 |
-| 5. Audio Gen | 16 | 0 | 0 | 0 | 0 | 16 |
-| 6. Edit Suite | 6 | 0 | 0 | 0 | 0 | 6 |
-| 7. Publishing | 15 | 0 | 0 | 0 | 0 | 15 |
-| 8. Analytics | 10 | 0 | 0 | 0 | 0 | 10 |
-| 9. Integration | 6 | 0 | 0 | 0 | 0 | 6 |
-| 10. Canon Mgmt | 7 | 0 | 0 | 0 | 0 | 7 |
-| 11. Canon Integ | 21 | 0 | 0 | 0 | 0 | 21 |
-| 12. Scale | 2 | 0 | 0 | 0 | 0 | 2 |
-| 13. Hook Opt | 2 | 1 | 0 | 0 | 0 | 1 |
-| 14. Edit Suite v2 | 1 | 1 | 0 | 0 | 0 | 0 |
-| 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 11 |
-| 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 17 |
-| 17. Analytics Provenance | 24 | 23 | 0 | 0 | 0 | 1 |
-| Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **215** | **30** | **0** | **0** | **0** | **185** |
+| Phase | Total | Draft | Review | Approved | In Progress | Deferred | Done |
+|-------|-------|-------|--------|----------|-------------|----------|------|
+| 1. Foundation | 26 | 0 | 0 | 0 | 0 | 0 | 26 |
+| Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
+| Design System | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
+| 2. Assets | 9 | 0 | 0 | 0 | 0 | 0 | 9 |
+| 3. Episodes | 14 | 0 | 0 | 0 | 0 | 0 | 14 |
+| 4. Video Gen | 15 | 0 | 0 | 0 | 0 | 0 | 15 |
+| 5. Audio Gen | 16 | 0 | 0 | 0 | 0 | 0 | 16 |
+| 6. Edit Suite | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
+| 7. Publishing | 15 | 0 | 0 | 0 | 0 | 0 | 15 |
+| 8. Analytics | 10 | 0 | 0 | 0 | 0 | 0 | 10 |
+| 9. Integration | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
+| 10. Canon Mgmt | 7 | 0 | 0 | 0 | 0 | 0 | 7 |
+| 11. Canon Integ | 21 | 0 | 0 | 0 | 0 | 0 | 21 |
+| 12. Scale | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
+| 13. Hook Opt | 2 | 1 | 0 | 0 | 0 | 0 | 1 |
+| 14. Edit Suite v2 | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 0 | 11 |
+| 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 0 | 17 |
+| 17. Analytics Provenance | 25 | 23 | 0 | 0 | 0 | 1 | 1 |
+| Spikes | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
+| **TOTAL** | **216** | **30** | **0** | **0** | **0** | **1** | **185** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
@@ -700,7 +701,7 @@ SPIKE-01 through SPIKE-05
 | Canon (Ph 10-11) | 28 | 28 | 100% |
 | Scale & Hooks (Ph 12-13) | 4 | 2 | 50% |
 | Workbook Parity (Ph 16) | 17 | 17 | 100% |
-| Provenance & Signal (Ph 17) | 24 | 1 | 4% |
+| Provenance & Signal (Ph 17) | 25 | 1 | 4% |
 
 Phase 14 (`edit-suite-v2`) carries an `ENGINEERING.md` with no status
 frontmatter and is counted as one unstarted item.

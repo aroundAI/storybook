@@ -612,21 +612,26 @@ and a question asked of the vendor.
 
 | Question | How to settle it | Owner |
 |---|---|---|
-| The `/2/media/analytics` historical window and rate limit | One call with a pay-per-use token, `start_time` beyond 30 days | *unassigned — FILM-1720* |
-| Whether `/2/media/analytics` is callable below Enterprise | The same call. A 403 settles it; a 200 falsifies the comparison table | *unassigned — FILM-1720* |
+| The `/2/media/analytics` historical window and rate limit | One call with a pay-per-use token, `start_time` beyond 30 days | **FILM-1725** (deferred; gates FILM-1720's X half) |
+| Whether `/2/media/analytics` is callable below Enterprise | The same call. A 403 settles it; a 200 falsifies the comparison table | **FILM-1725** (deferred; gates FILM-1720's X half) |
 | X Enterprise pricing, and any per-call analytics price | Sales contact | *unassigned — FILM-1720* |
 | Meta App Review and Business Verification timelines | Submit and measure | *unassigned — FILM-1711* |
 | How Meta's `total_cputime` is computed | Developer support ticket | *unassigned* |
 | Any path to raising Instagram BUC quotas | Developer support ticket | *unassigned* |
 | The denominator of Facebook's `total_video_avg_time_watched` | Developer support ticket | *unassigned — FILM-1720* |
 | Facebook's `post_video_retention_graph` segment count | One authorised call against a real Reel | *unassigned — FILM-1720* |
-| The TikTok Display API field list, confirmed live | A sandbox app with `video.list` granted to a test user — see below | *unassigned — FILM-1711* |
+| The TikTok Display API field list, confirmed live | A sandbox app with `video.list` granted to a test user — see below | **FILM-1725** (deferred; fold into FILM-1711) |
 
 ### Reproducible checks
 
 Two of the three checks FILM-1721 §11 named can be run without production
 credentials. The third cannot: X has no sandbox, Free/Basic/Pro closed to new
 signups on 2026-02-06, and the question *is* whether a non-Enterprise token works.
+
+The two that have not run are tracked in
+[FILM-1725](../specs/phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.md),
+with the trigger that should bring each back. They are deferred, not dropped —
+nothing below may be restated as fact until its check has run.
 
 ```bash
 # 1. Graph version routing. RUN 2026-09-21 - see "Graph API versions" above.

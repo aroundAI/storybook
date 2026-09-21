@@ -382,11 +382,13 @@ Three empirical checks, each cheap and each able to falsify a row:
 
 1. `/2/media/analytics` with a pay-per-use token — settles the Enterprise gate.
    **Not run.** X has no sandbox and closed Free/Basic/Pro to new signups on
-   2026-02-06, so the question cannot be settled without a paid token. Recorded
-   as an open question with FILM-1720 as owner.
+   2026-02-06, so the question cannot be settled without a paid token.
+   **Deferred to [FILM-1725](./FILM-1725-deferred-vendor-verifications.md)**,
+   which holds the question, the command and the trigger to revisit. It gates
+   FILM-1720's X half.
 2. `/v2/video/query/` with `video.list` granted — settles the field list.
    **Not run**; a sandbox app is enough and the command is recorded in the
-   document. Owner FILM-1711.
+   document. Also deferred to FILM-1725, to be folded into FILM-1711.
 3. A Graph call on v18.0 — settles whether token refresh is already broken.
    **Run 2026-09-21, and it resolved more than expected.** Meta's changelog
    gives v18.0's expiry as **2026-01-26** and v19.0's as **2026-05-21**, both

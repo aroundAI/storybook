@@ -77,6 +77,13 @@ being written, both of which change work downstream:
   does not have. This changes FILM-1703 §2's evidence, not its conclusion — see
   the note there.
 
+Two of FILM-1721's three empirical checks could not run: one needs a paid X
+token, the other a TikTok sandbox app. They are **deferred, not dropped** —
+[FILM-1725](./FILM-1725-deferred-vendor-verifications.md) holds the question,
+the command, what each blocks, and the event that brings it back. The X one
+gates FILM-1720's X half and is the reason that spec should not be scoped
+against `/2/media/analytics` until it is answered.
+
 **FILM-1723 and FILM-1710 are the remaining true roots.** FILM-1701 is
 independent of the reference but feeds FILM-1705. Everything else descends from
 one of them — in particular FILM-1703 now depends on FILM-1721, so it is no
@@ -146,6 +153,7 @@ FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook + X)
 | [FILM-1722](./FILM-1722-view-definition-registry.md) | DRAFT | M | What "a view" means per platform, with effective dates and the YouTube discontinuity |
 | [FILM-1723](./FILM-1723-api-version-consolidation.md) | DRAFT | M | One pinned version per vendor; the Graph v18 token-refresh risk; X onto `api.x.com` |
 | [FILM-1724](./FILM-1724-channel-experiments.md) | DRAFT | L | Which styles work: groups of new videos, one per style, compared at the same age; no verdict on thin samples |
+| [FILM-1725](./FILM-1725-deferred-vendor-verifications.md) | ⏸️ DEFERRED | S | The two FILM-1721 checks that need a paid X token and a TikTok sandbox app. Tracked, with the trigger that brings each back |
 
 **Two independent paths, deliberately.** `metrics → diagnosis` (FILM-1718)
 works without the genome, so a creator gets a usable diagnosis immediately;
