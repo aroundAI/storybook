@@ -1,12 +1,21 @@
 ---
 spec_id: FILM-1722
 title: View Definition Registry
-status: DRAFT
+status: ✅ DONE
 effort: M
 dependencies: FILM-1721
 ---
 
 # View Definition Registry
+
+> **Shipped.** The registry is `packages/clickhouse/src/lib/view-definitions.ts`,
+> exported from the client-safe `@kit/clickhouse` barrel. It is bound to
+> [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md)
+> by `packages/features/content-analytics/__tests__/view-definition-sources.test.ts`:
+> a field must be in the block it names, a date must be stated in the section it
+> cites, and "estimated" must be the vendor's word. §4 records where the shipped
+> types differ from the sketch below and why; §11 records what has **not** adopted
+> the rule yet.
 
 ## 1. A view is not one thing, and it changes without warning
 
@@ -22,7 +31,7 @@ before this spec was written**.
 | TikTok Display API | `view_count` |
 | TikTok Business API | `video_views` — **mixes organic and paid**, inseparable |
 | Facebook | four different denominators — see below |
-| X | `video_views` (analytics) or `view_count` (non-public metrics) |
+| X | `video_views` (analytics) or `view_count` (`public_metrics` and `organic_metrics` — **not** `non_public_metrics`; corrected against FILM-1721 on 2026-09-22) |
 
 Storing all of these in one `video_metrics.views` column, as we do, is
 defensible only if something records what each one means.
@@ -38,6 +47,14 @@ defensible only if something records what each one means.
   reflect the previous view-counting methodology"* under 2025-04-24. A registry
   keyed on effective dates is worth less with a wrong date than with none, so
   this is a correctness fix, not a typo.
+- **2025-06-24** — the bulk reports gained `engaged_views`, completing the
+  rollout. **Added 2026-09-22 from the revision history:** the 2025-03-26 entry
+  says of the API, *"until then, views will be based on the old methodology"*.
+  Studio changed on 2025-03-31; targeted queries on 2025-04-24; bulk reports on
+  2025-06-24. So a *stored* Shorts view between 2025-03-31 and 2025-06-24 is one
+  definition or the other and nothing says which. The registry keeps 2025-03-31
+  as the effective date and records 2025-06-24 as `rolloutCompleteBy`; a range
+  touching that window is not comparable.
 - **2026-08-27** — **YouTube unified view counting across all formats.** Verbatim:
   *"YouTube will count public views the moment a video begins to play"*,
   *"(includes autoplay, hold the pointer over, and click/tap to play)"*.
@@ -108,11 +125,56 @@ not yet in `AnalyticsPlatform` is **inert**: recorded, testable, and unreachable
 by any query until FILM-1720 (Facebook) or FILM-1727 (X) lands. That keeps
 this spec off both critical paths while letting it document what it learned.
 
+### What shipped differs from the sketch in five ways
+
+Each is a place where the sketch could not say something true.
+
+- **`includesReplays`, `includesPaid` and `isEstimated` are `VendorFact`
+  (`boolean | 'undocumented'`), not `boolean`.** Most vendors do not say whether
+  a view includes replays or paid plays. A `false` there would be *measured
+  badly* passing as *measured*; `'undocumented'` is *cannot say*. Only what a
+  vendor states is `true` or `false`.
+- **`effectiveFrom` is `string | null`.** TikTok, Facebook and X document no
+  start date. `null` means "no dated start on record — in force as far back as
+  the vendor documents". The type makes it impossible for a definition that
+  `supersedes` another to be undated.
+- **Added fields:** `id` (what `supersedes` points at, and what a rate
+  records), `label`, `role` (`views_column` — the chain behind
+  `video_metrics.views` — or `concurrent`), `availability`, `appliesTo`
+  (`all_formats` | `shorts`), `rolloutCompleteBy`, and `reference` (the heading
+  in the capability reference the entry traces to). `countsFrom` gains
+  `'unique_account'`, because reach is a denominator (FILM-1713 §4) and is not
+  an impression.
+- **ThruPlay has `field: null`.** `availability: 'ads_only'` forces `field` and
+  `surface` to `null` in the type, so "absent from organic insights" is not a
+  flag someone can forget to read — there is no name to request.
+- **Both functions take an optional fourth argument, `{ field?, format? }`,
+  and return a discriminated union rather than a bare definition or boolean.**
+  A pooled YouTube figure between 2025-03-31 and 2026-08-27 is *two*
+  definitions (`kind: 'by_format'`); Facebook has no single one
+  (`kind: 'no_single_view_definition'`); `engagedViews` has none before
+  2025-04-24 (`kind: 'not_defined_on_date'`). With no `format`, every change on
+  the platform counts, which is the safe reading of a pooled column.
+
+Exported from `@kit/clickhouse`: `VIEW_DEFINITIONS`, `PLATFORM_IDS`,
+`viewDefinitionAt`, `comparableAcross`, `viewDefinitionChangesBetween`, and the
+types `PlatformId`, `ViewDefinition`, `ViewDefinitionLookup`,
+`ViewComparability`, `ViewComparisonSuppressionReason`, `ViewDefinitionChange`,
+`ContinuousAlternative`, `ViewDefinitionOptions`, `ViewFormat`,
+`ViewCountsFrom`, `VendorFact`.
+
 Two functions are the point of it:
 
 - `viewDefinitionAt(platform, date)` — what `views` meant on a given day.
 - `comparableAcross(platform, from, to)` — **false** when a definition change
-  falls inside the range, plus the date and the continuous alternative.
+  falls inside the range, plus the date and the continuous alternative. The
+  alternative carries `coversRange`: `engagedViews` begins 2025-04-24, so for a
+  range starting before that it is offered with `coversRange: false` rather than
+  claimed as continuous over dates it does not have. The `comparable: true`
+  branch carries the definition the range was measured under, which is what
+  FILM-1713 stamps onto a rate.
+- `viewDefinitionChangesBetween(platform, from, to)` — the boundaries a chart
+  marks. `comparableAcross` is built on it, so the two cannot disagree.
 
 ## 5. The rule this enforces
 
@@ -152,16 +214,16 @@ make honestly is a named absent state, never a number.
 
 ## 8. Acceptance criteria
 
-- [ ] Every platform's `views` has a recorded definition with an effective date
-- [ ] The YouTube 2026-08-27 and 2025-03-31 changes are both recorded
-- [ ] Facebook's four denominators are distinguishable, and ThruPlay is marked ads-only and absent from organic insights
-- [ ] TikTok's Business-API `video_views` is marked as mixing organic and paid
-- [ ] Facebook impressions and Instagram reach are marked estimated where the vendor says so
-- [ ] A comparison spanning a definition change is suppressed with a named reason and the date
-- [ ] Where a continuous alternative exists it is named and offered
-- [ ] A chart crossing a boundary marks it rather than drawing a step change
-- [ ] No rate is computed without recording which denominator definition it used
-- [ ] Adding a platform without a view definition fails the test
+- [x] Every platform's `views` has a recorded definition with an effective date — or an explicit `null` where the vendor dates nothing (TikTok, Facebook, X)
+- [x] The YouTube 2026-08-27 and 2025-03-31 changes are both recorded
+- [x] Facebook's four denominators are distinguishable, and ThruPlay is marked ads-only and absent from organic insights
+- [x] TikTok's Business-API `video_views` is marked as mixing organic and paid
+- [x] Facebook impressions and Instagram reach are marked estimated where the vendor says so — Instagram's *"Metric is estimated"* was read off the vendor page on 2026-09-22 and added to the reference, which had not carried it
+- [x] A comparison spanning a definition change is suppressed with a named reason and the date — `comparableAcross` returns `view_definition_changed` and `changedOn`. **In the registry; see §11 for the surfaces that do not call it yet**
+- [x] Where a continuous alternative exists it is named and offered — with `coversRange`, so it is not over-claimed
+- [ ] A chart crossing a boundary marks it rather than drawing a step change — **registry half only.** `viewDefinitionChangesBetween` returns the boundaries; no chart calls it. §11
+- [ ] No rate is computed without recording which denominator definition it used — **registry half only.** The definition is available to stamp; the existing rate sites do not stamp it. This is FILM-1713's own criterion ("every measure records … which view definition and its effective date"). §11
+- [x] Adding a platform without a view definition fails the test — widening `AnalyticsPlatform` fails typecheck at `PLATFORM_COVERAGE`, and listing the platform there fails `view-definitions.test.ts` until a definition exists. Both seen red
 
 ## 9. Verification
 
@@ -191,3 +253,37 @@ The second risk is that the suppression is experienced as the product being
 broken — a user who cannot see a year-over-year comparison will not
 spontaneously understand why. The copy has to carry the reason, and FILM-1719
 is where that lands.
+
+## 11. Adoption — what does not obey §5 yet
+
+This spec shipped the registry and the rule as functions. It deliberately did
+**not** retrofit the surfaces already on screen, for two reasons: doing one and
+not the others is fixing the instance rather than the class, and suppressing a
+figure a user can see today is the kind of change the phase README says "wants
+sign-off before implementation, not after".
+
+A sweep on 2026-09-22 found these computing a comparison or a per-view rate
+over `video_metrics.views` with no knowledge of the boundary. Today is 26 days
+after 2026-08-27, so **every one of them with a YouTube window of 28 days or
+more is currently spanning it**:
+
+| Site | What it compares |
+|---|---|
+| `computeCohortGrowth` → `getCohortCurvesAction` → `cohort-curves-chart.tsx` | cohort median views against the previous cohort — the literal "cohort median, growth figure" of §5 |
+| `account-dashboard-actions.ts` `previousPeriodTotals` → `company-dashboard.tsx` | period-over-period totals |
+| `language-analytics.ts` `viewsChange` → `language-analytics-cards.tsx` | views vs the previous period, per language |
+| `queryRollingViews`, `queryMedianViewsPerVideo`, `queryBackCatalogShare` | view series and medians over long windows |
+| `performance-chart.tsx`, `language-trend-chart.tsx` (and `comparison-chart.tsx`, which overlays whatever current/previous series it is handed) | views over time, drawn straight across the boundary |
+| engagement rate in `aggregation-queries.ts`, `language-analytics.ts`, `account-dashboard-actions.ts` | `(likes + comments + shares) / views` — among the duplicate sites FILM-1713 §2 collapses |
+| RPM in `revenue-actions.ts`, `lib/segment-stats.ts` | revenue per thousand views |
+
+Who adopts it:
+
+- **FILM-1713** — every rate, by taking its denominator from
+  `comparableAcross`'s `comparable: true` branch.
+- **FILM-1715** — cohort medians and benchmarks, including the cohort curves.
+- **FILM-1707 / FILM-1719** — the charts and the copy, per §10.
+
+The second unticked criterion closes when FILM-1713 does; the first when a
+chart first calls `viewDefinitionChangesBetween`.
+

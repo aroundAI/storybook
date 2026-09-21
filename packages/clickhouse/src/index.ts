@@ -70,6 +70,28 @@ export type {
   TrafficSourceGroup,
   TrafficSourceRow,
 } from './lib/traffic-groups';
+// What "a view" means per platform, and when it changed (FILM-1722). Pure,
+// so a chart can ask where a boundary falls without reaching the server.
+export {
+  PLATFORM_IDS,
+  VIEW_DEFINITIONS,
+  comparableAcross,
+  viewDefinitionAt,
+  viewDefinitionChangesBetween,
+} from './lib/view-definitions';
+export type {
+  ContinuousAlternative,
+  PlatformId,
+  VendorFact,
+  ViewComparability,
+  ViewComparisonSuppressionReason,
+  ViewCountsFrom,
+  ViewDefinition,
+  ViewDefinitionChange,
+  ViewDefinitionLookup,
+  ViewDefinitionOptions,
+  ViewFormat,
+} from './lib/view-definitions';
 export type {
   SubscriberPoint,
   SubscriberSource,
