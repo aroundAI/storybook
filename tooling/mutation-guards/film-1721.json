@@ -30,6 +30,16 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/platform-field-names.test.ts",
       "pattern": "instagram-insights.ts"
+    },
+    {
+      "name": "A field block loses the source it was taken from",
+      "kind": "unit",
+      "file": "docs/platform-capability-reference.md",
+      "find": "<!-- fields: facebook/video-insights source: https://developers.facebook.com/docs/graph-api/reference/video/video_insights/ -->",
+      "replace": "<!-- fields: facebook/video-insights -->",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "cites a source"
     }
   ]
 }

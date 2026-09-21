@@ -22,12 +22,20 @@ const REFERENCE = 'docs/platform-capability-reference.md';
 
 const doc = readFileSync(join(REPO, REFERENCE), 'utf8');
 
-/** Blocks tagged `<!-- fields: <platform>/<surface> -->`, keyed by platform. */
+/**
+ * Blocks tagged `<!-- fields: <platform>/<surface> source: <url> -->`, keyed by
+ * platform. The `source` is required, and deliberately only proves that someone
+ * had a reference page open — it cannot prove a name is real. It exists because
+ * `facebook_views` once entered this index from an announcement blog post and
+ * nothing noticed: the coverage rule below only checks names we *request*, so an
+ * unrequested wrong name sits here indefinitely, waiting to be trusted.
+ */
 function documentedNames() {
   const byPlatform = new Map<string, Set<string>>();
-  const block = /<!-- fields: (\S+) -->\s*```text\n([\s\S]*?)```/g;
+  const block =
+    /<!-- fields: (\S+) source: (https?:\/\/\S+) -->\s*```text\n([\s\S]*?)```/g;
 
-  for (const [, key, body] of doc.matchAll(block)) {
+  for (const [, key, , body] of doc.matchAll(block)) {
     const platform = key!.split('/')[0]!;
     const names = byPlatform.get(platform) ?? new Set<string>();
 
@@ -152,6 +160,22 @@ describe('the reference is readable', () => {
 
     expect(DOCUMENTED.size).toBeGreaterThanOrEqual(5);
     expect(total).toBeGreaterThan(50);
+  });
+
+  it('cites a source for every field block', () => {
+    const tagged = [...doc.matchAll(/<!-- fields: (\S+)([^>]*)-->/g)].map(
+      ([, key, rest]) => ({ key: key!, rest: rest! }),
+    );
+
+    const uncited = tagged
+      .filter(({ rest }) => !/\bsource: https?:\/\//.test(rest))
+      .map(({ key }) => key);
+
+    expect(tagged.length).toBeGreaterThanOrEqual(5);
+    expect(
+      uncited,
+      `Every field block needs \`source: <url>\` in its tag. Missing on:`,
+    ).toEqual([]);
   });
 
   it('parses a forbidden list', () => {
