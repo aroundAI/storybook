@@ -8,6 +8,7 @@ import type {
   InstagramInsightsInput,
   InstagramInsightsPeriod,
   InstagramInsightsResult,
+  InstagramMediaProductType,
   InstagramMediaType,
   InstagramReachBreakdown,
 } from './types';
@@ -77,9 +78,11 @@ export class InstagramInsightsProvider {
     const { mediaId } = input;
 
     try {
-      // Get media type first
+      // `media_type` is only ever CAROUSEL_ALBUM / IMAGE / VIDEO — a Reel is
+      // VIDEO. The surface (FEED / REELS / STORY / AD) is `media_product_type`,
+      // and it is what decides which metrics exist.
       const mediaInfoResponse = await fetch(
-        `${GRAPH_API_BASE}/${mediaId}?fields=media_type&access_token=${this.accessToken}`,
+        `${GRAPH_API_BASE}/${mediaId}?fields=media_type,media_product_type&access_token=${this.accessToken}`,
       );
 
       if (!mediaInfoResponse.ok) {
@@ -90,6 +93,7 @@ export class InstagramInsightsProvider {
 
       const mediaInfo = (await mediaInfoResponse.json()) as {
         media_type?: InstagramMediaType;
+        media_product_type?: InstagramMediaProductType;
       } & GraphAPIError;
 
       if (mediaInfo.error) {
@@ -99,33 +103,27 @@ export class InstagramInsightsProvider {
       }
 
       const mediaType = mediaInfo.media_type ?? 'VIDEO';
+      const mediaProductType = mediaInfo.media_product_type ?? 'FEED';
 
       // Meta deprecated `plays` and `impressions` (2025-04-21, Graph v22)
       // in favor of the universal `views` metric across all media types.
-      const metricsForType =
-        mediaType === 'REELS'
-          ? [
-              'views',
-              'reach',
-              'total_interactions',
-              'likes',
-              'comments',
-              'saved',
-              'shares',
-            ]
-          : [
-              'views',
-              'reach',
-              'total_interactions',
-              'likes',
-              'comments',
-              'saved',
-            ];
+      // `shares` is documented for FEED, REELS and STORY alike.
+      const metricsForType = [
+        'views',
+        'reach',
+        'total_interactions',
+        'likes',
+        'comments',
+        'saved',
+        'shares',
+      ];
 
       // Fetch insights, reach breakdown, and audience in parallel
       const [insightsData, reachBreakdown, audience] = await Promise.all([
         this.fetchMediaInsights(mediaId, metricsForType),
-        mediaType === 'REELS' ? this.fetchReachBreakdown(mediaId) : undefined,
+        mediaProductType === 'REELS'
+          ? this.fetchReachBreakdown(mediaId)
+          : undefined,
         this.fetchAccountAudience(),
       ]);
 
@@ -134,6 +132,7 @@ export class InstagramInsightsProvider {
       return {
         mediaId,
         mediaType,
+        mediaProductType,
         totals: {
           plays: metrics.views ?? 0,
           reach: metrics.reach ?? 0,

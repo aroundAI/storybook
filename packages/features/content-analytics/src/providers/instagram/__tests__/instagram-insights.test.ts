@@ -16,7 +16,10 @@ describe('InstagramInsightsProvider', () => {
   let provider: InstagramInsightsProvider;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    // reset, not clear: clearAllMocks leaves queued mockResolvedValueOnce
+    // values in place, so a test that consumes fewer responses than it
+    // queued feeds the leftovers to the next test.
+    mockFetch.mockReset();
     provider = createInstagramInsightsProvider(accessToken, instagramAccountId);
   });
 
@@ -27,11 +30,52 @@ describe('InstagramInsightsProvider', () => {
   });
 
   describe('getMediaInsights', () => {
+    it('asks for media_product_type, and requests shares for every surface that has them', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              media_type: 'VIDEO',
+              media_product_type: 'FEED',
+            }),
+        })
+        // insights and account audience; a FEED video has no reach breakdown
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ data: [] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ data: [] }),
+        });
+
+      await provider.getMediaInsights({ mediaId: 'feed-video' });
+
+      const urls = mockFetch.mock.calls.map(([url]) => new URL(url as string));
+
+      expect(urls[0]!.searchParams.get('fields')!.split(',')).toContain(
+        'media_product_type',
+      );
+
+      const insights = urls.find(
+        (u) =>
+          u.pathname.endsWith('/insights') && u.pathname.includes('feed-video'),
+      )!;
+
+      // `shares` is documented for FEED, REELS and STORY.
+      expect(insights.searchParams.get('metric')!.split(',')).toContain(
+        'shares',
+      );
+    });
+
     it('should fetch insights for a Reel', async () => {
-      // Mock media type response
+      // What Meta returns for a Reel: `media_type` is only ever
+      // CAROUSEL_ALBUM / IMAGE / VIDEO. REELS lives on `media_product_type`.
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ media_type: 'REELS' }),
+        json: () =>
+          Promise.resolve({ media_type: 'VIDEO', media_product_type: 'REELS' }),
       });
 
       // Mock insights response
@@ -101,7 +145,8 @@ describe('InstagramInsightsProvider', () => {
       });
 
       expect(result.mediaId).toBe('test-media-id');
-      expect(result.mediaType).toBe('REELS');
+      expect(result.mediaType).toBe('VIDEO');
+      expect(result.mediaProductType).toBe('REELS');
       expect(result.totals.plays).toBe(1000);
       expect(result.totals.reach).toBe(500);
       expect(result.totals.likes).toBe(100);
@@ -117,7 +162,8 @@ describe('InstagramInsightsProvider', () => {
       // Mock media type response
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ media_type: 'VIDEO' }),
+        json: () =>
+          Promise.resolve({ media_type: 'VIDEO', media_product_type: 'FEED' }),
       });
 
       // Mock insights response
@@ -185,7 +231,8 @@ describe('InstagramInsightsProvider', () => {
     it('should handle missing metrics gracefully', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ media_type: 'REELS' }),
+        json: () =>
+          Promise.resolve({ media_type: 'VIDEO', media_product_type: 'REELS' }),
       });
 
       // Empty insights response

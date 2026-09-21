@@ -11,6 +11,7 @@ export type {
   InstagramInsightsInput,
   InstagramInsightsPeriod,
   InstagramInsightsResult,
+  InstagramMediaProductType,
   InstagramMediaType,
   InstagramMetric,
   InstagramReachBreakdown,
