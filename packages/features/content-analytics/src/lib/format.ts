@@ -70,28 +70,35 @@ export function formatPercent(value: number): string {
   return `${formatted}%`;
 }
 
-export interface ChangeResult {
-  percentage: number;
-  direction: 'up' | 'down' | 'neutral';
-}
+/**
+ * A percentage change, or the fact that there is nothing to compare to.
+ *
+ * `no-baseline` is not a zero and not an increase. A card reading it draws
+ * no arrow and no figure (KB-16): the previous case returned `100, up` for
+ * `previous === 0`, and three of the four dashboards passed no previous
+ * period at all, so every non-zero metric read "+100.0%".
+ */
+export type ChangeResult =
+  | { kind: 'change'; percentage: number; direction: 'up' | 'down' | 'neutral' }
+  | { kind: 'no-baseline' };
 
 /**
- * Calculates percentage change between current and previous values
+ * Change from `previous` to `current`. `previous` is null when no earlier
+ * period was measured, and a previous period of zero is no baseline either:
+ * a change from nothing is not a percentage.
  */
 export function calculateChange(
   current: number,
-  previous: number,
+  previous: number | null,
 ): ChangeResult {
-  if (previous === 0) {
-    return {
-      percentage: current > 0 ? 100 : 0,
-      direction: current > 0 ? 'up' : 'neutral',
-    };
+  if (previous === null || previous === 0) {
+    return { kind: 'no-baseline' };
   }
 
   const percentage = ((current - previous) / previous) * 100;
 
   return {
+    kind: 'change',
     percentage,
     direction: percentage > 1 ? 'up' : percentage < -1 ? 'down' : 'neutral',
   };

@@ -2,79 +2,190 @@
 
 import { DollarSign } from 'lucide-react';
 
-import { formatCurrency } from '../../lib/format';
+import type { Measured } from '../../lib/measured';
+import { formatCurrencyAmount } from '../../lib/money';
+import type { ProjectRevenue } from '../../lib/project-revenue';
+import {
+  REVENUE_CATEGORY_COLOR,
+  REVENUE_CATEGORY_LABEL,
+  revenueMixView,
+} from '../../lib/revenue-mix';
 import { AnalyticsCard } from './analytics-card';
 
-interface RevenueBreakdown {
-  adRevenue: number;
-  sponsorships: number;
-}
-
 interface RevenueCardProps {
-  /** Total revenue in cents */
-  revenueCents: number;
-  /** Revenue breakdown */
-  breakdown?: RevenueBreakdown;
-  /** Projection text */
-  projection?: string;
+  /**
+   * Recorded revenue for the project, one entry per currency, or `absent`
+   * when it could not be read. Measured and empty means nothing was
+   * recorded — which the card says, rather than showing a zero of dollars.
+   */
+  revenue: Measured<ProjectRevenue[]>;
 }
 
-export function RevenueCard({
-  revenueCents,
-  breakdown,
-  projection,
-}: RevenueCardProps) {
-  const revenue = revenueCents / 100;
+const WHOLE_UNITS = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
+const MIX_AMOUNT = { minimumFractionDigits: 0, maximumFractionDigits: 2 };
 
-  // Calculate percentages for breakdown
-  const total = breakdown
-    ? breakdown.adRevenue + breakdown.sponsorships
-    : revenueCents / 100;
-  const adPercentage = breakdown ? (breakdown.adRevenue / total) * 100 : 70;
-  const sponsorPercentage = breakdown
-    ? (breakdown.sponsorships / total) * 100
-    : 30;
+/**
+ * Revenue recorded against the project's videos, split by category —
+ * the mix FILM-1609 computes for the account dashboard, per currency
+ * (KB-12), instead of the fixed 70% "Ad Revenue" and 30% "Sponsorships"
+ * this card used to draw whatever was recorded (KB-16).
+ *
+ * One card per currency: a share across two currencies needs an exchange
+ * rate nobody has. An account paid in one currency sees one card, unnamed.
+ */
+export function RevenueCard({ revenue }: RevenueCardProps) {
+  if (revenue.kind === 'absent') {
+    return (
+      <RevenueCardShell>
+        <RevenueCardEmpty
+          heading="Revenue isn’t available"
+          data-test="overview-revenue-absent"
+        >
+          The recorded revenue for this project could not be read.
+        </RevenueCardEmpty>
+      </RevenueCardShell>
+    );
+  }
+
+  if (revenue.value.length === 0) {
+    return (
+      <RevenueCardShell>
+        <RevenueCardEmpty
+          heading="No revenue recorded"
+          data-test="overview-revenue-none"
+        >
+          Nothing was recorded against this project’s videos in this period.
+        </RevenueCardEmpty>
+      </RevenueCardShell>
+    );
+  }
+
+  const named = revenue.value.length > 1;
+
+  return (
+    <>
+      {revenue.value.map((entry) => (
+        <RevenueCardShell
+          key={entry.currency ?? 'none'}
+          currency={named ? entry.currency : undefined}
+        >
+          <CurrencyRevenue entry={entry} />
+        </RevenueCardShell>
+      ))}
+    </>
+  );
+}
+
+function RevenueCardShell({
+  currency,
+  children,
+}: {
+  /** Named only when the project has more than one currency. */
+  currency?: string | null;
+  children: React.ReactNode;
+}) {
+  const title =
+    currency === undefined
+      ? 'Revenue'
+      : `Revenue · ${currency ?? 'Currency not recorded'}`;
 
   return (
     <AnalyticsCard
-      title="Est. Revenue"
+      title={title}
       icon={DollarSign}
-      description="Estimated ad revenue (YouTube only)"
-      footer={projection || 'Projection: $10k by month end'}
+      description="Revenue recorded against this project’s videos in the selected period, by category"
+      footer="Revenue recorded against this project’s videos. Channel-level income is on the account’s Revenue tab."
+      data-test="overview-revenue"
     >
-      <div className="flex items-baseline gap-2">
-        <span className="text-5xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-          {formatCurrency(revenue)}
-        </span>
-      </div>
-      <div className="mt-4 w-full rounded-lg bg-gray-100 p-3 dark:bg-gray-800">
-        {/* Ad Revenue */}
-        <div className="mb-1 flex justify-between text-xs">
-          <span className="text-gray-500 dark:text-gray-400">Ad Revenue</span>
-          <span className="font-medium text-gray-900 dark:text-white">
-            {formatCurrency(breakdown?.adRevenue || revenue * 0.7)}
-          </span>
-        </div>
-        <div className="mb-2 h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-          <div
-            className="h-1.5 rounded-full bg-green-500"
-            style={{ width: `${adPercentage}%` }}
-          />
-        </div>
-        {/* Sponsorships */}
-        <div className="mb-1 flex justify-between text-xs">
-          <span className="text-gray-500 dark:text-gray-400">Sponsorships</span>
-          <span className="font-medium text-gray-900 dark:text-white">
-            {formatCurrency(breakdown?.sponsorships || revenue * 0.3)}
-          </span>
-        </div>
-        <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-          <div
-            className="h-1.5 rounded-full bg-blue-500"
-            style={{ width: `${sponsorPercentage}%` }}
-          />
-        </div>
-      </div>
+      {children}
     </AnalyticsCard>
+  );
+}
+
+function CurrencyRevenue({ entry }: { entry: ProjectRevenue }) {
+  const { currency, totalRevenueCents, byType } = entry;
+  const formatCents = (cents: number, options = MIX_AMOUNT) =>
+    formatCurrencyAmount({ currency, cents }, options);
+  const { entries, total, negatives } = revenueMixView(byType);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <span
+        className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white"
+        data-test="overview-revenue-total"
+      >
+        {formatCents(totalRevenueCents, WHOLE_UNITS)}
+      </span>
+
+      {total > 0 ? (
+        <div className="flex flex-col gap-1.5" data-test="overview-revenue-mix">
+          <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+            {entries.map(([category, cents]) => (
+              <div
+                key={category}
+                className={
+                  REVENUE_CATEGORY_COLOR[category] ?? 'bg-muted-foreground'
+                }
+                style={{ width: `${(cents / total) * 100}%` }}
+              />
+            ))}
+          </div>
+          {entries.map(([category, cents]) => (
+            <div
+              key={category}
+              className="flex justify-between text-xs"
+              data-test="overview-revenue-row"
+              data-category={category}
+            >
+              <span className="text-gray-500 dark:text-gray-400">
+                {REVENUE_CATEGORY_LABEL[category] ?? category}
+              </span>
+              <span className="font-medium text-gray-900 dark:text-white">
+                {formatCents(cents)} · {Math.round((cents / total) * 100)}%
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {negatives.length > 0
+            ? `No positive revenue this period — ${negatives.length} negative ${
+                negatives.length === 1 ? 'adjustment' : 'adjustments'
+              } only.`
+            : 'Every row recorded this period is zero.'}
+        </p>
+      )}
+
+      {negatives.length > 0 && total > 0 ? (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Excludes {negatives.length} negative{' '}
+          {negatives.length === 1 ? 'adjustment' : 'adjustments'}; the split
+          covers positive revenue only.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Words where figures would be, and no zero: a zero is a measurement.
+ * Collapses into FILM-1701's `NotCollectedCard` once #288 is on main.
+ */
+function RevenueCardEmpty({
+  heading,
+  children,
+  'data-test': dataTest,
+}: {
+  heading: string;
+  children: React.ReactNode;
+  'data-test': string;
+}) {
+  return (
+    <div className="flex flex-col gap-1" data-test={dataTest}>
+      <span className="text-base font-semibold text-gray-900 dark:text-white">
+        {heading}
+      </span>
+      <p className="text-xs text-gray-500 dark:text-gray-400">{children}</p>
+    </div>
   );
 }

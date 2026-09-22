@@ -75,8 +75,11 @@ describe('calculateChanges', () => {
 
     const changes = calculateChanges(current, previous);
 
-    // When previous is 0 and current > 0, should be 100%
-    expect(changes.views).toBe(100);
+    // A change from nothing is not a percentage (KB-16). This used to be
+    // 100, and a fabricated "+100%" went into the LLM's insight input.
+    expect(changes).not.toHaveProperty('views');
+    // The keys that do have a baseline are still reported.
+    expect(changes.likes).toBe(0);
   });
 
   it('should handle both zero values', () => {
@@ -92,8 +95,8 @@ describe('calculateChanges', () => {
 
     const changes = calculateChanges(current, previous);
 
-    // When both are 0, should be 0%
-    expect(changes.views).toBe(0);
+    // 0 → 0 has no baseline either: 0/0 is not "no change".
+    expect(changes).not.toHaveProperty('views');
   });
 
   it('should calculate all metric changes', () => {

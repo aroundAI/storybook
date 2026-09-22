@@ -20,6 +20,7 @@ import { Skeleton } from '@kit/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
 import { formatNumber } from '../lib/format';
+import { ABSENT, measured } from '../lib/measured';
 import {
   getContentListAction,
   getContentTypeComparisonAction,
@@ -30,6 +31,7 @@ import {
   getProjectAnalyticsAction,
   getProjectAudienceDataAction,
   getProjectDailyMetricsAction,
+  getProjectRevenueByCurrencyAction,
   getShortsSourcePerformanceAction,
 } from '../server/dashboard-actions';
 import type {
@@ -136,6 +138,24 @@ export function AnalyticsDashboard({
     ],
     queryFn: () =>
       getProjectDailyMetricsAction({
+        projectId,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+    enabled: activeTab === 'overview',
+  });
+
+  // Recorded revenue per currency, for the Overview's revenue card (KB-16).
+  // The card used to split a ClickHouse total 70/30 by itself.
+  const { data: revenueByCurrency, isLoading: isRevenueLoading } = useQuery({
+    queryKey: [
+      'project-revenue-by-currency',
+      projectId,
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ],
+    queryFn: () =>
+      getProjectRevenueByCurrencyAction({
         projectId,
         from: dateRange.from,
         to: dateRange.to,
@@ -400,7 +420,8 @@ export function AnalyticsDashboard({
             analytics={aggregateAnalytics}
             audience={audienceData ?? undefined}
             contentList={contentList}
-            isLoading={isLoading || isContentLoading}
+            revenue={revenueByCurrency ? measured(revenueByCurrency) : ABSENT}
+            isLoading={isLoading || isContentLoading || isRevenueLoading}
             onViewAllContent={() => setActiveTab('content')}
             onViewAIReport={() => setActiveTab('insights')}
           />

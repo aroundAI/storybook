@@ -3,7 +3,13 @@
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import {
+  type ProjectRevenue,
+  foldProjectRevenue,
+} from '../lib/project-revenue';
+import type { SummaryRevenueRow } from '../lib/revenue-by-currency';
 import {
   getContentList,
   getProjectAnalytics,
@@ -15,6 +21,8 @@ import {
   getLanguagePerformance,
   getPlatformLanguageMatrix,
 } from './language-analytics';
+import { forEachProjectRevenueRow } from './revenue-queries';
+import { assertProjectAccess } from './scope-access';
 
 /**
  * Schema for getProjectAnalyticsAction
@@ -89,6 +97,47 @@ export const getProjectDailyMetricsAction = enhanceAction(
   },
   {
     schema: GetProjectDailyMetricsSchema,
+    auth: true,
+  },
+);
+
+const GetProjectRevenueSchema = z.object({
+  projectId: z.string().uuid(),
+  from: z.coerce.date(),
+  to: z.coerce.date(),
+});
+
+/**
+ * Revenue recorded against a project's publishes in the window, one mix
+ * per currency (KB-16). Empty when nothing was recorded; null when the
+ * caller may not read the project, as `getProjectAnalytics` answers.
+ */
+export const getProjectRevenueByCurrencyAction = enhanceAction(
+  async ({ projectId, from, to }): Promise<ProjectRevenue[] | null> => {
+    const client = getSupabaseServerClient();
+
+    try {
+      await assertProjectAccess(client, projectId);
+    } catch {
+      return null;
+    }
+
+    const rows: SummaryRevenueRow[] = [];
+
+    // The same day boundaries as the Overview's other reads
+    // (`getProjectAnalytics`), so the card and the tiles cover one window.
+    await forEachProjectRevenueRow(
+      client,
+      projectId,
+      from.toISOString().split('T')[0]!,
+      to.toISOString().split('T')[0]!,
+      (row) => rows.push(row),
+    );
+
+    return foldProjectRevenue(rows);
+  },
+  {
+    schema: GetProjectRevenueSchema,
     auth: true,
   },
 );

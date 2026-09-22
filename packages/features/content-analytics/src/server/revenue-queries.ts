@@ -160,6 +160,59 @@ export async function forEachAccountRevenueRow(
 }
 
 /**
+ * Every revenue row recorded against one project's publishes in a window,
+ * for the Overview's revenue card (KB-16).
+ *
+ * Publish-scoped rows only. Channel-level income (`publish_id` null) has
+ * no project to belong to, and the card says it is not here rather than
+ * spreading the account's sponsorships over every project. Paged, because
+ * the fold over it is a total and a truncated read is a smaller total with
+ * no error.
+ */
+export async function forEachProjectRevenueRow(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  projectId: string,
+  from: string,
+  to: string,
+  onRow: (row: AccountRevenueRow) => void,
+): Promise<void> {
+  await forEachPage<
+    StoredRevenueRow & { publishes?: { episode_id?: string | null } }
+  >(
+    (pageFrom, pageTo) =>
+      client
+        .from('revenue_records')
+        .select(
+          `id,
+          publish_id,
+          platform,
+          record_date,
+          revenue_cents,
+          currency,
+          source,
+          category,
+          publishes!inner (
+            id,
+            episode_id,
+            episodes!inner ( id, project_id )
+          )`,
+        )
+        .eq('publishes.episodes.project_id', projectId)
+        .gte('record_date', from)
+        .lte('record_date', to)
+        .order('id')
+        .range(pageFrom, pageTo),
+    (batch) => {
+      for (const { publishes, ...row } of batch) {
+        onRow(toAccountRevenueRow(row, publishes?.episode_id ?? null));
+      }
+    },
+    'project revenue',
+  );
+}
+
+/**
  * Collects every row into an array.
  *
  * Prefer `forEachAccountRevenueRow` for aggregation — this materializes the

@@ -149,6 +149,57 @@ describe('MetricCards', () => {
     // Should display 0 for all metrics
     expect(screen.getAllByText('0').length).toBeGreaterThan(0);
   });
+
+  describe('no previous period (KB-16)', () => {
+    it('draws no change indicator when there is no previous period', () => {
+      // `previousData={null}` was read as zero, and every non-zero metric
+      // read "+100.0%" with a green arrow.
+      const { container } = render(
+        <MetricCards data={mockData} previousData={null} isLoading={false} />,
+      );
+
+      expect(container.querySelector('[data-test="metric-change"]')).toBeNull();
+      expect(screen.queryByText('100.0%')).toBeNull();
+      expect(screen.queryByTestId('icon-trending-up')).toBeNull();
+      expect(screen.queryByLabelText(/Increased/)).toBeNull();
+      expect(screen.getAllByText('No previous period to compare')).toHaveLength(
+        7,
+      );
+    });
+
+    it('draws no change for a metric whose previous period was zero', () => {
+      const { container } = render(
+        <MetricCards
+          data={mockData}
+          previousData={{ ...mockPreviousData, views: 0 }}
+          isLoading={false}
+        />,
+      );
+
+      // Six metrics have a baseline; views does not.
+      expect(
+        container.querySelectorAll('[data-test="metric-change"]'),
+      ).toHaveLength(6);
+      expect(
+        container.querySelector(
+          '[data-test="metric-card-views"] [data-test="metric-change"]',
+        ),
+      ).toBeNull();
+    });
+
+    it('still reports a measured change', () => {
+      render(
+        <MetricCards
+          data={mockData}
+          previousData={mockPreviousData}
+          isLoading={false}
+        />,
+      );
+
+      // 1,000,000 → 1,500,000 views.
+      expect(screen.getByLabelText('Increased by 50.0%')).toBeDefined();
+    });
+  });
 });
 
 describe('MetricCardSkeleton', () => {
