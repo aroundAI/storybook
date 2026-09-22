@@ -1,14 +1,6 @@
 import Link from 'next/link';
 
-import {
-  AlertCircle,
-  Clock,
-  ExternalLink,
-  Mail,
-  Trash2,
-  Unplug,
-  UserX,
-} from 'lucide-react';
+import { Clock, ExternalLink, Mail, Trash2, Unplug, UserX } from 'lucide-react';
 
 import { SitePageHeader } from '~/(marketing)/_components/site-page-header';
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
@@ -152,11 +144,16 @@ async function DataDeletionPage() {
                 </li>
               </ul>
 
-              <BlockedOnOwnerDecision>
-                What disconnecting does to the records and statistics already
-                collected, and how long they are kept afterwards, is not
-                settled. See KB-20 in the pull request that adds this page.
-              </BlockedOnOwnerDecision>
+              <p data-test="retention-disconnect">
+                Disconnecting also removes our records of what was published
+                through that account and any revenue entries attached to them,
+                including ones you typed in yourself — export anything you want
+                to keep first. The per-video statistics already in our analytics
+                store are kept until you ask us to delete them (section 1), with
+                one exception: YouTube&apos;s API policies require us to delete
+                the YouTube statistics we hold within 7 calendar days of a
+                disconnect, so for YouTube that is what happens.
+              </p>
             </div>
           </Section>
 
@@ -252,11 +249,16 @@ async function DataDeletionPage() {
                 </table>
               </div>
 
-              <BlockedOnOwnerDecision>
-                What we do with data already collected once access has been
-                revoked at the platform, and within how many days, is not
-                settled. See KB-20 in the pull request that adds this page.
-              </BlockedOnOwnerDecision>
+              <p data-test="retention-revoked">
+                Revoking at the platform stops us collecting anything further,
+                but by itself deletes nothing here: the connection stays in{' '}
+                <strong>Settings → Platforms</strong> until you disconnect it
+                there (section 2), and the statistics already collected are kept
+                until you ask (section 1). YouTube is the exception: if you
+                revoke access at Google, or your YouTube authorisation lapses
+                and cannot be renewed, we delete the YouTube statistics we hold
+                within 30 calendar days.
+              </p>
             </div>
           </Section>
 
@@ -305,33 +307,6 @@ function ContactLink({
     >
       {email}
     </a>
-  );
-}
-
-/**
- * KB-20: the owner's "keep until asked" decision conflicts with YouTube's
- * developer policies (III.D, III.E.4). Until the owner rules, the paragraphs
- * it governs are not written — and this renders in their place so the gap
- * cannot ship unnoticed. Remove every use before this page goes live.
- */
-function BlockedOnOwnerDecision({ children }: React.PropsWithChildren) {
-  return (
-    <div
-      data-test="blocked-on-owner-decision"
-      className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-900/20"
-    >
-      <div className="flex items-start gap-3">
-        <AlertCircle className="mt-0.5 h-5 w-5 text-amber-600 dark:text-amber-400" />
-        <div>
-          <p className="font-medium text-amber-800 dark:text-amber-200">
-            DRAFT — BLOCKED ON OWNER DECISION
-          </p>
-          <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
-            {children}
-          </p>
-        </div>
-      </div>
-    </div>
   );
 }
 

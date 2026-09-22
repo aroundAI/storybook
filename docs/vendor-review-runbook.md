@@ -42,22 +42,23 @@ so make them yours.
    run Instagram analytics end to end for your own company. App Review and Business
    Verification are what you need **before onboarding anyone else**. It also gives you
    the working integration the review asks to see.
-2. **Blocker for Meta App Review: the app has no data-deletion endpoint and no
-   deletion-instructions page.** Meta: *"Apps that access user data must provide a way
-   for users to request that their data be deleted"* — either a callback or an
-   instructions URL, set in the dashboard's Basic Settings **[cited]**
+2. **Was a blocker for Meta App Review — resolved by #294.** Meta: *"Apps that access
+   user data must provide a way for users to request that their data be deleted"* —
+   either a callback or an instructions URL, set in the dashboard's Basic Settings
+   **[cited]**
    ([data deletion callback](https://developers.facebook.com/docs/development/create-an-app/app-dashboard/data-deletion-callback)).
-   The repo has neither: no route under `apps/web/app/api` handles a `signed_request`,
-   and the privacy policy lists erasure as a right (§6) without saying how to ask. The
-   cheap fix is an instructions page; the callback is the fuller one. Details in
-   [Meta → Before you submit](#before-you-submit-1).
-3. **Blocker for Google verification: the privacy policy lacks three things YouTube's
-   developer policies require** — a link to YouTube's Terms of Service, a link to the
-   Google Privacy Policy, and the sentence about revoking access at Google's security
+   The instructions page now exists at `<APP_URL>/data-deletion`, linked from the
+   privacy policy (§1.4, §6) and the footer; that URL is what goes in Basic Settings.
+   No `signed_request` callback route exists — the instructions URL is the route taken.
+   Details in [Meta → Before you submit](#before-you-submit-1).
+3. **Was a blocker for Google verification — resolved by #294.** YouTube's developer
+   policies require the privacy policy to link YouTube's Terms of Service, link the
+   Google Privacy Policy, and state that access can be revoked at Google's security
    settings page **[cited]**
    ([YouTube API Services developer policies](https://developers.google.com/youtube/terms/developer-policies)).
-   `apps/web/app/(marketing)/(legal)/privacy-policy/page.tsx` contains none of the three
-   (grepped 2026-09-22).
+   `apps/web/app/(marketing)/(legal)/privacy-policy/page.tsx` now carries all three
+   (§1.3 the two links, §6 the security-settings sentence), each behind a `data-test`
+   that `apps/e2e/tests/legal/data-deletion.spec.ts` asserts.
 4. **A failed authorise used to land on a 404 and log nothing (KB-19). It now lands on
    Settings → Platforms with the reason on the page, and writes one log line.** Not
    caused by #289, but it is what you will see if a vendor refuses a scope, so you need
@@ -473,23 +474,22 @@ In the order the submission guide walks through them **[cited]**
       logos"* (no Instagram glyph in it); **Privacy Policy URL**
       (`<APP_URL>/privacy-policy` — exists); app purpose; a category that *"accurately
       describes your app"*; verified primary contact email.
-- [ ] 🚫 **Data deletion — BLOCKER, not built.** Either a **Data Deletion Request URL**
-      — an HTTPS endpoint receiving *"a POST with a signed request"* containing the
-      app-scoped user ID, which must *"Return a JSON response that contains a URL where
-      the user can check the status of their deletion request and an alphanumeric
-      confirmation code"* — or a **data deletion instructions URL**, entered in Basic
-      Settings **[cited]**
+- [ ] **Data deletion — instructions URL built (#294); paste it.** Meta accepts either a
+      **Data Deletion Request URL** — an HTTPS endpoint receiving *"a POST with a signed
+      request"* containing the app-scoped user ID, which must *"Return a JSON response
+      that contains a URL where the user can check the status of their deletion request
+      and an alphanumeric confirmation code"* — or a **data deletion instructions URL**,
+      entered in Basic Settings **[cited]**
       ([data deletion callback](https://developers.facebook.com/docs/development/create-an-app/app-dashboard/data-deletion-callback)).
-      What the app already does that either option can point at: disconnecting a Meta
-      connection revokes our permissions at Meta (`DELETE /me/permissions`, in
-      `packages/features/publishing/src/oauth/meta/disconnect.ts`) and removes the
-      stored tokens; deleting the account removes everything
-      (`account-danger-zone.tsx`). The fastest route is an instructions page saying
-      exactly that, linked from the privacy policy. The callback would be a new route,
-      e.g. `apps/web/app/api/platforms/meta/data-deletion/route.ts`, verifying
-      `signed_request` with the app secret. Whether Meta accepts an instructions URL
-      alone for this review: the page offers both, so **[cited]** as an option, but
-      which one a reviewer prefers is **[not verified]**.
+      We took the second: `<APP_URL>/data-deletion` says how to disconnect (Meta:
+      `DELETE /me/permissions` in `packages/features/publishing/src/oauth/meta/disconnect.ts`,
+      then the stored tokens go), how to delete the account, what each removes, and how
+      to ask for the rest by email — see `docs/data-deletion-runbook.md` for the
+      operator's side of that promise. The callback would be a new route, e.g.
+      `apps/web/app/api/platforms/meta/data-deletion/route.ts`, verifying
+      `signed_request` with the app secret; not built. Whether Meta accepts an
+      instructions URL alone for this review: the page offers both, so **[cited]** as an
+      option, but which one a reviewer prefers is **[not verified]**.
 - [ ] **App verification:** *"describe how we can access your app in order to test
       it."* *"Your app must be publicly available or you must provide instructions on
       how to access it."* And: *"We will test your app using our own test accounts. Do
@@ -608,7 +608,7 @@ form asks for; the first three shots can open each of them.
       `/privacy-policy`.
 - [ ] *"verify that you own all domains listed in your Authorized domains section"*
       **[cited]** — done through Search Console; **[not verified]** for the exact steps.
-- [ ] 🚫 **Privacy policy — BLOCKER, three missing items.** YouTube's developer
+- [x] **Privacy policy — the three items are in (#294).** YouTube's developer
       policies require an API client's privacy policy to *"display a link to YouTube's
       Terms of Service (https://www.youtube.com/t/terms)"*, to *"reference and link to
       the Google Privacy Policy at http://www.google.com/policies/privacy"*, and to
@@ -617,15 +617,22 @@ form asks for; the first three shots can open each of them.
       Google security settings page at
       https://security.google.com/settings/security/permissions"* **[cited]**
       ([developer policies](https://developers.google.com/youtube/terms/developer-policies)).
-      Ours has none of them. It is a text edit to
-      `app/(marketing)/(legal)/privacy-policy/page.tsx`, best placed in §1.3 beside the
-      "Social Platforms" entry.
-- [ ] The same policies limit how long authorised data may be kept without refreshing —
-      *"30 calendar days"* — and require deletion within 30 days of a user revoking at
-      Google, 7 days of revoking through us **[cited]**. Our sync refreshes figures on a
-      schedule; nothing deletes ClickHouse rows when a connection is removed. Not a form
-      field, but a verifier or a later compliance audit can ask — **flagged, not
-      solved**.
+      Ours has all three: the two links in §1.3 beside the "Social Platforms" entry,
+      the security-settings sentence in §6, each with a `data-test` that
+      `apps/e2e/tests/legal/data-deletion.spec.ts` asserts against the exact URL the
+      policy names.
+- [ ] **Retention, as the policies actually read (III.D, III.E.4, checked
+      2026-09-22):** a user's YouTube data must be deleted within **7 calendar days** of
+      a disconnect made through our app (our Disconnect button is the "mechanism" III.D
+      names) and of any deletion request; within **30 calendar days** when access is
+      revoked at Google or the token can no longer be refreshed; analytics kept while
+      the authorisation is valid has **no cap**, but the client must confirm every 30
+      days that it is still authorised **[cited]**. What we do: the hourly sync uses the
+      token, so a revoked or lapsed authorisation surfaces as a failed sync; the
+      deletion itself is done by hand, within those windows, from
+      `docs/data-deletion-runbook.md` — nothing automates it yet (KB-20 item 3, required
+      before a second account). `/privacy-policy` §1.4 and `/data-deletion` state these
+      windows, so a verifier reads the same figures the policy sets.
 - [ ] The scope added on the console's Data Access page, with its justification.
 - [ ] A demo Google account owning a YouTube channel. To show revenue figures, not just
       the consent line, the channel has to be in the Partner Program — revenue metrics

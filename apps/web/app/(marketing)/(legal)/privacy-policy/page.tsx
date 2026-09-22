@@ -331,24 +331,22 @@ async function PrivacyPolicyPage() {
                     page are sent to one of the AI providers listed in section 3
                     to write the summary.
                   </p>
-                  <p>
+                  <p data-test="privacy-retention">
                     <strong>How long.</strong> While the platform stays
-                    connected we refresh these figures on a schedule.
+                    connected we refresh these figures on a schedule, and each
+                    scheduled refresh confirms that your authorisation is still
+                    valid. After you disconnect a platform, or revoke our access
+                    at the platform, we keep the statistics already collected
+                    until you ask us to delete them, with no time limit — except
+                    for YouTube: YouTube&apos;s API policies require us to
+                    delete YouTube statistics within 7 calendar days of a
+                    disconnect in this app, and within 30 calendar days if you
+                    revoke access at Google or your authorisation lapses and
+                    cannot be renewed. Disconnecting also removes our records of
+                    what was published through that account and their revenue
+                    entries; the Data Deletion page below says exactly what
+                    goes.
                   </p>
-                  <div
-                    data-test="blocked-on-owner-decision"
-                    className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-900/20"
-                  >
-                    <p className="font-medium text-amber-800 dark:text-amber-200">
-                      DRAFT — BLOCKED ON OWNER DECISION
-                    </p>
-                    <p className="mt-1 text-amber-700 dark:text-amber-300">
-                      How long this data is kept after a platform is
-                      disconnected, or after access is revoked at the platform,
-                      is not settled. See KB-20 in the pull request that adds
-                      this section.
-                    </p>
-                  </div>
                   <p>
                     <strong>Deleting it.</strong> Our{' '}
                     <Link
@@ -532,7 +530,11 @@ async function PrivacyPolicyPage() {
                   period: 'Until deleted',
                   color: 'green',
                 },
-                { label: 'Analytics', period: '24 months', color: 'purple' },
+                {
+                  label: 'Analytics',
+                  period: 'Until you ask — see 1.4',
+                  color: 'purple',
+                },
                 {
                   label: 'Payment Records',
                   period: '7 years (legal)',

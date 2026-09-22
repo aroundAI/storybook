@@ -45,6 +45,14 @@ test.describe('Data deletion and privacy policy — evidence', () => {
       path: `${OUT}/02-privacy-section-1-platform-data.png`,
     });
 
+    // §5's "Analytics" row now defers to §1.4 rather than naming a period
+    // nothing enforces.
+    const retention = page.locator('#section-5');
+
+    await retention.screenshot({
+      path: `${OUT}/02b-privacy-section-5-retention.png`,
+    });
+
     const rights = page.locator('#section-6');
 
     await expect(

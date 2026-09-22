@@ -109,3 +109,47 @@ test.describe('Terms of service — what YouTube requires of it', () => {
     ).toHaveAttribute('href', YOUTUBE_TERMS);
   });
 });
+
+/**
+ * The retention paragraphs were rendered as amber "DRAFT — BLOCKED ON OWNER
+ * DECISION" boxes until the owner ruled (2026-09-22: YouTube carved out of
+ * keep-until-asked, per its developer policies III.D and III.E.4). A box that
+ * survives to production would be read by a vendor reviewer, so its absence is
+ * asserted, and the two figures the policy fixes are read off the page.
+ */
+test.describe('Nothing on either page is still waiting on a decision', () => {
+  for (const path of ['/data-deletion', '/privacy-policy']) {
+    test(`${path} renders no DRAFT — BLOCKED box`, async ({ page }) => {
+      await page.goto(path);
+
+      await expect(
+        page.locator('[data-test="blocked-on-owner-decision"]'),
+      ).toHaveCount(0);
+    });
+  }
+
+  test('the data-deletion page states the windows YouTube requires', async ({
+    page,
+  }) => {
+    await page.goto('/data-deletion');
+
+    await expect(
+      page.locator('[data-test="retention-disconnect"]'),
+    ).toContainText('7 calendar days');
+
+    await expect(page.locator('[data-test="retention-revoked"]')).toContainText(
+      '30 calendar days',
+    );
+  });
+
+  test('the privacy policy says how long platform data is kept', async ({
+    page,
+  }) => {
+    await page.goto('/privacy-policy');
+
+    const howLong = page.locator('[data-test="privacy-retention"]');
+
+    await expect(howLong).toContainText('7 calendar days');
+    await expect(howLong).toContainText('30 calendar days');
+  });
+});

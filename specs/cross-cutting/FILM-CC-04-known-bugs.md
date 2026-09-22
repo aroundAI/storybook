@@ -1095,12 +1095,19 @@ stayed valid*. Meta (Platform Terms §3.d, "Last updated February 3, 2026")
 requires deletion "promptly" on request and sets nothing off on disconnect: no
 conflict. TikTok's terms could not be read from this network: **not verified**.
 
-**Awaiting the owner:** (A) carve YouTube out of keep-until-asked; (B) add a
-*Pause* that stops syncing without revoking, so history survives inside the
-policy, with Disconnect as the deliberate revoke-and-delete; or both
-(recommended). Whatever is chosen, item 3 becomes a spec of its own, and it
-must be built together with **KB-22**, because the two pull the same lever in
-opposite directions.
+**Decided (owner, 2026-09-22, on the conflict): (A) — YouTube is carved out.**
+YouTube statistics are deleted within **7 calendar days** of a disconnect made
+in our app and within **30 calendar days** of revocation at Google or an
+authorisation that cannot be renewed; "keep until asked" stands for every
+other platform, **with no time limit** (a 12-month window was offered and
+declined). Three more decisions taken with it: the 7-day request window is
+real — the owner performs the deletion by hand, commands in
+`docs/data-deletion-runbook.md`; `privacy@storybook.digital` is monitored; no
+*Pause* action (B) is built. Because the owner is today the only user, the
+person who disconnects is the person who deletes, which is what makes the
+page's YouTube sentences true now. **Automating it — item 3, built together
+with KB-22 because the two pull the same lever in opposite directions — is a
+precondition before a second account is onboarded.**
 
 **Legal text is the owner's to approve.** A teammate can draft from the vendor
 requirements and the code's actual behaviour; the PR must say DRAFT and must
@@ -1109,12 +1116,12 @@ not implement. Item 3 exists so that items 1–2 never have to.
 
 ### Acceptance criteria
 
-- [ ] Data-deletion instructions page live, linked from the privacy policy and footer; every sentence on it checked against what the code does
-- [ ] Privacy policy carries the three YouTube-required items — each cited to the policy text in the PR
-- [x] Owner has decided what disconnect deletes (2026-09-22: keep until asked — see above)
-- [ ] Vendor retention/revocation clauses quoted and cited for YouTube, Meta and TikTok; any conflict with the decision brought to the owner before the pages are finalised
-- [ ] Item 3: after a disconnect (or on request), vendor-sourced rows for that connection are gone from ClickHouse and Postgres within the stated window; manual entries untouched — pgTAP/ClickHouse test with seeded rows, red first
-- [ ] Runbook (#289) updated: the two blockers struck, with the URLs to paste into each vendor form
+- [x] Data-deletion instructions page, linked from the privacy policy and footer; every sentence on it checked against what the code does — #294; the three BLOCKED boxes replaced with the decided text; live on deploy
+- [x] Privacy policy carries the three YouTube-required items — each cited to the policy text in #294 (§III.A.1, §III.A.2.c, §III.A.2.i)
+- [x] Owner has decided what disconnect deletes (2026-09-22: keep until asked; then, on the YouTube conflict, option A — see above)
+- [x] Vendor retention/revocation clauses quoted and cited for YouTube and Meta; TikTok **[not verified]** (its terms were unreachable from this network); the conflict was brought to the owner and decided
+- [ ] Item 3: after a disconnect (or on request), vendor-sourced rows for that connection are gone from ClickHouse and Postgres within the stated window; manual entries untouched — pgTAP/ClickHouse test with seeded rows, red first. **Precondition before a second account**; until then the YouTube windows are met by hand (`docs/data-deletion-runbook.md`)
+- [x] Runbook (#289) updated in #294: both blockers marked resolved, the URLs to paste kept in each vendor's form table
 
 ---
 
