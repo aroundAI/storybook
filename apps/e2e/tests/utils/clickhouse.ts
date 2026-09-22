@@ -20,7 +20,12 @@ function authHeader() {
 }
 
 async function run(query: string, body?: string, settings?: string) {
-  const url = `${HOST()}/?query=${encodeURIComponent(query)}${settings ?? ''}`;
+  // The same database the server reads (`CLICKHOUSE_DB`, as in
+  // `@kit/clickhouse`'s client). Without it a spec always seeded `default`,
+  // so a server pointed anywhere else rendered empty states for rows that
+  // had just been inserted.
+  const database = encodeURIComponent(process.env.CLICKHOUSE_DB ?? 'default');
+  const url = `${HOST()}/?database=${database}&query=${encodeURIComponent(query)}${settings ?? ''}`;
 
   const response = await fetch(url, {
     method: 'POST',
@@ -109,7 +114,7 @@ function videoDimRow(video: SeededVideo) {
     language: 'en',
     title: video.title,
     published_at: clickHouseDateTime(video.publishedAt),
-    duration_seconds: 600,
+    episode_duration_seconds: 600,
     tags: [],
     updated_at: clickHouseDateTime(new Date()),
   };
