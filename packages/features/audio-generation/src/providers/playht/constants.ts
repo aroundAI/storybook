@@ -1,11 +1,12 @@
 /**
  * PlayHT provider-specific constants
  */
+import { vendorUrl } from '@kit/shared/vendors';
 
 export const PLAYHT_PROVIDER = {
   // API Configuration
   API: {
-    BASE_URL: 'https://api.play.ht/api/v2',
+    BASE_URL: `${vendorUrl('playht')}/api/v2`,
     ENDPOINTS: {
       TTS: '/tts',
       TTS_STREAM: '/tts/stream',

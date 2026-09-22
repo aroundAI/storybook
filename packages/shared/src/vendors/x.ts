@@ -1,3 +1,5 @@
+import { vendorUrl } from './resolver';
+
 /**
  * The one X API host and version this repository calls (FILM-1723).
  *
@@ -17,9 +19,9 @@
  * is outside FILM-1723, so a video upload is refused until it is added and the
  * connection re-authorised.
  */
-const X_API_HOST = 'https://api.x.com';
+const X_API_HOST = vendorUrl('x-api');
 const X_API_VERSION = '2';
-const X_WEB_HOST = 'https://x.com';
+const X_WEB_HOST = vendorUrl('x-oauth');
 
 export const X_API_BASE = `${X_API_HOST}/${X_API_VERSION}`;
 

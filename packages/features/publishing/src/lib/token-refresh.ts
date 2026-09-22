@@ -5,6 +5,9 @@ import { getLogger } from '@kit/shared/logger';
 import { META_GRAPH_BASE, META_OAUTH_TOKEN_URL } from '@kit/shared/vendors';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import { LINKEDIN_OAUTH_CONFIG } from '../oauth/linkedin/config';
+import { TIKTOK_OAUTH_CONFIG } from '../oauth/tiktok/config';
+import { YOUTUBE_OAUTH_CONFIG } from '../oauth/youtube/config';
 import type { PlatformConnection } from './database-types';
 
 /**
@@ -334,7 +337,7 @@ async function refreshYouTubeToken(
     );
   }
 
-  const response = await fetch('https://oauth2.googleapis.com/token', {
+  const response = await fetch(YOUTUBE_OAUTH_CONFIG.tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -377,7 +380,7 @@ async function refreshTikTokToken(
     throw new Error('TikTok OAuth credentials not configured for this account');
   }
 
-  const response = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+  const response = await fetch(TIKTOK_OAUTH_CONFIG.tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -522,19 +525,16 @@ async function refreshLinkedInToken(
     );
   }
 
-  const response = await fetch(
-    'https://www.linkedin.com/oauth/v2/accessToken',
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken,
-        client_id: oauthApp.clientId,
-        client_secret: oauthApp.clientSecret,
-      }),
-    },
-  );
+  const response = await fetch(LINKEDIN_OAUTH_CONFIG.tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_id: oauthApp.clientId,
+      client_secret: oauthApp.clientSecret,
+    }),
+  });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));

@@ -2,11 +2,12 @@
  * YouTube OAuth 2.0 Configuration
  * Uses Google OAuth with YouTube-specific scopes
  */
+import { vendorUrl } from '@kit/shared/vendors';
 
 export const YOUTUBE_OAUTH_CONFIG = {
-  authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-  tokenUrl: 'https://oauth2.googleapis.com/token',
-  revokeUrl: 'https://oauth2.googleapis.com/revoke',
+  authUrl: `${vendorUrl('google-oauth')}/o/oauth2/v2/auth`,
+  tokenUrl: `${vendorUrl('google-token')}/token`,
+  revokeUrl: `${vendorUrl('google-token')}/revoke`,
   scopes: [
     'https://www.googleapis.com/auth/youtube.upload',
     'https://www.googleapis.com/auth/youtube.readonly',

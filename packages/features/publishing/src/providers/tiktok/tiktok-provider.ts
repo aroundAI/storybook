@@ -1,5 +1,7 @@
 import { createReadStream, promises as fsPromises } from 'fs';
 
+import { vendorUrl } from '@kit/shared/vendors';
+
 import type {
   TikTokUploadInit,
   TikTokUploadInput,
@@ -9,7 +11,7 @@ import type {
 } from './types';
 import { TIKTOK_CONSTRAINTS } from './types';
 
-const TIKTOK_API_BASE = 'https://open.tiktokapis.com/v2';
+const TIKTOK_API_BASE = `${vendorUrl('tiktok')}/v2`;
 
 /**
  * TikTok Provider

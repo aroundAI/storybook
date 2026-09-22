@@ -7,6 +7,8 @@
  */
 import { randomUUID } from 'node:crypto';
 
+import { vendorUrl } from '@kit/shared/vendors';
+
 import type {
   CredibilityTier,
   ExternalContent,
@@ -45,7 +47,7 @@ export class ArchiveOrgProvider extends BaseExternalProvider {
   }
 
   async fetchContent(params: ExternalSearchParams): Promise<ExternalContent[]> {
-    const url = new URL('https://archive.org/advancedsearch.php');
+    const url = new URL(`${vendorUrl('archive-org')}/advancedsearch.php`);
     url.searchParams.set('q', params.query);
     url.searchParams.set('output', 'json');
     url.searchParams.set('rows', String(params.pageSize ?? 20));

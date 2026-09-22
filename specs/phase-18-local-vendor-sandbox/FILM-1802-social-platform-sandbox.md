@@ -31,10 +31,10 @@ is a distinct origin, as it is in production:
 | Port | Serves | Resolver names (FILM-1801) |
 |---|---|---|
 | 4100 | Control API and ledger (§6); a small status page | — |
-| 4101 | Meta: Graph API (all version paths), Facebook Login dialog, token exchange | `meta-graph`, `meta-oauth` |
+| 4101 | Meta: Graph API (all version paths), Facebook Login dialog, token exchange | `meta-graph`, `meta-graph-video`, `meta-oauth` |
 | 4102 | TikTok: Display API, OAuth authorize and token | `tiktok`, `tiktok-oauth` |
-| 4103 | Google: OAuth authorize, token and revoke; YouTube Data v3, Analytics v2, Reporting v1 (including report downloads) | `google-oauth`, `google-token`, `google-apis` |
-| 4104 | X: API v2, media upload, OAuth 2.0 PKCE | `x-api`, `x-upload`, `x-oauth` |
+| 4103 | Google: OAuth authorize, token and revoke; YouTube Data v3, Analytics v2, Reporting v1 (including report downloads) | `google-oauth`, `google-token`, `youtube-data`, `youtube-analytics`, `youtube-reporting` |
+| 4104 | X: API v2, media upload, OAuth 2.0 PKCE | `x-api`, `x-oauth` |
 | 4105 | LinkedIn: API v2, OAuth, userinfo | `linkedin-api`, `linkedin-oauth` |
 
 **Lifecycle.** `./scripts/local-env.sh up` starts it beside Supabase and ClickHouse,

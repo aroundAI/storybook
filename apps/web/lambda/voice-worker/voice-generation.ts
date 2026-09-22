@@ -10,6 +10,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { z } from 'zod';
 
+import { vendorUrl } from '@kit/shared/vendors';
+
 import {
   markJobCompleted,
   markJobFailed,
@@ -189,7 +191,7 @@ export async function processDialogueVoiceGeneration(
 
     // 4. Generate voice using ElevenLabs TTS API
     const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${data.voiceId}`,
+      `${vendorUrl('elevenlabs')}/v1/text-to-speech/${data.voiceId}`,
       {
         method: 'POST',
         headers: {

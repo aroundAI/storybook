@@ -38,7 +38,7 @@ FILM-1802 + FILM-1803 ─→ FILM-1804 (sandbox-backed E2E flows)
 
 | Spec | Status | Effort | Covers |
 |------|--------|--------|--------|
-| [FILM-1801](./FILM-1801-vendor-base-url-resolver.md) | DRAFT | L | One resolver for every vendor host; env overrides in local dev only; fails closed in production; a guard against new hardcoded hosts |
+| [FILM-1801](./FILM-1801-vendor-base-url-resolver.md) | ✅ DONE | L | One resolver for every vendor host; env overrides in local dev only; fails closed in production; a guard against new hardcoded hosts |
 | [FILM-1802](./FILM-1802-social-platform-sandbox.md) | DRAFT | XL | YouTube, TikTok, Meta (Facebook + Instagram), X, LinkedIn: OAuth, refresh, publishing, analytics — stateful, randomized, growing over time |
 | [FILM-1803](./FILM-1803-ai-generation-sandbox.md) | DRAFT | L | LLM (OpenAI, Anthropic, Gemini), audio (ElevenLabs, PlayHT, Suno, Udio, Sync Labs), embeddings (Voyage, OpenAI) |
 | [FILM-1804](./FILM-1804-sandbox-backed-e2e-flows.md) | DRAFT | L | Connect, publish, sync-to-dashboard, token refresh, and one pass through the studio pipeline — asserted against the sandbox's ledger |

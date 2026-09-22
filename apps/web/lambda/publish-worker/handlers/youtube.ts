@@ -6,6 +6,8 @@ import { createReadStream, promises as fsPromises } from 'fs';
 import { OAuth2Client } from 'google-auth-library';
 import { Readable } from 'stream';
 
+import { vendorUrl } from '@kit/shared/vendors';
+
 import type { PublishJobMessage } from '../index';
 
 export async function uploadToYouTube(
@@ -14,7 +16,11 @@ export async function uploadToYouTube(
 ): Promise<{ contentId: string; url: string }> {
   const oauth2Client = new OAuth2Client();
   oauth2Client.setCredentials({ access_token: accessToken });
-  const youtube = youtubeApi({ version: 'v3', auth: oauth2Client });
+  const youtube = youtubeApi({
+    version: 'v3',
+    auth: oauth2Client,
+    rootUrl: vendorUrl('youtube-data'),
+  });
 
   // 1. Get video file as stream
   const videoStream = await getVideoStream(job.videoUrl);
@@ -50,6 +56,7 @@ export async function uploadToYouTube(
       },
     },
     {
+      rootUrl: vendorUrl('youtube-data'),
       onUploadProgress: (evt) => {
         if (fileSize > 0 && evt.bytesRead) {
           const progress = Math.round((evt.bytesRead / fileSize) * 100);
@@ -73,12 +80,15 @@ export async function uploadToYouTube(
   if (job.thumbnailUrl) {
     try {
       const thumbnailStream = await getVideoStream(job.thumbnailUrl);
-      await youtube.thumbnails.set({
-        videoId,
-        media: {
-          body: thumbnailStream,
+      await youtube.thumbnails.set(
+        {
+          videoId,
+          media: {
+            body: thumbnailStream,
+          },
         },
-      });
+        { rootUrl: vendorUrl('youtube-data') },
+      );
       console.log(`[YouTube] Thumbnail uploaded`);
     } catch (thumbnailError) {
       // Don't fail the upload if thumbnail fails
@@ -97,7 +107,11 @@ export async function deleteFromYouTube(
 ): Promise<void> {
   const oauth2Client = new OAuth2Client();
   oauth2Client.setCredentials({ access_token: accessToken });
-  const youtube = youtubeApi({ version: 'v3', auth: oauth2Client });
+  const youtube = youtubeApi({
+    version: 'v3',
+    auth: oauth2Client,
+    rootUrl: vendorUrl('youtube-data'),
+  });
 
   console.log(`[YouTube] Deleting video: ${videoId}`);
 

@@ -613,7 +613,7 @@ Local stand-ins for every social platform and AI vendor, on local ports: statefu
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-1801 | [vendor-base-url-resolver](./phase-18-local-vendor-sandbox/FILM-1801-vendor-base-url-resolver.md) | DRAFT | L | - (with or after FILM-1723) |
+| FILM-1801 | [vendor-base-url-resolver](./phase-18-local-vendor-sandbox/FILM-1801-vendor-base-url-resolver.md) | ✅ DONE | L | - (with or after FILM-1723) |
 | FILM-1802 | [social-platform-sandbox](./phase-18-local-vendor-sandbox/FILM-1802-social-platform-sandbox.md) | DRAFT | XL | FILM-1801, FILM-1721 |
 | FILM-1803 | [ai-generation-sandbox](./phase-18-local-vendor-sandbox/FILM-1803-ai-generation-sandbox.md) | DRAFT | L | FILM-1801 |
 | FILM-1804 | [sandbox-backed-e2e-flows](./phase-18-local-vendor-sandbox/FILM-1804-sandbox-backed-e2e-flows.md) | DRAFT | L | FILM-1802, FILM-1803 |

@@ -6,6 +6,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { Readable } from 'stream';
 
 import type { SubscriberCountResult } from '@kit/shared/subscribers';
+import { vendorUrl } from '@kit/shared/vendors';
 
 import type {
   YouTubeCategory,
@@ -27,7 +28,11 @@ export class YouTubeProvider {
   constructor(accessToken: string) {
     const oauth2Client = new OAuth2Client();
     oauth2Client.setCredentials({ access_token: accessToken });
-    this.youtube = youtubeApi({ version: 'v3', auth: oauth2Client });
+    this.youtube = youtubeApi({
+      version: 'v3',
+      auth: oauth2Client,
+      rootUrl: vendorUrl('youtube-data'),
+    });
   }
 
   /**
@@ -68,6 +73,7 @@ export class YouTubeProvider {
         },
       },
       {
+        rootUrl: vendorUrl('youtube-data'),
         onUploadProgress: (evt) => {
           if (fileSize > 0 && evt.bytesRead) {
             const progress = Math.round((evt.bytesRead / fileSize) * 100);
@@ -123,12 +129,15 @@ export class YouTubeProvider {
   ): Promise<string> {
     const thumbnailStream = await this.getVideoStream(thumbnailPath);
 
-    const response = await this.youtube.thumbnails.set({
-      videoId,
-      media: {
-        body: thumbnailStream,
+    const response = await this.youtube.thumbnails.set(
+      {
+        videoId,
+        media: {
+          body: thumbnailStream,
+        },
       },
-    });
+      { rootUrl: vendorUrl('youtube-data') },
+    );
 
     return response.data.items?.[0]?.default?.url ?? '';
   }

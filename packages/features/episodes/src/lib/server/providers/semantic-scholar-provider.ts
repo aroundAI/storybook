@@ -7,6 +7,8 @@
  */
 import { randomUUID } from 'node:crypto';
 
+import { vendorUrl } from '@kit/shared/vendors';
+
 import type {
   CredibilityTier,
   ExternalContent,
@@ -56,7 +58,7 @@ export class SemanticScholarProvider extends BaseExternalProvider {
 
   async fetchContent(params: ExternalSearchParams): Promise<ExternalContent[]> {
     const url = new URL(
-      'https://api.semanticscholar.org/graph/v1/paper/search',
+      `${vendorUrl('semantic-scholar')}/graph/v1/paper/search`,
     );
     url.searchParams.set('query', params.query);
     url.searchParams.set('limit', String(params.pageSize ?? 20));

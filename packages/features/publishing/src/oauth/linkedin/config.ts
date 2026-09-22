@@ -2,11 +2,12 @@
  * LinkedIn OAuth 2.0 Configuration
  * Uses LinkedIn's OAuth 2.0 with OpenID Connect
  */
+import { vendorUrl } from '@kit/shared/vendors';
 
 export const LINKEDIN_OAUTH_CONFIG = {
-  authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
-  tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
-  userInfoUrl: 'https://api.linkedin.com/v2/userinfo',
+  authUrl: `${vendorUrl('linkedin-oauth')}/oauth/v2/authorization`,
+  tokenUrl: `${vendorUrl('linkedin-oauth')}/oauth/v2/accessToken`,
+  userInfoUrl: `${vendorUrl('linkedin-api')}/v2/userinfo`,
   scopes: {
     personal: ['openid', 'profile', 'email', 'w_member_social'],
     company: [
