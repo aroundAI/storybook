@@ -126,6 +126,7 @@ product call recorded in the phase README, not settled here.
 - [ ] The two MetricCards hardcoded to zero either carry a coverage state or stop rendering a number
 - [ ] A project with no connections renders an intelligible page
 - [ ] The strip's window matches the tab's window — Deep Dive's strip describes 52 weeks, the others the picker's range
+- [ ] `not_authorised` is distinguishable from `no_data_in_window` everywhere both can appear — handed on by [FILM-1711](./FILM-1711-analytics-authorisation.md), whose criterion stays open until this lands (`AnalyticsAccess.summary` already carries `not_authorised`)
 
 ## 8. Verification
 

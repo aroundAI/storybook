@@ -170,6 +170,7 @@ missing during a different spec is not.
 - [ ] Content cards show one platform indication, not a badge and a chip saying the same thing
 - [ ] The three unmounted Deep Dive cards compile against the v2 shell
 - [ ] Tab-switching does not refetch coverage; the provider is above the tabs
+- [ ] A chart crossing a view-definition boundary marks it (from `viewDefinitionChangesBetween`) rather than drawing a step change — handed on by [FILM-1722](./FILM-1722-view-definition-registry.md) §12, whose criterion stays open until this lands
 
 ## 7. Verification
 
