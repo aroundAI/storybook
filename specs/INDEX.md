@@ -686,6 +686,11 @@ SPIKE-01 through SPIKE-05
 > are not, and the TOTAL moves only by this change's one spec. Reconciling
 > the whole table means counting the nested spec directories, which is its
 > own piece of work.
+>
+> Phases 17 and 18 were recounted from the files on 2026-09-23, after the
+> #276–#304 merges. The table has no Partial column, so the four
+> 🟡 PARTIAL specs (FILM-1703, 1711, 1722, 1723) are counted under
+> *In Progress*; FILM-1710 (done, TikTok leg pending) is counted as Done.
 
 
 | Phase | Total | Draft | Review | Approved | In Progress | Deferred | Done |
@@ -708,10 +713,10 @@ SPIKE-01 through SPIKE-05
 | 14. Edit Suite v2 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 0 | 11 |
 | 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 0 | 17 |
-| 17. Analytics Provenance | 30 | 27 | 0 | 0 | 0 | 2 | 1 |
-| 18. Vendor Sandbox | 5 | 5 | 0 | 0 | 0 | 0 | 0 |
+| 17. Analytics Provenance | 30 | 20 | 0 | 0 | 4 | 2 | 4 |
+| 18. Vendor Sandbox | 5 | 4 | 0 | 0 | 0 | 0 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **226** | **32** | **0** | **0** | **0** | **2** | **192** |
+| **TOTAL** | **226** | **24** | **0** | **0** | **4** | **2** | **196** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
@@ -722,8 +727,8 @@ SPIKE-01 through SPIKE-05
 | Canon (Ph 10-11) | 28 | 28 | 100% |
 | Scale & Hooks (Ph 12-13) | 4 | 4 | 100% |
 | Workbook Parity (Ph 16) | 17 | 17 | 100% |
-| Provenance & Signal (Ph 17) | 30 | 1 | 3% |
-| Vendor Sandbox (Ph 18) | 4 | 0 | 0% |
+| Provenance & Signal (Ph 17) | 30 | 4 | 13% |
+| Vendor Sandbox (Ph 18) | 5 | 1 | 20% |
 
 Phase 14 (`edit-suite-v2`) is one `ENGINEERING.md`, counted as one item. Its
 status is in a blockquote rather than frontmatter — `✅ Done`, shipped in

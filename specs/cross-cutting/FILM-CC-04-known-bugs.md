@@ -334,9 +334,9 @@ against `.url().optional()` — the FILM-1609 class); fixed in the same PR.
 **Remaining** — named in `KNOWN` in the guard test, which fails if the
 file is fixed without being removed from it:
 
-- *Deferred — owned by an open PR:*
-  `packages/features/content-analytics/src/components/manual-revenue-form.tsx`
-  (KB-12).
+- `packages/features/content-analytics/src/components/manual-revenue-form.tsx`
+  — deferred while KB-12 owned the file; KB-12 merged in #293, so it is now
+  unowned and still open.
 
 **No change needed** (the error never crossed a server action):
 `channel-picker.tsx`, `research/_components/upload-source-dialog.tsx`,
@@ -775,7 +775,8 @@ the first screen they see. Not a leak and not a crash, which is how it has
 survived; by this product's own standard (never render a default as a
 measurement) it is the worst kind of wrong. **Found:** FILM-1701 (#288),
 2026-09-22, which fixed the same defect on the Audience tab and listed these
-as outside its file map. **Open.**
+as outside its file map. **Fixed** in #300 for every row of the table
+below; the guard's widening and the items under *Remaining* are still open.
 
 Every line below was re-read on `main` (dbbd5ee8) before being written down.
 
@@ -816,11 +817,25 @@ and then make it pass — not to patch seven lines.
 
 ### Acceptance criteria
 
-- [ ] `no-literal-fallbacks` guard covers every component under `content-analytics/src/components`, seen red on today's code for each row above
-- [ ] No share donut, revenue split, projection or canned footer renders without data behind it
-- [ ] Revenue split comes from recorded revenue, per currency, or is absent
-- [ ] A metric with no previous period shows no change indicator; `calculateChange(n, 0)` no longer reports 100%
-- [ ] Playwright evidence: Overview for an account with no breakdown data, and one with real revenue mix — screenshots of both, values read from the DOM
+- [ ] `no-literal-fallbacks` guard covers every component under `content-analytics/src/components`, seen red on today's code for each row above — **Overview only** (#300, `no-literal-fallbacks-overview.test.ts`, red on the unfixed base for every row) plus Audience (#288); deep-dive, content, experiments, video-log and the rest are not scanned yet
+- [x] No share donut, revenue split, projection or canned footer renders without data behind it — #300
+- [x] Revenue split comes from recorded revenue, per currency, or is absent — #300
+- [x] A metric with no previous period shows no change indicator; `calculateChange(n, 0)` no longer reports 100% — #300
+- [x] Playwright evidence: Overview for an account with no breakdown data, and one with real revenue mix — screenshots of both, values read from the DOM — #300
+
+### Remaining (listed by #300, not fixed there)
+
+- Widen the guard to every component directory, and unify #288's
+  `no-literal-fallbacks.test.ts` with #300's `no-literal-fallbacks-overview.test.ts`
+  into one file.
+- Plumb a real previous period into the project Overview, project dashboard
+  and episode analytics (`company-dashboard` shows the shape); they now show
+  no change indicator, which is honest but less than they could.
+- Found, not yet reproduced as their own entries: Top Content prints
+  `0.0% ER` for a video with 0 views (0/0), and the AI Insight summary says
+  "average engagement rate of 0.0%" the same way; `OverviewGrid` renders `0`
+  for every total when `analytics` is `null`; the metric row's **Revenue $0**
+  is ClickHouse `revenue_cents`, which every writer sets to `0`.
 
 ---
 
@@ -964,7 +979,7 @@ platform, ends on a "page not found" with the reason hidden in the address
 bar. It matters now: FILM-1711 (#289) starts requesting scopes a vendor may
 refuse, and its pre-deploy check is *reading that failure*. **Found:**
 FILM-1711's runbook work, 2026-09-22 (the teammate saw the 404 with `curl`
-against a local server). **Open.**
+against a local server). **Fixed** in #297.
 
 All five callbacks under `apps/web/app/api/platforms/callback/` — `youtube`,
 `tiktok`, `meta`, `twitter`, `linkedin` — send every failure to
@@ -1007,10 +1022,10 @@ attributed, never as HTML.
 
 ### Acceptance criteria
 
-- [ ] Playwright, per platform, seeded via API: a callback hit with `?error=access_denied` and one with a bad `state` both end on a real page showing a message — asserted by text; screenshots in the PR
-- [ ] Each failure branch writes one log line; a test asserts no token, `code` or secret appears in it
-- [ ] A hostile `error_description` (`<script>`, a long string) is shown inert or replaced
-- [ ] `docs/vendor-review-runbook.md` (#289) updated: the pre-deploy check reads the page, not the address bar
+- [x] Playwright, per platform, seeded via API: a callback hit with `?error=access_denied` and one with a bad `state` both end on a real page showing a message — asserted by text; screenshots in the PR — #297, `connect-failure.spec.ts` (29 cases, dev and production build)
+- [x] Each failure branch writes one log line; a test asserts no token, `code` or secret appears in it — #297, `failConnect`
+- [x] A hostile `error_description` (`<script>`, a long string) is shown inert or replaced — #297 (rendered as a text node, capped at 300 chars)
+- [x] `docs/vendor-review-runbook.md` (#289) updated: the pre-deploy check reads the page, not the address bar — #297
 
 ---
 
@@ -1411,10 +1426,12 @@ that should not need to exist.
 | — | CI tested `@kit/mailers-core`, which does not exist; `@kit/mailers` never ran | #264 |
 | — | The experiment lifecycle was held only by the actions; a direct API call could reopen, back-date or forge an experiment | #264 (round 4) |
 | KB-6 (part) | Experiment log and note refusals replaced in production | #264 (round 4) |
-| KB-6 (part) | Projects and episodes/studio refusals replaced in production; shared `returnRefusals` helper and guard | KB-6 PR A |
-| KB-6 (part) | Assets, audio, publishing, analytics, edit-suite and admin refusals replaced in production | KB-6 PR B |
+| KB-6 (part) | Projects and episodes/studio refusals replaced in production; shared `returnRefusals` helper and guard | #296 |
+| KB-6 (part) | Assets, audio, publishing, analytics, edit-suite and admin refusals replaced in production | #303 (re-land of #299) |
 | KB-9, KB-10 | Hook Lab: a cross-tenant retention read, and a feature that could not be used and measured the wrong point | #269 (removed) |
 | KB-11 | Another account could read a public project's analytics | FILM-1615 Step 0 |
 | KB-1 | Deleting a user who had created anything failed: seventeen authorship keys to `auth.users` had no ON DELETE action, and three triggers refused or undid the key's own set-null | #290 |
 | KB-12 | Revenue was added across currencies | #293 |
+| KB-16 | The Overview tab drew figures nobody measured: a fixed share donut, a 70/30 revenue split, canned footers, +100% beside every metric | #300 |
+| KB-19 | A failed platform connect landed on a 404 and logged nothing | #297 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
