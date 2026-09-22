@@ -153,7 +153,7 @@ FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook) ─→
 | [FILM-1720](./FILM-1720-facebook-analytics.md) | DRAFT | L | Facebook's provider and enum value: 57 video, 11 Reels and 4 ad-break metrics, organic/paid splits, and the `dim-sync` fix. Split from X 2026-09-21 |
 | [FILM-1721](./FILM-1721-platform-capability-reference.md) | ✅ DONE | L | **The researched truth table.** Per platform × metric × API surface × field name × scope × window, cited to vendor docs. Lives at [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md); enforced by `platform-field-names.test.ts` |
 | [FILM-1722](./FILM-1722-view-definition-registry.md) | DRAFT | M | What "a view" means per platform, with effective dates and the YouTube discontinuity |
-| [FILM-1723](./FILM-1723-api-version-consolidation.md) | DRAFT | M | One pinned version per vendor; the Graph v18 token-refresh risk; X onto `api.x.com` |
+| [FILM-1723](./FILM-1723-api-version-consolidation.md) | 🟡 PARTIAL | M | One pinned version per vendor; the Graph v18 token-refresh risk; X onto `api.x.com` |
 | [FILM-1724](./FILM-1724-channel-experiments.md) | DRAFT | L | Which styles work: groups of new videos, one per style, compared at the same age; no verdict on thin samples |
 | [FILM-1725](./FILM-1725-deferred-vendor-verifications.md) | ⏸️ DEFERRED | S | The FILM-1721 checks that need a paid X token, a TikTok sandbox app, or an Instagram insights permission we do not hold |
 | [FILM-1727](./FILM-1727-x-analytics.md) | DRAFT | L | X on the pay-per-use path, Enterprise fields declared and dark; the `x`/`twitter` vocabulary; metered cost |
