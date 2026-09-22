@@ -9,6 +9,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import type { z } from 'zod';
 
 import type { TargetPlatform } from '@kit/film-studio-schemas/project';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { uploadProjectCover } from '@kit/storage/client';
 import { Button } from '@kit/ui/button';
 import {
@@ -227,13 +228,12 @@ export function CreateFilmProjectForm({
     startTransition(async () => {
       try {
         // 1. Create the project
-        const { projectId, projectSlug } = await createFilmProject(
-          accountSlug,
-          {
+        const { projectId, projectSlug } = await unwrap(
+          createFilmProject(accountSlug, {
             name: data.name,
             description: data.description,
             settings: data.settings,
-          },
+          }),
         );
 
         // 2. Upload cover image if provided (uses presigned URL - direct to R2)
@@ -246,7 +246,7 @@ export function CreateFilmProjectForm({
           } catch (uploadError) {
             console.error('Cover image upload failed:', uploadError);
             toast.error(
-              `Cover upload failed: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`,
+              'Cover upload failed. You can add a cover from the project settings.',
             );
           }
         }
@@ -254,9 +254,7 @@ export function CreateFilmProjectForm({
         // 3. Redirect to the new project using slug
         router.push(`/home/${accountSlug}/studio/${projectSlug ?? projectId}`);
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : 'Failed to create project',
-        );
+        toast.error(refusalMessage(error, 'Failed to create project'));
       }
     });
   });
