@@ -58,8 +58,10 @@ so make them yours.
    ([YouTube API Services developer policies](https://developers.google.com/youtube/terms/developer-policies)).
    `apps/web/app/(marketing)/(legal)/privacy-policy/page.tsx` contains none of the three
    (grepped 2026-09-22).
-4. **A failed authorise lands on a 404, and logs nothing.** Not caused by #289, but it
-   is what you will see if a vendor refuses a scope, so you need to recognise it. See
+4. **A failed authorise used to land on a 404 and log nothing (KB-19). It now lands on
+   Settings → Platforms with the reason on the page, and writes one log line.** Not
+   caused by #289, but it is what you will see if a vendor refuses a scope, so you need
+   to recognise it. See
    [What a failed authorise looks like](#what-a-failed-authorise-looks-like-in-our-app).
 
 ---
@@ -102,23 +104,56 @@ Source: `packages/features/publishing/src/oauth/{youtube,tiktok,meta}/config.ts`
 
 ## What a failed authorise looks like in our app
 
-Verified by running it (2026-09-22), because this is what you have to recognise:
+Verified by running it (2026-09-22) — by sending each callback the redirect a vendor
+would send, on a development server and on a production build
+(`apps/e2e/tests/platform-connections/connect-failure.spec.ts`). **Not** verified
+against a real vendor refusing a real scope: that is the check below, and nobody has
+run it yet.
 
-- **The vendor sends you back with an error.** Every callback redirects to
-  `<APP_URL>/settings/platforms?error=<the vendor's error_description, or its error code>`.
-  **That route does not exist** — the real page is `/home/<account>/settings/platforms`
-  — so you land on the app's **404 page**, with the reason only in the address bar.
-  `curl` of `/settings/platforms?error=invalid_scope` on a local server returned 404.
-  **Read the URL, not the page.**
-- **Nothing is logged for that case.** The `if (error)` branch in each callback
-  redirects without a log line. So an absence of logs is not an absence of failure.
+- **The vendor sends you back with an error.** You land on
+  `/home/<account>/settings/platforms`, with a red box at the top of the page. **Read
+  the page.** It has three parts:
+  1. *What happened and what to do*, in our words. A refused scope reads
+     **"<Platform> refused a permission this app asked for. The app's review for that
+     permission may not be approved yet."** A cancelled or declined consent screen
+     reads **"<Platform> reported that access was denied."**
+  2. *What the vendor sent back*, in a grey box marked as the vendor's words: its
+     `error` code, its `error_description` (cut at 300 characters) and its `log_id`
+     where it sends one. This is the part to copy into the results table.
+  3. A **Dismiss** button, which reloads the page without the message.
+  If you belong to several workspaces and the vendor did not return our `state`, the
+  same box appears on `/home` instead, because the app cannot tell which workspace the
+  connect was for.
+- **Which message you get is decided by the vendor's `error` code**: `invalid_scope`,
+  or any code containing the word `scope`, gives the refused-permission message;
+  `access_denied` gives the denied message; anything unrecognised gives "sent back an
+  error this app has no written explanation for" with the vendor's text below it. What
+  code TikTok or Meta actually sends for an unapproved scope is **[not verified]** — so
+  if you see the generic message, the grey box is the finding, and the code in it
+  should be added to `VENDOR_ERROR_CODES` in `apps/web/lib/platforms/connect-failure.ts`.
+- **Every failure is logged, once.** Search the server log for the message
+  **`Platform connect failed`**. The line is JSON with `name`
+  (`oauth.<platform>.callback`), `platform`, `code` (ours — `invalid_scope`,
+  `access_denied`, `state_expired`, `token_exchange_failed`, …), `branch` (which step
+  gave up — `vendor_refused` is the vendor redirecting back with an error),
+  `vendorError`, `vendorErrorDescription`, `vendorLogId`, and `accountId`. It never
+  contains the authorisation code, the state or a token. Example, from a local run:
+
+  ```json
+  {"level":"error","name":"oauth.youtube.callback","platform":"youtube","code":"invalid_scope","branch":"vendor_refused","accountId":"c5be14a0-…","vendorError":"invalid_scope","vendorErrorDescription":"Scope not authorized for this client","msg":"Platform connect failed"}
+  ```
+
+  On the Lambda deployment that is CloudWatch, log group `/aws/lambda/<stage>-Web-server`
+  (from `apps/web/CLAUDE.md`; the group name on the live stage is **[not verified]**).
 - **The vendor refuses before redirecting.** You stay on the vendor's own error page
   (tiktok.com, facebook.com, accounts.google.com) and our app sees nothing at all after
-  the `/api/platforms/connect/<platform>` redirect.
-- **The code exchange fails after consent.** This one is logged: logger name
-  `oauth.youtube.callback` / `oauth.tiktok.callback` / `oauth.meta.callback`, message
-  `Token exchange failed`, and the 404 URL carries the vendor's message or
-  `token_exchange_failed`.
+  the `/api/platforms/connect/<platform>` redirect — **no page of ours and no log
+  line.** So an absence of `Platform connect failed` is not an absence of failure:
+  screenshot the vendor's page.
+- **The code exchange fails after consent.** Same page, message "<Platform> showed the
+  consent screen but then refused to issue an access token", and the same log line with
+  `code: token_exchange_failed` and the vendor's reason in `vendorError` /
+  `vendorErrorDescription`.
 - **Meta only:** `oauth.meta.callback` warns `Could not read granted permissions` when
   `/me/permissions` could not be read. The connection is still saved, with an empty
   grant, and shows as "We have no record of what this connection may read".
@@ -196,7 +231,11 @@ was written.
   summariser's, not a quotation, so it is a reason to test first, not a finding.
   TikTok's OAuth errors carry a readable error code, a message and a `log_id`
   **[index]** ([OAuth error handling](https://developers.tiktok.com/doc/oauth-error-handling))
-  — copy all three from the 404's address bar if it happens.
+  — copy all three from the grey "What TikTok sent back" box on Settings → Platforms if
+  it happens (the same three are in the `Platform connect failed` log line). Whether
+  TikTok sends `log_id` as a parameter of the redirect, which is the only place our
+  callback can read it from, is **[not verified]**; if the box shows no Log ID, take it
+  from TikTok's own error page.
 
 **How to test without breaking production.** Create a **sandbox** on the app, add
 `video.list` and `user.info.stats` to it, add your own TikTok account as a target user,

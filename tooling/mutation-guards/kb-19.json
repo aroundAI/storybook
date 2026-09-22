@@ -1,0 +1,185 @@
+{
+  "feature": "KB-19",
+  "mutations": [
+    {
+      "name": "A1 A callback goes back to a hand-built failure redirect",
+      "kind": "unit",
+      "file": "apps/web/app/api/platforms/callback/tiktok/route.ts",
+      "find": "    return fail({ code: 'missing_params', branch: 'missing_params' });",
+      "replace": "    return NextResponse.redirect(\n      `${appUrl}/settings/platforms?error=missing_params`,\n    );",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/fail-connect.test.ts",
+      "pattern": "callback/tiktok"
+    },
+    {
+      "name": "A2 A token response is logged whole again",
+      "kind": "unit",
+      "file": "apps/web/app/api/platforms/callback/youtube/route.ts",
+      "find": "    // Not `tokens`: that object is the access and refresh tokens.\n",
+      "replace": "    logger.error({ ...ctx, tokens }, 'Invalid expires_in in token response');\n",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/fail-connect.test.ts",
+      "pattern": "callback/youtube"
+    },
+    {
+      "name": "A3 A callback loses the wrapper that catches a throw",
+      "kind": "unit",
+      "file": "apps/web/app/api/platforms/callback/meta/route.ts",
+      "find": "export const GET = catchConnectFailures('meta', handleCallback);",
+      "replace": "export const GET = handleCallback;",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/fail-connect.test.ts",
+      "pattern": "callback/meta"
+    },
+    {
+      "name": "B1 Text we did not write is logged without redaction",
+      "kind": "unit",
+      "file": "apps/web/lib/platforms/fail-connect.ts",
+      "find": "cleanVendorText(redactSecrets(String(value)), maxLength)",
+      "replace": "cleanVendorText(String(value), maxLength)",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/fail-connect.test.ts",
+      "pattern": "never carries the code"
+    },
+    {
+      "name": "B2 A caught error is logged whole",
+      "kind": "unit",
+      "file": "apps/web/lib/platforms/fail-connect.ts",
+      "find": "      cause: describeCause(params.cause),",
+      "replace": "      cause: params.cause,",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/fail-connect.test.ts",
+      "pattern": "keeps only the name"
+    },
+    {
+      "name": "B3 The log line loses the branch",
+      "kind": "unit",
+      "file": "apps/web/lib/platforms/fail-connect.ts",
+      "find": "      branch: params.branch,\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/fail-connect.test.ts",
+      "pattern": "names the platform"
+    },
+    {
+      "name": "B4 A vendor message is logged at any length, line breaks and all",
+      "kind": "unit",
+      "file": "apps/web/lib/platforms/fail-connect.ts",
+      "find": "  const vendorMessage = vendorText(\n    params.vendor?.description,\n    VENDOR_MESSAGE_MAX_LENGTH,\n  );",
+      "replace": "  const vendorMessage =\n    typeof params.vendor?.description === 'string'\n      ? params.vendor.description\n      : null;",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/fail-connect.test.ts",
+      "pattern": "forge lines"
+    },
+    {
+      "name": "C1 The account carried to the landing is no longer checked to be a UUID",
+      "kind": "unit",
+      "file": "apps/web/lib/platforms/fail-connect.ts",
+      "find": "  const accountId = isUuid(params.accountId) ? params.accountId : null;",
+      "replace": "  const accountId = params.accountId ?? null;",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/fail-connect.test.ts",
+      "pattern": "drops an account that is not a UUID"
+    },
+    {
+      "name": "C2 The redirect's origin is taken from the request",
+      "kind": "unit",
+      "file": "apps/web/lib/platforms/fail-connect.ts",
+      "find": "      return new URL(configured).origin;",
+      "replace": "      return request.nextUrl.origin;",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/fail-connect.test.ts",
+      "pattern": "uses the configured origin"
+    },
+    {
+      "name": "C3 A slug is put in the path unchecked",
+      "kind": "unit",
+      "file": "apps/web/lib/platforms/connect-failure.ts",
+      "find": "  return accountSlug && ACCOUNT_SLUG.test(accountSlug)",
+      "replace": "  return accountSlug",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/connect-failure.test.ts",
+      "pattern": "could leave its path segment"
+    },
+    {
+      "name": "C4 The landing guesses a workspace when there are several",
+      "kind": "unit",
+      "file": "apps/web/lib/platforms/connect-failure.ts",
+      "find": "(teams.length === 1 ? teams[0] : undefined)",
+      "replace": "teams[0]",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/connect-failure.test.ts",
+      "pattern": "several workspaces"
+    },
+    {
+      "name": "D1 An error code we never wrote is echoed to the page",
+      "kind": "unit",
+      "file": "apps/web/lib/platforms/connect-failure.ts",
+      "find": "  return CONNECT_FAILURE_CODES.some((code) => code === value);",
+      "replace": "  return typeof value === 'string';",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/connect-failure.test.ts",
+      "pattern": "does not echo"
+    },
+    {
+      "name": "D2 Vendor text is shown for failures no vendor reported",
+      "kind": "unit",
+      "file": "apps/web/lib/platforms/connect-failure.ts",
+      "find": "  const showsVendorText = SHOWS_VENDOR_TEXT.has(code);",
+      "replace": "  const showsVendorText = true;",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/connect-failure.test.ts",
+      "pattern": "no vendor reported"
+    },
+    {
+      "name": "D3 Vendor text from the address is shown at any length",
+      "kind": "unit",
+      "file": "apps/web/lib/platforms/connect-failure.ts",
+      "find": "          first(searchParams.vendor_message),\n          VENDOR_MESSAGE_MAX_LENGTH,",
+      "replace": "          first(searchParams.vendor_message),\n          Infinity,",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/connect-failure.test.ts",
+      "pattern": "caps vendor text again"
+    },
+    {
+      "name": "D4 A refused scope under a vendor's own name reads as a generic error",
+      "kind": "unit",
+      "file": "apps/web/lib/platforms/connect-failure.ts",
+      "find": "  return normalised.includes('scope') ? 'invalid_scope' : 'vendor_error';",
+      "replace": "  return 'vendor_error';",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/connect-failure.test.ts",
+      "pattern": "scope_not_authorized"
+    },
+    {
+      "name": "D5 The scope-refused message stops mentioning the review",
+      "kind": "unit",
+      "file": "apps/web/public/locales/en/platforms.json",
+      "find": " The app’s review for that permission may not be approved yet.",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/connect-failure.test.ts",
+      "pattern": "unapproved review"
+    },
+    {
+      "name": "D6 A failure code is added without a message",
+      "kind": "unit",
+      "file": "apps/web/lib/platforms/connect-failure.ts",
+      "find": "  'storage_failed',\n",
+      "replace": "  'storage_failed',\n  'quota_exceeded',\n",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/connect-failure.test.ts",
+      "pattern": "for every code"
+    },
+    {
+      "name": "E1 The vendor's words are rendered as markup",
+      "kind": "unit",
+      "file": "apps/web/components/platform-connect-failure.tsx",
+      "find": "              >\n                {failure.vendorMessage}\n              </p>",
+      "replace": "                dangerouslySetInnerHTML={{ __html: failure.vendorMessage }}\n              />",
+      "cwd": "apps/web",
+      "test": "components/__tests__/platform-connect-failure.test.tsx",
+      "pattern": "never as markup"
+    }
+  ]
+}

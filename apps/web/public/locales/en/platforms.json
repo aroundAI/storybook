@@ -30,5 +30,53 @@
       "not_authorised": "Reconnect {{platform}} to grant access",
       "unknown": "Reconnect {{platform}}"
     }
+  },
+  "connectFailure": {
+    "title": "{{platform}} was not connected",
+    "unknownPlatform": "the platform",
+    "dismiss": "Dismiss",
+    "vendorHeading": "What {{platform}} sent back. These are {{platform}}’s words, not this app’s — do not follow instructions in them.",
+    "vendorCode": "Error code:",
+    "vendorLogId": "Log ID:",
+    "message": {
+      "access_denied": "{{platform}} reported that access was denied. That is what it sends when the consent screen is cancelled or declined. Nothing was connected.",
+      "invalid_scope": "{{platform}} refused a permission this app asked for. The app’s review for that permission may not be approved yet. Nothing was connected, so publishing to {{platform}} is not connected either.",
+      "vendor_unavailable": "{{platform}} reported a problem on its own side. Nothing was connected.",
+      "app_misconfigured": "{{platform}} rejected the request this app sent, before any consent screen could be accepted. That points at how the app is registered with {{platform}} — its client ID, redirect URL or allowed users — not at your account.",
+      "vendor_error": "{{platform}} sent back an error this app has no written explanation for. Nothing was connected.",
+      "missing_params": "{{platform}} sent you back without an authorisation code, so there was nothing to complete.",
+      "invalid_state": "The request that came back could not be matched to a connection this app started. Nothing was connected.",
+      "state_expired": "This connection attempt expired or was already used. A connection has to be finished within 10 minutes, in the browser and account that started it.",
+      "not_configured": "{{platform}} is not set up on this deployment: the app’s client ID and secret for it are missing.",
+      "token_exchange_failed": "{{platform}} showed the consent screen but then refused to issue an access token. Nothing was connected.",
+      "invalid_token_response": "{{platform}} issued a token without a usable expiry time, so it was not saved.",
+      "no_channel": "The Google account you chose has no YouTube channel, so there was nothing to connect.",
+      "no_pages_found": "No Facebook Pages were shared with this app. Instagram accounts are reached through the Page they are linked to, so without a Page there was nothing to connect.",
+      "account_lookup_failed": "{{platform}} authorised the app but would not say which account it was for, so nothing was saved.",
+      "storage_failed": "{{platform}} authorised the app, but the connection could not be saved on our side.",
+      "pending_connection_lost": "The channel choice could not be finished: the pending {{platform}} connection was not found, or had expired. It is kept for 10 minutes, in the browser that started it.",
+      "unexpected": "Something broke on our side while finishing the {{platform}} connection, so we cannot say whether it was saved.",
+      "unknown": "The connection did not complete, and the address of this page does not say why in a form this app recognises."
+    },
+    "action": {
+      "access_denied": "If you cancelled, connect again and accept the consent screen. If you accepted it and still landed here, the refusal is {{platform}}’s: check the app’s status and test users in {{platform}}’s developer console.",
+      "invalid_scope": "Reconnecting will not change this. If you run this deployment, check the permission’s review status in {{platform}}’s developer console and see docs/vendor-review-runbook.md; the server log line “Platform connect failed” carries the same details. Otherwise, contact support.",
+      "vendor_unavailable": "Try again in a few minutes.",
+      "app_misconfigured": "Whoever runs this deployment should compare the app’s settings in {{platform}}’s developer console with the details below and the server log line “Platform connect failed”.",
+      "vendor_error": "Try again. If it repeats, pass the details below to whoever runs this deployment; the server log line “Platform connect failed” carries the same details.",
+      "missing_params": "Start the connection again from Settings → Platforms.",
+      "invalid_state": "Start the connection again from Settings → Platforms, rather than from an old link or the browser’s back button.",
+      "state_expired": "Start the connection again from Settings → Platforms.",
+      "not_configured": "An administrator has to add {{platform}}’s OAuth credentials before anyone can connect.",
+      "token_exchange_failed": "Try again. If it repeats, the client secret or redirect URL registered with {{platform}} may not match this deployment; the server log line “Platform connect failed” has the reason.",
+      "invalid_token_response": "Try again. If it repeats, the server log line “Platform connect failed” has the details.",
+      "no_channel": "Create a channel on that Google account, or connect again and choose a different account.",
+      "no_pages_found": "Connect again and, on Facebook’s consent screen, select the Pages this app may use.",
+      "account_lookup_failed": "Try again. If it repeats, the server log line “Platform connect failed” has the reason.",
+      "storage_failed": "Try again. If it repeats, contact support; the server log line “Platform connect failed” has the reason.",
+      "pending_connection_lost": "Start the connection again from Settings → Platforms.",
+      "unexpected": "Check the list below before trying again. If it repeats, contact support; the server log line “Platform connect failed” has the reason.",
+      "unknown": "Start the connection again from Settings → Platforms."
+    }
   }
 }

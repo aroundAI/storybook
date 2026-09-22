@@ -122,6 +122,18 @@ export default defineConfig({
         __dirname,
         '../../packages/features/assets/src/lib/upload/index.ts',
       ),
+      '@kit/ui/alert': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/alert.tsx',
+      ),
+      '@kit/ui/button': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/button.tsx',
+      ),
+      '@kit/ui/trans': path.resolve(
+        __dirname,
+        '../../packages/ui/src/makerkit/trans.tsx',
+      ),
       '@kit/ui/utils': path.resolve(
         __dirname,
         '../../packages/ui/src/lib/utils/index.ts',
