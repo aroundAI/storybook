@@ -5,7 +5,9 @@ import 'server-only';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { getStorageAdapter } from '@kit/storage';
 import { requireUser } from '@kit/supabase/require-user';
@@ -88,7 +90,7 @@ interface GenerationJobResponse {
  * 5. Updates the dialogue_lines record with audio URL and metadata
  * 6. Creates a generation_jobs record for cost tracking
  */
-export const generateDialogueVoiceAction = enhanceAction(
+const generateDialogueVoice = enhanceAction(
   async (
     data: GenerateDialogueVoiceSchemaType,
   ): Promise<GenerateDialogueVoiceResult> => {
@@ -137,7 +139,7 @@ export const generateDialogueVoiceAction = enhanceAction(
 
     if (fetchError || !dialogueLine) {
       logger.error({ ...ctx, error: fetchError }, 'Dialogue line not found');
-      throw new Error('Dialogue line not found');
+      throw new ActionRefusal('Dialogue line not found');
     }
 
     // Type-safe access to nested response data
@@ -154,9 +156,7 @@ export const generateDialogueVoiceAction = enhanceAction(
     // 2. Check if already generated (unless overwrite requested)
     const overwriteExisting = data.overwriteExisting ?? false;
     if (dialogueData.audio_url && !overwriteExisting) {
-      throw new Error(
-        'Audio already generated. Set overwriteExisting=true to regenerate.',
-      );
+      throw new ActionRefusal('This line already has audio.');
     }
 
     // 3. Get voice ID from params or character's voice profile
@@ -165,8 +165,8 @@ export const generateDialogueVoiceAction = enhanceAction(
       (await getVoiceIdForCharacter(client, dialogueData.character_asset_id));
 
     if (!voiceId) {
-      throw new Error(
-        'No voice ID provided and character has no voice profile configured',
+      throw new ActionRefusal(
+        'This character has no voice yet. Assign a voice first.',
       );
     }
 
@@ -186,7 +186,7 @@ export const generateDialogueVoiceAction = enhanceAction(
     );
     if (!hasBudget) {
       logger.warn({ ...ctx, estimatedCost, accountId }, 'Account over budget');
-      throw new Error(
+      throw new ActionRefusal(
         'Monthly budget exceeded. Please upgrade your plan or wait until next month.',
       );
     }
@@ -424,6 +424,10 @@ export const generateDialogueVoiceAction = enhanceAction(
   },
 );
 
+export const generateDialogueVoiceAction = returnRefusals(
+  generateDialogueVoice,
+);
+
 /**
  * Generate voice audio for a dialogue line (ASYNC)
  *
@@ -606,7 +610,7 @@ export const generateDialogueVoiceAsyncAction = enhanceAction(
  * since there's no persistent state to track failure. Callers should
  * handle errors appropriately.
  */
-export const generateVoiceFromTextAction = enhanceAction(
+const generateVoiceFromText = enhanceAction(
   async (
     data: GenerateVoiceFromTextSchemaType,
   ): Promise<GenerateVoiceFromTextResult> => {
@@ -638,7 +642,7 @@ export const generateVoiceFromTextAction = enhanceAction(
 
     if (episodeError || !episode) {
       logger.error({ ...ctx, error: episodeError }, 'Episode not found');
-      throw new Error('Episode not found');
+      throw new ActionRefusal('Episode not found');
     }
 
     // Type-safe access to nested response data
@@ -665,7 +669,7 @@ export const generateVoiceFromTextAction = enhanceAction(
     );
     if (!hasBudget) {
       logger.warn({ ...ctx, estimatedCost, accountId }, 'Account over budget');
-      throw new Error(
+      throw new ActionRefusal(
         'Monthly budget exceeded. Please upgrade your plan or wait until next month.',
       );
     }
@@ -797,13 +801,17 @@ export const generateVoiceFromTextAction = enhanceAction(
   },
 );
 
+export const generateVoiceFromTextAction = returnRefusals(
+  generateVoiceFromText,
+);
+
 /**
  * Update the text of a dialogue line
  *
  * This action allows users to edit dialogue text (e.g., fix translations).
  * If the dialogue has existing audio, it will be marked as needing regeneration.
  */
-export const updateDialogueTextAction = enhanceAction(
+const updateDialogueText = enhanceAction(
   async (data: {
     dialogueLineId: string;
     text: string;
@@ -849,7 +857,7 @@ export const updateDialogueTextAction = enhanceAction(
 
     if (fetchError || !dialogueLine) {
       logger.error({ ...ctx, error: fetchError }, 'Dialogue line not found');
-      throw new Error('Dialogue line not found');
+      throw new ActionRefusal('Dialogue line not found');
     }
 
     // Update the dialogue text
@@ -888,6 +896,8 @@ export const updateDialogueTextAction = enhanceAction(
     }),
   },
 );
+
+export const updateDialogueTextAction = returnRefusals(updateDialogueText);
 /**
  * Update the timing of a dialogue line (timeline position and duration)
  */

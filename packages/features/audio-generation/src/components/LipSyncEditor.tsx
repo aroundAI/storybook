@@ -14,6 +14,7 @@ import {
   Wand2,
 } from 'lucide-react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -211,11 +212,13 @@ export function LipSyncEditor({
 
     startTransition(async () => {
       try {
-        const result = await generateLipSyncAction({
-          shotId,
-          dialogueLineId: selectedDialogue,
-          quality,
-        });
+        const result = await unwrap(
+          generateLipSyncAction({
+            shotId,
+            dialogueLineId: selectedDialogue,
+            quality,
+          }),
+        );
 
         setExistingJob({
           id: result.jobId,
@@ -235,8 +238,7 @@ export function LipSyncEditor({
         });
       } catch (error) {
         toast.error('Lip sync failed', {
-          description:
-            error instanceof Error ? error.message : 'An error occurred',
+          description: refusalMessage(error, 'An error occurred'),
         });
       }
     });
@@ -247,7 +249,7 @@ export function LipSyncEditor({
 
     startTransition(async () => {
       try {
-        await applyLipSyncAction({ jobId: existingJob.id });
+        await unwrap(applyLipSyncAction({ jobId: existingJob.id }));
 
         toast.success('Lip sync applied', {
           description: 'The video has been updated with lip sync.',
@@ -256,8 +258,7 @@ export function LipSyncEditor({
         onSuccess?.();
       } catch (error) {
         toast.error('Failed to apply lip sync', {
-          description:
-            error instanceof Error ? error.message : 'An error occurred',
+          description: refusalMessage(error, 'An error occurred'),
         });
       }
     });

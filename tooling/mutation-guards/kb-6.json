@@ -80,6 +80,36 @@
       "cwd": "packages/features/projects",
       "test": "__tests__/project-mutations.test.ts",
       "pattern": "returns a second owner as a refusal of its own"
+    },
+    {
+      "name": "B: startVoiceCloneAction loses its wrapper",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/voice-clone-actions.ts",
+      "find": "export const startVoiceCloneAction = returnRefusals(startVoiceClone);",
+      "replace": "export const startVoiceCloneAction = startVoiceClone;",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/voice-clone-actions.test.ts",
+      "pattern": "returns a missing asset as a refusal"
+    },
+    {
+      "name": "B: a duplicate admin email is thrown with GoTrue's wording",
+      "kind": "unit",
+      "file": "packages/features/admin/src/lib/server/admin-server-actions.ts",
+      "find": "        if (error.code === 'email_exists') {\n          throw new ActionRefusal('A user with this email already exists.');\n        }\n",
+      "replace": "",
+      "cwd": "packages/features/admin",
+      "test": "__tests__/admin-server-actions.test.ts",
+      "pattern": "returns a duplicate email as a refusal"
+    },
+    {
+      "name": "B: an asset hook goes back to showing the caught message",
+      "kind": "unit",
+      "file": "packages/features/assets/src/hooks/use-assets.ts",
+      "find": "toast.error(refusalMessage(err, 'Failed to delete asset'));",
+      "replace": "toast.error(err instanceof Error ? err.message : 'Failed to delete asset');",
+      "cwd": "packages/next",
+      "test": "__tests__/kb6-caught-action-message.test.ts",
+      "pattern": "no client file shows or branches on the message"
     }
   ]
 }

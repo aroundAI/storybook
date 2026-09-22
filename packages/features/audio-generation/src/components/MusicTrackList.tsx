@@ -14,6 +14,7 @@ import {
   Trash2,
 } from 'lucide-react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import {
@@ -158,17 +159,19 @@ export function MusicTrackList({
         (t): t is string => !!t && t.trim() !== '',
       );
 
-      return generateMusicAction({
-        episodeId,
-        request: {
-          prompt,
-          duration: 60, // Default 60 second tracks
-          genre: genre || undefined,
-          mood: mood || undefined,
-          tempo: tempo || undefined,
-          tags: tags.length > 0 ? tags : undefined,
-        },
-      });
+      return unwrap(
+        generateMusicAction({
+          episodeId,
+          request: {
+            prompt,
+            duration: 60, // Default 60 second tracks
+            genre: genre || undefined,
+            mood: mood || undefined,
+            tempo: tempo || undefined,
+            tags: tags.length > 0 ? tags : undefined,
+          },
+        }),
+      );
     },
     onSuccess: () => {
       toast.success('Music generation started! This may take a few minutes.');
@@ -176,8 +179,8 @@ export function MusicTrackList({
       resetForm();
       queryClient.invalidateQueries({ queryKey: ['music-tracks', episodeId] });
     },
-    onError: (error: Error) => {
-      toast.error(`Failed to generate music: ${error.message}`);
+    onError: (error: unknown) => {
+      toast.error(refusalMessage(error, 'Failed to generate music'));
     },
   });
 
@@ -188,8 +191,8 @@ export function MusicTrackList({
       toast.success('Track deleted');
       queryClient.invalidateQueries({ queryKey: ['music-tracks', episodeId] });
     },
-    onError: (error: Error) => {
-      toast.error(`Failed to delete track: ${error.message}`);
+    onError: (error: unknown) => {
+      toast.error(refusalMessage(error, 'Failed to delete track'));
     },
   });
 

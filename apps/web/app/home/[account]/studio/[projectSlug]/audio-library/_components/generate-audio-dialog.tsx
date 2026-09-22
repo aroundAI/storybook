@@ -10,6 +10,7 @@ import { useTransition } from 'react';
 
 import { Loader2, Music, Sparkles, Volume2 } from 'lucide-react';
 
+import { refusalMessage } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -118,9 +119,7 @@ export function GenerateAudioDialog({
         setGenre('');
         setMood('');
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Failed to generate audio',
-        );
+        setError(refusalMessage(err, 'Failed to generate audio'));
       }
     });
   };

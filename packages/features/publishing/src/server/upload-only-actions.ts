@@ -1,6 +1,8 @@
 'use server';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -173,7 +175,7 @@ export function generateDefaultTags(
 /**
  * Generate an export package for manual platform upload
  */
-export const generateExportPackageAction = enhanceAction(
+const generateExportPackageHandler = enhanceAction(
   async ({ episodeId, platform }, user) => {
     const logger = await getLogger();
     const ctx = {
@@ -201,13 +203,15 @@ export const generateExportPackageAction = enhanceAction(
 
     if (episodeError || !episode) {
       logger.error({ ...ctx, error: episodeError }, 'Episode not found');
-      throw new Error('Episode not found');
+      throw new ActionRefusal('Episode not found');
     }
 
     // Check if video is ready
     if (!episode.final_video_url) {
       logger.warn(ctx, 'Video not ready for export');
-      throw new Error('Video is not ready. Please finalize the video first.');
+      throw new ActionRefusal(
+        'Video is not ready. Please finalize the video first.',
+      );
     }
 
     // Get existing publish record for this platform (if any)
@@ -267,6 +271,10 @@ export const generateExportPackageAction = enhanceAction(
     schema: GenerateExportPackageSchema,
     auth: true,
   },
+);
+
+export const generateExportPackageAction = returnRefusals(
+  generateExportPackageHandler,
 );
 
 /**

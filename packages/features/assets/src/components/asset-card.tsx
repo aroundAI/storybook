@@ -187,6 +187,7 @@ export function AssetCard({
             'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-zinc-900',
         )}
         onClick={selectionMode ? () => onToggleSelect?.(asset) : undefined}
+        data-test="asset-card"
       >
         <CardContent className="p-0">
           <div
@@ -261,13 +262,17 @@ export function AssetCard({
                         variant="secondary"
                         size="icon"
                         className="h-8 w-8 shadow-sm"
+                        data-test="asset-card-menu"
                       >
                         <MoreVertical className="h-4 w-4" />
                         <span className="sr-only">Open menu</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEdit?.(asset)}>
+                      <DropdownMenuItem
+                        onClick={() => onEdit?.(asset)}
+                        data-test="asset-card-edit"
+                      >
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>

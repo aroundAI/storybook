@@ -1,10 +1,11 @@
-import { Locator, Page } from '@playwright/test';
+import { Locator, Page, expect } from '@playwright/test';
 
 import {
   SeededTeam,
   insertRow,
   seedProject,
   seedTeamAccount,
+  seedYouTubeConnection,
   uniqueStamp,
   updateRows,
 } from '../utils/seed';
@@ -131,6 +132,145 @@ export const SCENARIOS: RefusalScenario[] = [
         .click();
       await page.locator('[data-test="episode-delete-item"]').click();
       await page.locator('[data-test="episode-delete-confirm"]').click();
+    },
+  },
+  {
+    area: 'assets',
+    name: 'renaming a location to a name already taken',
+    message:
+      'Another asset of the same type in this project is already named "The Old Library". Choose a different name.',
+    run: async (page) => {
+      const { team, project } = await teamWithProject(page);
+
+      for (const name of ['The Old Library', 'The Harbour']) {
+        await insertRow(
+          'assets',
+          { project_id: project.id, type: 'location', name },
+          service,
+        );
+      }
+
+      await page.goto(`${studio(team, project.slug)}/assets`);
+      await page.getByRole('tab', { name: /Locations/ }).click();
+
+      const card = page
+        .locator('[data-test="asset-card"]')
+        .filter({ hasText: 'The Harbour' });
+
+      await card.hover();
+      await card.locator('[data-test="asset-card-menu"]').click();
+      await page.locator('[data-test="asset-card-edit"]').click();
+
+      await page
+        .locator('[data-test="location-name-input"]')
+        .fill('The Old Library');
+      await page.locator('[data-test="location-submit"]').click();
+    },
+  },
+  {
+    area: 'audio',
+    name: 'generating dialogue for a character with no voice',
+    message:
+      'Missing voice assignments for 1 character(s). Please assign voices or create voice profiles.',
+    run: async (page) => {
+      const { team, project } = await teamWithProject(page);
+
+      const episode = await seedEpisode(project.id, {
+        screenplay_data: {
+          title: 'The Lighthouse',
+          scenes: [
+            {
+              sceneNumber: 1,
+              heading: 'INT. LIGHTHOUSE - NIGHT',
+              action: 'Ava climbs the stairs.',
+              dialogue: [{ character: 'Ava', text: 'Is anyone up there?' }],
+            },
+          ],
+        },
+      });
+
+      const character = await insertRow<{ id: string }>(
+        'assets',
+        { project_id: project.id, type: 'character', name: 'Ava' },
+        service,
+      );
+
+      await insertRow(
+        'dialogue_lines',
+        {
+          episode_id: episode.id,
+          character_asset_id: character.id,
+          text: 'Is anyone up there?',
+          sequence_number: 1,
+        },
+        service,
+      );
+
+      await page.goto(
+        `${studio(team, project.slug)}/episodes/${episode.slug}/audio-studio`,
+      );
+      await page.locator('[data-test="generate-all-dialogue"]').click();
+    },
+  },
+  {
+    area: 'publishing',
+    name: 'approving a post whose text another tab cleared',
+    message:
+      'Cannot approve a post without content. Please generate or write post text first.',
+    run: async (page) => {
+      const team = await seedTeamAccount({ emailPrefix: 'kb6' });
+
+      await seedYouTubeConnection(team.accountId, 'Seeded LinkedIn', {
+        platform: 'linkedin',
+      });
+
+      const post = await insertRow<{ id: string }>(
+        'social_posts',
+        {
+          account_id: team.accountId,
+          raw_notes: 'Notes on the lighthouse shoot',
+          final_text: 'We wrapped the lighthouse shoot today.',
+          status: 'ready_to_review',
+          created_by: team.userId,
+        },
+        service,
+      );
+
+      await signInAs(page, team);
+      await page.goto(`/home/${team.slug}/social-posts/${post.id}`);
+
+      const publish = page.getByRole('button', { name: 'Approve & Publish' });
+
+      // Enabled means the post and its connection have loaded into the page.
+      await expect(publish).toBeEnabled();
+
+      // The other tab: the text goes while this page still shows it.
+      await updateRows('social_posts', `id=eq.${post.id}`, { final_text: '' });
+
+      await publish.click();
+    },
+  },
+  {
+    area: 'analytics',
+    name: 'adding the same tag twice',
+    message: 'A tag with this label already exists in this dimension.',
+    run: async (page) => {
+      const team = await seedTeamAccount({ emailPrefix: 'kb6' });
+
+      await signInAs(page, team);
+      await page.goto(`/home/${team.slug}/studio/analytics/tags`);
+
+      const form = page.locator('[data-test="create-tag-form"]');
+      const label = form.getByPlaceholder('e.g. Process explainer');
+      const submit = form.getByRole('button', { name: 'Add tag' });
+
+      await label.fill('Process explainer');
+      await submit.click();
+      await page.getByText('Added "Process explainer"').waitFor();
+
+      // The second submission is the refusal.
+      await label.fill('Process explainer');
+      await submit.click();
     },
   },
 ];

@@ -10,6 +10,7 @@ import {
   generateDialogueVoiceAsyncAction,
   updateDialogueTextAction,
 } from '@kit/audio-generation/server';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
 import { Skeleton } from '@kit/ui/skeleton';
@@ -310,9 +311,7 @@ export function DialogueTimeline({
         });
       }
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to regenerate',
-      );
+      toast.error(refusalMessage(error, 'Failed to regenerate'));
       setGeneratingIds((prev) => {
         const next = new Set(prev);
         next.delete(dialogueId);
@@ -332,18 +331,18 @@ export function DialogueTimeline({
 
     setIsSaving(true);
     try {
-      await updateDialogueTextAction({
-        dialogueLineId: selectedDialogue.id,
-        text: editText.trim(),
-      });
+      await unwrap(
+        updateDialogueTextAction({
+          dialogueLineId: selectedDialogue.id,
+          text: editText.trim(),
+        }),
+      );
       toast.success('Dialogue updated');
       setIsEditModalOpen(false);
       setSelectedDialogue(null);
       onRefresh();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to update dialogue',
-      );
+      toast.error(refusalMessage(error, 'Failed to update dialogue'));
     } finally {
       setIsSaving(false);
     }

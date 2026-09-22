@@ -35,6 +35,7 @@ import {
   updateAudioCueAction,
   updateAudioTrackAction,
 } from '@kit/audio-generation/server';
+import { unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
 import { Skeleton } from '@kit/ui/skeleton';
@@ -573,14 +574,16 @@ export const MusicTimeline = React.forwardRef<
       let success = false;
 
       if (isSceneMusic && track.metadata?.sceneNumber) {
-        const result = await generateSceneMusicAction({
-          episodeId,
-          sceneNumber: track.metadata.sceneNumber,
-          genre: track.metadata.genre,
-          mood: track.metadata.mood,
-          instrumentalOnly: track.metadata.instrumentalOnly,
-          prompt: track.metadata.prompt,
-        });
+        const result = await unwrap(
+          generateSceneMusicAction({
+            episodeId,
+            sceneNumber: track.metadata.sceneNumber,
+            genre: track.metadata.genre,
+            mood: track.metadata.mood,
+            instrumentalOnly: track.metadata.instrumentalOnly,
+            prompt: track.metadata.prompt,
+          }),
+        );
         success = result.success;
       } else {
         const result = await generateMusicCueAction({

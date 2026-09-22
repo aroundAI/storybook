@@ -99,7 +99,11 @@ export function LocationEditorForm({
               <FormItem>
                 <FormLabel>Name *</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g. The Old Library" {...field} />
+                  <Input
+                    placeholder="e.g. The Old Library"
+                    data-test="location-name-input"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

@@ -242,6 +242,7 @@ export function AudioStudioHeader({
                   0
               }
               size="sm"
+              data-test="generate-all-dialogue"
               className="gap-2 bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
             >
               <Play className="h-4 w-4" />

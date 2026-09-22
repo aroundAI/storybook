@@ -4,7 +4,9 @@ import 'server-only';
 
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -149,7 +151,7 @@ async function getProjectTTSModelForBatch(projectId: string): Promise<string> {
  *
  * @throws {Error} If episode not found, budget insufficient, or missing voice assignments
  */
-export const batchGenerateDialogueAction = enhanceAction(
+const batchGenerateDialogue = enhanceAction(
   async (
     data: BatchGenerateDialogueSchemaType,
   ): Promise<BatchGenerateDialogueResult> => {
@@ -183,7 +185,7 @@ export const batchGenerateDialogueAction = enhanceAction(
 
     if (episodeError || !episode) {
       logger.error({ ...ctx, error: episodeError }, 'Episode not found');
-      throw new Error('Episode not found');
+      throw new ActionRefusal('Episode not found');
     }
 
     const episodeData = episode as EpisodeResponse;
@@ -218,7 +220,7 @@ export const batchGenerateDialogueAction = enhanceAction(
     });
 
     if (linesToProcess.length === 0) {
-      throw new Error(
+      throw new ActionRefusal(
         'No dialogue lines to process. All lines already have audio.',
       );
     }
@@ -251,7 +253,7 @@ export const batchGenerateDialogueAction = enhanceAction(
         { ...ctx, missingCharacterIds },
         'Missing voice assignments for characters',
       );
-      throw new Error(
+      throw new ActionRefusal(
         `Missing voice assignments for ${missingCharacterIds.length} character(s). ` +
           `Please assign voices or create voice profiles.`,
       );
@@ -271,7 +273,7 @@ export const batchGenerateDialogueAction = enhanceAction(
 
     if (!hasBudget) {
       logger.warn({ ...ctx, estimatedCost, accountId }, 'Insufficient budget');
-      throw new Error(
+      throw new ActionRefusal(
         `Insufficient budget for batch generation. ` +
           `Estimated cost: $${(estimatedCost / 100).toFixed(2)}. ` +
           `Please upgrade your plan or wait until next month.`,
@@ -361,6 +363,10 @@ export const batchGenerateDialogueAction = enhanceAction(
   {
     schema: BatchGenerateDialogueSchema,
   },
+);
+
+export const batchGenerateDialogueAction = returnRefusals(
+  batchGenerateDialogue,
 );
 
 /**
@@ -609,7 +615,7 @@ export const retryFailedDialogueAction = enhanceAction(
  *
  * @throws {Error} If job not found or already completed/cancelled
  */
-export const cancelBatchAction = enhanceAction(
+const cancelBatch = enhanceAction(
   async (data: CancelBatchSchemaType): Promise<CancelBatchResult> => {
     const logger = await getLogger();
     const ctx = {
@@ -634,11 +640,13 @@ export const cancelBatchAction = enhanceAction(
       .single();
 
     if (error || !job) {
-      throw new Error('Batch job not found');
+      throw new ActionRefusal('Batch job not found');
     }
 
     if (job.status === 'completed' || job.status === 'cancelled') {
-      throw new Error('Cannot cancel completed or already cancelled job');
+      throw new ActionRefusal(
+        'Cannot cancel completed or already cancelled job',
+      );
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -661,6 +669,8 @@ export const cancelBatchAction = enhanceAction(
     schema: CancelBatchSchema,
   },
 );
+
+export const cancelBatchAction = returnRefusals(cancelBatch);
 
 /**
  * Reset stale 'generating' dialogue lines back to 'pending'

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { unwrap } from '@kit/next/action-result';
+
 // Import actions after mocks are set up
 import {
   checkCloneStatusAction,
@@ -98,7 +100,7 @@ describe('Voice Clone Actions', () => {
           error: { message: 'Not authenticated' },
         });
 
-        await expect(startVoiceCloneAction(validInput)).rejects.toThrow(
+        await expect(unwrap(startVoiceCloneAction(validInput))).rejects.toThrow(
           'Authentication required',
         );
       });
@@ -164,7 +166,7 @@ describe('Voice Clone Actions', () => {
           status: 'ready',
         });
 
-        const result = await startVoiceCloneAction(validInput);
+        const result = await unwrap(startVoiceCloneAction(validInput));
 
         expect(result.success).toBe(true);
         expect(result.voiceId).toBe('voice-123');
@@ -188,9 +190,34 @@ describe('Voice Clone Actions', () => {
           return {};
         });
 
-        await expect(startVoiceCloneAction(validInput)).rejects.toThrow(
+        await expect(unwrap(startVoiceCloneAction(validInput))).rejects.toThrow(
           'Asset not found',
         );
+      });
+
+      // KB-6: a production build replaces a thrown message, so the refusal
+      // comes back as a value and a crash is still thrown.
+      it('returns a missing asset as a refusal, not a thrown error', async () => {
+        mockSupabaseClient.from.mockImplementation((table: string) => {
+          if (table === 'assets') {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  single: vi.fn().mockResolvedValue({
+                    data: null,
+                    error: { message: 'Not found' },
+                  }),
+                }),
+              }),
+            };
+          }
+          return {};
+        });
+
+        expect(await startVoiceCloneAction(validInput)).toEqual({
+          ok: false,
+          error: 'Asset not found',
+        });
       });
 
       it('should throw error when account cannot be determined', async () => {
@@ -212,7 +239,7 @@ describe('Voice Clone Actions', () => {
           return {};
         });
 
-        await expect(startVoiceCloneAction(validInput)).rejects.toThrow(
+        await expect(unwrap(startVoiceCloneAction(validInput))).rejects.toThrow(
           'Could not determine account',
         );
       });
@@ -243,7 +270,7 @@ describe('Voice Clone Actions', () => {
           return {};
         });
 
-        await expect(startVoiceCloneAction(validInput)).rejects.toThrow(
+        await expect(unwrap(startVoiceCloneAction(validInput))).rejects.toThrow(
           'Failed to store consent record',
         );
       });
@@ -288,7 +315,7 @@ describe('Voice Clone Actions', () => {
           return {};
         });
 
-        await expect(startVoiceCloneAction(validInput)).rejects.toThrow(
+        await expect(unwrap(startVoiceCloneAction(validInput))).rejects.toThrow(
           'No ElevenLabs API key configured',
         );
       });
@@ -349,7 +376,7 @@ describe('Voice Clone Actions', () => {
 
         mockCloneVoice.mockRejectedValue(new Error('ElevenLabs API error'));
 
-        await expect(startVoiceCloneAction(validInput)).rejects.toThrow(
+        await expect(unwrap(startVoiceCloneAction(validInput))).rejects.toThrow(
           'ElevenLabs API error',
         );
 
@@ -412,7 +439,7 @@ describe('Voice Clone Actions', () => {
           status: 404,
         });
 
-        await expect(startVoiceCloneAction(validInput)).rejects.toThrow(
+        await expect(unwrap(startVoiceCloneAction(validInput))).rejects.toThrow(
           'Failed to download sample',
         );
       });
@@ -476,7 +503,7 @@ describe('Voice Clone Actions', () => {
           status: 'ready',
         });
 
-        const result = await startVoiceCloneAction(validInput);
+        const result = await unwrap(startVoiceCloneAction(validInput));
 
         expect(result).toEqual({
           success: true,
@@ -499,9 +526,9 @@ describe('Voice Clone Actions', () => {
           error: { message: 'Not authenticated' },
         });
 
-        await expect(deleteVoiceCloneAction(validInput)).rejects.toThrow(
-          'Authentication required',
-        );
+        await expect(
+          unwrap(deleteVoiceCloneAction(validInput)),
+        ).rejects.toThrow('Authentication required');
       });
     });
 
@@ -521,9 +548,9 @@ describe('Voice Clone Actions', () => {
           return {};
         });
 
-        await expect(deleteVoiceCloneAction(validInput)).rejects.toThrow(
-          'Voice profile not found',
-        );
+        await expect(
+          unwrap(deleteVoiceCloneAction(validInput)),
+        ).rejects.toThrow('Voice profile not found');
       });
 
       it('should continue even when ElevenLabs deletion fails', async () => {
@@ -572,7 +599,7 @@ describe('Voice Clone Actions', () => {
         );
 
         // Should not throw - deletion continues despite ElevenLabs error
-        const result = await deleteVoiceCloneAction(validInput);
+        const result = await unwrap(deleteVoiceCloneAction(validInput));
         expect(result.success).toBe(true);
       });
     });
@@ -621,7 +648,7 @@ describe('Voice Clone Actions', () => {
 
         mockDeleteClonedVoice.mockResolvedValue(undefined);
 
-        const result = await deleteVoiceCloneAction(validInput);
+        const result = await unwrap(deleteVoiceCloneAction(validInput));
         expect(result).toEqual({ success: true });
       });
 
@@ -650,7 +677,7 @@ describe('Voice Clone Actions', () => {
           return {};
         });
 
-        const result = await deleteVoiceCloneAction(validInput);
+        const result = await unwrap(deleteVoiceCloneAction(validInput));
 
         expect(result.success).toBe(true);
         expect(mockDeleteClonedVoice).not.toHaveBeenCalled();

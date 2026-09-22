@@ -4,7 +4,9 @@ import 'server-only';
 
 import { revalidatePath } from 'next/cache';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { decrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -56,7 +58,7 @@ async function getElevenLabsApiKey(accountId: string): Promise<string> {
  * 3. Calls ElevenLabs API to create a cloned voice
  * 4. Updates the voice profile with the cloned voice ID
  */
-export const startVoiceCloneAction = enhanceAction(
+const startVoiceClone = enhanceAction(
   async (data: StartVoiceCloneSchemaType) => {
     const logger = await getLogger();
     const ctx = { name: 'voice-clone.start', assetId: data.assetId };
@@ -81,7 +83,7 @@ export const startVoiceCloneAction = enhanceAction(
 
     if (assetError || !asset) {
       logger.error({ ...ctx, error: assetError }, 'Asset not found');
-      throw new Error('Asset not found');
+      throw new ActionRefusal('Asset not found');
     }
 
     const accountId = asset.projects?.account_id;
@@ -202,6 +204,8 @@ export const startVoiceCloneAction = enhanceAction(
   },
 );
 
+export const startVoiceCloneAction = returnRefusals(startVoiceClone);
+
 /**
  * Delete a cloned voice
  *
@@ -210,7 +214,7 @@ export const startVoiceCloneAction = enhanceAction(
  * 2. Clears clone data from voice_profiles
  * 3. Deletes the consent record
  */
-export const deleteVoiceCloneAction = enhanceAction(
+const deleteVoiceClone = enhanceAction(
   async (data: DeleteVoiceCloneSchemaType) => {
     const logger = await getLogger();
     const ctx = { name: 'voice-clone.delete', assetId: data.assetId };
@@ -235,7 +239,7 @@ export const deleteVoiceCloneAction = enhanceAction(
 
     if (profileError || !profile) {
       logger.error({ ...ctx, error: profileError }, 'Voice profile not found');
-      throw new Error('Voice profile not found');
+      throw new ActionRefusal('Voice profile not found');
     }
 
     const accountId = profile.assets?.projects?.account_id;
@@ -291,6 +295,8 @@ export const deleteVoiceCloneAction = enhanceAction(
     schema: DeleteVoiceCloneSchema,
   },
 );
+
+export const deleteVoiceCloneAction = returnRefusals(deleteVoiceClone);
 
 /**
  * Check the status of a voice clone

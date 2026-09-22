@@ -13,6 +13,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { CheckSquare, Trash2, X } from 'lucide-react';
 
+import { refusalMessage } from '@kit/next/action-result';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -251,7 +252,7 @@ export function AssetGallery({
           }
         } catch (err) {
           toast.error(
-            `Failed to delete: ${err instanceof Error ? err.message : 'Unknown error'}`,
+            `Failed to delete: ${refusalMessage(err, 'Unknown error')}`,
           );
         }
       });

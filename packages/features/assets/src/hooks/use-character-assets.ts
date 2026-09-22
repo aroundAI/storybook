@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState, useTransition } from 'react';
 
+import { isRedirectError } from 'next/dist/client/components/redirect-error';
+
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { toast } from '@kit/ui/sonner';
 
 import {
@@ -117,15 +120,13 @@ export function useCharacterAssets({
         setHasMore(fallbackResponse.hasMore);
         setHasFetched(true);
       } catch (err) {
-        const error =
-          err instanceof Error ? err : new Error('Failed to fetch characters');
-
-        if (error.message?.includes('NEXT_REDIRECT')) {
+        if (isRedirectError(err)) {
           return;
         }
 
-        setError(error);
-        toast.error(error.message);
+        const message = refusalMessage(err, 'Failed to fetch characters');
+        setError(new Error(message));
+        toast.error(message);
         setHasFetched(true);
       }
     });
@@ -147,22 +148,13 @@ export function useCharacterAssets({
 
       startDeleteTransition(async () => {
         try {
-          await deleteAssetAction({ assetId });
+          await unwrap(deleteAssetAction({ assetId }));
           toast.success('Character deleted successfully');
         } catch (err) {
           setCharacters(previousCharacters);
           setTotal((prev) => prev + 1);
 
-          const error =
-            err instanceof Error
-              ? err
-              : new Error('Failed to delete character');
-
-          if (error.message.includes('in use')) {
-            toast.error('Cannot delete character that is in use by episodes');
-          } else {
-            toast.error('Failed to delete character');
-          }
+          toast.error(refusalMessage(err, 'Failed to delete character'));
         }
       });
     },

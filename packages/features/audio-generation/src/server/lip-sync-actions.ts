@@ -4,7 +4,9 @@ import 'server-only';
 
 import { revalidatePath } from 'next/cache';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -139,7 +141,7 @@ export const detectFacesAction = enhanceAction(
  * 3. Triggers the lip sync provider
  * 4. Returns the job ID for tracking
  */
-export const generateLipSyncAction = enhanceAction(
+const generateLipSyncHandler = enhanceAction(
   async (data: {
     shotId: string;
     dialogueLineId: string;
@@ -194,13 +196,15 @@ export const generateLipSyncAction = enhanceAction(
 
     if (shotError || !shot) {
       logger.error({ ...ctx, error: shotError }, 'Shot not found');
-      throw new Error('Shot not found');
+      throw new ActionRefusal('Shot not found');
     }
 
     const shotData = shot as ShotResponse;
 
     if (!shotData.video_url) {
-      throw new Error('Shot does not have a video. Generate video first.');
+      throw new ActionRefusal(
+        'Shot does not have a video. Generate video first.',
+      );
     }
 
     const accountId = shotData.episodes?.projects?.account_id;
@@ -218,13 +222,13 @@ export const generateLipSyncAction = enhanceAction(
 
     if (dialogueError || !dialogueLine) {
       logger.error({ ...ctx, error: dialogueError }, 'Dialogue line not found');
-      throw new Error('Dialogue line not found');
+      throw new ActionRefusal('Dialogue line not found');
     }
 
     const dialogueData = dialogueLine as DialogueLineResponse;
 
     if (!dialogueData.audio_url) {
-      throw new Error(
+      throw new ActionRefusal(
         'Dialogue line does not have audio. Generate voice first.',
       );
     }
@@ -313,6 +317,8 @@ export const generateLipSyncAction = enhanceAction(
   },
 );
 
+export const generateLipSyncAction = returnRefusals(generateLipSyncHandler);
+
 /**
  * Apply a completed lip sync job to the shot
  *
@@ -321,7 +327,7 @@ export const generateLipSyncAction = enhanceAction(
  * 2. Updates the shot's video_url with the lip-synced video
  * 3. Preserves original video URL in metadata
  */
-export const applyLipSyncAction = enhanceAction(
+const applyLipSync = enhanceAction(
   async (data: { jobId: string }): Promise<ApplyLipSyncResult> => {
     const logger = await getLogger();
     const ctx = {
@@ -357,19 +363,19 @@ export const applyLipSyncAction = enhanceAction(
 
     if (jobError || !job) {
       logger.error({ ...ctx, error: jobError }, 'Lip sync job not found');
-      throw new Error('Lip sync job not found');
+      throw new ActionRefusal('Lip sync job not found');
     }
 
     const jobData = job as LipSyncJob;
 
     if (jobData.status !== 'completed') {
-      throw new Error(
+      throw new ActionRefusal(
         `Lip sync job is not completed. Current status: ${jobData.status}`,
       );
     }
 
     if (!jobData.output_video_url) {
-      throw new Error('Lip sync job has no output video');
+      throw new ActionRefusal('Lip sync job has no output video');
     }
 
     // 2. Update shot with lip-synced video, preserving original
@@ -428,6 +434,8 @@ export const applyLipSyncAction = enhanceAction(
     schema: ApplyLipSyncSchema,
   },
 );
+
+export const applyLipSyncAction = returnRefusals(applyLipSync);
 
 /**
  * Get lip sync job details

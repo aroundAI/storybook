@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import { Button } from '@kit/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
@@ -89,22 +90,24 @@ export function PublishHub({
   const publishMutation = useMutation({
     mutationFn: async () => {
       const enabledPlatforms = platforms.filter((p) => p.enabled);
-      return publishToAllAction({
-        episodeId,
-        platforms: enabledPlatforms.map((p) => ({
-          platform: p.platform,
-          connectionId: p.connectionId,
-          contentType: 'full' as const, // Default to full video for legacy publish-hub
-          title: p.title,
-          description: p.description,
-          tags: p.tags,
-          thumbnailUrl: p.thumbnailUrl ?? null,
-          scheduledAt: p.scheduledAt?.toISOString() ?? null,
-          platformSpecific: p.platformSpecific,
-          // Language for multi-language analytics
-          language: p.language,
-        })),
-      });
+      return unwrap(
+        publishToAllAction({
+          episodeId,
+          platforms: enabledPlatforms.map((p) => ({
+            platform: p.platform,
+            connectionId: p.connectionId,
+            contentType: 'full' as const, // Default to full video for legacy publish-hub
+            title: p.title,
+            description: p.description,
+            tags: p.tags,
+            thumbnailUrl: p.thumbnailUrl ?? null,
+            scheduledAt: p.scheduledAt?.toISOString() ?? null,
+            platformSpecific: p.platformSpecific,
+            // Language for multi-language analytics
+            language: p.language,
+          })),
+        }),
+      );
     },
     onSuccess: (results) => {
       // Update results
@@ -129,8 +132,8 @@ export function PublishHub({
         toast.error('All publishes failed');
       }
     },
-    onError: (error: Error) => {
-      toast.error(`Publishing failed: ${error.message}`);
+    onError: (error: unknown) => {
+      toast.error(refusalMessage(error, 'Publishing failed'));
     },
   });
 
@@ -162,7 +165,8 @@ export function PublishHub({
 
   // Retry mutation
   const retryMutation = useMutation({
-    mutationFn: (publishId: string) => retryPublishAction({ publishId }),
+    mutationFn: (publishId: string) =>
+      unwrap(retryPublishAction({ publishId })),
     onSuccess: (result) => {
       setPublishResults((prev) => ({
         ...prev,
@@ -170,8 +174,8 @@ export function PublishHub({
       }));
       toast.success(`Retry successful for ${result.platform}`);
     },
-    onError: (error: Error) => {
-      toast.error(`Retry failed: ${error.message}`);
+    onError: (error: unknown) => {
+      toast.error(refusalMessage(error, 'Retry failed'));
     },
   });
 

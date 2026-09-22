@@ -9,7 +9,9 @@ import { z } from 'zod';
 
 import type { AggregatedTotals } from '@kit/clickhouse';
 import { queryTotalsByVideoIds } from '@kit/clickhouse/server';
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -70,7 +72,7 @@ function getTunnelUrl(url: string): string {
 /**
  * Publish video to all selected platforms
  */
-export const publishToAllAction = enhanceAction(
+const publishToAllHandler = enhanceAction(
   async ({ episodeId, platforms }, _user) => {
     const logger = await getLogger();
     const ctx = {
@@ -94,7 +96,7 @@ export const publishToAllAction = enhanceAction(
 
     if (episodeError || !episode) {
       logger.error({ ...ctx, error: episodeError }, 'Episode not found');
-      throw new Error('Episode not found');
+      throw new ActionRefusal('Episode not found');
     }
 
     // Support both legacy final_video_url and new localized_videos
@@ -114,7 +116,7 @@ export const publishToAllAction = enhanceAction(
 
     if (!hasAnyVideos) {
       logger.error(ctx, 'Episode video not ready');
-      throw new Error(
+      throw new ActionRefusal(
         'No videos available for publishing. Upload videos first.',
       );
     }
@@ -140,7 +142,7 @@ export const publishToAllAction = enhanceAction(
             .single();
 
           if (connError || !connection) {
-            throw new Error('Platform connection not found');
+            throw new ActionRefusal('Platform connection not found');
           }
 
           // The language of the asset this publish uploads: the one the
@@ -246,7 +248,7 @@ export const publishToAllAction = enhanceAction(
           }
 
           if (!videoUrl) {
-            throw new Error(`No video available for language: ${lang}`);
+            throw new ActionRefusal(`No video available for language: ${lang}`);
           }
 
           // Update content_type based on what we're actually publishing
@@ -405,6 +407,8 @@ export const publishToAllAction = enhanceAction(
   },
 );
 
+export const publishToAllAction = returnRefusals(publishToAllHandler);
+
 /**
  * Get publish status for an episode
  */
@@ -453,7 +457,7 @@ export const getPublishStatusAction = enhanceAction(
 /**
  * Retry a failed publish
  */
-export const retryPublishAction = enhanceAction(
+const retryPublish = enhanceAction(
   async ({ publishId }, _user) => {
     const logger = await getLogger();
     const ctx = { name: 'publishing.retry', publishId };
@@ -477,11 +481,11 @@ export const retryPublishAction = enhanceAction(
       .single();
 
     if (publishError || !publish) {
-      throw new Error('Publish record not found');
+      throw new ActionRefusal('Publish record not found');
     }
 
     if (publish.status !== 'failed') {
-      throw new Error('Can only retry failed publishes');
+      throw new ActionRefusal('Can only retry failed publishes');
     }
 
     const episode = publish.episodes as {
@@ -490,7 +494,7 @@ export const retryPublishAction = enhanceAction(
     } | null;
 
     if (!episode?.final_video_url) {
-      throw new Error('Episode video not available');
+      throw new ActionRefusal('Episode video not available');
     }
 
     // Get access token
@@ -511,7 +515,7 @@ export const retryPublishAction = enhanceAction(
       .single();
 
     if (!connection) {
-      throw new Error('Platform connection not found');
+      throw new ActionRefusal('Platform connection not found');
     }
 
     // Update status to publishing
@@ -578,6 +582,8 @@ export const retryPublishAction = enhanceAction(
     auth: true,
   },
 );
+
+export const retryPublishAction = returnRefusals(retryPublish);
 
 /**
  * Map database status to PublishResult status
@@ -982,7 +988,7 @@ export const deleteEpisodePublishesAction = enhanceAction(
  * Unpublish a single publish record - deletes from platform AND database
  * Now uses async worker to avoid timeouts.
  */
-export const unpublishAction = enhanceAction(
+const unpublishHandler = enhanceAction(
   async ({ publishId }, _user) => {
     const logger = await getLogger();
     const ctx = { name: 'publishing.unpublish', publishId };
@@ -1004,7 +1010,7 @@ export const unpublishAction = enhanceAction(
 
     if (fetchError || !publish) {
       logger.error({ ...ctx, error: fetchError }, 'Publish record not found');
-      throw new Error('Publish record not found');
+      throw new ActionRefusal('Publish record not found');
     }
 
     if (!PUBLISH_QUEUE_URL) {
@@ -1045,3 +1051,5 @@ export const unpublishAction = enhanceAction(
     auth: true,
   },
 );
+
+export const unpublishAction = returnRefusals(unpublishHandler);
