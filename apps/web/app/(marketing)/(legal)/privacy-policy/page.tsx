@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import {
   AlertCircle,
   Clock,
@@ -29,7 +31,7 @@ export async function generateMetadata() {
 
 async function PrivacyPolicyPage() {
   const { t } = await createI18nServerInstance();
-  const lastUpdated = 'January 7, 2025';
+  const lastUpdated = 'September 22, 2026';
   const companyName = 'Around AI Limited';
   const productName = 'StoryBook';
   const contactEmail = 'privacy@storybook.digital';
@@ -278,7 +280,85 @@ async function PrivacyPolicyPage() {
                       Account name, profile picture, channel IDs, analytics
                       data, follower counts
                     </p>
+                    <p
+                      data-test="privacy-youtube-api-services"
+                      className="mt-3 text-sm text-slate-600 dark:text-slate-400"
+                    >
+                      {productName} uses YouTube API Services to connect your
+                      YouTube channel, publish to it and read its statistics.
+                      Your use of YouTube through {productName} is also covered
+                      by the{' '}
+                      <ExternalPolicyLink
+                        dataTest="privacy-youtube-terms-link"
+                        href="https://www.youtube.com/t/terms"
+                      >
+                        YouTube Terms of Service
+                      </ExternalPolicyLink>
+                      , and Google&apos;s handling of your data by the{' '}
+                      <ExternalPolicyLink
+                        dataTest="privacy-google-privacy-link"
+                        href="https://www.google.com/policies/privacy"
+                      >
+                        Google Privacy Policy
+                      </ExternalPolicyLink>
+                      .
+                    </p>
                   </div>
+                </div>
+              </div>
+
+              <div data-test="privacy-platform-data">
+                <h4 className="mb-3 font-medium text-slate-900 dark:text-white">
+                  1.4 What We Keep from Connected Platforms
+                </h4>
+                <div className="space-y-3 text-sm">
+                  <p>
+                    <strong>What.</strong> The account&apos;s name, profile
+                    picture and channel or page ID; the access tokens the
+                    platform issues, encrypted; and the statistics the platform
+                    reports for your channel and your videos: titles, tags and
+                    publish dates, views, watch time, likes, comments, shares,
+                    saves, subscriber counts, impressions, audience breakdowns
+                    (age group, gender, country, device, follower status),
+                    traffic sources, retention curves and, where the platform
+                    reports it, revenue.
+                  </p>
+                  <p>
+                    <strong>Why.</strong> To publish to the account when you ask
+                    us to, and to show you and the members of your team how your
+                    channel and videos perform, in the app and in any reports
+                    you schedule. If you use AI Insights, the figures on that
+                    page are sent to one of the AI providers listed in section 3
+                    to write the summary.
+                  </p>
+                  <p data-test="privacy-retention">
+                    <strong>How long.</strong> While the platform stays
+                    connected we refresh these figures on a schedule, and each
+                    scheduled refresh confirms that your authorisation is still
+                    valid. After you disconnect a platform, or revoke our access
+                    at the platform, we keep the statistics already collected
+                    until you ask us to delete them, with no time limit — except
+                    for YouTube: YouTube&apos;s API policies require us to
+                    delete YouTube statistics within 7 calendar days of a
+                    disconnect in this app, and within 30 calendar days if you
+                    revoke access at Google or your authorisation lapses and
+                    cannot be renewed. Disconnecting also removes our records of
+                    what was published through that account and their revenue
+                    entries; the Data Deletion page below says exactly what
+                    goes.
+                  </p>
+                  <p>
+                    <strong>Deleting it.</strong> Our{' '}
+                    <Link
+                      data-test="privacy-data-deletion-link"
+                      href="/data-deletion"
+                      className="text-indigo-600 hover:underline dark:text-indigo-400"
+                    >
+                      Data Deletion
+                    </Link>{' '}
+                    page says how to disconnect a platform, delete your account,
+                    or ask us to delete this data.
+                  </p>
                 </div>
               </div>
             </div>
@@ -450,7 +530,11 @@ async function PrivacyPolicyPage() {
                   period: 'Until deleted',
                   color: 'green',
                 },
-                { label: 'Analytics', period: '24 months', color: 'purple' },
+                {
+                  label: 'Analytics',
+                  period: 'Until you ask — see 1.4',
+                  color: 'purple',
+                },
                 {
                   label: 'Payment Records',
                   period: '7 years (legal)',
@@ -543,6 +627,25 @@ async function PrivacyPolicyPage() {
               </a>
               . We will respond within 30 days.
             </p>
+            <p className="mt-4 text-sm text-slate-600 dark:text-slate-400">
+              How to have data from a connected platform deleted is set out,
+              step by step, on our{' '}
+              <Link
+                href="/data-deletion"
+                className="text-indigo-600 hover:underline dark:text-indigo-400"
+              >
+                Data Deletion
+              </Link>{' '}
+              page. In addition to that, you can revoke {productName}&apos;s
+              access to your Google and YouTube data at any time from the{' '}
+              <ExternalPolicyLink
+                dataTest="privacy-google-permissions-link"
+                href="https://security.google.com/settings/security/permissions"
+              >
+                Google security settings page
+              </ExternalPolicyLink>
+              .
+            </p>
           </Section>
 
           {/* Section 7: Security */}
@@ -607,6 +710,24 @@ async function PrivacyPolicyPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ExternalPolicyLink({
+  href,
+  dataTest,
+  children,
+}: React.PropsWithChildren<{ href: string; dataTest: string }>) {
+  return (
+    <a
+      data-test={dataTest}
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-indigo-600 hover:underline dark:text-indigo-400"
+    >
+      {children}
+    </a>
   );
 }
 
