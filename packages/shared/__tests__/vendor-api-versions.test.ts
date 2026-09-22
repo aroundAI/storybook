@@ -66,7 +66,8 @@ const TEST_FILE =
 
 /**
  * Pages a person opens, on hosts that also serve an API or an OAuth dialog:
- * permalinks, share intents, embeds, a footer link. No credential rides on
+ * permalinks, share intents, embeds, a footer link, the account settings
+ * where a person revokes our access. No credential rides on
  * them and no sandbox should serve them, so they are removed from a line
  * before it is searched. Anything else on these hosts is a vendor call.
  */
@@ -76,6 +77,9 @@ const PUBLIC_PAGES = [
   /www\.tiktok\.com\/(?:@|creator)/g,
   /www\.linkedin\.com\/(?:feed\/update\/|sharing\/share-offsite\/)/g,
   /(?<![\w.-])x\.com\/storybook/g,
+  /www\.facebook\.com\/settings/g,
+  /(?<![\w.-])x\.com\/settings\//g,
+  /www\.linkedin\.com\/mypreferences\//g,
   /archive\.org\/details\//g,
 ];
 
