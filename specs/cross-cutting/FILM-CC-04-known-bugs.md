@@ -1032,47 +1032,29 @@ ignored overrides at server start. These have none of that:
 | `ANTHROPIC_BASE_URL` | the Anthropic SDK itself | same |
 | `GOOGLE_GEMINI_BASE_URL` | the Google GenAI SDK itself | same |
 
-### Decided (owner, 2026-09-22): close them — with one that is in use
+### Decided (owner, 2026-09-22): close all six
 
-- `SYNCLABS_BASE_URL`, `WAV2LIP_API_URL`, `LOCAL_API_URL`: **no longer used.**
-  Remove the reads; route the hosts through the resolver like every other
-  vendor. If the Wav2Lip and `local` LLM providers are themselves dead, say so
-  in the PR and ask before deleting a provider — removing an env read is in
-  scope, removing a feature is not.
-- `OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`: not used, but the providers stay
-  supported. Close the silent path.
-- **`GOOGLE_GEMINI_BASE_URL` is set in production today** (owner). It is not set
-  anywhere in `sst.config.ts` or `deployment/`, so it lives in the hosting
-  environment directly. **"Close" must not mean "break production."** Closing
-  this one means replacing a silent override with an explicit one:
+**None of the six is set in production** (owner, 2026-09-22 — a first reading
+that `GOOGLE_GEMINI_BASE_URL` was in use was wrong; the owner sets API keys, not
+base URLs). No deployment depends on any of them, so there is nothing to keep
+working and no production value to learn. Close them outright.
 
 ### Proposed fix
 
-- **Pass `baseURL` explicitly to every SDK client** from the resolver, so the
-  SDKs' own environment lookup is never what decides the host. (Check each
-  SDK: an explicit option should take precedence over its env var — verify by
-  running the real SDK against a local listener with the env var set, as
-  FILM-1801 did for YouTube's `rootUrl`. Do not assume.)
-- **A production override becomes a declared thing, not an ambient one:** an
-  allow-list in the resolver of vendor → permitted non-default production
-  hosts, https only, no credentials in the URL, exact host match. Gemini's
-  current production value goes on that list. Anything else set in production
-  is ignored *and logged by name at server start*, as FILM-1801 already does
-  for `VENDOR_URL_*`.
-- **No production value is needed to build this, and none may be asked for**
-  (owner, 2026-09-22: *"do not use production credentials for anything"* — that
-  includes asking what a production variable is set to). So it ships in two
-  steps, and the first cannot break production whatever the value is:
-  1. **Observe.** In production the resolver *honours* the six variables exactly
-     as today, and logs once at server start which are set — by variable name
-     and destination **host only**, never a key, a path, a query string or a
-     URL carrying credentials. Behaviour is unchanged. The owner reads their own
-     log and learns what Gemini points at.
-  2. **Enforce.** A later PR turns the allow-list on. The owner adds the Gemini
-     host to it in code review, from what step 1 showed them. Until a host is
-     on the list, step 2 does not merge.
-  The three unused variables can be removed in step 1 — the owner has said they
-  are not set.
+- `SYNCLABS_BASE_URL`, `WAV2LIP_API_URL`, `LOCAL_API_URL`: remove the reads;
+  route the hosts through the resolver like every other vendor. If the Wav2Lip
+  or `local` LLM providers are themselves dead, say so in the PR and ask before
+  deleting a provider — removing an env read is in scope, removing a feature
+  is not.
+- `OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, `GOOGLE_GEMINI_BASE_URL`: **pass
+  `baseURL` explicitly to every SDK client** from the resolver, so the SDK's own
+  environment lookup never decides the host. Verify per SDK that the explicit
+  option wins over the env var by running the real SDK against a local listener
+  with the variable set — as FILM-1801 did for YouTube's `rootUrl`. Do not
+  assume.
+- **No production credentials, config or values are used or requested at any
+  point** (standing owner rule). The proof is local: variable set, production
+  settings, local listener, zero requests arrive.
 - Extend FILM-1801's guard (`vendor-api-versions.test.ts`): a new
   `process.env.*_BASE_URL` / `*_API_URL` read for a vendor host fails the
   build, with the resolver call to use instead.
@@ -1080,9 +1062,8 @@ ignored overrides at server start. These have none of that:
 
 ### Acceptance criteria
 
-- [ ] Step 2: none of the six variables changes a request's host unless the allow-list permits it — proven per SDK against a **local** listener, env var set, production settings: **0 requests arrive**. No production system, credential or value is used at any point
-- [ ] Step 1: with any of the six set under production settings, requests still reach that host (behaviour unchanged) and one start-up log line names the variable and the host — a test asserts no key, path, query or credential appears in it
-- [ ] Step 2 (separate PR, after the owner has read their log): Gemini reaches only the allow-listed host; an undeclared value is ignored and logged
+- [ ] None of the six variables changes a request's host under production settings — proven per SDK against a **local** listener, env var set: **0 requests arrive**. No production system, credential or value is used at any point
+- [ ] A set-but-ignored variable is logged by name at server start (never by value), as FILM-1801 already does for `VENDOR_URL_*`
 - [ ] The three unused variables are gone from source, docs and env examples
 - [ ] The guard fails on a newly introduced vendor base-URL env read — seen red
 - [ ] FILM-1803's spec updated: it planned to rely on these variables for the AI sandbox and must use `VENDOR_URL_*` instead
