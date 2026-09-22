@@ -24,6 +24,7 @@ import {
   createEpisodeWithContextAction,
   getProjectFactsForWizardAction,
 } from '@kit/episodes/server/actions';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Checkbox } from '@kit/ui/checkbox';
@@ -254,21 +255,25 @@ export function CreateEpisodeWizard({
   const handleCreate = (autoGenerate: boolean) => {
     startTransition(async () => {
       try {
-        const result = await createEpisodeWithContextAction({
-          projectId,
-          title,
-          description: description || undefined,
-          seasonId: isCreatingNewSeason ? undefined : seasonId,
-          newSeasonName: isCreatingNewSeason ? newSeasonName : undefined,
-          factIds:
-            selectedFactIds.size > 0 ? Array.from(selectedFactIds) : undefined,
-          hook: hook || undefined,
-          targetDuration: targetDuration || undefined,
-          contentStyle,
-          visualTone: resolvedVisualTone || undefined,
-          toneNotes: toneNotes || undefined,
-          autoGenerateStory: autoGenerate,
-        });
+        const result = await unwrap(
+          createEpisodeWithContextAction({
+            projectId,
+            title,
+            description: description || undefined,
+            seasonId: isCreatingNewSeason ? undefined : seasonId,
+            newSeasonName: isCreatingNewSeason ? newSeasonName : undefined,
+            factIds:
+              selectedFactIds.size > 0
+                ? Array.from(selectedFactIds)
+                : undefined,
+            hook: hook || undefined,
+            targetDuration: targetDuration || undefined,
+            contentStyle,
+            visualTone: resolvedVisualTone || undefined,
+            toneNotes: toneNotes || undefined,
+            autoGenerateStory: autoGenerate,
+          }),
+        );
 
         if (result.success && result.data) {
           const msg = autoGenerate
@@ -284,9 +289,7 @@ export function CreateEpisodeWizard({
           );
         }
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : 'Failed to create episode',
-        );
+        toast.error(refusalMessage(error, 'Failed to create episode'));
       }
     });
   };

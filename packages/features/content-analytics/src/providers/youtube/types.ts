@@ -13,16 +13,39 @@ export interface YouTubeAnalyticsInput {
   startDate: Date;
   endDate: Date;
   metrics?: YouTubeMetric[];
+  /**
+   * Ask for the revenue metrics. Only true when the connection's recorded
+   * grant carries `yt-analytics-monetary.readonly`; without it the query is a
+   * known 403 and is not made.
+   */
+  includeRevenue?: boolean;
 }
+
+/**
+ * Whether this result's revenue figures are a measurement.
+ *
+ * - `scope_missing`: not asked for, because the monetary scope is not held.
+ * - `account_type_gated`: asked for with the scope held, and refused. YouTube
+ *   reports revenue for Partner Program channels only.
+ * - `unavailable`: asked for and failed for a reason that says nothing about
+ *   access (quota, a 5xx). Try again next sync.
+ *
+ * In every state but `authorised` the revenue totals are 0 and mean "not
+ * measured", never "earned nothing".
+ */
+export type YouTubeRevenueAccess =
+  | 'authorised'
+  | 'scope_missing'
+  | 'account_type_gated'
+  | 'unavailable';
 
 /**
  * Available YouTube Analytics metrics.
  *
  * Every name here is documented at
  * https://developers.google.com/youtube/analytics/metrics. The three revenue
- * metrics require the `yt-analytics-monetary.readonly` scope, which
- * YOUTUBE_OAUTH_CONFIG does not currently request — FILM-1711.
- * See docs/platform-capability-reference.md.
+ * metrics require the `yt-analytics-monetary.readonly` scope and travel in
+ * their own query (FILM-1711). See docs/platform-capability-reference.md.
  */
 export type YouTubeMetric =
   | 'views'
@@ -51,6 +74,7 @@ export interface YouTubeAnalyticsResult {
     endDate: string;
   };
   totals: YouTubeTotals;
+  revenueAccess: YouTubeRevenueAccess;
   dailyData: YouTubeDailyMetrics[];
   retention?: RetentionData;
   demographics?: DemographicData;

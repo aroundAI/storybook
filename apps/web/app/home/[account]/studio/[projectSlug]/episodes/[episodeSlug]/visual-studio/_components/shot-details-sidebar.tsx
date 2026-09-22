@@ -28,6 +28,7 @@ import {
 import { VideoUploader } from '@kit/episodes/components';
 import { updateShotAction } from '@kit/episodes/server';
 import type { Shot } from '@kit/episodes/types';
+import { refusalMessage } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import {
@@ -332,9 +333,7 @@ export function ShotDetailsSidebar({
           onUpdate();
         }
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : 'Failed to regenerate shot',
-        );
+        toast.error(refusalMessage(error, 'Failed to regenerate shot'));
       }
     });
   };
@@ -378,9 +377,7 @@ export function ShotDetailsSidebar({
           onUpdate();
         }
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : 'Failed to remove video',
-        );
+        toast.error(refusalMessage(error, 'Failed to remove video'));
       }
     });
   }, [shot.id, onUpdate]);

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { insertClickHouse } from '../utils/clickhouse';
 import { readRows, seedRunningExperiment } from '../utils/seed';
 import { ExperimentsPageObject } from './experiments.po';
 
@@ -13,32 +14,6 @@ import { ExperimentsPageObject } from './experiments.po';
  * Skipped unless CAPTURE_EVIDENCE is set, so CI pays nothing for it.
  */
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
-
-/**
- * Writes rows straight into ClickHouse over HTTP, as
- * `deep-dive/subscriber-evidence.spec.ts` does.
- */
-async function insertClickHouse(table: string, rows: object[]) {
-  const host = process.env.CLICKHOUSE_HOST ?? 'http://localhost:8123';
-  const auth = Buffer.from(
-    `${process.env.CLICKHOUSE_USER ?? 'default'}:${process.env.CLICKHOUSE_PASSWORD ?? ''}`,
-  ).toString('base64');
-
-  const response = await fetch(
-    `${host}/?query=${encodeURIComponent(`INSERT INTO ${table} FORMAT JSONEachRow`)}`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Basic ${auth}` },
-      body: rows.map((row) => JSON.stringify(row)).join('\n'),
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      `ClickHouse insert into ${table} failed: ${await response.text()}`,
-    );
-  }
-}
 
 test.describe('Experiment log — evidence', () => {
   test.skip(
@@ -377,7 +352,7 @@ test.describe('Experiment log — evidence', () => {
       language: 'en',
       title: videoId,
       published_at: `${publishedAt} 00:00:00`,
-      duration_seconds: 600,
+      episode_duration_seconds: 600,
       tags: [],
     });
 

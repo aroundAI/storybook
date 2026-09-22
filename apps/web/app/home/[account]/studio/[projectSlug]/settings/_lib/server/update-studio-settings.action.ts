@@ -5,7 +5,9 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
@@ -25,7 +27,7 @@ import { UpdateStudioSettingsSchema } from '../schemas/studio-settings.schema';
  * - contentRating
  * - language
  */
-export const updateStudioSettingsAction = enhanceAction(
+const updateStudioSettings = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = {
@@ -57,7 +59,7 @@ export const updateStudioSettingsAction = enhanceAction(
 
     if (fetchError || !project) {
       logger.error({ ...ctx, error: fetchError }, 'Project not found');
-      throw new Error('Project not found');
+      throw new ActionRefusal('Project not found');
     }
 
     // Merge new settings with existing metadata
@@ -161,3 +163,5 @@ export const updateStudioSettingsAction = enhanceAction(
     schema: UpdateStudioSettingsSchema,
   },
 );
+
+export const updateStudioSettingsAction = returnRefusals(updateStudioSettings);

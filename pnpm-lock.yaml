@@ -2525,6 +2525,9 @@ importers:
       '@kit/prettier-config':
         specifier: workspace:*
         version: link:../../tooling/prettier
+      '@kit/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@kit/supabase':
         specifier: workspace:*
         version: link:../supabase

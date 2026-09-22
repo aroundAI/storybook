@@ -53,8 +53,12 @@ export const PlatformConfigSchema = z.object({
   thumbnailUrl: z.string().url().optional().nullable(),
   scheduledAt: z.string().datetime().optional().nullable(),
   platformSpecific: PlatformSpecificSettingsSchema.default({}),
-  // Language for multi-language analytics (en, hi, es, pt, etc.)
-  language: z.string().min(2).max(5).default('en'),
+  // Language of the asset being published (en, hi, es, pt, etc.). Optional
+  // with no default: a default here stamped 'en' on every request that
+  // omitted it, before the server's own fallback to the channel's target
+  // could run — so that fallback was dead code, and the analytics could not
+  // tell a chosen English from an unset one (FILM-1702).
+  language: z.string().min(2).max(5).optional(),
 });
 
 /**

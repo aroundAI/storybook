@@ -3,7 +3,9 @@
 import { revalidatePath } from 'next/cache';
 
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -233,7 +235,7 @@ export const getProjectSeasonsAction = enhanceAction(
  * - Updates updated_at timestamp
  * - Creates audit log entry
  */
-export const updateSeasonAction = enhanceAction(
+const updateSeason = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = { name: 'seasons.update', seasonId: data.seasonId };
@@ -264,7 +266,7 @@ export const updateSeasonAction = enhanceAction(
       .single();
 
     if (fetchError || !currentSeason) {
-      throw new Error('Season not found');
+      throw new ActionRefusal('Season not found');
     }
 
     // Build update object (only include provided fields)
@@ -292,7 +294,7 @@ export const updateSeasonAction = enhanceAction(
     }
 
     if (!season) {
-      throw new Error('Season not found');
+      throw new ActionRefusal('Season not found');
     }
 
     // Create audit log
@@ -327,6 +329,8 @@ export const updateSeasonAction = enhanceAction(
     schema: UpdateSeasonSchema,
   },
 );
+
+export const updateSeasonAction = returnRefusals(updateSeason);
 
 /**
  * Soft deletes a season

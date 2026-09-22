@@ -1,5 +1,7 @@
 'use client';
 
+import type { LanguageDimension } from '@kit/clickhouse';
+
 import type {
   ContentTypeComparison,
   GeographyByLanguage,
@@ -38,6 +40,11 @@ import { TopShortsCard, TopShortsCardSkeleton } from './shorts-geography-cards';
 
 interface LanguageAnalyticsDashboardProps {
   projectId: string;
+  /**
+   * Which language every card below is grouped by (FILM-1702). Each card
+   * names it, so none of them can be read under the wrong one.
+   */
+  dimension?: LanguageDimension;
   languageData: LanguagePerformance[] | null;
   matrixData: PlatformLanguageEntry[] | null;
   contentTypeData: ContentTypeComparison | null;
@@ -64,6 +71,7 @@ interface LanguageAnalyticsDashboardProps {
  */
 export function LanguageAnalyticsDashboard({
   projectId,
+  dimension = 'content',
   languageData,
   matrixData,
   contentTypeData,
@@ -80,19 +88,22 @@ export function LanguageAnalyticsDashboard({
     <div className="space-y-6">
       {/* Row 1: Language Performance + Content Type */}
       <div className="grid gap-6 md:grid-cols-2">
-        <LanguagePerformanceCard data={languageData || []} />
+        <LanguagePerformanceCard
+          data={languageData || []}
+          dimension={dimension}
+        />
         <ContentTypeCard data={contentTypeData} />
       </div>
 
       {/* Row 2: Language Trend Chart */}
-      <LanguageTrendChart data={trendData || []} />
+      <LanguageTrendChart data={trendData || []} dimension={dimension} />
 
       {/* Row 3: Platform × Language Matrix */}
-      <PlatformLanguageMatrix data={matrixData || []} />
+      <PlatformLanguageMatrix data={matrixData || []} dimension={dimension} />
 
       {/* Row 4: Phase 3 Analytics Enhancements */}
       <div className="grid gap-6 md:grid-cols-3">
-        <LanguageComparisonChart data={languageData} />
+        <LanguageComparisonChart data={languageData} dimension={dimension} />
         <ShortsROICard contentTypeData={contentTypeData} />
         <BestEpisodesToClipCard
           languageData={languageData}
@@ -102,12 +113,12 @@ export function LanguageAnalyticsDashboard({
 
       {/* Row 5: Shorts + AI Insights */}
       <div className="grid gap-6 md:grid-cols-2">
-        <TopShortsCard data={shortsData || []} />
+        <TopShortsCard data={shortsData || []} dimension={dimension} />
         <LanguageInsightsCard projectId={projectId} />
       </div>
 
       {/* Row 6: Geography Heatmap */}
-      <GeographyHeatmapCard data={geographyData || []} />
+      <GeographyHeatmapCard data={geographyData || []} dimension={dimension} />
     </div>
   );
 }

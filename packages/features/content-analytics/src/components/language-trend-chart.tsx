@@ -14,47 +14,35 @@ import {
   YAxis,
 } from 'recharts';
 
+import type { LanguageDimension } from '@kit/clickhouse';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Skeleton } from '@kit/ui/skeleton';
 
+import {
+  languageColor,
+  languageFromKey,
+  languageName,
+} from '../lib/language-labels';
 import type { LanguageTrendEntry } from '../server/language-analytics';
-
-// Language colors for chart
-const LANGUAGE_COLORS: Record<string, string> = {
-  en: '#3b82f6', // Blue
-  hi: '#f97316', // Orange
-  es: '#eab308', // Yellow
-  pt: '#22c55e', // Green
-  fr: '#8b5cf6', // Purple
-  de: '#ef4444', // Red
-  ja: '#ec4899', // Pink
-  ko: '#14b8a6', // Teal
-  zh: '#f43f5e', // Rose
-  ar: '#6366f1', // Indigo
-};
-
-const LANGUAGE_NAMES: Record<string, string> = {
-  en: 'English',
-  hi: 'Hindi',
-  es: 'Spanish',
-  pt: 'Portuguese',
-  fr: 'French',
-  de: 'German',
-  ja: 'Japanese',
-  ko: 'Korean',
-  zh: 'Chinese',
-  ar: 'Arabic',
-};
+import { LanguageDimensionLabel } from './language-dimension-label';
 
 interface LanguageTrendChartProps {
   data: LanguageTrendEntry[];
+  /** Which language the series are grouped by; named on the card. */
+  dimension?: LanguageDimension;
   isLoading?: boolean;
 }
 
 export function LanguageTrendChart({
   data,
+  dimension = 'content',
   isLoading,
 }: LanguageTrendChartProps) {
+  // Series are keyed by `languageKey`, so the unlabelled one arrives as a
+  // sentinel string. Named through here, or the legend prints the sentinel.
+  const seriesName = (key: string) =>
+    languageName(languageFromKey(key), dimension);
+
   // Get unique languages from data
   const languages = useMemo(() => {
     const langSet = new Set<string>();
@@ -109,12 +97,13 @@ export function LanguageTrendChart({
   }
 
   return (
-    <Card>
+    <Card data-test="language-trend-chart">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <TrendingUp className="h-4 w-4" />
           Language Performance Trend
         </CardTitle>
+        <LanguageDimensionLabel dimension={dimension} card="trend" />
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
@@ -159,20 +148,18 @@ export function LanguageTrendChart({
               }}
               formatter={(value: number, name: string) => [
                 value.toLocaleString(),
-                LANGUAGE_NAMES[name] || name,
+                seriesName(name),
               ]}
             />
-            <Legend
-              formatter={(value: string) => LANGUAGE_NAMES[value] || value}
-            />
+            <Legend formatter={(value: string) => seriesName(value)} />
             {languages.map((lang) => (
               <Area
                 key={lang}
                 type="monotone"
                 dataKey={lang}
                 stackId="1"
-                stroke={LANGUAGE_COLORS[lang] || '#888'}
-                fill={LANGUAGE_COLORS[lang] || '#888'}
+                stroke={languageColor(languageFromKey(lang))}
+                fill={languageColor(languageFromKey(lang))}
                 fillOpacity={0.6}
               />
             ))}

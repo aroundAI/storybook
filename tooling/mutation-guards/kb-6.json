@@ -1,0 +1,85 @@
+{
+  "feature": "KB-6",
+  "mutations": [
+    {
+      "name": "A refusal is thrown again (production replaces its message)",
+      "kind": "unit",
+      "file": "packages/next/src/refusals/with-refusals.ts",
+      "find": "      if (error instanceof ActionRefusal) {\n        return { ok: false, error: error.message };\n      }\n\n      throw error;",
+      "replace": "      throw error;",
+      "cwd": "packages/next",
+      "test": "__tests__/refusals.test.ts",
+      "pattern": "returns a refusal with its own wording"
+    },
+    {
+      "name": "A crash is swallowed into a returned value",
+      "kind": "unit",
+      "file": "packages/next/src/refusals/with-refusals.ts",
+      "find": "        return { ok: false, error: error.message };\n      }\n\n      throw error;",
+      "replace": "        return { ok: false, error: error.message };\n      }\n\n      return { ok: false, error: String(error) };",
+      "cwd": "packages/next",
+      "test": "__tests__/refusals.test.ts",
+      "pattern": "leaves an unexpected failure thrown"
+    },
+    {
+      "name": "The page shows whatever message a caught error carries",
+      "kind": "unit",
+      "file": "packages/next/src/refusals/action-result.ts",
+      "find": "return error instanceof ActionRefusal ? error.message : fallback;",
+      "replace": "return error instanceof Error ? error.message : fallback;",
+      "cwd": "packages/next",
+      "test": "__tests__/refusals.test.ts",
+      "pattern": "shows the fallback"
+    },
+    {
+      "name": "A client goes back to showing the caught message",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/quick-actions-menu.tsx",
+      "find": "toast.error(refusalMessage(error, 'Failed to delete episode'));",
+      "replace": "toast.error(error instanceof Error ? error.message : 'Failed to delete episode');",
+      "cwd": "packages/next",
+      "test": "__tests__/kb6-caught-action-message.test.ts",
+      "pattern": "no client file shows or branches on the message"
+    },
+    {
+      "name": "A wrapped action is called without unwrap, so a refusal reads as success",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-header.tsx",
+      "find": "await unwrap(updateSeasonAction({ seasonId, name: trimmed }));",
+      "replace": "await updateSeasonAction({ seasonId, name: trimmed });",
+      "cwd": "packages/next",
+      "test": "__tests__/kb6-caught-action-message.test.ts",
+      "pattern": "every call to an action that returns its refusals is unwrapped"
+    },
+    {
+      "name": "A taken project slug is thrown with its constraint name",
+      "kind": "unit",
+      "file": "packages/features/projects/src/lib/server/project.mutations.ts",
+      "find": "      if (projectError.code === UNIQUE_VIOLATION) {\n        throw new ActionRefusal(SLUG_TAKEN);\n      }\n",
+      "replace": "",
+      "cwd": "packages/features/projects",
+      "test": "__tests__/project-mutations.test.ts",
+      "pattern": "returns a taken slug as a refusal"
+    },
+    {
+      "name": "createProjectAction loses its wrapper",
+      "kind": "unit",
+      "file": "packages/features/projects/src/lib/server/project.mutations.ts",
+      "find": "export const createProjectAction = returnRefusals(createProject);",
+      "replace": "export const createProjectAction = createProject;",
+      "cwd": "packages/features/projects",
+      "test": "__tests__/project-mutations.test.ts",
+      "pattern": "returns a taken slug as a refusal"
+    },
+    {
+      "name": "A second project owner is reported as an existing member",
+      "kind": "unit",
+      "file": "packages/features/projects/src/lib/server/project.mutations.ts",
+      "find": "error.message.includes('ix_project_members_owner')",
+      "replace": "false",
+      "cwd": "packages/features/projects",
+      "test": "__tests__/project-mutations.test.ts",
+      "pattern": "returns a second owner as a refusal of its own"
+    }
+  ]
+}

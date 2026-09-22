@@ -32,11 +32,15 @@ export function ViewsCard({
   const data = sparklineData;
 
   return (
+    // No platform list. This read "Aggregated across TikTok, YouTube, and
+    // Instagram" whatever the filter said and whichever platforms had rows;
+    // a true one needs the capability model (FILM-1703), and FILM-1705
+    // restores it from there.
     <AnalyticsCard
       title="Total Views"
       icon={Eye}
-      description="Aggregated across TikTok, YouTube, and Instagram"
-      footer="Aggregated across TikTok, YT, Insta"
+      description="Views of this project's published content in the selected period"
+      data-test="overview-views"
     >
       <div className="flex items-baseline gap-2">
         <span className="text-5xl font-extrabold tracking-tight text-gray-900 dark:text-white">

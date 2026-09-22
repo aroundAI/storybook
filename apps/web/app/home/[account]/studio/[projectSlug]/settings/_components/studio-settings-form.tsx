@@ -19,6 +19,7 @@ import {
 import { type UseFormReturn, useFieldArray, useForm } from 'react-hook-form';
 
 import type { ContentStyle, Genre, VideoStyle } from '@kit/film-studio-schemas';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import {
   Card,
@@ -234,15 +235,13 @@ export function StudioSettingsForm({
   const onSubmit = form.handleSubmit((data: UpdateStudioSettingsInput) => {
     startTransition(async () => {
       try {
-        const result = await updateStudioSettingsAction(data);
+        const result = await unwrap(updateStudioSettingsAction(data));
 
         if (result.success) {
           toast.success('Settings updated successfully');
         }
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : 'Failed to update settings',
-        );
+        toast.error(refusalMessage(error, 'Failed to update settings'));
       }
     });
   });

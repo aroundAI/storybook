@@ -3,8 +3,13 @@ import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
 import { PageBody } from '@kit/ui/page';
 import { Trans } from '@kit/ui/trans';
 
+import { PlatformConnectFailure } from '~/components/platform-connect-failure';
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { withI18n } from '~/lib/i18n/with-i18n';
+import {
+  connectFailurePath,
+  readConnectFailure,
+} from '~/lib/platforms/connect-failure';
 
 import { TeamAccountLayoutPageHeader } from '../../_components/team-account-layout-page-header';
 import { loadTeamWorkspace } from '../../_lib/server/team-account-workspace.loader';
@@ -20,12 +25,14 @@ export const generateMetadata = async () => {
 
 interface PlatformConnectionsPageProps {
   params: Promise<{ account: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 async function PlatformConnectionsPage(props: PlatformConnectionsPageProps) {
   const slug = (await props.params).account;
   const workspace = await loadTeamWorkspace(slug);
   const accountId = workspace.account.id;
+  const failure = readConnectFailure(await props.searchParams);
 
   return (
     <>
@@ -36,7 +43,17 @@ async function PlatformConnectionsPage(props: PlatformConnectionsPageProps) {
       />
 
       <PageBody>
-        <div className="flex max-w-4xl flex-1 flex-col">
+        <div
+          className="flex max-w-4xl flex-1 flex-col"
+          data-test="platform-connections"
+        >
+          {failure && (
+            <PlatformConnectFailure
+              failure={failure}
+              dismissHref={connectFailurePath(slug)}
+            />
+          )}
+
           <PlatformConnections accountSlug={slug} accountId={accountId} />
         </div>
       </PageBody>

@@ -26,15 +26,21 @@ the [ledger](#documented-vs-inferred-ledger). Anything nobody can answer is in
 
 | Platform | Analytics surface | Auth state today | Commercial | Data window |
 |---|---|---|---|---|
-| YouTube | Analytics API + Reporting API | authorised, **except revenue** (`yt-analytics-monetary.readonly` not requested) | included | reporting: 30d from **job creation**, unrecoverable |
-| TikTok (basic) | Display API `/v2/video/query/` | **scope missing** (`video.list`) | included | unbounded backwards |
+| YouTube | Analytics API + Reporting API | authorised; **revenue requested since FILM-1711**, held only by connections made or re-consented after it, and Partner Program channels only | included | reporting: 30d from **job creation**, unrecoverable |
+| TikTok (basic) | Display API `/v2/video/query/` | `video.list` + `user.info.stats` **requested since FILM-1711; TikTok app review outstanding** | included | unbounded backwards |
 | TikTok (deep) | **Business API** `/business/video/list/` | not implemented; separate app | included | stops updating 365d after publish |
-| Instagram | Graph `/{ig-media-id}/insights` | **permission missing** | included | media ~2y; account ~90d (*inferred*) |
-| Facebook | Graph `/{video-id}/video_insights` | **permission missing** | included | 2 years |
+| Instagram | Graph `/{ig-media-id}/insights` | `instagram_manage_insights` **requested since FILM-1711; App Review + Business Verification outstanding** | included | media ~2y; account ~90d (*inferred*) |
+| Facebook | Graph `/{video-id}/video_insights` | **permission missing** (`read_insights`) — not requested until a provider uses it, FILM-1720 | included | 2 years |
 | X (degraded) | `media.non_public_metrics` via posts lookup | **held** — `tweet.read` + `users.read` are requested for publishing; no provider | metered | **30d from post creation** |
 | X (full) | `/2/media/analytics` | **held** (same scopes) | **tier gated — Enterprise** (*inferred*) | **undocumented** |
 
-_Verified: 2026-09-21_
+What each surface needs is declared in code, in
+`packages/features/publishing/src/oauth/analytics-scopes.ts`, and
+`analytics-scope-binding.test.ts` fails a provider call whose scopes the OAuth config
+does not request. Where each vendor review stands is in
+[vendor-review-status.md](./vendor-review-status.md).
+
+_Verified: 2026-09-22_
 
 ---
 
@@ -63,12 +69,21 @@ and valid on `dimensions=day` + `filters=video==ID`.
   docs also state monetary metrics are supported for **YouTube Partner Program
   members only**.
 
-  ⚠️ `YOUTUBE_OAUTH_CONFIG` (`packages/features/publishing/src/oauth/youtube/config.ts:11-14`)
-  requests `youtube.upload`, `youtube.readonly`, `youtube.force-ssl` and
-  `yt-analytics.readonly` — **not** the monetary scope, while
-  `YouTubeAnalyticsProvider.fetchTotals` asks for all three revenue metrics in the
-  same query as the non-monetary ones. FILM-1711 owns the scope audit; recorded here
-  because it is the kind of claim this document exists to stop being guessed at.
+  Until FILM-1711, `YOUTUBE_OAUTH_CONFIG` did not request the monetary scope while
+  `YouTubeAnalyticsProvider.fetchTotals` asked for all three revenue metrics in the
+  same query as the non-monetary ones. The scope is now requested, and revenue
+  travels in its own query (`fetchRevenue`), made only for a connection whose
+  recorded grant carries the scope. **Still not established:** whether YouTube
+  rejected the old mixed query outright or returned it without the revenue columns,
+  and what a non-Partner channel gets back with the scope held — FILM-1725 Check G.
+  The Reporting API's job methods accept either scope
+  ([jobs.list](https://developers.google.com/youtube/reporting/v1/reference/rest/v1/jobs/list),
+  read 2026-09-22).
+
+- **The Data API call (`videos.list`, for titles and durations) rides on
+  `youtube.readonly`** — "View your YouTube account" in Google's
+  [Data API scope table](https://developers.google.com/youtube/v3/guides/auth/server-side-web-apps),
+  read 2026-09-22. It is requested, and has been since the first YouTube connection.
 
 Reporting API (bulk) — the only source of thumbnail impressions and CTR:
 
@@ -98,6 +113,19 @@ older "past the first frame" methodology. The 2025-03-31 change (announced
 replay". Anything comparing
 view counts across that boundary is comparing two different measures; the same
 argument FILM-1722 makes per platform applies to YouTube against its own past.
+
+**The Shorts change reached the API later than it reached Studio.** The
+[revision history](https://developers.google.com/youtube/analytics/revision_history)
+(re-read 2026-09-22) dates `engagedViews` — "will reflect the previous
+view-counting methodology" — to **2025-04-24**, when targeted queries switched, and
+the bulk reports' `engaged_views` column to **2025-06-24**; the 2025-03-26 entry
+says "until then, views will be based on the old methodology". So a stored Shorts
+view between 2025-03-31 and 2025-06-24 is one definition or the other and nothing
+says which. The 2026-08-27 entry defines an engaged view as "playback continues
+past the first frame, or the user clicks/taps to play", and leaves it unchanged.
+FILM-1722's registry (`packages/clickhouse/src/lib/view-definitions.ts`) encodes
+these dates, and `view-definition-sources.test.ts` fails if one it uses is not
+stated in this section.
 
 **`ageGroup` expanded on 2026-03-09** to include viewers YouTube estimates to be
 under 18. Our audience buckets predate that and should be checked against it.
@@ -131,6 +159,17 @@ duration, which FILM-1710 needs.
 Scope: **`video.list`**. There is **no `video.query` scope**. Maximum 20 video IDs
 per request. Rate limit 600 req/min per endpoint. The pagination cursor is a UTC
 Unix timestamp **in milliseconds**, a documented bug source.
+
+**`/v2/user/info/` splits its fields across three scopes**, and `follower_count` is
+not in the basic one. TikTok's
+[User Info API scope migration](https://developers.tiktok.com/bulletin/user-info-scope-migration)
+bulletin: from 2024-02-29 `user.info.basic` returns only `open_id`, `union_id`, the
+avatar URLs and `display_name`; `follower_count`, `following_count`, `likes_count`
+and `video_count` need **`user.info.stats`**. Our follower snapshot asks for
+`follower_count`, so it needs that scope — added to the OAuth config by FILM-1711,
+which found it only because the scope-binding test refused the call. *Read through a
+search index on 2026-09-22; the page itself was unreachable from this network, as
+above.*
 
 **Every response carries `error`, success included.** A successful call returns
 `{ "data": { … }, "error": { "code": "ok", "message": "", "log_id": "…" } }`; only a
@@ -202,6 +241,14 @@ Organised by **`media_product_type`** (`FEED` / `REELS` / `STORY`), **not** by
 | skip rate | `reels_skip_rate` | — | yes | — |
 | **profile visits** | `profile_visits` | yes | **NO** | yes |
 | **follows** | `follows` | yes | **NO** | yes |
+
+**`reach` is estimated, and `views` is still "in development".** The
+[media insights reference](https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/insights/)
+(re-read 2026-09-22) describes `reach` as "number of unique Instagram users that
+have seen the reel at least once … different from impressions, which can include
+multiple views of a reel by the same account" and tags it *"Metric is estimated"*;
+`views` is "total number of times IG Media has been played" and tagged *"Metric in
+development"*. It does not say whether `views` counts replays or paid plays.
 
 **`profile_visits` and `follows` are not available for REELS** — which is what
 creators publish. Instagram's Audience stage therefore has no per-media signal, and

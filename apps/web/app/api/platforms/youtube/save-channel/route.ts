@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
-import { YOUTUBE_OAUTH_CONFIG } from '@kit/publishing/oauth/youtube';
 import { decrypt, encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -11,6 +10,8 @@ interface PendingConnection {
   accessToken: string;
   refreshToken?: string;
   expiresIn: number;
+  /** Absent on a cookie written before FILM-1711; recorded as no grant. */
+  grantedScopes?: string[];
   channels: Array<{
     id: string;
     title: string;
@@ -102,8 +103,9 @@ export async function POST(request: NextRequest) {
         token_expires_at: new Date(
           Date.now() + pendingConnection.expiresIn * 1000,
         ).toISOString(),
-        scopes: [...YOUTUBE_OAUTH_CONFIG.scopes],
+        scopes: pendingConnection.grantedScopes ?? [],
         metadata: {
+          scopes_granted_at: new Date().toISOString(),
           thumbnail_url: selectedChannel.thumbnailUrl,
           // No subscriber_count. It was written here and read nowhere — a
           // level captured once, at a date nobody recorded, then left to
