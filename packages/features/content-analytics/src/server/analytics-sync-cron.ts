@@ -780,7 +780,9 @@ function normalizeAnalytics(
         comments: data.totals.comments ?? 0,
         shares: data.totals.shares ?? 0,
         saves: data.totals.saved ?? 0,
-        watch_time_seconds: 0, // Instagram doesn't expose this
+        // Not measured as zero: Instagram documents Reels watch time and we
+        // never request it. `not_ingested` in CAPABILITY_MATRIX; FILM-1712.
+        watch_time_seconds: 0,
         subscribers_gained: data.totals.follows ?? 0,
         revenue_cents: 0,
         ad_revenue_cents: 0,

@@ -14,6 +14,15 @@
  *   pnpm --filter @kit/clickhouse verify
  */
 import {
+  ANALYTICS_PLATFORMS,
+  AUDIENCE_FAMILY_DIMENSIONS,
+  METRIC_FAMILIES,
+  allowedMetricSources,
+  capabilityFor,
+  unclaimedPlatforms,
+} from '../src/lib/data-provenance';
+import type { MetricFamily } from '../src/lib/data-provenance';
+import {
   getClickHouseClient,
   insertChannelDaily,
   insertRetentionCurves,
@@ -56,6 +65,7 @@ import {
   queryViewsForVideos,
   queryWatchWindowTotals,
 } from '../src/server';
+import type { AnalyticsPlatform } from '../src/types';
 
 const PROJECT = '550e8400-e29b-41d4-a716-446655440000';
 const ACCOUNT = '550e8400-e29b-41d4-a716-446655440000';
@@ -1270,6 +1280,152 @@ async function readRowsOf(
   return Number(rows[0]!.read_rows);
 }
 
+/**
+ * The capability matrix against what the tables actually hold (FILM-1703 §5c).
+ *
+ * The writer-binding test sees call sites; this sees rows. Per family, the
+ * platforms present must be a **subset** of those the matrix marks `native`
+ * or `derived` — subset, not equality, because a fresh fixture holds YouTube
+ * or nothing and equality would fail on every table it leaves empty. The
+ * matrix claims what the pipeline *may* produce; this catches it producing
+ * more. Proving a `native` entry is genuinely populated needs the
+ * multi-platform fixture from FILM-1701.
+ *
+ * The noise project is excluded by name. `scanScopeSteps` fills it with
+ * TikTok and Instagram rows in tables those platforms never write, as rows
+ * that exist to be *not* read — and on a developer's persistent ClickHouse
+ * they are still there from the previous run.
+ */
+const NOT_NOISE = 'project_id != {noiseProject: UUID}';
+
+const audienceProbe = (family: keyof typeof AUDIENCE_FAMILY_DIMENSIONS) =>
+  `SELECT DISTINCT platform FROM video_audience
+   WHERE ${NOT_NOISE}
+     AND dimension IN (${AUDIENCE_FAMILY_DIMENSIONS[family]
+       .map((dimension) => `'${dimension}'`)
+       .join(', ')})`;
+
+/**
+ * How each family's presence is read. A `Record` over `MetricFamily`, so a
+ * new family has to say how it is checked, or why it is not.
+ */
+const PRESENCE_PROBES: Record<MetricFamily, string | null> = {
+  engagement: `SELECT DISTINCT platform FROM video_metrics WHERE ${NOT_NOISE}`,
+  // Families that share video_metrics are told apart by their column: a row
+  // existing says nothing about whether watch time was measured.
+  watch_time: `SELECT DISTINCT platform FROM video_metrics
+               WHERE ${NOT_NOISE} AND watch_time_seconds > 0`,
+  // Not checked, and said so rather than skipped silently. Fixtures — this
+  // one, and the E2E evidence seeds — carry `revenue_cents` on YouTube rows to
+  // exercise the sums, while every pipeline writer sets it to a literal 0. A
+  // probe here would be testing the fixtures. What binds `revenue` is the
+  // OAuth-scope marker in data-provenance.test.ts.
+  revenue: null,
+  traffic_sources: `SELECT DISTINCT platform FROM video_traffic_sources WHERE ${NOT_NOISE}`,
+  retention_curve: `SELECT DISTINCT platform FROM video_retention_curves WHERE ${NOT_NOISE}`,
+  reach: `SELECT DISTINCT platform FROM video_reach_daily WHERE ${NOT_NOISE}`,
+  // Neither channel table has a platform column; both are keyed by
+  // connection. Resolved through video_dim rather than assumed to be YouTube
+  // because that happens to be true today. A connection with no dim row
+  // cannot be resolved and is not guessed at.
+  channel_totals: `SELECT DISTINCT dims.platform AS platform
+                   FROM (
+                     SELECT connection_id FROM channel_daily
+                     UNION DISTINCT
+                     SELECT connection_id FROM channel_subscribers
+                   ) AS channels
+                   INNER JOIN (
+                     SELECT DISTINCT connection_id, platform
+                     FROM video_dim
+                     WHERE ${NOT_NOISE}
+                   ) AS dims ON channels.connection_id = dims.connection_id`,
+  demographics: audienceProbe('demographics'),
+  geography: audienceProbe('geography'),
+  device: audienceProbe('device'),
+  follower_status: audienceProbe('follower_status'),
+};
+
+async function provenanceSteps() {
+  const client = getClickHouseClient();
+
+  const rowsOf = async <T>(query: string): Promise<T[]> => {
+    const result = await client.query({
+      query,
+      query_params: { noiseProject: NOISE_PROJECT },
+      format: 'JSONEachRow',
+    });
+
+    return result.json<T>();
+  };
+
+  const levelOf = (family: MetricFamily, platform: string) =>
+    (ANALYTICS_PLATFORMS as readonly string[]).includes(platform)
+      ? capabilityFor(family, platform as AnalyticsPlatform).level
+      : 'not a platform the matrix knows';
+
+  for (const family of METRIC_FAMILIES) {
+    const probe = PRESENCE_PROBES[family];
+
+    await step(`provenance: ${family}`, async () => {
+      if (probe === null) return 'not checked — see PRESENCE_PROBES';
+
+      const observed = (await rowsOf<{ platform: string }>(probe)).map(
+        (row) => row.platform,
+      );
+      const unclaimed = unclaimedPlatforms(family, observed);
+
+      if (unclaimed.length > 0) {
+        throw new Error(
+          `rows exist for ${unclaimed
+            .map((platform) => `${platform} (${levelOf(family, platform)})`)
+            .join(', ')} — the pipeline writes ${family} for a platform ` +
+            `CAPABILITY_MATRIX says has none`,
+        );
+      }
+
+      return `${observed.sort().join(', ') || 'no rows'} ⊆ matrix`;
+    });
+  }
+
+  // `metric_source` already records how a row was arrived at, so the matrix
+  // is reconciled against it rather than given a parallel notion: a
+  // `reporting_api` row for TikTok means the matrix is wrong.
+  await step('provenance: metric_source agrees with the level', async () => {
+    const rows = await rowsOf<{ platform: string; sources: string[] }>(
+      `SELECT platform, groupUniqArray(metric_source) AS sources
+       FROM video_metrics
+       WHERE ${NOT_NOISE}
+       GROUP BY platform`,
+    );
+
+    const stray = rows.flatMap(({ platform, sources }) => {
+      const allowed: readonly string[] = (
+        ANALYTICS_PLATFORMS as readonly string[]
+      ).includes(platform)
+        ? allowedMetricSources(
+            capabilityFor('engagement', platform as AnalyticsPlatform),
+          )
+        : [];
+
+      return sources
+        .filter((source) => !allowed.includes(source))
+        .map((source) => `${platform}: ${source}`);
+    });
+
+    if (stray.length > 0) {
+      throw new Error(
+        `metric_source the matrix's level does not allow — ${stray.join(', ')}`,
+      );
+    }
+
+    return rows
+      .map(
+        ({ platform, sources }) => `${platform}: ${sources.sort().join('/')}`,
+      )
+      .join('; ');
+  });
+}
+
 async function main() {
   if (!isClickHouseEnabled()) {
     console.error(
@@ -1282,6 +1438,7 @@ async function main() {
   await queries();
   await assertions();
   await watchedMetricSteps();
+  await provenanceSteps();
   // Last: it fills a project with noise, and nothing above should see it.
   await scanScopeSteps();
 

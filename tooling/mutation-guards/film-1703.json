@@ -1,0 +1,175 @@
+{
+  "feature": "FILM-1703",
+  "mutations": [
+    {
+      "name": "A traffic-source writer appears in a file the matrix does not list",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/dim-sync.ts",
+      "find": "    await insertVideoDims(rows);",
+      "replace": "    await insertVideoDims(rows);\n    await insertVideoTrafficSources([]);",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "video_traffic_sources: the listed files"
+    },
+    {
+      "name": "A listed writer stops writing its table",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/reporting/report-ingest.ts",
+      "find": "    await insertVideoTrafficSources(trafficRows);",
+      "replace": "    void trafficRows;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "video_traffic_sources: the listed files"
+    },
+    {
+      "name": "A second door into a table: a raw insert outside its writer",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/dim-sync.ts",
+      "find": "    await insertVideoDims(rows);",
+      "replace": "    await insertVideoDims(rows);\n    await client.insert({ table: 'video_traffic_sources', values: [] });",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "video_traffic_sources: nothing inserts into it except its writer"
+    },
+    {
+      "name": "An entry loses its note",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "      note: 'TikTok does not report which devices a video was watched on.',",
+      "replace": "      note: '',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "every entry: has a note"
+    },
+    {
+      "name": "A platform joins AnalyticsPlatform and not the matrix",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/types.ts",
+      "find": "export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram';",
+      "replace": "export type AnalyticsPlatform =\n  | 'youtube'\n  | 'tiktok'\n  | 'instagram'\n  | 'facebook';",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "lists exactly the members of AnalyticsPlatform"
+    },
+    {
+      "name": "TikTok traffic sources flipped to native with no integration behind it",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "      level: 'not_ingested',\n      table: null,\n      blockedBy: 'FILM-1712',\n      ...TIKTOK_BUSINESS,\n      note: 'TikTok does report where views came from,",
+      "replace": "      level: 'native',\n      table: 'video_traffic_sources',\n      ...TIKTOK_BUSINESS,\n      note: 'TikTok does report where views came from,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "agrees with whether"
+    },
+    {
+      "name": "Instagram watch time is requested and the matrix still says not_ingested",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "metric: 'views,reach',",
+      "replace": "metric: 'views,reach,ig_reels_video_view_total_time',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "agrees with whether"
+    },
+    {
+      "name": "The monetary scope is requested and the matrix still says scope_missing",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/youtube/config.ts",
+      "find": "    'https://www.googleapis.com/auth/yt-analytics.readonly',",
+      "replace": "    'https://www.googleapis.com/auth/yt-analytics.readonly',\n    'https://www.googleapis.com/auth/yt-analytics-monetary.readonly',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "agrees with whether"
+    },
+    {
+      "name": "YouTube revenue marked native while the monetary scope is absent",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "      level: 'not_ingested',\n      table: null,\n      blockedBy: 'FILM-1711',\n      access: 'scope_missing',",
+      "replace": "      level: 'native',\n      table: 'video_metrics',\n      access: 'scope_missing',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "agrees with whether"
+    },
+    {
+      "name": "Instagram watch time recorded as the platform's gap instead of ours",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "      level: 'not_ingested',\n      table: null,\n      blockedBy: 'FILM-1712',\n      ...INSTAGRAM_MEDIA,\n      note: 'Instagram does report watch time",
+      "replace": "      level: 'unsupported',\n      table: null,\n      blockedBy: null,\n      ...INSTAGRAM_MEDIA,\n      note: 'Instagram does report watch time",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "Instagram watch time is ours to build"
+    },
+    {
+      "name": "The module imports a value, so a client bundle would pull it in",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "import type {\n  AnalyticsPlatform,",
+      "replace": "import { isClickHouseEnabled } from '../client';\nimport type {\n  AnalyticsPlatform,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "imports nothing but types"
+    },
+    {
+      "name": "accessFor forgets the creator's side of a two-sided gate",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "  return capability.accountGate && !creator.meetsAccountGate\n    ? 'account_type_gated'\n    : capability.access;",
+      "replace": "  return capability.access;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "accessFor"
+    },
+    {
+      "name": "platformsWithData counts a platform that has nothing to show",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "  return capability.level === 'native' || capability.level === 'derived';",
+      "replace": "  return capability.level !== 'unsupported';",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "platformsWithData"
+    },
+    {
+      "name": "The live check lets a snapshot platform carry a reporting_api row",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "    return ['snapshot_delta'];",
+      "replace": "    return ['snapshot_delta', 'reporting_api'];",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "allowedMetricSources"
+    },
+    {
+      "name": "The matrix cites a vendor field the reference does not carry",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "        fields: ['ig_reels_avg_watch_time', 'ig_reels_video_view_total_time'],",
+      "replace": "        fields: ['ig_reels_avg_watch_time', 'ig_reels_replay_time'],",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/capability-matrix-reference.test.ts",
+      "pattern": "names only vendor fields the reference documents"
+    },
+    {
+      "name": "The reference loses a field the matrix cites",
+      "kind": "unit",
+      "file": "docs/platform-capability-reference.md",
+      "find": "ig_reels_avg_watch_time    # units undocumented; ms inferred\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/capability-matrix-reference.test.ts",
+      "pattern": "names only vendor fields the reference documents"
+    },
+    {
+      "name": "A not_ingested entry stops saying where the platform documents it",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "        surface: 'tiktok/business',\n        fields: ['impression_sources'],",
+      "replace": "        surface: null,\n        fields: [],",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/capability-matrix-reference.test.ts",
+      "pattern": "cites fields wherever it claims"
+    }
+  ]
+}
