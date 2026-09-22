@@ -138,7 +138,7 @@ export const SCENARIOS: RefusalScenario[] = [
     area: 'assets',
     name: 'renaming a location to a name already taken',
     message:
-      'Another location in this project is already named "The Old Library". Choose a different name.',
+      'Another asset of the same type in this project is already named "The Old Library". Choose a different name.',
     run: async (page) => {
       const { team, project } = await teamWithProject(page);
 
