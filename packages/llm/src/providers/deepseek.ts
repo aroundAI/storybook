@@ -9,6 +9,8 @@
  */
 import OpenAI from 'openai';
 
+import { vendorUrl } from '@kit/shared/vendors';
+
 import { calculateTokenCost, getModelPricing } from '../pricing';
 import type {
   ChatCompletionRequest,
@@ -40,7 +42,7 @@ export class DeepSeekClient implements LLMClient {
     this.config = config;
     this.client = new OpenAI({
       apiKey: config.apiKey,
-      baseURL: 'https://api.deepseek.com',
+      baseURL: vendorUrl('deepseek'),
     });
   }
 

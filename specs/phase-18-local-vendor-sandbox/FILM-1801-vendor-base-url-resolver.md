@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1801
 title: Vendor Base-URL Resolver
-status: DRAFT
+status: ✅ DONE
 effort: L
 dependencies: none; do with or after FILM-1723 (same files)
 ---
@@ -117,14 +117,14 @@ production (must go red).
 
 ## 6. Acceptance criteria
 
-- [ ] Every host in §1 is reached only through `vendorUrl()`; the guard finds no literal
-- [ ] `googleapis` and `@googleapis/youtube` both take `rootUrl` from the resolver
-- [ ] DeepSeek's hardcoded `baseURL` and the audio providers' unwired `baseUrl` are replaced by the resolver
-- [ ] OAuth authorize, token, refresh and revoke URLs all resolve through it, for all five social platforms
-- [ ] An override is honoured only with `NODE_ENV !== 'production'` and `VENDOR_SANDBOX=1`
-- [ ] In production a `VENDOR_URL_*` is logged as an error and ignored, never used
-- [ ] With no override set, every request goes to exactly the host it went to before — verified by comparing the resolved URL of every call site before and after
-- [ ] Both mutation guards go red
+- [x] Every host in §1 is reached only through `vendorUrl()`; the guard finds no literal
+- [x] `googleapis` and `@googleapis/youtube` both take `rootUrl` from the resolver
+- [x] DeepSeek's hardcoded `baseURL` and the audio providers' unwired `baseUrl` are replaced by the resolver
+- [x] OAuth authorize, token, refresh and revoke URLs all resolve through it, for all five social platforms
+- [x] An override is honoured only with `NODE_ENV !== 'production'` and `VENDOR_SANDBOX=1`
+- [x] In production a `VENDOR_URL_*` is logged as an error and ignored, never used
+- [x] With no override set, every request goes to exactly the host it went to before — verified by comparing the resolved URL of every call site before and after
+- [x] Both mutation guards go red
 
 ## 7. Verification
 
@@ -144,3 +144,106 @@ produced, not assumed.
 
 **The override becoming a production foot-gun** is what §3's double condition and
 fail-closed logging exist for. The mutation guard proves the condition is load-bearing.
+
+## 9. What was found and done (2026-09-22)
+
+Stacked on FILM-1723 (#284), which had already put Meta, X and LinkedIn's version
+in `packages/shared/src/vendors/` with each host in a private `*_HOST` constant.
+This spec swapped those constants for the resolver and swept everything #284 left.
+
+**Shipped names.** `@kit/shared/vendors` now exports `VENDORS`, `Vendor`,
+`vendorUrl(vendor, env?)`, `vendorUrlEnvName(vendor)`, `vendorSandboxEnabled(env?)`
+and `ignoredVendorOverrides(env?)`, from `resolver.ts`. The override for a vendor
+is `VENDOR_URL_` + its name upper-cased with `-` as `_`. The 29 names:
+
+`meta-graph`, `meta-graph-video`, `meta-oauth`, `tiktok`, `tiktok-oauth`, `x-api`,
+`x-oauth`, `linkedin-api`, `linkedin-oauth`, `google-oauth`, `google-token`,
+`youtube-data`, `youtube-analytics`, `youtube-reporting`, `gemini`, `openai`,
+`deepseek`, `voyage`, `elevenlabs`, `playht`, `suno`, `udio`, `synclabs`, `piapi`,
+`brave-search`, `semantic-scholar`, `newsapi`, `archive-org`, `crossref`.
+
+**Four places where §2's sketch was wrong, and what shipped instead.**
+
+| §2 said | Found | Shipped |
+|---|---|---|
+| `'google-apis': 'https://www.googleapis.com'` as the googleapis `rootUrl` | Neither SDK calls that host. Both default to `https://youtube.googleapis.com/`; Analytics and Reporting have hosts of their own. `www.googleapis.com` appears here only inside OAuth **scope identifiers**, which are names, not requests, and must never follow an override | `youtube-data`, `youtube-analytics`, `youtube-reporting`, each the SDK's own default, so production is unchanged. FILM-1802's port table is updated to these names |
+| `x-upload`, `upload.twitter.com` | FILM-1723 retired it; the upload is `/2/media/upload` on `api.x.com` | No `x-upload`. `x-api` covers it |
+| An instance `rootUrl` redirects an SDK client | `googleapis-common` rewrites `options.url` from the client's `rootUrl` but **not `mediaUrl`**, so `videos.insert` and `thumbnails.set` - the two calls that carry the video - kept going to the real host | `rootUrl` is also passed per call on both uploads, in the provider and in the publish lambda. Found by running the real SDK against a listener, which is now `youtube-root-url.test.ts` in `@kit/publishing` and `@kit/content-analytics` (the two SDKs bundle separate copies of `googleapis-common`, so each has its own) |
+| Honour an override when `NODE_ENV !== 'production'` | **The worker lambdas in `sst.config.ts` set no `NODE_ENV`** - only the web function does. Under that rule a production publish worker with `VENDOR_SANDBOX=1` and a `VENDOR_URL_*` would have sent OAuth tokens wherever it named | §3 as amended below |
+
+**§3 as shipped - stricter than written, never looser.** An override is honoured
+only when all of these hold; anything unrecognised refuses:
+
+1. `NODE_ENV` is `development` or `test`, by name - an allow-list, so unset,
+   `staging` and `Production` all refuse.
+2. `VENDOR_SANDBOX` is exactly `1`.
+3. `AWS_LAMBDA_FUNCTION_NAME` is unset. The Lambda runtime reserves it, so no
+   deploy configuration can clear it.
+4. The value is an `http(s)` URL on a **local address** - `localhost`,
+   `*.localhost`, `127.0.0.0/8`, `[::1]`, `host.docker.internal`, or a dotless
+   container name - with no credentials, query or fragment. A sandbox is never
+   anywhere else, and a public address is exactly what an exfiltration needs.
+
+With the sandbox **on**, a value failing (4) throws, naming the variable, rather
+than falling back: a typo in `local.env` must not send a development session to
+the real vendor unnoticed. With it **off** the variable is never read, so
+production cannot throw on it. `apps/web/instrumentation.ts` logs every ignored
+`VENDOR_URL_*` as an error at server start - by name, never by value.
+
+`NODE_ENV` is read from `process.env` at run time, deliberately not written as
+`process.env.NODE_ENV`: `next build` inlines that expression as `production` even
+under `build:test`, and `NODE_ENV=test next start` is the server FILM-1804's flows
+run against. A production deploy still refuses, because its run-time `NODE_ENV` is
+`production`.
+
+**The guard is one scanner, not two.** `vendor-api-versions.test.ts` (FILM-1723)
+now also derives one host rule per entry in `VENDORS`; the FILM-1723 version rules
+are unchanged and its mutation guards all still go red (one was repointed from
+`x.ts` to `resolver.ts`, where the X host now lives). Host rules skip test files;
+version rules still scan them.
+
+**Public pages are allowed, by path.** `www.facebook.com`, `www.tiktok.com`,
+`www.linkedin.com`, `x.com` and `archive.org` serve an OAuth dialog or an API
+*and* pages a person opens: permalinks, share intents, embeds, a footer link. No
+credential rides on those and no sandbox should serve them, so the guard strips a
+short list of public-page paths from a line before searching it. Anything else
+on those hosts fails - a mutation guard writes a LinkedIn token URL beside a
+permalink in the same file and must go red. The permalinks themselves were left
+as literals on purpose: they are not requests.
+
+**Left alone, deliberately.**
+
+- `SYNCLABS_BASE_URL`, `WAV2LIP_API_URL`, `OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`,
+  `GOOGLE_GEMINI_BASE_URL`, `LOCAL_API_URL`: existing overrides that **are
+  honoured in production today**, with none of §3's conditions. They predate this
+  spec and FILM-1803 relies on them. Whether to bring them under the same rule is
+  a product decision, because a deploy may be using one for a legitimate proxy.
+- Resend (`packages/mailers/resend`, the email-worker lambda): §5 - local mail goes
+  to Inbucket.
+- LinkedIn has no revoke call anywhere, so there was nothing to route.
+- The audio providers' `baseUrl` constructor option still exists and
+  `config-loader.ts` still does not fill it; the *default* each falls back to now
+  comes from the resolver, which is what makes them redirectable.
+
+**Verification, with results.**
+
+- Before/after, no override set: 50 URL literals across 28 files compared
+  mechanically from `git diff` - 0 differ. 9 SDK-built URLs (Data, upload,
+  Analytics, Reporting, report download) compared by capturing the final URL
+  with a gaxios adapter, with and without `rootUrl` - 0 differ.
+- End to end on a throwaway listener (`localhost:3117`), each run a fresh process
+  with all 29 `VENDOR_URL_*` set: `NODE_ENV=development VENDOR_SANDBOX=1` - 36
+  requests arrived, one per vendor plus real call sites (TikTok, LinkedIn and
+  Google token URLs, Graph `/v23.0/me/accounts`, X `/2/media/upload/initialize`,
+  Brave search, a DeepSeek chat completion through the OpenAI SDK).
+  `NODE_ENV=production VENDOR_SANDBOX=1`, `NODE_ENV` unset, development inside a
+  Lambda runtime, and development without `VENDOR_SANDBOX` - every vendor
+  resolved to its real host, all 29 variables reported as ignored, 0 requests
+  arrived.
+- Mutation guards: `python3 tooling/mutation-guards/run.py --kind unit` - every
+  guard red under its mutation, including all 14 of FILM-1723's and the 21 added
+  in `film-1801.json`.
+- Lambdas: no tsconfig covers `apps/web/lambda`, so all 11 were bundled with
+  esbuild as SST does. All bundle; the three that call a vendor carry the
+  resolver.
+- Builds: `pnpm --filter web build:test` passed, and its server bundle shows the rule compiled as a run-time read (`"development"===a.NODE_ENV||"test"===a.NODE_ENV`), not inlined. Production `next build` passed once given an https `NEXT_PUBLIC_SITE_URL`, which the local `.env.production` lacks - unrelated to this change. `next start` on that build with two `VENDOR_URL_*` set logged one `level: error` line naming both and neither value.

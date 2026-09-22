@@ -2,6 +2,8 @@ import 'server-only';
 
 import { google } from 'googleapis';
 
+import { vendorUrl } from '@kit/shared/vendors';
+
 import { YouTubeAnalyticsScopeError } from './youtube-analytics';
 
 /**
@@ -67,6 +69,7 @@ export class YouTubeReportingProvider {
     this.reporting = google.youtubereporting({
       version: 'v1',
       auth: oauth2Client,
+      rootUrl: vendorUrl('youtube-reporting'),
     });
   }
 

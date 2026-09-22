@@ -1,6 +1,8 @@
 /**
  * TikTok Upload Handler
  */
+import { vendorUrl } from '@kit/shared/vendors';
+
 import type { PublishJobMessage } from '../index';
 
 export async function uploadToTikTok(
@@ -11,7 +13,7 @@ export async function uploadToTikTok(
 
   // Step 1: Initialize video upload
   const initResponse = await fetch(
-    'https://open.tiktokapis.com/v2/post/publish/video/init/',
+    `${vendorUrl('tiktok')}/v2/post/publish/video/init/`,
     {
       method: 'POST',
       headers: {
@@ -57,7 +59,7 @@ export async function uploadToTikTok(
     await new Promise((resolve) => setTimeout(resolve, pollInterval));
 
     const statusResponse = await fetch(
-      'https://open.tiktokapis.com/v2/post/publish/status/fetch/',
+      `${vendorUrl('tiktok')}/v2/post/publish/status/fetch/`,
       {
         method: 'POST',
         headers: {

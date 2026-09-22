@@ -10,7 +10,9 @@
     "scripts": {
         "format": "prettier --check \"**/*.{ts,tsx}\""
     },
-    "dependencies": {},
+    "dependencies": {
+        "@kit/shared": "workspace:*"
+    },
     "devDependencies": {
         "@kit/prettier-config": "workspace:*",
         "@kit/supabase": "workspace:*",

@@ -2,6 +2,8 @@ import 'server-only';
 
 import { google } from 'googleapis';
 
+import { vendorUrl } from '@kit/shared/vendors';
+
 import {
   formatDate,
   parseDuration,
@@ -95,8 +97,13 @@ export class YouTubeAnalyticsProvider {
     this.youtubeAnalytics = google.youtubeAnalytics({
       version: 'v2',
       auth: oauth2Client,
+      rootUrl: vendorUrl('youtube-analytics'),
     });
-    this.youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+    this.youtube = google.youtube({
+      version: 'v3',
+      auth: oauth2Client,
+      rootUrl: vendorUrl('youtube-data'),
+    });
   }
 
   /**

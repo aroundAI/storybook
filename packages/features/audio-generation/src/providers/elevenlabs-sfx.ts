@@ -6,11 +6,13 @@
  *
  * Returns audio directly (streaming), not job-based.
  */
+import { vendorUrl } from '@kit/shared/vendors';
+
 import type { MusicProviderConfig } from '../lib/types';
 
 // ElevenLabs SFX constants
 export const ELEVENLABS_SFX = {
-  BASE_URL: 'https://api.elevenlabs.io/v1',
+  BASE_URL: `${vendorUrl('elevenlabs')}/v1`,
   MAX_PROMPT_LENGTH: 500,
   DEFAULT_DURATION: 5, // seconds
   MAX_DURATION: 22, // seconds (API limit)

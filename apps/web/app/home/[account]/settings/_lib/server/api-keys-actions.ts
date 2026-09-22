@@ -4,6 +4,7 @@ import 'server-only';
 
 import { enhanceAction } from '@kit/next/actions';
 import { decrypt, encrypt } from '@kit/shared/crypto';
+import { vendorUrl } from '@kit/shared/vendors';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
@@ -189,7 +190,7 @@ async function validateElevenLabsKey(
   apiKey: string,
 ): Promise<ValidationResult> {
   try {
-    const response = await fetch('https://api.elevenlabs.io/v1/user', {
+    const response = await fetch(`${vendorUrl('elevenlabs')}/v1/user`, {
       headers: { 'xi-api-key': apiKey },
     });
     return { valid: response.ok };
@@ -200,7 +201,7 @@ async function validateElevenLabsKey(
 
 async function validateOpenAIKey(apiKey: string): Promise<ValidationResult> {
   try {
-    const response = await fetch('https://api.openai.com/v1/models', {
+    const response = await fetch(`${vendorUrl('openai')}/v1/models`, {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
     return { valid: response.ok };
@@ -219,7 +220,7 @@ async function validateAnthropicKey(apiKey: string): Promise<ValidationResult> {
 
 async function validateKlingKey(apiKey: string): Promise<ValidationResult> {
   try {
-    const response = await fetch('https://api.piapi.ai/api/kling/v1/models', {
+    const response = await fetch(`${vendorUrl('piapi')}/api/kling/v1/models`, {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
     return { valid: response.ok };
@@ -243,7 +244,7 @@ async function validateHailuoKey(apiKey: string): Promise<ValidationResult> {
 async function validateGeminiKey(apiKey: string): Promise<ValidationResult> {
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+      `${vendorUrl('gemini')}/v1beta/models?key=${apiKey}`,
     );
     return { valid: response.ok };
   } catch {
