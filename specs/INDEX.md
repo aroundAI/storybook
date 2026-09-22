@@ -688,35 +688,44 @@ SPIKE-01 through SPIKE-05
 > own piece of work.
 >
 > Phases 17 and 18 were recounted from the files on 2026-09-23, after the
-> #276–#304 merges. The table has no Partial column, so the four
-> 🟡 PARTIAL specs (FILM-1703, 1711, 1722, 1723) are counted under
-> *In Progress*; FILM-1710 (done, TikTok leg pending) is counted as Done.
+> #276–#304 merges. FILM-1710 (done, TikTok leg pending) is counted as Done.
+
+**What each status means:**
+
+| Status | Meaning |
+|---|---|
+| DRAFT | Spec written; no code merged for it |
+| In Progress | A PR for it is open |
+| 🟡 PARTIAL | Its code is merged, but an acceptance criterion is still open: a live check against a real vendor account ([FILM-1725](./phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.md)), an action only the owner can take (a vendor review submission), or a surface another spec owns. Each PARTIAL spec's *Remaining* section names which, and who closes it |
+| ⏸️ DEFERRED | Blocked on something outside the code — a credential or account not held |
+| ✅ DONE | Code merged and every criterion met |
+| 🗑️ RETIRED | Dropped; counted under Done because it is not outstanding work |
 
 
-| Phase | Total | Draft | Review | Approved | In Progress | Deferred | Done |
-|-------|-------|-------|--------|----------|-------------|----------|------|
-| 1. Foundation | 26 | 0 | 0 | 0 | 0 | 0 | 26 |
-| Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
-| Design System | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
-| 2. Assets | 9 | 0 | 0 | 0 | 0 | 0 | 9 |
-| 3. Episodes | 14 | 0 | 0 | 0 | 0 | 0 | 14 |
-| 4. Video Gen | 15 | 0 | 0 | 0 | 0 | 0 | 15 |
-| 5. Audio Gen | 17 | 1 | 0 | 0 | 0 | 0 | 16 |
-| 6. Edit Suite | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
-| 7. Publishing | 15 | 0 | 0 | 0 | 0 | 0 | 15 |
-| 8. Analytics | 10 | 0 | 0 | 0 | 0 | 0 | 10 |
-| 9. Integration | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
-| 10. Canon Mgmt | 7 | 0 | 0 | 0 | 0 | 0 | 7 |
-| 11. Canon Integ | 21 | 0 | 0 | 0 | 0 | 0 | 21 |
-| 12. Scale | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
-| 13. Hook Opt | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
-| 14. Edit Suite v2 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
-| 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 0 | 11 |
-| 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 0 | 17 |
-| 17. Analytics Provenance | 30 | 20 | 0 | 0 | 4 | 2 | 4 |
-| 18. Vendor Sandbox | 5 | 4 | 0 | 0 | 0 | 0 | 1 |
-| Spikes | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **226** | **24** | **0** | **0** | **4** | **2** | **196** |
+| Phase | Total | Draft | Review | Approved | In Progress | Partial | Deferred | Done |
+|-------|-------|-------|--------|----------|-------------|---------|----------|------|
+| 1. Foundation | 26 | 0 | 0 | 0 | 0 | 0 | 0 | 26 |
+| Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
+| Design System | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 5 |
+| 2. Assets | 9 | 0 | 0 | 0 | 0 | 0 | 0 | 9 |
+| 3. Episodes | 14 | 0 | 0 | 0 | 0 | 0 | 0 | 14 |
+| 4. Video Gen | 15 | 0 | 0 | 0 | 0 | 0 | 0 | 15 |
+| 5. Audio Gen | 17 | 1 | 0 | 0 | 0 | 0 | 0 | 16 |
+| 6. Edit Suite | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 6 |
+| 7. Publishing | 15 | 0 | 0 | 0 | 0 | 0 | 0 | 15 |
+| 8. Analytics | 10 | 0 | 0 | 0 | 0 | 0 | 0 | 10 |
+| 9. Integration | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 6 |
+| 10. Canon Mgmt | 7 | 0 | 0 | 0 | 0 | 0 | 0 | 7 |
+| 11. Canon Integ | 21 | 0 | 0 | 0 | 0 | 0 | 0 | 21 |
+| 12. Scale | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 2 |
+| 13. Hook Opt | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 2 |
+| 14. Edit Suite v2 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
+| 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 0 | 0 | 11 |
+| 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 0 | 0 | 17 |
+| 17. Analytics Provenance | 30 | 20 | 0 | 0 | 0 | 4 | 2 | 4 |
+| 18. Vendor Sandbox | 5 | 4 | 0 | 0 | 0 | 0 | 0 | 1 |
+| Spikes | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 5 |
+| **TOTAL** | **226** | **24** | **0** | **0** | **0** | **4** | **2** | **196** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
