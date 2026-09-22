@@ -2,6 +2,7 @@
  * Instagram Upload Handler (via Meta Graph API)
  */
 import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
+import { META_GRAPH_BASE } from '@kit/shared/vendors';
 
 export async function uploadToInstagram(
   accessToken: string,
@@ -17,7 +18,7 @@ export async function uploadToInstagram(
 
   // Step 1: Create container for video
   const containerResponse = await fetch(
-    `https://graph.facebook.com/v19.0/${accountId}/media`,
+    `${META_GRAPH_BASE}/${accountId}/media`,
     {
       method: 'POST',
       headers: {
@@ -57,7 +58,7 @@ export async function uploadToInstagram(
     await new Promise((resolve) => setTimeout(resolve, pollInterval));
 
     const statusResponse = await fetch(
-      `https://graph.facebook.com/v19.0/${containerId}?fields=status_code&access_token=${accessToken}`,
+      `${META_GRAPH_BASE}/${containerId}?fields=status_code&access_token=${accessToken}`,
     );
 
     if (!statusResponse.ok) {
@@ -83,7 +84,7 @@ export async function uploadToInstagram(
 
   // Step 3: Publish the container
   const publishResponse = await fetch(
-    `https://graph.facebook.com/v19.0/${accountId}/media_publish`,
+    `${META_GRAPH_BASE}/${accountId}/media_publish`,
     {
       method: 'POST',
       headers: {
@@ -117,7 +118,7 @@ export async function uploadToInstagram(
 
     try {
       const detailsResponse = await fetch(
-        `https://graph.facebook.com/v19.0/${mediaId}?fields=shortcode,permalink&access_token=${accessToken}`,
+        `${META_GRAPH_BASE}/${mediaId}?fields=shortcode,permalink&access_token=${accessToken}`,
       );
 
       if (detailsResponse.ok) {
