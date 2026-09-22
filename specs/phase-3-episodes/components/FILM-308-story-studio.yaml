@@ -1,0 +1,338 @@
+spec_id: "FILM-308"
+title: "Story Studio Component"
+phase: 3
+phase_name: "Episodes"
+category: component
+status: DONE
+audited: "2026-09-23"
+effort: L
+dependencies:
+  - spec_id: "FILM-305"
+    note: null
+summary: >
+  The Story Studio is the main interface for episode content creation, guiding users through the story generation pipeline with a tabbed, wizard-like experience. It provides four sequential tabs: Ideation → Story → Screenplay → Shot List, with a visual progress indicator showing pipeline completion status.
+component:
+  component_name: "StoryStudio"
+  file_path: "packages/features/episodes/src/components/story-studio/story-studio.tsx"
+  props:
+    - name: "episodeId"
+      type: "string"
+      required: true
+      description: null
+  states: ["loading", "error", "incomplete", "in-progress", "completed", "approved"]
+  accessibility_notes: null
+acceptance_criteria:
+  - text: "Displays 4 tabs: Ideation, Story, Screenplay, Shot List"
+    met: true
+    evidence: null
+  - text: "Tabs unlock sequentially as pipeline progresses"
+    met: true
+    evidence: null
+  - text: "Progress bar shows completion percentage"
+    met: false
+    reason: "retired — `pipeline-progress.tsx` went with the legacy StoryStudio in e2d42522; the route tabs show lock state instead"
+  - text: "Active tab persists in URL query params"
+    met: false
+    reason: "retired — the tab is the route path now (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:159`)"
+  - text: "Polls episode during generation"
+    met: false
+    reason: "unverified — the job is polled with backoff (`packages/features/episodes/src/hooks/use-active-generation-job.ts:111`); no test drives it"
+  - text: "Handles errors with toast notifications"
+    met: true
+    evidence: null
+  - text: "Responsive design for mobile and desktop"
+    met: false
+    reason: "unverified — visual; needs a render at phone width"
+  - text: "Keyboard navigation works correctly"
+    met: false
+    reason: "unverified — no test drives the workspace by keyboard"
+  - text: "Loading states display appropriately"
+    met: true
+    evidence: null
+open_questions: []
+notes: |
+  ## Source header
+
+  **Status**: ✅ DONE
+  **Phase**: 3
+  **Priority**: P0
+  **Effort**: L (5-7 days)
+  **Dependencies**: FILM-305 (story-generation)
+  **Blocks**: FILM-312 (episode-workspace)
+
+  ## Context
+
+  The component manages state across all tabs, handles API calls to server actions, displays loading states during LLM generation, and provides approval flows for each step. It integrates child components (StoryIdeation, ScreenplayViewer, ShotListEditor) and coordinates the overall story creation workflow.
+
+  ## Requirements
+
+  ### Functional Requirements
+
+  1. **Tab Navigation**
+     - Display 4 tabs: Ideation, Story, Screenplay, Shot List
+     - Enable tabs sequentially (can't skip ahead)
+     - Highlight active tab
+     - Show completion status per tab (incomplete, in-progress, completed, approved)
+     - Persist active tab in URL query params
+
+  2. **Pipeline Progress Indicator**
+     - Visual progress bar showing overall completion
+     - Display current step (1/4, 2/4, etc.)
+     - Show step labels and status icons
+     - Responsive design for mobile
+
+  3. **Content State Management**
+     - Load episode data on mount
+     - Poll for updates during generation
+     - Handle optimistic UI updates
+     - Cache content between tab switches
+     - Invalidate cache on episode updates
+
+  4. **Action Buttons**
+     - "Generate" buttons for each step
+     - "Regenerate" option for completed steps
+     - "Approve & Continue" to advance pipeline
+     - "Save Draft" to persist without advancing
+     - Disabled states during generation
+
+  5. **Error Handling**
+     - Display toast notifications for errors
+     - Retry mechanism for failed generations
+     - Clear error messages with action suggestions
+     - Preserve work on errors
+
+  ## Interface
+
+  ### Component API
+
+  ```typescript
+  'use client';
+
+  import { useState, useEffect } from 'react';
+  import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+  import { Tabs, TabsList, TabsTrigger, TabsContent } from '@kit/ui/tabs';
+  import { Progress } from '@kit/ui/progress';
+  import { toast } from '@kit/ui/sonner';
+  import { Loader2, CheckCircle, Circle } from 'lucide-react';
+
+  interface StoryStudioProps {
+    episodeId: string;
+  }
+
+  interface EpisodeData {
+    id: string;
+    title: string;
+    status: string;
+    version: number;
+    storyData: any | null;
+    screenplayData: any | null;
+    shotList: any | null;
+  }
+
+  type PipelineStep = 'ideation' | 'story' | 'screenplay' | 'shot-list';
+
+  export function StoryStudio({ episodeId }: StoryStudioProps) {
+    const [activeTab, setActiveTab] = useState<PipelineStep>('ideation');
+    const queryClient = useQueryClient();
+
+    // Fetch episode data
+    const { data: episode, isLoading, error } = useQuery<EpisodeData>({
+      queryKey: ['episode', episodeId],
+      queryFn: () => getEpisodeWithShotsAction({ episodeId }),
+      refetchInterval: (data) => {
+        // Poll during generation
+        if (data?.status === 'generating') return 5000;
+        return false;
+      },
+    });
+
+    // Determine unlocked tabs
+    const unlockedTabs = {
+      ideation: true,
+      story: episode?.status !== 'draft',
+      screenplay: episode?.status === 'storyboard' || episode?.status === 'generating',
+      'shot-list': episode?.shotList !== null,
+    };
+
+    // Calculate progress
+    const progress = calculateProgress(episode);
+
+    // Handle tab change
+    const handleTabChange = (tab: PipelineStep) => {
+      if (unlockedTabs[tab]) {
+        setActiveTab(tab);
+        // Update URL
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
+        window.history.replaceState({}, '', url);
+      }
+    };
+
+    // Initialize from URL
+    useEffect(() => {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab') as PipelineStep;
+      if (tab && unlockedTabs[tab]) {
+        setActiveTab(tab);
+      }
+    }, []);
+
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="w-8 h-8 animate-spin" />
+        </div>
+      );
+    }
+
+    if (error || !episode) {
+      return (
+        <div className="text-center py-12">
+          <p className="text-destructive">Failed to load episode</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        {/* Progress Indicator */}
+        <PipelineProgress progress={progress} currentStep={activeTab} />
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="ideation" disabled={!unlockedTabs.ideation}>
+              <StepIcon status={getStepStatus(episode, 'ideation')} />
+              Ideation
+            </TabsTrigger>
+            <TabsTrigger value="story" disabled={!unlockedTabs.story}>
+              <StepIcon status={getStepStatus(episode, 'story')} />
+              Story
+            </TabsTrigger>
+            <TabsTrigger value="screenplay" disabled={!unlockedTabs.screenplay}>
+              <StepIcon status={getStepStatus(episode, 'screenplay')} />
+              Screenplay
+            </TabsTrigger>
+            <TabsTrigger value="shot-list" disabled={!unlockedTabs['shot-list']}>
+              <StepIcon status={getStepStatus(episode, 'shot-list')} />
+              Shot List
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="ideation">
+            <StoryIdeation
+              onComplete={(selectedIdea) => {
+                // Parent handles story generation with selected idea
+                handleTabChange('story');
+              }}
+              isGenerating={false}
+            />
+          </TabsContent>
+
+          <TabsContent value="story">
+            <StoryGenerationTab
+              episode={episode}
+              onComplete={() => handleTabChange('screenplay')}
+            />
+          </TabsContent>
+
+          <TabsContent value="screenplay">
+            <ScreenplayViewer
+              episode={episode}
+              onApprove={() => handleTabChange('shot-list')}
+            />
+          </TabsContent>
+
+          <TabsContent value="shot-list">
+            <ShotListEditor
+              episodeId={episodeId}
+              shots={episode.shots}
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  }
+
+  function PipelineProgress({ progress, currentStep }: {
+    progress: number;
+    currentStep: string;
+  }) {
+    return (
+      <div className="space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="font-medium">Pipeline Progress</span>
+          <span className="text-muted-foreground">{progress}% Complete</span>
+        </div>
+        <Progress value={progress} className="h-2" />
+        <p className="text-xs text-muted-foreground">
+          Current step: {currentStep}
+        </p>
+      </div>
+    );
+  }
+
+  function StepIcon({ status }: { status: 'incomplete' | 'in-progress' | 'completed' }) {
+    if (status === 'completed') {
+      return <CheckCircle className="w-4 h-4 mr-2 text-success" />;
+    }
+    if (status === 'in-progress') {
+      return <Loader2 className="w-4 h-4 mr-2 animate-spin" />;
+    }
+    return <Circle className="w-4 h-4 mr-2 text-muted-foreground" />;
+  }
+
+  function calculateProgress(episode: EpisodeData | undefined): number {
+    if (!episode) return 0;
+
+    let progress = 0;
+    if (episode.status !== 'draft') progress += 33;
+    if (episode.screenplayData) progress += 33;
+    if (episode.shotList) progress += 34;
+
+    return progress;
+  }
+
+  function getStepStatus(
+    episode: EpisodeData,
+    step: PipelineStep
+  ): 'incomplete' | 'in-progress' | 'completed' {
+    switch (step) {
+      case 'ideation':
+        return 'completed'; // Always accessible
+      case 'story':
+        return episode.storyData ? 'completed' : 'incomplete';
+      case 'screenplay':
+        return episode.screenplayData ? 'completed' : 'incomplete';
+      case 'shot-list':
+        return episode.shotList ? 'completed' : 'incomplete';
+    }
+  }
+  ```
+
+  ## File Changes
+
+  ### New Files
+
+  1. **packages/features/episodes/src/components/StoryStudio.tsx** (CREATE THIS)
+  2. **packages/features/episodes/src/components/PipelineProgress.tsx** (CREATE THIS)
+
+  ## Implementation Status
+
+  **Status**: COMPLETED
+  **Completed Date**: 2025-12-08
+  **PR**: feat/film-308-story-studio
+
+  ### Files Created
+  - `packages/features/episodes/src/components/story-studio/story-studio.tsx`
+  - `packages/features/episodes/src/components/story-studio/pipeline-progress.tsx`
+  - `packages/features/episodes/src/components/story-studio/story-studio-context.tsx`
+  - `packages/features/episodes/src/hooks/use-episode-query.ts`
+  - `packages/features/episodes/src/hooks/use-url-tab-state.ts`
+
+  ## References
+
+  - **FILM-305**: Story generation
+  - **FILM-309**: Story ideation component
+  - **FILM-310**: Screenplay viewer
+  - **FILM-311**: Shot list editor

@@ -387,46 +387,46 @@ CREATE TABLE verified_facts (
 
 ### Integration Specs
 
-- [FILM-1101: Register Canon Prompts in Lambda Worker](integration/FILM-1101-register-canon-prompts.md)
-- [FILM-1102: Memory Context Injection into Story Generation](integration/FILM-1102-memory-context-injection.md)
-- [FILM-1103: LLM-Based Canon Extraction](integration/FILM-1103-llm-canon-extraction.md)
-- [FILM-1104: Validation Integration at Generation Checkpoints](integration/FILM-1104-validation-integration.md)
+- [FILM-1101: Register Canon Prompts in Lambda Worker](integration/FILM-1101-register-canon-prompts.yaml)
+- [FILM-1102: Memory Context Injection into Story Generation](integration/FILM-1102-memory-context-injection.yaml)
+- [FILM-1103: LLM-Based Canon Extraction](integration/FILM-1103-llm-canon-extraction.yaml)
+- [FILM-1104: Validation Integration at Generation Checkpoints](integration/FILM-1104-validation-integration.yaml)
 
 ### Content Type Specs
 
-- [FILM-1110: Content Type Enum and Project Configuration](content-types/FILM-1110-content-type-enum.md)
-- [FILM-1111: Content Type Configurations and Memory Strategies](content-types/FILM-1111-content-type-configs.md)
-- [FILM-1112: Movie Act Context Bridge](content-types/FILM-1112-act-context-bridge.md)
-- [FILM-1113: Movie Sequel Linking System](content-types/FILM-1113-sequel-system.md)
+- [FILM-1110: Content Type Enum and Project Configuration](content-types/FILM-1110-content-type-enum.yaml)
+- [FILM-1111: Content Type Configurations and Memory Strategies](content-types/FILM-1111-content-type-configs.yaml)
+- [FILM-1112: Movie Act Context Bridge](content-types/FILM-1112-act-context-bridge.yaml)
+- [FILM-1113: Movie Sequel Linking System](content-types/FILM-1113-sequel-system.yaml)
 
 ### Fact Management Specs
 
-- [FILM-1120: Verified Facts Database Table](fact-management/FILM-1120-verified-facts-table.md)
-- [FILM-1121: Fact Management UI Components](fact-management/FILM-1121-fact-management-ui.md)
-- [FILM-1122: Researcher LLM Role Prompt](fact-management/FILM-1122-researcher-role.md)
-- [FILM-1123: Fact-Checker LLM Role Prompt](fact-management/FILM-1123-fact-checker-role.md)
+- [FILM-1120: Verified Facts Database Table](fact-management/FILM-1120-verified-facts-table.yaml)
+- [FILM-1121: Fact Management UI Components](fact-management/FILM-1121-fact-management-ui.yaml)
+- [FILM-1122: Researcher LLM Role Prompt](fact-management/FILM-1122-researcher-role.yaml)
+- [FILM-1123: Fact-Checker LLM Role Prompt](fact-management/FILM-1123-fact-checker-role.yaml)
 
 ### News System Specs
 
-- [FILM-1130: News Source Registry Database Table](news-system/FILM-1130-news-source-registry.md)
-- [FILM-1131: News Article Cache Database Table](news-system/FILM-1131-news-article-cache.md)
-- [FILM-1132: News Aggregator API Integration](news-system/FILM-1132-news-aggregator-api.md)
-- [FILM-1133: News Anchor LLM Role Prompt](news-system/FILM-1133-anchor-role.md)
-- [FILM-1134: Producer LLM Role Prompt](news-system/FILM-1134-producer-role.md)
+- [FILM-1130: News Source Registry Database Table](news-system/FILM-1130-news-source-registry.yaml)
+- [FILM-1131: News Article Cache Database Table](news-system/FILM-1131-news-article-cache.yaml)
+- [FILM-1132: News Aggregator API Integration](news-system/FILM-1132-news-aggregator-api.yaml)
+- [FILM-1133: News Anchor LLM Role Prompt](news-system/FILM-1133-anchor-role.yaml)
+- [FILM-1134: Producer LLM Role Prompt](news-system/FILM-1134-producer-role.yaml)
 
 ### External Context Providers (Unified Architecture)
 
-- [FILM-1135: External Context Provider Interface](providers/FILM-1135-external-context-provider.md)
+- [FILM-1135: External Context Provider Interface](providers/FILM-1135-external-context-provider.yaml)
 
 > [!IMPORTANT]
 > FILM-1135 supersedes the news-specific provider design. It creates a unified `ExternalContextProvider` interface that works for news, research papers, historical archives, and other external sources. FILM-1130-1132 should be implemented using this unified architecture.
 
 ### UI Integration Specs
 
-- [FILM-1140: Research Hub UI](ui-integration/FILM-1140-research-hub-ui.md)
-- [FILM-1141: Fact Source Upload & Extraction](ui-integration/FILM-1141-fact-source-upload.md)
-- [FILM-1142: Canon Dashboard Facts Tab](ui-integration/FILM-1142-canon-dashboard-facts.md)
-- [FILM-1143: Generate Season Content Type Integration](ui-integration/FILM-1143-generate-season-integration.md)
+- [FILM-1140: Research Hub UI](ui-integration/FILM-1140-research-hub-ui.yaml)
+- [FILM-1141: Fact Source Upload & Extraction](ui-integration/FILM-1141-fact-source-upload.yaml)
+- [FILM-1142: Canon Dashboard Facts Tab](ui-integration/FILM-1142-canon-dashboard-facts.yaml)
+- [FILM-1143: Generate Season Content Type Integration](ui-integration/FILM-1143-generate-season-integration.yaml)
 
 > [!NOTE]
 > These UI specs define how the external context system surfaces to users. They integrate with the existing Studio sidebar, Canon Dashboard, and Generate Season dialog.

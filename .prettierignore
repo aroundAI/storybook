@@ -2,3 +2,4 @@ database.types.ts
 playwright-report
 *.hbs
 *.md
+specs/**/*.yaml

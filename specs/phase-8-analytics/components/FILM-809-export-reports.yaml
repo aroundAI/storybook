@@ -1,0 +1,590 @@
+spec_id: "FILM-809"
+title: "Export Reports"
+phase: 8
+phase_name: "Analytics"
+category: component
+status: PARTIAL
+audited: "2026-09-23"
+effort: M
+dependencies:
+  - spec_id: "FILM-805"
+    note: "Analytics Dashboard"
+  - spec_id: "FILM-804"
+    note: "Analytics Sync"
+summary: >-
+  Creators and teams need to export analytics data for stakeholders, sponsors, and
+  internal reporting. Export reports generates downloadable PDF and CSV reports with
+  customizable date ranges, metrics, and visual charts.
+component:
+  component_name: "ExportReports"
+  file_path: "packages/features/content-analytics/src/components/export-reports.tsx"
+  props:
+    - name: "accountId"
+      type: "string"
+      required: true
+      description: null
+  states:
+    - "generating"
+    - "ready"
+    - "failed"
+  accessibility_notes: null
+acceptance_criteria:
+  - text: "Generate PDF reports with charts and branding"
+    met: false
+    reason: "no longer true — branding (name, logo) yes; no charts, only tables, since b03fd102 — `packages/features/content-analytics/src/lib/pdf-generator.tsx:248`"
+  - text: "Generate CSV exports with raw data"
+    met: true
+    evidence: null
+  - text: "Date range presets (7 days, 30 days, month, quarter, custom)"
+    met: true
+    evidence: null
+  - text: "Select specific metrics to include"
+    met: true
+    evidence: null
+  - text: "Filter by platform"
+    met: true
+    evidence: null
+  - text: "Download generated reports"
+    met: true
+    evidence: null
+  - text: "View report history (deferred - using temporary signed URLs instead)"
+    met: false
+    reason: "not met — deferred at ship time: report history; no table or UI exists, reports are signed URLs (`packages/features/content-analytics/src/server/report-actions.ts:352`)"
+  - text: "Schedule recurring reports (weekly/monthly)"
+    met: true
+    evidence: null
+test_plan:
+  unit:
+    - text: "Test CSV generation format"
+      met: false
+      reason: "not met — no test of `generateCSV`; only the later raw export's CSV is tested (`packages/features/content-analytics/__tests__/raw-export-generator.test.ts:40`)"
+    - text: "Test date range calculation"
+      met: false
+      reason: "not met — no test found"
+    - text: "Test metric aggregation"
+      met: false
+      reason: "not met — no test found (`calculateSummary`, `report-actions.ts:287`)"
+  integration:
+    - text: "Test full report generation workflow"
+      met: true
+      evidence: "`apps/e2e/tests/analytics/raw-export-evidence.spec.ts:100` (scheduled route → emailed signed link → CSV; gated by `CLICKHOUSE_EVIDENCE=1`)"
+    - text: "Test PDF generation with charts"
+      met: false
+      reason: "not met — no test found"
+    - text: "Test scheduled report execution"
+      met: true
+      evidence: "`apps/e2e/tests/analytics/raw-export-evidence.spec.ts:100` (asserts `last_run_status` and the delivered CSV)"
+  e2e: []
+remaining:
+  - criterion: "PDF reports with charts"
+    reason: "`pdf-generator.tsx` renders branding and three tables (metrics, platform breakdown, top content) with `@react-pdf/renderer`; no chart has ever been drawn (first version b03fd102 has none)"
+    closed_by: "unassigned"
+open_questions: []
+notes: |-
+  ## Metadata
+
+  - **Phase:** 8 - Analytics
+  - **Priority:** P2 (Future Enhancement)
+  - **Effort:** M (4-8 hours)
+  - **Dependencies:** FILM-805 (Analytics Dashboard), FILM-804 (Analytics Sync)
+  - **Blocks:** None
+  - **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
+
+  ## Specification
+
+  ### Requirements
+
+  1. **PDF Reports**: Professional branded PDF with charts and summaries
+  2. **CSV Export**: Raw data export for spreadsheet analysis
+  3. **Date Range Selection**: Custom date ranges for reporting periods
+  4. **Metric Selection**: Choose which metrics to include
+  5. **Multi-Platform Summary**: Aggregate data across all platforms
+  6. **Scheduled Reports**: Auto-generate and email reports weekly/monthly
+  7. **Branding Options**: Add logo and custom colors to PDF reports
+
+  ### Report Types
+
+  ```typescript
+  // packages/features/content-analytics/src/lib/report-types.ts
+
+  export interface ReportConfig {
+    type: 'pdf' | 'csv';
+    dateRange: {
+      start: Date;
+      end: Date;
+      preset?: 'last7days' | 'last30days' | 'lastMonth' | 'lastQuarter' | 'custom';
+    };
+    metrics: ReportMetric[];
+    platforms: ('youtube' | 'tiktok' | 'instagram' | 'facebook')[];
+    projectIds?: string[]; // Specific projects, or all if empty
+    branding?: {
+      logoUrl?: string;
+      primaryColor?: string;
+      companyName?: string;
+    };
+  }
+
+  export type ReportMetric =
+    | 'views'
+    | 'watchTime'
+    | 'likes'
+    | 'comments'
+    | 'shares'
+    | 'subscribers'
+    | 'revenue'
+    | 'retention'
+    | 'ctr'
+    | 'avgViewDuration';
+
+  export interface GeneratedReport {
+    id: string;
+    type: 'pdf' | 'csv';
+    status: 'generating' | 'ready' | 'failed';
+    downloadUrl?: string;
+    expiresAt?: Date;
+    config: ReportConfig;
+    generatedAt: Date;
+  }
+  ```
+
+  ### Export Reports Component
+
+  ```typescript
+  // packages/features/content-analytics/src/components/export-reports.tsx
+
+  'use client';
+
+  import { useState } from 'react';
+  import { useMutation, useQuery } from '@tanstack/react-query';
+  import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@kit/ui/card';
+  import { Button } from '@kit/ui/button';
+  import { Checkbox } from '@kit/ui/checkbox';
+  import { Badge } from '@kit/ui/badge';
+  import { Calendar } from '@kit/ui/calendar';
+  import { Popover, PopoverContent, PopoverTrigger } from '@kit/ui/popover';
+  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
+  import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
+  import {
+    FileText,
+    Table,
+    Download,
+    Calendar as CalendarIcon,
+    Clock,
+    Loader2,
+  } from 'lucide-react';
+  import { format, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+  import { generateReportAction, getReportHistoryAction } from '../server/report-actions';
+  import { ReportMetric, ReportConfig } from '../lib/report-types';
+
+  const METRIC_OPTIONS: { id: ReportMetric; label: string; category: string }[] = [
+    { id: 'views', label: 'Views', category: 'Engagement' },
+    { id: 'watchTime', label: 'Watch Time', category: 'Engagement' },
+    { id: 'likes', label: 'Likes', category: 'Engagement' },
+    { id: 'comments', label: 'Comments', category: 'Engagement' },
+    { id: 'shares', label: 'Shares', category: 'Engagement' },
+    { id: 'subscribers', label: 'Subscribers Gained', category: 'Growth' },
+    { id: 'revenue', label: 'Revenue', category: 'Monetization' },
+    { id: 'retention', label: 'Retention Curve', category: 'Performance' },
+    { id: 'ctr', label: 'Click-Through Rate', category: 'Performance' },
+    { id: 'avgViewDuration', label: 'Avg View Duration', category: 'Performance' },
+  ];
+
+  const DATE_PRESETS = [
+    { id: 'last7days', label: 'Last 7 Days', getRange: () => ({ start: subDays(new Date(), 7), end: new Date() }) },
+    { id: 'last30days', label: 'Last 30 Days', getRange: () => ({ start: subDays(new Date(), 30), end: new Date() }) },
+    { id: 'lastMonth', label: 'Last Month', getRange: () => ({ start: startOfMonth(subMonths(new Date(), 1)), end: endOfMonth(subMonths(new Date(), 1)) }) },
+    { id: 'lastQuarter', label: 'Last Quarter', getRange: () => ({ start: subMonths(new Date(), 3), end: new Date() }) },
+    { id: 'custom', label: 'Custom Range', getRange: () => null },
+  ];
+
+  interface ExportReportsProps {
+    accountId: string;
+  }
+
+  export function ExportReports({ accountId }: ExportReportsProps) {
+    const [reportType, setReportType] = useState<'pdf' | 'csv'>('pdf');
+    const [datePreset, setDatePreset] = useState('last30days');
+    const [customDateRange, setCustomDateRange] = useState<{ start?: Date; end?: Date }>({});
+    const [selectedMetrics, setSelectedMetrics] = useState<ReportMetric[]>(['views', 'watchTime', 'likes']);
+    const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['youtube']);
+
+    const { data: reportHistory } = useQuery({
+      queryKey: ['report-history', accountId],
+      queryFn: () => getReportHistoryAction({ accountId }),
+    });
+
+    const generateMutation = useMutation({
+      mutationFn: generateReportAction,
+    });
+
+    const getDateRange = () => {
+      if (datePreset === 'custom') {
+        return customDateRange;
+      }
+      const preset = DATE_PRESETS.find((p) => p.id === datePreset);
+      return preset?.getRange() || { start: subDays(new Date(), 30), end: new Date() };
+    };
+
+    const handleGenerate = () => {
+      const dateRange = getDateRange();
+      generateMutation.mutate({
+        accountId,
+        config: {
+          type: reportType,
+          dateRange: {
+            start: dateRange.start!,
+            end: dateRange.end!,
+            preset: datePreset as any,
+          },
+          metrics: selectedMetrics,
+          platforms: selectedPlatforms as any[],
+        },
+      });
+    };
+
+    return (
+      <div className="space-y-6">
+        <Tabs defaultValue="generate">
+          <TabsList>
+            <TabsTrigger value="generate">Generate Report</TabsTrigger>
+            <TabsTrigger value="history">Report History</TabsTrigger>
+            <TabsTrigger value="scheduled">Scheduled Reports</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="generate" className="space-y-6">
+            {/* Report Type */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Report Format</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => setReportType('pdf')}
+                    className={`p-4 rounded-lg border-2 transition-colors ${
+                      reportType === 'pdf' ? 'border-primary bg-primary/5' : 'border-border'
+                    }`}
+                  >
+                    <FileText className="h-8 w-8 mx-auto mb-2" />
+                    <p className="font-medium">PDF Report</p>
+                    <p className="text-xs text-muted-foreground">
+                      Visual charts, branded document
+                    </p>
+                  </button>
+                  <button
+                    onClick={() => setReportType('csv')}
+                    className={`p-4 rounded-lg border-2 transition-colors ${
+                      reportType === 'csv' ? 'border-primary bg-primary/5' : 'border-border'
+                    }`}
+                  >
+                    <Table className="h-8 w-8 mx-auto mb-2" />
+                    <p className="font-medium">CSV Export</p>
+                    <p className="text-xs text-muted-foreground">
+                      Raw data for spreadsheets
+                    </p>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Date Range */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Date Range</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Select value={datePreset} onValueChange={setDatePreset}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DATE_PRESETS.map((preset) => (
+                      <SelectItem key={preset.id} value={preset.id}>
+                        {preset.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {datePreset === 'custom' && (
+                  <div className="flex gap-4">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline">
+                          <CalendarIcon className="h-4 w-4 mr-2" />
+                          {customDateRange.start
+                            ? format(customDateRange.start, 'PPP')
+                            : 'Start date'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent>
+                        <Calendar
+                          mode="single"
+                          selected={customDateRange.start}
+                          onSelect={(date) =>
+                            setCustomDateRange((prev) => ({ ...prev, start: date }))
+                          }
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline">
+                          <CalendarIcon className="h-4 w-4 mr-2" />
+                          {customDateRange.end
+                            ? format(customDateRange.end, 'PPP')
+                            : 'End date'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent>
+                        <Calendar
+                          mode="single"
+                          selected={customDateRange.end}
+                          onSelect={(date) =>
+                            setCustomDateRange((prev) => ({ ...prev, end: date }))
+                          }
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Metrics */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Metrics to Include</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3">
+                  {METRIC_OPTIONS.map((metric) => (
+                    <label
+                      key={metric.id}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={selectedMetrics.includes(metric.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedMetrics([...selectedMetrics, metric.id]);
+                          } else {
+                            setSelectedMetrics(selectedMetrics.filter((m) => m !== metric.id));
+                          }
+                        }}
+                      />
+                      <span className="text-sm">{metric.label}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {metric.category}
+                      </Badge>
+                    </label>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Platforms */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Platforms</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4">
+                  {['youtube', 'tiktok', 'instagram', 'facebook'].map((platform) => (
+                    <label key={platform} className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox
+                        checked={selectedPlatforms.includes(platform)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedPlatforms([...selectedPlatforms, platform]);
+                          } else {
+                            setSelectedPlatforms(selectedPlatforms.filter((p) => p !== platform));
+                          }
+                        }}
+                      />
+                      <span className="text-sm capitalize">{platform}</span>
+                    </label>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Generate Button */}
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={handleGenerate}
+              disabled={generateMutation.isPending || selectedMetrics.length === 0}
+            >
+              {generateMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating Report...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Generate {reportType.toUpperCase()} Report
+                </>
+              )}
+            </Button>
+
+            {generateMutation.isSuccess && (
+              <Card className="bg-green-50 border-green-200">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-green-800">Report Ready!</p>
+                      <p className="text-sm text-green-600">
+                        Your report has been generated
+                      </p>
+                    </div>
+                    <Button asChild>
+                      <a href={generateMutation.data.downloadUrl} download>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
+                      </a>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="history">
+            <ReportHistoryList reports={reportHistory || []} />
+          </TabsContent>
+
+          <TabsContent value="scheduled">
+            <ScheduledReportsManager accountId={accountId} />
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  }
+  ```
+
+  ### Server Actions
+
+  ```typescript
+  // packages/features/content-analytics/src/server/report-actions.ts
+
+  'use server';
+
+  import { enhanceAction } from '@kit/next/actions';
+  import { getSupabaseServerClient } from '@kit/supabase/server-client';
+  import { z } from 'zod';
+
+  export const generateReportAction = enhanceAction(
+    async ({ accountId, config }, user) => {
+      const client = getSupabaseServerClient();
+
+      // Fetch analytics data for the date range
+      const { data: analytics } = await client
+        .from('content_analytics')
+        .select(`
+          *,
+          publishes (
+            platform,
+            episodes (title, projects (name))
+          )
+        `)
+        .gte('snapshot_date', config.dateRange.start.toISOString())
+        .lte('snapshot_date', config.dateRange.end.toISOString())
+        .in('publishes.platform', config.platforms);
+
+      if (config.type === 'csv') {
+        // Generate CSV
+        const csv = generateCSV(analytics, config.metrics);
+        const uploadUrl = await uploadToStorage(csv, 'csv');
+        return { downloadUrl: uploadUrl };
+      } else {
+        // Generate PDF
+        const pdf = await generatePDF(analytics, config);
+        const uploadUrl = await uploadToStorage(pdf, 'pdf');
+        return { downloadUrl: uploadUrl };
+      }
+    },
+    {
+      schema: z.object({
+        accountId: z.string().uuid(),
+        config: z.object({
+          type: z.enum(['pdf', 'csv']),
+          dateRange: z.object({
+            start: z.date(),
+            end: z.date(),
+            preset: z.string().optional(),
+          }),
+          metrics: z.array(z.string()),
+          platforms: z.array(z.string()),
+          projectIds: z.array(z.string().uuid()).optional(),
+          branding: z.object({
+            logoUrl: z.string().optional(),
+            primaryColor: z.string().optional(),
+            companyName: z.string().optional(),
+          }).optional(),
+        }),
+      }),
+      auth: true,
+    }
+  );
+
+  function generateCSV(analytics: any[], metrics: string[]): string {
+    const headers = ['Date', 'Platform', 'Content', ...metrics];
+    const rows = analytics.map((a) => [
+      a.snapshot_date,
+      a.publishes.platform,
+      a.publishes.episodes.title,
+      ...metrics.map((m) => a[m] || 0),
+    ]);
+
+    return [
+      headers.join(','),
+      ...rows.map((r) => r.join(',')),
+    ].join('\n');
+  }
+
+  async function generatePDF(analytics: any[], config: ReportConfig): Promise<Buffer> {
+    // Use a PDF library like @react-pdf/renderer or puppeteer
+    // This is a placeholder for the actual implementation
+    const PDFDocument = await import('pdfkit');
+    const doc = new PDFDocument();
+
+    // Add title
+    doc.fontSize(24).text('Analytics Report', { align: 'center' });
+    doc.moveDown();
+
+    // Add date range
+    doc.fontSize(12).text(
+      `${format(config.dateRange.start, 'PPP')} - ${format(config.dateRange.end, 'PPP')}`,
+      { align: 'center' }
+    );
+    doc.moveDown(2);
+
+    // Add summary metrics
+    const summary = calculateSummary(analytics);
+    for (const metric of config.metrics) {
+      doc.fontSize(14).text(`${metric}: ${summary[metric] || 0}`);
+    }
+
+    doc.end();
+    return doc;
+  }
+  ```
+
+  ### File Changes
+
+  | Action | Path |
+  |--------|------|
+  | CREATE | `packages/features/content-analytics/src/lib/report-types.ts` |
+  | CREATE | `packages/features/content-analytics/src/components/export-reports.tsx` |
+  | CREATE | `packages/features/content-analytics/src/server/report-actions.ts` |
+  | CREATE | `packages/features/content-analytics/src/lib/pdf-generator.ts` |
+
+  ## Error Handling
+
+  | Error | User Experience |
+  |-------|-----------------|
+  | No data in range | Show message, suggest different range |
+  | PDF generation failed | Fall back to CSV, show error |
+  | Download expired | Regenerate report |

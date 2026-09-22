@@ -134,7 +134,7 @@ const isOneOf =
 const DEVELOPER_VOCABULARY =
   /[`_]|FILM-|ClickHouse|\b(native|derived|ingest\w*|unsupported|scope|OAuth|endpoint)\b/i;
 
-const SPECS = sourceFiles(join(REPO, 'specs'), ['.md']).map(repoPath);
+const SPECS = sourceFiles(join(REPO, 'specs'), ['.md', '.yaml']).map(repoPath);
 
 /** A well-formed entry of each level, to break one rule at a time. */
 const AXES = {

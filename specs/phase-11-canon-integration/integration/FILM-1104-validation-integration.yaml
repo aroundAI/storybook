@@ -1,0 +1,350 @@
+spec_id: "FILM-1104"
+title: "Validation Integration at Generation Checkpoints"
+phase: 11
+phase_name: "Canon Integration & Content Types"
+category: feature
+status: PARTIAL
+audited: "2026-09-23"
+effort: M
+dependencies:
+  - spec_id: "FILM-1003"
+    note: "Continuity Validator (✅ Complete)"
+  - spec_id: "FILM-1102"
+    note: "Memory context injection"
+summary: >
+  Integrate the Continuity Validator into the story generation pipeline at three
+  checkpoints: plot skeleton, scene blocks, and dialogue.
+feature:
+  database:
+    tables: []
+    columns_added: []
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
+acceptance_criteria:
+  - text: "`runValidationCheckpoint` utility created"
+    met: true
+    evidence: null
+  - text: "Story generation runs checkpoint 1 when canon enabled"
+    met: false
+    reason: "no longer true — handler checkpoint removed in d5f6dbdc; replaced by the story agent's optional `checkContinuity` tool (`packages/features/episodes/src/agent/skills/continuity-skill.ts:148`)"
+  - text: "Screenplay conversion runs checkpoint 2 when canon enabled"
+    met: false
+    reason: "unverified — called at `apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:253`, but its imports reach `server-only`, which throws outside Next; likely always skipped"
+  - text: "Shot generation runs checkpoint 3 when canon enabled"
+    met: false
+    reason: "no longer true — never wired: b3eaabe2 added story and screenplay checkpoints only; no shot handler calls `runValidationCheckpoint`"
+  - text: "CRITICAL violations always block generation"
+    met: false
+    reason: "no longer true — screenplay runs `flexible` (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:256`), which passes everything; no CRITICAL severity exists"
+  - text: "HARD_FAIL violations block in strict mode only"
+    met: false
+    reason: "no longer true — no caller passes `strict`, and the only caller swallows the throw (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:271`)"
+  - text: "SOFT_FAIL violations logged as warnings"
+    met: false
+    reason: "unverified — logged at `apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:266` only if the checkpoint loads; see the import note above"
+  - text: "Validation failure updates job status correctly"
+    met: false
+    reason: "no longer true — nothing updates job status on a violation: screenplay swallows it (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:271`); story checkpoint removed in d5f6dbdc"
+  - text: "Validation latency < 200ms per checkpoint"
+    met: false
+    reason: "unverified — no timing test or measurement exists"
+test_plan:
+  unit: []
+  integration: []
+  e2e: []
+remaining:
+  - criterion: "Checkpoint 1 in story generation"
+    reason: "Removed in d5f6dbdc (#213); the story agent may call `checkContinuity`, which neither blocks nor follows the canon enforcement setting"
+    closed_by: "owner"
+  - criterion: "Checkpoint 3 in shot generation"
+    reason: "Never built"
+    closed_by: "owner"
+  - criterion: "Blocking on errors; strict mode"
+    reason: "Screenplay hard-codes `flexible` and catches every throw; the project's canon `enforcement` setting is read by no generation code"
+    closed_by: "unassigned"
+  - criterion: "Job status on validation failure"
+    reason: "No path updates it"
+    closed_by: "unassigned"
+open_questions: []
+notes: |
+  Priority (source frontmatter): high
+
+  ## Overview
+
+  Integrate the Continuity Validator into the story generation pipeline at three checkpoints: plot skeleton, scene blocks, and dialogue.
+
+  ## Problem Statement
+
+  The Continuity Validator exists (`packages/features/episodes/src/lib/canon/continuity-validator.ts`) with 9 validation rules, but:
+  - It is never called during story generation
+  - Violations are not detected until manual review
+  - No blocking mechanism prevents generation of invalid content
+
+  ## Solution
+
+  Add validation calls at three checkpoints in the generation pipeline, with configurable enforcement levels (strict = block, flexible = warn).
+
+  ## Checkpoint Architecture
+
+  ```
+  Story Ideation  ───► [CHECKPOINT 1: Plot Skeleton] ───►
+                              │
+                        VALIDATOR
+                              │
+  Screenplay Gen  ───► [CHECKPOINT 2: Scene Blocks] ───►
+                              │
+                        VALIDATOR
+                              │
+  Shot List Gen   ───► [CHECKPOINT 3: Dialogue] ───►
+                              │
+                        VALIDATOR
+                              │
+                         Final Output
+  ```
+
+  ## Files to Modify
+
+  | File | Change |
+  |------|--------|
+  | `apps/web/lambda/llm-worker/handlers/story-generation.ts` | Add checkpoint 1 |
+  | `apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts` | Add checkpoint 2 |
+  | `apps/web/lambda/llm-worker/handlers/shot-generation.ts` | Add checkpoint 3 |
+
+  ## Files to Create
+
+  | File | Purpose |
+  |------|---------|
+  | `apps/web/lambda/llm-worker/utils/validation-checkpoint.ts` | Shared validation utility |
+
+  ## Implementation
+
+  ### Step 1: Create Shared Validation Utility
+
+  ```typescript
+  // apps/web/lambda/llm-worker/utils/validation-checkpoint.ts
+
+  import type { SupabaseClient } from '@supabase/supabase-js';
+
+  interface ValidationCheckpointOptions {
+    projectId: string;
+    episodeNumber: number;
+    content: unknown;
+    checkpointType: 'plot_skeleton' | 'scene_blocks' | 'dialogue';
+    enforcement: 'strict' | 'flexible';
+  }
+
+  interface ValidationResult {
+    passed: boolean;
+    violations: Array<{
+      rule: string;
+      severity: 'critical' | 'hard_fail' | 'soft_fail';
+      message: string;
+      suggestion?: string;
+    }>;
+    warnings: string[];
+  }
+
+  export async function runValidationCheckpoint(
+    options: ValidationCheckpointOptions,
+    supabase: SupabaseClient,
+  ): Promise<ValidationResult> {
+    const {
+      projectId,
+      episodeNumber,
+      content,
+      checkpointType,
+      enforcement
+    } = options;
+
+    // Import validator dynamically
+    const {
+      buildMemoryContext,
+      createContinuityValidator
+    } = await import('@kit/episodes');
+
+    // Build context for validation
+    const context = await buildMemoryContext(projectId, episodeNumber);
+
+    // Create validator instance
+    const validator = createContinuityValidator(context);
+
+    // Run appropriate validation based on checkpoint
+    let result;
+    switch (checkpointType) {
+      case 'plot_skeleton':
+        result = await validator.validatePlotSkeleton(content);
+        break;
+      case 'scene_blocks':
+        result = await validator.validateSceneBlocks(content);
+        break;
+      case 'dialogue':
+        result = await validator.validateDialogue(content);
+        break;
+    }
+
+    // Filter violations by enforcement level
+    const criticalViolations = result.violations.filter(
+      v => v.severity === 'critical' ||
+           (enforcement === 'strict' && v.severity === 'hard_fail')
+    );
+
+    const warnings = result.violations
+      .filter(v => v.severity === 'soft_fail')
+      .map(v => `${v.rule}: ${v.message}`);
+
+    return {
+      passed: criticalViolations.length === 0,
+      violations: criticalViolations,
+      warnings,
+    };
+  }
+  ```
+
+  ### Step 2: Integrate Checkpoint 1 in Story Generation
+
+  ```typescript
+  // In story-generation.ts, after LLM generates plot skeleton
+
+  // Validate plot skeleton before proceeding
+  if (canonSettings?.enabled) {
+    const { runValidationCheckpoint } = await import('../utils/validation-checkpoint');
+
+    const validation = await runValidationCheckpoint({
+      projectId: data.projectId,
+      episodeNumber: episodeContext.episodeNumber,
+      content: result.data.story, // The generated story
+      checkpointType: 'plot_skeleton',
+      enforcement: canonSettings.enforcement ?? 'flexible',
+    }, supabase);
+
+    if (!validation.passed) {
+      await markJobFailed(supabase, data.episodeId, 'story',
+        `Canon violation: ${validation.violations[0].message}`
+      );
+      throw new ContinuityViolationError(validation.violations);
+    }
+
+    // Log warnings for review
+    if (validation.warnings.length > 0) {
+      console.warn('[Story Generation] Canon warnings:', validation.warnings);
+    }
+  }
+  ```
+
+  ### Step 3: Integrate Checkpoint 2 in Screenplay Conversion
+
+  ```typescript
+  // In screenplay-conversion.ts, after scenes generated
+
+  if (canonSettings?.enabled) {
+    const { runValidationCheckpoint } = await import('../utils/validation-checkpoint');
+
+    const validation = await runValidationCheckpoint({
+      projectId: data.projectId,
+      episodeNumber: episodeContext.episodeNumber,
+      content: result.data.scenes,
+      checkpointType: 'scene_blocks',
+      enforcement: canonSettings.enforcement ?? 'flexible',
+    }, supabase);
+
+    if (!validation.passed) {
+      throw new ContinuityViolationError(validation.violations);
+    }
+  }
+  ```
+
+  ### Step 4: Integrate Checkpoint 3 in Shot Generation
+
+  ```typescript
+  // In shot-generation.ts, after dialogue generated
+
+  if (canonSettings?.enabled) {
+    const { runValidationCheckpoint } = await import('../utils/validation-checkpoint');
+
+    const validation = await runValidationCheckpoint({
+      projectId: data.projectId,
+      episodeNumber: episodeContext.episodeNumber,
+      content: result.data.shots,
+      checkpointType: 'dialogue',
+      enforcement: canonSettings.enforcement ?? 'flexible',
+    }, supabase);
+
+    if (!validation.passed) {
+      throw new ContinuityViolationError(validation.violations);
+    }
+  }
+  ```
+
+  ## Enforcement Levels
+
+  | Level | CRITICAL | HARD_FAIL | SOFT_FAIL |
+  |-------|----------|-----------|-----------|
+  | **strict** | Block | Block | Warn |
+  | **flexible** | Block | Warn | Warn |
+
+  ## Testing
+
+  ### Unit Test
+
+  ```typescript
+  describe('Validation Checkpoint', () => {
+    it('should block on dead character resurrection', async () => {
+      // Setup: Create immutable death event
+      await client.from('immutable_events').insert({
+        project_id: projectId,
+        event_type: 'death',
+        event_key: 'character:john:dead',
+        description: 'John died',
+        established_in: episode1Id,
+        season: 1,
+        episode_number: 1,
+      });
+
+      // Attempt to generate story with John alive
+      const storyWithJohn = {
+        fullText: 'John walked into the room...',
+        characters: ['John'],
+      };
+
+      const validation = await runValidationCheckpoint({
+        projectId,
+        episodeNumber: 2,
+        content: storyWithJohn,
+        checkpointType: 'plot_skeleton',
+        enforcement: 'strict',
+      }, supabase);
+
+      expect(validation.passed).toBe(false);
+      expect(validation.violations[0].rule).toBe('CANON_001');
+    });
+  });
+  ```
+
+  ### Integration Test
+
+  1. Create project with canon enabled (strict)
+  2. Add death event for character
+  3. Attempt story generation mentioning character
+  4. Verify generation fails with CANON_001 violation
+  5. Verify job status shows failure reason
+
+  ## Estimated Effort
+
+  | Task | Time |
+  |------|------|
+  | Create validation-checkpoint.ts | 45 min |
+  | Integrate checkpoint 1 | 30 min |
+  | Integrate checkpoint 2 | 30 min |
+  | Integrate checkpoint 3 | 30 min |
+  | Testing | 1.5 hours |
+  | **Total** | **~4 hours** |
+
+  ## Blocks
+
+  - None (enhances generation pipeline)
+
+  ## Implementation Status
+
+  **🟡 PARTIAL** (audit 2026-09-23; was **Implemented** in PR #175 — merged 2026-02-09)

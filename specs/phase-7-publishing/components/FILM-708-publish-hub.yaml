@@ -1,0 +1,732 @@
+spec_id: "FILM-708"
+title: "Publish Hub"
+phase: 7
+phase_name: "Publishing"
+category: component
+status: PARTIAL
+audited: "2026-09-23"
+effort: L
+dependencies:
+  - spec_id: "FILM-701"
+    note: null
+  - spec_id: "FILM-702"
+    note: null
+  - spec_id: "FILM-703"
+    note: null
+  - spec_id: "FILM-704"
+    note: null
+  - spec_id: "FILM-705"
+    note: null
+  - spec_id: "FILM-706"
+    note: null
+  - spec_id: "FILM-707"
+    note: null
+  - spec_id: "FILM-312"
+    note: null
+summary: >
+  The Publish Hub is the central interface for publishing videos to multiple platforms. It
+  orchestrates platform selection, metadata customization per platform, scheduling, and publish
+  status tracking.
+component:
+  component_name: "PublishHub"
+  file_path: "packages/features/publishing/src/components/publish-hub.tsx"
+  props:
+    - name: "episodeId"
+      type: "string"
+      required: true
+      description: null
+    - name: "projectId"
+      type: "string"
+      required: true
+      description: null
+    - name: "videoUrl"
+      type: "string"
+      required: true
+      description: null
+    - name: "thumbnailUrl"
+      type: "string"
+      required: false
+      description: null
+    - name: "defaultTitle"
+      type: "string"
+      required: true
+      description: null
+    - name: "defaultDescription"
+      type: "string"
+      required: true
+      description: null
+    - name: "duration"
+      type: "number"
+      required: true
+      description: "seconds"
+  states:
+    - "pending"
+    - "publishing"
+    - "completed"
+    - "failed"
+  accessibility_notes: null
+acceptance_criteria:
+  - text: "Shows all connected platforms with toggle"
+    met: false
+    reason: "retired — replaced by language routing: each video goes to every connected channel of its language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1041`)"
+  - text: "Unconnected platforms show \"Connect\" action"
+    met: false
+    reason: "retired — connecting moved to Settings › Platforms, linked from the screen (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:129`, `:160`)"
+  - text: "Metadata can be customized per platform"
+    met: false
+    reason: "retired — one title/description/tags set for every channel (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:52`), translated per language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:907`)"
+  - text: "Thumbnail preview works"
+    met: true
+    evidence: null
+  - text: "Scheduling works for supported platforms"
+    met: false
+    reason: "unverified — panel → `scheduled` rows → cron → publish-worker (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:800`, `sst.config.ts:1435`); no test drives a due publish"
+  - text: "Publish triggers all selected platforms"
+    met: true
+    evidence: null
+  - text: "Real-time status updates during publish"
+    met: true
+    evidence: null
+  - text: "Success shows platform URLs"
+    met: true
+    evidence: null
+  - text: "Errors are displayed per platform"
+    met: true
+    evidence: null
+  - text: "Can retry failed publishes"
+    met: false
+    reason: "no longer true — `retryPublishAction` (`packages/features/publishing/src/server/publish-actions.ts:586`) is called only by `PublishHub`, which no page renders since baa752eb"
+test_plan:
+  unit:
+    - text: "Test platform config initialization"
+      met: false
+      reason: "not met — no test found"
+    - text: "Test metadata validation"
+      met: false
+      reason: "not met — no test found"
+    - text: "Test scheduling logic"
+      met: false
+      reason: "not met — no test found"
+  integration:
+    - text: "Test multi-platform publish flow"
+      met: false
+      reason: "not met — `packages/features/publishing/__tests__/publish-actions.test.ts` mocks every provider and never calls `publishToAllAction`"
+    - text: "Test status polling"
+      met: false
+      reason: "not met — `packages/features/publishing/__tests__/publish-actions.test.ts:126` calls `getPublishStatusAction` once and asserts only `toBeDefined()`"
+  e2e:
+    - text: "Full publish flow with mocked providers"
+      met: false
+      reason: "not met — no test found"
+remaining:
+  - criterion: "Can retry failed publishes"
+    reason: "`retryPublishAction` exists, but its only caller is `PublishHub`, which no page has rendered since baa752eb (2026-01-06) moved `/publish` to `PublishScreen`. The publish screen lists a failed publish with its error (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/published-content-section.tsx:145`) and offers no retry"
+    closed_by: "unassigned"
+open_questions:
+  - "Should we support partial publish (some succeed, some fail)? (yes - implemented)"
+  - "Should we allow republishing to failed platforms? (yes - implemented via retry)"
+notes: |
+  ## Metadata
+  - **Phase:** 7 - Publishing
+  - **Priority:** P1 (Post-MVP)
+  - **Effort:** L (1-3 days)
+  - **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
+  - **Dependencies:** FILM-701-704 (Platform Providers), FILM-705-707 (OAuth), FILM-312 (Episode Workspace)
+  - **Blocks:** None
+
+  ## Specification
+  ### Requirements
+
+  1. **Platform Selection**: Choose which platforms to publish to
+  2. **Metadata Customization**: Edit title, description, tags per platform
+  3. **Thumbnail Selection**: Choose or upload custom thumbnails
+  4. **Scheduling**: Set publish time or publish immediately
+  5. **Draft/Preview**: Preview before publishing
+  6. **Status Tracking**: Real-time publish status updates
+  7. **Shorts/Clips**: Generate short-form versions for TikTok/Reels
+
+  ### Component Interface
+
+  ```typescript
+  // packages/features/publishing/src/components/publish-hub.tsx
+
+  interface PublishHubProps {
+    episodeId: string;
+    projectId: string;
+    videoUrl: string;
+    thumbnailUrl?: string;
+    defaultTitle: string;
+    defaultDescription: string;
+    duration: number; // seconds
+  }
+
+  interface PlatformPublishConfig {
+    platform: 'youtube' | 'tiktok' | 'instagram' | 'facebook';
+    connectionId: string;
+    enabled: boolean;
+    title: string;
+    description: string;
+    tags: string[];
+    thumbnailUrl?: string;
+    scheduledAt?: Date;
+    platformSpecific: {
+      // YouTube
+      categoryId?: string;
+      playlistIds?: string[];
+      privacy?: 'private' | 'unlisted' | 'public';
+      madeForKids?: boolean;
+      // TikTok
+      disableDuet?: boolean;
+      disableStitch?: boolean;
+      disableComment?: boolean;
+      // Instagram
+      shareToFeed?: boolean;
+      locationId?: string;
+      // Facebook
+      isReel?: boolean;
+      targeting?: object;
+    };
+  }
+
+  interface PublishState {
+    platforms: PlatformPublishConfig[];
+    isPublishing: boolean;
+    publishResults: Record<string, PublishResult>;
+  }
+
+  interface PublishResult {
+    platform: string;
+    status: 'pending' | 'publishing' | 'completed' | 'failed';
+    platformContentId?: string;
+    platformUrl?: string;
+    error?: string;
+  }
+  ```
+
+  ### Main Component
+
+  ```tsx
+  // packages/features/publishing/src/components/publish-hub.tsx
+
+  'use client';
+
+  import { useState, useEffect } from 'react';
+  import { useQuery, useMutation } from '@tanstack/react-query';
+  import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@kit/ui/card';
+  import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
+  import { Button } from '@kit/ui/button';
+  import { Badge } from '@kit/ui/badge';
+  import { Alert, AlertDescription } from '@kit/ui/alert';
+  import { Loader2, CheckCircle, XCircle, Clock, ExternalLink } from 'lucide-react';
+
+  import { PlatformSelector } from './platform-selector';
+  import { MetadataEditor } from './metadata-editor';
+  import { ShortsClipper } from './shorts-clipper';
+  import { getConnectedPlatforms, publishToAllAction, getPublishStatus } from '../server/actions';
+
+  export function PublishHub({
+    episodeId,
+    projectId,
+    videoUrl,
+    thumbnailUrl,
+    defaultTitle,
+    defaultDescription,
+    duration,
+  }: PublishHubProps) {
+    const [activeTab, setActiveTab] = useState<'full' | 'shorts'>('full');
+    const [platforms, setPlatforms] = useState<PlatformPublishConfig[]>([]);
+    const [publishResults, setPublishResults] = useState<Record<string, PublishResult>>({});
+
+    // Fetch connected platforms
+    const { data: connections, isLoading: loadingConnections } = useQuery({
+      queryKey: ['platform-connections', projectId],
+      queryFn: () => getConnectedPlatforms({ projectId }),
+    });
+
+    // Initialize platform configs from connections
+    useEffect(() => {
+      if (connections) {
+        const configs: PlatformPublishConfig[] = connections.map((conn) => ({
+          platform: conn.platform,
+          connectionId: conn.id,
+          enabled: false,
+          title: defaultTitle,
+          description: defaultDescription,
+          tags: [],
+          thumbnailUrl,
+          platformSpecific: getDefaultPlatformSettings(conn.platform),
+        }));
+        setPlatforms(configs);
+      }
+    }, [connections, defaultTitle, defaultDescription, thumbnailUrl]);
+
+    // Publish mutation
+    const publishMutation = useMutation({
+      mutationFn: async () => {
+        const enabledPlatforms = platforms.filter(p => p.enabled);
+        return publishToAllAction({
+          episodeId,
+          platforms: enabledPlatforms,
+        });
+      },
+      onSuccess: (results) => {
+        // Start polling for status
+        results.forEach((result) => {
+          setPublishResults(prev => ({
+            ...prev,
+            [result.platform]: { ...result, status: 'publishing' },
+          }));
+        });
+      },
+    });
+
+    // Poll for publish status
+    useQuery({
+      queryKey: ['publish-status', episodeId],
+      queryFn: () => getPublishStatus({ episodeId }),
+      refetchInterval: (data) => {
+        // Stop polling when all are complete or failed
+        const results = Object.values(publishResults);
+        const allDone = results.every(r => r.status === 'completed' || r.status === 'failed');
+        return allDone ? false : 5000;
+      },
+      enabled: Object.keys(publishResults).length > 0,
+      onSuccess: (statuses) => {
+        setPublishResults(prev => ({
+          ...prev,
+          ...statuses,
+        }));
+      },
+    });
+
+    const updatePlatformConfig = (platform: string, updates: Partial<PlatformPublishConfig>) => {
+      setPlatforms(prev => prev.map(p =>
+        p.platform === platform ? { ...p, ...updates } : p
+      ));
+    };
+
+    const enabledCount = platforms.filter(p => p.enabled).length;
+    const isPublishing = publishMutation.isPending;
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Publish Hub</h2>
+            <p className="text-muted-foreground">
+              Publish your video to multiple platforms
+            </p>
+          </div>
+          <Button
+            size="lg"
+            disabled={enabledCount === 0 || isPublishing}
+            onClick={() => publishMutation.mutate()}
+          >
+            {isPublishing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Publishing...
+              </>
+            ) : (
+              `Publish to ${enabledCount} Platform${enabledCount !== 1 ? 's' : ''}`
+            )}
+          </Button>
+        </div>
+
+        {/* Connection Warning */}
+        {connections?.length === 0 && !loadingConnections && (
+          <Alert>
+            <AlertDescription>
+              No platforms connected. Go to Settings → Platforms to connect your accounts.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Content Type Tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'full' | 'shorts')}>
+          <TabsList>
+            <TabsTrigger value="full">Full Video</TabsTrigger>
+            <TabsTrigger value="shorts">Shorts/Clips</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="full" className="space-y-6">
+            {/* Platform Selection */}
+            <PlatformSelector
+              platforms={platforms}
+              onToggle={(platform, enabled) => updatePlatformConfig(platform, { enabled })}
+            />
+
+            {/* Metadata Editors per Platform */}
+            {platforms.filter(p => p.enabled).map((platform) => (
+              <MetadataEditor
+                key={platform.platform}
+                platform={platform}
+                onChange={(updates) => updatePlatformConfig(platform.platform, updates)}
+                videoPreviewUrl={videoUrl}
+              />
+            ))}
+          </TabsContent>
+
+          <TabsContent value="shorts">
+            <ShortsClipper
+              videoUrl={videoUrl}
+              duration={duration}
+              episodeId={episodeId}
+              onClipCreated={(clipUrl) => {
+                // Handle clip creation
+              }}
+            />
+          </TabsContent>
+        </Tabs>
+
+        {/* Publish Status */}
+        {Object.keys(publishResults).length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Publish Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {Object.entries(publishResults).map(([platform, result]) => (
+                  <PublishStatusRow key={platform} result={result} />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  function PublishStatusRow({ result }: { result: PublishResult }) {
+    const icons = {
+      pending: <Clock className="h-4 w-4 text-muted-foreground" />,
+      publishing: <Loader2 className="h-4 w-4 animate-spin text-blue-500" />,
+      completed: <CheckCircle className="h-4 w-4 text-green-500" />,
+      failed: <XCircle className="h-4 w-4 text-red-500" />,
+    };
+
+    return (
+      <div className="flex items-center justify-between p-3 rounded-lg border">
+        <div className="flex items-center gap-3">
+          {icons[result.status]}
+          <span className="font-medium capitalize">{result.platform}</span>
+          <Badge variant={result.status === 'completed' ? 'default' : 'secondary'}>
+            {result.status}
+          </Badge>
+        </div>
+        {result.platformUrl && (
+          <Button variant="ghost" size="sm" asChild>
+            <a href={result.platformUrl} target="_blank" rel="noopener noreferrer">
+              View <ExternalLink className="ml-1 h-3 w-3" />
+            </a>
+          </Button>
+        )}
+        {result.error && (
+          <span className="text-sm text-destructive">{result.error}</span>
+        )}
+      </div>
+    );
+  }
+
+  function getDefaultPlatformSettings(platform: string): PlatformPublishConfig['platformSpecific'] {
+    switch (platform) {
+      case 'youtube':
+        return { privacy: 'private', madeForKids: false };
+      case 'tiktok':
+        return { disableDuet: false, disableStitch: false, disableComment: false };
+      case 'instagram':
+        return { shareToFeed: true };
+      case 'facebook':
+        return { isReel: false };
+      default:
+        return {};
+    }
+  }
+  ```
+
+  ### Server Action
+
+  ```typescript
+  // packages/features/publishing/src/server/publish-actions.ts
+
+  'use server';
+
+  import { enhanceAction } from '@kit/next/actions';
+  import { getSupabaseServerClient } from '@kit/supabase/server-client';
+  import { z } from 'zod';
+  import { YouTubeProvider } from '../providers/youtube';
+  import { TikTokProvider } from '../providers/tiktok';
+  import { InstagramProvider } from '../providers/instagram';
+  import { FacebookProvider } from '../providers/facebook';
+  import { ensureValidToken } from '../oauth/ensure-token';
+
+  const PublishSchema = z.object({
+    episodeId: z.string().uuid(),
+    platforms: z.array(z.object({
+      platform: z.enum(['youtube', 'tiktok', 'instagram', 'facebook']),
+      connectionId: z.string().uuid(),
+      title: z.string(),
+      description: z.string(),
+      tags: z.array(z.string()),
+      thumbnailUrl: z.string().optional(),
+      scheduledAt: z.string().datetime().optional(),
+      platformSpecific: z.record(z.any()),
+    })),
+  });
+
+  export const publishToAllAction = enhanceAction(
+    async ({ episodeId, platforms }) => {
+      const client = getSupabaseServerClient();
+
+      // Get episode video
+      const { data: episode } = await client
+        .from('episodes')
+        .select('final_video_url, thumbnail_url, project_id')
+        .eq('id', episodeId)
+        .single();
+
+      if (!episode?.final_video_url) {
+        throw new Error('Episode video not ready');
+      }
+
+      const results = await Promise.allSettled(
+        platforms.map(async (platform) => {
+          // Ensure valid token
+          const tokenResult = await ensureValidToken(platform.connectionId);
+          if (!tokenResult.valid) {
+            throw new Error(tokenResult.error || 'Invalid token');
+          }
+
+          // Get connection details
+          const { data: connection } = await client
+            .from('platform_connections')
+            .select('*')
+            .eq('id', platform.connectionId)
+            .single();
+
+          // Create publish record
+          const { data: publish } = await client
+            .from('publishes')
+            .insert({
+              episode_id: episodeId,
+              platform_connection_id: platform.connectionId,
+              platform: platform.platform,
+              title: platform.title,
+              description: platform.description,
+              tags: platform.tags,
+              thumbnail_url: platform.thumbnailUrl || episode.thumbnail_url,
+              status: 'publishing',
+              scheduled_at: platform.scheduledAt,
+              metadata: platform.platformSpecific,
+            })
+            .select()
+            .single();
+
+          // Publish based on platform
+          try {
+            let result;
+            switch (platform.platform) {
+              case 'youtube':
+                result = await publishToYouTube(
+                  tokenResult.accessToken!,
+                  episode.final_video_url,
+                  platform
+                );
+                break;
+              case 'tiktok':
+                result = await publishToTikTok(
+                  tokenResult.accessToken!,
+                  episode.final_video_url,
+                  platform
+                );
+                break;
+              case 'instagram':
+                result = await publishToInstagram(
+                  tokenResult.accessToken!,
+                  connection.platform_account_id,
+                  episode.final_video_url,
+                  platform
+                );
+                break;
+              case 'facebook':
+                result = await publishToFacebook(
+                  tokenResult.accessToken!,
+                  connection.platform_account_id,
+                  episode.final_video_url,
+                  platform
+                );
+                break;
+            }
+
+            // Update publish record
+            await client
+              .from('publishes')
+              .update({
+                status: 'published',
+                platform_content_id: result.contentId,
+                platform_url: result.url,
+                published_at: new Date().toISOString(),
+              })
+              .eq('id', publish.id);
+
+            return {
+              platform: platform.platform,
+              status: 'completed' as const,
+              platformContentId: result.contentId,
+              platformUrl: result.url,
+            };
+          } catch (error) {
+            await client
+              .from('publishes')
+              .update({
+                status: 'failed',
+                metadata: { ...platform.platformSpecific, error: error.message },
+              })
+              .eq('id', publish.id);
+
+            throw error;
+          }
+        })
+      );
+
+      return results.map((result, index) => {
+        if (result.status === 'fulfilled') {
+          return result.value;
+        }
+        return {
+          platform: platforms[index].platform,
+          status: 'failed' as const,
+          error: result.reason?.message || 'Unknown error',
+        };
+      });
+    },
+    { schema: PublishSchema, auth: true }
+  );
+
+  async function publishToYouTube(accessToken: string, videoUrl: string, config: any) {
+    const provider = new YouTubeProvider(accessToken);
+    const result = await provider.uploadVideo({
+      videoPath: videoUrl,
+      title: config.title,
+      description: config.description,
+      tags: config.tags,
+      categoryId: config.platformSpecific.categoryId || '22',
+      privacy: config.platformSpecific.privacy || 'private',
+      madeForKids: config.platformSpecific.madeForKids || false,
+      thumbnailPath: config.thumbnailUrl,
+      playlistIds: config.platformSpecific.playlistIds,
+      publishAt: config.scheduledAt ? new Date(config.scheduledAt) : undefined,
+    });
+    return { contentId: result.videoId, url: result.videoUrl };
+  }
+
+  async function publishToTikTok(accessToken: string, videoUrl: string, config: any) {
+    const provider = new TikTokProvider(accessToken);
+    const result = await provider.uploadVideo({
+      videoPath: videoUrl,
+      caption: config.title,
+      privacy: 'PUBLIC',
+      disableDuet: config.platformSpecific.disableDuet || false,
+      disableStitch: config.platformSpecific.disableStitch || false,
+      disableComment: config.platformSpecific.disableComment || false,
+    });
+    return { contentId: result.publishId, url: result.videoUrl };
+  }
+
+  async function publishToInstagram(
+    accessToken: string,
+    accountId: string,
+    videoUrl: string,
+    config: any
+  ) {
+    const provider = new InstagramProvider(accessToken, accountId);
+    const result = await provider.uploadReel({
+      videoUrl,
+      caption: `${config.title}\n\n${config.description}`,
+      shareToFeed: config.platformSpecific.shareToFeed ?? true,
+      locationId: config.platformSpecific.locationId,
+    });
+    return { contentId: result.mediaId, url: result.permalink };
+  }
+
+  async function publishToFacebook(
+    accessToken: string,
+    pageId: string,
+    videoUrl: string,
+    config: any
+  ) {
+    const provider = new FacebookProvider(accessToken, pageId);
+    const result = await provider.uploadVideo({
+      videoPath: videoUrl,
+      title: config.title,
+      description: config.description,
+      isReel: config.platformSpecific.isReel || false,
+      published: !config.scheduledAt,
+      scheduledPublishTime: config.scheduledAt ? new Date(config.scheduledAt) : undefined,
+    });
+    return { contentId: result.videoId, url: result.videoUrl };
+  }
+  ```
+
+  ### File Changes
+
+  | Action | Path |
+  |--------|------|
+  | CREATE | `packages/features/publishing/src/components/publish-hub.tsx` |
+  | CREATE | `packages/features/publishing/src/server/publish-actions.ts` |
+  | CREATE | `packages/features/publishing/src/components/index.ts` |
+
+  ## Performance Considerations
+  - Parallel publishing to all platforms
+  - Optimistic UI updates
+  - Background status polling with backoff
+  - Cancel pending publishes on unmount
+
+  ## Implementation Notes
+  **Implementation Date:** 2025-12-11
+
+  ### What Was Built
+
+  1. **PublishHub Component** (`packages/features/publishing/src/components/publish-hub.tsx`)
+     - Full Video and Shorts/Clips tabs
+     - Platform selection with connection status
+     - Per-platform metadata editing
+     - Real-time publish status tracking with polling
+
+  2. **PlatformSelector Component** (`packages/features/publishing/src/components/platform-selector.tsx`)
+     - All 6 platforms: YouTube, TikTok, Instagram, Facebook, Twitter, LinkedIn
+     - Connection status, account info display, follower counts
+     - Multi-account dropdown support
+     - Token expiry warnings
+
+  3. **MetadataEditor Component** (`packages/features/publishing/src/components/metadata-editor.tsx`)
+     - Character count validation per platform
+     - Tags input (YouTube)
+     - Scheduling with date picker
+     - Platform-specific settings
+     - Thumbnail selector
+
+  4. **ShortsClipper Component** (`packages/features/publishing/src/components/shorts-clipper.tsx`)
+     - Video player with timeline
+     - Clip region selection
+     - 9:16 aspect ratio conversion
+     - Clip generation via server action
+
+  5. **Server Actions**
+     - `getConnectedPlatformsAction` - Fetch platform connections
+     - `publishToAllAction` - Parallel publishing to all platforms
+     - `getPublishStatusAction` - Poll publish status
+     - `retryPublishAction` - Retry failed publishes
+     - `generateClipAction` - Generate shorts/clips
+
+  6. **Integration**
+     - Added as 5th tab ("Publish Hub") in WorkspaceTabs
+     - Unlocks when episode status is 'ready' or 'published'
+
+  ### Deviations from Spec
+
+  - Added Twitter and LinkedIn support (6 platforms vs 4 in spec)
+  - Added `accountSlug` prop for proper navigation
+  - Used existing provider implementations from `@kit/publishing/providers/*`

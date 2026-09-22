@@ -1,0 +1,322 @@
+spec_id: "FILM-101d"
+title: "Assets Table"
+phase: 1
+phase_name: "Foundation"
+category: database_table
+status: DONE
+audited: "2026-09-23"
+effort: S
+dependencies: []
+summary: >
+  The `assets` table is a polymorphic table storing all project-level resources: characters,
+  locations, props, voice profiles, music tracks, and sound effects. This is the base table, with
+  extension tables (character_details, voice_profiles) providing type-specific fields.
+database_table:
+  table_name: "assets"
+  migration: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql"
+  columns:
+    - name: "id"
+      type: "UUID"
+      nullable: false
+      default: "gen_random_uuid()"
+      description: "Primary key"
+    - name: "project_id"
+      type: "UUID"
+      nullable: false
+      default: null
+      description: "Foreign key to projects table"
+    - name: "type"
+      type: "VARCHAR(50)"
+      nullable: false
+      default: null
+      description: "Asset type (see enum below)"
+    - name: "name"
+      type: "VARCHAR(255)"
+      nullable: false
+      default: null
+      description: "Asset display name"
+    - name: "description"
+      type: "TEXT"
+      nullable: true
+      default: "NULL"
+      description: "Asset description or notes"
+    - name: "file_url"
+      type: "TEXT"
+      nullable: true
+      default: "NULL"
+      description: "URL to primary asset file"
+    - name: "thumbnail_url"
+      type: "TEXT"
+      nullable: true
+      default: "NULL"
+      description: "URL to thumbnail/preview image"
+    - name: "metadata"
+      type: "JSONB"
+      nullable: false
+      default: "'{}'"
+      description: "Type-specific metadata"
+    - name: "created_at"
+      type: "TIMESTAMPTZ"
+      nullable: false
+      default: "NOW()"
+      description: "Timestamp when record was created"
+    - name: "updated_at"
+      type: "TIMESTAMPTZ"
+      nullable: false
+      default: "NOW()"
+      description: "Timestamp when record was last updated"
+  indexes:
+    - name: "idx_assets_project_type"
+      columns: ["project_id", "type"]
+      unique: false
+    - name: "idx_assets_type"
+      columns: ["type"]
+      unique: false
+    - name: "idx_assets_project_id"
+      columns: ["project_id"]
+      unique: false
+    - name: "idx_assets_metadata"
+      columns: ["metadata"]
+      unique: false
+    - name: null
+      columns: ["project_id", "type", "name"]
+      unique: true
+  foreign_keys:
+    - column: "project_id"
+      references: "projects(id)"
+      on_delete: "CASCADE"
+  rls_enabled: null
+acceptance_criteria:
+  - text: "Table created successfully with all columns"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:122"
+  - text: "Foreign key to projects with CASCADE delete"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:124"
+  - text: "Unique constraint on (project_id, type, name)"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:134"
+  - text: "Type check constraint enforces valid enum values"
+    met: true
+    evidence: "apps/web/supabase/migrations/20260127225653_master_video_schema.sql:22 (widened with master_video, master_title_card)"
+  - text: "Indexes created for common query patterns"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:142-145"
+  - text: "GIN index on metadata JSONB column"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:145"
+  - text: "Timestamps auto-populate and auto-update"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:148"
+test_plan:
+  unit:
+    - text: "Insert asset with valid project_id succeeds"
+      met: false
+      reason: "not met — no test asserts it; pgTAP inserts assets only as fixtures (apps/web/supabase/tests/database/authors-deletable.test.sql:62)"
+    - text: "Insert asset with invalid type fails (check constraint)"
+      met: false
+      reason: "not met — no test of the constraint; only the Zod enum is tested (packages/features/assets/__tests__/asset-actions.test.ts:64)"
+    - text: "Insert duplicate asset name for same project+type fails (unique constraint)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert same asset name for different types succeeds"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert same asset name for different projects succeeds"
+      met: false
+      reason: "not met — no test found"
+    - text: "Timestamps populate automatically on insert"
+      met: false
+      reason: "not met — no test found"
+    - text: "Timestamps update automatically on update"
+      met: false
+      reason: "not met — no test found"
+  integration:
+    - text: "Deleting a project cascades to delete all its assets"
+      met: false
+      reason: "not met — no test found"
+    - text: "Extension tables (character_details, voice_profiles) cascade delete"
+      met: false
+      reason: "not met — no test found; voice_profiles no longer exists (apps/web/supabase/migrations/20260103075610_remove_deprecated_voice_profiles.sql:13)"
+    - text: "JSONB metadata accepts valid JSON and rejects invalid JSON"
+      met: false
+      reason: "not met — no test found"
+    - text: "GIN index allows efficient JSONB queries (metadata @> '{\"tags\": [\"protagonist\"]}')"
+      met: false
+      reason: "not met — no test found"
+  e2e: []
+  edge_cases:
+    - text: "Very long name (255 char limit)"
+      met: true
+      evidence: "packages/features/assets/__tests__/asset-actions.test.ts:120 (\"should reject name over 255 characters\", app schema)"
+    - text: "NULL description, file_url, thumbnail_url allowed"
+      met: false
+      reason: "not met — no DB test; only the app schema's omitted-fields case is tested (packages/features/assets/__tests__/asset-actions.test.ts:87)"
+    - text: "Empty metadata JSONB ('{}')"
+      met: false
+      reason: "not met — no test found"
+    - text: "Large metadata JSONB (1MB+)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Query performance with 1000+ assets per project"
+      met: false
+      reason: "not met — no test found"
+    - text: "Asset with file_url but no thumbnail_url"
+      met: false
+      reason: "not met — no test found"
+    - text: "Asset with thumbnail_url but no file_url (valid for abstract concepts)"
+      met: false
+      reason: "not met — no test found"
+open_questions: []
+notes: |
+  Sections of the Markdown spec that have no typed field, kept verbatim. Moved to typed fields: the Context paragraph (summary), the column table (database_table.columns), index names and columns, unique keys and foreign keys (database_table) and the acceptance criteria and test-plan checklists.
+
+  ## Metadata
+  - **Phase:** 1
+  - **Priority:** P0
+  - **Effort:** S
+  - **Status:** ✅ COMPLETE
+  - **Completed:** 2025-12-05
+  - **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
+  - **Dependencies:** None (depends on existing projects table)
+  - **Blocks:** FILM-101 (character-details-table, voice-profiles-table), FILM-201 (asset-crud-actions)
+
+  ## Specification
+
+  ### Table Definition
+  ```sql
+  CREATE TABLE assets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    file_url TEXT,
+    thumbnail_url TEXT,
+    metadata JSONB DEFAULT '{}' NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    CHECK (type IN ('character', 'location', 'prop', 'voice', 'music', 'sfx')),
+    UNIQUE(project_id, type, name)
+  );
+  ```
+
+  ### Type Enum Values
+  - `character` - Character definitions (extends to character_details)
+  - `location` - Locations/settings for scenes
+  - `prop` - Objects/items in scenes
+  - `voice` - Voice profiles (extends to voice_profiles)
+  - `music` - Music tracks
+  - `sfx` - Sound effects
+
+  ### Indexes
+  ```sql
+  -- Index for project + type queries (e.g., "get all characters")
+  CREATE INDEX idx_assets_project_type ON assets(project_id, type);
+
+  -- Index for type queries (e.g., "get all voices across projects")
+  CREATE INDEX idx_assets_type ON assets(type);
+
+  -- Index for project_id (FK)
+  CREATE INDEX idx_assets_project_id ON assets(project_id);
+
+  -- GIN index for JSONB metadata queries
+  CREATE INDEX idx_assets_metadata ON assets USING GIN (metadata);
+  ```
+
+  ### Constraints
+  - **Primary Key**: `id` (UUID)
+  - **Foreign Key**: `project_id` references `projects(id)` ON DELETE CASCADE
+  - **Unique Constraint**: `(project_id, type, name)` - prevents duplicate asset names within type
+  - **Check Constraint**: `type` must be one of the enum values
+
+  ### JSONB Schema
+  #### Metadata by Type
+
+  **Character Metadata:**
+  ```typescript
+  interface CharacterMetadata {
+    tags?: string[];           // ["protagonist", "villain", "comic relief"]
+    appearanceCount?: number;  // How many shots use this character
+    elementPromptVersion?: string; // Version of element prompt (for tracking changes)
+  }
+  ```
+
+  **Location Metadata:**
+  ```typescript
+  interface LocationMetadata {
+    tags?: string[];           // ["indoor", "outdoor", "day", "night"]
+    referenceImages?: string[]; // Array of reference image URLs
+    usageCount?: number;        // How many shots use this location
+  }
+  ```
+
+  **Prop Metadata:**
+  ```typescript
+  interface PropMetadata {
+    tags?: string[];
+    size?: string;             // "small", "medium", "large"
+    referenceImages?: string[];
+  }
+  ```
+
+  **Voice Metadata:**
+  ```typescript
+  interface VoiceMetadata {
+    sampleUrls?: string[];     // Sample audio clips
+    language?: string;         // "en", "es", "fr", etc.
+    gender?: string;           // "male", "female", "neutral"
+    ageRange?: string;         // "child", "young", "adult", "elderly"
+  }
+  ```
+
+  **Music Metadata:**
+  ```typescript
+  interface MusicMetadata {
+    genre?: string;            // "orchestral", "electronic", "ambient"
+    mood?: string;             // "upbeat", "somber", "intense"
+    bpm?: number;
+    durationSeconds?: number;
+    loopable?: boolean;
+  }
+  ```
+
+  **SFX Metadata:**
+  ```typescript
+  interface SFXMetadata {
+    category?: string;         // "footsteps", "impact", "ambient", "ui"
+    tags?: string[];
+    durationSeconds?: number;
+  }
+  ```
+
+  ### Triggers
+  ```sql
+  -- Auto-update timestamps
+  CREATE TRIGGER assets_set_timestamps
+  BEFORE INSERT OR UPDATE ON assets
+  FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamps();
+  ```
+
+  ## File Changes
+  | Action | Path |
+  |--------|------|
+  | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
+
+  ## Test Plan
+
+  ### Type-Specific Tests
+  ```sql
+  -- Test different asset types
+  INSERT INTO assets (project_id, type, name, description)
+  VALUES
+    ('test-project-id', 'character', 'Alice', 'The hero'),
+    ('test-project-id', 'location', 'Forest', 'Dark woods'),
+    ('test-project-id', 'prop', 'Sword', 'Magic sword'),
+    ('test-project-id', 'voice', 'Alice Voice', 'Female, young adult'),
+    ('test-project-id', 'music', 'Battle Theme', 'Epic orchestral'),
+    ('test-project-id', 'sfx', 'Sword Slash', 'Metal impact');
+
+  -- Query by type
+  SELECT * FROM assets WHERE project_id = 'test-project-id' AND type = 'character';
+  ```

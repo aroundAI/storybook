@@ -1,0 +1,334 @@
+spec_id: "FILM-101l"
+title: "Content Analytics Table"
+phase: 1
+phase_name: "Foundation"
+category: database_table
+status: RETIRED
+audited: "2026-09-23"
+effort: S
+dependencies:
+  - spec_id: "FILM-101k"
+    note: "publishes-table"
+summary: >
+  The `content_analytics` table stores daily snapshots of content performance across platforms. Each
+  row represents metrics for a specific publish on a specific date, enabling time-series analysis
+  and performance tracking.
+database_table:
+  table_name: "content_analytics"
+  migration: null
+  columns:
+    - name: "id"
+      type: "UUID"
+      nullable: false
+      default: "gen_random_uuid()"
+      description: "Primary key"
+    - name: "publish_id"
+      type: "UUID"
+      nullable: false
+      default: null
+      description: "Foreign key to publishes"
+    - name: "snapshot_date"
+      type: "DATE"
+      nullable: false
+      default: null
+      description: "Date of this snapshot"
+    - name: "views"
+      type: "BIGINT"
+      nullable: false
+      default: "0"
+      description: "Total views"
+    - name: "likes"
+      type: "BIGINT"
+      nullable: false
+      default: "0"
+      description: "Total likes/reactions"
+    - name: "comments"
+      type: "BIGINT"
+      nullable: false
+      default: "0"
+      description: "Total comments"
+    - name: "shares"
+      type: "BIGINT"
+      nullable: false
+      default: "0"
+      description: "Total shares/reposts"
+    - name: "watch_time_seconds"
+      type: "BIGINT"
+      nullable: false
+      default: "0"
+      description: "Total watch time"
+    - name: "subscribers_gained"
+      type: "INTEGER"
+      nullable: false
+      default: "0"
+      description: "New subscribers from this content"
+    - name: "revenue_cents"
+      type: "INTEGER"
+      nullable: false
+      default: "0"
+      description: "Revenue generated (monetization)"
+    - name: "retention_data"
+      type: "JSONB"
+      nullable: true
+      default: "NULL"
+      description: "Audience retention curve"
+    - name: "raw_data"
+      type: "JSONB"
+      nullable: true
+      default: "NULL"
+      description: "Platform-specific raw metrics"
+    - name: "created_at"
+      type: "TIMESTAMPTZ"
+      nullable: false
+      default: "NOW()"
+      description: "Snapshot creation time"
+  indexes:
+    - name: "idx_content_analytics_publish_id"
+      columns: ["publish_id"]
+      unique: false
+    - name: "idx_content_analytics_snapshot_date"
+      columns: ["snapshot_date DESC"]
+      unique: false
+    - name: "idx_content_analytics_publish_date"
+      columns: ["publish_id", "snapshot_date DESC"]
+      unique: false
+    - name: "idx_content_analytics_views"
+      columns: ["views DESC"]
+      unique: false
+    - name: null
+      columns: ["publish_id", "snapshot_date"]
+      unique: true
+  foreign_keys:
+    - column: "publish_id"
+      references: "publishes(id)"
+      on_delete: "CASCADE"
+  rls_enabled: null
+acceptance_criteria:
+  - text: "Table created with all columns"
+  - text: "Foreign key with CASCADE delete"
+  - text: "Unique constraint on (publish_id, snapshot_date)"
+  - text: "Indexes for date range queries"
+  - text: "BIGINT columns for high view counts"
+  - text: "Revenue tracking in cents"
+test_plan:
+  unit:
+    - text: "Insert snapshot with valid publish_id succeeds"
+    - text: "Insert duplicate snapshot for same date fails (unique constraint)"
+    - text: "Insert snapshot with all metrics = 0 succeeds"
+    - text: "JSONB retention_data and raw_data accept valid JSON"
+  integration:
+    - text: "Deleting publish cascades to delete analytics"
+    - text: "Query snapshots for date range"
+    - text: "Calculate growth metrics (day-over-day, week-over-week)"
+    - text: "Aggregate metrics across multiple publishes"
+  e2e: []
+  edge_cases:
+    - text: "Very high view counts (billions - TikTok viral)"
+    - text: "Negative subscribers_gained (net loss)"
+    - text: "Zero views (new publish)"
+    - text: "NULL retention_data (not available from platform)"
+    - text: "Partial raw_data (some metrics unavailable)"
+retirement:
+  commit: "047f0c84"
+  date: "2026-02-12"
+  what_happened: >
+    `apps/web/supabase/migrations/20260212080000_drop_content_analytics.sql` dropped the table
+    (047f0c84, 2026-02-12) when per-video analytics moved to ClickHouse. Metrics now live in the
+    ClickHouse `video_metrics` table and `video_daily_stats` view
+    (`packages/clickhouse/src/migrations/001_create_tables.ts`); revenue stays in Postgres
+    `revenue_records`. Kept as a record; not outstanding work.
+  replacement: "ClickHouse video_metrics table and video_daily_stats view (packages/clickhouse/src/migrations/001_create_tables.ts); revenue stays in Postgres revenue_records"
+open_questions: []
+notes: |
+  Sections of the Markdown spec that have no typed field, kept verbatim. Moved to typed fields: the Context paragraph (summary), the column table (database_table.columns), index names and columns, unique keys and foreign keys (database_table), the acceptance criteria and test-plan checklists and the retirement note (retirement).
+
+  ## Metadata
+  - **Phase:** 1
+  - **Priority:** P0
+  - **Effort:** S
+  - **Status:** 🗑️ RETIRED (audit 2026-09-23; was ✅ COMPLETE)
+  - **Completed:** 2025-12-05
+  - **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
+  - **Dependencies:** FILM-101 (publishes-table)
+  - **Blocks:** FILM-801 (analytics-sync), FILM-802 (analytics-dashboard)
+
+  ## Specification
+
+  ### Table Definition
+  ```sql
+  CREATE TABLE content_analytics (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    publish_id UUID NOT NULL REFERENCES publishes(id) ON DELETE CASCADE,
+    snapshot_date DATE NOT NULL,
+    views BIGINT DEFAULT 0 NOT NULL,
+    likes BIGINT DEFAULT 0 NOT NULL,
+    comments BIGINT DEFAULT 0 NOT NULL,
+    shares BIGINT DEFAULT 0 NOT NULL,
+    watch_time_seconds BIGINT DEFAULT 0 NOT NULL,
+    subscribers_gained INTEGER DEFAULT 0 NOT NULL,
+    revenue_cents INTEGER DEFAULT 0 NOT NULL,
+    retention_data JSONB,
+    raw_data JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    UNIQUE(publish_id, snapshot_date)
+  );
+  ```
+
+  ### Indexes
+  ```sql
+  CREATE INDEX idx_content_analytics_publish_id ON content_analytics(publish_id);
+  CREATE INDEX idx_content_analytics_snapshot_date ON content_analytics(snapshot_date DESC);
+  CREATE INDEX idx_content_analytics_publish_date ON content_analytics(publish_id, snapshot_date DESC);
+  CREATE INDEX idx_content_analytics_views ON content_analytics(views DESC);
+  ```
+
+  ### Constraints
+  - **Primary Key**: `id`
+  - **Unique**: `(publish_id, snapshot_date)` - one snapshot per day
+  - **Foreign Key**: `publish_id` references `publishes(id)` ON DELETE CASCADE
+
+  ### JSONB Schema
+  ```typescript
+  interface RetentionData {
+    percentages: number[];      // Retention % at each 10% mark [100, 95, 85, 75, ...]
+    avgViewDuration: number;    // Average view duration in seconds
+    avgPercentageWatched: number; // Average % of video watched
+  }
+
+  interface RawData {
+    // YouTube-specific
+    youtube?: {
+      estimatedMinutesWatched: number;
+      averageViewPercentage: number;
+      clickThroughRate: number;
+      impressions: number;
+      trafficSources: {
+        [key: string]: number; // "BROWSE_FEATURES": 1234, "YT_SEARCH": 567
+      };
+      demographics: {
+        age: { [key: string]: number };
+        gender: { male: number; female: number };
+        geography: { [country: string]: number };
+      };
+    };
+
+    // TikTok-specific
+    tiktok?: {
+      totalPlayTime: number;
+      reachCount: number;
+      averageWatchTime: number;
+      fullVideoWatched: number;
+      finishRate: number;
+      soundUsages: number;
+    };
+
+    // Instagram-specific
+    instagram?: {
+      reach: number;
+      impressions: number;
+      savedCount: number;
+      replaysCount: number;
+      accountsEngaged: number;
+    };
+
+    // Platform-agnostic
+    engagementRate?: number;    // (likes + comments + shares) / views
+    viralityScore?: number;     // shares / views
+  }
+  ```
+
+  ### Example Data
+  ```sql
+  -- Daily snapshot for YouTube publish
+  INSERT INTO content_analytics (
+    publish_id,
+    snapshot_date,
+    views,
+    likes,
+    comments,
+    shares,
+    watch_time_seconds,
+    subscribers_gained,
+    revenue_cents,
+    retention_data,
+    raw_data
+  ) VALUES (
+    'publish-123',
+    '2025-12-04',
+    15234,
+    892,
+    134,
+    67,
+    458102,  -- ~127 hours
+    45,
+    1250,    -- $12.50
+    '{
+      "percentages": [100, 95, 88, 82, 75, 68, 60, 52, 45, 38],
+      "avgViewDuration": 180,
+      "avgPercentageWatched": 45
+    }',
+    '{
+      "youtube": {
+        "estimatedMinutesWatched": 7635,
+        "averageViewPercentage": 45.2,
+        "clickThroughRate": 8.5,
+        "impressions": 45000,
+        "trafficSources": {
+          "BROWSE_FEATURES": 6500,
+          "YT_SEARCH": 4200,
+          "SUGGESTED_VIDEOS": 3800
+        }
+      },
+      "engagementRate": 7.2
+    }'
+  );
+  ```
+
+  ## File Changes
+  | Action | Path |
+  |--------|------|
+  | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
+
+  ## Test Plan
+
+  ### Analytics Queries
+  ```sql
+  -- Get latest snapshot for each publish
+  SELECT DISTINCT ON (publish_id)
+    publish_id,
+    snapshot_date,
+    views,
+    likes,
+    watch_time_seconds
+  FROM content_analytics
+  ORDER BY publish_id, snapshot_date DESC;
+
+  -- Calculate day-over-day view growth
+  WITH daily_views AS (
+    SELECT
+      publish_id,
+      snapshot_date,
+      views,
+      LAG(views) OVER (PARTITION BY publish_id ORDER BY snapshot_date) AS prev_views
+    FROM content_analytics
+  )
+  SELECT
+    publish_id,
+    snapshot_date,
+    views - prev_views AS views_gained_today
+  FROM daily_views
+  WHERE prev_views IS NOT NULL;
+
+  -- Top performing content by engagement rate
+  SELECT
+    p.title,
+    ca.views,
+    ca.likes,
+    ca.comments,
+    (ca.likes + ca.comments + ca.shares)::FLOAT / NULLIF(ca.views, 0) AS engagement_rate
+  FROM content_analytics ca
+  JOIN publishes p ON ca.publish_id = p.id
+  WHERE ca.snapshot_date = CURRENT_DATE - 1
+  ORDER BY engagement_rate DESC
+  LIMIT 10;
+  ```

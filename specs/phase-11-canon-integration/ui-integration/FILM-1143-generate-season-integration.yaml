@@ -1,0 +1,348 @@
+spec_id: "FILM-1143"
+title: "Generate Season Content Type Integration"
+phase: 11
+phase_name: "Canon Integration & Content Types"
+category: component
+status: PARTIAL
+audited: "2026-09-23"
+dependencies:
+  - spec_id: "FILM-1110"
+    note: null
+  - spec_id: "FILM-1135"
+    note: null
+  - spec_id: "FILM-1140"
+    note: null
+summary: >
+  Update the Generate Season dialog to be aware of the project's content type
+  and show linked research sources, ensuring fact-based content types use
+  external context during generation.
+acceptance_criteria:
+  - text: "Content type banner shows in Generate Season"
+    met: false
+    reason: "no longer true — `contentType` is never set (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:285`); a generic \"Research Sources\" section shows instead"
+  - text: "Banner shows linked sources summary"
+    met: false
+    reason: "no longer true — the source count is every active global source (`packages/features/episodes/src/server/external-context-actions.ts:362`), not the project's"
+  - text: "Warning shown when factual content has no sources"
+    met: false
+    reason: "no longer true — not gated on content type, and the 12 seeded global sources always count as sources (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:347`)"
+  - text: "\"Add Sources\" link navigates to Research tab"
+    met: true
+    evidence: null
+  - text: "External facts passed to season analysis"
+    met: false
+    reason: "no longer true — only `verified` facts are sent (`packages/features/episodes/src/server/external-context-actions.ts:401`); KB-18 means none exist"
+  - text: "Memory context includes external facts"
+    met: true
+    evidence: null
+  - text: "News projects show API connection status"
+    met: false
+    reason: "no longer true — gated on `contentType === 'news'` (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:806`), which is never set"
+  - text: "Refresh button updates live API sources"
+    met: false
+    reason: "no longer true — it only re-reads counts (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:786`); nothing fetches from an API source"
+remaining:
+  - criterion: "Content type banner shows in Generate Season"
+    reason: >
+      `const [contentType, _setContentType] = useState(null)`
+      (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:285`):
+      the setter was never called, even in the first version (c397826e);
+      17dfb955 renamed it with `_` to quiet lint. No banner names the content
+      type
+    closed_by: "unassigned"
+  - criterion: "Banner shows linked sources summary"
+    reason: >
+      The "sources" badge is `getResearchCountsAction().sources`, a count of
+      every active row in the global `external_sources` registry
+      (`packages/features/episodes/src/server/external-context-actions.ts:362`);
+      projects have no linked sources in the data model
+    closed_by: "unassigned"
+  - criterion: "Warning shown when factual content has no sources"
+    reason: >
+      `hasResearchSources` is `sources > 0 || facts > 0`
+      (`season-generator-dialog.tsx:347`); the 12 news sources seeded as
+      active
+      (`apps/web/supabase/migrations/20260211200003_seed_news_sources.sql:4`)
+      keep it true for every project, and nothing checks the content type
+    closed_by: "unassigned"
+  - criterion: "External facts passed to season analysis"
+    reason: >
+      The dialog sends `getVerifiedFactsAction` results, which keep only
+      `verification_status = 'verified'` (`external-context-actions.ts:401`);
+      no fact can reach that state, so `externalFacts` is always `undefined`
+    closed_by: "KB-18"
+  - criterion: "News projects show API connection status"
+    reason: >
+      Rendered only when `contentType === 'news'`
+      (`season-generator-dialog.tsx:806`), which never holds
+    closed_by: "unassigned"
+  - criterion: "Refresh button updates live API sources"
+    reason: >
+      The button re-runs `fetchResearchData`
+      (`season-generator-dialog.tsx:786`), which re-reads counts and verified
+      facts; no provider is called
+    closed_by: "unassigned"
+open_questions: []
+component:
+  component_name: "ContentTypeBanner"
+  file_path: null
+  props:
+    - name: "projectId"
+      type: "string"
+      required: true
+      description: null
+    - name: "contentType"
+      type: "'series' | 'movie' | 'factual' | 'news'"
+      required: true
+      description: null
+  states:
+    - "Series/Movie (fiction)"
+    - "Documentary/Educational"
+    - "News"
+  accessibility_notes: null
+notes: |
+  Source metadata:
+  - priority: P1
+  - estimate: 6h
+  - status as written in the header table: 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
+
+  ## Goals
+
+  1. Show content type banner in Generate Season dialog
+  2. Display linked sources summary
+  3. Require sources for factual content types
+  4. Pass external context to story generation
+  5. Preview memory context including facts
+
+  ---
+
+  ## Location
+
+  **File:** `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx`
+
+  ## Current Flow
+
+  ```
+  1. Premise (roadmap input)
+  2. Assets (character/location mapping)
+  3. Generate (create episodes)
+  ```
+
+  ## Proposed Changes
+
+  ### Step 1: Premise - Add Content Type Banner
+
+  ```
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  Generate Season                                                 │
+  │                                                                  │
+  │  ┌────────────────────────────────────────────────────────────┐ │
+  │  │ 📚 DOCUMENTARY PROJECT                                     │ │
+  │  │ External facts will be included in story generation.       │ │
+  │  │                                                            │ │
+  │  │ Linked Sources (12 facts):                                 │ │
+  │  │ • NASA History (PDF) - 8 facts                            │ │
+  │  │ • Reuters Science (API) - 4 articles                      │ │
+  │  │                                                            │ │
+  │  │ [+ Add More Sources] [View Facts →]                       │ │
+  │  └────────────────────────────────────────────────────────────┘ │
+  │                                                                  │
+  │  Production Roadmap:                                             │
+  │  ┌────────────────────────────────────────────────────────────┐ │
+  │  │ # Mars Documentary - Season 1                              │ │
+  │  │ ...                                                        │ │
+  │  └────────────────────────────────────────────────────────────┘ │
+  └──────────────────────────────────────────────────────────────────┘
+  ```
+
+  ### Content Type Variants
+
+  **Series/Movie (fiction):**
+  ```
+  ┌────────────────────────────────────────────────────────────────┐
+  │ 🎬 SERIES PROJECT                                              │
+  │ Canon memory will maintain character and story consistency.    │
+  │ Canon Events: 24 | Character States: 8 | Active Threads: 3    │
+  └────────────────────────────────────────────────────────────────┘
+  ```
+
+  **Documentary/Educational:**
+  ```
+  ┌────────────────────────────────────────────────────────────────┐
+  │ 📚 DOCUMENTARY PROJECT                                         │
+  │ External facts will be included in story generation.           │
+  │                                                                │
+  │ Linked Sources: 3 sources, 47 facts                            │
+  │ ⚠️ No sources added yet - stories may be less accurate        │
+  │                                                                │
+  │ [Add Sources in Research Tab →]                                │
+  └────────────────────────────────────────────────────────────────┘
+  ```
+
+  **News:**
+  ```
+  ┌────────────────────────────────────────────────────────────────┐
+  │ 📰 NEWS PROJECT                                                 │
+  │ Live news feeds will provide balanced coverage.                 │
+  │                                                                │
+  │ Connected APIs: NewsAPI (Science, Technology)                   │
+  │ Balance: ✓ Left (NPR) ✓ Center (Reuters) ✓ Right (WSJ)         │
+  │ Last refresh: 2 hours ago [Refresh Now]                        │
+  └────────────────────────────────────────────────────────────────┘
+  ```
+
+  ---
+
+  ## Component: ContentTypeBanner
+
+  ```typescript
+  interface ContentTypeBannerProps {
+    projectId: string;
+    contentType: 'series' | 'movie' | 'factual' | 'news';
+  }
+
+  export function ContentTypeBanner({ projectId, contentType }: ContentTypeBannerProps) {
+    const { sources, facts, loading } = useResearchSummary(projectId);
+
+    return (
+      <Alert variant={getVariant(contentType)}>
+        <AlertIcon icon={getIcon(contentType)} />
+        <AlertTitle>{getTitle(contentType)}</AlertTitle>
+        <AlertDescription>
+          {getDescription(contentType, sources, facts)}
+        </AlertDescription>
+        {needsSources(contentType) && sources.length === 0 && (
+          <AlertAction>
+            <Link href={`/research`}>Add Sources in Research Tab →</Link>
+          </AlertAction>
+        )}
+      </Alert>
+    );
+  }
+  ```
+
+  ---
+
+  ## Data Flow
+
+  ### Fetch Project Settings
+
+  ```typescript
+  // In SeasonGeneratorDialog
+  const { data: project } = useProject(projectId);
+  const canonSettings = project?.metadata?.canon;
+  const contentType = canonSettings?.contentType ?? 'series';
+  ```
+
+  ### Fetch Research Summary
+
+  ```typescript
+  // Hook to get source and fact counts
+  function useResearchSummary(projectId: string) {
+    const [data, setData] = useState({ sources: [], facts: [], loading: true });
+
+    useEffect(() => {
+      getResearchSummaryAction(projectId).then(setData);
+    }, [projectId]);
+
+    return data;
+  }
+  ```
+
+  ---
+
+  ## Server Action Updates
+
+  ### Season Analysis with Facts
+
+  Update `analyzeSeasonRoadmapAction` to include external context:
+
+  ```typescript
+  export async function analyzeSeasonRoadmapAction(data: AnalyzeSeasonInput) {
+    const { projectId, roadmap } = data;
+
+    // Get content type
+    const project = await getProject(projectId);
+    const contentType = project.metadata?.canon?.contentType;
+
+    // Get external facts if factual content type
+    let externalContext = null;
+    if (['factual', 'news'].includes(contentType)) {
+      externalContext = await getExternalContextForGeneration(projectId);
+    }
+
+    // Build memory context
+    const memoryContext = await buildMemoryContext({
+      projectId,
+      includeFacts: true,
+      externalContext,
+    });
+
+    // Queue LLM job with enriched context
+    return queueSeasonAnalysis({
+      roadmap,
+      memoryContext,
+      externalContext,
+    });
+  }
+  ```
+
+  ### New Action: Research Summary
+
+  ```typescript
+  // packages/features/episodes/src/server/research-actions.ts
+
+  export async function getResearchSummaryAction(projectId: string) {
+    const client = await getSupabaseServerClient();
+
+    const { data: sources } = await client
+      .from('external_sources')
+      .select('id, name, type, status')
+      .eq('project_id', projectId);
+
+    const { count: factCount } = await client
+      .from('external_content')
+      .select('id', { count: 'exact' })
+      .eq('project_id', projectId)
+      .eq('content_type', 'fact');
+
+    return {
+      sources: sources ?? [],
+      factCount: factCount ?? 0,
+      hasApiSources: sources?.some(s => s.type === 'api'),
+    };
+  }
+  ```
+
+  ---
+
+  ## Prompt Integration
+
+  ### Updated Season Analysis Prompt
+
+  ```json
+  {
+    "name": "season-analysis",
+    "system": "You are analyzing a production roadmap to generate episode outlines.\n\n{{#if externalContext}}## VERIFIED FACTS\nUse these facts in your episode outlines where relevant:\n{{externalContext}}\n{{/if}}\n\n{{#if memoryContext}}## CANON CONTEXT\n{{memoryContext}}\n{{/if}}",
+    "user": "Analyze this roadmap and generate episode outlines:\n\n{{roadmap}}"
+  }
+  ```
+
+  ---
+
+  ## Validation
+
+  ### Require Sources for Factual Content
+
+  ```typescript
+  // In handleAnalyze
+  const handleAnalyze = (data) => {
+    if (['factual', 'news'].includes(contentType) && sources.length === 0) {
+      toast.warning(
+        'No fact sources linked. Stories will be based only on the roadmap.'
+      );
+    }
+
+    // Proceed with analysis...
+  };
+  ```

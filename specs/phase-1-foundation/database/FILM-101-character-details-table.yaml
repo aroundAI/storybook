@@ -1,0 +1,280 @@
+spec_id: "FILM-101e"
+title: "Character Details Table"
+phase: 1
+phase_name: "Foundation"
+category: database_table
+status: PARTIAL
+audited: "2026-09-23"
+effort: XS
+dependencies:
+  - spec_id: "FILM-101d"
+    note: "assets-table"
+summary: >
+  The `character_details` table extends the `assets` table specifically for character-type assets.
+  It stores character appearance, personality, and the Kling-ready element prompt for consistent
+  character generation across shots.
+database_table:
+  table_name: "character_details"
+  migration: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql"
+  columns:
+    - name: "asset_id"
+      type: "UUID"
+      nullable: false
+      default: null
+      description: "Primary key, FK to assets table"
+    - name: "physical_attributes"
+      type: "JSONB"
+      nullable: true
+      default: "NULL"
+      description: "Structured character appearance data"
+    - name: "personality"
+      type: "TEXT"
+      nullable: true
+      default: "NULL"
+      description: "Character personality description"
+    - name: "element_prompt"
+      type: "TEXT"
+      nullable: true
+      default: "NULL"
+      description: "Kling-ready prompt for character consistency"
+    - name: "reference_images"
+      type: "TEXT[]"
+      nullable: true
+      default: "NULL"
+      description: "Array of reference image URLs"
+    - name: "voice_asset_id"
+      type: "UUID"
+      nullable: true
+      default: "NULL"
+      description: "FK to voice asset for this character"
+  indexes:
+    - name: "idx_character_details_voice_asset_id"
+      columns: ["voice_asset_id"]
+      unique: false
+    - name: "idx_character_details_physical_attributes"
+      columns: ["physical_attributes"]
+      unique: false
+  foreign_keys:
+    - column: "asset_id"
+      references: "assets(id)"
+      on_delete: "CASCADE"
+    - column: "voice_asset_id"
+      references: "assets(id)"
+      on_delete: "SET NULL"
+  rls_enabled: null
+acceptance_criteria:
+  - text: "Table created successfully with all columns"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:420; voice_asset_id is now elevenlabs_voice_id text (apps/web/supabase/migrations/20251225160000_change_voice_id_to_text.sql:18)"
+  - text: "Foreign key to assets with CASCADE delete"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:421"
+  - text: "Foreign key to voice_asset_id with SET NULL delete"
+    met: false
+    reason: "retired — FK dropped and column retyped to an ElevenLabs voice ID in 30ed2083 (apps/web/supabase/migrations/20251225160000_change_voice_id_to_text.sql:8)"
+  - text: "Check constraint ensures asset is type 'character'"
+    met: false
+    reason: "not met — no check or trigger exists (a CHECK cannot hold the spec's subquery); the insert policy ignores type (apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:1104)"
+  - text: "GIN index on physical_attributes JSONB"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:438"
+  - text: "Can store multiple reference image URLs in array"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:425"
+  - text: "Deleting character asset cascades to delete character_details"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:421"
+test_plan:
+  unit:
+    - text: "Insert character_details with valid asset_id (type='character') succeeds"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert character_details with non-character asset_id fails (check constraint)"
+      met: false
+      reason: "not met — no test found; the constraint it would test does not exist"
+    - text: "Insert character_details with NULL physical_attributes succeeds"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert character_details with valid JSONB physical_attributes succeeds"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert character_details with invalid JSONB fails"
+      met: false
+      reason: "not met — no test found"
+    - text: "Array of reference_images stores and retrieves correctly"
+      met: false
+      reason: "not met — no test found"
+  integration:
+    - text: "Deleting character asset cascades to delete character_details"
+      met: false
+      reason: "not met — no test found"
+    - text: "Deleting voice asset sets voice_asset_id to NULL"
+      met: false
+      reason: "retired — the voice_asset_id FK was dropped in 30ed2083"
+    - text: "Can query characters by physical attributes (e.g., hair color)"
+      met: false
+      reason: "not met — no test found"
+    - text: "GIN index improves JSONB query performance"
+      met: false
+      reason: "not met — no test found"
+  e2e: []
+  edge_cases:
+    - text: "Character with no physical_attributes (NULL)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Character with minimal physical_attributes (just age)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Character with maximal physical_attributes (all fields populated)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Element prompt over 5000 characters"
+      met: false
+      reason: "not met — no test found"
+    - text: "Empty reference_images array"
+      met: false
+      reason: "not met — no test found"
+    - text: "Reference_images array with 20+ URLs"
+      met: false
+      reason: "not met — no test found"
+    - text: "Voice_asset_id pointing to non-voice asset (should be prevented at app level)"
+      met: false
+      reason: "retired — the column now holds an ElevenLabs voice ID, not an asset reference (30ed2083)"
+remaining:
+  - criterion: "Check constraint: asset is type 'character'"
+    reason: "Never created: Postgres rejects a subquery in a CHECK, and no trigger or policy tests the type (git log -S finds none). Only the app create path sets it (packages/features/assets/src/lib/server/character.mutations.ts:58)"
+    closed_by: "unassigned"
+open_questions: []
+notes: |
+  Sections of the Markdown spec that have no typed field, kept verbatim. Moved to typed fields: the Context paragraph (summary), the column table (database_table.columns), index names and columns, unique keys and foreign keys (database_table), the acceptance criteria and test-plan checklists and the Remaining table (remaining).
+
+  ## Metadata
+  - **Phase:** 1
+  - **Priority:** P0
+  - **Effort:** XS
+  - **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ COMPLETE)
+  - **Completed:** 2025-12-05
+  - **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
+  - **Dependencies:** FILM-101 (assets-table)
+  - **Blocks:** FILM-202 (character-actions), FILM-205 (character-editor)
+
+  ## Specification
+
+  ### Table Definition
+  ```sql
+  CREATE TABLE character_details (
+    asset_id UUID PRIMARY KEY REFERENCES assets(id) ON DELETE CASCADE,
+    physical_attributes JSONB,
+    personality TEXT,
+    element_prompt TEXT,
+    reference_images TEXT[],
+    voice_asset_id UUID REFERENCES assets(id) ON DELETE SET NULL,
+    CHECK ((SELECT type FROM assets WHERE id = asset_id) = 'character')
+  );
+  ```
+
+  ### Indexes
+  ```sql
+  -- Index for voice_asset_id (FK lookup)
+  CREATE INDEX idx_character_details_voice_asset_id ON character_details(voice_asset_id)
+    WHERE voice_asset_id IS NOT NULL;
+
+  -- GIN index for JSONB physical_attributes queries
+  CREATE INDEX idx_character_details_physical_attributes
+    ON character_details USING GIN (physical_attributes);
+  ```
+
+  ### Constraints
+  - **Primary Key**: `asset_id` (UUID)
+  - **Foreign Keys**:
+    - `asset_id` references `assets(id)` ON DELETE CASCADE
+    - `voice_asset_id` references `assets(id)` ON DELETE SET NULL
+  - **Check Constraint**: Asset must be of type 'character'
+
+  ### JSONB Schema
+  #### PhysicalAttributes Interface
+  ```typescript
+  interface PhysicalAttributes {
+    age?: string;              // "child", "teenager", "young adult", "middle-aged", "elderly"
+    height?: string;           // "short", "average", "tall"
+    build?: string;            // "slim", "athletic", "muscular", "heavyset"
+    hair?: {
+      color: string;           // "black", "brown", "blonde", "red", "gray", "white", etc.
+      style: string;           // "short", "long", "curly", "straight", "bald"
+      length?: string;         // "cropped", "shoulder-length", "waist-length"
+    };
+    eyes?: {
+      color: string;           // "brown", "blue", "green", "hazel", "gray"
+      shape?: string;          // "almond", "round", "hooded"
+    };
+    skin?: {
+      tone: string;            // "pale", "fair", "olive", "tan", "brown", "dark"
+      features?: string[];     // ["freckles", "scar on left cheek", "tattoo on arm"]
+    };
+    outfit?: {
+      style: string;           // "casual", "formal", "fantasy", "sci-fi", "period"
+      colors: string[];        // ["blue", "white"]
+      description: string;     // "Blue jeans and white t-shirt"
+    };
+    distinguishingFeatures?: string[]; // ["glasses", "beard", "prosthetic arm", "glowing eyes"]
+  }
+  ```
+
+  ### Example Data
+  ```sql
+  INSERT INTO assets (project_id, type, name, description)
+  VALUES ('project-123', 'character', 'Alice Blackwood', 'The protagonist detective')
+  RETURNING id;
+
+  INSERT INTO character_details (asset_id, physical_attributes, personality, element_prompt, reference_images)
+  VALUES (
+    'alice-asset-id',
+    '{
+      "age": "young adult",
+      "height": "average",
+      "build": "athletic",
+      "hair": {
+        "color": "black",
+        "style": "straight",
+        "length": "shoulder-length"
+      },
+      "eyes": {
+        "color": "green"
+      },
+      "skin": {
+        "tone": "fair"
+      },
+      "outfit": {
+        "style": "modern",
+        "colors": ["black", "gray"],
+        "description": "Black leather jacket, gray shirt, dark jeans"
+      },
+      "distinguishingFeatures": ["scar above left eyebrow"]
+    }',
+    'Determined, intelligent, cynical but compassionate. Trust issues stemming from past betrayal.',
+    'A young adult woman with shoulder-length straight black hair and piercing green eyes. Fair skin with a small scar above left eyebrow. Wearing black leather jacket over gray shirt and dark jeans. Athletic build, average height. Determined expression.',
+    ARRAY['https://storage.example.com/ref1.jpg', 'https://storage.example.com/ref2.jpg']
+  );
+  ```
+
+  ## File Changes
+  | Action | Path |
+  |--------|------|
+  | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
+
+  ## Test Plan
+
+  ### JSONB Query Examples
+  ```sql
+  -- Find all characters with black hair
+  SELECT a.name, cd.physical_attributes
+  FROM assets a
+  JOIN character_details cd ON a.id = cd.asset_id
+  WHERE cd.physical_attributes @> '{"hair": {"color": "black"}}';
+
+  -- Find all characters with glasses
+  SELECT a.name
+  FROM assets a
+  JOIN character_details cd ON a.id = cd.asset_id
+  WHERE cd.physical_attributes @> '{"distinguishingFeatures": ["glasses"]}';
+  ```

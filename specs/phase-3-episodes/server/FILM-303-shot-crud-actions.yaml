@@ -1,0 +1,1046 @@
+spec_id: "FILM-303"
+title: "Shot CRUD Server Actions"
+phase: 3
+phase_name: "Episodes"
+category: server_action
+status: PARTIAL
+audited: "2026-09-23"
+effort: M
+dependencies:
+  - spec_id: "FILM-101c"
+    note: null
+  - spec_id: "FILM-301"
+    note: null
+summary: >
+  The Shot Management system provides server-side actions to handle individual video shots within episodes. Shots are the atomic units of content generation - each shot represents a single video clip that will be generated using AI video providers (Kling, Runway, Luma). Shots are ordered by sequence_number and belong to scenes within episodes.
+server_action:
+  actions:
+    - name: "createShotAction"
+      file: "packages/features/episodes/src/lib/server/mutations/shot-actions.ts"
+      schema: "CreateShotSchema"
+      auth: true
+    - name: "batchCreateShotsAction"
+      file: "packages/features/episodes/src/lib/server/mutations/shot-actions.ts"
+      schema: "BatchCreateShotsSchema"
+      auth: true
+    - name: "reorderShotsAction"
+      file: "packages/features/episodes/src/lib/server/mutations/shot-actions.ts"
+      schema: "ReorderShotsSchema"
+      auth: true
+    - name: "getEpisodeShotsAction"
+      file: "packages/features/episodes/src/lib/server/queries/shot-queries.ts"
+      schema: "GetEpisodeShotsSchema"
+      auth: true
+    - name: "updateShotAction"
+      file: "packages/features/episodes/src/lib/server/mutations/shot-actions.ts"
+      schema: "UpdateShotSchema"
+      auth: true
+    - name: "deleteShotAction"
+      file: "packages/features/episodes/src/lib/server/mutations/shot-actions.ts"
+      schema: "DeleteShotSchema"
+      auth: true
+acceptance_criteria:
+  - text: "`createShotAction` successfully creates shot with valid data"
+    met: true
+    evidence: null
+  - text: "`createShotAction` auto-assigns sequence_number"
+    met: true
+    evidence: null
+  - text: "`createShotAction` respects RLS (cannot create for inaccessible project)"
+    met: false
+    reason: "unverified — policy `shots_create` exists (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:933`); no pgTAP test exercises it"
+  - text: "`batchCreateShotsAction` creates all shots atomically"
+    met: true
+    evidence: null
+  - text: "`batchCreateShotsAction` rolls back on any failure"
+    met: true
+    evidence: null
+  - text: "`batchCreateShotsAction` assigns sequential sequence_numbers"
+    met: true
+    evidence: null
+  - text: "`reorderShotsAction` updates all sequence_numbers correctly"
+    met: false
+    reason: "no longer true — its one-row updates break `unique(episode_id, sequence_number)` (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:331`) on any real reorder"
+  - text: "`reorderShotsAction` validates all shots belong to same episode"
+    met: true
+    evidence: null
+  - text: "`getEpisodeShotsAction` returns shots ordered by sequence_number"
+    met: false
+    reason: "no longer true — it embeds `generation_jobs` with no foreign key and selects a missing `progress` column, so every call errors (`packages/features/episodes/src/lib/server/queries/shot-queries.ts:43`)"
+  - text: "`getEpisodeShotsAction` includes generation job status"
+    met: false
+    reason: "retired — shot generation jobs were video jobs; in-app video generation removed in 5b88db3a"
+  - text: "`getEpisodeShotsAction` filters by status"
+    met: false
+    reason: "no longer true — same failing query (`packages/features/episodes/src/lib/server/queries/shot-queries.ts:43`)"
+  - text: "`updateShotAction` updates only provided fields"
+    met: true
+    evidence: null
+  - text: "`deleteShotAction` soft deletes shot"
+    met: true
+    evidence: null
+  - text: "`deleteShotAction` reorders remaining shots to close gap"
+    met: false
+    reason: "no longer true — the soft-deleted row keeps its number, so each decrement hits the same unique constraint; errors are ignored (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:425`)"
+  - text: "`deleteShotAction` cancels in-progress generation job"
+    met: false
+    reason: "retired — shot generation jobs were video jobs; in-app video generation removed in 5b88db3a"
+  - text: "All actions enforce authentication"
+    met: true
+    evidence: null
+  - text: "All actions complete within 3 seconds (except batch)"
+    met: false
+    reason: "unverified — runtime timing; needs a timed run against a seeded database"
+  - text: "Batch create handles 100+ shots"
+    met: false
+    reason: "no longer true — `BatchCreateShotsSchema` caps a batch at 100 (`packages/features/episodes/src/lib/schemas/shot.schema.ts:167`); 101 is refused"
+  - text: "All inputs validated with Zod schemas"
+    met: true
+    evidence: null
+  - text: "All database errors properly caught and thrown"
+    met: false
+    reason: "no longer true — `deleteShotAction` ignores the errors of its close-gap updates (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:425`)"
+  - text: "TypeScript compiles without errors"
+    met: true
+    evidence: null
+  - text: "No ESLint warnings"
+    met: false
+    reason: "unverified — linting is outside the audit rules; settle with `pnpm --filter @kit/episodes lint`"
+test_plan:
+  unit: []
+  integration: []
+  e2e: []
+remaining:
+  - criterion: "`reorderShotsAction` updates sequence numbers correctly"
+    reason: "sequential one-row updates break `unique(episode_id, sequence_number)` (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:331`) (owner: no callers: fix or delete)"
+    closed_by: "owner"
+  - criterion: "`getEpisodeShotsAction` returns and filters shots"
+    reason: "embeds `generation_jobs` with no foreign key and selects a nonexistent `progress` column (`packages/features/episodes/src/lib/server/queries/shot-queries.ts:43`) (owner: no callers: fix or delete)"
+    closed_by: "owner"
+  - criterion: "`deleteShotAction` closes the gap"
+    reason: "the soft-deleted row still holds its number, so the decrements collide, and the errors are ignored (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:425`) (owner: no callers: fix or delete)"
+    closed_by: "owner"
+  - criterion: "Batch create handles 100+ shots"
+    reason: "schema caps a batch at 100 (`packages/features/episodes/src/lib/schemas/shot.schema.ts:167`); shot generation inserts directly and is not capped (owner: no callers: fix or delete)"
+    closed_by: "owner"
+  - criterion: "All database errors caught and thrown"
+    reason: "close-gap update errors are ignored (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:425`) (owner: no callers: fix or delete)"
+    closed_by: "owner"
+open_questions: []
+notes: |
+  ## Source header
+
+  **Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
+  **Phase**: 3
+  **Priority**: P0
+  **Effort**: M (3-5 days)
+  **Dependencies**: FILM-101c (shots table), FILM-301 (episode-crud-actions)
+  **Blocks**: FILM-307, FILM-311, Phase 4 (Video Generation)
+
+  ## Context
+
+  The system must support creating individual shots, batch creating shots from a shot list, and reordering shots via drag-and-drop. Shots track their generation status, video URLs, and metadata including camera directions, prompts, and character appearances. The system must coordinate with the generation_jobs table for video generation tracking.
+
+  ## Requirements
+
+  ### Functional Requirements
+
+  1. **Create Shot**
+     - Accept shot data (episode_id, scene_number, shot_number, description, prompt, duration, metadata)
+     - Validate user has write access to project
+     - Auto-assign sequence_number based on existing shots
+     - Initialize shot in 'pending' status
+     - Return created shot with all fields
+
+  2. **Batch Create Shots**
+     - Accept array of shot definitions from shot list generation
+     - Validate user has write access to project
+     - Create all shots in a single transaction
+     - Auto-assign sequence_numbers sequentially
+     - Return all created shots
+     - Roll back all shots if any creation fails
+
+  3. **Reorder Shots**
+     - Accept array of shot IDs in new order
+     - Validate all shots belong to same episode
+     - Update sequence_numbers atomically
+     - Prevent gaps in sequence (1, 2, 3, 4...)
+     - Return updated shots
+
+  4. **Get Episode Shots**
+     - Fetch all shots for an episode
+     - Order by sequence_number
+     - Include generation job status if present
+     - Filter by status (pending, generating, completed, failed)
+     - Support pagination
+
+  5. **Update Shot**
+     - Accept partial shot updates
+     - Update description, prompt, metadata, camera_direction
+     - Update video_url and thumbnail_url after generation
+     - Validate user has write access
+     - Return updated shot
+
+  6. **Delete Shot**
+     - Soft delete (set deleted_at timestamp)
+     - Validate user has write access
+     - Reorder remaining shots to close gap
+     - Cancel related generation job if in progress
+     - Return success confirmation
+
+  ### Non-Functional Requirements
+
+  - All actions must complete within 3 seconds (except batch operations)
+  - Batch create must be atomic (all or nothing)
+  - Actions must be idempotent where possible
+  - Must enforce RLS policies via Supabase client
+  - Must log errors with context for debugging
+  - Must validate all inputs with Zod schemas
+
+  ## Interface
+
+  ### TypeScript Types
+
+  ```typescript
+  // Zod Schemas
+  import { z } from 'zod';
+
+  export const ShotStatusSchema = z.enum([
+    'pending',
+    'generating',
+    'completed',
+    'failed'
+  ]);
+
+  export const CameraDirectionSchema = z.enum([
+    'static',
+    'pan_left',
+    'pan_right',
+    'tilt_up',
+    'tilt_down',
+    'zoom_in',
+    'zoom_out',
+    'dolly_in',
+    'dolly_out',
+    'tracking',
+    'crane_up',
+    'crane_down'
+  ]);
+
+  export const CreateShotSchema = z.object({
+    episodeId: z.string().uuid(),
+    sceneNumber: z.number().int().positive(),
+    shotNumber: z.number().int().positive(),
+    description: z.string().min(1).max(1000),
+    prompt: z.string().min(1).max(2000),
+    durationSeconds: z.number().positive().max(10),
+    cameraDirection: CameraDirectionSchema.optional(),
+    metadata: z.object({
+      characters: z.array(z.string()).optional(),
+      location: z.string().optional(),
+      timeOfDay: z.enum(['day', 'night', 'dawn', 'dusk']).optional(),
+      weather: z.string().optional(),
+      mood: z.string().optional(),
+    }).optional(),
+  });
+
+  export const BatchCreateShotsSchema = z.object({
+    episodeId: z.string().uuid(),
+    shots: z.array(z.object({
+      sceneNumber: z.number().int().positive(),
+      shotNumber: z.number().int().positive(),
+      description: z.string().min(1).max(1000),
+      prompt: z.string().min(1).max(2000),
+      durationSeconds: z.number().positive().max(10),
+      cameraDirection: CameraDirectionSchema.optional(),
+      characters: z.array(z.string()).optional(),
+    })),
+  });
+
+  export const ReorderShotsSchema = z.object({
+    episodeId: z.string().uuid(),
+    shotIds: z.array(z.string().uuid()).min(1),
+  });
+
+  export const GetEpisodeShotsSchema = z.object({
+    episodeId: z.string().uuid(),
+    status: ShotStatusSchema.optional(),
+    limit: z.number().int().min(1).max(100).default(50),
+    offset: z.number().int().min(0).default(0),
+  });
+
+  export const UpdateShotSchema = z.object({
+    shotId: z.string().uuid(),
+    description: z.string().min(1).max(1000).optional(),
+    prompt: z.string().min(1).max(2000).optional(),
+    durationSeconds: z.number().positive().max(10).optional(),
+    cameraDirection: CameraDirectionSchema.optional(),
+    status: ShotStatusSchema.optional(),
+    videoUrl: z.string().url().optional(),
+    thumbnailUrl: z.string().url().optional(),
+    metadata: z.record(z.unknown()).optional(),
+  });
+
+  export const DeleteShotSchema = z.object({
+    shotId: z.string().uuid(),
+  });
+
+  // Return Types
+  export interface Shot {
+    id: string;
+    episodeId: string;
+    sceneNumber: number;
+    shotNumber: number;
+    sequenceNumber: number;
+    description: string;
+    prompt: string;
+    durationSeconds: number;
+    status: 'pending' | 'generating' | 'completed' | 'failed';
+    cameraDirection: string | null;
+    videoUrl: string | null;
+    thumbnailUrl: string | null;
+    generationJobId: string | null;
+    metadata: Record<string, unknown>;
+    createdAt: string;
+    updatedAt: string;
+    deletedAt: string | null;
+  }
+
+  export interface ShotWithJobStatus extends Shot {
+    generationJob: {
+      id: string;
+      status: string;
+      provider: string;
+      progress: number;
+      errorMessage: string | null;
+    } | null;
+  }
+
+  export interface GetEpisodeShotsResponse {
+    shots: ShotWithJobStatus[];
+    total: number;
+    hasMore: boolean;
+  }
+
+  export interface BatchCreateShotsResponse {
+    shots: Shot[];
+    count: number;
+  }
+
+  export interface ReorderShotsResponse {
+    shots: Shot[];
+    count: number;
+  }
+
+  export interface DeleteShotResponse {
+    success: boolean;
+    shotId: string;
+  }
+  ```
+
+  ### Server Actions
+
+  ```typescript
+  'use server';
+
+  import { enhanceAction } from '@kit/next/actions';
+  import { getSupabaseServerClient } from '@kit/supabase/server-client';
+  import {
+    CreateShotSchema,
+    BatchCreateShotsSchema,
+    ReorderShotsSchema,
+    GetEpisodeShotsSchema,
+    UpdateShotSchema,
+    DeleteShotSchema,
+  } from '../schemas/shot.schema';
+
+  /**
+   * Creates a new shot for an episode
+   * @throws {Error} If user lacks project access or validation fails
+   */
+  export const createShotAction = enhanceAction(
+    async (data, user) => {
+      const client = getSupabaseServerClient();
+
+      // Get next sequence number
+      const { data: existingShots } = await client
+        .from('shots')
+        .select('sequence_number')
+        .eq('episode_id', data.episodeId)
+        .is('deleted_at', null)
+        .order('sequence_number', { ascending: false })
+        .limit(1);
+
+      const nextSequenceNumber = (existingShots?.[0]?.sequence_number ?? 0) + 1;
+
+      // Insert shot
+      const { data: shot, error } = await client
+        .from('shots')
+        .insert({
+          episode_id: data.episodeId,
+          scene_number: data.sceneNumber,
+          shot_number: data.shotNumber,
+          sequence_number: nextSequenceNumber,
+          description: data.description,
+          prompt: data.prompt,
+          duration_seconds: data.durationSeconds,
+          camera_direction: data.cameraDirection ?? null,
+          status: 'pending',
+          metadata: data.metadata ?? {},
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return shot;
+    },
+    { schema: CreateShotSchema, auth: true }
+  );
+
+  /**
+   * Creates multiple shots from a shot list in a single transaction
+   * @throws {Error} If user lacks access or any shot creation fails
+   */
+  export const batchCreateShotsAction = enhanceAction(
+    async (data, user) => {
+      const client = getSupabaseServerClient();
+
+      // Verify user has access to episode (RLS will handle this)
+      const { data: episode } = await client
+        .from('episodes')
+        .select('id, project_id')
+        .eq('id', data.episodeId)
+        .is('deleted_at', null)
+        .single();
+
+      if (!episode) {
+        throw new Error('Episode not found');
+      }
+
+      // Get next sequence number
+      const { data: existingShots } = await client
+        .from('shots')
+        .select('sequence_number')
+        .eq('episode_id', data.episodeId)
+        .is('deleted_at', null)
+        .order('sequence_number', { ascending: false })
+        .limit(1);
+
+      let nextSequenceNumber = (existingShots?.[0]?.sequence_number ?? 0) + 1;
+
+      // Prepare batch insert
+      const shotsToInsert = data.shots.map((shot, index) => ({
+        episode_id: data.episodeId,
+        scene_number: shot.sceneNumber,
+        shot_number: shot.shotNumber,
+        sequence_number: nextSequenceNumber + index,
+        description: shot.description,
+        prompt: shot.prompt,
+        duration_seconds: shot.durationSeconds,
+        camera_direction: shot.cameraDirection ?? null,
+        status: 'pending',
+        metadata: {
+          characters: shot.characters ?? [],
+        },
+      }));
+
+      // Insert all shots atomically
+      const { data: shots, error } = await client
+        .from('shots')
+        .insert(shotsToInsert)
+        .select();
+
+      if (error) throw error;
+
+      return {
+        shots: shots ?? [],
+        count: shots?.length ?? 0,
+      };
+    },
+    { schema: BatchCreateShotsSchema, auth: true }
+  );
+
+  /**
+   * Reorders shots by updating sequence_numbers
+   * @throws {Error} If user lacks access or shots don't belong to same episode
+   */
+  export const reorderShotsAction = enhanceAction(
+    async (data, user) => {
+      const client = getSupabaseServerClient();
+
+      // Verify all shots belong to the same episode
+      const { data: shots, error: fetchError } = await client
+        .from('shots')
+        .select('id, episode_id')
+        .in('id', data.shotIds)
+        .is('deleted_at', null);
+
+      if (fetchError) throw fetchError;
+
+      if (!shots || shots.length !== data.shotIds.length) {
+        throw new Error('Some shots not found');
+      }
+
+      const episodeIds = [...new Set(shots.map(s => s.episode_id))];
+      if (episodeIds.length > 1 || episodeIds[0] !== data.episodeId) {
+        throw new Error('All shots must belong to the same episode');
+      }
+
+      // Update sequence numbers
+      const updates = data.shotIds.map((shotId, index) => ({
+        id: shotId,
+        sequence_number: index + 1,
+        updated_at: new Date().toISOString(),
+      }));
+
+      // Update each shot (Supabase doesn't support batch updates directly)
+      const updatedShots = [];
+      for (const update of updates) {
+        const { data: shot, error } = await client
+          .from('shots')
+          .update({
+            sequence_number: update.sequence_number,
+            updated_at: update.updated_at,
+          })
+          .eq('id', update.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        updatedShots.push(shot);
+      }
+
+      return {
+        shots: updatedShots,
+        count: updatedShots.length,
+      };
+    },
+    { schema: ReorderShotsSchema, auth: true }
+  );
+
+  /**
+   * Fetches all shots for an episode with optional filtering
+   * @throws {Error} If user lacks project access
+   */
+  export const getEpisodeShotsAction = enhanceAction(
+    async (data, user) => {
+      const client = getSupabaseServerClient();
+
+      // Build query
+      let query = client
+        .from('shots')
+        .select(`
+          *,
+          generation_job:generation_jobs(
+            id,
+            status,
+            provider,
+            progress,
+            error_message
+          )
+        `, { count: 'exact' })
+        .eq('episode_id', data.episodeId)
+        .is('deleted_at', null)
+        .order('sequence_number', { ascending: true })
+        .range(data.offset, data.offset + data.limit - 1);
+
+      // Apply status filter if provided
+      if (data.status) {
+        query = query.eq('status', data.status);
+      }
+
+      const { data: shots, error, count } = await query;
+
+      if (error) throw error;
+
+      return {
+        shots: shots ?? [],
+        total: count ?? 0,
+        hasMore: (count ?? 0) > data.offset + data.limit,
+      };
+    },
+    { schema: GetEpisodeShotsSchema, auth: true }
+  );
+
+  /**
+   * Updates an existing shot
+   * @throws {Error} If user lacks access or shot not found
+   */
+  export const updateShotAction = enhanceAction(
+    async (data, user) => {
+      const client = getSupabaseServerClient();
+
+      // Build update object (only include provided fields)
+      const updates: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (data.description !== undefined) updates.description = data.description;
+      if (data.prompt !== undefined) updates.prompt = data.prompt;
+      if (data.durationSeconds !== undefined) {
+        updates.duration_seconds = data.durationSeconds;
+      }
+      if (data.cameraDirection !== undefined) {
+        updates.camera_direction = data.cameraDirection;
+      }
+      if (data.status !== undefined) updates.status = data.status;
+      if (data.videoUrl !== undefined) updates.video_url = data.videoUrl;
+      if (data.thumbnailUrl !== undefined) {
+        updates.thumbnail_url = data.thumbnailUrl;
+      }
+      if (data.metadata !== undefined) updates.metadata = data.metadata;
+
+      const { data: shot, error } = await client
+        .from('shots')
+        .update(updates)
+        .eq('id', data.shotId)
+        .is('deleted_at', null)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!shot) throw new Error('Shot not found');
+
+      return shot;
+    },
+    { schema: UpdateShotSchema, auth: true }
+  );
+
+  /**
+   * Soft deletes a shot and reorders remaining shots
+   * @throws {Error} If user lacks access or shot not found
+   */
+  export const deleteShotAction = enhanceAction(
+    async (data, user) => {
+      const client = getSupabaseServerClient();
+
+      // Get shot to find its episode and sequence
+      const { data: shot, error: fetchError } = await client
+        .from('shots')
+        .select('episode_id, sequence_number, generation_job_id')
+        .eq('id', data.shotId)
+        .is('deleted_at', null)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!shot) throw new Error('Shot not found');
+
+      // Cancel generation job if exists and in progress
+      if (shot.generation_job_id) {
+        const { data: job } = await client
+          .from('generation_jobs')
+          .select('status')
+          .eq('id', shot.generation_job_id)
+          .single();
+
+        if (job && ['pending', 'processing'].includes(job.status)) {
+          await client
+            .from('generation_jobs')
+            .update({ status: 'cancelled' })
+            .eq('id', shot.generation_job_id);
+        }
+      }
+
+      // Soft delete shot
+      const now = new Date().toISOString();
+      const { error: deleteError } = await client
+        .from('shots')
+        .update({ deleted_at: now })
+        .eq('id', data.shotId);
+
+      if (deleteError) throw deleteError;
+
+      // Reorder remaining shots to close gap
+      const { data: remainingShots } = await client
+        .from('shots')
+        .select('id, sequence_number')
+        .eq('episode_id', shot.episode_id)
+        .gt('sequence_number', shot.sequence_number)
+        .is('deleted_at', null)
+        .order('sequence_number', { ascending: true });
+
+      if (remainingShots && remainingShots.length > 0) {
+        for (const remainingShot of remainingShots) {
+          await client
+            .from('shots')
+            .update({
+              sequence_number: remainingShot.sequence_number - 1,
+              updated_at: now,
+            })
+            .eq('id', remainingShot.id);
+        }
+      }
+
+      return {
+        success: true,
+        shotId: data.shotId,
+      };
+    },
+    { schema: DeleteShotSchema, auth: true }
+  );
+  ```
+
+  ## Implementation Details
+
+  ### File Structure
+
+  ```
+  packages/features/episodes/src/
+  ├── lib/
+  │   ├── schemas/
+  │   │   └── shot.schema.ts            # Zod schemas (CREATE THIS)
+  │   └── server/
+  │       ├── mutations/
+  │       │   └── shot-actions.ts        # CRUD actions (CREATE THIS)
+  │       └── queries/
+  │           └── shot-queries.ts        # Read-only queries (CREATE THIS)
+  └── types/
+      └── shot.types.ts                  # TypeScript interfaces (CREATE THIS)
+  ```
+
+  ### Sequence Number Management
+
+  Shots are ordered by `sequence_number` (1, 2, 3, 4...):
+
+  1. **Create**: Auto-assign next sequence number
+  2. **Batch Create**: Assign sequential numbers starting from next available
+  3. **Reorder**: Update all sequence numbers based on new order
+  4. **Delete**: Close gap by decrementing all subsequent shots
+
+  ### Camera Directions
+
+  Supported camera directions:
+  - `static` - No camera movement
+  - `pan_left`, `pan_right` - Horizontal camera rotation
+  - `tilt_up`, `tilt_down` - Vertical camera rotation
+  - `zoom_in`, `zoom_out` - Change focal length
+  - `dolly_in`, `dolly_out` - Physical camera movement forward/backward
+  - `tracking` - Follow subject movement
+  - `crane_up`, `crane_down` - Vertical camera movement
+
+  ### Shot Status Workflow
+
+  ```
+  pending → generating → completed
+                      → failed
+  ```
+
+  Status transitions:
+  - `pending`: Initial state, awaiting generation
+  - `generating`: Video generation in progress
+  - `completed`: Video generated successfully
+  - `failed`: Video generation failed
+
+  ### Error Handling
+
+  | Error Condition | Error Code | User Message | HTTP Status |
+  |----------------|------------|--------------|-------------|
+  | Invalid UUID | VALIDATION_ERROR | "Invalid shot ID format" | 400 |
+  | Shot not found | NOT_FOUND | "Shot not found" | 404 |
+  | No project access | FORBIDDEN | "You don't have access to this project" | 403 |
+  | Invalid sequence | CONFLICT | "Invalid shot sequence" | 409 |
+  | Batch insert failed | TRANSACTION_ERROR | "Failed to create shots" | 500 |
+  | Database error | INTERNAL_ERROR | "Failed to perform operation" | 500 |
+
+  ### Validation Rules
+
+  - **description**: 1-1000 characters, required
+  - **prompt**: 1-2000 characters, required
+  - **durationSeconds**: 0.5-10 seconds (Kling max: 10s)
+  - **sceneNumber**: Positive integer, required
+  - **shotNumber**: Positive integer, required
+  - **episodeId**: Valid UUID, required
+  - **cameraDirection**: Valid enum value, optional
+
+  ## File Changes
+
+  ### New Files
+
+  1. **packages/features/episodes/src/lib/schemas/shot.schema.ts**
+     - Export all Zod schemas
+     - Include type inference helpers
+     - Add JSDoc comments
+
+  2. **packages/features/episodes/src/lib/server/mutations/shot-actions.ts**
+     - Implement all CRUD actions
+     - Use enhanceAction wrapper
+     - Include comprehensive error handling
+     - Implement atomic batch operations
+
+  3. **packages/features/episodes/src/lib/server/queries/shot-queries.ts**
+     - Helper functions for read operations
+     - Reusable query builders
+     - Type-safe return values
+
+  4. **packages/features/episodes/src/types/shot.types.ts**
+     - Export Shot interface
+     - Export all response types
+     - Mirror database types
+
+  ### Modified Files
+
+  None (new feature)
+
+  ## Acceptance Criteria (non-checklist content)
+
+  Grouping in the source: items 1–16 under "### Functional"; items 17–22 under "### Non-Functional".
+
+  **Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ Complete (2025-12-08))
+  **Implementation**: PR #TBD
+
+  ## Test Plan
+
+  ### Unit Tests
+
+  **File**: `packages/features/episodes/src/lib/server/mutations/__tests__/shot-actions.test.ts`
+
+  ```typescript
+  import { describe, it, expect, vi, beforeEach } from 'vitest';
+  import {
+    createShotAction,
+    batchCreateShotsAction,
+    reorderShotsAction,
+    getEpisodeShotsAction,
+    updateShotAction,
+    deleteShotAction,
+  } from '../shot-actions';
+
+  // Mock Supabase client
+  vi.mock('@kit/supabase/server-client');
+
+  describe('Shot CRUD Actions', () => {
+    describe('createShotAction', () => {
+      it('should create shot with valid data', async () => {
+        // Test implementation
+      });
+
+      it('should auto-assign sequence_number', async () => {
+        // Test implementation
+      });
+
+      it('should enforce authentication', async () => {
+        // Test implementation
+      });
+    });
+
+    describe('batchCreateShotsAction', () => {
+      it('should create multiple shots atomically', async () => {
+        // Test implementation
+      });
+
+      it('should assign sequential sequence_numbers', async () => {
+        // Test implementation
+      });
+
+      it('should roll back on failure', async () => {
+        // Test implementation
+      });
+    });
+
+    describe('reorderShotsAction', () => {
+      it('should update sequence_numbers', async () => {
+        // Test implementation
+      });
+
+      it('should validate shots belong to same episode', async () => {
+        // Test implementation
+      });
+    });
+
+    describe('getEpisodeShotsAction', () => {
+      it('should return shots ordered by sequence', async () => {
+        // Test implementation
+      });
+
+      it('should include generation job status', async () => {
+        // Test implementation
+      });
+
+      it('should filter by status', async () => {
+        // Test implementation
+      });
+    });
+
+    describe('updateShotAction', () => {
+      it('should update only provided fields', async () => {
+        // Test implementation
+      });
+    });
+
+    describe('deleteShotAction', () => {
+      it('should soft delete shot', async () => {
+        // Test implementation
+      });
+
+      it('should reorder remaining shots', async () => {
+        // Test implementation
+      });
+
+      it('should cancel in-progress generation job', async () => {
+        // Test implementation
+      });
+    });
+  });
+  ```
+
+  ### Integration Tests
+
+  **File**: `apps/web/__tests__/integration/shot-crud.test.ts`
+
+  ```typescript
+  import { describe, it, expect } from 'vitest';
+  import { createClient } from '@supabase/supabase-js';
+
+  describe('Shot CRUD Integration', () => {
+    it('should complete full CRUD lifecycle', async () => {
+      // 1. Create shot
+      // 2. Batch create shots
+      // 3. Reorder shots
+      // 4. Update shot
+      // 5. Delete shot
+      // 6. Verify sequence closed gap
+    });
+
+    it('should handle batch operations atomically', async () => {
+      // Create batch with intentional error
+      // Verify no shots created
+    });
+  });
+  ```
+
+  ### Manual Testing
+
+  1. **Create Shot**
+     - Create episode
+     - Create shot
+     - Verify sequence_number = 1
+     - Create another shot
+     - Verify sequence_number = 2
+
+  2. **Batch Create**
+     - Create episode
+     - Batch create 10 shots
+     - Verify all shots created
+     - Verify sequential sequence_numbers (1-10)
+
+  3. **Reorder Shots**
+     - Create 5 shots
+     - Reorder: [5, 3, 1, 4, 2]
+     - Verify new sequence matches order
+
+  4. **Delete Shot**
+     - Create 5 shots (1, 2, 3, 4, 5)
+     - Delete shot #3
+     - Verify remaining shots: (1, 2, 3, 4)
+     - Verify no gap in sequence
+
+  ## Security Considerations
+
+  ### Authentication
+
+  - All actions require authenticated user via `auth: true`
+  - User identity retrieved from session token
+  - No direct user ID parameters accepted
+
+  ### Authorization
+
+  - RLS policies enforce project-level access control
+  - Shots inherit access from episodes
+  - Write operations require explicit write access
+
+  ### Input Validation
+
+  - All inputs validated with Zod schemas
+  - UUID format validated for IDs
+  - Prompt length limited to prevent abuse
+  - Duration limited to provider maximums
+
+  ### SQL Injection Prevention
+
+  - Supabase client uses parameterized queries
+  - No raw SQL string concatenation
+  - All inputs properly escaped
+
+  ### Rate Limiting
+
+  Consider adding rate limiting in future iteration:
+  - Max 1000 shot creations per hour per user
+  - Max 10000 reads per hour per user
+
+  ## Performance Considerations
+
+  ### Database Indexes
+
+  Verify the following indexes exist (from FILM-101c):
+
+  ```sql
+  CREATE INDEX idx_shots_episode_sequence ON shots(episode_id, sequence_number)
+    WHERE deleted_at IS NULL;
+
+  CREATE INDEX idx_shots_status ON shots(status)
+    WHERE deleted_at IS NULL;
+  ```
+
+  ### Query Optimization
+
+  - Use batch operations for multiple shots
+  - Implement cursor-based pagination for large shot lists
+  - Cache shot counts with React Query
+
+  ### Batch Operation Performance
+
+  - Batch create: ~100 shots in <2 seconds
+  - Reorder: ~100 shots in <1 second
+  - Consider chunking for 500+ shots
+
+  ### Caching Strategy
+
+  ```typescript
+  // Client-side React Query cache
+  const queryClient = useQueryClient();
+
+  // Cache shots for 30 seconds (frequently updated)
+  const { data } = useQuery({
+    queryKey: ['shots', episodeId, status],
+    queryFn: () => getEpisodeShotsAction({ episodeId, status }),
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000, // Poll for generation status updates
+  });
+
+  // Invalidate cache after mutations
+  await createShotAction(data);
+  queryClient.invalidateQueries({ queryKey: ['shots', episodeId] });
+  ```
+
+  ## Future Enhancements
+
+  1. **Shot Templates**
+     - Predefined shot templates for common scenes
+     - Template library with camera directions
+
+  2. **Shot Duplication**
+     - `duplicateShotAction` to clone existing shots
+     - Batch duplicate with modifications
+
+  3. **Shot Variations**
+     - Generate multiple variations of same shot
+     - A/B testing different prompts
+
+  4. **Smart Reordering**
+     - AI-suggested optimal shot order
+     - Scene continuity validation
+
+  5. **Shot Analytics**
+     - Track generation success rate per shot type
+     - Popular camera directions
+     - Average generation time
+
+  ## References
+
+  - **FILM-101c**: Shots table schema
+  - **FILM-301**: Episode CRUD actions
+  - **Constitution**: Section 2.2 (Server Actions Pattern)
+  - **Constitution**: Section 3 (Database Conventions)
+  - **Constitution**: Section 4.1 (RLS Policies)
+  - **Kling API**: Max duration 10 seconds per shot
+  - **Next.js Actions**: https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations

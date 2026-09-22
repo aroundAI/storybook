@@ -1,0 +1,407 @@
+spec_id: "FILM-1702"
+title: "Language Dimension Reconciliation"
+phase: 17
+phase_name: "Analytics Provenance and Signal"
+category: feature
+status: DONE
+audited: "2026-09-23"
+effort: L
+dependencies:
+  - spec_id: "FILM-1606"
+    note: null
+summary: >
+  publishes.language (the asset's language) and platform_connections.language (the channel's target
+  language) are two different columns answering two different questions, both default to 'en', and
+  the Language tab read only the connection column while every other tab read the publish column —
+  so a routing mismatch between them was invisible and the English bucket silently doubled as
+  'language never set'. This spec makes 'not set' representable (NULL in Postgres, '' in ClickHouse)
+  with a recorded, non-heuristic rule for interpreting existing 'en' rows, adds channel_language to
+  video_dim beside the existing publish language, moves the Language tab onto ClickHouse via
+  querySegmentPerformance so it and Deep Dive can never disagree, and exposes the choice as an
+  explicit on-screen toggle defaulting to content language.
+acceptance_criteria:
+  - text: "A publish whose language was never set is distinguishable from one deliberately in English, in the database and on screen"
+    met: true
+    evidence: "pgTAP publishes-language-unset.test.sql (an insert without a language is NULL, not 'en'); language-evidence.spec.ts reads \"Language not set · 509\" beside \"English · 100\" off the page"
+  - text: "The historical interpretation of existing `'en'` rows is recorded in this spec before any backfill runs"
+    met: true
+    evidence: "§2a, in the same commit as the migration"
+  - text: "`video_dim` carries both the publish language and the channel's target language"
+    met: true
+    evidence: "010_video_dim_channel_language; dim-sync-language.test.ts; verify run against ClickHouse 24.8"
+  - text: "The Language tab reports from ClickHouse, not from a Postgres connection join"
+    met: true
+    evidence: "language-analytics.ts no longer imports fetchAllRows or reads seasons, publishes or platform_connections; its one remaining Postgres read is episode titles for the ten shorts shown"
+  - text: "The Language tab and the Deep Dive tab, given the same scope and window, report the same figure for the same language"
+    met: true
+    evidence: "verify-queries.ts: \"the Language tab and a scoped Deep Dive agree per language\" — en=1000 es=1000 (not set)=5049, on a real server. On screen, the tab's medians match the medians panel's (language-evidence.spec.ts). The Deep Dive tab itself has no language control yet (FILM-1709), so the on-screen comparison is with the one other surface that groups by language"
+  - text: "The active dimension is named on screen; a reader never has to guess which language a percentage refers to"
+    met: true
+    evidence: "LanguageDimensionLabel rendered on every card grouped by language; asserted for four cards under both toggle settings"
+  - text: "Switching the dimension changes the numbers, and both settings are reachable"
+    met: true
+    evidence: "language-tab.spec.ts (no ClickHouse needed) and language-evidence.spec.ts (English 100 → 670 across the toggle)"
+  - text: "Publishes whose language differs from their channel's target are countable, and that count is surfaced somewhere"
+    met: true
+    evidence: "queryLanguagePairs + summariseLanguagePairs; \"2 of 16\" read off the page"
+  - text: "No reader coalesces a missing language to a real language code"
+    met: true
+    evidence: "Met for everything that reports or aggregates a language — the readers named in §2 and the siblings found beside them. Two groups of `|| 'en'` remain deliberately, recorded in notes under 'Deliberately unchanged' rather than silently left"
+  - text: "A language with too few videos to be meaningful renders dimmed with its n, per FILM-1606's convention, rather than being hidden"
+    met: true
+    evidence: "language-cards.test.tsx; Spanish at n=5 read off the page dimmed, \"directional only\""
+open_questions: []
+notes: |
+  ## 1. Overview
+
+  There are two `language` columns in this product, they mean different things,
+  different halves of the analytics feature read different ones, and nothing
+  reconciles them. On top of that, both default to `'en'`, which makes "English"
+  double as the bucket for *never set*.
+
+  **Source A — `publishes.language`.** `varchar(5) NOT NULL DEFAULT 'en'`, added
+  by `20251224180000_add_multi_language_analytics.sql:12-13` alongside
+  `dubbed_version_id`. This is the language of *this particular publish*.
+  `dim-sync.ts:47,163` selects it and writes it to `video_dim.language`, so it is
+  the value every ClickHouse query can filter on — `buildDimConditions`
+  (`queries-advanced.ts:139-142`) supports `scope.language`, and the raw CSV
+  export uses it (`apps/web/app/api/reports/scheduled/route.ts:371`).
+
+  **Source B — `platform_connections.language`.** `varchar(5) NOT NULL DEFAULT
+  'en'`, added by `20251223150000_add_platform_connection_language.sql:14-15` and
+  commented *"Target language for this channel"*. This is the language the
+  channel was created to serve. `server/language-analytics.ts` reads it at `:155`
+  and `:634`, maps connection → language at `:165`, then publish → language via
+  `publishes.platform_connection_id` at `:170-173`.
+
+  **The entire Language tab is built on Source B. Everything else is built on
+  Source A.** They agree only when routing worked. A publish that landed on the
+  wrong channel, or a channel carrying mixed content, makes them disagree
+  silently, and no surface exposes the disagreement.
+
+  > **Correction, 2026-09-22 (implementation).** Two statements in this
+  > section were checked against the code and are narrower than written.
+  >
+  > - *"The entire Language tab is built on Source B"* is true of five of its
+  >   six reads. `getContentTypeComparison` never grouped by language at all; it
+  >   shared the resolver only to get `content_type`. It moved to `video_dim`
+  >   with the rest and takes no dimension.
+  > - The tab's **metrics** already came from ClickHouse
+  >   (`queryTotalsByVideoIds`, `queryDailyStats`, `queryAudienceRows`). What
+  >   came from Postgres was the *mapping* — which publish is in which language
+  >   — through seasons → episodes → publishes → `platform_connections`. §3's
+  >   "moves the Language tab onto ClickHouse" means moving that mapping.
+  >
+  > **Measured locally the same day** (the local fixture, not production, which
+  > has no ClickHouse): Postgres held 41 publishes, all `'en'`, none with a
+  > channel — so Source B resolved none of them, and the tab's `: 'en'` branch
+  > labelled all 41 English. `video_dim` held 23,816 videos: 23,815 `'en'`,
+  > one `'es'`. After this spec, all 41 are NULL in Postgres (every one is
+  > provably a default, §2a) and the two columns disagree on none, because
+  > none has both set.
+
+  ## 2. English is also the unknown bucket
+
+  This is the part that invalidates conclusions rather than merely confusing
+  them.
+
+  Both columns are `NOT NULL DEFAULT 'en'`. The database therefore never stores
+  NULL, and a publish created without anyone choosing a language is recorded as
+  English, indistinguishably from one deliberately published in English. On top
+  of that the readers coalesce *again* — `language-analytics.ts:165` and `:644`
+  use `c.language || 'en'` (note `||`, so an empty string also becomes English),
+  and `dim-sync.ts:163` uses `row.language ?? 'en'`.
+
+  The consequence: **every "English outperforms" reading of the Language tab is
+  unfalsifiable**, because the English bucket contains both English content and
+  all content whose language nobody set. On a project that has never used the
+  dubbing pipeline, the English bucket is simply "everything".
+
+  The important detail for whoever implements this: it **cannot be fixed in the
+  readers**. Changing `'en'` to `'unknown'` in `language-analytics.ts` changes
+  nothing, because the value arriving from the database is already `'en'`. The
+  schema cannot currently express "never set". Fixing it requires either making
+  the column nullable or adopting a sentinel, plus a decision about what the
+  existing rows mean — and those existing rows are unrecoverable, since the
+  information was never captured.
+
+  That backfill decision is a judgement call about historical data and is the
+  reason this spec is L rather than M.
+
+  > **Correction, 2026-09-22.** The reader list above was incomplete, and one
+  > of the defaults was not in a reader or the schema at all:
+  >
+  > - `language-analytics.ts` coalesced in **nine** places, not two — the two
+  >   map builds named above and seven `publishLanguageMap.get(id) || 'en'`
+  >   inside the folds.
+  > - **`PlatformConfigSchema.language` was `.default('en')`**
+  >   (`publishing/src/lib/schemas/publish.schema.ts:57`). Zod applies it before
+  >   the action runs, so `publishToAllAction`'s documented fallback — *"explicit
+  >   language from request, or fall back to connection language"* — was dead
+  >   code: the request always carried a language. A request that omitted one
+  >   was stamped English by the validator. Removed; the fallback now runs.
+  > - `publish-actions.ts` initialised that fallback to `'en'` and kept it when
+  >   a second, error-swallowing query failed. It now reads the language with
+  >   the connection it has already fetched.
+  > - `getEpisodePublishesAction`, `generateLanguageInsightsAction` and the
+  >   `language-insights` worker each returned a literal `'en'` for "no
+  >   language" (`topLanguage`). Nothing renders it; all three return null.
+
+  ### 2a. What the existing `'en'` rows mean — recorded 2026-09-22, before any backfill
+
+  The information was never captured, so existing rows can only be
+  *interpreted*. The rule the migration
+  (`20260921213245_publishes-language-unset.sql`) applies:
+
+  > **An existing `'en'` becomes NULL only where it is provable that no code
+  > path ever wrote it. Every other `'en'` stays English.**
+
+  Two cases are provable:
+
+  | Case | Why it is certainly a default |
+  |---|---|
+  | `platform_connection_id is null` | The only application writer of a connection-less publish is `markAsExternallyUploaded` (`upload-only-actions.ts`), and its insert has never named `language`. Seeds and SQL fixtures likewise. |
+  | `created_at < 2025-12-24 18:00 UTC` | The column did not exist. `20251224180000` is the migration's own timestamp — a lower bound on when it could have been applied anywhere — so the row got `'en'` from `ADD COLUMN … DEFAULT`. |
+
+  Everything else was written by `publishToAllAction`, which has always named
+  `language`: from the key of the asset the publish screen picked, or from the
+  channel's target. Those stay English. **One ambiguity survives and is
+  recorded rather than resolved:** where the value was inherited from a channel
+  whose own target was never changed from *its* default, English is what the
+  routing did, but nobody can say it is what the video is.
+
+  Deliberately **not** heuristic. "This account never used dubbing, so its
+  `'en'` is probably a default" is plausible and unfalsifiable, and would
+  relabel a genuinely English channel as unknown. A wrong NULL is as much a
+  fabricated value as a wrong `'en'`.
+
+  Reversible, because only `'en'` is ever reclassified and nothing written
+  before the migration could have been NULL:
+
+  ```sql
+  update public.publishes set language = 'en'
+  where language is null and created_at < '<when the migration ran>';
+  ```
+
+  Executed against fixture rows before being trusted (the real migration file,
+  in a transaction, rolled back): connection-less `'en'` → NULL, pre-column
+  `'en'` → NULL, blank → NULL, post-column `'en'` with a channel → `'en'`,
+  connection-less pre-column `'es'` → `'es'`.
+
+  **`platform_connections.language` keeps its `'en'` default, on purpose.** It
+  is a routing *setting*, not a measurement: a channel left on the default
+  really does receive the English asset, so "English" is what it does rather
+  than a guess about what it is. That is why the surfaces call it **Channel
+  target language** and never "the channel's language".
+
+  ## 3. The decision: model both, default to the publish
+
+  Both columns are legitimate and answer different questions.
+
+  **For Source B (channel target).** It is the *editorial* dimension — the unit a
+  budget is allocated to, and the unit the Language tab's own question is about
+  ("should we keep doing Spanish?"). It is non-null by construction for any
+  connected channel, it works for platforms that expose no per-asset language
+  metadata, and all six existing Language tab queries already use it.
+
+  **For Source A (publish).** It is the *asset* dimension, and the only one that
+  can be correct when one channel posts multiple languages — which is precisely
+  what the migration named `add_multi_language_analytics` says the product is
+  heading toward. It is what `video_dim.language` carries, so it is the only one
+  the ClickHouse layer can filter on, and therefore the only one that lets the
+  Language tab and the Deep Dive tab ever agree or cross-filter.
+
+  **Neither should be discarded.** Picking one arbitrates a product question by
+  fiat. Instead:
+
+  - `video_dim` gains `channel_language` beside the existing `language`, written
+    by `dim-sync.ts` from the publish's connection.
+  - The Language tab's dimension becomes an explicit, visible toggle — **Content
+    language** vs **Channel target language** — defaulting to content.
+  - The active choice is named on the card, so a reader always knows which
+    question the number answers.
+  - The divergence becomes a *product surface*, not a bug: "N publishes whose
+    language differs from their channel's target" is a routing diagnostic worth
+    having.
+
+  This also moves the Language tab onto ClickHouse like every other tab, which is
+  what finally lets the platform filter reach it (FILM-1709).
+
+  > **As built, 2026-09-22.**
+  >
+  > - "Not set" is **NULL** in Postgres and **`''`** in `video_dim`
+  >   (`LANGUAGE_NOT_SET`). The empty string because it is also what ClickHouse
+  >   fills in for a column an insert does not name: a row written before
+  >   `channel_language` existed, or by a writer nobody updated, reads as not
+  >   set rather than as a language. A sentinel like `'unknown'` would have to
+  >   be written deliberately by every writer to mean the same thing.
+  > - In TypeScript it is `string | null`, not a string that might be empty.
+  >   That is what found every consumer: making `LanguagePerformance.language`
+  >   nullable produced a compile error at each of the five label tables.
+  > - The absence is worded per dimension — **"Language not set"** for content,
+  >   **"No channel target"** for channel — because the absence differs: one
+  >   was never labelled, the other was never on a connected channel.
+  > - It is shown by default and never crowned: the unlabelled group is usually
+  >   the largest, and "⭐ Top: Language not set" would repeat the old defect
+  >   under a new name. It is likewise withheld from the clip recommendations
+  >   and from the LLM insights payload.
+  > - The divergence is surfaced beside the toggle:
+  >   *"N of M videos with both languages known are in a language other than
+  >   their channel's target"*, the disagreeing pairs, and what could not be
+  >   compared. An unlabelled video is **not** divergent — `null !== 'en'` is
+  >   true, and a string comparison would have made the diagnostic measure how
+  >   much was never labelled.
+  > - A channel's target changes reach `video_dim` on the next reconcile
+  >   (nightly, or `POST /api/analytics/backfill`), not at once:
+  >   `@kit/publishing` cannot call `upsertVideoDims` without a dependency
+  >   cycle.
+
+  ## 4. Why this depends on FILM-1606
+
+  FILM-1606 replaces `queryMedianByTag` with
+  `querySegmentPerformance({ scope, segment: { kind: 'tag' | 'language' | 'content_type' | 'connection' } })`
+  — one SQL body, one `GROUP BY` selected from a closed lookup, measured at a
+  checkpoint age rather than as a lifetime sum. Its §2 already states that
+  "Language is not a `content_tags` dimension and must not be forced into one".
+
+  That is the query this spec's toggle should drive. Building a second
+  language-aggregation path here would recreate exactly the duplication this
+  spec exists to remove. If FILM-1606 has not landed, this spec waits.
+
+  > **Correction, 2026-09-22.** `querySegmentPerformance` landed with the
+  > shape assumed, but it cannot carry the whole tab. It returns a view
+  > *distribution at a checkpoint age* — median, quartiles, CTR — and the tab
+  > also shows windowed likes and shares, a platform × language matrix, a daily
+  > trend and geography, none of which that query has. So:
+  >
+  > - The **per-language figure** is `querySegmentPerformance`, through
+  >   `LANGUAGE_DIMENSION_SEGMENTS` (`content → 'language'`,
+  >   `channel → 'channel_language'`), which gained a `channel_language` segment
+  >   kind. It is the same call the medians panel makes, so the two agree by
+  >   construction, and `verify-queries.ts` asserts it against a real server
+  >   for every language and for the unlabelled group.
+  > - The **windowed folds** keep their existing TypeScript aggregation and
+  >   take each video's language from `queryVideoLanguages` — one read of
+  >   `video_dim` returning both languages, so the toggle is a different key
+  >   into one result rather than a second, differently-scoped query. No new
+  >   SQL aggregation by language was added.
+  >
+  > **A defect this exposed.** `dimSubquery` filtered `video_dim` *before* its
+  > `argMax`, and the table is read without `FINAL`. A video relabelled from
+  > `'en'` to not-set still has its old row until a merge that is never
+  > guaranteed; a `language = 'en'` filter kept only that row and the argMax
+  > over what was left said English. The backfill relabels in bulk, so every
+  > reclassified video would have stayed English under a language filter.
+  > Language filters now apply after the collapse, as a `HAVING`. Reproduced on
+  > ClickHouse 24.8 with merges paused — they otherwise finish before the
+  > assertion and hide it — red, then green.
+  >
+  > **And a guard the move needed.** The Postgres walk ran under the caller's
+  > RLS, which is what kept one tenant out of another's breakdown.
+  > `language-analytics.ts` is a `'use server'` module, so each export is an
+  > endpoint taking a bare `projectId`; reading ClickHouse without a check
+  > would have let any signed-in user read any project's languages.
+  > `assertScopeAccess` now runs first in every read.
+
+  ## 5. Implementation map
+
+  | File | Change |
+  |------|--------|
+  | `apps/web/supabase/migrations/<timestamp>_publishes-language-default.sql` | The `default 'en'` decision from §2, whichever way it goes — a hand-written migration, mirrored into `schemas/30-film-studio.sql`. Not generated with `db diff` (root `CLAUDE.md`). |
+  | `packages/clickhouse/src/migrations/` | New migration adding `channel_language` to `video_dim`. |
+  | `packages/clickhouse/src/types.ts` | `VideoDim.channel_language`. |
+  | `packages/features/content-analytics/src/server/dim-sync.ts` | Resolve the connection's language and write it; stop coalescing to `'en'` if §2 changes the sentinel. |
+  | `packages/clickhouse/src/queries-advanced.ts` | `buildDimConditions` gains `channelLanguage`; `DimScope` gains the field. |
+  | `packages/features/content-analytics/src/server/language-analytics.ts` | Retire the Postgres connection-join path in favour of `querySegmentPerformance`. This is the bulk of the work — six queries. |
+  | `components/language-analytics-dashboard.tsx` | The dimension toggle, and passing it down. |
+  | `components/language-analytics-cards.tsx` | `LANGUAGE_NAMES`/`LANGUAGE_FLAGS` currently render flags only in the Platform × Language matrix header (`:285`); add the name, since a flag is not a language. |
+
+  > **As built, 2026-09-22.** `LANGUAGE_NAMES` was not one table but **five**
+  > copies across five components, with two different colour palettes; they are
+  > one module, `lib/language-labels.ts`. The Top Shorts card had the same
+  > flag-only defect as the matrix and now names the language. The ClickHouse
+  > migration is `010_video_dim_channel_language` — `009` is FILM-1710's. The
+  > toggle lives in a new `components/language-tab.tsx`, which owns the tab's
+  > queries: in `analytics-dashboard.tsx` the toggle would have unmounted with
+  > the cards every time it was used. Also touched, because the type found them:
+  > `video-log-table.tsx` (a missing language rendered as a blank cell) and
+  > `taxonomy/tag-medians-card.tsx` (the unlabelled segment rendered as a row
+  > with no name).
+
+  ## 6. Out of scope
+
+  - Re-shelling the Language tab's cards onto `AnalyticsCard` — FILM-1707.
+  - The provenance chip naming which dimension is active — FILM-1705 provides the
+    chip; this spec provides the fact it displays.
+  - Making the platform filter reach the Language tab — FILM-1709.
+  - Any change to `dubbed_versions`, captions or the dubbing pipeline itself.
+
+  ### Deliberately unchanged
+
+  Criterion 9 is met for everything that **reports or aggregates** a language —
+  the readers §2 names, and the siblings found beside them. Two groups of
+  `|| 'en'` remain, and are listed so nobody has to rediscover them:
+
+  - **Asset selection in the publish pipeline** —
+    `publishing/src/jobs/process-scheduled-publishes.ts:248` and
+    `apps/web/lambda/scheduled-publish/index.ts:85,222`. They choose which
+    *file* to upload when a scheduled publish has no language, and fall back to
+    the English asset. That is a routing default, not a claim about the video:
+    the row stays NULL. Changing it means deciding what a language-less
+    scheduled publish should upload, which belongs to the publishing pipeline.
+  - **Source B fallbacks** — `connection-actions.ts:85,328`,
+    `publish-hub.tsx:81`, `platform-connections.tsx:374`,
+    `project-publishing-configs.tsx:92`, `episode-publishing-configs.tsx:121`,
+    `publish-screen.tsx:657,819,1042,1081`. The column is `NOT NULL`, so each
+    is unreachable; they date from when the column might not have existed.
+    Left alone because FILM-1711 is editing the same files.
+
+  Also unchanged, and a limit on criterion 1's "in the database": when no
+  localized asset exists for the requested language, `publishToAllAction` falls
+  through to `final_video_url` and still records the requested language — the
+  label then describes the channel, not the file.
+
+  ## 8. Verification
+
+  ```bash
+  pnpm --filter @kit/content-analytics test
+  pnpm --filter @kit/clickhouse test
+  ./scripts/local-env.sh verify
+  pnpm turbo typecheck --force && pnpm lint
+  ```
+
+  The seeded fixture must include, and the tests must assert on:
+
+  - a publish with an explicitly set non-English language
+  - a publish whose language was never set
+  - a publish routed to a channel whose target language differs from its own
+  - a channel carrying two languages
+
+  Cross-check by hand that the Language tab and a Deep Dive query scoped to the
+  same language return the same number. They cannot today, which is the point.
+
+  ## 9. Risk
+
+  **This spec will move numbers that are already on screen.** Separating unknown
+  from English will shrink the English bucket on essentially every existing
+  project, and any conclusion a user has drawn from the Language tab may reverse.
+  That is a correction, not a regression, but it needs to be communicated rather
+  than shipped quietly — and it is the reason §7 requires the historical
+  interpretation to be written down *before* the backfill, not after.
+
+  The second risk is scope creep into FILM-1606. If that spec's
+  `querySegmentPerformance` lands with a different shape than assumed here, this
+  spec's §5 needs revising rather than working around it.
+feature:
+  database:
+    tables: ["publishes"]
+    columns_added: ["publishes.language (nullable, backfilled per §2a)"]
+  queries:
+    - {name: "querySegmentPerformance", purpose: "Per-language figure via LANGUAGE_DIMENSION_SEGMENTS (content → 'language', channel → 'channel_language'); same call the medians panel makes, so the two agree by construction", file: "packages/clickhouse (FILM-1606's query)"}
+    - {name: "queryVideoLanguages", purpose: "One read of video_dim returning both languages, feeding the windowed TypeScript folds so the toggle is a different key into one result rather than a second query", file: "packages/clickhouse"}
+  actions: []
+  ui:
+    - {component: "LanguageTab (new, owns the tab's queries)", file: "components/language-tab.tsx"}
+    - {component: "LanguageAnalyticsDashboard (dimension toggle)", file: "components/language-analytics-dashboard.tsx"}
+    - {component: "LanguageAnalyticsCards", file: "components/language-analytics-cards.tsx"}
+  provider_integration: null

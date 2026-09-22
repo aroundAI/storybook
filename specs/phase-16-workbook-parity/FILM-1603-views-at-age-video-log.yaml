@@ -1,0 +1,171 @@
+spec_id: "FILM-1603"
+title: "Per-Video Views-at-Age & Video Log"
+phase: 16
+phase_name: "Workbook Parity"
+category: feature
+status: DONE
+audited: "2026-09-23"
+effort: L
+dependencies:
+  - spec_id: "FILM-1602"
+    note: null
+  - spec_id: "FILM-1612"
+    note: null
+summary: >
+  Sheet 1 of the workbook is a per-video row carrying views at fixed ages —
+  30/90/180/365 days — alongside CTR, average view duration and retention. It
+  is the sheet the rest of the workbook is derived from, and nothing in the
+  platform produces it: every existing query aggregates across videos or
+  across time, never per-video-at-a-fixed-age. This spec adds that row, as a
+  query, an action, and CSV columns. The in-app table is deliberately **not**
+  here — it lands with the other orphan wiring in FILM-1611.
+acceptance_criteria:
+  - text: "`queryVideoViewsAtAge` returns one row per video in scope, including videos with no metric rows"
+    met: true
+    evidence: null
+  - text: "Checkpoint sums use the `< N` boundary, and `queryCohortCurves` matches"
+    met: true
+    evidence: "`queryCohortCurves` became `queryCohortMedians` (1b02afde), same `< N`: `packages/clickhouse/src/queries-advanced.ts:683`; test `packages/clickhouse/__tests__/queries-advanced.test.ts:374`"
+  - text: "`matureAt[N]` is false for a video younger than N days"
+    met: true
+    evidence: null
+  - text: "`ingestLagDays` reflects the gap between publication and the first ingested metric day"
+    met: true
+    evidence: null
+  - text: "`orderBy` cannot inject SQL"
+    met: true
+    evidence: null
+  - text: "`getVideoLogAction` merges quality metrics, revenue and channel name onto each row"
+    met: true
+    evidence: null
+  - text: "Raw CSV carries `viewsAt30/90/180/365` and `channelName`"
+    met: true
+    evidence: null
+  - text: "Maturity and ingest-lag helpers are unit-tested"
+    met: true
+    evidence: null
+open_questions: []
+feature:
+  database:
+    tables: []
+    columns_added: []
+  queries:
+    - name: "queryVideoViewsAtAge"
+      purpose: "Per-video views at 30/90/180/365 days, LEFT JOIN from the dim subquery, paginated, whitelisted orderBy"
+      file: "packages/clickhouse/src/queries-advanced.ts"
+    - name: "dimSubquery"
+      purpose: "Projects title, connection_id, platform, content_type and language with argMax(…, updated_at)"
+      file: "packages/clickhouse/src/queries-advanced.ts"
+    - name: "queryCohortCurves"
+      purpose: "Checkpoint boundary switched from <= to <"
+      file: "packages/clickhouse/src/queries-advanced.ts"
+    - name: "queryQualityMetricsForVideos"
+      purpose: "CTR, average view duration and average view percentage merged onto each Video Log row"
+      file: "packages/clickhouse/src/queries-detail.ts"
+  actions:
+    - name: "getVideoLogAction"
+      file: "packages/features/content-analytics/src/server/video-log-actions.ts"
+  ui: []
+  provider_integration: null
+notes: |
+  ## 1. Overview
+
+  Sheet 1 of the workbook is a per-video row carrying views at fixed ages —
+  30/90/180/365 days — alongside CTR, average view duration and retention. It
+  is the sheet the rest of the workbook is derived from, and nothing in the
+  platform produces it: every existing query aggregates across videos or
+  across time, never per-video-at-a-fixed-age.
+
+  This spec adds that row, as a query, an action, and CSV columns. The
+  in-app table is deliberately **not** here — it lands with the other orphan
+  wiring in FILM-1611.
+
+  Two honesty affordances are part of the data, not the UI, because a
+  consumer that reads the numbers without them will be confidently wrong:
+
+  - **Maturity.** A video 12 days old has no meaningful "@30d" figure. Its
+    `viewsAt[30]` is not zero, it is *not yet knowable*, and the two must not
+    render the same.
+  - **Ingest lag.** Reporting jobs backfill only ~30 days from job creation,
+    so for anything published before jobs existed on that channel the
+    early-life rows do not exist and cannot be obtained. An "@30d" computed
+    over a partial window is truncated, not small.
+
+  ## 2. Conventions Fixed Here
+
+  - **Day boundary is `< N`**: days 0–29 are "@30d". The existing
+    `queryCohortCurves` used `<= N`, which is off by one against this and
+    would leave two conventions in the codebase the moment a second
+    age-bounded query existed. It is flipped in this spec — a one-day shift
+    in the existing cohort chart, taken once and deliberately.
+  - **`dimSubquery` projects a fixed, explicit column set.** FILM-1602
+    removed an unused `extra: string[]` parameter that spliced raw caller
+    identifiers into SQL. The columns this phase needs are added by name.
+
+  ## 3. Implementation Map
+
+  | File | Change |
+  |------|--------|
+  | `packages/clickhouse/src/queries-advanced.ts` | `dimSubquery` projects `title`, `connection_id`, `platform`, `content_type`, `language` alongside the existing columns, each with the same `argMax(…, updated_at)` rule. New `queryVideoViewsAtAge`. `queryCohortCurves` switches `<=` to `<`. |
+  | `packages/clickhouse/src/lib/video-age.ts` | Pure: `computeMaturity(publishedAt, checkpoints, now)` and `computeIngestLagDays(publishedAt, firstMetricDate)`. No I/O, so both are unit-tested without a ClickHouse instance. |
+  | `packages/features/content-analytics/src/server/video-log-actions.ts` | `getVideoLogAction` merges the query with `queryQualityMetricsForVideos` (which already returns exactly Sheet 1's CTR / avg view duration / avg view percentage), per-publish revenue, and channel names from `listProjectChannels`. |
+  | `packages/features/content-analytics/src/lib/raw-export-generator.ts` | `RawExportRow` gains `viewsAt30/90/180/365` and `channelName`. Per-video constants repeat on each daily row, which preserves the clean monthly concatenation the file header calls for. |
+
+  ### `queryVideoViewsAtAge`
+
+  ```ts
+  queryVideoViewsAtAge({
+    scope,                       // DimScope — project or account, optional channel
+    checkpoints = [30, 90, 180, 365],
+    publishedFrom?, publishedTo?,
+    limit = 200, offset = 0,
+    orderBy = 'published_at',    // whitelisted; never interpolated from input
+  }): Promise<VideoAgeRow[]>
+  ```
+
+  Per checkpoint:
+  `sumIf(m.views, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < N)`
+
+  `LEFT JOIN video_daily_stats` from the dim subquery, **deliberately LEFT**:
+  a published video with no ingested rows must show as zero rather than
+  vanish from the log. That is the same failure mode as the inflated
+  `viewsPerVideo` bug FILM-1601 fixed, and an inner join would reintroduce it
+  here.
+
+  `VideoAgeRow` carries `viewsAtAge`, `matureAt`, `lifetimeViews`,
+  `firstMetricDate` and `ingestLagDays` per video.
+
+  ## 4. Bounding
+
+  The join scans the scope's full history, so the query is always paginated
+  (`limit`/`offset`, default 200) and `orderBy` is whitelisted rather than
+  interpolated. `publishedFrom` is expected at account scale.
+
+  The id list handed to `queryQualityMetricsForVideos` is bounded by the same
+  page, so it stays well inside the chunking added in FILM-1612.
+
+  ## 5. Out of Scope
+
+  - **The `VideoLogTable` component and its tab** — FILM-1611.
+  - **Per-video notes.** `publishes.analytics_note` does not exist yet; it is
+    added in FILM-1610. The action leaves the field out entirely rather than
+    returning a placeholder that later changes meaning.
+  - **Recovering early-life rows for historical videos.** Not possible; see
+    the phase README. `ingestLagDays` exists to mark them, not to fix them.
+
+  ## 6. Acceptance Criteria
+
+  (Moved to the `acceptance_criteria:` key of this file.)
+
+  ## 7. Verification
+
+  ```bash
+  pnpm --filter @kit/clickhouse test
+  pnpm --filter @kit/content-analytics test
+  pnpm typecheck && pnpm lint
+  ```
+
+  The pure helpers are testable now. The query itself cannot be verified
+  end-to-end until ClickHouse is provisioned (`CLICKHOUSE_ENABLED=false`,
+  host unresolvable): reads return empty and the log renders as no rows.
+  `EXPLAIN` on seeded data before relying on the join at scale.

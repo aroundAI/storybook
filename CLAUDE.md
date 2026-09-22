@@ -829,7 +829,7 @@ fixable in place rather than by posting again.
 
 Feature implementations must adhere to the specifications in the `specs/` folder:
 
-- **Before implementing a feature**: Check if a spec exists in `specs/` for the feature (e.g., `specs/phase-5-audio-generation/providers/FILM-510-voice-cloning.md`)
+- **Before implementing a feature**: Check if a spec exists in `specs/` for the feature (e.g., `specs/phase-5-audio-generation/providers/FILM-510-voice-cloning.yaml`)
 - **During implementation**: Follow the database schema, API design, and component structure defined in the spec
 - **After implementation**: Update the spec file to mark acceptance criteria as complete and change status to `✅ DONE`
 - **Spec index**: See `specs/INDEX.md` for a complete list of all specifications and their status

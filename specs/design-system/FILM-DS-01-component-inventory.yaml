@@ -1,0 +1,199 @@
+spec_id: "FILM-DS-01"
+title: "Component Inventory"
+phase: null
+phase_name: "Design System"
+category: design_guideline
+status: PARTIAL
+audited: "2026-09-23"
+effort: S
+dependencies: []
+summary: >
+  The Film Studio introduces complex UI patterns not covered by the base @kit/ui
+  library. This spec inventories all components needed, categorizing them by reuse
+  potential and complexity.
+acceptance_criteria:
+  - text: "All required components are identified and categorized"
+    met: true
+    evidence: null
+  - text: "Each component has clear ownership (package)"
+    met: false
+    reason: "no longer true — §2 owners stale: ShotGrid/ShotCard in apps/web, timeline in @kit/edit-suite (old one deleted 5f44d0e1), VideoPlayer in @kit/public-sharing; §3–4 name none"
+  - text: "Effort estimates are provided for planning"
+    met: true
+    evidence: null
+  - text: "Component hierarchy shows relationships"
+    met: true
+    evidence: null
+  - text: "No duplicate components across packages"
+    met: true
+    evidence: null
+remaining:
+  - criterion: "Each component has clear ownership (package)"
+    reason: >
+      §2's owners no longer match the code: ShotGrid/ShotCard live in
+      `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/`,
+      the timeline in
+      `packages/features/edit-suite/src/components/timeline/timeline.tsx`, VideoPlayer
+      in `packages/features/public-sharing/src/components/video-player.tsx`. §3–§4 name
+      no package. CharacterCard, GenerationStatusBadge, ProgressRing and PromptEditor
+      were never built (placeholder comments removed in 18906820)
+    closed_by: "unassigned"
+open_questions:
+  - "Should we create a `@kit/studio-ui` package for shared studio components? (non-blocking)"
+  - "Should `TimelineEditor` be extracted to its own package for reuse? (post-MVP)"
+design_guideline:
+  guideline_type: "Component Inventory"
+  applies_to:
+    - "@kit/ui"
+    - "@kit/episodes"
+    - "@kit/audio-generation"
+    - "@kit/assets"
+    - "@kit/film-studio"
+  patterns:
+    - "Reusable from @kit/ui (no modification): `Card`, `CardHeader`, `CardContent` — Asset cards, episode cards, shot cards"
+    - "Reusable from @kit/ui (no modification): `Button`, `IconButton` — All actions and CTAs"
+    - "Reusable from @kit/ui (no modification): `Dialog`, `Sheet` — Modals, side panels, editors"
+    - "Reusable from @kit/ui (no modification): `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` — Studio workspace navigation"
+    - "Reusable from @kit/ui (no modification): `Form`, `FormField`, `FormItem`, `FormLabel` — All input forms"
+    - "Reusable from @kit/ui (no modification): `Input`, `Textarea` — Text inputs throughout"
+    - "Reusable from @kit/ui (no modification): `Select`, `Combobox` — Dropdowns, provider selection"
+    - "Reusable from @kit/ui (no modification): `Progress` — Linear progress indicators"
+    - "Reusable from @kit/ui (no modification): `Badge` — Status labels, tags"
+    - "Reusable from @kit/ui (no modification): `Table`, `TableHeader`, `TableRow`, `TableCell` — Analytics data display"
+    - "Reusable from @kit/ui (no modification): `Tooltip` — Help text, hover info"
+    - "Reusable from @kit/ui (no modification): `Skeleton` — Loading states"
+    - "Reusable from @kit/ui (no modification): `Alert`, `AlertTitle`, `AlertDescription` — Notifications, warnings"
+    - "Reusable from @kit/ui (no modification): `Avatar` — Character thumbnails"
+    - "Reusable from @kit/ui (no modification): `Checkbox`, `RadioGroup` — Multi-select, options"
+    - "Reusable from @kit/ui (no modification): `Slider` — Volume, timeline zoom"
+    - "Reusable from @kit/ui (no modification): `Switch` — Toggle settings"
+    - "Reusable from @kit/ui (no modification): `Popover` — Contextual menus"
+    - "Reusable from @kit/ui (no modification): `DropdownMenu` — Action menus"
+    - "Reusable from @kit/ui (no modification): `ScrollArea` — Scrollable containers"
+    - "Reusable from @kit/ui (no modification): `Separator` — Visual dividers"
+    - "New high-complexity component: `TimelineEditor` — Multi-track video/audio timeline with scrubbing (effort XL, package @kit/episodes)"
+    - "New high-complexity component: `ShotGrid` — Draggable grid with generation overlays (effort L, package @kit/episodes)"
+    - "New high-complexity component: `WaveformVisualizer` — Audio waveform with playhead sync (effort M, package @kit/audio-generation)"
+    - "New high-complexity component: `VideoPlayer` — Custom player with frame-accurate seeking (effort M, package @kit/episodes)"
+    - "New high-complexity component: `CharacterCard` — Reference images + element prompt preview (effort M, package @kit/assets)"
+    - "Medium-complexity extension: `GenerationStatusBadge` — base `Badge`; extension: Animated states, progress ring (effort S)"
+    - "Medium-complexity extension: `ProgressRing` — base New (SVG); extension: Circular progress for jobs (effort S)"
+    - "Medium-complexity extension: `AssetPicker` — base `Dialog` + `Combobox`; extension: Modal with preview, search (effort M)"
+    - "Medium-complexity extension: `PromptEditor` — base `Textarea`; extension: Token counter, variables (effort M)"
+    - "Medium-complexity extension: `CostEstimate` — base `Badge`; extension: Credits display, warnings (effort S)"
+    - "Low-complexity composition: `StudioSidebar` — `Nav` + `Badge` + `Tooltip` (effort S)"
+    - "Low-complexity composition: `EpisodeCard` — `Card` + `Badge` + `Progress` + menu (effort S)"
+    - "Low-complexity composition: `PipelineProgress` — `Steps` + `Progress` + status (effort S)"
+    - "Low-complexity composition: `ShotCard` — `Card` + `Badge` + overlay + menu (effort S)"
+    - "Low-complexity composition: `DialogueLine` — `Card` + `Avatar` + play button (effort S)"
+    - "Each feature package exports components from a single entry point (`src/components/index.ts`)"
+  file_path: null
+notes: |
+  ## Metadata
+  - **Phase:** Design System
+  - **Priority:** P0 (Critical)
+  - **Effort:** S (2-4 hours)
+  - **Dependencies:** None
+  - **Blocks:** All UI component specs
+
+  ## Specification
+
+  ### Component Categories
+
+  #### 1. Reusable from @kit/ui (70% coverage)
+
+  These components require no modification:
+
+  (Table rows transcribed into design_guideline.patterns.)
+
+  #### 2. New High-Complexity Components
+
+  These require dedicated design and implementation:
+
+  (Table rows transcribed into design_guideline.patterns.)
+
+  #### 3. Medium-Complexity Extensions
+
+  These extend existing @kit/ui components:
+
+  (Table rows transcribed into design_guideline.patterns.)
+
+  #### 4. Low-Complexity Compositions
+
+  These compose existing components:
+
+  (Table rows transcribed into design_guideline.patterns.)
+
+  ### Component Hierarchy
+
+  ```
+  Studio Layout
+  ├── StudioSidebar
+  │   ├── Navigation links
+  │   └── GenerationQueueIndicator
+  │
+  ├── StudioHeader
+  │   ├── Breadcrumbs
+  │   └── ActionButtons
+  │
+  ├── WorkspaceContent
+  │   ├── StoryStudio
+  │   │   ├── StoryIdeation
+  │   │   ├── StoryEditor
+  │   │   ├── ScreenplayViewer
+  │   │   └── ShotListEditor
+  │   │
+  │   ├── VisualStudio
+  │   │   ├── ShotGrid
+  │   │   │   └── ShotCard (×n)
+  │   │   ├── GenerationSettings
+  │   │   └── BatchActions
+  │   │
+  │   ├── AudioStudio
+  │   │   ├── DialogueList
+  │   │   │   └── DialogueLine (×n)
+  │   │   ├── VoiceAssignment
+  │   │   ├── MusicGenerator
+  │   │   └── WaveformVisualizer
+  │   │
+  │   ├── EditSuite
+  │   │   ├── TimelineEditor
+  │   │   │   ├── TrackLayer (×n)
+  │   │   │   └── Playhead
+  │   │   └── ClipEditor
+  │   │
+  │   └── PublishHub
+  │       ├── PlatformSelector
+  │       ├── MetadataEditor
+  │       └── ShortsClipper
+  │
+  └── GenerationQueuePanel (slide-over)
+      └── QueueItem (×n)
+  ```
+
+  ### File Changes
+
+  | Action | Path |
+  |--------|------|
+  | CREATE | `packages/features/film-studio/src/components/index.ts` |
+  | CREATE | `packages/features/episodes/src/components/index.ts` |
+  | CREATE | `packages/features/assets/src/components/index.ts` |
+  | CREATE | `packages/features/audio-generation/src/components/index.ts` |
+
+  ## Component Export Pattern
+
+  Each feature package exports components from a single entry point:
+
+  ```typescript
+  // packages/features/episodes/src/components/index.ts
+
+  export { ShotGrid } from './shot-grid';
+  export { ShotCard } from './shot-card';
+  export { StoryStudio } from './story-studio';
+  export { StoryIdeation } from './story-ideation';
+  export { ScreenplayViewer } from './screenplay-viewer';
+  export { ShotListEditor } from './shot-list-editor';
+  export { VisualStudio } from './visual-studio';
+  export { EpisodeCard } from './episode-card';
+  export { PipelineProgress } from './pipeline-progress';
+  ```

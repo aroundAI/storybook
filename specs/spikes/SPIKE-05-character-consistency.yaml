@@ -1,0 +1,410 @@
+spec_id: "SPIKE-05"
+title: "Character Consistency in Kling Video Generation"
+phase: null
+phase_name: "Spikes"
+category: research_spike
+status: DONE
+audited: "2026-09-23"
+effort: M
+dependencies:
+  - spec_id: "SPIKE-01"
+    note: "Kling API access and understanding"
+summary: >
+  One of the biggest challenges in AI video generation for storytelling is maintaining
+  character consistency across shots. Kling AI offers an "element" prompt parameter
+  designed to maintain consistency of characters, objects, or styles across videos. We
+  need to thoroughly test this feature to understand its capabilities and limitations
+  before building our multi-shot episode system.
+acceptance_criteria:
+  - text: "100+ video shots generated with character consistency testing"
+    met: false
+    reason: "retired — empirical testing was deferred to implementation (completion note, now research_spike.findings[0]); Kling generation went in 5b88db3a"
+  - text: "Quantified consistency rates for different scenarios"
+    met: false
+    reason: "retired — ratings are qualitative (`docs/character-consistency-report.md:9`); testing deferred, Kling removed in 5b88db3a"
+  - text: "Clear documentation of what works and what doesn't"
+    met: true
+    evidence: "docs/character-consistency-report.md:210"
+  - text: "Best practice guide for character prompts"
+    met: true
+    evidence: "docs/character-prompt-guide.md:29"
+  - text: "Examples of successful character consistency (5+ shot sequences)"
+    met: false
+    reason: "retired — `docs/examples/character-consistency/` was never created; Kling generation removed in 5b88db3a"
+  - text: "Failure patterns identified and documented"
+    met: true
+    evidence: "docs/character-consistency-report.md:157"
+  - text: "Recommendation for implementation approach"
+    met: true
+    evidence: "docs/character-consistency-report.md:293"
+  - text: "User-facing guidelines drafted"
+    met: false
+    reason: "retired — one draft UI message only (`docs/character-consistency-report.md:230`); `docs/user-guides/character-creation.md` never created; Kling removed 5b88db3a"
+open_questions: []
+research_spike:
+  question: >
+    Test and document the effectiveness of Kling's "element" prompt feature for
+    maintaining character consistency across multiple video shots in an episode.
+    Determine best practices for character prompts and establish realistic expectations
+    for consistency.
+  findings:
+    - >
+      This spike was completed as documentation research based on API documentation
+      review, community resources (Reddit r/KlingAI, Discord, tutorial videos), and best
+      practices analysis. Empirical testing (100+ video generations, visual consistency
+      scoring) was deferred to implementation phase.
+    - "Character Consistency Report (docs/character-consistency-report.md) - Analysis of Kling's character consistency capabilities, evaluation criteria, implementation recommendations"
+    - "Character Prompt Guide (docs/character-prompt-guide.md) - Best practices for prompt engineering, templates, multi-character handling, common pitfalls"
+  recommendation: null
+  docs:
+    - "docs/character-consistency-report.md"
+    - "docs/character-prompt-guide.md"
+  poc_path: null
+notes: |
+  ## Metadata
+  - **Priority**: P0
+  - **Effort**: M (Medium - 3-5 days)
+  - **Timeline**: Sprint 1, Week 3
+  - **Owner**: Agent 9
+  - **Status**: Completed
+  - **Created**: 2025-12-04
+  - **Completed**: 2025-12-05
+
+  ## Research Questions
+
+  ### 1. Element Prompt Fundamentals
+  - How does the element prompt parameter work?
+  - What types of elements can be specified? (characters, objects, styles)
+  - What's the prompt format and structure?
+  - How detailed should element descriptions be?
+  - Are there character limits on element prompts?
+  - Can multiple elements be specified in one prompt?
+
+  ### 2. Character Consistency Testing
+  - How consistent are character appearances across shots?
+    - Facial features
+    - Body type and proportions
+    - Clothing and accessories
+    - Hair color and style
+    - Age appearance
+  - Does consistency vary by:
+    - Shot angle/distance
+    - Action/movement complexity
+    - Lighting conditions
+    - Background complexity
+
+  ### 3. Reference Images vs Text-Only
+  - Can we provide reference images for characters?
+  - How do reference images compare to text descriptions?
+  - What image formats/sizes work best?
+  - Can we use previous generated shots as references?
+  - Do reference images significantly improve consistency?
+
+  ### 4. Prompt Engineering Strategies
+  - What prompt patterns work best for consistency?
+  - Should element descriptions be repeated in main prompt?
+  - How do we handle multiple characters in one shot?
+  - How do we maintain character while varying actions?
+  - What level of detail is optimal?
+
+  ### 5. Multi-Character Scenarios
+  - Can we maintain 2+ characters consistently?
+  - How do we distinguish between multiple characters?
+  - Do characters interfere with each other's consistency?
+  - Can we have character interactions while maintaining consistency?
+
+  ### 6. Consistency Limitations
+  - At what point does consistency break down?
+  - How many sequential shots maintain consistency?
+  - What variables most affect consistency?
+  - Are there certain character types that work better?
+  - What's the failure rate for consistency?
+
+  ### 7. Style and Aesthetic Consistency
+  - Beyond characters, can we maintain visual style?
+  - Can we keep consistent color grading/mood?
+  - Can we maintain consistent world/setting design?
+  - How do we handle time of day changes?
+
+  ### 8. Recovery Strategies
+  - What do we do when consistency breaks?
+  - Can we regenerate shots that don't match?
+  - Can we use failed shots as negative examples?
+  - Should we batch generate and cherry-pick?
+
+  ### 9. User Expectations Management
+  - What's a realistic expectation for consistency?
+  - Should we show users examples of variations?
+  - How do we communicate limitations?
+  - Should we offer a "character library" feature?
+
+  ## Approach
+
+  ### Phase 1: Element Prompt Documentation (4 hours)
+  1. Review Kling documentation on element prompts
+  2. Review PiAPI documentation for element parameter
+  3. Search for community examples and best practices
+  4. Document known prompt patterns
+  5. Identify any undocumented features or quirks
+
+  ### Phase 2: Single Character Testing (12 hours)
+
+  **Test Set 1: Simple Character (5 shots)**
+  - Character: "A young woman with red hair in a ponytail, wearing a blue jacket"
+  - Generate 5 shots with same character, different actions:
+    1. Walking forward
+    2. Turning around
+    3. Waving
+    4. Sitting down
+    5. Standing up
+  - Evaluate consistency across shots
+  - Document variations
+
+  **Test Set 2: Detailed Character (5 shots)**
+  - Character: "A 30-year-old Black man with short curly hair, brown eyes, beard, wearing round glasses, gray hoodie, and jeans"
+  - Generate 5 shots with different actions and angles
+  - Compare consistency with simple description
+  - Note which details are maintained
+
+  **Test Set 3: Character in Different Contexts (5 shots)**
+  - Same character in different settings:
+    1. Indoor office
+    2. Outdoor park
+    3. Nighttime street
+    4. Busy cafe
+    5. Empty room
+  - Evaluate if context affects consistency
+
+  **Test Set 4: Character at Different Distances (5 shots)**
+  - Same character at different shot types:
+    1. Extreme close-up (face)
+    2. Close-up (head and shoulders)
+    3. Medium shot (waist up)
+    4. Full shot (entire body)
+    5. Wide shot (character in environment)
+  - Evaluate if distance affects consistency
+
+  ### Phase 3: Reference Image Testing (10 hours)
+
+  **Test Set 5: Generated Reference (5 shots)**
+  - Generate initial shot of character
+  - Use that shot as reference for 4 more shots
+  - Compare consistency with text-only approach
+  - Document improvement or degradation
+
+  **Test Set 6: External Reference (5 shots)**
+  - Use external image as character reference
+  - Generate 5 shots with different actions
+  - Evaluate how well Kling matches reference
+  - Test with different reference image types:
+    - Photo realistic
+    - Illustration
+    - 3D render
+    - AI-generated image
+
+  **Test Set 7: Progressive Referencing (5 shots)**
+  - Generate shot 1 from text description
+  - Use shot 1 as reference for shot 2
+  - Use shot 2 as reference for shot 3
+  - Continue chain for 5 shots
+  - Evaluate drift over sequence
+
+  ### Phase 4: Multi-Character Testing (10 hours)
+
+  **Test Set 8: Two Characters (5 shots)**
+  - Character A: "A young woman with red hair"
+  - Character B: "A tall man with black hair"
+  - Generate 5 shots with both characters
+  - Evaluate consistency of each character
+  - Note any interference between characters
+
+  **Test Set 9: Character Interactions (5 shots)**
+  - Same two characters in interaction scenarios:
+    1. Standing together talking
+    2. Walking side by side
+    3. Sitting across from each other
+    4. One in foreground, one in background
+    5. High-five or handshake
+  - Evaluate consistency during interactions
+
+  ### Phase 5: Prompt Engineering (8 hours)
+
+  **Test Set 10: Prompt Variation Testing**
+  Generate same character with different prompt styles:
+  - Short prompt: "Red-haired woman in blue jacket"
+  - Medium prompt: "A woman with long red hair, blue denim jacket, jeans"
+  - Long prompt: "A 25-year-old woman with flowing red hair in a ponytail, bright blue eyes, wearing a blue denim jacket with patches, black t-shirt underneath, dark blue jeans, and white sneakers"
+  - Element only: Element in element prompt, no mention in main
+  - Element + main: Element described in both prompts
+  - Element + negative: Element in prompt, contradictory main prompt
+
+  Compare consistency across styles
+
+  **Test Set 11: Action Complexity Testing**
+  Same character performing:
+  - Simple action: Standing still, slight movement
+  - Medium action: Walking, waving
+  - Complex action: Dancing, jumping, running
+  Evaluate if action complexity affects consistency
+
+  ### Phase 6: Failure Analysis (6 hours)
+  1. Collect all inconsistent results
+  2. Categorize types of inconsistencies
+  3. Identify patterns in failures
+  4. Document what elements are most/least stable
+  5. Create failure rate statistics
+  6. Develop mitigation strategies
+
+  ### Phase 7: Best Practices Documentation (6 hours)
+  1. Compile most effective prompt patterns
+  2. Create character prompt template
+  3. Document do's and don'ts
+  4. Create examples of good vs bad results
+  5. Write guidelines for prompt engineering
+  6. Develop quality assessment criteria
+
+  ### Phase 8: Integration Strategy (4 hours)
+  1. Design how character data is stored
+  2. Define how element prompts are generated from character descriptions
+  3. Plan for handling consistency failures
+  4. Design user feedback for inconsistent results
+  5. Consider batch generation and selection approach
+  6. Plan for future improvements (character library, fine-tuning)
+
+  ## Deliverables
+
+  1. **Character Consistency Report** (`docs/character-consistency-report.md`)
+     - Consistency statistics across all test sets
+     - Visual examples of successful sequences
+     - Analysis of failure patterns
+     - Comparison of approaches (text vs image reference)
+     - Recommendations for implementation
+
+  2. **Prompt Engineering Guide** (`docs/character-prompt-guide.md`)
+     - Element prompt best practices
+     - Character description templates
+     - Prompt examples for different scenarios
+     - Common pitfalls and how to avoid them
+     - Multi-character handling
+
+  3. **Visual Reference Gallery** (`docs/examples/character-consistency/`)
+     - Successful consistency examples
+     - Failure examples with analysis
+     - Side-by-side comparisons
+     - Before/after of prompt improvements
+     - Multi-shot sequences
+
+  4. **Character System Design** (`docs/character-system-design.md`)
+     - Character data model
+     - Element prompt generation logic
+     - Consistency checking approach
+     - Failure handling strategy
+     - Future enhancement roadmap
+
+  5. **Test Scripts** (`packages/video-generation/tests/character-consistency/`)
+     - Scripts to reproduce test sets
+     - Consistency evaluation utilities
+     - Visual diff tools
+     - Automated testing framework
+
+  6. **User Guidelines** (`docs/user-guides/character-creation.md`)
+     - How to describe characters for best results
+     - What to expect for consistency
+     - Tips for improving consistency
+     - Troubleshooting guide
+
+  ## Risks if Not Completed
+
+  ### Critical Risks (P0)
+  - **Broken Narrative**: Inconsistent characters break story immersion
+  - **User Frustration**: Users disappointed by inconsistent results
+  - **Product Viability**: If consistency is too poor, product may not be viable
+  - **Wasted Generation Credits**: Regenerating shots wastes API credits
+
+  ### High Risks (P1)
+  - **Poor Prompts**: Without best practices, users get inconsistent results
+  - **Wrong Expectations**: Users expect perfect consistency we can't deliver
+  - **Technical Debt**: Building features assuming better consistency than reality
+  - **Support Burden**: Many support requests about inconsistency
+
+  ### Medium Risks (P2)
+  - **Competitive Disadvantage**: Competitors may handle consistency better
+  - **Feature Limitations**: Can't build advanced features requiring consistency
+  - **Marketing Challenges**: Hard to show consistent examples in demos
+  - **User Churn**: Users leave due to inconsistent results
+
+  ## Dependencies
+
+  - SPIKE-01 completed: Kling API access and understanding
+  - Sample character descriptions and references
+  - Visual comparison tools for evaluating consistency
+  - Budget for API calls (100+ video generations)
+
+  ## Follow-up Work
+
+  Based on findings, we may need:
+  - Additional spike on character fine-tuning if available
+  - Spike on consistency detection algorithms
+  - Spike on user-facing character library feature
+  - Investigation of alternative providers if Kling consistency is insufficient
+
+  ## Evaluation Criteria
+
+  For each generated shot, evaluate:
+
+  **Facial Consistency** (1-5 scale)
+  - Face structure and proportions
+  - Eye color and shape
+  - Nose and mouth features
+  - Skin tone
+  - Overall facial resemblance
+
+  **Body Consistency** (1-5 scale)
+  - Height and build
+  - Body proportions
+  - Posture and movement style
+
+  **Clothing Consistency** (1-5 scale)
+  - Color accuracy
+  - Style and design
+  - Fit and proportions
+  - Accessories
+
+  **Overall Consistency** (1-5 scale)
+  - Would a viewer recognize this as the same character?
+  - Could this work in a multi-shot sequence?
+
+  **Usability Rating**:
+  - ✅ Perfect: Can use as-is
+  - ⚠️ Acceptable: Minor inconsistencies but usable
+  - ❌ Failed: Too inconsistent to use
+
+  ## Hypothesis to Test
+
+  1. **H1**: Reference images provide better consistency than text-only prompts
+  2. **H2**: Detailed element prompts maintain consistency better than brief ones
+  3. **H3**: Consistency degrades as shot count increases in a sequence
+  4. **H4**: Simple character designs maintain consistency better than complex ones
+  5. **H5**: Close-up shots maintain facial consistency better than wide shots
+  6. **H6**: Complex actions reduce character consistency
+  7. **H7**: Using previous shot as reference creates visual drift over 5+ shots
+  8. **H8**: Multi-character shots reduce individual character consistency
+
+  ## Notes
+
+  - Character consistency is the #1 challenge in AI video storytelling
+  - Perfect consistency may not be achievable with current AI
+  - Consider hybrid approach: consistent enough for "good enough" stories
+  - Animation style may be more forgiving than photorealistic
+  - Community prompt engineering knowledge is valuable
+  - This is a rapidly evolving area - retest every 3-6 months
+  - Consider allowing users to pick from multiple generation options
+  - May need content warning about AI-generated character inconsistencies
+
+  ## References
+
+  - Kling Element Prompt Documentation: (from PiAPI)
+  - Community Examples: Reddit r/KlingAI, Discord
+  - Academic Papers: Character consistency in video generation
+  - Competitor Analysis: How do Runway, Pika handle consistency?
+  - Related Research: Stable Video Diffusion, AnimateDiff

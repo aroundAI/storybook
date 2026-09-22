@@ -1,0 +1,219 @@
+spec_id: "FILM-101g"
+title: "Dialogue Lines Table"
+phase: 1
+phase_name: "Foundation"
+category: database_table
+status: DONE
+audited: "2026-09-23"
+effort: XS
+dependencies:
+  - spec_id: "FILM-101b"
+    note: "episodes-table"
+  - spec_id: "FILM-101c"
+    note: "shots-table"
+  - spec_id: "FILM-101d"
+    note: "assets-table"
+summary: >
+  The `dialogue_lines` table stores individual lines of dialogue to be converted to audio using
+  voice generation providers. Each line is associated with an episode, optionally a shot, and a
+  character asset.
+database_table:
+  table_name: "dialogue_lines"
+  migration: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql"
+  columns:
+    - name: "id"
+      type: "UUID"
+      nullable: false
+      default: "gen_random_uuid()"
+      description: "Primary key"
+    - name: "episode_id"
+      type: "UUID"
+      nullable: false
+      default: null
+      description: "Foreign key to episodes"
+    - name: "shot_id"
+      type: "UUID"
+      nullable: true
+      default: "NULL"
+      description: "Optional FK to shot (for shot-specific dialogue)"
+    - name: "character_asset_id"
+      type: "UUID"
+      nullable: true
+      default: "NULL"
+      description: "FK to character speaking this line"
+    - name: "text"
+      type: "TEXT"
+      nullable: false
+      default: null
+      description: "Dialogue text to generate"
+    - name: "sequence_number"
+      type: "INTEGER"
+      nullable: false
+      default: null
+      description: "Order within episode"
+    - name: "audio_url"
+      type: "TEXT"
+      nullable: true
+      default: "NULL"
+      description: "URL to generated audio file"
+    - name: "status"
+      type: "VARCHAR(50)"
+      nullable: false
+      default: "'pending'"
+      description: "Generation status"
+    - name: "generation_metadata"
+      type: "JSONB"
+      nullable: true
+      default: "NULL"
+      description: "Provider metadata"
+    - name: "created_at"
+      type: "TIMESTAMPTZ"
+      nullable: false
+      default: "NOW()"
+      description: "Creation timestamp"
+  indexes:
+    - name: "idx_dialogue_lines_episode_sequence"
+      columns: ["episode_id", "sequence_number"]
+      unique: false
+    - name: "idx_dialogue_lines_shot"
+      columns: ["shot_id"]
+      unique: false
+    - name: "idx_dialogue_lines_character"
+      columns: ["character_asset_id"]
+      unique: false
+    - name: "idx_dialogue_lines_status"
+      columns: ["status"]
+      unique: false
+    - name: null
+      columns: ["episode_id", "sequence_number"]
+      unique: true
+  foreign_keys:
+    - column: "episode_id"
+      references: "episodes(id)"
+      on_delete: "CASCADE"
+    - column: "shot_id"
+      references: "shots(id)"
+      on_delete: "SET NULL"
+    - column: "character_asset_id"
+      references: "assets(id)"
+      on_delete: "SET NULL"
+  rls_enabled: null
+acceptance_criteria:
+  - text: "Table created with all columns"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:357"
+  - text: "Foreign keys with correct ON DELETE behavior"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:359-361"
+  - text: "Unique constraint on (episode_id, sequence_number)"
+    met: false
+    reason: "retired — widened to (episode_id, sequence_number, language) for translated lines (apps/web/supabase/migrations/20260101000000_fix_dialogue_language_constraint.sql:17)"
+  - text: "Status check constraint enforced"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:368"
+  - text: "Indexes created"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:378-383"
+test_plan:
+  unit:
+    - text: "Insert with valid episode_id succeeds"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert with invalid status fails"
+      met: false
+      reason: "not met — no test found"
+    - text: "Duplicate sequence_number fails"
+      met: false
+      reason: "not met — no test found"
+    - text: "NULL shot_id and character_asset_id allowed"
+      met: false
+      reason: "not met — no test found"
+  integration:
+    - text: "Deleting episode cascades"
+      met: false
+      reason: "not met — no test found"
+    - text: "Deleting shot sets shot_id to NULL"
+      met: false
+      reason: "not met — no test found"
+    - text: "Deleting character sets character_asset_id to NULL"
+      met: false
+      reason: "not met — no test found"
+  e2e: []
+open_questions: []
+notes: |
+  Sections of the Markdown spec that have no typed field, kept verbatim. Moved to typed fields: the Context paragraph (summary), the column table (database_table.columns), index names and columns, unique keys and foreign keys (database_table) and the acceptance criteria and test-plan checklists.
+
+  ## Metadata
+  - **Phase:** 1
+  - **Priority:** P0
+  - **Effort:** XS
+  - **Status:** ✅ COMPLETE
+  - **Completed:** 2025-12-05
+  - **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
+  - **Dependencies:** FILM-101 (episodes-table, shots-table, assets-table)
+  - **Blocks:** FILM-502 (voice-generation-action), FILM-503 (batch-dialogue-action)
+
+  ## Specification
+
+  ### Table Definition
+  ```sql
+  CREATE TABLE dialogue_lines (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    episode_id UUID NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+    shot_id UUID REFERENCES shots(id) ON DELETE SET NULL,
+    character_asset_id UUID REFERENCES assets(id) ON DELETE SET NULL,
+    text TEXT NOT NULL,
+    sequence_number INTEGER NOT NULL,
+    audio_url TEXT,
+    status VARCHAR(50) DEFAULT 'pending' NOT NULL,
+    generation_metadata JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    CHECK (status IN ('pending', 'generating', 'completed', 'failed')),
+    UNIQUE(episode_id, sequence_number)
+  );
+  ```
+
+  ### Status Enum Values
+  - `pending` - Not yet generated
+  - `generating` - Currently generating with provider
+  - `completed` - Audio generated successfully
+  - `failed` - Generation failed
+
+  ### Indexes
+  ```sql
+  CREATE INDEX idx_dialogue_lines_episode_sequence ON dialogue_lines(episode_id, sequence_number);
+  CREATE INDEX idx_dialogue_lines_shot ON dialogue_lines(shot_id) WHERE shot_id IS NOT NULL;
+  CREATE INDEX idx_dialogue_lines_character ON dialogue_lines(character_asset_id) WHERE character_asset_id IS NOT NULL;
+  CREATE INDEX idx_dialogue_lines_status ON dialogue_lines(status);
+  ```
+
+  ### Constraints
+  - **Primary Key**: `id`
+  - **Foreign Keys**:
+    - `episode_id` references `episodes(id)` ON DELETE CASCADE
+    - `shot_id` references `shots(id)` ON DELETE SET NULL
+    - `character_asset_id` references `assets(id)` ON DELETE SET NULL
+  - **Unique**: `(episode_id, sequence_number)`
+
+  ### JSONB Schema
+  ```typescript
+  interface GenerationMetadata {
+    provider: string;           // "elevenlabs", "playht"
+    providerJobId?: string;
+    voiceId: string;
+    settings: {
+      stability?: number;
+      similarityBoost?: number;
+      speed?: number;
+    };
+    costCents: number;
+    durationSeconds: number;
+    generatedAt: string;
+    characterCount: number;
+  }
+  ```
+
+  ## File Changes
+  | Action | Path |
+  |--------|------|
+  | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |

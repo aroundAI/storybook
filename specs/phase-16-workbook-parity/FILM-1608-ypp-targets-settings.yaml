@@ -1,0 +1,442 @@
+spec_id: "FILM-1608"
+title: "YPP Targets & Analytics Settings"
+phase: 16
+phase_name: "Workbook Parity"
+category: feature
+status: DONE
+audited: "2026-09-23"
+effort: M
+dependencies:
+  - spec_id: "FILM-1602"
+    note: null
+summary: >
+  `analytics_settings` has existed since migration `20260827101334`. It has
+  two readers and **zero writers**. This spec builds the writer, adds the
+  per-channel override, and moves target resolution out of two `??`
+  expressions into one pure, tested function.
+acceptance_criteria:
+  - text: "`resolveYppTarget` is pure and unit-tested before any UI exists"
+    met: true
+    evidence: null
+  - text: "A channel override wins over the account row, which wins over the default — **except where it collides with the over-state rule below.** A channel value *lower* than the account value, with the default `unknown` status, resolves to the account value. `existing_partner` is how an operator asserts the lower bar. Both directions have tests; §8 records the collision."
+    met: true
+    evidence: null
+  - text: "`null` on a channel column inherits rather than resolving to zero"
+    met: true
+    evidence: null
+  - text: "Defaults remain 4,000 watch hours and 1,000 subscribers, so no shipped number moves on deploy"
+    met: true
+    evidence: null
+  - text: "No escalation date is hardcoded anywhere in the resolver"
+    met: true
+    evidence: null
+  - text: "With an escalated threshold configured, `ypp_applicant_status = 'unknown'` resolves to the higher bar"
+    met: true
+    evidence: null
+  - text: "A channel with `joined_ypp_at` set reports as joined — `resolveYppTarget` returns `alreadyJoined`, unit-tested, and `YppProgressCard` early-returns on it. The *rendering* half is unverified in a browser because the card is mounted nowhere until FILM-1611."
+    met: true
+    evidence: "now mounted, `packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:780`; the joined state still has no browser test"
+  - text: "`getYppProgressAction` returns a per-channel target and a basis per metric — **verified by unit test only.** `YppProgressCard` is mounted nowhere and the action has no caller outside the package barrel, so this output reaches no screen until FILM-1611. Not ticked on the strength of reading types; not claimed to be visible either."
+    met: true
+    evidence: "now reaches the Deep Dive tab (`packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:368`); per-channel cards asserted in `apps/e2e/tests/deep-dive/deep-dive.spec.ts:144`"
+  - text: "Every account and channel settings write is an upsert; clearing a value writes `null` and never deletes a row"
+    met: true
+    evidence: null
+  - text: "The channel action rejects a `connection_id` that does not belong to the caller's account — it derives `account_id` from an RLS-scoped read of the connection, so a foreign id returns no row and the upsert never runs. Proven at the database layer by pgTAP; the action path itself has no test of its own, which is the weakest claim in this list."
+    met: true
+    evidence: null
+  - text: "`updated_at` advances on every settings write, on both tables"
+    met: true
+    evidence: null
+  - text: "`analytics_settings` has exactly one reader after this change — `fetchAccountAnalyticsSettings` (`server/settings-queries.ts`). Verified by grep: the only other reference to the table is the writer's `upsert`."
+    met: true
+    evidence: null
+  - text: "A timestamped migration creates `channel_analytics_settings`, and `pnpm --filter web check:schema-drift` passes"
+    met: true
+    evidence: null
+  - text: "Both `database.types.ts` copies are regenerated and identical"
+    met: true
+    evidence: null
+open_questions: []
+feature:
+  database:
+    tables:
+      - "channel_analytics_settings (new: schemas/73-channel-analytics-settings.sql)"
+      - "analytics_settings (gains its first writer)"
+    columns_added:
+      - "channel_analytics_settings.connection_id uuid primary key references platform_connections(id) on delete cascade"
+      - "channel_analytics_settings.account_id uuid not null references accounts(id) on delete cascade"
+      - "channel_analytics_settings.ypp_target_watch_hours integer"
+      - "channel_analytics_settings.ypp_target_subscribers integer"
+      - "channel_analytics_settings.ypp_applicant_status varchar(20) not null default 'unknown'"
+      - "channel_analytics_settings.joined_ypp_at date"
+      - "channel_analytics_settings.created_at timestamptz not null default now()"
+      - "channel_analytics_settings.updated_at timestamptz not null default now()"
+  queries:
+    - name: "fetchAccountAnalyticsSettings"
+      purpose: "The single read of analytics_settings"
+      file: "packages/features/content-analytics/src/server/settings-queries.ts"
+  actions:
+    - name: "getAnalyticsSettingsAction"
+      file: "packages/features/content-analytics/src/server/settings-actions.ts"
+    - name: "updateAccountAnalyticsSettingsAction"
+      file: "packages/features/content-analytics/src/server/settings-actions.ts"
+    - name: "updateChannelAnalyticsSettingsAction"
+      file: "packages/features/content-analytics/src/server/settings-actions.ts"
+    - name: "getYppProgressAction"
+      file: "packages/features/content-analytics/src/server/deep-dive-actions.ts"
+    - name: "getMedianByTagAction (tag_min_sample read)"
+      file: "packages/features/content-analytics/src/server/taxonomy-actions.ts"
+  ui:
+    - component: "Analytics settings page"
+      file: "apps/web/app/home/[account]/studio/analytics/settings/page.tsx"
+    - component: "Settings forms"
+      file: "apps/web/app/home/[account]/studio/analytics/settings/_components/"
+    - component: "OverrideNumberField"
+      file: "apps/web/app/home/[account]/studio/analytics/settings/_components/override-number-field.tsx"
+    - component: "Team account navigation entry"
+      file: "apps/web/config/team-account-navigation.config.tsx"
+    - component: "YppProgressCard (targetBasis)"
+      file: "packages/features/content-analytics/src/components/deep-dive/ypp-progress-card.tsx"
+  provider_integration: null
+notes: |
+  ## 1. Overview
+
+  `analytics_settings` has existed since migration `20260827101334`. It has
+  two readers and **zero writers**.
+
+  ```
+  packages/features/content-analytics/src/server/deep-dive-actions.ts:252   ypp_target_watch_hours, ypp_target_subscribers
+  packages/features/content-analytics/src/server/taxonomy-actions.ts:276    tag_min_sample
+  ```
+
+  Both fall back with `??` — `4000`, `1000`, `5` (`deep-dive-actions.ts:262-263`,
+  `taxonomy-actions.ts:295`). Nothing anywhere inserts, updates or upserts the
+  table. It is therefore always empty in every environment, the fallbacks
+  always fire, and the three settings are constants wearing a table's
+  clothing. The schema, the grants and three RLS policies were all shipped
+  for a writer that was never built.
+
+  That is the smaller half of the problem. The larger half:
+
+  **YPP targets are per channel, and there is nowhere to put a per-channel
+  value.** FILM-1602 made watch hours per-channel because the gate is
+  per-channel — pooling two channels against one 4,000-hour target reports a
+  threshold as met when neither channel has met it. `getYppProgressAction`
+  (`deep-dive-actions.ts:244`) duly returns one entry per channel. But it
+  reads **one account-wide row** and applies the same target to every one of
+  them (`:262-274`). A channel on a different tier, a channel that already
+  joined the programme, and a brand-new channel are all measured against the
+  same bar.
+
+  This spec builds the writer, adds the per-channel override, and moves
+  target resolution out of two `??` expressions into one pure, tested
+  function.
+
+  ## 2. The Escalation Date Is Configuration, Not Code
+
+  An earlier draft of this work hardcoded a YPP threshold escalation — 4,000
+  watch hours rising to 8,000 on **2027-02-01** for anyone who is not already
+  a partner — and derived the target from `now`.
+
+  **That date is not asserted by this spec.** It could not be verified
+  against YouTube policy at the time of writing, and a wrong hardcoded date
+  is the worst available failure: on the day it fires, every channel's
+  progress bar silently halves against a bar that may not exist, with no
+  error and nothing on screen explaining why the goal moved. A date that is
+  merely *early* is equally bad in the other direction.
+
+  So the resolver takes the escalated threshold from settings:
+
+  - Default target: **4,000** watch hours, **1,000** subscribers — today's
+    shipped defaults, unchanged, so nothing moves on deploy.
+  - An operator who has confirmed the policy sets
+    `ypp_target_watch_hours` on the account, or per channel, and that value
+    wins. No code change, no deploy.
+  - `ypp_applicant_status` is stored (`unknown` / `new_applicant` /
+    `existing_partner`) and **honours the phase README's locked decision**:
+    where an account or channel has configured an escalated threshold,
+    a status of `unknown` resolves to the *higher* bar, not the lower —
+    better to over-state the bar than under-state it. Where no escalation is
+    configured there is a single target and the status is inert.
+
+  If the date is later confirmed, it becomes a seed value or a one-line
+  default in this same resolver, with tests either side of the boundary. The
+  structure is built for it; the assertion is not made on a guess.
+
+  ## 3. Conventions Fixed Here
+
+  - **Resolution order is channel → account → default**, in one function, in
+    one place. Today it is two `??` expressions in two files, which is how
+    `tag_min_sample` and the YPP targets already resolve differently from
+    each other.
+  - **`null` on a channel row means inherit**, not zero. A nullable override
+    column with a non-null default cannot express "follow the account", and
+    an implementer who gives the column `default 4000` makes every channel
+    permanently opt out of account settings the moment its row is created.
+  - **Settings are upsert-only.** `analytics_settings` grants `select, insert,
+    update` to `authenticated` and has **no delete policy and no delete
+    grant** (`schemas/67-analytics-settings.sql`). Reset-to-default is
+    writing `null`, never deleting the row. The new table matches, so both
+    behave the same way.
+
+    **As specified this was impossible, and the migration fixes it.**
+    `analytics_settings`' three integer columns shipped `not null default
+    4000/1000/5`, so a null write to the account row fails outright — the two
+    levels could not have behaved the same way, and `basis` could not have
+    been reported honestly. Migration `20260916073206` drops the NOT NULL and
+    the defaults. Safe without a backfill: the table has never had a writer
+    and is empty in every environment, and both existing readers already
+    spell the fallback `??`, which treats null and absent alike.
+
+    The same migration attaches `trigger_set_timestamps()` to
+    `analytics_settings`, which had none — §4 below flagged the choice
+    between fixing it and making every writer remember; fixing it won.
+  - **The resolver is pure.** No Supabase client, no I/O; the caller passes
+    fetched rows in. It is unit-testable while ClickHouse and the database
+    are both unavailable, which is the only reason this spec's logic can be
+    verified at all today.
+
+  ## 4. Schema
+
+  New `apps/web/supabase/schemas/73-channel-analytics-settings.sql` — 73 is
+  the next free prefix (highest present is `72-embeddings.sql`).
+
+  ```sql
+  create table if not exists public.channel_analytics_settings (
+    connection_id uuid primary key
+      references public.platform_connections(id) on delete cascade,
+    account_id uuid not null
+      references public.accounts(id) on delete cascade,
+    ypp_target_watch_hours integer,
+    ypp_target_subscribers integer,
+    ypp_applicant_status varchar(20) not null default 'unknown',
+    joined_ypp_at date,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    constraint channel_analytics_settings_status_check
+      check (ypp_applicant_status in ('unknown', 'new_applicant', 'existing_partner'))
+  );
+  ```
+
+  Four decisions in that shape:
+
+  - **`connection_id` is the primary key**, with no separate `id`. One row
+    per channel by construction, so an upsert cannot create a second
+    conflicting override. `analytics_settings` sets the precedent with
+    `account_id` as its PK.
+  - **The two target columns are nullable with no default** — see §3.
+    `ypp_applicant_status` is `not null` because "unknown" is a real value
+    here, not an absence.
+  - **`account_id` is denormalised** so RLS reads
+    `public.has_account_access(account_id)` directly rather than joining
+    through `platform_connections` on every row. Note the platform table
+    itself authorises with `has_role_on_account`
+    (`schemas/32-platform-connections.sql`), while the analytics tables use
+    `has_account_access`; this spec follows the analytics convention because
+    the row is analytics configuration, and the difference is worth a
+    reviewer's attention rather than a silent choice.
+  - **`joined_ypp_at`** lets a channel that is already in the programme stop
+    rendering a progress bar toward a gate it has passed.
+
+  RLS, grants and indexes follow `67-analytics-settings.sql` exactly: enable
+  RLS, `revoke all` from `authenticated, service_role`, grant
+  `select, insert, update` to `authenticated` and all four to `service_role`,
+  then read/insert/update policies on `has_account_access(account_id)`. An
+  index on `(account_id)` — every FK is indexed, per constitution §3.3, and
+  the account-wide settings page reads by account, not by connection.
+
+  Also attach `public.trigger_set_timestamps()`, as
+  `analytics_experiments` does. **`analytics_settings` has no such trigger**,
+  so its `updated_at` is only ever the insert default — the new writer built
+  here must set `updated_at` explicitly when it touches that table, or fix it
+  with a trigger in the same migration. Silently leaving it stale is the
+  third option and the wrong one.
+
+  ### Deploy
+
+  Schema file **and** a timestamped migration containing the same
+  `create table`. `apps/web/scripts/check-schema-drift.ts` (PR #244) fails CI
+  when a table appears in `apps/web/lib/database.types.ts` but no file under
+  `migrations/` creates it, and its regex only recognises
+  `create table [if not exists] [public.]<name>`. Then regenerate types into
+  **both** copies — `apps/web/lib/database.types.ts` and
+  `packages/supabase/src/database.types.ts` — which the repo keeps in sync
+  and `.prettierignore` covers, so do not format the output.
+
+  No backfill: an absent row means inherit, which is the correct state for
+  every existing channel.
+
+  ## 5. Implementation Map
+
+  | File | Change |
+  |------|--------|
+  | `packages/features/content-analytics/src/lib/ypp-targets.ts` | New, pure. `resolveYppTarget({channelSettings, accountSettings})` → `{watchHours, subscribers, watchHoursBasis, subscribersBasis, applicantStatus, joinedYppAt, alreadyJoined}`. **Two basis fields, not one**: the override columns are independently nullable, so a channel that sets a subscriber target and inherits its watch-hours target is an ordinary row, and a single `basis` would have to be wrong about one of them. No `now` parameter — nothing here is time-dependent once the escalation date is configuration. No I/O. **Write its tests first** — override-wins, channel-null-inherits, account-null-defaults, unknown-status-takes-the-higher-configured-bar, already-joined. Cheap, and the only part of this spec verifiable before a database exists. |
+  | `packages/features/content-analytics/src/lib/schemas/settings.schema.ts` | New. `AccountAnalyticsSettingsSchema` and `ChannelAnalyticsSettingsSchema`, shared by the actions and the forms — the repo's form architecture requires one schema for both sides, not two that drift. |
+  | `packages/features/content-analytics/src/server/settings-actions.ts` | New. `getAnalyticsSettingsAction`, `updateAccountAnalyticsSettingsAction`, `updateChannelAnalyticsSettingsAction`. `enhanceAction` with the shared schemas. Upsert, never delete; a cleared field writes `null`. The channel action must verify the connection belongs to the account **before** upserting — `account_id` is caller-supplied on insert, and RLS checks the value written, not the value implied by `connection_id`. |
+  | `packages/features/content-analytics/src/server/deep-dive-actions.ts` | `getYppProgressAction` (`:244`) fetches the account row and the per-channel rows for the channels it already lists, then calls `resolveYppTarget` per channel. Deletes the `?? 4000` / `?? 1000` at `:262-263`. Adds `targetBasis` to each entry so the card can say where the number came from. Keeps the existing throw when `connectionId` is not an active YouTube connection (`:273-277`). |
+  | `packages/features/content-analytics/src/components/deep-dive/ypp-progress-card.tsx` | `YppChannelProgress` gains `targetBasis`. Mounting the card is FILM-1611; this spec only keeps the type honest. |
+  | `apps/web/app/home/[account]/studio/analytics/settings/page.tsx` | New. Server component, `withI18n`, page metadata. Resolves the slug to an account id through `createTeamAccountsApi.getTeamAccount` — the pattern `analytics/page.tsx:22` already uses — and renders the account form plus a per-channel table from `listAccountChannels`. |
+  | `apps/web/app/home/[account]/studio/analytics/settings/_components/` | Client forms, `react-hook-form` + `@kit/ui/form`, resolver from the shared schemas with no redundant generic. |
+  | `apps/web/config/team-account-navigation.config.tsx` | Nav entry alongside the existing analytics routes (`:44`, `:49`, `:54`). |
+  | `packages/features/content-analytics/src/server/taxonomy-actions.ts` | `tag_min_sample` read (`:276`) moves onto the same settings fetch so there is one reader of the table, not two with independent fallbacks. |
+
+  ### Files the map did not anticipate
+
+  Added while remediating review findings, and worth naming because §5 above is
+  otherwise read as the complete list:
+
+  | File | Why |
+  |------|-----|
+  | `server/settings-queries.ts` | The single read of `analytics_settings`, once three call sites existed |
+  | `settings/_components/override-number-field.tsx` | The empty-means-inherit rule, in one place rather than five |
+  | `migrations/…_analytics-targets-positive.sql` | Positivity constraints — every target is a denominator |
+  | `migrations/…_channel-settings-owner-integrity.sql` | The composite foreign key closing the cross-tenant squat |
+  | `apps/web/scripts/check-types-current.ts` | The gate that stops a hand-edited `database.types.ts` |
+
+  ## 6. Out of Scope
+
+  - **A per-channel `tag_min_sample`** — taxonomy is account-wide; nothing
+    asks for it per channel.
+  - **The Shorts alternate YPP path** (10M views / 90 days) — not
+    implemented anywhere; phase README known limits.
+  - **Making our watch hours match YouTube's exactly** — their figure adjusts
+    for deleted, private and ineligible content no API exposes. Ours is an
+    approximation and the UI must say so.
+  - **Mounting `YppProgressCard`** — FILM-1611.
+
+  ## 7. Acceptance Criteria
+
+  (Moved to the `acceptance_criteria:` key of this file.)
+
+  ## 8. Verification
+
+  ```bash
+  pnpm --filter web supabase migration up
+  pnpm supabase:web:typegen
+  pnpm --filter web check:schema-drift
+  pnpm --filter @kit/content-analytics test
+  pnpm typecheck && pnpm lint
+  ```
+
+  The resolver, the schemas and the RLS policies are genuinely verifiable
+  here — the `supabase-db` CI job applies every migration from scratch and
+  runs `pnpm --filter @kit/supabase verify` against real PostgREST, so a
+  policy that only fails on a live Postgres surfaces.
+
+  What a green run does **not** prove: any YPP figure. Watch hours come from
+  `queryWatchWindowTotals` and `queryChannelWatchWindow`, both gated on
+  `CLICKHOUSE_ENABLED`, which is `false` in production. The settings page
+  will save correctly and the progress card will read zero.
+
+  ## 9. Follow-up
+
+  `analytics_settings` gains a writer here and keeps one piece of its odd
+  shape: no delete policy. The missing `updated_at` trigger *was* fixed in
+  this migration, so that half of the question is closed. If a "reset to defaults" affordance is ever wanted as a row
+  deletion rather than a null-write, that needs a delete policy and a grant,
+  and is a separate decision. This spec deliberately does not add one: the
+  open question was recorded in the original phase plan and nulling is
+  sufficient for every current use.
+
+  ## 10. What shipped differently
+
+  - **`analytics_settings` gained a schema change** the implementation map did
+    not list — nullable targets and a timestamp trigger. See §3.
+  - **Two basis fields rather than one.** See §5.
+  - **The channel action does not accept `account_id`.** §5 said to verify a
+    caller-supplied value before upserting; it is derived from the connection
+    row instead, which removes the class rather than guarding the instance.
+  - **The `unknown`-status rule collides with channel precedence** when an
+    override is *lower* than the account value. The over-state rule wins;
+    `existing_partner` is how an operator asserts the lower bar. Both
+    directions are pinned by tests, and the phase README records it.
+  - **`with check` on the update policy is not what refuses a cross-tenant
+    repoint.** Measured: widening it to `true` leaves the pgTAP suite green,
+    because Postgres applies the SELECT policy to the row an UPDATE produces.
+    Widening the read policy as well turns the case red. The migration says so
+    rather than implying the clause is load-bearing.
+
+  ## 11. Code-review remediation
+
+  Eight findings, all confirmed before acting on any of them.
+
+  **Discarded PostgREST errors, in three places.** `fetchAccountAnalyticsSettings`
+  and both reads of `channel_analytics_settings` dropped `error` and returned
+  `null` / an empty map — which this feature *defines* as "nothing configured".
+  A transient read failure therefore rendered every field blank and armed the
+  user's next save to upsert those blanks over a good row, erasing the applicant
+  status and joined date a delete was deliberately kept away from. All three now
+  throw. The second read was the same query twice, so it moved into
+  `fetchChannelAnalyticsOverrides` rather than being fixed twice.
+
+  **Targets had no positivity constraint.** Every one is a denominator:
+  `Math.min(1, hours / 0)` is `1`, so a stored zero reported the monetisation
+  gate as *met*, and `0 / 0` put `NaN` into the progress bar. `.positive()`
+  guarded one writer; service_role, psql and any future caller went straight
+  past it. Migration `20260916130805` puts the invariant on both tables (NULL
+  still passes, so "inherit" survives), `resolveOne` treats a non-positive
+  stored value as unconfigured, and three pgTAP cases hold it.
+
+  **The generated types were regenerated with the wrong CLI.** Local
+  `supabase` is 2.40.7; CI pins 2.117.0. The committed diff was 358/102 with
+  only 5 lines touching this feature — it deleted `__InternalSupabase.
+  PostgrestVersion` and nine `SetofOptions` blocks, which is what types an
+  `.rpc()` result as a row rather than an array. Now spliced from main so the
+  diff is 71/9: the new table plus nine nullable columns, nothing else.
+
+  **The card asserted an escalation that had not happened.** It printed "the
+  higher configured target is shown" whenever the status was `unknown`, which
+  is every channel's default — so a brand-new account with nothing configured
+  was told a bar had been raised. `resolveYppTarget` now returns `escalated`,
+  true only where the rule actually moved the answer.
+
+  **A lower channel override looked like it worked and did not.** Saving one
+  under the default `unknown` status succeeds, toasts, and round-trips, while
+  the over-state rule keeps the account's figure. The form now says so before
+  the save, naming both numbers.
+
+  **One test could not fail.** `'a blank target is accepted and means inherit'`
+  asserted a blank form on a freshly seeded account — both assertions already
+  true before the save, so a no-op save stayed green. It now sets values,
+  clears them, and reloads; a no-op save was confirmed to turn it red.
+
+  ### And one defect the screenshots caught that nothing else did
+
+  The override notice quoted the account figure from *page load*, so after
+  saving new defaults without reloading it read "lower than the account's
+  4,000" directly beneath a field showing 3,500. No test asserted that number
+  and no type could. `router.refresh()` fixes it, and a Playwright case now
+  pins both figures — proven red first.
+
+  ## 12. Second and third review rounds
+
+  **Five findings, and one of them was mine from the round before.** Round one
+  fixed "a lower channel override is silently ignored" by adding a notice. That
+  notice re-derived the escalation rule instead of asking the resolver, and the
+  two disagreed: `page.tsx` collapsed "the account has no row" into the literal
+  4,000, while `resolveOne` escalates only when *both* levels hold a value. On
+  a fresh account — every account, since this table had no writer — a perfectly
+  good override was reported as ignored. `overriddenChannelTargets` now asks
+  `resolveYppTarget`, so the notice is a consequence of the rule rather than a
+  copy of it.
+
+  Also then: three discarded PostgREST errors that would have rendered blank
+  fields and armed a save to overwrite a good row; an unpaged read subject to
+  the `max_rows` cap; unguarded form submits; and a blank-target test that
+  could not fail.
+
+  **A cross-tenant integrity hole, found by the third review.** The policies
+  authorise on the denormalised `account_id`, and a foreign key check does not
+  run RLS — so a member of one account could file a row against another
+  account's connection under their own account id. `connection_id` is the
+  primary key, so the row squats the slot and the rightful owner's upsert fails
+  from then on, with no delete grant to clear it. Reproduced before fixing. A
+  composite foreign key to `(id, account_id)` makes the pair consistent by
+  construction, for every writer rather than for one action.
+
+  **The pgTAP suite had been demonstrating that hole while claiming to test
+  something else.** A case inserted another account's connection under this
+  account's id and asserted a `23514` check-constraint failure — which meant
+  RLS had already let the row through. It now uses the caller's own connection,
+  and a separate case asserts the squat is refused.

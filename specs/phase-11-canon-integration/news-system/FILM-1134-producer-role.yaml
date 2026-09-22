@@ -1,0 +1,289 @@
+spec_id: "FILM-1134"
+title: "Producer LLM Role Prompt"
+phase: 11
+phase_name: "Canon Integration & Content Types"
+category: feature
+status: PARTIAL
+audited: "2026-09-23"
+effort: M
+dependencies:
+  - spec_id: "FILM-1133"
+    note: null
+  - spec_id: "FILM-1006"
+    note: null
+summary: >
+  Create the Producer LLM role that orchestrates news episode structure,
+  assigns segments to anchors, manages pacing, and ensures editorial quality
+  across the broadcast.
+acceptance_criteria:
+  - text: "Producer role plans valid episode rundowns"
+    met: false
+    reason: "unverified — LLM output used unvalidated (`packages/features/episodes/src/lib/server/services/producer-service.ts:137`); no test or eval"
+  - text: "Segments are ordered by priority"
+    met: false
+    reason: "unverified — prompt rule only (`producer-role.json`); the service never sorts the rundown; no test"
+  - text: "Break positions are calculated correctly"
+    met: false
+    reason: "not met — no break positions anywhere: `EpisodeRundown` has none (`packages/features/episodes/src/lib/server/services/producer-service.ts:28`), nor the prompt"
+  - text: "Orchestrator generates all segments"
+    met: true
+    evidence: "packages/features/episodes/src/lib/server/services/producer-service.ts:165"
+  - text: "Total runtime matches target duration"
+    met: false
+    reason: "unverified — nothing reconciles segment durations with the target; the LLM's `totalRuntime` is returned as given; no test"
+  - text: "Server actions are authenticated"
+    met: true
+    evidence: "packages/features/episodes/src/server/news-actions.ts:140, :159"
+remaining:
+  - criterion: "Break positions are calculated correctly"
+    reason: >
+      Nothing computes break positions: `EpisodeRundown` is `{ rundown,
+      totalRuntime }`
+      (`packages/features/episodes/src/lib/server/services/producer-service.ts:28`),
+      the producer prompt never asks for them, and a repo search for
+      `breakPositions`/`break_position` finds nothing
+    closed_by: "unassigned"
+open_questions: []
+feature:
+  database:
+    tables: []
+    columns_added: []
+  queries: []
+  actions:
+    - name: "planRundownAction"
+      file: "packages/features/episodes/src/lib/server/mutations/producer-actions.ts"
+    - name: "orchestrateNewsEpisodeAction"
+      file: "packages/features/episodes/src/lib/server/mutations/producer-actions.ts"
+  ui: []
+  provider_integration: null
+notes: |
+  Source metadata:
+  - priority: medium
+
+  ## Problem Statement
+
+  For NEWS content type:
+  - Need high-level episode structure planning
+  - Must balance story importance and time allocation
+  - Need to manage transitions between segments
+  - Must ensure overall editorial coherence
+  - Need to prioritize breaking vs. feature news
+
+  ## Solution
+
+  Create `producer-role.json` prompt template that plans episode structure and orchestrates segment generation.
+
+  ---
+
+  ## Role Definition
+
+  | Attribute | Value |
+  |-----------|-------|
+  | Role Name | News Producer |
+  | Primary Function | Episode structure and orchestration |
+  | Output | Rundown, segment allocation, pacing |
+  | Restrictions | No content generation, planning only |
+
+  ---
+
+  ## Implementation
+
+  ### Step 1: Producer Role Prompt Template
+
+  **File:** `packages/features/prompt-engine/src/prompts/news-generation/producer-role.json`
+
+  ```json
+  {
+    "name": "producer-role",
+    "description": "Plans news episode structure and segment allocation",
+    "version": "1.0.0",
+    "llm": {
+      "provider": "google",
+      "model": "gemini-1.5-pro",
+      "temperature": 0.4,
+      "maxTokens": 4000
+    },
+    "systemPrompt": "You are a news producer planning broadcast episodes.\n\nPriorities:\n1. Breaking news first\n2. High-impact stories get more time\n3. Balance hard news with features\n4. Maintain viewer engagement\n5. End with memorable segment",
+    "promptTemplate": "Plan a {{totalDuration}}-minute news episode.\n\n## Available Stories\n{{#each stories}}\n- {{this.title}} ({{this.importance}}, {{this.category}})\n{{/each}}\n\n## Output Format\n{\n  \"rundown\": [\n    {\n      \"segmentNumber\": 1,\n      \"title\": \"...\",\n      \"duration\": 90,\n      \"category\": \"breaking|politics|business|feature\",\n      \"searchQuery\": \"...\",\n      \"priority\": \"high|medium|low\"\n    }\n  ],\n  \"totalRuntime\": 0,\n  \"breakPositions\": []\n}",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "totalDuration": { "type": "number" },
+        "stories": { "type": "array" }
+      },
+      "required": ["totalDuration", "stories"]
+    }
+  }
+  ```
+
+  ### Step 2: Producer Service
+
+  **File:** `packages/features/episodes/src/lib/server/services/news-producer/producer-service.ts`
+
+  ```typescript
+  import { executeLLM } from '@kit/prompt-engine';
+  import { getNewsAggregator } from '../news-aggregator/news-aggregator';
+  import { z } from 'zod';
+
+  const RundownSchema = z.object({
+    rundown: z.array(z.object({
+      segmentNumber: z.number(),
+      title: z.string(),
+      duration: z.number(),
+      category: z.string(),
+      searchQuery: z.string(),
+      priority: z.enum(['high', 'medium', 'low']),
+    })),
+    totalRuntime: z.number(),
+    breakPositions: z.array(z.number()),
+  });
+
+  export type Rundown = z.infer<typeof RundownSchema>;
+
+  export async function planEpisodeRundown(params: {
+    projectId: string;
+    totalDuration: number; // minutes
+    topicQuery?: string;
+  }): Promise<Rundown> {
+    const aggregator = await getNewsAggregator();
+
+    // Fetch trending stories
+    const newsResults = await aggregator.search({
+      projectId: params.projectId,
+      query: params.topicQuery ?? 'breaking news today',
+      pageSize: 20,
+    });
+
+    // Categorize stories by importance
+    const stories = newsResults.articles.map(a => ({
+      title: a.title,
+      importance: a.credibilityTier === 'tier_1' ? 'high' : 'medium',
+      category: inferCategory(a.title),
+    }));
+
+    const result = await executeLLM({
+      promptName: 'producer-role',
+      variables: {
+        totalDuration: params.totalDuration,
+        stories,
+      },
+    });
+
+    return RundownSchema.parse(JSON.parse(result.text));
+  }
+
+  function inferCategory(title: string): string {
+    const lower = title.toLowerCase();
+    if (lower.includes('breaking') || lower.includes('urgent')) return 'breaking';
+    if (lower.includes('election') || lower.includes('congress')) return 'politics';
+    if (lower.includes('market') || lower.includes('economy')) return 'business';
+    return 'feature';
+  }
+  ```
+
+  ### Step 3: Episode Orchestrator
+
+  ```typescript
+  // packages/features/episodes/src/lib/server/services/news-producer/orchestrator.ts
+
+  import { planEpisodeRundown, Rundown } from './producer-service';
+  import { generateNewsSegment } from '../news-anchor/anchor-service';
+
+  export async function orchestrateNewsEpisode(params: {
+    projectId: string;
+    episodeId: string;
+    episodeTitle: string;
+    totalDuration: number;
+  }) {
+    // 1. Plan the rundown
+    const rundown = await planEpisodeRundown({
+      projectId: params.projectId,
+      totalDuration: params.totalDuration,
+    });
+
+    // 2. Generate each segment
+    const segments = [];
+    for (const item of rundown.rundown) {
+      const segment = await generateNewsSegment({
+        projectId: params.projectId,
+        episodeId: params.episodeId,
+        episodeTitle: params.episodeTitle,
+        segmentTheme: item.title,
+        targetDuration: item.duration,
+        searchQuery: item.searchQuery,
+      });
+      segments.push({ ...item, script: segment });
+    }
+
+    return { rundown, segments };
+  }
+  ```
+
+  ### Step 4: Server Actions
+
+  ```typescript
+  // packages/features/episodes/src/lib/server/mutations/producer-actions.ts
+  'use server';
+
+  import { enhanceAction } from '@kit/next/actions';
+  import { z } from 'zod';
+  import { planEpisodeRundown } from '../services/news-producer/producer-service';
+  import { orchestrateNewsEpisode } from '../services/news-producer/orchestrator';
+
+  const PlanRundownSchema = z.object({
+    projectId: z.string().uuid(),
+    totalDuration: z.number().min(5).max(60),
+    topicQuery: z.string().optional(),
+  });
+
+  export const planRundownAction = enhanceAction(
+    async (data) => {
+      const rundown = await planEpisodeRundown(data);
+      return { success: true, data: rundown };
+    },
+    { schema: PlanRundownSchema, auth: true }
+  );
+
+  const OrchestrateEpisodeSchema = z.object({
+    projectId: z.string().uuid(),
+    episodeId: z.string().uuid(),
+    episodeTitle: z.string(),
+    totalDuration: z.number().min(5).max(60),
+  });
+
+  export const orchestrateNewsEpisodeAction = enhanceAction(
+    async (data) => {
+      const result = await orchestrateNewsEpisode(data);
+      return { success: true, data: result };
+    },
+    { schema: OrchestrateEpisodeSchema, auth: true }
+  );
+  ```
+
+  ---
+
+  ## Effort Estimation
+
+  | Task | Effort |
+  |------|--------|
+  | Producer role prompt | 3 hours |
+  | Producer service | 3 hours |
+  | Orchestrator | 3 hours |
+  | Server actions | 2 hours |
+  | Testing | 3 hours |
+  | **Total** | **14 hours** (M) |
+
+  ---
+
+  ## Dependencies
+
+  **Requires:** FILM-1133, FILM-1006
+  **Blocks:** None (end of chain)
+
+  ---
+
+  ## Notes
+
+  - Consider adding real-time news alerts integration
+  - Multi-anchor support for larger broadcasts
+  - Commercial break optimization for ad-supported content

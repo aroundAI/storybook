@@ -1,0 +1,302 @@
+spec_id: "FILM-101j"
+title: "Platform Connections Table"
+phase: 1
+phase_name: "Foundation"
+category: database_table
+status: DONE
+audited: "2026-09-23"
+effort: S
+dependencies: []
+summary: >
+  The `platform_connections` table stores OAuth tokens for publishing platforms (YouTube, TikTok,
+  Instagram, Facebook). Tokens are encrypted and include refresh logic for automatic token renewal.
+database_table:
+  table_name: "platform_connections"
+  migration: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql"
+  columns:
+    - name: "id"
+      type: "UUID"
+      nullable: false
+      default: "gen_random_uuid()"
+      description: "Primary key"
+    - name: "account_id"
+      type: "UUID"
+      nullable: false
+      default: null
+      description: "Account owning this connection"
+    - name: "platform"
+      type: "VARCHAR(50)"
+      nullable: false
+      default: null
+      description: "Platform name (see enum)"
+    - name: "platform_account_id"
+      type: "VARCHAR(255)"
+      nullable: true
+      default: "NULL"
+      description: "Platform-specific user/channel ID"
+    - name: "platform_account_name"
+      type: "VARCHAR(255)"
+      nullable: true
+      default: "NULL"
+      description: "Display name on platform"
+    - name: "access_token_encrypted"
+      type: "TEXT"
+      nullable: true
+      default: "NULL"
+      description: "Encrypted OAuth access token"
+    - name: "refresh_token_encrypted"
+      type: "TEXT"
+      nullable: true
+      default: "NULL"
+      description: "Encrypted OAuth refresh token"
+    - name: "token_expires_at"
+      type: "TIMESTAMPTZ"
+      nullable: true
+      default: "NULL"
+      description: "Access token expiration"
+    - name: "scopes"
+      type: "TEXT[]"
+      nullable: true
+      default: "NULL"
+      description: "OAuth scopes granted"
+    - name: "is_active"
+      type: "BOOLEAN"
+      nullable: false
+      default: "TRUE"
+      description: "Connection is active"
+    - name: "created_at"
+      type: "TIMESTAMPTZ"
+      nullable: false
+      default: "NOW()"
+      description: "Creation timestamp"
+    - name: "updated_at"
+      type: "TIMESTAMPTZ"
+      nullable: false
+      default: "NOW()"
+      description: "Last update timestamp"
+  indexes:
+    - name: "idx_platform_connections_account_id"
+      columns: ["account_id"]
+      unique: false
+    - name: "idx_platform_connections_platform"
+      columns: ["account_id", "platform"]
+      unique: false
+    - name: "idx_platform_connections_active"
+      columns: ["account_id", "is_active"]
+      unique: false
+    - name: "idx_platform_connections_expires_at"
+      columns: ["token_expires_at"]
+      unique: false
+    - name: null
+      columns: ["account_id", "platform", "platform_account_id"]
+      unique: true
+  foreign_keys: []
+  rls_enabled: null
+acceptance_criteria:
+  - text: "Table created with all columns"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:213"
+  - text: "Unique constraint on (account_id, platform, platform_account_id)"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:227; OAuth upserts depend on it (apps/web/app/api/platforms/callback/youtube/route.ts:265)"
+  - text: "Platform enum constraint enforced"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:226"
+  - text: "Indexes for token expiration queries"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:241"
+  - text: "Timestamps auto-update"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:245"
+  - text: "Can store multiple connections per account (e.g., 2 YouTube channels)"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:227 (the key includes platform_account_id)"
+test_plan:
+  unit:
+    - text: "Insert connection with valid platform succeeds"
+      met: false
+      reason: "not met — no test asserts it; pgTAP inserts connections only as fixtures (apps/web/supabase/tests/database/channel-analytics-settings-rls.test.sql:41)"
+    - text: "Insert connection with invalid platform fails"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert duplicate connection fails (unique constraint)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert with NULL tokens allowed (OAuth in progress)"
+      met: false
+      reason: "not met — not asserted; only a tokenless fixture exercises it (apps/web/supabase/tests/database/channel-analytics-settings-rls.test.sql:41)"
+    - text: "Timestamps populate automatically"
+      met: false
+      reason: "not met — no test found"
+  integration:
+    - text: "Query expiring tokens (expires_at < NOW + 30 minutes)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Query active connections only"
+      met: true
+      evidence: "packages/features/content-analytics/__tests__/subscriber-series-actions.test.ts:152 (the inactive channel is excluded)"
+    - text: "Update tokens after refresh"
+      met: true
+      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:355 (Meta; X is never refreshed, KB-15)"
+    - text: "Deactivate connection (set is_active = FALSE)"
+      met: false
+      reason: "not met — no test found"
+  e2e: []
+  edge_cases:
+    - text: "Connection with no refresh_token (some platforms don't provide)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Connection with NULL token_expires_at (non-expiring token)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Multiple YouTube channels for same account"
+      met: false
+      reason: "not met — no test found"
+    - text: "Reactivating deactivated connection"
+      met: false
+      reason: "not met — no test found"
+    - text: "Very long scopes array (100+ scopes)"
+      met: false
+      reason: "not met — no test found"
+open_questions: []
+notes: |
+  Sections of the Markdown spec that have no typed field, kept verbatim. Moved to typed fields: the Context paragraph (summary), the column table (database_table.columns), index names and columns, unique keys and foreign keys (database_table) and the acceptance criteria and test-plan checklists.
+
+  ## Metadata
+  - **Phase:** 1
+  - **Priority:** P0
+  - **Effort:** S
+  - **Status:** ✅ COMPLETE
+  - **Completed:** 2025-12-05
+  - **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
+  - **Dependencies:** None (depends on existing accounts)
+  - **Blocks:** FILM-701 (youtube-oauth), FILM-702 (tiktok-oauth), publishing features
+
+  ## Specification
+
+  ### Table Definition
+  ```sql
+  CREATE TABLE platform_connections (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    account_id UUID NOT NULL,
+    platform VARCHAR(50) NOT NULL,
+    platform_account_id VARCHAR(255),
+    platform_account_name VARCHAR(255),
+    access_token_encrypted TEXT,
+    refresh_token_encrypted TEXT,
+    token_expires_at TIMESTAMPTZ,
+    scopes TEXT[],
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    CHECK (platform IN ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin')),
+    UNIQUE(account_id, platform, platform_account_id)
+  );
+  ```
+
+  ### Platform Enum Values
+  - `youtube` - YouTube uploads
+  - `tiktok` - TikTok uploads
+  - `instagram` - Instagram Reels
+  - `facebook` - Facebook videos
+  - `twitter` - Twitter/X videos
+  - `linkedin` - LinkedIn posts
+
+  ### Indexes
+  ```sql
+  CREATE INDEX idx_platform_connections_account_id ON platform_connections(account_id);
+  CREATE INDEX idx_platform_connections_platform ON platform_connections(account_id, platform);
+  CREATE INDEX idx_platform_connections_active ON platform_connections(account_id, is_active)
+    WHERE is_active = TRUE;
+  CREATE INDEX idx_platform_connections_expires_at ON platform_connections(token_expires_at)
+    WHERE token_expires_at IS NOT NULL AND is_active = TRUE;
+  ```
+
+  ### Constraints
+  - **Primary Key**: `id`
+  - **Unique**: `(account_id, platform, platform_account_id)`
+  - **Check Constraint**: `platform` in enum values
+
+  ### Security
+  **Token Encryption Pattern:**
+  ```typescript
+  import { encrypt, decrypt } from '@kit/shared/crypto';
+
+  async function storeConnection(data: ConnectionData) {
+    const encrypted_access_token = await encrypt(data.access_token);
+    const encrypted_refresh_token = await encrypt(data.refresh_token);
+
+    await client.from('platform_connections').insert({
+      account_id: data.account_id,
+      platform: data.platform,
+      access_token_encrypted: encrypted_access_token,
+      refresh_token_encrypted: encrypted_refresh_token,
+      token_expires_at: data.expires_at,
+      scopes: data.scopes,
+    });
+  }
+
+  async function getConnection(id: string) {
+    const { data } = await client
+      .from('platform_connections')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    const access_token = await decrypt(data.access_token_encrypted);
+    const refresh_token = await decrypt(data.refresh_token_encrypted);
+
+    return { ...data, access_token, refresh_token };
+  }
+  ```
+
+  ### Token Refresh Strategy
+  ```typescript
+  interface TokenRefreshConfig {
+    refreshBeforeMinutes: number; // Refresh 30 min before expiry
+    maxRefreshRetries: number;    // Max 3 retry attempts
+  }
+
+  // Check for expiring tokens
+  const expiringConnections = await client
+    .from('platform_connections')
+    .select('*')
+    .lte('token_expires_at', new Date(Date.now() + 30 * 60 * 1000))
+    .eq('is_active', true);
+
+  // Refresh each connection
+  for (const conn of expiringConnections) {
+    await refreshPlatformToken(conn.id, conn.platform);
+  }
+  ```
+
+  ### Triggers
+  ```sql
+  CREATE TRIGGER platform_connections_set_timestamps
+  BEFORE INSERT OR UPDATE ON platform_connections
+  FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamps();
+  ```
+
+  ## File Changes
+  | Action | Path |
+  |--------|------|
+  | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
+
+  ## Test Plan
+
+  ### Token Refresh Test
+  ```sql
+  -- Find connections expiring soon
+  SELECT id, platform, platform_account_name, token_expires_at
+  FROM platform_connections
+  WHERE token_expires_at < NOW() + INTERVAL '30 minutes'
+    AND is_active = TRUE;
+
+  -- Update after refresh
+  UPDATE platform_connections
+  SET
+    access_token_encrypted = 'new_encrypted_token',
+    token_expires_at = NOW() + INTERVAL '1 hour',
+    updated_at = NOW()
+  WHERE id = 'connection-id';
+  ```

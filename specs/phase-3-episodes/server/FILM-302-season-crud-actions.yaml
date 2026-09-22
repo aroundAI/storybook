@@ -1,0 +1,760 @@
+spec_id: "FILM-302"
+title: "Season CRUD Server Actions"
+phase: 3
+phase_name: "Episodes"
+category: server_action
+status: DONE
+audited: "2026-09-23"
+effort: S
+dependencies:
+  - spec_id: "FILM-101a"
+    note: null
+  - spec_id: "FILM-301"
+    note: null
+summary: >
+  The Season Management system provides server-side actions to organize episodes into seasons for TV series and serialized content. Seasons are optional containers that group related episodes, enabling users to structure long-form content with multiple seasons (e.g., "Season 1", "Season 2"). For standalone films or short-form content, episodes can exist without a season (season_id = NULL).
+server_action:
+  actions:
+    - name: "createSeasonAction"
+      file: "packages/features/episodes/src/lib/server/mutations/season-actions.ts"
+      schema: "CreateSeasonSchema"
+      auth: true
+    - name: "getProjectSeasonsAction"
+      file: "packages/features/episodes/src/lib/server/mutations/season-actions.ts"
+      schema: "GetProjectSeasonsSchema"
+      auth: true
+    - name: "updateSeasonAction"
+      file: "packages/features/episodes/src/lib/server/mutations/season-actions.ts"
+      schema: "UpdateSeasonSchema"
+      auth: true
+    - name: "deleteSeasonAction"
+      file: "packages/features/episodes/src/lib/server/mutations/season-actions.ts"
+      schema: "DeleteSeasonSchema"
+      auth: true
+acceptance_criteria:
+  - text: "`createSeasonAction` successfully creates season with valid data"
+    met: true
+    evidence: null
+  - text: "`createSeasonAction` auto-assigns season number if not provided"
+    met: true
+    evidence: null
+  - text: "`createSeasonAction` prevents duplicate season numbers"
+    met: true
+    evidence: null
+  - text: "`createSeasonAction` respects RLS (cannot create for inaccessible project)"
+    met: false
+    reason: "unverified — policy `seasons_create` exists (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:615`); no pgTAP test exercises it"
+  - text: "`getProjectSeasonsAction` returns all non-deleted seasons"
+    met: true
+    evidence: null
+  - text: "`getProjectSeasonsAction` includes accurate episode counts"
+    met: true
+    evidence: null
+  - text: "`getProjectSeasonsAction` orders by season number"
+    met: true
+    evidence: null
+  - text: "`updateSeasonAction` updates only provided fields"
+    met: true
+    evidence: null
+  - text: "`updateSeasonAction` updates updated_at timestamp"
+    met: true
+    evidence: null
+  - text: "`deleteSeasonAction` soft deletes season"
+    met: true
+    evidence: null
+  - text: "`deleteSeasonAction` sets episodes' season_id to NULL"
+    met: false
+    reason: "retired — replaced in 5ddb6752 (#229): deleting a season soft-deletes its episodes and shots (`packages/features/episodes/src/lib/server/mutations/season-actions.ts:395`)"
+  - text: "All actions enforce authentication"
+    met: true
+    evidence: null
+  - text: "All actions complete within 2 seconds"
+    met: false
+    reason: "unverified — runtime timing; needs a timed run against a seeded database"
+  - text: "All inputs validated with Zod schemas"
+    met: true
+    evidence: null
+  - text: "All database errors properly caught and thrown"
+    met: true
+    evidence: null
+  - text: "TypeScript compiles without errors (season files)"
+    met: true
+    evidence: null
+  - text: "No ESLint warnings"
+    met: false
+    reason: "unverified — linting is outside the audit rules; settle with `pnpm --filter @kit/episodes lint`"
+test_plan:
+  unit: []
+  integration: []
+  e2e: []
+open_questions: []
+notes: |
+  ## Source header
+
+  **Phase**: 3
+  **Priority**: P0
+  **Effort**: S (1-2 days)
+  **Status**: ✅ Complete
+  **Completed**: 2025-12-09
+  **Dependencies**: FILM-101a (seasons table), FILM-301 (episode-crud-actions)
+  **Blocks**: FILM-308, FILM-312
+
+  ## Context
+
+  Seasons belong to projects and have a simple structure with name, number, and description. The system must support soft deletes to preserve historical data and maintain referential integrity with episodes.
+
+  > **Implementation Note**: The spec originally used `title` but the implementation uses `name` to match the existing database schema.
+
+  ## Requirements
+
+  ### Functional Requirements
+
+  1. **Create Season**
+     - Accept season data (project_id, title, number, description)
+     - Validate user has write access to project
+     - Auto-assign season number if not provided
+     - Prevent duplicate season numbers within same project
+     - Return created season with all fields
+
+  2. **Get Project Seasons**
+     - Fetch all seasons for a project
+     - Order by season number
+     - Include episode count for each season
+     - Include soft delete filtering (exclude deleted_at IS NOT NULL)
+     - Return seasons with metadata
+
+  3. **Update Season**
+     - Accept partial season updates
+     - Validate user has write access
+     - Update only provided fields
+     - Update updated_at timestamp
+     - Return updated season
+
+  4. **Delete Season**
+     - Soft delete (set deleted_at timestamp)
+     - Validate user has write access
+     - Set season_id to NULL for all episodes in season (ON DELETE SET NULL)
+     - Return success confirmation
+
+  ### Non-Functional Requirements
+
+  - All actions must complete within 2 seconds
+  - Actions must be idempotent where possible
+  - Must enforce RLS policies via Supabase client
+  - Must log errors with context for debugging
+  - Must validate all inputs with Zod schemas
+
+  ## Interface
+
+  ### TypeScript Types
+
+  ```typescript
+  // Zod Schemas
+  import { z } from 'zod';
+
+  export const CreateSeasonSchema = z.object({
+    projectId: z.string().uuid(),
+    number: z.number().int().positive().optional(),
+    title: z.string().min(1).max(255),
+    description: z.string().max(1000).optional(),
+  });
+
+  export const GetProjectSeasonsSchema = z.object({
+    projectId: z.string().uuid(),
+  });
+
+  export const UpdateSeasonSchema = z.object({
+    seasonId: z.string().uuid(),
+    title: z.string().min(1).max(255).optional(),
+    description: z.string().max(1000).optional(),
+  });
+
+  export const DeleteSeasonSchema = z.object({
+    seasonId: z.string().uuid(),
+  });
+
+  // Return Types
+  export interface Season {
+    id: string;
+    projectId: string;
+    number: number;
+    title: string;
+    description: string | null;
+    metadata: Record<string, unknown>;
+    createdAt: string;
+    updatedAt: string;
+    deletedAt: string | null;
+  }
+
+  export interface SeasonWithEpisodeCount extends Season {
+    episodeCount: number;
+  }
+
+  export interface GetProjectSeasonsResponse {
+    seasons: SeasonWithEpisodeCount[];
+  }
+
+  export interface DeleteSeasonResponse {
+    success: boolean;
+    seasonId: string;
+  }
+  ```
+
+  ### Server Actions
+
+  ```typescript
+  'use server';
+
+  import { enhanceAction } from '@kit/next/actions';
+  import { getSupabaseServerClient } from '@kit/supabase/server-client';
+  import {
+    CreateSeasonSchema,
+    GetProjectSeasonsSchema,
+    UpdateSeasonSchema,
+    DeleteSeasonSchema,
+  } from '../schemas/season.schema';
+
+  /**
+   * Creates a new season for a project
+   * @throws {Error} If user lacks project access or validation fails
+   */
+  export const createSeasonAction = enhanceAction(
+    async (data, user) => {
+      const client = getSupabaseServerClient();
+
+      // Auto-assign season number if not provided
+      let seasonNumber = data.number;
+      if (!seasonNumber) {
+        const { data: existingSeasons } = await client
+          .from('seasons')
+          .select('number')
+          .eq('project_id', data.projectId)
+          .is('deleted_at', null)
+          .order('number', { ascending: false })
+          .limit(1);
+
+        seasonNumber = (existingSeasons?.[0]?.number ?? 0) + 1;
+      }
+
+      // Check for duplicate season number
+      const { data: duplicate } = await client
+        .from('seasons')
+        .select('id')
+        .eq('project_id', data.projectId)
+        .eq('number', seasonNumber)
+        .is('deleted_at', null)
+        .single();
+
+      if (duplicate) {
+        throw new Error(
+          `Season ${seasonNumber} already exists for this project`
+        );
+      }
+
+      // Insert season
+      const { data: season, error } = await client
+        .from('seasons')
+        .insert({
+          project_id: data.projectId,
+          number: seasonNumber,
+          title: data.title,
+          description: data.description ?? null,
+          metadata: {},
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return season;
+    },
+    { schema: CreateSeasonSchema, auth: true }
+  );
+
+  /**
+   * Fetches all seasons for a project with episode counts
+   * @throws {Error} If user lacks project access
+   */
+  export const getProjectSeasonsAction = enhanceAction(
+    async (data, user) => {
+      const client = getSupabaseServerClient();
+
+      // Fetch seasons with episode counts
+      const { data: seasons, error } = await client
+        .from('seasons')
+        .select(`
+          *,
+          episodes:episodes(count)
+        `)
+        .eq('project_id', data.projectId)
+        .is('deleted_at', null)
+        .order('number', { ascending: true });
+
+      if (error) throw error;
+
+      // Transform response to include episode count
+      const seasonsWithCount = (seasons ?? []).map((season) => ({
+        ...season,
+        episodeCount: season.episodes?.[0]?.count ?? 0,
+        episodes: undefined, // Remove nested episodes array
+      }));
+
+      return {
+        seasons: seasonsWithCount,
+      };
+    },
+    { schema: GetProjectSeasonsSchema, auth: true }
+  );
+
+  /**
+   * Updates an existing season
+   * @throws {Error} If user lacks project access or season not found
+   */
+  export const updateSeasonAction = enhanceAction(
+    async (data, user) => {
+      const client = getSupabaseServerClient();
+
+      // Build update object (only include provided fields)
+      const updates: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (data.title !== undefined) updates.title = data.title;
+      if (data.description !== undefined) updates.description = data.description;
+
+      const { data: season, error } = await client
+        .from('seasons')
+        .update(updates)
+        .eq('id', data.seasonId)
+        .is('deleted_at', null)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!season) throw new Error('Season not found');
+
+      return season;
+    },
+    { schema: UpdateSeasonSchema, auth: true }
+  );
+
+  /**
+   * Soft deletes a season (episodes' season_id set to NULL via ON DELETE SET NULL)
+   * @throws {Error} If user lacks access or season not found
+   */
+  export const deleteSeasonAction = enhanceAction(
+    async (data, user) => {
+      const client = getSupabaseServerClient();
+
+      // Soft delete season
+      const { error } = await client
+        .from('seasons')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', data.seasonId)
+        .is('deleted_at', null);
+
+      if (error) throw error;
+
+      // Note: Episodes' season_id will be set to NULL automatically via
+      // ON DELETE SET NULL foreign key constraint (when season is hard deleted)
+      // For soft delete, we manually update episodes
+      const { error: episodesError } = await client
+        .from('episodes')
+        .update({ season_id: null })
+        .eq('season_id', data.seasonId)
+        .is('deleted_at', null);
+
+      if (episodesError) throw episodesError;
+
+      return {
+        success: true,
+        seasonId: data.seasonId,
+      };
+    },
+    { schema: DeleteSeasonSchema, auth: true }
+  );
+  ```
+
+  ## Implementation Details
+
+  ### File Structure
+
+  ```
+  packages/features/episodes/src/
+  ├── lib/
+  │   ├── schemas/
+  │   │   └── season.schema.ts          # Zod schemas (CREATE THIS)
+  │   └── server/
+  │       ├── mutations/
+  │       │   └── season-actions.ts      # CRUD actions (CREATE THIS)
+  │       └── queries/
+  │           └── season-queries.ts      # Read-only queries (CREATE THIS)
+  └── types/
+      └── season.types.ts                # TypeScript interfaces (CREATE THIS)
+  ```
+
+  ### Database Queries
+
+  **Create Season**:
+  ```sql
+  -- Check for duplicate
+  SELECT id FROM seasons
+  WHERE project_id = $1 AND number = $2 AND deleted_at IS NULL;
+
+  -- Insert season
+  INSERT INTO seasons (project_id, number, title, description, metadata)
+  VALUES ($1, $2, $3, $4, '{}')
+  RETURNING *;
+  ```
+
+  **Get Project Seasons**:
+  ```sql
+  SELECT
+    s.*,
+    COUNT(e.id) FILTER (WHERE e.deleted_at IS NULL) as episode_count
+  FROM seasons s
+  LEFT JOIN episodes e ON s.id = e.season_id
+  WHERE s.project_id = $1 AND s.deleted_at IS NULL
+  GROUP BY s.id
+  ORDER BY s.number ASC;
+  ```
+
+  **Update Season**:
+  ```sql
+  UPDATE seasons
+  SET
+    title = COALESCE($2, title),
+    description = COALESCE($3, description),
+    updated_at = NOW()
+  WHERE id = $1 AND deleted_at IS NULL
+  RETURNING *;
+  ```
+
+  **Delete Season** (Soft Delete):
+  ```sql
+  -- Soft delete season
+  UPDATE seasons
+  SET deleted_at = NOW()
+  WHERE id = $1 AND deleted_at IS NULL;
+
+  -- Set episodes' season_id to NULL
+  UPDATE episodes
+  SET season_id = NULL
+  WHERE season_id = $1 AND deleted_at IS NULL;
+  ```
+
+  ### RLS Policy Verification
+
+  The following RLS policies must exist on the `seasons` table (from FILM-101a):
+
+  ```sql
+  -- Users can view seasons for projects they have access to
+  CREATE POLICY "Users can view project seasons"
+  ON seasons FOR SELECT
+  TO authenticated
+  USING (user_has_project_access(project_id));
+
+  -- Users can create seasons for projects they have write access
+  CREATE POLICY "Users can create project seasons"
+  ON seasons FOR INSERT
+  TO authenticated
+  WITH CHECK (user_has_project_write_access(project_id));
+
+  -- Users can update seasons for projects they have write access
+  CREATE POLICY "Users can update project seasons"
+  ON seasons FOR UPDATE
+  TO authenticated
+  USING (user_has_project_write_access(project_id));
+
+  -- Users can delete seasons for projects they have write access
+  CREATE POLICY "Users can delete project seasons"
+  ON seasons FOR DELETE
+  TO authenticated
+  USING (user_has_project_write_access(project_id));
+  ```
+
+  ### Error Handling
+
+  | Error Condition | Error Code | User Message | HTTP Status |
+  |----------------|------------|--------------|-------------|
+  | Invalid UUID | VALIDATION_ERROR | "Invalid season ID format" | 400 |
+  | Season not found | NOT_FOUND | "Season not found" | 404 |
+  | No project access | FORBIDDEN | "You don't have access to this project" | 403 |
+  | Duplicate season number | CONFLICT | "Season number already exists" | 409 |
+  | Database error | INTERNAL_ERROR | "Failed to perform operation" | 500 |
+
+  ### Validation Rules
+
+  - **title**: 1-255 characters, required
+  - **description**: Max 1000 characters, optional
+  - **number**: Positive integer, auto-assigned if not provided
+  - **projectId**: Valid UUID, required
+
+  ## File Changes
+
+  ### New Files
+
+  1. **packages/features/episodes/src/lib/schemas/season.schema.ts**
+     - Export all Zod schemas
+     - Include type inference helpers
+     - Add JSDoc comments
+
+  2. **packages/features/episodes/src/lib/server/mutations/season-actions.ts**
+     - Implement all CRUD actions
+     - Use enhanceAction wrapper
+     - Include comprehensive error handling
+
+  3. **packages/features/episodes/src/lib/server/queries/season-queries.ts**
+     - Helper functions for read operations
+     - Reusable query builders
+     - Type-safe return values
+
+  4. **packages/features/episodes/src/types/season.types.ts**
+     - Export Season interface
+     - Export all response types
+     - Mirror database types
+
+  ### Modified Files
+
+  None (new feature)
+
+  ## Acceptance Criteria (non-checklist content)
+
+  Grouping in the source: items 1–12 under "### Functional"; items 13–17 under "### Non-Functional".
+
+  ## Test Plan
+
+  ### Unit Tests
+
+  **File**: `packages/features/episodes/src/lib/server/mutations/__tests__/season-actions.test.ts`
+
+  ```typescript
+  import { describe, it, expect, vi, beforeEach } from 'vitest';
+  import {
+    createSeasonAction,
+    getProjectSeasonsAction,
+    updateSeasonAction,
+    deleteSeasonAction,
+  } from '../season-actions';
+
+  // Mock Supabase client
+  vi.mock('@kit/supabase/server-client');
+
+  describe('Season CRUD Actions', () => {
+    describe('createSeasonAction', () => {
+      it('should create season with valid data', async () => {
+        // Test implementation
+      });
+
+      it('should auto-assign season number', async () => {
+        // Test implementation
+      });
+
+      it('should prevent duplicate season numbers', async () => {
+        // Test implementation
+      });
+
+      it('should enforce authentication', async () => {
+        // Test implementation
+      });
+    });
+
+    describe('getProjectSeasonsAction', () => {
+      it('should return all project seasons', async () => {
+        // Test implementation
+      });
+
+      it('should include episode counts', async () => {
+        // Test implementation
+      });
+
+      it('should order by season number', async () => {
+        // Test implementation
+      });
+
+      it('should exclude soft-deleted seasons', async () => {
+        // Test implementation
+      });
+    });
+
+    describe('updateSeasonAction', () => {
+      it('should update only provided fields', async () => {
+        // Test implementation
+      });
+
+      it('should update updated_at timestamp', async () => {
+        // Test implementation
+      });
+
+      it('should reject updates to deleted seasons', async () => {
+        // Test implementation
+      });
+    });
+
+    describe('deleteSeasonAction', () => {
+      it('should soft delete season', async () => {
+        // Test implementation
+      });
+
+      it('should set episodes season_id to NULL', async () => {
+        // Test implementation
+      });
+
+      it('should return success response', async () => {
+        // Test implementation
+      });
+    });
+  });
+  ```
+
+  ### Integration Tests
+
+  **File**: `apps/web/__tests__/integration/season-crud.test.ts`
+
+  ```typescript
+  import { describe, it, expect } from 'vitest';
+  import { createClient } from '@supabase/supabase-js';
+
+  describe('Season CRUD Integration', () => {
+    it('should complete full CRUD lifecycle', async () => {
+      // 1. Create season
+      // 2. Read seasons
+      // 3. Update season
+      // 4. Delete season
+      // 5. Verify soft delete
+      // 6. Verify episodes' season_id set to NULL
+    });
+
+    it('should enforce RLS policies', async () => {
+      // Test with different user contexts
+    });
+
+    it('should prevent duplicate season numbers', async () => {
+      // Create season with number 1
+      // Try creating another season with number 1
+      // Verify error
+    });
+  });
+  ```
+
+  ### Manual Testing
+
+  1. **Create Season**
+     - Open Supabase Studio
+     - Execute: `SELECT * FROM seasons WHERE id = '<new-season-id>'`
+     - Verify all fields populated correctly
+
+  2. **Get Seasons with Counts**
+     - Create season with multiple episodes
+     - Call getProjectSeasonsAction
+     - Verify episode count is accurate
+
+  3. **Update Season**
+     - Update season title
+     - Verify updated_at changed
+     - Verify other fields unchanged
+
+  4. **Delete Season**
+     - Create season with episodes
+     - Delete season
+     - Verify deleted_at set
+     - Verify episodes' season_id is NULL
+
+  ## Security Considerations
+
+  ### Authentication
+
+  - All actions require authenticated user via `auth: true`
+  - User identity retrieved from session token
+  - No direct user ID parameters accepted
+
+  ### Authorization
+
+  - RLS policies enforce project-level access control
+  - Helper functions verify team membership
+  - Write operations require explicit write access
+
+  ### Input Validation
+
+  - All inputs validated with Zod schemas
+  - UUID format validated for IDs
+  - Season number validated as positive integer
+
+  ### SQL Injection Prevention
+
+  - Supabase client uses parameterized queries
+  - No raw SQL string concatenation
+  - All inputs properly escaped
+
+  ### Rate Limiting
+
+  Consider adding rate limiting in future iteration:
+  - Max 50 season creations per hour per user
+  - Max 500 reads per hour per user
+
+  ## Performance Considerations
+
+  ### Database Indexes
+
+  Verify the following indexes exist (from FILM-101a):
+
+  ```sql
+  CREATE INDEX idx_seasons_project_number ON seasons(project_id, number)
+    WHERE deleted_at IS NULL;
+
+  CREATE INDEX idx_seasons_project_id ON seasons(project_id);
+  ```
+
+  ### Query Optimization
+
+  - Use aggregation for episode counts
+  - Implement caching for season lists
+  - Use partial indexes for active seasons only
+
+  ### Caching Strategy
+
+  ```typescript
+  // Client-side React Query cache
+  const queryClient = useQueryClient();
+
+  // Cache seasons for 5 minutes
+  const { data } = useQuery({
+    queryKey: ['seasons', projectId],
+    queryFn: () => getProjectSeasonsAction({ projectId }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Invalidate cache after mutations
+  await createSeasonAction(data);
+  queryClient.invalidateQueries({ queryKey: ['seasons', projectId] });
+  ```
+
+  ## Future Enhancements
+
+  1. **Season Templates**
+     - Predefined season structures (e.g., "Standard 10-episode season")
+     - Season templates marketplace
+
+  2. **Season Duplication**
+     - `duplicateSeasonAction` to clone existing seasons with episodes
+
+  3. **Batch Season Operations**
+     - `bulkCreateSeasonsAction` for series setup
+
+  4. **Season Metadata**
+     - Release dates
+     - Target audience
+     - Genre tags
+
+  5. **Season Statistics**
+     - Total duration
+     - Completion percentage
+     - View counts (when analytics implemented)
+
+  ## References
+
+  - **FILM-101a**: Seasons table schema
+  - **FILM-301**: Episode CRUD actions
+  - **Constitution**: Section 2.2 (Server Actions Pattern)
+  - **Constitution**: Section 3 (Database Conventions)
+  - **Constitution**: Section 4.1 (RLS Policies)
+  - **Next.js Actions**: https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations

@@ -1,0 +1,435 @@
+spec_id: "FILM-106"
+title: "@kit/episodes Package"
+phase: 1
+phase_name: "Foundation"
+category: package
+status: PARTIAL
+audited: "2026-09-23"
+effort: S
+dependencies: []
+summary: >
+  The @kit/episodes package manages episodes and shots within the film production
+  pipeline. It handles episode planning, shot creation, scene management, and
+  coordinates the relationship between episodes, shots, and assets. This package is
+  essential for organizing the narrative structure and production workflow.
+package:
+  package_name: "@kit/episodes"
+  path: "packages/features/episodes/"
+  exports:
+    - path: "."
+      description: "Main exports (re-exports from all modules)"
+    - path: "./components"
+      description: "UI components for episode and shot management"
+    - path: "./server"
+      description: "Server actions and queries for episodes/shots"
+    - path: "./lib"
+      description: "Shared utilities, types, and constants"
+    - path: "./schemas"
+      description: "Zod validation schemas"
+    - path: "./types"
+      description: "TypeScript type definitions"
+    - path: "./hooks"
+      description: "React hooks for episode operations"
+  package_dependencies:
+    - name: "@kit/supabase"
+      purpose: "Database access for episodes and shots"
+    - name: "@kit/shared"
+      purpose: "Shared utilities"
+    - name: "@kit/ui"
+      purpose: "UI components library"
+    - name: "zod"
+      purpose: "Schema validation"
+    - name: "react-hook-form"
+      purpose: "Form management"
+    - name: "@hookform/resolvers"
+      purpose: "Zod resolver for forms"
+acceptance_criteria:
+  - text: "Package builds without errors"
+    met: true
+    evidence: null
+  - text: "All exports work correctly"
+    met: false
+    reason: "no longer true — `./server/context-builder` (`packages/features/episodes/package.json:19`) points at a file deleted in `e2d42522`"
+  - text: "TypeScript types exported and accessible"
+    met: true
+    evidence: null
+  - text: "Zod schemas validate correctly"
+    met: true
+    evidence: null
+  - text: "Can be imported by other packages"
+    met: true
+    evidence: null
+  - text: "Server actions have 'use server' directive"
+    met: true
+    evidence: null
+test_plan:
+  unit:
+    - text: "Package can be imported from other workspace packages"
+      met: true
+      evidence: null
+    - text: "All export paths are accessible"
+      met: false
+      reason: "not met — no test found; and `./server/context-builder` resolves to nothing"
+    - text: "Zod schemas validate valid episode data"
+      met: true
+      evidence: null
+    - text: "Zod schemas validate valid shot data"
+      met: true
+      evidence: null
+    - text: "Zod schemas reject invalid input"
+      met: true
+      evidence: null
+    - text: "Constants are accessible"
+      met: false
+      reason: "not met — no test found; no consumer uses the constants in `packages/features/episodes/src/lib/constants.ts`"
+  integration: []
+  e2e: []
+remaining:
+  - criterion: "All exports work correctly"
+    reason: "`./server/context-builder` in `packages/features/episodes/package.json:19` maps to `src/server/context-builder.ts`, deleted in `e2d42522` (2026-01-18; the builder now lives in `apps/web/lambda/llm-worker/utils/context-builder.ts`). Nothing imports the path, so the fix is deleting the entry."
+    closed_by: "unassigned"
+open_questions: []
+notes: |
+  ## Metadata not held in typed fields
+  - **Priority:** P0
+  - **Dependencies:** None
+  - **Blocks:** Phase 3 (Episode Management)
+  - **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ COMPLETED)
+  - **PR:** https://github.com/aroundAI/storybook/pull/4
+
+  ## Specification
+  ### Package Structure
+  ```
+  packages/features/episodes/
+  ├── package.json
+  ├── tsconfig.json
+  └── src/
+      ├── index.ts
+      ├── components/
+      │   └── index.ts
+      ├── server/
+      │   ├── index.ts
+      │   ├── actions.ts
+      │   └── queries.ts
+      ├── lib/
+      │   ├── index.ts
+      │   ├── types.ts
+      │   ├── schemas.ts
+      │   └── constants.ts
+      └── hooks/
+          └── index.ts
+  ```
+
+  ### package.json
+  ```json
+  {
+    "name": "@kit/episodes",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+      "clean": "rimraf dist",
+      "build": "tsup",
+      "dev": "tsup --watch",
+      "typecheck": "tsc --noEmit"
+    },
+    "exports": {
+      ".": "./src/index.ts",
+      "./components": "./src/components/index.ts",
+      "./server": "./src/server/index.ts",
+      "./lib": "./src/lib/index.ts",
+      "./schemas": "./src/lib/schemas.ts",
+      "./types": "./src/lib/types.ts",
+      "./hooks": "./src/hooks/index.ts"
+    },
+    "dependencies": {
+      "@kit/supabase": "workspace:*",
+      "@kit/shared": "workspace:*",
+      "@kit/ui": "workspace:*",
+      "zod": "^3.22.4",
+      "react": "^18.2.0",
+      "react-hook-form": "^7.50.0",
+      "@hookform/resolvers": "^3.3.0",
+      "next": "^14.1.0"
+    },
+    "devDependencies": {
+      "@types/react": "^18.2.0",
+      "@types/node": "^20.0.0",
+      "typescript": "^5.3.0",
+      "tsup": "^8.0.0",
+      "rimraf": "^5.0.0"
+    }
+  }
+  ```
+
+  ### tsconfig.json
+  ```json
+  {
+    "extends": "../../../tsconfig.json",
+    "compilerOptions": {
+      "outDir": "./dist",
+      "rootDir": "./src"
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist"]
+  }
+  ```
+
+  ### Exports and Dependencies
+  The export paths and dependency tables are in `package.exports` and `package.package_dependencies`.
+
+  ### Initial Files
+
+  #### src/index.ts
+  ```typescript
+  export * from './components';
+  export * from './server';
+  export * from './lib';
+  export * from './hooks';
+  ```
+
+  #### src/components/index.ts
+  ```typescript
+  // Export episode components here
+  // EpisodeList, EpisodeCard, EpisodeForm, ShotList, ShotCard, ShotForm, SceneEditor, etc.
+  export {};
+  ```
+
+  #### src/server/index.ts
+  ```typescript
+  export * from './actions';
+  export * from './queries';
+  ```
+
+  #### src/server/actions.ts
+  ```typescript
+  'use server';
+
+  // Server actions for episode and shot CRUD operations
+  export {};
+  ```
+
+  #### src/server/queries.ts
+  ```typescript
+  import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+  // Database queries for episodes and shots
+  export async function getEpisodesByProject(projectId: string) {
+    const client = getSupabaseServerClient();
+    // Implementation will be added
+    return { data: [], error: null };
+  }
+
+  export async function getShotsByEpisode(episodeId: string) {
+    const client = getSupabaseServerClient();
+    // Implementation will be added
+    return { data: [], error: null };
+  }
+  ```
+
+  #### src/lib/index.ts
+  ```typescript
+  export * from './types';
+  export * from './schemas';
+  export * from './constants';
+  ```
+
+  #### src/lib/types.ts
+  ```typescript
+  // Episode and shot types
+  export type EpisodeStatus = 'draft' | 'planning' | 'in_progress' | 'completed' | 'published';
+  export type ShotStatus = 'pending' | 'generating' | 'completed' | 'failed';
+  export type CameraAngle = 'wide' | 'medium' | 'close-up' | 'extreme-close-up' | 'over-the-shoulder' | 'pov' | 'low-angle' | 'high-angle' | 'birds-eye' | 'dutch-angle';
+  export type CameraMovement = 'static' | 'pan' | 'tilt' | 'zoom' | 'dolly' | 'tracking' | 'crane' | 'handheld' | 'steadicam';
+
+  export interface Episode {
+    id: string;
+    projectId: string;
+    title: string;
+    description: string | null;
+    episodeNumber: number;
+    status: EpisodeStatus;
+    script: string | null;
+    duration: number | null;
+    metadata: {
+      sceneCount?: number;
+      shotCount?: number;
+      totalDuration?: number;
+      themes?: string[];
+      tags?: string[];
+    } | null;
+    createdAt: string;
+    updatedAt: string;
+  }
+
+  export interface Shot {
+    id: string;
+    episodeId: string;
+    sceneNumber: number;
+    shotNumber: number;
+    description: string;
+    duration: number;
+    status: ShotStatus;
+    cameraAngle: CameraAngle | null;
+    cameraMovement: CameraMovement | null;
+    prompt: string | null;
+    videoUrl: string | null;
+    thumbnailUrl: string | null;
+    metadata: {
+      characters?: string[];
+      locations?: string[];
+      props?: string[];
+      dialogue?: string;
+      soundEffects?: string[];
+      music?: string;
+      lighting?: string;
+      mood?: string;
+    } | null;
+    generationSettings: {
+      provider?: 'kling' | 'runway' | 'luma';
+      modelVersion?: string;
+      aspectRatio?: string;
+      duration?: number;
+      seed?: number;
+      negativePrompt?: string;
+    } | null;
+    generationJobId: string | null;
+    generationStartedAt: string | null;
+    generationCompletedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }
+  ```
+
+  #### src/lib/schemas.ts
+  ```typescript
+  import { z } from 'zod';
+
+  // Episode schemas
+  export const EpisodeStatusSchema = z.enum(['draft', 'planning', 'in_progress', 'completed', 'published']);
+
+  export const CreateEpisodeSchema = z.object({
+    projectId: z.string().uuid(),
+    title: z.string().min(1).max(255),
+    description: z.string().optional(),
+    episodeNumber: z.number().int().positive(),
+    script: z.string().optional(),
+    metadata: z.object({
+      themes: z.array(z.string()).optional(),
+      tags: z.array(z.string()).optional(),
+    }).optional(),
+  });
+
+  export const UpdateEpisodeSchema = CreateEpisodeSchema.partial().extend({
+    id: z.string().uuid(),
+    status: EpisodeStatusSchema.optional(),
+  });
+
+  // Shot schemas
+  export const ShotStatusSchema = z.enum(['pending', 'generating', 'completed', 'failed']);
+  export const CameraAngleSchema = z.enum(['wide', 'medium', 'close-up', 'extreme-close-up', 'over-the-shoulder', 'pov', 'low-angle', 'high-angle', 'birds-eye', 'dutch-angle']);
+  export const CameraMovementSchema = z.enum(['static', 'pan', 'tilt', 'zoom', 'dolly', 'tracking', 'crane', 'handheld', 'steadicam']);
+
+  export const CreateShotSchema = z.object({
+    episodeId: z.string().uuid(),
+    sceneNumber: z.number().int().positive(),
+    shotNumber: z.number().int().positive(),
+    description: z.string().min(1),
+    duration: z.number().positive(),
+    cameraAngle: CameraAngleSchema.optional(),
+    cameraMovement: CameraMovementSchema.optional(),
+    prompt: z.string().optional(),
+    metadata: z.object({
+      characters: z.array(z.string()).optional(),
+      locations: z.array(z.string()).optional(),
+      props: z.array(z.string()).optional(),
+      dialogue: z.string().optional(),
+      soundEffects: z.array(z.string()).optional(),
+      music: z.string().optional(),
+      lighting: z.string().optional(),
+      mood: z.string().optional(),
+    }).optional(),
+  });
+
+  export const UpdateShotSchema = CreateShotSchema.partial().extend({
+    id: z.string().uuid(),
+    status: ShotStatusSchema.optional(),
+    videoUrl: z.string().url().optional(),
+    thumbnailUrl: z.string().url().optional(),
+  });
+  ```
+
+  #### src/lib/constants.ts
+  ```typescript
+  // Episode and shot constants
+  export const EPISODE_STATUS = {
+    DRAFT: 'draft',
+    PLANNING: 'planning',
+    IN_PROGRESS: 'in_progress',
+    COMPLETED: 'completed',
+    PUBLISHED: 'published',
+  } as const;
+
+  export const SHOT_STATUS = {
+    PENDING: 'pending',
+    GENERATING: 'generating',
+    COMPLETED: 'completed',
+    FAILED: 'failed',
+  } as const;
+
+  export const CAMERA_ANGLES = [
+    'wide',
+    'medium',
+    'close-up',
+    'extreme-close-up',
+    'over-the-shoulder',
+    'pov',
+    'low-angle',
+    'high-angle',
+    'birds-eye',
+    'dutch-angle',
+  ] as const;
+
+  export const CAMERA_MOVEMENTS = [
+    'static',
+    'pan',
+    'tilt',
+    'zoom',
+    'dolly',
+    'tracking',
+    'crane',
+    'handheld',
+    'steadicam',
+  ] as const;
+
+  export const DEFAULT_SHOT_DURATION = 5; // seconds
+  export const MAX_SHOTS_PER_SCENE = 100;
+  ```
+
+  #### src/hooks/index.ts
+  ```typescript
+  // Export React hooks for episode and shot operations
+  export {};
+  ```
+
+  ## File Changes
+  | Action | Path |
+  |--------|------|
+  | CREATE | `packages/features/episodes/package.json` |
+  | CREATE | `packages/features/episodes/tsconfig.json` |
+  | CREATE | `packages/features/episodes/src/index.ts` |
+  | CREATE | `packages/features/episodes/src/components/index.ts` |
+  | CREATE | `packages/features/episodes/src/server/index.ts` |
+  | CREATE | `packages/features/episodes/src/server/actions.ts` |
+  | CREATE | `packages/features/episodes/src/server/queries.ts` |
+  | CREATE | `packages/features/episodes/src/lib/index.ts` |
+  | CREATE | `packages/features/episodes/src/lib/types.ts` |
+  | CREATE | `packages/features/episodes/src/lib/schemas.ts` |
+  | CREATE | `packages/features/episodes/src/lib/constants.ts` |
+  | CREATE | `packages/features/episodes/src/hooks/index.ts` |
+
+  ## Implementation Notes
+  - Implemented in PR #4
+  - Database operations use type assertions (`client as any`) since tables will be created in FILM-101
+  - Full CRUD server actions implemented: create, update, delete for episodes and shots
+  - Reorder shots action for sequence management
+  - All queries return proper typed results

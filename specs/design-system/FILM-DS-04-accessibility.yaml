@@ -1,0 +1,482 @@
+spec_id: "FILM-DS-04"
+title: "Accessibility Requirements"
+phase: null
+phase_name: "Design System"
+category: design_guideline
+status: PARTIAL
+audited: "2026-09-23"
+effort: M
+dependencies:
+  - spec_id: "FILM-DS-01"
+    note: null
+  - spec_id: "FILM-DS-02"
+    note: null
+  - spec_id: "FILM-DS-03"
+    note: null
+summary: >
+  The Film Studio must be accessible to users with disabilities, meeting WCAG 2.1 AA
+  standards. This spec defines accessibility requirements for all custom components.
+acceptance_criteria:
+  - text: "All interactive elements are keyboard accessible (useRovingTabIndex hook)"
+    met: false
+    reason: "no longer true — shot cards are unfocusable `<div onClick>`s (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`); useRovingTabIndex was never mounted, deleted 5f44d0e1"
+  - text: "Focus is never lost during navigation (useFocusTrap hook)"
+    met: false
+    reason: "no longer true — hand-rolled modals unmount with focus inside and restore nothing (`packages/features/edit-suite/src/components/export/export-dialog.tsx:212`); useFocusTrap deleted unused in 5f44d0e1"
+  - text: "Status changes are announced to screen readers (StatusAnnouncer component)"
+    met: false
+    reason: "no longer true — toasts and `@kit/ui` Alerts (`role=\"alert\"`) announce, but export progress (`packages/features/edit-suite/src/components/export/export-dialog.tsx:392`) and bulk-generate statuses have no live region; StatusAnnouncer never mounted"
+  - text: "Color contrast meets WCAG AA (4.5:1) (validateContrast utility)"
+    met: false
+    reason: "no longer true — `--status-processing` 3.95:1 and `--status-error` 4.41:1 against their foregrounds (`apps/web/styles/shadcn-ui.css:51`), used for badge text"
+  - text: "Icons have text alternatives or labels (documentation provided)"
+    met: false
+    reason: "no longer true — a scan finds at least 39 of 84 icon-only buttons with no aria-label, title or text, e.g. `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-header.tsx:320`"
+  - text: "Modals trap focus appropriately (useFocusTrap hook)"
+    met: false
+    reason: "no longer true — `@kit/ui` dialogs (Radix) trap focus, but `packages/features/edit-suite/src/components/export/export-dialog.tsx:217` is hand-rolled with no trap"
+  - text: "Skip links allow bypassing navigation (SkipLinks component)"
+    met: false
+    reason: "no longer true — no skip link anywhere in `apps/web`; SkipLinks was never mounted and was deleted in 5f44d0e1"
+  - text: "axe-core reports no critical violations (requires integration testing)"
+    met: false
+    reason: "not met — deferred at ship time: axe-core integration testing; no axe usage in `apps/e2e`"
+test_plan:
+  unit: []
+  integration: []
+  e2e: []
+  automated:
+    - text: "Run axe-core on all pages"
+      met: false
+      reason: "not met — no test found; axe-core is only a transitive dependency of eslint-plugin-jsx-a11y"
+    - text: "Validate HTML structure (headings, landmarks)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Check color contrast ratios"
+      met: false
+      reason: "not met — no test found; `packages/branding/__tests__/color-utils.test.ts:67` tests the contrast calculator, not the app's colours"
+    - text: "Verify ARIA attributes are valid"
+      met: true
+      evidence: "tooling/eslint/nextjs.js:9 (next/core-web-vitals enables jsx-a11y aria-props/aria-proptypes; warn-level, so CI lint reports but never fails)"
+  manual:
+    - text: "Navigate all functionality with keyboard only"
+      met: false
+      reason: "not met — no test or recorded pass found"
+    - text: "Test with screen reader (VoiceOver/NVDA)"
+      met: false
+      reason: "not met — no test or recorded pass found"
+    - text: "Verify focus order is logical"
+      met: false
+      reason: "not met — no test or recorded pass found"
+    - text: "Check skip links work"
+      met: false
+      reason: "not met — there are no skip links to check"
+    - text: "Test at 200% zoom"
+      met: false
+      reason: "not met — no test or recorded pass found"
+    - text: "Test with high contrast mode"
+      met: false
+      reason: "not met — no test or recorded pass found"
+remaining:
+  - criterion: "All interactive elements are keyboard accessible"
+    reason: >
+      Shot cards and the "Add New Shot" tile are unfocusable `<div>`s
+      (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`,
+      `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:55`);
+      the shipped `useRovingTabIndex` was never mounted and was deleted in 5f44d0e1
+    closed_by: "FILM-410"
+  - criterion: "Focus is never lost during navigation"
+    reason: >
+      The export dialog unmounts with focus inside it and nothing returns focus to its
+      trigger
+      (`packages/features/edit-suite/src/components/export/export-dialog.tsx:212`,
+      opened from `packages/features/edit-suite/src/components/toolbar.tsx:271`)
+    closed_by: "unassigned"
+  - criterion: "Status changes are announced to screen readers"
+    reason: >
+      Toasts, `@kit/ui` Alerts (`role="alert"`, `packages/ui/src/shadcn/alert.tsx:32`)
+      and
+      `packages/features/assets/src/components/image-uploader/ImageUploadProgress.tsx:43`
+      announce, but edit-suite export progress
+      (`packages/features/edit-suite/src/components/export/export-dialog.tsx:392`) and
+      bulk-generate statuses have no live region
+    closed_by: "unassigned"
+  - criterion: "Color contrast meets WCAG AA (4.5:1)"
+    reason: >
+      Computed from `apps/web/styles/shadcn-ui.css`: `--status-processing` 3.95:1 (dark
+      3.05:1) and `--status-error` 4.41:1 (dark 3.79:1) against their foregrounds; badge
+      text is `text-xs`
+    closed_by: "unassigned"
+  - criterion: "Icons have text alternatives or labels"
+    reason: >
+      A scan of every `<Button size="icon">` found 39 of 84 with no aria-label, title,
+      sr-only or visible text, and 6 more whose label depends on a runtime expression,
+      e.g.
+      `apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/audio-asset-card.tsx:146`
+    closed_by: "unassigned"
+  - criterion: "Modals trap focus appropriately"
+    reason: >
+      Two hand-rolled overlays have no `role="dialog"`, focus trap or Escape:
+      `packages/features/edit-suite/src/components/export/export-dialog.tsx:217` and
+      `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx:887`
+    closed_by: "unassigned"
+  - criterion: "Skip links allow bypassing navigation"
+    reason: "No skip link exists in `apps/web`"
+    closed_by: "unassigned"
+open_questions:
+  - "Should we support reduced motion preferences for animations? (nice-to-have)"
+  - "Should generated videos have auto-captions? (post-MVP)"
+design_guideline:
+  guideline_type: "Accessibility Requirements"
+  applies_to:
+    - "Shot Grid"
+    - "Status Badge"
+    - "Progress Indicators"
+    - "Timeline Editor"
+    - "Modal/Dialog"
+    - "Live regions"
+    - "Focus management"
+    - "Skip links"
+    - "Color contrast"
+  patterns:
+    - "WCAG 1.1.1 Non-text Content: Alt text for all images/videos — Thumbnails, generated content"
+    - "WCAG 1.3.1 Info and Relationships: Semantic HTML structure — Headings, landmarks, lists"
+    - "WCAG 1.4.1 Use of Color: Not sole indicator — Icons + color for status"
+    - "WCAG 1.4.3 Contrast: 4.5:1 minimum — All text/backgrounds"
+    - "WCAG 1.4.11 Non-text Contrast: 3:1 for UI components — Buttons, inputs, cards"
+    - "WCAG 2.1.1 Keyboard: All functionality via keyboard — Navigation, actions"
+    - "WCAG 2.1.2 No Keyboard Trap: Can navigate away — Modals, editors"
+    - "WCAG 2.4.3 Focus Order: Logical sequence — Tab order"
+    - "WCAG 2.4.7 Focus Visible: Clear focus indicator — Custom focus styles"
+    - "WCAG 4.1.2 Name, Role, Value: ARIA for custom controls — Timeline, shot grid"
+    - "Shot grid: `role=\"grid\"` with `aria-label` and `aria-rowcount`; each cell `role=\"gridcell\"` with `aria-rowindex`, `aria-colindex`, `aria-selected` and a roving `tabIndex`"
+    - "Status badge: icon (`aria-hidden`) + color + text label, with sr-only \", in progress\" while generating"
+    - "Progress ring: `role=\"progressbar\"` with `aria-valuenow`/`aria-valuemin`/`aria-valuemax` and an `aria-label` (default \"{progress}% complete\"), plus sr-only percentage text"
+    - "Timeline editor: `role=\"application\"` described by sr-only instructions; playhead `role=\"slider\"` with value and `aria-valuetext`; tracks `role=\"list\"`, clips `role=\"listitem\"` labelled with name and time range"
+    - "Modal/dialog: `aria-labelledby`/`aria-describedby`; focus the first input, button or select on open; return focus to the trigger on close"
+    - "Live regions: a `role=\"status\"`, `aria-live=\"polite\"`, `aria-atomic=\"true\"` sr-only announcer reports completed and failed generations"
+    - "Focus management: `useFocusTrap` cycles Tab/Shift+Tab between the first and last focusable elements of an active modal or sheet and focuses the first on activation"
+    - "Skip links: \"Skip to main content\" (`#main-content`) and \"Skip to navigation\" (`#sidebar-nav`), sr-only until focused"
+    - "Contrast minimums: normal text 4.5 (WCAG AA), large text 3.0 (18pt+ or 14pt bold), UI components 3.0, focus indicator 3.0; status colors validated against 4.5"
+  file_path: null
+notes: |
+  test_plan keeps the source's own split: "Automated Testing" and "Manual Testing" (the source has no unit/integration/e2e lists).
+
+  ## Metadata
+  - **Phase:** Design System
+  - **Priority:** P0 (Critical)
+  - **Effort:** M (4-8 hours)
+  - **Status:** 🟡 PARTIAL (audit 2026-09-23; was DONE)
+  - **Dependencies:** FILM-DS-01 through FILM-DS-03
+  - **Blocks:** All UI component implementations
+
+  ## Implementation Notes
+
+  > Completed 2025-12-08. Created a11y utilities, focus trap hook, skip links component, and status announcer with 99 unit tests.
+
+  **Files Created:**
+  - `packages/features/film-studio/src/lib/a11y-utils.ts` - Contrast validation, WCAG helpers
+  - `packages/features/film-studio/src/hooks/use-focus-trap.ts` - Focus trap and roving tabindex hooks
+  - `packages/features/film-studio/src/components/a11y/skip-links.tsx` - Skip navigation links
+  - `packages/features/film-studio/src/components/a11y/status-announcer.tsx` - Live region announcements
+
+  ## Specification
+
+  ### 1. WCAG 2.1 AA Compliance Targets
+
+  (Table rows transcribed into design_guideline.patterns.)
+
+  ### 2. Component-Specific ARIA Requirements
+
+  #### Shot Grid
+
+  ```typescript
+  // Grid with proper ARIA roles
+  <div
+    role="grid"
+    aria-label="Episode shots"
+    aria-rowcount={shots.length}
+    className="grid grid-cols-4 gap-4"
+  >
+    {shots.map((shot, index) => (
+      <div
+        key={shot.id}
+        role="gridcell"
+        aria-rowindex={Math.floor(index / 4) + 1}
+        aria-colindex={(index % 4) + 1}
+        aria-selected={selectedIds.has(shot.id)}
+        tabIndex={index === focusedIndex ? 0 : -1}
+      >
+        <ShotCard shot={shot} />
+      </div>
+    ))}
+  </div>
+  ```
+
+  #### Status Badge
+
+  ```typescript
+  // Status with icon + color + text
+  function StatusBadge({ status }: { status: StatusType }) {
+    const token = getStatusToken(status);
+    const Icon = Icons[token.icon];
+
+    return (
+      <Badge className={getStatusClasses(status)}>
+        <Icon className="h-3 w-3 mr-1" aria-hidden="true" />
+        <span>{token.label}</span>
+        {status === 'generating' && (
+          <span className="sr-only">, in progress</span>
+        )}
+      </Badge>
+    );
+  }
+  ```
+
+  #### Progress Indicators
+
+  ```typescript
+  // Circular progress with ARIA
+  function ProgressRing({ progress, label }: { progress: number; label?: string }) {
+    return (
+      <div
+        role="progressbar"
+        aria-valuenow={progress}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={label || `${progress}% complete`}
+      >
+        <svg className="h-12 w-12">
+          <circle
+            className="text-muted stroke-current"
+            strokeWidth="4"
+            fill="transparent"
+            r="20"
+            cx="24"
+            cy="24"
+          />
+          <circle
+            className="text-primary stroke-current transition-all duration-300"
+            strokeWidth="4"
+            strokeLinecap="round"
+            fill="transparent"
+            r="20"
+            cx="24"
+            cy="24"
+            style={{
+              strokeDasharray: `${2 * Math.PI * 20}`,
+              strokeDashoffset: `${2 * Math.PI * 20 * (1 - progress / 100)}`,
+            }}
+          />
+        </svg>
+        <span className="sr-only">{progress}% complete</span>
+      </div>
+    );
+  }
+  ```
+
+  #### Timeline Editor
+
+  ```typescript
+  // Timeline with slider semantics
+  <div
+    role="application"
+    aria-label="Timeline editor"
+    aria-describedby="timeline-instructions"
+  >
+    <p id="timeline-instructions" className="sr-only">
+      Use arrow keys to scrub playhead. Press space to play or pause.
+      Use [ and ] to set in and out points.
+    </p>
+
+    {/* Playhead */}
+    <div
+      role="slider"
+      aria-label="Playhead position"
+      aria-valuenow={currentTime}
+      aria-valuemin={0}
+      aria-valuemax={duration}
+      aria-valuetext={formatTime(currentTime)}
+      tabIndex={0}
+      onKeyDown={handlePlayheadKeyDown}
+    />
+
+    {/* Tracks */}
+    {tracks.map(track => (
+      <div
+        key={track.id}
+        role="list"
+        aria-label={`${track.type} track`}
+      >
+        {track.clips.map(clip => (
+          <div
+            key={clip.id}
+            role="listitem"
+            aria-label={`${clip.name}, ${formatTime(clip.start)} to ${formatTime(clip.end)}`}
+          />
+        ))}
+      </div>
+    ))}
+  </div>
+  ```
+
+  #### Modal/Dialog
+
+  ```typescript
+  // Modal with focus trap
+  <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <DialogContent
+      aria-labelledby="dialog-title"
+      aria-describedby="dialog-description"
+      onOpenAutoFocus={(e) => {
+        // Focus first interactive element
+        const firstInput = e.currentTarget.querySelector('input, button, select');
+        firstInput?.focus();
+      }}
+      onCloseAutoFocus={(e) => {
+        // Return focus to trigger
+        triggerRef.current?.focus();
+      }}
+    >
+      <DialogHeader>
+        <DialogTitle id="dialog-title">Edit Shot</DialogTitle>
+        <DialogDescription id="dialog-description">
+          Modify the shot prompt and settings.
+        </DialogDescription>
+      </DialogHeader>
+      {/* Content */}
+    </DialogContent>
+  </Dialog>
+  ```
+
+  ### 3. Live Regions for Dynamic Updates
+
+  ```typescript
+  // Generation status announcements
+  function GenerationStatusAnnouncer({ jobs }: { jobs: GenerationJob[] }) {
+    const [announcement, setAnnouncement] = useState('');
+
+    useEffect(() => {
+      const completed = jobs.filter(j => j.status === 'completed');
+      const failed = jobs.filter(j => j.status === 'failed');
+
+      if (completed.length > 0) {
+        setAnnouncement(`${completed.length} generation${completed.length > 1 ? 's' : ''} completed`);
+      } else if (failed.length > 0) {
+        setAnnouncement(`${failed.length} generation${failed.length > 1 ? 's' : ''} failed`);
+      }
+    }, [jobs]);
+
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {announcement}
+      </div>
+    );
+  }
+  ```
+
+  ### 4. Focus Management
+
+  ```typescript
+  // Focus trap for modals/sheets
+  function useFocusTrap(containerRef: RefObject<HTMLElement>, isActive: boolean) {
+    useEffect(() => {
+      if (!isActive || !containerRef.current) return;
+
+      const container = containerRef.current;
+      const focusableElements = container.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      const firstElement = focusableElements[0] as HTMLElement;
+      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+
+      const handleTab = (e: KeyboardEvent) => {
+        if (e.key !== 'Tab') return;
+
+        if (e.shiftKey && document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement.focus();
+        } else if (!e.shiftKey && document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement.focus();
+        }
+      };
+
+      container.addEventListener('keydown', handleTab);
+      firstElement?.focus();
+
+      return () => container.removeEventListener('keydown', handleTab);
+    }, [containerRef, isActive]);
+  }
+  ```
+
+  ### 5. Skip Links
+
+  ```typescript
+  // Skip to main content
+  function SkipLinks() {
+    return (
+      <div className="sr-only focus-within:not-sr-only">
+        <a
+          href="#main-content"
+          className="fixed top-0 left-0 z-50 bg-background p-4 focus:outline-none focus:ring-2"
+        >
+          Skip to main content
+        </a>
+        <a
+          href="#sidebar-nav"
+          className="fixed top-0 left-0 z-50 bg-background p-4 focus:outline-none focus:ring-2"
+        >
+          Skip to navigation
+        </a>
+      </div>
+    );
+  }
+  ```
+
+  ### 6. Color Contrast Validation
+
+  ```typescript
+  // Minimum contrast ratios
+  const CONTRAST_REQUIREMENTS = {
+    normalText: 4.5,    // WCAG AA
+    largeText: 3.0,     // 18pt+ or 14pt bold
+    uiComponents: 3.0,  // Buttons, inputs
+    focusIndicator: 3.0,
+  };
+
+  // Validate status colors meet requirements
+  function validateStatusContrast() {
+    const results: Record<string, boolean> = {};
+
+    for (const [status, token] of Object.entries(statusTokens)) {
+      // Extract actual color values and calculate contrast
+      // This would use a color contrast calculation library
+      results[status] = calculateContrastRatio(token.text, token.bg) >= 4.5;
+    }
+
+    return results;
+  }
+  ```
+
+  ### File Changes
+
+  | Action | Path |
+  |--------|------|
+  | CREATE | `packages/features/film-studio/src/components/a11y/skip-links.tsx` |
+  | CREATE | `packages/features/film-studio/src/components/a11y/status-announcer.tsx` |
+  | CREATE | `packages/features/film-studio/src/hooks/use-focus-trap.ts` |
+  | CREATE | `packages/features/film-studio/src/lib/a11y-utils.ts` |
+
+  ## Testing Tools
+
+  1. **axe DevTools**: Browser extension for automated testing
+  2. **Lighthouse**: Built-in accessibility audit
+  3. **VoiceOver** (macOS): Screen reader testing
+  4. **NVDA** (Windows): Screen reader testing
+  5. **Colour Contrast Analyser**: Manual contrast checking

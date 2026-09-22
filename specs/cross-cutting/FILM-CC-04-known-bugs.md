@@ -450,7 +450,7 @@ not stored; `refreshTestRetention` ignores its write errors.
 
 **What this means for the design.** A hook is part of the video, so a hook
 test is a comparison between *different* videos — exactly what
-[FILM-1724 channel experiments](../phase-17-analytics-provenance/FILM-1724-channel-experiments.md)
+[FILM-1724 channel experiments](../phase-17-analytics-provenance/FILM-1724-channel-experiments.yaml)
 is for. Early retention is measurable only where the curve resolves the
 first seconds: a 1%-step curve places its first point at 1% of the length,
 so 3 seconds needs a video of about 150 seconds or less (FILM-1716's short
@@ -1191,8 +1191,8 @@ variable is for, and each spec carries its own proof (PR #301):
 
 | Variable(s) | Owner's call | Spec |
 |---|---|---|
-| `SYNCLABS_BASE_URL`, `WAV2LIP_API_URL` | Both providers deprecated — and the whole lip-sync feature is unreachable (editor mounted nowhere, no API key anywhere). **Delete the feature.** | [FILM-513](../phase-5-audio-generation/providers/FILM-513-retire-lip-sync.md) |
-| `LOCAL_API_URL` | **Keep** — for testing local models. The `local` provider is already an OpenAI-compatible client, i.e. the Ollama path; retarget it, gate it to dev/test with FILM-1801's rules, validate the URL, and add `LLM_FORCE_PROVIDER=local` so the prompt executor actually uses it | [FILM-1805](../phase-18-local-vendor-sandbox/FILM-1805-local-models-and-sdk-base-urls.md) §4 |
+| `SYNCLABS_BASE_URL`, `WAV2LIP_API_URL` | Both providers deprecated — and the whole lip-sync feature is unreachable (editor mounted nowhere, no API key anywhere). **Delete the feature.** | [FILM-513](../phase-5-audio-generation/providers/FILM-513-retire-lip-sync.yaml) |
+| `LOCAL_API_URL` | **Keep** — for testing local models. The `local` provider is already an OpenAI-compatible client, i.e. the Ollama path; retarget it, gate it to dev/test with FILM-1801's rules, validate the URL, and add `LLM_FORCE_PROVIDER=local` so the prompt executor actually uses it | [FILM-1805](../phase-18-local-vendor-sandbox/FILM-1805-local-models-and-sdk-base-urls.yaml) §4 |
 | `OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, `GOOGLE_GEMINI_BASE_URL` (+ `GOOGLE_VERTEX_BASE_URL`, same class) | The SDKs read these only when no base URL is passed; ours pass none. **Pass `vendorUrl()` explicitly** at every construction site; prove per SDK against a local listener under production settings that 0 requests arrive | FILM-1805 §3 |
 
 **No production credentials, config or values are used or requested at any

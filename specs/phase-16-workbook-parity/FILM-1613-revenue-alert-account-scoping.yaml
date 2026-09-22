@@ -1,0 +1,98 @@
+spec_id: "FILM-1613"
+title: "Revenue Alert Account Scoping"
+phase: 16
+phase_name: "Workbook Parity"
+category: feature
+status: DONE
+audited: "2026-09-23"
+effort: S
+dependencies:
+  - spec_id: "FILM-1508"
+    note: null
+  - spec_id: "FILM-1601"
+    note: null
+summary: >
+  `evaluateRevenueAlerts` read `revenue_records` with **no account
+  predicate**. It runs on the **admin client** (`analytics-sync-cron.ts`
+  builds `getSupabaseServerAdminClient()` and passes it through), which
+  bypasses RLS. Every account's *"Revenue spike today"* and *"Passed $N this
+  month"* alert was therefore computed from **platform-wide** revenue and
+  written with that account's `account_id` — a cross-tenant disclosure of
+  aggregate financial figures.
+acceptance_criteria:
+  - text: "Alert aggregates include only the target account's revenue"
+    met: true
+    evidence: null
+  - text: "Per-video revenue rows (`account_id` NULL) are still included"
+    met: true
+    evidence: null
+  - text: "The shared helper is not exported from a `'use server'` module"
+    met: true
+    evidence: null
+  - text: "Read failures are logged rather than silently reported as zero alerts"
+    met: true
+    evidence: null
+open_questions: []
+feature:
+  database:
+    tables: []
+    columns_added: []
+  queries:
+    - name: "fetchAccountRevenueRows"
+      purpose: "Moved out of the 'use server' module into server-only revenue-queries.ts, bounded since … today"
+      file: "packages/features/content-analytics/src/server/revenue-queries.ts"
+  actions:
+    - name: "evaluateRevenueAlerts"
+      file: "packages/features/content-analytics/src/server/revenue-alerts.ts"
+  ui: []
+  provider_integration: null
+notes: |
+  ## 1. Overview
+
+  `evaluateRevenueAlerts` read `revenue_records` with **no account predicate**:
+
+  ```ts
+  const { data: records } = await client
+    .from('revenue_records')
+    .select('record_date, revenue_cents')
+    .gte('record_date', since);        // no account filter
+  ```
+
+  It runs on the **admin client** (`analytics-sync-cron.ts` builds `getSupabaseServerAdminClient()` and passes it through), which bypasses RLS. Every account's *"Revenue spike today"* and *"Passed $N this month"* alert was therefore computed from **platform-wide** revenue and written with that account's `account_id` — a cross-tenant disclosure of aggregate financial figures.
+
+  `insertNewAlerts` in the same file already scoped by `account_id`, which is what makes the omission read as an oversight rather than intent.
+
+  Latent in production: there is no revenue data yet, so no alert has fired with contaminated numbers. It would fire as soon as two accounts have revenue in the same 28-day window.
+
+  Shipped in PR #234, separately from the FILM-1602 review remediation so it could be reviewed on its own.
+
+  ## 2. Why Not a One-Line Filter
+
+  `revenue_records` carries `check (publish_id is not null or account_id is not null)`, so **`account_id` is NULL on per-video rows**. A plain `.eq('account_id', accountId)` would have dropped most revenue — trading an over-count for a worse under-count.
+
+  The correct scoping is the two-query union `fetchAccountRevenueRows` already implements (FILM-1601): channel-scoped via `account_id`, publish-scoped via `publishes → episodes → projects.account_id`, merged in TS because PostgREST cannot express an `OR` across an embedded resource.
+
+  ## 3. Implementation Map
+
+  | File | Change |
+  |------|--------|
+  | `revenue-queries.ts` | New. `fetchAccountRevenueRows` and `AccountRevenueRow` move here from `revenue-actions.ts`, which carries `'use server'` — where **every export becomes a callable endpoint**. A helper taking an `accountId` and returning that account's revenue must not be reachable that way. `server-only`, no `'use server'`. |
+  | `revenue-alerts.ts` | Uses the shared helper, bounded `since … today`. Reads now throw instead of returning `{ created: 0 }`, so failures surface through the existing catch and logger rather than being indistinguishable from "no alerts". |
+  | `revenue-actions.ts` | Imports the helper; no behaviour change for existing callers. |
+
+  ## 4. Acceptance Criteria
+
+  (Moved to the `acceptance_criteria:` key of this file.)
+
+  ## 5. Verification
+
+  ```bash
+  pnpm --filter @kit/content-analytics test
+  pnpm typecheck && pnpm lint
+  ```
+
+  `__tests__/revenue-queries.test.ts` asserts on the **filters applied**, not just returned rows, so a future "simplification" back to a single unscoped query fails: both halves scoped to the account, no query issued without an account predicate, and the publish-scoped half must *not* use a bare `eq account_id`.
+
+  ## 6. Follow-up
+
+  These queries were still subject to the `max_rows` cap when this shipped; pagination landed in FILM-1612.

@@ -1,0 +1,282 @@
+spec_id: "FILM-1712"
+title: "Metric Recovery"
+phase: 17
+phase_name: "Analytics Provenance and Signal"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-1711"
+    note: null
+  - spec_id: "FILM-1721"
+    note: null
+summary: >
+  Rewritten 2026-09-14 after the first draft claimed most missing metrics were
+  a field-list change; research against vendor documentation showed that is
+  true for YouTube but false for TikTok and Instagram. Separates what the
+  growth research asks for into data already fetched and discarded (or never
+  requested despite having access) versus a second API integration mistaken
+  for a URL parameter, because the two cost very different amounts and only
+  one is cheap. The first draft's meta-error — citing the repo's own
+  TypeScript types as evidence of a platform's capability — is the risk this
+  spec exists to correct.
+acceptance_criteria:
+  - text: "Every field added to a request appears in FILM-1721 with a citation"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "A test fails when a provider type declares a field the request does not ask for and when a request asks for a field FILM-1721 does not document"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "YouTube's daily query returns average view percentage, and the separate totals call is removed or justified"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "Instagram's reach reaches a column instead of extra_metrics"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "ig_reels_avg_watch_time and ig_reels_video_view_total_time are requested for REELS, and their unit is confirmed empirically before the value is stored"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "Instagram watch_time_seconds is a measurement or an honest null, never a hardcoded zero"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "reposts_count, saved_count and shares_count are requested for FEED and REELS"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "The aggregates are requested as Media node fields, and none is stored in views or labelled as views — they include boosted and crossposted placements, and total_views_count includes replays"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "The five TikTok field names that do not exist are recorded as such, so they are not re-added"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "Instagram follows/profile_visits are recorded as unavailable for Reels rather than requested"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "No provider maps a never-requested field to a column as zero"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "A metric we do not have is distinguishable from one that is genuinely zero"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "input.metrics on the Instagram provider is honoured or removed"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "Instagram's audience request sends timeframe and one demographic breakdown per call, as Meta documents; whether the current four-breakdown, no-timeframe call is rejected is confirmed against a live account first, and recorded in FILM-1721"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "extra_metrics gains a reader or stops being written"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "The capability matrix is updated in the same PR as each newly-ingested field, per FILM-1703's writer-binding test"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+open_questions: []
+feature:
+  database: null
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
+notes: |
+  ## Overview
+
+  Some of what the growth research asks for is data already fetched and
+  discarded, or never requested despite having access. Some of it is a
+  second API integration mistaken for a URL parameter. This spec separates
+  the two, because they cost very different amounts and only one of them is
+  cheap.
+
+  | Kind | Platform | Fix |
+  |---|---|---|
+  | Requested, dropped at ingest | Instagram `reach` | a column and a mapping |
+  | Requested wrongly, most likely rejected | Instagram `follower_demographics` | add the required `timeframe`; one breakdown per call |
+  | Not requested, same endpoint | YouTube x3, Instagram x2 (watch time) | add to a metrics string |
+  | Not requested, Media node fields | Instagram `reposts_count`, `saved_count`, `shares_count` + 3 aggregates | add to the `?fields=` list |
+  | Different API entirely | TikTok x5 | a second integration |
+  | Does not exist for this surface | Instagram `follows`, `profile_visits` on Reels | record as a limit |
+
+  ## Corrections to the first draft
+
+  These were wrong, and they were wrong because the first draft cited the
+  repo's own TypeScript types as evidence of a platform's capability.
+
+  TikTok: five of the fields are not on that endpoint. The complete
+  documented field list for `POST /v2/video/query/` is `id, create_time,
+  cover_image_url, share_url, video_description, duration, height, width,
+  title, embed_html, embed_link, like_count, comment_count, share_count,
+  view_count, is_aigc`.
+
+  | Planned to add | Reality |
+  |---|---|
+  | `save_count` | Does not exist for own videos on any creator-auth surface |
+  | `average_watch_time` | `average_time_watched` — TikTok Business API |
+  | `total_play_time` | `total_time_watched` — TikTok Business API |
+  | `full_video_watched_rate` | Right name, wrong API |
+  | `traffic_source_types` | `impression_sources` — TikTok Business API |
+
+  Instagram: `profile_visits` and `follows` do not exist for REELS. They are
+  FEED and STORY only. Since Reels is what creators publish, Instagram's
+  Audience stage has no per-media signal, and no amount of requesting will
+  produce one.
+
+  YouTube: this part was right. `averageViewPercentage` is valid with
+  `dimensions=day` and `filters=video==ID` — so it folds into the daily
+  query and the two YouTube calls collapse into one.
+
+  ## What is genuinely cheap
+
+  YouTube — three metrics onto the daily query. The daily query
+  (`youtube-analytics.ts:225`) currently asks for
+  `views,likes,comments,shares,estimatedMinutesWatched,averageViewDuration,subscribersGained`.
+  Add `averageViewPercentage` (completion on the fast path, instead of only
+  via the 1-3 day lagged bulk report), `subscribersLost` (so net subscribers
+  is real rather than gross), and `dislikes`. All three are already
+  requested on the separate totals call and dropped, because
+  `buildYouTubeDailyRows` (`ingest.ts:115-141`) builds rows from the daily
+  query. Adding them there lets the totals call go. Not
+  `annotationClickThroughRate` — annotations were retired and it returns
+  zeros. Keep `cardClickRate`.
+
+  Instagram — watch time never requested. Added 2026-09-21, after
+  re-verifying against Meta's live reference. The table above lists only
+  `reach` as recoverable for Instagram; that is understated.
+  `ig_reels_avg_watch_time` and `ig_reels_video_view_total_time` are both
+  documented for REELS and both absent from the request
+  (`instagram-insights.ts` asks for `views, reach, total_interactions,
+  likes, comments, saved, shares`). They belong in the "not requested, same
+  endpoint" row alongside YouTube's three — the cheap kind of fix, not the
+  second-integration kind. Units are still inferred to be milliseconds;
+  validate before use.
+
+  Also added by Meta on 2026-04-22 and not in any spec written before that
+  was known. Two groups, not equally safe to act on: confirmed on the Media
+  node reference, FEED and REELS: `reposts_count`, `saved_count`,
+  `shares_count` (`reposts_count` is the first media-level transmission
+  signal Instagram has offered, and is relevant to FILM-1714). The
+  aggregates, both spellings documented — the Instagram changelog
+  (developers.facebook.com/docs/instagram-platform/changelog) names each as
+  a pair: `total_views_count` / `total_views`, `total_like_count` /
+  `total_likes`, `total_comments_count` / `total_comments` — "available
+  through both the IG Media and Insights endpoints": the `*_count` spelling
+  is a Media node field, the short one an insights metric. Facebook Login
+  only, "applies to all versions". An earlier revision of this spec called
+  the pair an unsettled either-or, first from a blog post and then from two
+  Meta pages that disagreed; the changelog is the reference that settles it.
+
+  The aggregates are a different denominator from `views` — they fold in
+  boosted and crossposted-Facebook placements, and `total_views_count`
+  explicitly includes replays — so they must not be substituted for it.
+  FILM-1722 owns defining them. See
+  docs/platform-capability-reference.md.
+
+  Instagram — a column for the reach already fetched. `reach` is in the
+  request (`instagram-insights.ts:107`), read at `:139`, and discarded
+  because no column exists. It is the denominator the growth research
+  recommends for nearly every Instagram ratio. Give it one. Also worth
+  taking while here, already returned: `total_interactions`. `reposts_count`,
+  `saved_count` and `shares_count` (Media node, FEED and REELS, added
+  2026-04-22) are new requests rather than discards, and are confirmed by
+  the field reference. Request the aggregates as Media node fields
+  (`total_views_count`, `total_like_count`, `total_comments_count`)
+  alongside them — one request, not a second insights call.
+
+  ## What is a second integration
+
+  TikTok's real analytics live on the TikTok API for Business,
+  `business-api.tiktok.com/open_api/v1.3/business/video/list/`:
+  `video_views`, `reach`, `full_video_watched_rate`, `total_time_watched`,
+  `average_time_watched`, `impression_sources`, `audience_countries`. That
+  is a different host, a separate developer portal and app registration,
+  and — the part that is not an engineering problem — the creator must be
+  on a TikTok Business account. This is why `account_type_gated` exists in
+  FILM-1703's access axis. A creator on a personal account cannot grant
+  these metrics, and the honest UI response is to say so, not to show an
+  empty chart.
+
+  Documented constraints to carry into the capability matrix: `video_views`
+  mixes organic and paid and cannot be separated; `reach`,
+  `full_video_watched_rate`, `total_time_watched`, `average_time_watched`,
+  `impression_sources`, `audience_countries` return empty when the video
+  has been inactive for more than 7 days; post data stops updating 365 days
+  after publish; if TikTok Studio does not show it, the API will not return
+  it.
+
+  Recommendation: split this out. The Business API integration is its own
+  piece of work with its own approval, its own app and its own product
+  constraint. Doing it inside a spec called "metric recovery" would hide a
+  second integration inside a cheap-sounding name — which is exactly the
+  mistake the first draft made.
+
+  ## Stop writing zeros that look like measurements
+
+  The rule this spec establishes, independent of platform: a field we do
+  not have is null or absent, never zero. Today `saves: 0` for TikTok and
+  `revenue_cents: 0` everywhere are indistinguishable from genuine zeros.
+  Several of those exist because a never-requested field was mapped into a
+  column — the first draft would have added more.
+
+  `watch_time_seconds: 0` for Instagram belonged on that list when it was
+  written and no longer does: it is zero because we do not ask, not because
+  Instagram cannot answer. Requesting `ig_reels_avg_watch_time` and
+  `ig_reels_video_view_total_time` turns it into a measurement; until then
+  it is a `scope_missing`-shaped gap, not an unmeasurable one. The
+  distinction is the whole point of FILM-1703's four levels.
+
+  Where a column cannot be made nullable cheaply, the capability matrix
+  carries the fact and the UI reads it from there. The default is to
+  represent absence.
+
+  ## extra_metrics is write-only
+
+  `video_metrics.extra_metrics` holds `JSON.stringify` of the entire
+  provider response, written at `ingest.ts:139` and
+  `analytics-sync-cron.ts:689`. Nothing reads it — no `JSONExtract` anywhere
+  in the repository, and the `video_daily_stats` view enumerates columns
+  and omits it. There are 41 live publishes, so the blob does hold real
+  dropped payloads — but they are a few weeks of a seeded fixture, not
+  history worth a recovery path. It should gain a reader or stop being
+  written; an unread payload on every row is storage with no purpose.
+
+  ## Out of scope
+
+  - OAuth scopes and permissions — FILM-1711, which gates this entirely for
+    TikTok and Instagram.
+  - The TikTok Business API integration, per the recommendation above.
+  - Graph API version consolidation — FILM-1723, though it touches the same
+    Instagram files and should be sequenced with this.
+  - Facebook — FILM-1720. X — FILM-1727.
+  - Any ratio or signal computed from these fields — FILM-1713 onward.
+
+  ## Verification
+
+  ```bash
+  pnpm --filter @kit/content-analytics test
+  pnpm --filter @kit/clickhouse test
+  ./scripts/local-env.sh verify
+  pnpm turbo typecheck --force && pnpm lint
+  ```
+
+  The declared-vs-requested-vs-documented test is what stops this
+  recurring, and it is the one to write first. The first draft of this spec
+  would have passed review without it; it is the mechanical version of "our
+  own types are not evidence".
+
+  Everything else needs live connections and therefore FILM-1711. Against a
+  real account per platform, assert each newly-requested field returns a
+  non-zero for a video known to have one — a zero proves nothing, because a
+  zero is what the bug produced.
+
+  ## Risk
+
+  The estimate depends on FILM-1711's findings. If TikTok's `video.list`
+  needs app review, or Meta declines the insights permission, this spec
+  cannot be verified on those platforms regardless of how small the diff
+  is.
+
+  A new column that only one writer fills is the failure mode to avoid —
+  the same shape as `revenue_cents` being literal zero in all four writers.
+  Each new column gets one writer and a named absent state.
+
+  And the meta-risk, recorded because it already happened once: citing our
+  own types as evidence of a platform's capability. Five field names in the
+  first draft came from `TikTokVideoData` and none of them were real.
+  FILM-1721 exists to be the evidence instead.

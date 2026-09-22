@@ -1,0 +1,352 @@
+spec_id: "FILM-105"
+title: "@kit/assets Package"
+phase: 1
+phase_name: "Foundation"
+category: package
+status: DONE
+audited: "2026-09-23"
+effort: S
+dependencies: []
+summary: >
+  The @kit/assets package manages all asset-related functionality including characters,
+  locations, and props. It provides CRUD operations, UI components for asset management,
+  and server actions for asset operations. This package is central to the content
+  creation workflow as assets are reused across episodes and shots.
+package:
+  package_name: "@kit/assets"
+  path: "packages/features/assets/"
+  exports:
+    - path: "."
+      description: "Main exports (re-exports from all modules)"
+    - path: "./components"
+      description: "UI components for asset management"
+    - path: "./server"
+      description: "Server actions and queries for assets"
+    - path: "./lib"
+      description: "Shared utilities, types, and constants"
+    - path: "./schemas"
+      description: "Zod validation schemas"
+    - path: "./types"
+      description: "TypeScript type definitions"
+    - path: "./hooks"
+      description: "React hooks for asset operations"
+  package_dependencies:
+    - name: "@kit/supabase"
+      purpose: "Database access for asset storage"
+    - name: "@kit/shared"
+      purpose: "Shared utilities"
+    - name: "@kit/ui"
+      purpose: "UI components library"
+    - name: "zod"
+      purpose: "Schema validation"
+    - name: "react-hook-form"
+      purpose: "Form management"
+    - name: "@hookform/resolvers"
+      purpose: "Zod resolver for forms"
+acceptance_criteria:
+  - text: "Package builds without errors"
+    met: true
+    evidence: null
+  - text: "All exports work correctly"
+    met: true
+    evidence: null
+  - text: "TypeScript types exported and accessible"
+    met: true
+    evidence: null
+  - text: "Zod schemas validate correctly"
+    met: true
+    evidence: null
+  - text: "Can be imported by other packages"
+    met: true
+    evidence: null
+  - text: "Server actions have 'use server' directive"
+    met: true
+    evidence: null
+test_plan:
+  unit:
+    - text: "Package can be imported from other workspace packages"
+      met: true
+      evidence: null
+    - text: "All export paths are accessible"
+      met: false
+      reason: "not met — no test found; all 17 paths in `packages/features/assets/package.json` resolve, but no test imports them"
+    - text: "Zod schemas validate valid input"
+      met: true
+      evidence: null
+    - text: "Zod schemas reject invalid input"
+      met: true
+      evidence: null
+    - text: "Types are properly exported"
+      met: true
+      evidence: null
+  integration: []
+  e2e: []
+open_questions: []
+notes: |
+  ## Metadata not held in typed fields
+  - **Priority:** P0
+  - **Dependencies:** None
+  - **Blocks:** Phase 2 (Asset Management)
+  - **Status:** ✅ COMPLETED
+  - **PR:** [#2](https://github.com/aroundAI/storybook/pull/2)
+
+  ## Specification
+  ### Package Structure
+  ```
+  packages/features/assets/
+  ├── package.json
+  ├── tsconfig.json
+  └── src/
+      ├── index.ts
+      ├── components/
+      │   └── index.ts
+      ├── server/
+      │   ├── index.ts
+      │   ├── actions.ts
+      │   └── queries.ts
+      ├── lib/
+      │   ├── index.ts
+      │   ├── types.ts
+      │   ├── schemas.ts
+      │   └── constants.ts
+      └── hooks/
+          └── index.ts
+  ```
+
+  ### package.json
+  ```json
+  {
+    "name": "@kit/assets",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+      "clean": "rimraf dist",
+      "build": "tsup",
+      "dev": "tsup --watch",
+      "typecheck": "tsc --noEmit"
+    },
+    "exports": {
+      ".": "./src/index.ts",
+      "./components": "./src/components/index.ts",
+      "./server": "./src/server/index.ts",
+      "./lib": "./src/lib/index.ts",
+      "./schemas": "./src/lib/schemas.ts",
+      "./types": "./src/lib/types.ts",
+      "./hooks": "./src/hooks/index.ts"
+    },
+    "dependencies": {
+      "@kit/supabase": "workspace:*",
+      "@kit/shared": "workspace:*",
+      "@kit/ui": "workspace:*",
+      "zod": "^3.22.4",
+      "react": "^18.2.0",
+      "react-hook-form": "^7.50.0",
+      "@hookform/resolvers": "^3.3.0",
+      "next": "^14.1.0"
+    },
+    "devDependencies": {
+      "@types/react": "^18.2.0",
+      "@types/node": "^20.0.0",
+      "typescript": "^5.3.0",
+      "tsup": "^8.0.0",
+      "rimraf": "^5.0.0"
+    }
+  }
+  ```
+
+  ### tsconfig.json
+  ```json
+  {
+    "extends": "../../../tsconfig.json",
+    "compilerOptions": {
+      "outDir": "./dist",
+      "rootDir": "./src"
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist"]
+  }
+  ```
+
+  ### Exports and Dependencies
+  The export paths and dependency tables are in `package.exports` and `package.package_dependencies`.
+
+  ### Initial Files
+
+  #### src/index.ts
+  ```typescript
+  export * from './components';
+  export * from './server';
+  export * from './lib';
+  export * from './hooks';
+  ```
+
+  #### src/components/index.ts
+  ```typescript
+  // Export asset components here
+  // AssetList, AssetCard, AssetForm, CharacterForm, LocationForm, etc.
+  export {};
+  ```
+
+  #### src/server/index.ts
+  ```typescript
+  export * from './actions';
+  export * from './queries';
+  ```
+
+  #### src/server/actions.ts
+  ```typescript
+  'use server';
+
+  // Server actions for asset CRUD operations
+  export {};
+  ```
+
+  #### src/server/queries.ts
+  ```typescript
+  import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+  // Database queries for assets
+  export async function getAssetsByProject(projectId: string) {
+    const client = getSupabaseServerClient();
+    // Implementation will be added
+    return { data: [], error: null };
+  }
+  ```
+
+  #### src/lib/index.ts
+  ```typescript
+  export * from './types';
+  export * from './schemas';
+  export * from './constants';
+  ```
+
+  #### src/lib/types.ts
+  ```typescript
+  // Asset types
+  export type AssetType = 'character' | 'location' | 'prop';
+
+  export interface Asset {
+    id: string;
+    projectId: string;
+    type: AssetType;
+    name: string;
+    description: string | null;
+    imageUrl: string | null;
+    metadata: Record<string, unknown> | null;
+    createdAt: string;
+    updatedAt: string;
+  }
+
+  export interface Character extends Asset {
+    type: 'character';
+    metadata: {
+      physicalAttributes?: {
+        age?: string;
+        gender?: string;
+        height?: string;
+        build?: string;
+        hairColor?: string;
+        eyeColor?: string;
+        distinctiveFeatures?: string;
+      };
+      personality?: string;
+      backstory?: string;
+      voiceSettings?: {
+        voiceId?: string;
+        provider?: 'elevenlabs' | 'suno';
+        stability?: number;
+        similarityBoost?: number;
+      };
+    };
+  }
+
+  export interface Location extends Asset {
+    type: 'location';
+    metadata: {
+      setting?: string;
+      timeOfDay?: string;
+      weather?: string;
+      atmosphere?: string;
+    };
+  }
+  ```
+
+  #### src/lib/schemas.ts
+  ```typescript
+  import { z } from 'zod';
+
+  // Zod schemas for validation
+  export const AssetTypeSchema = z.enum(['character', 'location', 'prop']);
+
+  export const PhysicalAttributesSchema = z.object({
+    age: z.string().optional(),
+    gender: z.string().optional(),
+    height: z.string().optional(),
+    build: z.string().optional(),
+    hairColor: z.string().optional(),
+    eyeColor: z.string().optional(),
+    distinctiveFeatures: z.string().optional(),
+  });
+
+  export const VoiceSettingsSchema = z.object({
+    voiceId: z.string().optional(),
+    provider: z.enum(['elevenlabs', 'suno']).optional(),
+    stability: z.number().min(0).max(1).optional(),
+    similarityBoost: z.number().min(0).max(1).optional(),
+  });
+
+  export const CreateAssetSchema = z.object({
+    projectId: z.string().uuid(),
+    type: AssetTypeSchema,
+    name: z.string().min(1).max(255),
+    description: z.string().optional(),
+    imageUrl: z.string().url().optional(),
+    metadata: z.record(z.unknown()).optional(),
+  });
+
+  export const UpdateAssetSchema = CreateAssetSchema.partial().extend({
+    id: z.string().uuid(),
+  });
+  ```
+
+  #### src/lib/constants.ts
+  ```typescript
+  // Asset constants
+  export const ASSET_TYPES = {
+    CHARACTER: 'character',
+    LOCATION: 'location',
+    PROP: 'prop',
+  } as const;
+
+  export const DEFAULT_ASSET_IMAGE = '/assets/placeholder.png';
+  ```
+
+  #### src/hooks/index.ts
+  ```typescript
+  // Export React hooks for asset operations
+  export {};
+  ```
+
+  ## File Changes
+  | Action | Path |
+  |--------|------|
+  | CREATE | `packages/features/assets/package.json` |
+  | CREATE | `packages/features/assets/tsconfig.json` |
+  | CREATE | `packages/features/assets/src/index.ts` |
+  | CREATE | `packages/features/assets/src/components/index.ts` |
+  | CREATE | `packages/features/assets/src/server/index.ts` |
+  | CREATE | `packages/features/assets/src/server/actions.ts` |
+  | CREATE | `packages/features/assets/src/server/queries.ts` |
+  | CREATE | `packages/features/assets/src/lib/index.ts` |
+  | CREATE | `packages/features/assets/src/lib/types.ts` |
+  | CREATE | `packages/features/assets/src/lib/schemas.ts` |
+  | CREATE | `packages/features/assets/src/lib/constants.ts` |
+  | CREATE | `packages/features/assets/src/hooks/index.ts` |
+
+  ## Implementation Notes
+  - Implemented on 2024-12-05
+  - Package created at `packages/features/assets/`
+  - Uses workspace conventions (devDependencies, @kit/tsconfig, prettier config)
+  - Typecheck passes with `pnpm --filter @kit/assets typecheck`
+  - Enhanced types with `CharacterMetadata`, `LocationMetadata`, `PropMetadata` interfaces
+  - Voice provider updated to `'elevenlabs' | 'playht'` (per audio provider specs)

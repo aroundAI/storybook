@@ -1,0 +1,495 @@
+spec_id: "FILM-313"
+title: "Continuity Checker"
+phase: 3
+phase_name: "Episodes"
+category: server_action
+status: RETIRED
+audited: "2026-09-23"
+effort: M
+dependencies:
+  - spec_id: "FILM-305"
+    note: null
+  - spec_id: "FILM-307"
+    note: null
+summary: >
+  Continuity errors in storytelling can break viewer immersion. The Continuity Checker uses AI to analyze the story, screenplay, and shot list for inconsistencies in character behavior, timeline, setting details, props, and plot logic. This helps creators maintain professional-quality content.
+server_action:
+  actions:
+    - name: "checkContinuityAction"
+      file: "packages/features/episodes/src/server/continuity-actions.ts"
+      schema: "z.object({ episodeId: z.string().uuid() })"
+      auth: true
+    - name: "fixContinuityIssueAction"
+      file: "packages/features/episodes/src/server/continuity-actions.ts"
+      schema: "z.object({ episodeId: z.string().uuid(), issueId: z.string() })"
+      auth: true
+acceptance_criteria:
+  - text: "Analyzes story, screenplay, and shot list for continuity issues"
+  - text: "Detects 9+ issue types (character, timeline, props, settings, etc.)"
+  - text: "Issues categorized by severity (error, warning, suggestion)"
+  - text: "Click issue to navigate to source location"
+  - text: "Auto-fix available for applicable issues"
+  - text: "Real-time re-check after content changes"
+  - text: "Summary shows counts by severity"
+  - text: "Clear when no issues found"
+test_plan:
+  unit:
+    - text: "Test issue type categorization"
+    - text: "Test severity determination"
+    - text: "Test location extraction from content"
+  integration:
+    - text: "Test full continuity check workflow"
+    - text: "Test auto-fix application"
+    - text: "Test re-check after changes"
+  e2e: []
+retirement:
+  commit: "d38cdc38"
+  date: "2025-12-09"
+  what_happened: >
+    Built in d38cdc38 (2025-12-09) but never mounted: no page renders `ContinuityChecker` (`packages/features/episodes/src/components/continuity-checker.tsx`), and nothing outside it calls `checkContinuityAction` or `fixContinuityIssueAction`. Continuity checking in the product is FILM-1007's canon validation: `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/inline-violation-warning.tsx`, mounted in `story-screen.tsx:252`. Kept as a record; not outstanding work.
+  replacement: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/inline-violation-warning.tsx"
+open_questions: []
+notes: |
+  ## Metadata
+
+  - **Phase:** 3 - Episodes
+  - **Priority:** P1 (Post-MVP Enhancement)
+  - **Effort:** M (4-8 hours)
+  - **Dependencies:** FILM-305 (Story Generation), FILM-307 (Shot List Generation)
+  - **Blocks:** None
+
+  ## Specification
+
+  ### Requirements
+
+  1. **Character Consistency**: Check characters appear in correct locations and times
+  2. **Timeline Validation**: Verify chronological consistency of events
+  3. **Prop Tracking**: Ensure props mentioned in one scene exist in subsequent scenes
+  4. **Setting Continuity**: Check location descriptions remain consistent
+  5. **Dialogue Consistency**: Verify character knowledge matches story progression
+  6. **Visual Continuity**: Flag potential visual inconsistencies in shot descriptions
+
+  ### Issue Types
+
+  ```typescript
+  // packages/features/episodes/src/lib/continuity-types.ts
+
+  export interface ContinuityIssue {
+    id: string;
+    type: ContinuityIssueType;
+    severity: 'error' | 'warning' | 'suggestion';
+    title: string;
+    description: string;
+    locations: IssueLocation[];
+    suggestion?: string;
+    autoFixable: boolean;
+  }
+
+  export type ContinuityIssueType =
+    | 'character_location'      // Character in wrong place
+    | 'character_knowledge'     // Character knows something they shouldn't
+    | 'timeline_inconsistency'  // Events out of order
+    | 'prop_continuity'         // Prop appears/disappears incorrectly
+    | 'setting_change'          // Location details changed
+    | 'dialogue_reference'      // Reference to non-existent event
+    | 'visual_continuity'       // Visual description mismatch
+    | 'costume_change'          // Unexplained costume change
+    | 'time_of_day';           // Lighting/time inconsistency
+
+  export interface IssueLocation {
+    type: 'story' | 'screenplay' | 'shot';
+    sceneNumber?: number;
+    shotNumber?: number;
+    lineNumber?: number;
+    excerpt: string;
+  }
+  ```
+
+  ### Continuity Checker Component
+
+  ```typescript
+  // packages/features/episodes/src/components/continuity-checker.tsx
+
+  'use client';
+
+  import { useState } from 'react';
+  import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+  import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@kit/ui/card';
+  import { Button } from '@kit/ui/button';
+  import { Badge } from '@kit/ui/badge';
+  import { Alert, AlertDescription } from '@kit/ui/alert';
+  import { ScrollArea } from '@kit/ui/scroll-area';
+  import {
+    AlertTriangle,
+    CheckCircle,
+    Info,
+    RefreshCw,
+    Wand2,
+    ChevronDown,
+    ChevronUp,
+  } from 'lucide-react';
+  import { checkContinuityAction, fixContinuityIssueAction } from '../server/continuity-actions';
+  import { ContinuityIssue, ContinuityIssueType } from '../lib/continuity-types';
+
+  interface ContinuityCheckerProps {
+    episodeId: string;
+    onNavigate: (location: IssueLocation) => void;
+  }
+
+  const SEVERITY_CONFIG = {
+    error: { icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-100' },
+    warning: { icon: AlertTriangle, color: 'text-amber-500', bg: 'bg-amber-100' },
+    suggestion: { icon: Info, color: 'text-blue-500', bg: 'bg-blue-100' },
+  };
+
+  export function ContinuityChecker({ episodeId, onNavigate }: ContinuityCheckerProps) {
+    const [expandedIssue, setExpandedIssue] = useState<string | null>(null);
+    const queryClient = useQueryClient();
+
+    const { data: issues, isLoading, refetch } = useQuery({
+      queryKey: ['continuity-check', episodeId],
+      queryFn: () => checkContinuityAction({ episodeId }),
+    });
+
+    const fixMutation = useMutation({
+      mutationFn: fixContinuityIssueAction,
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['continuity-check', episodeId] });
+      },
+    });
+
+    const errorCount = issues?.filter((i) => i.severity === 'error').length || 0;
+    const warningCount = issues?.filter((i) => i.severity === 'warning').length || 0;
+    const suggestionCount = issues?.filter((i) => i.severity === 'suggestion').length || 0;
+
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                Continuity Checker
+                {!isLoading && issues?.length === 0 && (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                )}
+              </CardTitle>
+              <CardDescription>
+                Analyze your content for continuity issues
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? 'Checking...' : 'Re-check'}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Summary */}
+          <div className="flex gap-4">
+            <Badge variant="destructive" className="flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              {errorCount} Errors
+            </Badge>
+            <Badge variant="outline" className="flex items-center gap-1 text-amber-600 border-amber-300">
+              <AlertTriangle className="h-3 w-3" />
+              {warningCount} Warnings
+            </Badge>
+            <Badge variant="outline" className="flex items-center gap-1">
+              <Info className="h-3 w-3" />
+              {suggestionCount} Suggestions
+            </Badge>
+          </div>
+
+          {/* Issues List */}
+          {issues?.length === 0 ? (
+            <Alert>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <AlertDescription>
+                No continuity issues detected. Your content is consistent!
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <ScrollArea className="h-96">
+              <div className="space-y-2">
+                {issues?.map((issue) => (
+                  <IssueCard
+                    key={issue.id}
+                    issue={issue}
+                    isExpanded={expandedIssue === issue.id}
+                    onToggle={() =>
+                      setExpandedIssue(expandedIssue === issue.id ? null : issue.id)
+                    }
+                    onNavigate={onNavigate}
+                    onFix={
+                      issue.autoFixable
+                        ? () =>
+                            fixMutation.mutate({
+                              episodeId,
+                              issueId: issue.id,
+                            })
+                        : undefined
+                    }
+                    isFixing={fixMutation.isPending}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  function IssueCard({ issue, isExpanded, onToggle, onNavigate, onFix, isFixing }) {
+    const config = SEVERITY_CONFIG[issue.severity];
+    const Icon = config.icon;
+
+    return (
+      <div className={`rounded-lg border ${config.bg}/30`}>
+        <button
+          onClick={onToggle}
+          className="w-full p-3 flex items-start gap-3 text-left"
+        >
+          <Icon className={`h-5 w-5 ${config.color} flex-shrink-0 mt-0.5`} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-sm">{issue.title}</span>
+              <Badge variant="outline" className="text-xs">
+                {issue.type.replace(/_/g, ' ')}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground line-clamp-1">
+              {issue.description}
+            </p>
+          </div>
+          {isExpanded ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
+        </button>
+
+        {isExpanded && (
+          <div className="px-3 pb-3 space-y-3">
+            {/* Locations */}
+            <div className="space-y-1">
+              <span className="text-xs font-medium text-muted-foreground">Found in:</span>
+              {issue.locations.map((loc, i) => (
+                <button
+                  key={i}
+                  onClick={() => onNavigate(loc)}
+                  className="block w-full text-left p-2 rounded bg-muted/50 hover:bg-muted text-sm"
+                >
+                  <span className="font-medium capitalize">{loc.type}</span>
+                  {loc.sceneNumber && ` • Scene ${loc.sceneNumber}`}
+                  {loc.shotNumber && ` • Shot ${loc.shotNumber}`}
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    "{loc.excerpt}"
+                  </p>
+                </button>
+              ))}
+            </div>
+
+            {/* Suggestion */}
+            {issue.suggestion && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  <strong>Suggestion:</strong> {issue.suggestion}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Actions */}
+            {onFix && (
+              <Button
+                size="sm"
+                onClick={onFix}
+                disabled={isFixing}
+              >
+                <Wand2 className="h-4 w-4 mr-1" />
+                {isFixing ? 'Fixing...' : 'Auto-fix'}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+  ```
+
+  ### Server Actions
+
+  ```typescript
+  // packages/features/episodes/src/server/continuity-actions.ts
+
+  'use server';
+
+  import { enhanceAction } from '@kit/next/actions';
+  import { getSupabaseServerClient } from '@kit/supabase/server-client';
+  import { z } from 'zod';
+  import { createLLMClient } from '@kit/llm';
+
+  export const checkContinuityAction = enhanceAction(
+    async ({ episodeId }, user) => {
+      const client = getSupabaseServerClient();
+
+      // Get episode with all content
+      const { data: episode } = await client
+        .from('episodes')
+        .select(`
+          *,
+          shots (*),
+          dialogue_lines (*),
+          projects (assets (*))
+        `)
+        .eq('id', episodeId)
+        .single();
+
+      if (!episode.story_data || !episode.screenplay_data) {
+        return [];
+      }
+
+      // Prepare context for LLM
+      const context = {
+        story: episode.story_data,
+        screenplay: episode.screenplay_data,
+        shots: episode.shots,
+        dialogues: episode.dialogue_lines,
+        characters: episode.projects.assets.filter((a) => a.type === 'character'),
+        locations: episode.projects.assets.filter((a) => a.type === 'location'),
+      };
+
+      // Use LLM to analyze continuity
+      const llmClient = createLLMClient();
+      const response = await llmClient.chat.completions.create({
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a professional script supervisor checking for continuity errors.
+              Analyze the provided story, screenplay, and shot list for inconsistencies.
+              Return a JSON array of issues with this structure:
+              [{
+                "id": "unique-id",
+                "type": "character_location|character_knowledge|timeline_inconsistency|prop_continuity|setting_change|dialogue_reference|visual_continuity|costume_change|time_of_day",
+                "severity": "error|warning|suggestion",
+                "title": "Brief title",
+                "description": "Detailed explanation",
+                "locations": [{"type": "story|screenplay|shot", "sceneNumber": 1, "excerpt": "relevant text"}],
+                "suggestion": "How to fix it",
+                "autoFixable": true/false
+              }]`,
+          },
+          {
+            role: 'user',
+            content: JSON.stringify(context),
+          },
+        ],
+      });
+
+      const issues = JSON.parse(response.choices[0].message.content);
+      return issues;
+    },
+    {
+      schema: z.object({ episodeId: z.string().uuid() }),
+      auth: true,
+    }
+  );
+
+  export const fixContinuityIssueAction = enhanceAction(
+    async ({ episodeId, issueId }, user) => {
+      const client = getSupabaseServerClient();
+
+      // Get the specific issue
+      const issues = await checkContinuityAction({ episodeId });
+      const issue = issues.find((i: any) => i.id === issueId);
+
+      if (!issue || !issue.autoFixable) {
+        throw new Error('Issue cannot be auto-fixed');
+      }
+
+      // Get episode
+      const { data: episode } = await client
+        .from('episodes')
+        .select('*')
+        .eq('id', episodeId)
+        .single();
+
+      // Use LLM to generate fix
+      const llmClient = createLLMClient();
+      const response = await llmClient.chat.completions.create({
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a professional script editor. Fix the continuity issue described.
+              Return the corrected content in the same format as the input.`,
+          },
+          {
+            role: 'user',
+            content: JSON.stringify({
+              issue,
+              currentContent: {
+                story: episode.story_data,
+                screenplay: episode.screenplay_data,
+              },
+            }),
+          },
+        ],
+      });
+
+      const fix = JSON.parse(response.choices[0].message.content);
+
+      // Apply fix
+      if (fix.story) {
+        await client
+          .from('episodes')
+          .update({ story_data: fix.story })
+          .eq('id', episodeId);
+      }
+
+      if (fix.screenplay) {
+        await client
+          .from('episodes')
+          .update({ screenplay_data: fix.screenplay })
+          .eq('id', episodeId);
+      }
+
+      return { success: true, fixedIssueId: issueId };
+    },
+    {
+      schema: z.object({
+        episodeId: z.string().uuid(),
+        issueId: z.string(),
+      }),
+      auth: true,
+    }
+  );
+  ```
+
+  ### File Changes
+
+  | Action | Path |
+  |--------|------|
+  | CREATE | `packages/features/episodes/src/lib/continuity-types.ts` |
+  | CREATE | `packages/features/episodes/src/components/continuity-checker.tsx` |
+  | CREATE | `packages/features/episodes/src/server/continuity-actions.ts` |
+  | MODIFY | `packages/features/episodes/src/components/story-studio.tsx` |
+
+  ## Acceptance Criteria (non-checklist content)
+
+  Source box states, kept as history (retired spec): acceptance criteria all 8 unticked [ ]; test plan all 6 unticked [ ].
+
+  ## Error Handling
+
+  | Error | User Experience |
+  |-------|-----------------|
+  | No content to check | Prompt to generate story first |
+  | LLM analysis failed | Show error, allow retry |
+  | Auto-fix failed | Keep original content, show error |

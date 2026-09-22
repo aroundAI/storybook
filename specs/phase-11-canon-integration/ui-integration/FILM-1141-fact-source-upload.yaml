@@ -1,0 +1,301 @@
+spec_id: "FILM-1141"
+title: "Fact Source Upload & Extraction"
+phase: 11
+phase_name: "Canon Integration & Content Types"
+category: component
+status: PARTIAL
+audited: "2026-09-23"
+dependencies:
+  - spec_id: "FILM-1135"
+    note: null
+  - spec_id: "FILM-1140"
+    note: null
+summary: >
+  Enable users to upload documents (PDF, DOCX, TXT) and add URLs, then
+  automatically extract factual statements using LLM.
+acceptance_criteria:
+  - text: "File upload works for PDF, DOCX, TXT, MD"
+    met: false
+    reason: "unverified — parsers wired (`packages/features/episodes/src/lib/server/pdf-extractor.ts:58`, `:77`); no test uploads a file; read-only audit"
+  - text: "URL fetch extracts text content"
+    met: false
+    reason: "unverified — HTML stripping at `packages/features/episodes/src/server/source-upload-actions.ts:191`; no test; needs a live fetch"
+  - text: "API sources can be configured with categories"
+    met: true
+    evidence: null
+  - text: "LLM extracts facts with entities"
+    met: false
+    reason: "no longer true — prompt and handler return claim, category, confidence only (`apps/web/lambda/llm-worker/handlers/fact-extraction.ts:17`); no entities"
+  - text: "Progress shown during extraction"
+    met: false
+    reason: "no longer true — extraction is queued; the dialog reports done with 0 facts (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/upload-source-dialog.tsx:242`); `ExtractionStatusBanner` is never rendered"
+  - text: "Extracted facts appear in Facts list"
+    met: false
+    reason: "unverified — worker inserts into `verified_facts` (`apps/web/lambda/llm-worker/handlers/fact-extraction.ts:97`); needs a queued job run end to end"
+  - text: "Source credibility tier is stored"
+    met: true
+    evidence: null
+  - text: "Error handling for failed uploads/extractions"
+    met: false
+    reason: "no longer true — a queued extraction that fails in the worker is never reported; nothing writes `fact_extraction_jobs`"
+remaining:
+  - criterion: "LLM extracts facts with entities"
+    reason: >
+      `documentary/fact-extraction.json` asks for claim, category, confidence
+      and source context, and the worker's `ExtractedFact` has only those
+      (`apps/web/lambda/llm-worker/handlers/fact-extraction.ts:17`); no
+      people/places/dates/organizations are extracted or stored
+    closed_by: "unassigned"
+  - criterion: "Progress shown during extraction"
+    reason: >
+      Content over 500 characters is queued to the LLM worker
+      (`packages/features/episodes/src/server/source-upload-actions.ts:249`);
+      the dialog then shows "complete" and toasts "Extracted 0 fact(s)"
+      (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/upload-source-dialog.tsx:242`).
+      The progress banner
+      (`settings/facts/_components/extraction-status-banner.tsx`) is rendered
+      nowhere, and `createExtractionJobAction` has no caller, so
+      `fact_extraction_jobs` stays empty
+    closed_by: "unassigned"
+  - criterion: "Error handling for failed uploads/extractions"
+    reason: >
+      Upload and queueing errors are caught and toasted
+      (`upload-source-dialog.tsx:253`), but a job that fails in the worker
+      leaves no trace the user can see; SQS jobs are not recorded anywhere
+      (`packages/features/prompt-engine/src/lib/server/sqs-helper.ts:72`)
+    closed_by: "unassigned"
+open_questions: []
+component:
+  component_name: "AddSourceDialog"
+  file_path: null
+  props: []
+  states:
+    - "File tab"
+    - "URL tab"
+    - "API tab"
+  accessibility_notes: null
+notes: |
+  Source metadata:
+  - priority: P1
+  - estimate: 10h
+  - status as written in the header table: 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
+
+  ## Goals
+
+  1. Multi-format file upload with parsing
+  2. URL content fetching and parsing
+  3. LLM-based fact extraction
+  4. Entity extraction (people, places, dates, organizations)
+  5. Store extracted facts in `external_content` table
+
+  ---
+
+  ## Component: AddSourceDialog
+
+  ### Trigger
+
+  "+ Add Source" button in Research Hub
+
+  ### Tabs
+
+  ```
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  Add Source                                                   ✕  │
+  │                                                                  │
+  │  [📄 File] [🔗 URL] [📡 API]                                   │
+  │                                                                  │
+  │  ┌────────────────────────────────────────────────────────────┐ │
+  │  │                                                            │ │
+  │  │         📄 Drop files here or click to browse              │ │
+  │  │                                                            │ │
+  │  │         Supported: PDF, DOCX, TXT, MD                      │ │
+  │  │         Max size: 10MB                                     │ │
+  │  │                                                            │ │
+  │  └────────────────────────────────────────────────────────────┘ │
+  │                                                                  │
+  │  Source Name: [Auto-filled from filename____________]           │
+  │                                                                  │
+  │  Credibility Tier:                                              │
+  │  ○ Tier 1 - Primary (academic, government, official)           │
+  │  ● Tier 2 - Secondary (news, Wikipedia, mainstream)            │
+  │  ○ Tier 3 - Tertiary (blogs, social, user-generated)           │
+  │                                                                  │
+  │  [Cancel]                                     [Upload & Extract] │
+  └──────────────────────────────────────────────────────────────────┘
+  ```
+
+  ### URL Tab
+
+  ```
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  URL: [https://en.wikipedia.org/wiki/Mars_________]             │
+  │                                                                  │
+  │  [Fetch Preview]                                                │
+  │                                                                  │
+  │  ┌────────────────────────────────────────────────────────────┐ │
+  │  │  Mars - Wikipedia                                          │ │
+  │  │  Mars is the fourth planet from the Sun...                 │ │
+  │  │  Word count: 15,432                                        │ │
+  │  └────────────────────────────────────────────────────────────┘ │
+  │                                                                  │
+  │  ☐ Auto-refresh weekly                                          │
+  │                                                                  │
+  │  [Cancel]                                     [Add & Extract]    │
+  └──────────────────────────────────────────────────────────────────┘
+  ```
+
+  ### API Tab
+
+  ```
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  Provider: [NewsAPI ▼]                                          │
+  │                                                                  │
+  │  Category: [Science ▼]                                          │
+  │                                                                  │
+  │  Keywords: [Mars mission, space exploration____]                │
+  │                                                                  │
+  │  Balance Sources:                                               │
+  │  ☑️ Include left-leaning sources                                │
+  │  ☑️ Include center sources                                      │
+  │  ☑️ Include right-leaning sources                               │
+  │                                                                  │
+  │  Refresh: [Every 24 hours ▼]                                    │
+  │                                                                  │
+  │  [Cancel]                                     [Connect API]      │
+  └──────────────────────────────────────────────────────────────────┘
+  ```
+
+  ---
+
+  ## File Parsing Pipeline
+
+  ### Supported Formats
+
+  | Format | Parser | Notes |
+  |--------|--------|-------|
+  | PDF | `pdf-parse` | Text extraction, OCR fallback |
+  | DOCX | `mammoth` | Preserves structure |
+  | TXT/MD | Native | Direct text |
+
+  ### Processing Flow
+
+  ```
+  Upload → Parse → Chunk → Extract Facts → Store
+  ```
+
+  1. **Upload**: Store file in Supabase Storage
+  2. **Parse**: Extract text using appropriate parser
+  3. **Chunk**: Split into ~2000 token chunks with overlap
+  4. **Extract**: LLM extracts facts from each chunk
+  5. **Store**: Save to `external_content` table
+
+  ---
+
+  ## Fact Extraction Prompt
+
+  ```json
+  {
+    "name": "fact-extraction",
+    "template": "prompts/research/fact-extraction.json",
+    "model": {
+      "provider": "gemini",
+      "model": "gemini-2.0-flash-exp"
+    },
+    "schema": {
+      "facts": [{
+        "statement": "string",
+        "confidence": "number (0-1)",
+        "entities": {
+          "people": ["string"],
+          "places": ["string"],
+          "dates": ["string"],
+          "organizations": ["string"]
+        },
+        "category": "historical | scientific | biographical | statistical"
+      }]
+    }
+  }
+  ```
+
+  ### Example Extraction
+
+  **Input chunk:**
+  > "Water was discovered on Mars by NASA's Perseverance rover in 2024. The discovery was announced at a press conference in Washington D.C."
+
+  **Extracted:**
+  ```json
+  {
+    "facts": [{
+      "statement": "Water was discovered on Mars by NASA's Perseverance rover in 2024",
+      "confidence": 0.95,
+      "entities": {
+        "places": ["Mars", "Washington D.C."],
+        "dates": ["2024"],
+        "organizations": ["NASA"]
+      },
+      "category": "scientific"
+    }]
+  }
+  ```
+
+  ---
+
+  ## Server Actions
+
+  ```typescript
+  // packages/features/episodes/src/server/source-upload-actions.ts
+
+  export async function uploadFileSourceAction(
+    projectId: string,
+    file: File,
+    options: {
+      name: string;
+      tier: 1 | 2 | 3;
+    }
+  ): Promise<{ sourceId: string; jobId: string }>;
+
+  export async function addUrlSourceAction(
+    projectId: string,
+    url: string,
+    options: {
+      name: string;
+      tier: 1 | 2 | 3;
+      refreshInterval?: number;
+    }
+  ): Promise<{ sourceId: string; jobId: string }>;
+
+  export async function connectApiSourceAction(
+    projectId: string,
+    config: {
+      provider: 'newsapi' | 'semantic_scholar' | 'wikipedia';
+      categories?: string[];
+      query?: string;
+      balanceBias?: boolean;
+      refreshInterval: number;
+    }
+  ): Promise<{ sourceId: string }>;
+
+  export async function extractFactsAction(
+    sourceId: string
+  ): Promise<{ jobId: string }>;
+
+  export async function getExtractionStatusAction(
+    jobId: string
+  ): Promise<{ status: string; progress: number; facts?: Fact[] }>;
+  ```
+
+  ---
+
+  ## Background Job: fact-extraction
+
+  Uses existing Lambda job queue infrastructure.
+
+  ```typescript
+  // Job payload
+  interface FactExtractionJob {
+    type: 'fact-extraction';
+    sourceId: string;
+    projectId: string;
+    chunks: string[];
+  }
+  ```

@@ -1,0 +1,199 @@
+spec_id: "FILM-1618"
+title: "Channel-Residual Subscriber Movement"
+phase: 16
+phase_name: "Workbook Parity"
+category: feature
+status: DONE
+audited: "2026-09-23"
+effort: S
+dependencies:
+  - spec_id: "FILM-1601"
+    note: null
+  - spec_id: "FILM-1607"
+    note: null
+summary: >
+  Migration `006_gross_subscribers.ts` (FILM-1601) added `subscribers_gained`
+  and `subscribers_lost` to `channel_daily`. Its docstring states the purpose
+  in one line: "channel_daily gains both columns so channel-wide subscriber
+  movement from videos that never matched a publish is no longer discarded."
+  It is still discarded. Both columns have been zero in every environment
+  since the migration ran, and nothing reports an error.
+acceptance_criteria:
+  - text: "`accumulateChannelDaily` accepts and accumulates `subscribers_gained` and `subscribers_lost`"
+    met: true
+    evidence: null
+  - text: "The unmatched branch of `channel_basic_a3` passes both figures"
+    met: true
+    evidence: null
+  - text: "The reach branch still passes no subscriber figures"
+    met: true
+    evidence: null
+  - text: "`channel_combined_a3` still contributes nothing to `channel_daily`"
+    met: true
+    evidence: null
+  - text: "`subscribers_gained` and `subscribers_lost` are required fields on `ChannelDaily`"
+    met: true
+    evidence: null
+  - text: "A unit test asserts that two unmatched rows on the same date sum both subscriber fields"
+    met: true
+    evidence: null
+  - text: "A unit test asserts a reach-report row contributes zero to both"
+    met: true
+    evidence: null
+  - text: "Migration 006's docstring claim is true after this change"
+    met: true
+    evidence: null
+open_questions: []
+feature:
+  database:
+    tables:
+      - "channel_daily (ClickHouse): subscribers_gained and subscribers_lost now written for unmatched videos"
+    columns_added: []
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
+notes: |
+  ## 1. Overview
+
+  Migration `006_gross_subscribers.ts` (FILM-1601) added
+  `subscribers_gained` and `subscribers_lost` to `channel_daily`. Its
+  docstring states the purpose in one line:
+
+  > channel_daily gains both columns so channel-wide subscriber movement from
+  > videos that never matched a publish is no longer discarded.
+
+  It is still discarded. Both columns have been zero in every environment
+  since the migration ran, and nothing reports an error.
+
+  The ingest path proves it in two steps. `parseChannelBasicReport` does
+  return both figures (`reporting/csv-parsers.ts:22-26`), and for a **matched**
+  video they are written to `video_metrics`
+  (`reporting/report-ingest.ts:388-389`). For an **unmatched** video —
+  precisely the case the migration was for — the row goes to
+  `accumulateChannelDaily` (`:398-402`) carrying only `views`,
+  `watch_time_seconds` and `engaged_views`. It cannot carry more: the
+  function's `add` parameter is typed
+
+  ```ts
+  add: Partial<Pick<ChannelDaily,
+    'views' | 'watch_time_seconds' | 'impressions' | 'engaged_views'>>
+  ```
+
+  (`report-ingest.ts:421-426`), and its default row object initialises those
+  same four fields and no others (`:427-435`).
+
+  So the subscriber numbers are parsed, then dropped one function call later.
+
+  ## 2. Why It Is Silent
+
+  Three independent things had to be true for this to ship green, and all
+  three are ordinary good practice:
+
+  1. **`ChannelDaily.subscribers_gained` and `subscribers_lost` are optional**
+     in the TypeScript interface (`packages/clickhouse/src/types.ts:150-151`).
+     Omitting them is legal, so the compiler has nothing to say.
+  2. **`insertChannelDaily` sends `JSONEachRow`** (`queries.ts:109-120`), so
+     an absent key is simply an absent key in the payload — not a null, not
+     an error.
+  3. **Both columns are `UInt32 DEFAULT 0`** (migration 006). ClickHouse fills
+     them in without complaint.
+
+  The result is a column that is always present, always zero, and always
+  wrong — the phase's recurring failure mode: *a plausible-looking number
+  rather than an error.*
+
+  ## 3. What It Breaks
+
+  `querySubscriberDeltas` (`queries-advanced.ts:1165`) is a `UNION ALL` of two
+  legs: matched videos from `video_metrics ⨝ video_dim`, and the channel
+  residual from `channel_daily` (`:1205-1220`). Its docstring (`:1149-1155`)
+  explains that the second leg exists so subscriber movement on unmatched
+  videos is not lost.
+
+  **That leg contributes exactly zero, always.** So FILM-1607's reconstructed
+  subscriber series is built from matched videos only. Every day's net is
+  understated by whatever moved on unmatched videos, and because
+  `reconstructSeries` walks deltas forward from an anchor, the error
+  **accumulates** across the series rather than affecting one day.
+
+  That matters more than an ordinary undercount. The anchor is a real
+  absolute figure from the Data API; the walk between anchors is deltas. If
+  the deltas are systematically short, the curve drifts away from the
+  anchors, and each new snapshot corrects it with a visible step. A user
+  reads that step as a sudden gain.
+
+  The size of the error is the unmatched share of the channel, which is
+  exactly the population `channel_daily` exists to account for — small for a
+  channel whose library is fully published through this platform, and
+  potentially most of the channel for one that is not.
+
+  ## 4. Fix
+
+  | File | Change |
+  |------|--------|
+  | `packages/features/content-analytics/src/server/reporting/report-ingest.ts` | Widen `accumulateChannelDaily`'s `add` type to include `subscribers_gained` and `subscribers_lost`, initialise both to `0` in the default row, and accumulate them like the other four. |
+  | ↑ | Pass `subscribers_gained: row.subscribersGained` and `subscribers_lost: row.subscribersLost` from the unmatched branch of the `channel_basic_a3` path (`:398-402`). |
+  | ↑ | **Do not touch the reach branch** (`:356-357`). `channel_reach_*` reports carry no subscriber columns, so passing zeros there is correct — and passing anything else would double-count against the basic branch, which is the same trap the `channel_combined_a3` guard at `:408` already exists to avoid. |
+  | `packages/clickhouse/src/types.ts` | Make both fields **required** on `ChannelDaily`. This is the change that stops it happening again: with them optional, the next writer omits them and the compiler stays quiet. Every construction site must then name them, which is three call sites and no runtime behaviour. |
+  | `packages/features/content-analytics/__tests__/report-ingest.test.ts` | New file. `report-ingest.ts` has **no test coverage at all** today — `runReportingIngestJob`, `ingestReportCsv`, `accumulateChannelDaily` and `resolvePublishRefs` are untested. At minimum, cover `accumulateChannelDaily` directly: it is pure, and it is where the bug lives. |
+
+  ## 5. Backfill
+
+  **None is possible for days already ingested.** The subscriber figures were
+  parsed and dropped in memory; the CSV they came from is not retained, and
+  the Reporting API backfills only ~30 days from job creation. Days already
+  processed are gone unless their report is still inside that window and the
+  job's watermark is rewound — which is a manual, per-connection operation
+  and not part of this spec.
+
+  This bounds how long it is worth waiting — though only from the cutover,
+  not from today. `insertChannelDaily` no-ops while `CLICKHOUSE_ENABLED=false`
+  (`client.ts:98`), so nothing is being lost right now. **The loss starts the
+  day ClickHouse is enabled in production**, and from then on every day
+  before this ships is another day of permanently short deltas in a series
+  FILM-1607 has already shipped. The fix is a handful of lines; the data it
+  protects is not recoverable. Land it before the cutover and the cost is
+  zero.
+
+  ## 6. Out of Scope
+
+  - **Rewinding report watermarks to re-ingest recent days** — an operational
+    action, not code.
+  - **A traffic-source residual.** The traffic branch drops unmatched rows
+    entirely (`:296-302`) and `channel_daily` has no `source` column to hold
+    them. That is a real gap, disclosed in FILM-1605 §5, and it needs a
+    schema change rather than four lines.
+  - **Any change to `querySubscriberDeltas` or `reconstructSeries`.** Both
+    are correct; they were fed zeros.
+
+  ## 7. Acceptance Criteria
+
+  (Moved to the `acceptance_criteria:` key of this file.)
+
+  ## 8. Verification
+
+  ```bash
+  pnpm --filter @kit/content-analytics test
+  pnpm --filter @kit/clickhouse test
+  pnpm typecheck && pnpm lint
+  ```
+
+  `accumulateChannelDaily` is pure, so the fix is genuinely and completely
+  unit-testable — unusually for this phase, a green suite here really does
+  prove the behaviour.
+
+  What it does not prove is that the values reach ClickHouse:
+  `insertChannelDaily` no-ops while `CLICKHOUSE_ENABLED=false`
+  (`client.ts:98`). `pnpm --filter @kit/clickhouse verify` against a live
+  instance is the only check that the widened row inserts.
+
+  ## 9. Risk
+
+  Very low, and one-directional. The change adds two numbers to an insert
+  payload for rows that already exist; nothing reads those columns except the
+  `channel_daily` leg of `querySubscriberDeltas`, which currently sums zeros.
+  The only visible effect is that reconstructed subscriber series stop
+  understating net movement — which is the fix, and which will make figures
+  differ from anything recorded before it. Isolated and revertable, in the
+  shape of FILM-1601 and FILM-1613.

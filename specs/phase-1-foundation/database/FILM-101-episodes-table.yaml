@@ -1,0 +1,401 @@
+spec_id: "FILM-101b"
+title: "Episodes Table"
+phase: 1
+phase_name: "Foundation"
+category: database_table
+status: DONE
+audited: "2026-09-23"
+effort: S
+dependencies:
+  - spec_id: "FILM-101a"
+    note: "seasons-table"
+summary: >
+  The `episodes` table is the core content unit in the film studio. Each episode goes through a
+  workflow: draft → story → storyboard → generating → editing → ready → published. Episodes include
+  soft delete for safety and optimistic locking (version column) to prevent concurrent edit
+  conflicts.
+database_table:
+  table_name: "episodes"
+  migration: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql"
+  columns:
+    - name: "id"
+      type: "UUID"
+      nullable: false
+      default: "gen_random_uuid()"
+      description: "Primary key"
+    - name: "project_id"
+      type: "UUID"
+      nullable: false
+      default: null
+      description: "Foreign key to projects table"
+    - name: "season_id"
+      type: "UUID"
+      nullable: true
+      default: "NULL"
+      description: "Foreign key to seasons (NULL for films/shorts)"
+    - name: "number"
+      type: "INTEGER"
+      nullable: false
+      default: null
+      description: "Episode number within project or season"
+    - name: "title"
+      type: "VARCHAR(255)"
+      nullable: false
+      default: null
+      description: "Episode title"
+    - name: "description"
+      type: "TEXT"
+      nullable: true
+      default: "NULL"
+      description: "Episode synopsis"
+    - name: "status"
+      type: "VARCHAR(50)"
+      nullable: false
+      default: "'draft'"
+      description: "Workflow status (see enum below)"
+    - name: "duration_seconds"
+      type: "INTEGER"
+      nullable: true
+      default: "NULL"
+      description: "Final video duration in seconds"
+    - name: "thumbnail_url"
+      type: "TEXT"
+      nullable: true
+      default: "NULL"
+      description: "Episode thumbnail URL"
+    - name: "final_video_url"
+      type: "TEXT"
+      nullable: true
+      default: "NULL"
+      description: "URL to final rendered video"
+    - name: "story_data"
+      type: "JSONB"
+      nullable: true
+      default: "NULL"
+      description: "Story generation output (see schema below)"
+    - name: "screenplay_data"
+      type: "JSONB"
+      nullable: true
+      default: "NULL"
+      description: "Screenplay conversion output (see schema below)"
+    - name: "shot_list"
+      type: "JSONB"
+      nullable: true
+      default: "NULL"
+      description: "Shot list generation output (see schema below)"
+    - name: "metadata"
+      type: "JSONB"
+      nullable: false
+      default: "'{}'"
+      description: "Additional metadata"
+    - name: "version"
+      type: "INTEGER"
+      nullable: false
+      default: "1"
+      description: "Optimistic locking version number"
+    - name: "created_at"
+      type: "TIMESTAMPTZ"
+      nullable: false
+      default: "NOW()"
+      description: "Timestamp when record was created"
+    - name: "updated_at"
+      type: "TIMESTAMPTZ"
+      nullable: false
+      default: "NOW()"
+      description: "Timestamp when record was last updated"
+    - name: "deleted_at"
+      type: "TIMESTAMPTZ"
+      nullable: true
+      default: "NULL"
+      description: "Soft delete timestamp"
+  indexes:
+    - name: "idx_episodes_project_status"
+      columns: ["project_id", "status"]
+      unique: false
+    - name: "idx_episodes_season"
+      columns: ["season_id"]
+      unique: false
+    - name: "idx_episodes_deleted_at"
+      columns: ["deleted_at"]
+      unique: false
+    - name: "idx_episodes_project_id"
+      columns: ["project_id"]
+      unique: false
+  foreign_keys:
+    - column: "project_id"
+      references: "projects(id)"
+      on_delete: "CASCADE"
+    - column: "season_id"
+      references: "seasons(id)"
+      on_delete: "SET NULL"
+  rls_enabled: null
+acceptance_criteria:
+  - text: "Table created successfully with all columns"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:57"
+  - text: "Foreign keys with correct ON DELETE behavior (CASCADE for project, SET NULL for season)"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:59-60"
+  - text: "Status check constraint enforces valid enum values"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:76"
+  - text: "Partial indexes created for active episodes only"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:89-92"
+  - text: "Soft delete column (deleted_at) present"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:75"
+  - text: "Version column for optimistic locking"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:72"
+  - text: "Timestamps auto-populate and auto-update"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:98"
+  - text: "Version increments automatically on UPDATE"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:103-115"
+test_plan:
+  unit:
+    - text: "Insert episode with valid project_id succeeds"
+      met: false
+      reason: "not met — no test asserts it; pgTAP files insert episodes only as fixtures (apps/web/supabase/tests/database/authors-deletable.test.sql:58)"
+    - text: "Insert episode with invalid status fails (check constraint)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert episode with NULL season_id succeeds (for films)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Timestamps populate automatically on insert"
+      met: false
+      reason: "not met — no test found"
+    - text: "Timestamps update automatically on update"
+      met: false
+      reason: "not met — no test found"
+    - text: "Version starts at 1 on insert"
+      met: false
+      reason: "not met — no test found"
+    - text: "Version increments on update"
+      met: false
+      reason: "not met — no test found"
+  integration:
+    - text: "Deleting a project cascades to delete all episodes"
+      met: false
+      reason: "not met — no test found"
+    - text: "Deleting a season sets episode.season_id to NULL"
+      met: false
+      reason: "not met — no test found"
+    - text: "Soft delete: setting deleted_at excludes from active queries"
+      met: false
+      reason: "not met — no test found"
+    - text: "Optimistic locking: concurrent updates with stale version fail"
+      met: false
+      reason: "not met — no test found"
+    - text: "JSONB columns accept valid JSON and reject invalid JSON"
+      met: false
+      reason: "not met — no test found"
+  e2e: []
+  edge_cases:
+    - text: "Very long title (255 char limit)"
+      met: true
+      evidence: "packages/features/episodes/__tests__/schemas.test.ts:184 (\"should reject title exceeding max length\", app schema)"
+    - text: "Negative duration_seconds (should be prevented at app level)"
+      met: false
+      reason: "not met — no test found"
+    - text: "NULL story_data, screenplay_data, shot_list allowed"
+      met: false
+      reason: "not met — no test found"
+    - text: "Large JSONB objects (10MB+ - test performance)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Query performance with 1000+ episodes per project"
+      met: false
+      reason: "not met — no test found"
+open_questions: []
+notes: |
+  Sections of the Markdown spec that have no typed field, kept verbatim. Moved to typed fields: the Context paragraph (summary), the column table (database_table.columns), index names and columns, unique keys and foreign keys (database_table) and the acceptance criteria and test-plan checklists.
+
+  ## Metadata
+  - **Phase:** 1
+  - **Priority:** P0
+  - **Effort:** S
+  - **Status:** ✅ COMPLETE
+  - **Completed:** 2025-12-05
+  - **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
+  - **Dependencies:** FILM-101 (seasons-table)
+  - **Blocks:** FILM-101 (shots-table), FILM-301 (episode-crud-actions), FILM-305 (story-generation)
+
+  ## Specification
+
+  ### Table Definition
+  ```sql
+  CREATE TABLE episodes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    season_id UUID REFERENCES seasons(id) ON DELETE SET NULL,
+    number INTEGER NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'draft' NOT NULL,
+    duration_seconds INTEGER,
+    thumbnail_url TEXT,
+    final_video_url TEXT,
+    story_data JSONB,
+    screenplay_data JSONB,
+    shot_list JSONB,
+    metadata JSONB DEFAULT '{}' NOT NULL,
+    version INTEGER DEFAULT 1 NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    deleted_at TIMESTAMPTZ DEFAULT NULL,
+    CHECK (status IN ('draft', 'story', 'storyboard', 'generating', 'editing', 'ready', 'published'))
+  );
+  ```
+
+  ### Status Enum Values
+  - `draft` - Initial state, no content generated
+  - `story` - Story has been generated
+  - `storyboard` - Screenplay and shot list created
+  - `generating` - Videos are being generated
+  - `editing` - In timeline editor
+  - `ready` - Final video rendered, ready to publish
+  - `published` - Published to at least one platform
+
+  ### Indexes
+  ```sql
+  -- Partial index for active episodes (excludes soft-deleted)
+  CREATE INDEX idx_episodes_project_status ON episodes(project_id, status)
+    WHERE deleted_at IS NULL;
+
+  -- Index for season lookup
+  CREATE INDEX idx_episodes_season ON episodes(season_id)
+    WHERE deleted_at IS NULL;
+
+  -- Index for deleted episodes (for cleanup jobs)
+  CREATE INDEX idx_episodes_deleted_at ON episodes(deleted_at)
+    WHERE deleted_at IS NOT NULL;
+
+  -- Index for project_id (FK)
+  CREATE INDEX idx_episodes_project_id ON episodes(project_id);
+  ```
+
+  ### Constraints
+  - **Primary Key**: `id` (UUID)
+  - **Foreign Keys**:
+    - `project_id` references `projects(id)` ON DELETE CASCADE
+    - `season_id` references `seasons(id)` ON DELETE SET NULL
+  - **Check Constraint**: `status` must be one of the enum values
+  - **Unique Constraint**: Consider adding `UNIQUE(project_id, season_id, number)` at application level
+
+  ### JSONB Schema
+  #### StoryData Interface
+  ```typescript
+  interface StoryData {
+    premise: string;           // One-sentence story hook
+    fullStory: string;         // Complete narrative (500-1000 words)
+    generatedAt: string;       // ISO timestamp
+    approvedAt?: string;       // ISO timestamp when user approved
+    generatedBy: {
+      model: string;           // e.g., "claude-3-5-sonnet"
+      provider: string;        // e.g., "anthropic"
+      costCents: number;       // Cost of generation
+    };
+  }
+  ```
+
+  #### ScreenplayData Interface
+  ```typescript
+  interface ScreenplayData {
+    scenes: Scene[];
+    dialogue: DialogueLine[];
+    generatedAt: string;
+    approvedAt?: string;
+    generatedBy: {
+      model: string;
+      provider: string;
+      costCents: number;
+    };
+  }
+
+  interface Scene {
+    number: number;
+    location: string;
+    timeOfDay: string;       // "day", "night", "dawn", "dusk"
+    description: string;
+    duration: number;        // estimated seconds
+  }
+
+  interface DialogueLine {
+    sceneNumber: number;
+    characterName: string;
+    text: string;
+    emotion?: string;        // "happy", "sad", "angry", etc.
+  }
+  ```
+
+  #### ShotList Interface
+  ```typescript
+  interface ShotList {
+    shots: ShotDefinition[];
+    generatedAt: string;
+    approvedAt?: string;
+    totalEstimatedDuration: number;
+  }
+
+  interface ShotDefinition {
+    sequenceNumber: number;
+    sceneNumber: number;
+    duration: number;
+    sceneDescription: string;
+    actionDescription: string;
+    prompt: string;          // Kling-ready prompt
+    cameraDirection: string; // "static", "pan", "zoom", etc.
+    characters: string[];    // Character names in shot
+  }
+  ```
+
+  ### Triggers
+  ```sql
+  -- Auto-update timestamps
+  CREATE TRIGGER episodes_set_timestamps
+  BEFORE INSERT OR UPDATE ON episodes
+  FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamps();
+
+  -- Increment version on update (optimistic locking)
+  CREATE OR REPLACE FUNCTION increment_episode_version()
+  RETURNS TRIGGER AS $$
+  BEGIN
+    IF TG_OP = 'UPDATE' AND OLD.version IS NOT NULL THEN
+      NEW.version = OLD.version + 1;
+    END IF;
+    RETURN NEW;
+  END;
+  $$ LANGUAGE plpgsql;
+
+  CREATE TRIGGER episodes_increment_version
+  BEFORE UPDATE ON episodes
+  FOR EACH ROW EXECUTE FUNCTION increment_episode_version();
+  ```
+
+  ## File Changes
+  | Action | Path |
+  |--------|------|
+  | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
+
+  ## Test Plan
+
+  ### Optimistic Locking Test
+  ```sql
+  -- Simulate concurrent edit conflict
+  BEGIN;
+    SELECT version FROM episodes WHERE id = 'test-id'; -- returns 1
+    -- User A and User B both read version 1
+
+    -- User A updates first
+    UPDATE episodes SET title = 'New Title A', version = 2
+    WHERE id = 'test-id' AND version = 1; -- succeeds
+
+    -- User B tries to update with stale version
+    UPDATE episodes SET title = 'New Title B', version = 2
+    WHERE id = 'test-id' AND version = 1; -- fails (no rows updated)
+  COMMIT;
+  ```
