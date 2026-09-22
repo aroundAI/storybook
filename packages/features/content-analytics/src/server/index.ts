@@ -163,6 +163,8 @@ export {
   getShortsSourcePerformance,
   getGeographyByLanguage,
   getLanguageTrend,
+  getLanguageDivergence,
+  type LanguageCheckpoint,
   type LanguagePerformance,
   type PlatformLanguageEntry,
   type ContentTypeComparison,

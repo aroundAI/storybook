@@ -19,13 +19,21 @@ function authHeader() {
   return `Basic ${Buffer.from(`${user}:${password}`).toString('base64')}`;
 }
 
+/**
+ * The database the app under test reads, when it is not `default`.
+ *
+ * A spec that changes `video_dim`'s shape cannot run against the database
+ * other branches share, so it points both the server and this helper at a
+ * scratch one with the same variable the app's own client reads.
+ */
+function database() {
+  const name = process.env.CLICKHOUSE_DB;
+
+  return name ? `&database=${encodeURIComponent(name)}` : '';
+}
+
 async function run(query: string, body?: string, settings?: string) {
-  // The same database the server reads (`CLICKHOUSE_DB`, as in
-  // `@kit/clickhouse`'s client). Without it a spec always seeded `default`,
-  // so a server pointed anywhere else rendered empty states for rows that
-  // had just been inserted.
-  const database = encodeURIComponent(process.env.CLICKHOUSE_DB ?? 'default');
-  const url = `${HOST()}/?database=${database}&query=${encodeURIComponent(query)}${settings ?? ''}`;
+  const url = `${HOST()}/?query=${encodeURIComponent(query)}${database()}${settings ?? ''}`;
 
   const response = await fetch(url, {
     method: 'POST',
@@ -112,6 +120,9 @@ function videoDimRow(video: SeededVideo) {
     platform: 'youtube',
     content_type: 'long',
     language: 'en',
+    // Stated, not left to the column default: omitted, it reads as "no
+    // channel target", which is a claim these fixtures do not mean to make.
+    channel_language: 'en',
     title: video.title,
     published_at: clickHouseDateTime(video.publishedAt),
     episode_duration_seconds: 600,

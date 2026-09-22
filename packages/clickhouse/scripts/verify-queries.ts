@@ -42,6 +42,7 @@ import {
   queryDailyTimeSeries,
   queryDailyTimeSeriesByPlatform,
   queryDataDaysForVideos,
+  queryLanguagePairs,
   queryLatestSnapshots,
   queryLatestSubscriberLevels,
   queryMedianViewsPerVideo,
@@ -61,6 +62,7 @@ import {
   queryTotalsByVideoIds,
   queryTrafficSourceBreakdown,
   queryTrafficSources,
+  queryVideoLanguages,
   queryVideoViewsAtAge,
   queryViewsForVideos,
   queryWatchWindowTotals,
@@ -133,6 +135,7 @@ async function seed() {
         platform: 'youtube',
         content_type: 'full',
         language: 'en',
+        channel_language: 'en',
         title: 'Normal video',
         published_at: '2026-01-10 00:00:00',
         episode_duration_seconds: 600,
@@ -148,6 +151,7 @@ async function seed() {
         platform: 'youtube',
         content_type: 'full',
         language: 'en',
+        channel_language: 'en',
         title: 'Back catalogue',
         published_at: '2024-03-01 00:00:00',
         episode_duration_seconds: 600,
@@ -163,6 +167,7 @@ async function seed() {
         platform: 'youtube',
         content_type: 'short',
         language: 'es',
+        channel_language: 'en',
         title: 'Never watched',
         published_at: '2026-01-12 00:00:00',
         episode_duration_seconds: 1320,
@@ -490,6 +495,7 @@ async function queries() {
   for (const kind of [
     'tag',
     'language',
+    'channel_language',
     'content_type',
     'connection',
   ] as const) {
@@ -536,6 +542,7 @@ async function queries() {
     ['platform', { ...scope, platform: 'youtube' }],
     ['contentType', { ...scope, contentType: 'full' }],
     ['language', { ...scope, language: 'en' }],
+    ['channelLanguage', { ...scope, channelLanguage: 'en' }],
     ['accountId', { accountId: ACCOUNT }],
   ] as const) {
     await step(`scope filter: ${label}`, () =>
@@ -868,6 +875,328 @@ async function assertions() {
     }
     return 'published_at, lifetime_views, title';
   });
+}
+
+/** Its own project, so none of these videos move a figure asserted above. */
+const LANGUAGE_PROJECT = '33333333-3333-3333-3333-333333333333';
+const CHANNEL_EN = '44444444-4444-4444-4444-444444444444';
+const CHANNEL_ES = '55555555-5555-5555-5555-555555555555';
+const NO_CHANNEL = '00000000-0000-0000-0000-000000000000';
+
+/**
+ * The fixture FILM-1702 §8 requires, with its answers worked out by hand.
+ *
+ * | video           | content | channel | views |
+ * |-----------------|---------|---------|-------|
+ * | lang-en         | en      | en      | 1,000 |
+ * | lang-es         | es      | es      |   300 | explicitly non-English
+ * | lang-unset      | not set | en      | 5,000 | never set
+ * | lang-misrouted  | es      | en      |   700 | differs from its channel
+ * | lang-relabelled | not set | en      |    40 | was 'en'; the old row remains
+ * | lang-nochannel  | not set | not set |     9 | no channel at all
+ *
+ * CHANNEL_EN carries English, Spanish and unlabelled videos, which is the
+ * "channel carrying two languages" case.
+ *
+ * By content: en 1,000 · es 1,000 · not set 5,049. Under the old `'en'`
+ * default the first of those would have read 6,049 and the last would not
+ * have existed. By channel: en 6,740 · es 300 · not set 9.
+ */
+const LANGUAGE_FIXTURE = [
+  {
+    id: 'lang-en',
+    language: 'en',
+    channel: 'en',
+    conn: CHANNEL_EN,
+    views: 1000,
+  },
+  {
+    id: 'lang-es',
+    language: 'es',
+    channel: 'es',
+    conn: CHANNEL_ES,
+    views: 300,
+  },
+  {
+    id: 'lang-unset',
+    language: '',
+    channel: 'en',
+    conn: CHANNEL_EN,
+    views: 5000,
+  },
+  {
+    id: 'lang-misrouted',
+    language: 'es',
+    channel: 'en',
+    conn: CHANNEL_EN,
+    views: 700,
+  },
+  {
+    id: 'lang-relabelled',
+    language: '',
+    channel: 'en',
+    conn: CHANNEL_EN,
+    views: 40,
+  },
+  {
+    id: 'lang-nochannel',
+    language: '',
+    channel: '',
+    conn: NO_CHANNEL,
+    views: 9,
+  },
+] as const;
+
+async function languageSteps() {
+  // Merges are what remove a superseded dim row, and on a table this small
+  // they run within moments of the insert — so without this the relabelled
+  // video's old row is usually gone before the assertion about it runs, and
+  // that assertion passes whether or not the query handles it. (It did:
+  // moving the language filter back before the argMax left this script
+  // green.) Production gives no such guarantee in either direction.
+  await step('pause merges on video_dim', () =>
+    getClickHouseClient().command({ query: 'SYSTEM STOP MERGES video_dim' }),
+  );
+
+  try {
+    await languageFixtureSteps();
+  } finally {
+    await step('resume merges on video_dim', () =>
+      getClickHouseClient().command({ query: 'SYSTEM START MERGES video_dim' }),
+    );
+  }
+}
+
+async function languageFixtureSteps() {
+  const scope = { projectId: LANGUAGE_PROJECT };
+
+  await step('seed: language fixture', async () => {
+    await insertVideoDims(
+      LANGUAGE_FIXTURE.map((video) => ({
+        video_id: video.id,
+        project_id: LANGUAGE_PROJECT,
+        account_id: ACCOUNT,
+        episode_id: EPISODE,
+        connection_id: video.conn,
+        platform: 'youtube',
+        content_type: 'full',
+        language: video.language,
+        channel_language: video.channel,
+        title: video.id,
+        published_at: '2026-01-10 00:00:00',
+        episode_duration_seconds: 600,
+        asset_duration_seconds: null,
+        tags: [],
+      })),
+    );
+
+    // The row the backfill supersedes: this video said 'en' until its
+    // publish was reclassified. `updated_at` is set by hand so it is
+    // unambiguously the older of the two, and it goes in through the raw
+    // client because VideoDim has no such field — the application never
+    // writes one.
+    await getClickHouseClient().insert({
+      table: 'video_dim',
+      values: [
+        {
+          video_id: 'lang-relabelled',
+          project_id: LANGUAGE_PROJECT,
+          account_id: ACCOUNT,
+          episode_id: EPISODE,
+          connection_id: CHANNEL_EN,
+          platform: 'youtube',
+          content_type: 'full',
+          language: 'en',
+          channel_language: 'en',
+          title: 'lang-relabelled',
+          published_at: '2026-01-10 00:00:00',
+          duration_seconds: 600,
+          tags: [],
+          updated_at: '2026-01-01 00:00:00',
+        },
+      ],
+      format: 'JSONEachRow',
+    });
+
+    await insertVideoMetrics(
+      LANGUAGE_FIXTURE.map((video) => ({
+        project_id: LANGUAGE_PROJECT,
+        video_id: video.id,
+        platform: 'youtube',
+        metric_date: '2026-01-11',
+        views: video.views,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        saves: 0,
+        watch_time_seconds: 0,
+        revenue_cents: 0,
+        subscribers_gained: 0,
+        subscribers_lost: 0,
+        metric_source: 'analytics_api',
+        extra_metrics: '{}',
+      })),
+    );
+  });
+
+  await step('queryVideoLanguages', () => queryVideoLanguages({ scope }));
+  await step('queryLanguagePairs', () => queryLanguagePairs({ scope }));
+
+  const totalsBy = async (kind: 'language' | 'channel_language') => {
+    const rows = await querySegmentPerformance({
+      scope,
+      segment: { kind },
+      minVideos: 1,
+    });
+
+    return Object.fromEntries(
+      rows.map((row) => [row.segment || '(not set)', row.totalViews]),
+    );
+  };
+
+  await step('assert: a language nobody set is not English', async () => {
+    const totals = await totalsBy('language');
+    const expected = { en: 1000, es: 1000, '(not set)': 5049 };
+
+    if (JSON.stringify(sorted(totals)) !== JSON.stringify(sorted(expected))) {
+      throw new Error(
+        `by content language: got ${JSON.stringify(totals)} want ${JSON.stringify(expected)}`,
+      );
+    }
+
+    return JSON.stringify(totals);
+  });
+
+  await step(
+    'assert: switching the dimension changes the numbers',
+    async () => {
+      const totals = await totalsBy('channel_language');
+      const expected = { en: 6740, es: 300, '(not set)': 9 };
+
+      if (JSON.stringify(sorted(totals)) !== JSON.stringify(sorted(expected))) {
+        throw new Error(
+          `by channel target: got ${JSON.stringify(totals)} want ${JSON.stringify(expected)}`,
+        );
+      }
+
+      return JSON.stringify(totals);
+    },
+  );
+
+  await step(
+    'assert: a relabelled video is not found under its old language',
+    async () => {
+      // Its superseded 'en' row is still in the table. A filter applied
+      // before the argMax keeps only that row and reports the video as
+      // English — which is every publish the backfill reclassified.
+      const rows = await queryVideoViewsAtAge({
+        scope: { ...scope, language: 'en' },
+      });
+      const ids = rows.map((row) => row.videoId).sort();
+
+      if (ids.join(',') !== 'lang-en') {
+        throw new Error(`language 'en' matched [${ids.join(', ')}]`);
+      }
+
+      return `language 'en' → [${ids.join(', ')}]`;
+    },
+  );
+
+  await step(
+    'assert: the not-set filter selects the unlabelled, not everything',
+    async () => {
+      const rows = await queryVideoViewsAtAge({
+        scope: { ...scope, language: '' },
+      });
+      const ids = rows.map((row) => row.videoId).sort();
+      const expected = ['lang-nochannel', 'lang-relabelled', 'lang-unset'];
+
+      if (ids.join(',') !== expected.join(',')) {
+        throw new Error(`language '' matched [${ids.join(', ')}]`);
+      }
+
+      return `${ids.length} of ${LANGUAGE_FIXTURE.length} videos`;
+    },
+  );
+
+  await step(
+    'assert: the Language tab and a scoped Deep Dive agree per language',
+    async () => {
+      // The acceptance criterion, run rather than argued: the tab groups by
+      // the dim column; the Deep Dive filters on it. Same column, same
+      // checkpoint, so the same number — for every language, and for the
+      // unlabelled bucket.
+      const totals = await totalsBy('language');
+      const checked: string[] = [];
+
+      for (const [label, tabViews] of Object.entries(totals)) {
+        const language = label === '(not set)' ? '' : label;
+        const rows = await queryVideoViewsAtAge({
+          scope: { ...scope, language },
+          checkpoints: [30],
+        });
+        const deepDiveViews = rows.reduce(
+          (sum, row) => sum + (row.viewsAtAge[30] ?? 0),
+          0,
+        );
+
+        if (deepDiveViews !== tabViews) {
+          throw new Error(
+            `${label}: Language tab ${tabViews}, Deep Dive ${deepDiveViews}`,
+          );
+        }
+
+        checked.push(`${label}=${tabViews}`);
+      }
+
+      return checked.join(' ');
+    },
+  );
+
+  await step('assert: divergent publishes are countable', async () => {
+    const pairs = await queryLanguagePairs({ scope });
+    const divergent = pairs
+      .filter(
+        (pair) =>
+          pair.language !== null &&
+          pair.channelLanguage !== null &&
+          pair.language !== pair.channelLanguage,
+      )
+      .reduce((sum, pair) => sum + pair.videoCount, 0);
+    const total = pairs.reduce((sum, pair) => sum + pair.videoCount, 0);
+
+    // Only lang-misrouted. The three unlabelled videos differ from their
+    // channel's 'en' as strings and must not be counted as misrouted: an
+    // absence is not a disagreement.
+    if (divergent !== 1 || total !== LANGUAGE_FIXTURE.length) {
+      throw new Error(
+        `divergent=${divergent} of ${total}: ${JSON.stringify(pairs)}`,
+      );
+    }
+
+    return `${divergent} of ${total}`;
+  });
+
+  await step('assert: every video comes back with both languages', async () => {
+    const rows = await queryVideoLanguages({ scope });
+    const got = rows
+      .map((row) => `${row.videoId}:${row.language}/${row.channelLanguage}`)
+      .sort();
+    const expected = LANGUAGE_FIXTURE.map(
+      (video) =>
+        `${video.id}:${video.language || null}/${video.channel || null}`,
+    ).sort();
+
+    if (got.join('|') !== expected.join('|')) {
+      throw new Error(`got [${got.join(', ')}]`);
+    }
+
+    return `${rows.length} video(s)`;
+  });
+}
+
+function sorted(record: Record<string, number>) {
+  return Object.entries(record).sort(([a], [b]) => a.localeCompare(b));
 }
 
 /**
@@ -1482,6 +1811,7 @@ async function main() {
 
   await seed();
   await queries();
+  await languageSteps();
   await assertions();
   await watchedMetricSteps();
   await provenanceSteps();

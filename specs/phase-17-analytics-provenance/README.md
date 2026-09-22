@@ -102,7 +102,7 @@ thing that would read the column, through `getRetentionCurveAction`.
 | Spec | Status | Effort | Covers |
 |------|--------|--------|--------|
 | [FILM-1701](./FILM-1701-audience-truth-up.md) | DRAFT | M | Delete two fabricated cards, plumb the third from data we already ingest, fix the seed fixture's platform bug |
-| [FILM-1702](./FILM-1702-language-dimension-reconciliation.md) | DRAFT | L | Two disagreeing language columns, and the `'en'` default that doubles as the unknown bucket |
+| [FILM-1702](./FILM-1702-language-dimension-reconciliation.md) | ✅ DONE | L | Two disagreeing language columns, and the `'en'` default that doubles as the unknown bucket |
 | [FILM-1703](./FILM-1703-provenance-capability-model.md) | 🟡 PARTIAL | M | The capability matrix and the tests that stop it drifting from the writers |
 | [FILM-1704](./FILM-1704-observed-coverage.md) | DRAFT | M | One query answering what data exists for this project in this window |
 | [FILM-1705](./FILM-1705-provenance-surfaces.md) | DRAFT | L | Card chip, coverage strip, filter dimming |

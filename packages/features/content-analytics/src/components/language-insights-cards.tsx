@@ -14,6 +14,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
+import type { LanguageDimension } from '@kit/clickhouse';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -22,23 +23,11 @@ import { useLlmJob } from '@kit/ui/hooks';
 import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 
+import { languageKey, languageName } from '../lib/language-labels';
 import type { GeographyByLanguage } from '../server/language-analytics';
 import { generateLanguageInsightsAction } from '../server/language-insights-actions';
 import type { LanguageInsightsResult } from '../server/language-insights-actions';
-
-// Language names
-const LANGUAGE_NAMES: Record<string, string> = {
-  en: 'English',
-  hi: 'Hindi',
-  es: 'Spanish',
-  pt: 'Portuguese',
-  fr: 'French',
-  de: 'German',
-  ja: 'Japanese',
-  ko: 'Korean',
-  zh: 'Chinese',
-  ar: 'Arabic',
-};
+import { LanguageDimensionLabel } from './language-dimension-label';
 
 // Heat intensity colors (low to high)
 const HEAT_COLORS: [string, string, string, string, string] = [
@@ -57,21 +46,20 @@ function getHeatColor(percentage: number): string {
   return HEAT_COLORS[0];
 }
 
-function getLanguageName(code: string): string {
-  return LANGUAGE_NAMES[code] || code.toUpperCase();
-}
-
 // =============================================================================
 // Geography Heatmap Card
 // =============================================================================
 
 interface GeographyHeatmapCardProps {
   data: GeographyByLanguage[];
+  /** Which language the rows are grouped by; named on the card. */
+  dimension?: LanguageDimension;
   isLoading?: boolean;
 }
 
 export function GeographyHeatmapCard({
   data,
+  dimension = 'content',
   isLoading,
 }: GeographyHeatmapCardProps) {
   if (isLoading) {
@@ -125,15 +113,16 @@ export function GeographyHeatmapCard({
           <Globe className="h-4 w-4" />
           Geographic Heatmap
         </CardTitle>
+        <LanguageDimensionLabel dimension={dimension} card="geography" />
         <p className="text-xs text-muted-foreground">
           Color intensity shows view concentration
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
         {data.slice(0, 4).map((langData) => (
-          <div key={langData.language} className="space-y-3">
+          <div key={languageKey(langData.language)} className="space-y-3">
             <div className="text-sm font-medium">
-              {getLanguageName(langData.language)}
+              {languageName(langData.language, dimension)}
             </div>
             <div className="flex flex-wrap gap-2">
               {langData.countries.slice(0, 6).map((country) => (

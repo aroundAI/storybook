@@ -22,15 +22,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 import { formatNumber } from '../lib/format';
 import {
   getContentListAction,
-  getContentTypeComparisonAction,
-  getGeographyByLanguageAction,
-  getLanguagePerformanceAction,
-  getLanguageTrendAction,
-  getPlatformLanguageMatrixAction,
   getProjectAnalyticsAction,
   getProjectAudienceDataAction,
   getProjectDailyMetricsAction,
-  getShortsSourcePerformanceAction,
 } from '../server/dashboard-actions';
 import type {
   AggregateAnalytics,
@@ -44,10 +38,7 @@ import type { DateRangeValue } from './date-range-picker';
 import { DateRangePicker } from './date-range-picker';
 import { DeepDiveTab } from './deep-dive/deep-dive-tab';
 import { ExportReports } from './export-reports';
-import {
-  LanguageAnalyticsDashboard,
-  LanguageAnalyticsDashboardSkeleton,
-} from './language-analytics-dashboard';
+import { LanguageTab } from './language-tab';
 import { MetricCards } from './metric-cards';
 import { OverviewGrid } from './overview';
 import { PerformanceChart } from './performance-chart';
@@ -158,113 +149,6 @@ export function AnalyticsDashboard({
         to: dateRange.to,
       }),
     enabled: activeTab === 'audience',
-  });
-
-  // Fetch language performance for Language tab
-  const { data: languagePerformance, isLoading: isLanguageLoading } = useQuery({
-    queryKey: [
-      'language-performance',
-      projectId,
-      dateRange.from?.toISOString(),
-      dateRange.to?.toISOString(),
-    ],
-    queryFn: () =>
-      getLanguagePerformanceAction({
-        projectId,
-        from: dateRange.from,
-        to: dateRange.to,
-      }),
-    enabled: activeTab === 'language',
-  });
-
-  // Fetch platform × language matrix for Language tab
-  const { data: platformLanguageMatrix, isLoading: isMatrixLoading } = useQuery(
-    {
-      queryKey: [
-        'platform-language-matrix',
-        projectId,
-        dateRange.from?.toISOString(),
-        dateRange.to?.toISOString(),
-      ],
-      queryFn: () =>
-        getPlatformLanguageMatrixAction({
-          projectId,
-          from: dateRange.from,
-          to: dateRange.to,
-        }),
-      enabled: activeTab === 'language',
-    },
-  );
-
-  // Fetch content type comparison for Language tab
-  const { data: contentTypeComparison, isLoading: isContentTypeLoading } =
-    useQuery({
-      queryKey: [
-        'content-type-comparison',
-        projectId,
-        dateRange.from?.toISOString(),
-        dateRange.to?.toISOString(),
-      ],
-      queryFn: () =>
-        getContentTypeComparisonAction({
-          projectId,
-          from: dateRange.from,
-          to: dateRange.to,
-        }),
-      enabled: activeTab === 'language',
-    });
-
-  // Fetch shorts source performance for Language tab (Phase 3)
-  const { data: shortsPerformance, isLoading: isShortsLoading } = useQuery({
-    queryKey: [
-      'shorts-performance',
-      projectId,
-      dateRange.from?.toISOString(),
-      dateRange.to?.toISOString(),
-    ],
-    queryFn: () =>
-      getShortsSourcePerformanceAction({
-        projectId,
-        from: dateRange.from,
-        to: dateRange.to,
-      }),
-    enabled: activeTab === 'language',
-  });
-
-  // Fetch geography by language for Language tab (Phase 4)
-  const { data: geographyByLanguage, isLoading: isGeographyLoading } = useQuery(
-    {
-      queryKey: [
-        'geography-by-language',
-        projectId,
-        dateRange.from?.toISOString(),
-        dateRange.to?.toISOString(),
-      ],
-      queryFn: () =>
-        getGeographyByLanguageAction({
-          projectId,
-          from: dateRange.from,
-          to: dateRange.to,
-        }),
-      enabled: activeTab === 'language',
-    },
-  );
-
-  // Fetch language trend for trend chart
-  const { data: languageTrend, isLoading: isTrendLoading } = useQuery({
-    queryKey: [
-      'language-trend',
-      projectId,
-      dateRange.from?.toISOString(),
-      dateRange.to?.toISOString(),
-    ],
-    queryFn: () =>
-      getLanguageTrendAction({
-        projectId,
-        from: dateRange.from,
-        to: dateRange.to,
-      }),
-    enabled: activeTab === 'language',
   });
 
   // Filter data by selected platforms
@@ -390,7 +274,9 @@ export function AnalyticsDashboard({
           <TabsTrigger value="video-log" data-test="analytics-tab-video-log">
             Video Log
           </TabsTrigger>
-          <TabsTrigger value="language">Language</TabsTrigger>
+          <TabsTrigger value="language" data-test="analytics-tab-language">
+            Language
+          </TabsTrigger>
           <TabsTrigger value="insights">AI Insights</TabsTrigger>
         </TabsList>
 
@@ -470,24 +356,7 @@ export function AnalyticsDashboard({
         </TabsContent>
 
         <TabsContent value="language" className="mt-6">
-          {isLanguageLoading ||
-          isMatrixLoading ||
-          isContentTypeLoading ||
-          isShortsLoading ||
-          isGeographyLoading ||
-          isTrendLoading ? (
-            <LanguageAnalyticsDashboardSkeleton />
-          ) : (
-            <LanguageAnalyticsDashboard
-              projectId={projectId}
-              languageData={languagePerformance ?? null}
-              matrixData={platformLanguageMatrix ?? null}
-              contentTypeData={contentTypeComparison ?? null}
-              shortsData={shortsPerformance ?? null}
-              geographyData={geographyByLanguage ?? null}
-              trendData={languageTrend ?? null}
-            />
-          )}
+          <LanguageTab projectId={projectId} dateRange={dateRange} />
         </TabsContent>
       </Tabs>
 

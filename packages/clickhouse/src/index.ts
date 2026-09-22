@@ -131,6 +131,16 @@ export {
 } from './lib/subscriber-vocabulary';
 export type { SubscriberTrackedPlatform } from './lib/subscriber-vocabulary';
 
+// The two language dimensions and the not-set sentinel (FILM-1702). Shared
+// with the browser so a card never restates what an empty language means.
+export {
+  LANGUAGE_DIMENSIONS,
+  LANGUAGE_NOT_SET,
+  fromDimLanguage,
+  toDimLanguage,
+} from './lib/language-dimension';
+export type { LanguageDimension } from './lib/language-dimension';
+
 // What "a view" means per platform, and when it changed (FILM-1722). Pure,
 // so a chart can ask where a boundary falls without reaching the server.
 export {

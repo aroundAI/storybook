@@ -557,14 +557,15 @@ create table if not exists public.publishes (
   -- video_dim.language. Declared here so this file matches the database it
   -- documents; migrations remain the source of truth.
   --
-  -- Note the `default 'en'`: it means an unset language is indistinguishable
-  -- from a deliberate English one, so "English" doubles as the unknown bucket
-  -- in every language breakdown. Changing that needs a backfill decision, so
-  -- it is tracked separately rather than altered here.
+  -- Nullable with no default (FILM-1702, migration 20260921213245): NULL means
+  -- nobody set a language. It used to be `default 'en' not null`, which made
+  -- an unset language indistinguishable from a deliberate English one, so
+  -- "English" doubled as the unknown bucket in every language breakdown. The
+  -- backfill decision for the rows that existed then is in that migration.
   -- dubbed_version_id carries no inline `references` because
   -- public.dubbed_versions is created much later in this same file; the
   -- foreign key is added just after that table instead.
-  language varchar(5) default 'en' not null,
+  language varchar(5),
   dubbed_version_id uuid,
   -- Per-video analytics note (FILM-1610, migration 20260918184818). Its own
   -- columns, not a key in `metadata`, which the publish pipeline writes.
@@ -573,6 +574,9 @@ create table if not exists public.publishes (
   analytics_note_updated_by uuid references auth.users(id) on delete set null,
   constraint publishes_analytics_note_length_check
     check (char_length(analytics_note) <= 5000),
+  -- "Not set" has one spelling: NULL. A blank would be a third state.
+  constraint publishes_language_not_blank
+    check (language is null or char_length(btrim(language)) >= 2),
   -- The published asset's duration in whole seconds, as the platform reports
   -- it (FILM-1710, migration 20260921200942). Null is `duration_unknown` —
   -- never the episode's duration, and never 0. Written only by the analytics

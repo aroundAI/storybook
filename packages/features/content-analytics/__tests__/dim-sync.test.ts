@@ -38,6 +38,9 @@ function short(overrides: Partial<PublishDimRow> = {}): PublishDimRow {
     platform_connection_id: 'c1',
     content_type: 'short',
     language: 'en',
+    // Not this file's subject (FILM-1702 added the field); null is the
+    // manual-upload case, same as the interface's own default reading.
+    platform_connections: null,
     title: 'A Short',
     published_at: '2026-09-01T00:00:00Z',
     duration_seconds: 45,

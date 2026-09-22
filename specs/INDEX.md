@@ -574,7 +574,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
 | FILM-1701 | [audience-truth-up](./phase-17-analytics-provenance/FILM-1701-audience-truth-up.md) | DRAFT | M | - |
-| FILM-1702 | [language-dimension-reconciliation](./phase-17-analytics-provenance/FILM-1702-language-dimension-reconciliation.md) | DRAFT | L | FILM-1606 |
+| FILM-1702 | [language-dimension-reconciliation](./phase-17-analytics-provenance/FILM-1702-language-dimension-reconciliation.md) | ✅ DONE | L | FILM-1606 |
 | FILM-1703 | [provenance-capability-model](./phase-17-analytics-provenance/FILM-1703-provenance-capability-model.md) | 🟡 PARTIAL | M | FILM-1721 |
 | FILM-1704 | [observed-coverage](./phase-17-analytics-provenance/FILM-1704-observed-coverage.md) | DRAFT | M | FILM-1703 |
 | FILM-1705 | [provenance-surfaces](./phase-17-analytics-provenance/FILM-1705-provenance-surfaces.md) | DRAFT | L | FILM-1701, FILM-1703, FILM-1704, FILM-1706 |

@@ -2,7 +2,7 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { insertVideoDims } from '@kit/clickhouse/server';
+import { insertVideoDims, toDimLanguage } from '@kit/clickhouse/server';
 import type { VideoDim } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
 import { chunkIds, fetchAllByIds, forEachPage } from '@kit/shared/pagination';
@@ -30,6 +30,8 @@ export interface PublishDimRow {
   platform_connection_id: string | null;
   content_type: string | null;
   language: string | null;
+  /** The channel the publish went to; null for a manual upload. */
+  platform_connections: { language: string | null } | null;
   title: string | null;
   published_at: string | null;
   duration_seconds: number | null;
@@ -47,6 +49,7 @@ const PUBLISH_DIM_COLUMNS = `
   platform_connection_id,
   content_type,
   language,
+  platform_connections(language),
   title,
   published_at,
   duration_seconds,
@@ -165,7 +168,11 @@ export async function buildVideoDims(
       connection_id: row.platform_connection_id ?? UNATTRIBUTED_CONNECTION_ID,
       platform: row.platform,
       content_type: row.content_type ?? 'full',
-      language: row.language ?? 'en',
+      // Both through toDimLanguage, never `?? 'en'`: a language nobody set
+      // is written as not-set, so English stops being the bucket for every
+      // unlabelled publish (FILM-1702).
+      language: toDimLanguage(row.language),
+      channel_language: toDimLanguage(row.platform_connections?.language),
       title: row.title ?? '',
       published_at: toClickHouseDateTime(row.published_at),
       episode_duration_seconds: row.episodes?.duration_seconds ?? 0,

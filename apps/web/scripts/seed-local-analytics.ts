@@ -48,6 +48,11 @@ const {
 
 const { fetchAllRows } = await import('@kit/shared/pagination');
 
+// Its own statement so it does not contend with edits to the list above.
+const { LANGUAGE_NOT_SET, toDimLanguage } = await import(
+  '@kit/clickhouse/server'
+);
+
 /**
  * Mirrors `dim-sync.ts:21`. Redeclared rather than imported because that
  * module is `server-only`, which throws outside a Next runtime.
@@ -193,7 +198,10 @@ async function main() {
         connection_id: row.platform_connection_id ?? UNATTRIBUTED_CONNECTION_ID,
         platform: row.platform,
         content_type: row.content_type ?? 'full',
-        language: row.language ?? 'en',
+        language: toDimLanguage(row.language),
+        // The seeded publishes have no channel, so there is no target to
+        // read; dim-sync resolves it through the connection where one exists.
+        channel_language: LANGUAGE_NOT_SET,
         title: row.title ?? '',
         published_at: toClickHouseDateTime(row.published_at),
         episode_duration_seconds: row.episodes?.duration_seconds ?? 0,

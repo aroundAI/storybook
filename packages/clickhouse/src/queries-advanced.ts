@@ -9,6 +9,8 @@
  */
 import { concatByChunk } from './chunked';
 import { getClickHouseClient, isClickHouseEnabled } from './client';
+import type { LanguageDimension } from './lib/language-dimension';
+import { fromDimLanguage } from './lib/language-dimension';
 import type { SegmentConfidence } from './lib/segment-stats';
 import { computeSpread, resolveConfidence } from './lib/segment-stats';
 import type {
@@ -31,7 +33,17 @@ export interface DimScope {
   connectionId?: string;
   platform?: string;
   contentType?: string;
+  /**
+   * The published asset's language (`video_dim.language`).
+   *
+   * `undefined` means no filter. LANGUAGE_NOT_SET (`''`) is a filter — it
+   * selects the videos nobody set a language on — so the two must not be
+   * confused: a truthiness check here would turn "show me the unlabelled
+   * ones" into "show me everything", with no error.
+   */
   language?: string;
+  /** The channel's target language (`video_dim.channel_language`). Same rules. */
+  channelLanguage?: string;
 }
 
 export interface MedianBucket {
@@ -108,9 +120,15 @@ function assertDimScope(scope: DimScope): void {
  */
 function buildDimConditions(scope: DimScope): {
   conditions: string;
+  /**
+   * Filters on a column whose value changes over a video's life, applied
+   * to the newest dim row rather than to any row. See `dimSubquery`.
+   */
+  latest: string;
   params: Record<string, unknown>;
 } {
   const conditions: string[] = [];
+  const latest: string[] = [];
   const params: Record<string, unknown> = {};
 
   if (scope.projectId) {
@@ -133,12 +151,20 @@ function buildDimConditions(scope: DimScope): {
     conditions.push('content_type = {scopeContentType: String}');
     params.scopeContentType = scope.contentType;
   }
-  if (scope.language) {
-    conditions.push('language = {scopeLanguage: String}');
+  if (scope.language !== undefined) {
+    latest.push('language = {scopeLanguage: String}');
     params.scopeLanguage = scope.language;
   }
+  if (scope.channelLanguage !== undefined) {
+    latest.push('channel_language = {scopeChannelLanguage: String}');
+    params.scopeChannelLanguage = scope.channelLanguage;
+  }
 
-  return { conditions: conditions.join(' AND '), params };
+  return {
+    conditions: conditions.join(' AND '),
+    latest: latest.join(' AND '),
+    params,
+  };
 }
 
 /**
@@ -151,14 +177,29 @@ function buildDimConditions(scope: DimScope): {
  *
  * The scope filter runs in an inner subquery, before any aliasing. Every
  * projected column here is aliased to its own name, and several of them
- * (project_id, platform, content_type, language, connection_id) are also
+ * (project_id, platform, content_type, language, channel_language,
+ * connection_id) are also
  * filter columns — so a WHERE alongside the argMax resolves the bare name
  * to the *aggregate* and ClickHouse rejects the query outright:
  * "Aggregate function argMax(...) is found in WHERE". Filtering first makes
  * the shadowing impossible rather than relying on each condition to
  * qualify its column.
+ *
+ * `latest` is the exception, and it is applied *after* the collapse, as a
+ * HAVING over the argMax. `video_dim` is a ReplacingMergeTree read without
+ * FINAL, so a video's superseded rows stay visible until a merge that is
+ * never guaranteed. For a column that does not change — project, account —
+ * filtering those rows first is harmless. For one that does, it is wrong in
+ * a way nothing reports: a video relabelled from 'en' to not-set still has
+ * an 'en' row, the inner filter keeps only that row, and the argMax over
+ * what is left says 'en'. FILM-1702 relabels languages in bulk, which is
+ * what turned that from a theory into every reclassified video. The alias
+ * resolving to the aggregate — the thing the inner subquery exists to
+ * avoid in WHERE — is exactly what HAVING needs.
+ *
+ * Required rather than optional, so a new call site cannot forget it.
  */
-function dimSubquery(conditions: string): string {
+function dimSubquery(conditions: string, latest: string): string {
   return `
     SELECT
       video_id,
@@ -169,9 +210,11 @@ function dimSubquery(conditions: string): string {
       argMax(connection_id, updated_at) as connection_id,
       argMax(platform, updated_at) as platform,
       argMax(content_type, updated_at) as content_type,
-      argMax(language, updated_at) as language
+      argMax(language, updated_at) as language,
+      argMax(channel_language, updated_at) as channel_language
     FROM (SELECT * FROM video_dim WHERE ${conditions})
     GROUP BY video_id
+    ${latest ? `HAVING ${latest}` : ''}
   `;
 }
 
@@ -238,7 +281,7 @@ export async function queryMedianViewsPerVideo(input: {
   assertDimScope(input.scope);
 
   const client = getClickHouseClient();
-  const { conditions, params } = buildDimConditions(input.scope);
+  const { conditions, latest, params } = buildDimConditions(input.scope);
   const bucketFn =
     input.bucket === 'quarter' ? 'toStartOfQuarter' : 'toStartOfMonth';
 
@@ -270,11 +313,11 @@ export async function queryMedianViewsPerVideo(input: {
           quantileExact(0.25)(v.total_views) as p25_views,
           quantileExact(0.75)(v.total_views) as p75_views,
           avg(v.total_views) as mean_views
-        FROM (${dimSubquery(conditions)}) d
+        FROM (${dimSubquery(conditions, latest)}) d
         LEFT JOIN (
           SELECT video_id, sum(views) as total_views
           FROM video_daily_stats
-          WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions)}))
+          WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions, latest)}))
           GROUP BY video_id
         ) v ON v.video_id = d.video_id
         WHERE ${publishedConditions.join(' AND ')}
@@ -295,7 +338,7 @@ export async function queryMedianViewsPerVideo(input: {
             video_id,
             sum(views) as video_views
           FROM video_daily_stats
-          WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions)}))
+          WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions, latest)}))
             AND ${metricDateConditions.join(' AND ')}
           GROUP BY bucket, video_id
         )
@@ -342,7 +385,7 @@ export async function queryRollingViews(input: {
   assertDimScope(input.scope);
 
   const client = getClickHouseClient();
-  const { conditions, params } = buildDimConditions(input.scope);
+  const { conditions, latest, params } = buildDimConditions(input.scope);
   params.startDate = input.startDate;
   params.endDate = input.endDate;
   // Interpolated, not bound. A window frame bound is part of the query's
@@ -363,7 +406,7 @@ export async function queryRollingViews(input: {
     FROM (
       SELECT metric_date as date, sum(views) as views
       FROM video_daily_stats
-      WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions)}))
+      WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions, latest)}))
         AND metric_date >= {startDate: Date}
         AND metric_date <= {endDate: Date}
       GROUP BY metric_date
@@ -431,7 +474,7 @@ async function queryTrafficSourceRows(input: {
   assertDimScope(input.scope);
 
   const client = getClickHouseClient();
-  const { conditions, params } = buildDimConditions(input.scope);
+  const { conditions, latest, params } = buildDimConditions(input.scope);
 
   // Object.hasOwn, not a bare index: `TRAFFIC_BUCKET_FUNCTIONS['constructor']`
   // resolves up the prototype chain to a truthy function, which skips a
@@ -458,7 +501,7 @@ async function queryTrafficSourceRows(input: {
       sum(views) as views,
       sum(watch_time_minutes) as watch_time_minutes
     FROM video_traffic_sources FINAL
-    WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions)}))
+    WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions, latest)}))
       AND ${dateConditions.join(' AND ')}
     GROUP BY bucket, source
     ORDER BY bucket ASC, views DESC
@@ -530,7 +573,7 @@ export async function queryBackCatalogShare(input: {
   assertDimScope(input.scope);
 
   const client = getClickHouseClient();
-  const { conditions, params } = buildDimConditions(input.scope);
+  const { conditions, latest, params } = buildDimConditions(input.scope);
   params.startDate = input.startDate;
   params.endDate = input.endDate;
   params.ageDays = Math.floor(input.ageDays);
@@ -544,7 +587,7 @@ export async function queryBackCatalogShare(input: {
         dateDiff('day', d.published_at, toDateTime(m.metric_date)) > {ageDays: Int32}
       ) as back_views
     FROM video_daily_stats m
-    INNER JOIN (${dimSubquery(conditions)}) d ON m.video_id = d.video_id
+    INNER JOIN (${dimSubquery(conditions, latest)}) d ON m.video_id = d.video_id
     WHERE m.metric_date >= {startDate: Date}
       AND m.metric_date <= {endDate: Date}
     GROUP BY bucket
@@ -626,7 +669,7 @@ export async function queryCohortMedians(input: {
   ).sort((a, b) => a - b);
 
   const client = getClickHouseClient();
-  const { conditions, params } = buildDimConditions(input.scope);
+  const { conditions, latest, params } = buildDimConditions(input.scope);
 
   const bucketFn =
     input.bucket === 'month' ? 'toStartOfMonth' : 'toStartOfQuarter';
@@ -665,7 +708,7 @@ export async function queryCohortMedians(input: {
   // no rows on a well-ingested channel is a real zero and must keep
   // counting as one. One row per connection, so the join cannot multiply.
   const query = `
-    WITH dim AS (${dimSubquery(conditions)}),
+    WITH dim AS (${dimSubquery(conditions, latest)}),
     ingest AS (
       SELECT d.connection_id as connection_id, min(m.metric_date) as ingest_start
       FROM dim d
@@ -746,7 +789,7 @@ export async function queryWatchWindowTotals(input: {
   assertDimScope(input.scope);
 
   const client = getClickHouseClient();
-  const { conditions, params } = buildDimConditions(input.scope);
+  const { conditions, latest, params } = buildDimConditions(input.scope);
   params.windowDays = Math.floor(input.windowDays);
 
   const query = `
@@ -754,7 +797,7 @@ export async function queryWatchWindowTotals(input: {
       sum(watch_time_seconds) as watch_time_seconds,
       sum(subscribers_gained) - sum(subscribers_lost) as net_subscribers
     FROM video_daily_stats
-    WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions)}))
+    WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions, latest)}))
       AND metric_date >= today() - {windowDays: UInt32}
   `;
 
@@ -828,11 +871,25 @@ export async function queryChannelWatchWindow(input: {
 const SEGMENT_GROUPINGS = {
   tag: 'arrayJoin(d.tags)',
   language: 'd.language',
+  channel_language: 'd.channel_language',
   content_type: 'd.content_type',
   connection: 'toString(d.connection_id)',
 } as const;
 
 export type SegmentKind = keyof typeof SEGMENT_GROUPINGS;
+
+/**
+ * Which segment kind answers each language dimension (FILM-1702).
+ *
+ * The Language tab's toggle resolves through this, so "by content
+ * language" on that tab and `kind: 'language'` on the Deep Dive are the
+ * same query with the same GROUP BY — not two aggregations that happen to
+ * share a word.
+ */
+export const LANGUAGE_DIMENSION_SEGMENTS = {
+  content: 'language',
+  channel: 'channel_language',
+} as const satisfies Record<LanguageDimension, SegmentKind>;
 
 /**
  * Videos the figures at this checkpoint are computed over.
@@ -868,11 +925,12 @@ function segmentEligible(days: number): string {
  */
 function segmentPerVideoSql(
   conditions: string,
+  latest: string,
   grouping: string,
   days: number,
 ): string {
   return `
-    WITH dim AS (${dimSubquery(conditions)}),
+    WITH dim AS (${dimSubquery(conditions, latest)}),
     ingest AS (
       SELECT d.connection_id as connection_id, min(s.metric_date) as ingest_start
       FROM dim d
@@ -1017,7 +1075,7 @@ export async function querySegmentPerformance(input: {
   assertDimScope(input.scope);
 
   const client = getClickHouseClient();
-  const { conditions, params } = buildDimConditions(input.scope);
+  const { conditions, latest, params } = buildDimConditions(input.scope);
 
   // Floored to an integer, so it is safe to interpolate.
   const days = Math.max(1, Math.floor(input.checkpointDays ?? 30));
@@ -1034,7 +1092,7 @@ export async function querySegmentPerformance(input: {
   const eligible = segmentEligible(days);
 
   const query = `
-    ${segmentPerVideoSql(conditions, grouping, days)}
+    ${segmentPerVideoSql(conditions, latest, grouping, days)}
     SELECT
       segment,
       count() as video_count,
@@ -1174,7 +1232,7 @@ export async function querySegmentMembership(input: {
   assertDimScope(input.scope);
 
   const client = getClickHouseClient();
-  const { conditions, params } = buildDimConditions(input.scope);
+  const { conditions, latest, params } = buildDimConditions(input.scope);
 
   const days = Math.max(1, Math.floor(input.checkpointDays ?? 30));
   // Clamped high deliberately: each page re-runs the full CTE chain, so a
@@ -1199,7 +1257,7 @@ export async function querySegmentMembership(input: {
   }
 
   const query = `
-    ${segmentPerVideoSql(conditions, grouping, days)}
+    ${segmentPerVideoSql(conditions, latest, grouping, days)}
     SELECT
       segment,
       video_id,
@@ -1229,6 +1287,174 @@ export async function querySegmentMembership(input: {
   }));
 }
 
+export interface VideoLanguageRow {
+  videoId: string;
+  episodeId: string;
+  platform: string;
+  contentType: string;
+  title: string;
+  /** The published asset's language; null when nobody set one. */
+  language: string | null;
+  /** The channel's target language; null for a publish with no channel. */
+  channelLanguage: string | null;
+}
+
+/** One page of queryVideoLanguages. Rows are small; pages are not the cost. */
+const VIDEO_LANGUAGE_PAGE_SIZE = 50_000;
+
+/**
+ * Pages read before giving up — a million videos in one scope is a data
+ * problem, and the answer to it is an error, not a breakdown computed over
+ * the first million.
+ */
+const VIDEO_LANGUAGE_MAX_PAGES = 20;
+
+/**
+ * Every video in scope with both of its languages (FILM-1702).
+ *
+ * This is what the Language tab's per-video folds map through — the trend,
+ * the platform matrix, geography — where it used to walk Postgres from
+ * seasons to episodes to publishes to `platform_connections`. That walk is
+ * why the tab could only ever see the channel's language, and why it could
+ * not agree with anything read from here.
+ *
+ * Both languages come back on every row, so switching the dimension is a
+ * different key into the same result rather than a second query that could
+ * be scoped differently.
+ *
+ * Keyset-paged on `video_id`, which is the table's sort key and unique
+ * after the argMax collapse. Throws past the page budget rather than
+ * returning a partial list: a language whose videos all fell past the cut
+ * would vanish from the breakdown and read as "we do not publish in it".
+ */
+export async function queryVideoLanguages(input: {
+  scope: DimScope;
+}): Promise<VideoLanguageRow[]> {
+  if (!isClickHouseEnabled()) return [];
+  assertDimScope(input.scope);
+
+  const client = getClickHouseClient();
+  const { conditions, latest, params } = buildDimConditions(input.scope);
+  const rows: VideoLanguageRow[] = [];
+  let after = '';
+
+  for (let page = 0; page < VIDEO_LANGUAGE_MAX_PAGES; page++) {
+    const result = await client.query({
+      query: `
+        SELECT
+          video_id,
+          toString(argMax(episode_id, updated_at)) as episode_id,
+          argMax(platform, updated_at) as platform,
+          argMax(content_type, updated_at) as content_type,
+          argMax(title, updated_at) as title,
+          argMax(language, updated_at) as language,
+          argMax(channel_language, updated_at) as channel_language
+        FROM (
+          SELECT * FROM video_dim
+          WHERE ${conditions} AND video_id > {afterVideoId: String}
+        )
+        GROUP BY video_id
+        ${latest ? `HAVING ${latest}` : ''}
+        ORDER BY video_id ASC
+        LIMIT ${VIDEO_LANGUAGE_PAGE_SIZE}
+      `,
+      query_params: { ...params, afterVideoId: after },
+      format: 'JSONEachRow',
+    });
+
+    const batch = await result.json<{
+      video_id: string;
+      episode_id: string;
+      platform: string;
+      content_type: string;
+      title: string;
+      language: string;
+      channel_language: string;
+    }>();
+
+    for (const row of batch) {
+      rows.push({
+        videoId: String(row.video_id),
+        episodeId: String(row.episode_id),
+        platform: String(row.platform),
+        contentType: String(row.content_type),
+        title: String(row.title ?? ''),
+        language: fromDimLanguage(String(row.language ?? '')),
+        channelLanguage: fromDimLanguage(row.channel_language),
+      });
+    }
+
+    if (batch.length < VIDEO_LANGUAGE_PAGE_SIZE) return rows;
+
+    after = String(batch[batch.length - 1]!.video_id);
+  }
+
+  throw new Error(
+    `queryVideoLanguages: more than ${
+      VIDEO_LANGUAGE_PAGE_SIZE * VIDEO_LANGUAGE_MAX_PAGES
+    } videos in scope; refusing to return a partial list`,
+  );
+}
+
+export interface LanguagePairRow {
+  /** The published asset's language; null when nobody set one. */
+  language: string | null;
+  /** The channel's target language; null for a publish with no channel. */
+  channelLanguage: string | null;
+  videoCount: number;
+}
+
+/**
+ * How many videos carry each (content language, channel target) pair.
+ *
+ * The routing diagnostic FILM-1702 asks for: a publish whose language
+ * differs from its channel's target landed on the wrong channel, or the
+ * channel carries mixed content. Either way the two dimensions disagree
+ * about it, and until now nothing could count how often.
+ *
+ * Pairs rather than one "divergent" total, because the caller has to keep
+ * three things apart that a single number merges: pairs that differ, pairs
+ * that agree, and pairs where one side was never set — which are not a
+ * disagreement, only an absence. Cardinality is languages squared, so the
+ * result is small whatever the library size.
+ */
+export async function queryLanguagePairs(input: {
+  scope: DimScope;
+}): Promise<LanguagePairRow[]> {
+  if (!isClickHouseEnabled()) return [];
+  assertDimScope(input.scope);
+
+  const client = getClickHouseClient();
+  const { conditions, latest, params } = buildDimConditions(input.scope);
+
+  const result = await client.query({
+    query: `
+      WITH dim AS (${dimSubquery(conditions, latest)})
+      SELECT
+        language,
+        channel_language,
+        count() as video_count
+      FROM dim
+      GROUP BY language, channel_language
+      ORDER BY video_count DESC, language ASC, channel_language ASC
+    `,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<{
+    language: string;
+    channel_language: string;
+    video_count: number;
+  }>();
+
+  return rows.map((row) => ({
+    language: fromDimLanguage(row.language),
+    channelLanguage: fromDimLanguage(row.channel_language),
+    videoCount: Number(row.video_count ?? 0),
+  }));
+}
+
 /** True for a bare 'YYYY-MM-DD', which needs widening to a DateTime bound. */
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -1248,7 +1474,8 @@ export interface VideoAgeRow {
   connectionId: string;
   platform: string;
   contentType: string;
-  language: string;
+  /** The published asset's language; null when nobody set one. */
+  language: string | null;
   /** Views accumulated in days 0..N-1, per requested checkpoint. */
   viewsAtAge: Record<number, number>;
   /** Whether each checkpoint has actually elapsed for this video. */
@@ -1407,7 +1634,7 @@ async function queryVideoViewsAtAgeSingle(input: {
   const orderDirection = input.orderDirection === 'asc' ? 'ASC' : 'DESC';
 
   const client = getClickHouseClient();
-  const { conditions, params } = buildDimConditions(input.scope);
+  const { conditions, latest, params } = buildDimConditions(input.scope);
 
   const dimConditions = [conditions];
 
@@ -1453,7 +1680,7 @@ async function queryVideoViewsAtAgeSingle(input: {
       sum(m.views) as lifetime_views,
       toString(min(m.metric_date)) as first_metric_date,
       countIf(m.metric_date > toDate(0)) as metric_days
-    FROM (${dimSubquery(dimWhere)}) d
+    FROM (${dimSubquery(dimWhere, latest)}) d
     LEFT JOIN ${scopedDailyStats(
       dimWhere,
       'project_id, video_id, metric_date, views',
@@ -1496,7 +1723,7 @@ async function queryVideoViewsAtAgeSingle(input: {
       connectionId: String(row.connection_id ?? ''),
       platform: String(row.platform ?? ''),
       contentType: String(row.content_type ?? ''),
-      language: String(row.language ?? ''),
+      language: fromDimLanguage(String(row.language ?? '')),
       viewsAtAge,
       matureAt: computeMaturity(publishedAt, checkpoints, now),
       lifetimeViews: Number(row.lifetime_views ?? 0),

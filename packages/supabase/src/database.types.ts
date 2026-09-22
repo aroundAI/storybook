@@ -4010,7 +4010,7 @@ export type Database = {
           duration_seconds: number | null
           episode_id: string
           id: string
-          language: string
+          language: string | null
           metadata: Json | null
           platform: string
           platform_connection_id: string | null
@@ -4034,7 +4034,7 @@ export type Database = {
           duration_seconds?: number | null
           episode_id: string
           id?: string
-          language?: string
+          language?: string | null
           metadata?: Json | null
           platform: string
           platform_connection_id?: string | null
@@ -4058,7 +4058,7 @@ export type Database = {
           duration_seconds?: number | null
           episode_id?: string
           id?: string
-          language?: string
+          language?: string | null
           metadata?: Json | null
           platform?: string
           platform_connection_id?: string | null
