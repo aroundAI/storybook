@@ -71,6 +71,10 @@ export function LocationEditor({
   const onSubmit = form.handleSubmit((data) => {
     startTransition(async () => {
       try {
+        // The schema is `.url().optional()`: an empty string is neither, so
+        // a location without an image could never be saved. Found by
+        // KB-6's E2E spec — the refusal it was written for never arrived.
+
         // Build metadata object
         const metadata: LocationMetadata = {
           setting: data.setting,
@@ -87,8 +91,8 @@ export function LocationEditor({
               id: location.id,
               name: data.name,
               description: data.description,
-              fileUrl: data.fileUrl,
-              thumbnailUrl: data.thumbnailUrl,
+              fileUrl: data.fileUrl || undefined,
+              thumbnailUrl: data.thumbnailUrl || undefined,
               metadata: metadata as Record<string, unknown>,
             }),
           );
@@ -106,8 +110,8 @@ export function LocationEditor({
               type: 'location',
               name: data.name,
               description: data.description,
-              fileUrl: data.fileUrl,
-              thumbnailUrl: data.thumbnailUrl,
+              fileUrl: data.fileUrl || undefined,
+              thumbnailUrl: data.thumbnailUrl || undefined,
               metadata: metadata as Record<string, unknown>,
             }),
           );
