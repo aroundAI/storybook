@@ -109,6 +109,13 @@ begin
         new.updated_by = auth.uid();
 
     else
+        -- A foreign key clearing a deleted author (FILM-CC-04 KB-1)
+        if pg_trigger_depth() > 1
+           and ((old.created_by is not null and new.created_by is null)
+             or (old.updated_by is not null and new.updated_by is null)) then
+            return new;
+        end if;
+
         new.updated_by = auth.uid();
 
         new.created_by = old.created_by;

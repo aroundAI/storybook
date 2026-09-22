@@ -16,8 +16,8 @@ create table if not exists
     is_personal_account boolean default false not null,
     updated_at timestamp with time zone,
     created_at timestamp with time zone,
-    created_by uuid references auth.users,
-    updated_by uuid references auth.users,
+    created_by uuid references auth.users on delete set null,
+    updated_by uuid references auth.users on delete set null,
     picture_url varchar(1000),
     public_data jsonb default '{}'::jsonb not null,
     primary key (id)
