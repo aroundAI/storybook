@@ -29,7 +29,7 @@ const GenerateLanguageInsightsSchema = z.object({
  */
 interface _LanguageInsightsLLMOutput {
   languageSummary: string;
-  topLanguage: string;
+  topLanguage: string | null;
   languageRecommendations: string[];
   platformOptimization: string[];
   contentTypeInsights: string[];
@@ -42,7 +42,8 @@ interface _LanguageInsightsLLMOutput {
  */
 export interface LanguageInsightsResult {
   summary: string;
-  topLanguage: string;
+  /** Null until the model names one. Never defaulted to a language. */
+  topLanguage: string | null;
   recommendations: string[];
   platformInsights: string[];
   contentInsights: string[];
@@ -87,12 +88,19 @@ export const generateLanguageInsightsAction = enhanceAction(
       getGeographyByLanguage(projectId),
     ]);
 
+    // Only languages somebody set. The unlabelled bucket is not a language
+    // the model can recommend for or against, and the worker upper-cases
+    // `language` on its fallback path, so a null would crash it outright.
+    const isLabelled = (entry: { language: string | null }) =>
+      entry.language !== null;
+    const labelledPerformance = languagePerformance.filter(isLabelled);
+
     // Handle empty data case
-    if (!languagePerformance || languagePerformance.length === 0) {
+    if (labelledPerformance.length === 0) {
       return {
         summary:
           'Not enough language data to generate insights. Publish content in multiple languages to see AI-powered recommendations.',
-        topLanguage: 'en',
+        topLanguage: null,
         recommendations: [
           'Connect platform accounts for different languages to start tracking multi-language performance',
         ],
@@ -111,18 +119,18 @@ export const generateLanguageInsightsAction = enhanceAction(
       userId: user.id,
       payload: {
         projectId,
-        languagePerformance,
-        platformMatrix: platformMatrix.slice(0, 20),
+        languagePerformance: labelledPerformance,
+        platformMatrix: platformMatrix.filter(isLabelled).slice(0, 20),
         contentType,
-        shorts,
-        geography,
+        shorts: shorts.filter(isLabelled),
+        geography: geography.filter(isLabelled),
         userId: user.id,
       },
     });
 
     return {
       summary: 'Generating language insights in the background...',
-      topLanguage: 'en',
+      topLanguage: null,
       recommendations: [],
       platformInsights: [],
       contentInsights: [],

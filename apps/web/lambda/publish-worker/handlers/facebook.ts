@@ -1,6 +1,8 @@
 /**
  * Facebook Upload Handler
  */
+import { META_GRAPH_BASE, META_GRAPH_VIDEO_BASE } from '@kit/shared/vendors';
+
 import type { PublishJobMessage } from '../index';
 
 export async function uploadToFacebook(
@@ -44,13 +46,10 @@ export async function uploadToFacebook(
   }
 
   // Upload video via resumable upload API (using FormData for mixed content)
-  const response = await fetch(
-    `https://graph-video.facebook.com/v19.0/${pageId}/videos`,
-    {
-      method: 'POST',
-      body: formData,
-    },
-  );
+  const response = await fetch(`${META_GRAPH_VIDEO_BASE}/${pageId}/videos`, {
+    method: 'POST',
+    body: formData,
+  });
 
   if (!response.ok) {
     const error = await response.text();
@@ -79,7 +78,7 @@ export async function deleteFromFacebook(
   console.log(`[Facebook] Deleting video: ${videoId}`);
 
   const response = await fetch(
-    `https://graph.facebook.com/v19.0/${videoId}?access_token=${accessToken}`,
+    `${META_GRAPH_BASE}/${videoId}?access_token=${accessToken}`,
     {
       method: 'DELETE',
     },

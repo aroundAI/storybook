@@ -565,7 +565,7 @@ All workbook-parity scope is now specified. FILM-1611 was split — what the bac
 
 It must not read `video_dim.duration_seconds` either way. This is the only reason FILM-1710 is ordered ahead of the rest of phase 17.
 
-### Phase 17: Analytics Provenance and Signal (27 specs)
+### Phase 17: Analytics Provenance and Signal (30 specs)
 
 See [phase-17-analytics-provenance/README.md](./phase-17-analytics-provenance/README.md) for the dependency graph, locked decisions, known limits and open product questions.
 
@@ -574,15 +574,15 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
 | FILM-1701 | [audience-truth-up](./phase-17-analytics-provenance/FILM-1701-audience-truth-up.md) | ✅ DONE | M | - |
-| FILM-1702 | [language-dimension-reconciliation](./phase-17-analytics-provenance/FILM-1702-language-dimension-reconciliation.md) | DRAFT | L | FILM-1606 |
-| FILM-1703 | [provenance-capability-model](./phase-17-analytics-provenance/FILM-1703-provenance-capability-model.md) | DRAFT | M | FILM-1721 |
+| FILM-1702 | [language-dimension-reconciliation](./phase-17-analytics-provenance/FILM-1702-language-dimension-reconciliation.md) | ✅ DONE | L | FILM-1606 |
+| FILM-1703 | [provenance-capability-model](./phase-17-analytics-provenance/FILM-1703-provenance-capability-model.md) | 🟡 PARTIAL | M | FILM-1721 |
 | FILM-1704 | [observed-coverage](./phase-17-analytics-provenance/FILM-1704-observed-coverage.md) | DRAFT | M | FILM-1703 |
 | FILM-1705 | [provenance-surfaces](./phase-17-analytics-provenance/FILM-1705-provenance-surfaces.md) | DRAFT | L | FILM-1701, FILM-1703, FILM-1704, FILM-1706 |
 | FILM-1706 | [analytics-card-shell](./phase-17-analytics-provenance/FILM-1706-analytics-card-shell.md) | DRAFT | M | FILM-1703 |
 | FILM-1707 | [six-tab-adoption](./phase-17-analytics-provenance/FILM-1707-six-tab-adoption.md) | DRAFT | L | FILM-1702, FILM-1705, FILM-1706 |
 | FILM-1708 | [traffic-drill-down-colour-ramp](./phase-17-analytics-provenance/FILM-1708-traffic-drill-down-colour-ramp.md) | DRAFT | M | FILM-1605, FILM-1706 |
 | FILM-1709 | [platform-filter-completion](./phase-17-analytics-provenance/FILM-1709-platform-filter-completion.md) | DRAFT | L | FILM-1704, FILM-1707 |
-| FILM-1710 | [asset-duration](./phase-17-analytics-provenance/FILM-1710-asset-duration.md) | DRAFT | M | FILM-1711 (TikTok leg only) |
+| FILM-1710 | [asset-duration](./phase-17-analytics-provenance/FILM-1710-asset-duration.md) | ✅ DONE (TikTok leg pending FILM-1711) | M | FILM-1711 (TikTok leg only) |
 | FILM-1711 | [analytics-authorisation](./phase-17-analytics-provenance/FILM-1711-analytics-authorisation.md) | DRAFT | L | FILM-1721 |
 | FILM-1712 | [metric-recovery](./phase-17-analytics-provenance/FILM-1712-metric-recovery.md) | DRAFT | L | FILM-1711, FILM-1721 |
 | FILM-1713 | [normalised-measures-velocity](./phase-17-analytics-provenance/FILM-1713-normalised-measures-velocity.md) | DRAFT | M | FILM-1722 |
@@ -594,12 +594,15 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1719 | [signal-surfaces](./phase-17-analytics-provenance/FILM-1719-signal-surfaces.md) | DRAFT | L | FILM-1706, FILM-1717, FILM-1718 |
 | FILM-1720 | [facebook-analytics](./phase-17-analytics-provenance/FILM-1720-facebook-analytics.md) | DRAFT | L | FILM-1711, FILM-1714, FILM-1721, FILM-1723 |
 | FILM-1721 | [platform-capability-reference](./phase-17-analytics-provenance/FILM-1721-platform-capability-reference.md) | ✅ DONE | L | - |
-| FILM-1722 | [view-definition-registry](./phase-17-analytics-provenance/FILM-1722-view-definition-registry.md) | DRAFT | M | FILM-1721 |
-| FILM-1723 | [api-version-consolidation](./phase-17-analytics-provenance/FILM-1723-api-version-consolidation.md) | DRAFT | M | - |
+| FILM-1722 | [view-definition-registry](./phase-17-analytics-provenance/FILM-1722-view-definition-registry.md) | 🟡 PARTIAL | M | FILM-1721 |
+| FILM-1723 | [api-version-consolidation](./phase-17-analytics-provenance/FILM-1723-api-version-consolidation.md) | 🟡 PARTIAL | M | - |
 | FILM-1724 | [channel-experiments](./phase-17-analytics-provenance/FILM-1724-channel-experiments.md) | DRAFT | L | FILM-1610, FILM-1715, FILM-1716; FILM-1710 for hook tests |
 | FILM-1725 | [deferred-vendor-verifications](./phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.md) | ⏸️ DEFERRED | S | FILM-1721 |
 | FILM-1726 | [monetisation-stage](./phase-17-analytics-provenance/FILM-1726-monetisation-stage.md) | DRAFT | M | FILM-1703, FILM-1711, FILM-1720 |
 | FILM-1727 | [x-analytics](./phase-17-analytics-provenance/FILM-1727-x-analytics.md) | DRAFT | L | FILM-1711, FILM-1714, FILM-1721, FILM-1723; FILM-1725 Check A for the Enterprise tier only |
+| FILM-1728 | [meta-graph-v26-upgrade](./phase-17-analytics-provenance/FILM-1728-meta-graph-v26-upgrade.md) | DRAFT | M | FILM-1723 merged + deployed; FILM-1712 if it lands first |
+| FILM-1729 | [x-media-write-scope](./phase-17-analytics-provenance/FILM-1729-x-media-write-scope.md) | ⏸️ DEFERRED | S | FILM-1723; X pay-per-use credentials (not held) |
+| FILM-1730 | [tiktok-business-api](./phase-17-analytics-provenance/FILM-1730-tiktok-business-api.md) | DRAFT | XL | FILM-1703, FILM-1711, FILM-1721; a TikTok Business developer app (not held) |
 
 Three parts. **Provenance** (1701–1709) answers *where did this number come from*. **Signal** (1710–1720) answers *what is it telling me*, which differs per platform. **Reference** (1721–1723) is the researched vendor truth the other two are built on.
 
@@ -703,10 +706,10 @@ SPIKE-01 through SPIKE-05
 | 14. Edit Suite v2 | 1 | 0 | 0 | 0 | 0 | 0 | 1 |
 | 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 0 | 11 |
 | 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 0 | 17 |
-| 17. Analytics Provenance | 27 | 25 | 0 | 0 | 0 | 1 | 1 |
+| 17. Analytics Provenance | 30 | 27 | 0 | 0 | 0 | 2 | 1 |
 | 18. Vendor Sandbox | 4 | 4 | 0 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **222** | **29** | **0** | **0** | **0** | **1** | **192** |
+| **TOTAL** | **225** | **31** | **0** | **0** | **0** | **2** | **192** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
@@ -717,7 +720,7 @@ SPIKE-01 through SPIKE-05
 | Canon (Ph 10-11) | 28 | 28 | 100% |
 | Scale & Hooks (Ph 12-13) | 4 | 4 | 100% |
 | Workbook Parity (Ph 16) | 17 | 17 | 100% |
-| Provenance & Signal (Ph 17) | 27 | 1 | 4% |
+| Provenance & Signal (Ph 17) | 30 | 1 | 3% |
 | Vendor Sandbox (Ph 18) | 4 | 0 | 0% |
 
 Phase 14 (`edit-suite-v2`) is one `ENGINEERING.md`, counted as one item. Its

@@ -135,7 +135,7 @@ export const publishToAllAction = enhanceAction(
           // Get connection details
           const { data: connection, error: connError } = await client
             .from('platform_connections')
-            .select('platform_account_id, platform_account_name')
+            .select('platform_account_id, platform_account_name, language')
             .eq('id', platform.connectionId)
             .single();
 
@@ -143,29 +143,13 @@ export const publishToAllAction = enhanceAction(
             throw new Error('Platform connection not found');
           }
 
-          // Get connection language as fallback (if explicit language not provided)
-          // Using separate query to handle both typed and untyped scenarios
-          let connectionLanguage = 'en';
-          try {
-            const { data: langData } = await client
-              .from('platform_connections')
-              .select('language')
-              .eq('id', platform.connectionId)
-              .single();
-            // Cast through unknown to handle untyped column
-            const langRecord = langData as unknown as Record<
-              string,
-              unknown
-            > | null;
-            if (langRecord && typeof langRecord.language === 'string') {
-              connectionLanguage = langRecord.language;
-            }
-          } catch {
-            // Column may not exist yet, use default
-          }
-
-          // Use explicit language from request, or fall back to connection language
-          const publishLanguage = platform.language || connectionLanguage;
+          // The language of the asset this publish uploads: the one the
+          // request names, else the channel's target, which is what selects
+          // the asset below. Read with the connection rather than in a
+          // second query that fell back to 'en' when it failed — that
+          // recorded English for a publish nobody had called English, which
+          // is the defect FILM-1702 removes. The column is NOT NULL.
+          const publishLanguage = platform.language ?? connection.language;
 
           // Create publish record
           // Determine if this is a server-side scheduled publish
@@ -886,7 +870,8 @@ export const getEpisodePublishesAction = enhanceAction(
         title: p.title,
         platformContentId: p.platform_content_id,
         platformUrl: p.platform_url,
-        language: ((p as Record<string, unknown>).language as string) ?? 'en',
+        // Null when nobody set one; not defaulted to a language (FILM-1702).
+        language: p.language,
         channelName:
           (p.platform_connections as { platform_account_name: string } | null)
             ?.platform_account_name ?? 'Unknown',

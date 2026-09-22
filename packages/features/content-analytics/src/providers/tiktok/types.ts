@@ -132,6 +132,8 @@ export interface TikTokAccountAnalytics {
  */
 export interface TikTokVideoData {
   id: string;
+  /** The published asset's length in seconds (FILM-1710). */
+  duration?: number;
   view_count?: number;
   like_count?: number;
   comment_count?: number;

@@ -52,8 +52,15 @@ describe('parseDuration', () => {
   it('should return 0 for invalid format', () => {
     expect(parseDuration('invalid')).toBe(0);
     expect(parseDuration('')).toBe(0);
-    expect(parseDuration('P1D')).toBe(0); // Days not supported
     expect(parseDuration('1H2M3S')).toBe(0); // Missing PT prefix
+  });
+
+  // FILM-1710: this used to be pinned at 0 ("Days not supported"). YouTube
+  // reports a video longer than 24 hours with a day designator, so the old
+  // reading silently dropped the days.
+  it('should read the day designator', () => {
+    expect(parseDuration('P1D')).toBe(86400);
+    expect(parseDuration('P1DT2H')).toBe(93600);
   });
 
   it('should handle edge case with zero values', () => {

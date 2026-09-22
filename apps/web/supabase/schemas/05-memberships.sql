@@ -13,8 +13,8 @@ create table if not exists
     account_role varchar(50) references public.roles (name) not null,
     created_at timestamptz default current_timestamp not null,
     updated_at timestamptz default current_timestamp not null,
-    created_by uuid references auth.users,
-    updated_by uuid references auth.users,
+    created_by uuid references auth.users on delete set null,
+    updated_by uuid references auth.users on delete set null,
     primary key (user_id, account_id)
   );
 
@@ -95,6 +95,14 @@ set
   search_path = '' as $$
 begin
     if new.account_role <> old.account_role then
+        return new;
+    end if;
+
+    -- A foreign key clearing a deleted author is not a member editing a
+    -- membership (FILM-CC-04 KB-1)
+    if pg_trigger_depth() > 1
+       and ((old.created_by is not null and new.created_by is null)
+         or (old.updated_by is not null and new.updated_by is null)) then
         return new;
     end if;
 
