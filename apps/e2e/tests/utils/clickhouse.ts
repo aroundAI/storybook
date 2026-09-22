@@ -125,7 +125,7 @@ function videoDimRow(video: SeededVideo) {
     channel_language: 'en',
     title: video.title,
     published_at: clickHouseDateTime(video.publishedAt),
-    duration_seconds: 600,
+    episode_duration_seconds: 600,
     tags: [],
     updated_at: clickHouseDateTime(new Date()),
   };

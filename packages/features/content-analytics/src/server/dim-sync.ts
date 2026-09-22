@@ -8,6 +8,8 @@ import { getLogger } from '@kit/shared/logger';
 import { chunkIds, fetchAllByIds, forEachPage } from '@kit/shared/pagination';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import { normalizeAssetDurationSeconds } from '../lib/asset-duration';
+
 // Use generic SupabaseClient type to avoid strict type checking issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Client = SupabaseClient<any, any, any>;
@@ -21,7 +23,7 @@ type Client = SupabaseClient<any, any, any>;
 export const UNATTRIBUTED_CONNECTION_ID =
   '00000000-0000-0000-0000-000000000000';
 
-interface PublishDimRow {
+export interface PublishDimRow {
   id: string;
   episode_id: string;
   platform: string;
@@ -32,10 +34,10 @@ interface PublishDimRow {
   platform_connections: { language: string | null } | null;
   title: string | null;
   published_at: string | null;
+  duration_seconds: number | null;
   episodes: {
     project_id: string | null;
     duration_seconds: number | null;
-    target_duration_seconds: number | null;
     projects: { account_id: string | null } | null;
   } | null;
 }
@@ -50,10 +52,10 @@ const PUBLISH_DIM_COLUMNS = `
   platform_connections(language),
   title,
   published_at,
+  duration_seconds,
   episodes!inner(
     project_id,
     duration_seconds,
-    target_duration_seconds,
     projects!inner(account_id)
   )
 `;
@@ -75,8 +77,11 @@ const PUBLISH_DIM_COLUMNS = `
  * Rows are pushed to ClickHouse per page rather than accumulated, so a
  * full reconcile costs the same memory whatever the library size.
  *
- * duration_seconds uses the episode's actual duration, falling back to its
- * target duration when the render has not reported one.
+ * Two durations, and they are not interchangeable (FILM-1710).
+ * `asset_duration_seconds` is the published clip's, as its platform reported
+ * it, and is null until one has — never the episode's, and never zero.
+ * `episode_duration_seconds` is the episode's render. Neither falls back to
+ * `target_duration_seconds`: a target is a plan, not a measurement.
  */
 export async function upsertVideoDims(publishIds?: string[]): Promise<number> {
   const logger = await getLogger();
@@ -138,7 +143,7 @@ export async function upsertVideoDims(publishIds?: string[]): Promise<number> {
 }
 
 /** Maps one page of publishes to dimension rows, resolving their tags. */
-async function buildVideoDims(
+export async function buildVideoDims(
   client: Client,
   batch: PublishDimRow[],
 ): Promise<VideoDim[]> {
@@ -170,10 +175,10 @@ async function buildVideoDims(
       channel_language: toDimLanguage(row.platform_connections?.language),
       title: row.title ?? '',
       published_at: toClickHouseDateTime(row.published_at),
-      duration_seconds:
-        row.episodes?.duration_seconds ??
-        row.episodes?.target_duration_seconds ??
-        0,
+      episode_duration_seconds: row.episodes?.duration_seconds ?? 0,
+      asset_duration_seconds: normalizeAssetDurationSeconds(
+        row.duration_seconds,
+      ),
       tags: tagsByPublish.get(row.id) ?? [],
     });
   }

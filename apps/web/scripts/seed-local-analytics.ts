@@ -114,10 +114,10 @@ interface PublishRow {
   title: string | null;
   published_at: string;
   platform_connection_id: string | null;
+  duration_seconds: number | null;
   episodes: {
     project_id: string;
     duration_seconds: number | null;
-    target_duration_seconds: number | null;
     projects: { account_id: string } | null;
   } | null;
 }
@@ -163,7 +163,7 @@ async function main() {
       client
         .from('publishes')
         .select(
-          'id, episode_id, platform, content_type, language, title, published_at, platform_connection_id, episodes!inner(project_id, duration_seconds, target_duration_seconds, projects!inner(account_id))',
+          'id, episode_id, platform, content_type, language, title, published_at, platform_connection_id, duration_seconds, episodes!inner(project_id, duration_seconds, projects!inner(account_id))',
         )
         .eq('status', 'published')
         .not('published_at', 'is', null)
@@ -204,10 +204,13 @@ async function main() {
         channel_language: LANGUAGE_NOT_SET,
         title: row.title ?? '',
         published_at: toClickHouseDateTime(row.published_at),
-        duration_seconds:
-          row.episodes?.duration_seconds ??
-          row.episodes?.target_duration_seconds ??
-          0,
+        episode_duration_seconds: row.episodes?.duration_seconds ?? 0,
+        // Null stays null: an unmeasured asset is `duration_unknown`, and a
+        // 0 here is what FILM-1710 removed.
+        asset_duration_seconds:
+          row.duration_seconds && row.duration_seconds > 0
+            ? row.duration_seconds
+            : null,
         tags: [],
       },
     ];

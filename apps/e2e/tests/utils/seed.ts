@@ -318,7 +318,19 @@ export async function seedProject(
 export async function seedPublishedEpisode(
   projectId: string,
   connectionId: string,
-  options: { number?: number; platform?: string; title?: string } = {},
+  options: {
+    number?: number;
+    platform?: string;
+    title?: string;
+    /** `episodes.duration_seconds` — the render the clip was cut from. */
+    episodeDurationSeconds?: number;
+    /**
+     * `publishes.duration_seconds` — the published asset's own length
+     * (FILM-1710). Omitted, it stays null: `duration_unknown`.
+     */
+    assetDurationSeconds?: number;
+    contentType?: 'full' | 'short';
+  } = {},
 ): Promise<{ episodeId: string; publishId: string; episodeSlug: string }> {
   const auth = { key: SERVICE_ROLE_KEY };
   const number = options.number ?? 1;
@@ -336,6 +348,9 @@ export async function seedPublishedEpisode(
       number,
       title,
       slug: episodeSlug,
+      ...(options.episodeDurationSeconds !== undefined && {
+        duration_seconds: options.episodeDurationSeconds,
+      }),
     },
     auth,
   );
@@ -351,6 +366,10 @@ export async function seedPublishedEpisode(
       // episode's, so a publish without one renders as "Untitled".
       title,
       published_at: new Date().toISOString(),
+      ...(options.contentType && { content_type: options.contentType }),
+      ...(options.assetDurationSeconds !== undefined && {
+        duration_seconds: options.assetDurationSeconds,
+      }),
     },
     auth,
   );

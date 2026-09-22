@@ -29,6 +29,17 @@ export { UNATTRIBUTED_CONNECTION_ID } from './dim-sync';
 // Video dimension sync (FILM-1506)
 export { upsertVideoDims } from './dim-sync';
 
+// Published asset duration: the single writer, and its backfill (FILM-1710)
+export {
+  runAssetDurationBackfillBatch,
+  syncAssetDurations,
+} from './asset-duration-sync';
+export type {
+  AssetDurationBackfillResult,
+  AssetDurationGap,
+  AssetDurationSyncResult,
+} from './asset-duration-sync';
+
 // Deep-dive analytics actions (FILM-1506)
 export {
   getBackCatalogAction,

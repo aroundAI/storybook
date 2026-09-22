@@ -1,5 +1,7 @@
 import { promises as fsPromises } from 'fs';
 
+import { LINKEDIN_REST_VERSION } from '@kit/shared/vendors';
+
 import type {
   LinkedInOrganization,
   LinkedInPostMetrics,
@@ -15,7 +17,6 @@ import type {
 import { LINKEDIN_CONSTRAINTS } from './types';
 
 const LINKEDIN_API_BASE = 'https://api.linkedin.com/v2';
-const LINKEDIN_REST_VERSION = '202401';
 
 /**
  * LinkedIn Provider

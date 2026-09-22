@@ -103,7 +103,7 @@ thing that would read the column, through `getRetentionCurveAction`.
 |------|--------|--------|--------|
 | [FILM-1701](./FILM-1701-audience-truth-up.md) | DRAFT | M | Delete two fabricated cards, plumb the third from data we already ingest, fix the seed fixture's platform bug |
 | [FILM-1702](./FILM-1702-language-dimension-reconciliation.md) | ✅ DONE | L | Two disagreeing language columns, and the `'en'` default that doubles as the unknown bucket |
-| [FILM-1703](./FILM-1703-provenance-capability-model.md) | DRAFT | M | The capability matrix and the tests that stop it drifting from the writers |
+| [FILM-1703](./FILM-1703-provenance-capability-model.md) | 🟡 PARTIAL | M | The capability matrix and the tests that stop it drifting from the writers |
 | [FILM-1704](./FILM-1704-observed-coverage.md) | DRAFT | M | One query answering what data exists for this project in this window |
 | [FILM-1705](./FILM-1705-provenance-surfaces.md) | DRAFT | L | Card chip, coverage strip, filter dimming |
 | [FILM-1706](./FILM-1706-analytics-card-shell.md) | DRAFT | M | Semantic tokens, progressive disclosure, required `metricFamily` |
@@ -140,7 +140,7 @@ FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook) ─→
 
 | Spec | Status | Effort | Covers |
 |------|--------|--------|--------|
-| [FILM-1710](./FILM-1710-asset-duration.md) | DRAFT | M | The published clip's real duration. A **latent** defect — `video_dim.duration_seconds` is the episode's, and today nothing reads it |
+| [FILM-1710](./FILM-1710-asset-duration.md) | ✅ DONE (TikTok leg pending FILM-1711) | M | The published clip's real duration. A **latent** defect — `video_dim.duration_seconds` is the episode's, and today nothing reads it |
 | [FILM-1711](./FILM-1711-analytics-authorisation.md) | DRAFT | L | TikTok and Instagram analytics were never authorised; scope audit across all five platforms |
 | [FILM-1712](./FILM-1712-metric-recovery.md) | DRAFT | L | Request the fields we already have access to; give Instagram `reach` a column |
 | [FILM-1713](./FILM-1713-normalised-measures-velocity.md) | DRAFT | M | One definition per rate; bucketed velocity, acceleration, `growth_state` |
@@ -152,8 +152,8 @@ FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook) ─→
 | [FILM-1719](./FILM-1719-signal-surfaces.md) | DRAFT | L | The five-stage strip, three depths, evidence, "model after" |
 | [FILM-1720](./FILM-1720-facebook-analytics.md) | DRAFT | L | Facebook's provider and enum value: 57 video, 11 Reels and 4 ad-break metrics, organic/paid splits, and the `dim-sync` fix. Split from X 2026-09-21 |
 | [FILM-1721](./FILM-1721-platform-capability-reference.md) | ✅ DONE | L | **The researched truth table.** Per platform × metric × API surface × field name × scope × window, cited to vendor docs. Lives at [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md); enforced by `platform-field-names.test.ts` |
-| [FILM-1722](./FILM-1722-view-definition-registry.md) | DRAFT | M | What "a view" means per platform, with effective dates and the YouTube discontinuity |
-| [FILM-1723](./FILM-1723-api-version-consolidation.md) | DRAFT | M | One pinned version per vendor; the Graph v18 token-refresh risk; X onto `api.x.com` |
+| [FILM-1722](./FILM-1722-view-definition-registry.md) | 🟡 PARTIAL | M | What "a view" means per platform, with effective dates and the YouTube discontinuity |
+| [FILM-1723](./FILM-1723-api-version-consolidation.md) | 🟡 PARTIAL | M | One pinned version per vendor; the Graph v18 token-refresh risk; X onto `api.x.com` |
 | [FILM-1724](./FILM-1724-channel-experiments.md) | DRAFT | L | Which styles work: groups of new videos, one per style, compared at the same age; no verdict on thin samples |
 | [FILM-1725](./FILM-1725-deferred-vendor-verifications.md) | ⏸️ DEFERRED | S | The FILM-1721 checks that need a paid X token, a TikTok sandbox app, or an Instagram insights permission we do not hold |
 | [FILM-1727](./FILM-1727-x-analytics.md) | DRAFT | L | X on the pay-per-use path, Enterprise fields declared and dark; the `x`/`twitter` vocabulary; metered cost |

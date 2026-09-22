@@ -670,10 +670,12 @@ function WeeklyDiagnosticsSection({
             message={'That retention curve could not be loaded.'}
             dataTest={'retention-curve-error'}
           >
-            {/* No durationSeconds until FILM-1710: video_dim's column is the
-                episode's duration, so a Short's cliff would be labelled past
-                the end of the clip. The chart treats it as optional. */}
-            <RetentionCurveChart points={curveQuery.data?.points ?? []} />
+            {/* The asset's own duration (FILM-1710), or `duration_unknown` —
+                in which case the cliff is described without a timestamp. */}
+            <RetentionCurveChart
+              points={curveQuery.data?.points ?? []}
+              duration={curveQuery.data?.duration}
+            />
           </QueryState>
         </div>
       ) : null}

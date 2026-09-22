@@ -575,14 +575,14 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 |---------|------|--------|--------|--------------|
 | FILM-1701 | [audience-truth-up](./phase-17-analytics-provenance/FILM-1701-audience-truth-up.md) | DRAFT | M | - |
 | FILM-1702 | [language-dimension-reconciliation](./phase-17-analytics-provenance/FILM-1702-language-dimension-reconciliation.md) | ✅ DONE | L | FILM-1606 |
-| FILM-1703 | [provenance-capability-model](./phase-17-analytics-provenance/FILM-1703-provenance-capability-model.md) | DRAFT | M | FILM-1721 |
+| FILM-1703 | [provenance-capability-model](./phase-17-analytics-provenance/FILM-1703-provenance-capability-model.md) | 🟡 PARTIAL | M | FILM-1721 |
 | FILM-1704 | [observed-coverage](./phase-17-analytics-provenance/FILM-1704-observed-coverage.md) | DRAFT | M | FILM-1703 |
 | FILM-1705 | [provenance-surfaces](./phase-17-analytics-provenance/FILM-1705-provenance-surfaces.md) | DRAFT | L | FILM-1701, FILM-1703, FILM-1704, FILM-1706 |
 | FILM-1706 | [analytics-card-shell](./phase-17-analytics-provenance/FILM-1706-analytics-card-shell.md) | DRAFT | M | FILM-1703 |
 | FILM-1707 | [six-tab-adoption](./phase-17-analytics-provenance/FILM-1707-six-tab-adoption.md) | DRAFT | L | FILM-1702, FILM-1705, FILM-1706 |
 | FILM-1708 | [traffic-drill-down-colour-ramp](./phase-17-analytics-provenance/FILM-1708-traffic-drill-down-colour-ramp.md) | DRAFT | M | FILM-1605, FILM-1706 |
 | FILM-1709 | [platform-filter-completion](./phase-17-analytics-provenance/FILM-1709-platform-filter-completion.md) | DRAFT | L | FILM-1704, FILM-1707 |
-| FILM-1710 | [asset-duration](./phase-17-analytics-provenance/FILM-1710-asset-duration.md) | DRAFT | M | FILM-1711 (TikTok leg only) |
+| FILM-1710 | [asset-duration](./phase-17-analytics-provenance/FILM-1710-asset-duration.md) | ✅ DONE (TikTok leg pending FILM-1711) | M | FILM-1711 (TikTok leg only) |
 | FILM-1711 | [analytics-authorisation](./phase-17-analytics-provenance/FILM-1711-analytics-authorisation.md) | DRAFT | L | FILM-1721 |
 | FILM-1712 | [metric-recovery](./phase-17-analytics-provenance/FILM-1712-metric-recovery.md) | DRAFT | L | FILM-1711, FILM-1721 |
 | FILM-1713 | [normalised-measures-velocity](./phase-17-analytics-provenance/FILM-1713-normalised-measures-velocity.md) | DRAFT | M | FILM-1722 |
@@ -594,8 +594,8 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1719 | [signal-surfaces](./phase-17-analytics-provenance/FILM-1719-signal-surfaces.md) | DRAFT | L | FILM-1706, FILM-1717, FILM-1718 |
 | FILM-1720 | [facebook-analytics](./phase-17-analytics-provenance/FILM-1720-facebook-analytics.md) | DRAFT | L | FILM-1711, FILM-1714, FILM-1721, FILM-1723 |
 | FILM-1721 | [platform-capability-reference](./phase-17-analytics-provenance/FILM-1721-platform-capability-reference.md) | ✅ DONE | L | - |
-| FILM-1722 | [view-definition-registry](./phase-17-analytics-provenance/FILM-1722-view-definition-registry.md) | DRAFT | M | FILM-1721 |
-| FILM-1723 | [api-version-consolidation](./phase-17-analytics-provenance/FILM-1723-api-version-consolidation.md) | DRAFT | M | - |
+| FILM-1722 | [view-definition-registry](./phase-17-analytics-provenance/FILM-1722-view-definition-registry.md) | 🟡 PARTIAL | M | FILM-1721 |
+| FILM-1723 | [api-version-consolidation](./phase-17-analytics-provenance/FILM-1723-api-version-consolidation.md) | 🟡 PARTIAL | M | - |
 | FILM-1724 | [channel-experiments](./phase-17-analytics-provenance/FILM-1724-channel-experiments.md) | DRAFT | L | FILM-1610, FILM-1715, FILM-1716; FILM-1710 for hook tests |
 | FILM-1725 | [deferred-vendor-verifications](./phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.md) | ⏸️ DEFERRED | S | FILM-1721 |
 | FILM-1726 | [monetisation-stage](./phase-17-analytics-provenance/FILM-1726-monetisation-stage.md) | DRAFT | M | FILM-1703, FILM-1711, FILM-1720 |

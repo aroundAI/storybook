@@ -19,6 +19,25 @@ statement turned out wrong on testing, the entry says so.
 
 ## KB-1 — Deleting a user who has created anything fails
 
+> **Fixed (2026-09-21), #290.** All seventeen keys are `ON DELETE SET NULL`
+> (`20260921205124_authors-deletable.sql`). The keys were not the whole bug:
+> three BEFORE UPDATE triggers undid or refused the key's own `SET NULL`
+> (`trigger_set_user_tracking`, `kit.prevent_memberships_update`,
+> `enforce_verified_facts_update_rules`), so each now lets through a
+> foreign-key action that clears an author, and nothing else. Kept here as
+> the record of what was found.
+>
+> **Owner decision (2026-09-22):** the two audit columns "keep a snapshot of
+> the author's name". `immutable_events.created_by_name` and
+> `verified_facts.verified_by_name` (`20260921211043_audit-author-name-snapshot.sql`)
+> hold the author's display name — their personal account's `accounts.name`,
+> not their email — written by trigger when the author is, never taken from
+> the client, backfilled for existing rows, and kept when the key goes to
+> NULL. A fact's name lasts as long as its verification does.
+>
+> Still open, for the owner: `accounts` / `accounts_memberships` now diverge
+> from the upstream kit, which a future upstream sync must not undo.
+
 **Severity:** Medium — affects account deletion for every user who has
 ever created a project, and super-admin "delete user". Few users today.
 **Found:** FILM-1610 review, round 3.
@@ -101,11 +120,18 @@ FILM-1610 (#264) already fixed the same defect on
 
 ### Acceptance criteria
 
-- [ ] pgTAP: a user who created a project, a membership, a verified fact
+- [x] pgTAP: a user who created a project, a membership, a verified fact
       and a social post can be deleted; each row stays with a null author
-- [ ] E2E: "delete user flow" runs with a user who has created a project
-      and fails if the delete is refused
-- [ ] The query above returns no rows for authorship columns
+      (`authors-deletable.test.sql`, one row per key — all seventeen)
+- [x] E2E: "delete user flow" runs with a user who has created a project
+      and fails if the delete is refused (`admin.spec.ts`; the same for a
+      user deleting their own account, in `account.spec.ts`)
+- [x] The query above returns no rows for authorship columns (no rows at
+      all; asserted by the pgTAP file, so a new key without an action fails
+      the suite)
+- [x] Added by the owner's decision: after the author is deleted, the event
+      and the verified fact survive with a NULL key and the author's name
+      intact; a forged name loses to the id (`audit-author-snapshot.test.sql`)
 
 ---
 
@@ -498,4 +524,5 @@ can be wrong. Not worth it until someone has a real account that is slow.
 | KB-6 (part) | Experiment log and note refusals replaced in production | #264 (round 4) |
 | KB-9, KB-10 | Hook Lab: a cross-tenant retention read, and a feature that could not be used and measured the wrong point | #269 (removed) |
 | KB-11 | Another account could read a public project's analytics | FILM-1615 Step 0 |
+| KB-1 | Deleting a user who had created anything failed: seventeen authorship keys to `auth.users` had no ON DELETE action, and three triggers refused or undid the key's own set-null | #290 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |

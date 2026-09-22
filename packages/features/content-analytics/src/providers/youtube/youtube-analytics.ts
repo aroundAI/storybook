@@ -2,7 +2,11 @@ import 'server-only';
 
 import { google } from 'googleapis';
 
-import { formatDate, parseDuration } from '../../lib/utils';
+import {
+  formatDate,
+  parseDuration,
+  parseIsoDurationSeconds,
+} from '../../lib/utils';
 import type {
   CityGeographyData,
   DemographicData,
@@ -524,7 +528,42 @@ export class YouTubeAnalyticsProvider {
       duration: parseDuration(video.contentDetails?.duration ?? ''),
     };
   }
+
+  /**
+   * The published assets' durations in whole seconds, keyed by video id
+   * (FILM-1710).
+   *
+   * One `videos.list` call per 50 ids — the Data API's ceiling, at 1 quota
+   * unit a call whatever the id count. A video missing from the result was
+   * deleted, made private to this channel, or has no finished duration
+   * (`P0D`, a live broadcast): all of them are "unknown", so they are left
+   * out of the map rather than recorded as zero.
+   */
+  async getVideoDurations(videoIds: string[]): Promise<Map<string, number>> {
+    const durations = new Map<string, number>();
+
+    for (let i = 0; i < videoIds.length; i += YOUTUBE_VIDEOS_LIST_MAX_IDS) {
+      const response = await this.youtube.videos.list({
+        part: ['contentDetails'],
+        id: videoIds.slice(i, i + YOUTUBE_VIDEOS_LIST_MAX_IDS),
+        maxResults: YOUTUBE_VIDEOS_LIST_MAX_IDS,
+      });
+
+      for (const video of response.data.items ?? []) {
+        const seconds = parseIsoDurationSeconds(
+          video.contentDetails?.duration ?? '',
+        );
+
+        if (video.id && seconds !== null) durations.set(video.id, seconds);
+      }
+    }
+
+    return durations;
+  }
 }
+
+/** `videos.list` accepts at most 50 comma-separated ids. */
+const YOUTUBE_VIDEOS_LIST_MAX_IDS = 50;
 
 /**
  * Creates a YouTubeAnalyticsProvider with the given access token

@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1710
 title: Asset Duration
-status: DRAFT
+status: ✅ DONE (TikTok leg pending FILM-1711)
 effort: M
 dependencies: FILM-1711 (TikTok leg only)
 ---
@@ -145,18 +145,19 @@ be quietly re-read.
 
 ## 6. Acceptance criteria
 
-- [ ] `publishes` carries the published asset's duration, written from the provider
-- [ ] `video_dim` carries it nullably, distinguishable from zero
-- [ ] The episode duration is renamed rather than repurposed, so stale readers fail to compile
-- [ ] `dim-sync` no longer falls back to a target duration for an asset measurement
-- [ ] A 45-second Short reports a 45-second duration, not its episode's
-- [ ] `retention_3s` for a short-form variant is computed against the clip, and no longer reads ≈ 1.0
-- [ ] A variant whose asset duration is unknown yields `duration_unknown`, not a winner
-- [ ] Existing YouTube and TikTok publishes have their asset duration backfilled from the provider, not left null
-- [ ] Instagram's duration comes from the uploaded file at publish time, or is `duration_unknown` — never requested from Meta, which has no such field
-- [ ] Existing short-form retention caches are cleared, and recomputed **where a duration is now known**; where it is not, they read `duration_unknown` rather than a stale figure
-- [ ] Any consumer that cannot get a duration returns a named reason rather than a number
-- [ ] `detectRetentionCliff` is not passed a duration it cannot trust
+- [x] `publishes` carries the published asset's duration, written from the provider — `publishes.duration_seconds integer`, nullable, `check (> 0)`; one writer (`syncAssetDurations`), held by a trigger that keeps browser sessions from writing it
+- [x] `video_dim` carries it nullably, distinguishable from zero — `asset_duration_seconds Nullable(UInt32)`, migration `009_video_dim_asset_duration`
+- [x] The episode duration is renamed rather than repurposed, so stale readers fail to compile — `episode_duration_seconds`, in the `VideoDim` type **and** the ClickHouse column. See §9 for the writers a compile error does *not* catch
+- [x] `dim-sync` no longer falls back to a target duration for an asset measurement — nor for the episode's
+- [x] A 45-second Short reports a 45-second duration, not its episode's — `dim-sync.test.ts`, and against the real stack in `dim-sync.local-stack.test.ts`
+- [x] `retention_3s` for a short-form variant is computed against the clip, and no longer reads ≈ 1.0 — as a property of `retentionAtSeconds` (the decisive pair in `retention.test.ts`: 0.9333 at 45s, 0.9977 at 1,320s). There are no variants left to store it on; see §9
+- [x] A variant whose asset duration is unknown yields `duration_unknown`, not a winner — `retentionAtSeconds` returns `{ ok: false, reason: 'duration_unknown' }`; it cannot return a number without a known `AssetDuration`
+- [x] A backfill exists for YouTube and TikTok publishes that predate the column — `POST /api/analytics/asset-duration-backfill`, cursor-resumed, driven locally
+- [ ] …and has been run against production. **Operational, after deploy.** YouTube rows fill on the first run; **TikTok rows stay null until FILM-1711** adds `video.list` — the request is built and tested, and reports `scope_missing` rather than a number until then
+- [x] Instagram's duration comes from the uploaded file at publish time, or is `duration_unknown` — never requested from Meta, which has no such field. **It is `duration_unknown`**: the publish path holds a URL, not a measured length (§9)
+- [x] Existing short-form retention caches are cleared, and recomputed **where a duration is now known**; where it is not, they read `duration_unknown` rather than a stale figure — **moot**: `hook_variants` and `hook_tests` were dropped (guarded on being empty) by migration `20260919193447_remove-hook-lab` before this spec was built, so no cache survives to clear
+- [x] Any consumer that cannot get a duration returns a named reason rather than a number — `AssetDuration` (`lib/asset-duration.ts`); `getRetentionCurveAction` returns one
+- [x] `detectRetentionCliff` is not passed a duration it cannot trust — it takes an `AssetDuration`, not a number, so an episode's duration does not typecheck
 
 ## 7. Verification
 
@@ -192,3 +193,81 @@ The real risk is partial coverage: a nullable column written by only one of
 several publish paths is the same class of defect as `revenue_cents` being
 literal `0` in every writer — silent, permanent, and invisible in tests. Pick
 the provider sync as the single writer, and make absence a named state.
+
+## 9. Implementation notes (2026-09-22)
+
+**What shipped.** Postgres migration `20260921200942_publish-asset-duration`;
+ClickHouse migration `009_video_dim_asset_duration`;
+`server/asset-duration-sync.ts` (the single writer, called by the hourly sync,
+the manual single-publish sync and the backfill route);
+`getVideoDurations` on the YouTube and TikTok providers; `AssetDuration` in
+`lib/asset-duration.ts`; and the two surfaces that were waiting on this spec —
+the Deep Dive retention drill-down and the episode analytics page now time the
+cliff against the clip, and say nothing when they cannot.
+
+**Deferred on FILM-1711, and only this:** TikTok durations *arriving*. The
+request (`/v2/video/query/?fields=id,duration`, 20 ids a call) is written,
+bound to the capability reference by `platform-field-names.test.ts`, and unit
+tested — but no connection holds `video.list`, so in production it is refused
+and every TikTok publish stays `duration_unknown`. Nothing is estimated in the
+meantime. After FILM-1711 re-authorises connections, re-run the backfill route;
+no code change is needed. Which error code TikTok sends for a valid token
+lacking the scope is not in the capability reference, so such a refusal may be
+counted under `provider_error` rather than `scope_missing` until FILM-1711
+establishes it — either way the row stays null.
+
+**Not verified live:** a successful provider fetch. No real YouTube or TikTok
+credentials exist locally (phase 18's sandbox is not built), so
+`getVideoDurations` is verified against mocked clients only. Everything around
+it — candidate selection, the cursor, token refusal, gaps, the fill-only write,
+the ClickHouse round trip — was run against the real local stack.
+
+**Instagram.** §2 suggests recording the uploaded file's duration in the publish
+worker. The publish path passes a video *URL*
+(`episodes.final_video_url`, `shorts_groups[].videos`); no measured length of
+that file exists anywhere to copy, and probing media in the publish lambda is a
+new capability rather than a column. So Instagram takes the criterion's other
+branch: `duration_unknown`, permanently, never requested. It wants its own
+ticket if Instagram completion figures are ever needed.
+
+**The Hook Lab criteria are moot.** §4 and two criteria in §6 concern
+`hook_variants`. The Hook Lab was reviewed and removed (FILM-CC-04 KB-9/KB-10)
+after this spec was written; its tables are gone, and with them the
+contaminated caches and every `is_winner`. What survives is
+`retentionAtSeconds`, which FILM-1724's hook tests will call — so the
+guarantee was moved into its signature instead.
+
+**A correction to §8.** "A compile error is the cheapest possible way to find
+every reader" holds for TypeScript. It does not hold for the ClickHouse column:
+24.8 **silently drops a JSON field it does not recognise**
+(`input_format_skip_unknown_fields`), so a raw `duration_seconds` writer keeps
+succeeding after the rename and stores `episode_duration_seconds = 0`. Measured:
+`insertVideoDims` with the new field names *passed* against the pre-009 table.
+Three E2E helpers wrote the old name as raw JSON and were found by grep, not by
+failure.
+
+**Newly permitted, and guarded.** A new column on `publishes` is writable by
+any project member through `publishes_update`. `publishes_keep_asset_duration`
+holds it to the service role; `publish-asset-duration.test.sql` exercises it as
+a member and as the service role. Its first draft keyed on `auth.role()` and
+the test showed a member's write going straight through — it keys on
+`current_user` now.
+
+**Verified** (2026-09-22, local stack, ClickHouse 24.8):
+
+```
+pnpm --filter @kit/content-analytics test     52 files, 799 tests passed
+pnpm --filter @kit/clickhouse test            12 files, 325 tests passed
+pnpm --filter @kit/clickhouse verify          65 passed, 0 failed  (64/1 before 009)
+pgTAP publish-asset-duration.test.sql         9/9
+tooling/mutation-guards  FILM-1710            11 unit + 3 pgtap + 1 e2e, all RED
+```
+
+§7's query, after the real reconcile (`upsertVideoDims()`, 49 rows) over the
+seeded fixture:
+
+| platform | content_type | episode | asset |
+|---|---|---|---|
+| instagram | short | 1552 | NULL (9 of 9 unknown) |
+| tiktok | short | 1534 | 44 |
+| youtube | full | 1534 | 1534 |

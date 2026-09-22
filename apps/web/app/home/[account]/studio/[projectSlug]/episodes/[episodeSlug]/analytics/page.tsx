@@ -145,10 +145,12 @@ export default function EpisodeAnalyticsPage() {
                 That retention curve could not be loaded.
               </p>
             ) : (
-              // No durationSeconds until FILM-1710 lands a real asset
-              // duration: video_dim's column is the episode's, so a Short's
-              // cliff would be labelled past the end of the clip.
-              <RetentionCurveChart points={curveQuery.data?.points ?? []} />
+              // The asset's own duration (FILM-1710), or `duration_unknown`
+              // — in which case the cliff is described without a timestamp.
+              <RetentionCurveChart
+                points={curveQuery.data?.points ?? []}
+                duration={curveQuery.data?.duration}
+              />
             )}
           </section>
         ) : null}

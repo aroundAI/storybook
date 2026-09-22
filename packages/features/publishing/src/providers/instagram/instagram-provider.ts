@@ -1,3 +1,5 @@
+import { META_GRAPH_BASE } from '@kit/shared/vendors';
+
 import type {
   InstagramAccount,
   InstagramContainerStatus,
@@ -7,7 +9,7 @@ import type {
 } from './types';
 import { INSTAGRAM_CONSTRAINTS } from './types';
 
-const GRAPH_API_BASE = 'https://graph.facebook.com/v18.0';
+const GRAPH_API_BASE = META_GRAPH_BASE;
 
 /**
  * Instagram Provider
