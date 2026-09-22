@@ -1,6 +1,14 @@
+---
+spec_id: FILM-402
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-402: Video Provider Factory
 
-**Status**: ✅ DONE
+> **🗑️ Retired (audit 2026-09-23).** The video provider factory and registry (`packages/features/video-generation/src/providers/factory.ts`, `registry.ts`) were deleted in `5b88db3a` (2026-01-15), the commit that removed `packages/features/video-generation`; the owner retired in-app video generation on purpose. Nothing replaces it: the Visual Studio writes VEO 3.1 prompts and each shot's video, generated outside the app, is uploaded with `VideoUploader` (`packages/features/episodes/src/components/video-uploader.tsx`). Kept as a record; not outstanding work.
+
+**Status**: 🗑️ RETIRED (audit 2026-09-23; was ✅ DONE)
 **Phase**: 4
 **Priority**: P0
 **Effort**: M (4-8 hours)

@@ -1,8 +1,14 @@
+---
+spec_id: FILM-1141
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-1141: Fact Source Upload & Extraction
 
 | Field | Value |
 |-------|-------|
-| **Status** | ✅ DONE |
+| **Status** | 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE) |
 | **Priority** | P1 |
 | **Estimate** | 10h |
 | **Dependencies** | FILM-1135, FILM-1140 |
@@ -235,11 +241,19 @@ interface FactExtractionJob {
 
 ## Acceptance Criteria
 
-- [x] File upload works for PDF, DOCX, TXT, MD
-- [x] URL fetch extracts text content
+- [ ] File upload works for PDF, DOCX, TXT, MD — *audit: unverified* — parsers wired (`packages/features/episodes/src/lib/server/pdf-extractor.ts:58`, `:77`); no test uploads a file; read-only audit
+- [ ] URL fetch extracts text content — *audit: unverified* — HTML stripping at `packages/features/episodes/src/server/source-upload-actions.ts:191`; no test; needs a live fetch
 - [x] API sources can be configured with categories
-- [x] LLM extracts facts with entities
-- [x] Progress shown during extraction
-- [x] Extracted facts appear in Facts list
+- [ ] LLM extracts facts with entities — *audit: no longer true* — prompt and handler return claim, category, confidence only (`apps/web/lambda/llm-worker/handlers/fact-extraction.ts:17`); no entities
+- [ ] Progress shown during extraction — *audit: no longer true* — extraction is queued; the dialog reports done with 0 facts (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/upload-source-dialog.tsx:242`); `ExtractionStatusBanner` is never rendered
+- [ ] Extracted facts appear in Facts list — *audit: unverified* — worker inserts into `verified_facts` (`apps/web/lambda/llm-worker/handlers/fact-extraction.ts:97`); needs a queued job run end to end
 - [x] Source credibility tier is stored
-- [x] Error handling for failed uploads/extractions
+- [ ] Error handling for failed uploads/extractions — *audit: no longer true* — a queued extraction that fails in the worker is never reported; nothing writes `fact_extraction_jobs`
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| LLM extracts facts with entities | `documentary/fact-extraction.json` asks for claim, category, confidence and source context, and the worker's `ExtractedFact` has only those (`apps/web/lambda/llm-worker/handlers/fact-extraction.ts:17`); no people/places/dates/organizations are extracted or stored | unassigned |
+| Progress shown during extraction | Content over 500 characters is queued to the LLM worker (`packages/features/episodes/src/server/source-upload-actions.ts:249`); the dialog then shows "complete" and toasts "Extracted 0 fact(s)" (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/upload-source-dialog.tsx:242`). The progress banner (`settings/facts/_components/extraction-status-banner.tsx`) is rendered nowhere, and `createExtractionJobAction` has no caller, so `fact_extraction_jobs` stays empty | unassigned |
+| Error handling for failed uploads/extractions | Upload and queueing errors are caught and toasted (`upload-source-dialog.tsx:253`), but a job that fails in the worker leaves no trace the user can see; SQS jobs are not recorded anywhere (`packages/features/prompt-engine/src/lib/server/sqs-helper.ts:72`) | unassigned |

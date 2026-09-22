@@ -1,9 +1,17 @@
+---
+spec_id: FILM-506
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-506: Dialogue List Component
+
+> **🗑️ Retired (audit 2026-09-23).** The package `DialogueList` has been mounted nowhere since `f7cdfa21` (2025-12-18), when a route-local audio studio replaced the package `AudioStudio` that rendered it; the orphaned mount was deleted in `5b88db3a` (2026-01-15). Dialogue is now a zoomable per-character timeline, ordered by timeline position, whose blocks open a play / regenerate / edit popover, with no search, filters, sort control, multi-select or download (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx`, redesigned in `e737c138`). The component, and the synchronous `generateDialogueVoiceAction` only it calls, still exist unused. Kept as a record; not outstanding work.
 
 **Phase**: 5
 **Priority**: P0
 **Effort**: M (3-5 days)
-**Status**: ✅ DONE
+**Status**: 🗑️ RETIRED (audit 2026-09-23; was ✅ DONE)
 **Dependencies**: FILM-505 (Audio Studio)
 **Blocks**: None
 

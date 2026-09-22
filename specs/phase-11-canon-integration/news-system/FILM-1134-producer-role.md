@@ -1,7 +1,8 @@
 ---
 id: FILM-1134
 title: Producer LLM Role Prompt
-status: done
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: medium
 effort: M
 dependencies: [FILM-1133, FILM-1006]
@@ -217,12 +218,12 @@ export const orchestrateNewsEpisodeAction = enhanceAction(
 
 ## Acceptance Criteria
 
-- [ ] Producer role plans valid episode rundowns
-- [ ] Segments are ordered by priority
-- [ ] Break positions are calculated correctly
-- [ ] Orchestrator generates all segments
-- [ ] Total runtime matches target duration
-- [ ] Server actions are authenticated
+- [ ] Producer role plans valid episode rundowns — *audit: unverified* — LLM output used unvalidated (`packages/features/episodes/src/lib/server/services/producer-service.ts:137`); no test or eval
+- [ ] Segments are ordered by priority — *audit: unverified* — prompt rule only (`producer-role.json`); the service never sorts the rundown; no test
+- [ ] Break positions are calculated correctly — *audit: not met* — no break positions anywhere: `EpisodeRundown` has none (`packages/features/episodes/src/lib/server/services/producer-service.ts:28`), nor the prompt
+- [x] Orchestrator generates all segments — *audit:* `packages/features/episodes/src/lib/server/services/producer-service.ts:165`
+- [ ] Total runtime matches target duration — *audit: unverified* — nothing reconciles segment durations with the target; the LLM's `totalRuntime` is returned as given; no test
+- [x] Server actions are authenticated — *audit:* `packages/features/episodes/src/server/news-actions.ts:140`, `:159`
 
 ---
 
@@ -251,3 +252,9 @@ export const orchestrateNewsEpisodeAction = enhanceAction(
 - Consider adding real-time news alerts integration
 - Multi-anchor support for larger broadcasts
 - Commercial break optimization for ad-supported content
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Break positions are calculated correctly | Nothing computes break positions: `EpisodeRundown` is `{ rundown, totalRuntime }` (`packages/features/episodes/src/lib/server/services/producer-service.ts:28`), the producer prompt never asks for them, and a repo search for `breakPositions`/`break_position` finds nothing | unassigned |

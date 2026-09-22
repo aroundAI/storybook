@@ -1,3 +1,9 @@
+---
+spec_id: FILM-101a
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-101 Seasons Table
 
 ## Metadata
@@ -79,22 +85,22 @@ FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamps();
 ## Test Plan
 
 ### Unit Tests
-- [ ] Insert season with valid project_id succeeds
-- [ ] Insert season with invalid project_id fails (FK violation)
-- [ ] Insert duplicate season number for same project fails (unique constraint)
-- [ ] Insert same season number for different projects succeeds
-- [ ] Timestamps populate automatically on insert
-- [ ] Timestamps update automatically on update
+- [ ] Insert season with valid project_id succeeds — *audit: not met* — no test asserts it; the E2E seed inserts one only as a fixture (`apps/e2e/tests/utils/seed.ts:322`)
+- [ ] Insert season with invalid project_id fails (FK violation) — *audit: not met* — no test found
+- [ ] Insert duplicate season number for same project fails (unique constraint) — *audit: not met* — no test found
+- [ ] Insert same season number for different projects succeeds — *audit: not met* — no test found
+- [ ] Timestamps populate automatically on insert — *audit: not met* — no test found
+- [ ] Timestamps update automatically on update — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Deleting a project cascades to delete all its seasons
-- [ ] Deleting a season sets episodes.season_id to NULL (tested in episodes table)
-- [ ] Query seasons ordered by number returns correct order
-- [ ] Can create Season 1, 2, 3 in sequence
-- [ ] Cannot create Season 5 before Season 4 (enforced at app level)
+- [ ] Deleting a project cascades to delete all its seasons — *audit: not met* — no test found
+- [ ] Deleting a season sets episodes.season_id to NULL (tested in episodes table) — *audit: not met* — no test found
+- [ ] Query seasons ordered by number returns correct order — *audit: not met* — no test found
+- [ ] Can create Season 1, 2, 3 in sequence — *audit: not met* — no test found
+- [ ] Cannot create Season 5 before Season 4 (enforced at app level) — *audit: not met* — no test found
 
 ### Edge Cases
-- [ ] Season number = 0 (should fail if check constraint added)
-- [ ] Season number negative (should fail if check constraint added)
-- [ ] Very long season name (255 char limit)
-- [ ] NULL name is allowed (optional field)
+- [ ] Season number = 0 (should fail if check constraint added) — *audit: not met* — no test found; the check exists (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:36`)
+- [ ] Season number negative (should fail if check constraint added) — *audit: not met* — no test found; the check exists (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:36`)
+- [ ] Very long season name (255 char limit) — *audit: not met* — no test found
+- [ ] NULL name is allowed (optional field) — *audit: not met* — no test found

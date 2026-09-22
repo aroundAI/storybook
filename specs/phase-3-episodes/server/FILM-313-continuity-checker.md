@@ -1,4 +1,12 @@
+---
+spec_id: FILM-313
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-313: Continuity Checker
+
+> **🗑️ Retired (audit 2026-09-23).** Built in d38cdc38 (2025-12-09) but never mounted: no page renders `ContinuityChecker` (`packages/features/episodes/src/components/continuity-checker.tsx`), and nothing outside it calls `checkContinuityAction` or `fixContinuityIssueAction`. Continuity checking in the product is FILM-1007's canon validation: `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/inline-violation-warning.tsx`, mounted in `story-screen.tsx:252`. Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 3 - Episodes

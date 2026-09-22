@@ -1,7 +1,8 @@
 ---
 spec_id: FILM-1511
 title: Deep-Dive Dashboards & Reports Completion
-status: ✅ DONE
+status: 🟡 PARTIAL
+audited: 2026-09-23
 effort: L
 dependencies: FILM-1504, FILM-1505, FILM-1506, FILM-1507, FILM-1508
 ---
@@ -51,11 +52,11 @@ Account dashboard (`company-dashboard.tsx` via `account-dashboard-actions.ts`): 
 
 ## 4. Acceptance Criteria
 
-- [ ] Diagnostics tab lists recent videos with impressions/CTR/AVD and cliff flags; `detectRetentionCliff` unit-tested
-- [ ] All new cards render with data, loading skeletons, and empty states
-- [ ] Generated CSV has no empty CTR/AVD columns; retention included when selected
-- [ ] `raw_csv` monthly report delivers a complete per-video-per-day export
-- [ ] `pnpm --filter web typecheck` passes
+- [x] Diagnostics tab lists recent videos with impressions/CTR/AVD and cliff flags; `detectRetentionCliff` unit-tested — *audit:* now a Deep Dive section: `apps/e2e/tests/deep-dive/diagnostics-evidence.spec.ts:42`, `packages/features/content-analytics/__tests__/retention.test.ts:126`
+- [ ] All new cards render with data, loading skeletons, and empty states — *audit: not met* — rolling-90 and returning-viewer cards and the account-dashboard tiles were never built; their actions have no caller
+- [ ] Generated CSV has no empty CTR/AVD columns; retention included when selected — *audit: unverified* — wired (`packages/features/content-analytics/src/server/report-actions.ts:278`, retention `:229`); no test asserts a generated CSV
+- [x] `raw_csv` monthly report delivers a complete per-video-per-day export — *audit:* `apps/e2e/tests/analytics/raw-export-evidence.spec.ts:100`, `packages/features/content-analytics/__tests__/raw-export-generator.test.ts:40`
+- [ ] `pnpm --filter web typecheck` passes — *audit: unverified* — CI runs `pnpm run typecheck` on every PR (`.github/workflows/workflow.yml:45`); not run in this audit
 
 ## 5. Verification
 
@@ -64,3 +65,9 @@ pnpm --filter web typecheck && pnpm lint:fix
 pnpm --filter @kit/content-analytics test
 # Manual: visual pass per dashboard tab; trigger /api/reports/scheduled and open the CSV.
 ```
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| All new cards render with data, skeletons and empty states | Never built: `rolling-90-card` (`getRollingViewsAction` has no caller), `returning-viewer-proxy-card` (`getReturningViewerProxyAction` has no caller), the account dashboard's median-views and rolling-90 tiles (`company-dashboard.tsx` has neither), and traffic sources on episode analytics (the page shows the retention curve only). `git log -S` finds none of them, ever. The rest exist: `traffic-share-card.tsx` (renamed; FILM-1605 groups), median, cohort, back-catalog, YPP, tag medians and the retention curve | unassigned |

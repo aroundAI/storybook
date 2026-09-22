@@ -2,6 +2,7 @@
 spec_id: FILM-1615
 title: Video Log Table
 status: ✅ DONE
+audited: 2026-09-23
 effort: M
 dependencies: FILM-1603, FILM-1611; FILM-1610 soft (the note column, §4)
 ---

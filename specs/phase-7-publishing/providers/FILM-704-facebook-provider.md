@@ -1,3 +1,9 @@
+---
+spec_id: FILM-704
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-704: Facebook Provider
 
 ## Metadata
@@ -309,26 +315,26 @@ export class FacebookProvider {
 
 ## Acceptance Criteria
 
-- [ ] Videos upload successfully to Page
-- [ ] Resumable upload works for large files
-- [ ] Progress reporting works
-- [ ] Title and description are set
-- [ ] Scheduled publishing works
-- [ ] Reels upload to correct endpoint
-- [ ] Video status can be polled
-- [ ] Page list can be retrieved
+- [ ] Videos upload successfully to Page — *audit: unverified* — simple, resumable and Reel paths built (`packages/features/publishing/src/providers/facebook/facebook-provider.ts:28`); no test or sandbox run
+- [ ] Resumable upload works for large files — *audit: unverified* — three-phase session above 1 GB (`packages/features/publishing/src/providers/facebook/facebook-provider.ts:253`, `packages/features/publishing/src/providers/facebook/types.ts:79`); no test
+- [x] Progress reporting works — *audit:* `packages/features/publishing/src/providers/facebook/facebook-provider.ts:92`, `packages/features/publishing/src/providers/facebook/facebook-provider.ts:241`
+- [x] Title and description are set — *audit:* `packages/features/publishing/src/providers/facebook/facebook-provider.ts:180`, `packages/features/publishing/src/providers/facebook/facebook-provider.ts:394`
+- [ ] Scheduled publishing works — *audit: unverified* — provider can send `scheduled_publish_time` (`packages/features/publishing/src/providers/facebook/facebook-provider.ts:184`); the product schedules server-side (`packages/features/publishing/src/server/publish-actions.ts:158`); no test
+- [x] Reels upload to correct endpoint — *audit:* `packages/features/publishing/src/providers/facebook/facebook-provider.ts:63`
+- [x] Video status can be polled — *audit:* `packages/features/publishing/src/providers/facebook/facebook-provider.ts:443`
+- [x] Page list can be retrieved — *audit:* `packages/features/publishing/src/providers/facebook/facebook-provider.ts:477`
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test resumable upload threshold
-- [ ] Test status mapping
+- [ ] Test resumable upload threshold — *audit: not met* — no test found
+- [ ] Test status mapping — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Test simple upload flow
-- [ ] Test resumable upload flow
+- [ ] Test simple upload flow — *audit: not met* — no test found
+- [ ] Test resumable upload flow — *audit: not met* — no test found
 
 ---
 

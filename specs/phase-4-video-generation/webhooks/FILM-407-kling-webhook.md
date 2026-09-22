@@ -1,4 +1,12 @@
+---
+spec_id: FILM-407
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-407: Video Provider Webhooks
+
+> **🗑️ Retired (audit 2026-09-23).** The webhook routes (`apps/web/app/api/generation/webhooks/kling|hailuo/route.ts`) and `packages/features/video-generation/src/lib/webhook-processor.ts` were deleted in `5b88db3a` (2026-01-15), the commit that removed `packages/features/video-generation`; the owner retired in-app video generation on purpose. Nothing replaces them. Kept as a record; not outstanding work.
 
 **Phase**: 4
 **Priority**: P0

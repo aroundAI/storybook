@@ -1,10 +1,18 @@
+---
+spec_id: FILM-709
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-709: Platform Selector
+
+> **🗑️ Retired (audit 2026-09-23).** `PlatformSelector` was rendered only inside `PublishHub`, which no page has rendered since baa752eb (2026-01-06) switched the `/publish` route to `PublishScreen`; the component is still in `packages/features/publishing/src/components/platform-selector.tsx`, unused. The publish screen does not ask which platforms: it sends each video to every connected channel of the video's language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1041`), shows those channels as badges with follower counts and an expiry warning (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/platform-ui.tsx:128`), and leaves connecting to `PlatformConnections` on Settings › Platforms (`packages/features/publishing/src/components/platform-connections.tsx`). Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 7 - Publishing
 - **Priority:** P1 (Post-MVP)
 - **Effort:** S (2-4 hours)
-- **Status:** ✅ DONE
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was ✅ DONE)
 - **Dependencies:** FILM-705-707 (OAuth)
 - **Blocks:** FILM-708 (Publish Hub)
 

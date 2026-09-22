@@ -1,7 +1,8 @@
 ---
 id: FILM-1001
 title: Canon Management Database Tables
-status: implemented
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: high
 effort: L
 dependencies: [FILM-101]
@@ -744,12 +745,12 @@ Legend:
 
 ## Acceptance Criteria
 
-- [ ] All 6 tables created with correct constraints
-- [ ] Foreign keys enforce referential integrity
-- [ ] Indexes created for common query patterns
-- [ ] RLS policies applied and tested
-- [ ] TypeScript types generated: `pnpm supabase:web:typegen`
-- [ ] Types include: `ImmutableEvent`, `CharacterState`, `WorldState`, `NarrativeThread`, `StateDelta`, `EpisodeSummary`
+- [x] All 6 tables created with correct constraints — *audit:* `apps/web/supabase/migrations/20260128225704_canon_management.sql:10`
+- [x] Foreign keys enforce referential integrity — *audit:* `apps/web/supabase/migrations/20260128225704_canon_management.sql:12`, `apps/web/supabase/migrations/20260324095502_canon_episode_fk_cascade.sql:5`
+- [x] Indexes created for common query patterns — *audit:* `apps/web/supabase/migrations/20260128225704_canon_management.sql:45`
+- [ ] RLS policies applied and tested — *audit: not met* — applied (`apps/web/supabase/migrations/20260128225704_canon_management.sql:230`), but no pgTAP test asserts a canon access rule; the one member-role insert (`apps/web/supabase/tests/database/audit-author-snapshot.test.sql:57`) tests the name trigger — KB-17
+- [x] TypeScript types generated: `pnpm supabase:web:typegen` — *audit:* `packages/supabase/src/database.types.ts:2851`
+- [x] Types include: `ImmutableEvent`, `CharacterState`, `WorldState`, `NarrativeThread`, `StateDelta`, `EpisodeSummary` — *audit:* `packages/features/episodes/src/lib/canon/types.ts:17`
 
 ---
 
@@ -765,3 +766,9 @@ insert into public.immutable_events (project_id, event_type, event_key, establis
 values ('project-uuid', 'death', 'character:john:dead', 'episode-uuid', 1, 10, 'John died again');
 -- Expected: ERROR unique constraint violation
 ```
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| RLS policies applied and tested | No pgTAP test asserts a canon access rule. The one member-role statement, `audit-author-snapshot.test.sql:57`, checks the name trigger — and succeeds while naming another user as author. The `immutable_events` policy (`FOR ALL`, no `WITH CHECK`) lets any member update, delete and re-author events | KB-17 |

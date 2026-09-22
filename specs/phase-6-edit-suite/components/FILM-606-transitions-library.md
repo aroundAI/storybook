@@ -1,10 +1,18 @@
+---
+spec_id: FILM-606
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-606: Transitions Library
+
+> **🗑️ Retired (audit 2026-09-23).** The old transitions code (`packages/features/episodes/src/lib/transitions.ts`) was deleted in `5f44d0e1` (2026-02-19), and phase 14 replaced this design (10+ categorised presets, a drag-and-drop panel, apply-to-all) with a per-gap picker: a handle between adjacent clips (`packages/features/edit-suite/src/components/timeline/transition-handle.tsx`) opens `transition-picker.tsx` with six transitions plus cut and a 100–3000 ms duration; the preview renders them (`packages/features/edit-suite/src/lib/transition-renderer.ts`) and export maps them to `xfade` (`packages/features/edit-suite/src/lib/ffmpeg-builder.ts:250`). Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 6 - Edit Suite
 - **Priority:** P1 (Post-MVP Enhancement)
 - **Effort:** M (4-8 hours)
-- **Status:** ✅ DONE
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was ✅ DONE)
 - **Dependencies:** FILM-601 (Timeline Editor), FILM-604 (Auto-Stitch)
 - **Blocks:** None
 

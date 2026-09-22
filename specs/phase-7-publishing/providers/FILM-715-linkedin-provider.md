@@ -1,10 +1,16 @@
+---
+spec_id: FILM-715
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-715: LinkedIn Provider
 
 ## Metadata
 - **Phase:** 7 - Publishing
 - **Priority:** P2 (Future Enhancement)
 - **Effort:** M (4-8 hours)
-- **Status:** DONE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was DONE)
 - **Dependencies:** FILM-708 (Publish Hub), OAuth Infrastructure
 - **Blocks:** None
 
@@ -533,29 +539,29 @@ export function LinkedInComposer({ initialText, isCompanyPage = false, onSave }:
 
 ## Acceptance Criteria
 
-- [x] OAuth 2.0 connection flow works for personal accounts
-- [x] OAuth 2.0 connection flow works for company pages
+- [ ] OAuth 2.0 connection flow works for personal accounts — *audit: unverified* — success path never run or tested (failure branches only: `apps/e2e/tests/platform-connections/connect-failure.spec.ts`); refresh can never find credentials (`packages/features/publishing/src/lib/token-refresh.ts:520`)
+- [ ] OAuth 2.0 connection flow works for company pages — *audit: no longer true* — company connect stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:174`); no organization is chosen; no UI offers `type=company`
 - [x] Video upload with proper initialization and finalization
 - [x] Post composition with character limit enforcement
 - [x] Hashtag tracking in composer
-- [x] Analytics retrieval (impressions, likes, comments, shares)
-- [x] Delete post functionality
-- [x] Video duration validation (10 min personal, 15 min company)
+- [ ] Analytics retrieval (impressions, likes, comments, shares) — *audit: no longer true* — `getPostMetrics` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:319`) has no caller; no LinkedIn metrics are read anywhere
+- [ ] Delete post functionality — *audit: no longer true* — `deletePost` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:346`) has no caller; unpublish skips LinkedIn (`apps/web/lambda/publish-worker/index.ts:257-264`)
+- [ ] Video duration validation (10 min personal, 15 min company) — *audit: no longer true* — only the never-mounted `LinkedInComposer` checks duration (`packages/features/publishing/src/components/linkedin-composer.tsx:42`); the provider checks size (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:45`)
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test character counting
-- [ ] Test hashtag extraction
-- [ ] Test video duration validation for personal vs company
+- [ ] Test character counting — *audit: not met* — no test found
+- [ ] Test hashtag extraction — *audit: not met* — no test found
+- [ ] Test video duration validation for personal vs company — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Test OAuth flow with mock API
-- [ ] Test video upload initialization
-- [ ] Test post creation
-- [ ] Test analytics retrieval
+- [ ] Test OAuth flow with mock API — *audit: not met* — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)
+- [ ] Test video upload initialization — *audit: not met* — no test found
+- [ ] Test post creation — *audit: not met* — no test found
+- [ ] Test analytics retrieval — *audit: not met* — no test found
 
 ---
 
@@ -595,3 +601,13 @@ LINKEDIN_CLIENT_SECRET=
 - **FILM-714**: Twitter/X Provider (similar pattern)
 - **LinkedIn Marketing API**: https://learn.microsoft.com/en-us/linkedin/marketing/
 - **LinkedIn Video API**: https://learn.microsoft.com/en-us/linkedin/marketing/integrations/community-management/shares/videos-api
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| OAuth 2.0 connection flow works for personal accounts (unverified) | The success path has never been run or tested. And a LinkedIn token can never be refreshed: `refreshLinkedInToken` looks up `account_oauth_apps` with platform `linkedin` (`packages/features/publishing/src/lib/token-refresh.ts:520`), which that table's CHECK forbids (`apps/web/supabase/migrations/20260102221811_add_account_oauth_apps.sql:8`), so every connection is marked inactive when its 60-day token expires | unassigned |
+| OAuth 2.0 connection flow works for company pages | Company connect still stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:174`); `getOrganizations` has no caller and no UI passes `type=company`. Organization publishing never existed (`urn:li:organization` appears nowhere in history) | unassigned |
+| Analytics retrieval | `getPostMetrics` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:319`) has no caller | unassigned |
+| Delete post functionality | `deletePost` has no caller; unpublish skips LinkedIn at the vendor (`apps/web/lambda/publish-worker/index.ts:257-264`) | unassigned |
+| Video duration validation | Only the never-mounted `LinkedInComposer` checks it | unassigned |

@@ -1,4 +1,12 @@
+---
+spec_id: FILM-DS-02
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-DS-02: Design Tokens
+
+> **🗑️ Retired (audit 2026-09-23).** `packages/features/film-studio/src/lib/design-tokens.ts` and its tests were deleted with `@kit/film-studio` in 5f44d0e1 (2026-02-19); their only consumer outside the package, the old timeline editor, went in the same commit, and the Kling/Runway/Hailuo provider tokens lost their subject when in-app generation was removed in 5b88db3a. Status colours are now CSS custom properties (`--status-*`, light and dark) in `apps/web/styles/shadcn-ui.css:49`, mapped per component, e.g. `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/status-badge.tsx` — the CSS-variable design this spec's open question rejected. Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** Design System

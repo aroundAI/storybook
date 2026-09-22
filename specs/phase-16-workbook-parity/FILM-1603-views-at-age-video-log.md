@@ -2,6 +2,7 @@
 spec_id: FILM-1603
 title: Per-Video Views-at-Age & Video Log
 status: ✅ DONE
+audited: 2026-09-23
 effort: L
 dependencies: FILM-1602, FILM-1612
 ---
@@ -96,7 +97,7 @@ page, so it stays well inside the chunking added in FILM-1612.
 ## 6. Acceptance Criteria
 
 - [x] `queryVideoViewsAtAge` returns one row per video in scope, including videos with no metric rows
-- [x] Checkpoint sums use the `< N` boundary, and `queryCohortCurves` matches
+- [x] Checkpoint sums use the `< N` boundary, and `queryCohortCurves` matches — *audit:* `queryCohortCurves` became `queryCohortMedians` (1b02afde), same `< N`: `packages/clickhouse/src/queries-advanced.ts:683`; test `packages/clickhouse/__tests__/queries-advanced.test.ts:374`
 - [x] `matureAt[N]` is false for a video younger than N days
 - [x] `ingestLagDays` reflects the gap between publication and the first ingested metric day
 - [x] `orderBy` cannot inject SQL

@@ -1,3 +1,9 @@
+---
+spec_id: FILM-202
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-202: Character Server Actions
 
 **Phase**: 2
@@ -5,7 +11,7 @@
 **Effort**: M (3-5 days)
 **Dependencies**: FILM-103 (character_details table), FILM-201 (asset CRUD)
 **Blocks**: FILM-205 (CharacterEditor component)
-**Status**: ✅ Complete (2025-12-08)
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ Complete 2025-12-08)
 
 ---
 
@@ -658,11 +664,11 @@ None (new feature, builds on FILM-201)
 ### Functional
 
 - [x] `createCharacterAction` creates asset and character_details in transaction
-- [x] `createCharacterAction` rolls back asset if details creation fails
+- [ ] `createCharacterAction` rolls back asset if details creation fails — *audit: unverified* — compensating delete (`packages/features/assets/src/lib/server/character.mutations.ts:106`) is unchecked, and `assets_delete` admits only owner/admin; no test
 - [x] `createCharacterAction` validates all nested schemas
 - [x] `getCharacterAction` returns complete character with JOIN
 - [x] `getCharacterAction` handles missing character_details gracefully
-- [x] `updateCharacterAction` updates both asset and details atomically
+- [ ] `updateCharacterAction` updates both asset and details atomically — *audit: not met* — the asset update commits first (`packages/features/assets/src/lib/server/character.mutations.ts:267`); a failed details upsert (`:353`) leaves it applied
 - [x] `updateCharacterAction` preserves unmodified fields
 - [x] `listCharactersAction` returns all characters with details
 - [x] `listCharactersAction` respects pagination
@@ -673,8 +679,8 @@ None (new feature, builds on FILM-201)
 
 ### Non-Functional
 
-- [x] All operations complete within 3 seconds
-- [x] Transaction rollback works correctly
+- [ ] All operations complete within 3 seconds — *audit: unverified* — runtime timing; nothing measures it
+- [ ] Transaction rollback works correctly — *audit: unverified* — see the rollback item above; no test exercises a failed details insert
 - [x] JSONB columns properly typed in TypeScript
 - [x] No N+1 queries (use JOINs)
 - [x] TypeScript compiles without errors
@@ -1023,3 +1029,9 @@ queryClient.setQueryData(['characters', projectId], (old) => ({
 - **FILM-209**: Element prompt generation (uses character data)
 - **Constitution**: Section 2.2 (Server Actions Pattern)
 - **Constitution**: Section 3.4 (JSONB Column Standards)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Update is atomic | `updateCharacterAction` commits the `assets` update (`packages/features/assets/src/lib/server/character.mutations.ts:267`) before upserting `character_details` (`:353`), and never reverts the first when the second fails | unassigned |

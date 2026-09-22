@@ -1,7 +1,8 @@
 ---
 id: FILM-1102
 title: Memory Context Injection into Story Generation
-status: done
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: critical
 effort: M
 dependencies: [FILM-1004, FILM-1101]
@@ -167,13 +168,13 @@ These threads are open and expecting progress or resolution:
 
 ## Acceptance Criteria
 
-- [x] `buildMemoryContext` is called in story generation handler
-- [x] Memory context is injected into prompt variables
+- [ ] `buildMemoryContext` is called in story generation handler — *audit: no longer true* — removed from the handler in d5f6dbdc; only the story agent's optional tool calls it (`packages/features/episodes/src/agent/skills/continuity-skill.ts:39`)
+- [ ] Memory context is injected into prompt variables — *audit: no longer true* — the story prompt gets `canon_context: ''` (`packages/features/episodes/src/agent/skills/story-director-skill.ts:193`) since d5f6dbdc
 - [x] Story generation prompt template includes canon sections
-- [x] Token budget stays within 15% of context window
+- [ ] Token budget stays within 15% of context window — *audit: unverified* — no test measures it, and no context reaches the story prompt since d5f6dbdc
 - [x] Build failure is non-fatal (graceful degradation)
-- [x] Logs show memory context token usage
-- [x] Generated stories reference established facts appropriately
+- [ ] Logs show memory context token usage — *audit: no longer true* — the handler's log went in d5f6dbdc; the agent tool returns `tokensUsed` unlogged (`packages/features/episodes/src/agent/skills/continuity-skill.ts:76`)
+- [ ] Generated stories reference established facts appropriately — *audit: unverified* — story prompt receives empty `canon_context` since d5f6dbdc; no test or recorded run checks stories
 
 ---
 
@@ -249,4 +250,11 @@ describe('Story Generation with Memory Context', () => {
 
 ## Implementation Status
 
-**Implemented** in PR #175 — merged 2026-02-09
+**🟡 PARTIAL** (audit 2026-09-23; was **Implemented** in PR #175 — merged 2026-02-09)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Memory context injected into the story prompt | Since d5f6dbdc (#213) the Story Director passes `canon_context: ''`, so the template's canon section always reads as "no canon"; canon reaches the agent only through the continuity tool | owner (restore injection, or retire) |
+| Handler builds context and logs token usage | Removed from the story handler in d5f6dbdc | owner |

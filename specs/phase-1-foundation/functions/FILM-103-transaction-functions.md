@@ -1,3 +1,9 @@
+---
+spec_id: FILM-103
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-103: Transaction Functions
 
 ## Metadata
@@ -6,7 +12,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-101a through FILM-101n (all database tables)
 - **Blocks:** FILM-202 (Character Actions), FILM-303 (Shot CRUD)
-- **Status:** ✅ Completed
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ Completed)
 
 ---
 
@@ -270,14 +276,14 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 ## Acceptance Criteria
 
-- [x] `create_character_with_details` creates both records atomically
-- [x] `create_character_with_details` rolls back on any failure
-- [x] `update_episode_with_lock` returns conflict data when version mismatch
-- [x] `update_episode_with_lock` increments version on success
-- [x] `batch_create_shots` deletes existing shots before inserting new ones
+- [ ] `create_character_with_details` creates both records atomically — *audit: no longer true* — inserts `character_details.voice_asset_id`, renamed to `elevenlabs_voice_id` in `20251225160000`; every call fails (`apps/web/supabase/migrations/20251207165513_film-studio-functions.sql:45`)
+- [ ] `create_character_with_details` rolls back on any failure — *audit: unverified* — needs a pgTAP test; no test or app code calls any of these five functions
+- [ ] `update_episode_with_lock` returns conflict data when version mismatch — *audit: unverified* — needs a pgTAP test; none exists
+- [ ] `update_episode_with_lock` increments version on success — *audit: unverified* — needs a pgTAP test; none exists
+- [ ] `batch_create_shots` deletes existing shots before inserting new ones — *audit: unverified* — needs a pgTAP test; none exists
 - [x] `batch_create_shots` returns array of new shot IDs
-- [x] `soft_delete_episode` cancels pending generation jobs
-- [x] `get_project_generation_costs` aggregates costs correctly
+- [ ] `soft_delete_episode` cancels pending generation jobs — *audit: unverified* — needs a pgTAP test; none exists
+- [ ] `get_project_generation_costs` aggregates costs correctly — *audit: unverified* — needs a pgTAP test; none exists
 - [x] All functions use `SECURITY DEFINER` for RLS bypass
 - [x] All functions have proper error handling with meaningful messages
 
@@ -286,18 +292,18 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test character creation with valid data
-- [ ] Test character creation with missing required fields (should fail)
-- [ ] Test optimistic lock success case
-- [ ] Test optimistic lock conflict detection
-- [ ] Test batch shot creation with empty array
-- [ ] Test batch shot creation with multiple shots
-- [ ] Test cost aggregation with various job types
+- [ ] Test character creation with valid data — *audit: not met* — no test found
+- [ ] Test character creation with missing required fields (should fail) — *audit: not met* — no test found
+- [ ] Test optimistic lock success case — *audit: not met* — no test found
+- [ ] Test optimistic lock conflict detection — *audit: not met* — no test found
+- [ ] Test batch shot creation with empty array — *audit: not met* — no test found
+- [ ] Test batch shot creation with multiple shots — *audit: not met* — no test found
+- [ ] Test cost aggregation with various job types — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Test transaction rollback on character creation failure
-- [ ] Test concurrent episode updates trigger conflict
-- [ ] Test RLS policies are respected within functions
+- [ ] Test transaction rollback on character creation failure — *audit: not met* — no test found
+- [ ] Test concurrent episode updates trigger conflict — *audit: not met* — no test found
+- [ ] Test RLS policies are respected within functions — *audit: not met* — no test found
 
 ---
 
@@ -325,3 +331,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 - [x] Should `batch_create_shots` update episode status? **Yes, to 'storyboard'**
 - [ ] Should we add a `restore_episode` function for soft delete recovery? (non-blocking)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| `create_character_with_details` creates both records atomically | Its insert names `character_details.voice_asset_id` (`apps/web/supabase/migrations/20251207165513_film-studio-functions.sql:45`), a column renamed to `elevenlabs_voice_id` in `20251225160000`, so every call fails. No app code calls any of the five functions (characters are written by `packages/features/assets/src/lib/server/character.mutations.ts:89`), so the choice is fix or drop them. | owner |

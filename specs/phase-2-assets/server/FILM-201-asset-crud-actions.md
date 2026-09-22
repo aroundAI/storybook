@@ -1,3 +1,9 @@
+---
+spec_id: FILM-201
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-201: Asset CRUD Server Actions
 
 **Phase**: 2
@@ -423,7 +429,7 @@ None (new feature)
 
 - [x] `createAssetAction` successfully creates asset with valid data
 - [x] `createAssetAction` throws error for invalid project ID
-- [x] `createAssetAction` respects RLS (cannot create for inaccessible project)
+- [ ] `createAssetAction` respects RLS (cannot create for inaccessible project) — *audit: unverified* — policy exists (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:719`); no pgTAP test exercises it (`apps/web/supabase/tests/database/authors-deletable.test.sql:62` only inserts a fixture as `postgres`)
 - [x] `getProjectAssetsAction` returns all non-deleted assets for project
 - [x] `getProjectAssetsAction` filters by type when specified
 - [x] `getProjectAssetsAction` respects pagination (limit/offset)
@@ -432,14 +438,14 @@ None (new feature)
 - [x] `updateAssetAction` updates updated_at timestamp
 - [x] `updateAssetAction` throws error for deleted assets
 - [x] `deleteAssetAction` soft deletes asset (sets deleted_at)
-- [x] `deleteAssetAction` prevents deletion of assets in use
+- [ ] `deleteAssetAction` prevents deletion of assets in use — *audit: not met* — checks dialogue lines only, and ignores that query's error, so a failed check deletes (`packages/features/assets/src/lib/server/asset.queries.ts:139-143`)
 - [x] All actions enforce authentication (reject unauthenticated users)
 
 ### Non-Functional
 
-- [x] All actions complete within 2 seconds
+- [ ] All actions complete within 2 seconds — *audit: unverified* — runtime timing; nothing measures it
 - [x] All inputs validated with Zod schemas
-- [x] All database errors properly caught and thrown
+- [ ] All database errors properly caught and thrown — *audit: not met* — `isAssetInUse` drops its count query's error and answers "not in use" (`packages/features/assets/src/lib/server/asset.queries.ts:139-143`)
 - [x] TypeScript compiles without errors
 - [x] No ESLint warnings
 
@@ -735,3 +741,10 @@ queryClient.invalidateQueries({ queryKey: ['assets', projectId] });
 - **Constitution**: Section 3 (Database Conventions)
 - **Constitution**: Section 4.1 (RLS Policies)
 - **Next.js Actions**: https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| In-use check before delete | `isAssetInUse` checks only `dialogue_lines` and never reads the count query's `error`, so a failed check reports "not in use" and the asset is deleted (`packages/features/assets/src/lib/server/asset.queries.ts:139-143`) | unassigned |
+| Database errors caught and thrown | The same query's error is dropped rather than thrown | unassigned |

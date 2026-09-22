@@ -1,4 +1,12 @@
+---
+spec_id: FILM-508
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-508: Audio Player Component
+
+> **🗑️ Retired (audit 2026-09-23).** `AudioPlayer`'s only consumer was the package `AudioStudio`, mounted nowhere since `f7cdfa21` (2025-12-18). Nothing replaces a standalone waveform player: the audio studio's timelines play clips through a bare `Audio` element (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:277`), and the edit suite draws its own clip waveforms (`packages/features/edit-suite/src/components/timeline/waveform.tsx`). The component still exists unused. Kept as a record; not outstanding work.
 
 **Phase**: 5
 **Priority**: P0

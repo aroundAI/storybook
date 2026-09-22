@@ -2,6 +2,7 @@
 spec_id: FILM-1604
 title: Cohort Medians & Growth
 status: ✅ DONE
+audited: 2026-09-23
 effort: M
 dependencies: FILM-1603
 ---

@@ -1,7 +1,8 @@
 ---
 spec_id: FILM-1507
 title: Content Taxonomy & Tag-Level Analytics
-status: ✅ DONE
+status: 🟡 PARTIAL
+audited: 2026-09-23
 effort: M
 dependencies: FILM-1506
 ---
@@ -51,10 +52,10 @@ create table if not exists public.publish_tags (
 
 ## 4. Acceptance Criteria
 
-- [ ] Tags are account-scoped, unique per (dimension, slug); RLS blocks other accounts
-- [ ] Tagging/bulk-tagging updates `video_dim.tags` within the same action
-- [ ] Median-by-tag groups correctly and respects `insufficientSample` gates
-- [ ] Content table shows tags and supports bulk tagging of selected rows
+- [ ] Tags are account-scoped, unique per (dimension, slug); RLS blocks other accounts — *audit: unverified* — scope and unique key at `apps/web/supabase/migrations/20260827102452_content-taxonomy.sql:16`; no pgTAP test proves the policies refuse another account
+- [x] Tagging/bulk-tagging updates `video_dim.tags` within the same action — *audit:* `packages/features/content-analytics/src/server/taxonomy-actions.ts:175`, `:214`; tags built at `packages/features/content-analytics/src/server/dim-sync.ts:230`
+- [x] Median-by-tag groups correctly and respects `insufficientSample` gates — *audit:* gate `apps/e2e/tests/tags/tag-medians.spec.ts:29`; per-tag grouping `packages/clickhouse/__tests__/queries-advanced.test.ts:1015`
+- [ ] Content table shows tags and supports bulk tagging of selected rows — *audit: not met* — `content-table.tsx` has no tags or selection; `ContentTable`, `TagPicker`, `bulkTagPublishesAction` have no caller
 
 ## 5. Verification
 
@@ -63,3 +64,9 @@ pnpm --filter web supabase migration up && pnpm supabase:web:typegen
 pnpm --filter @kit/content-analytics test
 # Manual: create topic tags, bulk-tag 3 publishes, confirm video_dim.tags + median-by-tag rows.
 ```
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Content table shows tags and bulk-tags selected rows | Never wired. `packages/features/content-analytics/src/components/content-table.tsx` has no tags column and no row selection, and nothing renders `ContentTable`. `TagPicker`, `setPublishTagsAction` and `bulkTagPublishesAction` are exported but nothing calls them (`git log -S` finds no caller, ever). The only tag UI is vocabulary management (`apps/web/app/home/[account]/studio/analytics/tags/`), so no publish can be tagged in the product and tag medians cannot reach their 30-video gate | unassigned |

@@ -1,4 +1,12 @@
+---
+spec_id: FILM-412
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-412: Cost Tracking Library
+
+> **🗑️ Retired (audit 2026-09-23).** The video cost-tracking library (`packages/features/video-generation/src/lib/cost-tracking/`) was deleted in `5b88db3a` (2026-01-15), the commit that removed `packages/features/video-generation`; the owner retired in-app video generation on purpose. Nothing replaces it for video; account budgets for voice generation are a separate feature (`check_account_budget` / `increment_account_usage`, called from `packages/features/audio-generation/src/server/voice-queries.ts:58`). Kept as a record; not outstanding work.
 
 **Phase**: 4
 **Priority**: P0
@@ -399,7 +407,7 @@ Budget tracking resets on the 1st of each month. Historical data preserved in ge
 - [x] Budget blocks generation at 100%
 - [x] Costs tracked per provider
 
-**Status: COMPLETED** - Implemented in `packages/features/video-generation/src/lib/cost-tracking/`
+**Status: 🗑️ RETIRED** (audit 2026-09-23; was COMPLETED) - Implemented in `packages/features/video-generation/src/lib/cost-tracking/`
 
 ---
 

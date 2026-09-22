@@ -1,7 +1,8 @@
 ---
 id: FILM-1120
 title: Verified Facts Database Table
-status: done
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: high
 effort: M
 dependencies: []
@@ -283,11 +284,11 @@ export function generateAPACitation(
 ## Acceptance Criteria
 
 - [x] `verified_facts` table created with all columns
-- [x] RLS policies protect project-level access
+- [ ] RLS policies protect project-level access — *audit: unverified* — policies exist (`apps/web/supabase/migrations/20260211100000_create_verified_facts.sql:104`); no pgTAP test asserts cross-project isolation
 - [x] TypeScript types exported from @kit/episodes
-- [x] Full-text search index works for claim matching
+- [ ] Full-text search index works for claim matching — *audit: no longer true* — the only claim search, `textSearch('claim', …)` (`packages/features/episodes/src/server/fact-actions.ts:298`), cannot use this expression index
 - [x] Tags are indexed with GIN
-- [x] `generateAPACitation` produces valid APA format
+- [ ] `generateAPACitation` produces valid APA format — *audit: no longer true* — its test pins `Watson, J. D., Crick, F. H. C. (1953)` (`packages/features/episodes/src/lib/__tests__/verified-facts.test.ts:96`); APA needs `&` before the last author
 - [x] Types regenerated after migration
 
 ---
@@ -354,3 +355,10 @@ psql -c "\\d verified_facts"
 ## Implementation Status
 
 **Implemented** in PR #178 — merged 2026-02-10
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Full-text search index works for claim matching | The index is on `to_tsvector('english', claim \|\| ' ' \|\| COALESCE(simplified_claim, ''))` (`apps/web/supabase/migrations/20260211100000_create_verified_facts.sql:92`); the fact library searches `textSearch('claim', …)` (`packages/features/episodes/src/server/fact-actions.ts:298`), a different expression, so the index is never used. `external_content` had the same defect and was fixed with a generated `fts` column (`20260211200001_fix_external_content_fts_and_trigger.sql`) | unassigned |
+| `generateAPACitation` produces valid APA format | Authors are joined with `, ` and no `&`, and a missing author becomes "Unknown Author" (`packages/features/episodes/src/types/verified-facts.ts:126`); the unit test pins that output (`packages/features/episodes/src/lib/__tests__/verified-facts.test.ts:95`) | unassigned |

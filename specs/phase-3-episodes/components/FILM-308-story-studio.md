@@ -1,3 +1,9 @@
+---
+spec_id: FILM-308
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-308: Story Studio Component
 
 **Status**: ✅ DONE
@@ -295,12 +301,12 @@ function getStepStatus(
 
 - [x] Displays 4 tabs: Ideation, Story, Screenplay, Shot List
 - [x] Tabs unlock sequentially as pipeline progresses
-- [x] Progress bar shows completion percentage
-- [x] Active tab persists in URL query params
-- [x] Polls episode during generation
+- [ ] ~~Progress bar shows completion percentage~~ — *audit: retired* — `pipeline-progress.tsx` went with the legacy StoryStudio in e2d42522; the route tabs show lock state instead
+- [ ] ~~Active tab persists in URL query params~~ — *audit: retired* — the tab is the route path now (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:159`)
+- [ ] Polls episode during generation — *audit: unverified* — the job is polled with backoff (`packages/features/episodes/src/hooks/use-active-generation-job.ts:111`); no test drives it
 - [x] Handles errors with toast notifications
-- [x] Responsive design for mobile and desktop
-- [x] Keyboard navigation works correctly
+- [ ] Responsive design for mobile and desktop — *audit: unverified* — visual; needs a render at phone width
+- [ ] Keyboard navigation works correctly — *audit: unverified* — no test drives the workspace by keyboard
 - [x] Loading states display appropriately
 
 ---

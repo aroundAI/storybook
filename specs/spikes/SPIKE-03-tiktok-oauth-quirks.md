@@ -1,3 +1,9 @@
+---
+spec_id: SPIKE-03
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # SPIKE-03: TikTok OAuth Implementation Quirks
 
 ## Metadata
@@ -160,13 +166,13 @@ TikTok's OAuth and API are known to have quirks and inconsistencies. Unlike YouT
 
 ## Success Criteria
 
-- [ ] Working OAuth implementation with token refresh
-- [ ] Successful video upload to TikTok from our app
-- [ ] Complete documentation of all API quirks and workarounds
-- [ ] Error handling covers all known error scenarios
-- [ ] Test suite covers OAuth, upload, and publishing flows
-- [ ] Clear guidance on rate limit management
-- [ ] Known issues documented with mitigation strategies
+- [x] Working OAuth implementation with token refresh — *audit:* `packages/features/publishing/src/oauth/tiktok/refresh.ts:18`, tested at `packages/features/publishing/__tests__/token-refresh.test.ts:235`
+- [ ] Successful video upload to TikTok from our app — *audit: unverified* — needs a real upload to a TikTok account (a vendor call, outside this audit); no recorded upload found
+- [ ] Complete documentation of all API quirks and workarounds — *audit: not met* — no upload/publishing quirks doc (`docs/tiktok-api-quirks.md` never created); FILM-706 and `docs/platform-capability-reference.md:151` cover OAuth and analytics quirks only
+- [ ] Error handling covers all known error scenarios — *audit: not met* — provider and worker throw generic errors (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:192`); no rate-limit or spam-risk handling
+- [ ] Test suite covers OAuth, upload, and publishing flows — *audit: not met* — upload untested: nothing tests `tiktok-provider.ts` or `apps/web/lambda/publish-worker/handlers/tiktok.ts`; publish tests mock the provider
+- [ ] Clear guidance on rate limit management — *audit: not met* — only the Display API's 600 req/min is recorded (`docs/platform-capability-reference.md:160`); nothing on upload limits or handling them
+- [ ] Known issues documented with mitigation strategies — *audit: not met* — "Known Issues from Community" below has no mitigations; `docs/platform-capability-reference.md:151` covers analytics-side issues only
 
 ## Deliverables
 

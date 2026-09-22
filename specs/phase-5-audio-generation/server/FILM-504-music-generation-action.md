@@ -1,3 +1,9 @@
+---
+spec_id: FILM-504
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-504: Music Generation Server Action
 
 **Phase**: 5
@@ -743,28 +749,28 @@ None (new feature)
 
 ### Functional
 
-- [x] `generateMusicAction` submits request to Suno API
-- [x] `generateMusicAction` creates generation_jobs record with pending status
-- [x] `generateMusicAction` returns job info for client-side polling
-- [x] `generateMusicAction` validates input with schema
-- [x] `generateMusicAction` validates prompt length (1-1000 chars)
-- [x] `getMusicJobStatusAction` returns accurate status
-- [x] `getMusicJobStatusAction` calculates progress percentage
-- [x] `getMusicJobStatusAction` polls Suno for status updates
-- [x] `getMusicJobStatusAction` updates database with audio URL when complete
-- [x] `getMusicJobStatusAction` records cost after completion
-- [x] `getMusicJobStatusAction` handles terminal states correctly
-- [x] `getMusicJobStatusAction` marks as failed on Suno error
-- [x] `cancelMusicGenerationAction` cancels pending jobs
-- [x] All actions enforce authentication
-- [x] All actions use generation_jobs table for tracking
+- [x] `generateMusicAction` submits request to Suno API — *audit:* the live dialogs call `generateSceneMusicAction` and `generateMusicCueAction`, which submit to Suno (`packages/features/audio-generation/src/server/music-actions.ts:261`, `:392`); `generateMusicAction` is called only by the unmounted `MusicTrackList`
+- [ ] `generateMusicAction` creates generation_jobs record with pending status — *audit: no longer true* — since `4417f9e1` the live actions create an `audio_tracks` row with `metadata.status: 'pending'` (`packages/features/audio-generation/src/server/music-actions.ts:230`), no `generation_jobs` row
+- [x] `generateMusicAction` returns job info for client-side polling — *audit:* returns `trackId` and `jobId` (`packages/features/audio-generation/src/server/music-actions.ts:296`)
+- [x] `generateMusicAction` validates input with schema — *audit:* `packages/features/audio-generation/src/server/music-actions.ts:320`, `:451`
+- [x] `generateMusicAction` validates prompt length (1-1000 chars) — *audit:* 1–1000 enforced by the provider (`packages/features/audio-generation/src/providers/base.ts:224`); the action schemas are stricter, 10–500 (`packages/features/audio-generation/src/lib/schemas/music.schema.ts:41`)
+- [x] `getMusicJobStatusAction` returns accurate status — *audit:* the live `pollMusicStatusAction` maps Suno's status (`packages/features/audio-generation/src/server/music-actions.ts:532`); mapping tested at `packages/features/audio-generation/__tests__/suno.test.ts:236`
+- [ ] `getMusicJobStatusAction` calculates progress percentage — *audit: no longer true* — the live `pollMusicStatusAction` relays Suno's `progress` and computes none (`packages/features/audio-generation/src/server/music-actions.ts:592`)
+- [x] `getMusicJobStatusAction` polls Suno for status updates — *audit:* `packages/features/audio-generation/src/server/music-actions.ts:531`
+- [x] `getMusicJobStatusAction` updates database with audio URL when complete — *audit:* `packages/features/audio-generation/src/server/music-actions.ts:540`
+- [ ] `getMusicJobStatusAction` records cost after completion — *audit: no longer true* — nothing records cost on completion (`packages/features/audio-generation/src/server/music-actions.ts:535`); only an estimate is stored at submit (`:286`)
+- [x] `getMusicJobStatusAction` handles terminal states correctly — *audit:* `packages/features/audio-generation/src/server/music-actions.ts:509`
+- [x] `getMusicJobStatusAction` marks as failed on Suno error — *audit:* `packages/features/audio-generation/src/server/music-actions.ts:562`
+- [ ] `cancelMusicGenerationAction` cancels pending jobs — *audit: no longer true* — the live music path has no cancel; `cancelMusicGenerationAction` (`packages/features/audio-generation/src/server/actions.ts:374`) has no caller
+- [x] All actions enforce authentication — *audit:* `packages/features/audio-generation/src/server/music-actions.ts:179`, `:352`, `:478`
+- [ ] All actions use generation_jobs table for tracking — *audit: no longer true* — the live actions track status in `audio_tracks.metadata` (`packages/features/audio-generation/src/server/music-actions.ts:230`)
 
 ### Non-Functional
 
-- [x] Client polls getMusicJobStatusAction for status updates
-- [x] Server actions don't block (return immediately after starting generation)
-- [x] All errors logged with context using structured logging
-- [x] API keys never exposed in logs
+- [x] Client polls getMusicJobStatusAction for status updates — *audit:* the timeline polls `pollMusicStatusAction` (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx:337`)
+- [x] Server actions don't block (return immediately after starting generation) — *audit:* returns once Suno accepts the job (`packages/features/audio-generation/src/server/music-actions.ts:296`)
+- [x] All errors logged with context using structured logging — *audit:* `packages/features/audio-generation/src/server/music-actions.ts:315`, `:595`
+- [x] API keys never exposed in logs — *audit:* `SUNO_API_KEY` is passed only to the provider (`packages/features/audio-generation/src/server/music-actions.ts:83`) and never logged
 - [x] TypeScript compiles without errors
 - [x] No ESLint warnings
 
@@ -1052,3 +1058,12 @@ async function handleMusicGeneration(episodeId: string, prompt: string) {
 - **Constitution**: Section 2.2 (Server Actions Pattern)
 - **Constitution**: Section 4.2 (API Keys)
 - **Constitution**: Section 5.2 (Generation Job Errors)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Creates a `generation_jobs` record; all actions track in `generation_jobs` | the live actions track status in `audio_tracks.metadata` (`packages/features/audio-generation/src/server/music-actions.ts:230`) — which is what this spec's own Functional Requirement 4 and reference code describe; these two criteria follow the replaced implementation | owner — decide whether music still needs a `generation_jobs` row |
+| Calculates progress percentage | Suno's `progress` is relayed as-is (`packages/features/audio-generation/src/server/music-actions.ts:592`) | unassigned |
+| Records cost after completion | no cost is written on completion; only an estimate at submit (`packages/features/audio-generation/src/server/music-actions.ts:286`) | unassigned |
+| Cancels pending jobs | the live music path has no cancel | unassigned |

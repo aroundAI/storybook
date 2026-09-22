@@ -1,7 +1,8 @@
 ---
 id: FILM-1005
 title: Canon Server Actions
-status: implemented
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: high
 effort: M
 dependencies: [FILM-1003, FILM-1004]
@@ -781,18 +782,25 @@ export async function validateContentInlineAction(
 
 ## Acceptance Criteria
 
-- [ ] All CRUD actions implemented with proper typing
-- [ ] Authorization checks on all actions via RLS
-- [ ] Audit logging for all mutations with context
-- [ ] State delta tracking for rollback capability
-- [ ] Input validation with comprehensive Zod schemas
-- [ ] Error handling with specific error classes
-- [ ] Optimistic locking for concurrent updates
-- [ ] Batch operations for efficient multi-record updates
-- [ ] Rollback support for failed transactions
-- [ ] **New**: Dashboard query actions for Canon Settings page
-- [ ] **New**: Canon extraction actions for Publish page
-- [ ] Unit tests for conflict detection
-- [ ] Integration tests for batch operations
+- [x] All CRUD actions implemented with proper typing — *audit:* `packages/features/episodes/src/server/canon-actions.ts:187`, `packages/features/episodes/src/server/canon-actions.ts:514`
+- [ ] Authorization checks on all actions via RLS — *audit: not met* — `commitCanonChangesAction` calls SECURITY DEFINER `commit_canon_changes`, which checks no membership (`apps/web/supabase/migrations/20260130004332_add_commit_canon_changes_function.sql:16`); KB-27, KB-17
+- [ ] Audit logging for all mutations with context — *audit: not met* — only character-state inserts write `state_deltas` (`packages/features/episodes/src/server/canon-actions.ts:349`); deletes and thread edits unrecorded; authorship forgeable (KB-17)
+- [ ] State delta tracking for rollback capability — *audit: not met* — deltas only for character states, insert error ignored (`packages/features/episodes/src/server/canon-actions.ts:349`); nothing reads `state_deltas`
+- [x] Input validation with comprehensive Zod schemas — *audit:* `packages/features/episodes/src/server/canon-actions.ts:40`
+- [ ] Error handling with specific error classes — *audit: not met* — no canon error classes exist; actions throw `Error` or `ActionRefusal` (`packages/features/episodes/src/server/canon-actions.ts:200`)
+- [x] Optimistic locking for concurrent updates — *audit:* `packages/features/episodes/src/server/canon-actions.ts:575`, `apps/web/supabase/migrations/20260129194541_add_narrative_threads_version.sql:4`
+- [x] Batch operations for efficient multi-record updates — *audit:* `packages/features/episodes/src/server/canon-actions.ts:1231`
+- [x] Rollback support for failed transactions — *audit:* `apps/web/supabase/migrations/20260130004332_add_commit_canon_changes_function.sql:5`
+- [x] **New**: Dashboard query actions for Canon Settings page — *audit:* `packages/features/episodes/src/server/canon-actions.ts:663`
+- [x] **New**: Canon extraction actions for Publish page — *audit:* `packages/features/episodes/src/server/canon-actions.ts:1013`
+- [ ] Unit tests for conflict detection — *audit: not met* — no test found
+- [ ] Integration tests for batch operations — *audit: not met* — no test found
 
+## Remaining (audit 2026-09-23)
 
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Authorization checks on all actions via RLS | `commit_canon_changes` bypasses RLS and checks no membership; `deleteImmutableEventAction` says "admin only" but any member can delete | KB-17 (delete); KB-27 (RPC) |
+| Audit logging; state deltas for rollback | Only character-state changes write a delta, with no actor; nothing reads deltas | unassigned |
+| Specific error classes | None exist | unassigned |
+| Unit and integration tests | No test imports `canon-actions.ts` | unassigned |

@@ -1,10 +1,16 @@
+---
+spec_id: FILM-901
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-901: Main Navigation
 
 ## Metadata
 - **Phase:** 9 - Integration
 - **Priority:** P2 (Post-MVP)
 - **Effort:** M (4-8 hours)
-- **Status:** DONE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was DONE)
 - **Dependencies:** All feature packages
 - **Blocks:** None
 
@@ -385,23 +391,23 @@ export function EpisodeTabs() {
 - [x] Account-level navigation shows all projects
 - [x] Project-level navigation shows episodes, assets, analytics
 - [x] Episode tabs switch between Story/Visual/Audio/Edit/Publish
-- [x] Active state correctly highlights current route
-- [ ] Badge shows pending publish count (deferred to FILM-903)
+- [ ] Active state correctly highlights current route — *audit: no longer true* — Characters and Locations test `pathname` for "character"/"location", which live in `?tab=`, so they never highlight — `apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx:460`
+- [ ] Badge shows pending publish count (deferred to FILM-903) — *audit: not met* — deferred at ship time: no nav item carries a publish count, and FILM-903 is retired
 - [x] Back button returns to projects list
-- [x] Sidebar collapsible on mobile (via existing ResponsiveLayout)
-- [x] Keyboard navigation works throughout (via Radix primitives)
+- [x] Sidebar collapsible on mobile (via existing ResponsiveLayout) — *audit:* now a `Sheet` in `MobileStudioHeader` (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:137`), the desktop sidebar being `hidden md:block` (`layout.tsx:117`); `ResponsiveLayout` went in 5f44d0e1
+- [ ] Keyboard navigation works throughout (via Radix primitives) — *audit: unverified* — needs a keyboard-only walk-through or E2E; no test found
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test `getStudioNavigation` with different params
-- [ ] Test active state detection
+- [ ] Test `getStudioNavigation` with different params — *audit: not met* — no test found; `getStudioNavigationConfig` (`apps/web/config/studio-navigation.config.tsx:101`) has no callers
+- [ ] Test active state detection — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Test navigation between sections
-- [ ] Test deep linking to episode tabs
+- [ ] Test navigation between sections — *audit: not met* — no test found
+- [x] Test deep linking to episode tabs — *audit:* `apps/e2e/tests/refusals/refusals.po.ts:209` (a direct `goto` to `audio-studio`; incidental, no tab-state assertion)
 
 ---
 
@@ -411,3 +417,9 @@ export function EpisodeTabs() {
 - Focus management on route changes
 - Skip links to main content
 - Keyboard arrow navigation in sidebar
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Active state correctly highlights current route | `studio-sidebar.tsx:460-471` mark Characters and Locations active when `pathname` includes "character"/"location"; their links are `assets?tab=character` / `assets?tab=location`, and `usePathname` carries no query string, so on the assets page neither highlights (or one does whenever the project slug contains the word). Found by reading; not run | unassigned |

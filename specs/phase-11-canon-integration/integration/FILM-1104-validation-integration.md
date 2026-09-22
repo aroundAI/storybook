@@ -1,7 +1,8 @@
 ---
 id: FILM-1104
 title: Validation Integration at Generation Checkpoints
-status: done
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: high
 effort: M
 dependencies: [FILM-1003, FILM-1102]
@@ -235,14 +236,14 @@ if (canonSettings?.enabled) {
 ## Acceptance Criteria
 
 - [x] `runValidationCheckpoint` utility created
-- [x] Story generation runs checkpoint 1 when canon enabled
-- [x] Screenplay conversion runs checkpoint 2 when canon enabled
-- [x] Shot generation runs checkpoint 3 when canon enabled
-- [x] CRITICAL violations always block generation
-- [x] HARD_FAIL violations block in strict mode only
-- [x] SOFT_FAIL violations logged as warnings
-- [x] Validation failure updates job status correctly
-- [x] Validation latency < 200ms per checkpoint
+- [ ] Story generation runs checkpoint 1 when canon enabled — *audit: no longer true* — handler checkpoint removed in d5f6dbdc; replaced by the story agent's optional `checkContinuity` tool (`packages/features/episodes/src/agent/skills/continuity-skill.ts:148`)
+- [ ] Screenplay conversion runs checkpoint 2 when canon enabled — *audit: unverified* — called at `apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:253`, but its imports reach `server-only`, which throws outside Next; likely always skipped
+- [ ] Shot generation runs checkpoint 3 when canon enabled — *audit: no longer true* — never wired: b3eaabe2 added story and screenplay checkpoints only; no shot handler calls `runValidationCheckpoint`
+- [ ] CRITICAL violations always block generation — *audit: no longer true* — screenplay runs `flexible` (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:256`), which passes everything; no CRITICAL severity exists
+- [ ] HARD_FAIL violations block in strict mode only — *audit: no longer true* — no caller passes `strict`, and the only caller swallows the throw (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:271`)
+- [ ] SOFT_FAIL violations logged as warnings — *audit: unverified* — logged at `apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:266` only if the checkpoint loads; see the import note above
+- [ ] Validation failure updates job status correctly — *audit: no longer true* — nothing updates job status on a violation: screenplay swallows it (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:271`); story checkpoint removed in d5f6dbdc
+- [ ] Validation latency < 200ms per checkpoint — *audit: unverified* — no timing test or measurement exists
 
 ---
 
@@ -320,4 +321,13 @@ describe('Validation Checkpoint', () => {
 
 ## Implementation Status
 
-**Implemented** in PR #175 — merged 2026-02-09
+**🟡 PARTIAL** (audit 2026-09-23; was **Implemented** in PR #175 — merged 2026-02-09)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Checkpoint 1 in story generation | Removed in d5f6dbdc (#213); the story agent may call `checkContinuity`, which neither blocks nor follows the canon enforcement setting | owner |
+| Checkpoint 3 in shot generation | Never built | owner |
+| Blocking on errors; strict mode | Screenplay hard-codes `flexible` and catches every throw; the project's canon `enforcement` setting is read by no generation code | unassigned |
+| Job status on validation failure | No path updates it | unassigned |

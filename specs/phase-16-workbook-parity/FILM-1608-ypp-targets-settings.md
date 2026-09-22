@@ -2,6 +2,7 @@
 spec_id: FILM-1608
 title: YPP Targets & Analytics Settings
 status: ✅ DONE
+audited: 2026-09-23
 effort: M
 dependencies: FILM-1602
 ---
@@ -221,8 +222,8 @@ otherwise read as the complete list:
 - [x] Defaults remain 4,000 watch hours and 1,000 subscribers, so no shipped number moves on deploy
 - [x] No escalation date is hardcoded anywhere in the resolver
 - [x] With an escalated threshold configured, `ypp_applicant_status = 'unknown'` resolves to the higher bar
-- [x] A channel with `joined_ypp_at` set reports as joined — `resolveYppTarget` returns `alreadyJoined`, unit-tested, and `YppProgressCard` early-returns on it. The *rendering* half is unverified in a browser because the card is mounted nowhere until FILM-1611.
-- [x] `getYppProgressAction` returns a per-channel target and a basis per metric — **verified by unit test only.** `YppProgressCard` is mounted nowhere and the action has no caller outside the package barrel, so this output reaches no screen until FILM-1611. Not ticked on the strength of reading types; not claimed to be visible either.
+- [x] A channel with `joined_ypp_at` set reports as joined — `resolveYppTarget` returns `alreadyJoined`, unit-tested, and `YppProgressCard` early-returns on it. The *rendering* half is unverified in a browser because the card is mounted nowhere until FILM-1611. — *audit:* now mounted, `packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:780`; the joined state still has no browser test
+- [x] `getYppProgressAction` returns a per-channel target and a basis per metric — **verified by unit test only.** `YppProgressCard` is mounted nowhere and the action has no caller outside the package barrel, so this output reaches no screen until FILM-1611. Not ticked on the strength of reading types; not claimed to be visible either. — *audit:* now reaches the Deep Dive tab (`packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:368`); per-channel cards asserted in `apps/e2e/tests/deep-dive/deep-dive.spec.ts:144`
 - [x] Every account and channel settings write is an upsert; clearing a value writes `null` and never deletes a row
 - [x] The channel action rejects a `connection_id` that does not belong to the caller's account — it derives `account_id` from an RLS-scoped read of the connection, so a foreign id returns no row and the upsert never runs. Proven at the database layer by pgTAP; the action path itself has no test of its own, which is the weakest claim in this list.
 - [x] `updated_at` advances on every settings write, on both tables

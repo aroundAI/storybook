@@ -1,11 +1,19 @@
+---
+spec_id: FILM-507
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-507: Voice Assignment Component
+
+> **🗑️ Retired (audit 2026-09-23).** The package `VoiceAssignmentPanel` has been mounted nowhere since `f7cdfa21` (2025-12-18); the route-local studio's own voice panel was dropped in `ae019639` (2026-01-03), and `05ec0ae9` (2026-01-03) dropped the `voice_profiles` table this spec saves to, "replaced by `character_details.elevenlabs_voice_id`". A character's voice is now picked in the character editor (`packages/features/assets/src/components/character-editor/sections/CharacterVoiceSelector.tsx`, FILM-205), and generation uses default voice settings (`packages/features/audio-generation/src/server/voice-queries.ts:44`). The component and its actions still exist unused. Kept as a record; not outstanding work.
 
 **Phase**: 5
 **Priority**: P0
 **Effort**: M (3-5 days)
 **Dependencies**: FILM-206 (character management), FILM-506 (dialogue list)
 **Blocks**: None
-**Status**: COMPLETED
+**Status**: 🗑️ RETIRED (audit 2026-09-23; was COMPLETED)
 **PR**: #TBD
 
 ---

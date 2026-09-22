@@ -2,6 +2,7 @@
 spec_id: FILM-1503
 title: Historical Backfill & Scheduled-Reports Cron Wiring
 status: ✅ DONE
+audited: 2026-09-23
 effort: M
 dependencies: FILM-1501, FILM-1502
 ---
@@ -48,11 +49,11 @@ Trigger: `apps/web/app/api/analytics/backfill/route.ts` — `CRON_SECRET`-protec
 
 ## 5. Acceptance Criteria
 
-- [ ] Backfill dry-run prints planned queries without writing
-- [ ] After backfill, per-video `min(metric_date)` matches `published_at`
-- [ ] Backfill is resumable — re-invocation skips completed publishes
-- [ ] `pnpm sst diff` shows only the new scheduled-reports cron
-- [ ] A due scheduled report is generated + emailed within an hour in deployed infra
+- [x] Backfill dry-run prints planned queries without writing — *audit:* `packages/features/content-analytics/src/server/backfill/youtube-backfill.ts:109` (logs `plannedQueries`, skips every write; dims skipped at `:91`)
+- [ ] After backfill, per-video `min(metric_date)` matches `published_at` — *audit: unverified* — depends on the rows the Analytics API returns; needs a real backfill run
+- [x] Backfill is resumable — re-invocation skips completed publishes — *audit:* `packages/features/content-analytics/src/server/backfill/youtube-backfill.ts:207` (pending predicate; completion mark at `:298`)
+- [ ] `pnpm sst diff` shows only the new scheduled-reports cron — *audit: unverified* — a ship-time diff; the cron exists (`sst.config.ts:1306`); a diff needs AWS credentials
+- [ ] A due scheduled report is generated + emailed within an hour in deployed infra — *audit: unverified* — deployed-infra outcome; wiring present: `sst.config.ts:1306` → `apps/web/app/api/reports/scheduled/route.ts:581`
 
 ## 6. Verification
 

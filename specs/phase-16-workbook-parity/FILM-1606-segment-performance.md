@@ -2,6 +2,7 @@
 spec_id: FILM-1606
 title: Segment Performance
 status: ✅ DONE
+audited: 2026-09-23
 effort: L
 dependencies: FILM-1603, FILM-1605
 ---
@@ -233,27 +234,27 @@ interpolating caller text; `dimension` is a bound parameter used as a
 - [x] `meanCtr` is impression-weighted
 - [x] `confidence` is derived from `matureVideoCount`, not `videoCount`
 - [x] A `directional` segment renders dimmed with its n, and is not hidden
-- [x] `rpmCents` is pooled, and is absent rather than zero when revenue was not requested
-- [x] Channel-level revenue is excluded from `rpmCents` and reported as `channelLevelRevenueCentsInWindow`, named for the bound it carries
+- [x] `rpmCents` is pooled, and is absent rather than zero when revenue was not requested — *audit:* renamed `rpm`, one rate per currency, in ce1efe19 (KB-12); absent when not requested: `packages/features/content-analytics/src/server/segment-actions.ts:275`
+- [x] Channel-level revenue is excluded from `rpmCents` and reported as `channelLevelRevenueCentsInWindow`, named for the bound it carries — *audit:* now `channelLevelRevenueInWindow`, per currency (ce1efe19): `packages/features/content-analytics/src/server/segment-actions.ts:127`
 - [x] Revenue is bounded to each video's own checkpoint window, so the rate's numerator and denominator cover the same span
-- [x] Every streamed cent lands in a segment, `channelLevelRevenueCents` or `unattributedRevenueCents` — none is dropped
-- [x] A truncated membership suppresses `rpmCents` rather than understating it
+- [x] Every streamed cent lands in a segment, `channelLevelRevenueCents` or `unattributedRevenueCents` — none is dropped — *audit:* now `channelLevel` / `unattributed` per currency (ce1efe19); test `packages/features/content-analytics/__tests__/segment-revenue.test.ts:170`
+- [x] A truncated membership suppresses `rpmCents` rather than understating it — *audit:* `packages/features/content-analytics/src/server/segment-actions.ts:316`
 - [x] An account with no revenue rows yields no rate, not `$0.00 RPM` on every segment
 - [x] A revenue read that exceeds the pagination guard degrades to figures-without-a-rate rather than throwing
 - [x] `revenueStatus` gives each absence its own reason, and never reports one the code did not check
 - [x] The revenue read is chunked by year, so the pagination guard is not tripped by the window spanning the account's whole history
 - [x] A membership that exactly fills the page budget is not reported truncated
 - [x] The scope carries project **or** account, never both ANDed together
-- [x] `segmentRpmCents` delegates to `pooledRpmCents` rather than restating the arithmetic
-- [x] A segment with no revenue rows at all yields `rpmCents: null`, distinct from one whose rows sum to zero
+- [x] `segmentRpmCents` delegates to `pooledRpmCents` rather than restating the arithmetic — *audit:* now `segmentRpm` (ce1efe19), still delegating: `packages/features/content-analytics/src/lib/segment-revenue.ts:144`
+- [x] A segment with no revenue rows at all yields `rpmCents: null`, distinct from one whose rows sum to zero — *audit:* test `packages/features/content-analytics/__tests__/segment-revenue.test.ts:318`
 - [x] Revenue for a segment the aggregate trimmed is counted as unattributed, once, not attributed to a key no row carries
-- [x] `channelLevelRevenueCentsInWindow` is named for the bound it carries, and `measuredWindow` states that bound
+- [x] `channelLevelRevenueCentsInWindow` is named for the bound it carries, and `measuredWindow` states that bound — *audit:* now `channelLevelRevenueInWindow` (ce1efe19): `packages/features/content-analytics/src/server/segment-actions.ts:127,142`
 - [x] Membership pages by keyset, so a page does not re-scan the metrics history
 - [x] `getMedianByTagAction` reads through the *resolved* account, not the caller's unvalidated `accountId`
 - [x] `minVideos` gates on `matureVideoCount`, so a segment with nothing measurable is trimmed rather than rendered as zero
 - [x] A `tag` segment with no `dimension` returns every tag rather than silently none
 - [x] One `asOf` is resolved per request and passed to every query
-- [x] `attributedRevenueOnly` is surfaced wherever `rpmCents` renders
+- [x] `attributedRevenueOnly` is surfaced wherever `rpmCents` renders — *audit:* `packages/features/content-analytics/src/components/taxonomy/tag-medians-card.tsx:189`
 - [x] Revenue is read through `forEachAccountRevenueRow` and is never collected whole for a long window
 - [x] `getMedianByTagAction` returns the new shape and keeps both existing sample gates
 - [x] `queryMedianByTag` is deleted, not left as a permanent wrapper — with `TagMedianRow`, which had no other producer

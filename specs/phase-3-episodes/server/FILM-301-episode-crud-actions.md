@@ -1,3 +1,9 @@
+---
+spec_id: FILM-301
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-301: Episode CRUD Server Actions
 
 **Phase**: 3
@@ -693,29 +699,29 @@ None (new feature)
 
 ### Functional
 
-- [ ] `createEpisodeAction` successfully creates episode with valid data
-- [ ] `createEpisodeAction` auto-assigns episode number if not provided
-- [ ] `createEpisodeAction` respects RLS (cannot create for inaccessible project)
-- [ ] `getEpisodeWithShotsAction` returns episode with all related shots
-- [ ] `getEpisodeWithShotsAction` includes season information
-- [ ] `updateEpisodeStatusAction` enforces valid status transitions
-- [ ] `updateEpisodeStatusAction` throws error on version mismatch
-- [ ] `updateEpisodeStatusAction` increments version on success
-- [ ] `listProjectEpisodesAction` returns all non-deleted episodes
-- [ ] `listProjectEpisodesAction` filters by season and status
-- [ ] `listProjectEpisodesAction` respects pagination
-- [ ] `updateEpisodeAction` updates only provided fields
-- [ ] `updateEpisodeAction` validates version for optimistic locking
-- [ ] `deleteEpisodeAction` soft deletes episode and all shots
-- [ ] All actions enforce authentication
+- [x] `createEpisodeAction` successfully creates episode with valid data — *audit:* `packages/features/episodes/src/server/actions.ts:95`
+- [x] `createEpisodeAction` auto-assigns episode number if not provided — *audit:* `packages/features/episodes/src/server/actions.ts:88`
+- [ ] `createEpisodeAction` respects RLS (cannot create for inaccessible project) — *audit: unverified* — policy `episodes_create` exists (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:667`); no pgTAP test exercises it
+- [x] `getEpisodeWithShotsAction` returns episode with all related shots — *audit:* `packages/features/episodes/src/server/actions.ts:560`
+- [ ] `getEpisodeWithShotsAction` includes season information — *audit: not met* — `packages/features/episodes/src/server/actions.ts:649` reads `season?.[0]`, but PostgREST returns this many-to-one embed as an object, so season is always null
+- [x] `updateEpisodeStatusAction` enforces valid status transitions — *audit:* `packages/features/episodes/src/server/actions.ts:713`
+- [x] `updateEpisodeStatusAction` throws error on version mismatch — *audit:* `packages/features/episodes/src/server/actions.ts:707`
+- [x] `updateEpisodeStatusAction` increments version on success — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:113`
+- [x] `listProjectEpisodesAction` returns all non-deleted episodes — *audit:* `packages/features/episodes/src/server/actions.ts:816`
+- [x] `listProjectEpisodesAction` filters by season and status — *audit:* `packages/features/episodes/src/server/actions.ts:821`
+- [x] `listProjectEpisodesAction` respects pagination — *audit:* `packages/features/episodes/src/server/actions.ts:818`, `packages/features/episodes/src/lib/schemas.ts:93`
+- [x] `updateEpisodeAction` updates only provided fields — *audit:* `packages/features/episodes/src/server/actions.ts:899`
+- [x] `updateEpisodeAction` validates version for optimistic locking — *audit:* `packages/features/episodes/src/server/actions.ts:894`
+- [ ] `deleteEpisodeAction` soft deletes episode and all shots — *audit: not met* — its shots are hard-deleted (`packages/features/episodes/src/server/actions.ts:1046`), although `shots.deleted_at` exists since migration `20251209061319`
+- [x] All actions enforce authentication — *audit:* `packages/features/episodes/src/server/actions.ts:60`, `packages/next/src/actions/index.ts:43`
 
 ### Non-Functional
 
-- [ ] All actions complete within 3 seconds
-- [ ] All inputs validated with Zod schemas
-- [ ] All database errors properly caught and thrown
-- [ ] TypeScript compiles without errors
-- [ ] No ESLint warnings
+- [ ] All actions complete within 3 seconds — *audit: unverified* — runtime timing; needs a timed run against a seeded database
+- [x] All inputs validated with Zod schemas — *audit:* `packages/features/episodes/src/server/actions.ts:183` (a `schema` on every action)
+- [x] All database errors properly caught and thrown — *audit:* `packages/features/episodes/src/server/actions.ts:743`
+- [x] TypeScript compiles without errors — *audit:* `tsc --noEmit` in `packages/features/episodes` at 3017b6f9: no errors in the package
+- [ ] No ESLint warnings — *audit: unverified* — linting is outside the audit rules; settle with `pnpm --filter @kit/episodes lint`
 
 ---
 
@@ -1000,3 +1006,10 @@ queryClient.invalidateQueries({ queryKey: ['episodes', projectId] });
 - **Constitution**: Section 4.1 (RLS Policies)
 - **Constitution**: Section 5 (Error Handling)
 - **Next.js Actions**: https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| `getEpisodeWithShotsAction` includes season information | `packages/features/episodes/src/server/actions.ts:649` reads `season?.[0]` from a many-to-one embed that PostgREST returns as an object, so `season` is always null; the action has no callers today | unassigned |
+| `deleteEpisodeAction` soft-deletes the shots | shots are hard-deleted (`packages/features/episodes/src/server/actions.ts:1046`) although `shots.deleted_at` exists (`apps/web/supabase/migrations/20251209061319_add-missing-shots-columns.sql:19`) | unassigned |

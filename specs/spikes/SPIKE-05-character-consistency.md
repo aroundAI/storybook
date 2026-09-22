@@ -1,3 +1,9 @@
+---
+spec_id: SPIKE-05
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # SPIKE-05: Character Consistency in Kling Video Generation
 
 ## Metadata
@@ -227,14 +233,14 @@ Evaluate if action complexity affects consistency
 
 ## Success Criteria
 
-- [ ] 100+ video shots generated with character consistency testing
-- [ ] Quantified consistency rates for different scenarios
-- [ ] Clear documentation of what works and what doesn't
-- [ ] Best practice guide for character prompts
-- [ ] Examples of successful character consistency (5+ shot sequences)
-- [ ] Failure patterns identified and documented
-- [ ] Recommendation for implementation approach
-- [ ] User-facing guidelines drafted
+- [ ] ~~100+ video shots generated with character consistency testing~~ — *audit: retired* — empirical testing was deferred to implementation (line 20 note); Kling generation went in 5b88db3a
+- [ ] ~~Quantified consistency rates for different scenarios~~ — *audit: retired* — ratings are qualitative (`docs/character-consistency-report.md:9`); testing deferred, Kling removed in 5b88db3a
+- [x] Clear documentation of what works and what doesn't — *audit:* `docs/character-consistency-report.md:210`
+- [x] Best practice guide for character prompts — *audit:* `docs/character-prompt-guide.md:29`
+- [ ] ~~Examples of successful character consistency (5+ shot sequences)~~ — *audit: retired* — `docs/examples/character-consistency/` was never created; Kling generation removed in 5b88db3a
+- [x] Failure patterns identified and documented — *audit:* `docs/character-consistency-report.md:157`
+- [x] Recommendation for implementation approach — *audit:* `docs/character-consistency-report.md:293`
+- [ ] ~~User-facing guidelines drafted~~ — *audit: retired* — one draft UI message only (`docs/character-consistency-report.md:230`); `docs/user-guides/character-creation.md` never created; Kling removed 5b88db3a
 
 ## Deliverables
 

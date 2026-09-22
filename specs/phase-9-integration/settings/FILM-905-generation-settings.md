@@ -1,4 +1,12 @@
+---
+spec_id: FILM-905
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-905: Generation Settings
+
+> **🗑️ Retired (audit 2026-09-23).** The `/settings/generation` route, `generation-settings-form.tsx`, `generation-settings.schema.ts` and `settings-actions.ts` in `@kit/film-studio` were deleted by the owner in 5f44d0e1 (2026-02-19); the video generation they configured (provider, quality, aspect ratio, budget, concurrency, retries) was retired in 5b88db3a. Nothing replaces it: no user-facing settings for generation defaults, budgets or job notifications exist, and the surviving `accounts.monthly_budget_cents` column is only displayed on the admin account page (`apps/web/app/admin/accounts/[id]/page.tsx:42`). Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 9 - Integration

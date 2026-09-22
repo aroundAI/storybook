@@ -1,14 +1,15 @@
 ---
 phase: 11
 title: Canon Management Integration & Content Type Taxonomy
-status: done
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: critical
 estimated_effort: 3-4 weeks
 ---
 
 # Phase 11: Canon Management Integration & Content Type Taxonomy
 
-> **Status**: 🔴 NOT STARTED - Blocking production usage  
+> **Status**: 🟡 PARTIAL (audit 2026-09-23) — built across PRs #175–#188, but canon stopped reaching story generation in #213 (FILM-1102, FILM-1104) and most specs have open criteria. The executive summary below describes the system *before* this phase. Current statuses: [INDEX.md](../INDEX.md).  
 > **Dependencies**: Phase 10 (Canon Management System) - ✅ Complete
 
 ## Executive Summary
@@ -579,31 +580,31 @@ CREATE INDEX idx_news_articles_published ON news_articles(published_at DESC);
 
 ### Phase 11.1 (Core Integration)
 
-- [ ] Story generation injects memory context from `buildMemoryContext()`
-- [ ] Canon role prompts registered in Lambda prompt registry
-- [ ] `extractCanonChangesAction` uses LLM instead of regex
-- [ ] Validator runs at checkpoints (plot skeleton, scene blocks, dialogue)
+- [ ] Story generation injects memory context from `buildMemoryContext()` — *audit: not met* — removed in d5f6dbdc; the story prompt receives `canon_context: ''` (`packages/features/episodes/src/agent/skills/story-director-skill.ts:193`)
+- [ ] ~~Canon role prompts registered in Lambda prompt registry~~ — *audit: retired* — role prompts deleted in 2f23eb4e (#220); FILM-1101 retired
+- [x] `extractCanonChangesAction` uses LLM instead of regex — *audit:* `packages/features/episodes/src/server/canon-actions.ts:1103`
+- [ ] Validator runs at checkpoints (plot skeleton, scene blocks, dialogue) — *audit: not met* — dialogue checkpoint never built; plot skeleton became an agent tool in d5f6dbdc; only scene blocks remain
 
 ### Phase 11.2 (Content Types)
 
-- [ ] Projects have `content_type` column with 6 values
-- [ ] Each content type has configurable memory horizon
-- [ ] Movie sequels can link to parent movies
-- [ ] Act context bridge works for movie generation
+- [ ] ~~Projects have `content_type` column with 6 values~~ — *audit: retired* — superseded by FILM-1110: type is `projects.metadata.projectType`, 7 values (`packages/features/film-studio-schemas/src/project.ts:6`)
+- [ ] Each content type has configurable memory horizon — *audit: not met* — horizons defined per type (`packages/features/episodes/src/lib/canon/content-type-configs.ts:63`), but no caller passes `projectType`; 10 always applies
+- [ ] Movie sequels can link to parent movies — *audit: not met* — `linkAsSequel` (`packages/features/episodes/src/lib/canon/sequel-system.ts:93`) has no caller and no UI
+- [ ] Act context bridge works for movie generation — *audit: not met* — `act_context_bridges` is never written or read; the bridge functions have no caller
 
 ### Phase 11.3 (Fact Management)
 
-- [ ] `verified_facts` table created with RLS
-- [ ] UI for adding/searching/verifying facts
-- [ ] Researcher and Fact-Checker roles produce valid output
-- [ ] Generated content includes inline citations when type = DOCUMENTARY
+- [x] `verified_facts` table created with RLS — *audit:* `apps/web/supabase/migrations/20260211100000_create_verified_facts.sql:102`
+- [ ] UI for adding/searching/verifying facts — *audit: not met* — add and search exist (`packages/features/episodes/src/components/facts/fact-library.tsx:66`); verifying is always refused by RLS — KB-18
+- [ ] Researcher and Fact-Checker roles produce valid output — *audit: unverified* — LLM output; tests cover only `shouldBlockContent` (`packages/features/episodes/src/lib/__tests__/fact-checker.test.ts:20`)
+- [ ] Generated content includes inline citations when type = DOCUMENTARY — *audit: unverified* — LLM output; no test or recorded run checks citations
 
 ### Phase 11.4 (News System)
 
-- [ ] `news_sources` and `news_articles` tables created
-- [ ] At least 3 news sources configured (e.g., Reuters, AP, BBC)
-- [ ] News aggregation produces timestamped, attributed content
-- [ ] Generated news includes source attribution
+- [ ] ~~`news_sources` and `news_articles` tables created~~ — *audit: retired* — superseded by unified `external_sources`/`external_content` (FILM-1135, `apps/web/supabase/migrations/20260211200000_create_external_context_tables.sql:9`)
+- [x] At least 3 news sources configured (e.g., Reuters, AP, BBC) — *audit:* `apps/web/supabase/migrations/20260211200003_seed_news_sources.sql:9`
+- [ ] News aggregation produces timestamped, attributed content — *audit: unverified* — vendor output (NewsAPI); no test with a recorded response
+- [ ] Generated news includes source attribution — *audit: unverified* — LLM output; no test or recorded run checks attribution
 
 ---
 

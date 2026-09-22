@@ -1,3 +1,9 @@
+---
+spec_id: FILM-101m
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-101 Shared Resources Table
 
 ## Metadata
@@ -106,25 +112,25 @@ VALUES (
 | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
 
 ## Acceptance Criteria
-- [ ] Table created with all columns
-- [ ] Type enum constraint enforced
-- [ ] GIN index on tags array
-- [ ] is_system flag differentiates user vs system resources
-- [ ] Can query system resources across all accounts
+- [x] Table created with all columns — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:254`
+- [x] Type enum constraint enforced — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:264`
+- [x] GIN index on tags array — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:275`
+- [x] is_system flag differentiates user vs system resources — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:262`
+- [ ] Can query system resources across all accounts — *audit: unverified* — needs a pgTAP test; the read policy admits `is_system` rows (`apps/web/supabase/migrations/20251210201500_fix-account-rls-helpers.sql:190`)
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Insert resource with valid type succeeds
-- [ ] Insert resource with invalid type fails
-- [ ] Insert with is_system = TRUE succeeds
-- [ ] Tags array stores and retrieves correctly
+- [ ] Insert resource with valid type succeeds — *audit: not met* — no test found
+- [ ] Insert resource with invalid type fails — *audit: not met* — no test found
+- [ ] Insert with is_system = TRUE succeeds — *audit: not met* — no test found
+- [ ] Tags array stores and retrieves correctly — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Query all SFX for account
-- [ ] Query system resources (is_system = TRUE)
-- [ ] Search by tags (GIN index)
-- [ ] Filter by type and tags combined
+- [ ] Query all SFX for account — *audit: not met* — no test found
+- [ ] Query system resources (is_system = TRUE) — *audit: not met* — no test found
+- [ ] Search by tags (GIN index) — *audit: not met* — no test found
+- [ ] Filter by type and tags combined — *audit: not met* — no test found
 
 ### Query Examples
 ```sql
@@ -146,8 +152,8 @@ WHERE account_id = 'account-123'
 ```
 
 ### Edge Cases
-- [ ] Resource with no file_url (preset/config only)
-- [ ] Empty tags array
-- [ ] Very long tags array (100+ tags)
-- [ ] System resource accessed by multiple accounts
-- [ ] User trying to set is_system = TRUE (prevented at app level)
+- [ ] Resource with no file_url (preset/config only) — *audit: not met* — no test found
+- [ ] Empty tags array — *audit: not met* — no test found
+- [ ] Very long tags array (100+ tags) — *audit: not met* — no test found
+- [ ] System resource accessed by multiple accounts — *audit: not met* — no test found
+- [ ] User trying to set is_system = TRUE (prevented at app level) — *audit: not met* — no test found; the insert policy refuses it (`apps/web/supabase/migrations/20251210201500_fix-account-rls-helpers.sql:196`)

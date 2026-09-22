@@ -1,10 +1,16 @@
+---
+spec_id: FILM-101e
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-101 Character Details Table
 
 ## Metadata
 - **Phase:** 1
 - **Priority:** P0
 - **Effort:** XS
-- **Status:** ✅ COMPLETE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ COMPLETE)
 - **Completed:** 2025-12-05
 - **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
 - **Dependencies:** FILM-101 (assets-table)
@@ -129,29 +135,29 @@ VALUES (
 | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
 
 ## Acceptance Criteria
-- [ ] Table created successfully with all columns
-- [ ] Foreign key to assets with CASCADE delete
-- [ ] Foreign key to voice_asset_id with SET NULL delete
-- [ ] Check constraint ensures asset is type 'character'
-- [ ] GIN index on physical_attributes JSONB
-- [ ] Can store multiple reference image URLs in array
-- [ ] Deleting character asset cascades to delete character_details
+- [x] Table created successfully with all columns — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:420`; `voice_asset_id` is now `elevenlabs_voice_id` text (`apps/web/supabase/migrations/20251225160000_change_voice_id_to_text.sql:18`)
+- [x] Foreign key to assets with CASCADE delete — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:421`
+- [ ] ~~Foreign key to voice_asset_id with SET NULL delete~~ — *audit: retired* — FK dropped and column retyped to an ElevenLabs voice ID in 30ed2083 (`apps/web/supabase/migrations/20251225160000_change_voice_id_to_text.sql:8`)
+- [ ] Check constraint ensures asset is type 'character' — *audit: not met* — no check or trigger exists (a CHECK cannot hold the spec's subquery); the insert policy ignores type (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:1104`)
+- [x] GIN index on physical_attributes JSONB — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:438`
+- [x] Can store multiple reference image URLs in array — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:425`
+- [x] Deleting character asset cascades to delete character_details — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:421`
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Insert character_details with valid asset_id (type='character') succeeds
-- [ ] Insert character_details with non-character asset_id fails (check constraint)
-- [ ] Insert character_details with NULL physical_attributes succeeds
-- [ ] Insert character_details with valid JSONB physical_attributes succeeds
-- [ ] Insert character_details with invalid JSONB fails
-- [ ] Array of reference_images stores and retrieves correctly
+- [ ] Insert character_details with valid asset_id (type='character') succeeds — *audit: not met* — no test found
+- [ ] Insert character_details with non-character asset_id fails (check constraint) — *audit: not met* — no test found; the constraint it would test does not exist
+- [ ] Insert character_details with NULL physical_attributes succeeds — *audit: not met* — no test found
+- [ ] Insert character_details with valid JSONB physical_attributes succeeds — *audit: not met* — no test found
+- [ ] Insert character_details with invalid JSONB fails — *audit: not met* — no test found
+- [ ] Array of reference_images stores and retrieves correctly — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Deleting character asset cascades to delete character_details
-- [ ] Deleting voice asset sets voice_asset_id to NULL
-- [ ] Can query characters by physical attributes (e.g., hair color)
-- [ ] GIN index improves JSONB query performance
+- [ ] Deleting character asset cascades to delete character_details — *audit: not met* — no test found
+- [ ] ~~Deleting voice asset sets voice_asset_id to NULL~~ — *audit: retired* — the `voice_asset_id` FK was dropped in 30ed2083
+- [ ] Can query characters by physical attributes (e.g., hair color) — *audit: not met* — no test found
+- [ ] GIN index improves JSONB query performance — *audit: not met* — no test found
 
 ### JSONB Query Examples
 ```sql
@@ -169,10 +175,16 @@ WHERE cd.physical_attributes @> '{"distinguishingFeatures": ["glasses"]}';
 ```
 
 ### Edge Cases
-- [ ] Character with no physical_attributes (NULL)
-- [ ] Character with minimal physical_attributes (just age)
-- [ ] Character with maximal physical_attributes (all fields populated)
-- [ ] Element prompt over 5000 characters
-- [ ] Empty reference_images array
-- [ ] Reference_images array with 20+ URLs
-- [ ] Voice_asset_id pointing to non-voice asset (should be prevented at app level)
+- [ ] Character with no physical_attributes (NULL) — *audit: not met* — no test found
+- [ ] Character with minimal physical_attributes (just age) — *audit: not met* — no test found
+- [ ] Character with maximal physical_attributes (all fields populated) — *audit: not met* — no test found
+- [ ] Element prompt over 5000 characters — *audit: not met* — no test found
+- [ ] Empty reference_images array — *audit: not met* — no test found
+- [ ] Reference_images array with 20+ URLs — *audit: not met* — no test found
+- [ ] ~~Voice_asset_id pointing to non-voice asset (should be prevented at app level)~~ — *audit: retired* — the column now holds an ElevenLabs voice ID, not an asset reference (30ed2083)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Check constraint: asset is type 'character' | Never created: Postgres rejects a subquery in a CHECK, and no trigger or policy tests the type (`git log -S` finds none). Only the app create path sets it (`packages/features/assets/src/lib/server/character.mutations.ts:58`) | unassigned |

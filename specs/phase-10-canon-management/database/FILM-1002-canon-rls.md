@@ -1,7 +1,8 @@
 ---
 id: FILM-1002
 title: Canon Management RLS Policies
-status: implemented
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: high
 effort: S
 dependencies: [FILM-1001]
@@ -396,11 +397,18 @@ INSERT INTO public.immutable_events (...) VALUES (...);
 
 ## Acceptance Criteria
 
-- [ ] All 6 tables have RLS enabled
-- [ ] Appropriate GRANT statements for each table
-- [ ] Append-only tables restricted to SELECT/INSERT
-- [ ] Policies use existing `has_role_on_account` function
-- [ ] No cross-project data leakage possible
-- [ ] Attack vector analysis completed and all vectors mitigated
-- [ ] Test cases documented for security validation
+- [x] All 6 tables have RLS enabled — *audit:* `apps/web/supabase/migrations/20260128225704_canon_management.sql:227`
+- [ ] Appropriate GRANT statements for each table — *audit: not met* — `immutable_events` grants UPDATE and DELETE to every member (`apps/web/supabase/migrations/20260128225704_canon_management.sql:228`) — KB-17
+- [ ] Append-only tables restricted to SELECT/INSERT — *audit: not met* — DELETE granted on both (`apps/web/supabase/migrations/20260607183439_grant_canon_delete_permissions.sql:6`); only the missing DELETE policy still blocks it
+- [x] Policies use existing `has_role_on_account` function — *audit:* `apps/web/supabase/migrations/20260128225704_canon_management.sql:235`
+- [ ] No cross-project data leakage possible — *audit: unverified* — every read policy checks `has_role_on_account`; no pgTAP cross-account test exists
+- [ ] Attack vector analysis completed and all vectors mitigated — *audit: not met* — project_id injection open via `commit_canon_changes` (SECURITY DEFINER, no membership check, `apps/web/supabase/migrations/20260130004332_add_commit_canon_changes_function.sql:16`; reproduced as KB-27); state modification open (KB-17)
+- [x] Test cases documented for security validation — *audit:* `specs/phase-10-canon-management/database/FILM-1002-canon-rls.md:313`
 
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Appropriate GRANT statements | `immutable_events` is granted UPDATE and DELETE under a `FOR ALL` policy with no `WITH CHECK`: any member can rewrite, delete or re-author an event | KB-17 |
+| Append-only tables restricted to SELECT/INSERT | `20260607183439_grant_canon_delete_permissions.sql` granted DELETE on `character_states` and `state_deltas`; RLS alone now blocks deletes | unassigned |
+| All attack vectors mitigated | `commit_canon_changes` is SECURITY DEFINER, executable by `authenticated`, and checks no membership: a caller can insert events into, and overwrite `episodes.metadata` of, any project | KB-27 |

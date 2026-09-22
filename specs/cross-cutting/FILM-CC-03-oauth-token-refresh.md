@@ -1,3 +1,9 @@
+---
+spec_id: FILM-CC-03
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-CC-03: OAuth Token Refresh
 
 ## Metadata
@@ -6,7 +12,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-101j (Platform Connections Table)
 - **Blocks:** FILM-705, FILM-706, FILM-707 (OAuth flows), FILM-701-704 (Publishing providers)
-- **Status:** ✅ Complete
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ Complete)
 - **Implemented:** 2025-12-05
 - **PR:** [#6](https://github.com/aroundAI/storybook/pull/6)
 
@@ -375,14 +381,14 @@ export async function GET(request: NextRequest) {
 ## Acceptance Criteria
 
 - [x] Valid tokens are returned without refresh
-- [x] Tokens expiring within 5 minutes are proactively refreshed
-- [x] Expired tokens trigger refresh before API call
-- [x] Failed refresh marks connection as inactive
-- [x] Failed refresh sends user notification
-- [x] Notification includes reconnect link
-- [x] Background job refreshes tokens expiring within 1 hour
+- [ ] Tokens expiring within 5 minutes are proactively refreshed — *audit: no longer true* — X connections (added in `12bbe35b`) reach `Unknown platform` and are deactivated instead (KB-15)
+- [ ] Expired tokens trigger refresh before API call — *audit: no longer true* — not for X (KB-15); the publish lambda (added in `16cbeb88`) refuses an expired token without refreshing (`apps/web/lambda/publish-worker/index.ts:175`)
+- [ ] Failed refresh marks connection as inactive — *audit: unverified* — needs a unit test; the failure path's `markConnectionInactive` (`packages/features/publishing/src/lib/token-refresh.ts:242`) is untested
+- [ ] Failed refresh sends user notification — *audit: not met* — `sendReauthNotification` is a stub that only logs (`packages/features/publishing/src/lib/token-refresh.ts:576`)
+- [ ] Notification includes reconnect link — *audit: not met* — the link exists only in a commented-out call (`packages/features/publishing/src/lib/token-refresh.ts:598`)
+- [ ] Background job refreshes tokens expiring within 1 hour — *audit: no longer true* — scheduled every 30 minutes (`sst.config.ts:1389`) but cannot refresh X (KB-15)
 - [x] Cron endpoint is protected by secret
-- [x] All refresh attempts are logged
+- [ ] All refresh attempts are logged — *audit: not met* — a successful on-demand refresh returns unlogged (`packages/features/publishing/src/lib/token-refresh.ts:224`); only failures and the cron job log
 
 ---
 
@@ -390,16 +396,16 @@ export async function GET(request: NextRequest) {
 
 ### Unit Tests
 - [x] Test valid token returns immediately
-- [x] Test near-expiry token triggers refresh
+- [ ] Test near-expiry token triggers refresh — *audit: not met* — no test found; `packages/features/publishing/__tests__/token-refresh.test.ts:114` checks only the 5-minute constant
 - [x] Test expired token triggers refresh
 - [x] Test successful refresh updates database
-- [x] Test failed refresh marks connection inactive
-- [x] Test notification sent on failure
+- [ ] Test failed refresh marks connection inactive — *audit: not met* — no test found
+- [ ] Test notification sent on failure — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Test full refresh flow with mocked OAuth endpoints
-- [ ] Test cron job processes multiple connections
-- [ ] Test concurrent refresh requests (no race conditions)
+- [x] Test full refresh flow with mocked OAuth endpoints — *audit:* `packages/features/publishing/__tests__/token-refresh.test.ts:332`
+- [ ] Test cron job processes multiple connections — *audit: not met* — no test found
+- [ ] Test concurrent refresh requests (no race conditions) — *audit: not met* — no test found
 
 ---
 
@@ -447,3 +453,14 @@ export async function GET(request: NextRequest) {
 
 - [ ] Should we implement retry with exponential backoff for refresh failures? (non-blocking)
 - [ ] Should we support per-connection refresh token rotation? (non-blocking)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Tokens expiring within 5 minutes are proactively refreshed | `Platform` omits X, so `connection.platform as Platform` reaches `default: throw` (`packages/features/publishing/src/lib/token-refresh.ts:317`) and the connection is deactivated rather than refreshed | KB-15 |
+| Expired tokens trigger refresh before API call | Same X gap; and the publish lambda's own `ensureValidToken` returns "Token expired" without refreshing (`apps/web/lambda/publish-worker/index.ts:175`) | KB-15 |
+| Failed refresh sends user notification | `sendReauthNotification` only logs; the `@kit/notifications` call is a TODO (`packages/features/publishing/src/lib/token-refresh.ts:576`) | unassigned |
+| Notification includes reconnect link | The reconnect URL is inside the commented-out call (`packages/features/publishing/src/lib/token-refresh.ts:598`) | unassigned |
+| Background job refreshes tokens expiring within 1 hour | The 30-minute job (`sst.config.ts:1389` → `/api/cron/token-refresh`) calls the same refresh, so X fails | KB-15 |
+| All refresh attempts are logged | A successful on-demand refresh returns without a log line (`packages/features/publishing/src/lib/token-refresh.ts:224`) | unassigned |

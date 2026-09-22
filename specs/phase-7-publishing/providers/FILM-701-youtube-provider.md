@@ -1,3 +1,9 @@
+---
+spec_id: FILM-701
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-701: YouTube Provider
 
 ## Metadata
@@ -306,28 +312,28 @@ export class YouTubeProvider {
 
 ## Acceptance Criteria
 
-- [ ] Videos upload successfully with progress reporting
-- [ ] Metadata (title, description, tags) is set correctly
-- [ ] Custom thumbnails can be uploaded
-- [ ] Videos can be added to playlists
-- [ ] Scheduled publishing works
-- [ ] Channel info can be retrieved
-- [ ] Playlists can be listed and created
-- [ ] Categories can be fetched
+- [x] Videos upload successfully with progress reporting — *audit:* `packages/features/publishing/src/providers/youtube/youtube-provider.ts:77`; upload run through the real SDK against a local stand-in in `packages/features/publishing/__tests__/youtube-root-url.test.ts:88`
+- [x] Metadata (title, description, tags) is set correctly — *audit:* `packages/features/publishing/src/providers/youtube/youtube-provider.ts:51`
+- [x] Custom thumbnails can be uploaded — *audit:* `packages/features/publishing/src/providers/youtube/youtube-provider.ts:126`; asserted in `packages/features/publishing/__tests__/youtube-root-url.test.ts:88`
+- [x] Videos can be added to playlists — *audit:* `packages/features/publishing/src/providers/youtube/youtube-provider.ts:148`
+- [ ] Scheduled publishing works — *audit: unverified* — provider no longer sets `publishAt` (`packages/features/publishing/src/providers/youtube/youtube-provider.ts:60`); due rows go cron → `apps/web/lambda/scheduled-publish` → publish-worker; no test drives one
+- [x] Channel info can be retrieved — *audit:* `packages/features/publishing/src/providers/youtube/youtube-provider.ts:166`
+- [x] Playlists can be listed and created — *audit:* `packages/features/publishing/src/providers/youtube/youtube-provider.ts:236`, `packages/features/publishing/src/providers/youtube/youtube-provider.ts:253`
+- [x] Categories can be fetched — *audit:* `packages/features/publishing/src/providers/youtube/youtube-provider.ts:276`
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test metadata formatting
-- [ ] Test category ID validation
-- [ ] Test privacy status mapping
+- [ ] Test metadata formatting — *audit: not met* — no test found
+- [ ] Test category ID validation — *audit: not met* — no test found
+- [ ] Test privacy status mapping — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Test upload with mocked YouTube API
-- [ ] Test thumbnail upload
-- [ ] Test playlist operations
+- [x] Test upload with mocked YouTube API — *audit:* `packages/features/publishing/__tests__/youtube-root-url.test.ts:88`
+- [x] Test thumbnail upload — *audit:* `packages/features/publishing/__tests__/youtube-root-url.test.ts:88`
+- [ ] Test playlist operations — *audit: not met* — no test found
 
 ---
 

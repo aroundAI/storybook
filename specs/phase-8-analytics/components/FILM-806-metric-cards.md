@@ -1,3 +1,9 @@
+---
+spec_id: FILM-806
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-806: Metric Cards
 
 ## Metadata
@@ -476,9 +482,9 @@ export type { MetricConfig } from './metric-cards';
 - [x] CompactMetric applies red color for negative change
 
 ### Visual Tests
-- [ ] Responsive layout at all breakpoints
-- [ ] Loading state skeleton
-- [ ] Trend colors correct
+- [ ] Responsive layout at all breakpoints — *audit: not met* — no test found
+- [ ] Loading state skeleton — *audit: not met* — no visual test found; DOM-only coverage at `packages/features/content-analytics/src/components/__tests__/metric-cards.test.tsx:89`
+- [ ] Trend colors correct — *audit: not met* — no visual test found; class assertions for `CompactMetric` only (`metric-cards.test.tsx:246`)
 
 ---
 

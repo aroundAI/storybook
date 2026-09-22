@@ -1,3 +1,9 @@
+---
+spec_id: FILM-809
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-809: Export Reports
 
 ## Metadata
@@ -6,7 +12,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-805 (Analytics Dashboard), FILM-804 (Analytics Sync)
 - **Blocks:** None
-- **Status:** ✅ DONE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
 
 ---
 
@@ -511,13 +517,13 @@ async function generatePDF(analytics: any[], config: ReportConfig): Promise<Buff
 
 ## Acceptance Criteria
 
-- [x] Generate PDF reports with charts and branding
+- [ ] Generate PDF reports with charts and branding — *audit: no longer true* — branding (name, logo) yes; no charts, only tables, since b03fd102 — `packages/features/content-analytics/src/lib/pdf-generator.tsx:248`
 - [x] Generate CSV exports with raw data
 - [x] Date range presets (7 days, 30 days, month, quarter, custom)
 - [x] Select specific metrics to include
 - [x] Filter by platform
 - [x] Download generated reports
-- [ ] View report history (deferred - using temporary signed URLs instead)
+- [ ] View report history (deferred - using temporary signed URLs instead) — *audit: not met* — deferred at ship time: report history; no table or UI exists, reports are signed URLs (`packages/features/content-analytics/src/server/report-actions.ts:352`)
 - [x] Schedule recurring reports (weekly/monthly)
 
 ---
@@ -525,14 +531,14 @@ async function generatePDF(analytics: any[], config: ReportConfig): Promise<Buff
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test CSV generation format
-- [ ] Test date range calculation
-- [ ] Test metric aggregation
+- [ ] Test CSV generation format — *audit: not met* — no test of `generateCSV`; only the later raw export's CSV is tested (`packages/features/content-analytics/__tests__/raw-export-generator.test.ts:40`)
+- [ ] Test date range calculation — *audit: not met* — no test found
+- [ ] Test metric aggregation — *audit: not met* — no test found (`calculateSummary`, `report-actions.ts:287`)
 
 ### Integration Tests
-- [ ] Test full report generation workflow
-- [ ] Test PDF generation with charts
-- [ ] Test scheduled report execution
+- [x] Test full report generation workflow — *audit:* `apps/e2e/tests/analytics/raw-export-evidence.spec.ts:100` (scheduled route → emailed signed link → CSV; gated by `CLICKHOUSE_EVIDENCE=1`)
+- [ ] Test PDF generation with charts — *audit: not met* — no test found
+- [x] Test scheduled report execution — *audit:* `apps/e2e/tests/analytics/raw-export-evidence.spec.ts:100` (asserts `last_run_status` and the delivered CSV)
 
 ---
 
@@ -543,3 +549,9 @@ async function generatePDF(analytics: any[], config: ReportConfig): Promise<Buff
 | No data in range | Show message, suggest different range |
 | PDF generation failed | Fall back to CSV, show error |
 | Download expired | Regenerate report |
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| PDF reports with charts | `pdf-generator.tsx` renders branding and three tables (metrics, platform breakdown, top content) with `@react-pdf/renderer`; no chart has ever been drawn (first version b03fd102 has none) | unassigned |

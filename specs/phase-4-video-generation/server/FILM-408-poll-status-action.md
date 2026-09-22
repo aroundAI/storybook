@@ -1,6 +1,14 @@
+---
+spec_id: FILM-408
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-408: Poll Video Status Action
 
-**Status**: ✅ DONE
+> **🗑️ Retired (audit 2026-09-23).** `packages/features/video-generation/src/server/actions/poll-status-action.ts` was deleted in `5b88db3a` (2026-01-15), the commit that removed `packages/features/video-generation`; the owner retired in-app video generation on purpose. Nothing replaces it: no video job is started in the app, so there is nothing to poll. Kept as a record; not outstanding work.
+
+**Status**: 🗑️ RETIRED (audit 2026-09-23; was ✅ DONE)
 **Phase**: 4
 **Priority**: P0
 **Effort**: S (1-2 days)

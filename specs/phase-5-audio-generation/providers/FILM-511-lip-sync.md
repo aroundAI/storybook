@@ -1,4 +1,12 @@
+---
+spec_id: FILM-511
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-511: Lip Sync
+
+> **🗑️ Retired (audit 2026-09-23).** Retired by owner decision on 2026-09-22 (FILM-CC-04 KB-21): the feature is unreachable — the editor is mounted nowhere and no API key exists anywhere. The code still exists; deleting it is FILM-513 (DRAFT). Nothing replaces it. Kept as a record; not outstanding work.
 
 > **Status: 🗑️ RETIRED (2026-09-22) — see [FILM-513](./FILM-513-retire-lip-sync.md).**
 > Both providers (SyncLabs, Wav2Lip) are deprecated by the owner, and the feature

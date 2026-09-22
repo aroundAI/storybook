@@ -326,24 +326,24 @@ interface ErrorResponse {
 
 ### 7.1 Unit Tests Required For
 
-- [ ] All Zod schemas (valid and invalid cases)
-- [ ] All server actions (success and error paths)
-- [ ] All provider adapters (mock responses)
-- [ ] All utility functions
-- [ ] All cost calculations
+- All Zod schemas (valid and invalid cases)
+- All server actions (success and error paths)
+- All provider adapters (mock responses)
+- All utility functions
+- All cost calculations
 
 ### 7.2 Integration Tests Required For
 
-- [ ] Database transactions (rollback on error)
-- [ ] Webhook handlers (signature verification)
-- [ ] OAuth flows (token refresh)
-- [ ] RLS policy enforcement
+- Database transactions (rollback on error)
+- Webhook handlers (signature verification)
+- OAuth flows (token refresh)
+- RLS policy enforcement
 
 ### 7.3 E2E Tests Required For
 
-- [ ] Episode creation → Story → Screenplay → Shots → Preview
-- [ ] Video generation flow with status polling
-- [ ] Publishing flow to YouTube
+- Episode creation → Story → Screenplay → Shots → Preview
+- ~~Video generation flow with status polling~~ — retired with in-app video generation (`5b88db3a`, 2026-01-15)
+- Publishing flow to YouTube
 
 ### 7.4 Test File Naming
 

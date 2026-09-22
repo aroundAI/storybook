@@ -1,3 +1,9 @@
+---
+spec_id: FILM-DS-05
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-DS-05: Responsive Strategy
 
 ## Metadata
@@ -324,14 +330,14 @@ When container queries have broader support:
 
 ## Acceptance Criteria
 
-- [x] All pages render correctly at all breakpoints
-- [x] Sidebar collapses to sheet on tablet/mobile
-- [x] Bottom navigation appears on mobile
-- [x] Touch gestures work on mobile devices
-- [ ] Timeline has simplified mobile view (future implementation in FILM-601)
-- [x] Modals become full-screen sheets on mobile
-- [x] Typography scales appropriately
-- [x] No horizontal overflow at any breakpoint
+- [ ] All pages render correctly at all breakpoints — *audit: unverified* — needs screenshots at 390/768/1024/1280px; Playwright runs Desktop Chrome only (`apps/e2e/playwright.config.ts:136`)
+- [ ] Sidebar collapses to sheet on tablet/mobile — *audit: no longer true* — only below 768px (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:136`); tablets keep the full sidebar (`apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:118`)
+- [ ] Bottom navigation appears on mobile — *audit: no longer true* — mobile navigation is a top header with a Sheet (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:136`); MobileNav never mounted, deleted 5f44d0e1
+- [ ] Touch gestures work on mobile devices — *audit: no longer true* — no touch handlers anywhere in `apps/web` or `packages`; useTouchGestures never mounted, deleted 5f44d0e1
+- [ ] Timeline has simplified mobile view (future implementation in FILM-601) — *audit: not met* — deferred at ship time: mobile timeline; `packages/features/edit-suite` has no breakpoint variants or mobile view
+- [ ] Modals become full-screen sheets on mobile — *audit: no longer true* — `@kit/ui` DialogContent is a centred `max-w-lg` dialog at every width (`packages/ui/src/shadcn/dialog.tsx:38`); nothing swaps in a sheet
+- [ ] Typography scales appropriately — *audit: unverified* — responsive sizes exist (e.g. `apps/web/app/home/[account]/studio/[projectSlug]/_components/hero-banner.tsx:38`); "appropriately" needs screenshots per breakpoint
+- [ ] No horizontal overflow at any breakpoint — *audit: no longer true* — the export dialog is a fixed `w-[680px]` (`packages/features/edit-suite/src/components/export/export-dialog.tsx:218`) with no narrow-screen variant
 
 ---
 
@@ -357,3 +363,13 @@ When container queries have broader support:
 
 - [ ] Should we support offline mode for mobile? (post-MVP)
 - [ ] Should we have a dedicated mobile app? (post-MVP)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Sidebar collapses to sheet on tablet/mobile | The studio swaps to a Sheet only below `md` (768px); from 768px up the full sidebar shows (`hidden md:block`, `apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:118`) | owner |
+| Bottom navigation appears on mobile | The product chose a top header with a Sheet (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:136`); the unused MobileNav was deleted in 5f44d0e1 | owner |
+| Touch gestures work on mobile devices | No touch, pointer or swipe handling exists in `apps/web` or `packages`; the unused `useTouchGestures` was deleted in 5f44d0e1 | owner |
+| Modals become full-screen sheets on mobile | Dialogs stay centred at every width (`packages/ui/src/shadcn/dialog.tsx:38`); no `useIsMobile` / drawer swap outside the sidebar | owner |
+| No horizontal overflow at any breakpoint | The edit-suite export dialog is fixed at 680px (`packages/features/edit-suite/src/components/export/export-dialog.tsx:218`) and the edit suite has no mobile gate | unassigned |

@@ -3,7 +3,7 @@
 
 **Version:** 2.1 (Revised)
 **Date:** December 2025
-**Status:** Ready for Review
+**Status:** Historical baseline — the original architecture, as written in December 2025. Not maintained: its checklists were never ticked, and parts were later retired or replaced (in-app video generation, the first timeline editor). Current status is in [INDEX.md](./INDEX.md).
 
 ### Revision Notes (v2.1)
 This revision addresses the following critique points:

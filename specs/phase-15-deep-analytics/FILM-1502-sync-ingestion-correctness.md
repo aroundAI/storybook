@@ -2,6 +2,7 @@
 spec_id: FILM-1502
 title: Sync Worker Ingestion Correctness
 status: ✅ DONE
+audited: 2026-09-23
 effort: M
 dependencies: FILM-1501
 ---
@@ -94,12 +95,12 @@ Supports `fetchPublishesForSync`'s filter + `published_at DESC` ordering.
 
 ## 6. Acceptance Criteria
 
-- [ ] Running the sync twice within an hour does NOT change day totals (idempotent)
-- [ ] YouTube rows carry real platform data dates, not sync dates
-- [ ] TikTok/IG day rows equal lifetime delta vs. previous snapshot, clamped ≥ 0
-- [ ] First sync of an adopted (old) TikTok/IG video writes only a baseline snapshot
-- [ ] 30–90-day-old videos sync daily
-- [ ] New indexes exist; `fetchPublishesForSync` query plan uses them
+- [ ] Running the sync twice within an hour does NOT change day totals (idempotent) — *audit: unverified* — needs two sync runs against a live ClickHouse; unit tests cover only the pure helpers
+- [x] YouTube rows carry real platform data dates, not sync dates — *audit:* `packages/features/content-analytics/__tests__/ingest.test.ts:144`
+- [x] TikTok/IG day rows equal lifetime delta vs. previous snapshot, clamped ≥ 0 — *audit:* `packages/features/content-analytics/__tests__/ingest.test.ts:53`, `packages/features/content-analytics/src/server/analytics-sync-cron.ts:805`
+- [x] First sync of an adopted (old) TikTok/IG video writes only a baseline snapshot — *audit:* `packages/features/content-analytics/__tests__/ingest.test.ts:273`, `packages/features/content-analytics/src/server/analytics-sync-cron.ts:829`
+- [x] 30–90-day-old videos sync daily — *audit:* `packages/features/content-analytics/src/server/schedule.ts:45`, `packages/features/content-analytics/__tests__/ingest.test.ts:288`
+- [ ] New indexes exist; `fetchPublishesForSync` query plan uses them — *audit: unverified* — indexes exist (`apps/web/supabase/migrations/20260827095315_publishes-sync-indexes.sql:3`); plan use needs `EXPLAIN` on seeded data
 
 ## 7. Verification
 

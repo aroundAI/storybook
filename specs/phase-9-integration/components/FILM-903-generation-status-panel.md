@@ -1,7 +1,15 @@
+---
+spec_id: FILM-903
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-903: Generation Status Panel
 
+> **🗑️ Retired (audit 2026-09-23).** `generation-status-panel.tsx`, `generation-status-indicator.tsx` and `generation-status-actions.ts` in `@kit/film-studio` read `generation_jobs` (video generation), were mounted nowhere, and were deleted as dead code by the owner in 5f44d0e1 (2026-02-19); in-app video generation itself was retired in 5b88db3a. Nothing replaces the global panel: LLM jobs report status on the screen that started them, through `useLlmJob` (`packages/ui/src/hooks/use-llm-job.ts`). Kept as a record; not outstanding work.
+
 ## Metadata
-- **Status:** DONE
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was DONE)
 - **Phase:** 9 - Integration
 - **Priority:** P2 (Post-MVP)
 - **Effort:** M (4-8 hours)

@@ -1,7 +1,8 @@
 ---
 id: FILM-1003
 title: Continuity Validator Service
-status: implemented
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: high
 effort: L
 dependencies: [FILM-1001]
@@ -1073,13 +1074,13 @@ async function commitCanonChanges(
 
 ## Acceptance Criteria
 
-- [ ] All 9 violation types implemented
-- [ ] 4 checkpoint methods functional (IDEATION, STORY, SCREENPLAY, PUBLISH)
-- [ ] Integration with story-actions.ts
-- [ ] Unit tests with >80% coverage
-- [ ] Performance: single validation < 500ms
-- [ ] Clear error messages with suggestions
-- [ ] Audit logging for all validations
+- [ ] All 9 violation types implemented — *audit: not met* — nine codes exist (`packages/features/episodes/src/lib/canon/continuity-validator.ts:29`), but the spec's Causality Break and standalone-episode Connectivity are absent
+- [ ] 4 checkpoint methods functional (IDEATION, STORY, SCREENPLAY, PUBLISH) — *audit: unverified* — no test drives any checkpoint; the Lambda paths import `server-only` via the context builder and likely skip
+- [ ] ~~Integration with story-actions.ts~~ — *audit: retired* — superseded: STORY validation runs as the story agent's `checkContinuity` tool (`packages/features/episodes/src/agent/skills/continuity-skill.ts:148`), d5f6dbdc
+- [ ] Unit tests with >80% coverage — *audit: not met* — no test found for `continuity-validator.ts`
+- [ ] Performance: single validation < 500ms — *audit: unverified* — needs a timed run; no benchmark exists
+- [x] Clear error messages with suggestions — *audit:* `packages/features/episodes/src/lib/canon/continuity-validator.ts:215`
+- [ ] Audit logging for all validations — *audit: not met* — nothing persisted; the STORY tool's result is not logged, SCREENPLAY logs counts only (`apps/web/lambda/llm-worker/utils/validation-checkpoint.ts:130`)
 
 ---
 
@@ -1112,3 +1113,11 @@ describe('ContinuityValidator', () => {
   // ... additional test cases
 });
 ```
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| All 9 violation types | Causality Break (rule 3) and standalone-episode Connectivity (rule 7) are not implemented; codes 003/005 check knowledge and world facts instead, and 007 holds the thread-orphan check | owner |
+| Unit tests with >80% coverage | No test imports `continuity-validator.ts` | unassigned |
+| Audit logging for all validations | No persisted record; only a console count at the SCREENPLAY checkpoint | unassigned |

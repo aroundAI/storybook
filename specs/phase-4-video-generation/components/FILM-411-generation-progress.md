@@ -1,11 +1,19 @@
+---
+spec_id: FILM-411
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-411: Generation Progress Component
+
+> **🗑️ Retired (audit 2026-09-23).** The generation-progress components (`packages/features/video-generation/src/components/generation-progress/`, `packages/features/video-generation/src/components/visual-studio/generation-progress.tsx`) were deleted in `5b88db3a` (2026-01-15), the commit that removed `packages/features/video-generation`; the owner retired in-app video generation on purpose. Nothing replaces them: no video job runs in the app, so there is no progress to show. Kept as a record; not outstanding work.
 
 **Phase**: 4
 **Priority**: P0
 **Effort**: M (3-4 days)
 **Dependencies**: FILM-408 (poll-status-action)
 **Blocks**: None
-**Status**: ✅ Complete
+**Status**: 🗑️ RETIRED (audit 2026-09-23; was ✅ Complete)
 **Completed**: 2025-12-11
 **PR**: [#76](https://github.com/aroundAI/storybook/pull/76)
 

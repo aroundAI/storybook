@@ -1,8 +1,14 @@
+---
+spec_id: PUBLIC-SHARING-PRD
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # PRD: Public Sharing & Discovery Platform
 
 **Document Version:** 1.0  
 **Created:** 2026-01-08  
-**Status:** ✅ Implemented — see [ENGINEERING-public-sharing.md](./ENGINEERING-public-sharing.md)
+**Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ Implemented — see [ENGINEERING-public-sharing.md](./ENGINEERING-public-sharing.md))
 
 ---
 
@@ -565,13 +571,13 @@ Based on research into ChatGPT, Perplexity, and Gemini citation patterns:
 
 #### Optimization Checklist
 
-- [ ] Add visible `Last Updated: {date}` on all pages
-- [ ] Include JSON-LD with `dateModified` property
-- [ ] Start descriptions with direct answers
-- [ ] Use question-based H2 headings
-- [ ] Add FAQ schema for common questions
-- [ ] Ensure PerplexityBot and GPTBot allowed in robots.txt
-- [ ] Create `/llms.txt` with site structure guide
+- [ ] Add visible `Last Updated: {date}` on all pages — *audit: not met* — no "Last Updated" anywhere; the episode page shows only its creation date (`packages/features/public-sharing/src/components/episode-page.tsx:127`), the others no date
+- [ ] Include JSON-LD with `dateModified` property — *audit: not met* — no `dateModified` in `packages/features/public-sharing/src/lib/structured-data.ts`
+- [ ] Start descriptions with direct answers — *audit: not met* — descriptions are creator text or a generic fallback ("Project by …", `packages/features/public-sharing/src/lib/metadata.ts:58`)
+- [ ] Use question-based H2 headings — *audit: not met* — H2s are "Shows" and "Episodes" (`packages/features/public-sharing/src/components/company-page.tsx:127`, `packages/features/public-sharing/src/components/project-page.tsx:72`)
+- [ ] Add FAQ schema for common questions — *audit: not met* — no FAQPage schema in `packages/features/public-sharing`, now or in its history
+- [x] Ensure PerplexityBot and GPTBot allowed in robots.txt — *audit:* `apps/web/app/robots.ts:14`
+- [x] Create `/llms.txt` with site structure guide — *audit:* `apps/web/public/llms.txt:1`
 
 ---
 
@@ -839,27 +845,27 @@ async function getPublicEpisodes(): Promise<SitemapEntry[]> {
 ## 11. Implementation Phases
 
 ### Phase 1: Foundation (Week 1-2)
-- [ ] Database migrations for visibility, slugs, video_links
-- [ ] Public page routes: `/@{slug}`, `/@{slug}/{project}`, `/@{slug}/{project}/e/{episode}`
-- [ ] Basic rendering without auth
+- [x] Database migrations for visibility, slugs, video_links — *audit:* `apps/web/supabase/migrations/20260107202214_public-sharing.sql:19` (`localized_videos` at :58)
+- [x] Public page routes: `/@{slug}`, `/@{slug}/{project}`, `/@{slug}/{project}/e/{episode}` — *audit:* `apps/web/app/(public)/[...slug]/page.tsx:114` (project :130, episode :150)
+- [x] Basic rendering without auth — *audit:* `/@*` is only rate-limited (`apps/web/middleware.ts:233`); anon read policies in `apps/web/supabase/migrations/20260108120000_public_sharing_rls.sql:28`
 
 ### Phase 2: SEO/OGP (Week 2-3)
-- [ ] OpenGraph meta tags for all pages
-- [ ] JSON-LD schemas (Organization, TVSeries, TVEpisode, VideoObject)
-- [ ] Dynamic sitemap with public content
-- [ ] robots.txt allowing public routes
+- [x] OpenGraph meta tags for all pages — *audit:* `packages/features/public-sharing/src/lib/metadata.ts:38` (:67, :109); tested in `packages/features/public-sharing/src/lib/__tests__/metadata.test.ts:15`
+- [x] JSON-LD schemas (Organization, TVSeries, TVEpisode, VideoObject) — *audit:* `packages/features/public-sharing/src/lib/structured-data.ts:92` (VideoObject at :128)
+- [x] Dynamic sitemap with public content — *audit:* `apps/web/app/sitemap.ts:114`; note `apps/web/app/sitemap.xml/route.ts` also claims `/sitemap.xml`
+- [x] robots.txt allowing public routes — *audit:* `apps/web/app/robots.ts:21`
 
 ### Phase 3: Sharing Features (Week 3-4)
-- [ ] Share buttons with platform-aware logic
-- [ ] Video embedding for YouTube/FB
-- [ ] Copy link functionality
-- [ ] Embed code generator
+- [ ] Share buttons with platform-aware logic — *audit: not met* — every platform gets the canonical page URL (`packages/features/public-sharing/src/components/episode-page.tsx:56`); no §8.3 native-video or `?lang=` choice
+- [x] Video embedding for YouTube/FB — *audit:* `packages/features/public-sharing/src/components/embed-video.tsx:102` (Facebook at :113)
+- [x] Copy link functionality — *audit:* `packages/features/public-sharing/src/components/share-button.tsx:31`
+- [ ] Embed code generator — *audit: not met* — no embed-code UI; searches for embed-code or iframe-snippet generators find only rendered players
 
 ### Phase 4: Settings UI (Week 4-5)
-- [ ] Public profile settings in Account Settings
-- [ ] Project visibility toggle
-- [ ] Episode visibility override
-- [ ] Video link management per episode
+- [x] Public profile settings in Account Settings — *audit:* `apps/web/app/home/[account]/settings/public-profile/_components/public-profile-form.tsx:67`, linked at `apps/web/config/team-account-navigation.config.tsx:86`
+- [x] Project visibility toggle — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/visibility-settings.tsx:101`, mounted at `apps/web/app/home/[account]/studio/[projectSlug]/settings/page.tsx:415`
+- [ ] Episode visibility override — *audit: not met* — `packages/features/public-sharing/src/components/episode-visibility-settings.tsx` is mounted nowhere, so no UI sets episode visibility
+- [x] Video link management per episode — *audit:* Publish page, `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:727`
 
 ---
 
@@ -914,3 +920,16 @@ async function getPublicEpisodes(): Promise<SitemapEntry[]> {
 - [schema.org VideoObject](https://schema.org/VideoObject)
 - [Google Video SEO](https://developers.google.com/search/docs/appearance/video)
 - [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Visible `Last Updated` on all pages | Nothing renders a "Last Updated" date: the episode page shows its creation date (`packages/features/public-sharing/src/components/episode-page.tsx:127`); the company and project pages show none | unassigned |
+| JSON-LD `dateModified` | `packages/features/public-sharing/src/lib/structured-data.ts` emits Organization/TVSeries/TVEpisode/VideoObject without it | unassigned |
+| Descriptions start with direct answers | Descriptions are the creator's text or a generic fallback (`packages/features/public-sharing/src/lib/metadata.ts:58`) | unassigned |
+| Question-based H2 headings | H2s are "Shows" and "Episodes" (`packages/features/public-sharing/src/components/company-page.tsx:127`, `packages/features/public-sharing/src/components/project-page.tsx:72`) | unassigned |
+| FAQ schema | No FAQPage schema anywhere in the feature | unassigned |
+| Share buttons with platform-aware logic | `ShareButton` sends one canonical URL to every platform (`packages/features/public-sharing/src/components/episode-page.tsx:56`, `:180`); §8.3's native-video and language choice is not implemented | unassigned |
+| Embed code generator | No UI produces an embed snippet | unassigned |
+| Episode visibility override | `EpisodeVisibilitySettings` and `updateEpisodeVisibilityAction` exist in `packages/features/public-sharing` but the component is mounted nowhere, so episodes keep their default `inherit` | unassigned |

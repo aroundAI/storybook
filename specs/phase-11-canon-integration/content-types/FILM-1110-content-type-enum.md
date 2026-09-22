@@ -1,7 +1,8 @@
 ---
 id: FILM-1110
 title: Content Type Configurations
-status: done
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: high
 effort: S
 dependencies: []
@@ -271,7 +272,7 @@ The existing project creation form already handles this. No changes needed to UI
 - [x] `ContentTypeConfig` interface defined
 - [x] `CONTENT_TYPE_CONFIGS` mapping created for all project types
 - [x] `getContentTypeConfig()` helper function works
-- [x] Memory context builder uses config for budget allocation
+- [ ] Memory context builder uses config for budget allocation — *audit: no longer true* — no caller passes `projectType`, and `getProjectContentType` (`packages/features/episodes/src/lib/canon/content-type-configs.ts:209`) is never called
 - [x] Project type retrieved from settings.projectType (not new column)
 - [x] Optional: Add 'news' to ProjectTypeSchema if needed
 
@@ -329,4 +330,10 @@ describe('getContentTypeConfig', () => {
 
 ## Implementation Status
 
-**Implemented** in PR #176 — merged 2026-02-09
+**🟡 PARTIAL** (audit 2026-09-23; was **Implemented** in PR #176 — merged 2026-02-09)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Memory context builder uses config for budget allocation | `buildMemoryContext` applies the config only when given `projectType`; no caller passes one (`BuildMemoryContextSchema` has no such field), so the default split and a 10-episode horizon always apply | unassigned |

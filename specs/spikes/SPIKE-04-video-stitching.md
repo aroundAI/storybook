@@ -1,3 +1,9 @@
+---
+spec_id: SPIKE-04
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # SPIKE-04: Video Stitching Approaches Evaluation
 
 ## Metadata
@@ -190,12 +196,12 @@ Our episodes consist of multiple shots (5-10 second videos) that need to be comb
 
 ## Success Criteria
 
-- [x] Working implementation of each approach with sample edit
-- [x] Quality comparison with visual examples
+- [ ] ~~Working implementation of each approach with sample edit~~ — *audit: retired* — `packages/features/video-rendering/src/{ffmpeg,remotion,cloud}` and `poc/` were deleted in 5b88db3a
+- [ ] Quality comparison with visual examples — *audit: no longer true* — comparison is a subjective score table (`docs/stitching-benchmarks.md:121`); no visual example was ever committed to `docs/examples/stitched-videos/`
 - [x] Performance benchmarks across all approaches
 - [x] Cost analysis for 100, 1K, 10K renders per day
-- [x] Timeline JSON schema defined
-- [x] Integration code for at least 2 approaches
+- [ ] ~~Timeline JSON schema defined~~ — *audit: retired* — `packages/features/video-rendering/schema/timeline.json` was deleted in 5b88db3a; a field mapping survives at `docs/video-stitching-comparison.md:212`
+- [ ] ~~Integration code for at least 2 approaches~~ — *audit: retired* — the FFmpeg and Shotstack/Creatomate code went with `video-rendering` in 5b88db3a; the edit suite exports via `packages/features/edit-suite/src/lib/ffmpeg-builder.ts:101`
 - [x] Clear recommendation with justification
 - [x] Fallback strategy if primary approach fails
 
@@ -305,24 +311,24 @@ Our episodes consist of multiple shots (5-10 second videos) that need to be comb
 ## Testing Checklist
 
 Video Quality:
-- [ ] No visible compression artifacts
-- [ ] Smooth transitions without stuttering
-- [ ] Audio perfectly in sync
-- [ ] Consistent brightness/color across clips
-- [ ] No audio clicks or pops at transitions
+- [ ] ~~No visible compression artifacts~~ — *audit: retired* — the stitching PoC it tests was deleted in 5b88db3a
+- [ ] ~~Smooth transitions without stuttering~~ — *audit: retired* — the stitching PoC it tests was deleted in 5b88db3a
+- [ ] ~~Audio perfectly in sync~~ — *audit: retired* — the stitching PoC it tests was deleted in 5b88db3a
+- [ ] ~~Consistent brightness/color across clips~~ — *audit: retired* — the stitching PoC it tests was deleted in 5b88db3a
+- [ ] ~~No audio clicks or pops at transitions~~ — *audit: retired* — the stitching PoC it tests was deleted in 5b88db3a
 
 Performance:
-- [ ] 60s video renders in < 2 minutes
-- [ ] Can handle 10 concurrent renders
-- [ ] Resource usage stays within bounds
-- [ ] Progress tracking works accurately
+- [ ] ~~60s video renders in < 2 minutes~~ — *audit: retired* — the stitching PoC it tests was deleted in 5b88db3a
+- [ ] ~~Can handle 10 concurrent renders~~ — *audit: retired* — the stitching PoC it tests was deleted in 5b88db3a
+- [ ] ~~Resource usage stays within bounds~~ — *audit: retired* — the stitching PoC it tests was deleted in 5b88db3a
+- [ ] ~~Progress tracking works accurately~~ — *audit: retired* — the stitching PoC it tests was deleted in 5b88db3a
 
 Integration:
-- [ ] Timeline JSON converts correctly
-- [ ] Can add/remove clips dynamically
-- [ ] Transition changes apply correctly
-- [ ] Preview generation works
-- [ ] Error handling is robust
+- [ ] ~~Timeline JSON converts correctly~~ — *audit: retired* — the stitching PoC it tests was deleted in 5b88db3a
+- [ ] ~~Can add/remove clips dynamically~~ — *audit: retired* — the stitching PoC it tests was deleted in 5b88db3a
+- [ ] ~~Transition changes apply correctly~~ — *audit: retired* — the stitching PoC it tests was deleted in 5b88db3a
+- [ ] ~~Preview generation works~~ — *audit: retired* — the stitching PoC it tests was deleted in 5b88db3a
+- [ ] ~~Error handling is robust~~ — *audit: retired* — the stitching PoC it tests was deleted in 5b88db3a
 
 ## Notes
 

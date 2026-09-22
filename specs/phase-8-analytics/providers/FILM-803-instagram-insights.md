@@ -1,10 +1,16 @@
+---
+spec_id: FILM-803
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-803: Instagram Insights Provider
 
 ## Metadata
 - **Phase:** 8 - Analytics
 - **Priority:** P2 (Post-MVP)
 - **Effort:** M (4-8 hours)
-- **Status:** DONE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was DONE)
 - **Dependencies:** FILM-707 (Meta OAuth)
 - **Blocks:** FILM-804 (Analytics Sync), FILM-805 (Analytics Dashboard)
 
@@ -305,13 +311,13 @@ export class InstagramInsightsProvider {
 
 ## Acceptance Criteria
 
-- [x] Fetches Reel plays, reach, impressions
-- [x] Fetches engagement (likes, comments, saves, shares)
-- [x] ~~Fetches reach breakdown (follower vs non-follower)~~ — removed 2026-09-21
+- [ ] Fetches Reel plays, reach, impressions — *audit: unverified* — the code asks for `views` (Meta's Graph v22 replacement for `plays` and `impressions`) and `reach` (`packages/features/content-analytics/src/providers/instagram/instagram-insights.ts:111`, mocked test `instagram-insights.test.ts:108`); live data waits on Meta's review of the insights scope (FILM-1711)
+- [ ] Fetches engagement (likes, comments, saves, shares) — *audit: unverified* — requested and parsed (`instagram-insights.ts:118`, mocked test `instagram-insights.test.ts:108`); live data waits on Meta's review (FILM-1711)
+- [ ] ~~Fetches reach breakdown (follower vs non-follower)~~ — removed 2026-09-21
   (FILM-1721): Meta documents `follow_type` for account-level reach only, and the
-  call never ran, because it was gated on a `media_type` of `REELS` that does not exist
-- [x] Fetches profile visits and follows from content
-- [x] Fetches audience demographics
+  call never ran, because it was gated on a `media_type` of `REELS` that does not exist — *audit: retired* — d818a603 (FILM-1721)
+- [ ] Fetches profile visits and follows from content — *audit: no longer true* — never requested (since d301d96b), so both read as 0; Meta offers them for FEED/STORY, not Reels — `instagram-insights.ts:147`
+- [ ] Fetches audience demographics — *audit: unverified* — `follower_demographics` by country, city, age, gender is requested (`instagram-insights.ts:202`) but no test asserts its parsing; live data waits on Meta's review (FILM-1711)
 - [x] Handles different media types
 - [x] Normalizes to common format
 
@@ -321,7 +327,7 @@ export class InstagramInsightsProvider {
 
 ### Unit Tests
 - [x] Test metrics parsing
-- [x] Test breakdown parsing
+- [ ] Test breakdown parsing — *audit: no longer true* — the reach-breakdown test went with the call in d818a603; the audience breakdown is mocked but never asserted (`packages/features/content-analytics/src/providers/instagram/__tests__/instagram-insights.test.ts:108`)
 
 ### Integration Tests
 - [x] Test with mocked Graph API
@@ -344,3 +350,9 @@ export class InstagramInsightsProvider {
 | `OAuthException` | Token expired, trigger re-auth |
 | Media not found | Content deleted |
 | Permissions error | Missing insights permission |
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Fetches profile visits and follows from content | Neither metric is in the request list (`instagram-insights.ts:111-122`), so `profileVisits` and `follows` are always 0 — and the sync stores that `follows` 0 as the publish's `subscribers_gained` (`analytics-sync-cron.ts:915`), a never-requested field written as a measurement. Meta offers both for FEED and STORY media only — not Reels (`docs/platform-capability-reference.md:253`) | FILM-1712 ("No provider maps a never-requested field to a column as zero"; records Reels `follows`/`profile_visits` as unavailable) |

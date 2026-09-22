@@ -1,3 +1,9 @@
+---
+spec_id: FILM-714
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-714: Twitter/X Provider
 
 ## Metadata
@@ -6,7 +12,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-708 (Publish Hub), OAuth Infrastructure
 - **Blocks:** None
-- **Status:** ✅ DONE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
 
 ---
 
@@ -373,27 +379,27 @@ export function TwitterComposer({ initialText, onSave }: TwitterComposerProps) {
 
 ## Acceptance Criteria
 
-- [ ] OAuth 2.0 connection flow works
-- [ ] Video upload with chunked transfer
-- [ ] Tweet composition with character limit
-- [ ] Hashtag and mention tracking
-- [ ] Analytics retrieval (views, likes, retweets, replies)
-- [ ] Delete tweet functionality
-- [ ] Video duration validation
+- [ ] OAuth 2.0 connection flow works — *audit: unverified* — `apps/web/app/api/platforms/connect/twitter/route.ts` and `apps/web/app/api/platforms/callback/twitter/route.ts` exist; never run: no X credentials (FILM-1729 §2); tokens never refreshed (KB-15)
+- [ ] Video upload with chunked transfer — *audit: not met* — FILM-1729: `media.write` is never requested, so X refuses the upload (403); chunking itself is tested (`packages/features/publishing/__tests__/twitter-provider.test.ts:95`)
+- [ ] Tweet composition with character limit — *audit: not met* — no composer (`twitter-composer.tsx` never existed); the provider only rejects text over 280 (`packages/features/publishing/src/providers/twitter/twitter-provider.ts:36`)
+- [ ] Hashtag and mention tracking — *audit: not met* — no hashtag or mention handling in any X code
+- [ ] Analytics retrieval (views, likes, retweets, replies) — *audit: not met* — no X metrics are read anywhere (`public_metrics` appears nowhere); FILM-1727 is DRAFT
+- [ ] Delete tweet functionality — *audit: not met* — the provider has no delete; unpublish skips X (`apps/web/lambda/publish-worker/index.ts:257-264`)
+- [ ] Video duration validation — *audit: not met* — `TWITTER_CONSTRAINTS.maxDuration` (`packages/features/publishing/src/providers/twitter/types.ts:50`) is never read
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test character counting
-- [ ] Test hashtag/mention extraction
-- [ ] Test video duration validation
+- [ ] Test character counting — *audit: not met* — no test found
+- [ ] Test hashtag/mention extraction — *audit: not met* — no test found
+- [ ] Test video duration validation — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Test OAuth flow with mock API
-- [ ] Test video upload process
-- [ ] Test analytics retrieval
+- [ ] Test OAuth flow with mock API — *audit: not met* — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)
+- [x] Test video upload process — *audit:* `packages/features/publishing/__tests__/twitter-provider.test.ts:95`
+- [ ] Test analytics retrieval — *audit: not met* — no test found
 
 ---
 
@@ -415,3 +421,15 @@ TWITTER_BEARER_TOKEN= # For app-only auth
 | Tweet too long | Real-time character counter |
 | Upload failed | Retry with exponential backoff |
 | Rate limited | Show wait time, queue for later |
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| OAuth 2.0 connection flow works (unverified) | Never run against X — no credentials are held (FILM-1729 §2) — and an X connection stops working two hours after it is made, because X tokens are never refreshed | KB-15 |
+| Video upload with chunked transfer | Chunking is built and tested, but `media.write` is never requested, so X refuses the upload with 403. Nothing on the publish screen sends a video to X either: its platform lists stop at YouTube, Facebook, Instagram and TikTok (`packages/features/publishing/src/lib/constants.ts:45`) | FILM-1729 |
+| Tweet composition with character limit | No composer exists; the provider only rejects text over 280 characters | unassigned |
+| Hashtag and mention tracking | Not implemented for X (only LinkedIn's post editor counts hashtags) | unassigned |
+| Analytics retrieval | No X metrics are read anywhere | FILM-1727 |
+| Delete tweet functionality | The provider has no delete, and unpublish skips X at the vendor (`apps/web/lambda/publish-worker/index.ts:257-264`) | unassigned |
+| Video duration validation | The 140-second limit is declared and never checked | unassigned |

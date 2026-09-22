@@ -2,6 +2,7 @@
 spec_id: FILM-1613
 title: Revenue Alert Account Scoping
 status: ✅ DONE
+audited: 2026-09-23
 effort: S
 dependencies: FILM-1508, FILM-1601
 ---

@@ -31,7 +31,7 @@ FILM-1617 (subscriber surfaces)              ← FILM-1607, FILM-1611, FILM-1618
 FILM-1610 (experiment log + per-video notes)  ← FILM-1602, FILM-1603, FILM-1605
 ```
 
-Specified, not yet built:
+Shipped last:
 
 ```
 FILM-1615 (Video Log table + note editor)     ← FILM-1603 ✅, FILM-1611 ✅,
@@ -41,7 +41,7 @@ FILM-1616 (weekly diagnostics + retention drill-down) — needs FILM-1602 ✅;
           duration from FILM-1710, or ship without one (below)
 ```
 
-**FILM-1611 (PR #260), FILM-1617 (PR #262) and FILM-1610 (PR #264) shipped.**
+**FILM-1611 (PR #260), FILM-1617 (PR #262), FILM-1610 (PR #264), FILM-1615 (PR #271) and FILM-1616 (PR #276) shipped. The phase is closed.**
 
 **FILM-1610 before FILM-1615.** Not a hard dependency, but the two specs
 handed the note editor to each other: FILM-1610 §7 left the editable cell to
@@ -60,7 +60,7 @@ first or omit the duration, and it must never read that column. FILM-1616
 §4 now says so; the plan is to ship the fallback so phase 16 can close
 without waiting on phase 17.
 
-Both remaining specs — FILM-1615 and 1616 — can start today and are independent. FILM-1610 has landed, so FILM-1615 ships the note editor.
+Both have shipped: FILM-1615 in #271, with the note editor, and FILM-1616 in #276.
 
 **FILM-1614 is not a phase-16 spec.** The id is claimed by an in-code `TODO(FILM-1614)` at `packages/features/content-analytics/src/server/revenue-queries.ts:79`, for folding the two client-side revenue query shapes into a pre-grouped RPC. New spec ids in this phase therefore resume at 1615.
 
@@ -81,13 +81,8 @@ Both remaining specs — FILM-1615 and 1616 — can start today and are independ
 | FILM-1611 | PR #260 |
 | FILM-1617 | PR #262 |
 | FILM-1610 | PR #264 |
-
-Specified and not yet built:
-
-| Spec | Status | Effort | Covers |
-|------|--------|--------|--------|
-| FILM-1615 | DRAFT | M | The Video Log table — FILM-1603 built the query and action, not the screen |
-| FILM-1616 | DRAFT | M | `WeeklyDiagnosticsTable` and `RetentionCurveChart`, both of which need actions built |
+| FILM-1615 | PR #271 |
+| FILM-1616 | PR #276 |
 
 ## Testing precedent set by this phase
 
@@ -110,10 +105,11 @@ FILM-1608 was the first to follow both: `apps/e2e/tests/analytics-settings/`
 seeds through the API, asserts the state after a *second* save, and each
 guard was watched failing before it was believed. FILM-1610 followed both
 too (`apps/e2e/tests/experiments/`), Postgres-backed and so run in CI in
-full. Relevant to what is left: FILM-1615 and FILM-1616 add screens that have
-no rows to show while ClickHouse is off, so each splits its browser coverage
-the way FILM-1617 did: a guard spec in CI, and an evidence spec gated on
-`CLICKHOUSE_EVIDENCE` for the screenshots.
+full. FILM-1615 and FILM-1616 added screens that have no rows to show while
+ClickHouse is off, so each split its browser coverage the way FILM-1617 did: a
+guard spec (`video-log.spec.ts`, `diagnostics.spec.ts`), and an evidence spec
+gated on `CLICKHOUSE_EVIDENCE` for the screenshots (`video-log-evidence.spec.ts`,
+`diagnostics-evidence.spec.ts`).
 
 ## Locked decisions
 
@@ -141,8 +137,8 @@ the way FILM-1617 did: a guard spec in CI, and an evidence spec gated on
 
 ## Everything is now specified
 
-Every remaining item has a spec file. FILM-1615 and 1616 are DRAFT;
-nothing is left planned-but-unwritten.
+Every item has a spec file, and every spec has shipped; FILM-1615 and
+FILM-1616 were the last.
 
 **FILM-1611 was split.** The backlog entry called "analytics UI" had
 accumulated four unrelated deliverables, and anyone sizing it from its name

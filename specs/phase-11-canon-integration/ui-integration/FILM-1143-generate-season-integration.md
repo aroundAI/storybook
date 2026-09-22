@@ -1,8 +1,14 @@
+---
+spec_id: FILM-1143
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-1143: Generate Season Content Type Integration
 
 | Field | Value |
 |-------|-------|
-| **Status** | ✅ DONE |
+| **Status** | 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE) |
 | **Priority** | P1 |
 | **Estimate** | 6h |
 | **Dependencies** | FILM-1110, FILM-1135, FILM-1140 |
@@ -256,11 +262,22 @@ const handleAnalyze = (data) => {
 
 ## Acceptance Criteria
 
-- [x] Content type banner shows in Generate Season
-- [x] Banner shows linked sources summary
-- [x] Warning shown when factual content has no sources
+- [ ] Content type banner shows in Generate Season — *audit: no longer true* — `contentType` is never set (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:285`); a generic "Research Sources" section shows instead
+- [ ] Banner shows linked sources summary — *audit: no longer true* — the source count is every active global source (`packages/features/episodes/src/server/external-context-actions.ts:362`), not the project's
+- [ ] Warning shown when factual content has no sources — *audit: no longer true* — not gated on content type, and the 12 seeded global sources always count as sources (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:347`)
 - [x] "Add Sources" link navigates to Research tab
-- [x] External facts passed to season analysis
+- [ ] External facts passed to season analysis — *audit: no longer true* — only `verified` facts are sent (`packages/features/episodes/src/server/external-context-actions.ts:401`); KB-18 means none exist
 - [x] Memory context includes external facts
-- [x] News projects show API connection status
-- [x] Refresh button updates live API sources
+- [ ] News projects show API connection status — *audit: no longer true* — gated on `contentType === 'news'` (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:806`), which is never set
+- [ ] Refresh button updates live API sources — *audit: no longer true* — it only re-reads counts (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:786`); nothing fetches from an API source
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Content type banner shows in Generate Season | `const [contentType, _setContentType] = useState(null)` (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:285`): the setter was never called, even in the first version (c397826e); 17dfb955 renamed it with `_` to quiet lint. No banner names the content type | unassigned |
+| Banner shows linked sources summary | The "sources" badge is `getResearchCountsAction().sources`, a count of every active row in the global `external_sources` registry (`packages/features/episodes/src/server/external-context-actions.ts:362`); projects have no linked sources in the data model | unassigned |
+| Warning shown when factual content has no sources | `hasResearchSources` is `sources > 0 \|\| facts > 0` (`season-generator-dialog.tsx:347`); the 12 news sources seeded as active (`apps/web/supabase/migrations/20260211200003_seed_news_sources.sql:4`) keep it true for every project, and nothing checks the content type | unassigned |
+| External facts passed to season analysis | The dialog sends `getVerifiedFactsAction` results, which keep only `verification_status = 'verified'` (`external-context-actions.ts:401`); no fact can reach that state, so `externalFacts` is always `undefined` | KB-18 |
+| News projects show API connection status | Rendered only when `contentType === 'news'` (`season-generator-dialog.tsx:806`), which never holds | unassigned |
+| Refresh button updates live API sources | The button re-runs `fetchResearchData` (`season-generator-dialog.tsx:786`), which re-reads counts and verified facts; no provider is called | unassigned |

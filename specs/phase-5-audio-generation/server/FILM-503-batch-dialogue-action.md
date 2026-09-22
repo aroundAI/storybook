@@ -1,9 +1,15 @@
+---
+spec_id: FILM-503
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-503: Batch Dialogue Generation Action
 
 **Phase**: 5
 **Priority**: P0
 **Effort**: M (3-5 days)
-**Status**: ✅ DONE
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
 **Dependencies**: FILM-502 (voice-generation-action)
 **Blocks**: FILM-505, FILM-506
 
@@ -864,33 +870,33 @@ None (new feature)
 
 - [x] `batchGenerateDialogueAction` creates batch job for valid episode
 - [x] `batchGenerateDialogueAction` processes all dialogue lines
-- [x] `batchGenerateDialogueAction` respects concurrency limit
+- [x] `batchGenerateDialogueAction` respects concurrency limit — *audit:* one line per message, at most 3 workers at once (`sst.config.ts:928`, `:932`)
 - [x] `batchGenerateDialogueAction` estimates cost accurately
 - [x] `batchGenerateDialogueAction` checks budget before starting
 - [x] `batchGenerateDialogueAction` assigns voices to all characters
-- [x] `batchGenerateDialogueAction` uses voice profiles when available
+- [ ] ~~`batchGenerateDialogueAction` uses voice profiles when available~~ — *audit: retired* — `voice_profiles` was dropped in `05ec0ae9`; voices come from `character_details.elevenlabs_voice_id` (`packages/features/audio-generation/src/server/batch-actions.ts:110`)
 - [x] `batchGenerateDialogueAction` supports manual voice assignments
 - [x] `batchGenerateDialogueAction` returns batch job ID immediately
-- [x] `getBatchStatusAction` returns accurate progress
+- [ ] `getBatchStatusAction` returns accurate progress — *audit: no longer true* — voice-worker adds a failure on every SQS attempt (`apps/web/lambda/voice-worker/index.ts:291`; 3 receives, `sst.config.ts:463`), since `b7f7cb53`
 - [x] `getBatchStatusAction` calculates percentage correctly
 - [x] `getBatchStatusAction` estimates completion time
-- [x] `getBatchStatusAction` includes all errors
+- [ ] `getBatchStatusAction` includes all errors — *audit: no longer true* — voice-worker never passes `p_error` to `increment_batch_progress` (`apps/web/lambda/voice-worker/index.ts:291`), so `errors` stays empty
 - [x] `retryFailedDialogueAction` retries only failed lines
 - [x] `retryFailedDialogueAction` resets error state
-- [x] `cancelBatchAction` stops processing
-- [x] `cancelBatchAction` marks job as cancelled
-- [x] Batch processing continues on individual failures
+- [ ] `cancelBatchAction` stops processing — *audit: no longer true* — queued lines still run; voice-worker never checks the batch's status (`apps/web/lambda/voice-worker/index.ts:198`), since `b7f7cb53`
+- [ ] `cancelBatchAction` marks job as cancelled — *audit: no longer true* — `increment_batch_progress` overwrites `cancelled` once the queued lines finish (`apps/web/supabase/migrations/20260527094643_increment_batch_progress_rpc.sql:64`)
+- [x] Batch processing continues on individual failures — *audit:* one SQS message per line, settled independently (`apps/web/lambda/voice-worker/index.ts:180`)
 - [x] Batch processing respects overwriteExisting flag
 - [x] All actions enforce authentication
 
 ### Non-Functional
 
-- [x] Batch processing completes within reasonable time (10 min for 100 lines)
-- [x] Progress updates are atomic
-- [ ] Batch job is resumable after server restart (deferred - requires queue system)
+- [ ] Batch processing completes within reasonable time (10 min for 100 lines) — *audit: unverified* — runtime timing; needs a timed run with 3 concurrent workers (`sst.config.ts:932`)
+- [x] Progress updates are atomic — *audit:* one `UPDATE … RETURNING` per line (`apps/web/supabase/migrations/20260527094643_increment_batch_progress_rpc.sql:24`)
+- [x] Batch job is resumable after server restart (deferred - requires queue system) — *audit:* lines are SQS messages processed by `apps/web/lambda/voice-worker` (`packages/features/audio-generation/src/server/batch-actions.ts:344`); the studio resumes polling an active batch on load (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/use-batch-generation.ts:113`)
 - [x] All errors logged with context
-- [x] TypeScript compiles without errors
-- [x] No ESLint warnings
+- [ ] TypeScript compiles without errors — *audit: no longer true* — KB-14: since `b7f7cb53` the lines run in voice-worker, which is never typechecked
+- [x] No ESLint warnings — *audit:* CI run 35779959194 (`main` at `6dfa35a4`): `@kit/audio-generation:lint` and `web:lint` (covers `lambda/`) executed with no output
 
 ---
 
@@ -1269,3 +1275,12 @@ async function handleBatchGeneration(episodeId: string) {
 - **Constitution**: Section 2.2 (Server Actions Pattern)
 - **Constitution**: Section 5.2 (Generation Job Errors)
 - **Constitution**: Section 6 (Cost Tracking)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| `getBatchStatusAction` returns accurate progress | a failed line is redelivered up to 3 times (`sst.config.ts:463`) and each attempt adds a failure (`apps/web/lambda/voice-worker/index.ts:291`), so a batch can count as complete while lines are still queued | unassigned |
+| `getBatchStatusAction` includes all errors | voice-worker never passes `p_error`, so `batch_generation_jobs.errors` stays empty | unassigned |
+| `cancelBatchAction` stops processing; marks job as cancelled | voice-worker never checks the batch status, and the RPC overwrites `cancelled` with a final status when the queued lines finish (`apps/web/supabase/migrations/20260527094643_increment_batch_progress_rpc.sql:64`) | unassigned |
+| TypeScript compiles without errors | voice-worker is outside every tsconfig | KB-14 |

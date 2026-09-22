@@ -1,3 +1,9 @@
+---
+spec_id: FILM-705
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-705: YouTube OAuth
 
 ## Metadata
@@ -298,29 +304,29 @@ export const disconnectYouTubeAction = enhanceAction(
 
 ## Acceptance Criteria
 
-- [ ] Connect button redirects to Google consent screen
-- [ ] Consent screen shows correct app name and scopes
-- [ ] Callback exchanges code for tokens successfully
-- [ ] Channel info is retrieved and stored
-- [ ] Tokens are encrypted before storage
-- [ ] Multiple channels per user are supported
-- [ ] Disconnect revokes token at Google
-- [ ] Disconnect removes connection from database
-- [ ] State/nonce prevents CSRF attacks
-- [ ] Expired states are rejected
+- [x] Connect button redirects to Google consent screen — *audit:* `apps/web/app/api/platforms/connect/youtube/route.ts:115`; driven in `apps/e2e/tests/platform-connections/analytics-access.spec.ts:162`
+- [ ] Consent screen shows correct app name and scopes — *audit: unverified* — Google renders it; needs a consent run with the owner's Google app
+- [ ] Callback exchanges code for tokens successfully — *audit: unverified* — exchange at `apps/web/app/api/platforms/callback/youtube/route.ts:105`; only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)
+- [x] Channel info is retrieved and stored — *audit:* `apps/web/app/api/platforms/callback/youtube/route.ts:158`, `apps/web/app/api/platforms/callback/youtube/route.ts:238`
+- [x] Tokens are encrypted before storage — *audit:* `apps/web/app/api/platforms/callback/youtube/route.ts:232`
+- [x] Multiple channels per user are supported — *audit:* `apps/web/app/api/platforms/callback/youtube/route.ts:199`; `apps/web/app/api/platforms/youtube/save-channel/route.ts:94`
+- [x] Disconnect revokes token at Google — *audit:* `packages/features/publishing/src/oauth/youtube/disconnect.ts:47`
+- [x] Disconnect removes connection from database — *audit:* `packages/features/publishing/src/oauth/youtube/disconnect.ts:62` (it also cascades further: KB-22)
+- [x] State/nonce prevents CSRF attacks — *audit:* `apps/web/app/api/platforms/callback/youtube/route.ts:79`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:156`
+- [x] Expired states are rejected — *audit:* `apps/web/app/api/platforms/callback/youtube/route.ts:85`
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test state encoding/decoding
-- [ ] Test nonce generation and validation
+- [x] Test state encoding/decoding — *audit:* `apps/e2e/tests/platform-connections/connect-failure.spec.ts:126`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:172`
+- [ ] Test nonce generation and validation — *audit: not met* — validation only (`apps/e2e/tests/platform-connections/connect-failure.spec.ts:156`); nothing tests nonce generation
 
 ### Integration Tests
-- [ ] Test OAuth flow with mocked Google endpoints
-- [ ] Test token refresh flow
-- [ ] Test disconnect flow
+- [ ] Test OAuth flow with mocked Google endpoints — *audit: not met* — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)
+- [ ] Test token refresh flow — *audit: not met* — `packages/features/publishing/__tests__/token-refresh.test.ts:199` calls `fetch` itself and asserts it; no product code runs
+- [ ] Test disconnect flow — *audit: not met* — no test found
 
 ---
 

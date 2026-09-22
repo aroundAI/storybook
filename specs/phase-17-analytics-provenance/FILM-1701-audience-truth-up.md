@@ -2,6 +2,7 @@
 spec_id: FILM-1701
 title: Audience Truth-Up
 status: ✅ DONE
+audited: 2026-09-23
 effort: M
 dependencies: none
 ---

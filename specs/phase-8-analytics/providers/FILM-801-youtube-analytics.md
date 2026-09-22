@@ -1,3 +1,9 @@
+---
+spec_id: FILM-801
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-801: YouTube Analytics Provider
 
 ## Metadata
@@ -418,29 +424,29 @@ export class YouTubeAnalyticsProvider {
 
 ## Acceptance Criteria
 
-- [ ] Fetches total views, likes, comments, shares
-- [ ] Fetches watch time and average duration
-- [ ] Fetches daily metrics breakdown
-- [ ] Fetches audience retention curve
-- [ ] Fetches demographic data (age/gender)
-- [ ] Fetches traffic source breakdown
-- [ ] Fetches geographic breakdown
-- [ ] Fetches estimated revenue (if available)
-- [ ] Handles API rate limits gracefully
-- [ ] Normalizes data to common format
+- [x] Fetches total views, likes, comments, shares — *audit:* `packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:193`
+- [x] Fetches watch time and average duration — *audit:* `packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:199`
+- [x] Fetches daily metrics breakdown — *audit:* `packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:299`
+- [x] Fetches audience retention curve — *audit:* `packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:335`
+- [x] Fetches demographic data (age/gender) — *audit:* `packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:364`
+- [x] Fetches traffic source breakdown — *audit:* `packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:413`
+- [x] Fetches geographic breakdown — *audit:* `packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:440`
+- [x] Fetches estimated revenue (if available) — *audit:* `packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:235` (own query, only with `yt-analytics-monetary.readonly`; FILM-1711)
+- [x] Handles API rate limits gracefully — *audit:* `packages/features/content-analytics/src/server/analytics-sync-cron.ts:177` (per-platform limiter), test `packages/features/content-analytics/__tests__/youtube-analytics.test.ts:199`
+- [x] Normalizes data to common format — *audit:* `packages/features/content-analytics/src/server/analytics-sync-cron.ts:839`
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test date formatting
-- [ ] Test duration parsing
-- [ ] Test data normalization
+- [x] Test date formatting — *audit:* `packages/features/content-analytics/__tests__/utils.test.ts:5`
+- [x] Test duration parsing — *audit:* `packages/features/content-analytics/__tests__/utils.test.ts:27`
+- [x] Test data normalization — *audit:* `packages/features/content-analytics/__tests__/ingest.test.ts:143` (`buildYouTubeDailyRows`)
 
 ### Integration Tests
-- [ ] Test with mocked YouTube API
-- [ ] Test error handling
+- [x] Test with mocked YouTube API — *audit:* `packages/features/content-analytics/__tests__/youtube-analytics.test.ts:85`
+- [x] Test error handling — *audit:* `packages/features/content-analytics/__tests__/youtube-analytics.test.ts:388`
 
 ---
 

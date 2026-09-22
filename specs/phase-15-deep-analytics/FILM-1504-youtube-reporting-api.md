@@ -1,7 +1,8 @@
 ---
 spec_id: FILM-1504
 title: YouTube Reporting API (Bulk Reports) Integration
-status: ✅ DONE
+status: 🟡 PARTIAL
+audited: 2026-09-23
 effort: L
 dependencies: FILM-1501
 ---
@@ -84,12 +85,12 @@ Report jobs created per connection: `channel_basic_a3`, `channel_combined_a3`, `
 
 ## 4. Acceptance Criteria
 
-- [ ] Report jobs auto-created for every active YouTube connection (rows in `youtube_report_jobs`)
-- [ ] CSV parsers handle fixture files for all four report types, including header-only (empty) reports
-- [ ] Matched rows land in `video_metrics` / `video_reach_daily` / `video_traffic_sources`; re-delivery does not duplicate
-- [ ] Unmatched channel videos aggregate into `channel_daily` (counted + logged, never dropped silently)
-- [ ] Watermark (`last_report_created_after`) advances; already-ingested reports are skipped
-- [ ] One video/day cross-checked against YouTube Studio (views, impressions, CTR)
+- [ ] Report jobs auto-created for every active YouTube connection (rows in `youtube_report_jobs`) — *audit: unverified* — needs a live YouTube connection; path exists (`packages/features/content-analytics/src/server/reporting/report-ingest.ts:124` → `ensureReportJobs`)
+- [ ] CSV parsers handle fixture files for all four report types, including header-only (empty) reports — *audit: not met* — no `channel_combined_a3` fixture; header-only tested only for the basic parser (`packages/features/content-analytics/__tests__/csv-parsers.test.ts:47`)
+- [ ] Matched rows land in `video_metrics` / `video_reach_daily` / `video_traffic_sources`; re-delivery does not duplicate — *audit: unverified* — inserts at `packages/features/content-analytics/src/server/reporting/report-ingest.ts:316`, `:356`, `:416`; no test runs `ingestReportCsv`
+- [ ] Unmatched channel videos aggregate into `channel_daily` (counted + logged, never dropped silently) — *audit: not met* — reach and basic branches insert zero-seeded rows on one key (`packages/features/content-analytics/src/server/reporting/report-ingest.ts:349`, `:403`); under `FINAL` the later zeroes the other
+- [ ] Watermark (`last_report_created_after`) advances; already-ingested reports are skipped — *audit: unverified* — advances at `packages/features/content-analytics/src/server/reporting/report-ingest.ts:263`, sent as `createdAfter`; the skip is YouTube's filter, needs a live job
+- [ ] One video/day cross-checked against YouTube Studio (views, impressions, CTR) — *audit: unverified* — a manual check against YouTube Studio on a real channel
 
 ## 5. Verification
 
@@ -99,3 +100,10 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" localhost:3000/api/analytic
 # after 24–48h: SELECT count() FROM video_reach_daily
 pnpm sst diff
 ```
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Parser fixtures for all four report types, incl. header-only | No `channel_combined_a3` fixture; header-only and empty-file cases are tested only for `parseChannelBasicReport` (`packages/features/content-analytics/__tests__/csv-parsers.test.ts:47`). The code returns `[]` for them, but no test shows it | unassigned |
+| Unmatched videos never dropped silently in `channel_daily` | The reach branch (`report-ingest.ts:349`) and the basic branch (`:403`) each insert a `channel_daily` row with the other's columns zeroed, on the same `(connection_id, metric_date)` key (`packages/clickhouse/src/migrations/003_reach_and_traffic.ts:56`). Readers use `channel_daily FINAL` (`packages/clickhouse/src/queries-advanced.ts:841`), so whichever report lands later zeroes the residual views and watch time (the YPP input) or the impressions for that day | unassigned |

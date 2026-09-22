@@ -1,3 +1,9 @@
+---
+spec_id: FILM-304
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-304: Story Generation Prompt Templates
 
 **Phase**: 3
@@ -630,23 +636,23 @@ None (new feature)
 
 ### Functional
 
-- [ ] All four JSON template files are valid JSON
-- [ ] Templates follow @kit/prompt-engine schema
-- [ ] All required variables defined with types
-- [ ] System prompts provide clear instructions
-- [ ] User prompts include variable interpolation
-- [ ] Output schemas match Zod validation schemas
-- [ ] Templates work with Claude, GPT-4, and Gemini
-- [ ] Generated outputs are parseable JSON
-- [ ] Prompts produce deterministic structured output
+- [x] All four JSON template files are valid JSON — *audit:* `packages/features/prompt-engine/__tests__/prompt-format.test.ts:103`; the fourth is now `scene-shot-generation.json` (`shot-list-generation.json` went in 2f23eb4e)
+- [x] Templates follow @kit/prompt-engine schema — *audit:* `packages/features/prompt-engine/__tests__/story-generation-templates.test.ts:21`; `scene-shot-generation.json` also passes `safeValidatePromptTemplate` (run 2026-09-23)
+- [x] All required variables defined with types — *audit:* `packages/features/prompt-engine/src/lib/validation/prompt-template.schema.ts:33`
+- [x] System prompts provide clear instructions — *audit:* role, constraint and format layers in each, e.g. `packages/features/prompt-engine/src/prompts/story-generation/story-generation.json`
+- [x] User prompts include variable interpolation — *audit:* `packages/features/prompt-engine/__tests__/story-generation-templates.test.ts:58`
+- [ ] Output schemas match Zod validation schemas — *audit: not met* — `scene-shot-generation.json` requires `sceneViralScore`, absent from its own example and from `packages/features/prompt-engine/src/schemas/story-generation-schemas.ts:373`; untested
+- [ ] Templates work with Claude, GPT-4, and Gemini — *audit: unverified* — needs a run on each vendor, which the audit rules forbid; all four templates pin Gemini
+- [ ] Generated outputs are parseable JSON — *audit: unverified* — LLM output; the executor retries truncated JSON (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:402`), but no run measures the rate
+- [ ] Prompts produce deterministic structured output — *audit: unverified* — LLM behaviour at temperature 0.4–0.8; structure is enforced by Zod (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:601`)
 
 ### Non-Functional
 
-- [ ] Templates are human-readable and editable
-- [ ] Variable names are clear and descriptive
-- [ ] Prompts produce consistent output format
-- [ ] JSON files are properly formatted
-- [ ] No hardcoded provider-specific syntax
+- [x] Templates are human-readable and editable — *audit:* JSON files in `packages/features/prompt-engine/src/prompts/story-generation/`, loaded at runtime
+- [x] Variable names are clear and descriptive — *audit:* e.g. `premise`, `target_duration`, `scene_count_min`; `packages/features/prompt-engine/__tests__/story-generation-templates.test.ts:32`
+- [ ] Prompts produce consistent output format — *audit: unverified* — LLM behaviour; off-schema output is rejected (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:601`), but no run measures how often
+- [x] JSON files are properly formatted — *audit:* `packages/features/prompt-engine/__tests__/prompt-format.test.ts:103` (valid JSON, trailing newline)
+- [x] No hardcoded provider-specific syntax — *audit:* no chat markers (`Human:`, `[INST]`, `<|im_start|>`) in the four; `packages/features/prompt-engine/__tests__/prompt-format.test.ts:216`
 
 ---
 
@@ -824,3 +830,9 @@ describe('Prompt Execution', () => {
 - **OpenAI GPT-4**: https://platform.openai.com/docs
 - **Kling AI**: Video generation constraints (10s max)
 - **Constitution**: Section 9 (Performance Guidelines)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Output schemas match Zod validation schemas | `scene-shot-generation.json` requires `sceneViralScore`, which its own `example_output` and `SceneShotGenerationOutputSchema` (`packages/features/prompt-engine/src/schemas/story-generation-schemas.ts:373`) lack; no test covers this template | unassigned |

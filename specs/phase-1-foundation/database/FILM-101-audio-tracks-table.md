@@ -1,10 +1,16 @@
+---
+spec_id: FILM-101h
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-101 Audio Tracks Table
 
 ## Metadata
 - **Phase:** 1
 - **Priority:** P0
 - **Effort:** XS
-- **Status:** ✅ COMPLETE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ COMPLETE)
 - **Completed:** 2025-12-05
 - **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
 - **Dependencies:** FILM-101 (episodes-table)
@@ -92,23 +98,29 @@ interface AudioTrackMetadata {
 | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
 
 ## Acceptance Criteria
-- [ ] Table created with all columns
-- [ ] Foreign key with CASCADE delete
-- [ ] Type enum constraint enforced
-- [ ] Volume constraint (0.0-2.0) enforced
-- [ ] Check constraints prevent negative values
-- [ ] Indexes created
+- [x] Table created with all columns — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:390`
+- [x] Foreign key with CASCADE delete — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:392`
+- [x] Type enum constraint enforced — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:401`
+- [x] Volume constraint (0.0-2.0) enforced — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:402`
+- [ ] Check constraints prevent negative values — *audit: not met* — the spec's `duration_seconds > 0` check was never created; only volume and timeline start are checked (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:402-403`)
+- [x] Indexes created — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:412-413`
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Insert with valid episode_id succeeds
-- [ ] Insert with invalid type fails
-- [ ] Insert with volume > 2.0 fails
-- [ ] Insert with negative timeline_start_seconds fails
-- [ ] Insert with duration_seconds = 0 fails
+- [ ] Insert with valid episode_id succeeds — *audit: not met* — no test found
+- [ ] Insert with invalid type fails — *audit: not met* — no test found
+- [ ] Insert with volume > 2.0 fails — *audit: not met* — no test found
+- [ ] Insert with negative timeline_start_seconds fails — *audit: not met* — no test found
+- [ ] Insert with duration_seconds = 0 fails — *audit: not met* — no test found; no such check exists
 
 ### Integration Tests
-- [ ] Deleting episode cascades to delete tracks
-- [ ] Query tracks by type
-- [ ] Order tracks by timeline_start_seconds
+- [ ] Deleting episode cascades to delete tracks — *audit: not met* — no test found
+- [ ] Query tracks by type — *audit: not met* — no test found
+- [ ] Order tracks by timeline_start_seconds — *audit: not met* — no test found
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| `duration_seconds > 0` check | In the spec's table definition but never created: the migration checks only type, volume and timeline start (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:401-403`); `git log -S` finds no later addition | unassigned |

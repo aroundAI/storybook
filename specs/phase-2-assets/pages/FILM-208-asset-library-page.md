@@ -1,6 +1,12 @@
+---
+spec_id: FILM-208
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-208: Asset Library Page
 
-**Status**: ✅ Completed (2025-12-08)
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ Completed 2025-12-08)
 **Phase**: 2
 **Priority**: P0
 **Effort**: M (3-5 days)
@@ -447,30 +453,30 @@ export function StudioSidebar({ project, account }: StudioSidebarProps) {
 
 ### Functional
 
-- [ ] Page accessible at `/home/[account]/studio/[projectId]/assets`
-- [ ] Breadcrumb displays: Home > Studio > [Project Name] > Assets
-- [ ] Page title: "Asset Library"
-- [ ] Description displayed below title
-- [ ] "Create Asset" button in page header
-- [ ] Dropdown shows: Create Character, Create Location, Create Voice Profile
-- [ ] Character dialog opens CharacterEditor
-- [ ] Voice dialog opens VoiceProfileEditor
-- [ ] Location dialog shows placeholder (coming soon)
-- [ ] AssetGallery renders with project assets
-- [ ] Tab selection persisted in URL (?tab=character)
-- [ ] Back link navigates to project dashboard
-- [ ] Sidebar highlights "Assets" when active
-- [ ] Page refreshes after asset creation
-- [ ] Dialog closes after successful creation
+- [x] Page accessible at `/home/[account]/studio/[projectId]/assets` — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx` (the segment is now the project slug); E2E `apps/e2e/tests/refusals/refusals.po.ts:153`
+- [ ] Breadcrumb displays: Home > Studio > [Project Name] > Assets — *audit: not met* — never built; the page has a "Back to Project" link instead (`apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:133-140`)
+- [ ] ~~Page title: "Asset Library"~~ — *audit: retired* — renamed "Cast" / "Story World" by tab in 307d879b (`apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:101-107`)
+- [ ] Description displayed below title — *audit: not met* — `PageHeader` renders the description above the title (`packages/ui/src/makerkit/page.tsx:172-185`)
+- [x] "Create Asset" button in page header — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:143-149`
+- [ ] ~~Dropdown shows: Create Character, Create Location, Create Voice Profile~~ — *audit: retired* — voice option removed in a70af938; Character and Location remain (`apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:63-70`)
+- [x] Character dialog opens CharacterEditor — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:75-90`
+- [ ] ~~Voice dialog opens VoiceProfileEditor~~ — *audit: retired* — voice profiles removed in a70af938; see FILM-206
+- [ ] ~~Location dialog shows placeholder (coming soon)~~ — *audit: retired* — replaced by a real `LocationEditor` in 41c76442 (`apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:93-107`)
+- [x] AssetGallery renders with project assets — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:152-157`; E2E `apps/e2e/tests/refusals/refusals.po.ts:153-162`
+- [x] Tab selection persisted in URL (?tab=character) — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:59`, `packages/features/assets/src/components/asset-gallery.tsx:161`
+- [x] Back link navigates to project dashboard — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:134-140`
+- [ ] Sidebar highlights "Assets" when active — *audit: not met* — items test `usePathname()` for "character"/"location", which only appear in `?tab=` (`apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx:461`)
+- [ ] Page refreshes after asset creation — *audit: not met* — `router.refresh()` runs, but the gallery seeds its lists once (`packages/features/assets/src/hooks/use-character-assets.ts:44`); new assets stay hidden
+- [x] Dialog closes after successful creation — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:44-46`
 
 ### Non-Functional
 
-- [ ] Page loads within 2 seconds
-- [ ] Responsive layout on mobile, tablet, desktop
-- [ ] SEO metadata generated dynamically
-- [ ] Keyboard shortcut Cmd/Ctrl+K opens create menu (future)
-- [ ] TypeScript compiles without errors
-- [ ] No ESLint warnings
+- [ ] Page loads within 2 seconds — *audit: unverified* — runtime timing; nothing measures it
+- [ ] Responsive layout on mobile, tablet, desktop — *audit: unverified* — needs viewport screenshots
+- [x] SEO metadata generated dynamically — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:31-52`
+- [ ] Keyboard shortcut Cmd/Ctrl+K opens create menu (future) — *audit: not met* — deferred at ship time: Cmd/Ctrl+K shortcut; no `keydown` handler in the assets page or package
+- [x] TypeScript compiles without errors — *audit:* main CI run 35779959194 (6dfa35a4; code unchanged since): `web:typecheck` ran uncached, no errors
+- [x] No ESLint warnings — *audit:* main CI run 35779959194: `web:lint` ran uncached, printed nothing
 
 ---
 
@@ -774,3 +780,13 @@ const handleSuccess = (assetId: string) => {
 - **FILM-206**: VoiceProfileEditor component
 - **Next.js Pages**: https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts
 - **Constitution**: Section 2.3 (Component Pattern)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Breadcrumb | Never built; the page has a "Back to Project" link instead (`apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:133-140`) | unassigned |
+| Description below title | `PageHeader` renders `description` above the title (`packages/ui/src/makerkit/page.tsx:172-185`) | unassigned |
+| Sidebar highlight | "Characters" and "Locations" test `usePathname()` for a word that is only in `?tab=` (`apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx:461`, `:471`; same in `mobile-studio-header.tsx:258`, `:268`) | unassigned |
+| New asset shown after creation | `router.refresh()` (`apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:46`) cannot reach the gallery's client state: characters are seeded once (`packages/features/assets/src/hooks/use-character-assets.ts:44`), locations refetch only on a tab change (`packages/features/assets/src/components/asset-gallery.tsx:138-142`) | unassigned |
+| Cmd/Ctrl+K opens create menu | Deferred at ship time ("future"); not built | unassigned |

@@ -1,3 +1,9 @@
+---
+spec_id: FILM-109
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-109 Zod Schemas Package
 
 ## Metadata
@@ -670,7 +676,7 @@ export const VoiceSchema = z.object({
 ## Test Plan
 ### Unit Tests
 - [x] Package can be imported from other workspace packages
-- [x] All export paths are accessible
+- [ ] All export paths are accessible — *audit: not met* — no test found; the tests import `../src/*`, never the eight export paths
 - [x] Project schemas validate correctly
 - [x] Asset schemas validate correctly (character, location, prop)
 - [x] Episode schemas validate correctly
@@ -678,13 +684,13 @@ export const VoiceSchema = z.object({
 - [x] Video generation schemas validate correctly
 - [x] Audio generation schemas validate correctly
 - [x] Common schemas validate correctly
-- [x] Invalid data is rejected with clear error messages
-- [x] Type inference works correctly for all schemas
+- [ ] Invalid data is rejected with clear error messages — *audit: not met* — tests assert `success === false` only; none checks a message
+- [ ] Type inference works correctly for all schemas — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Schemas work with react-hook-form and @hookform/resolvers
-- [ ] Schemas work with Supabase type generation
-- [ ] Schemas can be used in API route validation
+- [x] Schemas work with react-hook-form and @hookform/resolvers — *audit:* `apps/e2e/tests/refusals/refusals.po.ts:99` drives the project form, whose `zodResolver` schema embeds `StudioProjectSettingsSchema`
+- [ ] Schemas work with Supabase type generation — *audit: not met* — no test found
+- [ ] Schemas can be used in API route validation — *audit: not met* — no test found; no API route imports the package
 
 ## Implementation Notes
 

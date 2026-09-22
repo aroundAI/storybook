@@ -1,10 +1,18 @@
+---
+spec_id: FILM-101l
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-101 Content Analytics Table
+
+> **🗑️ Retired (audit 2026-09-23).** `apps/web/supabase/migrations/20260212080000_drop_content_analytics.sql` dropped the table (047f0c84, 2026-02-12) when per-video analytics moved to ClickHouse. Metrics now live in the ClickHouse `video_metrics` table and `video_daily_stats` view (`packages/clickhouse/src/migrations/001_create_tables.ts`); revenue stays in Postgres `revenue_records`. Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 1
 - **Priority:** P0
 - **Effort:** S
-- **Status:** ✅ COMPLETE
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was ✅ COMPLETE)
 - **Completed:** 2025-12-05
 - **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
 - **Dependencies:** FILM-101 (publishes-table)

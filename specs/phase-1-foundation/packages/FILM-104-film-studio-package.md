@@ -1,4 +1,12 @@
+---
+spec_id: FILM-104
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-104 @kit/film-studio Package
+
+> **🗑️ Retired (audit 2026-09-23).** `@kit/film-studio` was deleted in `5f44d0e1` (2026-02-19, "remove dead video editor code, film-studio package, and orphaned routes"). Its one live piece, the API-keys settings, moved to `apps/web/app/home/[account]/settings/_components/api-keys-settings.tsx`; nothing replaces the orchestration package (`packages/features/film-studio-schemas` is FILM-109's Zod schemas, not a successor). Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 1
@@ -6,7 +14,7 @@
 - **Effort:** S
 - **Dependencies:** None
 - **Blocks:** Phase 2-5 features
-- **Status:** ✅ COMPLETED
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was ✅ COMPLETED)
 - **PR:** [#2](https://github.com/aroundAI/storybook/pull/2)
 
 ## Context

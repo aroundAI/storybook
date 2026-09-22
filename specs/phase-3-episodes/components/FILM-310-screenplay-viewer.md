@@ -1,3 +1,9 @@
+---
+spec_id: FILM-310
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-310: Screenplay Viewer Component
 
 **Status**: ✅ DONE
@@ -230,12 +236,12 @@ function SceneContent({ scene }: { scene: any }) {
 ## Acceptance Criteria
 
 - [x] Displays scenes in professional screenplay format
-- [x] Scene navigation sidebar works
-- [x] Active scene highlights on click
-- [x] Approve button advances pipeline
-- [x] Regenerate button triggers conversion
+- [ ] Scene navigation sidebar works — *audit: unverified* — clicks scroll to the scene (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/screenplay/_components/screenplay-screen.tsx:131`); no test drives it (package tests cover the unused `ScreenplayViewer`)
+- [ ] Active scene highlights on click — *audit: unverified* — highlight follows `activeSceneNumber` (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/screenplay/_components/scene-index-sidebar.tsx:31`); no test drives it
+- [ ] Approve button advances pipeline — *audit: unverified* — "Approve & Generate Shots" calls `generateShotListAction` (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/screenplay/_components/screenplay-screen.tsx:173`); no test drives it
+- [ ] ~~Regenerate button triggers conversion~~ — *audit: retired* — no Regenerate on the screenplay screen; regeneration is Reset to stage (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/quick-actions-menu.tsx:291`)
 - [x] Loading states display correctly
-- [x] Responsive on mobile (sidebar collapses)
+- [ ] Responsive on mobile (sidebar collapses) — *audit: unverified* — visual; the sidebar collapses by a toggle (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/screenplay/_components/screenplay-screen.tsx:292`), untested at phone width
 
 ---
 

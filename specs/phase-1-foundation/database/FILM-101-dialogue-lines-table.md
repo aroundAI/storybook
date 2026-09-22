@@ -1,3 +1,9 @@
+---
+spec_id: FILM-101g
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-101 Dialogue Lines Table
 
 ## Metadata
@@ -94,21 +100,21 @@ interface GenerationMetadata {
 | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
 
 ## Acceptance Criteria
-- [ ] Table created with all columns
-- [ ] Foreign keys with correct ON DELETE behavior
-- [ ] Unique constraint on (episode_id, sequence_number)
-- [ ] Status check constraint enforced
-- [ ] Indexes created
+- [x] Table created with all columns — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:357`
+- [x] Foreign keys with correct ON DELETE behavior — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:359-361`
+- [ ] ~~Unique constraint on (episode_id, sequence_number)~~ — *audit: retired* — widened to (episode_id, sequence_number, language) for translated lines (`apps/web/supabase/migrations/20260101000000_fix_dialogue_language_constraint.sql:17`)
+- [x] Status check constraint enforced — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:368`
+- [x] Indexes created — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:378-383`
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Insert with valid episode_id succeeds
-- [ ] Insert with invalid status fails
-- [ ] Duplicate sequence_number fails
-- [ ] NULL shot_id and character_asset_id allowed
+- [ ] Insert with valid episode_id succeeds — *audit: not met* — no test found
+- [ ] Insert with invalid status fails — *audit: not met* — no test found
+- [ ] Duplicate sequence_number fails — *audit: not met* — no test found
+- [ ] NULL shot_id and character_asset_id allowed — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Deleting episode cascades
-- [ ] Deleting shot sets shot_id to NULL
-- [ ] Deleting character sets character_asset_id to NULL
+- [ ] Deleting episode cascades — *audit: not met* — no test found
+- [ ] Deleting shot sets shot_id to NULL — *audit: not met* — no test found
+- [ ] Deleting character sets character_asset_id to NULL — *audit: not met* — no test found

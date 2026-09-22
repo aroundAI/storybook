@@ -1,3 +1,9 @@
+---
+spec_id: FILM-105
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-105 @kit/assets Package
 
 ## Metadata
@@ -295,7 +301,7 @@ export {};
 ## Test Plan
 ### Unit Tests
 - [x] Package can be imported from other workspace packages
-- [x] All export paths are accessible
+- [ ] All export paths are accessible — *audit: not met* — no test found; all 17 paths in `packages/features/assets/package.json` resolve, but no test imports them
 - [x] Zod schemas validate valid input
 - [x] Zod schemas reject invalid input
 - [x] Types are properly exported

@@ -1,3 +1,9 @@
+---
+spec_id: FILM-102c
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-102 Account-Based Access Policies
 
 ## Metadata
@@ -126,8 +132,8 @@ This pattern allows access for:
 ## Acceptance Criteria
 - [x] All 4 account-scoped tables have RLS policies (platform_connections, external_api_keys, shared_resources, generation_jobs)
 - [x] Helper functions correctly identify user's account ownership
-- [x] Users can only access their own account data (personal or team accounts)
-- [x] Users cannot access other users' credentials or API keys
+- [ ] Users can only access their own account data (personal or team accounts) — *audit: unverified* — needs a pgTAP test on these four tables; their policies call `has_account_access` (`apps/web/supabase/migrations/20251210201500_fix-account-rls-helpers.sql:163`), exercised only through other tables' tests (`revenue-records-rls.test.sql`, `channel-analytics-settings-rls.test.sql`)
+- [ ] Users cannot access other users' credentials or API keys — *audit: unverified* — needs a pgTAP test that an outsider reads no `platform_connections`/`external_api_keys` rows; none exists
 - [x] Performance indexes are created for policy checks (in schema file)
 - [x] All policies verified in schema file
 

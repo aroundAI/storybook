@@ -1,10 +1,18 @@
+---
+spec_id: FILM-902
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-902: Dashboard Widgets
+
+> **🗑️ Retired (audit 2026-09-23).** The widgets (`recent-activity`, `generation-queue`, `scheduled-publishes`, `quick-stats`, `recent-projects`) and `studio-dashboard.tsx` in `@kit/film-studio` were mounted nowhere and were deleted as dead code by the owner in 5f44d0e1 (2026-02-19); the video-generation queue one of them watched was retired in 5b88db3a. The account home page is a different design instead: `CompanyDashboard` (`packages/features/content-analytics/src/components/company-dashboard.tsx`, mounted by `apps/web/app/home/[account]/page.tsx`) — 30-day metrics against the previous period, production-status and scheduled counts, top content — with no activity feed, live queue or hideable widgets. Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 9 - Integration
 - **Priority:** P2 (Post-MVP)
 - **Effort:** M (4-8 hours)
-- **Status:** DONE
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was DONE)
 - **Dependencies:** FILM-805 (Analytics), FILM-804 (Sync), All feature packages
 - **Blocks:** None
 
