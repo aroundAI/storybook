@@ -137,7 +137,11 @@ export function LocationEditor({
               Cancel
             </Button>
           )}
-          <Button type="submit" disabled={isPending}>
+          <Button
+            type="submit"
+            disabled={isPending}
+            data-test="location-submit"
+          >
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isEditMode ? 'Update Location' : 'Create Location'}
           </Button>
