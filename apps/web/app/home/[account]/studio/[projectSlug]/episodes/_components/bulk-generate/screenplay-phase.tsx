@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 
 import { batchConvertScreenplaysAction } from '@kit/episodes/server';
+import { refusalMessage } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { useBulkLlmJobs } from '@kit/ui/hooks';
@@ -431,10 +432,7 @@ export function ScreenplayPhase({
         dispatch({ type: 'SET_SCREENPLAY_STATUS', episodeId, status: 'error' });
       }
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Batch screenplay conversion failed';
+      const message = refusalMessage(err, 'Batch screenplay conversion failed');
       for (const ep of toGenerate) {
         dispatch({
           type: 'SET_EPISODE_ERROR',

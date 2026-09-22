@@ -7,7 +7,9 @@ import { z } from 'zod';
 import type { AssetRow } from '@kit/assets';
 import { mapRowToAsset } from '@kit/assets';
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
@@ -47,7 +49,7 @@ import type {
  * - Initializes in 'draft' status with version 1
  * - Creates audit log entry
  */
-export const createEpisodeAction = enhanceAction(
+const createEpisode = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = { name: 'episodes.create', projectId: data.projectId };
@@ -129,6 +131,15 @@ export const createEpisodeAction = enhanceAction(
     }
 
     if (!episode) {
+      // A number chosen by the caller is never retried, so a clash on it is
+      // theirs to resolve. An auto-assigned number that still clashes after
+      // every retry is a failure, and stays thrown.
+      if (data.number && lastError?.code === '23505') {
+        throw new ActionRefusal(
+          `Episode ${data.number} already exists in this project. Choose a different number.`,
+        );
+      }
+
       logger.error({ ...ctx, error: lastError }, 'Failed to create episode');
       throw new Error(
         `Failed to create episode: ${lastError?.message ?? 'Unknown error'}`,
@@ -173,11 +184,13 @@ export const createEpisodeAction = enhanceAction(
   },
 );
 
+export const createEpisodeAction = returnRefusals(createEpisode);
+
 /**
  * Create an episode with full context from the Enhanced Create Episode Wizard.
  * Supports attaching facts, creative direction, and optional story auto-generation.
  */
-export const createEpisodeWithContextAction = enhanceAction(
+const createEpisodeWithContext = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = {
@@ -203,7 +216,7 @@ export const createEpisodeWithContextAction = enhanceAction(
       .single();
 
     if (!project) {
-      throw new Error('Project not found or access denied');
+      throw new ActionRefusal('Project not found or access denied');
     }
 
     // 2. Resolve or create season
@@ -427,6 +440,10 @@ export const createEpisodeWithContextAction = enhanceAction(
   {
     schema: CreateEpisodeWithContextSchema,
   },
+);
+
+export const createEpisodeWithContextAction = returnRefusals(
+  createEpisodeWithContext,
 );
 
 /**
@@ -971,7 +988,7 @@ export const updateEpisodeAction = enhanceAction(
  * - Cascades soft delete to all related shots
  * - Creates audit log entry
  */
-export const deleteEpisodeAction = enhanceAction(
+const deleteEpisode = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = { name: 'episodes.delete', episodeId: data.episodeId };
@@ -1003,7 +1020,7 @@ export const deleteEpisodeAction = enhanceAction(
       .single();
 
     if (fetchError || !episode) {
-      throw new Error('Episode not found');
+      throw new ActionRefusal('Episode not found');
     }
 
     const now = new Date().toISOString();
@@ -1067,6 +1084,8 @@ export const deleteEpisodeAction = enhanceAction(
     schema: DeleteEpisodeSchema,
   },
 );
+
+export const deleteEpisodeAction = returnRefusals(deleteEpisode);
 
 // Shot CRUD actions have been moved to lib/server/mutations/shot-actions.ts (FILM-303)
 // Shot list generation has been moved to lib/server/mutations/shot-list-actions.ts (FILM-307)
@@ -1690,7 +1709,7 @@ export const bulkResetToStoryboardAction = enhanceAction(
  * - `story`: Keep story_data, clear screenplay + shots + audio + canon
  * - `screenplay` / `storyboard`: Keep story + screenplay + dialogue_lines, clear shots + audio
  */
-export const resetToStageAction = enhanceAction(
+const resetToStageHandler = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = {
@@ -1724,7 +1743,7 @@ export const resetToStageAction = enhanceAction(
       .single();
 
     if (fetchError || !episode) {
-      throw new Error('Episode not found');
+      throw new ActionRefusal('Episode not found');
     }
 
     const accountId = episode.project?.account_id;
@@ -2154,6 +2173,8 @@ export const resetToStageAction = enhanceAction(
     schema: ResetToStageSchema,
   },
 );
+
+export const resetToStageAction = returnRefusals(resetToStageHandler);
 
 /**
  * Bulk flexible reset: rewind multiple episodes to a specific pipeline stage.

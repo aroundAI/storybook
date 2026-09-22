@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react';
 import { Image as ImageIcon, Trash2, Upload } from 'lucide-react';
 
 import { updateShotAction } from '@kit/episodes/server';
+import { refusalMessage } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
@@ -81,9 +82,7 @@ export function FrameUploader({
         );
         onUploadComplete();
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : 'Failed to upload image',
-        );
+        toast.error(refusalMessage(error, 'Failed to upload image'));
       } finally {
         setIsUploading(false);
         // Reset the input
@@ -113,9 +112,7 @@ export function FrameUploader({
       );
       onUploadComplete();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to remove frame',
-      );
+      toast.error(refusalMessage(error, 'Failed to remove frame'));
     } finally {
       setIsUploading(false);
     }

@@ -24,6 +24,7 @@ import {
   updateSeasonAction,
 } from '@kit/episodes/server';
 import type { Episode } from '@kit/episodes/types';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -136,7 +137,7 @@ export function SeasonHeader({
     }
     startTransition(async () => {
       try {
-        await updateSeasonAction({ seasonId, name: trimmed });
+        await unwrap(updateSeasonAction({ seasonId, name: trimmed }));
         toast.success('Season renamed');
         setIsEditing(false);
         router.refresh();
@@ -150,10 +151,12 @@ export function SeasonHeader({
     if (notesValue === (directionNotes ?? '')) return;
     setIsSavingNotes(true);
     try {
-      await updateSeasonAction({
-        seasonId,
-        directionNotes: notesValue || undefined,
-      });
+      await unwrap(
+        updateSeasonAction({
+          seasonId,
+          directionNotes: notesValue || undefined,
+        }),
+      );
     } catch (error) {
       console.error('Failed to save direction notes:', error);
     } finally {
@@ -216,9 +219,7 @@ export function SeasonHeader({
       }
     } catch (error) {
       toast.dismiss(loadingToastId);
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to reset season',
-      );
+      toast.error(refusalMessage(error, 'Failed to reset season'));
     } finally {
       setIsResettingSeason(false);
     }

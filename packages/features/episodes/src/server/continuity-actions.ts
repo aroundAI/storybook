@@ -4,7 +4,9 @@ import { revalidatePath } from 'next/cache';
 
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { createLLMClient } from '@kit/llm';
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -189,7 +191,7 @@ export const checkContinuityAction = enhanceAction(
 /**
  * Auto-fix a specific continuity issue
  */
-export const fixContinuityIssueAction = enhanceAction(
+const fixContinuityIssue = enhanceAction(
   async (data): Promise<{ success: true; data: { fixedIssueId: string } }> => {
     const logger = await getLogger();
     const ctx = {
@@ -214,11 +216,11 @@ export const fixContinuityIssueAction = enhanceAction(
     const issue = checkResult.data.issues.find((i) => i.id === data.issueId);
 
     if (!issue) {
-      throw new Error('Issue not found - it may have been resolved');
+      throw new ActionRefusal('Issue not found - it may have been resolved');
     }
 
     if (!issue.autoFixable) {
-      throw new Error('This issue cannot be auto-fixed');
+      throw new ActionRefusal('This issue cannot be auto-fixed');
     }
 
     // Fetch episode for fixing (include project for audit log)
@@ -237,7 +239,7 @@ export const fixContinuityIssueAction = enhanceAction(
       .single();
 
     if (episodeError || !episode) {
-      throw new Error('Episode not found');
+      throw new ActionRefusal('Episode not found');
     }
 
     // Use LLM to generate the fix
@@ -350,6 +352,8 @@ export const fixContinuityIssueAction = enhanceAction(
     schema: FixContinuityIssueSchema,
   },
 );
+
+export const fixContinuityIssueAction = returnRefusals(fixContinuityIssue);
 
 // Helper functions
 
