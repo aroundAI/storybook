@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useTransition } from 'react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { toast } from '@kit/ui/sonner';
 
 import {
@@ -56,10 +57,9 @@ export function useAssets({
         });
         setData(response);
       } catch (err) {
-        const error =
-          err instanceof Error ? err : new Error('Failed to fetch assets');
-        setError(error);
-        toast.error(error.message);
+        const message = refusalMessage(err, 'Failed to fetch assets');
+        setError(new Error(message));
+        toast.error(message);
       }
     });
   }, [projectId, type, limit]);
@@ -76,7 +76,7 @@ export function useAssets({
 
       startDeleteTransition(async () => {
         try {
-          await deleteAssetAction({ assetId });
+          await unwrap(deleteAssetAction({ assetId }));
           toast.success('Asset deleted successfully');
         } catch (err) {
           // Rollback on error
@@ -86,14 +86,7 @@ export function useAssets({
             total: prev.total + 1,
           }));
 
-          const error =
-            err instanceof Error ? err : new Error('Failed to delete asset');
-
-          if (error.message.includes('in use')) {
-            toast.error('Cannot delete asset that is in use by episodes');
-          } else {
-            toast.error('Failed to delete asset');
-          }
+          toast.error(refusalMessage(err, 'Failed to delete asset'));
         }
       });
     },

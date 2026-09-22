@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import { Form } from '@kit/ui/form';
 import { toast } from '@kit/ui/sonner';
@@ -81,14 +82,16 @@ export function LocationEditor({
 
         if (isEditMode && location) {
           // Update existing location
-          const result = await updateAssetAction({
-            id: location.id,
-            name: data.name,
-            description: data.description,
-            fileUrl: data.fileUrl,
-            thumbnailUrl: data.thumbnailUrl,
-            metadata: metadata as Record<string, unknown>,
-          });
+          const result = await unwrap(
+            updateAssetAction({
+              id: location.id,
+              name: data.name,
+              description: data.description,
+              fileUrl: data.fileUrl,
+              thumbnailUrl: data.thumbnailUrl,
+              metadata: metadata as Record<string, unknown>,
+            }),
+          );
 
           if (result.success) {
             toast.success('Location updated successfully');
@@ -97,15 +100,17 @@ export function LocationEditor({
           }
         } else {
           // Create new location
-          const result = await createAssetAction({
-            projectId,
-            type: 'location',
-            name: data.name,
-            description: data.description,
-            fileUrl: data.fileUrl,
-            thumbnailUrl: data.thumbnailUrl,
-            metadata: metadata as Record<string, unknown>,
-          });
+          const result = await unwrap(
+            createAssetAction({
+              projectId,
+              type: 'location',
+              name: data.name,
+              description: data.description,
+              fileUrl: data.fileUrl,
+              thumbnailUrl: data.thumbnailUrl,
+              metadata: metadata as Record<string, unknown>,
+            }),
+          );
 
           if (result.success) {
             toast.success('Location created successfully');
@@ -114,8 +119,7 @@ export function LocationEditor({
           }
         }
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Failed to save location';
+        const message = refusalMessage(error, 'Failed to save location');
         toast.error(message);
       }
     });

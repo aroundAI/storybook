@@ -24,6 +24,7 @@ import {
   deleteAssetAction,
 } from '@kit/assets/mutations';
 import { updateEpisodeAction } from '@kit/episodes/server';
+import { unwrap } from '@kit/next/action-result';
 import { calculateFileHash } from '@kit/shared/utils';
 import { Button } from '@kit/ui/button';
 import {
@@ -210,16 +211,18 @@ function MasterVideoSection({
       setProgress(80);
 
       // 4. Create Asset Record
-      const createResult = await createAssetAction({
-        projectId,
-        name: file.name,
-        type,
-        fileUrl: uploadResult.url,
-        fileHash,
-        fileSizeBytes: file.size,
-        contentType: file.type,
-        episodeId, // Context
-      });
+      const createResult = await unwrap(
+        createAssetAction({
+          projectId,
+          name: file.name,
+          type,
+          fileUrl: uploadResult.url,
+          fileHash,
+          fileSizeBytes: file.size,
+          contentType: file.type,
+          episodeId, // Context
+        }),
+      );
 
       if (!createResult.success || !createResult.data) {
         // CLEANUP: If DB insert fails, try to delete the uploaded file to avoid orphans
@@ -363,16 +366,18 @@ function TitleCardsSection({
         // This ensures the new asset belongs to this episode (episode_id)
         // while sharing the storage file.
 
-        const result = await createAssetAction({
-          projectId,
-          name: existingAsset.name,
-          type: 'master_title_card',
-          fileUrl: existingAsset.fileUrl!, // Validated above
-          fileHash: existingAsset.fileHash ?? undefined,
-          fileSizeBytes: existingAsset.fileSizeBytes ?? undefined,
-          contentType: existingAsset.contentType!, // Validated above
-          episodeId, // Critical: Link to current episode
-        });
+        const result = await unwrap(
+          createAssetAction({
+            projectId,
+            name: existingAsset.name,
+            type: 'master_title_card',
+            fileUrl: existingAsset.fileUrl!, // Validated above
+            fileHash: existingAsset.fileHash ?? undefined,
+            fileSizeBytes: existingAsset.fileSizeBytes ?? undefined,
+            contentType: existingAsset.contentType!, // Validated above
+            episodeId, // Critical: Link to current episode
+          }),
+        );
 
         if (result.success) {
           toast.success('Title card linked successfully');
@@ -437,16 +442,18 @@ function TitleCardsSection({
       setProgress(80);
 
       // 4. Create Asset Record (Auto-linked via episodeId)
-      const createResult = await createAssetAction({
-        projectId,
-        name: file.name,
-        type: 'master_title_card',
-        fileUrl: uploadResult.url,
-        fileHash,
-        fileSizeBytes: file.size,
-        contentType: file.type,
-        episodeId, // Link!
-      });
+      const createResult = await unwrap(
+        createAssetAction({
+          projectId,
+          name: file.name,
+          type: 'master_title_card',
+          fileUrl: uploadResult.url,
+          fileHash,
+          fileSizeBytes: file.size,
+          contentType: file.type,
+          episodeId, // Link!
+        }),
+      );
 
       if (!createResult.success || !createResult.data) {
         const errorMsg =
@@ -470,7 +477,7 @@ function TitleCardsSection({
 
   const handleDelete = async (assetId: string) => {
     startTransition(async () => {
-      const result = await deleteAssetAction({ assetId });
+      const result = await unwrap(deleteAssetAction({ assetId }));
       if (result.success) {
         toast.success('Title card removed');
         setDeleteConfirmId(null);

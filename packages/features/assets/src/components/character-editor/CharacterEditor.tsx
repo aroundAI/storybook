@@ -12,6 +12,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import {
   Card,
@@ -161,37 +162,41 @@ export function CharacterEditor({
         let result;
 
         if (mode === 'edit' && character) {
-          result = await updateCharacterAction({
-            assetId: character.id,
-            name: data.name,
-            description: data.description || null,
-            fileUrl: data.fileUrl || null,
-            thumbnailUrl: data.thumbnailUrl || null,
-            physicalAttributes: data.physicalAttributes,
-            personality: data.personality || null,
-            personalityTraits: data.personalityTraits,
-            clothingStyle: data.clothingStyle,
-            backstory: data.backstory || null,
-            elementPrompt: data.elementPrompt || null,
-            referenceImages: data.referenceImages,
-            voiceAssetId: data.voiceAssetId,
-          });
+          result = await unwrap(
+            updateCharacterAction({
+              assetId: character.id,
+              name: data.name,
+              description: data.description || null,
+              fileUrl: data.fileUrl || null,
+              thumbnailUrl: data.thumbnailUrl || null,
+              physicalAttributes: data.physicalAttributes,
+              personality: data.personality || null,
+              personalityTraits: data.personalityTraits,
+              clothingStyle: data.clothingStyle,
+              backstory: data.backstory || null,
+              elementPrompt: data.elementPrompt || null,
+              referenceImages: data.referenceImages,
+              voiceAssetId: data.voiceAssetId,
+            }),
+          );
         } else {
-          result = await createCharacterAction({
-            projectId,
-            name: data.name,
-            description: data.description || undefined,
-            fileUrl: data.fileUrl || undefined,
-            thumbnailUrl: data.thumbnailUrl || undefined,
-            physicalAttributes: data.physicalAttributes,
-            personality: data.personality || undefined,
-            personalityTraits: data.personalityTraits,
-            clothingStyle: data.clothingStyle,
-            backstory: data.backstory || undefined,
-            elementPrompt: data.elementPrompt || undefined,
-            referenceImages: data.referenceImages,
-            voiceAssetId: data.voiceAssetId,
-          });
+          result = await unwrap(
+            createCharacterAction({
+              projectId,
+              name: data.name,
+              description: data.description || undefined,
+              fileUrl: data.fileUrl || undefined,
+              thumbnailUrl: data.thumbnailUrl || undefined,
+              physicalAttributes: data.physicalAttributes,
+              personality: data.personality || undefined,
+              personalityTraits: data.personalityTraits,
+              clothingStyle: data.clothingStyle,
+              backstory: data.backstory || undefined,
+              elementPrompt: data.elementPrompt || undefined,
+              referenceImages: data.referenceImages,
+              voiceAssetId: data.voiceAssetId,
+            }),
+          );
         }
 
         if (result.success && result.data) {
@@ -213,9 +218,10 @@ export function CharacterEditor({
         }
       } catch (error) {
         toast.error(
-          `Failed to ${mode === 'edit' ? 'update' : 'create'} character: ${
-            error instanceof Error ? error.message : 'Unknown error'
-          }`,
+          `Failed to ${mode === 'edit' ? 'update' : 'create'} character: ${refusalMessage(
+            error,
+            'Unknown error',
+          )}`,
         );
       }
     });
