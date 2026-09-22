@@ -113,6 +113,12 @@ import type {
 
 - `user.info.basic` - Basic creator information
 - `video.list` - List and query the creator's own videos
+- `user.info.stats` - `follower_count`, which left `user.info.basic` on 2024-02-29
+
+These are declared in `packages/features/publishing/src/oauth/analytics-scopes.ts`,
+and `__tests__/analytics-scope-binding.test.ts` fails a provider call whose scope
+the OAuth config does not request (FILM-1711). Add the requirement there before
+adding the call.
 
 There is **no `video.query` scope**, and `research.creator_insights` is not a
 real scope — TikTok's research scopes are restricted to non-profit academic
@@ -166,6 +172,11 @@ the figures previously here (1000/day, 200/day) had no citation.
 The YouTube connection must include these scopes:
 - `youtube.readonly` - For video metadata
 - `yt-analytics.readonly` - For analytics data (added in FILM-801)
+- `yt-analytics-monetary.readonly` - For the three revenue metrics (FILM-1711).
+  They travel in their own query, made only when `includeRevenue` is passed, so a
+  channel without the scope or outside the Partner Program keeps its totals.
+  `result.revenueAccess` says which of those it was; in every state but
+  `authorised` the revenue totals are 0 and mean "not measured"
 
 ## Error Handling
 
@@ -243,7 +254,9 @@ import type {
 ### Instagram API Requirements
 
 - Requires Instagram Professional account (Business or Creator)
-- Access token must have `instagram_basic` and `instagram_manage_insights` permissions
+- Access token must have `instagram_basic`, `instagram_manage_insights` and
+  `pages_read_engagement` — the Facebook Login triple, since we call
+  `graph.facebook.com`
 - 90-day data retention limit for insights
 
 ### Error Handling

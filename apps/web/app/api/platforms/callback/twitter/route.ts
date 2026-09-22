@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { parseGrantedScopes } from '@kit/publishing/oauth/analytics-scopes';
 import {
   TWITTER_OAUTH_CONFIG,
   TwitterOAuthState,
@@ -197,8 +198,9 @@ export async function GET(request: NextRequest) {
         access_token_encrypted: encryptedAccessToken,
         refresh_token_encrypted: encryptedRefreshToken,
         token_expires_at: accessTokenExpiresAt.toISOString(),
-        scopes: tokens.scope?.split(' ') || TWITTER_OAUTH_CONFIG.scopes,
+        scopes: parseGrantedScopes(tokens.scope),
         metadata: {
+          scopes_granted_at: new Date().toISOString(),
           name: twitterUser.name,
           profile_image_url: twitterUser.profile_image_url,
           refresh_expires_at: refreshTokenExpiresAt.toISOString(),

@@ -8,7 +8,13 @@ export const TIKTOK_OAUTH_CONFIG = {
   tokenUrl: 'https://open.tiktokapis.com/v2/oauth/token/',
   revokeUrl: 'https://open.tiktokapis.com/v2/oauth/revoke/',
   userInfoUrl: 'https://open.tiktokapis.com/v2/user/info/',
-  scopes: ['user.info.basic', 'video.upload'],
+  scopes: [
+    'user.info.basic',
+    'video.upload',
+    // Analytics: /v2/video/query/ and follower_count — see analytics-scopes.ts
+    'video.list',
+    'user.info.stats',
+  ],
   // Access token expires in 24 hours
   accessTokenExpiry: 24 * 60 * 60 * 1000,
   // Refresh token expires in 365 days but rotates on use

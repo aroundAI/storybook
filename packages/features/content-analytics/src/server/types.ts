@@ -1,5 +1,7 @@
 import 'server-only';
 
+import type { ConnectionGrant } from './sync-authorisation';
+
 /**
  * Supported platforms for analytics sync
  */
@@ -21,6 +23,8 @@ export interface PublishForSync {
    */
   duration_seconds: number | null;
   metadata: PublishMetadata | null;
+  /** What the connection's OAuth callback recorded. Absent if the row is. */
+  connection?: ConnectionGrant;
 }
 
 /**
@@ -32,6 +36,9 @@ export interface SyncMetadata {
   last_error?: string;
   consecutive_failures?: number;
   requires_reauth?: boolean;
+  /** When the last failure was recorded. A reconnect later than this voids
+   * `requires_reauth` and the failure count — see `syncEligibility`. */
+  last_failed_at?: string;
   /** Latest platform data date ingested (YouTube), YYYY-MM-DD. The next
    * sync re-fetches from 3 days before this to absorb restatements. */
   last_data_date?: string;
@@ -54,7 +61,13 @@ export interface SyncResult {
   publishId: string;
   success: boolean;
   error?: string;
-  errorType?: 'auth' | 'rate_limit' | 'scope' | 'not_found' | 'unknown';
+  errorType?:
+    | 'auth'
+    | 'rate_limit'
+    | 'scope'
+    | 'not_authorised'
+    | 'not_found'
+    | 'unknown';
   metricsUpdated?: boolean;
 }
 
@@ -67,6 +80,9 @@ export interface SyncJobResult {
   successful: number;
   failed: number;
   skipped: number;
+  /** Publishes left alone because their connection lacks the analytics
+   * scope. Not failures: nothing was attempted. */
+  notAuthorised: number;
   byPlatform: Record<
     SyncPlatform,
     {
@@ -119,6 +135,9 @@ export interface NormalizedAnalytics {
   revenue_cents: number;
   ad_revenue_cents: number;
   red_revenue_cents: number;
+  /** False when the revenue figures are zero because nobody could ask, not
+   * because nothing was earned. Such a sync must not touch revenue rows. */
+  revenue_measured: boolean;
   subscribed_views: number;
   unsubscribed_views: number;
   device_breakdown: DeviceBreakdown[] | null;

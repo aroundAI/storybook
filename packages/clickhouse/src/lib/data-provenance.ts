@@ -418,20 +418,22 @@ export const CAPABILITY_MATRIX: Record<
   },
 
   revenue: {
-    // Plumbed end to end and arriving as zero: `yt-analytics-monetary.readonly`
-    // is not requested. Never `native` while that scope is absent — a zero
-    // that was never measured is not a measurement. The move to `native`
-    // belongs in the change that requests the scope, and INGESTION_MARKERS
-    // fails either half done without the other.
+    // `yt-analytics-monetary.readonly` is now requested (FILM-1711), so
+    // `access` moved off `scope_missing` — but that is the OAuth axis, not
+    // ClickHouse ingestion: `video_metrics.revenue_cents` is still written
+    // as a literal 0 by every sync path (KB-12), and `level` stays
+    // `not_ingested` until something replaces that with a real value.
+    // FILM-1711's own pipeline writes to Postgres `revenue_records`
+    // (`source = 'api'`), a different store from what this axis describes.
     youtube: {
       level: 'not_ingested',
       table: null,
       blockedBy: 'FILM-1711',
-      access: 'scope_missing',
+      access: 'authorised',
       accountGate: YOUTUBE_PARTNER_PROGRAM,
       availability: 'included',
       window: YOUTUBE_ANALYTICS.window,
-      note: 'YouTube reports earnings, but we have not yet asked for permission to read them, so YouTube revenue is only what you enter yourself.',
+      note: 'YouTube reports earnings, and we can now ask for permission to read them, but this figure is not that number yet, so YouTube revenue here is only what you enter yourself.',
       reference: {
         section: 'YouTube',
         surface: 'youtube/analytics-metrics',

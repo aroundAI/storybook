@@ -72,26 +72,6 @@
       "pattern": "agrees with whether"
     },
     {
-      "name": "The monetary scope is requested and the matrix still says scope_missing",
-      "kind": "unit",
-      "file": "packages/features/publishing/src/oauth/youtube/config.ts",
-      "find": "    'https://www.googleapis.com/auth/yt-analytics.readonly',",
-      "replace": "    'https://www.googleapis.com/auth/yt-analytics.readonly',\n    'https://www.googleapis.com/auth/yt-analytics-monetary.readonly',",
-      "cwd": "packages/clickhouse",
-      "test": "__tests__/data-provenance.test.ts",
-      "pattern": "agrees with whether"
-    },
-    {
-      "name": "YouTube revenue marked native while the monetary scope is absent",
-      "kind": "unit",
-      "file": "packages/clickhouse/src/lib/data-provenance.ts",
-      "find": "      level: 'not_ingested',\n      table: null,\n      blockedBy: 'FILM-1711',\n      access: 'scope_missing',",
-      "replace": "      level: 'native',\n      table: 'video_metrics',\n      access: 'scope_missing',",
-      "cwd": "packages/clickhouse",
-      "test": "__tests__/data-provenance.test.ts",
-      "pattern": "agrees with whether"
-    },
-    {
       "name": "Instagram watch time recorded as the platform's gap instead of ours",
       "kind": "unit",
       "file": "packages/clickhouse/src/lib/data-provenance.ts",

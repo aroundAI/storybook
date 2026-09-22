@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { parseGrantedScopes } from '@kit/publishing/oauth/analytics-scopes';
 import {
   TIKTOK_OAUTH_CONFIG,
   TikTokOAuthState,
@@ -181,8 +182,11 @@ export async function GET(request: NextRequest) {
         access_token_encrypted: encryptedAccessToken,
         refresh_token_encrypted: encryptedRefreshToken,
         token_expires_at: accessTokenExpiresAt.toISOString(),
-        scopes: tokens.scope?.split(',') || TIKTOK_OAUTH_CONFIG.scopes,
+        // No fallback to the scopes we requested: that records a grant
+        // nobody confirmed, and the analytics gate would believe it.
+        scopes: parseGrantedScopes(tokens.scope),
         metadata: {
+          scopes_granted_at: new Date().toISOString(),
           union_id: tiktokUser.union_id,
           avatar_url: tiktokUser.avatar_url,
           refresh_expires_at: refreshTokenExpiresAt.toISOString(),

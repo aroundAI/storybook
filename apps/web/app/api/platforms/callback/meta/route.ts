@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { parseMetaGrantedPermissions } from '@kit/publishing/oauth/analytics-scopes';
 import { META_OAUTH_CONFIG, MetaOAuthState } from '@kit/publishing/oauth/meta';
 import { getGlobalOAuthCredentials } from '@kit/publishing/server';
 import { encrypt } from '@kit/shared/crypto';
@@ -176,6 +177,26 @@ export async function GET(request: NextRequest) {
 
   const encryptedUserToken = await encrypt(userAccessToken);
 
+  // What the person granted, which can be less than the dialog asked for —
+  // `/me/permissions` lists declined and expired permissions beside granted
+  // ones. `[]` when the lookup fails, which reads as "no recorded grant"
+  // rather than as a grant of everything we asked for.
+  const permissionsUrl = new URL(
+    `${META_OAUTH_CONFIG.graphUrl}/me/permissions`,
+  );
+  permissionsUrl.searchParams.set('access_token', userAccessToken);
+
+  const grantedScopes = await fetch(permissionsUrl.toString())
+    .then((response) => response.json())
+    .then(parseMetaGrantedPermissions)
+    .catch(() => []);
+
+  if (grantedScopes.length === 0) {
+    logger.warn(ctx, 'Could not read granted permissions');
+  }
+
+  const scopesGrantedAt = new Date().toISOString();
+
   // Store connections for each page and associated Instagram
   const pageConnectionResults = await Promise.all(
     pages.map(async (page) => {
@@ -204,9 +225,10 @@ export async function GET(request: NextRequest) {
           access_token_encrypted: encryptedPageToken, // Page access token (never expires)
           refresh_token_encrypted: encryptedUserToken, // User token for refresh
           token_expires_at: expiresAt.toISOString(),
-          scopes: [...META_OAUTH_CONFIG.scopes],
+          scopes: grantedScopes,
           is_active: true,
           metadata: {
+            scopes_granted_at: scopesGrantedAt,
             category: page.category,
             picture_url: page.picture?.data?.url ?? null,
             user_token_expires_at: expiresAt.toISOString(),
@@ -245,9 +267,10 @@ export async function GET(request: NextRequest) {
               access_token_encrypted: encryptedPageToken, // Use Page token for Instagram API
               refresh_token_encrypted: encryptedUserToken, // User token for refresh
               token_expires_at: expiresAt.toISOString(),
-              scopes: ['instagram_basic', 'instagram_content_publish'],
+              scopes: grantedScopes,
               is_active: true,
               metadata: {
+                scopes_granted_at: scopesGrantedAt,
                 linked_page_id: page.id,
                 profile_picture_url: igAccount.profile_picture_url ?? null,
                 followers_count: igAccount.followers_count ?? null,

@@ -411,10 +411,13 @@ describe('what the platform cannot do is kept apart from what we have not done',
     );
   });
 
-  it('YouTube revenue is a missing scope, never native while it is missing', () => {
+  it('YouTube revenue is authorised (FILM-1711) but still not ingested', () => {
+    // The scope moved from missing to authorised in code; ClickHouse
+    // ingestion is a separate axis and stays not_ingested until something
+    // replaces the literal 0 every sync path writes to revenue_cents.
     expect(capabilityFor('revenue', 'youtube')).toMatchObject({
       level: 'not_ingested',
-      access: 'scope_missing',
+      access: 'authorised',
       blockedBy: 'FILM-1711',
     });
   });
@@ -497,9 +500,11 @@ describe('the invariants are in the type, not only in this suite', () => {
 });
 
 describe('accessFor', () => {
-  it('a YPP creator meets a missing scope; a non-YPP creator meets the gate', () => {
+  it('a YPP creator is authorised; a non-YPP creator meets the gate', () => {
+    // FILM-1711 requested the scope, so a YPP creator's own access is no
+    // longer blocked on us — only on being in the Partner Program at all.
     expect(accessFor('revenue', 'youtube', { meetsAccountGate: true })).toBe(
-      'scope_missing',
+      'authorised',
     );
     expect(accessFor('revenue', 'youtube', { meetsAccountGate: false })).toBe(
       'account_type_gated',
@@ -522,8 +527,33 @@ describe('accessFor', () => {
   });
 
   it('keeps the three unresolved states apart, because each has its own owner', () => {
+    // `scope_missing` had exactly one real occurrence — YouTube revenue —
+    // and FILM-1711 requesting that scope closed it: no entry in the matrix
+    // carries it any more (grep `access: 'scope_missing'` in
+    // data-provenance.ts). The state stays in the type, because the same
+    // situation — a gap we can close with a code change alone, no vendor
+    // review — can recur for a future platform or family; this proves the
+    // type still keeps it distinct from the other two, via a synthetic
+    // capability rather than a live one.
+    expect(
+      Object.values(CAPABILITY_MATRIX).flatMap((byPlatform) =>
+        Object.values(byPlatform),
+      ),
+    ).not.toContainEqual(expect.objectContaining({ access: 'scope_missing' }));
+
+    const synthetic: PlatformCapability = {
+      level: 'not_ingested',
+      table: null,
+      blockedBy: 'FILM-1712',
+      access: 'scope_missing',
+      availability: 'included',
+      window: { maxAgeDays: null, anchoredOn: 'publish_date' },
+      note: 'synthetic — see comment above',
+      reference: { section: 'test', surface: null, fields: [] },
+    };
+
     const states = new Set([
-      accessFor('revenue', 'youtube', { meetsAccountGate: true }),
+      synthetic.access,
       accessFor('watch_time', 'instagram', { meetsAccountGate: true }),
       accessFor('watch_time', 'tiktok', { meetsAccountGate: false }),
     ]);
