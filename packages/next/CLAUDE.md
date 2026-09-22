@@ -202,6 +202,59 @@ export const POST = enhanceRouteHandler(
 
 ## Error Handling Patterns
 
+### Refusals are returned, not thrown (KB-6) ⚠️
+
+**A production build replaces the message of an error thrown from a server
+action** with "An error occurred in the Server Components render…". A dev
+server passes the real text through, so `throw new Error('Episode not found')`
+looks right on `pnpm dev`, in every dev-server E2E run, and nowhere else.
+
+A rule the user ran into — not found, already exists, not allowed yet — is an
+`ActionRefusal`, and the action is wrapped so it comes back as a value:
+
+```typescript
+import { ActionRefusal } from '@kit/next/action-result';
+import { returnRefusals } from '@kit/next/refusals';
+
+const renameSeason = enhanceAction(
+  async (data) => {
+    if (!season) throw new ActionRefusal('Season not found');
+    if (error) throw new Error(`Failed to update season: ${error.message}`); // a crash stays thrown
+    return { success: true };
+  },
+  { schema: RenameSeasonSchema },
+);
+
+export const renameSeasonAction = returnRefusals(renameSeason);
+```
+
+```typescript
+import { refusalMessage, unwrap } from '@kit/next/action-result';
+
+try {
+  await unwrap(renameSeasonAction({ seasonId, name })); // throws the refusal
+  toast.success('Season renamed');
+} catch (error) {
+  toast.error(refusalMessage(error, 'Failed to rename season'));
+}
+```
+
+- **An `ActionRefusal` message is text for the page.** Never a database or
+  vendor string: map `error.code === '23505'` to words, do not pass
+  `error.message` along. The redaction was incidentally hiding those.
+- **Anything else stays thrown**, so it still reaches `onRequestError` and
+  monitoring; the client shows its own fallback. (`withRefusals(what, action)`
+  is the FILM-1610 variant that also turns a crash into a logged, generic
+  value.)
+- **Never read `error.message` of an error caught around a server action**,
+  to show it or to branch on it. `refusalMessage(error, fallback)` is the
+  reader. `__tests__/kb6-caught-action-message.test.ts` fails on either
+  half: a caught message being read, or a wrapped action called without
+  `unwrap`.
+- **Assert the wording on a production build** —
+  `apps/e2e/tests/refusals/action-refusals.spec.ts`. "An error is visible"
+  passes on the generic sentence too.
+
 ### Server Actions with Error Handling
 
 ```typescript

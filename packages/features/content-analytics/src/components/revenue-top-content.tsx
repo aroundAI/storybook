@@ -14,13 +14,23 @@ import {
   TableRow,
 } from '@kit/ui/table';
 
-import { formatCurrency, formatNumber } from '../lib/format';
+import { formatNumber } from '../lib/format';
+import { DEFAULT_CURRENCY, formatCurrencyAmount } from '../lib/money';
 import type { TopRevenueContent } from '../lib/types/revenue';
 
 interface RevenueTopContentProps {
   data: TopRevenueContent[];
+  /**
+   * The currency `data` is ranked in. A ranking across currencies orders
+   * nothing, so a table holds one (KB-12).
+   */
+  currency?: string | null;
+  /** Shown beside the title when the account has more than one currency. */
+  titleSuffix?: string;
   isLoading?: boolean;
 }
+
+const WHOLE_UNITS = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
 
 const PLATFORM_COLORS: Record<string, string> = {
   youtube: 'bg-red-100 text-red-700',
@@ -31,7 +41,15 @@ const PLATFORM_COLORS: Record<string, string> = {
   linkedin: 'bg-blue-100 text-blue-700',
 };
 
-export function RevenueTopContent({ data, isLoading }: RevenueTopContentProps) {
+export function RevenueTopContent({
+  data,
+  currency = DEFAULT_CURRENCY,
+  titleSuffix = '',
+  isLoading,
+}: RevenueTopContentProps) {
+  const formatCents = (cents: number) =>
+    formatCurrencyAmount({ currency, cents }, WHOLE_UNITS);
+
   const sortedData = useMemo(
     () => [...data].sort((a, b) => b.revenueCents - a.revenueCents),
     [data],
@@ -41,7 +59,7 @@ export function RevenueTopContent({ data, isLoading }: RevenueTopContentProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Top Performing Content</CardTitle>
+          <CardTitle>Top Performing Content{titleSuffix}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -65,7 +83,7 @@ export function RevenueTopContent({ data, isLoading }: RevenueTopContentProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Top Performing Content</CardTitle>
+          <CardTitle>Top Performing Content{titleSuffix}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex h-32 items-center justify-center text-muted-foreground">
@@ -77,9 +95,9 @@ export function RevenueTopContent({ data, isLoading }: RevenueTopContentProps) {
   }
 
   return (
-    <Card>
+    <Card data-test="revenue-top-content">
       <CardHeader>
-        <CardTitle>Top Performing Content</CardTitle>
+        <CardTitle>Top Performing Content{titleSuffix}</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
@@ -94,7 +112,10 @@ export function RevenueTopContent({ data, isLoading }: RevenueTopContentProps) {
           </TableHeader>
           <TableBody>
             {sortedData.map((item, index) => (
-              <TableRow key={item.publishId}>
+              <TableRow
+                key={item.publishId}
+                data-test="revenue-top-content-row"
+              >
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-medium text-muted-foreground">
@@ -133,10 +154,10 @@ export function RevenueTopContent({ data, isLoading }: RevenueTopContentProps) {
                   {formatNumber(item.views)}
                 </TableCell>
                 <TableCell className="text-right font-medium tabular-nums">
-                  {formatCurrency(item.revenueCents / 100)}
+                  {formatCents(item.revenueCents)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {formatCurrency(item.rpm / 100)}
+                  {formatCents(item.rpm)}
                 </TableCell>
               </TableRow>
             ))}

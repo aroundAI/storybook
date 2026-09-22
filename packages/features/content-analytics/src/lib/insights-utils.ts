@@ -4,7 +4,11 @@
 import type { AnalyticsTotals, InsightsResult } from '../types';
 
 /**
- * Calculate percentage changes between current and previous period
+ * Percentage change per metric between the current and previous period.
+ *
+ * A metric whose previous value is zero has no key here rather than a
+ * `100` (KB-16): this is the LLM's insight input, and a fabricated
+ * "+100%" fed to a model is the same invented figure as one on a card.
  */
 export function calculateChanges(
   current: AnalyticsTotals,
@@ -33,8 +37,6 @@ export function calculateChanges(
 
     if (previousVal > 0) {
       changes[key] = ((currentVal - previousVal) / previousVal) * 100;
-    } else {
-      changes[key] = currentVal > 0 ? 100 : 0;
     }
   }
 

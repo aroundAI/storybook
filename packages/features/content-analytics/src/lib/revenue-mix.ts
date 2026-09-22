@@ -24,8 +24,14 @@ import {
  *
  * The two definitions differ only where a category is negative, i.e. a
  * clawback month, which is exactly the case nobody would notice by eye.
+ *
+ * Version 3 (KB-12): `summary_data` is `{ summaries: RevenueSummary[] }`,
+ * one per currency, where versions 1-2 spread a single summary whose
+ * totals added every currency together under `currency: 'USD'`. Those rows
+ * cannot be migrated either — and are only wrong for an account that had
+ * recorded more than one currency, which the row does not say.
  */
-export const REVENUE_SUMMARY_SCHEMA_VERSION = 2;
+export const REVENUE_SUMMARY_SCHEMA_VERSION = 3;
 
 /**
  * Every category the schema accepts, with its label.

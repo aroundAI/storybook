@@ -10,6 +10,7 @@ import { useForm } from 'react-hook-form';
 
 import { CreateEpisodeSchema } from '@kit/episodes/schemas';
 import { createEpisodeAction } from '@kit/episodes/server/actions';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -71,11 +72,13 @@ export function CreateEpisodeDialog({
 
   async function onSubmit(data: { title: string; description?: string }) {
     try {
-      const result = await createEpisodeAction({
-        projectId,
-        title: data.title,
-        description: data.description,
-      });
+      const result = await unwrap(
+        createEpisodeAction({
+          projectId,
+          title: data.title,
+          description: data.description,
+        }),
+      );
 
       if (result.success && result.data) {
         toast.success('Episode created successfully');
@@ -89,9 +92,7 @@ export function CreateEpisodeDialog({
         toast.error('Failed to create episode');
       }
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to create episode',
-      );
+      toast.error(refusalMessage(error, 'Failed to create episode'));
     }
   }
 

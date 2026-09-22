@@ -16,6 +16,7 @@ import {
   refineStoryAction,
   undoRefinementAction,
 } from '@kit/episodes/server';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
@@ -148,11 +149,13 @@ export function RefinementChat({
     try {
       const action =
         mode === 'story' ? refineStoryAction : refineScreenplayAction;
-      const result = await action({
-        episodeId,
-        projectId,
-        feedback,
-      });
+      const result = await unwrap(
+        action({
+          episodeId,
+          projectId,
+          feedback,
+        }),
+      );
 
       if (result.queued) {
         setMessages((prev) =>
@@ -168,10 +171,10 @@ export function RefinementChat({
             ? {
                 ...msg,
                 status: 'error',
-                errorMessage:
-                  error instanceof Error
-                    ? error.message
-                    : 'Failed to submit feedback',
+                errorMessage: refusalMessage(
+                  error,
+                  'Failed to submit feedback',
+                ),
               }
             : msg,
         ),
@@ -185,18 +188,18 @@ export function RefinementChat({
   const handleUndo = useCallback(async () => {
     setIsUndoing(true);
     try {
-      await undoRefinementAction({
-        episodeId,
-        type: mode,
-      });
+      await unwrap(
+        undoRefinementAction({
+          episodeId,
+          type: mode,
+        }),
+      );
       toast.success(
         `${mode === 'story' ? 'Story' : 'Screenplay'} reverted to previous version`,
       );
       onRefinementComplete?.();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to undo refinement',
-      );
+      toast.error(refusalMessage(error, 'Failed to undo refinement'));
     } finally {
       setIsUndoing(false);
     }

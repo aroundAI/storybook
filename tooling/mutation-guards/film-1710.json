@@ -1,0 +1,145 @@
+{
+  "feature": "FILM-1710",
+  "mutations": [
+    {
+      "name": "The asset duration falls back to the episode's",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/dim-sync.ts",
+      "find": "      asset_duration_seconds: normalizeAssetDurationSeconds(\n        row.duration_seconds,\n      ),",
+      "replace": "      asset_duration_seconds:\n        row.duration_seconds ?? row.episodes?.duration_seconds ?? 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/dim-sync.test.ts",
+      "pattern": "never the episode"
+    },
+    {
+      "name": "The episode duration falls back to a target again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/dim-sync.ts",
+      "find": "      episode_duration_seconds: row.episodes?.duration_seconds ?? 0,",
+      "replace": "      episode_duration_seconds:\n        row.episodes?.duration_seconds ??\n        (row.episodes as { target_duration_seconds?: number } | null)\n          ?.target_duration_seconds ??\n        0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/dim-sync.test.ts",
+      "pattern": "target duration"
+    },
+    {
+      "name": "Zero passes for a measured duration",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/asset-duration.ts",
+      "find": "  return seconds > 0 ? seconds : null;",
+      "replace": "  return seconds;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/asset-duration.test.ts",
+      "pattern": "zero"
+    },
+    {
+      "name": "An unfinished broadcast's P0D parses to a zero-second video",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/utils.ts",
+      "find": "  return total > 0 ? total : null;",
+      "replace": "  return total;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/asset-duration.test.ts",
+      "pattern": "P0D"
+    },
+    {
+      "name": "An unknown duration yields a retention figure",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/retention.ts",
+      "find": "  if (!duration.known) return { ok: false, reason: duration.reason };",
+      "replace": "  if (!duration.known) return { ok: true, retention: retentionFull(points) ?? 0 };",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/retention.test.ts",
+      "pattern": "duration is unknown"
+    },
+    {
+      "name": "A cliff is timestamped without a known asset duration",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/retention.ts",
+      "find": "        ...(options?.duration?.known\n          ? { seconds: prev.elapsedRatio * options.duration.seconds }\n          : {}),",
+      "replace": "        seconds: prev.elapsedRatio * (options?.duration?.known ? options.duration.seconds : 1320),",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/retention.test.ts",
+      "pattern": "drops the timestamp"
+    },
+    {
+      "name": "The sync overwrites a duration already on the row",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/asset-duration-sync.ts",
+      "find": "          .eq('id', candidate.id)\n          .is('duration_seconds', null);",
+      "replace": "          .eq('id', candidate.id);",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/asset-duration-sync.test.ts",
+      "pattern": "only into a null"
+    },
+    {
+      "name": "One connection's refusal aborts the whole duration sync",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/asset-duration-sync.ts",
+      "find": "      recordGap(reason, group.length);\n      logger.warn(",
+      "replace": "      throw error;\n      logger.warn(",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/asset-duration-sync.test.ts",
+      "pattern": "contains a failure"
+    },
+    {
+      "name": "Instagram is asked for a duration Meta does not have",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/asset-duration.ts",
+      "find": "export const ASSET_DURATION_PLATFORMS = ['youtube', 'tiktok'] as const;",
+      "replace": "export const ASSET_DURATION_PLATFORMS = ['youtube', 'tiktok', 'instagram'] as const;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/asset-duration-sync.test.ts",
+      "pattern": "never asks Meta"
+    },
+    {
+      "name": "The backfill restarts from the first id instead of its cursor",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/asset-duration-sync.ts",
+      "find": "    return (options?.afterId ? query.gt('id', options.afterId) : query)",
+      "replace": "    return query",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/asset-duration-sync.test.ts",
+      "pattern": "hands back a cursor"
+    },
+    {
+      "name": "The reference loses TikTok's duration while a request still asks for it",
+      "kind": "unit",
+      "file": "docs/platform-capability-reference.md",
+      "find": "video_description\nduration                   # the published asset's duration - FILM-1710\n",
+      "replace": "video_description\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "tiktok-analytics.ts"
+    },
+    {
+      "name": "The retention drill-down times the cliff against the episode",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/server/diagnostics-actions.ts",
+      "find": "        duration: resolveAssetDuration(publish.duration_seconds),",
+      "replace": "        duration: resolveAssetDuration(1320),",
+      "spec": "tests/deep-dive/asset-duration-evidence.spec.ts",
+      "grep": "times the cliff against the asset",
+      "env": {
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
+    },
+    {
+      "name": "DB the single-writer trigger is dropped",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/publish-asset-duration.test.sql",
+      "sql": "drop trigger publishes_keep_asset_duration on public.publishes;"
+    },
+    {
+      "name": "DB the guard reads the JWT claim instead of the role",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/publish-asset-duration.test.sql",
+      "sql": "create or replace function public.keep_publish_asset_duration() returns trigger language plpgsql set search_path = '' as $fn$ begin if coalesce(auth.role(), '') not in ('authenticated', 'anon') then return new; end if; if tg_op = 'INSERT' then new.duration_seconds = null; else new.duration_seconds = old.duration_seconds; end if; return new; end; $fn$;"
+    },
+    {
+      "name": "DB a zero duration is accepted",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/publish-asset-duration.test.sql",
+      "sql": "alter table public.publishes drop constraint publishes_duration_seconds_positive_check;"
+    }
+  ]
+}

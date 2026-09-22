@@ -82,6 +82,10 @@ const COLUMNS: Array<{
     getValue: (r) => String(r.subscribersGained),
   },
   {
+    // The header is a column name in files recipients already parse, so it
+    // stays. It is also true: the figure is ClickHouse's, which holds only
+    // USD-sourced revenue (KB-12; bound by `revenue-writers.test.ts`), and
+    // never a manual entry in another currency.
     header: 'Revenue (USD)',
     getValue: (r) => (r.revenueCents / 100).toFixed(2),
   },

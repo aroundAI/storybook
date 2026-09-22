@@ -2,6 +2,8 @@ import 'server-only';
 
 import { forEachPage } from '@kit/shared/pagination';
 
+import type { CurrencyAmount } from '../lib/money';
+
 /**
  * Shared revenue reads.
  *
@@ -15,17 +17,38 @@ import { forEachPage } from '@kit/shared/pagination';
 /**
  * One revenue row as seen by an account, from either scope.
  * `publish_id`/`episode_id` are null for channel-level rows.
+ *
+ * The figure travels with its currency as one `amount`, and there is no
+ * bare `revenue_cents` to reach for (KB-12): every caller of this read used
+ * to add that number across rows without looking at the column beside it.
+ * `money.test.ts` holds the type to that.
  */
 export interface AccountRevenueRow {
   id: string;
   publish_id: string | null;
   platform: string;
   record_date: string;
-  revenue_cents: number;
-  currency: string | null;
+  amount: CurrencyAmount;
   source: string;
   category: string;
   episode_id: string | null;
+}
+
+/** The columns as PostgREST returns them, before `toAccountRevenueRow`. */
+interface StoredRevenueRow extends Omit<AccountRevenueRow, 'amount'> {
+  revenue_cents: number | null;
+  currency: string | null;
+}
+
+function toAccountRevenueRow(
+  { revenue_cents, currency, ...row }: StoredRevenueRow,
+  episodeId: string | null,
+): AccountRevenueRow {
+  return {
+    ...row,
+    amount: { currency, cents: revenue_cents ?? 0 },
+    episode_id: episodeId,
+  };
 }
 
 /**
@@ -83,7 +106,7 @@ export async function forEachAccountRevenueRow(
   // place instead of two client-side query shapes. Deferred here because it
   // needs a migration and regenerated types.
   await Promise.all([
-    forEachPage<AccountRevenueRow>(
+    forEachPage<StoredRevenueRow>(
       // Named pageFrom/pageTo so they cannot shadow the `from`/`to` date
       // bounds of the enclosing function. If they did and any date filter
       // were written inline here, integer page offsets would be passed as
@@ -99,13 +122,13 @@ export async function forEachAccountRevenueRow(
           .order('id')
           .range(pageFrom, pageTo),
       (batch) => {
-        for (const row of batch) {
-          onRow({ ...(row as AccountRevenueRow), episode_id: null });
-        }
+        for (const row of batch) onRow(toAccountRevenueRow(row, null));
       },
       'channel-scoped revenue',
     ),
-    forEachPage<AccountRevenueRow & { publishes?: { episode_id?: string } }>(
+    forEachPage<
+      StoredRevenueRow & { publishes?: { episode_id?: string | null } }
+    >(
       (pageFrom, pageTo) =>
         applyRange(
           client
@@ -127,19 +150,66 @@ export async function forEachAccountRevenueRow(
           .order('id')
           .range(pageFrom, pageTo),
       (batch) => {
-        for (const row of batch) {
-          const publish = (
-            row as { publishes?: { episode_id?: string | null } }
-          ).publishes;
-          onRow({
-            ...(row as AccountRevenueRow),
-            episode_id: publish?.episode_id ?? null,
-          });
+        for (const { publishes, ...row } of batch) {
+          onRow(toAccountRevenueRow(row, publishes?.episode_id ?? null));
         }
       },
       'publish-scoped revenue',
     ),
   ]);
+}
+
+/**
+ * Every revenue row recorded against one project's publishes in a window,
+ * for the Overview's revenue card (KB-16).
+ *
+ * Publish-scoped rows only. Channel-level income (`publish_id` null) has
+ * no project to belong to, and the card says it is not here rather than
+ * spreading the account's sponsorships over every project. Paged, because
+ * the fold over it is a total and a truncated read is a smaller total with
+ * no error.
+ */
+export async function forEachProjectRevenueRow(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  projectId: string,
+  from: string,
+  to: string,
+  onRow: (row: AccountRevenueRow) => void,
+): Promise<void> {
+  await forEachPage<
+    StoredRevenueRow & { publishes?: { episode_id?: string | null } }
+  >(
+    (pageFrom, pageTo) =>
+      client
+        .from('revenue_records')
+        .select(
+          `id,
+          publish_id,
+          platform,
+          record_date,
+          revenue_cents,
+          currency,
+          source,
+          category,
+          publishes!inner (
+            id,
+            episode_id,
+            episodes!inner ( id, project_id )
+          )`,
+        )
+        .eq('publishes.episodes.project_id', projectId)
+        .gte('record_date', from)
+        .lte('record_date', to)
+        .order('id')
+        .range(pageFrom, pageTo),
+    (batch) => {
+      for (const { publishes, ...row } of batch) {
+        onRow(toAccountRevenueRow(row, publishes?.episode_id ?? null));
+      }
+    },
+    'project revenue',
+  );
 }
 
 /**

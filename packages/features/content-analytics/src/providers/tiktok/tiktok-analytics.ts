@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { SubscriberCountResult } from '@kit/shared/subscribers';
 
+import { normalizeAssetDurationSeconds } from '../../lib/asset-duration';
 import type {
   TikTokAccountAnalytics,
   TikTokAnalyticsInput,
@@ -10,6 +11,9 @@ import type {
 } from './types';
 
 const TIKTOK_API_BASE = 'https://open.tiktokapis.com/v2';
+
+/** `/v2/video/query/` accepts at most 20 video ids a request. */
+const TIKTOK_VIDEO_QUERY_MAX_IDS = 20;
 
 /**
  * Error thrown when the TikTok connection is missing required scopes
@@ -215,6 +219,76 @@ export class TikTokAnalyticsProvider {
       }
       throw error;
     }
+  }
+
+  /**
+   * The published assets' durations in whole seconds, keyed by video id
+   * (FILM-1710).
+   *
+   * `duration` is on the documented field list for `/v2/video/query/`
+   * (docs/platform-capability-reference.md), the endpoint already used
+   * above, at 20 ids a request. It needs the `video.list` scope, which no
+   * connection holds until FILM-1711 — until then this throws
+   * `TikTokAnalyticsScopeError` and the publish stays `duration_unknown`.
+   *
+   * A video absent from the response, or one with no positive duration, is
+   * left out of the map. Absent is not zero.
+   *
+   * @throws {TikTokAnalyticsScopeError} If the connection lacks `video.list`
+   * @throws {TikTokRateLimitError} If rate limited
+   */
+  async getVideoDurations(videoIds: string[]): Promise<Map<string, number>> {
+    const durations = new Map<string, number>();
+
+    try {
+      for (let i = 0; i < videoIds.length; i += TIKTOK_VIDEO_QUERY_MAX_IDS) {
+        const response = await fetch(
+          `${TIKTOK_API_BASE}/video/query/?fields=id,duration`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${this.accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              filters: {
+                video_ids: videoIds.slice(i, i + TIKTOK_VIDEO_QUERY_MAX_IDS),
+              },
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const body = (await response.json()) as TikTokApiResponse<{
+          videos: TikTokVideoData[];
+        }>;
+
+        const failure = tiktokFailure(body.error);
+
+        if (failure) {
+          throw new Error(failure);
+        }
+
+        for (const video of body.data?.videos ?? []) {
+          const seconds = normalizeAssetDurationSeconds(video.duration);
+
+          if (seconds !== null) durations.set(video.id, seconds);
+        }
+      }
+    } catch (error) {
+      if (isAuthError(error)) {
+        throw new TikTokAnalyticsScopeError();
+      }
+      if (isRateLimitError(error)) {
+        throw new TikTokRateLimitError();
+      }
+      throw error;
+    }
+
+    return durations;
   }
 
   /**

@@ -27,7 +27,7 @@ export class AccountPageObject {
     await signInAs(this.page, user);
     await this.page.goto('/home/settings');
 
-    return { email: user.email, password: user.password };
+    return { email: user.email, password: user.password, userId: user.userId };
   }
 
   async updateName(name: string) {

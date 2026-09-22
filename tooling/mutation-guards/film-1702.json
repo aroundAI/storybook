@@ -1,0 +1,287 @@
+{
+  "feature": "FILM-1702",
+  "mutations": [
+    {
+      "name": "dim-sync writes a language nobody set as English again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/dim-sync.ts",
+      "find": "      language: toDimLanguage(row.language),",
+      "replace": "      language: row.language ?? 'en',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/dim-sync-language.test.ts",
+      "pattern": "never as English"
+    },
+    {
+      "name": "dim-sync stops writing the channel's target language",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/dim-sync.ts",
+      "find": "      channel_language: toDimLanguage(row.platform_connections?.language),",
+      "replace": "      channel_language: '',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/dim-sync-language.test.ts",
+      "pattern": "target beside the publish"
+    },
+    {
+      "name": "dim-sync stops reading the channel's language with the publish",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/dim-sync.ts",
+      "find": "  platform_connections(language),\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/dim-sync-language.test.ts",
+      "pattern": "reads the channel"
+    },
+    {
+      "name": "toDimLanguage defaults a missing language to a real code",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/language-dimension.ts",
+      "find": "  return trimmed ? trimmed : LANGUAGE_NOT_SET;",
+      "replace": "  return trimmed ? trimmed : 'en';",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/language-dimension.test.ts",
+      "pattern": "never as a code"
+    },
+    {
+      "name": "The Language tab coalesces an unset language to English again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "      dimension === 'channel' ? video.channelLanguage : video.language,",
+      "replace": "      (dimension === 'channel' ? video.channelLanguage : video.language) ??\n        'en',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-analytics.test.ts",
+      "pattern": "out of the English bucket"
+    },
+    {
+      "name": "The dimension toggle is ignored by the reads",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "      dimension === 'channel' ? video.channelLanguage : video.language,",
+      "replace": "      video.language,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-analytics.test.ts",
+      "pattern": "groups by the channel target"
+    },
+    {
+      "name": "The Language tab's medians stop following the dimension",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "      segment: { kind: LANGUAGE_DIMENSION_SEGMENTS[dimension] },",
+      "replace": "      segment: { kind: 'language' },",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-analytics.test.ts",
+      "pattern": "per dimension"
+    },
+    {
+      "name": "The Language tab reads ClickHouse without checking project access",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "  try {\n    await assertScopeAccess({ projectId });\n  } catch {\n    return null;\n  }\n\n  const videos = await queryVideoLanguages({",
+      "replace": "  const videos = await queryVideoLanguages({",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-analytics.test.ts",
+      "pattern": "cannot access"
+    },
+    {
+      "name": "The divergence count reads ClickHouse without checking project access",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "  try {\n    await assertScopeAccess({ projectId });\n  } catch {\n    return null;\n  }\n\n  return summariseLanguagePairs(",
+      "replace": "  return summariseLanguagePairs(",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-analytics.test.ts",
+      "pattern": "cannot access"
+    },
+    {
+      "name": "A language with no views in the window vanishes from the card",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "    current.videoCount++;\n    languageStats.set(language, current);",
+      "replace": "    current.videoCount++;\n    if (language !== 'hi') languageStats.set(language, current);",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-analytics.test.ts",
+      "pattern": "no views in the window"
+    },
+    {
+      "name": "The trend keys its unlabelled series by a real code",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "    const language = languageKey(languageByVideo.get(stat.video_id) ?? null);",
+      "replace": "    const language = languageByVideo.get(stat.video_id) ?? 'en';",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-analytics.test.ts",
+      "pattern": "not-set key"
+    },
+    {
+      "name": "An unlabelled video counts as misrouted",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/language-divergence.ts",
+      "find": "    if (pair.language === null || pair.channelLanguage === null) continue;\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-labels.test.ts",
+      "pattern": "only when both languages are known"
+    },
+    {
+      "name": "The not-set bucket is named as a language",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/language-labels.ts",
+      "find": "  if (code === null) return NOT_SET_LABELS[dimension];",
+      "replace": "  if (code === null) return 'English';",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-labels.test.ts",
+      "pattern": "never names a language nobody set as English"
+    },
+    {
+      "name": "An unvalidated dimension is trusted",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/language-labels.ts",
+      "find": "    LANGUAGE_DIMENSIONS.find((dimension) => dimension === value) ?? 'content'",
+      "replace": "    (value as LanguageDimension) ?? 'content'",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-labels.test.ts",
+      "pattern": "unvalidated dimension"
+    },
+    {
+      "name": "A thin language is no longer dimmed",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/language-analytics-cards.tsx",
+      "find": "              className={cn('space-y-2', !isReportable(lang) && 'opacity-60')}",
+      "replace": "              className={cn('space-y-2')}",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-cards.test.tsx",
+      "pattern": "dims a thin language"
+    },
+    {
+      "name": "The unlabelled bucket is crowned the top language",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/language-analytics-cards.tsx",
+      "find": "    (lang) => lang.language !== null && isReportable(lang),",
+      "replace": "    () => true,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-cards.test.tsx",
+      "pattern": "never crowns"
+    },
+    {
+      "name": "The matrix heads a column with a flag and no name",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/language-analytics-cards.tsx",
+      "find": "                    {languageName(lang, dimension)}\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-cards.test.tsx",
+      "pattern": "heads each column"
+    },
+    {
+      "name": "The medians panel renders the not-set language as a nameless row",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/taxonomy/tag-medians-card.tsx",
+      "find": "    ? languageName(fromDimLanguage(segment))",
+      "replace": "    ? segment",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-cards.test.tsx",
+      "pattern": "names the not-set segment"
+    },
+    {
+      "name": "The Video Log renders a missing language as a blank cell",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/video-log/video-log-table.tsx",
+      "find": "                  {languageName(row.language)}",
+      "replace": "                  {row.language}",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/components/video-log/__tests__/video-log-table.test.tsx",
+      "pattern": "no language set"
+    },
+    {
+      "name": "The insights job is sent the unlabelled bucket as a language",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/language-insights-actions.ts",
+      "find": "    const labelledPerformance = languagePerformance.filter(isLabelled);",
+      "replace": "    const labelledPerformance = languagePerformance;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-insights-actions.test.ts"
+    },
+    {
+      "name": "An empty language filter means no filter",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "  if (scope.language !== undefined) {",
+      "replace": "  if (scope.language) {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/queries-advanced.test.ts",
+      "pattern": "not-set filter"
+    },
+    {
+      "name": "The language filter runs before the argMax, on any row",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "    latest.push('language = {scopeLanguage: String}');",
+      "replace": "    conditions.push('language = {scopeLanguage: String}');",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/queries-advanced.test.ts",
+      "pattern": "newest dim row"
+    },
+    {
+      "name": "The channel dimension groups by the content column",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "  channel_language: 'd.channel_language',",
+      "replace": "  channel_language: 'd.language',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/queries-advanced.test.ts",
+      "pattern": "channel dimension by its own column"
+    },
+    {
+      "name": "A language pair reports the not-set value as a string",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "  return rows.map((row) => ({\n    language: fromDimLanguage(row.language),\n    channelLanguage: fromDimLanguage(row.channel_language),",
+      "replace": "  return rows.map((row) => ({\n    language: row.language || 'en',\n    channelLanguage: row.channel_language || 'en',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/queries-advanced.test.ts",
+      "pattern": "null in a pair"
+    },
+    {
+      "name": "The publish request defaults an omitted language to English",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/schemas/publish.schema.ts",
+      "find": "  language: z.string().min(2).max(5).optional(),",
+      "replace": "  language: z.string().min(2).max(5).default('en'),",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-language.test.ts",
+      "pattern": "omitted language absent"
+    },
+    {
+      "name": "DB publishes.language defaults to 'en' again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/publishes-language-unset.test.sql",
+      "sql": "alter table public.publishes alter column language set default 'en';"
+    },
+    {
+      "name": "DB a blank language is accepted",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/publishes-language-unset.test.sql",
+      "sql": "alter table public.publishes drop constraint publishes_language_not_blank;"
+    },
+    {
+      "name": "E2E the dimension toggle can be switched off",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/language-tab.tsx",
+      "find": "              next && setDimension(resolveLanguageDimension(next))",
+      "replace": "              setDimension(next as 'content' | 'channel')",
+      "spec": "tests/analytics/language-tab.spec.ts",
+      "grep": "cannot be left with no dimension"
+    },
+    {
+      "name": "E2E the toggle does not reach the server reads",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/server/dashboard-actions.ts",
+      "find": "  async ({ projectId, from, to, dimension }) => {\n    return getLanguagePerformance(projectId, {\n      startDate: from,\n      endDate: to,\n      dimension,\n    });",
+      "replace": "  async ({ projectId, from, to }) => {\n    return getLanguagePerformance(projectId, {\n      startDate: from,\n      endDate: to,\n    });",
+      "spec": "tests/analytics/language-evidence.spec.ts",
+      "grep": "separates unset from English",
+      "env": {
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
+    }
+  ]
+}

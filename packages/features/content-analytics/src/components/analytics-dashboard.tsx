@@ -20,17 +20,13 @@ import { Skeleton } from '@kit/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
 import { formatNumber } from '../lib/format';
+import { ABSENT, measured } from '../lib/measured';
 import {
   getContentListAction,
-  getContentTypeComparisonAction,
-  getGeographyByLanguageAction,
-  getLanguagePerformanceAction,
-  getLanguageTrendAction,
-  getPlatformLanguageMatrixAction,
   getProjectAnalyticsAction,
   getProjectAudienceDataAction,
   getProjectDailyMetricsAction,
-  getShortsSourcePerformanceAction,
+  getProjectRevenueByCurrencyAction,
 } from '../server/dashboard-actions';
 import type {
   AggregateAnalytics,
@@ -44,10 +40,7 @@ import type { DateRangeValue } from './date-range-picker';
 import { DateRangePicker } from './date-range-picker';
 import { DeepDiveTab } from './deep-dive/deep-dive-tab';
 import { ExportReports } from './export-reports';
-import {
-  LanguageAnalyticsDashboard,
-  LanguageAnalyticsDashboardSkeleton,
-} from './language-analytics-dashboard';
+import { LanguageTab } from './language-tab';
 import { MetricCards } from './metric-cards';
 import { OverviewGrid } from './overview';
 import { PerformanceChart } from './performance-chart';
@@ -143,7 +136,28 @@ export function AnalyticsDashboard({
     enabled: activeTab === 'overview',
   });
 
-  // Fetch audience data for Audience tab
+  // Recorded revenue per currency, for the Overview's revenue card (KB-16).
+  // The card used to split a ClickHouse total 70/30 by itself.
+  const { data: revenueByCurrency, isLoading: isRevenueLoading } = useQuery({
+    queryKey: [
+      'project-revenue-by-currency',
+      projectId,
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ],
+    queryFn: () =>
+      getProjectRevenueByCurrencyAction({
+        projectId,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+    enabled: activeTab === 'overview',
+  });
+
+  // Audience data, for the Audience tab and for Overview's Top Regions and
+  // Gender cards. Enabled on both: it was enabled on Audience alone while
+  // Overview was handed its result, so on a first load those two cards said
+  // "no data" about data that had simply not been asked for (FILM-1701).
   const { data: audienceData, isLoading: isAudienceLoading } = useQuery({
     queryKey: [
       'audience-data',
@@ -157,114 +171,7 @@ export function AnalyticsDashboard({
         from: dateRange.from,
         to: dateRange.to,
       }),
-    enabled: activeTab === 'audience',
-  });
-
-  // Fetch language performance for Language tab
-  const { data: languagePerformance, isLoading: isLanguageLoading } = useQuery({
-    queryKey: [
-      'language-performance',
-      projectId,
-      dateRange.from?.toISOString(),
-      dateRange.to?.toISOString(),
-    ],
-    queryFn: () =>
-      getLanguagePerformanceAction({
-        projectId,
-        from: dateRange.from,
-        to: dateRange.to,
-      }),
-    enabled: activeTab === 'language',
-  });
-
-  // Fetch platform × language matrix for Language tab
-  const { data: platformLanguageMatrix, isLoading: isMatrixLoading } = useQuery(
-    {
-      queryKey: [
-        'platform-language-matrix',
-        projectId,
-        dateRange.from?.toISOString(),
-        dateRange.to?.toISOString(),
-      ],
-      queryFn: () =>
-        getPlatformLanguageMatrixAction({
-          projectId,
-          from: dateRange.from,
-          to: dateRange.to,
-        }),
-      enabled: activeTab === 'language',
-    },
-  );
-
-  // Fetch content type comparison for Language tab
-  const { data: contentTypeComparison, isLoading: isContentTypeLoading } =
-    useQuery({
-      queryKey: [
-        'content-type-comparison',
-        projectId,
-        dateRange.from?.toISOString(),
-        dateRange.to?.toISOString(),
-      ],
-      queryFn: () =>
-        getContentTypeComparisonAction({
-          projectId,
-          from: dateRange.from,
-          to: dateRange.to,
-        }),
-      enabled: activeTab === 'language',
-    });
-
-  // Fetch shorts source performance for Language tab (Phase 3)
-  const { data: shortsPerformance, isLoading: isShortsLoading } = useQuery({
-    queryKey: [
-      'shorts-performance',
-      projectId,
-      dateRange.from?.toISOString(),
-      dateRange.to?.toISOString(),
-    ],
-    queryFn: () =>
-      getShortsSourcePerformanceAction({
-        projectId,
-        from: dateRange.from,
-        to: dateRange.to,
-      }),
-    enabled: activeTab === 'language',
-  });
-
-  // Fetch geography by language for Language tab (Phase 4)
-  const { data: geographyByLanguage, isLoading: isGeographyLoading } = useQuery(
-    {
-      queryKey: [
-        'geography-by-language',
-        projectId,
-        dateRange.from?.toISOString(),
-        dateRange.to?.toISOString(),
-      ],
-      queryFn: () =>
-        getGeographyByLanguageAction({
-          projectId,
-          from: dateRange.from,
-          to: dateRange.to,
-        }),
-      enabled: activeTab === 'language',
-    },
-  );
-
-  // Fetch language trend for trend chart
-  const { data: languageTrend, isLoading: isTrendLoading } = useQuery({
-    queryKey: [
-      'language-trend',
-      projectId,
-      dateRange.from?.toISOString(),
-      dateRange.to?.toISOString(),
-    ],
-    queryFn: () =>
-      getLanguageTrendAction({
-        projectId,
-        from: dateRange.from,
-        to: dateRange.to,
-      }),
-    enabled: activeTab === 'language',
+    enabled: activeTab === 'audience' || activeTab === 'overview',
   });
 
   // Filter data by selected platforms
@@ -381,16 +288,22 @@ export function AnalyticsDashboard({
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="overview" data-test="analytics-tab-overview">
+            Overview
+          </TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
-          <TabsTrigger value="audience">Audience</TabsTrigger>
+          <TabsTrigger value="audience" data-test="analytics-tab-audience">
+            Audience
+          </TabsTrigger>
           <TabsTrigger value="deep-dive" data-test="analytics-tab-deep-dive">
             Deep Dive
           </TabsTrigger>
           <TabsTrigger value="video-log" data-test="analytics-tab-video-log">
             Video Log
           </TabsTrigger>
-          <TabsTrigger value="language">Language</TabsTrigger>
+          <TabsTrigger value="language" data-test="analytics-tab-language">
+            Language
+          </TabsTrigger>
           <TabsTrigger value="insights">AI Insights</TabsTrigger>
         </TabsList>
 
@@ -400,7 +313,8 @@ export function AnalyticsDashboard({
             analytics={aggregateAnalytics}
             audience={audienceData ?? undefined}
             contentList={contentList}
-            isLoading={isLoading || isContentLoading}
+            revenue={revenueByCurrency ? measured(revenueByCurrency) : ABSENT}
+            isLoading={isLoading || isContentLoading || isRevenueLoading}
             onViewAllContent={() => setActiveTab('content')}
             onViewAIReport={() => setActiveTab('insights')}
           />
@@ -470,24 +384,7 @@ export function AnalyticsDashboard({
         </TabsContent>
 
         <TabsContent value="language" className="mt-6">
-          {isLanguageLoading ||
-          isMatrixLoading ||
-          isContentTypeLoading ||
-          isShortsLoading ||
-          isGeographyLoading ||
-          isTrendLoading ? (
-            <LanguageAnalyticsDashboardSkeleton />
-          ) : (
-            <LanguageAnalyticsDashboard
-              projectId={projectId}
-              languageData={languagePerformance ?? null}
-              matrixData={platformLanguageMatrix ?? null}
-              contentTypeData={contentTypeComparison ?? null}
-              shortsData={shortsPerformance ?? null}
-              geographyData={geographyByLanguage ?? null}
-              trendData={languageTrend ?? null}
-            />
-          )}
+          <LanguageTab projectId={projectId} dateRange={dateRange} />
         </TabsContent>
       </Tabs>
 

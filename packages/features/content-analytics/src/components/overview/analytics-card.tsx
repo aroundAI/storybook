@@ -28,6 +28,7 @@ interface AnalyticsCardProps {
   footer?: React.ReactNode;
   /** Optional className */
   className?: string;
+  'data-test'?: string;
 }
 
 /**
@@ -43,6 +44,7 @@ export function AnalyticsCard({
   children,
   footer,
   className = '',
+  'data-test': dataTest,
 }: AnalyticsCardProps) {
   const colSpanClass = colSpan === 2 ? 'md:col-span-2' : '';
   const variantClasses =
@@ -52,6 +54,7 @@ export function AnalyticsCard({
 
   return (
     <div
+      data-test={dataTest}
       className={`flex h-64 flex-col rounded-2xl border p-6 shadow-sm transition-all hover:shadow-md ${variantClasses} ${colSpanClass} ${className}`}
     >
       {/* Header */}

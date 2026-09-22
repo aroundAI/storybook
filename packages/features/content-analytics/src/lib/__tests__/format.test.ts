@@ -105,43 +105,61 @@ describe('formatPercent', () => {
 
 describe('calculateChange', () => {
   it('should return up direction for increases > 1%', () => {
-    const result = calculateChange(102, 100);
-    expect(result.direction).toBe('up');
-    expect(result.percentage).toBe(2);
+    expect(calculateChange(102, 100)).toEqual({
+      kind: 'change',
+      direction: 'up',
+      percentage: 2,
+    });
   });
 
   it('should return down direction for decreases < -1%', () => {
-    const result = calculateChange(98, 100);
-    expect(result.direction).toBe('down');
-    expect(result.percentage).toBe(-2);
+    expect(calculateChange(98, 100)).toEqual({
+      kind: 'change',
+      direction: 'down',
+      percentage: -2,
+    });
   });
 
   it('should return neutral for changes within -1% to 1%', () => {
-    expect(calculateChange(100.5, 100).direction).toBe('neutral');
-    expect(calculateChange(99.5, 100).direction).toBe('neutral');
-    expect(calculateChange(101, 100).direction).toBe('neutral');
-    expect(calculateChange(99, 100).direction).toBe('neutral');
+    for (const current of [100.5, 99.5, 101, 99]) {
+      expect(calculateChange(current, 100)).toMatchObject({
+        kind: 'change',
+        direction: 'neutral',
+      });
+    }
   });
 
-  it('should handle zero previous value', () => {
-    const resultPositive = calculateChange(100, 0);
-    expect(resultPositive.direction).toBe('up');
-    expect(resultPositive.percentage).toBe(100);
+  it('reports no baseline for a previous period of zero (KB-16)', () => {
+    // A change from nothing is not a percentage. This used to be
+    // `{ percentage: 100, direction: 'up' }`, and every metric card whose
+    // caller passed `previousData={null}` read as doubled.
+    expect(calculateChange(100, 0)).toEqual({ kind: 'no-baseline' });
+    expect(calculateChange(0, 0)).toEqual({ kind: 'no-baseline' });
+  });
 
-    const resultZero = calculateChange(0, 0);
-    expect(resultZero.direction).toBe('neutral');
-    expect(resultZero.percentage).toBe(0);
+  it('reports no baseline when there is no previous period at all', () => {
+    expect(calculateChange(100, null)).toEqual({ kind: 'no-baseline' });
+  });
+
+  it('is a measured change only when it says so', () => {
+    const result = calculateChange(150, 100);
+
+    expect(result.kind).toBe('change');
+    // @ts-expect-error percentage exists only on a measured change
+    expect(result.percentage).toBe(50);
   });
 
   it('should calculate correct percentage', () => {
-    expect(calculateChange(150, 100).percentage).toBe(50);
-    expect(calculateChange(50, 100).percentage).toBe(-50);
-    expect(calculateChange(200, 100).percentage).toBe(100);
+    expect(calculateChange(150, 100)).toMatchObject({ percentage: 50 });
+    expect(calculateChange(50, 100)).toMatchObject({ percentage: -50 });
+    expect(calculateChange(200, 100)).toMatchObject({ percentage: 100 });
   });
 
   it('should handle going from value to zero (-100% decrease)', () => {
-    const result = calculateChange(0, 100);
-    expect(result.direction).toBe('down');
-    expect(result.percentage).toBe(-100);
+    expect(calculateChange(0, 100)).toEqual({
+      kind: 'change',
+      direction: 'down',
+      percentage: -100,
+    });
   });
 });

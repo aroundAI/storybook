@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import type { CanonSettings } from '@kit/episodes';
 import { DEFAULT_CANON_SETTINGS } from '@kit/episodes';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -86,16 +87,16 @@ export function CanonSettingsForm({
     (data: CanonSettingsFormData) => {
       startTransition(async () => {
         try {
-          await updateCanonSettingsAction({
-            projectId,
-            settings: data,
-          });
+          await unwrap(
+            updateCanonSettingsAction({
+              projectId,
+              settings: data,
+            }),
+          );
           toast.success('Canon settings saved');
           form.reset(data);
         } catch (error) {
-          toast.error(
-            error instanceof Error ? error.message : 'Failed to save settings',
-          );
+          toast.error(refusalMessage(error, 'Failed to save settings'));
         }
       });
     },

@@ -36,8 +36,8 @@ create table if not exists public.projects (
   metadata jsonb default '{}'::jsonb,
   created_at timestamp with time zone,
   updated_at timestamp with time zone,
-  created_by uuid references auth.users,
-  updated_by uuid references auth.users,
+  created_by uuid references auth.users on delete set null,
+  updated_by uuid references auth.users on delete set null,
   primary key (id),
   unique (account_id, slug)
 );
@@ -64,8 +64,8 @@ create table if not exists public.project_members (
   role public.project_role default 'member' not null,
   created_at timestamp with time zone,
   updated_at timestamp with time zone,
-  created_by uuid references auth.users,
-  updated_by uuid references auth.users,
+  created_by uuid references auth.users on delete set null,
+  updated_by uuid references auth.users on delete set null,
   primary key (id),
   unique (project_id, user_id)
 );

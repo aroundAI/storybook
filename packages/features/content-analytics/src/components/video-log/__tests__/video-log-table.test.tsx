@@ -99,6 +99,22 @@ describe('VideoLogTable', () => {
     expect(testId('checkpoint-figure')[0]?.textContent).toBe('1,234,567');
   });
 
+  it('names a video with no language set, rather than leaving the cell blank', () => {
+    // A blank cell reads as a rendering fault; 'en' would be a claim nobody
+    // made (FILM-1702).
+    renderTable([row({ language: null })]);
+
+    expect(testId('video-log-language')[0]?.textContent).toBe(
+      'Language not set',
+    );
+  });
+
+  it('names the language of a video that has one', () => {
+    renderTable([row({ language: 'es' })]);
+
+    expect(testId('video-log-language')[0]?.textContent).toBe('Spanish');
+  });
+
   it('shows a real zero as 0, not as missing data', () => {
     renderTable([row({ viewsAtAge: { 30: 0, 90: 0 } })]);
 

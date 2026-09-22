@@ -12,6 +12,8 @@ export const YOUTUBE_OAUTH_CONFIG = {
     'https://www.googleapis.com/auth/youtube.readonly',
     'https://www.googleapis.com/auth/youtube.force-ssl',
     'https://www.googleapis.com/auth/yt-analytics.readonly',
+    // Revenue metrics. Partner Program channels only — see analytics-scopes.ts
+    'https://www.googleapis.com/auth/yt-analytics-monetary.readonly',
   ],
   // Token expires in 1 hour, refresh 5 minutes before
   tokenRefreshBuffer: 5 * 60 * 1000,

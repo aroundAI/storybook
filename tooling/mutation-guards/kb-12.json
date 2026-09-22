@@ -1,0 +1,234 @@
+{
+  "feature": "KB-12",
+  "mutations": [
+    {
+      "name": "K1 the money fold treats every amount as one currency",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/money.ts",
+      "find": "      const key = currencyKey(currency);",
+      "replace": "      const key = currencyKey('USD');",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/money.test.ts",
+      "pattern": "never adds two currencies together"
+    },
+    {
+      "name": "K2 a currency code's case makes it a second currency",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/money.ts",
+      "find": "  const code = currency?.trim().toUpperCase();",
+      "replace": "  const code = currency?.trim();",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/money.test.ts",
+      "pattern": "written in another case"
+    },
+    {
+      "name": "K3 the manual entry schema stores the code as typed",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/schemas/revenue.schema.ts",
+      "find": "    currency: z.string().length(3).toUpperCase().optional().default('USD'),",
+      "replace": "    currency: z.string().length(3).optional().default('USD'),",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/money.test.ts",
+      "pattern": "upper-case"
+    },
+    {
+      "name": "K4 the account revenue read drops the row's currency",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/revenue-queries.ts",
+      "find": "    amount: { currency, cents: revenue_cents ?? 0 },",
+      "replace": "    amount: { currency: 'USD', cents: revenue_cents ?? 0 },",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-queries.test.ts",
+      "pattern": "merges both scopes"
+    },
+    {
+      "name": "K5 the summary adds every row into one total",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/revenue-by-currency.ts",
+      "find": "      const part = parts.for(row.amount.currency);\n      const revenueCents = row.amount.cents || 0;\n\n      part.totalRevenueCents += revenueCents;",
+      "replace": "      const part = parts.for('USD');\n      const revenueCents = row.amount.cents || 0;\n\n      part.totalRevenueCents += revenueCents;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-by-currency.test.ts",
+      "pattern": "one total per currency"
+    },
+    {
+      "name": "K5b the ad share is taken over a mix of two currencies",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/revenue-by-currency.ts",
+      "find": "      const part = parts.for(row.amount.currency);\n      const revenueCents = row.amount.cents || 0;\n\n      part.totalRevenueCents += revenueCents;",
+      "replace": "      const part = parts.for('USD');\n      const revenueCents = row.amount.cents || 0;\n\n      part.totalRevenueCents += revenueCents;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-by-currency.test.ts",
+      "pattern": "the mix and the ad share within a currency"
+    },
+    {
+      "name": "K5c RPM divides a sum of two currencies by the views",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/revenue-by-currency.ts",
+      "find": "      const part = parts.for(row.amount.currency);\n      const revenueCents = row.amount.cents || 0;\n\n      part.totalRevenueCents += revenueCents;",
+      "replace": "      const part = parts.for('USD');\n      const revenueCents = row.amount.cents || 0;\n\n      part.totalRevenueCents += revenueCents;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-by-currency.test.ts",
+      "pattern": "never a mixed sum"
+    },
+    {
+      "name": "K6 the trend compares against every currency's previous period",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/revenue-by-currency.ts",
+      "find": "      parts.for(amount.currency).previousTotal += amount.cents || 0;",
+      "replace": "      parts.for('USD').previousTotal += amount.cents || 0;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-by-currency.test.ts",
+      "pattern": "against the same currency a period earlier"
+    },
+    {
+      "name": "K7 the chart series adds two currencies onto one day",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/revenue-by-currency.ts",
+      "find": "      const byDate = parts.for(row.amount.currency);",
+      "replace": "      const byDate = parts.for('USD');",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-by-currency.test.ts",
+      "pattern": "one zero-filled series per currency"
+    },
+    {
+      "name": "K8 the projection is made from a sum of two currencies",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/revenue-by-currency.ts",
+      "find": "      const part = parts.for(row.amount.currency);\n      const revenueCents = row.amount.cents || 0;\n\n      part.totalRecent += revenueCents;",
+      "replace": "      const part = parts.for('USD');\n      const revenueCents = row.amount.cents || 0;\n\n      part.totalRecent += revenueCents;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-by-currency.test.ts",
+      "pattern": "from its own days of data"
+    },
+    {
+      "name": "K9 top content ranks a video by the sum of its currencies",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/revenue-by-currency.ts",
+      "find": "      const byPublish = parts.for(amount.currency);",
+      "replace": "      const byPublish = parts.for('USD');",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-by-currency.test.ts",
+      "pattern": "ranks within a currency"
+    },
+    {
+      "name": "K10 a euro sponsorship trips a dollar spike alert",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/revenue-alerts.ts",
+      "find": "      const byDate = byCurrency.for(row.amount.currency);",
+      "replace": "      const byDate = byCurrency.for('USD');",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-alerts.test.ts",
+      "pattern": "trip a dollar spike"
+    },
+    {
+      "name": "K10b steady euro income masks a dollar spike",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/revenue-alerts.ts",
+      "find": "      const byDate = byCurrency.for(row.amount.currency);",
+      "replace": "      const byDate = byCurrency.for('USD');",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-alerts.test.ts",
+      "pattern": "mask a dollar spike"
+    },
+    {
+      "name": "K10c a milestone is reached by adding dollars to euros",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/revenue-alerts.ts",
+      "find": "      const byDate = byCurrency.for(row.amount.currency);",
+      "replace": "      const byDate = byCurrency.for('USD');",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-alerts.test.ts",
+      "pattern": "within one currency, never across two"
+    },
+    {
+      "name": "K11 a milestone alert is always written in dollars",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/revenue-alerts.ts",
+      "find": "          title: `Passed ${formatCurrencyAmount({ currency, cents: milestone }, ALERT_AMOUNT)} this month`,",
+      "replace": "          title: `Passed $${(milestone / 100).toLocaleString()} this month`,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-alerts.test.ts",
+      "pattern": "in the currency that reached it"
+    },
+    {
+      "name": "K12 two currencies spiking on one day share a title, and the dedupe drops one",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/revenue-alerts.ts",
+      "find": "            currencies.length > 1\n              ? `Revenue spike today (${currencyLabel(currency)})`\n              : 'Revenue spike today',",
+      "replace": "            'Revenue spike today',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-alerts.test.ts",
+      "pattern": "mask a dollar spike"
+    },
+    {
+      "name": "K13 a one-currency account's alerts change their wording",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/revenue-alerts.ts",
+      "find": "            currencies.length > 1\n              ? `Revenue spike today (${currencyLabel(currency)})`\n              : 'Revenue spike today',",
+      "replace": "            `Revenue spike today (${currencyLabel(currency)})`,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-alerts.test.ts",
+      "pattern": "what it always said"
+    },
+    {
+      "name": "K14 segment revenue is attributed as if it were all one currency",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/segment-revenue.ts",
+      "find": "        fold.add(row.amount);\n        bySegment.set(name, fold);",
+      "replace": "        fold.add({ ...row.amount, currency: 'USD' });\n        bySegment.set(name, fold);",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/segment-revenue.test.ts",
+      "pattern": "in the currency it arrived in"
+    },
+    {
+      "name": "K15 a ClickHouse writer starts writing a revenue figure",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "    revenue_cents: 0,\n    subscribers_gained: day.subscribersGained,",
+      "replace": "    revenue_cents: day.estimatedRevenue ?? 0,\n    subscribers_gained: day.subscribersGained,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-writers.test.ts",
+      "pattern": "exactly the ones whose currency is accounted for"
+    },
+    {
+      "name": "K16 the YouTube revenue query asks for another currency",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "          'estimatedRedPartnerRevenue',\n        ].join(','),\n        filters: `video==${videoId}`,",
+      "replace": "          'estimatedRedPartnerRevenue',\n        ].join(','),\n        currency: 'EUR',\n        filters: `video==${videoId}`,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-writers.test.ts",
+      "pattern": "without a currency"
+    },
+    {
+      "name": "K17 the sync stops stamping its rows as USD",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/analytics-sync-cron.ts",
+      "find": "      revenue_cents: write.revenueCents,\n      currency: 'USD',",
+      "replace": "      revenue_cents: write.revenueCents,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-writers.test.ts",
+      "pattern": "stamp every synced"
+    },
+    {
+      "name": "K18 the Video Log cell adds its currencies into one figure",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/video-log/cells.tsx",
+      "find": "      {formatMoney(revenue)}",
+      "replace": "      {formatMoney([{ currency: 'USD', cents: revenue.reduce((sum, amount) => sum + amount.cents, 0) }])}",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/components/video-log/__tests__/video-log-table.test.tsx",
+      "pattern": "lists revenue per currency"
+    },
+    {
+      "name": "E1 the revenue mix is drawn in dollars whatever currency it holds",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/revenue-dashboard.tsx",
+      "find": "                    byType={summary.byType}\n                    currency={currency}",
+      "replace": "                    byType={summary.byType}",
+      "spec": "tests/revenue/revenue-currency.spec.ts",
+      "grep": "one card per currency, never a sum"
+    }
+  ]
+}

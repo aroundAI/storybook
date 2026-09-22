@@ -27,6 +27,13 @@ next stage. It runs in the same process as FILM-1802, on its own ports.
 DeepSeek goes through FILM-1801 because it hardcodes a `baseURL` that beats
 `OPENAI_BASE_URL`.
 
+> **Note (2026-09-22):** the 4110–4112 rows above will change. [FILM-1805](./FILM-1805-local-models-and-sdk-base-urls.md)
+> closes the SDKs' own env-var overrides, so the app reaches those ports through
+> `VENDOR_URL_OPENAI` / `VENDOR_URL_ANTHROPIC` / `VENDOR_URL_GEMINI` (FILM-1801's
+> scheme) instead — and DeepSeek is no longer the odd one out. Row 4114 (Sync Labs)
+> goes away with [FILM-513](../phase-5-audio-generation/providers/FILM-513-retire-lip-sync.md).
+> This spec's implementer updates the table; the rest of the body is unaffected.
+
 ## 2. The hard part: LLM output the app will accept
 
 Random prose is easy. The pipeline, though, parses and validates what the LLM

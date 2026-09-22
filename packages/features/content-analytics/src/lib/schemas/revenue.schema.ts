@@ -92,7 +92,9 @@ export const AddManualRevenueSchema = z
       // integer`, which reaches the user as a redacted server-action
       // error — a save that fails with nothing actionable in it.
       .max(2_147_483_647, 'Amount is too large to record'),
-    currency: z.string().length(3).optional().default('USD'),
+    // Stored upper-case. Totals are per currency (KB-12), and `usd` beside
+    // `USD` would be two currencies to everything that groups in SQL.
+    currency: z.string().length(3).toUpperCase().optional().default('USD'),
     category: ManualRevenueCategorySchema.default('sponsorship'),
     notes: z.string().max(1000).optional(),
   })

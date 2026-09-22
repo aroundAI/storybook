@@ -1,0 +1,133 @@
+{
+  "feature": "KB-16",
+  "mutations": [
+    {
+      "name": "O1 a previous period of zero is reported as a percentage again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/format.ts",
+      "find": "  if (previous === null || previous === 0) {",
+      "replace": "  if (previous === null) {",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/lib/__tests__/format.test.ts",
+      "pattern": "no baseline for a previous period of zero"
+    },
+    {
+      "name": "O2 the LLM input reports a change for a metric with no baseline",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/insights-utils.ts",
+      "find": "    if (previousVal > 0) {",
+      "replace": "    if (previousVal >= 0) {",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/insights-actions.test.ts",
+      "pattern": "zero previous values"
+    },
+    {
+      "name": "O3 the metric cards read an absent previous period as zero",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "      previousValue: previousData ? previousData.views : null,",
+      "replace": "      previousValue: previousData?.views || 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/no-literal-fallbacks-overview.test.ts",
+      "pattern": "never reads an absent previous period as zero"
+    },
+    {
+      "name": "O4 the metric card draws an indicator with no baseline",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "          {change.kind === 'change' ? (",
+      "replace": "          {change.kind !== 'absent' ? (",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/components/__tests__/metric-cards.test.tsx",
+      "pattern": "draws no change indicator when there is no previous period"
+    },
+    {
+      "name": "O5 the shares card grows a breakdown default again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/overview/shares-card.tsx",
+      "find": "export function SharesCard({ shares }: SharesCardProps) {",
+      "replace": "export function SharesCard({ shares, breakdown }: SharesCardProps & { breakdown?: { direct: number; copyLink: number } }) {\n  const shareBreakdown = breakdown || { direct: 83, copyLink: 17 };",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/no-literal-fallbacks-overview.test.ts",
+      "pattern": "never falls back to an object literal of figures"
+    },
+    {
+      "name": "O6 the revenue card prints a projection nobody computed",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/overview/revenue-card.tsx",
+      "find": "      footer=\"Revenue recorded against this project’s videos. Channel-level income is on the account’s Revenue tab.\"",
+      "replace": "      footer=\"Projection: $10k by month end\"",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/no-literal-fallbacks-overview.test.ts",
+      "pattern": "prints no literal footer that is not a denominator or a caveat"
+    },
+    {
+      "name": "O7 the revenue card shows nothing at all for a project with no revenue",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/overview/revenue-card.tsx",
+      "find": "  if (revenue.value.length === 0) {",
+      "replace": "  if (revenue.value.length < 0) {",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/components/__tests__/overview-cards.test.tsx",
+      "pattern": "says nothing was recorded rather than showing"
+    },
+    {
+      "name": "O8 the platform split footer sounds insightful again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/overview/platform-split-card.tsx",
+      "find": "      footer={\n        totalViews > 0\n          ? `Share of ${formatNumber(totalViews)} views by platform.`\n          : undefined\n      }",
+      "replace": "      footer=\"Dominant performance on short-form\"",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/no-literal-fallbacks-overview.test.ts",
+      "pattern": "prints no literal footer that is not a denominator or a caveat"
+    },
+    {
+      "name": "O9 the most-discussed rule names an item nobody commented on",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/most-discussed.ts",
+      "find": "  return top !== null && top.comments > 0 && !tied ? top : null;",
+      "replace": "  return top;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/overview-truth.test.ts",
+      "pattern": "names nothing when nobody commented"
+    },
+    {
+      "name": "O10 the project revenue read is not scoped to the project",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/revenue-queries.ts",
+      "find": "        .eq('publishes.episodes.project_id', projectId)\n        .gte('record_date', from)",
+      "replace": "        .gte('record_date', from)",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-queries.test.ts",
+      "pattern": "reads publish-scoped rows through the project chain"
+    },
+    {
+      "name": "O11 the project revenue fold adds every currency into one mix",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/project-revenue.ts",
+      "find": "  for (const row of rows) fold.add(row);",
+      "replace": "  for (const row of rows) fold.add({ ...row, amount: { ...row.amount, currency: 'USD' } });",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/overview-truth.test.ts",
+      "pattern": "one mix per currency"
+    },
+    {
+      "name": "E1 the dashboard never hands the grid the revenue it fetched",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/analytics-dashboard.tsx",
+      "find": "            revenue={revenueByCurrency ? measured(revenueByCurrency) : ABSENT}",
+      "replace": "            revenue={ABSENT}",
+      "spec": "tests/analytics/overview.spec.ts",
+      "grep": "one currency sees one card"
+    },
+    {
+      "name": "E2 the grid draws only the first currency's revenue",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/overview/overview-grid.tsx",
+      "find": "      <RevenueCard revenue={revenue} />",
+      "replace": "      <RevenueCard revenue={revenue.kind === 'measured' ? { kind: 'measured', value: revenue.value.slice(0, 1) } : revenue} />",
+      "spec": "tests/analytics/overview.spec.ts",
+      "grep": "two currencies"
+    }
+  ]
+}

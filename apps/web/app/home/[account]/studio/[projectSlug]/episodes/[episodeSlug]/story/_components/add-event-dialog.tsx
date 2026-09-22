@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import type { ImmutableEventType } from '@kit/episodes';
 import { addImmutableEventAction } from '@kit/episodes/server';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -120,15 +121,17 @@ export function AddEventDialog({
   const onSubmit = (data: AddEventFormData) => {
     startTransition(async () => {
       try {
-        const result = await addImmutableEventAction({
-          projectId,
-          season,
-          episodeNumber,
-          eventType: data.eventType,
-          eventKey: data.eventKey,
-          description: data.description,
-          establishedIn: episodeId,
-        });
+        const result = await unwrap(
+          addImmutableEventAction({
+            projectId,
+            season,
+            episodeNumber,
+            eventType: data.eventType,
+            eventKey: data.eventKey,
+            description: data.description,
+            establishedIn: episodeId,
+          }),
+        );
 
         if (result) {
           toast.success('Immutable event added successfully');
@@ -139,9 +142,7 @@ export function AddEventDialog({
           toast.error('Failed to add event');
         }
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : 'Failed to add event',
-        );
+        toast.error(refusalMessage(error, 'Failed to add event'));
       }
     });
   };

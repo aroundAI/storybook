@@ -101,38 +101,113 @@ describe('YouTubeAnalyticsProvider', () => {
       expect(result.dailyData).toBeDefined();
     });
 
-    it('should return correct totals structure', async () => {
-      mockReportsQuery.mockResolvedValue({
-        data: {
-          rows: [[1000, 50, 2, 25, 10, 5000, 180, 45.5, 20, 5, 12.5]],
-        },
-      });
+    // Every reports.query answers by what it was asked for, so a test can tell
+    // the totals call from the revenue call the way YouTube does.
+    const TOTALS_ROW = [1000, 50, 2, 25, 10, 5000, 180, 45.5, 20, 5];
 
-      const result = await provider.getVideoAnalytics({
-        videoId: 'test-video-id',
-        startDate: new Date('2025-01-01'),
-        endDate: new Date('2025-01-31'),
-      });
+    function answerByMetrics(revenue: () => Promise<unknown>) {
+      mockReportsQuery.mockImplementation(({ metrics }: { metrics: string }) =>
+        metrics.includes('estimatedRevenue')
+          ? revenue()
+          : Promise.resolve({
+              data: {
+                rows: metrics.startsWith('views,likes,dislikes')
+                  ? [TOTALS_ROW]
+                  : [],
+              },
+            }),
+      );
+    }
 
+    const input = {
+      videoId: 'test-video-id',
+      startDate: new Date('2025-01-01'),
+      endDate: new Date('2025-01-31'),
+    };
+
+    const NON_REVENUE_TOTALS = {
+      views: 1000,
+      likes: 50,
+      dislikes: 2,
+      comments: 25,
+      shares: 10,
+      estimatedMinutesWatched: 5000,
+      averageViewDuration: 180,
+      averageViewPercentage: 45.5,
+      subscribersGained: 20,
+      subscribersLost: 5,
+    };
+
+    it('does not ask for revenue unless told the monetary scope is held', async () => {
+      answerByMetrics(() => Promise.reject(new Error('must not be called')));
+
+      const result = await provider.getVideoAnalytics(input);
+
+      const asked = mockReportsQuery.mock.calls.map(
+        ([params]) => (params as { metrics: string }).metrics,
+      );
+
+      expect(asked.filter((metrics) => /revenue/i.test(metrics))).toEqual([]);
+      expect(result.revenueAccess).toBe('scope_missing');
       expect(result.totals).toEqual({
-        views: 1000,
-        likes: 50,
-        dislikes: 2,
-        comments: 25,
-        shares: 10,
-        estimatedMinutesWatched: 5000,
-        averageViewDuration: 180,
-        averageViewPercentage: 45.5,
-        subscribersGained: 20,
-        subscribersLost: 5,
-        estimatedRevenue: 1250, // 12.5 * 100 = 1250 cents
-        // The ads/Premium split added in FILM-1601. Zero here because this
-        // fixture's response carries neither column — which is the case
-        // that matters: a channel without monetization must report 0
-        // rather than leaving the fields absent.
+        ...NON_REVENUE_TOTALS,
+        estimatedRevenue: 0,
         estimatedAdRevenue: 0,
         estimatedRedPartnerRevenue: 0,
       });
+    });
+
+    it('fetches revenue in its own query and merges it into the totals', async () => {
+      answerByMetrics(() =>
+        Promise.resolve({ data: { rows: [[12.5, 10, 2.5]] } }),
+      );
+
+      const result = await provider.getVideoAnalytics({
+        ...input,
+        includeRevenue: true,
+      });
+
+      const revenueCalls = mockReportsQuery.mock.calls
+        .map(([params]) => (params as { metrics: string }).metrics)
+        .filter((metrics) => /revenue/i.test(metrics));
+
+      expect(revenueCalls).toEqual([
+        'estimatedRevenue,estimatedAdRevenue,estimatedRedPartnerRevenue',
+      ]);
+      expect(result.revenueAccess).toBe('authorised');
+      expect(result.totals).toEqual({
+        ...NON_REVENUE_TOTALS,
+        estimatedRevenue: 1250, // 12.5 * 100 = 1250 cents
+        estimatedAdRevenue: 1000,
+        estimatedRedPartnerRevenue: 250,
+      });
+    });
+
+    it('keeps the totals when the revenue query is forbidden', async () => {
+      answerByMetrics(() => Promise.reject(new Error('Forbidden')));
+
+      const result = await provider.getVideoAnalytics({
+        ...input,
+        includeRevenue: true,
+      });
+
+      expect(result.revenueAccess).toBe('account_type_gated');
+      expect(result.totals.views).toBe(1000);
+      expect(result.totals.estimatedRevenue).toBe(0);
+    });
+
+    it('does not read a quota 403 on revenue as an access state', async () => {
+      answerByMetrics(() =>
+        Promise.reject(new Error('Forbidden: quotaExceeded for this project')),
+      );
+
+      const result = await provider.getVideoAnalytics({
+        ...input,
+        includeRevenue: true,
+      });
+
+      expect(result.revenueAccess).toBe('unavailable');
+      expect(result.totals.views).toBe(1000);
     });
 
     it('should handle empty API response', async () => {
@@ -149,6 +224,58 @@ describe('YouTubeAnalyticsProvider', () => {
       expect(result.totals.views).toBe(0);
       expect(result.totals.likes).toBe(0);
       expect(result.dailyData).toEqual([]);
+    });
+  });
+
+  // FILM-1710
+  describe('getVideoDurations', () => {
+    it('reads contentDetails.duration, keyed by video id', async () => {
+      mockVideosList.mockResolvedValue({
+        data: {
+          items: [
+            { id: 'short-1', contentDetails: { duration: 'PT45S' } },
+            { id: 'full-1', contentDetails: { duration: 'PT15M33S' } },
+          ],
+        },
+      });
+
+      const durations = await provider.getVideoDurations(['short-1', 'full-1']);
+
+      expect([...durations]).toEqual([
+        ['short-1', 45],
+        ['full-1', 933],
+      ]);
+      expect(mockVideosList).toHaveBeenCalledWith({
+        part: ['contentDetails'],
+        id: ['short-1', 'full-1'],
+        maxResults: 50,
+      });
+    });
+
+    it('leaves out a video the API omits, and one with no finished length', async () => {
+      // `P0D` is a live broadcast still running. Both are unknown — neither
+      // is a zero-second video.
+      mockVideosList.mockResolvedValue({
+        data: {
+          items: [{ id: 'live-1', contentDetails: { duration: 'P0D' } }],
+        },
+      });
+
+      const durations = await provider.getVideoDurations(['live-1', 'gone-1']);
+
+      expect(durations.size).toBe(0);
+    });
+
+    it('asks for at most 50 ids a call', async () => {
+      mockVideosList.mockResolvedValue({ data: { items: [] } });
+
+      const ids = Array.from({ length: 120 }, (_, i) => `v${i}`);
+
+      await provider.getVideoDurations(ids);
+
+      expect(
+        mockVideosList.mock.calls.map(([params]) => params.id.length),
+      ).toEqual([50, 50, 20]);
     });
   });
 

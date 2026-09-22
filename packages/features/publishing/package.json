@@ -20,6 +20,7 @@
     "./oauth/twitter": "./src/oauth/twitter/index.ts",
     "./oauth/meta": "./src/oauth/meta/index.ts",
     "./oauth/linkedin": "./src/oauth/linkedin/index.ts",
+    "./oauth/analytics-scopes": "./src/oauth/analytics-scopes.ts",
     "./providers/youtube": "./src/providers/youtube/index.ts",
     "./providers/tiktok": "./src/providers/tiktok/index.ts",
     "./providers/twitter": "./src/providers/twitter/index.ts",

@@ -2,21 +2,61 @@
 
 import 'server-only';
 
+import type { LanguageDimension, SegmentConfidence } from '@kit/clickhouse';
 import {
+  LANGUAGE_DIMENSION_SEGMENTS,
+  fromDimLanguage,
   queryAudienceRows,
   queryDailyStats,
+  queryLanguagePairs,
+  querySegmentPerformance,
   queryTotalsByVideoIds,
+  queryVideoLanguages,
 } from '@kit/clickhouse/server';
-import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
+import { fetchAllByIds } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import type { LanguageDivergence } from '../lib/language-divergence';
+import { summariseLanguagePairs } from '../lib/language-divergence';
+import {
+  LANGUAGE_CHECKPOINT_DAYS,
+  languageKey,
+  resolveLanguageDimension,
+} from '../lib/language-labels';
+import { assertScopeAccess } from './scope-access';
+
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Options every windowed read here takes. */
+interface LanguageReadOptions {
+  startDate?: Date;
+  endDate?: Date;
+  /**
+   * Which language the figures are grouped by. Resolved through
+   * `resolveLanguageDimension` rather than trusted: this is a `'use server'`
+   * module, so every export is an endpoint and the value can be anything.
+   */
+  dimension?: LanguageDimension;
+}
+
+/** A language's figures at a fixed video age, from querySegmentPerformance. */
+export interface LanguageCheckpoint {
+  days: number;
+  medianViews: number;
+  /** Videos old enough to be measured at `days`. Drives `confidence`. */
+  matureVideoCount: number;
+  confidence: SegmentConfidence;
+}
 
 /**
  * Language performance summary
  */
 export interface LanguagePerformance {
-  language: string;
+  /**
+   * Null when no language was set — never a defaulted code. What "not set"
+   * means depends on the dimension; `languageName` words it.
+   */
+  language: string | null;
   views: number;
   viewsChange: number; // percentage change vs previous period
   likes: number;
@@ -25,6 +65,13 @@ export interface LanguagePerformance {
   engagement: number; // (likes + comments + shares) / views * 100
   revenueCents: number;
   contentCount: number;
+  /** Every published video in this language, with or without views. */
+  videoCount: number;
+  /**
+   * Null when no video in this language has reached the checkpoint age:
+   * there is no median to report, which is not a median of zero.
+   */
+  checkpoint: LanguageCheckpoint | null;
 }
 
 /**
@@ -32,7 +79,8 @@ export interface LanguagePerformance {
  */
 export interface PlatformLanguageEntry {
   platform: string;
-  language: string;
+  /** Null when no language was set. */
+  language: string | null;
   views: number;
   likes: number;
   comments: number;
@@ -69,115 +117,55 @@ export interface ContentTypeComparison {
 }
 
 // =============================================================================
-// Helper: resolve publish IDs + language map for a project
+// Helper: every video in a project, with the language the dimension selects
 // =============================================================================
 
-async function resolveProjectPublishes(
+/**
+ * A project's videos and the language each is grouped under.
+ *
+ * Read from `video_dim`, which carries both languages. This used to walk
+ * Postgres — seasons, episodes, publishes, then `platform_connections` — and
+ * so could only ever see the channel's target language, while every other
+ * analytics surface filtered on the publish's. The two agreed only when
+ * routing worked, and nothing showed when it had not (FILM-1702).
+ *
+ * That walk ran under the caller's RLS, which is what kept one tenant out of
+ * another's figures. ClickHouse has no row-level security, so the check is
+ * made here instead; "no access" answers with nothing, as it always did.
+ */
+async function resolveProjectVideos(
   projectId: string,
-  extraSelect?: string,
+  dimensionInput: unknown,
+  contentType?: string,
 ) {
-  const client = getSupabaseServerClient();
+  const dimension = resolveLanguageDimension(dimensionInput);
 
-  // Every stage is paged. These stack — seasons feed episodes feed publishes
-  // — so a truncation at any level silently shrinks the set the language
-  // shares are computed over. A whole language can disappear from the
-  // breakdown if all of its publishes fall past a cut, which reads as
-  // "we don't publish in that language" rather than as missing data.
-  const seasons = await fetchAllRows<{ id: string }>(
-    (from, to) =>
-      client
-        .from('seasons')
-        .select('id')
-        .eq('project_id', projectId)
-        .is('deleted_at', null)
-        .order('id')
-        .range(from, to),
-    'project seasons',
-  );
-
-  if (seasons.length === 0) return null;
-
-  const seasonIds = seasons.map((s) => s.id);
-
-  const episodes = await fetchAllByIds<{ id: string; title: string }>(
-    seasonIds,
-    (chunk, from, to) =>
-      client
-        .from('episodes')
-        .select('id, title')
-        .in('season_id', chunk)
-        .is('deleted_at', null)
-        .order('id')
-        .range(from, to),
-    'season episodes',
-  );
-
-  if (episodes.length === 0) return null;
-
-  const episodeIds = episodes.map((e) => e.id);
-
-  const selectCols = extraSelect
-    ? `id, platform_connection_id, ${extraSelect}`
-    : 'id, platform_connection_id';
-
-  const rawPublishes = await fetchAllByIds(
-    episodeIds,
-    (chunk, from, to) =>
-      client
-        .from('publishes')
-        .select(selectCols)
-        .in('episode_id', chunk)
-        .order('id')
-        .range(from, to),
-    'episode publishes',
-  );
-
-  if (rawPublishes.length === 0) return null;
-
-  // Cast to proper shape — Supabase returns GenericStringError for dynamic selects
-  const publishes = rawPublishes as unknown as Array<{
-    id: string;
-    platform_connection_id: string | null;
-    [key: string]: unknown;
-  }>;
-
-  // Build language map from platform connections
-  const connectionIds = [
-    ...new Set(publishes.map((p) => p.platform_connection_id).filter(Boolean)),
-  ];
-  const languageByConnection = new Map<string, string>();
-
-  if (connectionIds.length > 0) {
-    const connections = await fetchAllByIds(
-      connectionIds as string[],
-      (chunk, from, to) =>
-        client
-          .from('platform_connections')
-          .select('id, language')
-          .in('id', chunk)
-          .order('id')
-          .range(from, to),
-      'connection languages',
-    );
-
-    for (const conn of connections) {
-      const c = conn as unknown as { id: string; language?: string };
-      languageByConnection.set(c.id, c.language || 'en');
-    }
+  try {
+    await assertScopeAccess({ projectId });
+  } catch {
+    return null;
   }
 
-  const publishLanguageMap = new Map<string, string>();
-  for (const p of publishes) {
-    const connId = p.platform_connection_id;
-    const language = connId ? languageByConnection.get(connId) || 'en' : 'en';
-    publishLanguageMap.set(p.id, language);
+  const videos = await queryVideoLanguages({
+    scope: { projectId, contentType },
+  });
+
+  if (videos.length === 0) return null;
+
+  const languageByVideo = new Map<string, string | null>();
+
+  for (const video of videos) {
+    languageByVideo.set(
+      video.videoId,
+      dimension === 'channel' ? video.channelLanguage : video.language,
+    );
   }
 
   return {
-    publishes,
-    episodes,
-    publishLanguageMap,
-    publishIds: publishes.map((p) => p.id),
+    videos,
+    dimension,
+    languageByVideo,
+    videoIds: videos.map((video) => video.videoId),
   };
 }
 
@@ -190,7 +178,7 @@ async function resolveProjectPublishes(
  */
 export async function getLanguagePerformance(
   projectId: string,
-  options?: { startDate?: Date; endDate?: Date },
+  options?: LanguageReadOptions,
 ): Promise<LanguagePerformance[]> {
   const endDate = options?.endDate || new Date();
   const startDate =
@@ -204,33 +192,44 @@ export async function getLanguagePerformance(
     previousEndDate.getTime() - periodDays * 24 * 60 * 60 * 1000,
   );
 
-  const resolved = await resolveProjectPublishes(projectId);
+  const resolved = await resolveProjectVideos(projectId, options?.dimension);
   if (!resolved) return [];
 
-  const { publishIds, publishLanguageMap } = resolved;
+  const { videos, videoIds, languageByVideo, dimension } = resolved;
 
   const startDateStr = startDate.toISOString().split('T')[0]!;
   const endDateStr = endDate.toISOString().split('T')[0]!;
   const prevStartStr = previousStartDate.toISOString().split('T')[0]!;
   const prevEndStr = previousEndDate.toISOString().split('T')[0]!;
 
-  // Query ClickHouse for current and previous periods
-  const [currentTotals, previousTotals] = await Promise.all([
-    queryTotalsByVideoIds(publishIds, {
+  // The windowed totals, and the same per-language query the Deep Dive
+  // runs. `minVideos: 1` because a thin language is dimmed on screen, not
+  // dropped here: the gate that hides it would hide the only figure a new
+  // channel has.
+  const [currentTotals, previousTotals, segments] = await Promise.all([
+    queryTotalsByVideoIds(videoIds, {
       startDate: startDateStr,
       endDate: endDateStr,
       projectIds: [projectId],
     }),
-    queryTotalsByVideoIds(publishIds, {
+    queryTotalsByVideoIds(videoIds, {
       startDate: prevStartStr,
       endDate: prevEndStr,
       projectIds: [projectId],
     }),
+    querySegmentPerformance({
+      scope: { projectId },
+      segment: { kind: LANGUAGE_DIMENSION_SEGMENTS[dimension] },
+      minVideos: 1,
+      checkpointDays: LANGUAGE_CHECKPOINT_DAYS,
+    }),
   ]);
 
-  // Aggregate by language (current period)
+  // Every language with a published video gets a row, views or not. Built
+  // from the window's totals alone, a language with a quiet month vanished
+  // and read as "we do not publish in it".
   const languageStats = new Map<
-    string,
+    string | null,
     {
       views: number;
       likes: number;
@@ -238,11 +237,12 @@ export async function getLanguagePerformance(
       shares: number;
       revenueCents: number;
       publishCount: number;
+      videoCount: number;
     }
   >();
 
-  for (const [publishId, stats] of currentTotals) {
-    const language = publishLanguageMap.get(publishId) || 'en';
+  for (const video of videos) {
+    const language = languageByVideo.get(video.videoId) ?? null;
     const current = languageStats.get(language) || {
       views: 0,
       likes: 0,
@@ -250,7 +250,17 @@ export async function getLanguagePerformance(
       shares: 0,
       revenueCents: 0,
       publishCount: 0,
+      videoCount: 0,
     };
+
+    current.videoCount++;
+    languageStats.set(language, current);
+  }
+
+  for (const [publishId, stats] of currentTotals) {
+    const current = languageStats.get(languageByVideo.get(publishId) ?? null);
+
+    if (!current) continue;
 
     current.views += stats.views;
     current.likes += stats.likes;
@@ -258,18 +268,26 @@ export async function getLanguagePerformance(
     current.shares += stats.shares;
     current.revenueCents += stats.revenue_cents;
     current.publishCount++;
-
-    languageStats.set(language, current);
   }
 
   // Previous period views by language
-  const previousViewsByLanguage = new Map<string, number>();
+  const previousViewsByLanguage = new Map<string | null, number>();
   for (const [publishId, stats] of previousTotals) {
-    const language = publishLanguageMap.get(publishId) || 'en';
+    const language = languageByVideo.get(publishId) ?? null;
     previousViewsByLanguage.set(
       language,
       (previousViewsByLanguage.get(language) || 0) + stats.views,
     );
+  }
+
+  const checkpointByLanguage = new Map<string | null, LanguageCheckpoint>();
+  for (const row of segments) {
+    checkpointByLanguage.set(fromDimLanguage(row.segment), {
+      days: LANGUAGE_CHECKPOINT_DAYS,
+      medianViews: row.medianViews,
+      matureVideoCount: row.matureVideoCount,
+      confidence: row.confidence,
+    });
   }
 
   // Build result
@@ -298,6 +316,8 @@ export async function getLanguagePerformance(
       engagement,
       revenueCents: stats.revenueCents,
       contentCount: stats.publishCount,
+      videoCount: stats.videoCount,
+      checkpoint: checkpointByLanguage.get(language) ?? null,
     });
   }
 
@@ -313,27 +333,27 @@ export async function getLanguagePerformance(
  */
 export async function getPlatformLanguageMatrix(
   projectId: string,
-  options?: { startDate?: Date; endDate?: Date },
+  options?: LanguageReadOptions,
 ): Promise<PlatformLanguageEntry[]> {
   const endDate = options?.endDate || new Date();
   const startDate =
     options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
-  const resolved = await resolveProjectPublishes(projectId, 'platform');
+  const resolved = await resolveProjectVideos(projectId, options?.dimension);
   if (!resolved) return [];
 
-  const { publishes, publishIds, publishLanguageMap } = resolved;
+  const { videos, videoIds, languageByVideo } = resolved;
 
   const startDateStr = startDate.toISOString().split('T')[0]!;
   const endDateStr = endDate.toISOString().split('T')[0]!;
 
   // Build publish -> platform map
   const publishPlatformMap = new Map<string, string>();
-  for (const p of publishes) {
-    publishPlatformMap.set(p.id as string, (p.platform as string) || 'unknown');
+  for (const video of videos) {
+    publishPlatformMap.set(video.videoId, video.platform || 'unknown');
   }
 
-  const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
+  const perVideoTotals = await queryTotalsByVideoIds(videoIds, {
     startDate: startDateStr,
     endDate: endDateStr,
     projectIds: [projectId],
@@ -344,7 +364,7 @@ export async function getPlatformLanguageMatrix(
     string,
     {
       platform: string;
-      language: string;
+      language: string | null;
       views: number;
       likes: number;
       comments: number;
@@ -356,8 +376,8 @@ export async function getPlatformLanguageMatrix(
 
   for (const [publishId, stats] of perVideoTotals) {
     const platform = publishPlatformMap.get(publishId) || 'unknown';
-    const language = publishLanguageMap.get(publishId) || 'en';
-    const key = `${platform}:${language}`;
+    const language = languageByVideo.get(publishId) ?? null;
+    const key = `${platform}:${languageKey(language)}`;
 
     const current = matrix.get(key) || {
       platform,
@@ -419,24 +439,21 @@ export async function getContentTypeComparison(
   const startDate =
     options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
-  const resolved = await resolveProjectPublishes(projectId, 'content_type');
+  const resolved = await resolveProjectVideos(projectId, undefined);
   if (!resolved) return getEmptyComparison();
 
-  const { publishes, publishIds } = resolved;
+  const { videos, videoIds } = resolved;
 
   const startDateStr = startDate.toISOString().split('T')[0]!;
   const endDateStr = endDate.toISOString().split('T')[0]!;
 
   // Build content type map
   const publishContentTypeMap = new Map<string, string>();
-  for (const p of publishes) {
-    publishContentTypeMap.set(
-      p.id as string,
-      (p.content_type as string) || 'full',
-    );
+  for (const video of videos) {
+    publishContentTypeMap.set(video.videoId, video.contentType || 'full');
   }
 
-  const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
+  const perVideoTotals = await queryTotalsByVideoIds(videoIds, {
     startDate: startDateStr,
     endDate: endDateStr,
     projectIds: [projectId],
@@ -535,7 +552,8 @@ export interface ShortsSourcePerformance {
   sourceEpisodeId: string | null;
   sourceEpisodeTitle: string | null;
   sourceShotId: string | null;
-  language: string;
+  /** Null when no language was set. */
+  language: string | null;
   platform: string;
   views: number;
   likes: number;
@@ -549,111 +567,28 @@ export interface ShortsSourcePerformance {
  */
 export async function getShortsSourcePerformance(
   projectId: string,
-  options?: { startDate?: Date; endDate?: Date; limit?: number },
+  options?: LanguageReadOptions & { limit?: number },
 ): Promise<ShortsSourcePerformance[]> {
-  const client = getSupabaseServerClient();
-
   const endDate = options?.endDate || new Date();
   const startDate =
     options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
   const limit = options?.limit || 10;
 
-  // Get project structure. Paged for the same reason as
-  // resolveProjectPublishes: the stages stack, so truncation compounds.
-  const seasons = await fetchAllRows<{ id: string }>(
-    (from, to) =>
-      client
-        .from('seasons')
-        .select('id')
-        .eq('project_id', projectId)
-        .is('deleted_at', null)
-        .order('id')
-        .range(from, to),
-    'shorts seasons',
+  const resolved = await resolveProjectVideos(
+    projectId,
+    options?.dimension,
+    'short',
   );
 
-  if (seasons.length === 0) return [];
+  if (!resolved) return [];
 
-  const seasonIds = seasons.map((s) => s.id);
-
-  const episodes = await fetchAllByIds<{ id: string; title: string }>(
-    seasonIds,
-    (chunk, from, to) =>
-      client
-        .from('episodes')
-        .select('id, title')
-        .in('season_id', chunk)
-        .is('deleted_at', null)
-        .order('id')
-        .range(from, to),
-    'shorts episodes',
-  );
-
-  if (episodes.length === 0) return [];
-
-  const episodeIds = episodes.map((e) => e.id);
-  const episodeTitleMap = new Map<string, string>();
-  for (const ep of episodes) {
-    episodeTitleMap.set(ep.id, ep.title);
-  }
-
-  // Get shorts publishes
-  const publishes = await fetchAllByIds<{
-    id: string;
-    title: string | null;
-    platform: string;
-    platform_connection_id: string | null;
-    episode_id: string;
-    content_type: string | null;
-  }>(
-    episodeIds,
-    (chunk, from, to) =>
-      client
-        .from('publishes')
-        .select(
-          'id, title, platform, platform_connection_id, episode_id, content_type',
-        )
-        .in('episode_id', chunk)
-        .eq('content_type', 'short')
-        .order('id')
-        .range(from, to),
-    'shorts publishes',
-  );
-
-  if (publishes.length === 0) return [];
-
-  const publishIds = publishes.map((p) => p.id);
-
-  // Get language from platform connections
-  const connectionIds = [
-    ...new Set(publishes.map((p) => p.platform_connection_id).filter(Boolean)),
-  ];
-  const languageByConnection = new Map<string, string>();
-
-  if (connectionIds.length > 0) {
-    const connections = await fetchAllByIds(
-      connectionIds as string[],
-      (chunk, from, to) =>
-        client
-          .from('platform_connections')
-          .select('id, language')
-          .in('id', chunk)
-          .order('id')
-          .range(from, to),
-      'connection languages',
-    );
-
-    for (const conn of connections) {
-      const c = conn as unknown as { id: string; language?: string };
-      languageByConnection.set(c.id, c.language || 'en');
-    }
-  }
+  const { videos, videoIds, languageByVideo } = resolved;
 
   const startDateStr = startDate.toISOString().split('T')[0]!;
   const endDateStr = endDate.toISOString().split('T')[0]!;
 
   // Get metrics from ClickHouse
-  const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
+  const perVideoTotals = await queryTotalsByVideoIds(videoIds, {
     startDate: startDateStr,
     endDate: endDateStr,
     projectIds: [projectId],
@@ -661,27 +596,23 @@ export async function getShortsSourcePerformance(
 
   // Build results
   const results: ShortsSourcePerformance[] = [];
-  for (const pub of publishes) {
-    const stats = perVideoTotals.get(pub.id);
+  for (const video of videos) {
+    const stats = perVideoTotals.get(video.videoId);
     if (!stats) continue;
 
-    const connId = pub.platform_connection_id;
-    const language = connId ? languageByConnection.get(connId) || 'en' : 'en';
     const engagement =
       stats.views > 0
         ? ((stats.likes + stats.comments) / stats.views) * 100
         : 0;
 
     results.push({
-      publishId: pub.id,
-      publishTitle: pub.title || 'Untitled Short',
-      sourceEpisodeId: pub.episode_id,
-      sourceEpisodeTitle: pub.episode_id
-        ? episodeTitleMap.get(pub.episode_id) || null
-        : null,
+      publishId: video.videoId,
+      publishTitle: video.title || 'Untitled Short',
+      sourceEpisodeId: video.episodeId,
+      sourceEpisodeTitle: null,
       sourceShotId: null, // Will be available after migration
-      language,
-      platform: pub.platform,
+      language: languageByVideo.get(video.videoId) ?? null,
+      platform: video.platform,
       views: stats.views,
       likes: stats.likes,
       comments: stats.comments,
@@ -689,7 +620,51 @@ export async function getShortsSourcePerformance(
     });
   }
 
-  return results.sort((a, b) => b.views - a.views).slice(0, limit);
+  const top = results.sort((a, b) => b.views - a.views).slice(0, limit);
+
+  // Episode titles are not a dimension, so they stay in Postgres — looked
+  // up for the rows that survived the cut, not for the whole library.
+  const episodeTitles = await fetchEpisodeTitles(
+    top.flatMap((short) =>
+      short.sourceEpisodeId ? [short.sourceEpisodeId] : [],
+    ),
+  );
+
+  return top.map((short) => ({
+    ...short,
+    sourceEpisodeTitle: short.sourceEpisodeId
+      ? (episodeTitles.get(short.sourceEpisodeId) ?? null)
+      : null,
+  }));
+}
+
+async function fetchEpisodeTitles(
+  episodeIds: string[],
+): Promise<Map<string, string>> {
+  const titles = new Map<string, string>();
+  const uniqueIds = [...new Set(episodeIds)];
+
+  if (uniqueIds.length === 0) return titles;
+
+  const client = getSupabaseServerClient();
+
+  const episodes = await fetchAllByIds<{ id: string; title: string }>(
+    uniqueIds,
+    (chunk, from, to) =>
+      client
+        .from('episodes')
+        .select('id, title')
+        .in('id', chunk)
+        .order('id')
+        .range(from, to),
+    'shorts episodes',
+  );
+
+  for (const episode of episodes) {
+    titles.set(episode.id, episode.title);
+  }
+
+  return titles;
 }
 
 // =============================================================================
@@ -700,7 +675,8 @@ export async function getShortsSourcePerformance(
  * Geography breakdown for a language
  */
 export interface GeographyByLanguage {
-  language: string;
+  /** Null when no language was set. */
+  language: string | null;
   countries: {
     country: string;
     views: number;
@@ -716,39 +692,39 @@ export interface GeographyByLanguage {
  */
 export async function getGeographyByLanguage(
   projectId: string,
-  options?: { startDate?: Date; endDate?: Date },
+  options?: LanguageReadOptions,
 ): Promise<GeographyByLanguage[]> {
   const endDate = options?.endDate || new Date();
   const startDate =
     options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
-  const resolved = await resolveProjectPublishes(projectId);
+  const resolved = await resolveProjectVideos(projectId, options?.dimension);
   if (!resolved) return [];
 
-  const { publishIds, publishLanguageMap } = resolved;
+  const { videoIds, languageByVideo } = resolved;
 
   const startDateStr = startDate.toISOString().split('T')[0]!;
   const endDateStr = endDate.toISOString().split('T')[0]!;
 
   // Per-video totals weight the per-video country breakdowns
   const [perVideoTotals, countryRows] = await Promise.all([
-    queryTotalsByVideoIds(publishIds, {
+    queryTotalsByVideoIds(videoIds, {
       startDate: startDateStr,
       endDate: endDateStr,
       projectIds: [projectId],
     }),
     queryAudienceRows({
-      videoIds: publishIds,
+      videoIds,
       projectIds: [projectId],
       dimension: 'country',
     }),
   ]);
 
   // language → country → weighted views
-  const byLanguage = new Map<string, Map<string, number>>();
+  const byLanguage = new Map<string | null, Map<string, number>>();
 
   for (const row of countryRows) {
-    const language = publishLanguageMap.get(row.videoId) || 'en';
+    const language = languageByVideo.get(row.videoId) ?? null;
     const videoViews = perVideoTotals.get(row.videoId)?.views || 0;
     const weight =
       row.views > 0 ? row.views : (row.percentage / 100) * videoViews;
@@ -762,7 +738,7 @@ export async function getGeographyByLanguage(
 
   // Videos with no audience rows still contribute to their language bucket
   for (const [publishId, stats] of perVideoTotals) {
-    const language = publishLanguageMap.get(publishId) || 'en';
+    const language = languageByVideo.get(publishId) ?? null;
     if (!byLanguage.has(language) && stats.views > 0) {
       byLanguage.set(language, new Map([['Unknown', stats.views]]));
     }
@@ -803,6 +779,10 @@ export async function getGeographyByLanguage(
  */
 export interface LanguageTrendEntry {
   date: string;
+  /**
+   * Keyed by `languageKey`, because a record key cannot be null: a language
+   * nobody set is under LANGUAGE_NOT_SET_KEY, never under a real code.
+   */
   viewsByLanguage: Record<string, number>;
 }
 
@@ -812,23 +792,23 @@ export interface LanguageTrendEntry {
  */
 export async function getLanguageTrend(
   projectId: string,
-  options?: { startDate?: Date; endDate?: Date },
+  options?: LanguageReadOptions,
 ): Promise<LanguageTrendEntry[]> {
   const endDate = options?.endDate || new Date();
   const startDate =
     options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
-  const resolved = await resolveProjectPublishes(projectId);
+  const resolved = await resolveProjectVideos(projectId, options?.dimension);
   if (!resolved) return [];
 
-  const { publishIds, publishLanguageMap } = resolved;
+  const { videoIds, languageByVideo } = resolved;
 
   const startDateStr = startDate.toISOString().split('T')[0]!;
   const endDateStr = endDate.toISOString().split('T')[0]!;
 
   // Get daily stats from ClickHouse
   const dailyStats = await queryDailyStats({
-    videoIds: publishIds,
+    videoIds,
     startDate: startDateStr,
     endDate: endDateStr,
   });
@@ -838,7 +818,7 @@ export async function getLanguageTrend(
 
   for (const stat of dailyStats) {
     const date = stat.metric_date;
-    const language = publishLanguageMap.get(stat.video_id) || 'en';
+    const language = languageKey(languageByVideo.get(stat.video_id) ?? null);
 
     if (!trendByDate.has(date)) {
       trendByDate.set(date, new Map());
@@ -855,4 +835,32 @@ export async function getLanguageTrend(
       viewsByLanguage: Object.fromEntries(langMap),
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// =============================================================================
+// Where the two dimensions disagree
+// =============================================================================
+
+/**
+ * How many of a project's videos are in a language other than their
+ * channel's target.
+ *
+ * The two language dimensions agree only when routing worked. A video that
+ * landed on the wrong channel, or a channel carrying mixed content, makes
+ * them disagree, and the Language tab's two settings then tell different
+ * stories about the same videos. This is the count that says how far apart
+ * those stories are — a routing diagnostic, not a bug report.
+ */
+export async function getLanguageDivergence(
+  projectId: string,
+): Promise<LanguageDivergence | null> {
+  try {
+    await assertScopeAccess({ projectId });
+  } catch {
+    return null;
+  }
+
+  return summariseLanguagePairs(
+    await queryLanguagePairs({ scope: { projectId } }),
+  );
 }

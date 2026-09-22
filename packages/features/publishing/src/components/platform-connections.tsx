@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import {
   AlertCircle,
+  BarChart3,
   CheckCircle,
   Clock,
   Facebook,
@@ -49,6 +50,10 @@ import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 import { Trans } from '@kit/ui/trans';
 
+import type {
+  AnalyticsAccess,
+  AnalyticsAccessEntry,
+} from '../oauth/analytics-scopes';
 import {
   disconnectPlatformAction,
   getConnectionsAction,
@@ -434,6 +439,15 @@ function ConnectionRow({
         </Alert>
       )}
 
+      {connection.analyticsAccess && (
+        <AnalyticsAccessNotice
+          connectionId={connection.id}
+          access={connection.analyticsAccess}
+          platformName={platform.name}
+          onReconnect={() => initiateOAuth(platform.id, connection.accountSlug)}
+        />
+      )}
+
       <AlertDialog open={showDisconnect} onOpenChange={setShowDisconnect}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -467,6 +481,129 @@ function ConnectionRow({
       </AlertDialog>
     </>
   );
+}
+
+/**
+ * Says what this connection's analytics cannot reach, and who can change it.
+ *
+ * Silent when everything is authorised, and silent about a platform nothing
+ * reads yet. Each line names what would be gained, because "reconnect for
+ * analytics" gives nobody a reason to.
+ */
+function AnalyticsAccessNotice({
+  connectionId,
+  access,
+  platformName,
+  onReconnect,
+}: {
+  connectionId: string;
+  access: AnalyticsAccess;
+  platformName: string;
+  onReconnect: () => void;
+}) {
+  const unreachable = access.entries.filter(
+    (entry) => entry.state !== 'authorised' && entry.state !== 'no_provider',
+  );
+
+  if (unreachable.length === 0) return null;
+
+  return (
+    <Alert
+      className="mt-2"
+      data-test="analytics-access-notice"
+      data-connection-id={connectionId}
+      data-access={access.summary}
+    >
+      <BarChart3 className="h-4 w-4" />
+      <AlertDescription>
+        <p className="font-medium text-foreground">
+          <Trans
+            i18nKey={`platforms:analyticsAccess.title.${access.summary}`}
+            defaults={
+              access.summary === 'unknown'
+                ? 'We have no record of what this connection may read'
+                : 'Some analytics are not authorised on this connection'
+            }
+          />
+        </p>
+        <ul className="mt-1 space-y-1">
+          {unreachable.map((entry) => (
+            <li
+              key={entry.requirementId}
+              data-test="analytics-access-entry"
+              data-requirement={entry.requirementId}
+              data-state={entry.state}
+            >
+              <span className="font-medium">{entry.gains}.</span>{' '}
+              <AnalyticsAccessReason
+                entry={entry}
+                platformName={platformName}
+              />
+            </li>
+          ))}
+        </ul>
+        {access.canReconnect && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            data-test="analytics-reconnect"
+            onClick={onReconnect}
+          >
+            <RefreshCw className="mr-1 h-4 w-4" />
+            <Trans
+              i18nKey={`platforms:analyticsAccess.reconnect.${access.summary}`}
+              defaults={
+                access.summary === 'unknown'
+                  ? 'Reconnect {platform}'
+                  : 'Reconnect {platform} to grant access'
+              }
+              values={{ platform: platformName }}
+            />
+          </Button>
+        )}
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+function AnalyticsAccessReason({
+  entry,
+  platformName,
+}: {
+  entry: AnalyticsAccessEntry;
+  platformName: string;
+}) {
+  switch (entry.state) {
+    case 'scope_missing':
+      return (
+        <Trans
+          i18nKey="platforms:analyticsAccess.reason.scope_missing"
+          defaults="This connection was made before we asked {platform} for it. Reconnect to grant it."
+          values={{ platform: platformName }}
+        />
+      );
+    case 'review_pending':
+      return (
+        <Trans
+          i18nKey="platforms:analyticsAccess.reason.review_pending"
+          defaults="{platform} has to approve our app before anyone can grant this. Nothing for you to do, and reconnecting will not change it."
+          values={{ platform: platformName }}
+        />
+      );
+    case 'account_type_gated':
+      return <>{entry.resolution}</>;
+    case 'unknown':
+      return (
+        <Trans
+          i18nKey="platforms:analyticsAccess.reason.unknown"
+          defaults="Reconnect and we will record what {platform} allows."
+          values={{ platform: platformName }}
+        />
+      );
+    default:
+      return null;
+  }
 }
 
 function ConnectionStatusBadge({ status }: { status: ConnectionStatus }) {
