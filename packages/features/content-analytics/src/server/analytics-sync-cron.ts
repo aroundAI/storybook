@@ -36,6 +36,8 @@ import {
   createYouTubeAnalyticsProvider,
 } from '../providers/youtube';
 import type { YouTubeAnalyticsResult } from '../providers/youtube';
+import { syncAssetDurations } from './asset-duration-sync';
+import type { AssetDurationCandidate } from './asset-duration-sync';
 import {
   buildAudienceRows,
   buildRetentionPoints,
@@ -150,6 +152,10 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
     // 2. Group by platform for efficient processing
     const byPlatform = groupByPlatform(publishesToSync);
 
+    // Before the dim upsert, so a duration written this run reaches
+    // video_dim this run rather than on the publish's next visit.
+    await fillMissingAssetDurations(client, publishesToSync, ctx);
+
     // Keep the dimension table fresh: batch upsert for this run's
     // publishes, full reconcile once a day (publishes has no updated_at)
     const { upsertVideoDims } = await import('./dim-sync');
@@ -248,6 +254,44 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
 }
 
 /**
+ * Asks the provider for the asset duration of any publish still missing one
+ * (FILM-1710). `syncAssetDurations` is the only writer of that column.
+ *
+ * Never throws. A duration is a dimension, and losing one is not a reason to
+ * lose the run's metrics: the row stays `duration_unknown` and is asked about
+ * again next visit.
+ */
+async function fillMissingAssetDurations(
+  client: Client,
+  publishes: Array<
+    AssetDurationCandidate & { duration_seconds: number | null }
+  >,
+  ctx: { name: string },
+): Promise<string[]> {
+  const missing = publishes.filter((p) => p.duration_seconds === null);
+
+  if (missing.length === 0) return [];
+
+  try {
+    const { writtenIds } = await syncAssetDurations(client, missing);
+
+    return writtenIds;
+  } catch (error) {
+    const logger = await getLogger();
+
+    logger.warn(
+      {
+        ...ctx,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      'Asset duration sync failed; publishes stay duration_unknown',
+    );
+
+    return [];
+  }
+}
+
+/**
  * Fetches publishes that are due for syncing
  */
 export async function fetchPublishesForSync(
@@ -269,6 +313,7 @@ export async function fetchPublishesForSync(
       platform_connection_id,
       platform_content_id,
       published_at,
+      duration_seconds,
       metadata
     `,
     )
@@ -331,6 +376,7 @@ export async function fetchPublishesForSync(
       platform_connection_id: row.platform_connection_id,
       platform_content_id: row.platform_content_id!,
       published_at: row.published_at!,
+      duration_seconds: row.duration_seconds ?? null,
       metadata,
       connection: grant,
     });
@@ -863,7 +909,9 @@ function normalizeAnalytics(
         comments: data.totals.comments ?? 0,
         shares: data.totals.shares ?? 0,
         saves: data.totals.saved ?? 0,
-        watch_time_seconds: 0, // Instagram doesn't expose this
+        // Not measured as zero: Instagram documents Reels watch time and we
+        // never request it. `not_ingested` in CAPABILITY_MATRIX; FILM-1712.
+        watch_time_seconds: 0,
         subscribers_gained: data.totals.follows ?? 0,
         revenue_cents: 0,
         ad_revenue_cents: 0,
@@ -987,6 +1035,7 @@ export async function syncSinglePublishById(
       platform_connection_id,
       platform_content_id,
       published_at,
+      duration_seconds,
       metadata
     `,
     )
@@ -1030,6 +1079,32 @@ export async function syncSinglePublishById(
     };
   }
 
+  // A manual sync is often the first visit a publish gets, and nothing else
+  // in this path touches video_dim — so re-upsert it when a duration lands.
+  // Independent of the analytics-authorisation gate below: it uses a
+  // different scope, and a connection lacking analytics access should not
+  // also be denied this.
+  if (publish.duration_seconds === null) {
+    const written = await fillMissingAssetDurations(
+      client,
+      [
+        {
+          id: publish.id,
+          platform,
+          platform_connection_id: publish.platform_connection_id,
+          platform_content_id: publish.platform_content_id,
+          duration_seconds: null,
+        },
+      ],
+      ctx,
+    );
+
+    if (written.length > 0) {
+      const { upsertVideoDims } = await import('./dim-sync');
+      await upsertVideoDims(written);
+    }
+  }
+
   const grant = (
     await fetchConnectionGrants(client, [publish.platform_connection_id])
   ).get(publish.platform_connection_id);
@@ -1062,6 +1137,7 @@ export async function syncSinglePublishById(
       platform_connection_id: publish.platform_connection_id,
       platform_content_id: publish.platform_content_id,
       published_at: publish.published_at!,
+      duration_seconds: publish.duration_seconds ?? null,
       metadata: publish.metadata as PublishMetadata | null,
       connection: grant,
     },

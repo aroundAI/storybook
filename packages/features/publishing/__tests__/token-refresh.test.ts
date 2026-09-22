@@ -8,8 +8,11 @@ import {
   vi,
 } from 'vitest';
 
+import { META_GRAPH_BASE, META_OAUTH_TOKEN_URL } from '@kit/shared/vendors';
+
 import {
   type Platform,
+  ensureValidToken,
   formatPlatformName,
   getExpiryBuffer,
 } from '../src/lib/token-refresh';
@@ -48,6 +51,15 @@ const mockSupabase = {
     (): Promise<QueryResult> => Promise.resolve({ data: null, error: null }),
   ),
 };
+
+vi.mock('../src/server/account-oauth-actions', () => ({
+  getAccountOAuthAppAdmin: vi.fn(() =>
+    Promise.resolve({
+      clientId: 'test-facebook-app-id',
+      clientSecret: 'test-facebook-app-secret',
+    }),
+  ),
+}));
 
 // token-refresh.ts runs from background workers with no user session, so it
 // uses the admin client. Mocking `server-client` left the real admin client to
@@ -254,31 +266,100 @@ describe('Platform Token Refresh Functions', () => {
     });
   });
 
+  /**
+   * Driven through `ensureValidToken`, the entry point all six callers use.
+   * The case this replaced called `fetch` itself and asserted that `fetch` had
+   * been called, so it passed whatever token-refresh.ts did (FILM-1723).
+   */
   describe('Meta token refresh', () => {
-    it('should call Meta Graph API endpoint', async () => {
-      const mockResponse = {
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            access_token: 'new-meta-access-token',
-            expires_in: 5184000, // 60 days
+    const connection = {
+      id: 'conn-1',
+      account_id: 'account-1',
+      platform: 'instagram',
+      platform_account_id: 'ig-1',
+      access_token_encrypted: 'encrypted:old-page-token',
+      refresh_token_encrypted: 'encrypted:old-user-token',
+      is_active: true,
+      token_expires_at: new Date(Date.now() - 1000).toISOString(),
+      metadata: { linked_page_id: 'page-1' },
+      updated_at: '2026-09-01T00:00:00.000Z',
+    };
+
+    beforeEach(() => {
+      mockSupabase.single.mockResolvedValueOnce({
+        data: connection,
+        error: null,
+      });
+      // The first `select` is the read above; the second closes the
+      // optimistic-lock update and has to report a locked row.
+      mockSupabase.select
+        .mockImplementationOnce(() => mockSupabase)
+        .mockImplementationOnce(
+          () =>
+            Promise.resolve({
+              data: [{ id: connection.id }],
+              error: null,
+            }) as unknown as typeof mockSupabase,
+        );
+
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValueOnce({
+            json: () =>
+              Promise.resolve({
+                access_token: 'new-user-token',
+                expires_in: 5184000,
+              }),
+          })
+          .mockResolvedValueOnce({
+            json: () =>
+              Promise.resolve({
+                data: [
+                  { id: 'page-0', access_token: 'other-page-token' },
+                  { id: 'page-1', access_token: 'new-page-token' },
+                ],
+              }),
           }),
-      };
-
-      (global.fetch as Mock).mockResolvedValueOnce(mockResponse);
-
-      const url = new URL(
-        'https://graph.facebook.com/v18.0/oauth/access_token',
       );
-      url.searchParams.set('grant_type', 'fb_exchange_token');
-      url.searchParams.set('client_id', 'test-facebook-app-id');
-      url.searchParams.set('client_secret', 'test-facebook-app-secret');
-      url.searchParams.set('fb_exchange_token', 'current-token');
+    });
 
-      await global.fetch(url.toString());
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('graph.facebook.com'),
+    it('exchanges the user token and reads the page token on the pinned Graph version', async () => {
+      const result = await ensureValidToken(connection.id);
+
+      expect(result).toEqual({ valid: true, accessToken: 'new-page-token' });
+
+      const [exchange, pages] = (fetch as Mock).mock.calls.map(
+        ([url]) => new URL(url as string),
+      );
+
+      expect(exchange!.origin + exchange!.pathname).toBe(META_OAUTH_TOKEN_URL);
+      expect(Object.fromEntries(exchange!.searchParams)).toEqual({
+        grant_type: 'fb_exchange_token',
+        client_id: 'test-facebook-app-id',
+        client_secret: 'test-facebook-app-secret',
+        fb_exchange_token: 'old-user-token',
+      });
+
+      expect(pages!.origin + pages!.pathname).toBe(
+        `${META_GRAPH_BASE}/me/accounts`,
+      );
+      expect(pages!.searchParams.get('access_token')).toBe('new-user-token');
+    });
+
+    it('stores the refreshed user token for the next cycle', async () => {
+      await ensureValidToken(connection.id);
+
+      expect(mockSupabase.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          access_token_encrypted: 'encrypted:new-page-token',
+          refresh_token_encrypted: 'encrypted:new-user-token',
+        }),
       );
     });
   });

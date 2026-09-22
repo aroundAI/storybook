@@ -17,6 +17,11 @@ export interface PublishForSync {
   platform_connection_id: string;
   platform_content_id: string;
   published_at: string;
+  /**
+   * The published asset's duration (FILM-1710). Null until the provider has
+   * been asked — which the sync does, once, for any publish still missing it.
+   */
+  duration_seconds: number | null;
   metadata: PublishMetadata | null;
   /** What the connection's OAuth callback recorded. Absent if the row is. */
   connection?: ConnectionGrant;

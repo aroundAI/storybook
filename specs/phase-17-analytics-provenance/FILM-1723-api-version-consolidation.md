@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1723
 title: API Version Consolidation
-status: DRAFT
+status: 🟡 PARTIAL
 effort: M
 dependencies: none
 ---
@@ -98,15 +98,15 @@ so it is closest to correct. The *publishing* providers are the stale ones.
 
 ## 7. Acceptance criteria
 
-- [ ] Whether Graph v18.0 still responds is established **first**, and recorded
-- [ ] If it does not, the token-refresh failure is treated as an incident, not as part of this spec's normal flow
-- [ ] Exactly one Meta Graph version constant exists, with a doc-comment naming its release date and expected end-of-life
-- [ ] Exactly one X host/version constant exists
-- [ ] A version literal outside those constants fails a test
-- [ ] X uses `api.x.com` and `/2/media/upload`
-- [ ] The Meta upgrade accounts for the 2025-04-21 metric removals rather than only changing the number
-- [ ] Token refresh is verified against a live Meta connection after the change, not only typechecked
-- [ ] The next expected deprecation date is recorded somewhere a person will see it
+- [x] Whether Graph v18.0 still responds is established **first**, and recorded — it responds, **as v20.0**; see §10
+- [x] If it does not, the token-refresh failure is treated as an incident, not as part of this spec's normal flow — not triggered: refresh was being served, on a substituted version, so there was no outage to escalate
+- [x] Exactly one Meta Graph version constant exists, with a doc-comment naming its release date and expected end-of-life — `META_GRAPH_VERSION` in `packages/shared/src/vendors/meta.ts`
+- [x] Exactly one X host/version constant exists — `X_API_BASE` in `packages/shared/src/vendors/x.ts`
+- [x] A version literal outside those constants fails a test — `packages/shared/__tests__/vendor-api-versions.test.ts`, 14 mutation guards in `tooling/mutation-guards/film-1723.json`
+- [x] X uses `api.x.com` and `/2/media/upload` — in code and under test; **not callable until `media.write` is granted**, see §10
+- [x] The Meta upgrade accounts for the 2025-04-21 metric removals rather than only changing the number — none is requested anywhere Meta is called, FILM-1721's forbidden list already covers the publishing providers and lambdas, and `video_views` (removed in v21, which the pin crosses) was added to it
+- [ ] Token refresh is verified against a live Meta connection after the change, not only typechecked — **not met.** No Meta credentials or connection exist outside production. Tracked as [FILM-1725](./FILM-1725-deferred-vendor-verifications.md) Check D, to run at the first deploy carrying this change
+- [x] The next expected deprecation date is recorded somewhere a person will see it — **2027-10-08**: at the top of "Graph API versions" in `docs/platform-capability-reference.md`, on the constant, and bound together by a test
 
 ## 8. Verification
 
@@ -139,3 +139,79 @@ adjacent files.
 outcome — better to find it here than to discover it when a creator asks why
 their Instagram stopped publishing — but it means this spec should not be
 scheduled as routine work without someone available to act on the answer.
+
+## 10. What was found and done (2026-09-22)
+
+**The v18 question, settled first.** Meta reports the version it served in a
+`facebook-api-version` response header. Unauthenticated, against `/{version}/me`,
+2026-09-21T20:00Z:
+
+| Requested | Served |
+|---|---|
+| v18.0 | **v20.0** |
+| v19.0 | **v20.0** |
+| v23.0 | v23.0 |
+| v26.0 | v26.0 |
+
+So §2's fear did not hold — refresh was not failing — and the README's correction
+did: every publishing call, the OAuth dialog and the token refresh were running
+on v20.0, a version nobody chose, which itself expires **2026-09-24**. Left
+alone, the same code would have moved to v21.0 three days later.
+
+**Pinned to v23.0, not v26.0.** It is the only version this repository had run
+deliberately, so Instagram insights requests are unchanged, and the refresh path
+moves the shortest distance from what it was actually being served. v21–v23
+change nothing on the OAuth, Page, publishing or container endpoints we call
+(changelogs read for each). It expires **2027-10-08**; bumping it is three
+constants, one table row and a changelog read.
+
+**Where the pins live.** `packages/shared/src/vendors/` — `meta.ts`, `x.ts`,
+`linkedin.ts`, one file per vendor, pure constants so the lambdas can import
+them. FILM-1801's resolver is planned for the same directory: it replaces each
+file's private `*_HOST` constant with `vendorUrl()` and touches nothing else.
+
+**X.** Hosts moved to `api.x.com` / `x.com`. The upload is a rewrite, not a
+rename: v2 has a separate endpoint per step, takes JSON on initialize, drops the
+`command` and `media_id` form fields, and returns the id as `data.id`. Both
+implementations (the provider and the publish lambda) were rewritten and each
+has its own test.
+
+**Three things this spec surfaced and did not fix:**
+
+- **X video upload needs the `media.write` scope, and we do not request it.**
+  §6 rules scope changes out and FILM-1711 covers analytics scopes only, so it
+  was unowned when found (now FILM-1729, see §11). Until it is added and connections re-authorised, the upload is
+  refused with a 403 — which the code now names. This is not a regression: the
+  v1.1 endpoint it replaces never accepted OAuth 2.0 user tokens and is retired.
+- **LinkedIn's `LinkedIn-Version: 202401`** was declared twice and is now
+  declared once, unchanged. It is probably past sunset, and probably inert
+  because every call goes to `/v2/`. Neither could be checked without a token.
+- **Nothing under `apps/web/lambda/` is typechecked** — no tsconfig includes it.
+  The touched handlers were checked by hand; four others fail on a type that
+  `../index` does not export.
+
+**Not verified live**, per §8: a Meta token refresh and an X media upload. Both
+are FILM-1725 Checks D and E.
+
+## 11. Remaining
+
+The code is complete and its guards are in CI. Two live checks are what keep
+this spec at PARTIAL; neither can be run from a development machine.
+
+| Left | Closed by | Blocked on |
+|---|---|---|
+| Token refresh verified against a live Meta connection (the unticked criterion in §7) | FILM-1725 **Check D** — one forced refresh, `ensureValidToken(<meta connection id>, true)`, at the first deploy carrying this change | Nothing but the deploy |
+| A live X media upload against `/2/media/upload` (§8, check 3) | FILM-1725 **Check E** | X credentials we do not hold |
+
+Set the status to ✅ DONE when Check D has run and its result is recorded here.
+Check E follows FILM-1729 and does not hold this spec open on its own.
+
+### Owner decisions, 2026-09-22
+
+- **Meta stays pinned at v23.0 here.** The move to v26.0 is **FILM-1728** (PR #285).
+- **The X `media.write` scope is FILM-1729** (PR #285) — deferred, because there
+  are no X credentials to re-authorise or verify with.
+- **The two defects found while doing this work are filed in FILM-CC-04** (PR #285):
+  **KB-14**, lambdas are not typechecked — reproduced: 0 lambda files in the
+  `tsc` program, 82 errors when they are included; and **KB-15**, X connections
+  are never refreshed.

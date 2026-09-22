@@ -2,6 +2,12 @@
  * Twitter (X) Upload Handler
  */
 import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
+import {
+  X_API_BASE,
+  X_MEDIA_UPLOAD,
+  X_MEDIA_UPLOAD_SCOPE,
+  xPostUrl,
+} from '@kit/shared/vendors';
 
 export async function uploadToTwitter(
   accessToken: string,
@@ -19,31 +25,37 @@ export async function uploadToTwitter(
   console.log(`[Twitter] Video fetched: ${totalBytes} bytes`);
 
   // 2. INIT
-  const initParams = new URLSearchParams({
-    command: 'INIT',
-    total_bytes: totalBytes.toString(),
-    media_type: 'video/mp4',
-    media_category: 'tweet_video',
-  });
-
-  const initRes = await fetch(
-    'https://upload.twitter.com/1.1/media/upload.json',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: initParams,
+  const initRes = await fetch(X_MEDIA_UPLOAD.initialize, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
     },
-  );
+    body: JSON.stringify({
+      media_type: 'video/mp4',
+      total_bytes: totalBytes,
+      media_category: 'tweet_video',
+    }),
+  });
 
   if (!initRes.ok) {
     const text = await initRes.text();
-    throw new Error(`Twitter INIT failed: ${text}`);
+    // Every connection made before the scope was requested lands here, and
+    // X's own body does not say which scope it wanted.
+    const hint =
+      initRes.status === 403
+        ? ` (the connection may lack the ${X_MEDIA_UPLOAD_SCOPE} scope)`
+        : '';
+
+    throw new Error(`Twitter INIT failed: ${initRes.status}${hint} ${text}`);
   }
 
   const initData = await initRes.json();
-  const mediaId = initData.media_id_string;
+  const mediaId: string | undefined = initData.data?.id;
+
+  if (!mediaId) {
+    throw new Error('Twitter INIT failed: missing media id');
+  }
   console.log(`[Twitter] Media initialized: ${mediaId}`);
 
   // 3. APPEND (Chunked)
@@ -58,22 +70,17 @@ export async function uploadToTwitter(
 
     // Construct FormData manually or use native FormData
     const formData = new FormData();
-    formData.append('command', 'APPEND');
-    formData.append('media_id', mediaId);
     formData.append('segment_index', i.toString());
     formData.append('media', new Blob([chunkBuffer]));
 
-    const appendRes = await fetch(
-      'https://upload.twitter.com/1.1/media/upload.json',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          // Note: fetch with FormData automatically sets Content-Type to multipart/form-data with boundary
-        },
-        body: formData,
+    const appendRes = await fetch(X_MEDIA_UPLOAD.append(mediaId), {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        // Note: fetch with FormData automatically sets Content-Type to multipart/form-data with boundary
       },
-    );
+      body: formData,
+    });
 
     if (!appendRes.ok) {
       const text = await appendRes.text();
@@ -83,21 +90,12 @@ export async function uploadToTwitter(
   }
 
   // 4. FINALIZE
-  const finalizeParams = new URLSearchParams({
-    command: 'FINALIZE',
-    media_id: mediaId,
-  });
-
-  const finalizeRes = await fetch(
-    'https://upload.twitter.com/1.1/media/upload.json',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: finalizeParams,
+  const finalizeRes = await fetch(X_MEDIA_UPLOAD.finalize(mediaId), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
     },
-  );
+  });
 
   if (!finalizeRes.ok) {
     const text = await finalizeRes.text();
@@ -107,45 +105,37 @@ export async function uploadToTwitter(
   const finalizeData = await finalizeRes.json();
 
   // 5. STATUS Check (Polling)
-  if (finalizeData.processing_info) {
-    let state = finalizeData.processing_info.state;
-    // Possible states: pending, in_progress, failed, succeeded
+  // Possible states: pending, in_progress, failed, succeeded
+  let processing = finalizeData.data?.processing_info;
 
-    while (state === 'pending' || state === 'in_progress') {
-      const checkAfter = finalizeData.processing_info.check_after_secs || 1;
-      console.log(`[Twitter] Processing... waiting ${checkAfter}s`);
-      await new Promise((r) => setTimeout(r, checkAfter * 1000));
+  while (
+    processing?.state === 'pending' ||
+    processing?.state === 'in_progress'
+  ) {
+    const checkAfter = processing.check_after_secs ?? 1;
+    console.log(`[Twitter] Processing... waiting ${checkAfter}s`);
+    await new Promise((r) => setTimeout(r, checkAfter * 1000));
 
-      const statusParams = new URLSearchParams({
-        command: 'STATUS',
-        media_id: mediaId,
-      });
+    const statusRes = await fetch(X_MEDIA_UPLOAD.status(mediaId), {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
 
-      const statusRes = await fetch(
-        `https://upload.twitter.com/1.1/media/upload.json?${statusParams.toString()}`,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        },
-      );
-
-      if (!statusRes.ok) {
-        throw new Error('Twitter STATUS check failed');
-      }
-
-      const statusData = await statusRes.json();
-      state = statusData.processing_info.state;
-
-      if (state === 'failed') {
-        throw new Error(
-          `Twitter processing failed: ${statusData.processing_info.error?.message}`,
-        );
-      }
+    if (!statusRes.ok) {
+      throw new Error('Twitter STATUS check failed');
     }
+
+    processing = (await statusRes.json()).data?.processing_info;
+  }
+
+  if (processing?.state === 'failed') {
+    throw new Error(
+      `Twitter processing failed: ${processing.error?.message ?? 'unknown error'}`,
+    );
   }
   console.log(`[Twitter] Media processed successfully`);
 
   // 6. Create Tweet (V2 API)
-  const tweetRes = await fetch('https://api.twitter.com/2/tweets', {
+  const tweetRes = await fetch(`${X_API_BASE}/tweets`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -165,12 +155,8 @@ export async function uploadToTwitter(
   const tweetData = await tweetRes.json();
   const tweetId = tweetData.data.id;
 
-  // Construct URL
-  // Twitter username is difficult to get from V2 without another call, so we use generic format
-  // or user will be redirected. Actually 'x.com/i/web/status/<id>' works.
-
   return {
     contentId: tweetId,
-    url: `https://x.com/i/web/status/${tweetId}`,
+    url: xPostUrl(tweetId),
   };
 }

@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS public.social_posts (
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  created_by UUID REFERENCES auth.users(id)
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL
 );
 
 COMMENT ON TABLE public.social_posts IS 'Standalone social media text posts with AI-generated content from user notes';

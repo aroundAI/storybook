@@ -50,6 +50,10 @@ export default defineConfig({
         __dirname,
         '../../packages/shared/src/logger/index.ts',
       ),
+      '@kit/shared/vendors': path.resolve(
+        __dirname,
+        '../../packages/shared/src/vendors/index.ts',
+      ),
       '@kit/supabase/server-client': path.resolve(
         __dirname,
         '../../packages/supabase/src/clients/server-client.ts',

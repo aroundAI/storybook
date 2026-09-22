@@ -114,6 +114,19 @@ replay". Anything comparing
 view counts across that boundary is comparing two different measures; the same
 argument FILM-1722 makes per platform applies to YouTube against its own past.
 
+**The Shorts change reached the API later than it reached Studio.** The
+[revision history](https://developers.google.com/youtube/analytics/revision_history)
+(re-read 2026-09-22) dates `engagedViews` — "will reflect the previous
+view-counting methodology" — to **2025-04-24**, when targeted queries switched, and
+the bulk reports' `engaged_views` column to **2025-06-24**; the 2025-03-26 entry
+says "until then, views will be based on the old methodology". So a stored Shorts
+view between 2025-03-31 and 2025-06-24 is one definition or the other and nothing
+says which. The 2026-08-27 entry defines an engaged view as "playback continues
+past the first frame, or the user clicks/taps to play", and leaves it unchanged.
+FILM-1722's registry (`packages/clickhouse/src/lib/view-definitions.ts`) encodes
+these dates, and `view-definition-sources.test.ts` fails if one it uses is not
+stated in this section.
+
 **`ageGroup` expanded on 2026-03-09** to include viewers YouTube estimates to be
 under 18. Our audience buckets predate that and should be checked against it.
 
@@ -228,6 +241,14 @@ Organised by **`media_product_type`** (`FEED` / `REELS` / `STORY`), **not** by
 | skip rate | `reels_skip_rate` | — | yes | — |
 | **profile visits** | `profile_visits` | yes | **NO** | yes |
 | **follows** | `follows` | yes | **NO** | yes |
+
+**`reach` is estimated, and `views` is still "in development".** The
+[media insights reference](https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/insights/)
+(re-read 2026-09-22) describes `reach` as "number of unique Instagram users that
+have seen the reel at least once … different from impressions, which can include
+multiple views of a reel by the same account" and tags it *"Metric is estimated"*;
+`views` is "total number of times IG Media has been played" and tagged *"Metric in
+development"*. It does not say whether `views` counts replays or paid plays.
 
 **`profile_visits` and `follows` are not available for REELS** — which is what
 creators publish. Instagram's Audience stage therefore has no per-media signal, and
@@ -413,6 +434,14 @@ _Verified: 2026-09-21_
 
 ## Graph API versions
 
+**Pinned: `v23.0`, upgrade before 2027-10-08.** One constant,
+`META_GRAPH_VERSION` in `packages/shared/src/vendors/meta.ts`, read by every Meta
+call in the repository (FILM-1723). `vendor-api-versions.test.ts` fails if this
+line, the table row below and the constant disagree, or if a version literal is
+written anywhere else. Meta's cadence makes the next bump a scheduled task: by
+**2027-10-08**, move to a version with at least a year left, reading the
+changelog of every version crossed.
+
 Measured 2026-09-21 against
 [Meta's changelog](https://developers.facebook.com/docs/graph-api/changelog/):
 
@@ -436,10 +465,24 @@ an unrecognised `v99.0` returns `Unknown path components: /me`. So routing succe
 proves the version string is *recognised*, and proves nothing about which version's
 semantics were served.
 
-⚠️ **This is worse than a hard failure, and it is live in our code.** Three versions
-are pinned at once, two of them expired:
+**The `facebook-api-version` response header does say which version was served**,
+and settles it. Run 2026-09-21T20:00Z for FILM-1723, unauthenticated, against
+`/{version}/me`:
 
-| Version | Where |
+| Requested | `facebook-api-version` returned |
+|---|---|
+| `v18.0` | **`v20.0`** |
+| `v19.0` | **`v20.0`** |
+| `v23.0` | `v23.0` |
+| `v26.0` | `v26.0` |
+
+So token refresh was not failing: it was running on v20.0, three days from its own
+expiry, after which the same requests would have been served as v21.0.
+
+⚠️ **This is worse than a hard failure, and it was live in our code until
+FILM-1723.** Three versions were pinned at once, two of them expired:
+
+| Version | Where it was |
 |---|---|
 | `v18.0` (expired) | **`packages/features/publishing/src/oauth/meta/config.ts:7-9` — the OAuth dialog, token exchange and Graph base for every Meta connection**, `providers/facebook/types.ts:90-91`, `providers/instagram/instagram-provider.ts:10`, and **`lib/token-refresh.ts:432,475`** |
 | `v19.0` (expired) | `apps/web/lambda/publish-worker/handlers/{facebook,instagram}.ts` |
@@ -449,6 +492,12 @@ Token refresh running on a silently-substituted version is the specific risk
 FILM-1723 was written for. That spec listed "Graph v18.0 is past end-of-life" as
 *inferred*; it is now documented with a date, and the case is stronger than the spec
 assumed, because the failure mode is substitution rather than rejection.
+
+All of those now read the single pin. v23.0 was chosen over v26.0 because it is the
+only version this repository had already run deliberately, so Instagram insights
+requests did not change, and v21-v23 alter nothing on the OAuth, Page, publishing or
+container endpoints called here. **Not yet verified against a live Meta connection** -
+no fixture has one; see FILM-1723's acceptance criteria.
 
 _Verified: 2026-09-21_
 
@@ -830,6 +879,7 @@ instagram|meta|facebook plays                               -> views            
 instagram|meta|facebook impressions                         -> views                 removed 2025-04-21, enforced across all Graph versions
 instagram|meta|facebook clips_replays_count                 -> (none)                removed 2025-04-21, no replacement
 instagram|meta|facebook ig_reels_aggregated_all_plays_count -> views                 removed 2025-04-21
+instagram               video_views                         -> views                 removed from IG media insights in Graph v21.0; FILM-1723 pinned every Meta call past it
 instagram|meta|facebook video_duration                      -> (none)                IG Media has no duration field (checked 2026-09-21); record the uploaded file's duration instead
 youtube                 annotationClickThroughRate          -> (none)                annotations retired; documented but dead
 ```

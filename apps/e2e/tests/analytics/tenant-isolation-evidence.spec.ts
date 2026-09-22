@@ -1,5 +1,6 @@
 import { Page, expect, test } from '@playwright/test';
 
+import { insertClickHouse } from '../utils/clickhouse';
 import {
   seedProject,
   seedPublishedEpisode,
@@ -25,26 +26,6 @@ import { signInAs } from '../utils/session';
 
 /** A figure only account B's project has. */
 const B_VIEWS = 777777;
-
-async function insertClickHouse(table: string, rows: object[]) {
-  const auth = Buffer.from(
-    `${process.env.CLICKHOUSE_USER ?? 'default'}:${process.env.CLICKHOUSE_PASSWORD ?? ''}`,
-  ).toString('base64');
-  const response = await fetch(
-    `${process.env.CLICKHOUSE_HOST ?? 'http://localhost:8123'}/?query=${encodeURIComponent(`INSERT INTO ${table} FORMAT JSONEachRow`)}`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Basic ${auth}` },
-      body: rows.map((row) => JSON.stringify(row)).join('\n'),
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      `ClickHouse insert into ${table} failed: ${await response.text()}`,
-    );
-  }
-}
 
 async function makePublic(projectId: string) {
   const service =
@@ -178,7 +159,7 @@ test.describe('Analytics tenant isolation (FILM-1615 Step 0)', () => {
         language: 'en',
         title: 'Victim video',
         published_at: `${day} 00:00:00`,
-        duration_seconds: 600,
+        episode_duration_seconds: 600,
         tags: [],
       },
     ]);

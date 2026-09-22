@@ -12,6 +12,7 @@ import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { ActionRefusal } from '../lib/action-result';
+import { resolveAssetDuration } from '../lib/asset-duration';
 import { detectRetentionCliff } from '../lib/retention';
 import {
   EpisodeAnalyticsSchema,
@@ -182,12 +183,12 @@ export const getWeeklyDiagnosticsAction = withRefusals(
  * membership comparison against an account id the caller also supplied —
  * both would answer "does this row exist", not "may this caller see it".
  *
- * `durationSeconds` is deliberately absent. `video_dim.duration_seconds`
- * holds the *episode's* duration, falling back to its target and then zero
- * (`dim-sync.ts`), so a Short's cliff would be labelled past the end of the
- * clip. Both the chart and `detectRetentionCliff` treat it as optional, and
- * the cliff shows its position without a time until FILM-1710 lands a real
- * asset duration.
+ * `duration` is the published asset's own (FILM-1710), read from the row RLS
+ * just let through — never the episode's, which is what would label a
+ * Short's cliff past the end of the clip. It is an `AssetDuration`, not a
+ * number: where the platform has not reported one (every Instagram publish,
+ * and anything not yet backfilled) the caller gets `duration_unknown` and the
+ * cliff keeps its position without a timestamp.
  */
 export const getRetentionCurveAction = withRefusals(
   'load the retention curve',
@@ -197,7 +198,7 @@ export const getRetentionCurveAction = withRefusals(
 
       const { data: publish } = await client
         .from('publishes')
-        .select('id, episodes!inner(project_id)')
+        .select('id, duration_seconds, episodes!inner(project_id)')
         .eq('id', publishId)
         .maybeSingle();
 
@@ -228,7 +229,10 @@ export const getRetentionCurveAction = withRefusals(
         ...(episode?.project_id && { projectIds: [episode.project_id] }),
       });
 
-      return { points };
+      return {
+        points,
+        duration: resolveAssetDuration(publish.duration_seconds),
+      };
     },
     { schema: RetentionCurveSchema },
   ),

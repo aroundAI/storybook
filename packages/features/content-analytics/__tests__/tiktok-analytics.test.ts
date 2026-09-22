@@ -482,4 +482,101 @@ describe('TikTokAnalyticsProvider', () => {
       );
     });
   });
+
+  // FILM-1710. `duration` is on `/v2/video/query/`'s documented field list
+  // (docs/platform-capability-reference.md) and needs the `video.list` scope,
+  // which no connection holds until FILM-1711 — so the scope-error path is
+  // the one production takes today, and it is tested as such.
+  describe('getVideoDurations', () => {
+    const ok = { code: 'ok', message: '', log_id: '202609211234' };
+
+    it('asks for id and duration only, and keys the result by video id', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: {
+              videos: [
+                { id: 'v1', duration: 45 },
+                { id: 'v2', duration: 31 },
+              ],
+            },
+            error: ok,
+          }),
+      });
+
+      const durations = await provider.getVideoDurations(['v1', 'v2']);
+
+      expect([...durations]).toEqual([
+        ['v1', 45],
+        ['v2', 31],
+      ]);
+
+      const [url, init] = mockFetch.mock.calls[0]!;
+
+      expect(url).toBe(
+        'https://open.tiktokapis.com/v2/video/query/?fields=id,duration',
+      );
+      expect(JSON.parse(init.body)).toEqual({
+        filters: { video_ids: ['v1', 'v2'] },
+      });
+    });
+
+    it('leaves out a video with no duration, or a zero one: absent is not zero', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: {
+              videos: [{ id: 'v1' }, { id: 'v2', duration: 0 }],
+            },
+            error: ok,
+          }),
+      });
+
+      const durations = await provider.getVideoDurations(['v1', 'v2', 'v3']);
+
+      expect(durations.size).toBe(0);
+    });
+
+    it('sends at most 20 ids a request', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: { videos: [] }, error: ok }),
+      });
+
+      const ids = Array.from({ length: 45 }, (_, i) => `v${i}`);
+
+      await provider.getVideoDurations(ids);
+
+      const sizes = mockFetch.mock.calls.map(
+        ([, init]) => JSON.parse(init.body).filters.video_ids.length,
+      );
+
+      expect(sizes).toEqual([20, 20, 5]);
+    });
+
+    it('raises a refused token as a scope error, by its code, and writes nothing', async () => {
+      // The one refusal code the capability reference documents. Which code
+      // TikTok sends for a token that is valid but lacks `video.list` is
+      // FILM-1711's to establish; whatever it is, this throws and the
+      // publish stays `duration_unknown`.
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            error: {
+              code: 'access_token_invalid',
+              message:
+                'The access token is invalid or not found in the request.',
+              log_id: 'x',
+            },
+          }),
+      });
+
+      await expect(provider.getVideoDurations(['v1'])).rejects.toThrow(
+        TikTokAnalyticsScopeError,
+      );
+    });
+  });
 });
