@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { SubscriberCountResult } from '@kit/shared/subscribers';
+import { vendorUrl } from '@kit/shared/vendors';
 
 import { normalizeAssetDurationSeconds } from '../../lib/asset-duration';
 import type {
@@ -10,7 +11,7 @@ import type {
   TikTokVideoData,
 } from './types';
 
-const TIKTOK_API_BASE = 'https://open.tiktokapis.com/v2';
+const TIKTOK_API_BASE = `${vendorUrl('tiktok')}/v2`;
 
 /** `/v2/video/query/` accepts at most 20 video ids a request. */
 const TIKTOK_VIDEO_QUERY_MAX_IDS = 20;

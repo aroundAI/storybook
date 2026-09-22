@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { vendorUrl } from '@kit/shared/vendors';
+
 /**
  * Voyage AI Client for generating embeddings
  * Uses Voyage-large-2 model for 1024-dimensional embeddings
@@ -14,7 +16,7 @@ interface VoyageEmbeddingResponse {
 }
 
 const VOYAGE_API_KEY = process.env.VOYAGE_API_KEY;
-const VOYAGE_API_URL = 'https://api.voyageai.com/v1/embeddings';
+const VOYAGE_API_URL = `${vendorUrl('voyage')}/v1/embeddings`;
 const VOYAGE_MODEL = 'voyage-large-2';
 
 if (!VOYAGE_API_KEY) {

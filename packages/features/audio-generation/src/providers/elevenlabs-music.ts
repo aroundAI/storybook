@@ -7,6 +7,8 @@
  * Note: Unlike Suno, ElevenLabs returns the audio directly (streaming),
  * not a job ID. We handle this by treating completed immediately.
  */
+import { vendorUrl } from '@kit/shared/vendors';
+
 import type {
   MusicGenerationRequest,
   MusicGenerationResponse,
@@ -16,7 +18,7 @@ import { BaseMusicGenerationProvider } from './base';
 
 // ElevenLabs Music constants
 export const ELEVENLABS_MUSIC = {
-  BASE_URL: 'https://api.elevenlabs.io/v1',
+  BASE_URL: `${vendorUrl('elevenlabs')}/v1`,
   MAX_DURATION: 300, // 5 minutes max
   MIN_DURATION: 5, // 5 seconds min
   COST_PER_SECOND: 1, // cents per second (estimated)

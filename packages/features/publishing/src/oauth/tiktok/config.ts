@@ -2,12 +2,13 @@
  * TikTok OAuth 2.0 Configuration
  * Uses TikTok Login Kit with PKCE for Content Posting API access
  */
+import { vendorUrl } from '@kit/shared/vendors';
 
 export const TIKTOK_OAUTH_CONFIG = {
-  authUrl: 'https://www.tiktok.com/v2/auth/authorize/',
-  tokenUrl: 'https://open.tiktokapis.com/v2/oauth/token/',
-  revokeUrl: 'https://open.tiktokapis.com/v2/oauth/revoke/',
-  userInfoUrl: 'https://open.tiktokapis.com/v2/user/info/',
+  authUrl: `${vendorUrl('tiktok-oauth')}/v2/auth/authorize/`,
+  tokenUrl: `${vendorUrl('tiktok')}/v2/oauth/token/`,
+  revokeUrl: `${vendorUrl('tiktok')}/v2/oauth/revoke/`,
+  userInfoUrl: `${vendorUrl('tiktok')}/v2/user/info/`,
   scopes: [
     'user.info.basic',
     'video.upload',

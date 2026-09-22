@@ -1,6 +1,7 @@
 /**
  * Audio generation constants
  */
+import { vendorUrl } from '@kit/shared/vendors';
 
 // Voice provider names
 export const VOICE_PROVIDERS = {
@@ -84,7 +85,7 @@ export const DEFAULT_TIMEOUT = 30000; // 30 seconds
 
 // ElevenLabs specific constants
 export const ELEVENLABS = {
-  BASE_URL: 'https://api.elevenlabs.io/v1',
+  BASE_URL: `${vendorUrl('elevenlabs')}/v1`,
   MAX_TEXT_LENGTH: 5000,
   SUPPORTED_LANGUAGES: [
     'en',
@@ -144,7 +145,7 @@ export const ELEVENLABS = {
 
 // PlayHT specific constants
 export const PLAYHT = {
-  BASE_URL: 'https://api.play.ht/api/v2',
+  BASE_URL: `${vendorUrl('playht')}/api/v2`,
   MAX_TEXT_LENGTH: 10000,
   SUPPORTED_LANGUAGES: [
     'en-US',
@@ -175,7 +176,7 @@ export const PLAYHT = {
 
 // Suno specific constants
 export const SUNO = {
-  BASE_URL: 'https://api.suno.ai',
+  BASE_URL: vendorUrl('suno'),
   MAX_DURATION: 240, // 4 minutes
   COST_PER_GENERATION: 50, // cents ($0.50)
   SUPPORTED_GENRES: [
@@ -192,7 +193,7 @@ export const SUNO = {
 
 // Udio specific constants
 export const UDIO = {
-  BASE_URL: 'https://api.udio.com/v1',
+  BASE_URL: `${vendorUrl('udio')}/v1`,
   MAX_DURATION: 120, // 2 minutes (shorter than Suno)
   MIN_DURATION: 15,
   SUPPORTED_DURATIONS: [15, 30, 60, 120],
@@ -230,7 +231,7 @@ export const LIP_SYNC_PROVIDERS = {
 
 // SyncLabs specific constants
 export const SYNCLABS = {
-  BASE_URL: 'https://api.synclabs.so/v2',
+  BASE_URL: `${vendorUrl('synclabs')}/v2`,
   COST_PER_JOB: 10, // cents ($0.10)
   PROCESSING_TIME: {
     FAST: 60,

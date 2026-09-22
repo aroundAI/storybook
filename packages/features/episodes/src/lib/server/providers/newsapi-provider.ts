@@ -7,6 +7,8 @@
  */
 import { createHash, randomUUID } from 'node:crypto';
 
+import { vendorUrl } from '@kit/shared/vendors';
+
 import type {
   CredibilityTier,
   ExternalContent,
@@ -56,7 +58,7 @@ export class NewsAPIProvider extends BaseExternalProvider {
       throw new Error('NewsAPI key not configured (NEWSAPI_KEY)');
     }
 
-    const url = new URL('https://newsapi.org/v2/everything');
+    const url = new URL(`${vendorUrl('newsapi')}/v2/everything`);
     url.searchParams.set('q', params.query);
     url.searchParams.set('pageSize', String(params.pageSize ?? 20));
     url.searchParams.set('sortBy', 'relevancy');

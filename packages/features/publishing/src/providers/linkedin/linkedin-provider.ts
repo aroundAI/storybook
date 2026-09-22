@@ -1,6 +1,6 @@
 import { promises as fsPromises } from 'fs';
 
-import { LINKEDIN_REST_VERSION } from '@kit/shared/vendors';
+import { LINKEDIN_REST_VERSION, vendorUrl } from '@kit/shared/vendors';
 
 import type {
   LinkedInOrganization,
@@ -16,7 +16,7 @@ import type {
 } from './types';
 import { LINKEDIN_CONSTRAINTS } from './types';
 
-const LINKEDIN_API_BASE = 'https://api.linkedin.com/v2';
+const LINKEDIN_API_BASE = `${vendorUrl('linkedin-api')}/v2`;
 
 /**
  * LinkedIn Provider
@@ -362,7 +362,7 @@ export class LinkedInProvider {
    * Gets the authenticated user's profile using OpenID Connect
    */
   async getUserInfo(): Promise<LinkedInUser> {
-    const response = await fetch('https://api.linkedin.com/v2/userinfo', {
+    const response = await fetch(`${LINKEDIN_API_BASE}/userinfo`, {
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
       },

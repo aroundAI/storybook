@@ -6,6 +6,8 @@ import {
   META_GRAPH_VERSION,
   META_GRAPH_VERSION_EXPIRES,
   META_GRAPH_VERSION_RELEASED,
+  VENDORS,
+  type Vendor,
 } from '../src/vendors';
 
 /**
@@ -21,6 +23,13 @@ import {
  * Tests are scanned too. An expectation that restates `…/v18.0/…` keeps passing
  * after the pin moves only if somebody remembers to edit it, which is the same
  * decay one file over.
+ *
+ * FILM-1801 extends the same scan to every vendor **host**. The list is read
+ * from `VENDORS`, not restated, so adding a vendor to the resolver extends the
+ * guard. A host written outside the vendors directory is a request the local
+ * sandbox cannot intercept, and a second place for a host to go stale. Host
+ * rules skip test files: a test may name the real host to assert that it is
+ * what comes back.
  */
 
 const REPO = resolve(__dirname, '../../..');
@@ -47,10 +56,34 @@ interface Rule {
   pattern: RegExp;
   /** Limits a pattern too generic to apply repo-wide. */
   appliesTo?: RegExp;
+  /** Host rules leave tests alone; version rules do not. */
+  skipTests?: boolean;
   use: string;
 }
 
-const RULES: Rule[] = [
+const TEST_FILE =
+  /(?:^|\/)(?:__tests__|__mocks__|e2e)\/|\.(?:test|spec)\.[jt]sx?$/;
+
+/**
+ * Pages a person opens, on hosts that also serve an API or an OAuth dialog:
+ * permalinks, share intents, embeds, a footer link, the account settings
+ * where a person revokes our access. No credential rides on
+ * them and no sandbox should serve them, so they are removed from a line
+ * before it is searched. Anything else on these hosts is a vendor call.
+ */
+const PUBLIC_PAGES = [
+  /www\.facebook\.com\/(?:plugins\/video\.php|sharer\/|watch\/|USER\/videos\/|\$\{pageId\}\/videos\/)/g,
+  /www\.facebook\.com\$\{data\.permalink_url\}/g,
+  /www\.tiktok\.com\/(?:@|creator)/g,
+  /www\.linkedin\.com\/(?:feed\/update\/|sharing\/share-offsite\/)/g,
+  /(?<![\w.-])x\.com\/storybook/g,
+  /www\.facebook\.com\/settings/g,
+  /(?<![\w.-])x\.com\/settings\//g,
+  /www\.linkedin\.com\/mypreferences\//g,
+  /archive\.org\/details\//g,
+];
+
+const VERSION_RULES: Rule[] = [
   {
     name: 'Meta Graph API host',
     pattern: /graph(?:-video)?\.facebook\.com/,
@@ -91,6 +124,31 @@ const RULES: Rule[] = [
   },
 ];
 
+function escapeRegExp(text: string) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * One rule per host in `VENDORS`, matched without its scheme so `http://` and
+ * a protocol-relative spelling are caught too. A host FILM-1723's rules
+ * already cover is left to them, so a line is reported once.
+ */
+const HOST_RULES: Rule[] = (Object.entries(VENDORS) as [Vendor, string][])
+  .map(([vendor, url]) => ({ vendor, host: new URL(url).host }))
+  .filter(({ host }) => !VERSION_RULES.some((rule) => rule.pattern.test(host)))
+  .map(({ vendor, host }) => ({
+    name: `${vendor} host`,
+    pattern: new RegExp(`(?<![\\w.-])${escapeRegExp(host)}(?![\\w-])`),
+    skipTests: true,
+    use: `vendorUrl('${vendor}')`,
+  }));
+
+const RULES = [...VERSION_RULES, ...HOST_RULES];
+
+function withoutPublicPages(line: string) {
+  return PUBLIC_PAGES.reduce((rest, page) => rest.replace(page, ''), line);
+}
+
 function sourceFiles(path: string): string[] {
   const absolute = join(REPO, path);
 
@@ -101,23 +159,41 @@ function sourceFiles(path: string): string[] {
   );
 }
 
+/**
+ * Any rule at all, as one expression. Nearly every line in the repository
+ * matches none, and asking once instead of once per rule is what keeps a scan
+ * of every source file inside the test timeout.
+ */
+const ANY_RULE = new RegExp(
+  RULES.map((rule) => `(?:${rule.pattern.source})`).join('|'),
+);
+
 function violations() {
   return ROOTS.flatMap(sourceFiles)
     .map((file) => relative(REPO, join(REPO, file)).split(sep).join('/'))
     .filter((file) => !file.startsWith(`${VENDORS_DIR}/`) && file !== THIS_FILE)
-    .flatMap((file) =>
-      readFileSync(join(REPO, file), 'utf8')
+    .flatMap((file) => {
+      const rules = RULES.filter(
+        (rule) =>
+          (rule.appliesTo?.test(file) ?? true) &&
+          !(rule.skipTests && TEST_FILE.test(file)),
+      );
+
+      return readFileSync(join(REPO, file), 'utf8')
         .split('\n')
-        .flatMap((line, index) =>
-          RULES.filter(
-            (rule) =>
-              (rule.appliesTo?.test(file) ?? true) && rule.pattern.test(line),
-          ).map(
-            (rule) =>
-              `${file}:${index + 1} ${rule.name} - import ${rule.use} from @kit/shared/vendors`,
-          ),
-        ),
-    );
+        .flatMap((line, index) => {
+          if (!ANY_RULE.test(line)) return [];
+
+          const rest = withoutPublicPages(line);
+
+          return rules
+            .filter((rule) => rule.pattern.test(rest))
+            .map(
+              (rule) =>
+                `${file}:${index + 1} ${rule.name} - import ${rule.use} from @kit/shared/vendors`,
+            );
+        });
+    });
 }
 
 describe('vendor API versions are declared once (FILM-1723)', () => {
@@ -133,9 +209,13 @@ describe('vendor API versions are declared once (FILM-1723)', () => {
     );
   });
 
-  it('has no vendor host or version literal outside packages/shared/src/vendors', () => {
-    expect(violations()).toEqual([]);
-  });
+  it(
+    'has no vendor host or version literal outside packages/shared/src/vendors',
+    { timeout: 60_000 },
+    () => {
+      expect(violations()).toEqual([]);
+    },
+  );
 
   it('declares each pin exactly once inside the vendors directory', () => {
     const declared = sourceFiles(VENDORS_DIR)

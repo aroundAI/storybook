@@ -5,6 +5,7 @@
  * Uses OpenAI text-embedding-3-small for 1536-dimension vectors.
  */
 import { getLogger } from '@kit/shared/logger';
+import { vendorUrl } from '@kit/shared/vendors';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 // =============================================================================
@@ -43,7 +44,7 @@ export async function generateAudioEmbedding(
   }
 
   try {
-    const response = await fetch('https://api.openai.com/v1/embeddings', {
+    const response = await fetch(`${vendorUrl('openai')}/v1/embeddings`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

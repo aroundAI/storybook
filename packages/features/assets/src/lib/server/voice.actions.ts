@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 import { decrypt } from '@kit/shared/crypto';
+import { vendorUrl } from '@kit/shared/vendors';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -64,7 +65,7 @@ export const getElevenLabsVoicesAction = enhanceAction(
     const apiKey = await getAccountElevenLabsApiKey(accountId);
 
     // Fetch voices directly from ElevenLabs API
-    const response = await fetch('https://api.elevenlabs.io/v1/voices', {
+    const response = await fetch(`${vendorUrl('elevenlabs')}/v1/voices`, {
       method: 'GET',
       headers: {
         'xi-api-key': apiKey,

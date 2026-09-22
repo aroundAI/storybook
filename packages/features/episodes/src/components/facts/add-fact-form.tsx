@@ -10,6 +10,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { generateAPACitation } from '@kit/episodes';
+import { vendorUrl } from '@kit/shared/vendors';
 import { Button } from '@kit/ui/button';
 import {
   Card,
@@ -49,7 +50,7 @@ const sourceTypeValues = [
   ...restSourceTypes,
 ] as const satisfies readonly [SourceTypeValue, ...SourceTypeValue[]];
 
-const CROSSREF_API_URL = 'https://api.crossref.org/works/';
+const CROSSREF_API_URL = `${vendorUrl('crossref')}/works/`;
 
 const CrossRefAuthorSchema = z.object({
   family: z.string().optional(),

@@ -1,6 +1,8 @@
 /**
  * LinkedIn Upload Handler
  */
+import { vendorUrl } from '@kit/shared/vendors';
+
 import type { PublishJobMessage } from '../index';
 
 export async function uploadToLinkedIn(
@@ -17,7 +19,7 @@ export async function uploadToLinkedIn(
 
   // Step 1: Register upload
   const registerResponse = await fetch(
-    'https://api.linkedin.com/v2/assets?action=registerUpload',
+    `${vendorUrl('linkedin-api')}/v2/assets?action=registerUpload`,
     {
       method: 'POST',
       headers: {
@@ -82,38 +84,41 @@ export async function uploadToLinkedIn(
   console.log(`[LinkedIn] Video uploaded, creating share...`);
 
   // Step 3: Create share with video
-  const shareResponse = await fetch('https://api.linkedin.com/v2/ugcPosts', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-      'X-Restli-Protocol-Version': '2.0.0',
-    },
-    body: JSON.stringify({
-      author: authorUrn,
-      lifecycleState: 'PUBLISHED',
-      specificContent: {
-        'com.linkedin.ugc.ShareContent': {
-          shareCommentary: {
-            text: `${job.title}\n\n${job.description}`,
-          },
-          shareMediaCategory: 'VIDEO',
-          media: [
-            {
-              status: 'READY',
-              media: asset,
-              title: {
-                text: job.title,
-              },
+  const shareResponse = await fetch(
+    `${vendorUrl('linkedin-api')}/v2/ugcPosts`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'X-Restli-Protocol-Version': '2.0.0',
+      },
+      body: JSON.stringify({
+        author: authorUrn,
+        lifecycleState: 'PUBLISHED',
+        specificContent: {
+          'com.linkedin.ugc.ShareContent': {
+            shareCommentary: {
+              text: `${job.title}\n\n${job.description}`,
             },
-          ],
+            shareMediaCategory: 'VIDEO',
+            media: [
+              {
+                status: 'READY',
+                media: asset,
+                title: {
+                  text: job.title,
+                },
+              },
+            ],
+          },
         },
-      },
-      visibility: {
-        'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC',
-      },
-    }),
-  });
+        visibility: {
+          'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC',
+        },
+      }),
+    },
+  );
 
   if (!shareResponse.ok) {
     const error = await shareResponse.text();
