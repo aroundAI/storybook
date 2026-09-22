@@ -17,6 +17,7 @@ import {
   deleteEpisodeAction,
   resetToStageAction,
 } from '@kit/episodes/server/actions';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -97,7 +98,7 @@ export function QuickActionsMenu({
   async function handleDelete() {
     setState((s) => ({ ...s, isDeleting: true }));
     try {
-      const result = await deleteEpisodeAction({ episodeId });
+      const result = await unwrap(deleteEpisodeAction({ episodeId }));
 
       if (result.success) {
         toast.success('Episode deleted successfully');
@@ -106,9 +107,7 @@ export function QuickActionsMenu({
         toast.error('Failed to delete episode');
       }
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to delete episode',
-      );
+      toast.error(refusalMessage(error, 'Failed to delete episode'));
     } finally {
       setState((s) => ({ ...s, isDeleting: false, showDeleteDialog: false }));
     }
@@ -122,10 +121,12 @@ export function QuickActionsMenu({
     );
 
     try {
-      const result = await resetToStageAction({
-        episodeId,
-        targetStage: state.resetTargetStage,
-      });
+      const result = await unwrap(
+        resetToStageAction({
+          episodeId,
+          targetStage: state.resetTargetStage,
+        }),
+      );
 
       toast.dismiss(loadingToastId);
 
@@ -139,9 +140,7 @@ export function QuickActionsMenu({
       }
     } catch (error) {
       toast.dismiss(loadingToastId);
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to reset episode',
-      );
+      toast.error(refusalMessage(error, 'Failed to reset episode'));
     } finally {
       setState((s) => ({ ...s, isResetting: false }));
     }
@@ -159,7 +158,11 @@ export function QuickActionsMenu({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="icon">
+          <Button
+            variant="outline"
+            size="icon"
+            data-test="episode-actions-trigger"
+          >
             <MoreVertical className="h-4 w-4" />
             <span className="sr-only">Episode actions</span>
           </Button>
@@ -249,6 +252,7 @@ export function QuickActionsMenu({
           <DropdownMenuItem
             onClick={() => setState((s) => ({ ...s, showDeleteDialog: true }))}
             className="text-destructive focus:text-destructive"
+            data-test="episode-delete-item"
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Delete Episode
@@ -329,6 +333,7 @@ export function QuickActionsMenu({
             <AlertDialogAction
               onClick={handleDelete}
               disabled={state.isDeleting}
+              data-test="episode-delete-confirm"
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {state.isDeleting && (

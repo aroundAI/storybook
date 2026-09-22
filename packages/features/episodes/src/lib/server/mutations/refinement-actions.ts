@@ -2,7 +2,9 @@
 
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -28,7 +30,7 @@ const UndoRefinementSchema = z.object({
  * Queue a story refinement job to the LLM worker.
  * The Lambda handler will refine the story based on user feedback.
  */
-export const refineStoryAction = enhanceAction(
+const refineStoryHandler = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = { name: 'episodes.refineStory', episodeId: data.episodeId };
@@ -55,16 +57,18 @@ export const refineStoryAction = enhanceAction(
       .single();
 
     if (fetchError || !episode) {
-      throw new Error('Episode not found');
+      throw new ActionRefusal('Episode not found');
     }
 
     if (!episode.story_data?.fullStory) {
-      throw new Error('Episode must have a story before it can be refined');
+      throw new ActionRefusal(
+        'Episode must have a story before it can be refined',
+      );
     }
 
     const accountId = episode.project?.account_id;
     if (!accountId) {
-      throw new Error('Project not found or access denied');
+      throw new ActionRefusal('Project not found or access denied');
     }
 
     // Create generation job for tracking
@@ -110,11 +114,13 @@ export const refineStoryAction = enhanceAction(
   { schema: RefineStorySchema },
 );
 
+export const refineStoryAction = returnRefusals(refineStoryHandler);
+
 /**
  * Queue a screenplay refinement job to the LLM worker.
  * The Lambda handler will refine the screenplay based on user feedback.
  */
-export const refineScreenplayAction = enhanceAction(
+const refineScreenplayHandler = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = {
@@ -146,18 +152,18 @@ export const refineScreenplayAction = enhanceAction(
       .single();
 
     if (fetchError || !episode) {
-      throw new Error('Episode not found');
+      throw new ActionRefusal('Episode not found');
     }
 
     if (!episode.screenplay_data?.scenes) {
-      throw new Error(
+      throw new ActionRefusal(
         'Episode must have a screenplay before it can be refined',
       );
     }
 
     const accountId = episode.project?.account_id;
     if (!accountId) {
-      throw new Error('Project not found or access denied');
+      throw new ActionRefusal('Project not found or access denied');
     }
 
     // Create generation job for tracking
@@ -203,10 +209,12 @@ export const refineScreenplayAction = enhanceAction(
   { schema: RefineScreenplaySchema },
 );
 
+export const refineScreenplayAction = returnRefusals(refineScreenplayHandler);
+
 /**
  * Undo the last refinement by restoring previous data from metadata.
  */
-export const undoRefinementAction = enhanceAction(
+const undoRefinementHandler = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = { name: 'episodes.undoRefinement', episodeId: data.episodeId };
@@ -228,7 +236,7 @@ export const undoRefinementAction = enhanceAction(
       .single();
 
     if (fetchError || !episode) {
-      throw new Error('Episode not found');
+      throw new ActionRefusal('Episode not found');
     }
 
     const metadata = (episode.metadata ?? {}) as Record<string, unknown>;
@@ -236,7 +244,7 @@ export const undoRefinementAction = enhanceAction(
     if (data.type === 'story') {
       const previousStoryData = metadata.previous_story_data;
       if (!previousStoryData) {
-        throw new Error('No previous story data available to restore');
+        throw new ActionRefusal('No previous story data available to restore');
       }
 
       // Restore previous story data and clear the backup
@@ -257,7 +265,9 @@ export const undoRefinementAction = enhanceAction(
     } else {
       const previousScreenplayData = metadata.previous_screenplay_data;
       if (!previousScreenplayData) {
-        throw new Error('No previous screenplay data available to restore');
+        throw new ActionRefusal(
+          'No previous screenplay data available to restore',
+        );
       }
 
       // Restore previous screenplay data and clear the backup
@@ -281,3 +291,5 @@ export const undoRefinementAction = enhanceAction(
   },
   { schema: UndoRefinementSchema },
 );
+
+export const undoRefinementAction = returnRefusals(undoRefinementHandler);

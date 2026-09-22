@@ -1,6 +1,7 @@
 'use server';
 
 import type { StudioProjectSettings } from '@kit/film-studio-schemas/project';
+import type { ActionResult } from '@kit/next/action-result';
 import type { Json } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -27,7 +28,9 @@ export async function createFilmProject(
     description?: string;
     settings: StudioProjectSettings;
   },
-): Promise<{ projectId: string; projectSlug: string; accountSlug: string }> {
+): Promise<
+  ActionResult<{ projectId: string; projectSlug: string; accountSlug: string }>
+> {
   const client = getSupabaseServerClient();
 
   // Get account ID from slug
@@ -60,13 +63,27 @@ export async function createFilmProject(
     .single();
 
   if (error) {
+    // `unique (account_id, slug)`: the slug is derived from the name, so the
+    // one failure a user causes here is reusing a name. Returned, because a
+    // production build replaces the message of a thrown error (KB-6).
+    if (error.code === '23505') {
+      return {
+        ok: false,
+        error:
+          'A project with this name already exists in this workspace. Choose a different name.',
+      };
+    }
+
     throw new Error(`Failed to create project: ${error.message}`);
   }
 
   return {
-    projectId: project.id,
-    projectSlug: project.slug ?? slug,
-    accountSlug,
+    ok: true,
+    data: {
+      projectId: project.id,
+      projectSlug: project.slug ?? slug,
+      accountSlug,
+    },
   };
 }
 

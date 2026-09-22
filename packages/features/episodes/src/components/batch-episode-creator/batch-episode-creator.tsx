@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Info, Loader2, Sparkles } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { Button } from '@kit/ui/button';
 import {
@@ -135,7 +136,7 @@ export function BatchEpisodeCreator({
   const onSubmit = form.handleSubmit((data: GenerateSeasonOutlineInput) => {
     startTransition(async () => {
       try {
-        const result = await generateSeasonOutlineAction(data);
+        const result = await unwrap(generateSeasonOutlineAction(data));
 
         if (result.success) {
           if (result.queued) {
@@ -150,9 +151,7 @@ export function BatchEpisodeCreator({
         }
       } catch (error) {
         toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to generate episode outlines',
+          refusalMessage(error, 'Failed to generate episode outlines'),
         );
       }
     });
@@ -166,10 +165,12 @@ export function BatchEpisodeCreator({
       // Update season name if provided and seasonId exists
       if (seasonId && seasonName.trim()) {
         try {
-          await updateSeasonAction({
-            seasonId,
-            name: seasonName.trim(),
-          });
+          await unwrap(
+            updateSeasonAction({
+              seasonId,
+              name: seasonName.trim(),
+            }),
+          );
         } catch {
           toast.error('Failed to update season name');
           setIsCreating(false);
@@ -177,11 +178,13 @@ export function BatchEpisodeCreator({
         }
       }
 
-      const result = await batchCreateEpisodesAction({
-        projectId,
-        seasonId,
-        episodes,
-      });
+      const result = await unwrap(
+        batchCreateEpisodesAction({
+          projectId,
+          seasonId,
+          episodes,
+        }),
+      );
 
       if (result.success) {
         toast.success(`Created ${result.data.count} episodes`);
@@ -200,9 +203,7 @@ export function BatchEpisodeCreator({
         onSuccess?.();
       }
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to create episodes',
-      );
+      toast.error(refusalMessage(error, 'Failed to create episodes'));
     } finally {
       setIsCreating(false);
     }

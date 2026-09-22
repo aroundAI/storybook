@@ -2,6 +2,8 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { unwrap } from '@kit/next/action-result';
+
 import {
   addProjectMemberAction,
   createProjectAction,
@@ -132,13 +134,15 @@ describe('Project Mutations', () => {
 
       mockSingle.mockResolvedValue({ data: mockProject, error: null });
 
-      const result = await createProjectAction({
-        account_id: ACCOUNT_ID,
-        name: 'Test Project',
-        description: 'Test description',
-        slug: 'test-project',
-        metadata: {},
-      });
+      const result = await unwrap(
+        createProjectAction({
+          account_id: ACCOUNT_ID,
+          name: 'Test Project',
+          description: 'Test description',
+          slug: 'test-project',
+          metadata: {},
+        }),
+      );
 
       expect(mockFrom).toHaveBeenCalledWith('projects');
       expect(mockInsert).toHaveBeenCalledWith({
@@ -166,10 +170,12 @@ describe('Project Mutations', () => {
 
       mockSingle.mockResolvedValue({ data: mockProject, error: null });
 
-      const result = await createProjectAction({
-        account_id: ACCOUNT_ID,
-        name: 'Minimal Project',
-      });
+      const result = await unwrap(
+        createProjectAction({
+          account_id: ACCOUNT_ID,
+          name: 'Minimal Project',
+        }),
+      );
 
       expect(result.success).toBe(true);
       expect(result.data?.name).toBe('Minimal Project');
@@ -182,46 +188,84 @@ describe('Project Mutations', () => {
       });
 
       await expect(
-        createProjectAction({
-          account_id: ACCOUNT_ID,
-          name: 'Test Project',
-          slug: 'duplicate',
-        }),
+        unwrap(
+          createProjectAction({
+            account_id: ACCOUNT_ID,
+            name: 'Test Project',
+            slug: 'duplicate',
+          }),
+        ),
       ).rejects.toThrow('Failed to create project: Duplicate slug');
+    });
+
+    // KB-6: a production build replaces the message of a thrown error, so
+    // the one failure a user causes is returned, in words written for them.
+    it('returns a taken slug as a refusal, without the constraint name', async () => {
+      mockSingle.mockResolvedValue({
+        data: null,
+        error: {
+          code: '23505',
+          message:
+            'duplicate key value violates unique constraint "projects_account_id_slug_key"',
+        },
+      });
+
+      const result = await createProjectAction({
+        account_id: ACCOUNT_ID,
+        name: 'Test Project',
+        slug: 'duplicate',
+      });
+
+      expect(result).toEqual({
+        ok: false,
+        error:
+          'A project with this slug already exists in this workspace. Choose a different slug.',
+      });
+      expect(JSON.stringify(result)).not.toContain(
+        'projects_account_id_slug_key',
+      );
     });
 
     it('should validate UUID format for account_id', async () => {
       await expect(
-        createProjectAction({
-          account_id: 'invalid-uuid',
-          name: 'Test Project',
-        }),
+        unwrap(
+          createProjectAction({
+            account_id: 'invalid-uuid',
+            name: 'Test Project',
+          }),
+        ),
       ).rejects.toThrow();
     });
 
     it('should validate slug format', async () => {
       await expect(
-        createProjectAction({
-          account_id: ACCOUNT_ID,
-          name: 'Test Project',
-          slug: 'Invalid Slug!',
-        }),
+        unwrap(
+          createProjectAction({
+            account_id: ACCOUNT_ID,
+            name: 'Test Project',
+            slug: 'Invalid Slug!',
+          }),
+        ),
       ).rejects.toThrow();
     });
 
     it('should validate name length', async () => {
       await expect(
-        createProjectAction({
-          account_id: ACCOUNT_ID,
-          name: '',
-        }),
+        unwrap(
+          createProjectAction({
+            account_id: ACCOUNT_ID,
+            name: '',
+          }),
+        ),
       ).rejects.toThrow();
 
       await expect(
-        createProjectAction({
-          account_id: ACCOUNT_ID,
-          name: 'a'.repeat(256),
-        }),
+        unwrap(
+          createProjectAction({
+            account_id: ACCOUNT_ID,
+            name: 'a'.repeat(256),
+          }),
+        ),
       ).rejects.toThrow();
     });
   });
@@ -275,11 +319,13 @@ describe('Project Mutations', () => {
         }),
       });
 
-      const result = await updateProjectAction({
-        id: PROJECT_ID,
-        name: 'New Name',
-        description: 'New description',
-      });
+      const result = await unwrap(
+        updateProjectAction({
+          id: PROJECT_ID,
+          name: 'New Name',
+          description: 'New description',
+        }),
+      );
 
       expect(result).toEqual({ success: true, data: mockUpdatedProject });
     });
@@ -309,10 +355,12 @@ describe('Project Mutations', () => {
         }),
       });
 
-      await updateProjectAction({
-        id: PROJECT_ID,
-        name: 'Updated Name',
-      });
+      await unwrap(
+        updateProjectAction({
+          id: PROJECT_ID,
+          name: 'Updated Name',
+        }),
+      );
 
       expect(mockUpdate).toHaveBeenCalledWith({ name: 'Updated Name' });
     });
@@ -342,10 +390,12 @@ describe('Project Mutations', () => {
         }),
       });
 
-      const result = await updateProjectAction({
-        id: PROJECT_ID,
-        status: 'archived',
-      });
+      const result = await unwrap(
+        updateProjectAction({
+          id: PROJECT_ID,
+          status: 'archived',
+        }),
+      );
 
       expect(result.data?.status).toBe('archived');
     });
@@ -365,10 +415,12 @@ describe('Project Mutations', () => {
       });
 
       await expect(
-        updateProjectAction({
-          id: PROJECT_ID,
-          name: 'New Name',
-        }),
+        unwrap(
+          updateProjectAction({
+            id: PROJECT_ID,
+            name: 'New Name',
+          }),
+        ),
       ).rejects.toThrow('Failed to update project: Not found');
     });
   });
@@ -476,11 +528,13 @@ describe('Project Mutations', () => {
 
       mockSingle.mockResolvedValue({ data: mockMember, error: null });
 
-      const result = await addProjectMemberAction({
-        project_id: PROJECT_ID,
-        user_id: MEMBER_USER_ID,
-        role: 'member',
-      });
+      const result = await unwrap(
+        addProjectMemberAction({
+          project_id: PROJECT_ID,
+          user_id: MEMBER_USER_ID,
+          role: 'member',
+        }),
+      );
 
       expect(result).toEqual({ success: true, data: mockMember });
       expect(mockInsert).toHaveBeenCalledWith({
@@ -532,11 +586,13 @@ describe('Project Mutations', () => {
           return {};
         });
 
-        const result = await addProjectMemberAction({
-          project_id: PROJECT_ID,
-          user_id: MEMBER_USER_ID,
-          role,
-        });
+        const result = await unwrap(
+          addProjectMemberAction({
+            project_id: PROJECT_ID,
+            user_id: MEMBER_USER_ID,
+            role,
+          }),
+        );
 
         expect(result.data?.role).toBe(role);
       }
@@ -549,21 +605,66 @@ describe('Project Mutations', () => {
       });
 
       await expect(
-        addProjectMemberAction({
+        unwrap(
+          addProjectMemberAction({
+            project_id: PROJECT_ID,
+            user_id: MEMBER_USER_ID,
+            role: 'member',
+          }),
+        ),
+      ).rejects.toThrow('Failed to add project member: Already a member');
+    });
+
+    it('returns an existing membership as a refusal', async () => {
+      mockSingle.mockResolvedValue({
+        data: null,
+        error: {
+          code: '23505',
+          message:
+            'duplicate key value violates unique constraint "project_members_project_id_user_id_key"',
+        },
+      });
+
+      expect(
+        await addProjectMemberAction({
           project_id: PROJECT_ID,
           user_id: MEMBER_USER_ID,
           role: 'member',
         }),
-      ).rejects.toThrow('Failed to add project member: Already a member');
+      ).toEqual({
+        ok: false,
+        error: 'This person is already a member of the project.',
+      });
+    });
+
+    it('returns a second owner as a refusal of its own', async () => {
+      mockSingle.mockResolvedValue({
+        data: null,
+        error: {
+          code: '23505',
+          message:
+            'duplicate key value violates unique constraint "ix_project_members_owner"',
+        },
+      });
+
+      expect(
+        await addProjectMemberAction({
+          project_id: PROJECT_ID,
+          user_id: MEMBER_USER_ID,
+          role: 'owner',
+        }),
+      ).toEqual({ ok: false, error: 'A project can have only one owner.' });
     });
 
     it('should validate UUIDs', async () => {
       await expect(
-        addProjectMemberAction({
-          project_id: 'invalid',
-          user_id: MEMBER_USER_ID,
-          role: 'member',
-        }),
+        unwrap(
+          addProjectMemberAction({
+            project_id: 'invalid',
+            user_id: MEMBER_USER_ID,
+            role: 'member',
+          }),
+        ),
       ).rejects.toThrow();
     });
   });

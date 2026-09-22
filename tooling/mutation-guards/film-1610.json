@@ -430,7 +430,7 @@
     },
     {
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/with-refusals.ts",
+      "file": "packages/next/src/refusals/with-refusals.ts",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
       "name": "G1 refusal thrown again (production hides it)",
@@ -440,7 +440,7 @@
     },
     {
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/with-refusals.ts",
+      "file": "packages/next/src/refusals/with-refusals.ts",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
       "name": "G1b database detail passed to the page",
@@ -511,7 +511,7 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
       "name": "H7 failure logged without its ids",
-      "file": "packages/features/content-analytics/src/server/with-refusals.ts",
+      "file": "packages/next/src/refusals/with-refusals.ts",
       "find": "{ error, what, ...idsOf(input) }",
       "replace": "{ error, what }",
       "pattern": "logs the experiment the failed start was for"

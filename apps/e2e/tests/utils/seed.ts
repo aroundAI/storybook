@@ -242,7 +242,7 @@ export async function seedYouTubeConnection(
 }
 
 /** Inserts one row through PostgREST and returns it. */
-async function insertRow<T>(
+export async function insertRow<T>(
   table: string,
   body: Record<string, unknown>,
   auth: { key: string; token?: string },
@@ -585,6 +585,32 @@ export async function readRows<T>(table: string, query: string): Promise<T[]> {
   }
 
   return JSON.parse(text) as T[];
+}
+
+/**
+ * Changes rows with the service role — for the state a second tab or another
+ * user would have produced, which no amount of driving one page can.
+ */
+export async function updateRows(
+  table: string,
+  query: string,
+  body: Record<string, unknown>,
+): Promise<void> {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+    method: 'PATCH',
+    headers: {
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `update ${table} failed (${response.status}): ${await response.text()}`,
+    );
+  }
 }
 
 /**

@@ -9,7 +9,9 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
@@ -36,10 +38,16 @@ import {
   invalidateProjectMembersCache,
 } from './cache-invalidation';
 
+/** Postgres `unique_violation`: the one insert/update failure a user causes. */
+const UNIQUE_VIOLATION = '23505';
+
+const SLUG_TAKEN =
+  'A project with this slug already exists in this workspace. Choose a different slug.';
+
 /**
  * Create a new project
  */
-export const createProjectAction = enhanceAction(
+const createProject = enhanceAction(
   async (data: CreateProjectParams) => {
     const logger = await getLogger();
     const ctx = { name: 'projects.create', data };
@@ -67,6 +75,10 @@ export const createProjectAction = enhanceAction(
       .single();
 
     if (projectError) {
+      if (projectError.code === UNIQUE_VIOLATION) {
+        throw new ActionRefusal(SLUG_TAKEN);
+      }
+
       logger.error({ ...ctx, error: projectError }, 'Failed to create project');
       throw new Error(`Failed to create project: ${projectError.message}`);
     }
@@ -109,10 +121,12 @@ export const createProjectAction = enhanceAction(
   },
 );
 
+export const createProjectAction = returnRefusals(createProject);
+
 /**
  * Update an existing project
  */
-export const updateProjectAction = enhanceAction(
+const updateProject = enhanceAction(
   async (data: UpdateProjectParams) => {
     const logger = await getLogger();
     const ctx = { name: 'projects.update', projectId: data.id };
@@ -156,6 +170,10 @@ export const updateProjectAction = enhanceAction(
       .single();
 
     if (error) {
+      if (error.code === UNIQUE_VIOLATION) {
+        throw new ActionRefusal(SLUG_TAKEN);
+      }
+
       logger.error({ ...ctx, error }, 'Failed to update project');
       throw new Error(`Failed to update project: ${error.message}`);
     }
@@ -197,6 +215,8 @@ export const updateProjectAction = enhanceAction(
     schema: UpdateProjectSchema,
   },
 );
+
+export const updateProjectAction = returnRefusals(updateProject);
 
 /**
  * Delete a project
@@ -273,7 +293,7 @@ export const deleteProjectAction = enhanceAction(
 /**
  * Add a member to a project
  */
-export const addProjectMemberAction = enhanceAction(
+const addProjectMember = enhanceAction(
   async (data: AddProjectMemberParams) => {
     const logger = await getLogger();
     const ctx = { name: 'projects.addMember', projectId: data.project_id };
@@ -305,6 +325,16 @@ export const addProjectMemberAction = enhanceAction(
       .single();
 
     if (error) {
+      if (error.code === UNIQUE_VIOLATION) {
+        // Two unique rules on this table: one membership per person, and
+        // one owner per project (`ix_project_members_owner`).
+        throw new ActionRefusal(
+          error.message.includes('ix_project_members_owner')
+            ? 'A project can have only one owner.'
+            : 'This person is already a member of the project.',
+        );
+      }
+
       logger.error({ ...ctx, error }, 'Failed to add project member');
       throw new Error(`Failed to add project member: ${error.message}`);
     }
@@ -347,6 +377,8 @@ export const addProjectMemberAction = enhanceAction(
     schema: AddProjectMemberSchema,
   },
 );
+
+export const addProjectMemberAction = returnRefusals(addProjectMember);
 
 /**
  * Update a project member's role
@@ -536,7 +568,7 @@ export type ProjectAudioSettings = z.infer<
   typeof UpdateProjectAudioSettingsSchema
 >['audioSettings'];
 
-export const updateProjectAudioSettingsAction = enhanceAction(
+const updateProjectAudioSettings = enhanceAction(
   async (data: z.infer<typeof UpdateProjectAudioSettingsSchema>) => {
     const logger = await getLogger();
     const ctx = {
@@ -561,7 +593,7 @@ export const updateProjectAudioSettingsAction = enhanceAction(
       .single();
 
     if (fetchError || !project) {
-      throw new Error('Project not found');
+      throw new ActionRefusal('Project not found');
     }
 
     // Update audio_settings column
@@ -588,4 +620,8 @@ export const updateProjectAudioSettingsAction = enhanceAction(
   {
     schema: UpdateProjectAudioSettingsSchema,
   },
+);
+
+export const updateProjectAudioSettingsAction = returnRefusals(
+  updateProjectAudioSettings,
 );

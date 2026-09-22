@@ -10,6 +10,7 @@ import {
   getElevenLabsAccountInfoAction,
   getElevenLabsModelsAction,
 } from '@kit/audio-generation/server';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import {
   type ProjectAudioSettings,
   updateProjectAudioSettingsAction,
@@ -82,27 +83,27 @@ export function AudioSettingsForm({
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async () => {
-      return updateProjectAudioSettingsAction({
-        projectId,
-        audioSettings: {
-          elevenlabs: {
-            enabled: true,
-            tts_model: ttsModel,
-            sfx_model: sfxModel,
-            music_model: musicModel,
+      return unwrap(
+        updateProjectAudioSettingsAction({
+          projectId,
+          audioSettings: {
+            elevenlabs: {
+              enabled: true,
+              tts_model: ttsModel,
+              sfx_model: sfxModel,
+              music_model: musicModel,
+            },
+            voice_provider: voiceProvider,
           },
-          voice_provider: voiceProvider,
-        },
-      });
+        }),
+      );
     },
     onSuccess: () => {
       toast.success('Audio settings saved');
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
     },
     onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to save settings',
-      );
+      toast.error(refusalMessage(error, 'Failed to save settings'));
     },
   });
 

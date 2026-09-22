@@ -8,6 +8,7 @@ import { useCallback, useState, useTransition } from 'react';
 
 import { ImageIcon, Loader2, Trash2, Upload } from 'lucide-react';
 
+import { refusalMessage } from '@kit/next/action-result';
 import { uploadProjectCover } from '@kit/storage/client';
 import { Button } from '@kit/ui/button';
 import {
@@ -77,11 +78,7 @@ export function ProjectCoverSettings({
 
           toast.success('Cover image updated successfully');
         } catch (uploadError) {
-          setError(
-            uploadError instanceof Error
-              ? uploadError.message
-              : 'Failed to upload cover image',
-          );
+          setError(refusalMessage(uploadError, 'Failed to upload cover image'));
           toast.error('Failed to upload cover image');
           setPreviewUrl(null);
           URL.revokeObjectURL(preview);

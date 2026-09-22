@@ -14,6 +14,8 @@
   "prettier": "@kit/prettier-config",
   "exports": {
     "./actions": "./src/actions/index.ts",
+    "./action-result": "./src/refusals/action-result.ts",
+    "./refusals": "./src/refusals/with-refusals.ts",
     "./routes": "./src/routes/index.ts"
   },
   "devDependencies": {
@@ -21,6 +23,7 @@
     "@kit/eslint-config": "workspace:*",
     "@kit/monitoring": "workspace:*",
     "@kit/prettier-config": "workspace:*",
+    "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@kit/tsconfig": "workspace:*",
     "@supabase/supabase-js": "2.57.4",
