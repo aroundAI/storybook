@@ -1296,6 +1296,139 @@ describe('queries-advanced', () => {
     });
   });
 
+  describe('language dimensions (FILM-1702)', () => {
+    it('treats an empty language as the not-set filter, not as no filter', async () => {
+      const { queryCohortMedians } = await import('../src/queries-advanced');
+
+      await queryCohortMedians({ scope: { projectId: PROJECT, language: '' } });
+
+      // A truthiness check drops the filter, and "the videos nobody
+      // labelled" silently becomes "every video".
+      const { query, query_params } = lastQuery();
+
+      expect(query).toContain('language = {scopeLanguage: String}');
+      expect(query_params.scopeLanguage).toBe('');
+    });
+
+    it('leaves language unfiltered when the scope does not name one', async () => {
+      const { queryCohortMedians } = await import('../src/queries-advanced');
+
+      await queryCohortMedians({ scope: { projectId: PROJECT } });
+
+      expect(lastQuery().query).not.toContain('scopeLanguage');
+    });
+
+    it('filters language on the newest dim row, not on any row', async () => {
+      const { queryCohortMedians } = await import('../src/queries-advanced');
+
+      await queryCohortMedians({
+        scope: { projectId: PROJECT, language: 'en', channelLanguage: 'es' },
+      });
+
+      // video_dim is read without FINAL, so a relabelled video still has
+      // its old row. Filtering inside the inner subquery keeps only that
+      // row, and the argMax over what is left reports the old language.
+      const { query, query_params } = lastQuery();
+      const inner = query.match(
+        /FROM \(SELECT \* FROM video_dim WHERE ([^)]*)\)/,
+      );
+
+      expect(inner?.[1]).toContain('project_id');
+      expect(inner?.[1]).not.toContain('language');
+      expect(query).toMatch(
+        /GROUP BY video_id\s+HAVING language = \{scopeLanguage: String\} AND channel_language = \{scopeChannelLanguage: String\}/,
+      );
+      expect(query_params.scopeChannelLanguage).toBe('es');
+    });
+
+    it('groups the channel dimension by its own column', async () => {
+      const { querySegmentPerformance } = await import(
+        '../src/queries-advanced'
+      );
+
+      await querySegmentPerformance({
+        scope: { projectId: PROJECT },
+        segment: { kind: 'channel_language' },
+        minVideos: 1,
+      });
+
+      expect(lastQuery().query).toContain('d.channel_language as segment');
+    });
+
+    it('resolves each language dimension to a segment kind the query knows', async () => {
+      const { LANGUAGE_DIMENSION_SEGMENTS } = await import(
+        '../src/queries-advanced'
+      );
+
+      expect(LANGUAGE_DIMENSION_SEGMENTS).toEqual({
+        content: 'language',
+        channel: 'channel_language',
+      });
+    });
+
+    it('reports a language nobody set as null in a pair, never as a code', async () => {
+      mockQueryResult.json.mockResolvedValueOnce([
+        { language: 'es', channel_language: 'en', video_count: 3 },
+        { language: '', channel_language: 'en', video_count: 2 },
+        { language: 'en', channel_language: '', video_count: 1 },
+      ]);
+
+      const { queryLanguagePairs } = await import('../src/queries-advanced');
+
+      expect(
+        await queryLanguagePairs({ scope: { projectId: PROJECT } }),
+      ).toEqual([
+        { language: 'es', channelLanguage: 'en', videoCount: 3 },
+        { language: null, channelLanguage: 'en', videoCount: 2 },
+        { language: 'en', channelLanguage: null, videoCount: 1 },
+      ]);
+    });
+
+    it('reads every video with both of its languages', async () => {
+      mockQueryResult.json.mockResolvedValueOnce([
+        {
+          video_id: 'a',
+          episode_id: 'e1',
+          platform: 'youtube',
+          content_type: 'short',
+          title: 'A',
+          language: '',
+          channel_language: 'hi',
+        },
+      ]);
+
+      const { queryVideoLanguages } = await import('../src/queries-advanced');
+
+      expect(
+        await queryVideoLanguages({ scope: { projectId: PROJECT } }),
+      ).toEqual([
+        {
+          videoId: 'a',
+          episodeId: 'e1',
+          platform: 'youtube',
+          contentType: 'short',
+          title: 'A',
+          language: null,
+          channelLanguage: 'hi',
+        },
+      ]);
+      expect(mockClickHouseClient.query).toHaveBeenCalledTimes(1);
+    });
+
+    it('refuses the language reads without a scope', async () => {
+      const { queryLanguagePairs, queryVideoLanguages } = await import(
+        '../src/queries-advanced'
+      );
+
+      await expect(queryLanguagePairs({ scope: {} })).rejects.toThrow(
+        /projectId or accountId/,
+      );
+      await expect(queryVideoLanguages({ scope: {} })).rejects.toThrow(
+        /projectId or accountId/,
+      );
+    });
+  });
+
   describe('disabled ClickHouse', () => {
     it('returns empty results instead of querying', async () => {
       process.env.CLICKHOUSE_ENABLED = 'false';

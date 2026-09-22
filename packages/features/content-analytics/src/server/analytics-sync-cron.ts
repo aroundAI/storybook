@@ -36,6 +36,8 @@ import {
   createYouTubeAnalyticsProvider,
 } from '../providers/youtube';
 import type { YouTubeAnalyticsResult } from '../providers/youtube';
+import { syncAssetDurations } from './asset-duration-sync';
+import type { AssetDurationCandidate } from './asset-duration-sync';
 import {
   buildAudienceRows,
   buildRetentionPoints,
@@ -48,6 +50,12 @@ import {
 } from './ingest';
 import { getRateLimiter } from './rate-limiter';
 import { getSyncPriority, shouldSyncNow } from './schedule';
+import {
+  mayFetchRevenue,
+  syncEligibility,
+  toConnectionGrant,
+} from './sync-authorisation';
+import type { ConnectionGrant } from './sync-authorisation';
 import type {
   NormalizedAnalytics,
   PublishForSync,
@@ -59,6 +67,7 @@ import type {
 
 const BATCH_SIZE = 50;
 const MAX_CONSECUTIVE_FAILURES = 5;
+const REVENUE_REQUIREMENT = 'youtube.revenue';
 
 // Use generic SupabaseClient type to avoid strict type checking issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -103,6 +112,7 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
     successful: 0,
     failed: 0,
     skipped: 0,
+    notAuthorised: 0,
     byPlatform: {
       youtube: { processed: 0, successful: 0, failed: 0 },
       tiktok: { processed: 0, successful: 0, failed: 0 },
@@ -113,7 +123,20 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
 
   try {
     // 1. Fetch publishes that need syncing
-    const publishesToSync = await fetchPublishesForSync(client, BATCH_SIZE);
+    const { publishes: publishesToSync, notAuthorised } =
+      await fetchPublishesForSync(client, BATCH_SIZE);
+
+    result.notAuthorised = notAuthorised;
+
+    if (notAuthorised > 0) {
+      // Once per run, not once per publish: these are a permanent condition
+      // until a creator reconnects, and a line each is how a log stops being
+      // read.
+      logger.info(
+        { ...ctx, notAuthorised },
+        'Left alone: connection lacks the analytics scope',
+      );
+    }
 
     if (publishesToSync.length === 0) {
       logger.info(ctx, 'No publishes to sync');
@@ -128,6 +151,10 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
 
     // 2. Group by platform for efficient processing
     const byPlatform = groupByPlatform(publishesToSync);
+
+    // Before the dim upsert, so a duration written this run reaches
+    // video_dim this run rather than on the publish's next visit.
+    await fillMissingAssetDurations(client, publishesToSync, ctx);
 
     // Keep the dimension table fresh: batch upsert for this run's
     // publishes, full reconcile once a day (publishes has no updated_at)
@@ -227,12 +254,50 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
 }
 
 /**
+ * Asks the provider for the asset duration of any publish still missing one
+ * (FILM-1710). `syncAssetDurations` is the only writer of that column.
+ *
+ * Never throws. A duration is a dimension, and losing one is not a reason to
+ * lose the run's metrics: the row stays `duration_unknown` and is asked about
+ * again next visit.
+ */
+async function fillMissingAssetDurations(
+  client: Client,
+  publishes: Array<
+    AssetDurationCandidate & { duration_seconds: number | null }
+  >,
+  ctx: { name: string },
+): Promise<string[]> {
+  const missing = publishes.filter((p) => p.duration_seconds === null);
+
+  if (missing.length === 0) return [];
+
+  try {
+    const { writtenIds } = await syncAssetDurations(client, missing);
+
+    return writtenIds;
+  } catch (error) {
+    const logger = await getLogger();
+
+    logger.warn(
+      {
+        ...ctx,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      'Asset duration sync failed; publishes stay duration_unknown',
+    );
+
+    return [];
+  }
+}
+
+/**
  * Fetches publishes that are due for syncing
  */
-async function fetchPublishesForSync(
+export async function fetchPublishesForSync(
   client: Client,
   limit: number,
-): Promise<PublishForSync[]> {
+): Promise<{ publishes: PublishForSync[]; notAuthorised: number }> {
   // Query publishes that:
   // 1. Have status = 'published'
   // 2. Have a platform_content_id (means they were actually published)
@@ -248,6 +313,7 @@ async function fetchPublishesForSync(
       platform_connection_id,
       platform_content_id,
       published_at,
+      duration_seconds,
       metadata
     `,
     )
@@ -258,28 +324,38 @@ async function fetchPublishesForSync(
     .limit(limit * 2); // Fetch extra to account for filtering
 
   if (error || !data) {
-    return [];
+    return { publishes: [], notAuthorised: 0 };
   }
+
+  const grants = await fetchConnectionGrants(
+    client,
+    data.map((row) => row.platform_connection_id),
+  );
 
   // Filter based on sync schedule and metadata
   const eligiblePublishes: PublishForSync[] = [];
+  let notAuthorised = 0;
 
   for (const row of data) {
     if (eligiblePublishes.length >= limit) break;
 
     const metadata = row.metadata as PublishMetadata | null;
     const syncMeta = metadata?.sync;
+    const grant = grants.get(row.platform_connection_id);
 
-    // Skip if too many consecutive failures
-    if (
-      syncMeta?.consecutive_failures &&
-      syncMeta.consecutive_failures >= MAX_CONSECUTIVE_FAILURES
-    ) {
+    const eligibility = syncEligibility({
+      platform: row.platform,
+      sync: syncMeta,
+      grant,
+      maxConsecutiveFailures: MAX_CONSECUTIVE_FAILURES,
+    });
+
+    if (eligibility === 'not_authorised') {
+      notAuthorised++;
       continue;
     }
 
-    // Skip if requires reauth
-    if (syncMeta?.requires_reauth) {
+    if (eligibility === 'suppressed') {
       continue;
     }
 
@@ -300,16 +376,50 @@ async function fetchPublishesForSync(
       platform_connection_id: row.platform_connection_id,
       platform_content_id: row.platform_content_id!,
       published_at: row.published_at!,
+      duration_seconds: row.duration_seconds ?? null,
       metadata,
+      connection: grant,
     });
   }
 
   // Sort by priority (newer content first)
-  return eligiblePublishes.sort((a, b) => {
+  eligiblePublishes.sort((a, b) => {
     const priorityA = getSyncPriority(new Date(a.published_at));
     const priorityB = getSyncPriority(new Date(b.published_at));
     return priorityA - priorityB;
   });
+
+  return { publishes: eligiblePublishes, notAuthorised };
+}
+
+/**
+ * What each connection's OAuth callback recorded, keyed by connection id.
+ */
+async function fetchConnectionGrants(
+  client: Client,
+  connectionIds: Array<string | null>,
+): Promise<Map<string, ConnectionGrant>> {
+  const ids = [
+    ...new Set(connectionIds.filter((id): id is string => id !== null)),
+  ];
+
+  const rows = await fetchAllByIds<{
+    id: string;
+    scopes: string[] | null;
+    metadata: unknown;
+  }>(
+    ids,
+    (chunk, from, to) =>
+      client
+        .from('platform_connections')
+        .select('id, scopes, metadata')
+        .in('id', chunk)
+        .order('id')
+        .range(from, to),
+    'connection grants',
+  );
+
+  return new Map(rows.map((row) => [row.id, toConnectionGrant(row)]));
 }
 
 /**
@@ -358,6 +468,7 @@ async function syncSinglePublish(
         last_sync_status: isAuthError ? 'scope_error' : 'failed',
         last_error: tokenResult.error ?? 'Token validation failed',
         requires_reauth: tokenResult.requiresReauth ?? false,
+        last_failed_at: new Date().toISOString(),
       });
 
       return {
@@ -418,8 +529,20 @@ async function syncSinglePublish(
     }
 
     // 5b. Revenue lands in Postgres split by category so the revenue mix
-    // (ads vs Premium vs sponsorship) is measurable
-    await upsertRevenueRecords(client, platform, normalizedData);
+    // (ads vs Premium vs sponsorship) is measurable. Only when it was
+    // measured: an unauthorised zero would otherwise correct today's real
+    // figure down to nothing.
+    if (normalizedData.revenue_measured) {
+      await upsertRevenueRecords(client, platform, normalizedData);
+    }
+
+    if (platform === 'youtube') {
+      await recordRevenueGate(
+        client,
+        publish,
+        (analytics as YouTubeAnalyticsResult).revenueAccess,
+      );
+    }
 
     // 6. Update publish metadata
     await updatePublishSyncMetadata(client, publish.id, {
@@ -469,6 +592,7 @@ async function syncSinglePublish(
       last_error: errorMessage,
       consecutive_failures: currentFailures + 1,
       requires_reauth: errorType === 'scope',
+      last_failed_at: new Date().toISOString(),
     });
 
     logger.error(
@@ -512,6 +636,7 @@ async function fetchPlatformAnalytics(
         videoId: publish.platform_content_id,
         startDate,
         endDate,
+        includeRevenue: mayFetchRevenue(publish.connection),
       });
     }
     case 'tiktok': {
@@ -733,6 +858,7 @@ function normalizeAnalytics(
         revenue_cents: data.totals.estimatedRevenue ?? 0,
         ad_revenue_cents: data.totals.estimatedAdRevenue ?? 0,
         red_revenue_cents: data.totals.estimatedRedPartnerRevenue ?? 0,
+        revenue_measured: data.revenueAccess === 'authorised',
         subscribed_views: data.subscribedStatus?.subscribed ?? 0,
         unsubscribed_views: data.subscribedStatus?.notSubscribed ?? 0,
         device_breakdown: data.deviceBreakdown ?? null,
@@ -761,6 +887,9 @@ function normalizeAnalytics(
         revenue_cents: 0, // TikTok doesn't expose revenue
         ad_revenue_cents: 0,
         red_revenue_cents: 0,
+        // True, as before: these platforms' zeros reconcile against any
+        // 'api' row. See the cost note in upsertRevenueRecords.
+        revenue_measured: true,
         subscribed_views: 0,
         unsubscribed_views: 0,
         device_breakdown: null, // TikTok API doesn't expose device breakdown
@@ -780,11 +909,16 @@ function normalizeAnalytics(
         comments: data.totals.comments ?? 0,
         shares: data.totals.shares ?? 0,
         saves: data.totals.saved ?? 0,
-        watch_time_seconds: 0, // Instagram doesn't expose this
+        // Not measured as zero: Instagram documents Reels watch time and we
+        // never request it. `not_ingested` in CAPABILITY_MATRIX; FILM-1712.
+        watch_time_seconds: 0,
         subscribers_gained: data.totals.follows ?? 0,
         revenue_cents: 0,
         ad_revenue_cents: 0,
         red_revenue_cents: 0,
+        // True, as before: these platforms' zeros reconcile against any
+        // 'api' row. See the cost note in upsertRevenueRecords.
+        revenue_measured: true,
         subscribed_views: 0,
         unsubscribed_views: 0,
         device_breakdown: null, // Instagram API doesn't expose device breakdown
@@ -901,6 +1035,7 @@ export async function syncSinglePublishById(
       platform_connection_id,
       platform_content_id,
       published_at,
+      duration_seconds,
       metadata
     `,
     )
@@ -944,6 +1079,56 @@ export async function syncSinglePublishById(
     };
   }
 
+  // A manual sync is often the first visit a publish gets, and nothing else
+  // in this path touches video_dim — so re-upsert it when a duration lands.
+  // Independent of the analytics-authorisation gate below: it uses a
+  // different scope, and a connection lacking analytics access should not
+  // also be denied this.
+  if (publish.duration_seconds === null) {
+    const written = await fillMissingAssetDurations(
+      client,
+      [
+        {
+          id: publish.id,
+          platform,
+          platform_connection_id: publish.platform_connection_id,
+          platform_content_id: publish.platform_content_id,
+          duration_seconds: null,
+        },
+      ],
+      ctx,
+    );
+
+    if (written.length > 0) {
+      const { upsertVideoDims } = await import('./dim-sync');
+      await upsertVideoDims(written);
+    }
+  }
+
+  const grant = (
+    await fetchConnectionGrants(client, [publish.platform_connection_id])
+  ).get(publish.platform_connection_id);
+
+  // `suppressed` is deliberately not refused here: a person asking for a sync
+  // is allowed to retry what the schedule gave up on. A missing scope is
+  // different — the call cannot succeed, so it is not made.
+  if (
+    syncEligibility({
+      platform,
+      sync: (publish.metadata as PublishMetadata | null)?.sync,
+      grant,
+      maxConsecutiveFailures: MAX_CONSECUTIVE_FAILURES,
+    }) === 'not_authorised'
+  ) {
+    return {
+      publishId,
+      success: false,
+      error:
+        'This connection has not been granted analytics access. Reconnect it from Settings → Platforms.',
+      errorType: 'not_authorised',
+    };
+  }
+
   return syncSinglePublish(
     {
       id: publish.id,
@@ -952,11 +1137,58 @@ export async function syncSinglePublishById(
       platform_connection_id: publish.platform_connection_id,
       platform_content_id: publish.platform_content_id,
       published_at: publish.published_at!,
+      duration_seconds: publish.duration_seconds ?? null,
       metadata: publish.metadata as PublishMetadata | null,
+      connection: grant,
     },
     platform,
     ctx,
   );
+}
+
+/**
+ * Records on the connection that YouTube refused revenue although the scope
+ * is held (a channel outside the Partner Program), or clears it once revenue
+ * arrives. Written only on a change. Publishes in a run share one grant
+ * object, so a channel's fifty publishes cost a write or two (they sync
+ * concurrently, and the first few can all see the old value), not fifty.
+ */
+async function recordRevenueGate(
+  client: Client,
+  publish: PublishForSync,
+  access: YouTubeAnalyticsResult['revenueAccess'],
+): Promise<void> {
+  if (access !== 'authorised' && access !== 'account_type_gated') return;
+
+  const gatedNow = access === 'account_type_gated';
+  const gatedBefore =
+    publish.connection?.accountGated.includes(REVENUE_REQUIREMENT) ?? false;
+
+  if (gatedNow === gatedBefore) return;
+
+  const { data: row, error } = await client
+    .from('platform_connections')
+    .select('metadata')
+    .eq('id', publish.platform_connection_id)
+    .single();
+
+  if (error || !row) return;
+
+  const metadata = (row.metadata ?? {}) as Record<string, unknown>;
+  const others = toConnectionGrant({ metadata }).accountGated.filter(
+    (id) => id !== REVENUE_REQUIREMENT,
+  );
+  const gated = gatedNow ? [...others, REVENUE_REQUIREMENT] : others;
+
+  await client
+    .from('platform_connections')
+    .update({ metadata: { ...metadata, analytics_account_gated: gated } })
+    .eq('id', publish.platform_connection_id);
+
+  // The rest of this run reads the grant from memory, not the row.
+  if (publish.connection) {
+    publish.connection.accountGated = gated;
+  }
 }
 
 /**

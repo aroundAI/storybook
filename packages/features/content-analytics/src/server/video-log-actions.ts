@@ -66,7 +66,8 @@ export interface VideoLogRow {
   channelName: string;
   platform: string;
   contentType: string;
-  language: string;
+  /** Null when nobody set one — never a defaulted code (FILM-1702). */
+  language: string | null;
   viewsAtAge: Record<number, number>;
   /** Whether each checkpoint has elapsed. False means "not yet knowable". */
   matureAt: Record<number, boolean>;

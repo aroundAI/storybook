@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import { batchCreateAssetsAction } from '@kit/episodes/server';
+import { refusalMessage } from '@kit/next/action-result';
 import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -340,8 +341,7 @@ export function AssetsPhase({
         });
       }
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Batch asset creation failed';
+      const message = refusalMessage(err, 'Batch asset creation failed');
       for (const ep of eligibleEpisodes) {
         dispatch({
           type: 'SET_EPISODE_ERROR',

@@ -1,12 +1,18 @@
+import {
+  META_GRAPH_BASE,
+  META_OAUTH_DIALOG_URL,
+  META_OAUTH_TOKEN_URL,
+} from '@kit/shared/vendors';
+
 /**
  * Meta OAuth 2.0 Configuration
  * Uses Facebook Login for both Instagram and Facebook publishing access
  */
 
 export const META_OAUTH_CONFIG = {
-  authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
-  tokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
-  graphUrl: 'https://graph.facebook.com/v18.0',
+  authUrl: META_OAUTH_DIALOG_URL,
+  tokenUrl: META_OAUTH_TOKEN_URL,
+  graphUrl: META_GRAPH_BASE,
   scopes: [
     // Facebook Page publishing
     'pages_show_list',
@@ -16,6 +22,8 @@ export const META_OAUTH_CONFIG = {
     // Instagram
     'instagram_basic',
     'instagram_content_publish',
+    // Media and account insights on the Facebook Login path
+    'instagram_manage_insights',
 
     // Business features
     'business_management',

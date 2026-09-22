@@ -31,6 +31,7 @@ import type {
   PublishJobMessage,
   SocialTextPostJobMessage,
 } from '@kit/publishing/lib/job-types';
+import { LINKEDIN_REST_VERSION } from '@kit/shared/vendors';
 
 // Initialize DynamoDB client
 const ddbClient = new DynamoDBClient({});
@@ -438,7 +439,6 @@ async function processSocialTextPost(
   }
 
   // 2. Create text-only LinkedIn post
-  const LINKEDIN_REST_VERSION = '202401';
   const response = await fetch('https://api.linkedin.com/v2/posts', {
     method: 'POST',
     headers: {

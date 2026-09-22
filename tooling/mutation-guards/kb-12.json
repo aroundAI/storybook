@@ -195,8 +195,8 @@
       "name": "K16 the YouTube revenue query asks for another currency",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
-      "find": "        'estimatedRedPartnerRevenue',\n      ].join(','),\n      filters: `video==${videoId}`,",
-      "replace": "        'estimatedRedPartnerRevenue',\n      ].join(','),\n      currency: 'EUR',\n      filters: `video==${videoId}`,",
+      "find": "          'estimatedRedPartnerRevenue',\n        ].join(','),\n        filters: `video==${videoId}`,",
+      "replace": "          'estimatedRedPartnerRevenue',\n        ].join(','),\n        currency: 'EUR',\n        filters: `video==${videoId}`,",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/revenue-writers.test.ts",
       "pattern": "without a currency"

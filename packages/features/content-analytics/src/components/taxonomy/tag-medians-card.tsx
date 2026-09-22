@@ -2,12 +2,13 @@
 
 import { BarChart3 } from 'lucide-react';
 
-import { interpretSpread } from '@kit/clickhouse';
+import { fromDimLanguage, interpretSpread } from '@kit/clickhouse';
 import type { SegmentConfidence } from '@kit/clickhouse';
 import { Progress } from '@kit/ui/progress';
 import { Skeleton } from '@kit/ui/skeleton';
 import { cn } from '@kit/ui/utils';
 
+import { languageName } from '../../lib/language-labels';
 import type { MoneyByCurrency } from '../../lib/money';
 import { formatMoney } from '../../lib/money';
 
@@ -63,6 +64,17 @@ function formatViews(value: number): string {
 function tagLabel(tag: string): string {
   const separator = tag.indexOf(':');
   return separator >= 0 ? tag.slice(separator + 1) : tag;
+}
+
+/**
+ * A row's name. A language segment is a `video_dim` value, where "nobody
+ * set one" is the empty string — which rendered as a row with no name at
+ * all, its figures intact. It is named here instead (FILM-1702).
+ */
+function segmentLabel(segment: string, noun: 'tag' | 'language'): string {
+  return noun === 'language'
+    ? languageName(fromDimLanguage(segment))
+    : tagLabel(segment);
 }
 
 function formatRpm(rpm: MoneyByCurrency): string {
@@ -131,8 +143,11 @@ export function TagMediansCard({
           )}
         >
           <div className={'flex items-baseline justify-between gap-2'}>
-            <span className={'truncate text-sm font-medium'}>
-              {tagLabel(row.segment)}
+            <span
+              className={'truncate text-sm font-medium'}
+              data-test={'tag-medians-segment'}
+            >
+              {segmentLabel(row.segment, segmentNoun)}
             </span>
             <span className={'shrink-0 text-xs text-muted-foreground'}>
               {formatViews(row.medianViews)} median · {row.matureVideoCount} of{' '}

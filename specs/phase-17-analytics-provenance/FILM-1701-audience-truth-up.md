@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1701
 title: Audience Truth-Up
-status: DRAFT
+status: ✅ DONE
 effort: M
 dependencies: none
 ---
@@ -127,6 +127,24 @@ acceptance criteria as *either read or deliberately recorded as unread*, so the
 next person does not rediscover them. Deciding their surfaces is FILM-1707's
 job, once there is a shell that can describe coverage.
 
+### The register — every `AudienceDimension`, read or deliberately unread
+
+The same list lives in code as `AUDIENCE_DIMENSION_READERS`
+(`lib/audience-dimensions.ts`), a `Record<AudienceDimension, …>` so a new
+dimension does not compile until it has a row here.
+`no-literal-fallbacks.test.ts` binds each `read` entry to a file that asks
+for it, each `unread` entry to nothing asking for it, and both to this table.
+
+| Dimension | Status | Surface, or why not |
+|---|---|---|
+| `age_group` | read | Audience › Age Distribution |
+| `gender` | read | Audience › Gender Split, Overview › Gender |
+| `country` | read | Audience › Top Geographies, Overview › Top Regions |
+| `device` | read | Audience › Device Type — plumbed by this spec |
+| `follower_status` | read | Deep Dive › returning-viewer proxy (`getReturningViewerProxyAction`) |
+| `city` | unread | **Deliberately.** Written by YouTube and Instagram ingest, no card. FILM-1707 decides its surface |
+| `os` | unread | **Deliberately.** Written by YouTube ingest, no card. FILM-1707 decides its surface |
+
 ## 6. The seed script writes the wrong platform
 
 `apps/web/scripts/seed-local-analytics.ts:239` picks a dimension row with
@@ -168,17 +186,17 @@ traffic rows at all — or none of the coverage work can be seen working.
 
 ## 8. Acceptance criteria
 
-- [ ] No `DEFAULT_*` constant in `components/audience/` is rendered as data
-- [ ] `grep -rn "|| DEFAULT_" packages/features/content-analytics/src` returns nothing
-- [ ] Device Type renders rows read from `video_audience` `dimension = 'device'`
-- [ ] Device Type renders an empty state, not a zero and not a default, when the window has no device rows
-- [ ] Interests and Peak Activity are deleted, exports included, with no dangling imports
-- [ ] Every `AudienceDimension` value is either read by a surface or listed in this spec as deliberately unread
-- [ ] The Views card no longer claims a platform set it has not checked
-- [ ] Top Regions and Gender are populated on first load of Overview, not only after visiting Audience
-- [ ] The seed script writes each row under the platform of the publish it belongs to
-- [ ] The seeded fixture contains at least one platform with **no** traffic-source rows, so absence is representable
-- [ ] A reviewer can state, for every number on the Audience tab, which ClickHouse rows produced it
+- [x] No `DEFAULT_*` constant in `components/audience/` is rendered as data
+- [x] `grep -rn "|| DEFAULT_" packages/features/content-analytics/src` returns nothing
+- [x] Device Type renders rows read from `video_audience` `dimension = 'device'`
+- [x] Device Type renders an empty state, not a zero and not a default, when the window has no device rows
+- [x] Interests and Peak Activity are deleted, exports included, with no dangling imports
+- [x] Every `AudienceDimension` value is either read by a surface or listed in this spec as deliberately unread
+- [x] The Views card no longer claims a platform set it has not checked
+- [x] Top Regions and Gender are populated on first load of Overview, not only after visiting Audience
+- [x] The seed script writes each row under the platform of the publish it belongs to
+- [x] The seeded fixture contains at least one platform with **no** traffic-source rows, so absence is representable
+- [x] A reviewer can state, for every number on the Audience tab, which ClickHouse rows produced it
 
 ## 9. Verification
 
@@ -189,21 +207,102 @@ set -a && . deployment/config/local.env && set +a
 pnpm --filter web seed:local-analytics
 ```
 
-Then confirm in the live database that the fixture is genuinely mixed:
+Then confirm in the live database that the fixture is genuinely mixed. Scoped
+to the seeded project: a shared local ClickHouse also holds other people's
+rows (a load-test project with TikTok traffic rows, when this was run), and an
+unscoped count reports those as if the seed had written them.
 
 ```sql
-SELECT platform, count() FROM video_traffic_sources FINAL GROUP BY platform;
--- expect: youtube only
+SELECT platform, count() FROM video_traffic_sources FINAL
+WHERE project_id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' GROUP BY platform;
+-- expect: youtube only                       (measured: youtube 480)
 
-SELECT platform, count() FROM video_metrics FINAL GROUP BY platform;
--- expect: all three
+SELECT platform, metric_source, count() FROM video_metrics FINAL
+WHERE project_id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+GROUP BY platform, metric_source;
+-- expect: all three, youtube as true daily   (measured: youtube backfill 48,
+--         rows and the others as deltas       tiktok snapshot_delta 47,
+--                                             instagram snapshot_delta 47)
 ```
 
 And in the browser, on the Audience tab: Device Type shows measured rows or an
 empty state; Interests and Peak Activity are gone; nothing on the tab displays
 a number that cannot be traced to a row.
 
-## 10. Risk
+## 10. As built
+
+### Where every number on the Audience tab comes from
+
+All of it is `video_audience`, read by `getProjectAudienceData`
+(`server/aggregation-queries.ts`) through `queryAudienceRows`, which takes the
+latest row per `(video_id, key)` with `argMax(…, fetched_at)`.
+
+| Card | Rows | How the figure is made |
+|---|---|---|
+| Age Distribution | `dimension = 'age_group'` | Each row's weight is its `views`, or where the platform sends only a share, `percentage / 100 ×` that video's views in the selected period (`queryTotalsByVideoIds`). Figure = key's weight ÷ all weights × 100 |
+| Gender Split | `dimension = 'gender'` | Same. `other` and YouTube's `user_specified` are shown together as Other |
+| Top Geographies | `dimension = 'country'` | Same; top seven |
+| Device Type | `dimension = 'device'` | Sum of `views` per device ÷ sum over all devices × 100. The footer states the denominator |
+| Peak Activity, Audience Interests | none | No figure. "We don't collect this" |
+
+Three things a reviewer should know rather than discover:
+
+- **Audience rows are lifetime, latest-wins, and carry no date.** The date
+  picker changes only the *weights* of percentage-only rows, never which rows
+  are read. The spec's "when the window has no device rows" is therefore "when
+  the project has no device rows".
+- **A video with no views in the period weighs 1, not 0**
+  (`perVideoTotals.get(videoId)?.views || 1`). Pre-existing, and left alone: at
+  0 a project whose videos were all quiet in the period would divide by zero.
+  It is a weight, not a displayed figure.
+- **Only YouTube writes device rows**, so Device Type is a YouTube figure on a
+  mixed project. Saying so on the card is FILM-1705's chip; this spec makes the
+  number true, not labelled.
+
+### Found on the way, and fixed because the tab could not be true without it
+
+- **Every audience share was 100× too small.** `aggregate` returned `0..1` and
+  each card printed the value followed by `%`: a seeded 80% share read "0.8%",
+  and the Gender donut's centre read "1%" beside a legend (which normalises
+  itself) reading 70.0%. The read now returns percentages out of 100. Measured
+  before and after against the same seeded rows — see the PR.
+- **Age, Gender and Geography had `|| DEFAULT_*` fallbacks too**, reachable
+  whenever one dimension was missing and another was not — a TikTok-only
+  project with genders and no ages was shown `{ '18-24': 32.5, … }`. Each card
+  now has its own empty state. `GenderSplitCard` separately fell back to
+  `|| 58` and `|| 38.5` per key.
+- **Every Audience card carried a canned footer** presented as an insight —
+  "Male viewership has increased by 4.2% over the last month". Removed; the
+  only footer left is Device Type's, which is derived from its rows.
+- **`PeakActivityGrid`** (`charts/heatmap-grid.tsx`) held a second copy of the
+  invented hour-of-day curve behind its own `data || defaultData`. Deleted with
+  its only caller.
+- **`ExtendedAudienceData`** lost `peakActivity`, `interests` and
+  `contentAffinity`: fields with no provider, no dimension and no writer, which
+  existed so the constants had something to fall back *from*.
+
+### The Views card
+
+Removed, not derived, as §11 anticipated. `totalViews` is summed through
+`seasons → episodes → publishes` while the platform list would come from
+`queryPlatformBreakdown` by project id — two different sets, so a list derived
+from one would be a claim about the other.
+
+### The seed script
+
+The row-building moved to `scripts/local-analytics-fixture.ts`, a pure function
+with a unit test, because "every row under its publish's platform" is a
+property and the script could not be imported without running it. Two changes
+beyond the platform fix:
+
+- **It clears before it writes.** Both tables sort by `(project_id, platform,
+  …)`, so a row re-seeded under its true platform sits *beside* the copy an
+  earlier run wrote under `youtube` instead of replacing it.
+- **It writes metrics and traffic to the seeded project only.** It cycled
+  through every published publish in the database, which on a shared local
+  stack put a year of invented views on other people's E2E fixtures.
+
+## 11. Risk
 
 Deleting two populated-looking cards is a visible regression to anyone who
 believed them. That is the point, and the honest framing is that the regression

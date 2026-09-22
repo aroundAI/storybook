@@ -10,7 +10,9 @@ import { revalidatePath } from 'next/cache';
 
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -183,7 +185,7 @@ function mapNarrativeThread(row: NarrativeThreadRow): NarrativeThread {
 /**
  * Adds an immutable event to the canon.
  */
-export const addImmutableEventAction = enhanceAction(
+const addImmutableEvent = enhanceAction(
   async (data: AddImmutableEventInput, user) => {
     const client = getSupabaseServerClient();
 
@@ -196,7 +198,7 @@ export const addImmutableEventAction = enhanceAction(
       .single();
 
     if (existing) {
-      throw new Error(
+      throw new ActionRefusal(
         `Event key "${data.eventKey}" already exists. Immutable events cannot be duplicated.`,
       );
     }
@@ -233,6 +235,8 @@ export const addImmutableEventAction = enhanceAction(
     schema: AddImmutableEventSchema,
   },
 );
+
+export const addImmutableEventAction = returnRefusals(addImmutableEvent);
 
 /**
  * Gets all immutable events for a project.

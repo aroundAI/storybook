@@ -1,0 +1,145 @@
+{
+  "feature": "FILM-1723",
+  "mutations": [
+    {
+      "name": "Token refresh pins its own Graph version again, caught by the repo scan",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "const refreshUrl = new URL(META_OAUTH_TOKEN_URL);",
+      "replace": "const refreshUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "no vendor host or version literal"
+    },
+    {
+      "name": "Token refresh pins its own Graph version again, caught by the refresh test",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "const refreshUrl = new URL(META_OAUTH_TOKEN_URL);",
+      "replace": "const refreshUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "pinned Graph version"
+    },
+    {
+      "name": "A publish lambda writes a Graph version literal",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/handlers/instagram.ts",
+      "find": "`${META_GRAPH_BASE}/${accountId}/media_publish`",
+      "replace": "`https://graph.facebook.com/v19.0/${accountId}/media_publish`",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "no vendor host or version literal"
+    },
+    {
+      "name": "A bare Graph version constant reappears in a provider",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/facebook/types.ts",
+      "find": "export const FACEBOOK_API_VERSION = META_GRAPH_VERSION;",
+      "replace": "export const FACEBOOK_API_VERSION = 'v18.0';",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "no vendor host or version literal"
+    },
+    {
+      "name": "A second Graph version is declared beside the pin",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/meta.ts",
+      "find": "export const META_GRAPH_VERSION = 'v23.0';",
+      "replace": "export const META_GRAPH_VERSION = 'v23.0';\nexport const META_LEGACY_GRAPH_VERSION = 'v18.0';",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "declares each pin exactly once"
+    },
+    {
+      "name": "The Graph pin moves without its expiry date",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/meta.ts",
+      "find": "export const META_GRAPH_VERSION = 'v23.0';",
+      "replace": "export const META_GRAPH_VERSION = 'v26.0';",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "the Graph pin carries the dates"
+    },
+    {
+      "name": "X goes back to the legacy API host",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/x.ts",
+      "find": "const X_API_HOST = 'https://api.x.com';",
+      "replace": "const X_API_HOST = 'https://api.twitter.com';",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "declares each pin exactly once"
+    },
+    {
+      "name": "The X provider calls the retired v1.1 upload",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/twitter/twitter-provider.ts",
+      "find": "const response = await fetch(X_MEDIA_UPLOAD.initialize, {",
+      "replace": "const response = await fetch('https://upload.twitter.com/1.1/media/upload.json?command=INIT', {",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/twitter-provider.test.ts",
+      "pattern": "walks initialize"
+    },
+    {
+      "name": "The X provider reads the v1.1 media id field",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/twitter/twitter-provider.ts",
+      "find": "    if (!data?.id) {\n      throw new Error('Twitter init failed: Missing media id');\n    }\n\n    return {\n      mediaId: data.id,",
+      "replace": "    return {\n      mediaId: data.media_id_string,",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/twitter-provider.test.ts",
+      "pattern": "attaches the id"
+    },
+    {
+      "name": "The X provider sends the v1.1 command field on append",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/twitter/twitter-provider.ts",
+      "find": "    formData.append('segment_index', String(segmentIndex));",
+      "replace": "    formData.append('command', 'APPEND');\n    formData.append('segment_index', String(segmentIndex));",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/twitter-provider.test.ts",
+      "pattern": "without the v1.1 command"
+    },
+    {
+      "name": "The X lambda reads processing state from the v1.1 response root",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/handlers/twitter.ts",
+      "find": "    processing = (await statusRes.json()).data?.processing_info;",
+      "replace": "    processing = (await statusRes.json()).processing_info;",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/twitter.test.ts",
+      "pattern": "does not post when processing fails"
+    },
+    {
+      "name": "The X lambda calls the retired v1.1 upload",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/handlers/twitter.ts",
+      "find": "const initRes = await fetch(X_MEDIA_UPLOAD.initialize, {",
+      "replace": "const initRes = await fetch('https://upload.twitter.com/1.1/media/upload.json', {",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/twitter.test.ts",
+      "pattern": "walks initialize"
+    },
+    {
+      "name": "LinkedIn's version is declared a second time in the lambda",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/index.ts",
+      "find": "      'LinkedIn-Version': LINKEDIN_REST_VERSION,",
+      "replace": "      'LinkedIn-Version': '202401',",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "no vendor host or version literal"
+    },
+    {
+      "name": "Instagram asks for video_views, removed in the versions the pin crossed",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/instagram/instagram-provider.ts",
+      "find": "?fields=permalink&access_token=",
+      "replace": "?fields=permalink,video_views&access_token=",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "video_views"
+    }
+  ]
+}

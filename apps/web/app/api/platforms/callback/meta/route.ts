@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { parseMetaGrantedPermissions } from '@kit/publishing/oauth/analytics-scopes';
 import { META_OAUTH_CONFIG, MetaOAuthState } from '@kit/publishing/oauth/meta';
 import { getGlobalOAuthCredentials } from '@kit/publishing/server';
 import { encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+import { accountIdFromUnverifiedState } from '~/lib/platforms/connect-failure';
+import {
+  CallbackFailure,
+  catchConnectFailures,
+  failConnect,
+  vendorRefusal,
+} from '~/lib/platforms/fail-connect';
 
 interface FacebookPageResponse {
   id: string;
@@ -28,7 +37,7 @@ interface InstagramAccountResponse {
  * Handles the OAuth callback from Facebook, exchanges code for tokens,
  * fetches Pages and Instagram accounts, and stores connections
  */
-export async function GET(request: NextRequest) {
+async function handleCallback(request: NextRequest) {
   const logger = await getLogger();
   const ctx = { name: 'oauth.meta.callback' };
 
@@ -47,27 +56,34 @@ export async function GET(request: NextRequest) {
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
 
+  // Every way of giving up goes through here: one log line, one landing page.
+  const fail = (failure: CallbackFailure) =>
+    failConnect({
+      request,
+      platform: 'meta',
+      accountId: accountIdFromUnverifiedState(stateParam),
+      ...failure,
+    });
+
   if (error) {
-    const errorDesc = request.nextUrl.searchParams.get('error_description');
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=${encodeURIComponent(errorDesc || error)}`,
-    );
+    return fail(vendorRefusal(error, request.nextUrl.searchParams));
   }
 
   if (!code || !stateParam) {
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=missing_params`,
-    );
+    return fail({ code: 'missing_params', branch: 'missing_params' });
   }
 
   // Decode and validate state
   let state: MetaOAuthState;
   try {
     state = JSON.parse(Buffer.from(stateParam, 'base64url').toString());
+
+    // Valid JSON is not yet a state: `null` parses, and has no nonce to read.
+    if (typeof state?.nonce !== 'string') {
+      throw new Error('Not an OAuth state');
+    }
   } catch {
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=invalid_state`,
-    );
+    return fail({ code: 'invalid_state', branch: 'state_unreadable' });
   }
 
   // Verify nonce
@@ -81,18 +97,18 @@ export async function GET(request: NextRequest) {
     .single();
 
   if (stateError || !storedState) {
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=state_expired`,
-    );
+    return fail({
+      code: 'state_expired',
+      branch: 'state_not_found',
+      cause: stateError,
+    });
   }
 
   // Get global OAuth credentials (configured by super admin)
   const credentials = await getGlobalOAuthCredentials('meta');
 
   if (!credentials) {
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=meta_not_configured`,
-    );
+    return fail({ code: 'not_configured', branch: 'credentials_missing' });
   }
 
   // Exchange code for short-lived token
@@ -109,13 +125,15 @@ export async function GET(request: NextRequest) {
   const shortLivedToken = await tokenResponse.json();
 
   if (shortLivedToken.error || !shortLivedToken.access_token) {
-    logger.error(
-      { ...ctx, error: shortLivedToken.error },
-      'Token exchange failed',
-    );
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=${encodeURIComponent(shortLivedToken.error?.message || 'token_exchange_failed')}`,
-    );
+    return fail({
+      code: 'token_exchange_failed',
+      branch: 'token_exchange',
+      vendor: {
+        error: shortLivedToken.error?.type,
+        description: shortLivedToken.error?.message,
+      },
+      status: tokenResponse.status,
+    });
   }
 
   // Exchange for long-lived token
@@ -134,13 +152,15 @@ export async function GET(request: NextRequest) {
   const longLivedToken = await longLivedResponse.json();
 
   if (longLivedToken.error || !longLivedToken.access_token) {
-    logger.error(
-      { ...ctx, error: longLivedToken.error },
-      'Long-lived token exchange failed',
-    );
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=token_exchange_failed`,
-    );
+    return fail({
+      code: 'token_exchange_failed',
+      branch: 'long_lived_token_exchange',
+      vendor: {
+        error: longLivedToken.error?.type,
+        description: longLivedToken.error?.message,
+      },
+      status: longLivedResponse.status,
+    });
   }
 
   const userAccessToken = longLivedToken.access_token;
@@ -160,21 +180,41 @@ export async function GET(request: NextRequest) {
   const pagesData = await pagesResponse.json();
 
   if (pagesData.error) {
-    logger.error({ ...ctx, error: pagesData.error }, 'Failed to fetch Pages');
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=pages_fetch_failed`,
-    );
+    return fail({
+      code: 'account_lookup_failed',
+      branch: 'pages_fetch',
+      cause: pagesData.error,
+      status: pagesResponse.status,
+    });
   }
 
   const pages: FacebookPageResponse[] = pagesData.data || [];
 
   if (pages.length === 0) {
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=no_pages_found`,
-    );
+    return fail({ code: 'no_pages_found', branch: 'no_pages_found' });
   }
 
   const encryptedUserToken = await encrypt(userAccessToken);
+
+  // What the person granted, which can be less than the dialog asked for —
+  // `/me/permissions` lists declined and expired permissions beside granted
+  // ones. `[]` when the lookup fails, which reads as "no recorded grant"
+  // rather than as a grant of everything we asked for.
+  const permissionsUrl = new URL(
+    `${META_OAUTH_CONFIG.graphUrl}/me/permissions`,
+  );
+  permissionsUrl.searchParams.set('access_token', userAccessToken);
+
+  const grantedScopes = await fetch(permissionsUrl.toString())
+    .then((response) => response.json())
+    .then(parseMetaGrantedPermissions)
+    .catch(() => []);
+
+  if (grantedScopes.length === 0) {
+    logger.warn(ctx, 'Could not read granted permissions');
+  }
+
+  const scopesGrantedAt = new Date().toISOString();
 
   // Store connections for each page and associated Instagram
   const pageConnectionResults = await Promise.all(
@@ -204,9 +244,10 @@ export async function GET(request: NextRequest) {
           access_token_encrypted: encryptedPageToken, // Page access token (never expires)
           refresh_token_encrypted: encryptedUserToken, // User token for refresh
           token_expires_at: expiresAt.toISOString(),
-          scopes: [...META_OAUTH_CONFIG.scopes],
+          scopes: grantedScopes,
           is_active: true,
           metadata: {
+            scopes_granted_at: scopesGrantedAt,
             category: page.category,
             picture_url: page.picture?.data?.url ?? null,
             user_token_expires_at: expiresAt.toISOString(),
@@ -245,9 +286,10 @@ export async function GET(request: NextRequest) {
               access_token_encrypted: encryptedPageToken, // Use Page token for Instagram API
               refresh_token_encrypted: encryptedUserToken, // User token for refresh
               token_expires_at: expiresAt.toISOString(),
-              scopes: ['instagram_basic', 'instagram_content_publish'],
+              scopes: grantedScopes,
               is_active: true,
               metadata: {
+                scopes_granted_at: scopesGrantedAt,
                 linked_page_id: page.id,
                 profile_picture_url: igAccount.profile_picture_url ?? null,
                 followers_count: igAccount.followers_count ?? null,
@@ -284,13 +326,11 @@ export async function GET(request: NextRequest) {
       });
 
     if (insertError) {
-      logger.error(
-        { ...ctx, error: insertError },
-        'Failed to store connections',
-      );
-      return NextResponse.redirect(
-        `${appUrl}/settings/platforms?error=storage_failed`,
-      );
+      return fail({
+        code: 'storage_failed',
+        branch: 'connection_upsert',
+        cause: insertError,
+      });
     }
   }
 
@@ -324,3 +364,5 @@ export async function GET(request: NextRequest) {
     `${appUrl}/home/${accountSlug}/settings/platforms?success=meta_connected&count=${connectedCount}&accounts=${encodeURIComponent(platformNames)}`,
   );
 }
+
+export const GET = catchConnectFailures('meta', handleCallback);

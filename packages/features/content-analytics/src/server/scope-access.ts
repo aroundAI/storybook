@@ -20,6 +20,7 @@ export interface AnalyticsScope {
   platform?: 'youtube' | 'tiktok' | 'instagram';
   contentType?: string;
   language?: string;
+  channelLanguage?: string;
 }
 
 /**

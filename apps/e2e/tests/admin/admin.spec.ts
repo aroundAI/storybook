@@ -4,6 +4,9 @@ import { AuthPageObject } from '../authentication/auth.po';
 import {
   SeededTeam,
   SeededUser,
+  readRows,
+  seedMembership,
+  seedProject,
   seedTeamAccount,
   seedUser,
   uniqueStamp,
@@ -201,6 +204,28 @@ test.describe('Admin', () => {
     });
 
     test('delete user flow', async ({ page }) => {
+      // FILM-CC-04 KB-1. This flow used to pass only because its user had
+      // never created anything: `projects.created_by` referenced auth.users
+      // with no ON DELETE action, so the first project made a user
+      // undeletable. The project lives on a colleague's team, so it outlives
+      // its author and can be read back afterwards.
+      const team = await seedTeamAccount({ emailPrefix: 'admin-kb1-owner' });
+      await seedMembership(testUser.userId, team.accountId);
+
+      const project = await seedProject({
+        email: testUser.email,
+        password: testUser.password,
+        accountId: team.accountId,
+      });
+
+      const before = await readRows<{ created_by: string | null }>(
+        'projects',
+        `id=eq.${project.id}&select=created_by`,
+      );
+
+      // Otherwise "no author" below is true of a project nobody authored.
+      expect(before).toEqual([{ created_by: testUser.userId }]);
+
       await page.getByTestId('admin-delete-account-button').click();
 
       await expect(
@@ -221,7 +246,8 @@ test.describe('Admin', () => {
 
       await page.getByRole('button', { name: 'Delete' }).click();
 
-      // Should redirect to admin dashboard
+      // Should redirect to admin dashboard. A refused delete stays on the
+      // account page, and the test fails here.
       await page.waitForURL('/admin/accounts');
 
       // Log out
@@ -242,6 +268,17 @@ test.describe('Admin', () => {
       await expect(
         page.locator('[data-test="auth-error-message"]'),
       ).toBeVisible();
+
+      // The project stays with the team, with no author. Read last: the
+      // log-out above depends on the cookies going while the accounts page
+      // is still loading, and a request placed before it let the page settle
+      // so that nothing ever navigated to '/'.
+      const after = await readRows<{ created_by: string | null }>(
+        'projects',
+        `id=eq.${project.id}&select=created_by`,
+      );
+
+      expect(after).toEqual([{ created_by: null }]);
     });
   });
 

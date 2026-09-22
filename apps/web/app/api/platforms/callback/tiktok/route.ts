@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { parseGrantedScopes } from '@kit/publishing/oauth/analytics-scopes';
 import {
   TIKTOK_OAUTH_CONFIG,
   TikTokOAuthState,
@@ -7,6 +8,14 @@ import {
 import { encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+import { accountIdFromUnverifiedState } from '~/lib/platforms/connect-failure';
+import {
+  CallbackFailure,
+  catchConnectFailures,
+  failConnect,
+  vendorRefusal,
+} from '~/lib/platforms/fail-connect';
 
 interface TikTokOAuthMetadata {
   codeVerifier?: string;
@@ -17,7 +26,7 @@ interface TikTokOAuthMetadata {
  * Handles the OAuth callback from TikTok, exchanges code for tokens with PKCE,
  * and stores the connection
  */
-export async function GET(request: NextRequest) {
+async function handleCallback(request: NextRequest) {
   const logger = await getLogger();
   const ctx = { name: 'oauth.tiktok.callback' };
 
@@ -35,27 +44,34 @@ export async function GET(request: NextRequest) {
   const error = request.nextUrl.searchParams.get('error');
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
 
+  // Every way of giving up goes through here: one log line, one landing page.
+  const fail = (failure: CallbackFailure) =>
+    failConnect({
+      request,
+      platform: 'tiktok',
+      accountId: accountIdFromUnverifiedState(stateParam),
+      ...failure,
+    });
+
   if (error) {
-    const errorDesc = request.nextUrl.searchParams.get('error_description');
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=${encodeURIComponent(errorDesc || error)}`,
-    );
+    return fail(vendorRefusal(error, request.nextUrl.searchParams));
   }
 
   if (!code || !stateParam) {
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=missing_params`,
-    );
+    return fail({ code: 'missing_params', branch: 'missing_params' });
   }
 
   // Decode state
   let state: TikTokOAuthState;
   try {
     state = JSON.parse(Buffer.from(stateParam, 'base64url').toString());
+
+    // Valid JSON is not yet a state: `null` parses, and has no nonce to read.
+    if (typeof state?.nonce !== 'string') {
+      throw new Error('Not an OAuth state');
+    }
   } catch {
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=invalid_state`,
-    );
+    return fail({ code: 'invalid_state', branch: 'state_unreadable' });
   }
 
   // Verify nonce and retrieve code verifier
@@ -69,18 +85,18 @@ export async function GET(request: NextRequest) {
     .single();
 
   if (stateError || !storedState) {
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=state_expired`,
-    );
+    return fail({
+      code: 'state_expired',
+      branch: 'state_not_found',
+      cause: stateError,
+    });
   }
 
   const metadata = storedState.metadata as TikTokOAuthMetadata | null;
   const codeVerifier = metadata?.codeVerifier;
 
   if (!codeVerifier) {
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=invalid_state`,
-    );
+    return fail({ code: 'invalid_state', branch: 'code_verifier_missing' });
   }
 
   // Note: State deletion moved to after successful connection storage
@@ -90,9 +106,7 @@ export async function GET(request: NextRequest) {
   const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
 
   if (!clientKey || !clientSecret) {
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=tiktok_not_configured`,
-    );
+    return fail({ code: 'not_configured', branch: 'credentials_missing' });
   }
 
   // Exchange code for tokens
@@ -112,31 +126,31 @@ export async function GET(request: NextRequest) {
   const tokens = await tokenResponse.json();
 
   if (tokens.error || !tokens.access_token) {
-    logger.error({ ...ctx, error: tokens.error }, 'Token exchange failed');
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=${encodeURIComponent(tokens.error_description || tokens.error || 'token_exchange_failed')}`,
-    );
+    return fail({
+      code: 'token_exchange_failed',
+      branch: 'token_exchange',
+      vendor: { error: tokens.error, description: tokens.error_description },
+      status: tokenResponse.status,
+    });
   }
 
   // Validate expires_in and refresh_expires_in for token expiration calculations
   if (typeof tokens.expires_in !== 'number' || tokens.expires_in <= 0) {
-    logger.error({ ...ctx, tokens }, 'Invalid expires_in in token response');
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=invalid_token_response`,
-    );
+    // Not `tokens`: that object is the access and refresh tokens.
+    return fail({
+      code: 'invalid_token_response',
+      branch: 'expires_in_invalid',
+    });
   }
 
   if (
     typeof tokens.refresh_expires_in !== 'number' ||
     tokens.refresh_expires_in <= 0
   ) {
-    logger.error(
-      { ...ctx, tokens },
-      'Invalid refresh_expires_in in token response',
-    );
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=invalid_token_response`,
-    );
+    return fail({
+      code: 'invalid_token_response',
+      branch: 'refresh_expires_in_invalid',
+    });
   }
 
   // Get user info
@@ -153,10 +167,12 @@ export async function GET(request: NextRequest) {
   const tiktokUser = userInfo.data?.user;
 
   if (!tiktokUser) {
-    logger.error({ ...ctx, error: userInfo }, 'Failed to get user info');
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=no_user_info`,
-    );
+    return fail({
+      code: 'account_lookup_failed',
+      branch: 'user_info_empty',
+      cause: userInfo.error,
+      status: userInfoResponse.status,
+    });
   }
 
   // Calculate expiration times
@@ -181,8 +197,11 @@ export async function GET(request: NextRequest) {
         access_token_encrypted: encryptedAccessToken,
         refresh_token_encrypted: encryptedRefreshToken,
         token_expires_at: accessTokenExpiresAt.toISOString(),
-        scopes: tokens.scope?.split(',') || TIKTOK_OAUTH_CONFIG.scopes,
+        // No fallback to the scopes we requested: that records a grant
+        // nobody confirmed, and the analytics gate would believe it.
+        scopes: parseGrantedScopes(tokens.scope),
         metadata: {
+          scopes_granted_at: new Date().toISOString(),
           union_id: tiktokUser.union_id,
           avatar_url: tiktokUser.avatar_url,
           refresh_expires_at: refreshTokenExpiresAt.toISOString(),
@@ -196,10 +215,11 @@ export async function GET(request: NextRequest) {
     );
 
   if (insertError) {
-    logger.error({ ...ctx, error: insertError }, 'Failed to store connection');
-    return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=storage_failed`,
-    );
+    return fail({
+      code: 'storage_failed',
+      branch: 'connection_upsert',
+      cause: insertError,
+    });
   }
 
   // Clean up used state after successful connection storage
@@ -220,3 +240,5 @@ export async function GET(request: NextRequest) {
     `${state.returnUrl}?success=tiktok_connected&username=${encodeURIComponent(tiktokUser.display_name || '')}`,
   );
 }
+
+export const GET = catchConnectFailures('tiktok', handleCallback);

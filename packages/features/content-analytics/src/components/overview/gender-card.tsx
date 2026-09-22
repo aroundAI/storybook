@@ -23,6 +23,7 @@ export function GenderCard({ genders }: GenderCardProps) {
       icon={Users}
       description="Viewer gender distribution"
       footer="Based on platform demographics data"
+      data-test="overview-gender"
     >
       <div className="flex flex-1 flex-col justify-center gap-4">
         {/* Male */}
@@ -31,7 +32,10 @@ export function GenderCard({ genders }: GenderCardProps) {
             <span className="font-medium text-gray-900 dark:text-white">
               Male
             </span>
-            <span className="text-gray-500 dark:text-gray-400">
+            <span
+              className="text-gray-500 dark:text-gray-400"
+              data-test="gender-male"
+            >
               {formatPercent(genders.male)}
             </span>
           </div>
@@ -48,7 +52,10 @@ export function GenderCard({ genders }: GenderCardProps) {
             <span className="font-medium text-gray-900 dark:text-white">
               Female
             </span>
-            <span className="text-gray-500 dark:text-gray-400">
+            <span
+              className="text-gray-500 dark:text-gray-400"
+              data-test="gender-female"
+            >
               {formatPercent(genders.female)}
             </span>
           </div>

@@ -1,6 +1,7 @@
 /**
  * Platform connection types for managing OAuth connections to publishing platforms
  */
+import type { AnalyticsAccess } from './oauth/analytics-scopes';
 
 export type PlatformType =
   | 'youtube'
@@ -29,6 +30,8 @@ export interface PlatformConnection {
   updatedAt: string;
   accountSlug: string;
   language?: string; // Target language for this channel (en, hi, es, etc.)
+  /** Null for a platform with no analytics requirement (LinkedIn). */
+  analyticsAccess?: AnalyticsAccess | null;
 }
 
 /**

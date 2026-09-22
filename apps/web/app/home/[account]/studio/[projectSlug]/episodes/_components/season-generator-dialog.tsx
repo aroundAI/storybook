@@ -41,6 +41,7 @@ import {
   analyzeSeasonRoadmapAction,
   generateSeasonEpisodesAction,
 } from '@kit/episodes/server/season-generation';
+import { refusalMessage } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import {
@@ -570,7 +571,7 @@ export function SeasonGeneratorDialog({
         }
       } catch (err) {
         console.error('[SeasonGenerator] Generation failed:', err);
-        const message = err instanceof Error ? err.message : 'Unknown error';
+        const message = refusalMessage(err, 'Unknown error');
         toast.error(`Failed to generate season: ${message}`);
       }
     });

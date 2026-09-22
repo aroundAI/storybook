@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import type { NarrativeThreadType } from '@kit/episodes';
 import { createNarrativeThreadAction } from '@kit/episodes/server';
+import { refusalMessage } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -140,9 +141,7 @@ export function AddThreadDialog({
           toast.error('Failed to create thread');
         }
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : 'Failed to create thread',
-        );
+        toast.error(refusalMessage(error, 'Failed to create thread'));
       }
     });
   };

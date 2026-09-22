@@ -17,6 +17,7 @@ import {
   batchGenerateStoriesAction,
   refineStoryAction,
 } from '@kit/episodes/server';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { useBulkLlmJobs } from '@kit/ui/hooks';
@@ -260,13 +261,15 @@ function EpisodeStoryCard({
       registerRefine([ep.episodeId]);
       markRefinePending(ep.episodeId);
 
-      await refineStoryAction({
-        episodeId: ep.episodeId,
-        projectId,
-        feedback: notes,
-      });
+      await unwrap(
+        refineStoryAction({
+          episodeId: ep.episodeId,
+          projectId,
+          feedback: notes,
+        }),
+      );
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Refinement failed';
+      const message = refusalMessage(err, 'Refinement failed');
       dispatch({
         type: 'SET_EPISODE_ERROR',
         episodeId: ep.episodeId,
@@ -610,8 +613,7 @@ export function StoryPhase({
         dispatch({ type: 'SET_STORY_STATUS', episodeId, status: 'error' });
       }
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Batch story generation failed';
+      const message = refusalMessage(err, 'Batch story generation failed');
       for (const ep of batchPayload) {
         dispatch({
           type: 'SET_EPISODE_ERROR',

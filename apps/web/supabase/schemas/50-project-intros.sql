@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS public.project_intros (
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
-  created_by UUID REFERENCES auth.users(id),
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   
   -- One active intro per language per project
   UNIQUE (project_id, language)

@@ -168,3 +168,18 @@ export type {
   TrafficSourceGroup,
   TrafficSourceRow,
 } from '../lib/traffic-groups';
+
+// Language dimensions (FILM-1702).
+export {
+  LANGUAGE_DIMENSION_SEGMENTS,
+  queryLanguagePairs,
+  queryVideoLanguages,
+} from '../queries-advanced';
+export type { LanguagePairRow, VideoLanguageRow } from '../queries-advanced';
+export {
+  LANGUAGE_DIMENSIONS,
+  LANGUAGE_NOT_SET,
+  fromDimLanguage,
+  toDimLanguage,
+} from '../lib/language-dimension';
+export type { LanguageDimension } from '../lib/language-dimension';

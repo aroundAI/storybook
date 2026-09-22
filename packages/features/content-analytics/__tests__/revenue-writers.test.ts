@@ -82,7 +82,7 @@ const WRITERS: Record<string, Array<{ value: string; store: Store }>> = {
     // The manual form: any currency, stored beside the figure.
     { value: 'revenueCents', store: 'postgres' },
   ],
-  'apps/web/scripts/seed-local-analytics.ts': [
+  'apps/web/scripts/local-analytics-fixture.ts': [
     { value: '0', store: 'clickhouse' },
   ],
 };

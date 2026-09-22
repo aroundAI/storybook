@@ -5,6 +5,7 @@ import { useTransition } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import {
   Form,
@@ -48,7 +49,7 @@ export function UpdateProjectForm({
   const onSubmit = form.handleSubmit((data) => {
     startTransition(async () => {
       try {
-        const result = await updateProjectAction(data);
+        const result = await unwrap(updateProjectAction(data));
 
         if (result.success) {
           toast.success(<Trans i18nKey="projects:updateSuccess" />);
@@ -59,7 +60,7 @@ export function UpdateProjectForm({
           <Trans
             i18nKey="projects:updateError"
             values={{
-              error: error instanceof Error ? error.message : 'Unknown error',
+              error: refusalMessage(error, 'Unknown error'),
             }}
           />,
         );

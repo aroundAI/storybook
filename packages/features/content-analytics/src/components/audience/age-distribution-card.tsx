@@ -2,16 +2,18 @@
 
 import { Users } from 'lucide-react';
 
-import { AudienceCard } from './audience-card';
+import { AudienceCard, AudienceCardEmpty } from './audience-card';
 
 interface AgeGroup {
+  /** The platform's own bucket, e.g. `age18-24`. */
+  key: string;
   label: string;
   percentage: number;
 }
 
 interface AgeDistributionCardProps {
-  /** Age group data */
-  ageGroups: Record<string, number> | AgeGroup[];
+  /** Percentage of viewers per age bucket. Absent when none was reported. */
+  ageGroups?: Record<string, number>;
 }
 
 function formatAgeLabel(key: string): string {
@@ -28,13 +30,27 @@ function formatAgeLabel(key: string): string {
 }
 
 export function AgeDistributionCard({ ageGroups }: AgeDistributionCardProps) {
-  // Normalize input data
-  const normalizedData: AgeGroup[] = Array.isArray(ageGroups)
-    ? ageGroups
-    : Object.entries(ageGroups).map(([key, percentage]) => ({
-        label: formatAgeLabel(key),
-        percentage,
-      }));
+  const normalizedData: AgeGroup[] = Object.entries(ageGroups ?? {})
+    .map(([key, percentage]) => ({
+      key,
+      label: formatAgeLabel(key),
+      percentage,
+    }))
+    .sort((a, b) => a.key.localeCompare(b.key));
+
+  if (normalizedData.length === 0) {
+    return (
+      <AudienceCard
+        title="Age Distribution"
+        icon={Users}
+        data-test="audience-card-age"
+      >
+        <AudienceCardEmpty>
+          No platform has reported viewer ages for this project yet.
+        </AudienceCardEmpty>
+      </AudienceCard>
+    );
+  }
 
   // Find the highest percentage to highlight
   const maxPercentage = Math.max(...normalizedData.map((g) => g.percentage));
@@ -43,18 +59,19 @@ export function AgeDistributionCard({ ageGroups }: AgeDistributionCardProps) {
     <AudienceCard
       title="Age Distribution"
       icon={Users}
-      footerInsight="Primary audience is Gen Z and young adults, suggesting high engagement with trend-based content."
+      data-test="audience-card-age"
     >
       <div className="space-y-4">
         {normalizedData.map((group) => {
           const isHighest = group.percentage === maxPercentage;
           return (
-            <div key={group.label}>
+            <div key={group.key} data-test={`age-row-${group.key}`}>
               <div className="mb-1.5 flex justify-between text-xs">
                 <span className="font-medium text-gray-900 dark:text-white">
                   {group.label}
                 </span>
                 <span
+                  data-test="age-share"
                   className={
                     isHighest
                       ? 'font-bold text-blue-500'
