@@ -5,6 +5,9 @@ import { useMemo } from 'react';
 import { Skeleton } from '@kit/ui/skeleton';
 
 import { formatDate, formatNumber, formatPercent } from '../../lib/format';
+import type { Measured } from '../../lib/measured';
+import { mostDiscussed } from '../../lib/most-discussed';
+import type { ProjectRevenue } from '../../lib/project-revenue';
 import type { ContentListItem } from '../../server/aggregation-queries';
 import type {
   AggregateAnalytics,
@@ -31,10 +34,12 @@ interface OverviewGridProps {
   contentList?: ContentListItem[];
   /** AI insights for the insight card */
   insights?: InsightsResult | null;
-  /** Share breakdown (mock data) */
-  shareBreakdown?: { direct: number; copyLink: number };
-  /** Revenue breakdown (mock data) */
-  revenueBreakdown?: { adRevenue: number; sponsorships: number };
+  /**
+   * Recorded revenue per currency, or absent when it could not be read.
+   * Not optional: an optional prop here is how a 70/30 split nobody
+   * measured was drawn for every account (KB-16).
+   */
+  revenue: Measured<ProjectRevenue[]>;
   /** Loading state */
   isLoading?: boolean;
   /** Callback for View All content */
@@ -48,8 +53,7 @@ export function OverviewGrid({
   audience,
   contentList,
   insights,
-  shareBreakdown,
-  revenueBreakdown,
+  revenue,
   isLoading = false,
   onViewAllContent,
   onViewAIReport,
@@ -82,6 +86,7 @@ export function OverviewGrid({
     return (
       platformMetrics?.map((p) => ({
         platform: p.platform,
+        views: p.views,
         percentage: totalViews > 0 ? (p.views / totalViews) * 100 : 0,
       })) || []
     );
@@ -123,14 +128,11 @@ export function OverviewGrid({
     [audience?.demographics?.genders],
   );
 
-  const topCommented = useMemo(
-    () =>
-      contentList?.reduce(
-        (max, item) => (item.comments > (max?.comments || 0) ? item : max),
-        contentList[0],
-      ),
-    [contentList],
-  );
+  const topCommented = useMemo(() => {
+    const item = mostDiscussed(contentList);
+
+    return item ? { title: item.publishTitle, comments: item.comments } : null;
+  }, [contentList]);
 
   if (isLoading) {
     return <OverviewGridSkeleton />;
@@ -177,7 +179,7 @@ export function OverviewGrid({
       <PlatformSplitCard platforms={platforms} />
       <CommentsCard
         comments={totals?.comments || 0}
-        topCommentedTitle={topCommented?.publishTitle}
+        mostDiscussed={topCommented}
       />
 
       {/* Row 2: AI Insight (2 cols), Shares */}
@@ -186,14 +188,11 @@ export function OverviewGrid({
         insights={aiInsights}
         onViewReport={onViewAIReport}
       />
-      <SharesCard shares={totals?.shares || 0} breakdown={shareBreakdown} />
+      <SharesCard shares={totals?.shares || 0} />
 
       {/* Row 3: Top Content (2 cols), Revenue, Regions */}
       <TopContentCard content={topContent} onViewAll={onViewAllContent} />
-      <RevenueCard
-        revenueCents={totals?.revenueCents || 0}
-        breakdown={revenueBreakdown}
-      />
+      <RevenueCard revenue={revenue} />
       <TopRegionsCard regions={regions} />
 
       {/* Row 4: Gender - only show if we have gender data */}

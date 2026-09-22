@@ -147,6 +147,7 @@ export {
 export {
   getContentListAction,
   getProjectAnalyticsAction,
+  getProjectRevenueByCurrencyAction,
 } from './dashboard-actions';
 
 // Account-level dashboard actions

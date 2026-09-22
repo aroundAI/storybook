@@ -23,6 +23,7 @@ import {
   TooltipTrigger,
 } from '@kit/ui/tooltip';
 
+import type { ChangeResult } from '../lib/format';
 import {
   calculateChange,
   formatCurrency,
@@ -34,6 +35,11 @@ import type { AnalyticsTotals } from '../types';
 
 interface MetricCardsProps {
   data: AnalyticsTotals | null;
+  /**
+   * The period before, or null when none was measured. Null is "no
+   * comparison" and draws nothing — it was read as zero, which made every
+   * non-zero metric "+100.0%" on three of the four dashboards (KB-16).
+   */
   previousData: AnalyticsTotals | null;
   isLoading: boolean;
 }
@@ -58,7 +64,7 @@ export function MetricCards({
       key: 'views',
       label: 'Views',
       value: data?.views || 0,
-      previousValue: previousData?.views || 0,
+      previousValue: previousData ? previousData.views : null,
       formatter: formatNumber,
       description: 'Total video views across all platforms',
       icon: Eye,
@@ -67,7 +73,7 @@ export function MetricCards({
       key: 'likes',
       label: 'Likes',
       value: data?.likes || 0,
-      previousValue: previousData?.likes || 0,
+      previousValue: previousData ? previousData.likes : null,
       formatter: formatNumber,
       description: 'Total likes, hearts, and reactions',
       icon: Heart,
@@ -76,7 +82,7 @@ export function MetricCards({
       key: 'comments',
       label: 'Comments',
       value: data?.comments || 0,
-      previousValue: previousData?.comments || 0,
+      previousValue: previousData ? previousData.comments : null,
       formatter: formatNumber,
       description: 'Total comments and replies',
       icon: MessageCircle,
@@ -85,7 +91,7 @@ export function MetricCards({
       key: 'shares',
       label: 'Shares',
       value: data?.shares || 0,
-      previousValue: previousData?.shares || 0,
+      previousValue: previousData ? previousData.shares : null,
       formatter: formatNumber,
       description: 'Times content was shared or reposted',
       icon: Share2,
@@ -94,7 +100,7 @@ export function MetricCards({
       key: 'watchTime',
       label: 'Watch Time',
       value: data?.watchTimeSeconds || 0,
-      previousValue: previousData?.watchTimeSeconds || 0,
+      previousValue: previousData ? previousData.watchTimeSeconds : null,
       formatter: formatDuration,
       description: 'Total time viewers spent watching',
       icon: Clock,
@@ -103,7 +109,7 @@ export function MetricCards({
       key: 'subscribers',
       label: 'Subscribers',
       value: data?.subscribersGained || 0,
-      previousValue: previousData?.subscribersGained || 0,
+      previousValue: previousData ? previousData.subscribersGained : null,
       formatter: formatNumber,
       description: 'New followers and subscribers gained',
       icon: UserPlus,
@@ -112,7 +118,7 @@ export function MetricCards({
       key: 'revenue',
       label: 'Revenue',
       value: data?.revenueCents || 0,
-      previousValue: previousData?.revenueCents || 0,
+      previousValue: previousData ? previousData.revenueCents : null,
       formatter: (v) => formatCurrency(v / 100),
       description: 'Estimated ad revenue (YouTube only)',
       icon: DollarSign,
@@ -132,7 +138,8 @@ export interface MetricConfig {
   key: string;
   label: string;
   value: number;
-  previousValue: number;
+  /** Null when no previous period was measured. */
+  previousValue: number | null;
   formatter: (value: number) => string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -149,22 +156,9 @@ export function MetricCard({ metric }: { metric: MetricConfig }) {
   } = metric;
 
   const change = calculateChange(value, previousValue);
-  const TrendIcon =
-    change.direction === 'up'
-      ? TrendingUp
-      : change.direction === 'down'
-        ? TrendingDown
-        : Minus;
-
-  const trendColor =
-    change.direction === 'up'
-      ? 'text-green-600'
-      : change.direction === 'down'
-        ? 'text-red-600'
-        : 'text-muted-foreground';
 
   return (
-    <Card>
+    <Card data-test={`metric-card-${metric.key}`}>
       <CardContent className="px-4 pt-4 pb-3">
         <div className="mb-2 flex items-start justify-between">
           <div className="flex items-center gap-1.5">
@@ -191,19 +185,58 @@ export function MetricCard({ metric }: { metric: MetricConfig }) {
         </div>
 
         <div className="flex items-baseline justify-between">
-          <span className="text-2xl font-bold tabular-nums">
+          <span
+            className="text-2xl font-bold tabular-nums"
+            data-test="metric-value"
+          >
             {formatter(value)}
           </span>
-          <div
-            className={`flex items-center gap-0.5 text-sm ${trendColor}`}
-            aria-label={`${change.direction === 'up' ? 'Increased' : change.direction === 'down' ? 'Decreased' : 'No change'} by ${formatPercent(Math.abs(change.percentage))}`}
-          >
-            <TrendIcon className="h-3.5 w-3.5" />
-            <span>{formatPercent(Math.abs(change.percentage))}</span>
-          </div>
+          {change.kind === 'change' ? (
+            <MetricChange change={change} />
+          ) : (
+            <span className="sr-only">No previous period to compare</span>
+          )}
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function MetricChange({
+  change,
+}: {
+  change: Extract<ChangeResult, { kind: 'change' }>;
+}) {
+  const TrendIcon =
+    change.direction === 'up'
+      ? TrendingUp
+      : change.direction === 'down'
+        ? TrendingDown
+        : Minus;
+
+  const trendColor =
+    change.direction === 'up'
+      ? 'text-green-600'
+      : change.direction === 'down'
+        ? 'text-red-600'
+        : 'text-muted-foreground';
+
+  const verb =
+    change.direction === 'up'
+      ? 'Increased'
+      : change.direction === 'down'
+        ? 'Decreased'
+        : 'No change';
+
+  return (
+    <div
+      className={`flex items-center gap-0.5 text-sm ${trendColor}`}
+      aria-label={`${verb} by ${formatPercent(Math.abs(change.percentage))}`}
+      data-test="metric-change"
+    >
+      <TrendIcon className="h-3.5 w-3.5" />
+      <span>{formatPercent(Math.abs(change.percentage))}</span>
+    </div>
   );
 }
 

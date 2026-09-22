@@ -64,7 +64,9 @@ function calculateChanges(
   for (const key of Object.keys(current)) {
     const curr = current[key] ?? 0;
     const prev = previous[key] ?? 0;
-    changes[key] = prev > 0 ? ((curr - prev) / prev) * 100 : 0;
+    // No key when there is no baseline (KB-16): a change from nothing is
+    // not 0%, and this is what the model reads.
+    if (prev > 0) changes[key] = ((curr - prev) / prev) * 100;
   }
   return changes;
 }

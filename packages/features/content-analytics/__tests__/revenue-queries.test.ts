@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { foldMoney } from '../src/lib/money';
-import { fetchAccountRevenueRows } from '../src/server/revenue-queries';
+import {
+  fetchAccountRevenueRows,
+  forEachProjectRevenueRow,
+} from '../src/server/revenue-queries';
 
 type Call = [string, ...unknown[]];
 
@@ -314,5 +317,73 @@ describe('fetchAccountRevenueRows', () => {
         '2026-01-31',
       ),
     ).rejects.toThrow(/publish-scoped revenue.*bang/);
+  });
+});
+
+describe('forEachProjectRevenueRow (KB-16)', () => {
+  const PROJECT = 'proj-1';
+
+  async function collect(client: ReturnType<typeof createClient>) {
+    const rows: Array<{ id: string; episode_id: string | null }> = [];
+
+    await forEachProjectRevenueRow(
+      client,
+      PROJECT,
+      '2026-01-01',
+      '2026-01-31',
+      (row) => rows.push({ id: row.id, episode_id: row.episode_id }),
+    );
+
+    return rows;
+  }
+
+  it('reads publish-scoped rows through the project chain, bounded inclusively', async () => {
+    const client = createClient([{ data: [], error: null }]);
+
+    await collect(client);
+
+    expect(client.queries).toHaveLength(1);
+
+    const applied = filtersOf(client.queries[0]!.calls);
+
+    // Scoped by the project, not by an account: the Overview is a project
+    // page and this read is what its revenue card draws.
+    expect(applied).toContain(`eq publishes.episodes.project_id ${PROJECT}`);
+    expect(applied).toContain('gte record_date 2026-01-01');
+    expect(applied).toContain('lte record_date 2026-01-31');
+    expect(applied).toContain('order id');
+  });
+
+  it('returns every row past one page, with each row’s currency', async () => {
+    const many = Array.from({ length: 600 }, (_, index) => ({
+      id: `r${index}`,
+      publish_id: 'p1',
+      revenue_cents: 100,
+      currency: index % 2 === 0 ? 'USD' : 'EUR',
+      publishes: { episode_id: 'ep1' },
+    }));
+
+    const client = createClient([{ data: many, error: null }]);
+    const amounts: Array<{ currency: string | null; cents: number }> = [];
+
+    await forEachProjectRevenueRow(
+      client,
+      PROJECT,
+      '2026-01-01',
+      '2026-01-31',
+      (row) => amounts.push(row.amount),
+    );
+
+    expect(amounts).toHaveLength(600);
+    expect(foldMoney(amounts)).toEqual([
+      { currency: 'EUR', cents: 30_000 },
+      { currency: 'USD', cents: 30_000 },
+    ]);
+  });
+
+  it('throws rather than folding a partial read into a smaller total', async () => {
+    const client = createClient([{ data: [], error: { message: 'boom' } }]);
+
+    await expect(collect(client)).rejects.toThrow(/project revenue.*boom/);
   });
 });
