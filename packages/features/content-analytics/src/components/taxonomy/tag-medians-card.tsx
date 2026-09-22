@@ -8,9 +8,9 @@ import { Progress } from '@kit/ui/progress';
 import { Skeleton } from '@kit/ui/skeleton';
 import { cn } from '@kit/ui/utils';
 
+import { languageName } from '../../lib/language-labels';
 import type { MoneyByCurrency } from '../../lib/money';
 import { formatMoney } from '../../lib/money';
-import { languageName } from '../../lib/language-labels';
 
 /** One segment's aggregated performance, from getMedianByTagAction. */
 export interface TagMedianEntry {
