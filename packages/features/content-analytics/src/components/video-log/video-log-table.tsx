@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '@kit/ui/table';
 
+import { languageName } from '../../lib/language-labels';
 import { localDateOf } from '../../lib/local-date';
 import {
   checkpointState,
@@ -148,7 +149,9 @@ export function VideoLogTable({
                 <TableCell>{row.channelName}</TableCell>
                 <TableCell>{row.platform}</TableCell>
                 <TableCell>{row.contentType}</TableCell>
-                <TableCell>{row.language}</TableCell>
+                <TableCell data-test="video-log-language">
+                  {languageName(row.language)}
+                </TableCell>
 
                 {checkpoints.map((days) => (
                   <TableCell key={days} className={'text-right'}>

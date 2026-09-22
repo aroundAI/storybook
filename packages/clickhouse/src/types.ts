@@ -177,7 +177,17 @@ export interface VideoDim {
   connection_id: string;
   platform: string;
   content_type: string;
+  /**
+   * The published asset's language (`publishes.language`), or
+   * LANGUAGE_NOT_SET when nobody set one. Never a defaulted code.
+   */
   language: string;
+  /**
+   * The channel's target language (`platform_connections.language`), or
+   * LANGUAGE_NOT_SET for a publish with no channel. See
+   * lib/language-dimension.ts for why both exist.
+   */
+  channel_language: string;
   title: string;
   /** DateTime string, e.g. '2026-06-14 08:30:00'. */
   published_at: string;

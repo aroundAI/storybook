@@ -4006,7 +4006,7 @@ export type Database = {
           dubbed_version_id: string | null
           episode_id: string
           id: string
-          language: string
+          language: string | null
           metadata: Json | null
           platform: string
           platform_connection_id: string | null
@@ -4029,7 +4029,7 @@ export type Database = {
           dubbed_version_id?: string | null
           episode_id: string
           id?: string
-          language?: string
+          language?: string | null
           metadata?: Json | null
           platform: string
           platform_connection_id?: string | null
@@ -4052,7 +4052,7 @@ export type Database = {
           dubbed_version_id?: string | null
           episode_id?: string
           id?: string
-          language?: string
+          language?: string | null
           metadata?: Json | null
           platform?: string
           platform_connection_id?: string | null

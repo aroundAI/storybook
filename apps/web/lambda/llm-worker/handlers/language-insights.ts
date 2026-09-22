@@ -26,7 +26,8 @@ interface LanguageInsightsResult {
   success: boolean;
   data: {
     summary: string;
-    topLanguage: string;
+    /** Null when nothing names one — never defaulted to a language. */
+    topLanguage: string | null;
     recommendations: string[];
     platformInsights: string[];
     contentInsights: string[];
@@ -49,7 +50,7 @@ export async function processLanguageInsights(
       success: true,
       data: {
         summary: 'Not enough language data to generate insights.',
-        topLanguage: 'en',
+        topLanguage: null,
         recommendations: ['Publish content in multiple languages'],
         platformInsights: [],
         contentInsights: [],
@@ -101,7 +102,7 @@ export async function processLanguageInsights(
       success: true,
       data: {
         summary: result.data.languageSummary || 'Analysis complete.',
-        topLanguage: result.data.topLanguage || 'en',
+        topLanguage: result.data.topLanguage || null,
         recommendations: result.data.languageRecommendations || [],
         platformInsights: result.data.platformOptimization || [],
         contentInsights: result.data.contentTypeInsights || [],
