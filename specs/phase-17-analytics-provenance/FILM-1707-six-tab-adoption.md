@@ -63,6 +63,52 @@ Option 2 is the better answer and the more expensive one. Whichever is chosen,
 the rationale belongs in this file before the code is written, because it
 changes numbers that are already on screen.
 
+### Decided (owner, 2026-09-22): option 2, plus option 1's platform switcher
+
+**The rule: a fetch-dated figure never goes on a date axis.** Everything below
+follows from it.
+
+- **Time-bucketed aggregates exclude `metric_source = 'snapshot_delta'` rows.**
+  Median views by upload month, cohort curves over time, weekly diagnostics —
+  anything whose x-axis or grouping is a date — are built from true-daily rows
+  only. Today that means YouTube. It is a rule about *how a row was dated*, not
+  about a platform: if TikTok or Instagram ever supply a true daily series
+  (FILM-1730 §4.6 asks exactly this of the TikTok Business API), those rows
+  qualify with no change here. Do not write `platform = 'youtube'`.
+- **Lifetime aggregates keep every platform.** Total views per video, back
+  catalog totals — a lifetime sum is not distorted by which day a delta was
+  attributed to, so pooling stays, and stays honest.
+- **Each card says which kind it is.** A time-bucketed card carries a plain
+  sentence, in the card and not only in a tooltip: *"TikTok and Instagram aren't
+  shown here — they report running totals, not daily views."* The provenance
+  chip (FILM-1705) states the platforms actually included, so "3 platforms" can
+  never sit on a card that only plotted one. The sentence appears only when the
+  project has publishes on an excluded platform; a YouTube-only creator sees
+  no caveat about platforms they do not use.
+- **A platform switcher, from option 1.** `scope.platform` becomes explicit and
+  changeable on the tab. **Default: all platforms**, under the rule above — not
+  YouTube, which was option 1's default and is not what was chosen. Selecting a
+  single platform shows that platform's own figures; for TikTok or Instagram the
+  time-bucketed cards then have nothing true to plot and show an empty state
+  that says why (running totals, fetch-dated), never a fetch-dated chart. This
+  is FILM-1709's filter reaching this tab; build it once, there or here, not
+  twice.
+- **Tell the creator the numbers moved.** For any project with TikTok or
+  Instagram publishes, the median and cohort figures change the day this ships.
+  The old figures were wrong in a way nobody could see, so the change needs one
+  dismissible note on the tab — what changed, and why — not silence. Per-viewer
+  dismissal; it does not need to outlive a release or two.
+
+**Why not option 1 alone:** it throws away the cross-platform lifetime view,
+which is true and useful, to fix the time-bucketed one, which is neither.
+**Why not option 3:** unchanged — it invents a spread the providers never gave
+us.
+
+**What this costs:** every Deep Dive query that groups by date needs the
+predicate, and each needs a fixture proving a `snapshot_delta` row is excluded
+from the bucket and still counted in the lifetime total. Seed a sync gap across
+a month boundary; the median for that month must not move.
+
 ## 3. Tab-by-tab
 
 | Tab | Work |
