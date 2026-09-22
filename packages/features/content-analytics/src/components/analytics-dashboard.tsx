@@ -27,7 +27,6 @@ import {
   getProjectAudienceDataAction,
   getProjectDailyMetricsAction,
   getProjectRevenueByCurrencyAction,
-  getShortsSourcePerformanceAction,
 } from '../server/dashboard-actions';
 import type {
   AggregateAnalytics,
