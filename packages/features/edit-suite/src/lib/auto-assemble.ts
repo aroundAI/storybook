@@ -13,6 +13,8 @@
  * syncGroupIndex, primaryClipIndex) that the RPC function resolves
  * to real UUIDs after insertion.
  */
+import { unwrap } from '@kit/next/action-result';
+
 import type {
   MediaBinAudioTrack,
   MediaBinDialogueLine,
@@ -405,7 +407,9 @@ export function buildAssemblyPayload(
 export async function autoAssemble(params: AutoAssembleParams) {
   // 1. Fetch episode data
   const { getMediaBinDataAction } = await import('../server/media-bin-queries');
-  const data = await getMediaBinDataAction({ episodeId: params.episodeId });
+  const data = await unwrap(
+    getMediaBinDataAction({ episodeId: params.episodeId }),
+  );
 
   // 2. Build the assembly payload
   const payload = buildAssemblyPayload(data, params);

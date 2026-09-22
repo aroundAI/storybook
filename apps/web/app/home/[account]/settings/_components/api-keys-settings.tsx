@@ -12,6 +12,7 @@ import {
   XCircle,
 } from 'lucide-react';
 
+import { refusalMessage } from '@kit/next/action-result';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -294,7 +295,7 @@ function ApiKeyDialog({
     onError: (err) => {
       setFormState((prev) => ({
         ...prev,
-        error: err instanceof Error ? err.message : 'Failed to save key',
+        error: refusalMessage(err, 'Failed to save key'),
       }));
     },
   });
@@ -312,7 +313,7 @@ function ApiKeyDialog({
     onError: (err) => {
       setFormState((prev) => ({
         ...prev,
-        error: err instanceof Error ? err.message : 'Failed to remove key',
+        error: refusalMessage(err, 'Failed to remove key'),
       }));
     },
   });
@@ -340,7 +341,7 @@ function ApiKeyDialog({
       setFormState((prev) => ({
         ...prev,
         validationStatus: 'invalid',
-        error: err instanceof Error ? err.message : 'Failed to validate key',
+        error: refusalMessage(err, 'Failed to validate key'),
       }));
     }
   };
