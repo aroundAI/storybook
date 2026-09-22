@@ -3,7 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -166,7 +168,7 @@ export const deleteAccountAction = adminAction(
  * @name createUserAction
  * @description Create a new user in the system.
  */
-export const createUserAction = adminAction(
+const createUser = adminAction(
   enhanceAction(
     async ({ email, password, emailConfirm }) => {
       const adminClient = getSupabaseServerAdminClient();
@@ -181,6 +183,12 @@ export const createUserAction = adminAction(
       });
 
       if (error) {
+        // The one failure the admin caused; GoTrue's other messages are
+        // internal and stay in the log (KB-6).
+        if (error.code === 'email_exists') {
+          throw new ActionRefusal('A user with this email already exists.');
+        }
+
         logger.error({ error }, `Error creating user`);
         throw new Error(`Error creating user: ${error.message}`);
       }
@@ -202,6 +210,8 @@ export const createUserAction = adminAction(
     },
   ),
 );
+
+export const createUserAction = returnRefusals(createUser);
 
 /**
  * @name resetPasswordAction

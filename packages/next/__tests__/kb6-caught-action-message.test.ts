@@ -27,68 +27,8 @@ const SKIPPED = new Set([
  * shrink — delete the line in the pull request that fixes the file.
  */
 const KNOWN: Record<string, string> = {
-  'apps/web/app/home/[account]/settings/_components/api-keys-settings.tsx':
-    'KB-6 part 2',
-  'apps/web/app/home/[account]/social-posts/[postId]/_components/social-post-detail.tsx':
-    'KB-6 part 2',
-  'apps/web/app/home/[account]/social-posts/_components/social-posts-dashboard.tsx':
-    'KB-6 part 2',
-  'apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/batch-generate-dialog.tsx':
-    'KB-6 part 2',
-  'apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/generate-audio-dialog.tsx':
-    'KB-6 part 2',
-  'apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/upload-audio-dialog.tsx':
-    'KB-6 part 2',
-  'apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/add-music-cue-dialog.tsx':
-    'KB-6 part 2',
-  'apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx':
-    'KB-6 part 2',
-  'apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/generate-scene-music-dialog.tsx':
-    'KB-6 part 2',
-  'apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/use-audio-studio-data.ts':
-    'KB-6 part 2',
-  'apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/use-batch-generation.ts':
-    'KB-6 part 2',
-  'apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx':
-    'KB-6 part 2',
-  'apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/generate-all-sound-modal.tsx':
-    'KB-6 part 2',
-  'packages/features/admin/src/components/admin-create-user-dialog.tsx':
-    'KB-6 part 2',
-  'packages/features/admin/src/components/admin-reset-password-dialog.tsx':
-    'KB-6 part 2',
-  'packages/features/assets/src/components/asset-gallery.tsx': 'KB-6 part 2',
-  'packages/features/assets/src/components/character-editor/CharacterEditor.tsx':
-    'KB-6 part 2',
-  'packages/features/assets/src/components/location-editor.tsx': 'KB-6 part 2',
-  'packages/features/assets/src/components/voice-profile-editor.tsx':
-    'KB-6 part 2',
-  'packages/features/assets/src/hooks/use-assets.ts': 'KB-6 part 2',
-  'packages/features/assets/src/hooks/use-character-assets.ts': 'KB-6 part 2',
-  'packages/features/audio-generation/src/components/DialogueList.tsx':
-    'KB-6 part 2',
-  'packages/features/audio-generation/src/components/LipSyncEditor.tsx':
-    'KB-6 part 2',
-  'packages/features/audio-generation/src/components/MusicTrackList.tsx':
-    'KB-6 part 2',
-  'packages/features/audio-generation/src/components/VoiceAssignment.tsx':
-    'KB-6 part 2',
-  'packages/features/audio-generation/src/components/VoiceCloningEditor.tsx':
-    'KB-6 part 2',
-  'packages/features/content-analytics/src/components/export-reports.tsx':
-    'KB-6 part 2',
   'packages/features/content-analytics/src/components/manual-revenue-form.tsx':
     'KB-12 (open PR rewrites this form)',
-  'packages/features/content-analytics/src/components/scheduled-reports-manager.tsx':
-    'KB-6 part 2',
-  'packages/features/content-analytics/src/components/video-log/note-cell.tsx':
-    'KB-6 part 2',
-  'packages/features/edit-suite/src/components/export/export-dialog.tsx':
-    'KB-6 part 2',
-  'packages/features/edit-suite/src/hooks/use-media-bin.ts': 'KB-6 part 2',
-  'packages/features/publishing/src/components/publish-hub.tsx': 'KB-6 part 2',
-  'packages/features/publishing/src/components/upload-only-mode.tsx':
-    'KB-6 part 2',
 };
 
 function sourceFiles(directory: string): string[] {

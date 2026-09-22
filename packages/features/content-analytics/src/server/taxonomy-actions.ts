@@ -3,7 +3,9 @@
 import { z } from 'zod';
 
 import { querySegmentPerformance } from '@kit/clickhouse/server';
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -22,7 +24,7 @@ import { upsertVideoDims } from './dim-sync';
 import { assertScopeAccess } from './scope-access';
 import { fetchAccountAnalyticsSettings } from './settings-queries';
 
-export const createTagAction = enhanceAction(
+const createTag = enhanceAction(
   async (data, user) => {
     const client = getSupabaseServerClient();
 
@@ -39,6 +41,13 @@ export const createTagAction = enhanceAction(
       .single();
 
     if (error) {
+      // unique (account_id, dimension, slug): the one failure a user causes.
+      if (error.code === '23505') {
+        throw new ActionRefusal(
+          'A tag with this label already exists in this dimension.',
+        );
+      }
+
       throw new Error(`Failed to create tag: ${error.message}`);
     }
 
@@ -46,6 +55,8 @@ export const createTagAction = enhanceAction(
   },
   { schema: CreateTagSchema, auth: true },
 );
+
+export const createTagAction = returnRefusals(createTag);
 
 export const updateTagAction = enhanceAction(
   async ({ tagId, label }) => {

@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import { refusalMessage } from '@kit/next/action-result';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import {
   AlertDialog,
@@ -68,7 +69,7 @@ export function AdminResetPasswordDialog(
 
         toast.success('Password reset email successfully sent');
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setError(refusalMessage(e, 'The reset email could not be sent.'));
 
         toast.error('We hit an error. Please read the logs.');
       }

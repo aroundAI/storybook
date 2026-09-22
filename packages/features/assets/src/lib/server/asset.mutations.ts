@@ -2,7 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
@@ -32,7 +34,19 @@ import { checkAssetHashQuery, getAsset, isAssetInUse } from './asset.queries';
  *
  * @throws {Error} If user lacks project access or validation fails
  */
-export const createAssetAction = enhanceAction(
+/**
+ * `unique(project_id, type, name)` on assets: the one insert/update failure
+ * a user causes, worded for them (KB-6). Postgres `unique_violation`.
+ */
+function nameTaken(error: { code?: string }, type: string, name: string) {
+  return error.code === '23505'
+    ? new ActionRefusal(
+        `Another ${type} in this project is already named "${name}". Choose a different name.`,
+      )
+    : null;
+}
+
+const createAsset = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = { name: 'assets.create', projectId: data.projectId };
@@ -59,7 +73,7 @@ export const createAssetAction = enhanceAction(
       }
 
       if (episodeCheck.project_id !== data.projectId) {
-        throw new Error('Episode does not belong to this project');
+        throw new ActionRefusal('Episode does not belong to this project');
       }
     }
 
@@ -86,6 +100,9 @@ export const createAssetAction = enhanceAction(
         .single();
 
       if (error) {
+        const taken = nameTaken(error, data.type, data.name);
+        if (taken) throw taken;
+
         logger.error(
           { ...ctx, error, data },
           'Failed to create asset - DB Error',
@@ -101,6 +118,8 @@ export const createAssetAction = enhanceAction(
 
       return { success: true, data: mapRowToAsset(asset as AssetRow) };
     } catch (error) {
+      if (error instanceof ActionRefusal) throw error;
+
       logger.error({ ...ctx, error }, 'Failed to create asset - Exception');
       throw new Error(
         `Failed to create asset: ${error instanceof Error ? error.message : String(error)}`,
@@ -111,6 +130,8 @@ export const createAssetAction = enhanceAction(
     schema: CreateAssetSchema,
   },
 );
+
+export const createAssetAction = returnRefusals(createAsset);
 
 /**
  * Fetch all assets for a project with optional filtering and pagination
@@ -227,7 +248,7 @@ export const checkAssetHashAction = enhanceAction(
  *
  * @throws {Error} If user lacks project access or asset not found
  */
-export const updateAssetAction = enhanceAction(
+const updateAsset = enhanceAction(
   async (data): Promise<{ success: boolean; data: Asset }> => {
     const logger = await getLogger();
     const ctx = { name: 'assets.update', assetId: data.id };
@@ -262,6 +283,13 @@ export const updateAssetAction = enhanceAction(
       .single();
 
     if (error) {
+      // The update does not read the row's type back, so the wording
+      // names the rule rather than the kind of asset.
+      const taken =
+        data.name !== undefined &&
+        nameTaken(error, 'asset of the same type', data.name);
+      if (taken) throw taken;
+
       logger.error({ ...ctx, error }, 'Failed to update asset');
       throw new Error(`Failed to update asset: ${error.message}`);
     }
@@ -279,12 +307,14 @@ export const updateAssetAction = enhanceAction(
   },
 );
 
+export const updateAssetAction = returnRefusals(updateAsset);
+
 /**
  * Soft delete an asset (sets deleted_at timestamp)
  *
  * @throws {Error} If user lacks access or asset is in use
  */
-export const deleteAssetAction = enhanceAction(
+const deleteAsset = enhanceAction(
   async (data): Promise<DeleteAssetResponse> => {
     const logger = await getLogger();
     const ctx = { name: 'assets.delete', assetId: data.assetId };
@@ -303,8 +333,8 @@ export const deleteAssetAction = enhanceAction(
 
     if (inUse) {
       logger.warn(ctx, 'Cannot delete asset that is in use');
-      throw new Error(
-        'Cannot delete asset that is in use by other entities (dialogue lines or character details)',
+      throw new ActionRefusal(
+        'This asset is used by dialogue in an episode, so it cannot be deleted.',
       );
     }
 
@@ -339,6 +369,8 @@ export const deleteAssetAction = enhanceAction(
     schema: DeleteAssetSchema,
   },
 );
+
+export const deleteAssetAction = returnRefusals(deleteAsset);
 
 /**
  * Get a single asset by ID (Server Action wrapper)

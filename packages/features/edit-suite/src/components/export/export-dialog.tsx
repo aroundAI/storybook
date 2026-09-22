@@ -11,6 +11,7 @@
  */
 import { useCallback, useMemo, useState, useTransition } from 'react';
 
+import { refusalMessage } from '@kit/next/action-result';
 import { cn } from '@kit/ui/utils';
 
 import { useExportWorker } from '../../hooks/use-export-worker';
@@ -188,9 +189,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
           language: selectedLang === 'all' ? data.activeLanguage : selectedLang,
         });
       } catch (err) {
-        setServerError(
-          err instanceof Error ? err.message : 'Failed to enqueue render',
-        );
+        setServerError(refusalMessage(err, 'Failed to enqueue render'));
       }
     });
   }, [data.project, data.activeLanguage, selectedLang, startTransition]);
@@ -205,9 +204,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
           languages: availableLanguages,
         });
       } catch (err) {
-        setServerError(
-          err instanceof Error ? err.message : 'Failed to enqueue renders',
-        );
+        setServerError(refusalMessage(err, 'Failed to enqueue renders'));
       }
     });
   }, [data.project, availableLanguages, startTransition]);

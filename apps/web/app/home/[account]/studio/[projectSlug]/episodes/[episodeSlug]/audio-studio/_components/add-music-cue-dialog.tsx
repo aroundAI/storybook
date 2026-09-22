@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { Loader2, Music } from 'lucide-react';
 
 import { generateMusicCueAction } from '@kit/audio-generation/server';
+import { refusalMessage } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -133,11 +134,7 @@ export function AddMusicCueDialog({
           setTempo('');
         }
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to start music generation',
-        );
+        toast.error(refusalMessage(error, 'Failed to start music generation'));
       }
     });
   };

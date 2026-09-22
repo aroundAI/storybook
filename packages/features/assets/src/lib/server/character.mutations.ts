@@ -8,7 +8,9 @@
  */
 import { revalidatePath } from 'next/cache';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
@@ -34,7 +36,7 @@ import { isAssetInUse } from './asset.queries';
  * 2. Insert into character_details table
  * 3. If step 2 fails, rollback by deleting the asset
  */
-export const createCharacterAction = enhanceAction(
+const createCharacter = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = { name: 'character.create', projectId: data.projectId };
@@ -64,6 +66,12 @@ export const createCharacterAction = enhanceAction(
       .single();
 
     if (assetError) {
+      if (assetError.code === '23505') {
+        throw new ActionRefusal(
+          `A character named "${data.name}" already exists in this project. Choose a different name.`,
+        );
+      }
+
       logger.error({ ...ctx, error: assetError }, 'Failed to create asset');
       throw new Error(`Failed to create character: ${assetError.message}`);
     }
@@ -149,6 +157,8 @@ export const createCharacterAction = enhanceAction(
   },
 );
 
+export const createCharacterAction = returnRefusals(createCharacter);
+
 /**
  * Get a single character with full details
  */
@@ -219,7 +229,7 @@ export const getCharacterAction = enhanceAction(
 /**
  * Update an existing character (both assets and character_details)
  */
-export const updateCharacterAction = enhanceAction(
+const updateCharacter = enhanceAction(
   async (data): Promise<{ success: boolean; data: CharacterWithDetails }> => {
     const logger = await getLogger();
     const ctx = { name: 'character.update', assetId: data.assetId };
@@ -262,6 +272,12 @@ export const updateCharacterAction = enhanceAction(
         .is('deleted_at', null);
 
       if (assetError) {
+        if (assetError.code === '23505' && data.name !== undefined) {
+          throw new ActionRefusal(
+            `A character named "${data.name}" already exists in this project. Choose a different name.`,
+          );
+        }
+
         logger.error({ ...ctx, error: assetError }, 'Failed to update asset');
         throw new Error(`Failed to update character: ${assetError.message}`);
       }
@@ -405,6 +421,8 @@ export const updateCharacterAction = enhanceAction(
     schema: UpdateCharacterSchema,
   },
 );
+
+export const updateCharacterAction = returnRefusals(updateCharacter);
 
 /**
  * List characters for a project with pagination

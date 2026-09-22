@@ -6,7 +6,9 @@ import { revalidatePath } from 'next/cache';
 
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -162,7 +164,7 @@ function calculateSceneStartTime(
  *   instrumentalOnly: true,
  * });
  */
-export const generateSceneMusicAction = enhanceAction(
+const generateSceneMusic = enhanceAction(
   async (data: GenerateSceneMusicInput): Promise<GenerateMusicResult> => {
     const logger = await getLogger();
     const ctx = {
@@ -191,7 +193,7 @@ export const generateSceneMusicAction = enhanceAction(
 
     if (episodeError || !episode) {
       logger.error({ ...ctx, error: episodeError }, 'Failed to fetch episode');
-      throw new Error('Episode not found');
+      throw new ActionRefusal('Episode not found');
     }
 
     const screenplayData = episode.screenplay_data as {
@@ -202,7 +204,9 @@ export const generateSceneMusicAction = enhanceAction(
     // 2. Find the target scene
     const targetScene = scenes.find((s) => s.number === data.sceneNumber);
     if (!targetScene) {
-      throw new Error(`Scene ${data.sceneNumber} not found in screenplay`);
+      throw new ActionRefusal(
+        `Scene ${data.sceneNumber} not found in screenplay`,
+      );
     }
 
     // 3. Build music prompt
@@ -316,6 +320,8 @@ export const generateSceneMusicAction = enhanceAction(
     schema: GenerateSceneMusicSchema,
   },
 );
+
+export const generateSceneMusicAction = returnRefusals(generateSceneMusic);
 
 /**
  * Generate music from a manual cue

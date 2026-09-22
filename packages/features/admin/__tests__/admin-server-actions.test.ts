@@ -842,8 +842,8 @@ describe('Admin Server Actions', () => {
         const result = await createUserAction(validCreateRequest);
 
         expect(result).toEqual({
-          success: true,
-          user: newUser,
+          ok: true,
+          data: { success: true, user: newUser },
         });
 
         expect(mockAdminClient.auth.admin.createUser).toHaveBeenCalledWith({
@@ -870,15 +870,19 @@ describe('Admin Server Actions', () => {
         vi.mocked(isSuperAdmin).mockResolvedValue(true);
       });
 
-      it('should handle duplicate email errors', async () => {
+      // KB-6: a production build replaces a thrown message, so the one
+      // failure the admin caused is returned in words for the page — and
+      // GoTrue's own wording is not among them.
+      it('returns a duplicate email as a refusal, without the GoTrue text', async () => {
         mockAdminClient.auth.admin.createUser.mockResolvedValue({
           data: { user: null },
-          error: { message: 'User already registered' },
+          error: { code: 'email_exists', message: 'User already registered' },
         });
 
-        await expect(createUserAction(validCreateRequest)).rejects.toThrow(
-          'Error creating user: User already registered',
-        );
+        expect(await createUserAction(validCreateRequest)).toEqual({
+          ok: false,
+          error: 'A user with this email already exists.',
+        });
       });
 
       it('should handle general creation errors', async () => {

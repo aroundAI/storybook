@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
+import { refusalMessage } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import {
   Form,
@@ -189,8 +190,7 @@ function NoteEditor({
       onSaved({ note: result.note, updatedAt: result.updatedAt });
       onDone();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Could not save the note.';
+      const message = refusalMessage(error, 'Could not save the note.');
 
       setNotice({ kind: 'error', message });
 
