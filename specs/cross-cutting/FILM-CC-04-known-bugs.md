@@ -201,6 +201,26 @@ id change) before starting Playwright, and fail loudly — `NOT APPLIED`, not
 `STAYED GREEN` — if it never appears. Then run the e2e guards ×10 and show none
 flips.
 
+### The evidence job can fail before any test runs (added 2026-09-22)
+
+Seen on PR #300, run 35741414668, job "🧬 E2E evidence" (106791846286): the
+`Supabase Server` step (`supabase start`) failed with `failed to bind host
+port for 0.0.0.0:55326:172.19.0.5:1110/tcp: address already in use` —
+inbucket's POP3 port, fixed in `apps/web/supabase/config.toml`. No Playwright
+test had started. #300 touches no infra or port config, and the same job had
+passed on every other run that day. `ubuntu-latest` is a fresh VM per job, so
+whatever held the port was inside that job's own VM, and it could not be
+reproduced. **Re-running the failed job on the same commit passed, 12 of 12.**
+
+The evidence job is not a required check (branch protection names TypeScript,
+Unit Tests, ClickHouse SQL, Supabase DB and Test), so this alone does not
+block a merge; it does hide the screenshots a reviewer wants to see.
+
+**When this entry is worked:** only if it recurs on the same port. Then add an
+`ss -ltnp` step before `Supabase Server` to name the holder, and fix from
+that — not from a guess (`supabase stop` before `start` cannot help on a
+fresh VM, and a change that cannot be shown red first proves nothing).
+
 ---
 
 ## KB-4 — `config.toml` still points `db diff` at `schemas/`
