@@ -12,6 +12,8 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
+
 import type { EditClip } from '../lib/types';
 import type {
   MediaBinAudioTrack,
@@ -209,11 +211,11 @@ export function useMediaBin(
       const { getMediaBinDataAction } = await import(
         '../server/media-bin-queries'
       );
-      const result = await getMediaBinDataAction({ episodeId });
+      const result = await unwrap(getMediaBinDataAction({ episodeId }));
       setRawData(result);
     } catch (err) {
       console.error('Failed to fetch media bin data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load media');
+      setError(refusalMessage(err, 'Failed to load media'));
     } finally {
       setIsLoading(false);
     }

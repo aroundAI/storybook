@@ -14,6 +14,7 @@ import {
   Users,
 } from 'lucide-react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import { Checkbox } from '@kit/ui/checkbox';
 import {
@@ -174,12 +175,14 @@ export function VoiceAssignmentPanel({
       if (!selectedVoiceId || !episodeId) {
         throw new Error('Voice and episode required for preview');
       }
-      return generateVoiceFromTextAction({
-        text: previewText,
-        voiceId: selectedVoiceId,
-        settings,
-        episodeId,
-      });
+      return unwrap(
+        generateVoiceFromTextAction({
+          text: previewText,
+          voiceId: selectedVoiceId,
+          settings,
+          episodeId,
+        }),
+      );
     },
     onSuccess: (result: GenerateVoiceFromTextResult) => {
       // Stop existing audio
@@ -193,8 +196,8 @@ export function VoiceAssignmentPanel({
         toast.error('Failed to play audio preview');
       });
     },
-    onError: (error: Error) => {
-      toast.error(`Failed to generate preview: ${error.message}`);
+    onError: (error: unknown) => {
+      toast.error(refusalMessage(error, 'Failed to generate preview'));
     },
   });
 
@@ -204,12 +207,14 @@ export function VoiceAssignmentPanel({
       if (!selectedVoiceId || !selectedCharacterId) {
         throw new Error('Voice and character required');
       }
-      return saveVoiceProfileAction({
-        characterAssetId: selectedCharacterId,
-        providerVoiceId: selectedVoiceId,
-        provider: 'elevenlabs',
-        settings,
-      });
+      return unwrap(
+        saveVoiceProfileAction({
+          characterAssetId: selectedCharacterId,
+          providerVoiceId: selectedVoiceId,
+          provider: 'elevenlabs',
+          settings,
+        }),
+      );
     },
     onSuccess: () => {
       toast.success('Voice profile saved');
@@ -218,8 +223,8 @@ export function VoiceAssignmentPanel({
         queryKey: ['voice-profile', selectedCharacterId],
       });
     },
-    onError: (error: Error) => {
-      toast.error(`Failed to save: ${error.message}`);
+    onError: (error: unknown) => {
+      toast.error(refusalMessage(error, 'Failed to save'));
     },
   });
 
@@ -245,18 +250,20 @@ export function VoiceAssignmentPanel({
       setIsBulkMode(false);
       queryClient.invalidateQueries({ queryKey: ['voice-profile'] });
     },
-    onError: (error: Error) => {
-      toast.error(`Failed to assign: ${error.message}`);
+    onError: (error: unknown) => {
+      toast.error(refusalMessage(error, 'Failed to assign'));
     },
   });
 
   // Auto-assign mutation
   const autoAssignMutation = useMutation({
     mutationFn: (characterIds: string[]) =>
-      autoAssignVoicesAction({
-        characterAssetIds: characterIds,
-        projectId,
-      }),
+      unwrap(
+        autoAssignVoicesAction({
+          characterAssetIds: characterIds,
+          projectId,
+        }),
+      ),
     onSuccess: (result: AutoAssignVoicesResponse) => {
       toast.success(
         `Auto-assigned voices to ${result.assignedCount} character${result.assignedCount !== 1 ? 's' : ''}`,
@@ -265,8 +272,8 @@ export function VoiceAssignmentPanel({
       setIsBulkMode(false);
       queryClient.invalidateQueries({ queryKey: ['voice-profile'] });
     },
-    onError: (error: Error) => {
-      toast.error(`Failed to auto-assign: ${error.message}`);
+    onError: (error: unknown) => {
+      toast.error(refusalMessage(error, 'Failed to auto-assign'));
     },
   });
 

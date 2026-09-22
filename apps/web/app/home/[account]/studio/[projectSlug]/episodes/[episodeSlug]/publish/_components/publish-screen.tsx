@@ -23,6 +23,7 @@ import {
   uploadEpisodeThumbnailAction,
 } from '@kit/episodes/server';
 import type { EpisodeWithShots, ShortsGroup } from '@kit/episodes/types';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import {
   type ScheduleConfig,
   ScheduleReleasePanel,
@@ -768,7 +769,7 @@ export function PublishScreen({
       });
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error(error instanceof Error ? error.message : 'Upload failed');
+      toast.error(refusalMessage(error, 'Upload failed'));
     } finally {
       setIsUploading(false);
     }
@@ -885,10 +886,12 @@ export function PublishScreen({
 
     // Call publish with all configs (they have scheduledAt set)
     try {
-      await publishToAllAction({
-        episodeId: episode.id,
-        platforms: platformConfigs,
-      });
+      await unwrap(
+        publishToAllAction({
+          episodeId: episode.id,
+          platforms: platformConfigs,
+        }),
+      );
       toast.success(`Scheduled ${platformConfigs.length} uploads`);
       refetchPublishes();
     } catch (error) {
@@ -1163,10 +1166,12 @@ export function PublishScreen({
 
       try {
         // Upload single platform
-        const results = await publishToAllAction({
-          episodeId: episode.id,
-          platforms: [config],
-        });
+        const results = await unwrap(
+          publishToAllAction({
+            episodeId: episode.id,
+            platforms: [config],
+          }),
+        );
 
         const result = results[0] as
           | { status: string; url?: string; error?: string }
@@ -1198,8 +1203,7 @@ export function PublishScreen({
         }
       } catch (error) {
         failureCount++;
-        const errorMessage =
-          error instanceof Error ? error.message : 'Upload failed';
+        const errorMessage = refusalMessage(error, 'Upload failed');
         setPlatformStatuses((prev) =>
           prev.map((s, idx) =>
             idx === i
@@ -1269,14 +1273,13 @@ export function PublishScreen({
 
     try {
       toast.info('Deletion started...');
-      await unpublishAction({ publishId: pendingDeletePublish.id });
+      await unwrap(unpublishAction({ publishId: pendingDeletePublish.id }));
 
       // Close dialog immediately for background processing
       cancelDelete();
       refetchPublishes();
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to unpublish';
+      const errorMessage = refusalMessage(error, 'Failed to unpublish');
       setDeleteStatuses((prev) =>
         prev.map((s) => ({
           ...s,

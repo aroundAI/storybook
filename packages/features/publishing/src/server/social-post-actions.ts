@@ -4,7 +4,9 @@ import 'server-only';
 
 import { revalidatePath } from 'next/cache';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -343,7 +345,7 @@ export const deleteSocialPostAction = enhanceAction(
  * Approve a social post for publishing
  * Sets status to 'approved' and assigns a platform connection
  */
-export const approveSocialPostAction = enhanceAction(
+const approveSocialPost = enhanceAction(
   async (input, _user) => {
     const client = getSupabaseServerClient();
 
@@ -355,11 +357,11 @@ export const approveSocialPostAction = enhanceAction(
       .single();
 
     if (fetchError || !post) {
-      throw new Error('Social post not found');
+      throw new ActionRefusal('Social post not found');
     }
 
     if (!post.final_text || post.final_text.trim().length === 0) {
-      throw new Error(
+      throw new ActionRefusal(
         'Cannot approve a post without content. Please generate or write post text first.',
       );
     }
@@ -385,11 +387,13 @@ export const approveSocialPostAction = enhanceAction(
   },
 );
 
+export const approveSocialPostAction = returnRefusals(approveSocialPost);
+
 /**
  * Publish a social post immediately
  * Posts to LinkedIn via the provider and updates status
  */
-export const publishSocialPostAction = enhanceAction(
+const publishSocialPostHandler = enhanceAction(
   async (input, _user) => {
     checkRateLimit(_user.id, 'publishSocialPost', {
       maxRequests: 5,
@@ -410,15 +414,15 @@ export const publishSocialPostAction = enhanceAction(
       .single();
 
     if (fetchError || !post) {
-      throw new Error('Social post not found');
+      throw new ActionRefusal('Social post not found');
     }
 
     if (!post.final_text) {
-      throw new Error('Post has no content to publish');
+      throw new ActionRefusal('Post has no content to publish');
     }
 
     if (!post.platform_connection_id) {
-      throw new Error(
+      throw new ActionRefusal(
         'No LinkedIn connection selected. Please approve the post with a connection first.',
       );
     }
@@ -508,10 +512,12 @@ export const publishSocialPostAction = enhanceAction(
   },
 );
 
+export const publishSocialPostAction = returnRefusals(publishSocialPostHandler);
+
 /**
  * Regenerate variants for an existing post
  */
-export const regenerateVariantsAction = enhanceAction(
+const regenerateVariantsHandler = enhanceAction(
   async (input, user) => {
     checkRateLimit(user.id, 'regenerateVariants', {
       maxRequests: 10,
@@ -529,7 +535,7 @@ export const regenerateVariantsAction = enhanceAction(
       .single();
 
     if (fetchError || !post) {
-      throw new Error('Social post not found');
+      throw new ActionRefusal('Social post not found');
     }
 
     // Re-generate variants
@@ -588,4 +594,8 @@ export const regenerateVariantsAction = enhanceAction(
     schema: RegenerateVariantsSchema,
     auth: true,
   },
+);
+
+export const regenerateVariantsAction = returnRefusals(
+  regenerateVariantsHandler,
 );

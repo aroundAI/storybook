@@ -11,6 +11,7 @@ import {
   extractDescriptionAction,
   linkAssetToEpisodeAction,
 } from '@kit/episodes/server';
+import { unwrap } from '@kit/next/action-result';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -401,16 +402,20 @@ function CreateAssetDialog({
   const handleCreate = () => {
     startCreating(async () => {
       try {
-        const result = await createAssetAction({
-          projectId,
-          episodeId,
-          type,
-          name,
-          description:
-            description ||
-            `${type === 'character' ? 'Character' : 'Location'} from story`,
-          metadata: role ? { role, autoCreated: true } : { autoCreated: true },
-        });
+        const result = await unwrap(
+          createAssetAction({
+            projectId,
+            episodeId,
+            type,
+            name,
+            description:
+              description ||
+              `${type === 'character' ? 'Character' : 'Location'} from story`,
+            metadata: role
+              ? { role, autoCreated: true }
+              : { autoCreated: true },
+          }),
+        );
 
         if (result.success) {
           // Link to episode

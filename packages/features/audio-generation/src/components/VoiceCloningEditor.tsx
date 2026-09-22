@@ -12,6 +12,7 @@ import {
   Trash2,
 } from 'lucide-react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -144,13 +145,15 @@ export function VoiceCloningEditor({
             .filter((s) => s.url && !s.error)
             .map((s) => s.url);
 
-          const result = await startVoiceCloneAction({
-            assetId,
-            voiceName: voiceName.trim(),
-            description: description.trim() || undefined,
-            samples: sampleUrls,
-            consent,
-          });
+          const result = await unwrap(
+            startVoiceCloneAction({
+              assetId,
+              voiceName: voiceName.trim(),
+              description: description.trim() || undefined,
+              samples: sampleUrls,
+              consent,
+            }),
+          );
 
           if (result.success) {
             toast.success('Voice cloning started', {
@@ -160,8 +163,7 @@ export function VoiceCloningEditor({
           }
         } catch (error) {
           toast.error('Voice cloning failed', {
-            description:
-              error instanceof Error ? error.message : 'An error occurred',
+            description: refusalMessage(error, 'An error occurred'),
           });
         }
       });
@@ -172,7 +174,7 @@ export function VoiceCloningEditor({
   const handleDeleteClone = useCallback(() => {
     startTransition(async () => {
       try {
-        const result = await deleteVoiceCloneAction({ assetId });
+        const result = await unwrap(deleteVoiceCloneAction({ assetId }));
 
         if (result.success) {
           toast.success('Voice clone deleted', {
@@ -185,8 +187,7 @@ export function VoiceCloningEditor({
         }
       } catch (error) {
         toast.error('Failed to delete voice clone', {
-          description:
-            error instanceof Error ? error.message : 'An error occurred',
+          description: refusalMessage(error, 'An error occurred'),
         });
       }
     });

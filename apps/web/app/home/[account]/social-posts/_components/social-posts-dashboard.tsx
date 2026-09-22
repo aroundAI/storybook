@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 
 import { Linkedin } from 'lucide-react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { NotesInput, PostsList } from '@kit/publishing/components/social-posts';
 import {
   createSocialPostAction,
@@ -77,7 +78,7 @@ export function SocialPostsDashboard({
         router.push(`/home/${accountSlug}/social-posts/${result.postId}`);
       } catch (error) {
         toast.error('Failed to create post', {
-          description: error instanceof Error ? error.message : 'Unknown error',
+          description: refusalMessage(error, 'Unknown error'),
         });
       }
     },
@@ -97,7 +98,7 @@ export function SocialPostsDashboard({
 
       startTransition(async () => {
         try {
-          const result = await publishSocialPostAction({ postId });
+          const result = await unwrap(publishSocialPostAction({ postId }));
           if (result.success) {
             toast.success('Post published to LinkedIn!', {
               description: 'Your post is now live.',
@@ -112,8 +113,7 @@ export function SocialPostsDashboard({
           }
         } catch (error) {
           toast.error('Failed to publish', {
-            description:
-              error instanceof Error ? error.message : 'Unknown error',
+            description: refusalMessage(error, 'Unknown error'),
           });
         } finally {
           setPublishingIds((prev) => {
@@ -136,8 +136,7 @@ export function SocialPostsDashboard({
           router.refresh();
         } catch (error) {
           toast.error('Failed to delete post', {
-            description:
-              error instanceof Error ? error.message : 'Unknown error',
+            description: refusalMessage(error, 'Unknown error'),
           });
         }
       });
@@ -149,14 +148,13 @@ export function SocialPostsDashboard({
     (postId: string) => {
       startTransition(async () => {
         try {
-          const result = await regenerateVariantsAction({ postId });
+          const result = await unwrap(regenerateVariantsAction({ postId }));
           toast.success(`Regenerated ${result.variantCount} new variants`);
           router.refresh();
           router.push(`/home/${accountSlug}/social-posts/${postId}`);
         } catch (error) {
           toast.error('Failed to regenerate', {
-            description:
-              error instanceof Error ? error.message : 'Unknown error',
+            description: refusalMessage(error, 'Unknown error'),
           });
         }
       });

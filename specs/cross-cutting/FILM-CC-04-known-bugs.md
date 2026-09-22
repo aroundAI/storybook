@@ -245,35 +245,29 @@ fix removed, so only that job can see it). The 27 client files:
 - `packages/features/episodes/src/components/continuity-checker.tsx`
 - `packages/features/episodes/src/components/refinement-chat.tsx`
 
-**Remaining** — every file is named in `KNOWN` in the guard test, which
-fails if one is fixed without being removed from it, so the list can only
-shrink:
+**Fixed (PR B — assets, audio, publishing, analytics, edit suite, admin),
+33 client files, 28 more actions** — `asset-gallery`, `location-editor`,
+`voice-profile-editor`, `CharacterEditor`, `use-assets`,
+`use-character-assets` (the last two also *branched* on
+`error.message.includes('in use')`, which cannot match in production);
+`DialogueList`, `LipSyncEditor`, `MusicTrackList`, `VoiceAssignment`,
+`VoiceCloningEditor`; the three audio-library dialogs; the audio-studio
+dialogs, timeline and hooks; `generate-all-sound-modal`;
+`publish-screen`, `publish-hub`, `upload-only-mode`, both social-posts
+surfaces; `api-keys-settings`; `export-reports`,
+`scheduled-reports-manager`, `note-cell` (fallback), `tag-manager` via
+its caller; `export-dialog`, `use-media-bin`; both admin dialogs. The
+E2E spec asserts one refusal per area (assets, audio, publishing,
+analytics) on the production build. It also found that the location
+editor could never save a location without an image (`fileUrl: ''`
+against `.url().optional()` — the FILM-1609 class); fixed in the same PR.
 
-- *PR B (KB-6 part 2: assets, audio, publishing, analytics, edit suite,
-  admin):* `packages/features/assets/src/components/{asset-gallery,location-editor,voice-profile-editor}.tsx`,
-  `character-editor/CharacterEditor.tsx`, `hooks/{use-assets,use-character-assets}.ts`
-  (the last two also *branch* on `error.message.includes('in use')`, which
-  cannot match in production);
-  `packages/features/audio-generation/src/components/{DialogueList,LipSyncEditor,MusicTrackList,VoiceAssignment,VoiceCloningEditor}.tsx`;
-  `apps/web/…/audio-library/_components/{batch-generate,generate-audio,upload-audio}-dialog.tsx`;
-  `apps/web/…/audio-studio/_components/{add-music-cue,generate-scene-music}-dialog.tsx`,
-  `dialogue-timeline.tsx`, `use-audio-studio-data.ts`, `use-batch-generation.ts`;
-  `apps/web/…/episodes/_components/generate-all-sound-modal.tsx`;
-  `apps/web/…/publish/_components/publish-screen.tsx`;
-  `apps/web/app/home/[account]/social-posts/**` (2 files);
-  `apps/web/app/home/[account]/settings/_components/api-keys-settings.tsx`;
-  `packages/features/publishing/src/components/{publish-hub,upload-only-mode}.tsx`;
-  `packages/features/content-analytics/src/components/{export-reports,scheduled-reports-manager}.tsx`;
-  `packages/features/content-analytics/src/components/video-log/note-cell.tsx`
-  (its `catch` fallback only);
-  `packages/features/edit-suite/src/components/export/export-dialog.tsx`,
-  `hooks/use-media-bin.ts`;
-  `packages/features/admin/src/components/{admin-create-user,admin-reset-password}-dialog.tsx`.
+**Remaining** — named in `KNOWN` in the guard test, which fails if the
+file is fixed without being removed from it:
+
 - *Deferred — owned by an open PR:*
   `packages/features/content-analytics/src/components/manual-revenue-form.tsx`
-  (KB-12). `taxonomy/tag-manager.tsx` reads the message of an error its
-  *caller* throws — fixed when `tag-manager-client.tsx` unwraps
-  `createTagAction` in PR B.
+  (KB-12).
 
 **No change needed** (the error never crossed a server action):
 `channel-picker.tsx`, `research/_components/upload-source-dialog.tsx`,
@@ -524,6 +518,7 @@ can be wrong. Not worth it until someone has a real account that is slow.
 | — | The experiment lifecycle was held only by the actions; a direct API call could reopen, back-date or forge an experiment | #264 (round 4) |
 | KB-6 (part) | Experiment log and note refusals replaced in production | #264 (round 4) |
 | KB-6 (part) | Projects and episodes/studio refusals replaced in production; shared `returnRefusals` helper and guard | KB-6 PR A |
+| KB-6 (part) | Assets, audio, publishing, analytics, edit-suite and admin refusals replaced in production | KB-6 PR B |
 | KB-9, KB-10 | Hook Lab: a cross-tenant retention read, and a feature that could not be used and measured the wrong point | #269 (removed) |
 | KB-11 | Another account could read a public project's analytics | FILM-1615 Step 0 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |

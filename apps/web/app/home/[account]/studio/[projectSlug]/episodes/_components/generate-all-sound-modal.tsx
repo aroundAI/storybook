@@ -22,6 +22,7 @@ import {
   getSeasonAudioSummaryAction,
 } from '@kit/audio-generation/server';
 import type { Episode } from '@kit/episodes/types';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import { Checkbox } from '@kit/ui/checkbox';
 import {
@@ -562,7 +563,7 @@ export function GenerateAllSoundModal({
             type: 'STEP_ERROR',
             episodeId: ep.episodeId,
             step: 'cues',
-            error: err instanceof Error ? err.message : 'Unknown error',
+            error: refusalMessage(err, 'Unknown error'),
           });
         }
       } else {
@@ -580,9 +581,11 @@ export function GenerateAllSoundModal({
           total: ep.dialogue.pending,
         });
         try {
-          const batchResult = await batchGenerateDialogueAction({
-            episodeId: ep.episodeId,
-          });
+          const batchResult = await unwrap(
+            batchGenerateDialogueAction({
+              episodeId: ep.episodeId,
+            }),
+          );
 
           if (batchResult.batchJobId) {
             // Poll batch status
@@ -629,7 +632,7 @@ export function GenerateAllSoundModal({
             type: 'STEP_ERROR',
             episodeId: ep.episodeId,
             step: 'dialogue',
-            error: err instanceof Error ? err.message : 'Unknown error',
+            error: refusalMessage(err, 'Unknown error'),
           });
         }
       } else {
@@ -717,7 +720,7 @@ export function GenerateAllSoundModal({
             type: 'STEP_ERROR',
             episodeId: ep.episodeId,
             step: 'music',
-            error: err instanceof Error ? err.message : 'Unknown error',
+            error: refusalMessage(err, 'Unknown error'),
           });
         }
       } else {
@@ -804,7 +807,7 @@ export function GenerateAllSoundModal({
             type: 'STEP_ERROR',
             episodeId: ep.episodeId,
             step: 'sfx',
-            error: err instanceof Error ? err.message : 'Unknown error',
+            error: refusalMessage(err, 'Unknown error'),
           });
         }
       } else {

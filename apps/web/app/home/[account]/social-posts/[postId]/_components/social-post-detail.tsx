@@ -14,6 +14,7 @@ import {
   Send,
 } from 'lucide-react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { VariantSelector } from '@kit/publishing/components/social-posts';
 import { getConnectedPlatformsAction } from '@kit/publishing/server';
 import {
@@ -185,7 +186,7 @@ export function SocialPostDetail({
 
     startTransition(async () => {
       try {
-        await regenerateVariantsAction({ postId: post.id });
+        await unwrap(regenerateVariantsAction({ postId: post.id }));
         const refreshed = await getSocialPostAction({ postId: post.id });
         setPost(
           mapPostToState(refreshed as unknown as Record<string, unknown>),
@@ -193,7 +194,7 @@ export function SocialPostDetail({
         toast.success('New variants generated');
       } catch (error) {
         toast.error('Failed to regenerate', {
-          description: error instanceof Error ? error.message : 'Unknown error',
+          description: refusalMessage(error, 'Unknown error'),
         });
       }
     });
@@ -208,13 +209,17 @@ export function SocialPostDetail({
     startTransition(async () => {
       try {
         // Approve first
-        await approveSocialPostAction({
-          postId: post.id,
-          platformConnectionId: selectedConnectionId,
-        });
+        await unwrap(
+          approveSocialPostAction({
+            postId: post.id,
+            platformConnectionId: selectedConnectionId,
+          }),
+        );
 
         // Then publish
-        const result = await publishSocialPostAction({ postId: post.id });
+        const result = await unwrap(
+          publishSocialPostAction({ postId: post.id }),
+        );
 
         if (result.success) {
           toast.success('Published to LinkedIn!', {
@@ -233,7 +238,7 @@ export function SocialPostDetail({
         }
       } catch (error) {
         toast.error('Failed to publish', {
-          description: error instanceof Error ? error.message : 'Unknown error',
+          description: refusalMessage(error, 'Unknown error'),
         });
         // Refresh to get current state
         const refreshed = await getSocialPostAction({ postId: post.id });

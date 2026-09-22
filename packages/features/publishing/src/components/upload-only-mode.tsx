@@ -13,6 +13,7 @@ import {
   Link2,
 } from 'lucide-react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import {
@@ -77,7 +78,7 @@ export function UploadOnlyMode({ episodeId, platform }: UploadOnlyModeProps) {
     error,
   } = useQuery({
     queryKey: ['export-package', episodeId, platform],
-    queryFn: () => generateExportPackageAction({ episodeId, platform }),
+    queryFn: () => unwrap(generateExportPackageAction({ episodeId, platform })),
   });
 
   const markUploadedMutation = useMutation({
@@ -87,9 +88,7 @@ export function UploadOnlyMode({ episodeId, platform }: UploadOnlyModeProps) {
       setPlatformUrl('');
     },
     onError: (err) => {
-      toast.error(
-        err instanceof Error ? err.message : 'Failed to mark as uploaded',
-      );
+      toast.error(refusalMessage(err, 'Failed to mark as uploaded'));
     },
   });
 
@@ -122,9 +121,7 @@ export function UploadOnlyMode({ episodeId, platform }: UploadOnlyModeProps) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-destructive">
-          {error instanceof Error
-            ? error.message
-            : 'Failed to generate export package'}
+          {refusalMessage(error, 'Failed to generate export package')}
         </div>
       </div>
     );

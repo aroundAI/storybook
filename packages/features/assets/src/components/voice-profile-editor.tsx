@@ -8,6 +8,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import { Button } from '@kit/ui/button';
 import {
@@ -189,11 +190,13 @@ export function VoiceProfileEditor({
         };
 
         if (isEditMode && voiceProfile) {
-          const result = await updateAssetAction({
-            id: voiceProfile.id,
-            name: data.name,
-            metadata: metadata as Record<string, unknown>,
-          });
+          const result = await unwrap(
+            updateAssetAction({
+              id: voiceProfile.id,
+              name: data.name,
+              metadata: metadata as Record<string, unknown>,
+            }),
+          );
 
           if (result.success) {
             toast.success('Voice profile updated successfully');
@@ -201,12 +204,14 @@ export function VoiceProfileEditor({
             onSuccess?.(result.data.id);
           }
         } else {
-          const result = await createAssetAction({
-            projectId,
-            type: 'voice',
-            name: data.name,
-            metadata: metadata as Record<string, unknown>,
-          });
+          const result = await unwrap(
+            createAssetAction({
+              projectId,
+              type: 'voice',
+              name: data.name,
+              metadata: metadata as Record<string, unknown>,
+            }),
+          );
 
           if (result.success) {
             toast.success('Voice profile created successfully');
@@ -215,10 +220,7 @@ export function VoiceProfileEditor({
           }
         }
       } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : 'Failed to save voice profile';
+        const message = refusalMessage(error, 'Failed to save voice profile');
         toast.error(message);
       }
     });
@@ -255,9 +257,10 @@ export function VoiceProfileEditor({
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                {voicesError instanceof Error
-                  ? voicesError.message
-                  : 'Failed to load voices. Please check your ElevenLabs API key.'}
+                {refusalMessage(
+                  voicesError,
+                  'Failed to load voices. Please check your ElevenLabs API key.',
+                )}
               </AlertDescription>
             </Alert>
           ) : (

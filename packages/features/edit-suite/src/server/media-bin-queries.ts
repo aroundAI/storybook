@@ -2,6 +2,8 @@
 
 import 'server-only';
 
+import { ActionRefusal } from '@kit/next/action-result';
+import { returnRefusals } from '@kit/next/refusals';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -67,7 +69,7 @@ export interface MediaBinQueryResult {
 // Server action
 // ──────────────────────────────────────────
 
-export async function getMediaBinDataAction(params: {
+async function getMediaBinData(params: {
   episodeId: string;
 }): Promise<MediaBinQueryResult> {
   const client = getSupabaseServerClient();
@@ -88,7 +90,7 @@ export async function getMediaBinDataAction(params: {
     .single();
 
   if (episodeError || !episode) {
-    throw new Error('Unauthorized or episode not found');
+    throw new ActionRefusal('Episode not found or access denied');
   }
 
   // Fetch all data in parallel
@@ -207,3 +209,5 @@ export async function getMediaBinDataAction(params: {
 
   return { shots, dialogueLines, dubbedVersions, audioTracks };
 }
+
+export const getMediaBinDataAction = returnRefusals(getMediaBinData);

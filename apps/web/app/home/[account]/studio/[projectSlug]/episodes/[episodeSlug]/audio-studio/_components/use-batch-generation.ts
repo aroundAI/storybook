@@ -9,6 +9,7 @@ import {
   getActiveBatchForEpisodeAction,
   getBatchStatusAction,
 } from '@kit/audio-generation/server';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { toast } from '@kit/ui/sonner';
 
 import type { SupportedLanguage } from './language-tab-bar';
@@ -152,9 +153,11 @@ export function useBatchGeneration(
   const handleGenerateAll = useCallback(() => {
     startTransition(async () => {
       try {
-        const result = await batchGenerateDialogueAction({
-          episodeId,
-        });
+        const result = await unwrap(
+          batchGenerateDialogueAction({
+            episodeId,
+          }),
+        );
 
         setBatchJobId(result.batchJobId);
         setBatchStatus({
@@ -177,9 +180,7 @@ export function useBatchGeneration(
           void pollBatchStatus(result.batchJobId);
         }, 3000);
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : 'Failed to start generation',
-        );
+        toast.error(refusalMessage(error, 'Failed to start generation'));
       }
     });
   }, [episodeId, pollBatchStatus, startTransition]);
@@ -189,7 +190,7 @@ export function useBatchGeneration(
 
     startTransition(async () => {
       try {
-        await cancelBatchAction({ batchJobId });
+        await unwrap(cancelBatchAction({ batchJobId }));
         toast.info('Generation cancelled');
 
         if (batchPollRef.current) {
@@ -202,11 +203,7 @@ export function useBatchGeneration(
         );
         void refreshAll();
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to cancel generation',
-        );
+        toast.error(refusalMessage(error, 'Failed to cancel generation'));
       }
     });
   }, [batchJobId, refreshAll, startTransition]);
@@ -233,9 +230,7 @@ export function useBatchGeneration(
           toast.error(result.error ?? 'Failed to clear voices');
         }
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : 'Failed to clear voices',
-        );
+        toast.error(refusalMessage(error, 'Failed to clear voices'));
       }
     });
   }, [completedCount, episodeId, refreshAll, startTransition]);

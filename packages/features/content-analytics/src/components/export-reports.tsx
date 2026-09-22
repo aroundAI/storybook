@@ -11,6 +11,7 @@ import {
   Table,
 } from 'lucide-react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Calendar } from '@kit/ui/calendar';
@@ -146,26 +147,26 @@ export function ExportReports({ accountId }: ExportReportsProps) {
     }
 
     try {
-      const result = await generateReportAction({
-        accountId,
-        config: {
-          type: reportType,
-          dateRange: {
-            start: dateRange.start,
-            end: dateRange.end,
-            preset: datePreset,
+      const result = await unwrap(
+        generateReportAction({
+          accountId,
+          config: {
+            type: reportType,
+            dateRange: {
+              start: dateRange.start,
+              end: dateRange.end,
+              preset: datePreset,
+            },
+            metrics: selectedMetrics,
+            platforms: selectedPlatforms,
+            branding: reportType === 'pdf' ? branding : undefined,
           },
-          metrics: selectedMetrics,
-          platforms: selectedPlatforms,
-          branding: reportType === 'pdf' ? branding : undefined,
-        },
-      });
+        }),
+      );
 
       setGeneratedReport(result);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to generate report',
-      );
+      setError(refusalMessage(err, 'Failed to generate report'));
     } finally {
       setIsGenerating(false);
     }

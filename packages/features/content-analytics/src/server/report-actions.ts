@@ -18,7 +18,9 @@ import {
   queryRetentionCurve,
   queryTotalsByVideoIds,
 } from '@kit/clickhouse/server';
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { chunkIds, fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -365,7 +367,7 @@ async function uploadAndGetSignedUrl(
 /**
  * Generate and return a report with signed download URL
  */
-export const generateReportAction = enhanceAction(
+const generateReport = enhanceAction(
   async function (data): Promise<GeneratedReport> {
     const { accountId, config } = data;
 
@@ -383,7 +385,9 @@ export const generateReportAction = enhanceAction(
     );
 
     if (analyticsData.length === 0) {
-      throw new Error('No data found for the selected date range and filters');
+      throw new ActionRefusal(
+        'No data found for the selected date range and filters',
+      );
     }
 
     let buffer: Buffer;
@@ -432,6 +436,8 @@ export const generateReportAction = enhanceAction(
     schema: GenerateReportSchema,
   },
 );
+
+export const generateReportAction = returnRefusals(generateReport);
 
 /**
  * Create a new scheduled report

@@ -8,6 +8,7 @@ import {
   createTagAction,
   deleteTagAction,
 } from '@kit/content-analytics/server/taxonomy-actions';
+import { unwrap } from '@kit/next/action-result';
 
 interface TagManagerClientProps {
   /** Account whose vocabulary is being edited */
@@ -32,7 +33,7 @@ export function TagManagerClient({
       accountId={accountId}
       tags={tags}
       onCreate={async (input) => {
-        const created = await createTagAction(input);
+        const created = await unwrap(createTagAction(input));
 
         startTransition(() => {
           setTags((current) => [...current, created as ContentTag]);

@@ -16,6 +16,7 @@ import {
   Trash2,
 } from 'lucide-react';
 
+import { refusalMessage } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Card, CardContent } from '@kit/ui/card';
@@ -333,9 +334,7 @@ function CreateScheduleDialog({
       });
       onSuccess();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to create schedule',
-      );
+      setError(refusalMessage(err, 'Failed to create schedule'));
     } finally {
       setIsCreating(false);
     }

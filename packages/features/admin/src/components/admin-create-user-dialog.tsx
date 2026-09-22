@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import {
   AlertDialog,
@@ -55,7 +56,7 @@ export function AdminCreateUserDialog(props: React.PropsWithChildren) {
   const onSubmit = (data: CreateUserSchemaType) => {
     startTransition(async () => {
       try {
-        const result = await createUserAction(data);
+        const result = await unwrap(createUserAction(data));
 
         if (result.success) {
           toast.success('User creates successfully');
@@ -66,7 +67,7 @@ export function AdminCreateUserDialog(props: React.PropsWithChildren) {
 
         setError(null);
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Error');
+        setError(refusalMessage(e, 'Error'));
       }
     });
   };
