@@ -2,8 +2,9 @@ name: Workflow
 on:
   push:
     branches: [ main ]
+  # Every pull request, not only those into main: a PR stacked on another
+  # feature branch showed "no checks reported" until it was retargeted.
   pull_request:
-    branches: [ main ]
 jobs:
   typescript:
     name: ʦ TypeScript
