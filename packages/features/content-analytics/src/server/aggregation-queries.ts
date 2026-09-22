@@ -673,6 +673,27 @@ export interface ProjectAudienceData {
     genders?: Record<string, number>;
   };
   geography?: Record<string, number>;
+  /**
+   * Absent when no video has a device row. Never a zero and never a
+   * default: the card this feeds showed `{ mobile: 78, desktop: 18,
+   * tablet: 4 }` from a constant for as long as this field did not exist
+   * (FILM-1701).
+   */
+  deviceType?: DeviceTypeBreakdown;
+}
+
+/**
+ * Views by device, pooled across the project's videos.
+ *
+ * Only YouTube reports devices, and it reports absolute views, so this is a
+ * sum rather than a weighting. `totalViews` is the denominator of every
+ * `percentage` here — the views that carried a device, which is not the
+ * project's view count.
+ */
+export interface DeviceTypeBreakdown {
+  totalViews: number;
+  /** Largest first. `device` is the platform's own value, e.g. `MOBILE`. */
+  devices: Array<{ device: string; views: number; percentage: number }>;
 }
 
 /**
@@ -713,27 +734,33 @@ export async function getProjectAudienceData(
   }
 
   // Per-video view totals weight the per-video percentage breakdowns
-  const [perVideoTotals, ageRows, genderRows, countryRows] = await Promise.all([
-    queryTotalsByVideoIds(publishIds, {
-      ...dateFilters,
-      projectIds: [projectId],
-    }),
-    queryAudienceRows({
-      videoIds: publishIds,
-      projectIds: [projectId],
-      dimension: 'age_group',
-    }),
-    queryAudienceRows({
-      videoIds: publishIds,
-      projectIds: [projectId],
-      dimension: 'gender',
-    }),
-    queryAudienceRows({
-      videoIds: publishIds,
-      projectIds: [projectId],
-      dimension: 'country',
-    }),
-  ]);
+  const [perVideoTotals, ageRows, genderRows, countryRows, deviceRows] =
+    await Promise.all([
+      queryTotalsByVideoIds(publishIds, {
+        ...dateFilters,
+        projectIds: [projectId],
+      }),
+      queryAudienceRows({
+        videoIds: publishIds,
+        projectIds: [projectId],
+        dimension: 'age_group',
+      }),
+      queryAudienceRows({
+        videoIds: publishIds,
+        projectIds: [projectId],
+        dimension: 'gender',
+      }),
+      queryAudienceRows({
+        videoIds: publishIds,
+        projectIds: [projectId],
+        dimension: 'country',
+      }),
+      queryAudienceRows({
+        videoIds: publishIds,
+        projectIds: [projectId],
+        dimension: 'device',
+      }),
+    ]);
 
   const weightFor = (videoId: string) =>
     perVideoTotals.get(videoId)?.views || 1;
@@ -760,9 +787,11 @@ export async function getProjectAudienceData(
       totalWeight += weight;
     }
 
+    // Out of 100, not 0..1: every card prints this number followed by "%",
+    // and a fraction put "0.3%" on screen for a 30% share.
     if (totalWeight > 0) {
       for (const key of Object.keys(totals)) {
-        totals[key] = totals[key]! / totalWeight;
+        totals[key] = (totals[key]! / totalWeight) * 100;
       }
     }
 
@@ -773,10 +802,13 @@ export async function getProjectAudienceData(
   const genders = aggregate(genderRows);
   const geography = aggregate(countryRows);
 
+  const deviceType = poolDeviceViews(deviceRows);
+
   const hasData =
     Object.keys(ageGroups).length > 0 ||
     Object.keys(genders).length > 0 ||
-    Object.keys(geography).length > 0;
+    Object.keys(geography).length > 0 ||
+    deviceType !== undefined;
 
   if (!hasData) {
     return null;
@@ -792,6 +824,48 @@ export async function getProjectAudienceData(
           }
         : undefined,
     geography: Object.keys(geography).length > 0 ? geography : undefined,
+    ...(deviceType ? { deviceType } : {}),
+  };
+}
+
+/**
+ * Device rows carry absolute views — only YouTube writes them, and
+ * `buildAudienceRows` stores no percentage — so the project's split is the
+ * sum per device over the sum of all of them. Averaging each video's own
+ * shares instead would let a ten-view video move the figure as far as a
+ * ten-thousand-view one.
+ *
+ * Undefined, not an all-zero breakdown, when no row counts a view: a share
+ * of nothing is 0/0, and "0%" on every device is a measurement nobody made.
+ */
+function poolDeviceViews(
+  rows: Array<{ key: string; views: number }>,
+): DeviceTypeBreakdown | undefined {
+  const viewsByDevice = new Map<string, number>();
+
+  for (const row of rows) {
+    viewsByDevice.set(row.key, (viewsByDevice.get(row.key) ?? 0) + row.views);
+  }
+
+  const totalViews = [...viewsByDevice.values()].reduce(
+    (sum, views) => sum + views,
+    0,
+  );
+
+  if (totalViews === 0) {
+    return undefined;
+  }
+
+  return {
+    totalViews,
+    devices: [...viewsByDevice]
+      .filter(([, views]) => views > 0)
+      .map(([device, views]) => ({
+        device,
+        views,
+        percentage: (views / totalViews) * 100,
+      }))
+      .sort((a, b) => b.views - a.views || a.device.localeCompare(b.device)),
   };
 }
 

@@ -108,6 +108,11 @@ export interface SeededVideo {
   connectionId: string;
   title: string;
   publishedAt: Date;
+  /**
+   * The platform the rows are written under. YouTube when omitted, which is
+   * what every spec before FILM-1701 meant.
+   */
+  platform?: 'youtube' | 'tiktok' | 'instagram';
 }
 
 function videoDimRow(video: SeededVideo) {
@@ -117,7 +122,7 @@ function videoDimRow(video: SeededVideo) {
     account_id: video.accountId,
     connection_id: video.connectionId,
     episode_id: '00000000-0000-0000-0000-000000000000',
-    platform: 'youtube',
+    platform: video.platform ?? 'youtube',
     content_type: 'long',
     language: 'en',
     // Stated, not left to the column default: omitted, it reads as "no
@@ -166,7 +171,7 @@ function videoMetricRow(video: SeededVideo, day: DailyMetric) {
   return {
     project_id: video.projectId,
     video_id: video.videoId,
-    platform: 'youtube',
+    platform: video.platform ?? 'youtube',
     metric_date: clickHouseDate(
       new Date(video.publishedAt.getTime() + day.ageDays * 86_400_000),
     ),
@@ -248,5 +253,48 @@ export async function seedVideoReach(
       impressions_ctr: day.ctr,
       engaged_views: 0,
     })),
+  );
+}
+
+/**
+ * One row of `video_audience`: a share of one video's audience, for one key
+ * of one dimension.
+ *
+ * `views` is the absolute count where the platform reports one (YouTube's
+ * device, country), and `percentage` is the share where it reports only that
+ * (age, gender, and everything TikTok sends). A row carries one or the other,
+ * and the Audience read weights a percentage by the video's own views.
+ */
+export interface AudienceRow {
+  dimension:
+    | 'age_group'
+    | 'gender'
+    | 'country'
+    | 'city'
+    | 'device'
+    | 'os'
+    | 'follower_status';
+  key: string;
+  views?: number;
+  percentage?: number;
+}
+
+/** Audience breakdown rows for several videos, in one request. */
+export async function seedVideoAudience(
+  entries: Array<{ video: SeededVideo; rows: AudienceRow[] }>,
+) {
+  await insertClickHouse(
+    'video_audience',
+    entries.flatMap(({ video, rows }) =>
+      rows.map((row) => ({
+        project_id: video.projectId,
+        video_id: video.videoId,
+        platform: video.platform ?? 'youtube',
+        dimension: row.dimension,
+        key: row.key,
+        views: row.views ?? 0,
+        percentage: row.percentage ?? 0,
+      })),
+    ),
   );
 }

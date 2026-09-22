@@ -134,7 +134,10 @@ export function AnalyticsDashboard({
     enabled: activeTab === 'overview',
   });
 
-  // Fetch audience data for Audience tab
+  // Audience data, for the Audience tab and for Overview's Top Regions and
+  // Gender cards. Enabled on both: it was enabled on Audience alone while
+  // Overview was handed its result, so on a first load those two cards said
+  // "no data" about data that had simply not been asked for (FILM-1701).
   const { data: audienceData, isLoading: isAudienceLoading } = useQuery({
     queryKey: [
       'audience-data',
@@ -148,7 +151,7 @@ export function AnalyticsDashboard({
         from: dateRange.from,
         to: dateRange.to,
       }),
-    enabled: activeTab === 'audience',
+    enabled: activeTab === 'audience' || activeTab === 'overview',
   });
 
   // Filter data by selected platforms
@@ -265,9 +268,13 @@ export function AnalyticsDashboard({
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="overview" data-test="analytics-tab-overview">
+            Overview
+          </TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
-          <TabsTrigger value="audience">Audience</TabsTrigger>
+          <TabsTrigger value="audience" data-test="analytics-tab-audience">
+            Audience
+          </TabsTrigger>
           <TabsTrigger value="deep-dive" data-test="analytics-tab-deep-dive">
             Deep Dive
           </TabsTrigger>
