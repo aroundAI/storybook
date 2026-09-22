@@ -71,6 +71,7 @@ describe('sitemap.xml/route', () => {
           '/cookie-policy',
           '/terms-of-service',
           '/privacy-policy',
+          '/data-deletion',
         ];
 
         expectedPaths.forEach((path) => {
@@ -334,7 +335,7 @@ describe('sitemap.xml/route', () => {
 
         const [[paths]] = mockGetServerSideSitemap.mock.calls;
 
-        expect(paths.length).toBeGreaterThanOrEqual(11); // 9 static + 1 blog + 1 doc
+        expect(paths.length).toBeGreaterThanOrEqual(12); // 10 static + 1 blog + 1 doc
         expect(
           paths.find((p: any) => p.loc === 'https://test.com/'),
         ).toBeDefined();
@@ -363,7 +364,7 @@ describe('sitemap.xml/route', () => {
 
         const [[paths]] = mockGetServerSideSitemap.mock.calls;
 
-        expect(paths.length).toBeGreaterThanOrEqual(109); // 9 static + 100 posts
+        expect(paths.length).toBeGreaterThanOrEqual(110); // 10 static + 100 posts
       });
 
       it('should handle CMS client errors gracefully', async () => {
@@ -432,7 +433,7 @@ describe('sitemap.xml/route', () => {
         const [[paths]] = mockGetServerSideSitemap.mock.calls;
 
         // Should still have static paths
-        expect(paths.length).toBe(9);
+        expect(paths.length).toBe(10);
       });
 
       it('should handle CMS returning null items', async () => {

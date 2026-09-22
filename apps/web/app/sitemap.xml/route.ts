@@ -35,6 +35,7 @@ function getPaths() {
     '/cookie-policy',
     '/terms-of-service',
     '/privacy-policy',
+    '/data-deletion',
     // add more paths here
   ];
 

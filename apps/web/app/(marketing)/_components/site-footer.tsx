@@ -46,6 +46,7 @@ export function SiteFooter() {
         </div>
       </div>
       <Footer
+        data-test="site-footer"
         logo={<AppLogo className="w-[85px] md:w-[95px]" />}
         description={<Trans i18nKey="marketing:footerDescription" />}
         copyright={
@@ -72,6 +73,10 @@ export function SiteFooter() {
               {
                 href: '/cookie-policy',
                 label: <Trans i18nKey="marketing:cookiePolicy" />,
+              },
+              {
+                href: '/data-deletion',
+                label: <Trans i18nKey="marketing:dataDeletion" />,
               },
             ],
           },

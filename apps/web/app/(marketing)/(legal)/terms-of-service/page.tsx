@@ -27,7 +27,7 @@ export async function generateMetadata() {
 
 async function TermsOfServicePage() {
   const { t } = await createI18nServerInstance();
-  const lastUpdated = 'January 7, 2025';
+  const lastUpdated = 'September 22, 2026';
   const companyName = 'Around AI Limited';
   const productName = 'StoryBook';
   const contactEmail = 'legal@storybook.digital';
@@ -274,6 +274,21 @@ async function TermsOfServicePage() {
                   When publishing content to third-party platforms, you must
                   comply with their respective terms of service. We are not
                   responsible for actions taken by third-party platforms.
+                </p>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                  {productName} uses YouTube API Services. By using{' '}
+                  {productName} to connect or publish to YouTube, you agree to
+                  be bound by the{' '}
+                  <a
+                    data-test="terms-youtube-terms-link"
+                    href="https://www.youtube.com/t/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-indigo-600 hover:underline dark:text-indigo-400"
+                  >
+                    YouTube Terms of Service
+                  </a>
+                  .
                 </p>
               </div>
             </div>
