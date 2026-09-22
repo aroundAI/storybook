@@ -1254,6 +1254,56 @@ window alone.
 
 ---
 
+## KB-25 — Disconnecting X or LinkedIn does not revoke anything at the vendor
+
+**Severity:** Medium — the creator believes access is withdrawn and it is not.
+The token stays valid at X / LinkedIn until it expires on its own (X refresh
+tokens: 180 days by our own config). **Found:** KB-20's drafting (#294),
+2026-09-22, while writing down what disconnect does; re-read on `main` by the
+coordinator. **Open.**
+
+`connection-actions.ts:130-133`:
+
+```ts
+case 'twitter':
+case 'linkedin':
+  result = await deleteConnection(connectionId);
+```
+
+YouTube, TikTok and Meta each go through a platform `disconnect*Action` that
+revokes at the vendor first. X and LinkedIn go straight to the row delete.
+`oauth/twitter/disconnect.ts` exports `disconnectTwitterAction` — which does
+call X's revoke endpoint — and **nothing in the repo calls it**. LinkedIn has
+no revoke code at all (`oauth/linkedin/` holds only `config.ts` and
+`index.ts`).
+
+The data-deletion page drafted in #294 therefore has to say, truthfully,
+"for X and LinkedIn we do not yet ask the platform to revoke" — a sentence
+that should not need to exist.
+
+### Proposed fix
+
+- Route `'twitter'` through the existing `disconnectTwitterAction`; add a
+  LinkedIn revoke (LinkedIn documents token revocation on its OAuth 2.0
+  pages — cite before writing). Design it together with KB-22, which changes
+  what `deleteConnection` itself does.
+- **Fix the class:** the switch is the shape of the bug — a platform that
+  lands in `default`, or in a bare `deleteConnection`, silently skips revocation.
+  Make the per-platform disconnect a required member of the provider
+  interface, so a sixth platform cannot compile without one.
+- Verifying the revoke against X needs the credentials we do not hold
+  (FILM-1729); the LinkedIn one likewise. Unit-test that the vendor call is
+  made; record the live check in FILM-1725.
+
+### Acceptance criteria
+
+- [ ] Disconnecting X calls X's revoke endpoint; LinkedIn calls LinkedIn's — unit-tested against a local listener, red first
+- [ ] No platform can reach `deleteConnection` without a revoke step — enforced by the type, not the switch
+- [ ] #294's "we do not yet ask the platform to revoke" sentence removed once true
+- [ ] Live revoke on X and LinkedIn — FILM-1725, blocked on credentials
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
