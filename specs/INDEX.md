@@ -380,7 +380,7 @@ graph TD
 | FILM-411 | [generation-progress](./phase-4-video-generation/components/FILM-411-generation-progress.md) | ✅ DONE | M | FILM-408 |
 | FILM-412 | [cost-tracking](./phase-4-video-generation/lib/FILM-412-cost-tracking.md) | ✅ DONE | M | FILM-405 |
 
-### Phase 5: Audio Generation (16 specs)
+### Phase 5: Audio Generation (17 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -397,7 +397,8 @@ graph TD
 | FILM-509 | [suno-provider](./phase-5-audio-generation/providers/FILM-509-suno-provider.md) | ✅ DONE | M | FILM-108 |
 | FILM-509b | [udio-provider](./phase-5-audio-generation/providers/FILM-509b-udio-provider.md) | ✅ DONE | M | FILM-108, FILM-502b |
 | FILM-510 | [voice-cloning](./phase-5-audio-generation/providers/FILM-510-voice-cloning.md) | ✅ DONE | L | FILM-501 |
-| FILM-511 | [lip-sync](./phase-5-audio-generation/providers/FILM-511-lip-sync.md) | ✅ DONE | L | FILM-502 |
+| FILM-511 | [lip-sync](./phase-5-audio-generation/providers/FILM-511-lip-sync.md) | 🗑️ RETIRED (FILM-513) | L | FILM-502 |
+| FILM-513 | [retire-lip-sync](./phase-5-audio-generation/providers/FILM-513-retire-lip-sync.md) | DRAFT | M | FILM-1801 for the resolver entry only |
 | FILM-512 | [multi-language-dubbing](./phase-5-audio-generation/server/FILM-512-multi-language-dubbing.md) | ✅ DONE | L | FILM-502, FILM-510 |
 
 ### Phase 6: Edit Suite (6 specs)
@@ -605,7 +606,7 @@ Three parts. **Provenance** (1701–1709) answers *where did this number come fr
 
 FILM-1710 fixes a latent write-only defect: `video_dim.duration_seconds` is the episode's duration, not the published clip's. Nothing reads the column today — the Hook Lab divides by `hook_variants.duration_seconds` — so it ships ahead of FILM-1616, the first thing that would read it, rather than ahead of the whole phase. FILM-1711 records that TikTok and Instagram analytics were never authorised. FILM-1721 exists because the first draft of the signal specs cited our own TypeScript types as evidence of platform capability and was wrong in five places on TikTok alone — its rule is that a metric name may not appear in a spec, a type or a request unless FILM-1721 documents it with a vendor citation. The declarative schema-drift repair this investigation surfaced shipped separately as PR #253.
 
-### Phase 18: Local Vendor Sandbox (4 specs)
+### Phase 18: Local Vendor Sandbox (5 specs)
 
 See [phase-18-local-vendor-sandbox/README.md](./phase-18-local-vendor-sandbox/README.md) for the problem table, locked decisions and known limits.
 
@@ -617,6 +618,7 @@ Local stand-ins for every social platform and AI vendor, on local ports: statefu
 | FILM-1802 | [social-platform-sandbox](./phase-18-local-vendor-sandbox/FILM-1802-social-platform-sandbox.md) | DRAFT | XL | FILM-1801, FILM-1721 |
 | FILM-1803 | [ai-generation-sandbox](./phase-18-local-vendor-sandbox/FILM-1803-ai-generation-sandbox.md) | DRAFT | L | FILM-1801 |
 | FILM-1804 | [sandbox-backed-e2e-flows](./phase-18-local-vendor-sandbox/FILM-1804-sandbox-backed-e2e-flows.md) | DRAFT | L | FILM-1802, FILM-1803 |
+| FILM-1805 | [local-models-and-sdk-base-urls](./phase-18-local-vendor-sandbox/FILM-1805-local-models-and-sdk-base-urls.md) | DRAFT | M | FILM-1801; FILM-513 for KB-21's lip-sync half |
 
 ### Spikes (5 specs)
 
@@ -691,7 +693,7 @@ SPIKE-01 through SPIKE-05
 | 2. Assets | 9 | 0 | 0 | 0 | 0 | 0 | 9 |
 | 3. Episodes | 14 | 0 | 0 | 0 | 0 | 0 | 14 |
 | 4. Video Gen | 15 | 0 | 0 | 0 | 0 | 0 | 15 |
-| 5. Audio Gen | 16 | 0 | 0 | 0 | 0 | 0 | 16 |
+| 5. Audio Gen | 17 | 1 | 0 | 0 | 0 | 0 | 16 |
 | 6. Edit Suite | 6 | 0 | 0 | 0 | 0 | 0 | 6 |
 | 7. Publishing | 15 | 0 | 0 | 0 | 0 | 0 | 15 |
 | 8. Analytics | 10 | 0 | 0 | 0 | 0 | 0 | 10 |
@@ -704,9 +706,9 @@ SPIKE-01 through SPIKE-05
 | 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 0 | 11 |
 | 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 0 | 17 |
 | 17. Analytics Provenance | 27 | 25 | 0 | 0 | 0 | 1 | 1 |
-| 18. Vendor Sandbox | 4 | 4 | 0 | 0 | 0 | 0 | 0 |
+| 18. Vendor Sandbox | 5 | 5 | 0 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **222** | **29** | **0** | **0** | **0** | **1** | **192** |
+| **TOTAL** | **224** | **31** | **0** | **0** | **0** | **1** | **192** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 

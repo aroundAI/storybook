@@ -1,6 +1,13 @@
 # FILM-511: Lip Sync
 
+> **Status: 🗑️ RETIRED (2026-09-22) — see [FILM-513](./FILM-513-retire-lip-sync.md).**
+> Both providers (SyncLabs, Wav2Lip) are deprecated by the owner, and the feature
+> was never reachable: the editor is mounted nowhere and no API key exists in any
+> environment. FILM-513 deletes the code and drops the empty table. This file is
+> kept as the record of the design.
+
 ## Metadata
+- **Status:** 🗑️ RETIRED (FILM-513)
 - **Phase:** 5 - Audio Generation
 - **Priority:** P2 (Future Enhancement)
 - **Effort:** L (1-3 days)
