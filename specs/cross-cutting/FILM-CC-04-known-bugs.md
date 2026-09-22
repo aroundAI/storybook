@@ -1032,41 +1032,28 @@ ignored overrides at server start. These have none of that:
 | `ANTHROPIC_BASE_URL` | the Anthropic SDK itself | same |
 | `GOOGLE_GEMINI_BASE_URL` | the Google GenAI SDK itself | same |
 
-### Decided (owner, 2026-09-22): close all six
+### Decided (owner, 2026-09-22): close all six — specified in FILM-513 and FILM-1805
 
 **None of the six is set in production** (owner, 2026-09-22 — a first reading
 that `GOOGLE_GEMINI_BASE_URL` was in use was wrong; the owner sets API keys, not
-base URLs). No deployment depends on any of them, so there is nothing to keep
-working and no production value to learn. Close them outright.
+base URLs). No deployment depends on any of them. The fix is split by what each
+variable is for, and each spec carries its own proof (PR #301):
 
-### Proposed fix
+| Variable(s) | Owner's call | Spec |
+|---|---|---|
+| `SYNCLABS_BASE_URL`, `WAV2LIP_API_URL` | Both providers deprecated — and the whole lip-sync feature is unreachable (editor mounted nowhere, no API key anywhere). **Delete the feature.** | [FILM-513](../phase-5-audio-generation/providers/FILM-513-retire-lip-sync.md) |
+| `LOCAL_API_URL` | **Keep** — for testing local models. The `local` provider is already an OpenAI-compatible client, i.e. the Ollama path; retarget it, gate it to dev/test with FILM-1801's rules, validate the URL, and add `LLM_FORCE_PROVIDER=local` so the prompt executor actually uses it | [FILM-1805](../phase-18-local-vendor-sandbox/FILM-1805-local-models-and-sdk-base-urls.md) §4 |
+| `OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, `GOOGLE_GEMINI_BASE_URL` (+ `GOOGLE_VERTEX_BASE_URL`, same class) | The SDKs read these only when no base URL is passed; ours pass none. **Pass `vendorUrl()` explicitly** at every construction site; prove per SDK against a local listener under production settings that 0 requests arrive | FILM-1805 §3 |
 
-- `SYNCLABS_BASE_URL`, `WAV2LIP_API_URL`, `LOCAL_API_URL`: remove the reads;
-  route the hosts through the resolver like every other vendor. If the Wav2Lip
-  or `local` LLM providers are themselves dead, say so in the PR and ask before
-  deleting a provider — removing an env read is in scope, removing a feature
-  is not.
-- `OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, `GOOGLE_GEMINI_BASE_URL`: **pass
-  `baseURL` explicitly to every SDK client** from the resolver, so the SDK's own
-  environment lookup never decides the host. Verify per SDK that the explicit
-  option wins over the env var by running the real SDK against a local listener
-  with the variable set — as FILM-1801 did for YouTube's `rootUrl`. Do not
-  assume.
-- **No production credentials, config or values are used or requested at any
-  point** (standing owner rule). The proof is local: variable set, production
-  settings, local listener, zero requests arrive.
-- Extend FILM-1801's guard (`vendor-api-versions.test.ts`): a new
-  `process.env.*_BASE_URL` / `*_API_URL` read for a vendor host fails the
-  build, with the resolver call to use instead.
-- Depends on #291.
+**No production credentials, config or values are used or requested at any
+point** (standing owner rule). Every proof is local.
 
 ### Acceptance criteria
 
-- [ ] None of the six variables changes a request's host under production settings — proven per SDK against a **local** listener, env var set: **0 requests arrive**. No production system, credential or value is used at any point
+- [ ] FILM-513 landed: the two lip-sync variables no longer exist in source
+- [ ] FILM-1805 landed: the three SDK variables provably ignored under production settings; `LOCAL_API_URL` gated and validated
 - [ ] A set-but-ignored variable is logged by name at server start (never by value), as FILM-1801 already does for `VENDOR_URL_*`
-- [ ] The three unused variables are gone from source, docs and env examples
-- [ ] The guard fails on a newly introduced vendor base-URL env read — seen red
-- [ ] FILM-1803's spec updated: it planned to rely on these variables for the AI sandbox and must use `VENDOR_URL_*` instead
+- [ ] Then this entry moves to *Fixed* with both PR numbers
 
 ---
 
