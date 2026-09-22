@@ -16,6 +16,7 @@ interface SyncJobResult {
   successful?: number;
   failed?: number;
   skipped?: number;
+  notAuthorised?: number;
   byPlatform?: Record<
     string,
     { processed: number; successful: number; failed: number }

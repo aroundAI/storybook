@@ -2,7 +2,9 @@
 
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 const UpdateCanonSettingsSchema = z.object({
@@ -16,7 +18,7 @@ const UpdateCanonSettingsSchema = z.object({
   }),
 });
 
-export const updateCanonSettingsAction = enhanceAction(
+const updateCanonSettings = enhanceAction(
   async (data) => {
     const client = getSupabaseServerClient();
 
@@ -28,7 +30,7 @@ export const updateCanonSettingsAction = enhanceAction(
       .single();
 
     if (fetchError || !project) {
-      throw new Error('Project not found');
+      throw new ActionRefusal('Project not found');
     }
 
     // Merge canon settings into existing metadata
@@ -57,3 +59,5 @@ export const updateCanonSettingsAction = enhanceAction(
     schema: UpdateCanonSettingsSchema,
   },
 );
+
+export const updateCanonSettingsAction = returnRefusals(updateCanonSettings);

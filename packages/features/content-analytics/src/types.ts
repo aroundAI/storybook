@@ -76,8 +76,13 @@ export interface AudienceData {
 }
 
 /**
- * Extended audience data for detailed insights
- * Includes device type, peak activity, interests
+ * Extended audience data for detailed insights.
+ *
+ * Every field here has a provider field and a `video_audience` dimension
+ * behind it. `peakActivity`, `interests` and `contentAffinity` had neither,
+ * and existed only so three constants had something to fall back *from*
+ * (FILM-1701). Wanting them back means a provider field, an
+ * `AudienceDimension` slot, a writer and a backfill — not a field here.
  */
 export interface ExtendedAudienceData {
   /** Device type percentages (mobile, desktop, tablet, tv, gameConsole) */
@@ -96,16 +101,6 @@ export interface ExtendedAudienceData {
   subscribedStatus?: {
     subscribed: number;
     notSubscribed: number;
-  };
-  /** Peak activity heatmap: 4 time slots x 7 days, values 0-1 */
-  peakActivity?: number[][];
-  /** Audience interest tags */
-  interests?: string[];
-  /** Content affinity data */
-  contentAffinity?: {
-    label: string;
-    percentage: number;
-    thumbnailUrl?: string;
   };
 }
 

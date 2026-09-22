@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 
 import { batchGenerateIdeasAction } from '@kit/episodes/server';
+import { refusalMessage } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { useBulkLlmJobs } from '@kit/ui/hooks';
@@ -190,8 +191,7 @@ export function IdeationPhase({
         dispatch({ type: 'SET_IDEATION_STATUS', episodeId, status: 'error' });
       }
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Batch ideation failed';
+      const message = refusalMessage(err, 'Batch ideation failed');
       for (const ep of pendingEpisodes) {
         dispatch({
           type: 'SET_EPISODE_ERROR',

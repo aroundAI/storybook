@@ -4,6 +4,8 @@ interface DonutSegment {
   value: number;
   color: string;
   label?: string;
+  /** `data-test` for this segment's legend percentage. */
+  testId?: string;
 }
 
 interface DonutChartProps {
@@ -116,7 +118,10 @@ export function DonutChart({
               <span className="text-gray-500 dark:text-gray-400">
                 {segment.label}
               </span>
-              <span className="font-semibold text-gray-900 dark:text-white">
+              <span
+                className="font-semibold text-gray-900 dark:text-white"
+                data-test={segment.testId}
+              >
                 {((segment.value / total) * 100).toFixed(1)}%
               </span>
             </div>

@@ -63,7 +63,6 @@ export {
   MiniBarChart,
   HorizontalProgress,
   DonutChart,
-  PeakActivityGrid,
   TagCloudWithAffinity,
 } from './charts';
 
@@ -94,8 +93,7 @@ export {
   GenderSplitCard,
   GeographyCard,
   DeviceTypeCard,
-  PeakActivityCard,
-  InterestsCard,
+  NotCollectedCard,
 } from './audience';
 
 // Account-level Company Dashboard

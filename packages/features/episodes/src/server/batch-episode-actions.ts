@@ -3,7 +3,9 @@
 import { revalidatePath } from 'next/cache';
 
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
+import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
@@ -27,7 +29,7 @@ import { generateEpisodeSlug } from '../lib/slug-utils';
  * with proper story structure distribution.
  * In production, queues via SQS for background processing.
  */
-export const generateSeasonOutlineAction = enhanceAction(
+const generateSeasonOutlineHandler = enhanceAction(
   async (
     data,
   ): Promise<{
@@ -66,7 +68,7 @@ export const generateSeasonOutlineAction = enhanceAction(
       .single();
 
     if (projectError || !project) {
-      throw new Error('Project not found or access denied');
+      throw new ActionRefusal('Project not found or access denied');
     }
 
     const accountId = project.account_id;
@@ -96,6 +98,10 @@ export const generateSeasonOutlineAction = enhanceAction(
   { schema: GenerateSeasonOutlineSchema },
 );
 
+export const generateSeasonOutlineAction = returnRefusals(
+  generateSeasonOutlineHandler,
+);
+
 /**
  * Batch create episodes from generated outlines (FILM-314)
  *
@@ -104,7 +110,7 @@ export const generateSeasonOutlineAction = enhanceAction(
  *
  * @throws {Error} If episode creation fails
  */
-export const batchCreateEpisodesAction = enhanceAction(
+const batchCreateEpisodesHandler = enhanceAction(
   async (
     data,
   ): Promise<{ success: true; data: BatchCreateEpisodesResponse }> => {
@@ -139,7 +145,7 @@ export const batchCreateEpisodesAction = enhanceAction(
       .single();
 
     if (projectError || !project) {
-      throw new Error('Project not found or access denied');
+      throw new ActionRefusal('Project not found or access denied');
     }
 
     const accountId = project.account_id;
@@ -243,6 +249,10 @@ export const batchCreateEpisodesAction = enhanceAction(
   {
     schema: BatchCreateEpisodesSchema,
   },
+);
+
+export const batchCreateEpisodesAction = returnRefusals(
+  batchCreateEpisodesHandler,
 );
 
 /**

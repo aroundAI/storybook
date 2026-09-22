@@ -15,6 +15,8 @@ import { migration as m005 } from './005_video_dim';
 import { migration as m006 } from './006_gross_subscribers';
 import { migration as m007 } from './007_video_dim_connection';
 import { migration as m008 } from './008_channel_subscribers';
+import { migration as m009 } from './009_video_dim_asset_duration';
+import { migration as m010 } from './010_video_dim_channel_language';
 import type { ClickHouseMigration } from './migration-types';
 
 const MIGRATIONS: ClickHouseMigration[] = [
@@ -26,6 +28,8 @@ const MIGRATIONS: ClickHouseMigration[] = [
   m006,
   m007,
   m008,
+  m009,
+  m010,
 ];
 
 const MIGRATION_TABLE = `

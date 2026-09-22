@@ -50,6 +50,10 @@ export default defineConfig({
         __dirname,
         '../../packages/shared/src/logger/index.ts',
       ),
+      '@kit/shared/vendors': path.resolve(
+        __dirname,
+        '../../packages/shared/src/vendors/index.ts',
+      ),
       '@kit/supabase/server-client': path.resolve(
         __dirname,
         '../../packages/supabase/src/clients/server-client.ts',
@@ -117,6 +121,18 @@ export default defineConfig({
       '@kit/assets/upload': path.resolve(
         __dirname,
         '../../packages/features/assets/src/lib/upload/index.ts',
+      ),
+      '@kit/ui/alert': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/alert.tsx',
+      ),
+      '@kit/ui/button': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/button.tsx',
+      ),
+      '@kit/ui/trans': path.resolve(
+        __dirname,
+        '../../packages/ui/src/makerkit/trans.tsx',
       ),
       '@kit/ui/utils': path.resolve(
         __dirname,

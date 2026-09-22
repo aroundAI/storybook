@@ -19,11 +19,9 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
-import type {
-  VideoDim,
-  VideoMetric,
-  VideoTrafficSource,
-} from '@kit/clickhouse/server';
+import type { VideoDim } from '@kit/clickhouse/server';
+
+import { buildLocalAnalyticsFixture } from './local-analytics-fixture';
 
 /**
  * Loaded dynamically, not with a static named import.
@@ -40,6 +38,7 @@ import type {
  * package normally.
  */
 const {
+  getClickHouseClient,
   insertVideoDims,
   insertVideoMetrics,
   insertVideoTrafficSources,
@@ -48,28 +47,21 @@ const {
 
 const { fetchAllRows } = await import('@kit/shared/pagination');
 
+// Its own statement so it does not contend with edits to the list above.
+const { LANGUAGE_NOT_SET, toDimLanguage } = await import(
+  '@kit/clickhouse/server'
+);
+
 /**
  * Mirrors `dim-sync.ts:21`. Redeclared rather than imported because that
  * module is `server-only`, which throws outside a Next runtime.
  */
 const UNATTRIBUTED_CONNECTION_ID = '00000000-0000-0000-0000-000000000000';
 
+/** The project `supabase/seeds/analytics-mock-data.sql` creates. */
+const SEEDED_PROJECT_ID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
 const WEEKS = 52;
-const DAY_MS = 86_400_000;
-
-/**
- * Deterministic, so re-running does not move the numbers under a screenshot
- * that was already reviewed. A seeded LCG rather than Math.random.
- */
-function makeRandom(seed: number) {
-  let state = seed;
-
-  return () => {
-    state = (state * 1_664_525 + 1_013_904_223) % 4_294_967_296;
-
-    return state / 4_294_967_296;
-  };
-}
 
 /** Mirrors `dim-sync.ts:228` so the fixture cannot drift from real sync. */
 function toClickHouseDateTime(iso: string): string {
@@ -100,6 +92,30 @@ function trafficWindow() {
   return { from, currentWeekStart };
 }
 
+/**
+ * Removes what an earlier run of this script wrote, and nothing else: the
+ * metric rows are matched on the two `metric_source` values the fixture
+ * uses, so rows a real sync wrote for the project survive a re-seed. Traffic
+ * rows carry no source column; the seeded project's are all this script's.
+ */
+async function clearSeededProject() {
+  const clickhouse = getClickHouseClient();
+
+  const deletions = [
+    'ALTER TABLE video_traffic_sources DELETE WHERE project_id = {projectId: UUID}',
+    `ALTER TABLE video_metrics DELETE WHERE project_id = {projectId: UUID}
+       AND metric_source IN ('backfill', 'snapshot_delta')`,
+  ];
+
+  for (const query of deletions) {
+    await clickhouse.command({
+      query,
+      query_params: { projectId: SEEDED_PROJECT_ID },
+      clickhouse_settings: { mutations_sync: '2' },
+    });
+  }
+}
+
 interface PublishRow {
   id: string;
   episode_id: string;
@@ -109,10 +125,10 @@ interface PublishRow {
   title: string | null;
   published_at: string;
   platform_connection_id: string | null;
+  duration_seconds: number | null;
   episodes: {
     project_id: string;
     duration_seconds: number | null;
-    target_duration_seconds: number | null;
     projects: { account_id: string } | null;
   } | null;
 }
@@ -158,7 +174,7 @@ async function main() {
       client
         .from('publishes')
         .select(
-          'id, episode_id, platform, content_type, language, title, published_at, platform_connection_id, episodes!inner(project_id, duration_seconds, target_duration_seconds, projects!inner(account_id))',
+          'id, episode_id, platform, content_type, language, title, published_at, platform_connection_id, duration_seconds, episodes!inner(project_id, duration_seconds, projects!inner(account_id))',
         )
         .eq('status', 'published')
         .not('published_at', 'is', null)
@@ -193,13 +209,19 @@ async function main() {
         connection_id: row.platform_connection_id ?? UNATTRIBUTED_CONNECTION_ID,
         platform: row.platform,
         content_type: row.content_type ?? 'full',
-        language: row.language ?? 'en',
+        language: toDimLanguage(row.language),
+        // The seeded publishes have no channel, so there is no target to
+        // read; dim-sync resolves it through the connection where one exists.
+        channel_language: LANGUAGE_NOT_SET,
         title: row.title ?? '',
         published_at: toClickHouseDateTime(row.published_at),
-        duration_seconds:
-          row.episodes?.duration_seconds ??
-          row.episodes?.target_duration_seconds ??
-          0,
+        episode_duration_seconds: row.episodes?.duration_seconds ?? 0,
+        // Null stays null: an unmeasured asset is `duration_unknown`, and a
+        // 0 here is what FILM-1710 removed.
+        asset_duration_seconds:
+          row.duration_seconds && row.duration_seconds > 0
+            ? row.duration_seconds
+            : null,
         tags: [],
       },
     ];
@@ -221,96 +243,50 @@ async function main() {
 
   await insertVideoDims(dims);
 
-  const { from } = trafficWindow();
-  const random = makeRandom(1605);
+  // Dimension rows are written for every publish, as sync does. The metric
+  // and traffic fixture belongs to the seeded project alone: on a shared
+  // local database the other publishes are other people's E2E fixtures, and
+  // a year of invented views landing on them is not a favour.
+  const seeded = dims.filter((dim) => dim.project_id === SEEDED_PROJECT_ID);
 
-  const traffic: VideoTrafficSource[] = [];
-  const metrics: VideoMetric[] = [];
-
-  for (let week = 0; week < WEEKS; week++) {
-    const date = new Date(from.getTime() + week * 7 * DAY_MS);
-    const metricDate = isoDate(date);
-
-    // Weeks 9-12 are left with no rows at all, so the tab's gap-fill has
-    // something real to fill and a reviewer can see quiet weeks rendered in
-    // place rather than as a shorter chart.
-    if (week >= 9 && week <= 12) continue;
-
-    const dim = dims[week % dims.length]!;
-
-    // Week 20 gets rows that sum to zero views — distinct from a missing
-    // week, and the case both cards label "no views".
-    const zeroWeek = week === 20;
-
-    // Browse+Suggested climbs across the year and crosses 60% near the end,
-    // so the threshold line has a real crossing to sit against rather than a
-    // flat series on one side of it.
-    const browseShare = zeroWeek ? 0 : 0.28 + (week / WEEKS) * 0.45;
-    const total = zeroWeek ? 0 : 1_200 + Math.round(random() * 2_400);
-
-    const split: Array<[string, number]> = [
-      ['RELATED_VIDEO', browseShare * 0.62],
-      ['SUBSCRIBER', browseShare * 0.26],
-      ['NOTIFICATION', browseShare * 0.12],
-      ['YT_SEARCH', (1 - browseShare) * 0.44],
-      ['EXTERNAL_URL', (1 - browseShare) * 0.16],
-      ['SHORTS', (1 - browseShare) * 0.14],
-      ['PLAYLIST', (1 - browseShare) * 0.12],
-      ['CHANNEL_PAGE', (1 - browseShare) * 0.09],
-      ['DIRECT_OR_UNKNOWN', (1 - browseShare) * 0.04],
-      // Deliberately under 1% of the week, to exercise the minimum slice
-      // height that three review rounds went back and forth over.
-      ['END_SCREEN', (1 - browseShare) * 0.01],
-    ];
-
-    for (const [source, share] of split) {
-      const views = Math.round(total * share);
-
-      if (views === 0 && !zeroWeek) continue;
-
-      traffic.push({
-        project_id: dim.project_id,
-        video_id: dim.video_id,
-        platform: 'youtube',
-        metric_date: metricDate,
-        source,
-        views,
-        watch_time_minutes: Math.round(views * 2.4),
-      });
-    }
-
-    // So the sibling Deep Dive cards are not empty beside the traffic ones.
-    metrics.push({
-      project_id: dim.project_id,
-      video_id: dim.video_id,
-      platform: 'youtube',
-      metric_date: metricDate,
-      views: total,
-      likes: Math.round(total * 0.04),
-      comments: Math.round(total * 0.006),
-      shares: Math.round(total * 0.003),
-      saves: 0,
-      watch_time_seconds: Math.round(total * 144),
-      revenue_cents: 0,
-      subscribers_gained: Math.round(total * 0.01),
-      subscribers_lost: Math.round(total * 0.002),
-      metric_source: 'backfill',
-      extra_metrics: '{}',
-    });
+  if (seeded.length === 0) {
+    throw new Error(
+      `No published publishes in the seeded project (${SEEDED_PROJECT_ID}). ` +
+        `Run \`pnpm supabase:web:reset\` to load analytics-mock-data.sql.`,
+    );
   }
+
+  const { from } = trafficWindow();
+  const { traffic, metrics } = buildLocalAnalyticsFixture({
+    dims: seeded,
+    from,
+    weeks: WEEKS,
+  });
+
+  // Both tables sort by (project_id, platform, video_id, …), so a row
+  // re-seeded under its true platform does not replace the copy an earlier
+  // run wrote under 'youtube' — it sits beside it. Clear the project first,
+  // and wait for the mutation: an ALTER … DELETE is asynchronous by default.
+  await clearSeededProject();
 
   await insertVideoTrafficSources(traffic);
   await insertVideoMetrics(metrics);
 
-  const project = dims[0]?.project_id;
+  const byPlatform = (rows: Array<{ platform: string }>) =>
+    ['youtube', 'tiktok', 'instagram']
+      .map(
+        (platform) =>
+          `${platform} ${rows.filter((row) => row.platform === platform).length}`,
+      )
+      .join(', ');
 
   console.log(
     [
       `Seeded local ClickHouse:`,
       `  video_dim              ${dims.length} rows`,
-      `  video_traffic_sources  ${traffic.length} rows`,
-      `  video_metrics          ${metrics.length} rows`,
-      `  project                ${project}`,
+      `  video_traffic_sources  ${traffic.length} rows (${byPlatform(traffic)})`,
+      `  video_metrics          ${metrics.length} rows (${byPlatform(metrics)})`,
+      `  project                ${SEEDED_PROJECT_ID}`,
       `  window                 ${isoDate(from)} .. (last complete week)`,
       `  weeks with no rows     9-12 (gap-fill)`,
       `  week with zero views   20`,

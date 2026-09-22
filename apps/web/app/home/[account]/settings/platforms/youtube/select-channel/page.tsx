@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 
 import { decrypt } from '@kit/shared/crypto';
 
+import { connectFailureQuery } from '~/lib/platforms/connect-failure';
+
 import { ChannelPicker } from './_components/channel-picker';
 
 interface PendingConnection {
@@ -20,6 +22,15 @@ interface PendingConnection {
   nonce: string;
 }
 
+// Shown by the platforms page, which looks the code up (KB-19).
+const PENDING_CONNECTION_LOST = connectFailureQuery({
+  code: 'pending_connection_lost',
+  platform: 'youtube',
+  vendorCode: null,
+  vendorMessage: null,
+  vendorLogId: null,
+});
+
 interface Props {
   params: Promise<{ account: string }>;
 }
@@ -31,7 +42,7 @@ export default async function SelectChannelPage({ params }: Props) {
 
   if (!pendingCookie?.value) {
     // No pending connection - redirect back to platforms
-    redirect(`/home/${account}/settings/platforms?error=no_pending_connection`);
+    redirect(`/home/${account}/settings/platforms?${PENDING_CONNECTION_LOST}`);
   }
 
   let pendingConnection: PendingConnection;
@@ -40,9 +51,7 @@ export default async function SelectChannelPage({ params }: Props) {
     pendingConnection = JSON.parse(decrypted);
   } catch {
     // Invalid or expired pending connection
-    redirect(
-      `/home/${account}/settings/platforms?error=invalid_pending_connection`,
-    );
+    redirect(`/home/${account}/settings/platforms?${PENDING_CONNECTION_LOST}`);
   }
 
   return (

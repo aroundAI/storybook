@@ -56,7 +56,14 @@ const SegmentPerformanceSchema = z
     connectionId: z.string().uuid().optional(),
     contentType: z.string().max(50).optional(),
     language: z.string().max(10).optional(),
-    kind: z.enum(['tag', 'language', 'content_type', 'connection']),
+    channelLanguage: z.string().max(10).optional(),
+    kind: z.enum([
+      'tag',
+      'language',
+      'channel_language',
+      'content_type',
+      'connection',
+    ]),
     /** Tag dimension prefix — meaningful only when `kind` is 'tag'. */
     dimension: z.string().max(50).optional(),
     minVideos: z.number().int().min(1).max(MAX_TAG_MIN_SAMPLE).default(5),
@@ -233,6 +240,7 @@ export const getSegmentPerformanceAction = enhanceAction(
       connectionId: input.connectionId,
       contentType: input.contentType,
       language: input.language,
+      channelLanguage: input.channelLanguage,
     };
 
     // ClickHouse is outside Postgres RLS, so access is proven here or not

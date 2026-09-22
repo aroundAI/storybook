@@ -13,6 +13,7 @@ import {
   Wand2,
 } from 'lucide-react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -94,7 +95,8 @@ export function ContinuityChecker({
   });
 
   const fixMutation = useMutation({
-    mutationFn: fixContinuityIssueAction,
+    mutationFn: (input: Parameters<typeof fixContinuityIssueAction>[0]) =>
+      unwrap(fixContinuityIssueAction(input)),
     onSuccess: () => {
       toast.success('Issue fixed successfully');
       void queryClient.invalidateQueries({
@@ -102,9 +104,7 @@ export function ContinuityChecker({
       });
     },
     onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to fix issue',
-      );
+      toast.error(refusalMessage(error, 'Failed to fix issue'));
     },
   });
 

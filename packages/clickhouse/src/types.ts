@@ -187,11 +187,34 @@ export interface VideoDim {
   connection_id: string;
   platform: string;
   content_type: string;
+  /**
+   * The published asset's language (`publishes.language`), or
+   * LANGUAGE_NOT_SET when nobody set one. Never a defaulted code.
+   */
   language: string;
+  /**
+   * The channel's target language (`platform_connections.language`), or
+   * LANGUAGE_NOT_SET for a publish with no channel. See
+   * lib/language-dimension.ts for why both exist.
+   */
+  channel_language: string;
   title: string;
   /** DateTime string, e.g. '2026-06-14 08:30:00'. */
   published_at: string;
-  duration_seconds: number;
+  /**
+   * The *episode's* rendered duration — not the published clip's. Renamed
+   * from `duration_seconds` (FILM-1710) so nothing reads it as the asset's:
+   * a Short cut from a 22-minute episode carries ~1,320 here. 0 when the
+   * render never reported one.
+   */
+  episode_duration_seconds: number;
+  /**
+   * The published asset's duration as the platform reports it
+   * (`publishes.duration_seconds`). Null is `duration_unknown` — the state of
+   * every row until the provider has been asked, and of every Instagram row,
+   * because Meta's Media node has no duration field. Never coerce it to 0.
+   */
+  asset_duration_seconds: number | null;
   /** 'dimension:slug' strings, e.g. 'topic:volcanoes'. */
   tags: string[];
 }

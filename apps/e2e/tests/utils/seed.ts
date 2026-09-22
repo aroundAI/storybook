@@ -197,6 +197,8 @@ export async function seedYouTubeConnection(
     metadata?: Record<string, unknown>;
     /** Defaults to YouTube; the Deep Dive total is per platform. */
     platform?: string;
+    /** The grant the OAuth callback would have recorded (FILM-1711). */
+    scopes?: string[];
   } = {},
 ): Promise<string> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/platform_connections`, {
@@ -217,6 +219,7 @@ export async function seedYouTubeConnection(
       // must still list it — which needs one to exist.
       is_active: options.isActive ?? true,
       ...(options.metadata ? { metadata: options.metadata } : {}),
+      ...(options.scopes ? { scopes: options.scopes } : {}),
     }),
   });
 
@@ -239,7 +242,7 @@ export async function seedYouTubeConnection(
 }
 
 /** Inserts one row through PostgREST and returns it. */
-async function insertRow<T>(
+export async function insertRow<T>(
   table: string,
   body: Record<string, unknown>,
   auth: { key: string; token?: string },
@@ -309,6 +312,27 @@ export async function seedProject(
 }
 
 /**
+ * A season on a project.
+ *
+ * The Overview, Content and Audience reads reach a project's publishes
+ * through `episodes → seasons → project`, with inner joins, so an episode
+ * that belongs to no season is invisible to all three however complete its
+ * publish is. A spec of those tabs needs one of these first.
+ */
+export async function seedSeason(
+  projectId: string,
+  number = 1,
+): Promise<{ seasonId: string }> {
+  const season = await insertRow<{ id: string }>(
+    'seasons',
+    { project_id: projectId, number, name: `Season ${number}` },
+    { key: SERVICE_ROLE_KEY },
+  );
+
+  return { seasonId: season.id };
+}
+
+/**
  * An episode with one published publish to a channel.
  *
  * `listProjectChannels` derives a project's channels from its *published*
@@ -318,7 +342,20 @@ export async function seedProject(
 export async function seedPublishedEpisode(
   projectId: string,
   connectionId: string,
-  options: { number?: number; platform?: string; title?: string } = {},
+  options: {
+    number?: number;
+    platform?: string;
+    title?: string;
+    seasonId?: string;
+    /** `episodes.duration_seconds` — the render the clip was cut from. */
+    episodeDurationSeconds?: number;
+    /**
+     * `publishes.duration_seconds` — the published asset's own length
+     * (FILM-1710). Omitted, it stays null: `duration_unknown`.
+     */
+    assetDurationSeconds?: number;
+    contentType?: 'full' | 'short';
+  } = {},
 ): Promise<{ episodeId: string; publishId: string; episodeSlug: string }> {
   const auth = { key: SERVICE_ROLE_KEY };
   const number = options.number ?? 1;
@@ -336,6 +373,10 @@ export async function seedPublishedEpisode(
       number,
       title,
       slug: episodeSlug,
+      ...(options.seasonId ? { season_id: options.seasonId } : {}),
+      ...(options.episodeDurationSeconds !== undefined && {
+        duration_seconds: options.episodeDurationSeconds,
+      }),
     },
     auth,
   );
@@ -351,6 +392,10 @@ export async function seedPublishedEpisode(
       // episode's, so a publish without one renders as "Untitled".
       title,
       published_at: new Date().toISOString(),
+      ...(options.contentType && { content_type: options.contentType }),
+      ...(options.assetDurationSeconds !== undefined && {
+        duration_seconds: options.assetDurationSeconds,
+      }),
     },
     auth,
   );
@@ -540,6 +585,32 @@ export async function readRows<T>(table: string, query: string): Promise<T[]> {
   }
 
   return JSON.parse(text) as T[];
+}
+
+/**
+ * Changes rows with the service role — for the state a second tab or another
+ * user would have produced, which no amount of driving one page can.
+ */
+export async function updateRows(
+  table: string,
+  query: string,
+  body: Record<string, unknown>,
+): Promise<void> {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+    method: 'PATCH',
+    headers: {
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `update ${table} failed (${response.status}): ${await response.text()}`,
+    );
+  }
 }
 
 /**

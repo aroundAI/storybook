@@ -1,5 +1,12 @@
 import { promises as fsPromises } from 'fs';
 
+import {
+  X_API_BASE,
+  X_MEDIA_UPLOAD,
+  X_MEDIA_UPLOAD_SCOPE,
+  xPostUrl,
+} from '@kit/shared/vendors';
+
 import type {
   TwitterMediaInit,
   TwitterUploadInput,
@@ -9,12 +16,9 @@ import type {
 } from './types';
 import { TWITTER_CONSTRAINTS } from './types';
 
-const TWITTER_API_V2 = 'https://api.twitter.com/2';
-const TWITTER_UPLOAD_API = 'https://upload.twitter.com/1.1/media/upload.json';
-
 /**
  * Twitter/X Provider
- * Handles video uploads using Twitter's chunked media upload API
+ * Handles video uploads using X's v2 chunked media upload
  * and tweet creation using the v2 API
  */
 export class TwitterProvider {
@@ -82,48 +86,54 @@ export class TwitterProvider {
     return {
       tweetId,
       status: 'PUBLISHED',
-      tweetUrl: `https://twitter.com/i/status/${tweetId}`,
+      tweetUrl: xPostUrl(tweetId),
     };
   }
 
   /**
-   * Initializes the upload session using INIT command
+   * Opens the upload session
    */
   private async initUpload(totalBytes: number): Promise<TwitterMediaInit> {
-    const params = new URLSearchParams({
-      command: 'INIT',
-      total_bytes: String(totalBytes),
-      media_type: 'video/mp4',
-      media_category: 'tweet_video',
-    });
-
-    const response = await fetch(`${TWITTER_UPLOAD_API}?${params}`, {
+    const response = await fetch(X_MEDIA_UPLOAD.initialize, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        media_type: 'video/mp4',
+        total_bytes: totalBytes,
+        media_category: 'tweet_video',
+      }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
+      // Every connection made before the scope was requested lands here, and
+      // X's own body does not say which scope it wanted.
+      const hint =
+        response.status === 403
+          ? ` (the connection may lack the ${X_MEDIA_UPLOAD_SCOPE} scope)`
+          : '';
+
       throw new Error(
-        `Twitter upload init failed: ${response.status} - ${errorText}`,
+        `Twitter upload init failed: ${response.status}${hint} - ${errorText}`,
       );
     }
 
-    const data = await response.json();
+    const { data } = await response.json();
 
-    if (!data.media_id_string) {
-      throw new Error('Twitter init failed: Missing media_id');
+    if (!data?.id) {
+      throw new Error('Twitter init failed: Missing media id');
     }
 
     return {
-      mediaId: data.media_id_string,
+      mediaId: data.id,
     };
   }
 
   /**
-   * Uploads a single chunk using APPEND command
+   * Uploads a single chunk
    */
   private async uploadChunk(
     mediaId: string,
@@ -132,8 +142,6 @@ export class TwitterProvider {
   ): Promise<void> {
     // Create form data for chunk upload
     const formData = new FormData();
-    formData.append('command', 'APPEND');
-    formData.append('media_id', mediaId);
     formData.append('segment_index', String(segmentIndex));
     // Slice the underlying buffer to get only this chunk's bytes
     // subarray() creates a view with an offset, so chunk.buffer would include
@@ -144,7 +152,7 @@ export class TwitterProvider {
     ) as ArrayBuffer;
     formData.append('media', new Blob([chunkBuffer], { type: 'video/mp4' }));
 
-    const response = await fetch(TWITTER_UPLOAD_API, {
+    const response = await fetch(X_MEDIA_UPLOAD.append(mediaId), {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
@@ -161,15 +169,10 @@ export class TwitterProvider {
   }
 
   /**
-   * Finalizes the upload using FINALIZE command
+   * Closes the upload session
    */
   private async finalizeUpload(mediaId: string): Promise<void> {
-    const params = new URLSearchParams({
-      command: 'FINALIZE',
-      media_id: mediaId,
-    });
-
-    const response = await fetch(`${TWITTER_UPLOAD_API}?${params}`, {
+    const response = await fetch(X_MEDIA_UPLOAD.finalize(mediaId), {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
@@ -194,12 +197,7 @@ export class TwitterProvider {
     const startTime = Date.now();
 
     while (Date.now() - startTime < maxWaitTimeMs) {
-      const params = new URLSearchParams({
-        command: 'STATUS',
-        media_id: mediaId,
-      });
-
-      const response = await fetch(`${TWITTER_UPLOAD_API}?${params}`, {
+      const response = await fetch(X_MEDIA_UPLOAD.status(mediaId), {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${this.accessToken}`,
@@ -213,8 +211,8 @@ export class TwitterProvider {
         );
       }
 
-      const data = await response.json();
-      const processingInfo = data.processing_info;
+      const { data } = await response.json();
+      const processingInfo = data?.processing_info;
 
       if (!processingInfo) {
         // No processing_info means processing is complete
@@ -258,7 +256,7 @@ export class TwitterProvider {
       body.reply_settings = replySettings;
     }
 
-    const response = await fetch(`${TWITTER_API_V2}/tweets`, {
+    const response = await fetch(`${X_API_BASE}/tweets`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
@@ -288,7 +286,7 @@ export class TwitterProvider {
    */
   async getUserInfo(): Promise<TwitterUser> {
     const response = await fetch(
-      `${TWITTER_API_V2}/users/me?user.fields=profile_image_url`,
+      `${X_API_BASE}/users/me?user.fields=profile_image_url`,
       {
         headers: { Authorization: `Bearer ${this.accessToken}` },
       },
