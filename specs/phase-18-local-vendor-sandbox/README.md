@@ -34,6 +34,7 @@ FILM-1801 (base-URL resolver) ── prerequisite; coordinate with phase-17 FILM
    └─→ FILM-1803 (AI generation sandbox)
             │
 FILM-1802 + FILM-1803 ─→ FILM-1804 (sandbox-backed E2E flows)
+FILM-1801 ─→ FILM-1805 (local models + SDK base URLs) ── the LLM rows of 1803's port table move to VENDOR_URL_* here
 ```
 
 | Spec | Status | Effort | Covers |
@@ -42,6 +43,7 @@ FILM-1802 + FILM-1803 ─→ FILM-1804 (sandbox-backed E2E flows)
 | [FILM-1802](./FILM-1802-social-platform-sandbox.md) | DRAFT | XL | YouTube, TikTok, Meta (Facebook + Instagram), X, LinkedIn: OAuth, refresh, publishing, analytics — stateful, randomized, growing over time |
 | [FILM-1803](./FILM-1803-ai-generation-sandbox.md) | DRAFT | L | LLM (OpenAI, Anthropic, Gemini), audio (ElevenLabs, PlayHT, Suno, Udio, Sync Labs), embeddings (Voyage, OpenAI) |
 | [FILM-1804](./FILM-1804-sandbox-backed-e2e-flows.md) | DRAFT | L | Connect, publish, sync-to-dashboard, token refresh, and one pass through the studio pipeline — asserted against the sandbox's ledger |
+| [FILM-1805](./FILM-1805-local-models-and-sdk-base-urls.md) | DRAFT | M | The SDKs' own base-URL env vars (`OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, `GOOGLE_GEMINI_BASE_URL`) closed by passing the resolver's URL explicitly; the `local` provider retargeted to Ollama, gated to dev/test, and a `LLM_FORCE_PROVIDER=local` switch that runs all 29 prompts on it. Closes FILM-CC-04 KB-21 with FILM-513 |
 
 **Scheduling.** This phase touches the same provider files as phase 17's FILM-1711,
 FILM-1712, FILM-1720 and FILM-1723. FILM-1801 in particular rewrites the host
