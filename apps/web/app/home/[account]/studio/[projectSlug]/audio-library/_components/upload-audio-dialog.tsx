@@ -10,6 +10,7 @@ import { useTransition } from 'react';
 
 import { FileAudio, Loader2, Music, Upload, Volume2, X } from 'lucide-react';
 
+import { refusalMessage } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -146,7 +147,7 @@ export function UploadAudioDialog({
         setFile(null);
         setName('');
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to upload audio');
+        setError(refusalMessage(err, 'Failed to upload audio'));
       }
     });
   };

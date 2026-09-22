@@ -15,6 +15,7 @@ import {
 } from '@kit/audio-generation/server';
 import type { AudioStudioBulkData } from '@kit/audio-generation/server';
 import type { EpisodeWithShots } from '@kit/episodes/types';
+import { refusalMessage } from '@kit/next/action-result';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 
@@ -448,11 +449,7 @@ export function useAudioStudioData(
         }
       } catch (error) {
         setIsGeneratingCues(false);
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to generate audio cues',
-        );
+        toast.error(refusalMessage(error, 'Failed to generate audio cues'));
       }
     });
   }, [episode.id, startTransition]);

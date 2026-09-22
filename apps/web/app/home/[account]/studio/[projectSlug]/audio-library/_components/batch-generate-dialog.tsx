@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react';
 
+import { refusalMessage } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import {
@@ -151,7 +152,7 @@ export function BatchGenerateDialog({
                 ? {
                     ...item,
                     status: 'failed',
-                    error: err instanceof Error ? err.message : 'Failed',
+                    error: refusalMessage(err, 'Failed'),
                   }
                 : item,
             ),

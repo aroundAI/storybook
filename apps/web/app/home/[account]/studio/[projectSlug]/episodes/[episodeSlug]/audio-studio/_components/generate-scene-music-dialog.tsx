@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react';
 import { Loader2, Music } from 'lucide-react';
 
 import { generateSceneMusicAction } from '@kit/audio-generation/server';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -92,16 +93,19 @@ export function GenerateSceneMusicDialog({
 
     startTransition(async () => {
       try {
-        const result = await generateSceneMusicAction({
-          episodeId,
-          sceneNumber: parseInt(selectedScene, 10),
-          genre: genre || undefined,
-          mood: mood || undefined,
-          tempo: (tempo as 'slow' | 'medium' | 'fast' | 'varied') || undefined,
-          prompt: customPrompt || undefined,
-          duration: customDuration ? parseInt(customDuration, 10) : undefined,
-          instrumentalOnly,
-        });
+        const result = await unwrap(
+          generateSceneMusicAction({
+            episodeId,
+            sceneNumber: parseInt(selectedScene, 10),
+            genre: genre || undefined,
+            mood: mood || undefined,
+            tempo:
+              (tempo as 'slow' | 'medium' | 'fast' | 'varied') || undefined,
+            prompt: customPrompt || undefined,
+            duration: customDuration ? parseInt(customDuration, 10) : undefined,
+            instrumentalOnly,
+          }),
+        );
 
         if (result.success) {
           toast.success('Music generation started');
@@ -116,11 +120,7 @@ export function GenerateSceneMusicDialog({
           setCustomDuration('');
         }
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to start music generation',
-        );
+        toast.error(refusalMessage(error, 'Failed to start music generation'));
       }
     });
   };

@@ -4,7 +4,9 @@ import 'server-only';
 
 import { revalidatePath } from 'next/cache';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { decrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -210,7 +212,7 @@ export const getVoiceProfileAction = enhanceAction(
  * Save voice profile to a character
  * Simplified: writes directly to elevenlabs_voice_id column
  */
-export const saveVoiceProfileAction = enhanceAction(
+const saveVoiceProfile = enhanceAction(
   async (
     data: SaveVoiceProfileSchemaType,
   ): Promise<SaveVoiceProfileResponse> => {
@@ -242,7 +244,7 @@ export const saveVoiceProfileAction = enhanceAction(
 
     if (assetError || !charAsset) {
       logger.error({ ...ctx, error: assetError }, 'Character asset not found');
-      throw new Error('Character not found');
+      throw new ActionRefusal('Character not found');
     }
 
     // Update character_details with the ElevenLabs voice ID directly
@@ -276,6 +278,8 @@ export const saveVoiceProfileAction = enhanceAction(
     schema: SaveVoiceProfileSchema,
   },
 );
+
+export const saveVoiceProfileAction = returnRefusals(saveVoiceProfile);
 
 /**
  * Delete voice profile from a character
@@ -400,7 +404,7 @@ export const bulkAssignVoiceAction = enhanceAction(
 /**
  * Auto-assign voices based on character gender/age
  */
-export const autoAssignVoicesAction = enhanceAction(
+const autoAssignVoices = enhanceAction(
   async (
     data: AutoAssignVoicesSchemaType,
   ): Promise<AutoAssignVoicesResponse> => {
@@ -425,7 +429,7 @@ export const autoAssignVoicesAction = enhanceAction(
     const voicesResult = await listVoicesAction({ projectId: data.projectId });
 
     if (!voicesResult.voices.length) {
-      throw new Error('No voices available for auto-assignment');
+      throw new ActionRefusal('No voices available for auto-assignment');
     }
 
     // Get character details for all characters
@@ -571,3 +575,5 @@ export const autoAssignVoicesAction = enhanceAction(
     schema: AutoAssignVoicesSchema,
   },
 );
+
+export const autoAssignVoicesAction = returnRefusals(autoAssignVoices);

@@ -16,6 +16,7 @@ import {
   XCircle,
 } from 'lucide-react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Checkbox } from '@kit/ui/checkbox';
@@ -186,14 +187,14 @@ export function DialogueList({
       const line = dialogueLines.find((l) => l.id === lineId);
       if (!line) throw new Error('Dialogue line not found');
 
-      return generateDialogueVoiceAction({
-        dialogueLineId: lineId,
-        overwriteExisting: true,
-      });
+      return unwrap(
+        generateDialogueVoiceAction({
+          dialogueLineId: lineId,
+          overwriteExisting: true,
+        }),
+      );
     },
-    onSuccess: (
-      result: Awaited<ReturnType<typeof generateDialogueVoiceAction>>,
-    ) => {
+    onSuccess: (result) => {
       if (result.status === 'completed') {
         toast.success('Audio regenerated successfully');
         queryClient.invalidateQueries({
@@ -203,22 +204,22 @@ export function DialogueList({
         toast.error(result.error ?? 'Failed to regenerate audio');
       }
     },
-    onError: (error: Error) => {
-      toast.error(error.message ?? 'Failed to regenerate');
+    onError: (error: unknown) => {
+      toast.error(refusalMessage(error, 'Failed to regenerate'));
     },
   });
 
   // Batch generate mutation
   const batchGenerateMutation = useMutation({
     mutationFn: async () => {
-      return batchGenerateDialogueAction({
-        episodeId,
-        overwriteExisting: false,
-      });
+      return unwrap(
+        batchGenerateDialogueAction({
+          episodeId,
+          overwriteExisting: false,
+        }),
+      );
     },
-    onSuccess: (
-      result: Awaited<ReturnType<typeof batchGenerateDialogueAction>>,
-    ) => {
+    onSuccess: (result) => {
       toast.success(
         `Batch generation started for ${result.totalLines} lines. Estimated cost: $${(result.estimatedCost / 100).toFixed(2)}`,
       );
@@ -226,8 +227,8 @@ export function DialogueList({
         queryKey: ['dialogue-lines', episodeId],
       });
     },
-    onError: (error: Error) => {
-      toast.error(error.message ?? 'Failed to start batch generation');
+    onError: (error: unknown) => {
+      toast.error(refusalMessage(error, 'Failed to start batch generation'));
     },
   });
 

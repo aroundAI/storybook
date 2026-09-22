@@ -6,7 +6,9 @@ import { revalidatePath } from 'next/cache';
 
 import { v4 as uuidv4 } from 'uuid';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -36,7 +38,7 @@ import { SunoProvider } from '../providers/suno';
  * 3. Calls the Suno provider to start generation
  * 4. Returns the job ID for status polling
  */
-export const generateMusicAction = enhanceAction(
+const generateMusicHandler = enhanceAction(
   async (data: GenerateMusicSchemaType) => {
     const logger = await getLogger();
     const ctx = {
@@ -65,7 +67,7 @@ export const generateMusicAction = enhanceAction(
 
     if (episodeError || !episode) {
       logger.error({ ...ctx, error: episodeError }, 'Episode not found');
-      throw new Error('Episode not found');
+      throw new ActionRefusal('Episode not found');
     }
 
     const accountId = episode.projects?.account_id;
@@ -191,6 +193,8 @@ export const generateMusicAction = enhanceAction(
     schema: GenerateMusicSchema,
   },
 );
+
+export const generateMusicAction = returnRefusals(generateMusicHandler);
 
 /**
  * Get the status of a music generation job
