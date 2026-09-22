@@ -99,6 +99,19 @@ replay". Anything comparing
 view counts across that boundary is comparing two different measures; the same
 argument FILM-1722 makes per platform applies to YouTube against its own past.
 
+**The Shorts change reached the API later than it reached Studio.** The
+[revision history](https://developers.google.com/youtube/analytics/revision_history)
+(re-read 2026-09-22) dates `engagedViews` — "will reflect the previous
+view-counting methodology" — to **2025-04-24**, when targeted queries switched, and
+the bulk reports' `engaged_views` column to **2025-06-24**; the 2025-03-26 entry
+says "until then, views will be based on the old methodology". So a stored Shorts
+view between 2025-03-31 and 2025-06-24 is one definition or the other and nothing
+says which. The 2026-08-27 entry defines an engaged view as "playback continues
+past the first frame, or the user clicks/taps to play", and leaves it unchanged.
+FILM-1722's registry (`packages/clickhouse/src/lib/view-definitions.ts`) encodes
+these dates, and `view-definition-sources.test.ts` fails if one it uses is not
+stated in this section.
+
 **`ageGroup` expanded on 2026-03-09** to include viewers YouTube estimates to be
 under 18. Our audience buckets predate that and should be checked against it.
 
@@ -202,6 +215,14 @@ Organised by **`media_product_type`** (`FEED` / `REELS` / `STORY`), **not** by
 | skip rate | `reels_skip_rate` | — | yes | — |
 | **profile visits** | `profile_visits` | yes | **NO** | yes |
 | **follows** | `follows` | yes | **NO** | yes |
+
+**`reach` is estimated, and `views` is still "in development".** The
+[media insights reference](https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/insights/)
+(re-read 2026-09-22) describes `reach` as "number of unique Instagram users that
+have seen the reel at least once … different from impressions, which can include
+multiple views of a reel by the same account" and tags it *"Metric is estimated"*;
+`views` is "total number of times IG Media has been played" and tagged *"Metric in
+development"*. It does not say whether `views` counts replays or paid plays.
 
 **`profile_visits` and `follows` are not available for REELS** — which is what
 creators publish. Instagram's Audience stage therefore has no per-media signal, and

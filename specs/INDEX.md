@@ -594,7 +594,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1719 | [signal-surfaces](./phase-17-analytics-provenance/FILM-1719-signal-surfaces.md) | DRAFT | L | FILM-1706, FILM-1717, FILM-1718 |
 | FILM-1720 | [facebook-analytics](./phase-17-analytics-provenance/FILM-1720-facebook-analytics.md) | DRAFT | L | FILM-1711, FILM-1714, FILM-1721, FILM-1723 |
 | FILM-1721 | [platform-capability-reference](./phase-17-analytics-provenance/FILM-1721-platform-capability-reference.md) | ✅ DONE | L | - |
-| FILM-1722 | [view-definition-registry](./phase-17-analytics-provenance/FILM-1722-view-definition-registry.md) | DRAFT | M | FILM-1721 |
+| FILM-1722 | [view-definition-registry](./phase-17-analytics-provenance/FILM-1722-view-definition-registry.md) | 🟡 PARTIAL | M | FILM-1721 |
 | FILM-1723 | [api-version-consolidation](./phase-17-analytics-provenance/FILM-1723-api-version-consolidation.md) | 🟡 PARTIAL | M | - |
 | FILM-1724 | [channel-experiments](./phase-17-analytics-provenance/FILM-1724-channel-experiments.md) | DRAFT | L | FILM-1610, FILM-1715, FILM-1716; FILM-1710 for hook tests |
 | FILM-1725 | [deferred-vendor-verifications](./phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.md) | ⏸️ DEFERRED | S | FILM-1721 |
