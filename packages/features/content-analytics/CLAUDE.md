@@ -287,6 +287,31 @@ try {
 }
 ```
 
+## Revenue is per currency (KB-12) ⚠️
+
+`revenue_records.currency` is a column, a channel can be paid in more than
+one, and there are no exchange rates here. **Never add `revenue_cents`
+across rows without looking at the currency** — `$12.00` and `€5.00` are not
+`1700` of anything. Decided by the product owner (2026-09-22): one card per
+currency; no FX, no base currency, no selector; a single-currency account
+sees exactly what it always did.
+
+- **One primitive: `src/lib/money.ts`.** `CurrencyAmount`, `MoneyByCurrency`,
+  `createMoneyFold` / `foldMoney`, `createCurrencyPartition` (per-currency
+  state for a fold that keeps more than one number), `formatCurrencyAmount` /
+  `formatMoney` (`$12.00 + €5.00`). Do not write a second fold or formatter.
+- **`forEachAccountRevenueRow` hands out `row.amount`**, not a bare number.
+  Reaching for `row.amount.cents` to add it to another row's is the bug.
+- **Shares, trends and RPM are computed within a currency**
+  (`src/lib/revenue-by-currency.ts`). Never divide a mixed sum; if a chart
+  cannot show two currencies on one axis, draw one per currency.
+- **Alerts are per currency** (`revenue-alerts.ts`).
+- **ClickHouse `video_metrics.revenue_cents` is USD by construction** — no
+  currency column, only USD-sourced writers (today: a literal `0`).
+  `__tests__/revenue-writers.test.ts` binds that to the source; a new writer
+  of `revenue_cents` fails it until listed. `formatCurrency` in `lib/format`
+  is for those figures only.
+
 ## Dependencies
 
 - `googleapis` - Google API client library (YouTube only)
@@ -301,10 +326,10 @@ read zero. They live between the DOM and form state. Changes to
 `apps/e2e/tests/revenue/`; see the E2E section of the root `CLAUDE.md` for
 how these are written.
 
-**`revenue-mix-card.tsx` has no browser coverage because it is mounted
-nowhere** — FILM-1611 wires it in, and that is the PR that should add a
-spec for it. Its logic lives in `lib/revenue-mix.ts` and is unit-tested;
-what is untested is that any of it reaches a screen.
+**`revenue-mix-card.tsx` is mounted by `revenue-dashboard.tsx`, once per
+currency**, and covered in the browser by `revenue.spec.ts` ("Revenue mix")
+and `revenue-currency.spec.ts`. Its logic lives in `lib/revenue-mix.ts` and
+is unit-tested.
 
 ```bash
 # Run tests

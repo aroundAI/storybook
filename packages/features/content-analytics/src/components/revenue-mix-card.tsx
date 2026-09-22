@@ -4,6 +4,7 @@ import { PieChart } from 'lucide-react';
 
 import { Skeleton } from '@kit/ui/skeleton';
 
+import { DEFAULT_CURRENCY, formatCurrencyAmount } from '../lib/money';
 import {
   REVENUE_CATEGORY_COLOR,
   REVENUE_CATEGORY_LABEL,
@@ -13,16 +14,17 @@ import {
 interface RevenueMixCardProps {
   /** Revenue in cents keyed by category, from RevenueSummary.byType */
   byType: Record<string, number>;
+  /**
+   * The currency every cent in `byType` is in. A mix is a set of shares,
+   * and a share across two currencies needs a rate nobody has (KB-12) — so
+   * a card draws one currency, and an account with two gets two cards.
+   */
+  currency?: string | null;
   /** Loading state */
   isLoading?: boolean;
 }
 
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  })}`;
-}
+const MIX_AMOUNT = { minimumFractionDigits: 0, maximumFractionDigits: 2 };
 
 /**
  * Revenue mix by category. Ads falling as a share of total is the health
@@ -31,8 +33,12 @@ function formatCents(cents: number): string {
  */
 export function RevenueMixCard({
   byType,
+  currency = DEFAULT_CURRENCY,
   isLoading = false,
 }: RevenueMixCardProps) {
+  const formatCents = (cents: number) =>
+    formatCurrencyAmount({ currency, cents }, MIX_AMOUNT);
+
   if (isLoading) {
     return <RevenueMixCardSkeleton />;
   }

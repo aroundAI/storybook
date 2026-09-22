@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { foldMoney } from '../src/lib/money';
 import { fetchAccountRevenueRows } from '../src/server/revenue-queries';
 
 type Call = [string, ...unknown[]];
@@ -172,7 +173,9 @@ describe('fetchAccountRevenueRows', () => {
   it('merges both scopes, resolving episode_id only for publish-scoped rows', async () => {
     const client = createClient([
       {
-        data: [{ id: 'r1', publish_id: null, revenue_cents: 500 }],
+        data: [
+          { id: 'r1', publish_id: null, revenue_cents: 500, currency: 'EUR' },
+        ],
         error: null,
       },
       {
@@ -181,6 +184,7 @@ describe('fetchAccountRevenueRows', () => {
             id: 'r2',
             publish_id: 'p1',
             revenue_cents: 250,
+            currency: 'USD',
             publishes: { episode_id: 'ep-1' },
           },
         ],
@@ -198,6 +202,14 @@ describe('fetchAccountRevenueRows', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({ id: 'r1', episode_id: null });
     expect(rows[1]).toMatchObject({ id: 'r2', episode_id: 'ep-1' });
+
+    // KB-12: the figure leaves this read with its currency attached, and
+    // not as a bare number a caller can add to another row's.
+    expect(rows.map((row) => row.amount)).toEqual([
+      { currency: 'EUR', cents: 500 },
+      { currency: 'USD', cents: 250 },
+    ]);
+    expect(rows[0]).not.toHaveProperty('revenue_cents');
   });
 
   it('returns every row when a half exceeds one page', async () => {
@@ -207,6 +219,7 @@ describe('fetchAccountRevenueRows', () => {
       id: `r${index}`,
       publish_id: null,
       revenue_cents: 100,
+      currency: 'USD',
     }));
 
     const client = createClient([
@@ -222,7 +235,9 @@ describe('fetchAccountRevenueRows', () => {
     );
 
     expect(rows).toHaveLength(600);
-    expect(rows.reduce((sum, r) => sum + r.revenue_cents, 0)).toBe(60_000);
+    expect(foldMoney(rows.map((row) => row.amount))).toEqual([
+      { currency: 'USD', cents: 60_000 },
+    ]);
   });
 
   it('keeps each half’s filters separate when both page past one page', async () => {

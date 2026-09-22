@@ -8,13 +8,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Progress } from '@kit/ui/progress';
 import { Skeleton } from '@kit/ui/skeleton';
 
-import { formatCurrency } from '../lib/format';
+import { DEFAULT_CURRENCY, formatCurrencyAmount } from '../lib/money';
 
 interface RevenuePlatformBreakdownProps {
   breakdown: Record<string, number>;
+  /**
+   * The total `breakdown` is a share of — the same currency's, never a sum
+   * across currencies (KB-12).
+   */
   total: number;
+  /** The currency of `breakdown` and `total`. */
+  currency?: string | null;
   isLoading?: boolean;
 }
+
+const WHOLE_UNITS = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
 
 const PLATFORM_CONFIG: Record<
   string,
@@ -52,6 +60,7 @@ const PLATFORM_CONFIG: Record<
 export function RevenuePlatformBreakdown({
   breakdown,
   total,
+  currency = DEFAULT_CURRENCY,
   isLoading,
 }: RevenuePlatformBreakdownProps) {
   const platforms = useMemo(() => {
@@ -100,7 +109,7 @@ export function RevenuePlatformBreakdown({
       {platforms.map(({ platform, revenueCents, percentage, config }) => {
         const Icon = config.icon;
         return (
-          <Card key={platform}>
+          <Card key={platform} data-test="revenue-platform-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 <div className="flex items-center gap-2">
@@ -113,7 +122,10 @@ export function RevenuePlatformBreakdown({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatCurrency(revenueCents / 100)}
+                {formatCurrencyAmount(
+                  { currency, cents: revenueCents },
+                  WHOLE_UNITS,
+                )}
               </div>
               <div className="mt-2 space-y-1">
                 <Progress value={percentage} className="h-2" />

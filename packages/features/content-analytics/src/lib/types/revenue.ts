@@ -40,11 +40,16 @@ export interface RevenueRecord {
 }
 
 /**
- * Aggregated revenue summary for a period
+ * Aggregated revenue summary for a period, **in one currency** (KB-12).
+ *
+ * Every cents field here is an amount of `currency` and of nothing else. An
+ * account paid in two currencies has two of these — see
+ * `createRevenueSummaryFold` — because there are no exchange rates to make
+ * one from. `currency` is null only for rows written without a code.
  */
 export interface RevenueSummary {
   totalRevenueCents: number;
-  currency: string;
+  currency: string | null;
   period: {
     start: string;
     end: string;
@@ -93,9 +98,11 @@ export interface RevenueSummary {
 }
 
 /**
- * Revenue projection based on historical data
+ * Revenue projection based on historical data, in one currency (KB-12):
+ * the days counted and the confidence are that currency's own.
  */
 export interface RevenueProjection {
+  currency: string | null;
   estimatedMonthlyRevenueCents: number;
   estimatedYearlyRevenueCents: number;
   confidenceLevel: 'high' | 'medium' | 'low';
@@ -116,17 +123,15 @@ export interface RevenueReport {
   period: 'monthly' | 'quarterly' | 'yearly' | 'custom';
   startDate: string;
   endDate: string;
-  summary: RevenueSummary;
-  topPerformers: {
-    contentId: string;
-    title: string;
-    revenueCents: number;
-    views: number;
-    rpm: number;
-  }[];
+  /** One per currency, largest first. Empty when nothing was recorded. */
+  summaries: RevenueSummary[];
+  /** Ranked within a currency: there is no rate to rank across two. */
+  topPerformers: TopRevenueContentByCurrency[];
   platformBreakdown: {
+    currency: string | null;
     platform: string;
     revenueCents: number;
+    /** Share of this currency's total, never of a sum across currencies. */
     percentOfTotal: number;
     contentCount: number;
   }[];
@@ -154,8 +159,15 @@ export interface RevenueDataPoint {
   platform?: string;
 }
 
+/** One currency's daily series, zero-filled across the requested range. */
+export interface RevenueSeries {
+  currency: string | null;
+  points: RevenueDataPoint[];
+}
+
 /**
- * Top content item by revenue
+ * Top content item by revenue. `revenueCents` and `rpm` are in the currency
+ * of the `TopRevenueContentByCurrency` that holds the item.
  */
 export interface TopRevenueContent {
   publishId: string;
@@ -166,6 +178,12 @@ export interface TopRevenueContent {
   views: number;
   rpm: number;
   thumbnailUrl?: string;
+}
+
+/** One currency's ranking. A video paid in two currencies is in both. */
+export interface TopRevenueContentByCurrency {
+  currency: string | null;
+  items: TopRevenueContent[];
 }
 
 /**

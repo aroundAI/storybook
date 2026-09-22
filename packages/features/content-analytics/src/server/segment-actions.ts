@@ -14,13 +14,14 @@ import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import type { MoneyByCurrency } from '../lib/money';
 import type { MembershipEntry } from '../lib/segment-revenue';
 import {
   checkpointWindow,
   createSegmentRevenueFold,
   retainSurvivingSegments,
   revenueFetchWindow,
-  segmentRpmCents,
+  segmentRpm,
   yearChunks,
 } from '../lib/segment-revenue';
 import { MAX_TAG_MIN_SAMPLE } from '../lib/ypp-targets';
@@ -75,13 +76,15 @@ const SegmentPerformanceSchema = z
 
 export interface SegmentPerformanceEntry extends SegmentPerformanceRow {
   /**
-   * Pooled revenue per thousand views. Absent when revenue was not
-   * requested, and absent rather than zero when the segment has no views.
+   * Pooled revenue per thousand views, one rate per currency the segment
+   * was paid in (KB-12) — cents of that currency, largest first. Absent
+   * when revenue was not requested, and absent rather than zero when the
+   * segment has no views.
    */
-  rpmCents?: number | null;
+  rpm?: MoneyByCurrency | null;
 }
 
-/** Why `rpmCents` is absent, when it is. */
+/** Why `rpm` is absent, when it is. */
 export type RevenueStatus =
   | 'included'
   /** The caller did not ask for it. */
@@ -105,7 +108,7 @@ export interface SegmentPerformanceResult {
    */
   revenueStatus: RevenueStatus;
   /**
-   * True whenever `rpmCents` is present. Revenue reaches a segment only
+   * True whenever `rpm` is present. Revenue reaches a segment only
    * through a publish, and only within that video's own checkpoint window
    * — the UI must say so wherever the rate renders.
    */
@@ -121,14 +124,14 @@ export interface SegmentPerformanceResult {
    * is not: a figure silently truncated is worse than one that says what
    * it covers.
    */
-  channelLevelRevenueCentsInWindow: number;
+  channelLevelRevenueInWindow: MoneyByCurrency;
   /**
    * Revenue on a publish outside the measured set — another project under
    * the same account, a video excluded as immature, or earnings after its
    * checkpoint window closed. Reported rather than dropped so the gap
    * against a total shown elsewhere can be explained.
    */
-  unattributedRevenueCents: number;
+  unattributedRevenue: MoneyByCurrency;
   /**
    * The span both revenue figures cover, across the measured videos:
    * earliest checkpoint window start, to the exclusive end of the latest.
@@ -256,8 +259,8 @@ export const getSegmentPerformanceAction = enhanceAction(
     const withoutRevenue = (revenueStatus: RevenueStatus) => ({
       revenueStatus,
       attributedRevenueOnly: false,
-      channelLevelRevenueCentsInWindow: 0,
-      unattributedRevenueCents: 0,
+      channelLevelRevenueInWindow: [] as MoneyByCurrency,
+      unattributedRevenue: [] as MoneyByCurrency,
       measuredWindow: null,
     });
 
@@ -364,22 +367,17 @@ export const getSegmentPerformanceAction = enhanceAction(
     // pooledRpmCents itself is built around.
     if (rowsSeen === 0) return { rows, ...withoutRevenue('no_data') };
 
-    const { revenueBySegment, channelLevelCents, unattributedCents } =
-      fold.result();
+    const { revenueBySegment, channelLevel, unattributed } = fold.result();
 
     return {
       rows: rows.map((row) => ({
         ...row,
-        rpmCents: segmentRpmCents(
-          revenueBySegment,
-          row.segment,
-          row.totalViews,
-        ),
+        rpm: segmentRpm(revenueBySegment, row.segment, row.totalViews),
       })),
       revenueStatus: 'included' as const,
       attributedRevenueOnly: true,
-      channelLevelRevenueCentsInWindow: channelLevelCents,
-      unattributedRevenueCents: unattributedCents,
+      channelLevelRevenueInWindow: channelLevel,
+      unattributedRevenue: unattributed,
       measuredWindow: window,
     };
   },

@@ -4,6 +4,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { getLogger } from '@kit/shared/logger';
 
+import {
+  createCurrencyPartition,
+  currencyLabel,
+  formatCurrencyAmount,
+} from '../lib/money';
 import { forEachAccountRevenueRow } from './revenue-queries';
 
 // Use generic SupabaseClient type to avoid strict type checking issues
@@ -16,8 +21,17 @@ const SPIKE_MULTIPLIER = 3;
 /** Days of history the spike comparison averages over. */
 const TRAILING_DAYS = 28;
 
-/** Monthly revenue milestones, in cents. */
+/**
+ * Monthly revenue milestones, in cents of whichever currency reached them.
+ *
+ * The same ladder in every currency — 100, 500, 1,000 … of it — because a
+ * ladder that meant the same *value* everywhere would need exchange rates,
+ * and there are none. "Passed €100" is a fact about euros.
+ */
 const MONTHLY_MILESTONES_CENTS = [10_000, 50_000, 100_000, 500_000, 1_000_000];
+
+/** How the alerts have always written an amount: `$1,234.5`, `$100`. */
+const ALERT_AMOUNT = { minimumFractionDigits: 0, maximumFractionDigits: 2 };
 
 export interface RevenueAlertResult {
   created: number;
@@ -37,6 +51,18 @@ interface AlertInsert {
  *
  * Runs at the end of the sync job. Alerts are deduplicated against the
  * last 24 hours so a rule that stays true does not post every hour.
+ *
+ * **Every rule is evaluated per currency (KB-12).** Both compare amounts —
+ * today against a trailing average, a month against a milestone — and an
+ * amount summed across currencies is not one. Summed, a euro sponsorship
+ * tripped a dollar spike, steady euro income hid a real dollar one, and
+ * $95 + €20 "passed $100". So each currency is measured against its own
+ * history: its own prior days (a day with no euros is not a euro day of
+ * zero), its own month-to-date, its own milestones.
+ *
+ * An account with one currency gets the alerts it always got, word for
+ * word. With more than one, a spike names its currency — two can spike on
+ * one day, and the dedupe below keys on the title.
  */
 export async function evaluateRevenueAlerts(
   client: Client,
@@ -60,62 +86,78 @@ export async function evaluateRevenueAlerts(
     // that unions the channel- and publish-scoped halves.
     // Streamed, not collected: only the per-date fold is needed, so the
     // rows never have to exist all at once.
-    const byDate = new Map<string, number>();
+    const byCurrency = createCurrencyPartition(() => new Map<string, number>());
 
     await forEachAccountRevenueRow(client, accountId, since, today, (row) => {
+      const byDate = byCurrency.for(row.amount.currency);
+
       byDate.set(
         row.record_date,
-        (byDate.get(row.record_date) ?? 0) + (row.revenue_cents ?? 0),
+        (byDate.get(row.record_date) ?? 0) + row.amount.cents,
       );
     });
 
+    const currencies = byCurrency.entries((byDate) =>
+      [...byDate.values()].reduce((sum, cents) => sum + cents, 0),
+    );
+
     const alerts: AlertInsert[] = [];
 
-    const todayCents = byDate.get(today) ?? 0;
+    for (const { currency, part: byDate } of currencies) {
+      const todayCents = byDate.get(today) ?? 0;
 
-    const priorDays = Array.from(byDate.entries()).filter(
-      ([date]) => date !== today,
-    );
-    const priorTotal = priorDays.reduce((sum, [, cents]) => sum + cents, 0);
-    const priorAverage =
-      priorDays.length > 0 ? priorTotal / priorDays.length : 0;
+      const priorDays = Array.from(byDate.entries()).filter(
+        ([date]) => date !== today,
+      );
+      const priorTotal = priorDays.reduce((sum, [, cents]) => sum + cents, 0);
+      const priorAverage =
+        priorDays.length > 0 ? priorTotal / priorDays.length : 0;
 
-    if (priorAverage > 0 && todayCents > priorAverage * SPIKE_MULTIPLIER) {
-      alerts.push({
-        account_id: accountId,
-        alert_type: 'significant_change',
-        title: 'Revenue spike today',
-        message: `Today's revenue is ${(todayCents / priorAverage).toFixed(1)}x the ${TRAILING_DAYS}-day average.`,
-        severity: 'info',
-        related_data: {
-          todayCents,
-          trailingAverageCents: Math.round(priorAverage),
-          trailingDays: TRAILING_DAYS,
-        },
-      });
-    }
+      if (priorAverage > 0 && todayCents > priorAverage * SPIKE_MULTIPLIER) {
+        alerts.push({
+          account_id: accountId,
+          alert_type: 'significant_change',
+          title:
+            currencies.length > 1
+              ? `Revenue spike today (${currencyLabel(currency)})`
+              : 'Revenue spike today',
+          message: `Today's revenue is ${(todayCents / priorAverage).toFixed(1)}x the ${TRAILING_DAYS}-day average.`,
+          severity: 'info',
+          related_data: {
+            currency,
+            todayCents,
+            trailingAverageCents: Math.round(priorAverage),
+            trailingDays: TRAILING_DAYS,
+          },
+        });
+      }
 
-    // Month-to-date milestones
-    const monthPrefix = today.slice(0, 7);
-    const monthToDateCents = Array.from(byDate.entries())
-      .filter(([date]) => date.startsWith(monthPrefix))
-      .reduce((sum, [, cents]) => sum + cents, 0);
+      // Month-to-date milestones
+      const monthPrefix = today.slice(0, 7);
+      const monthToDateCents = Array.from(byDate.entries())
+        .filter(([date]) => date.startsWith(monthPrefix))
+        .reduce((sum, [, cents]) => sum + cents, 0);
 
-    const crossed = MONTHLY_MILESTONES_CENTS.filter(
-      (milestone) =>
-        monthToDateCents >= milestone &&
-        monthToDateCents - todayCents < milestone,
-    );
+      const crossed = MONTHLY_MILESTONES_CENTS.filter(
+        (milestone) =>
+          monthToDateCents >= milestone &&
+          monthToDateCents - todayCents < milestone,
+      );
 
-    for (const milestone of crossed) {
-      alerts.push({
-        account_id: accountId,
-        alert_type: 'threshold_reached',
-        title: `Passed $${(milestone / 100).toLocaleString()} this month`,
-        message: `Month-to-date revenue reached $${(monthToDateCents / 100).toLocaleString()}.`,
-        severity: 'info',
-        related_data: { milestoneCents: milestone, monthToDateCents },
-      });
+      for (const milestone of crossed) {
+        alerts.push({
+          account_id: accountId,
+          alert_type: 'threshold_reached',
+          title: `Passed ${formatCurrencyAmount({ currency, cents: milestone }, ALERT_AMOUNT)} this month`,
+          message: `Month-to-date revenue reached ${formatCurrencyAmount({ currency, cents: monthToDateCents }, ALERT_AMOUNT)}.`,
+          severity: 'info',
+          related_data: {
+            currency,
+            milestoneCents: milestone,
+            monthToDateCents,
+          },
+        });
+      }
     }
 
     if (alerts.length === 0) {

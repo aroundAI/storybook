@@ -8,11 +8,13 @@ import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
-  REVENUE_SUMMARY_SCHEMA_VERSION,
-  effectiveRevenueCategory,
-  payoutShare,
-  splitRevenueByPayout,
-} from '../lib/revenue-mix';
+  createRevenueProjectionFold,
+  createRevenueSeriesFold,
+  createRevenueSummaryFold,
+  createTopContentFold,
+  inclusiveDayCount,
+} from '../lib/revenue-by-currency';
+import { REVENUE_SUMMARY_SCHEMA_VERSION } from '../lib/revenue-mix';
 import {
   AddManualRevenueSchema,
   DeleteManualRevenueSchema,
@@ -24,11 +26,11 @@ import {
   SyncRevenueFromPlatformSchema,
 } from '../lib/schemas/revenue.schema';
 import type {
-  RevenueDataPoint,
   RevenueProjection,
   RevenueRecord,
+  RevenueSeries,
   RevenueSummary,
-  TopRevenueContent,
+  TopRevenueContentByCurrency,
 } from '../lib/types/revenue';
 import { forEachAccountRevenueRow } from './revenue-queries';
 
@@ -59,54 +61,30 @@ async function fetchAccountPublishIds(
   return rows.map((row) => row.id);
 }
 
+/**
+ * The revenue summary, **one per currency** (KB-12), largest total first.
+ *
+ * `revenue_records.currency` is a column and there are no exchange rates,
+ * so an account paid $12.00 and €5.00 has two totals, two mixes and two
+ * RPMs — never 1700 cents of nothing in particular. The arithmetic lives in
+ * `createRevenueSummaryFold`, where it is tested without a database. Empty
+ * when nothing was recorded in this period or the one before.
+ */
 export const getRevenueSummaryAction = enhanceAction(
-  async function (data): Promise<RevenueSummary> {
+  async function (data): Promise<RevenueSummary[]> {
     const client = getSupabaseServerClient();
     const { accountId, startDate, endDate } = data;
 
-    // Both publish-scoped and channel-scoped revenue
-    // Calculate totals and group by platform/content/category in single
-    // pass, streamed so the window never has to be held in memory.
-    let totalRevenueCents = 0;
-    const byPlatform: Record<string, number> = {};
-    const byContent: Record<string, number> = {};
-    const byType: Record<string, number> = {};
-    const publishIds: string[] = [];
+    // Both publish-scoped and channel-scoped revenue, folded in a single
+    // pass and streamed so the window never has to be held in memory.
+    const fold = createRevenueSummaryFold();
 
     await forEachAccountRevenueRow(
       client,
       accountId,
       startDate,
       endDate,
-      (r) => {
-        const revenueCents = r.revenue_cents || 0;
-        totalRevenueCents += revenueCents;
-
-        // Group by platform
-        const platform = r.platform || 'unknown';
-        byPlatform[platform] = (byPlatform[platform] || 0) + revenueCents;
-
-        // Group by revenue category (the mix: ads vs sponsorship vs product).
-        // Keyed on what the row counts as rather than what it says: a
-        // hand-entered 'ads' row from before the form dropped that option is
-        // not evidence of a platform payout, and counting it as one inflates
-        // the ad-share signal for every account that has an old row.
-        const category = effectiveRevenueCategory(
-          r.category || 'ads',
-          r.source,
-        );
-        byType[category] = (byType[category] || 0) + revenueCents;
-
-        // Group by content (episode) — channel-level rows have no episode
-        if (r.episode_id) {
-          byContent[r.episode_id] =
-            (byContent[r.episode_id] || 0) + revenueCents;
-        }
-
-        if (r.publish_id) {
-          publishIds.push(r.publish_id);
-        }
-      },
+      (row) => fold.add(row),
     );
 
     // RPM denominator is every published video's views in the window, not
@@ -130,101 +108,25 @@ export const getRevenueSummaryAction = enhanceAction(
       }
     }
 
-    // Revenue mix: ads + Premium are platform payouts; everything else is
-    // income the channel built itself. A falling ads share is the health
-    // signal, so both halves are returned rather than derived downstream.
-    //
-    // The split lives in lib/revenue-mix.ts so that "which side does a new
-    // category fall on" is answered by a test rather than by re-reading
-    // this line each time the vocabulary grows.
-    const { adsRevenueCents, nonAdRevenueCents } = splitRevenueByPayout(
-      byType,
-      totalRevenueCents,
+    // Trend: the same number of days immediately before, streamed.
+    const previousStartDate = new Date(startDate);
+    previousStartDate.setDate(
+      previousStartDate.getDate() - inclusiveDayCount(startDate, endDate),
     );
-
-    // The denominator the two share fields use: positive buckets only.
-    const positiveRevenueCents = Object.values(byType).reduce(
-      (sum, cents) => sum + (cents > 0 ? cents : 0),
-      0,
-    );
-    const payoutSharePercent = payoutShare(byType) * 100;
-
-    /** Cents per 1000 views. Display sites divide by 100 for dollars. */
-    const allInRpmCents =
-      totalViews > 0 ? (totalRevenueCents / totalViews) * 1000 : 0;
-    const adsRpmCents =
-      totalViews > 0 ? (adsRevenueCents / totalViews) * 1000 : 0;
-    const rpm = allInRpmCents;
-
-    // Calculate day count and average
-    const startDateObj = new Date(startDate);
-    const endDateObj = new Date(endDate);
-    const dayCount = Math.max(
-      1,
-      Math.ceil(
-        (endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24),
-      ) + 1,
-    );
-    const averageDailyRevenueCents = totalRevenueCents / dayCount;
-
-    // Calculate trend by comparing to previous period
-    const previousStartDate = new Date(startDateObj);
-    previousStartDate.setDate(previousStartDate.getDate() - dayCount);
-
-    // Single-pass sum for previous period, streamed.
-    let previousTotal = 0;
 
     await forEachAccountRevenueRow(
       client,
       accountId,
       previousStartDate.toISOString().split('T')[0]!,
       startDate,
-      (r) => {
-        previousTotal += r.revenue_cents || 0;
-      },
+      (row) => fold.addPrevious(row.amount),
       { toExclusive: true },
     );
-    const trendPercent =
-      previousTotal > 0
-        ? ((totalRevenueCents - previousTotal) / previousTotal) * 100
-        : totalRevenueCents > 0
-          ? 100
-          : 0;
 
-    return {
-      totalRevenueCents,
-      currency: 'USD',
+    return fold.result({
       period: { start: startDate, end: endDate },
-      byPlatform,
-      byContent,
-      byType,
-      rpm,
       totalViews,
-      adsRevenueCents,
-      nonAdRevenueCents,
-      // Over positive buckets, via the shared rule, and computed once.
-      //
-      // A signed total is not a denominator: `{ ads: 10000, sponsorship:
-      // -8000 }` reported adsSharePercent as 500 while the card showed 100
-      // for the same data. Fixing that dropped the old `total > 0` guard,
-      // which made an account with no revenue at all report
-      // `nonAdSharePercent: 100` — and that figure is persisted into
-      // revenue_reports.summary_data, so it is not display-only.
-      //
-      // positiveRevenueCents travels with them because the cents fields
-      // beside these are signed: without the denominator in the payload, a
-      // consumer recomputing `adsRevenueCents / totalRevenueCents` gets a
-      // different number than the percentage states.
-      adsSharePercent: positiveRevenueCents > 0 ? payoutSharePercent : 0,
-      nonAdSharePercent:
-        positiveRevenueCents > 0 ? 100 - payoutSharePercent : 0,
-      positiveRevenueCents,
-      adsRpmCents,
-      allInRpmCents,
-      averageDailyRevenueCents,
-      trend: trendPercent > 5 ? 'up' : trendPercent < -5 ? 'down' : 'stable',
-      trendPercent,
-    };
+    });
   },
   {
     auth: true,
@@ -545,7 +447,7 @@ export const deleteManualRevenueAction = enhanceAction(
  * Calculates estimated monthly and yearly revenue with confidence levels.
  */
 export const getRevenueProjectionAction = enhanceAction(
-  async function (data): Promise<RevenueProjection> {
+  async function (data): Promise<RevenueProjection[]> {
     const client = getSupabaseServerClient();
     const { accountId } = data;
 
@@ -553,81 +455,21 @@ export const getRevenueProjectionAction = enhanceAction(
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // Single-pass aggregation for total, unique dates, and trend
-    // calculation, streamed.
-    let totalRecent = 0;
-    let firstHalfRevenue = 0;
-    const uniqueDates = new Set<string>();
     const fifteenDaysAgo = new Date();
     fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+
+    // One projection per currency (KB-12), streamed in a single pass.
+    const fold = createRevenueProjectionFold(fifteenDaysAgo);
 
     await forEachAccountRevenueRow(
       client,
       accountId,
       thirtyDaysAgo.toISOString().split('T')[0]!,
       new Date().toISOString().split('T')[0]!,
-      (r) => {
-        const revenueCents = r.revenue_cents || 0;
-        totalRecent += revenueCents;
-        uniqueDates.add(r.record_date);
-
-        // Check if in first half for trend
-        const date = new Date(r.record_date);
-        if (date < fifteenDaysAgo) {
-          firstHalfRevenue += revenueCents;
-        }
-      },
+      (row) => fold.add(row),
     );
 
-    const daysWithData = uniqueDates.size;
-
-    // Calculate daily average
-    const dailyAverage = daysWithData > 0 ? totalRecent / daysWithData : 0;
-
-    // Project monthly and yearly
-    const estimatedMonthlyRevenueCents = Math.round(dailyAverage * 30);
-    const estimatedYearlyRevenueCents = Math.round(dailyAverage * 365);
-
-    // Determine confidence level
-    let confidenceLevel: 'high' | 'medium' | 'low' = 'low';
-    if (daysWithData >= 25) confidenceLevel = 'high';
-    else if (daysWithData >= 14) confidenceLevel = 'medium';
-
-    // Calculate trend for impact factor
-    const secondHalfRevenue = totalRecent - firstHalfRevenue;
-    const trendImpact =
-      firstHalfRevenue > 0
-        ? Math.round(
-            ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 50,
-          )
-        : 0;
-
-    return {
-      estimatedMonthlyRevenueCents,
-      estimatedYearlyRevenueCents,
-      confidenceLevel,
-      basedOnDays: daysWithData,
-      factors: [
-        {
-          factor: 'Historical Data',
-          impact: daysWithData >= 14 ? 20 : -20,
-          description:
-            daysWithData >= 14
-              ? 'Sufficient data for accurate projection'
-              : 'Limited data may affect accuracy',
-        },
-        {
-          factor: 'Trend Direction',
-          impact: trendImpact,
-          description:
-            trendImpact > 0
-              ? 'Revenue is trending upward'
-              : trendImpact < 0
-                ? 'Revenue is trending downward'
-                : 'Revenue is stable',
-        },
-      ],
-    };
+    return fold.result();
   },
   {
     auth: true,
@@ -639,41 +481,24 @@ export const getRevenueProjectionAction = enhanceAction(
  * Get revenue time series data for charts.
  */
 export const getRevenueTimeSeriesAction = enhanceAction(
-  async function (data): Promise<RevenueDataPoint[]> {
+  async function (data): Promise<RevenueSeries[]> {
     const client = getSupabaseServerClient();
     const { accountId, startDate, endDate } = data;
 
-    // Aggregate by date, streamed. The rows were sorted before folding,
-    // which a map fold does not need — the series is built from the date
-    // range below, in order, regardless of arrival order.
-    const dateMap = new Map<string, number>();
+    // One series per currency (KB-12): two currencies cannot share an axis
+    // without a rate. Streamed; the fold zero-fills the range in order,
+    // whatever order the rows arrive in.
+    const fold = createRevenueSeriesFold();
 
     await forEachAccountRevenueRow(
       client,
       accountId,
       startDate,
       endDate,
-      (r) => {
-        const existing = dateMap.get(r.record_date) ?? 0;
-        dateMap.set(r.record_date, existing + (r.revenue_cents || 0));
-      },
+      (row) => fold.add(row),
     );
 
-    // Fill in missing dates with 0
-    const result: RevenueDataPoint[] = [];
-    const currentDate = new Date(startDate);
-    const endDateObj = new Date(endDate);
-
-    while (currentDate <= endDateObj) {
-      const dateStr = currentDate.toISOString().split('T')[0] ?? '';
-      result.push({
-        date: dateStr,
-        revenueCents: dateMap.get(dateStr) ?? 0,
-      });
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    return result;
+    return fold.result(startDate, endDate);
   },
   {
     auth: true,
@@ -685,7 +510,7 @@ export const getRevenueTimeSeriesAction = enhanceAction(
  * Get top content by revenue.
  */
 export const getTopContentByRevenueAction = enhanceAction(
-  async function (data): Promise<TopRevenueContent[]> {
+  async function (data): Promise<TopRevenueContentByCurrency[]> {
     const client = getSupabaseServerClient();
     const { accountId, startDate, endDate, limit } = data;
 
@@ -695,6 +520,7 @@ export const getTopContentByRevenueAction = enhanceAction(
     const records = await fetchAllRows<{
       publish_id: string | null;
       revenue_cents: number | null;
+      currency: string | null;
       platform: string | null;
       publishes?: {
         episode_id?: string | null;
@@ -710,6 +536,7 @@ export const getTopContentByRevenueAction = enhanceAction(
             `
         publish_id,
         revenue_cents,
+        currency,
         platform,
         publishes!inner (
           id,
@@ -735,41 +562,28 @@ export const getTopContentByRevenueAction = enhanceAction(
       'top content by revenue',
     );
 
-    // Aggregate by publish
-    const publishMap = new Map<
-      string,
-      {
-        publishId: string;
-        episodeId: string;
-        title: string;
-        platform: string;
-        revenueCents: number;
-        thumbnailUrl?: string;
-      }
-    >();
+    // Aggregate by publish, within a currency (KB-12): a ranking across
+    // currencies orders nothing, so each currency ranks its own.
+    const fold = createTopContentFold();
 
-    records?.forEach((r) => {
+    for (const r of records) {
       // Channel-level revenue has no publish to attribute to
-      const publishId = r.publish_id;
-      if (!publishId) return;
+      if (!r.publish_id) continue;
 
-      const existing = publishMap.get(publishId);
-      if (existing) {
-        existing.revenueCents += r.revenue_cents || 0;
-      } else {
-        publishMap.set(publishId, {
-          publishId,
+      fold.add(
+        {
+          publishId: r.publish_id,
           episodeId: r.publishes?.episode_id ?? '',
           title: r.publishes?.episodes?.title ?? 'Untitled',
           platform: r.publishes?.platform ?? 'unknown',
-          revenueCents: r.revenue_cents || 0,
           thumbnailUrl: r.publishes?.thumbnail_url ?? undefined,
-        });
-      }
-    });
+        },
+        { currency: r.currency, cents: r.revenue_cents || 0 },
+      );
+    }
 
     // Get views for RPM calculation from ClickHouse
-    const publishIds = Array.from(publishMap.keys());
+    const publishIds = fold.publishIds();
     const viewsMap = new Map<string, number>();
 
     if (publishIds.length > 0) {
@@ -783,20 +597,7 @@ export const getTopContentByRevenueAction = enhanceAction(
       }
     }
 
-    // Sort by revenue and return top items
-    const sortedContent = Array.from(publishMap.values())
-      .map((item) => {
-        const views = viewsMap.get(item.publishId) ?? 0;
-        return {
-          ...item,
-          views,
-          rpm: views > 0 ? (item.revenueCents / views) * 1000 : 0,
-        };
-      })
-      .sort((a, b) => b.revenueCents - a.revenueCents)
-      .slice(0, limit);
-
-    return sortedContent;
+    return fold.result(viewsMap, limit);
   },
   {
     auth: true,
@@ -812,8 +613,8 @@ export const generateRevenueReportAction = enhanceAction(
     const client = getSupabaseServerClient();
     const { accountId, periodType, startDate, endDate, format } = data;
 
-    // Get summary data
-    const summary = await getRevenueSummaryAction({
+    // Get summary data, one per currency
+    const summaries = await getRevenueSummaryAction({
       accountId,
       startDate,
       endDate,
@@ -827,9 +628,10 @@ export const generateRevenueReportAction = enhanceAction(
       limit: 10,
     });
 
-    // Calculate platform breakdown
-    const platformBreakdown = Object.entries(summary.byPlatform).map(
-      ([platform, cents]) => ({
+    // Platform breakdown, each a share of its own currency's total
+    const platformBreakdown = summaries.flatMap((summary) =>
+      Object.entries(summary.byPlatform).map(([platform, cents]) => ({
+        currency: summary.currency,
         platform,
         revenueCents: cents,
         percentOfTotal:
@@ -837,7 +639,7 @@ export const generateRevenueReportAction = enhanceAction(
             ? (cents / summary.totalRevenueCents) * 100
             : 0,
         contentCount: 0, // Could be calculated if needed
-      }),
+      })),
     );
 
     // Create report record - cast to Json for JSONB columns
@@ -856,12 +658,11 @@ export const generateRevenueReportAction = enhanceAction(
         period_type: periodType,
         start_date: startDate,
         end_date: endDate,
-        // Stamped so a reader can tell which definition of
-        // adsSharePercent it is looking at; rows without it predate the
-        // change from a signed denominator to a positive-only one.
+        // Stamped so a reader can tell which shape it is looking at: see
+        // REVENUE_SUMMARY_SCHEMA_VERSION for what each version means.
         summary_data: JSON.parse(
           JSON.stringify({
-            ...summary,
+            summaries,
             schemaVersion: REVENUE_SUMMARY_SCHEMA_VERSION,
           }),
         ) as Json,
@@ -883,7 +684,7 @@ export const generateRevenueReportAction = enhanceAction(
       period: report.period_type,
       startDate: report.start_date,
       endDate: report.end_date,
-      summary,
+      summaries,
       topPerformers,
       platformBreakdown,
       generatedAt: new Date(report.created_at),

@@ -690,22 +690,36 @@ async function insertRows<T>(
  * one, and the Video Log lists each rather than adding them (FILM-1615).
  * One row per publish per day, so two currencies need two dates.
  */
-export async function seedRevenueRecord(input: {
-  publishId: string;
-  revenueCents: number;
-  recordDate: string;
-  currency?: string;
-  platform?: string;
-}): Promise<void> {
+export async function seedRevenueRecord(
+  input: {
+    revenueCents: number;
+    recordDate: string;
+    currency?: string;
+    platform?: string;
+    /** Part of the unique key, so two rows on one day need two of these. */
+    category?: string;
+    source?: 'api' | 'manual';
+  } & (
+    | { publishId: string }
+    /** Channel-level income: a sponsorship or product sale with no video. */
+    | { accountId: string }
+  ),
+): Promise<void> {
+  const scope =
+    'publishId' in input
+      ? { publish_id: input.publishId }
+      : { account_id: input.accountId };
+
   await insertRow(
     'revenue_records',
     {
-      publish_id: input.publishId,
-      platform: input.platform ?? 'youtube',
+      ...scope,
+      platform: input.platform ?? ('publishId' in input ? 'youtube' : 'manual'),
       record_date: input.recordDate,
       revenue_cents: input.revenueCents,
       currency: input.currency ?? 'USD',
-      source: 'api',
+      source: input.source ?? 'api',
+      ...(input.category ? { category: input.category } : {}),
     },
     { key: SERVICE_ROLE_KEY },
   );

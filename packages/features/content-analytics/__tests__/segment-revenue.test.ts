@@ -5,7 +5,7 @@ import {
   createSegmentRevenueFold,
   retainSurvivingSegments,
   revenueFetchWindow,
-  segmentRpmCents,
+  segmentRpm,
   yearChunks,
 } from '../src/lib/segment-revenue';
 
@@ -34,11 +34,14 @@ const revenue = (
   publishId: string | null,
   cents: number,
   recordDate = '2026-01-15',
+  currency: string | null = 'USD',
 ) => ({
   publish_id: publishId,
   record_date: recordDate,
-  revenue_cents: cents,
+  amount: { currency, cents },
 });
+
+const usd = (cents: number) => [{ currency: 'USD', cents }];
 
 describe('checkpointWindow', () => {
   it('opens on the publish day and closes N days later, exclusive', () => {
@@ -74,8 +77,12 @@ describe('createSegmentRevenueFold', () => {
 
     fold.add(revenue('v1', 1000));
 
-    expect(fold.result().revenueBySegment.get('topic:cooking')).toBe(1000);
-    expect(fold.result().revenueBySegment.get('format:tutorial')).toBe(1000);
+    expect(fold.result().revenueBySegment.get('topic:cooking')).toEqual(
+      usd(1000),
+    );
+    expect(fold.result().revenueBySegment.get('format:tutorial')).toEqual(
+      usd(1000),
+    );
   });
 
   it('accumulates across videos and rows', () => {
@@ -85,7 +92,9 @@ describe('createSegmentRevenueFold', () => {
     fold.add(revenue('v2', 250, '2026-02-10'));
     fold.add(revenue('v2', 250, '2026-02-11'));
 
-    expect(fold.result().revenueBySegment.get('topic:cooking')).toBe(1500);
+    expect(fold.result().revenueBySegment.get('topic:cooking')).toEqual(
+      usd(1500),
+    );
   });
 
   it('holds channel-level revenue aside rather than dropping it', () => {
@@ -93,7 +102,7 @@ describe('createSegmentRevenueFold', () => {
 
     fold.add(revenue(null, 5000));
 
-    expect(fold.result().channelLevelCents).toBe(5000);
+    expect(fold.result().channelLevel).toEqual(usd(5000));
     expect(fold.result().revenueBySegment.size).toBe(0);
   });
 
@@ -106,7 +115,7 @@ describe('createSegmentRevenueFold', () => {
     fold.add(revenue('v-unknown', 9999));
 
     expect(fold.result().revenueBySegment.size).toBe(0);
-    expect(fold.result().unattributedCents).toBe(9999);
+    expect(fold.result().unattributed).toEqual(usd(9999));
   });
 
   it('excludes revenue earned after the video checkpoint window closed', () => {
@@ -117,7 +126,7 @@ describe('createSegmentRevenueFold', () => {
     fold.add(revenue('v1', 7777, '2026-07-20'));
 
     expect(fold.result().revenueBySegment.size).toBe(0);
-    expect(fold.result().unattributedCents).toBe(7777);
+    expect(fold.result().unattributed).toEqual(usd(7777));
   });
 
   it('excludes revenue earned before the video was published', () => {
@@ -125,7 +134,7 @@ describe('createSegmentRevenueFold', () => {
 
     fold.add(revenue('v1', 300, '2025-12-25'));
 
-    expect(fold.result().unattributedCents).toBe(300);
+    expect(fold.result().unattributed).toEqual(usd(300));
   });
 
   it('treats the window as half-open, matching the < N day convention', () => {
@@ -135,8 +144,10 @@ describe('createSegmentRevenueFold', () => {
     fold.add(revenue('v1', 20, '2026-01-30')); // day 29, in
     fold.add(revenue('v1', 40, '2026-01-31')); // day 30, out
 
-    expect(fold.result().revenueBySegment.get('topic:cooking')).toBe(30);
-    expect(fold.result().unattributedCents).toBe(40);
+    expect(fold.result().revenueBySegment.get('topic:cooking')).toEqual(
+      usd(30),
+    );
+    expect(fold.result().unattributed).toEqual(usd(40));
   });
 
   it('accounts for every cent it is given', () => {
@@ -147,13 +158,54 @@ describe('createSegmentRevenueFold', () => {
     fold.add(revenue('v-unknown', 400)); // unattributed
     fold.add(revenue('v1', 800, '2027-01-01')); // out of window
 
-    const { revenueBySegment, channelLevelCents, unattributedCents } =
-      fold.result();
+    const { revenueBySegment, channelLevel, unattributed } = fold.result();
 
     // topic:cooking and format:tutorial each hold the same 100 — one video
     // in two segments, not two videos — so the attributed total is 100.
-    expect(revenueBySegment.get('topic:cooking')).toBe(100);
-    expect(100 + channelLevelCents + unattributedCents).toBe(1500);
+    expect(revenueBySegment.get('topic:cooking')).toEqual(usd(100));
+    expect(channelLevel).toEqual(usd(200));
+    expect(unattributed).toEqual(usd(1200));
+  });
+
+  it('accounts for every cent in the currency it arrived in (KB-12)', () => {
+    // A euro sponsorship beside dollar ad revenue, in each of the three
+    // buckets. Every one of these used to be a single number: 1700, 2300
+    // and 4400 cents of nothing in particular.
+    const fold = createSegmentRevenueFold(membership());
+
+    fold.add(revenue('v1', 1200));
+    fold.add(revenue('v1', 500, '2026-01-16', 'EUR'));
+    fold.add(revenue(null, 300));
+    fold.add(revenue(null, 2000, '2026-01-16', 'EUR'));
+    fold.add(revenue('v-unknown', 400));
+    fold.add(revenue('v-unknown', 4000, '2026-01-16', 'EUR'));
+
+    expect(fold.result()).toEqual({
+      revenueBySegment: new Map([
+        [
+          'topic:cooking',
+          [
+            { currency: 'USD', cents: 1200 },
+            { currency: 'EUR', cents: 500 },
+          ],
+        ],
+        [
+          'format:tutorial',
+          [
+            { currency: 'USD', cents: 1200 },
+            { currency: 'EUR', cents: 500 },
+          ],
+        ],
+      ]),
+      channelLevel: [
+        { currency: 'EUR', cents: 2000 },
+        { currency: 'USD', cents: 300 },
+      ],
+      unattributed: [
+        { currency: 'EUR', cents: 4000 },
+        { currency: 'USD', cents: 400 },
+      ],
+    });
   });
 
   it('starts empty', () => {
@@ -161,8 +213,8 @@ describe('createSegmentRevenueFold', () => {
 
     expect(fold.result()).toEqual({
       revenueBySegment: new Map(),
-      channelLevelCents: 0,
-      unattributedCents: 0,
+      channelLevel: [],
+      unattributed: [],
     });
   });
 });
@@ -223,30 +275,54 @@ describe('retainSurvivingSegments', () => {
     fold.add({
       publish_id: 'v1',
       record_date: '2026-01-05',
-      revenue_cents: 900,
+      amount: { currency: 'USD', cents: 900 },
     });
 
-    expect(fold.result().unattributedCents).toBe(900);
+    expect(fold.result().unattributed).toEqual(usd(900));
   });
 });
 
-describe('segmentRpmCents', () => {
+describe('segmentRpm', () => {
   it('pools cents over views per thousand', () => {
-    expect(segmentRpmCents(new Map([['a', 5000]]), 'a', 10_000)).toBe(500);
+    expect(segmentRpm(new Map([['a', usd(5000)]]), 'a', 10_000)).toEqual(
+      usd(500),
+    );
+  });
+
+  it('gives one rate per currency, never a rate of their sum (KB-12)', () => {
+    // (1200 + 500) / 10000 × 1000 = 170 is the rate of nothing.
+    expect(
+      segmentRpm(
+        new Map([
+          [
+            'a',
+            [
+              { currency: 'USD', cents: 1200 },
+              { currency: 'EUR', cents: 500 },
+            ],
+          ],
+        ]),
+        'a',
+        10_000,
+      ),
+    ).toEqual([
+      { currency: 'USD', cents: 120 },
+      { currency: 'EUR', cents: 50 },
+    ]);
   });
 
   it('reports a segment whose rows sum to zero as zero, which is a fact', () => {
-    expect(segmentRpmCents(new Map([['a', 0]]), 'a', 10_000)).toBe(0);
+    expect(segmentRpm(new Map([['a', usd(0)]]), 'a', 10_000)).toEqual(usd(0));
   });
 
   it('has no rate for a segment with no revenue rows at all', () => {
     // Revenue ingest covering YouTube but not Instagram makes this
     // ordinary; "$0.00 RPM" would state a finding about the content.
-    expect(segmentRpmCents(new Map([['a', 500]]), 'b', 10_000)).toBeNull();
+    expect(segmentRpm(new Map([['a', usd(500)]]), 'b', 10_000)).toBeNull();
   });
 
   it('has no rate without views to divide by', () => {
-    expect(segmentRpmCents(new Map([['a', 500]]), 'a', 0)).toBeNull();
+    expect(segmentRpm(new Map([['a', usd(500)]]), 'a', 0)).toBeNull();
   });
 });
 

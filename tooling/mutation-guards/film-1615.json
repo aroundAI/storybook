@@ -119,8 +119,8 @@
       "name": "F-2 revenue summed across currencies",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/video-log-actions.ts",
-      "find": "    byCurrency.set(\n      row.currency,",
-      "replace": "    byCurrency.set(\n      'USD',",
+      "find": "    fold.add({ currency: row.currency, cents: row.cents ?? 0 });",
+      "replace": "    fold.add({ currency: 'USD', cents: row.cents ?? 0 });",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/video-log-notes.test.ts",
       "pattern": "revenue per currency"
