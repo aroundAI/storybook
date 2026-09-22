@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import { describeFollowerCount } from '../src/lib/follower-count';
 
+// Every case pins `today`: the freshness rule compares `asOf` to the wall
+// clock, so a case that omits it goes red once the calendar moves 7 days past
+// its `asOf` — which is how this file broke every PR's CI on 2026-09-22.
 describe('describeFollowerCount', () => {
   it('dates a measured level without marking it stale', () => {
     expect(
@@ -9,6 +12,7 @@ describe('describeFollowerCount', () => {
         count: 41_000,
         source: 'snapshot',
         asOf: '2026-09-15',
+        today: '2026-09-16',
       }),
     ).toEqual({
       short: '41.0K',
@@ -23,6 +27,7 @@ describe('describeFollowerCount', () => {
         count: 1200,
         source: 'reconstructed',
         asOf: '2026-09-15',
+        today: '2026-09-16',
       }).detail,
     ).toBe(
       '1,200 followers — Reconstructed from daily movement, no snapshot that day, as of Sep 15, 2026',
@@ -51,6 +56,7 @@ describe('describeFollowerCount', () => {
       count: 42_600,
       source: 'snapshot',
       asOf: '2026-09-14',
+      today: '2026-09-15',
       roundingStep: 100,
     });
 
@@ -63,6 +69,7 @@ describe('describeFollowerCount', () => {
         count: 900,
         source: 'snapshot',
         asOf: '2026-09-14',
+        today: '2026-09-15',
         roundingStep: 0,
       }).detail,
     ).not.toContain('either way');
