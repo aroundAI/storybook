@@ -2,53 +2,21 @@
 
 import { Film, Globe, MapPin, Video } from 'lucide-react';
 
+import type { LanguageDimension } from '@kit/clickhouse';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Skeleton } from '@kit/ui/skeleton';
 
 import { formatNumber } from '../lib/format';
+import {
+  languageFlag,
+  languageKey,
+  languageName,
+} from '../lib/language-labels';
 import type {
   GeographyByLanguage,
   ShortsSourcePerformance,
 } from '../server/language-analytics';
-
-// Language code to name mapping
-const LANGUAGE_NAMES: Record<string, string> = {
-  en: 'English',
-  hi: 'Hindi',
-  es: 'Spanish',
-  pt: 'Portuguese',
-  fr: 'French',
-  de: 'German',
-  ja: 'Japanese',
-  ko: 'Korean',
-  zh: 'Chinese',
-  ar: 'Arabic',
-  ru: 'Russian',
-  it: 'Italian',
-};
-
-const LANGUAGE_FLAGS: Record<string, string> = {
-  en: '🇺🇸',
-  hi: '🇮🇳',
-  es: '🇪🇸',
-  pt: '🇧🇷',
-  fr: '🇫🇷',
-  de: '🇩🇪',
-  ja: '🇯🇵',
-  ko: '🇰🇷',
-  zh: '🇨🇳',
-  ar: '🇸🇦',
-  ru: '🇷🇺',
-  it: '🇮🇹',
-};
-
-function getLanguageName(code: string): string {
-  return LANGUAGE_NAMES[code] || code.toUpperCase();
-}
-
-function getLanguageFlag(code: string): string {
-  return LANGUAGE_FLAGS[code] || '🌐';
-}
+import { LanguageDimensionLabel } from './language-dimension-label';
 
 // =============================================================================
 // Top Shorts Card (Phase 3)
@@ -56,10 +24,16 @@ function getLanguageFlag(code: string): string {
 
 interface TopShortsCardProps {
   data: ShortsSourcePerformance[];
+  /** Which language each short is labelled with; named on the card. */
+  dimension?: LanguageDimension;
   isLoading?: boolean;
 }
 
-export function TopShortsCard({ data, isLoading }: TopShortsCardProps) {
+export function TopShortsCard({
+  data,
+  dimension = 'content',
+  isLoading,
+}: TopShortsCardProps) {
   if (isLoading) {
     return (
       <Card>
@@ -110,6 +84,7 @@ export function TopShortsCard({ data, isLoading }: TopShortsCardProps) {
           <Video className="h-4 w-4" />
           Top Performing Shorts
         </CardTitle>
+        <LanguageDimensionLabel dimension={dimension} card="shorts" />
       </CardHeader>
       <CardContent className="space-y-3">
         {data.slice(0, 5).map((short, index) => (
@@ -135,8 +110,13 @@ export function TopShortsCard({ data, isLoading }: TopShortsCardProps) {
                 <span className="text-sm font-medium tabular-nums">
                   {formatNumber(short.views)}
                 </span>
-                <span className="text-xs">
-                  {getLanguageFlag(short.language)}
+                {/* The name, not a bare flag: a short with no language
+                    set has no flag, and used to show an American one. */}
+                <span
+                  className="text-xs text-muted-foreground"
+                  data-test="top-short-language"
+                >
+                  {languageName(short.language, dimension)}
                 </span>
               </div>
               <div className="text-xs text-muted-foreground">
@@ -231,12 +211,14 @@ export function LanguageGeographyCard({ data, isLoading }: GeographyCardProps) {
       </CardHeader>
       <CardContent className="space-y-6">
         {data.slice(0, 3).map((langData) => (
-          <div key={langData.language} className="space-y-3">
+          <div key={languageKey(langData.language)} className="space-y-3">
             <div className="flex items-center gap-2 font-medium">
-              <span className="text-lg">
-                {getLanguageFlag(langData.language)}
-              </span>
-              <span>{getLanguageName(langData.language)}</span>
+              {languageFlag(langData.language) ? (
+                <span className="text-lg">
+                  {languageFlag(langData.language)}
+                </span>
+              ) : null}
+              <span>{languageName(langData.language)}</span>
             </div>
             <div className="space-y-2">
               {langData.countries.slice(0, 5).map((country) => (

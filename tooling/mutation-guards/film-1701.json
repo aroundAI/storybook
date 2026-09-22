@@ -1,0 +1,134 @@
+{
+  "feature": "FILM-1701",
+  "mutations": [
+    {
+      "name": "T1 the device dimension goes unread again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "        dimension: 'device',\n      }),\n    ]);",
+      "replace": "        dimension: 'os',\n      }),\n    ]);",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/project-audience.test.ts",
+      "pattern": "reads video_audience's device dimension"
+    },
+    {
+      "name": "T2 no device rows rendered as a default",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "  if (totalViews === 0) {\n    return undefined;\n  }",
+      "replace": "  if (totalViews === 0) {\n    return { totalViews: 0, devices: [{ device: 'MOBILE', views: 0, percentage: 78 }] };\n  }",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/project-audience.test.ts",
+      "pattern": "reports no device breakdown"
+    },
+    {
+      "name": "T3 device views not summed across videos",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "    viewsByDevice.set(row.key, (viewsByDevice.get(row.key) ?? 0) + row.views);",
+      "replace": "    viewsByDevice.set(row.key, Math.max(viewsByDevice.get(row.key) ?? 0, row.views));",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/project-audience.test.ts",
+      "pattern": "pools device views"
+    },
+    {
+      "name": "T4 audience shares returned as 0..1 to cards that print a percent sign",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "        totals[key] = (totals[key]! / totalWeight) * 100;",
+      "replace": "        totals[key] = totals[key]! / totalWeight;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/project-audience.test.ts",
+      "pattern": "returns percentages out of 100"
+    },
+    {
+      "name": "T5 a gender share falls back to a literal",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/audience/gender-split-card.tsx",
+      "find": "  const male = genders?.['male'] || 0;",
+      "replace": "  const male = genders?.['male'] || 58;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/no-literal-fallbacks.test.ts",
+      "pattern": "non-zero number"
+    },
+    {
+      "name": "T6 a card falls back to a DEFAULT_ constant",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/audience/audience-grid.tsx",
+      "find": "      <GeographyCard geography={data?.geography} />",
+      "replace": "      <GeographyCard geography={data?.geography || DEFAULT_GEOGRAPHY} />",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/no-literal-fallbacks.test.ts",
+      "pattern": "DEFAULT_"
+    },
+    {
+      "name": "T7 an unread dimension recorded as read",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/audience-dimensions.ts",
+      "find": "  city: {\n    status: 'unread',\n    reason: 'No card. FILM-1707 decides its surface.',\n  },",
+      "replace": "  city: {\n    status: 'read',\n    readBy: 'server/aggregation-queries.ts',\n    surface: 'Audience',\n  },",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/no-literal-fallbacks.test.ts",
+      "pattern": "city"
+    },
+    {
+      "name": "T8 the seed fixture cycles through every publish as YouTube",
+      "kind": "unit",
+      "file": "apps/web/scripts/local-analytics-fixture.ts",
+      "find": "  const youtube = input.dims.filter((dim) => isPlatform(dim, 'youtube'));",
+      "replace": "  const youtube = input.dims;",
+      "cwd": "apps/web",
+      "test": "scripts/__tests__/local-analytics-fixture.test.ts",
+      "pattern": "under the platform of the publish"
+    },
+    {
+      "name": "T9 a snapshot platform's metrics stamped as YouTube",
+      "kind": "unit",
+      "file": "apps/web/scripts/local-analytics-fixture.ts",
+      "find": "        video_id: video.video_id,\n        platform,",
+      "replace": "        video_id: video.video_id,\n        platform: 'youtube',",
+      "cwd": "apps/web",
+      "test": "scripts/__tests__/local-analytics-fixture.test.ts",
+      "pattern": "under the platform of the publish"
+    },
+    {
+      "name": "E1 the audience read enabled on the Audience tab alone",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/analytics-dashboard.tsx",
+      "find": "    enabled: activeTab === 'audience' || activeTab === 'overview',",
+      "replace": "    enabled: activeTab === 'audience',",
+      "spec": "tests/audience/audience-evidence.spec.ts",
+      "grep": "first load of Overview",
+      "env": {
+        "CAPTURE_EVIDENCE": "1",
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
+    },
+    {
+      "name": "E2 the Device Type card rendered from a constant",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/audience/audience-grid.tsx",
+      "find": "      <DeviceTypeCard deviceType={data?.deviceType} />",
+      "replace": "      <DeviceTypeCard\n        deviceType={{\n          totalViews: 100,\n          devices: [\n            { device: 'MOBILE', views: 78, percentage: 78 },\n            { device: 'DESKTOP', views: 18, percentage: 18 },\n            { device: 'TABLET', views: 4, percentage: 4 },\n          ],\n        }}\n      />",
+      "spec": "tests/audience/audience-evidence.spec.ts",
+      "grep": "pooled by views",
+      "env": {
+        "CAPTURE_EVIDENCE": "1",
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
+    },
+    {
+      "name": "E3 the Views card claiming a platform set it has not checked",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/overview/views-card.tsx",
+      "find": "      data-test=\"overview-views\"\n    >",
+      "replace": "      data-test=\"overview-views\"\n      footer=\"Aggregated across TikTok, YT, Insta\"\n    >",
+      "spec": "tests/audience/audience-evidence.spec.ts",
+      "grep": "first load of Overview",
+      "env": {
+        "CAPTURE_EVIDENCE": "1",
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
+    }
+  ]
+}

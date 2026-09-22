@@ -4,11 +4,11 @@ import { useMemo } from 'react';
 
 import { Globe } from 'lucide-react';
 
-import { AudienceCard } from './audience-card';
+import { AudienceCard, AudienceCardEmpty } from './audience-card';
 
 interface GeographyCardProps {
-  /** Country data - record of country name to percentage */
-  geography: Record<string, number>;
+  /** Percentage of views per country. Absent when none was reported. */
+  geography?: Record<string, number>;
 }
 
 const COUNTRY_FLAGS: Record<string, string> = {
@@ -52,7 +52,7 @@ export function GeographyCard({ geography }: GeographyCardProps) {
   // Sort countries by percentage and take top 7
   const sortedCountries = useMemo(
     () =>
-      Object.entries(geography)
+      Object.entries(geography ?? {})
         .map(([country, percentage]) => ({ country, percentage }))
         .sort((a, b) => b.percentage - a.percentage)
         .slice(0, 7),
@@ -62,18 +62,37 @@ export function GeographyCard({ geography }: GeographyCardProps) {
   // Find the highest percentage for highlighting
   const maxPercentage = sortedCountries[0]?.percentage || 0;
 
+  if (sortedCountries.length === 0) {
+    return (
+      <AudienceCard
+        title="Top Geographies"
+        icon={Globe}
+        rowSpan={true}
+        data-test="audience-card-geography"
+      >
+        <AudienceCardEmpty>
+          No platform has reported viewer countries for this project yet.
+        </AudienceCardEmpty>
+      </AudienceCard>
+    );
+  }
+
   return (
     <AudienceCard
       title="Top Geographies"
       icon={Globe}
       rowSpan={true}
-      footerInsight="English-speaking regions dominate, but growth in Brazil and Germany indicates localization opportunities."
+      data-test="audience-card-geography"
     >
       <div className="space-y-4">
         {sortedCountries.map((item) => {
           const isTop = item.percentage === maxPercentage;
           return (
-            <div key={item.country} className="flex items-center gap-3">
+            <div
+              key={item.country}
+              className="flex items-center gap-3"
+              data-test={`geography-row-${item.country}`}
+            >
               <div className="w-6 text-xl">{getCountryFlag(item.country)}</div>
               <div className="flex-1">
                 <div className="mb-1 flex justify-between text-xs">
@@ -81,6 +100,7 @@ export function GeographyCard({ geography }: GeographyCardProps) {
                     {item.country}
                   </span>
                   <span
+                    data-test="geography-share"
                     className={
                       isTop
                         ? 'font-semibold text-gray-900 dark:text-white'

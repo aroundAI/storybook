@@ -130,7 +130,36 @@ was taken as fact, then two disagreeing pages were taken as proof nothing was
 known. A name is settled by a first-party reference page or a live response —
 and the changelog is a first-party reference page.
 
-## 3c. Checks F, G and H — what FILM-1711 could not run
+## 3c. Checks D and E — the two live calls FILM-1723 could not make
+
+Added 2026-09-22. [FILM-1723](./FILM-1723-api-version-consolidation.md) pinned
+every Meta call to Graph v23.0 and moved X publishing to `api.x.com` and
+`/2/media/upload`. Its guards prove the pins are used consistently. They cannot
+prove a vendor accepts the requests, and neither fixture nor CI holds a Meta or
+an X connection.
+
+| | Check D — Meta token refresh | Check E — X media upload |
+|---|---|---|
+| **Question** | Does `fb_exchange_token` followed by `/me/accounts` succeed on v23.0 for a real connection? | Does the v2 chunked upload (`/initialize`, `/{id}/append`, `/{id}/finalize`, `STATUS`) accept our requests and return a postable media id? |
+| **Status today** | *Inferred* to work: v21-v23 change nothing on either endpoint, and the same requests were being served as v20.0 before the pin | *Inferred* from X's reference pages. **Known to be refused today**: the endpoint needs the `media.write` scope, which `TWITTER_OAUTH_CONFIG.scopes` does not request |
+| **Why it did not run** | No Meta app credentials or connected Page outside production | No X token; X has no sandbox (see Check A) |
+| **Cost to settle** | One forced refresh of one production connection | Add `media.write`, re-authorise one X connection, publish one video |
+| **Blocks** | Nothing outright; a failure would mean Instagram and Facebook connections expire unrenewed | X video publishing, which the v1.1 endpoint's retirement had already broken |
+
+```bash
+# D. Read-only half, safe against production: confirms the pin is honoured.
+curl -sI "https://graph.facebook.com/v23.0/me" | grep -i facebook-api-version
+# D. The decisive half: force one refresh and read the result.
+#    ensureValidToken(<meta connection id>, true)  ->  { valid: true, ... }
+
+# E. After media.write is granted:
+curl -s -X POST https://api.x.com/2/media/upload/initialize \
+  -H "Authorization: Bearer $X_USER_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"media_type":"video/mp4","total_bytes":1024,"media_category":"tweet_video"}'
+# Expected: 200 with data.id. A 403 means the scope is still missing.
+```
+
+## 3d. Checks F, G and H — what FILM-1711 could not run
 
 Added 2026-09-22 by [FILM-1711](./FILM-1711-analytics-authorisation.md), which
 requested the analytics scopes and built everything that can be built without a
@@ -185,7 +214,6 @@ gate — `channels.list?part=status` or the monetisation details — and FILM-17
 | **Why it did not run** | Needs the two vendor reviews in [docs/vendor-review-status.md](../../docs/vendor-review-status.md), or a sandbox app (TikTok) and a role account (Meta) |
 | **Cost to settle** | One sync each. Folds in Checks B and C, which need the same tokens |
 | **Blocks** | FILM-1711 §7; [FILM-1712](./FILM-1712-metric-recovery.md)'s estimate |
-
 ## 4. What is *not* deferred
 
 This spec covers questions we cannot answer. It does **not** cover work we simply
@@ -201,7 +229,8 @@ owned elsewhere:
 | Meta requests `instagram_basic` + `instagram_content_publish`, but the insights code calls `/{media-id}/insights` | FILM-1711 |
 | YouTube requests `yt-analytics.readonly` but not `yt-analytics-monetary.readonly`, while `fetchTotals` asks for three revenue metrics | FILM-1711 |
 | No Facebook or X analytics provider exists in code at all | FILM-1720 (Facebook), FILM-1727 (X) |
-| Graph v18.0 (expired 2026-01-26) and v19.0 (expired 2026-05-21) are both pinned in live code | FILM-1723 |
+| ~~Graph v18.0 (expired 2026-01-26) and v19.0 (expired 2026-05-21) are both pinned in live code~~ | FILM-1723 - done 2026-09-22, one pin at v23.0 |
+| X publishing requests no `media.write` scope, which `/2/media/upload` requires | **unowned** - FILM-1711 audits analytics scopes only, and FILM-1723 excluded scope changes |
 
 None of those needs a vendor answer. They need a decision and an afternoon.
 
@@ -216,6 +245,10 @@ Un-defer **Check A** on any of:
 
 Un-defer **Check C** the moment FILM-1711 holds an Instagram token — it costs one
 call.
+
+Un-defer **Check D** at the first production deploy carrying FILM-1723 - it is
+one forced refresh. Un-defer **Check E** when `media.write` is added to the X
+scopes, whichever spec does that.
 
 Un-defer **Check B** on any of:
 
@@ -241,6 +274,9 @@ This spec is complete when both checks have been run and their answers recorded
       reference's forbidden block
 - [ ] Check C run on the pinned version, and the result recorded against the
       2026-04-22 rows in the reference
+- [ ] Check D run against one production Meta connection, and the result
+      recorded against FILM-1723's open acceptance criterion
+- [ ] Check E run once `media.write` is held, and the result recorded there too
 - [ ] Check F run per vendor before FILM-1711's scopes reach production, and the
       result recorded in `docs/vendor-review-status.md`
 - [ ] Check G run; if a non-partner channel gets zero rows rather than a 403,

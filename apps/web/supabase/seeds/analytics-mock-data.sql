@@ -201,6 +201,26 @@ INSERT INTO public.publishes (id, episode_id, platform, content_type, title, des
 ON CONFLICT (id) DO NOTHING;
 
 -- ==================================
+-- Section 4b: Asset durations (FILM-1710)
+-- ==================================
+-- What the provider sync would have written. A YouTube `full` is the episode
+-- render, so it shares the episode's length; a TikTok `short` is a 30-59s
+-- clip of it, which is the whole point — before FILM-1710 these read as the
+-- episode's ~1,500 seconds. Instagram stays NULL on purpose: Meta's Media
+-- node has no duration field, so `duration_unknown` is its real state.
+
+UPDATE public.publishes p
+SET duration_seconds = CASE
+  WHEN p.platform = 'youtube' THEN NULLIF(GREATEST(e.duration_seconds, 0), 0)
+  ELSE 30 + (('x' || substr(md5(p.id::text), 1, 4))::bit(16)::int % 30)
+END
+FROM public.episodes e
+WHERE e.id = p.episode_id
+  AND e.project_id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+  AND p.platform IN ('youtube', 'tiktok')
+  AND p.duration_seconds IS NULL;
+
+-- ==================================
 -- Section 5: Content Analytics — REMOVED
 -- ==================================
 -- Analytics metrics are now stored in ClickHouse (video_daily_stats table).

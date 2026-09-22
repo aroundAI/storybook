@@ -78,30 +78,3 @@ export function HeatmapGrid({
     </div>
   );
 }
-
-/**
- * Default 7x4 peak activity grid with preset data structure
- */
-export function PeakActivityGrid({
-  data,
-  className = '',
-}: {
-  data?: number[][];
-  className?: string;
-}) {
-  // Default mock data if none provided (7 days x 4 time slots)
-  const defaultData = [
-    [0.2, 0.3, 0.4, 0.6, 0.8, 0.9, 0.7],
-    [0.3, 0.4, 0.6, 0.8, 1.0, 1.0, 0.8],
-    [0.2, 0.3, 0.4, 0.5, 0.7, 0.9, 0.6],
-    [0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.5],
-  ];
-
-  return (
-    <HeatmapGrid
-      data={data || defaultData}
-      columnLabels={['M', 'T', 'W', 'T', 'F', 'S', 'S']}
-      className={className}
-    />
-  );
-}

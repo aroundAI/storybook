@@ -227,6 +227,58 @@ describe('YouTubeAnalyticsProvider', () => {
     });
   });
 
+  // FILM-1710
+  describe('getVideoDurations', () => {
+    it('reads contentDetails.duration, keyed by video id', async () => {
+      mockVideosList.mockResolvedValue({
+        data: {
+          items: [
+            { id: 'short-1', contentDetails: { duration: 'PT45S' } },
+            { id: 'full-1', contentDetails: { duration: 'PT15M33S' } },
+          ],
+        },
+      });
+
+      const durations = await provider.getVideoDurations(['short-1', 'full-1']);
+
+      expect([...durations]).toEqual([
+        ['short-1', 45],
+        ['full-1', 933],
+      ]);
+      expect(mockVideosList).toHaveBeenCalledWith({
+        part: ['contentDetails'],
+        id: ['short-1', 'full-1'],
+        maxResults: 50,
+      });
+    });
+
+    it('leaves out a video the API omits, and one with no finished length', async () => {
+      // `P0D` is a live broadcast still running. Both are unknown — neither
+      // is a zero-second video.
+      mockVideosList.mockResolvedValue({
+        data: {
+          items: [{ id: 'live-1', contentDetails: { duration: 'P0D' } }],
+        },
+      });
+
+      const durations = await provider.getVideoDurations(['live-1', 'gone-1']);
+
+      expect(durations.size).toBe(0);
+    });
+
+    it('asks for at most 50 ids a call', async () => {
+      mockVideosList.mockResolvedValue({ data: { items: [] } });
+
+      const ids = Array.from({ length: 120 }, (_, i) => `v${i}`);
+
+      await provider.getVideoDurations(ids);
+
+      expect(
+        mockVideosList.mock.calls.map(([params]) => params.id.length),
+      ).toEqual([50, 50, 20]);
+    });
+  });
+
   describe('getVideoInfo', () => {
     it('should return video info', async () => {
       mockVideosList.mockResolvedValue({

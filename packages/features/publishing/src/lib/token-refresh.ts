@@ -2,6 +2,7 @@ import 'server-only';
 
 import { decrypt, encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
+import { META_GRAPH_BASE, META_OAUTH_TOKEN_URL } from '@kit/shared/vendors';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import type { PlatformConnection } from './database-types';
@@ -428,9 +429,7 @@ async function refreshMetaToken(
   }
 
   // Step 1: Refresh the User Access Token
-  const refreshUrl = new URL(
-    'https://graph.facebook.com/v18.0/oauth/access_token',
-  );
+  const refreshUrl = new URL(META_OAUTH_TOKEN_URL);
   refreshUrl.searchParams.set('grant_type', 'fb_exchange_token');
   refreshUrl.searchParams.set('client_id', oauthApp.clientId);
   refreshUrl.searchParams.set('client_secret', oauthApp.clientSecret);
@@ -472,7 +471,7 @@ async function refreshMetaToken(
   }
 
   // Fetch pages to get fresh Page Access Token
-  const pagesUrl = new URL('https://graph.facebook.com/v18.0/me/accounts');
+  const pagesUrl = new URL(`${META_GRAPH_BASE}/me/accounts`);
   pagesUrl.searchParams.set('access_token', newUserToken);
   pagesUrl.searchParams.set('fields', 'id,access_token');
 

@@ -4,14 +4,20 @@ import { useMemo } from 'react';
 
 import { Skeleton } from '@kit/ui/skeleton';
 
+import type { AssetDuration } from '../../lib/asset-duration';
 import { detectRetentionCliff } from '../../lib/retention';
 import type { RetentionPoint } from '../../lib/retention';
 
 interface RetentionCurveChartProps {
   /** Curve points from queryRetentionCurve */
   points: RetentionPoint[];
-  /** Video length, used to label the cliff position in seconds */
-  durationSeconds?: number;
+  /**
+   * The published asset's duration, to label the cliff in seconds. Not a
+   * bare number: an episode's duration passed here labelled a Short's cliff
+   * past the end of the clip (FILM-1710). Omitted or `duration_unknown`, the
+   * cliff is described by its size alone.
+   */
+  duration?: AssetDuration;
   /** Loading state */
   isLoading?: boolean;
 }
@@ -31,12 +37,12 @@ function formatTimestamp(seconds: number): string {
  */
 export function RetentionCurveChart({
   points,
-  durationSeconds,
+  duration,
   isLoading = false,
 }: RetentionCurveChartProps) {
   const cliff = useMemo(
-    () => detectRetentionCliff(points, { durationSeconds }),
-    [points, durationSeconds],
+    () => detectRetentionCliff(points, { duration }),
+    [points, duration],
   );
 
   const path = useMemo(() => {

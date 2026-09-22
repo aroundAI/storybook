@@ -18,10 +18,31 @@ export function formatDate(date: Date): string {
  * parseDuration('PT45S') // returns 45
  */
 export function parseDuration(isoDuration: string): number {
-  const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-  if (!match) return 0;
-  const hours = parseInt(match[1] || '0');
-  const minutes = parseInt(match[2] || '0');
-  const seconds = parseInt(match[3] || '0');
-  return hours * 3600 + minutes * 60 + seconds;
+  return parseIsoDurationSeconds(isoDuration) ?? 0;
+}
+
+/**
+ * ISO 8601 duration to whole seconds, or null when there is no duration to
+ * report (FILM-1710).
+ *
+ * `parseDuration` answers 0 for anything it cannot read, and 0 is a
+ * measurement. YouTube sends `P0D` for a live broadcast that has not
+ * finished, and a string this does not recognise is not a zero-length video
+ * either — both are *unknown*. It also reads the day designator, which
+ * YouTube uses past 24 hours (`P1DT2H`) and the older pattern ignored.
+ */
+export function parseIsoDurationSeconds(isoDuration: string): number | null {
+  const match = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(
+    isoDuration,
+  );
+
+  if (!match) return null;
+
+  const [days, hours, minutes, seconds] = match
+    .slice(1)
+    .map((part) => Number.parseInt(part ?? '0', 10));
+
+  const total = days! * 86_400 + hours! * 3600 + minutes! * 60 + seconds!;
+
+  return total > 0 ? total : null;
 }

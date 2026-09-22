@@ -17,7 +17,7 @@ Measured 2026-09-21, from the code:
 | Overridable today | Only the LLM SDKs (`OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, `GOOGLE_GEMINI_BASE_URL`), AWS, lip-sync (`SYNCLABS_BASE_URL`, `WAV2LIP_API_URL`), SMTP, ClickHouse, Redis | The AI half is partly reachable; the social half is not |
 | OAuth connect | No dev path. E2E inserts `platform_connections` rows directly (`apps/e2e/tests/utils/seed.ts:188` calls the flow "an entire external round trip") | Connect, token refresh and disconnect are never exercised before production |
 | E2E coverage | Auth, teams, billing, admin, and the analytics suite | No spec for project creation, any studio stage, assets, canon, publishing, platform connect or social posts |
-| Local analytics | Seeded ClickHouse; `seed-local-analytics.ts` writes every metric row as `platform: 'youtube'`, TikTok and Instagram publishes included | TikTok and Instagram analytics are never seen locally as they would arrive |
+| Local analytics | Seeded ClickHouse. Until FILM-1701, `seed-local-analytics.ts` wrote every metric row as `platform: 'youtube'`, TikTok and Instagram publishes included; it now writes each row under its publish's platform, as hand-shaped snapshot deltas | TikTok and Instagram analytics are still never seen locally as a provider response would deliver them — the rows are invented, not ingested |
 | User docs | `docs/PRODUCT_DOCUMENTATION.md` and `apps/web/content/documentation/*` describe connect paths and menus that do not exist | A new user is told to click things that are not there |
 
 The cost is not hypothetical. Two defects found in the review of #277 passed every

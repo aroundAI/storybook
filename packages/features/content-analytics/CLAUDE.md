@@ -126,6 +126,34 @@ researchers and carry no demographics endpoints. Audience demographics are not
 reachable on any surface we can authorise. See
 [docs/platform-capability-reference.md](../../../docs/platform-capability-reference.md).
 
+## Asset duration (FILM-1710)
+
+`publishes.duration_seconds` is the **published clip's** length as its platform
+reports it; ClickHouse carries it as `video_dim.asset_duration_seconds`
+(`Nullable`). `video_dim.episode_duration_seconds` is the episode's render — a
+Short cut from a 22-minute episode has 45 in one and 1,320 in the other. They
+are not interchangeable, and neither falls back to the other.
+
+- **One writer:** `syncAssetDurations` in `server/asset-duration-sync.ts`, called
+  by the hourly sync for publishes still missing one and by
+  `POST /api/analytics/asset-duration-backfill` for history. A database trigger
+  keeps browser sessions from writing the column. It only ever fills a null.
+- **Sources:** YouTube `contentDetails.duration`
+  (`YouTubeAnalyticsProvider.getVideoDurations`, 50 ids a call) and TikTok
+  `duration` on `/v2/video/query/` (`TikTokAnalyticsProvider.getVideoDurations`,
+  20 ids a call — needs `video.list`, so it is a `scope_missing` gap until
+  FILM-1711). **Instagram has no duration field** and is never asked.
+- **Unknown is a state, not a zero.** Read a duration through `AssetDuration`
+  (`lib/asset-duration.ts`): `{ known: true, seconds } | { known: false, reason:
+  'duration_unknown' }`. `retentionAtSeconds` and `detectRetentionCliff` take
+  one, not a number, so an episode's duration cannot be passed by mistake.
+
+```bash
+# the real reconcile against local Postgres + ClickHouse (off by default)
+set -a; . deployment/config/local.env; set +a
+DIM_SYNC_LOCAL_STACK=1 pnpm --filter @kit/content-analytics test dim-sync.local-stack
+```
+
 ## API Rate Limits
 
 - **YouTube Analytics API**: cost is per query with no published number — read

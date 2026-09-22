@@ -19,57 +19,22 @@ import {
   YAxis,
 } from 'recharts';
 
+import type { LanguageDimension } from '@kit/clickhouse';
 import { Badge } from '@kit/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Skeleton } from '@kit/ui/skeleton';
 
 import { formatNumber } from '../lib/format';
+import {
+  languageColor,
+  languageKey,
+  languageName,
+} from '../lib/language-labels';
 import type {
   ContentTypeComparison,
   LanguagePerformance,
 } from '../server/language-analytics';
-
-// =============================================================================
-// Language Names & Colors
-// =============================================================================
-
-const LANGUAGE_NAMES: Record<string, string> = {
-  en: 'English',
-  hi: 'Hindi',
-  es: 'Spanish',
-  pt: 'Portuguese',
-  fr: 'French',
-  de: 'German',
-  ja: 'Japanese',
-  ko: 'Korean',
-  zh: 'Chinese',
-  ar: 'Arabic',
-  ru: 'Russian',
-  it: 'Italian',
-};
-
-const LANGUAGE_COLORS: Record<string, string> = {
-  en: '#3B82F6', // Blue
-  hi: '#F59E0B', // Amber
-  es: '#EF4444', // Red
-  pt: '#10B981', // Emerald
-  fr: '#8B5CF6', // Violet
-  de: '#EC4899', // Pink
-  ja: '#F97316', // Orange
-  ko: '#6366F1', // Indigo
-  zh: '#14B8A6', // Teal
-  ar: '#84CC16', // Lime
-  ru: '#06B6D4', // Cyan
-  it: '#22C55E', // Green
-};
-
-function getLanguageName(code: string): string {
-  return LANGUAGE_NAMES[code] || code.toUpperCase();
-}
-
-function getLanguageColor(code: string): string {
-  return LANGUAGE_COLORS[code] || '#6B7280';
-}
+import { LanguageDimensionLabel } from './language-dimension-label';
 
 // =============================================================================
 // Language Comparison Chart (Side-by-Side)
@@ -77,11 +42,14 @@ function getLanguageColor(code: string): string {
 
 interface LanguageComparisonChartProps {
   data: LanguagePerformance[] | null;
+  /** Which language the bars are grouped by; named on the card. */
+  dimension?: LanguageDimension;
   isLoading?: boolean;
 }
 
 export function LanguageComparisonChart({
   data,
+  dimension = 'content',
   isLoading,
 }: LanguageComparisonChartProps) {
   if (isLoading) {
@@ -121,8 +89,9 @@ export function LanguageComparisonChart({
 
   // Prepare chart data
   const chartData = data.slice(0, 6).map((lang) => ({
-    name: getLanguageName(lang.language),
-    code: lang.language,
+    name: languageName(lang.language, dimension),
+    code: languageKey(lang.language),
+    color: languageColor(lang.language),
     views: lang.views,
     engagement: lang.engagement,
     revenue: lang.revenueCents / 100,
@@ -135,6 +104,7 @@ export function LanguageComparisonChart({
           <BarChart3 className="h-4 w-4" />
           Language Comparison
         </CardTitle>
+        <LanguageDimensionLabel dimension={dimension} card="comparison" />
       </CardHeader>
       <CardContent>
         <div className="h-64">
@@ -166,7 +136,7 @@ export function LanguageComparisonChart({
                 radius={[0, 4, 4, 0]}
               >
                 {chartData.map((entry) => (
-                  <Cell key={entry.code} fill={getLanguageColor(entry.code)} />
+                  <Cell key={entry.code} fill={entry.color} />
                 ))}
               </Bar>
             </BarChart>
@@ -364,28 +334,34 @@ export function BestEpisodesToClipCard({
     }
   }
 
-  // Check language opportunities
-  if (languageData && languageData.length > 1) {
-    const topLang = languageData[0];
-    const secondLang = languageData[1];
+  // Check language opportunities — among labelled languages only. The
+  // unlabelled bucket is often the largest, and "focus on Language not set"
+  // is advice about nothing.
+  const labelledLanguages = (languageData ?? []).filter(
+    (lang) => lang.language !== null,
+  );
+
+  if (labelledLanguages.length > 1) {
+    const topLang = labelledLanguages[0];
+    const secondLang = labelledLanguages[1];
 
     if (topLang && secondLang && topLang.views > secondLang.views * 2) {
       recommendations.push({
         icon: <Clapperboard className="h-4 w-4 text-amber-500" />,
-        title: `Focus on ${getLanguageName(topLang.language)} clips`,
-        description: `${getLanguageName(topLang.language)} content gets ${(topLang.views / (secondLang.views || 1)).toFixed(1)}x more views than ${getLanguageName(secondLang.language)}.`,
+        title: `Focus on ${languageName(topLang.language)} clips`,
+        description: `${languageName(topLang.language)} content gets ${(topLang.views / (secondLang.views || 1)).toFixed(1)}x more views than ${languageName(secondLang.language)}.`,
         priority: 'high',
       });
     }
 
     // Find underutilized language with high engagement
-    const highEngagementLang = languageData.find(
+    const highEngagementLang = labelledLanguages.find(
       (l) => l.engagement > 5 && l.contentCount < 5,
     );
     if (highEngagementLang) {
       recommendations.push({
         icon: <TrendingUp className="h-4 w-4 text-purple-500" />,
-        title: `Expand ${getLanguageName(highEngagementLang.language)} content`,
+        title: `Expand ${languageName(highEngagementLang.language)} content`,
         description: `High engagement (${highEngagementLang.engagement.toFixed(1)}%) but low volume. Great opportunity for more clips.`,
         priority: 'medium',
       });
