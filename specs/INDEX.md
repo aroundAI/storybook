@@ -7,15 +7,19 @@
 ## Quick Navigation
 
 - [By Phase](#by-phase)
-- [By Category](#by-category)
-- [Dependency Graph](#dependency-graph)
-- [Implementation Order](#implementation-order-critical-path)
 - [Progress Tracker](#progress-tracker)
-- [Cross-Reference Matrix](#cross-reference-spec--implementation-files)
+- [Dependency Graph](#dependency-graph) (phases 1–9)
+- [Implementation Order](#implementation-order-critical-path) (phases 1–9)
+- [Effort Sizes](#effort-sizes)
 
 ---
 
 ## Dependency Graph
+
+> Phases 1–9 as planned in December 2025, kept as a record. Some of these
+> specs have since been retired or superseded; their statuses are in
+> [By Phase](#by-phase). Later phases keep their dependency graphs in their own
+> READMEs.
 
 ```mermaid
 graph TD
@@ -180,6 +184,8 @@ graph TD
 
 ## Implementation Order (Critical Path)
 
+> The order phases 1–9 were built in, kept as a record.
+
 ### Phase 1: Foundation (Must Complete First)
 ```
 1. FILM-101 (Database Schema) - All tables
@@ -286,133 +292,133 @@ graph TD
 | FILM-101b | [episodes-table](./phase-1-foundation/database/FILM-101-episodes-table.md) | ✅ DONE | S | - |
 | FILM-101c | [shots-table](./phase-1-foundation/database/FILM-101-shots-table.md) | ✅ DONE | S | FILM-101b |
 | FILM-101d | [assets-table](./phase-1-foundation/database/FILM-101-assets-table.md) | ✅ DONE | S | - |
-| FILM-101e | [character-details-table](./phase-1-foundation/database/FILM-101-character-details-table.md) | ✅ DONE | XS | FILM-101d |
-| FILM-101f | [voice-profiles-table](./phase-1-foundation/database/FILM-101-voice-profiles-table.md) | ✅ DONE | XS | FILM-101d |
+| FILM-101e | [character-details-table](./phase-1-foundation/database/FILM-101-character-details-table.md) | 🟡 PARTIAL | XS | FILM-101d |
+| FILM-101f | [voice-profiles-table](./phase-1-foundation/database/FILM-101-voice-profiles-table.md) | 🗑️ RETIRED (05ec0ae9) | XS | FILM-101d |
 | FILM-101g | [dialogue-lines-table](./phase-1-foundation/database/FILM-101-dialogue-lines-table.md) | ✅ DONE | XS | FILM-101b, FILM-101c |
-| FILM-101h | [audio-tracks-table](./phase-1-foundation/database/FILM-101-audio-tracks-table.md) | ✅ DONE | XS | FILM-101b |
+| FILM-101h | [audio-tracks-table](./phase-1-foundation/database/FILM-101-audio-tracks-table.md) | 🟡 PARTIAL | XS | FILM-101b |
 | FILM-101i | [generation-jobs-table](./phase-1-foundation/database/FILM-101-generation-jobs-table.md) | ✅ DONE | M | - |
 | FILM-101j | [platform-connections-table](./phase-1-foundation/database/FILM-101-platform-connections-table.md) | ✅ DONE | S | - |
 | FILM-101k | [publishes-table](./phase-1-foundation/database/FILM-101-publishes-table.md) | ✅ DONE | S | FILM-101b, FILM-101j |
-| FILM-101l | [content-analytics-table](./phase-1-foundation/database/FILM-101-content-analytics-table.md) | ✅ DONE | S | FILM-101k |
+| FILM-101l | [content-analytics-table](./phase-1-foundation/database/FILM-101-content-analytics-table.md) | 🗑️ RETIRED (047f0c84) | S | FILM-101k |
 | FILM-101m | [shared-resources-table](./phase-1-foundation/database/FILM-101-shared-resources-table.md) | ✅ DONE | XS | - |
-| FILM-101n | [external-api-keys-table](./phase-1-foundation/database/FILM-101-external-api-keys-table.md) | ✅ DONE | XS | - |
+| FILM-101n | [external-api-keys-table](./phase-1-foundation/database/FILM-101-external-api-keys-table.md) | 🟡 PARTIAL | XS | - |
 | FILM-102a | [enable-rls](./phase-1-foundation/rls/FILM-102-enable-rls.md) | ✅ DONE | XS | FILM-101* |
 | FILM-102b | [project-policies](./phase-1-foundation/rls/FILM-102-project-policies.md) | ✅ DONE | M | FILM-102a |
 | FILM-102c | [account-policies](./phase-1-foundation/rls/FILM-102-account-policies.md) | ✅ DONE | S | FILM-102a |
-| FILM-103 | [transaction-functions](./phase-1-foundation/functions/FILM-103-transaction-functions.md) | ✅ DONE | M | FILM-101* |
-| FILM-104 | [film-studio-package](./phase-1-foundation/packages/FILM-104-film-studio-package.md) | ✅ DONE | S | - |
+| FILM-103 | [transaction-functions](./phase-1-foundation/functions/FILM-103-transaction-functions.md) | 🟡 PARTIAL | M | FILM-101* |
+| FILM-104 | [film-studio-package](./phase-1-foundation/packages/FILM-104-film-studio-package.md) | 🗑️ RETIRED (5f44d0e1) | S | - |
 | FILM-105 | [assets-package](./phase-1-foundation/packages/FILM-105-assets-package.md) | ✅ DONE | S | - |
-| FILM-106 | [episodes-package](./phase-1-foundation/packages/FILM-106-episodes-package.md) | ✅ DONE | S | - |
-| FILM-107 | [video-generation-package](./phase-1-foundation/packages/FILM-107-video-generation-package.md) | ✅ DONE | S | - |
+| FILM-106 | [episodes-package](./phase-1-foundation/packages/FILM-106-episodes-package.md) | 🟡 PARTIAL | S | - |
+| FILM-107 | [video-generation-package](./phase-1-foundation/packages/FILM-107-video-generation-package.md) | 🗑️ RETIRED (5b88db3a) | S | - |
 | FILM-108 | [audio-generation-package](./phase-1-foundation/packages/FILM-108-audio-generation-package.md) | ✅ DONE | S | - |
 | FILM-109 | [zod-schemas](./phase-1-foundation/packages/FILM-109-zod-schemas.md) | ✅ DONE | M | FILM-105, FILM-106 |
 | FILM-110 | [project-extension](./phase-1-foundation/packages/FILM-110-project-extension.md) | ✅ DONE | M | FILM-104 |
-| FILM-111 | [project-templates](./phase-1-foundation/packages/FILM-111-project-templates.md) | ✅ DONE | M | FILM-110 |
+| FILM-111 | [project-templates](./phase-1-foundation/packages/FILM-111-project-templates.md) | 🗑️ RETIRED (5f44d0e1) | M | FILM-110 |
 
 ### Cross-Cutting Concerns (4 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
 | FILM-CC-01 | [file-upload-validation](./cross-cutting/FILM-CC-01-file-upload-validation.md) | ✅ DONE | M | - |
-| FILM-CC-02 | [webhook-security](./cross-cutting/FILM-CC-02-webhook-security.md) | ✅ DONE | M | - |
-| FILM-CC-03 | [oauth-token-refresh](./cross-cutting/FILM-CC-03-oauth-token-refresh.md) | ✅ DONE | M | - |
+| FILM-CC-02 | [webhook-security](./cross-cutting/FILM-CC-02-webhook-security.md) | 🗑️ RETIRED (5b88db3a) | M | - |
+| FILM-CC-03 | [oauth-token-refresh](./cross-cutting/FILM-CC-03-oauth-token-refresh.md) | 🟡 PARTIAL | M | - |
 | FILM-CC-04 | [known-bugs](./cross-cutting/FILM-CC-04-known-bugs.md) | OPEN | M | - |
 
 ### Design System (5 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-DS-01 | [component-inventory](./design-system/FILM-DS-01-component-inventory.md) | ✅ DONE | M | - |
-| FILM-DS-02 | [design-tokens](./design-system/FILM-DS-02-design-tokens.md) | ✅ DONE | S | - |
-| FILM-DS-03 | [interaction-patterns](./design-system/FILM-DS-03-interaction-patterns.md) | ✅ DONE | M | FILM-DS-01 |
-| FILM-DS-04 | [accessibility](./design-system/FILM-DS-04-accessibility.md) | ✅ DONE | M | FILM-DS-01 |
-| FILM-DS-05 | [responsive-strategy](./design-system/FILM-DS-05-responsive-strategy.md) | ✅ DONE | S | FILM-DS-01 |
+| FILM-DS-01 | [component-inventory](./design-system/FILM-DS-01-component-inventory.md) | 🟡 PARTIAL | M | - |
+| FILM-DS-02 | [design-tokens](./design-system/FILM-DS-02-design-tokens.md) | 🗑️ RETIRED (5f44d0e1) | S | - |
+| FILM-DS-03 | [interaction-patterns](./design-system/FILM-DS-03-interaction-patterns.md) | 🟡 PARTIAL | M | FILM-DS-01 |
+| FILM-DS-04 | [accessibility](./design-system/FILM-DS-04-accessibility.md) | 🟡 PARTIAL | M | FILM-DS-01 |
+| FILM-DS-05 | [responsive-strategy](./design-system/FILM-DS-05-responsive-strategy.md) | 🟡 PARTIAL | S | FILM-DS-01 |
 
 ### Phase 2: Assets (9 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-201 | [asset-crud-actions](./phase-2-assets/server/FILM-201-asset-crud-actions.md) | ✅ DONE | M | FILM-101d, FILM-105 |
-| FILM-202 | [character-actions](./phase-2-assets/server/FILM-202-character-actions.md) | ✅ DONE | M | FILM-103, FILM-201 |
-| FILM-203 | [upload-route](./phase-2-assets/server/FILM-203-upload-route.md) | ✅ DONE | M | FILM-CC-01 |
-| FILM-204 | [asset-gallery](./phase-2-assets/components/FILM-204-asset-gallery.md) | ✅ DONE | M | FILM-201 |
-| FILM-205 | [character-editor](./phase-2-assets/components/FILM-205-character-editor.md) | ✅ DONE | L | FILM-202, FILM-204 |
-| FILM-206 | [voice-profile-editor](./phase-2-assets/components/FILM-206-voice-profile-editor.md) | ✅ DONE | M | FILM-201 |
-| FILM-207 | [image-uploader](./phase-2-assets/components/FILM-207-image-uploader.md) | ✅ DONE | S | FILM-203 |
-| FILM-208 | [asset-library-page](./phase-2-assets/pages/FILM-208-asset-library-page.md) | ✅ DONE | M | FILM-204 |
-| FILM-209 | [element-prompt-generation](./phase-2-assets/lib/FILM-209-element-prompt-generation.md) | ✅ DONE | M | FILM-202 |
+| FILM-201 | [asset-crud-actions](./phase-2-assets/server/FILM-201-asset-crud-actions.md) | 🟡 PARTIAL | M | FILM-101d, FILM-105 |
+| FILM-202 | [character-actions](./phase-2-assets/server/FILM-202-character-actions.md) | 🟡 PARTIAL | M | FILM-103, FILM-201 |
+| FILM-203 | [upload-route](./phase-2-assets/server/FILM-203-upload-route.md) | 🗑️ RETIRED (c17efd37) | M | FILM-CC-01 |
+| FILM-204 | [asset-gallery](./phase-2-assets/components/FILM-204-asset-gallery.md) | 🟡 PARTIAL | M | FILM-201 |
+| FILM-205 | [character-editor](./phase-2-assets/components/FILM-205-character-editor.md) | 🟡 PARTIAL | L | FILM-202, FILM-204 |
+| FILM-206 | [voice-profile-editor](./phase-2-assets/components/FILM-206-voice-profile-editor.md) | 🗑️ RETIRED (a70af938) | M | FILM-201 |
+| FILM-207 | [image-uploader](./phase-2-assets/components/FILM-207-image-uploader.md) | 🟡 PARTIAL | S | FILM-203 |
+| FILM-208 | [asset-library-page](./phase-2-assets/pages/FILM-208-asset-library-page.md) | 🟡 PARTIAL | M | FILM-204 |
+| FILM-209 | [element-prompt-generation](./phase-2-assets/lib/FILM-209-element-prompt-generation.md) | 🗑️ RETIRED (never wired) | M | FILM-202 |
 
 ### Phase 3: Episodes & Story (14 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-301 | [episode-crud-actions](./phase-3-episodes/server/FILM-301-episode-crud-actions.md) | ✅ DONE | M | FILM-101b, FILM-106 |
+| FILM-301 | [episode-crud-actions](./phase-3-episodes/server/FILM-301-episode-crud-actions.md) | 🟡 PARTIAL | M | FILM-101b, FILM-106 |
 | FILM-302 | [season-crud-actions](./phase-3-episodes/server/FILM-302-season-crud-actions.md) | ✅ DONE | S | FILM-301 |
-| FILM-303 | [shot-crud-actions](./phase-3-episodes/server/FILM-303-shot-crud-actions.md) | ✅ DONE | M | FILM-301 |
-| FILM-304 | [prompt-templates](./phase-3-episodes/prompts/FILM-304-prompt-templates.md) | ✅ DONE | S | - |
-| FILM-305 | [story-generation](./phase-3-episodes/server/FILM-305-story-generation.md) | ✅ DONE | L | FILM-301, FILM-304 |
-| FILM-306 | [screenplay-conversion](./phase-3-episodes/server/FILM-306-screenplay-conversion.md) | ✅ DONE | L | FILM-305 |
-| FILM-307 | [shot-list-generation](./phase-3-episodes/server/FILM-307-shot-list-generation.md) | ✅ DONE | L | FILM-306, FILM-303 |
+| FILM-303 | [shot-crud-actions](./phase-3-episodes/server/FILM-303-shot-crud-actions.md) | 🟡 PARTIAL | M | FILM-301 |
+| FILM-304 | [prompt-templates](./phase-3-episodes/prompts/FILM-304-prompt-templates.md) | 🟡 PARTIAL | S | - |
+| FILM-305 | [story-generation](./phase-3-episodes/server/FILM-305-story-generation.md) | 🟡 PARTIAL | L | FILM-301, FILM-304 |
+| FILM-306 | [screenplay-conversion](./phase-3-episodes/server/FILM-306-screenplay-conversion.md) | 🟡 PARTIAL | L | FILM-305 |
+| FILM-307 | [shot-list-generation](./phase-3-episodes/server/FILM-307-shot-list-generation.md) | 🟡 PARTIAL | L | FILM-306, FILM-303 |
 | FILM-308 | [story-studio](./phase-3-episodes/components/FILM-308-story-studio.md) | ✅ DONE | L | FILM-305 |
 | FILM-309 | [story-ideation](./phase-3-episodes/components/FILM-309-story-ideation.md) | ✅ DONE | M | FILM-308 |
 | FILM-310 | [screenplay-viewer](./phase-3-episodes/components/FILM-310-screenplay-viewer.md) | ✅ DONE | M | FILM-306 |
-| FILM-311 | [shot-list-editor](./phase-3-episodes/components/FILM-311-shot-list-editor.md) | ✅ DONE | L | FILM-307 |
-| FILM-312 | [episode-workspace](./phase-3-episodes/pages/FILM-312-episode-workspace.md) | ✅ DONE | L | FILM-301, FILM-308 |
-| FILM-313 | [continuity-checker](./phase-3-episodes/lib/FILM-313-continuity-checker.md) | ✅ DONE | M | FILM-305, FILM-202 |
-| FILM-314 | [batch-episode-creation](./phase-3-episodes/server/FILM-314-batch-episode-creation.md) | ✅ DONE | M | FILM-301 |
+| FILM-311 | [shot-list-editor](./phase-3-episodes/components/FILM-311-shot-list-editor.md) | 🗑️ RETIRED (e2d42522) | L | FILM-307 |
+| FILM-312 | [episode-workspace](./phase-3-episodes/pages/FILM-312-episode-workspace.md) | 🟡 PARTIAL | L | FILM-301, FILM-308 |
+| FILM-313 | [continuity-checker](./phase-3-episodes/server/FILM-313-continuity-checker.md) | 🗑️ RETIRED (never mounted) | M | FILM-305, FILM-202 |
+| FILM-314 | [batch-episode-creation](./phase-3-episodes/server/FILM-314-batch-episode-creation.md) | 🗑️ RETIRED (never mounted) | M | FILM-301 |
 
-### Phase 4: Video Generation (15 specs)
-
-| Task ID | Name | Status | Effort | Dependencies |
-|---------|------|--------|--------|--------------|
-| FILM-401 | [kling-provider](./phase-4-video-generation/providers/FILM-401-kling-provider.md) | ✅ DONE | L | FILM-107 |
-| FILM-401b | [runway-provider](./phase-4-video-generation/providers/FILM-401b-runway-provider.md) | ✅ DONE | M | FILM-107, FILM-402 |
-| FILM-401c | [hailuo-provider](./phase-4-video-generation/providers/FILM-401c-hailuo-provider.md) | ✅ DONE | M | FILM-107, FILM-402 |
-| FILM-402 | [provider-factory](./phase-4-video-generation/providers/FILM-402-provider-factory.md) | ✅ DONE | M | FILM-401 |
-| FILM-403 | [rate-limiter](./phase-4-video-generation/lib/FILM-403-rate-limiter.md) | ✅ DONE | M | - |
-| FILM-404 | [job-queue](./phase-4-video-generation/queue/FILM-404-job-queue.md) | ✅ DONE | L | FILM-403 |
-| FILM-405 | [generate-video-action](./phase-4-video-generation/server/FILM-405-generate-video-action.md) | ✅ DONE | L | FILM-401, FILM-404 |
-| FILM-406 | [batch-generate-action](./phase-4-video-generation/server/FILM-406-batch-generate-action.md) | ✅ DONE | M | FILM-405 |
-| FILM-407 | [kling-webhook](./phase-4-video-generation/webhooks/FILM-407-kling-webhook.md) | ✅ DONE | M | FILM-CC-02 |
-| FILM-408 | [poll-status-action](./phase-4-video-generation/server/FILM-408-poll-status-action.md) | ✅ DONE | S | FILM-405 |
-| FILM-409 | [visual-studio](./phase-4-video-generation/components/FILM-409-visual-studio.md) | ✅ DONE | L | FILM-405 |
-| FILM-410 | [shot-grid](./phase-4-video-generation/components/FILM-410-shot-grid.md) | ✅ DONE | M | FILM-303 |
-| FILM-411 | [generation-progress](./phase-4-video-generation/components/FILM-411-generation-progress.md) | ✅ DONE | M | FILM-408 |
-| FILM-412 | [cost-tracking](./phase-4-video-generation/lib/FILM-412-cost-tracking.md) | ✅ DONE | M | FILM-405 |
-
-### Phase 5: Audio Generation (17 specs)
+### Phase 4: Video Generation (14 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-501 | [elevenlabs-provider](./phase-5-audio-generation/providers/FILM-501-elevenlabs-provider.md) | ✅ DONE | M | FILM-108 |
+| FILM-401 | [kling-provider](./phase-4-video-generation/providers/FILM-401-kling-provider.md) | 🗑️ RETIRED (5b88db3a) | L | FILM-107 |
+| FILM-401b | [runway-provider](./phase-4-video-generation/providers/FILM-401b-runway-provider.md) | 🗑️ RETIRED (5b88db3a) | M | FILM-107, FILM-402 |
+| FILM-401c | [hailuo-provider](./phase-4-video-generation/providers/FILM-401c-hailuo-provider.md) | 🗑️ RETIRED (5b88db3a) | M | FILM-107, FILM-402 |
+| FILM-402 | [provider-factory](./phase-4-video-generation/providers/FILM-402-provider-factory.md) | 🗑️ RETIRED (5b88db3a) | M | FILM-401 |
+| FILM-403 | [rate-limiter](./phase-4-video-generation/lib/FILM-403-rate-limiter.md) | 🗑️ RETIRED (5b88db3a) | M | - |
+| FILM-404 | [job-queue](./phase-4-video-generation/queue/FILM-404-job-queue.md) | 🗑️ RETIRED (5b88db3a) | L | FILM-403 |
+| FILM-405 | [generate-video-action](./phase-4-video-generation/server/FILM-405-generate-video-action.md) | 🗑️ RETIRED (5b88db3a) | L | FILM-401, FILM-404 |
+| FILM-406 | [batch-generate-action](./phase-4-video-generation/server/FILM-406-batch-generate-action.md) | 🗑️ RETIRED (5b88db3a) | M | FILM-405 |
+| FILM-407 | [kling-webhook](./phase-4-video-generation/webhooks/FILM-407-kling-webhook.md) | 🗑️ RETIRED (5b88db3a) | M | FILM-CC-02 |
+| FILM-408 | [poll-status-action](./phase-4-video-generation/server/FILM-408-poll-status-action.md) | 🗑️ RETIRED (5b88db3a) | S | FILM-405 |
+| FILM-409 | [visual-studio](./phase-4-video-generation/components/FILM-409-visual-studio.md) | 🟡 PARTIAL | L | FILM-405 |
+| FILM-410 | [shot-grid](./phase-4-video-generation/components/FILM-410-shot-grid.md) | 🟡 PARTIAL | M | FILM-303 |
+| FILM-411 | [generation-progress](./phase-4-video-generation/components/FILM-411-generation-progress.md) | 🗑️ RETIRED (5b88db3a) | M | FILM-408 |
+| FILM-412 | [cost-tracking](./phase-4-video-generation/lib/FILM-412-cost-tracking.md) | 🗑️ RETIRED (5b88db3a) | M | FILM-405 |
+
+### Phase 5: Audio Generation (16 specs)
+
+| Task ID | Name | Status | Effort | Dependencies |
+|---------|------|--------|--------|--------------|
+| FILM-501 | [elevenlabs-provider](./phase-5-audio-generation/providers/FILM-501-elevenlabs-provider.md) | 🟡 PARTIAL | M | FILM-108 |
 | FILM-501b | [playht-provider](./phase-5-audio-generation/providers/FILM-501b-playht-provider.md) | ✅ DONE | M | FILM-108, FILM-502b |
-| FILM-502 | [voice-generation-action](./phase-5-audio-generation/server/FILM-502-voice-generation-action.md) | ✅ DONE | M | FILM-501 |
+| FILM-502 | [voice-generation-action](./phase-5-audio-generation/server/FILM-502-voice-generation-action.md) | 🟡 PARTIAL | M | FILM-501 |
 | FILM-502b | [audio-provider-factory](./phase-5-audio-generation/providers/FILM-502b-audio-provider-factory.md) | ✅ DONE | M | FILM-501, FILM-509 |
-| FILM-503 | [batch-dialogue-action](./phase-5-audio-generation/server/FILM-503-batch-dialogue-action.md) | ✅ DONE | M | FILM-502 |
-| FILM-504 | [music-generation-action](./phase-5-audio-generation/server/FILM-504-music-generation-action.md) | ✅ DONE | M | FILM-509 |
-| FILM-505 | [audio-studio](./phase-5-audio-generation/components/FILM-505-audio-studio.md) | ✅ DONE | L | FILM-502 |
-| FILM-506 | [dialogue-list](./phase-5-audio-generation/components/FILM-506-dialogue-list.md) | ✅ DONE | M | FILM-503 |
-| FILM-507 | [voice-assignment](./phase-5-audio-generation/components/FILM-507-voice-assignment.md) | ✅ DONE | M | FILM-206, FILM-506 |
-| FILM-508 | [audio-player](./phase-5-audio-generation/components/FILM-508-audio-player.md) | ✅ DONE | M | - |
-| FILM-509 | [suno-provider](./phase-5-audio-generation/providers/FILM-509-suno-provider.md) | ✅ DONE | M | FILM-108 |
+| FILM-503 | [batch-dialogue-action](./phase-5-audio-generation/server/FILM-503-batch-dialogue-action.md) | 🟡 PARTIAL | M | FILM-502 |
+| FILM-504 | [music-generation-action](./phase-5-audio-generation/server/FILM-504-music-generation-action.md) | 🟡 PARTIAL | M | FILM-509 |
+| FILM-505 | [audio-studio](./phase-5-audio-generation/components/FILM-505-audio-studio.md) | 🟡 PARTIAL | L | FILM-502 |
+| FILM-506 | [dialogue-list](./phase-5-audio-generation/components/FILM-506-dialogue-list.md) | 🗑️ RETIRED (f7cdfa21) | M | FILM-503 |
+| FILM-507 | [voice-assignment](./phase-5-audio-generation/components/FILM-507-voice-assignment.md) | 🗑️ RETIRED (f7cdfa21) | M | FILM-206, FILM-506 |
+| FILM-508 | [audio-player](./phase-5-audio-generation/components/FILM-508-audio-player.md) | 🗑️ RETIRED (f7cdfa21) | M | - |
+| FILM-509 | [suno-provider](./phase-5-audio-generation/providers/FILM-509-suno-provider.md) | 🟡 PARTIAL | M | FILM-108 |
 | FILM-509b | [udio-provider](./phase-5-audio-generation/providers/FILM-509b-udio-provider.md) | ✅ DONE | M | FILM-108, FILM-502b |
-| FILM-510 | [voice-cloning](./phase-5-audio-generation/providers/FILM-510-voice-cloning.md) | ✅ DONE | L | FILM-501 |
+| FILM-510 | [voice-cloning](./phase-5-audio-generation/providers/FILM-510-voice-cloning.md) | 🗑️ RETIRED (05ec0ae9) | L | FILM-501 |
 | FILM-511 | [lip-sync](./phase-5-audio-generation/providers/FILM-511-lip-sync.md) | 🗑️ RETIRED (FILM-513) | L | FILM-502 |
 | FILM-513 | [retire-lip-sync](./phase-5-audio-generation/providers/FILM-513-retire-lip-sync.md) | DRAFT | M | FILM-1801 for the resolver entry only |
-| FILM-512 | [multi-language-dubbing](./phase-5-audio-generation/server/FILM-512-multi-language-dubbing.md) | ✅ DONE | L | FILM-502, FILM-510 |
+| FILM-512 | [multi-language-dubbing](./phase-5-audio-generation/providers/FILM-512-multi-language-dubbing.md) | 🗑️ RETIRED (5b88db3a) | L | FILM-502, FILM-510 |
 
 ### Phase 6: Edit Suite (6 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-601 | [timeline-editor](./phase-6-edit-suite/components/FILM-601-timeline-editor.md) | ✅ DONE | XL | FILM-DS-03 |
-| FILM-602 | [track-layer](./phase-6-edit-suite/components/FILM-602-track-layer.md) | ✅ DONE | L | FILM-601 |
-| FILM-603 | [clip-editor](./phase-6-edit-suite/components/FILM-603-clip-editor.md) | ✅ DONE | L | FILM-601 |
-| FILM-604 | [auto-stitch](./phase-6-edit-suite/lib/FILM-604-auto-stitch.md) | ✅ DONE | L | FILM-601 |
-| FILM-605 | [auto-captions](./phase-6-edit-suite/components/FILM-605-auto-captions.md) | ✅ DONE | L | FILM-601 |
-| FILM-606 | [transitions-library](./phase-6-edit-suite/lib/FILM-606-transitions-library.md) | ✅ DONE | M | FILM-601 |
+| FILM-601 | [timeline-editor](./phase-6-edit-suite/components/FILM-601-timeline-editor.md) | 🟡 PARTIAL | XL | FILM-DS-03 |
+| FILM-602 | [track-layer](./phase-6-edit-suite/components/FILM-602-track-layer.md) | 🟡 PARTIAL | L | FILM-601 |
+| FILM-603 | [clip-editor](./phase-6-edit-suite/components/FILM-603-clip-editor.md) | 🗑️ RETIRED (5f44d0e1) | L | FILM-601 |
+| FILM-604 | [auto-stitch](./phase-6-edit-suite/lib/FILM-604-auto-stitch.md) | 🗑️ RETIRED (b7f7cb53) | L | FILM-601 |
+| FILM-605 | [auto-captions](./phase-6-edit-suite/components/FILM-605-auto-captions.md) | 🗑️ RETIRED (5f44d0e1) | L | FILM-601 |
+| FILM-606 | [transitions-library](./phase-6-edit-suite/components/FILM-606-transitions-library.md) | 🗑️ RETIRED (5f44d0e1) | M | FILM-601 |
 
-### Phase 7: Publishing (15 specs)
+### Phase 7: Publishing (16 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -421,83 +427,84 @@ graph TD
 | FILM-703 | [instagram-provider](./phase-7-publishing/providers/FILM-703-instagram-provider.md) | ✅ DONE | M | - |
 | FILM-704 | [facebook-provider](./phase-7-publishing/providers/FILM-704-facebook-provider.md) | ✅ DONE | M | - |
 | FILM-705 | [youtube-oauth](./phase-7-publishing/oauth/FILM-705-youtube-oauth.md) | ✅ DONE | M | FILM-CC-03 |
-| FILM-706 | [tiktok-oauth](./phase-7-publishing/oauth/FILM-706-tiktok-oauth.md) | ✅ DONE | M | FILM-CC-03 |
-| FILM-707 | [meta-oauth](./phase-7-publishing/oauth/FILM-707-meta-oauth.md) | ✅ DONE | M | FILM-CC-03 |
-| FILM-708 | [publish-hub](./phase-7-publishing/components/FILM-708-publish-hub.md) | ✅ DONE | L | FILM-701 |
-| FILM-709 | [platform-selector](./phase-7-publishing/components/FILM-709-platform-selector.md) | ✅ DONE | M | FILM-708 |
-| FILM-710 | [metadata-editor](./phase-7-publishing/components/FILM-710-metadata-editor.md) | ✅ DONE | M | FILM-708 |
-| FILM-711 | [shorts-clipper](./phase-7-publishing/components/FILM-711-shorts-clipper.md) | ✅ DONE | L | FILM-708 |
-| FILM-712 | [thumbnail-generator](./phase-7-publishing/components/FILM-712-thumbnail-generator.md) | ✅ DONE | M | FILM-708 |
-| FILM-713 | [upload-only-mode](./phase-7-publishing/lib/FILM-713-upload-only-mode.md) | ✅ DONE | M | FILM-701-704 |
-| FILM-714 | [twitter-provider](./phase-7-publishing/providers/FILM-714-twitter-provider.md) | ✅ DONE | M | FILM-708 |
-| FILM-715 | [linkedin-provider](./phase-7-publishing/providers/FILM-715-linkedin-provider.md) | ✅ DONE | M | FILM-708 |
+| FILM-706 | [tiktok-oauth](./phase-7-publishing/oauth/FILM-706-tiktok-oauth.md) | 🟡 PARTIAL | M | FILM-CC-03 |
+| FILM-707 | [meta-oauth](./phase-7-publishing/oauth/FILM-707-meta-oauth.md) | 🟡 PARTIAL | M | FILM-CC-03 |
+| FILM-708 | [publish-hub](./phase-7-publishing/components/FILM-708-publish-hub.md) | 🟡 PARTIAL | L | FILM-701 |
+| FILM-709 | [platform-selector](./phase-7-publishing/components/FILM-709-platform-selector.md) | 🗑️ RETIRED (baa752eb) | M | FILM-708 |
+| FILM-710 | [metadata-editor](./phase-7-publishing/components/FILM-710-metadata-editor.md) | 🗑️ RETIRED (baa752eb) | M | FILM-708 |
+| FILM-711 | [shorts-clipper](./phase-7-publishing/components/FILM-711-shorts-clipper.md) | 🗑️ RETIRED (baa752eb) | L | FILM-708 |
+| FILM-712 | [thumbnail-generator](./phase-7-publishing/components/FILM-712-thumbnail-generator.md) | 🟡 PARTIAL | M | FILM-708 |
+| FILM-713 | [upload-only-mode](./phase-7-publishing/components/FILM-713-upload-only-mode.md) | 🟡 PARTIAL | M | FILM-701-704 |
+| FILM-714 | [twitter-provider](./phase-7-publishing/providers/FILM-714-twitter-provider.md) | 🟡 PARTIAL | M | FILM-708 |
+| FILM-715 | [linkedin-provider](./phase-7-publishing/providers/FILM-715-linkedin-provider.md) | 🟡 PARTIAL | M | FILM-708 |
+| FILM-716 | [master-video-record-keeping](./phase-7-publishing/FILM-716-master-video-record-keeping.md) | ✅ DONE | — | — |
 
 ### Phase 8: Analytics (10 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
 | FILM-801 | [youtube-analytics](./phase-8-analytics/providers/FILM-801-youtube-analytics.md) | ✅ DONE | M | - |
-| FILM-802 | [tiktok-analytics](./phase-8-analytics/providers/FILM-802-tiktok-analytics.md) | ✅ DONE | M | FILM-706 |
-| FILM-803 | [instagram-insights](./phase-8-analytics/providers/FILM-803-instagram-insights.md) | ✅ DONE | M | FILM-707 |
+| FILM-802 | [tiktok-analytics](./phase-8-analytics/providers/FILM-802-tiktok-analytics.md) | 🟡 PARTIAL | M | FILM-706 |
+| FILM-803 | [instagram-insights](./phase-8-analytics/providers/FILM-803-instagram-insights.md) | 🟡 PARTIAL | M | FILM-707 |
 | FILM-804 | [analytics-sync-cron](./phase-8-analytics/server/FILM-804-analytics-sync-cron.md) | ✅ DONE | M | FILM-801-803 |
-| FILM-805 | [analytics-dashboard](./phase-8-analytics/components/FILM-805-analytics-dashboard.md) | ✅ DONE | L | FILM-804 |
+| FILM-805 | [analytics-dashboard](./phase-8-analytics/components/FILM-805-analytics-dashboard.md) | 🟡 PARTIAL | L | FILM-804 |
 | FILM-806 | [metric-cards](./phase-8-analytics/components/FILM-806-metric-cards.md) | ✅ DONE | S | FILM-DS-02 |
-| FILM-807 | [performance-chart](./phase-8-analytics/components/FILM-807-performance-chart.md) | ✅ DONE | M | FILM-805 |
-| FILM-808 | [ai-insights](./phase-8-analytics/components/FILM-808-ai-insights.md) | ✅ DONE | M | FILM-805 |
-| FILM-809 | [export-reports](./phase-8-analytics/lib/FILM-809-export-reports.md) | ✅ DONE | M | FILM-805 |
-| FILM-810 | [revenue-tracking](./phase-8-analytics/components/FILM-810-revenue-tracking.md) | ✅ DONE | L | FILM-804, FILM-805 |
+| FILM-807 | [performance-chart](./phase-8-analytics/components/FILM-807-performance-chart.md) | 🟡 PARTIAL | M | FILM-805 |
+| FILM-808 | [ai-insights](./phase-8-analytics/components/FILM-808-ai-insights.md) | 🟡 PARTIAL | M | FILM-805 |
+| FILM-809 | [export-reports](./phase-8-analytics/components/FILM-809-export-reports.md) | 🟡 PARTIAL | M | FILM-805 |
+| FILM-810 | [revenue-tracking](./phase-8-analytics/components/FILM-810-revenue-tracking.md) | 🟡 PARTIAL | L | FILM-804, FILM-805 |
 
 ### Phase 9: Integration (6 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-901 | [main-navigation](./phase-9-integration/navigation/FILM-901-main-navigation.md) | ✅ DONE | M | - |
-| FILM-902 | [dashboard-widgets](./phase-9-integration/components/FILM-902-dashboard-widgets.md) | ✅ DONE | M | FILM-805, FILM-804 |
-| FILM-903 | [generation-status-panel](./phase-9-integration/components/FILM-903-generation-status-panel.md) | ✅ DONE | M | FILM-411 |
+| FILM-901 | [main-navigation](./phase-9-integration/navigation/FILM-901-main-navigation.md) | 🟡 PARTIAL | M | - |
+| FILM-902 | [dashboard-widgets](./phase-9-integration/components/FILM-902-dashboard-widgets.md) | 🗑️ RETIRED (5f44d0e1) | M | FILM-805, FILM-804 |
+| FILM-903 | [generation-status-panel](./phase-9-integration/components/FILM-903-generation-status-panel.md) | 🗑️ RETIRED (5f44d0e1) | M | FILM-411 |
 | FILM-904 | [api-keys-page](./phase-9-integration/settings/FILM-904-api-keys-page.md) | ✅ DONE | M | FILM-101n |
-| FILM-905 | [generation-settings](./phase-9-integration/settings/FILM-905-generation-settings.md) | ✅ DONE | M | - |
-| FILM-906 | [platform-connections](./phase-9-integration/settings/FILM-906-platform-connections.md) | ✅ DONE | M | FILM-706 |
+| FILM-905 | [generation-settings](./phase-9-integration/settings/FILM-905-generation-settings.md) | 🗑️ RETIRED (5f44d0e1) | M | - |
+| FILM-906 | [platform-connections](./phase-9-integration/settings/FILM-906-platform-connections.md) | 🟡 PARTIAL | M | FILM-706 |
 
 ### Phase 10: Canon Management (7 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-1001 | [canon-tables](./phase-10-canon-management/database/FILM-1001-canon-tables.md) | ✅ DONE | L | FILM-101 |
-| FILM-1002 | [canon-rls](./phase-10-canon-management/database/FILM-1002-canon-rls.md) | ✅ DONE | S | FILM-1001 |
-| FILM-1003 | [continuity-validator](./phase-10-canon-management/lib/FILM-1003-continuity-validator.md) | ✅ DONE | L | FILM-1001 |
-| FILM-1004 | [memory-context-builder](./phase-10-canon-management/lib/FILM-1004-memory-context-builder.md) | ✅ DONE | M | FILM-1001 |
-| FILM-1005 | [canon-actions](./phase-10-canon-management/server/FILM-1005-canon-actions.md) | ✅ DONE | M | FILM-1003, FILM-1004 |
-| FILM-1006 | [llm-role-separation](./phase-10-canon-management/prompts/FILM-1006-llm-role-separation.md) | ✅ DONE | M | FILM-304 |
-| FILM-1007 | [canon-ui-components](./phase-10-canon-management/ui/FILM-1007-canon-ui-components.md) | ✅ DONE | L | FILM-1005 |
+| FILM-1001 | [canon-tables](./phase-10-canon-management/database/FILM-1001-canon-tables.md) | 🟡 PARTIAL | L | FILM-101 |
+| FILM-1002 | [canon-rls](./phase-10-canon-management/database/FILM-1002-canon-rls.md) | 🟡 PARTIAL | S | FILM-1001 |
+| FILM-1003 | [continuity-validator](./phase-10-canon-management/lib/FILM-1003-continuity-validator.md) | 🟡 PARTIAL | L | FILM-1001 |
+| FILM-1004 | [memory-context-builder](./phase-10-canon-management/lib/FILM-1004-memory-context-builder.md) | 🟡 PARTIAL | M | FILM-1001 |
+| FILM-1005 | [canon-actions](./phase-10-canon-management/server/FILM-1005-canon-actions.md) | 🟡 PARTIAL | M | FILM-1003, FILM-1004 |
+| FILM-1006 | [llm-role-separation](./phase-10-canon-management/prompts/FILM-1006-llm-role-separation.md) | 🗑️ RETIRED (2f23eb4e) | M | FILM-304 |
+| FILM-1007 | [canon-ui-components](./phase-10-canon-management/ui/FILM-1007-canon-ui-components.md) | 🟡 PARTIAL | L | FILM-1005 |
 
-### Phase 11: Canon Integration & Content Types (21 specs)
+### Phase 11: Canon Integration & Content Types (22 specs)
 
-> **Status**: ✅ COMPLETE — All 21 specs implemented across PRs #175–178, #181–185, #188.
+> **Status**: 🟡 PARTIAL — built across PRs #175–178, #181–185, #188; the 2026-09-23 audit found 19 of its 22 specs with open criteria, and canon no longer reaching story generation since #213 (FILM-1102, FILM-1104). See [phase-11-canon-integration/README.md](./phase-11-canon-integration/README.md).
 
 | Task ID | Name | Status | Effort | PR | Dependencies |
 |---------|------|--------|--------|-----|-------------|
-| FILM-1101 | [Register Canon Prompts](./phase-11-canon-integration/integration/FILM-1101-register-canon-prompts.md) | ✅ DONE | S | #175 | FILM-1006 |
-| FILM-1102 | [Memory Context Injection](./phase-11-canon-integration/integration/FILM-1102-memory-context-injection.md) | ✅ DONE | M | #175 | FILM-1004 |
+| FILM-1101 | [Register Canon Prompts](./phase-11-canon-integration/integration/FILM-1101-register-canon-prompts.md) | 🗑️ RETIRED (2f23eb4e) | S | #175 | FILM-1006 |
+| FILM-1102 | [Memory Context Injection](./phase-11-canon-integration/integration/FILM-1102-memory-context-injection.md) | 🟡 PARTIAL | M | #175 | FILM-1004 |
 | FILM-1103 | [LLM-based Canon Extraction](./phase-11-canon-integration/integration/FILM-1103-llm-canon-extraction.md) | ✅ DONE | M | #175 | FILM-1005 |
-| FILM-1104 | [Validation Integration](./phase-11-canon-integration/integration/FILM-1104-validation-integration.md) | ✅ DONE | M | #175 | FILM-1003 |
-| FILM-1110 | [Content Type Enum](./phase-11-canon-integration/content-types/FILM-1110-content-type-enum.md) | ✅ DONE | S | #176 | - |
-| FILM-1111 | [Content Type Configs](./phase-11-canon-integration/content-types/FILM-1111-content-type-configs.md) | ✅ DONE | M | #176 | FILM-1110 |
-| FILM-1112 | [Act Context Bridge](./phase-11-canon-integration/content-types/FILM-1112-act-context-bridge.md) | ✅ DONE | L | #177 | FILM-1110 |
-| FILM-1113 | [Sequel System](./phase-11-canon-integration/content-types/FILM-1113-sequel-system.md) | ✅ DONE | M | #177 | FILM-1110 |
-| FILM-1120 | [Verified Facts Table](./phase-11-canon-integration/fact-management/FILM-1120-verified-facts-table.md) | ✅ DONE | M | #178 | - |
-| FILM-1121 | [Fact Management UI](./phase-11-canon-integration/fact-management/FILM-1121-fact-management-ui.md) | ✅ DONE | L | #185 | FILM-1120 |
-| FILM-1122 | [Researcher Role Prompt](./phase-11-canon-integration/fact-management/FILM-1122-researcher-role.md) | ✅ DONE | M | #178 | FILM-304 |
-| FILM-1123 | [Fact-Checker Role Prompt](./phase-11-canon-integration/fact-management/FILM-1123-fact-checker-role.md) | ✅ DONE | M | #178 | FILM-304 |
+| FILM-1104 | [Validation Integration](./phase-11-canon-integration/integration/FILM-1104-validation-integration.md) | 🟡 PARTIAL | M | #175 | FILM-1003 |
+| FILM-1110 | [Content Type Enum](./phase-11-canon-integration/content-types/FILM-1110-content-type-enum.md) | 🟡 PARTIAL | S | #176 | - |
+| FILM-1111 | [Content Type Configs](./phase-11-canon-integration/content-types/FILM-1111-content-type-configs.md) | 🟡 PARTIAL | M | #176 | FILM-1110 |
+| FILM-1112 | [Act Context Bridge](./phase-11-canon-integration/content-types/FILM-1112-act-context-bridge.md) | 🟡 PARTIAL | L | #177 | FILM-1110 |
+| FILM-1113 | [Sequel System](./phase-11-canon-integration/content-types/FILM-1113-sequel-system.md) | 🟡 PARTIAL | M | #177 | FILM-1110 |
+| FILM-1120 | [Verified Facts Table](./phase-11-canon-integration/fact-management/FILM-1120-verified-facts-table.md) | 🟡 PARTIAL | M | #178 | - |
+| FILM-1121 | [Fact Management UI](./phase-11-canon-integration/fact-management/FILM-1121-fact-management-ui.md) | 🟡 PARTIAL | L | #185 | FILM-1120 |
+| FILM-1122 | [Researcher Role Prompt](./phase-11-canon-integration/fact-management/FILM-1122-researcher-role.md) | 🟡 PARTIAL | M | #178 | FILM-304 |
+| FILM-1123 | [Fact-Checker Role Prompt](./phase-11-canon-integration/fact-management/FILM-1123-fact-checker-role.md) | 🟡 PARTIAL | M | #178 | FILM-304 |
 | FILM-1130 | [News Source Registry](./phase-11-canon-integration/news-system/FILM-1130-news-source-registry.md) | ✅ DONE | M | #182 | ~~FILM-1135~~ |
-| FILM-1131 | [News Article Cache](./phase-11-canon-integration/news-system/FILM-1131-news-article-cache.md) | ✅ DONE | M | #182 | ~~FILM-1135~~ |
-| FILM-1132 | [News Aggregator API](./phase-11-canon-integration/news-system/FILM-1132-news-aggregator-api.md) | ✅ DONE | L | #182 | ~~FILM-1135~~ |
-| FILM-1133 | [News Anchor Role](./phase-11-canon-integration/news-system/FILM-1133-anchor-role.md) | ✅ DONE | M | — | FILM-1132 |
-| FILM-1134 | [Producer Role](./phase-11-canon-integration/news-system/FILM-1134-producer-role.md) | ✅ DONE | M | — | FILM-1133 |
-| FILM-1135 | [External Context Provider](./phase-11-canon-integration/providers/FILM-1135-external-context-provider.md) | ✅ DONE | L | FILM-1135 | - |
-| FILM-1140 | [Research Hub UI](./phase-11-canon-integration/ui-integration/FILM-1140-research-hub-ui.md) | ✅ Done | L | — | FILM-1120 |
-| FILM-1141 | [Fact Source Upload](./phase-11-canon-integration/ui-integration/FILM-1141-fact-source-upload.md) | ✅ Done | M | — | FILM-1140 |
-| FILM-1142 | [Canon Dashboard Facts Tab](./phase-11-canon-integration/ui-integration/FILM-1142-canon-dashboard-facts.md) | ✅ Done | M | — | FILM-1140 |
-| FILM-1143 | [Generate Season Integration](./phase-11-canon-integration/ui-integration/FILM-1143-generate-season-integration.md) | ✅ Done | M | — | FILM-1120, FILM-1122 |
+| FILM-1131 | [News Article Cache](./phase-11-canon-integration/news-system/FILM-1131-news-article-cache.md) | 🟡 PARTIAL | M | #182 | ~~FILM-1135~~ |
+| FILM-1132 | [News Aggregator API](./phase-11-canon-integration/news-system/FILM-1132-news-aggregator-api.md) | 🟡 PARTIAL | L | #182 | ~~FILM-1135~~ |
+| FILM-1133 | [News Anchor Role](./phase-11-canon-integration/news-system/FILM-1133-anchor-role.md) | 🟡 PARTIAL | M | — | FILM-1132 |
+| FILM-1134 | [Producer Role](./phase-11-canon-integration/news-system/FILM-1134-producer-role.md) | 🟡 PARTIAL | M | — | FILM-1133 |
+| FILM-1135 | [External Context Provider](./phase-11-canon-integration/providers/FILM-1135-external-context-provider.md) | 🟡 PARTIAL | L | #181 | - |
+| FILM-1140 | [Research Hub UI](./phase-11-canon-integration/ui-integration/FILM-1140-research-hub-ui.md) | 🟡 PARTIAL | L | — | FILM-1120 |
+| FILM-1141 | [Fact Source Upload](./phase-11-canon-integration/ui-integration/FILM-1141-fact-source-upload.md) | 🟡 PARTIAL | M | — | FILM-1140 |
+| FILM-1142 | [Canon Dashboard Facts Tab](./phase-11-canon-integration/ui-integration/FILM-1142-canon-dashboard-facts.md) | 🟡 PARTIAL | M | — | FILM-1140 |
+| FILM-1143 | [Generate Season Integration](./phase-11-canon-integration/ui-integration/FILM-1143-generate-season-integration.md) | 🟡 PARTIAL | M | — | FILM-1120, FILM-1122 |
 
 ### Phase 12: Scale & Network Strategy (2 specs)
 
@@ -513,6 +520,14 @@ graph TD
 | FILM-1301 | [hook-testing-engine](./phase-13-hook-optimization/FILM-1301-hook-testing-engine.md) | 🗑️ RETIRED (with FILM-1510) | L | FILM-1201, FILM-716 |
 | FILM-1302 | [cultural-audit-workflow](./phase-13-hook-optimization/FILM-1302-cultural-audit-workflow.md) | 🗑️ RETIRED (unbuilt; phase closed) | M | FILM-1301 |
 
+### Phase 14: Edit Suite v2 (1 spec)
+
+One engineering document rather than task specs. Shipped in c3de1674 ("complete Phase 14").
+
+| Task ID | Name | Status | Effort | Dependencies |
+|---------|------|--------|--------|--------------|
+| PHASE-14 | [edit-suite-v2](./phase-14-edit-suite-v2/ENGINEERING.md) | 🟡 PARTIAL | — | — |
+
 ### Phase 15: Deep Analytics Discipline (11 specs)
 
 See [phase-15-deep-analytics/README.md](./phase-15-deep-analytics/README.md) for the dependency graph and locked decisions.
@@ -522,16 +537,14 @@ See [phase-15-deep-analytics/README.md](./phase-15-deep-analytics/README.md) for
 | FILM-1501 | [clickhouse-v2-data-model](./phase-15-deep-analytics/FILM-1501-clickhouse-v2-data-model.md) | ✅ DONE | M | FILM-1201 |
 | FILM-1502 | [sync-ingestion-correctness](./phase-15-deep-analytics/FILM-1502-sync-ingestion-correctness.md) | ✅ DONE | M | FILM-1501 |
 | FILM-1503 | [backfill-and-cron-wiring](./phase-15-deep-analytics/FILM-1503-backfill-and-cron-wiring.md) | ✅ DONE | M | FILM-1501, FILM-1502 |
-| FILM-1504 | [youtube-reporting-api](./phase-15-deep-analytics/FILM-1504-youtube-reporting-api.md) | ✅ DONE | L | FILM-1501 |
+| FILM-1504 | [youtube-reporting-api](./phase-15-deep-analytics/FILM-1504-youtube-reporting-api.md) | 🟡 PARTIAL | L | FILM-1501 |
 | FILM-1505 | [stranded-metrics-promotion](./phase-15-deep-analytics/FILM-1505-stranded-metrics-promotion.md) | ✅ DONE | M | FILM-1502, FILM-1504 |
-| FILM-1506 | [video-dim-deep-dive-queries](./phase-15-deep-analytics/FILM-1506-video-dim-deep-dive-queries.md) | ✅ DONE | L | FILM-1502, FILM-1504, FILM-1505 |
-| FILM-1507 | [content-taxonomy](./phase-15-deep-analytics/FILM-1507-content-taxonomy.md) | ✅ DONE | M | FILM-1506 |
+| FILM-1506 | [video-dim-deep-dive-queries](./phase-15-deep-analytics/FILM-1506-video-dim-deep-dive-queries.md) | 🟡 PARTIAL | L | FILM-1502, FILM-1504, FILM-1505 |
+| FILM-1507 | [content-taxonomy](./phase-15-deep-analytics/FILM-1507-content-taxonomy.md) | 🟡 PARTIAL | M | FILM-1506 |
 | FILM-1508 | [revenue-mix-alerts](./phase-15-deep-analytics/FILM-1508-revenue-mix-alerts.md) | ✅ DONE | M | FILM-1506 |
-| FILM-1509 | [experiment-log](./phase-15-deep-analytics/FILM-1509-experiment-log.md) | ✅ DONE | M | FILM-1502 |
+| FILM-1509 | [experiment-log](./phase-15-deep-analytics/FILM-1509-experiment-log.md) | 🟡 PARTIAL | M | FILM-1502 |
 | FILM-1510 | [hook-lab](./phase-15-deep-analytics/FILM-1510-hook-lab.md) | 🗑️ RETIRED (removed; FILM-CC-04 KB-9, KB-10; redesigned as FILM-1724) | L | FILM-1505, FILM-1506, FILM-1507, FILM-1301 |
-| FILM-1511 | [deep-analytics-ui-reports](./phase-15-deep-analytics/FILM-1511-deep-analytics-ui-reports.md) | ✅ DONE | L | FILM-1504, FILM-1505, FILM-1506, FILM-1507, FILM-1508 |
-
-See [phase-11-canon-integration/README.md](./phase-11-canon-integration/README.md) for full specification.
+| FILM-1511 | [deep-analytics-ui-reports](./phase-15-deep-analytics/FILM-1511-deep-analytics-ui-reports.md) | 🟡 PARTIAL | L | FILM-1504, FILM-1505, FILM-1506, FILM-1507, FILM-1508 |
 
 ### Phase 16: Workbook Parity (17 specs)
 
@@ -539,8 +552,8 @@ See [phase-16-workbook-parity/README.md](./phase-16-workbook-parity/README.md) f
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-1601 | [analytics-correctness-bugs](./phase-16-workbook-parity/FILM-1601-analytics-correctness-bugs.md) | ✅ DONE | M | FILM-1506, FILM-1508 |
-| FILM-1602 | [channel-dimension-ypp](./phase-16-workbook-parity/FILM-1602-channel-dimension-ypp.md) | ✅ DONE | L | FILM-1601, FILM-1506 |
+| FILM-1601 | [analytics-correctness-bugs](./phase-16-workbook-parity/FILM-1601-analytics-correctness-bugs.md) | 🟡 PARTIAL | M | FILM-1506, FILM-1508 |
+| FILM-1602 | [channel-dimension-ypp](./phase-16-workbook-parity/FILM-1602-channel-dimension-ypp.md) | 🟡 PARTIAL | L | FILM-1601, FILM-1506 |
 | FILM-1603 | [views-at-age-video-log](./phase-16-workbook-parity/FILM-1603-views-at-age-video-log.md) | ✅ DONE | L | FILM-1602, FILM-1612 |
 | FILM-1604 | [cohort-medians-growth](./phase-16-workbook-parity/FILM-1604-cohort-medians-growth.md) | ✅ DONE | M | FILM-1603 |
 | FILM-1607 | [subscriber-snapshots](./phase-16-workbook-parity/FILM-1607-subscriber-snapshots.md) | ✅ DONE | M | FILM-1602, FILM-1612 |
@@ -583,7 +596,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1707 | [six-tab-adoption](./phase-17-analytics-provenance/FILM-1707-six-tab-adoption.md) | DRAFT | L | FILM-1702, FILM-1705, FILM-1706 |
 | FILM-1708 | [traffic-drill-down-colour-ramp](./phase-17-analytics-provenance/FILM-1708-traffic-drill-down-colour-ramp.md) | DRAFT | M | FILM-1605, FILM-1706 |
 | FILM-1709 | [platform-filter-completion](./phase-17-analytics-provenance/FILM-1709-platform-filter-completion.md) | DRAFT | L | FILM-1704, FILM-1707 |
-| FILM-1710 | [asset-duration](./phase-17-analytics-provenance/FILM-1710-asset-duration.md) | ✅ DONE (TikTok leg pending FILM-1711) | M | FILM-1711 (TikTok leg only) |
+| FILM-1710 | [asset-duration](./phase-17-analytics-provenance/FILM-1710-asset-duration.md) | 🟡 PARTIAL | M | FILM-1711 (TikTok leg only) |
 | FILM-1711 | [analytics-authorisation](./phase-17-analytics-provenance/FILM-1711-analytics-authorisation.md) | 🟡 PARTIAL | L | FILM-1721 |
 | FILM-1712 | [metric-recovery](./phase-17-analytics-provenance/FILM-1712-metric-recovery.md) | DRAFT | L | FILM-1711, FILM-1721 |
 | FILM-1713 | [normalised-measures-velocity](./phase-17-analytics-provenance/FILM-1713-normalised-measures-velocity.md) | DRAFT | M | FILM-1722 |
@@ -633,62 +646,26 @@ Local stand-ins for every social platform and AI vendor, on local ports: statefu
 | SPIKE-04 | [video-stitching](./spikes/SPIKE-04-video-stitching.md) | ✅ DONE | M | - |
 | SPIKE-05 | [character-consistency](./spikes/SPIKE-05-character-consistency.md) | ✅ DONE | M | - |
 
----
+### Public Sharing (2 docs)
 
-## By Category
+A requirements document and an engineering document for one feature, shipped in PR #126 (2026-01-08).
 
-### Database (14 specs)
-FILM-101a through FILM-101n
-
-### RLS & Security (3 specs)
-FILM-102a, FILM-102b, FILM-102c
-
-### Database Functions (1 spec)
-FILM-103
-
-### Package Setup (7 specs)
-FILM-104 through FILM-110
-
-### Cross-Cutting (3 specs)
-FILM-CC-01 through FILM-CC-03
-
-### Design System (5 specs)
-FILM-DS-01 through FILM-DS-05
-
-### Server Actions (21 specs)
-FILM-201, FILM-202, FILM-203, FILM-301-307, FILM-405, FILM-406, FILM-408, FILM-502-504, FILM-804
-
-### UI Components (31 specs)
-FILM-204-208, FILM-308-312, FILM-409-411, FILM-505-508, FILM-601-603, FILM-708-711, FILM-805-808, FILM-902-903
-
-### Providers (14 specs)
-FILM-401, FILM-401b, FILM-401c, FILM-501, FILM-501b, FILM-502b, FILM-509, FILM-509b, FILM-701-704, FILM-801-803
-
-### OAuth (3 specs)
-FILM-705, FILM-706, FILM-707
-
-### Library/Utilities (5 specs)
-FILM-209, FILM-403, FILM-412, FILM-604, FILM-407
-
-### Pages (4 specs)
-FILM-208, FILM-312, FILM-904-906
-
-### Spikes (5 specs)
-SPIKE-01 through SPIKE-05
+| Task ID | Name | Status | Effort | Dependencies |
+|---------|------|--------|--------|--------------|
+| PUBLIC-SHARING-PRD | [requirements](./PRD-public-sharing.md) | 🟡 PARTIAL | — | — |
+| PUBLIC-SHARING-ENG | [engineering](./ENGINEERING-public-sharing.md) | ✅ DONE | — | — |
 
 ---
 
 ## Progress Tracker
 
-> **The per-phase counts have drifted from the spec files.** Before this
-> change the Phase 16 row read 11 done / 6 draft while the directory held 16
-> done / 1 draft. That row is now counted from the files (17 / 0); the others
-> are not, and the TOTAL moves only by this change's one spec. Reconciling
-> the whole table means counting the nested spec directories, which is its
-> own piece of work.
->
-> Phases 17 and 18 were recounted from the files on 2026-09-23, after the
-> #276–#304 merges. FILM-1710 (done, TikTok leg pending) is counted as Done.
+> **Counted from the spec files' own `status:` on 2026-09-23**, after every spec
+> then marked done was audited against the code, box by box (`audited:
+> 2026-09-23` in each file). Before the audit this table said 196 done. It had
+> drifted from the files, and "done" had stopped meaning "in the product": two
+> bulk deletions — `5b88db3a` (in-app video generation, 2026-01-15) and
+> `5f44d0e1` (the owner's dead-code cleanup, 2026-02-19) — were recorded nowhere
+> here. Recount from the files' `status:` lines, never by hand.
 
 **What each status means:**
 
@@ -696,121 +673,83 @@ SPIKE-01 through SPIKE-05
 |---|---|
 | DRAFT | Spec written; no code merged for it |
 | In Progress | A PR for it is open |
-| 🟡 PARTIAL | Its code is merged, but an acceptance criterion is still open: a live check against a real vendor account ([FILM-1725](./phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.md)), an action only the owner can take (a vendor review submission), or a surface another spec owns. Each PARTIAL spec's *Remaining* section names which, and who closes it |
+| 🟡 PARTIAL | Code merged, but an acceptance criterion is still open — verified not met, a live check against a real vendor account ([FILM-1725](./phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.md)), an action only the owner can take, or a surface another spec owns. Each PARTIAL spec's *Remaining* section names which, and who closes it |
 | ⏸️ DEFERRED | Blocked on something outside the code — a credential or account not held |
-| ✅ DONE | Code merged and every criterion met |
-| 🗑️ RETIRED | Dropped; counted under Done because it is not outstanding work |
+| ✅ DONE | Code merged and every acceptance criterion met, or genuinely unverifiable by reading and marked so |
+| 🗑️ RETIRED | Dropped, removed or superseded — not outstanding work. The cell names the commit; the spec's note says what, if anything, replaced it |
+| OPEN | [FILM-CC-04](./cross-cutting/FILM-CC-04-known-bugs.md) only: a living register of known bugs, not a spec, and not counted below |
 
+**In every spec file**, `status:` in the frontmatter is the source of truth, and
+`audited: 2026-09-23` marks one checked against the code that day. An audited box
+carries its evidence: `*audit:* path:line` when ticked, or `*audit: not met*`,
+`*audit: unverified*`, `*audit: retired*` or `*audit: no longer true*` with a
+reason when not.
 
-| Phase | Total | Draft | Review | Approved | In Progress | Partial | Deferred | Done |
-|-------|-------|-------|--------|----------|-------------|---------|----------|------|
-| 1. Foundation | 26 | 0 | 0 | 0 | 0 | 0 | 0 | 26 |
-| Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
-| Design System | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 5 |
-| 2. Assets | 9 | 0 | 0 | 0 | 0 | 0 | 0 | 9 |
-| 3. Episodes | 14 | 0 | 0 | 0 | 0 | 0 | 0 | 14 |
-| 4. Video Gen | 15 | 0 | 0 | 0 | 0 | 0 | 0 | 15 |
-| 5. Audio Gen | 17 | 1 | 0 | 0 | 0 | 0 | 0 | 16 |
-| 6. Edit Suite | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 6 |
-| 7. Publishing | 15 | 0 | 0 | 0 | 0 | 0 | 0 | 15 |
-| 8. Analytics | 10 | 0 | 0 | 0 | 0 | 0 | 0 | 10 |
-| 9. Integration | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 6 |
-| 10. Canon Mgmt | 7 | 0 | 0 | 0 | 0 | 0 | 0 | 7 |
-| 11. Canon Integ | 21 | 0 | 0 | 0 | 0 | 0 | 0 | 21 |
-| 12. Scale | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 2 |
-| 13. Hook Opt | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 2 |
-| 14. Edit Suite v2 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
-| 15. Deep Analytics | 11 | 0 | 0 | 0 | 0 | 0 | 0 | 11 |
-| 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 0 | 0 | 17 |
-| 17. Analytics Provenance | 30 | 20 | 0 | 0 | 0 | 4 | 2 | 4 |
-| 18. Vendor Sandbox | 5 | 4 | 0 | 0 | 0 | 0 | 0 | 1 |
-| Spikes | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **226** | **24** | **0** | **0** | **0** | **4** | **2** | **196** |
+| Phase | Total | Draft | Partial | Deferred | Retired | Done |
+|-------|-------|-------|---------|----------|---------|------|
+| 1. Foundation | 26 | 0 | 5 | 0 | 5 | 16 |
+| Cross-Cutting | 3 | 0 | 1 | 0 | 1 | 1 |
+| Design System | 5 | 0 | 4 | 0 | 1 | 0 |
+| 2. Assets | 9 | 0 | 6 | 0 | 3 | 0 |
+| 3. Episodes | 14 | 0 | 7 | 0 | 3 | 4 |
+| 4. Video Gen | 14 | 0 | 2 | 0 | 12 | 0 |
+| 5. Audio Gen | 16 | 1 | 6 | 0 | 6 | 3 |
+| 6. Edit Suite | 6 | 0 | 2 | 0 | 4 | 0 |
+| 7. Publishing | 16 | 0 | 7 | 0 | 3 | 6 |
+| 8. Analytics | 10 | 0 | 7 | 0 | 0 | 3 |
+| 9. Integration | 6 | 0 | 2 | 0 | 3 | 1 |
+| 10. Canon Mgmt | 7 | 0 | 6 | 0 | 1 | 0 |
+| 11. Canon Integ | 22 | 0 | 19 | 0 | 1 | 2 |
+| 12. Scale | 2 | 0 | 0 | 0 | 0 | 2 |
+| 13. Hook Opt | 2 | 0 | 0 | 0 | 2 | 0 |
+| 14. Edit Suite v2 | 1 | 0 | 1 | 0 | 0 | 0 |
+| 15. Deep Analytics | 11 | 0 | 5 | 0 | 1 | 5 |
+| 16. Workbook Parity | 17 | 0 | 2 | 0 | 0 | 15 |
+| 17. Analytics Provenance | 30 | 20 | 5 | 2 | 0 | 3 |
+| 18. Vendor Sandbox | 5 | 4 | 0 | 0 | 0 | 1 |
+| Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
+| Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
+| **TOTAL** | **229** | **25** | **88** | **2** | **46** | **68** |
 
-### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
+No column for In Progress: no PR is open.
 
-| Scope | Total | Completed | % |
-|-------|-------|-----------|---|
-| MVP Specs | 93 | 93 | 100% |
-| Post-MVP (Ph 6-9) | 37 | 37 | 100% |
-| Canon (Ph 10-11) | 28 | 28 | 100% |
-| Scale & Hooks (Ph 12-13) | 4 | 4 | 100% |
-| Workbook Parity (Ph 16) | 17 | 17 | 100% |
-| Provenance & Signal (Ph 17) | 30 | 4 | 13% |
-| Vendor Sandbox (Ph 18) | 5 | 1 | 20% |
+### By scope
 
-Phase 14 (`edit-suite-v2`) is one `ENGINEERING.md`, counted as one item. Its
-status is in a blockquote rather than frontmatter — `✅ Done`, shipped in
-c3de1674 ("complete Phase 14").
+| Scope | Total | Done | Partial | Retired | Draft / Deferred |
+|-------|-------|------|---------|---------|------------------|
+| MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 92 | 29 | 31 | 31 | 1 |
+| Post-MVP (Ph 6–9) | 38 | 10 | 18 | 10 | 0 |
+| Canon (Ph 10–11) | 29 | 2 | 25 | 2 | 0 |
+| Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |
+| Edit Suite v2 (Ph 14) | 1 | 0 | 1 | 0 | 0 |
+| Deep Analytics (Ph 15) | 11 | 5 | 5 | 1 | 0 |
+| Workbook Parity (Ph 16) | 17 | 15 | 2 | 0 | 0 |
+| Provenance & Signal (Ph 17) | 30 | 3 | 5 | 0 | 22 |
+| Vendor Sandbox (Ph 18) | 5 | 1 | 0 | 0 | 4 |
+| Public Sharing | 2 | 1 | 1 | 0 | 0 |
 
-Retired specs (FILM-1301, FILM-1302, FILM-1510) sit in the Done column: the
-table has no Retired column, and none of them is outstanding work.
+### Deferred at ship time, still open
 
----
+Deferred inside specs whose status does not show it, so they are not lost:
 
-## Cross-Reference: Spec → Implementation Files
-
-### Database Migrations
-| Spec | Migration File |
-|------|----------------|
-| FILM-101* | `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql` ✅ |
-| FILM-102* | `apps/web/supabase/migrations/YYYYMMDD_film-studio-rls.sql` |
-| FILM-103 | `apps/web/supabase/migrations/YYYYMMDD_film-studio-functions.sql` |
-
-### Packages
-| Spec | Package Path |
-|------|--------------|
-| FILM-104 | `packages/features/film-studio/` |
-| FILM-105 | `packages/features/assets/` |
-| FILM-106 | `packages/features/episodes/` |
-| FILM-107 | `packages/features/video-generation/` |
-| FILM-108 | `packages/features/audio-generation/` |
-
-### Server Actions
-| Spec | File Path |
-|------|-----------|
-| FILM-201 | `packages/features/assets/src/server/asset-actions.ts` |
-| FILM-202 | `packages/features/assets/src/server/character-actions.ts` |
-| FILM-301 | `packages/features/episodes/src/server/actions.ts` ✅ |
-| FILM-405 | `packages/features/video-generation/src/server/actions/generate-video-action.ts` ✅ |
-| FILM-502 | `packages/features/audio-generation/src/server/voice-actions.ts` |
-
-### Components
-| Spec | File Path |
-|------|-----------|
-| FILM-204 | `packages/features/assets/src/components/AssetGallery.tsx` |
-| FILM-205 | `packages/features/assets/src/components/CharacterEditor.tsx` |
-| FILM-308 | `packages/features/episodes/src/components/StoryStudio.tsx` |
-| FILM-410 | `packages/features/video-generation/src/components/ShotGrid.tsx` |
-| FILM-601 | `packages/features/episodes/src/components/TimelineEditor.tsx` |
-
-### API Routes
-| Spec | Route Path |
-|------|------------|
-| FILM-203 | `apps/web/app/api/projects/[projectId]/assets/upload/route.ts` |
-| FILM-407 | `apps/web/app/api/generation/webhooks/kling/route.ts` |
-| FILM-705 | `apps/web/app/api/platforms/connect/youtube/route.ts` |
-
-### Pages
-| Spec | Page Path |
-|------|-----------|
-| FILM-208 | `apps/web/app/home/[account]/studio/[projectId]/assets/page.tsx` |
-| FILM-312 | `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/page.tsx` |
-| FILM-904 | `apps/web/app/home/[account]/settings/api-keys/page.tsx` |
+- **FILM-809** — report history (reports are temporary signed URLs)
+- **FILM-901** — a pending-publish count badge in navigation
+- **FILM-904** — a user's own API keys used before platform keys; met for no provider today
 
 ---
 
-## Effort Summary
+## Effort Sizes
 
-| Size | Count | Description |
-|------|-------|-------------|
-| XS | 8 | < 2 hours - Simple config, single file |
-| S | 22 | 2-4 hours - Single component or function |
-| M | 59 | 4-8 hours - Multiple files, integration |
-| L | 26 | 1-3 days - Feature slice, complex component |
-| XL | 4 | 3-5 days - Major feature, multiple subsystems |
+The Effort column in the tables above uses these sizes. They were estimates when
+each spec was written, not measurements of what it took.
 
-**Total Estimated Effort:** ~350-430 hours
+| Size | Meaning |
+|------|---------|
+| XS | < 2 hours - Simple config, single file |
+| S | 2-4 hours - Single component or function |
+| M | 4-8 hours - Multiple files, integration |
+| L | 1-3 days - Feature slice, complex component |
+| XL | 3-5 days - Major feature, multiple subsystems |
 
 ---
 
@@ -818,9 +757,9 @@ table has no Retired column, and none of them is outstanding work.
 
 - [Constitution](./constitution.md) - Project conventions
 - [README](./README.md) - Spec overview
-- [PRD](/PRD.md) - Product Requirements
-- [Engineering Design](/ENGINEERING_DESIGN.md) - Technical architecture
+- [PRD](./PRD.md) - Product Requirements
+- [Engineering Design](./ENGINEERING_DESIGN.md) - Technical architecture
 
 ---
 
-**Last Updated:** September 2026
+**Last Updated:** 2026-09-23

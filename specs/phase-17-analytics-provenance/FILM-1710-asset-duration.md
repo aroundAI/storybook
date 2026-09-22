@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1710
 title: Asset Duration
-status: ✅ DONE (TikTok leg pending FILM-1711)
+status: 🟡 PARTIAL
 effort: M
 dependencies: FILM-1711 (TikTok leg only)
 ---
@@ -271,3 +271,18 @@ seeded fixture:
 | instagram | short | 1552 | NULL (9 of 9 unknown) |
 | tiktok | short | 1534 | 44 |
 | youtube | full | 1534 | 1534 |
+
+## 10. Remaining
+
+Status is `🟡 PARTIAL`, not done, because one acceptance criterion is open
+(§6, the production run). The code is merged and its guards are in CI; what is
+left is operational:
+
+| Left | Closed by | Blocked on |
+|---|---|---|
+| Run the backfill (`POST /api/analytics/asset-duration-backfill`) against production and record the result here | Owner, after the deploy carrying this change | The deploy |
+| TikTok rows get a duration, not `scope_missing` | [FILM-1711](./FILM-1711-analytics-authorisation.md)'s `video.list` scope reaching production — [FILM-1725](./FILM-1725-deferred-vendor-verifications.md) Check F first | FILM-1711 |
+
+Set the status to ✅ DONE once the production run is recorded. The TikTok leg
+does not hold this spec open on its own: the request is built and tested, and
+reports `scope_missing` rather than a number until the scope is granted.

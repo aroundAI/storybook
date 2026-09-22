@@ -2,6 +2,7 @@
 spec_id: FILM-1721
 title: Platform Capability Reference
 status: ✅ DONE
+audited: 2026-09-23
 effort: L
 dependencies: none
 ---

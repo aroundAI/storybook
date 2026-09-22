@@ -1,3 +1,9 @@
+---
+spec_id: FILM-702
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-702: TikTok Provider
 
 ## Metadata
@@ -304,25 +310,25 @@ export class TikTokProvider {
 
 ## Acceptance Criteria
 
-- [ ] Videos upload with chunked upload protocol
-- [ ] Caption and privacy settings are applied
-- [ ] Duet/stitch toggles work
-- [ ] Commercial content disclosure works
-- [ ] Upload progress is reported
-- [ ] Post status can be polled
-- [ ] User info can be retrieved
+- [ ] Videos upload with chunked upload protocol — *audit: unverified* — chunked flow built (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:53`), but its inbox-init + `video_upload_id` sequence (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:171`, `packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:275`) differs from the lambda's; no test
+- [ ] Caption and privacy settings are applied — *audit: unverified* — sent (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:244`) with privacy as `'PUBLIC'`, while the lambda sends `'PUBLIC_TO_EVERYONE'` (`apps/web/lambda/publish-worker/handlers/tiktok.ts:26`); no test
+- [ ] Duet/stitch toggles work — *audit: unverified* — sent as `disable_duet`/`disable_stitch` (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:246`); no live UI sets them; no test
+- [ ] Commercial content disclosure works — *audit: unverified* — brand toggles sent when given (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:255`); no caller passes them; no test
+- [x] Upload progress is reported — *audit:* `packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:132`, `packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:156`
+- [x] Post status can be polled — *audit:* `packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:299`
+- [x] User info can be retrieved — *audit:* `packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:337`
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test chunk size calculation
-- [ ] Test caption length validation (max 2200)
+- [ ] Test chunk size calculation — *audit: not met* — no test found
+- [ ] Test caption length validation (max 2200) — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Test upload flow with mocked API
-- [ ] Test status polling
+- [ ] Test upload flow with mocked API — *audit: not met* — no test found
+- [ ] Test status polling — *audit: not met* — no test found
 
 ---
 

@@ -1,4 +1,12 @@
+---
+spec_id: FILM-314
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-314: Batch Episode Creation
+
+> **🗑️ Retired (audit 2026-09-23).** Built in 52d6ef0d (2025-12-09) but never mounted: no page renders `BatchEpisodeCreator` (`packages/features/episodes/src/components/batch-episode-creator/`), and nothing outside it calls `generateSeasonOutlineAction`, `batchCreateEpisodesAction` or `regenerateEpisodeOutlineAction`. A season's episodes are created in the product by the season generator (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx`, 307d879b; FILM-1143), which works from a season bible and has no outline preview, reorder or per-episode regenerate. Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 3 - Episodes

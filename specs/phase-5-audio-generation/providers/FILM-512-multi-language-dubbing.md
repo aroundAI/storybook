@@ -1,4 +1,12 @@
+---
+spec_id: FILM-512
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-512: Multi-Language Dubbing
+
+> **🗑️ Retired (audit 2026-09-23).** Retired by owner decision on 2026-09-23: the dubbing pipeline (`dubbing-actions.ts`, `dubbing-queries.ts`, the dubbing schemas, utils and languages, and `apps/web/lambda/llm-worker/handlers/dubbing-translate.ts`) was deleted in `5b88db3a` (2026-01-15). What exists of multi-language audio now is per-line dialogue translation (`packages/features/audio-generation/src/server/translate-dialogue-action.ts`) and the audio studio's language tabs (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/language-tab-bar.tsx`). The `dubbed_versions` and `dubbed_dialogue_lines` tables remain; nothing writes them, though the edit suite's media bin still reads them (`packages/features/edit-suite/src/server/media-bin-queries.ts:123`). Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 5 - Audio Generation
@@ -6,7 +14,7 @@
 - **Effort:** L (1-3 days)
 - **Dependencies:** FILM-502 (Voice Generation), FILM-511 (Lip Sync)
 - **Blocks:** None
-- **Status:** ✅ DONE
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was ✅ DONE)
 - **Implementation Date:** 2025-12-11
 
 ---

@@ -1,10 +1,18 @@
+---
+spec_id: FILM-605
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-605: Auto-Captions
+
+> **🗑️ Retired (audit 2026-09-23).** Auto-captions (the caption editor, `caption-utils.ts` and `caption-actions.ts` in `@kit/film-studio`) were deleted in `5f44d0e1` (2026-02-19), the owner's removal of dead video-editor code. Nothing replaces them in the product: the phase 14 edit suite has no captions. What survives is unused: the `captions` and `caption_segments` tables (`apps/web/supabase/migrations/20251211143159_captions.sql`), `createTranscriptionService` (`packages/llm/src/transcription.ts`), `getEpisodeCaptionsAction` (`packages/features/episodes/src/server/captions-actions.ts:19`), which builds SRT from dialogue timings and has no caller, and the new-project form's "Enable Subtitles" option (`settings.subtitlesEnabled`, `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:705`), which nothing reads. Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 6 - Edit Suite
 - **Priority:** P1 (Post-MVP Enhancement)
 - **Effort:** L (1-3 days)
-- **Status:** ✅ DONE
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was ✅ DONE)
 - **Dependencies:** FILM-601 (Timeline Editor), FILM-503 (Batch Dialogue Action)
 - **Blocks:** None
 

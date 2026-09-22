@@ -1,7 +1,8 @@
 ---
 id: FILM-1123
 title: Fact-Checker LLM Role Prompt
-status: done
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: medium
 effort: M
 dependencies: [FILM-1120, FILM-1122]
@@ -349,12 +350,12 @@ export function FactCheckResults({ result }: { result: FactCheckResult }) {
 
 - [x] `fact-checker-role.json` prompt template created
 - [x] Prompt registered in Lambda worker
-- [x] `runFactCheck` function validates content correctly
-- [x] Critical issues are properly identified
-- [x] Unsourced claims are flagged
-- [x] Citation formatting is validated
+- [ ] `runFactCheck` function validates content correctly — *audit: no longer true* — no caller; needs `verified` facts, which KB-18 prevents (`packages/features/episodes/src/lib/documentary/fact-checker.ts:81`); slug `fact-checker-role` unregistered
+- [ ] Critical issues are properly identified — *audit: unverified* — LLM judgement in the live skill (`packages/features/episodes/src/agent/skills/fact-checker-skill.ts:72`); no test or eval; read-only audit, not run
+- [ ] Unsourced claims are flagged — *audit: unverified* — LLM judgement per the prompt rule; the skill surfaces only critical and warning issues; no test
+- [ ] Citation formatting is validated — *audit: unverified* — LLM judgement; the skill drops `citations_valid` (`packages/features/episodes/src/agent/skills/fact-checker-skill.ts:72`); no test
 - [x] `shouldBlockContent` blocks on critical/low accuracy
-- [x] UI shows results with severity-based styling
+- [ ] UI shows results with severity-based styling — *audit: no longer true* — no fact-check results UI exists or ever did (`FactCheckResults` never in git history)
 
 ---
 
@@ -440,3 +441,10 @@ describe('Fact-Checker Role', () => {
 ## Implementation Status
 
 **Implemented** in PR #178 — merged 2026-02-10
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| `runFactCheck` function validates content correctly | Nothing calls it. It reads only `verified` facts (`packages/features/episodes/src/lib/documentary/fact-checker.ts:81`) and returns "cannot fact-check" when there are none (`:120`), which is always, since no fact can be verified (KB-18). Its `templateSlug: 'fact-checker-role'` (`:134`) is also not a registry key; the live agent skill uses `documentary/fact-checker-role` (`packages/features/episodes/src/agent/skills/fact-checker-skill.ts:58`) | KB-18 |
+| UI shows results with severity-based styling | No `FactCheckResults` component or equivalent exists in code or git history; results stay inside the story agent | unassigned |

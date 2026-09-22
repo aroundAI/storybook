@@ -2,6 +2,7 @@
 spec_id: FILM-1508
 title: Revenue Mix Categories & Alerts
 status: ✅ DONE
+audited: 2026-09-23
 effort: M
 dependencies: FILM-1506
 ---
@@ -34,11 +35,11 @@ Revenue tracking today distinguishes only `api` vs `manual` source; `getRevenueS
 
 ## 4. Acceptance Criteria
 
-- [ ] YouTube sync produces separate ads/premium rows per day without clobbering (conflict-semantics unit test)
-- [ ] `byType` is populated in the revenue summary; RevenueMixCard renders the mix
-- [ ] Manual entry supports category + channel-level records; RLS covers both branches
-- [ ] Historical rows are backfilled into categories
-- [ ] Alerts appear in `revenue_alerts` when rules trigger
+- [x] YouTube sync produces separate ads/premium rows per day without clobbering (conflict-semantics unit test) — *audit:* `packages/features/content-analytics/__tests__/revenue-mix.test.ts:508`; the upsert became a planned write (FILM-1609), `analytics-sync-cron.ts:1275`
+- [x] `byType` is populated in the revenue summary; RevenueMixCard renders the mix — *audit:* per currency since KB-12: `packages/features/content-analytics/__tests__/revenue-by-currency.test.ts:60`, `apps/e2e/tests/revenue/revenue-currency-evidence.spec.ts:105`
+- [x] Manual entry supports category + channel-level records; RLS covers both branches — *audit:* `apps/e2e/tests/revenue/revenue.spec.ts:16`, `:30`; `apps/web/supabase/tests/database/revenue-records-rls.test.sql:79` (account branch), `:315` (publish branch)
+- [x] Historical rows are backfilled into categories — *audit:* `apps/web/supabase/migrations/20260827104500_revenue-categories.sql:66`
+- [x] Alerts appear in `revenue_alerts` when rules trigger — *audit:* `packages/features/content-analytics/__tests__/revenue-alerts.test.ts:113`, `:145`
 
 ## 5. Verification
 

@@ -1,4 +1,12 @@
+---
+spec_id: FILM-403
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-403: Rate Limiter
+
+> **🗑️ Retired (audit 2026-09-23).** The Redis token-bucket limiter for video providers (`packages/features/video-generation/src/lib/rate-limiter/`) was deleted in `5b88db3a` (2026-01-15), the commit that removed `packages/features/video-generation`; the owner retired in-app video generation on purpose. Nothing replaces it: `packages/next/src/actions/rate-limiter.ts` is an unrelated in-memory, fixed-window limit per user and server action, with no tokens, tiers, providers or Redis. Kept as a record; not outstanding work.
 
 **Phase**: 4
 **Priority**: P0

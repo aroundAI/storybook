@@ -1,6 +1,12 @@
+---
+spec_id: FILM-204
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-204: Asset Gallery Component
 
-**Status**: ✅ Completed (2025-12-08)
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ Completed 2025-12-08)
 **Phase**: 2
 **Priority**: P0
 **Effort**: M (3-5 days)
@@ -637,34 +643,34 @@ None (new feature)
 
 ### Functional
 
-- [ ] Gallery displays three tabs: Characters, Locations, Voices
-- [ ] Active tab persisted in URL query parameter
-- [ ] Only active tab assets loaded (no unnecessary requests)
-- [ ] Assets displayed in responsive grid (1-4 columns)
-- [ ] Asset cards show thumbnail, name, description preview
-- [ ] Asset cards have Edit and Delete buttons
-- [ ] Search bar filters assets by name and description
-- [ ] Search input debounced (300ms)
-- [ ] Clear search button appears when query present
-- [ ] Skeleton loading state displayed while fetching
-- [ ] Empty state displayed when no assets
-- [ ] Empty state CTA opens create modal/page
-- [ ] Delete confirmation dialog before deletion
-- [ ] Optimistic UI update on delete
-- [ ] Error rollback on delete failure
-- [ ] Toast notifications for success/error
+- [ ] ~~Gallery displays three tabs: Characters, Locations, Voices~~ — *audit: retired* — Voices tab removed in a70af938 (voices are chosen per character); Characters and Locations remain (`packages/features/assets/src/components/asset-tabs.tsx:25`, `:34`)
+- [x] Active tab persisted in URL query parameter — *audit:* `packages/features/assets/src/components/asset-gallery.tsx:88`, `:161`
+- [ ] Only active tab assets loaded (no unnecessary requests) — *audit: not met* — on the Locations tab characters still load: no server data, so the hook fetches on mount (`packages/features/assets/src/hooks/use-character-assets.ts:136-140`)
+- [x] Assets displayed in responsive grid (1-4 columns) — *audit:* `packages/features/assets/src/components/asset-grid.tsx:39`
+- [x] Asset cards show thumbnail, name, description preview — *audit:* `packages/features/assets/src/components/asset-card.tsx:212`, `:301`, `:319`
+- [x] Asset cards have Edit and Delete buttons — *audit:* as card-menu items (`packages/features/assets/src/components/asset-card.tsx:272-285`); E2E `apps/e2e/tests/refusals/refusals.po.ts:161-162`
+- [x] Search bar filters assets by name and description — *audit:* `packages/features/assets/src/components/asset-gallery.tsx:145-153`, `packages/features/assets/src/hooks/use-character-filters.ts:88-93`
+- [x] Search input debounced (300ms) — *audit:* `packages/features/assets/src/components/asset-search-bar.tsx:24` (both tabs use it)
+- [x] Clear search button appears when query present — *audit:* `packages/features/assets/src/components/asset-search-bar.tsx:51-63`
+- [x] Skeleton loading state displayed while fetching — *audit:* `packages/features/assets/src/components/asset-gallery.tsx:512-513`, `packages/features/assets/src/components/asset-grid.tsx:21-33`
+- [x] Empty state displayed when no assets — *audit:* `packages/features/assets/src/components/asset-gallery.tsx:552-553`
+- [ ] Empty state CTA opens create modal/page — *audit: not met* — the only caller passes no `onCreateAsset` (`apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:152-157`), so the button does nothing
+- [x] Delete confirmation dialog before deletion — *audit:* `packages/features/assets/src/components/asset-card.tsx:340-359`
+- [x] Optimistic UI update on delete — *audit:* `packages/features/assets/src/hooks/use-assets.ts:69-75`, `packages/features/assets/src/hooks/use-character-assets.ts:146`
+- [x] Error rollback on delete failure — *audit:* `packages/features/assets/src/hooks/use-assets.ts:81-87`, `packages/features/assets/src/hooks/use-character-assets.ts:153-155`
+- [x] Toast notifications for success/error — *audit:* `packages/features/assets/src/hooks/use-assets.ts:80`, `:89`
 
 ### Non-Functional
 
-- [ ] Renders 50 assets within 500ms
-- [ ] Smooth tab transitions
-- [ ] Hover effects on cards
-- [ ] Keyboard navigation works (Tab, Enter, Space)
-- [ ] Screen reader announces tabs and cards
-- [ ] Focus visible on interactive elements
-- [ ] Responsive on mobile, tablet, desktop
-- [ ] TypeScript compiles without errors
-- [ ] No ESLint warnings
+- [ ] Renders 50 assets within 500ms — *audit: unverified* — runtime timing; needs a measured render
+- [ ] Smooth tab transitions — *audit: unverified* — visual; needs a recording
+- [x] Hover effects on cards — *audit:* `packages/features/assets/src/components/asset-card.tsx:181`
+- [ ] Keyboard navigation works (Tab, Enter, Space) — *audit: unverified* — Radix tabs and menus take keys; no keyboard-only test exists
+- [ ] Screen reader announces tabs and cards — *audit: unverified* — needs a screen-reader run
+- [ ] Focus visible on interactive elements — *audit: not met* — the card menu button sits in an `opacity-0` wrapper shown only on hover (`packages/features/assets/src/components/asset-card.tsx:258`)
+- [ ] Responsive on mobile, tablet, desktop — *audit: unverified* — grid breakpoints exist; needs viewport screenshots
+- [x] TypeScript compiles without errors — *audit:* main CI run 35779959194 (6dfa35a4; code unchanged since): `@kit/assets:typecheck` ran uncached, no errors
+- [x] No ESLint warnings — *audit:* main CI run 35779959194: `@kit/assets:lint` ran uncached, printed nothing
 
 ---
 
@@ -951,3 +957,11 @@ onMutate: async (assetId) => {
 - **Shadcn Tabs**: https://ui.shadcn.com/docs/components/tabs
 - **React Query**: https://tanstack.com/query/latest/docs/react/overview
 - **Constitution**: Section 2.3 (Component Pattern)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Only the active tab loads | On the Locations tab the page sends no character data (`apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:118`), so `useCharacterAssets` fetches characters on mount anyway (`packages/features/assets/src/hooks/use-character-assets.ts:136-140`) | unassigned |
+| Empty-state CTA | `AssetGallery` calls `onCreateAsset?.()` (`packages/features/assets/src/components/asset-gallery.tsx:305-307`); its only caller passes none (`apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:152-157`) | unassigned |
+| Focus visible | The card menu trigger is inside an `opacity-0` wrapper revealed only by `group-hover`, with no focus rule (`packages/features/assets/src/components/asset-card.tsx:258`) | unassigned |

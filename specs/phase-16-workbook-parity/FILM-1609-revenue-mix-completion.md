@@ -2,6 +2,7 @@
 spec_id: FILM-1609
 title: Revenue Mix Completion
 status: ✅ DONE
+audited: 2026-09-23
 effort: S
 dependencies: FILM-1601
 ---

@@ -1,3 +1,9 @@
+---
+spec_id: FILM-DS-03
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-DS-03: Interaction Patterns
 
 ## Metadata
@@ -6,7 +12,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-DS-01 (Component Inventory), FILM-DS-02 (Design Tokens)
 - **Blocks:** FILM-410 (Shot Grid), FILM-601 (Timeline Editor)
-- **Status:** ✅ Complete
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ Complete)
 - **Implemented:** 2025-12-07
 - **PR:** #16
 
@@ -341,13 +347,13 @@ function useShotUpdates(episodeId: string) {
 
 ## Acceptance Criteria
 
-- [x] Shot grid supports keyboard navigation
-- [x] Timeline supports keyboard shortcuts for playback
-- [x] Drag and drop has clear visual feedback
-- [x] Loading states use skeletons (not spinners for content)
-- [x] Empty states include actionable next steps
-- [x] Error states include recovery options when possible
-- [x] Real-time updates don't cause layout shift
+- [ ] Shot grid supports keyboard navigation — *audit: no longer true* — shot cards are `<div onClick>` with no tabIndex or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`); the keyboard grid went in 5b88db3a
+- [x] Timeline supports keyboard shortcuts for playback — *audit:* `packages/features/edit-suite/src/components/edit-suite-provider.tsx:423` (Space/J/K/L, listener at :505)
+- [x] Drag and drop has clear visual feedback — *audit:* `packages/features/edit-suite/src/components/timeline/clip-block.tsx:425` (drag opacity and cursor), snap line at :551
+- [x] Loading states use skeletons (not spinners for content) — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/loading.tsx:3`, `apps/web/app/home/[account]/studio/[projectSlug]/episodes/loading.tsx:11`
+- [x] Empty states include actionable next steps — *audit:* `packages/features/assets/src/components/empty-asset-state.tsx:56`
+- [x] Error states include recovery options when possible — *audit:* `apps/web/app/error.tsx:60`, `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/bulk-generate/shots-phase.tsx:355`
+- [ ] Real-time updates don't cause layout shift — *audit: unverified* — needs a layout-shift measurement while edit-suite peer edits or notifications arrive; no test measures it
 
 ---
 
@@ -365,3 +371,9 @@ function useShotUpdates(episodeId: string) {
 
 - [ ] Should we implement undo/redo for shot reordering? (post-MVP)
 - [ ] Should timeline support touch gestures for mobile? (post-MVP)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Shot grid supports keyboard navigation | The live grid's shot cards are clickable `<div>`s with no tabIndex, role or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`). The grid that had `role="grid"` and arrow-key handling lived in `@kit/video-generation` and was deleted in 5b88db3a; `useShotGridKeyboard` in `@kit/film-studio` was never wired up and went in 5f44d0e1 | FILM-410 |

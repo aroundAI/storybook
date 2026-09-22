@@ -35,26 +35,17 @@ FILM-1501+1502 must merge in quick succession with the analytics sync cron disab
 
 ## Verification status
 
-All 11 specs are **code-complete** and pass `typecheck`, `lint`, and their unit
-tests. Their acceptance-criteria checkboxes remain unchecked because they are
-runtime assertions that need a live database, and the implementation
-environment had neither Docker (for local Supabase/ClickHouse) nor permission
-to touch the linked production project.
+**Audited against the code on 2026-09-23.** Of the 51 acceptance boxes across
+the ten live specs, 23 are ticked with evidence, 8 are not met, and 20 are
+unverified — they need a live database, a vendor account or a deploy to
+settle. FILM-1504, 1506, 1507, 1509 and 1511 are 🟡 PARTIAL, each with a
+*Remaining* section; the rest are ✅ DONE. The evidence sits beside each box.
 
-Before checking them off, run:
+This section used to say every box was unchecked, and that the phase-15 types
+had been hand-edited because typegen could not run. Both are superseded: the
+boxes are audited, and CI now regenerates the types and fails on any
+difference (root `CLAUDE.md`, *Database Workflow*, step 4).
 
-```bash
-pnpm --filter @kit/clickhouse migrate      # applies 002–005 against ClickHouse
-pnpm --filter web supabase migration up    # applies the Phase 15 migrations
-pnpm supabase:web:typegen                  # regenerates database.types.ts
-```
-
-> [!IMPORTANT]
-> `packages/supabase/src/database.types.ts` and `apps/web/lib/database.types.ts`
-> were hand-edited in typegen's exact format for the Phase 15 tables, against
-> the repo convention of never editing generated files, because typegen could
-> not be run. The typegen command above regenerates both and supersedes those
-> edits — run it before trusting the types.
-
-Then follow the FILM-1503 cutover runbook (disable sync cron → migrate → drain
-backfill → re-enable) and spot-check dashboard totals against YouTube Studio.
+Still operational, and not recorded here as done: the FILM-1503 cutover
+runbook (disable sync cron → migrate → drain backfill → re-enable) and a
+spot-check of dashboard totals against YouTube Studio.

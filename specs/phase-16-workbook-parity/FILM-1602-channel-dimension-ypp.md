@@ -1,7 +1,8 @@
 ---
 spec_id: FILM-1602
 title: Channel Dimension & Per-Channel YPP Progress
-status: ✅ DONE
+status: 🟡 PARTIAL
+audited: 2026-09-23
 effort: L
 dependencies: FILM-1601, FILM-1506
 ---
@@ -45,7 +46,7 @@ Cheap — `connection_id` is not part of `ORDER BY (video_id)`, so this is a met
 - [x] Deep-dive queries accept and filter by `connectionId`
 - [x] `getYppProgressAction` returns one row per channel with its own target
 - [x] A channel outside the scope raises an error rather than returning empty
-- [x] For a single-channel account, Σ per-channel watch hours equals the previous pooled number (regression guard)
+- [ ] For a single-channel account, Σ per-channel watch hours equals the previous pooled number (regression guard) — *audit: not met* — no test compares per-channel and pooled totals; 2e44f648 added only SQL-shape tests
 - [x] `YppChannelProgress` describes one channel, matching what the action returns
 
 ## 5. Verification
@@ -58,3 +59,9 @@ pnpm typecheck && pnpm lint
 ```
 
 End-to-end verification of the YPP numbers is blocked until a ClickHouse instance is provisioned (`CLICKHOUSE_ENABLED=false`); reads return empty and the UI shows zeros until then.
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Σ per-channel watch hours = pooled (regression guard) | No such test exists. The per-channel figure filters `connection_id` (`packages/clickhouse/src/queries-advanced.ts:142`), so a video synced with the zero-UUID `UNATTRIBUTED_CONNECTION_ID` is in a pooled total and in no channel's — the guard would have to seed one to mean anything | unassigned |

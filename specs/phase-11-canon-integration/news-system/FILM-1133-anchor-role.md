@@ -1,7 +1,8 @@
 ---
 id: FILM-1133
 title: News Anchor LLM Role Prompt
-status: done
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: medium
 effort: M
 dependencies: [FILM-1132, FILM-1006]
@@ -185,11 +186,11 @@ export const generateNewsSegmentAction = enhanceAction(
 
 ## Acceptance Criteria
 
-- [ ] Anchor role prompt generates valid broadcast scripts
-- [ ] All claims are attributed to sources
-- [ ] Script includes ANCHOR, GRAPHIC, TRANSITION cues
-- [ ] Balance checker identifies bias distribution
-- [ ] Server actions are authenticated
+- [ ] Anchor role prompt generates valid broadcast scripts — *audit: unverified* — LLM output used unvalidated (`packages/features/episodes/src/lib/server/services/anchor-service.ts:119`); no test or eval
+- [ ] All claims are attributed to sources — *audit: unverified* — prompt rule only (`packages/features/prompt-engine/src/prompts/news-generation/anchor-role.json`); LLM behaviour, no test
+- [ ] Script includes ANCHOR, GRAPHIC, TRANSITION cues — *audit: unverified* — the prompt asks for all three types; nothing checks the output; no test
+- [ ] Balance checker identifies bias distribution — *audit: not met* — `checkSourceBalanceAction` feeds articles with no bias label (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:94`); every distribution is `unknown`
+- [x] Server actions are authenticated — *audit:* `packages/features/episodes/src/server/news-actions.ts:82`, `:115`
 
 ---
 
@@ -210,3 +211,9 @@ export const generateNewsSegmentAction = enhanceAction(
 
 **Requires:** FILM-1132, FILM-1006
 **Blocks:** FILM-1134
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Balance checker identifies bias distribution | `checkSourceBalance` counts `article.biasLabel` (`packages/features/episodes/src/lib/server/services/anchor-service.ts:143`), but the articles `checkSourceBalanceAction` passes it never carry one (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:94`), so it always reports every source as `unknown` — the same missing labels as FILM-1132 | FILM-1132 |

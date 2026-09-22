@@ -1,3 +1,9 @@
+---
+spec_id: FILM-904
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-904: API Keys Page
 
 ## Metadata
@@ -587,19 +593,19 @@ async function validateKlingKey(apiKey: string): Promise<{ valid: boolean; error
 - [x] Delete key option
 - [x] Link to provider documentation
 - [x] Keys encrypted at rest
-- [ ] BYOK keys used in priority over platform keys (requires provider integration)
+- [ ] BYOK keys used in priority over platform keys (requires provider integration) — *audit: not met* — deferred at ship time: only ElevenLabs reads stored keys (no platform key); LLM and video keys are never read — `packages/features/audio-generation/src/providers/config-loader.ts:48` (BYOK-first loader, no production caller)
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test key masking function
-- [ ] Test provider categorization
+- [ ] Test key masking function — *audit: not met* — no test found
+- [ ] Test provider categorization — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Test key save/retrieve encryption
-- [ ] Test key validation endpoints
+- [x] Test key save/retrieve encryption — *audit:* `packages/shared/__tests__/crypto.test.ts:32` (the AES-GCM round trip the key actions use)
+- [ ] Test key validation endpoints — *audit: not met* — no test found
 
 ---
 

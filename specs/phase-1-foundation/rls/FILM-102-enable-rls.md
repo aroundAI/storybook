@@ -1,3 +1,9 @@
+---
+spec_id: FILM-102a
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-102 Enable RLS on All Tables
 
 ## Metadata
@@ -91,7 +97,7 @@ GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
 | EXISTS | `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql` |
 
 ## Acceptance Criteria
-- [x] RLS is enabled on all 14 FILM-101 tables
+- [x] RLS is enabled on all 14 FILM-101 tables — *audit:* `apps/web/supabase/tests/database/schema-conditions.test.sql:18` — 12 remain; `voice_profiles` and `content_analytics` were dropped (`20260103075610`, `20260212080000`)
 - [x] Default permissions revoked from authenticated users
 - [x] Explicit CRUD permissions granted (controlled by RLS policies)
 - [x] Service role can bypass RLS for admin operations
@@ -117,12 +123,12 @@ ORDER BY tablename;
 
 ### Unit Tests
 - [x] All 14 tables have `rowsecurity = true` in pg_tables
-- [x] Service role can query all tables (bypasses RLS)
+- [ ] Service role can query all tables (bypasses RLS) — *audit: not met* — only `publishes` is exercised as service role (`apps/web/supabase/tests/database/publish-asset-duration.test.sql:59`)
 - [x] Authenticated users without policies see 0 rows
 
 ### Security Tests
 - [x] Direct database connections respect RLS settings
-- [x] API requests through PostgREST respect RLS settings
+- [ ] API requests through PostgREST respect RLS settings — *audit: not met* — no test found; `@kit/supabase verify` covers `content_tags` only
 
 ## Security Considerations
 

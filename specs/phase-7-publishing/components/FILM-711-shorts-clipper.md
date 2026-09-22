@@ -1,10 +1,18 @@
+---
+spec_id: FILM-711
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-711: Shorts Clipper
+
+> **🗑️ Retired (audit 2026-09-23).** The in-app clipper (`shorts-clipper.tsx`, `clip-actions.ts`, `clip.schema.ts` under `packages/features/publishing/src/`) was rendered only inside `PublishHub`, which lost its page in baa752eb (2026-01-06); f4efd8b9 (2026-01-18) deleted it as dead code. Short-form video is now uploaded per language as shorts groups on the publish screen (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/shorts-section.tsx`). `@kit/shorts` can still cut shots flagged `shorts_candidate` to 9:16 with ffmpeg (`packages/features/shorts/src/server/generate-short-action.ts:95`), but its page (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/shorts-studio/page.tsx`) is linked from nowhere. Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 7 - Publishing
 - **Priority:** P1 (Post-MVP)
 - **Effort:** L (1-3 days)
-- **Status:** ✅ DONE
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was ✅ DONE)
 - **Dependencies:** FILM-601 (Timeline Editor), FILM-604 (Auto-Stitch)
 - **Blocks:** FILM-708 (Publish Hub)
 

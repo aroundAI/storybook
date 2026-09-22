@@ -1,3 +1,9 @@
+---
+spec_id: FILM-102b
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-102b Project-Based Access Policies
 
 ## Metadata
@@ -249,12 +255,12 @@ create policy "platform_connections_read" on public.platform_connections for sel
 
 ## Acceptance Criteria
 
-- [x] All 14 film studio tables have RLS policies
-- [x] Helper functions correctly identify user's project membership
-- [x] Project owners and admins can perform elevated operations
-- [x] Project members can read and create resources
-- [x] Non-members cannot access any project data
-- [x] Policies work correctly with nested resources (assets via projects, shots via episodes, etc.)
+- [x] All 14 film studio tables have RLS policies — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:597` — 12 remain; `voice_profiles` and `content_analytics` were dropped (`20260103075610`, `20260212080000`)
+- [ ] Helper functions correctly identify user's project membership — *audit: unverified* — needs a pgTAP test; `has_role_on_project`/`can_perform_project_action` are only called through a mocked RPC (`packages/features/projects/__tests__/project-queries.test.ts:296`)
+- [ ] Project owners and admins can perform elevated operations — *audit: unverified* — needs a pgTAP test; delete policies require owner/admin (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:635`) but nothing drives them
+- [ ] Project members can read and create resources — *audit: unverified* — tested for `publishes` only (`apps/web/supabase/tests/database/publish-analytics-note-rls.test.sql:120`, `apps/web/supabase/tests/database/publish-asset-duration.test.sql:129`); the other 11 tables have no test
+- [ ] ~~Non-members cannot access any project data~~ — *audit: retired* — superseded for public/unlisted projects and episodes by public sharing (PR #126): `apps/web/supabase/migrations/20260108120000_public_sharing_rls.sql:43`, `specs/PRD-public-sharing.md`
+- [ ] Policies work correctly with nested resources (assets via projects, shots via episodes, etc.) — *audit: unverified* — only the episode-nested `publishes` policies are tested (`apps/web/supabase/tests/database/publish-analytics-note-rls.test.sql:143`); the asset-nested and other episode-nested tables are not
 - [x] Account-scoped resources check account membership
 - [x] All policies use consistent patterns avoiding circular dependencies
 

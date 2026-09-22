@@ -1,10 +1,18 @@
+---
+spec_id: FILM-101f
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-101 Voice Profiles Table
+
+> **🗑️ Retired (audit 2026-09-23).** `apps/web/supabase/migrations/20260103075610_remove_deprecated_voice_profiles.sql` dropped the table (05ec0ae9, 2026-01-03); the voice link it served had already become a text ElevenLabs voice ID in 30ed2083 (2025-12-25). A character's voice is now `character_details.elevenlabs_voice_id` (`apps/web/supabase/migrations/20251225160000_change_voice_id_to_text.sql:18`). Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 1
 - **Priority:** P0
 - **Effort:** XS
-- **Status:** ✅ COMPLETE
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was ✅ COMPLETE)
 - **Completed:** 2025-12-05
 - **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
 - **Dependencies:** FILM-101 (assets-table)

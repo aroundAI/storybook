@@ -2,6 +2,7 @@
 spec_id: FILM-1612
 title: PostgREST Row-Cap Pagination Sweep
 status: ✅ DONE
+audited: 2026-09-23
 effort: L
 dependencies: FILM-1602
 ---

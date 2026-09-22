@@ -1,3 +1,9 @@
+---
+spec_id: FILM-101k
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-101 Publishes Table
 
 ## Metadata
@@ -156,26 +162,26 @@ interface PublishMetadata {
 | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
 
 ## Acceptance Criteria
-- [ ] Table created with all columns
-- [ ] Foreign keys with CASCADE delete
-- [ ] Status, platform, content_type enums enforced
-- [ ] Indexes for scheduled publishes
-- [ ] Can store platform-specific metadata
+- [x] Table created with all columns — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:468`; `platform_connection_id` nullable since `apps/web/supabase/migrations/20251210164448_make-platform-connection-id-nullable.sql:6`
+- [x] Foreign keys with CASCADE delete — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:470-471`; KB-22 records the connection cascade deleting user records
+- [x] Status, platform, content_type enums enforced — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:485-486`; status widened in `apps/web/supabase/migrations/20260122205819_add_queued_publish_status.sql:8`
+- [x] Indexes for scheduled publishes — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:500`
+- [x] Can store platform-specific metadata — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:483`
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Insert with valid episode_id and platform_connection_id succeeds
-- [ ] Insert with invalid status fails
-- [ ] Insert with invalid platform fails
-- [ ] NULL platform_content_id allowed (not yet published)
-- [ ] Tags array stores correctly
+- [ ] Insert with valid episode_id and platform_connection_id succeeds — *audit: not met* — no test asserts it; pgTAP inserts publishes only as fixtures
+- [ ] Insert with invalid status fails — *audit: not met* — no test found
+- [ ] Insert with invalid platform fails — *audit: not met* — no test found
+- [ ] NULL platform_content_id allowed (not yet published) — *audit: not met* — no test found
+- [ ] Tags array stores correctly — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Deleting episode cascades to delete publishes
-- [ ] Deleting platform_connection cascades to delete publishes
-- [ ] Query scheduled publishes (scheduled_at < NOW, status = 'scheduled')
-- [ ] Update status workflow (draft → scheduled → publishing → published)
+- [ ] Deleting episode cascades to delete publishes — *audit: not met* — no test found
+- [ ] Deleting platform_connection cascades to delete publishes — *audit: not met* — no test found; KB-22 reproduced it by hand on the local database
+- [ ] Query scheduled publishes (scheduled_at < NOW, status = 'scheduled') — *audit: not met* — no test found
+- [ ] Update status workflow (draft → scheduled → publishing → published) — *audit: not met* — no test found
 
 ### Status Workflow Test
 ```sql

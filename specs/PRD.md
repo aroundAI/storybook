@@ -4,7 +4,7 @@
 **Version:** 2.1  
 **Date:** December 2025  
 **Author:** Product Team  
-**Status:** Draft
+**Status:** Historical baseline — the original product scope, as written in December 2025. Not maintained: what has shipped since, what was retired, and what is left are in [INDEX.md](./INDEX.md).
 
 ---
 

@@ -1,13 +1,14 @@
 ---
 phase: 10
 title: Canon Management System
-status: implemented
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: high
 ---
 
 # Phase 10: Canon Management System
 
-> **Status**: ✅ Implemented - All components complete
+> **Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ Implemented) — built, but six of its specs have open criteria and FILM-1006 is retired. Two cross-tenant bugs sit in this phase: KB-17 and KB-27 in [FILM-CC-04](../cross-cutting/FILM-CC-04-known-bugs.md). Current statuses: [INDEX.md](../INDEX.md).
 
 ## Overview
 
@@ -75,8 +76,8 @@ Historical context injection is limited to **15%** of token budget to prevent:
 
 | ID | Title | Status | Effort | File |
 |----|-------|--------|--------|------|
-| FILM-1001 | Canon Tables | Draft | L | [database/FILM-1001-canon-tables.md](database/FILM-1001-canon-tables.md) |
-| FILM-1002 | RLS Policies | Draft | S | [database/FILM-1002-canon-rls.md](database/FILM-1002-canon-rls.md) |
+| FILM-1001 | Canon Tables | 🟡 PARTIAL | L | [database/FILM-1001-canon-tables.md](database/FILM-1001-canon-tables.md) |
+| FILM-1002 | RLS Policies | 🟡 PARTIAL | S | [database/FILM-1002-canon-rls.md](database/FILM-1002-canon-rls.md) |
 
 **New Tables**:
 - `immutable_events` - Hard canon facts
@@ -90,26 +91,26 @@ Historical context injection is limited to **15%** of token budget to prevent:
 
 | ID | Title | Status | Effort | File |
 |----|-------|--------|--------|------|
-| FILM-1003 | Continuity Validator | Draft | L | [lib/FILM-1003-continuity-validator.md](lib/FILM-1003-continuity-validator.md) |
-| FILM-1004 | Memory Context Builder | Draft | M | [lib/FILM-1004-memory-context-builder.md](lib/FILM-1004-memory-context-builder.md) |
+| FILM-1003 | Continuity Validator | 🟡 PARTIAL | L | [lib/FILM-1003-continuity-validator.md](lib/FILM-1003-continuity-validator.md) |
+| FILM-1004 | Memory Context Builder | 🟡 PARTIAL | M | [lib/FILM-1004-memory-context-builder.md](lib/FILM-1004-memory-context-builder.md) |
 
 ### Server Actions
 
 | ID | Title | Status | Effort | File |
 |----|-------|--------|--------|------|
-| FILM-1005 | Canon Server Actions | Draft | M | [server/FILM-1005-canon-actions.md](server/FILM-1005-canon-actions.md) |
+| FILM-1005 | Canon Server Actions | 🟡 PARTIAL | M | [server/FILM-1005-canon-actions.md](server/FILM-1005-canon-actions.md) |
 
 ### Prompt Templates
 
 | ID | Title | Status | Effort | File |
 |----|-------|--------|--------|------|
-| FILM-1006 | LLM Role Separation | Draft | M | [prompts/FILM-1006-llm-role-separation.md](prompts/FILM-1006-llm-role-separation.md) |
+| FILM-1006 | LLM Role Separation | 🗑️ RETIRED | M | [prompts/FILM-1006-llm-role-separation.md](prompts/FILM-1006-llm-role-separation.md) |
 
 ### UI Layer
 
 | ID | Title | Status | Effort | File |
 |----|-------|--------|--------|------|
-| FILM-1007 | Canon UI Components | Draft | L | [ui/FILM-1007-canon-ui-components.md](ui/FILM-1007-canon-ui-components.md) |
+| FILM-1007 | Canon UI Components | 🟡 PARTIAL | L | [ui/FILM-1007-canon-ui-components.md](ui/FILM-1007-canon-ui-components.md) |
 
 ---
 
@@ -249,12 +250,12 @@ graph TD
 
 ## Success Criteria
 
-- [ ] All 6 database tables created with RLS
-- [ ] Continuity Validator blocks resurrection of dead characters
-- [ ] Memory context stays within 15% token budget
-- [ ] Generation pipeline integrates validation checkpoints
-- [ ] 80%+ test coverage on new services
-- [ ] < 500ms validation latency
+- [x] All 6 database tables created with RLS — *audit:* `apps/web/supabase/migrations/20260128225704_canon_management.sql:227`
+- [ ] Continuity Validator blocks resurrection of dead characters — *audit: not met* — CANON_001 flags it (`packages/features/episodes/src/lib/canon/continuity-validator.ts:177`), but no checkpoint blocks: screenplay runs `flexible`, story's is an agent tool
+- [ ] Memory context stays within 15% token budget — *audit: unverified* — category caps at `packages/features/episodes/src/lib/canon/memory-context-builder.ts:450`; no test builds a context
+- [x] Generation pipeline integrates validation checkpoints — *audit:* `apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:253`, `packages/features/episodes/src/agent/story-orchestrator.ts:275`
+- [ ] 80%+ test coverage on new services — *audit: not met* — no tests for the validator, context builder or canon actions; only memory strategies and content-type configs are tested
+- [ ] < 500ms validation latency — *audit: unverified* — needs a timed run; no benchmark exists
 
 ---
 

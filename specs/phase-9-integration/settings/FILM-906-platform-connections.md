@@ -1,3 +1,9 @@
+---
+spec_id: FILM-906
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-906: Platform Connections
 
 ## Metadata
@@ -6,7 +12,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-705-707 (OAuth flows)
 - **Blocks:** FILM-708 (Publish Hub)
-- **Status:** ✅ COMPLETE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ COMPLETE)
 - **PR:** [#74](https://github.com/aroundAI/storybook/pull/74)
 - **Commits:** `79201ef`, `d041997`
 
@@ -605,7 +611,7 @@ function determineStatus(connection: any): 'active' | 'expired' | 'error' {
 
 ## Acceptance Criteria
 
-- [x] Lists all supported platforms (YouTube, TikTok, Instagram, Facebook)
+- [ ] Lists all supported platforms (YouTube, TikTok, Instagram, Facebook) — *audit: no longer true* — X and LinkedIn (FILM-714/715) have connect routes but no card here, the only connect UI — `packages/features/publishing/src/components/platform-connections.tsx:90`
 - [x] Shows connected accounts per platform
 - [x] Displays account name, profile picture, status
 - [x] Connect button initiates OAuth flow
@@ -621,14 +627,14 @@ function determineStatus(connection: any): 'active' | 'expired' | 'error' {
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test status determination logic (`determineStatus` function)
-- [ ] Test connection mapping (DB → PlatformConnection interface)
-- [ ] Test schema validation for server actions
+- [ ] Test status determination logic (`determineStatus` function) — *audit: not met* — no test found
+- [ ] Test connection mapping (DB → PlatformConnection interface) — *audit: not met* — the page's `getConnectionsAction` mapping is untested; `getConnectedPlatformsAction`'s is (`packages/features/publishing/__tests__/connection-actions.test.ts:98`)
+- [ ] Test schema validation for server actions — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Test OAuth initiation redirect (initiateOAuth function)
-- [ ] Test disconnect flow (confirmation dialog → mutation → invalidate query)
-- [ ] Test refresh token mutation (calls ensureValidToken)
+- [x] Test OAuth initiation redirect (initiateOAuth function) — *audit:* `apps/e2e/tests/platform-connections/analytics-access.spec.ts:162`
+- [ ] Test disconnect flow (confirmation dialog → mutation → invalidate query) — *audit: not met* — no test found
+- [ ] Test refresh token mutation (calls ensureValidToken) — *audit: not met* — no test of `refreshConnectionAction`; `ensureValidToken` itself is tested (`packages/features/publishing/__tests__/token-refresh.test.ts:119`)
 
 ### Manual Testing Checklist
 - [x] Page loads at `/home/[account]/settings/platforms`
@@ -639,7 +645,7 @@ function determineStatus(connection: any): 'active' | 'expired' | 'error' {
 - [x] Refresh button spins during mutation
 - [x] Disconnect shows confirmation dialog
 - [x] Toast notifications on success/error
-- [x] Dark mode styling works correctly
+- [ ] Dark mode styling works correctly — *audit: unverified* — visual; needs a dark-mode screenshot (the `dark:` classes are present)
 
 ---
 
@@ -660,3 +666,9 @@ function determineStatus(connection: any): 'active' | 'expired' | 'error' {
 - Disconnect removes all token data
 - OAuth state validated on callback
 - Rate limit OAuth initiations
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Lists all supported platforms | `PLATFORMS` (`platform-connections.tsx:90-120`) has YouTube, TikTok, Instagram and Facebook. X and LinkedIn have had connect and callback routes since FILM-714/715 (`apps/web/app/api/platforms/connect/{twitter,linkedin}`), but nothing in the UI links to them, and an X or LinkedIn connection would not be shown here to disconnect. The social-posts screen tells a creator with no LinkedIn account to "Connect one in Settings → Platforms" (`social-post-detail.tsx:381`), which cannot be done | unassigned |

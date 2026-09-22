@@ -2,6 +2,7 @@
 spec_id: FILM-1616
 title: Weekly Diagnostics & Retention Drill-Down
 status: ✅ DONE
+audited: 2026-09-23
 effort: M
 dependencies: FILM-1602; FILM-1710 soft (the cliff timestamp, §4)
 ---

@@ -2,6 +2,7 @@
 spec_id: FILM-1201
 title: ClickHouse Analytics Migration
 status: ✅ DONE
+audited: 2026-09-23
 effort: L
 dependencies: FILM-804, FILM-805
 ---

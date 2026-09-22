@@ -1,6 +1,12 @@
+---
+spec_id: FILM-306
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-306: Screenplay Conversion Server Actions
 
-**Status**: ✅ DONE
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
 **Phase**: 3
 **Priority**: P0
 **Effort**: L (5-7 days)
@@ -322,8 +328,8 @@ function extractDialogueLines(screenplay: Screenplay, episodeId: string) {
 - [x] Updates episode.screenplay_data
 - [x] Updates episode status to 'storyboard'
 - [x] Validates output with Zod schema
-- [x] Handles optimistic locking
-- [x] Completes within 30 seconds
+- [ ] Handles optimistic locking — *audit: no longer true* — the action sends the stored version and the worker's write drops the guard (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:420`, 669b66e3)
+- [ ] Completes within 30 seconds — *audit: unverified* — runtime timing of an async agent job; needs a timed run
 - [x] Enforces authentication
 
 ---
@@ -355,3 +361,9 @@ describe('convertToScreenplayAction', () => {
 - **FILM-305**: Story generation
 - **FILM-304**: Prompt templates
 - **FILM-101**: Dialogue lines table
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Handles optimistic locking | no version guard on the worker's write since 669b66e3 (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:420`); the action takes no client version (`packages/features/episodes/src/lib/schemas.ts:305`) | owner |

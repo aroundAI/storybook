@@ -1,3 +1,9 @@
+---
+spec_id: FILM-101i
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-101 Generation Jobs Table
 
 ## Metadata
@@ -160,28 +166,28 @@ interface VoiceJobOutput {
 | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
 
 ## Acceptance Criteria
-- [ ] Table created with all columns
-- [ ] Unique constraint on idempotency_key
-- [ ] Foreign key with CASCADE delete
-- [ ] Status and job_type enums enforced
-- [ ] Retry constraint enforced
-- [ ] Indexes for querying by status, provider, retry time
-- [ ] Cost tracking columns present
+- [x] Table created with all columns — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:157`
+- [x] Unique constraint on idempotency_key — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:159`
+- [x] Foreign key with CASCADE delete — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:160-161`
+- [x] Status and job_type enums enforced — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:182-183`; `job_type` widened in `apps/web/supabase/migrations/20260120000000_add_audio_cue_generation_job.sql:4`
+- [x] Retry constraint enforced — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:184`
+- [x] Indexes for querying by status, provider, retry time — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:199-203`
+- [x] Cost tracking columns present — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:177-178`
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Insert job with unique idempotency_key succeeds
-- [ ] Insert job with duplicate idempotency_key fails
-- [ ] Insert job with invalid status fails
-- [ ] Insert job with retry_count > max_retries fails
-- [ ] Update status transitions work correctly
+- [ ] Insert job with unique idempotency_key succeeds — *audit: not met* — no test found
+- [ ] Insert job with duplicate idempotency_key fails — *audit: not met* — no test found
+- [ ] Insert job with invalid status fails — *audit: not met* — no test found
+- [ ] Insert job with retry_count > max_retries fails — *audit: not met* — no test found
+- [ ] Update status transitions work correctly — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Deleting project cascades to delete jobs
-- [ ] Query jobs ready for retry (next_retry_at < NOW)
-- [ ] Query failed jobs for DLQ (retry_count >= max_retries)
-- [ ] Exponential backoff calculation
+- [ ] Deleting project cascades to delete jobs — *audit: not met* — no test found
+- [ ] Query jobs ready for retry (next_retry_at < NOW) — *audit: not met* — no test found; no application code reads `next_retry_at`
+- [ ] Query failed jobs for DLQ (retry_count >= max_retries) — *audit: not met* — no test found
+- [ ] Exponential backoff calculation — *audit: not met* — no test found
 
 ### Retry Logic Test
 ```sql

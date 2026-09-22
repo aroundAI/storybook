@@ -1,7 +1,8 @@
 ---
 id: FILM-1131
 title: External Content Cache (News/Research)
-status: done
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: medium
 effort: M
 dependencies: [FILM-1135]
@@ -161,7 +162,7 @@ This spec adds:
 - [x] `getCacheExpiry()` returns correct expiry per category
 - [x] `extractEntitiesFromArticle()` calls LLM
 - [x] Entity extraction prompt created
-- [x] Entities stored in `external_content.entities` JSONB
+- [ ] Entities stored in `external_content.entities` JSONB — *audit: no longer true* — the cache stores the providers' empty entities (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:108`); extracted entities are never written back
 
 ---
 
@@ -184,3 +185,9 @@ This spec adds:
 ## Blocks
 
 - **FILM-1132**: News Aggregator (uses cache)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Entities stored in `external_content.entities` JSONB | All three providers set `entities: createEmptyEntities()` (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:108`, `semantic-scholar-provider.ts:109`, `archive-org-provider.ts:91`), and the cache writes what they return (`packages/features/episodes/src/lib/server/services/context-aggregator.ts:328`). `extractEntitiesFromArticle` runs only in memory for clustering (`news-story-service.ts:184`); nothing persists its result | unassigned |

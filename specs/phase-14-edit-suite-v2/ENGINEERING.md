@@ -1,6 +1,12 @@
+---
+spec_id: PHASE-14
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # Phase 14: Edit Suite v2 — Engineering Specification
 
-> **Status:** ✅ Done  
+> **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ Done)  
 > **Owner:** Engineering  
 > **Supersedes:** Phase 6 (FILM-601–606) — old timeline editor  
 > **Scope:** Per-episode, in-browser NLE with WebCodecs + Canvas rendering  
@@ -544,14 +550,14 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 ### Build Phase 1: Foundation — Database + Skeleton ✅
 
 #### 1.1 Database Migration ✅
-- [x] Create schema file `apps/web/supabase/schemas/35-edit-suite.sql`
+- [x] Create schema file `apps/web/supabase/schemas/35-edit-suite.sql` — *audit:* the file is `apps/web/supabase/schemas/36-edit-suite.sql` (added 5d89563b)
 - [x] Define `edit_projects` table with all columns + constraints
 - [x] Define `edit_tracks` table with type enum + volume/mute/solo/lock
 - [x] Define `edit_clips` table with polymorphic source FKs
 - [x] Define `edit_transitions` table with type enum + duration
 - [x] Define `edit_keyframes` table with property enum + easing + bezier
 - [x] Define `dialogue_sync_groups` table with unique constraint
-- [x] Create `get_edit_project_account_id()` helper function for RLS
+- [x] Create `get_edit_project_account_id()` helper function for RLS — *audit:* named `get_project_id_for_edit_project()`, `apps/web/supabase/migrations/20260219083555_edit-suite-v2.sql:288`
 - [x] Add RLS policies for all 6 tables (select/insert/update/delete)
 - [x] Add indexes: `edit_clips(track_id)`, `edit_clips(sync_group_id)`, keyframe composite index
 - [x] Generate migration file with timestamp
@@ -572,7 +578,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 
 #### 1.3 Package Scaffold ✅
 - [x] Create `packages/features/edit-suite/package.json`
-- [x] Configure `tsconfig.json` with path aliases
+- [ ] Configure `tsconfig.json` with path aliases — *audit: no longer true* — never true: no `paths` in `packages/features/edit-suite/tsconfig.json` or `tooling/typescript/base.json`; imports are relative
 - [x] Create `src/lib/types.ts` — all TypeScript interfaces + row mappers
 - [x] Create `src/lib/schemas/index.ts` — Zod schemas for all entities
 - [x] Create `src/state/edit-reducer.ts` — useReducer with all action types
@@ -621,7 +627,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Place dubbed variants with `is_active = false` for non-primary
 - [x] Place audio tracks (music, sfx, ambient) with original timeline positions
 - [x] Create default volume keyframe (1.0 at offset 0) per clip
-- [x] Call `batchCreateEditProjectAction` to persist
+- [x] Call `batchCreateEditProjectAction` to persist — *audit:* the call is `batchAssembleAction`, `packages/features/edit-suite/src/lib/auto-assemble.ts:419`
 - [x] Loading state with progress indicator during assembly
 
 #### 1.8 Auto-Save ✅
@@ -691,7 +697,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] `EditCommand` interface with `execute()` and `undo()`
 - [x] `MoveClipCommand`, `TrimClipCommand`, `SplitClipCommand`, `DeleteClipCommand`
 - [x] `UndoManager` class — 100-item stacks
-- [x] `useUndoRedo` hook exposing `undo()`, `redo()`, `canUndo`, `canRedo`
+- [x] `useUndoRedo` hook exposing `undo()`, `redo()`, `canUndo`, `canRedo` — *audit:* exposed by `useEditCommands()`, `packages/features/edit-suite/src/components/edit-suite-provider.tsx:699`
 - [x] `Cmd+Z` / `Cmd+Shift+Z` keyboard shortcuts
 - [x] Undo/redo buttons in toolbar with disabled state
 
@@ -701,10 +707,10 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 
 #### 3.1 Transition UI
 - [x] `TransitionHandle` — appears between adjacent clips on hover
-- [x] `TransitionPicker` in Inspector — grid of transition types with preview
+- [ ] `TransitionPicker` in Inspector — grid of transition types with preview — *audit: no longer true* — the picker opens from the timeline handle (`packages/features/edit-suite/src/components/timeline/transition-handle.tsx:138`), icons only, no preview; the Inspector is placeholders
 - [x] Click transition handle to open picker
-- [x] Transition duration slider (100ms–5000ms)
-- [x] Visual indicator: overlap region between clips shown as gradient
+- [ ] Transition duration slider (100ms–5000ms) — *audit: no longer true* — 100–3000 ms since added in a355c5ce (`packages/features/edit-suite/src/components/timeline/transition-picker.tsx:32`)
+- [ ] Visual indicator: overlap region between clips shown as gradient — *audit: no longer true* — the handle is a small round icon (`packages/features/edit-suite/src/components/timeline/transition-handle.tsx:124`); no gradient over the overlap
 
 #### 3.2 Transition Rendering
 - [x] `crossfade` — alpha blend between outgoing and incoming frames
@@ -715,7 +721,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Server actions: `createTransitionAction`, `updateTransitionAction`, `deleteTransitionAction`
 
 #### 3.3 Speed Control
-- [x] Speed slider in Inspector (0.25×–4×)
+- [ ] Speed slider in Inspector (0.25×–4×) — *audit: no longer true* — `SpeedControl` has been mounted nowhere since a355c5ce; the Inspector renders placeholders (`packages/features/edit-suite/src/components/inspector/inspector-panel.tsx:37`)
 - [x] Clip duration recalculates on speed change
 - [x] `<video>.playbackRate` updated during preview
 - [x] Visual indicator on clip block (e.g., "2×" badge)
@@ -727,10 +733,10 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Cache thumbnails per clip URL
 
 #### 3.5 Snap System
-- [x] Snap-to-grid: quantize to nearest frame boundary
+- [ ] Snap-to-grid: quantize to nearest frame boundary — *audit: no longer true* — never wired: snapping targets only clip edges and the playhead, with no frame quantisation (`packages/features/edit-suite/src/components/timeline/clip-block.tsx:172`)
 - [x] Snap-to-edges: adjacent clip start/end points
 - [x] Snap-to-playhead
-- [x] `SnapToggle` in toolbar to enable/disable
+- [ ] `SnapToggle` in toolbar to enable/disable — *audit: no longer true* — never wired: the toggle flips `snapEnabled`, which `ClipBlock` never reads, so snapping is always on (`packages/features/edit-suite/src/components/timeline/clip-block.tsx:172`)
 - [x] Visual snap guides (thin lines) during drag
 
 ---
@@ -741,7 +747,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] `createKeyframeAction` — add keyframe for clip + property + offset
 - [x] `updateKeyframeAction` — update value, easing, bezier control points
 - [x] `deleteKeyframeAction` — remove keyframe
-- [x] `batchUpdateKeyframesAction` — save all dirty keyframes
+- [x] `batchUpdateKeyframesAction` — save all dirty keyframes — *audit:* done by `batchSaveAction` (`p_dirty_keyframes`), `packages/features/edit-suite/src/server/batch-actions.ts:147`
 
 #### 4.2 Keyframe Engine
 - [x] `interpolateKeyframes()` function in `lib/keyframe-engine.ts`
@@ -762,21 +768,21 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Transform origin at clip center
 
 #### 4.5 Curve Editor UI
-- [x] `KeyframeEditor` component in Inspector
+- [ ] `KeyframeEditor` component in Inspector — *audit: no longer true* — mounted nowhere since c1abd5fb; the Inspector renders "Coming soon" (`packages/features/edit-suite/src/components/inspector/inspector-panel.tsx:37`)
 - [x] Property selector dropdown (volume, position_x, etc.)
 - [x] SVG canvas for curve visualization
 - [x] Draggable ◆ diamonds — horizontal (time) + vertical (value)
 - [x] Curve line drawn between keyframes using easing function
 - [x] Double-click to add keyframe at position
-- [x] Right-click context menu to delete / change easing
+- [ ] Right-click context menu to delete / change easing — *audit: no longer true* — right-click deletes the keyframe directly; there is no menu (`packages/features/edit-suite/src/components/inspector/keyframe-editor.tsx:353`)
 - [x] Easing preset buttons (linear, ease-in, ease-out, ease-in-out, hold)
-- [x] Bezier handle editing when easing = 'bezier'
+- [ ] Bezier handle editing when easing = 'bezier' — *audit: no longer true* — no bezier-handle UI; the presets omit bezier and new keyframes get null control points (`packages/features/edit-suite/src/components/inspector/keyframe-editor.tsx:179`)
 
 #### 4.6 Keyframe Diamonds on Clips
 - [x] Small ◆ markers on clip blocks in timeline
 - [x] Show on hover or when clip is selected
 - [x] Color-coded by property
-- [x] Draggable horizontally to adjust offset within clip
+- [ ] Draggable horizontally to adjust offset within clip — *audit: no longer true* — clip diamonds are static SVG with no drag handler (`packages/features/edit-suite/src/components/timeline/clip-block.tsx:519`)
 
 ---
 
@@ -836,10 +842,10 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Direct R2 upload from browser ✅ *(presigned-upload.ts + Upload to R2 button in export dialog)*
 
 #### 6.2 Performance ✅
-- [x] LRU media cache for decoded frames
+- [ ] LRU media cache for decoded frames — *audit: no longer true* — never used: `frameCache` (`packages/features/edit-suite/src/lib/lru-cache.ts:101`) is never read; the LRU backs waveform peaks only
 - [x] Virtual scrolling for timeline (only render visible clips)
 - [x] Debounced re-render on property changes
-- [x] OffscreenCanvas for waveform generation in Worker
+- [ ] OffscreenCanvas for waveform generation in Worker — *audit: no longer true* — the worker decodes and computes peaks without OffscreenCanvas; drawing is on the main thread (`packages/features/edit-suite/src/components/timeline/waveform.tsx:71`)
 
 #### 6.3 Title/Text Overlays ✅
 - [x] Title track type
@@ -851,3 +857,15 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] WebSocket-based operational transforms ✅ *(OT engine with 8 op types, OperationBuffer, server-wins conflict resolution)*
 - [x] Cursor presence indicators ✅ *(CursorPresence overlay + ActiveEditorsList component)*
 - [x] Conflict resolution for simultaneous clip edits ✅ *(transformOperation() + WebSocket edit-operation/cursor-update handlers)*
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Inspector: speed slider, keyframe curve editor, transition picker (§3.1, §3.3, §4.5) | `packages/features/edit-suite/src/components/inspector/inspector-panel.tsx:37` renders "Coming soon" placeholders; `SpeedControl` and `KeyframeEditor` have never been mounted, so clip speed, fades and keyframes cannot be edited in the UI | unassigned |
+| Snap-to-grid and `SnapToggle` (§3.5) | No frame quantisation, and `snapEnabled` is never read by `ClipBlock` (`packages/features/edit-suite/src/components/timeline/clip-block.tsx:172`) | unassigned |
+| Every edit is an undoable command (§8) | Keyframe, transition, media-bin drop, I/O trim, speed and track edits dispatch directly and bypass `UndoManager` (e.g. `packages/features/edit-suite/src/components/timeline/track-row.tsx:234`) | unassigned |
+| Transition duration 100–5000 ms, overlap gradient (§3.1) | Slider stops at 3000 ms (`packages/features/edit-suite/src/components/timeline/transition-picker.tsx:32`); the handle is an icon, not a gradient | unassigned |
+| Keyframe diamonds draggable on clips (§4.6); bezier handles and right-click menu (§4.5) | Clip diamonds are static (`packages/features/edit-suite/src/components/timeline/clip-block.tsx:519`); no bezier-handle UI; right-click deletes directly | unassigned |
+| LRU frame cache, OffscreenCanvas waveform (§6.2) | `frameCache` is never read (`packages/features/edit-suite/src/lib/lru-cache.ts:101`); the waveform worker only computes peaks | unassigned |
+| `tsconfig.json` path aliases (§1.3) | None configured in `packages/features/edit-suite/tsconfig.json` | unassigned |

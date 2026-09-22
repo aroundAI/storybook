@@ -1,10 +1,16 @@
+---
+spec_id: FILM-802
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-802: TikTok Analytics Provider
 
 ## Metadata
 - **Phase:** 8 - Analytics
 - **Priority:** P2 (Post-MVP)
 - **Effort:** M (4-8 hours)
-- **Status:** DONE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was DONE)
 - **Dependencies:** FILM-706 (TikTok OAuth)
 - **Blocks:** FILM-804 (Analytics Sync), FILM-805 (Analytics Dashboard)
 
@@ -253,11 +259,11 @@ export class TikTokAnalyticsProvider {
 
 ## Acceptance Criteria
 
-- [x] Fetches video views, likes, comments, shares
-- [x] Fetches save count
-- [x] Fetches watch time metrics
-- [x] Fetches audience demographics
-- [x] Fetches traffic source breakdown
+- [ ] Fetches video views, likes, comments, shares — *audit: unverified* — the code asks the Display API for them (`packages/features/content-analytics/src/providers/tiktok/tiktok-analytics.ts:136`, mocked test `tiktok-analytics.test.ts:114`); live data waits on TikTok's review of `video.list` (FILM-1711)
+- [ ] ~~Fetches save count~~ — *audit: retired* — FILM-1721: `save_count` exists for own videos on no creator-auth surface; reported as structural 0 since d818a603 (`tiktok-analytics.ts:195`)
+- [ ] Fetches watch time metrics — *audit: no longer true* — structural 0 since d818a603: watch time is Business API only (`tiktok-analytics.ts:198`)
+- [ ] Fetches audience demographics — *audit: no longer true* — `audience: undefined` since d818a603; no creator-auth demographics endpoint exists (FILM-1721) — `tiktok-analytics.ts:203`
+- [ ] Fetches traffic source breakdown — *audit: no longer true* — `trafficSources: []` since d818a603: `impression_sources` is Business API only (`tiktok-analytics.ts:209`)
 - [x] Handles API rate limits
 - [x] Normalizes to common format
 
@@ -266,8 +272,8 @@ export class TikTokAnalyticsProvider {
 ## Test Plan
 
 ### Unit Tests
-- [x] Test audience data parsing
-- [x] Test traffic source mapping
+- [ ] Test audience data parsing — *audit: no longer true* — nothing is parsed since d818a603; the test asserts the audience is absent (`packages/features/content-analytics/__tests__/tiktok-analytics.test.ts:174`)
+- [ ] Test traffic source mapping — *audit: no longer true* — nothing is mapped since d818a603; the test asserts `trafficSources` is empty (`tiktok-analytics.test.ts:174`)
 
 ### Integration Tests
 - [x] Test with mocked TikTok API
@@ -290,3 +296,11 @@ export class TikTokAnalyticsProvider {
 | `spam_risk_too_many_pending` | Rate limited, retry later |
 | `access_token_invalid` | Trigger re-auth |
 | `video_not_found` | Video deleted |
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Fetches watch time metrics | The Display API has no watch-time field; `total_time_watched`, `average_time_watched` and `full_video_watched_rate` are on the Business API, a separate app registration (FILM-1721 §4) | FILM-1730 |
+| Fetches traffic source breakdown | `impression_sources` is Business API only | FILM-1730 |
+| Fetches audience demographics | No creator-auth surface returns age or gender (FILM-1721); the Business API returns `audience_countries` only | FILM-1730 (countries only) |

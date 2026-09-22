@@ -1,6 +1,12 @@
+---
+spec_id: FILM-303
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-303: Shot CRUD Server Actions
 
-**Status**: ✅ DONE
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
 **Phase**: 3
 **Priority**: P0
 **Effort**: M (3-5 days)
@@ -667,36 +673,36 @@ None (new feature)
 
 ## Acceptance Criteria
 
-**Status**: ✅ Complete (2025-12-08)
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ Complete (2025-12-08))
 **Implementation**: PR #TBD
 
 ### Functional
 
 - [x] `createShotAction` successfully creates shot with valid data
 - [x] `createShotAction` auto-assigns sequence_number
-- [x] `createShotAction` respects RLS (cannot create for inaccessible project)
+- [ ] `createShotAction` respects RLS (cannot create for inaccessible project) — *audit: unverified* — policy `shots_create` exists (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:933`); no pgTAP test exercises it
 - [x] `batchCreateShotsAction` creates all shots atomically
 - [x] `batchCreateShotsAction` rolls back on any failure
 - [x] `batchCreateShotsAction` assigns sequential sequence_numbers
-- [x] `reorderShotsAction` updates all sequence_numbers correctly
+- [ ] `reorderShotsAction` updates all sequence_numbers correctly — *audit: no longer true* — its one-row updates break `unique(episode_id, sequence_number)` (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:331`) on any real reorder
 - [x] `reorderShotsAction` validates all shots belong to same episode
-- [x] `getEpisodeShotsAction` returns shots ordered by sequence_number
-- [x] `getEpisodeShotsAction` includes generation job status
-- [x] `getEpisodeShotsAction` filters by status
+- [ ] `getEpisodeShotsAction` returns shots ordered by sequence_number — *audit: no longer true* — it embeds `generation_jobs` with no foreign key and selects a missing `progress` column, so every call errors (`packages/features/episodes/src/lib/server/queries/shot-queries.ts:43`)
+- [ ] ~~`getEpisodeShotsAction` includes generation job status~~ — *audit: retired* — shot generation jobs were video jobs; in-app video generation removed in 5b88db3a
+- [ ] `getEpisodeShotsAction` filters by status — *audit: no longer true* — same failing query (`packages/features/episodes/src/lib/server/queries/shot-queries.ts:43`)
 - [x] `updateShotAction` updates only provided fields
 - [x] `deleteShotAction` soft deletes shot
-- [x] `deleteShotAction` reorders remaining shots to close gap
-- [x] `deleteShotAction` cancels in-progress generation job
+- [ ] `deleteShotAction` reorders remaining shots to close gap — *audit: no longer true* — the soft-deleted row keeps its number, so each decrement hits the same unique constraint; errors are ignored (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:425`)
+- [ ] ~~`deleteShotAction` cancels in-progress generation job~~ — *audit: retired* — shot generation jobs were video jobs; in-app video generation removed in 5b88db3a
 - [x] All actions enforce authentication
 
 ### Non-Functional
 
-- [x] All actions complete within 3 seconds (except batch)
-- [x] Batch create handles 100+ shots
+- [ ] All actions complete within 3 seconds (except batch) — *audit: unverified* — runtime timing; needs a timed run against a seeded database
+- [ ] Batch create handles 100+ shots — *audit: no longer true* — `BatchCreateShotsSchema` caps a batch at 100 (`packages/features/episodes/src/lib/schemas/shot.schema.ts:167`); 101 is refused
 - [x] All inputs validated with Zod schemas
-- [x] All database errors properly caught and thrown
+- [ ] All database errors properly caught and thrown — *audit: no longer true* — `deleteShotAction` ignores the errors of its close-gap updates (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:425`)
 - [x] TypeScript compiles without errors
-- [x] No ESLint warnings
+- [ ] No ESLint warnings — *audit: unverified* — linting is outside the audit rules; settle with `pnpm --filter @kit/episodes lint`
 
 ---
 
@@ -964,3 +970,13 @@ queryClient.invalidateQueries({ queryKey: ['shots', episodeId] });
 - **Constitution**: Section 4.1 (RLS Policies)
 - **Kling API**: Max duration 10 seconds per shot
 - **Next.js Actions**: https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| `reorderShotsAction` updates sequence numbers correctly | sequential one-row updates break `unique(episode_id, sequence_number)` (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:331`) | owner (no callers: fix or delete) |
+| `getEpisodeShotsAction` returns and filters shots | embeds `generation_jobs` with no foreign key and selects a nonexistent `progress` column (`packages/features/episodes/src/lib/server/queries/shot-queries.ts:43`) | owner (no callers: fix or delete) |
+| `deleteShotAction` closes the gap | the soft-deleted row still holds its number, so the decrements collide, and the errors are ignored (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:425`) | owner (no callers: fix or delete) |
+| Batch create handles 100+ shots | schema caps a batch at 100 (`packages/features/episodes/src/lib/schemas/shot.schema.ts:167`); shot generation inserts directly and is not capped | owner (no callers: fix or delete) |
+| All database errors caught and thrown | close-gap update errors are ignored (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:425`) | owner (no callers: fix or delete) |

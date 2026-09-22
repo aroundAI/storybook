@@ -1,6 +1,12 @@
+---
+spec_id: FILM-305
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-305: Story Generation Server Actions
 
-**Status**: ✅ DONE
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
 **Phase**: 3
 **Priority**: P0
 **Effort**: L (5-7 days)
@@ -500,7 +506,7 @@ None (new feature)
 
 ## Implementation Status
 
-**Status**: COMPLETED
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was COMPLETED)
 **Completed Date**: 2025-12-08
 **PR**: feat/film-308-story-studio
 
@@ -514,18 +520,18 @@ None (new feature)
 
 ### Functional
 
-- [x] `generateStoryIdeasAction` generates 3-5 story ideas from premise
+- [ ] `generateStoryIdeasAction` generates 3-5 story ideas from premise — *audit: unverified* — the count (1–5, `packages/features/episodes/src/lib/schemas/story.schema.ts:20`) is asked of an LLM agent; nothing enforces or tests it
 - [x] `generateStoryIdeasAction` validates output with Zod schema
-- [x] `generateStoryIdeasAction` calculates cost accurately
-- [x] `generateStoryIdeasAction` completes within 15 seconds
-- [x] `generateFullStoryAction` generates 500-1000 word story
+- [ ] `generateStoryIdeasAction` calculates cost accurately — *audit: no longer true* — the ideation result reports `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:131`); only per-call analytics carry cost
+- [ ] `generateStoryIdeasAction` completes within 15 seconds — *audit: unverified* — runtime timing of an async agent job; needs a timed run
+- [ ] ~~`generateFullStoryAction` generates 500-1000 word story~~ — *audit: retired* — length now scales with target duration (`apps/web/lambda/llm-worker/handlers/story-generation.ts:251`)
 - [x] `generateFullStoryAction` updates episode.story_data
 - [x] `generateFullStoryAction` updates episode status to 'story'
 - [x] `generateFullStoryAction` validates output with Zod schema
-- [x] `generateFullStoryAction` handles optimistic locking
-- [x] `generateFullStoryAction` completes within 30 seconds
+- [ ] `generateFullStoryAction` handles optimistic locking — *audit: no longer true* — version checked only when queueing (`packages/features/episodes/src/server/story-actions.ts:182`); the worker's write drops the guard (f64c9648)
+- [ ] `generateFullStoryAction` completes within 30 seconds — *audit: unverified* — runtime timing of an async agent job; needs a timed run
 - [x] All actions enforce authentication
-- [x] All actions respect RLS policies
+- [ ] All actions respect RLS policies — *audit: no longer true* — KB-31: story ideation builds its prompt from any episode, for any caller (`apps/web/lambda/llm-worker/index.ts:71`)
 
 ### Non-Functional
 
@@ -533,9 +539,9 @@ None (new feature)
 - [x] Handles LLM timeouts gracefully
 - [x] Handles LLM rate limits with retry
 - [x] Logs all generation attempts
-- [x] Tracks costs accurately
-- [ ] TypeScript compiles without errors
-- [ ] No ESLint warnings
+- [ ] Tracks costs accurately — *audit: unverified* — per-call cost is logged (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:666`) from `packages/llm/src/pricing.ts`; rates not checked against vendor prices
+- [ ] TypeScript compiles without errors — *audit: not met* — the actions compile, but the worker handlers fail a typecheck (`apps/web/lambda/llm-worker/handlers/story-generation.ts:329`); nothing runs one (KB-14)
+- [ ] No ESLint warnings — *audit: unverified* — linting is outside the audit rules; settle with `pnpm --filter @kit/episodes lint`
 
 ---
 
@@ -766,3 +772,12 @@ const result = await Promise.race([
 - **Constitution**: Section 5 (Error Handling)
 - **Anthropic Claude**: https://docs.anthropic.com/claude/docs
 - **OpenAI GPT-4**: https://platform.openai.com/docs
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| `generateStoryIdeasAction` calculates cost accurately | the ideation result hardcodes `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:131`) | unassigned |
+| `generateFullStoryAction` handles optimistic locking | the version guard was dropped from the worker's write (f64c9648, 669b66e3) because the orchestrator bumps `version` mid-run (`apps/web/lambda/llm-worker/handlers/story-generation.ts:471`) | owner |
+| All actions respect RLS policies | `generateStoryIdeasAction` never reads the episode through RLS, and the service-role worker builds its context from any `episodeId` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:65`) | KB-31 |
+| TypeScript compiles without errors | type errors in the worker handlers (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:58`, `apps/web/lambda/llm-worker/handlers/story-generation.ts:329`) | KB-14 |

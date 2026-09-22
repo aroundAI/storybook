@@ -2,6 +2,7 @@
 spec_id: FILM-1618
 title: Channel-Residual Subscriber Movement
 status: ✅ DONE
+audited: 2026-09-23
 effort: S
 dependencies: FILM-1601, FILM-1607
 ---

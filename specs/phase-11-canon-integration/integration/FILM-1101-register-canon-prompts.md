@@ -1,13 +1,16 @@
 ---
 id: FILM-1101
 title: Register Canon Prompts in Lambda Worker
-status: done
+status: 🗑️ RETIRED
+audited: 2026-09-23
 priority: critical
 effort: S
 dependencies: [FILM-1006]
 ---
 
 # FILM-1101: Register Canon Prompts in Lambda Worker
+
+> **🗑️ Retired (audit 2026-09-23).** The four canon-role prompts and their registry entries were deleted with the role orchestrator in 2f23eb4e (#220, 2026-05-23); FILM-1006 is retired with them. Only `canon-extraction` (FILM-1103) is still registered, at `apps/web/lambda/llm-worker/prompt-registry.ts:113`. Kept as a record; not outstanding work.
 
 ## Overview
 
@@ -141,4 +144,4 @@ describe('Canon Role Prompts Registration', () => {
 
 ## Implementation Status
 
-**Implemented** in PR #175 — merged 2026-02-09
+**🗑️ RETIRED** (audit 2026-09-23; was **Implemented** in PR #175 — merged 2026-02-09)

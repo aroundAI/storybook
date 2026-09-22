@@ -1,6 +1,12 @@
+---
+spec_id: FILM-307
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-307: Shot List Generation Server Actions
 
-**Status**: ✅ DONE
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
 **Phase**: 3
 **Priority**: P0
 **Effort**: L (5-7 days)
@@ -185,17 +191,17 @@ export const generateShotListAction = enhanceAction(
 
 ## Acceptance Criteria
 
-**Status**: ✅ Complete (2025-12-08)
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ Complete (2025-12-08))
 **Implementation**: Verified 2025-12-11
 
 - [x] `generateShotListAction` generates shots from screenplay
-- [x] Creates shot records via batchCreateShotsAction
+- [ ] ~~Creates shot records via batchCreateShotsAction~~ — *audit: retired* — the job flow inserts shots directly (`apps/web/lambda/llm-worker/handlers/shot-generation.ts:412`); `batchCreateShotsAction` has no callers
 - [x] Updates episode.shot_list with metadata
 - [x] Validates output with Zod schema
-- [x] Handles optimistic locking
-- [x] Completes within 40 seconds
+- [ ] Handles optimistic locking — *audit: no longer true* — the worker's write drops the version guard (`apps/web/lambda/llm-worker/handlers/shot-generation.ts:451`, 669b66e3)
+- [ ] Completes within 40 seconds — *audit: unverified* — runtime timing of an async agent job; needs a timed run
 - [x] Enforces authentication
-- [x] Supports both screenplay_data and story_data as input sources (fallback)
+- [ ] ~~Supports both screenplay_data and story_data as input sources (fallback)~~ — *audit: retired* — eb3b01f0 moved to per-scene processing, which needs a screenplay (`packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts:68`)
 
 ---
 
@@ -204,3 +210,9 @@ export const generateShotListAction = enhanceAction(
 - **FILM-303**: Shot CRUD actions (implemented together)
 - **FILM-306**: Screenplay conversion
 - **FILM-304**: Prompt templates
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Handles optimistic locking | no version guard on the worker's write since 669b66e3 (`apps/web/lambda/llm-worker/handlers/shot-generation.ts:451`) | owner |

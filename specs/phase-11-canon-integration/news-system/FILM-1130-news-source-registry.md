@@ -1,7 +1,8 @@
 ---
 id: FILM-1130
 title: External Source Registry (News/Research)
-status: done
+status: ✅ DONE
+audited: 2026-09-23
 priority: medium
 effort: M
 dependencies: [FILM-1135]

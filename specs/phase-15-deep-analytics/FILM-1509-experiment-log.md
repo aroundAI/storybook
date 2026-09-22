@@ -1,7 +1,8 @@
 ---
 spec_id: FILM-1509
 title: Analytics Experiment Log
-status: ✅ DONE
+status: 🟡 PARTIAL
+audited: 2026-09-23
 effort: M
 dependencies: FILM-1502
 ---
@@ -63,10 +64,10 @@ create table if not exists public.experiment_tags (
 
 ## 4. Acceptance Criteria
 
-- [ ] Full lifecycle works: create → link publishes/tags → start (baseline captured) → conclude (results captured, actual_outcome required)
-- [ ] Metric deltas render on the detail view
-- [ ] RLS: second account's user cannot read or modify
-- [ ] Experiments appear newest-first with filter by status
+- [ ] Full lifecycle works: create → link publishes/tags → start (baseline captured) → conclude (results captured, actual_outcome required) — *audit: not met* — tags cannot be linked (form always sends `tagIds: []`, `experiment-form.tsx:101`); the rest passes `apps/e2e/tests/experiments/experiments.spec.ts:224`
+- [x] Metric deltas render on the detail view — *audit:* baseline and result of the watched metric (FILM-1610): `apps/e2e/tests/experiments/experiments-evidence.spec.ts:198`, `:237`
+- [ ] RLS: second account's user cannot read or modify — *audit: unverified* — policies at `apps/web/supabase/migrations/20260827103738_analytics-experiments.sql:81`; pgTAP covers only an outsider linking (`experiment-publishes-account-rls.test.sql:89`)
+- [ ] Experiments appear newest-first with filter by status — *audit: not met* — newest-first holds (`experiment-actions.ts:736`); the page has no status filter and never passes `status`
 
 ## 5. Verification
 
@@ -74,3 +75,10 @@ create table if not exists public.experiment_tags (
 pnpm --filter web supabase migration up && pnpm supabase:web:typegen
 pnpm --filter @kit/content-analytics test
 ```
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Link tags to an experiment | The server accepts `tagIds` (`packages/features/content-analytics/src/server/experiment-actions.ts:324`), but the form always sends `tagIds: []` (`packages/features/content-analytics/src/components/experiments/experiment-form.tsx:101`) and `TagPicker` has never had a caller. The same missing tag UI leaves FILM-1507 open | unassigned |
+| Filter experiments by status | `listExperimentsAction` accepts `status` (`experiment-actions.ts:733`), but the page calls it with `{ accountId }` only (`apps/web/app/home/[account]/studio/analytics/experiments/_components/experiments-client.tsx:79`) and renders no filter. It never had one. FILM-1610's "Due for review" list is a different question | unassigned |

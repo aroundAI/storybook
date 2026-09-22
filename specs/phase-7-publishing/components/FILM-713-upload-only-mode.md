@@ -1,10 +1,16 @@
+---
+spec_id: FILM-713
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-713: Upload-Only Mode
 
 ## Metadata
 - **Phase:** 7 - Publishing
 - **Priority:** P2 (Future Enhancement)
 - **Effort:** S (2-4 hours)
-- **Status:** ✅ DONE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
 - **Dependencies:** FILM-708 (Publish Hub), FILM-705-707 (OAuth Flows)
 - **Blocks:** None
 
@@ -542,14 +548,14 @@ function extractContentId(url: string, platform: string): string | null {
 
 ## Acceptance Criteria
 
-- [x] Generate downloadable video file
-- [x] Generate downloadable thumbnail
-- [x] Copy-paste ready title, description, tags
-- [x] Platform-specific upload instructions
-- [x] Interactive checklist for upload steps
-- [x] Link to platform upload page
-- [x] Input for platform URL after upload
-- [x] Mark publish as external with URL tracking
+- [ ] Generate downloadable video file — *audit: no longer true* — built (`packages/features/publishing/src/components/upload-only-mode.tsx:175`), but no page has ever rendered `UploadOnlyMode` (`git log -S '<UploadOnlyMode'` is empty)
+- [ ] Generate downloadable thumbnail — *audit: no longer true* — built (`packages/features/publishing/src/components/upload-only-mode.tsx:197`), but no page has ever rendered `UploadOnlyMode`
+- [ ] Copy-paste ready title, description, tags — *audit: no longer true* — built (`packages/features/publishing/src/components/upload-only-mode.tsx:210`), but no page has ever rendered `UploadOnlyMode`
+- [ ] Platform-specific upload instructions — *audit: no longer true* — built (`packages/features/publishing/src/components/upload-only-mode.tsx:296`), but no page has ever rendered `UploadOnlyMode`
+- [ ] Interactive checklist for upload steps — *audit: no longer true* — built (`packages/features/publishing/src/components/upload-only-mode.tsx:305`), but no page has ever rendered `UploadOnlyMode`
+- [ ] Link to platform upload page — *audit: no longer true* — built (`packages/features/publishing/src/components/upload-only-mode.tsx:333`), but no page has ever rendered `UploadOnlyMode`
+- [ ] Input for platform URL after upload — *audit: no longer true* — built (`packages/features/publishing/src/components/upload-only-mode.tsx:357`), but no page has ever rendered `UploadOnlyMode`
+- [ ] Mark publish as external with URL tracking — *audit: no longer true* — `markAsExternallyUploadedAction` (`packages/features/publishing/src/server/upload-only-actions.ts:283`) is called only from that never-rendered component
 
 ---
 
@@ -561,9 +567,9 @@ function extractContentId(url: string, platform: string): string | null {
 - [x] Test description formatting per platform
 
 ### Integration Tests
-- [ ] Test export package generation
-- [ ] Test external upload marking
-- [ ] Test publish record creation
+- [ ] Test export package generation — *audit: not met* — no test found
+- [ ] Test external upload marking — *audit: not met* — no test found
+- [ ] Test publish record creation — *audit: not met* — no test found
 
 ---
 
@@ -574,3 +580,9 @@ function extractContentId(url: string, platform: string): string | null {
 | Video not ready | Show message to finalize video first |
 | No thumbnail | Allow upload without thumbnail |
 | Invalid URL | Validate URL format before saving |
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| All eight criteria (export package, copy-ready metadata, instructions, checklist, upload link, URL capture, external marking) | Built and partly unit-tested, but no page renders `UploadOnlyMode` (`packages/features/publishing/src/components/upload-only-mode.tsx`), and none ever has: `git log -S '<UploadOnlyMode'` finds no mount | unassigned |

@@ -1,3 +1,9 @@
+---
+spec_id: SPIKE-02
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # SPIKE-02: FFmpeg Video Rendering Pipeline
 
 ## Metadata
@@ -145,12 +151,12 @@ Our episodes consist of multiple shots (videos) that need to be stitched togethe
 
 ## Success Criteria
 
-- [x] Working POC that stitches 10 videos with transitions
-- [x] Audio synchronization working correctly
+- [ ] ~~Working POC that stitches 10 videos with transitions~~ — *audit: retired* — `packages/features/video-rendering/poc/` was deleted in 5b88db3a; the edit suite now exports via `packages/features/edit-suite/src/lib/ffmpeg-builder.ts:101`
+- [ ] ~~Audio synchronization working correctly~~ — *audit: retired* — the PoC's audio mixer (`packages/features/video-rendering/src/ffmpeg/audio-mixer.ts`) was deleted in 5b88db3a
 - [x] Performance benchmarks for FFmpeg, Remotion, and 2+ cloud services
 - [x] Cost projection for each approach at scale
 - [x] Clear recommendation with justification
-- [x] Docker container with FFmpeg ready for deployment
+- [ ] ~~Docker container with FFmpeg ready for deployment~~ — *audit: retired* — `packages/features/video-rendering/Dockerfile` was deleted with server-side rendering in 5b88db3a
 - [x] Integration design for timeline editor
 - [x] Documentation of edge cases and limitations
 

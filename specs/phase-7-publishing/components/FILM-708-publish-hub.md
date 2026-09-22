@@ -1,10 +1,16 @@
+---
+spec_id: FILM-708
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-708: Publish Hub
 
 ## Metadata
 - **Phase:** 7 - Publishing
 - **Priority:** P1 (Post-MVP)
 - **Effort:** L (1-3 days)
-- **Status:** ✅ DONE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
 - **Dependencies:** FILM-701-704 (Platform Providers), FILM-705-707 (OAuth), FILM-312 (Episode Workspace)
 - **Blocks:** None
 
@@ -565,32 +571,32 @@ async function publishToFacebook(
 
 ## Acceptance Criteria
 
-- [x] Shows all connected platforms with toggle
-- [x] Unconnected platforms show "Connect" action
-- [x] Metadata can be customized per platform
+- [ ] ~~Shows all connected platforms with toggle~~ — *audit: retired* — replaced by language routing: each video goes to every connected channel of its language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1041`)
+- [ ] ~~Unconnected platforms show "Connect" action~~ — *audit: retired* — connecting moved to Settings › Platforms, linked from the screen (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:129`, `:160`)
+- [ ] ~~Metadata can be customized per platform~~ — *audit: retired* — one title/description/tags set for every channel (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:52`), translated per language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:907`)
 - [x] Thumbnail preview works
-- [x] Scheduling works for supported platforms
+- [ ] Scheduling works for supported platforms — *audit: unverified* — panel → `scheduled` rows → cron → publish-worker (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:800`, `sst.config.ts:1435`); no test drives a due publish
 - [x] Publish triggers all selected platforms
 - [x] Real-time status updates during publish
 - [x] Success shows platform URLs
 - [x] Errors are displayed per platform
-- [x] Can retry failed publishes
+- [ ] Can retry failed publishes — *audit: no longer true* — `retryPublishAction` (`packages/features/publishing/src/server/publish-actions.ts:586`) is called only by `PublishHub`, which no page renders since baa752eb
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test platform config initialization
-- [ ] Test metadata validation
-- [ ] Test scheduling logic
+- [ ] Test platform config initialization — *audit: not met* — no test found
+- [ ] Test metadata validation — *audit: not met* — no test found
+- [ ] Test scheduling logic — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Test multi-platform publish flow
-- [ ] Test status polling
+- [ ] Test multi-platform publish flow — *audit: not met* — `packages/features/publishing/__tests__/publish-actions.test.ts` mocks every provider and never calls `publishToAllAction`
+- [ ] Test status polling — *audit: not met* — `packages/features/publishing/__tests__/publish-actions.test.ts:126` calls `getPublishStatusAction` once and asserts only `toBeDefined()`
 
 ### E2E Tests
-- [ ] Full publish flow with mocked providers
+- [ ] Full publish flow with mocked providers — *audit: not met* — no test found
 
 ---
 
@@ -657,3 +663,9 @@ async function publishToFacebook(
 - Added Twitter and LinkedIn support (6 platforms vs 4 in spec)
 - Added `accountSlug` prop for proper navigation
 - Used existing provider implementations from `@kit/publishing/providers/*`
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Can retry failed publishes | `retryPublishAction` exists, but its only caller is `PublishHub`, which no page has rendered since baa752eb (2026-01-06) moved `/publish` to `PublishScreen`. The publish screen lists a failed publish with its error (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/published-content-section.tsx:145`) and offers no retry | unassigned |

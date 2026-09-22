@@ -1,7 +1,13 @@
+---
+spec_id: FILM-707
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-707: Meta OAuth (Instagram & Facebook)
 
 ## Metadata
-- **Status:** DONE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was DONE)
 - **Phase:** 7 - Publishing
 - **Priority:** P1 (Post-MVP)
 - **Effort:** M (4-8 hours)
@@ -476,29 +482,29 @@ export const disconnectMetaAction = enhanceAction(
 
 ## Acceptance Criteria
 
-- [ ] Connect button redirects to Facebook Login
-- [ ] Consent screen shows correct permissions
-- [ ] User can select which Pages to connect
-- [ ] Long-lived tokens are obtained (60-day)
-- [ ] Page access tokens are stored per-page
-- [ ] Instagram Business accounts are detected
-- [ ] Instagram connections link to parent Page
-- [ ] Token refresh works for both platforms
-- [ ] Disconnect removes related connections
-- [ ] Proper error messages for permission issues
+- [x] Connect button redirects to Facebook Login — *audit:* `apps/web/app/api/platforms/connect/meta/route.ts:116`
+- [ ] Consent screen shows correct permissions — *audit: unverified* — Meta renders it; needs a consent run on the owner's app (App Review pending, KB-20)
+- [ ] User can select which Pages to connect — *audit: unverified* — no in-app choice: every Page `/me/accounts` returns is connected (`apps/web/app/api/platforms/callback/meta/route.ts:221`); only Meta's dialog could choose
+- [x] Long-lived tokens are obtained (60-day) — *audit:* `apps/web/app/api/platforms/callback/meta/route.ts:139`
+- [x] Page access tokens are stored per-page — *audit:* `apps/web/app/api/platforms/callback/meta/route.ts:221`
+- [x] Instagram Business accounts are detected — *audit:* `apps/web/app/api/platforms/callback/meta/route.ts:262`
+- [x] Instagram connections link to parent Page — *audit:* `apps/web/app/api/platforms/callback/meta/route.ts:293`
+- [ ] Token refresh works for both platforms — *audit: not met* — `refreshMetaToken` reads `account_oauth_apps` (`packages/features/publishing/src/lib/token-refresh.ts:428`); connect uses global credentials, and nothing writes that table since 3238dd61 — KB-29
+- [x] Disconnect removes related connections — *audit:* `packages/features/publishing/src/oauth/meta/disconnect.ts:83`, `packages/features/publishing/src/oauth/meta/disconnect.ts:98` (it also cascades further: KB-22)
+- [x] Proper error messages for permission issues — *audit:* `apps/e2e/tests/platform-connections/connect-failure.spec.ts:94` (KB-19, #297)
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test state encoding/decoding
-- [ ] Test page selection logic
+- [x] Test state encoding/decoding — *audit:* `apps/e2e/tests/platform-connections/connect-failure.spec.ts:126`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:172`
+- [ ] Test page selection logic — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Test OAuth flow with mocked Meta endpoints
-- [ ] Test token refresh
-- [ ] Test Instagram-Page linking
+- [ ] Test OAuth flow with mocked Meta endpoints — *audit: not met* — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)
+- [x] Test token refresh — *audit:* `packages/features/publishing/__tests__/token-refresh.test.ts:332`
+- [ ] Test Instagram-Page linking — *audit: not met* — callback linking untested; only refresh's use of `linked_page_id` is (`packages/features/publishing/__tests__/token-refresh.test.ts:284`)
 
 ---
 
@@ -547,3 +553,9 @@ export const disconnectMetaAction = enhanceAction(
 
 - [ ] Should we support multiple Pages per connection? (post-MVP)
 - [ ] Should we store Page category for filtering? (future)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Token refresh works for both platforms | `refreshMetaToken` takes the app secret from `account_oauth_apps` (`packages/features/publishing/src/lib/token-refresh.ts:428`); Meta connect has used `oauth_app_credentials` since 3238dd61 (2026-01-21) and nothing writes the former, so an account without an older row fails its refresh and is marked inactive. The passing test mocks the lookup (`packages/features/publishing/__tests__/token-refresh.test.ts:55`) | KB-29 |

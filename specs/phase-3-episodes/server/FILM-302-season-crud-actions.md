@@ -1,3 +1,9 @@
+---
+spec_id: FILM-302
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-302: Season CRUD Server Actions
 
 **Phase**: 3
@@ -447,23 +453,23 @@ None (new feature)
 - [x] `createSeasonAction` successfully creates season with valid data
 - [x] `createSeasonAction` auto-assigns season number if not provided
 - [x] `createSeasonAction` prevents duplicate season numbers
-- [x] `createSeasonAction` respects RLS (cannot create for inaccessible project)
+- [ ] `createSeasonAction` respects RLS (cannot create for inaccessible project) — *audit: unverified* — policy `seasons_create` exists (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:615`); no pgTAP test exercises it
 - [x] `getProjectSeasonsAction` returns all non-deleted seasons
 - [x] `getProjectSeasonsAction` includes accurate episode counts
 - [x] `getProjectSeasonsAction` orders by season number
 - [x] `updateSeasonAction` updates only provided fields
 - [x] `updateSeasonAction` updates updated_at timestamp
 - [x] `deleteSeasonAction` soft deletes season
-- [x] `deleteSeasonAction` sets episodes' season_id to NULL
+- [ ] ~~`deleteSeasonAction` sets episodes' season_id to NULL~~ — *audit: retired* — replaced in 5ddb6752 (#229): deleting a season soft-deletes its episodes and shots (`packages/features/episodes/src/lib/server/mutations/season-actions.ts:395`)
 - [x] All actions enforce authentication
 
 ### Non-Functional
 
-- [x] All actions complete within 2 seconds
+- [ ] All actions complete within 2 seconds — *audit: unverified* — runtime timing; needs a timed run against a seeded database
 - [x] All inputs validated with Zod schemas
 - [x] All database errors properly caught and thrown
 - [x] TypeScript compiles without errors (season files)
-- [x] No ESLint warnings
+- [ ] No ESLint warnings — *audit: unverified* — linting is outside the audit rules; settle with `pnpm --filter @kit/episodes lint`
 
 ---
 

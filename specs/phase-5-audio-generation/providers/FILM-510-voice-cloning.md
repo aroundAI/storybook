@@ -1,4 +1,12 @@
-# FILM-510: Voice Cloning ✅ DONE
+---
+spec_id: FILM-510
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
+# FILM-510: Voice Cloning 🗑️ RETIRED (was ✅ DONE)
+
+> **🗑️ Retired (audit 2026-09-23).** In-app voice cloning never reached users — `VoiceCloningEditor` has never been mounted anywhere in `apps/` — and `05ec0ae9` (2026-01-03) dropped the `voice_profiles` and `voice_consent` tables it writes, its migration declaring the voice-cloning schema deprecated. `packages/features/audio-generation/src/server/voice-clone-actions.ts` still queries both tables, so it could not succeed if called. Nothing in the app clones a voice: the character editor lists the account's ElevenLabs voices, cloned ones included (`packages/features/assets/src/lib/server/voice.actions.ts:100`), and stores the pick in `character_details.elevenlabs_voice_id`. Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 5 - Audio Generation
@@ -6,7 +14,7 @@
 - **Effort:** L (1-3 days)
 - **Dependencies:** FILM-501 (ElevenLabs Provider), FILM-206 (Voice Profile Editor)
 - **Blocks:** None
-- **Status:** ✅ DONE
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was ✅ DONE)
 - **Implementation Date:** 2025-12-11
 
 ---

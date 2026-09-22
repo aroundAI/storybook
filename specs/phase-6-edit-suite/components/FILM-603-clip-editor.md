@@ -1,10 +1,18 @@
+---
+spec_id: FILM-603
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-603: Clip Editor
+
+> **🗑️ Retired (audit 2026-09-23).** The double-click Clip Editor modal (`packages/features/episodes/src/components/timeline-editor/clip-editor.tsx`) was deleted in `5f44d0e1` (2026-02-19) with the rest of the old timeline editor; phase 14 (`specs/phase-14-edit-suite-v2/ENGINEERING.md`) replaced it with an Inspector panel shown on selection. That panel is unfinished: it renders only "Coming soon" placeholders (`packages/features/edit-suite/src/components/inspector/inspector-panel.tsx:37`), and `SpeedControl` and `KeyframeEditor` are mounted nowhere, so clip speed, volume and fades cannot be edited today; trimming happens on the timeline (`packages/features/edit-suite/src/components/timeline/clip-block.tsx:273`). That open work is recorded under PHASE-14. Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 6 - Edit Suite
 - **Priority:** P1 (Post-MVP)
 - **Effort:** L (1-3 days)
-- **Status:** ✅ Done
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was ✅ Done)
 - **Dependencies:** FILM-601 (Timeline Editor) ✅, FILM-602 (Track Layer) ⚠️
 - **Blocks:** None
 

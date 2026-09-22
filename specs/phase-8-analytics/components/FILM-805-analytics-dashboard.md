@@ -1,3 +1,9 @@
+---
+spec_id: FILM-805
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-805: Analytics Dashboard
 
 ## Metadata
@@ -545,7 +551,7 @@ function EngagementRate({ likes, comments, views }: {
 
 - [x] Shows aggregate metrics across all platforms
 - [x] Supports date range selection with presets
-- [x] Filters by selected platforms
+- [ ] Filters by selected platforms — *audit: no longer true* — chart, content and breakdown filter; the metric row and Overview totals do not (`getProjectAnalyticsAction` takes no platforms, since f58f4433) — `packages/features/content-analytics/src/components/analytics-dashboard.tsx:94`
 - [x] Shows performance over time chart
 - [x] Shows platform breakdown comparison
 - [x] Lists all content with sortable columns
@@ -553,7 +559,7 @@ function EngagementRate({ likes, comments, views }: {
 - [x] Shows audience demographics
 - [x] Includes AI insights tab
 - [x] Export functionality works
-- [x] Shows last sync time
+- [ ] Shows last sync time — *audit: no longer true* — "Last updated" is the page's fetch time (`dataUpdatedAt`); `getSyncStatusAction` is rendered nowhere — `packages/features/content-analytics/src/components/analytics-dashboard.tsx:266`
 - [x] Auto-refreshes every 5 minutes
 
 ---
@@ -561,13 +567,13 @@ function EngagementRate({ likes, comments, views }: {
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test `calculateTotals` aggregation
-- [ ] Test `aggregateDailyMetrics` date filling
-- [ ] Test `aggregateByPlatform` grouping
+- [ ] Test `calculateTotals` aggregation — *audit: not met* — no test found; totals are summed in `getEpisodeAnalytics`/`getProjectAnalytics`, whose tests mock them empty
+- [ ] Test `aggregateDailyMetrics` date filling — *audit: not met* — no test found; the dashboard's daily series (`queryDailyTimeSeriesByPlatform`) is not date-filled
+- [x] Test `aggregateByPlatform` grouping — *audit:* `packages/clickhouse/__tests__/clickhouse.test.ts:338` (`queryPlatformBreakdown`, its replacement)
 
 ### Integration Tests
-- [ ] Test full analytics query with mock data
-- [ ] Test date range filtering
+- [x] Test full analytics query with mock data — *audit:* `packages/features/content-analytics/__tests__/dashboard-project-access.test.ts:105`
+- [x] Test date range filtering — *audit:* `packages/clickhouse/__tests__/clickhouse.test.ts:269` (the shared `buildWhereClause`)
 
 ---
 
@@ -587,3 +593,10 @@ function EngagementRate({ likes, comments, views }: {
 | Desktop | Full dashboard with side-by-side charts |
 | Tablet | Stacked charts, collapsible filters |
 | Mobile | Single column, simplified metrics |
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Filters by selected platforms | The platform filter reaches the chart, content list and breakdown, but not the metric row or Overview totals: `getProjectAnalyticsAction` has no `platforms` input (`analytics-dashboard.tsx:94`), though ClickHouse's `buildWhereClause` supports one | unassigned |
+| Shows last sync time | The header's "Last updated" is react-query's `dataUpdatedAt` (`analytics-dashboard.tsx:266`); the real `last_synced_at` is returned by `getSyncStatusAction` (`sync-actions.ts:86`), which no UI calls | unassigned |

@@ -1,7 +1,8 @@
 ---
 spec_id: FILM-1506
 title: Video Dimension Table & Deep-Dive Query Layer
-status: ✅ DONE
+status: 🟡 PARTIAL
+audited: 2026-09-23
 effort: L
 dependencies: FILM-1502, FILM-1504, FILM-1505
 ---
@@ -75,11 +76,11 @@ All `enhanceAction` + Zod schemas in `_lib/schemas`, authz copied from `dashboar
 
 ## 6. Acceptance Criteria
 
-- [ ] `video_dim` rows exist for all published publishes; publish-success keeps it fresh; nightly reconcile heals drift
-- [ ] Median (both modes), rolling-90, traffic share, back-catalog, cohort, YPP, returning-proxy queries return hand-verified values on fixtures
-- [ ] Monthly median ≤ mean on right-skewed fixture data (sanity)
-- [ ] Cohort curves are age-aligned (Q3 cohort at 90d comparable to Q1 cohort at 90d)
-- [ ] `analytics_settings` defaults apply when no row exists
+- [ ] `video_dim` rows exist for all published publishes; publish-success keeps it fresh; nightly reconcile heals drift — *audit: unverified* — no publish-success hook; each hourly sync upserts its batch, full reconcile at 02:00 UTC (`packages/features/content-analytics/src/server/analytics-sync-cron.ts:161`); coverage needs a live database
+- [ ] Median (both modes), rolling-90, traffic share, back-catalog, cohort, YPP, returning-proxy queries return hand-verified values on fixtures — *audit: not met* — no fixture checks upload-month median, rolling, back-catalog or returning-proxy values; unit tests mock the client
+- [ ] Monthly median ≤ mean on right-skewed fixture data (sanity) — *audit: not met* — no test for the monthly median; the one skewed-data median test covers the experiment fold (`watched-metrics.test.ts:64`)
+- [x] Cohort curves are age-aligned (Q3 cohort at 90d comparable to Q1 cohort at 90d) — *audit:* each video judged at its own age (FILM-1604): `packages/clickhouse/__tests__/queries-advanced.test.ts:854`
+- [x] `analytics_settings` defaults apply when no row exists — *audit:* `packages/features/content-analytics/__tests__/ypp-targets.test.ts:60`, `:533` (defaults moved to `ypp-targets.ts` by FILM-1608)
 
 ## 7. Verification
 
@@ -88,3 +89,10 @@ pnpm --filter @kit/clickhouse migrate && pnpm --filter @kit/clickhouse test  # f
 pnpm --filter web supabase migration up && pnpm supabase:web:typegen
 pnpm --filter @kit/content-analytics test
 ```
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Deep-dive queries return hand-verified values on fixtures | `packages/clickhouse/__tests__/queries-advanced.test.ts` mocks the client, so it checks SQL and mapping, not computed values. CI's `verify` (`packages/clickhouse/scripts/verify-queries.ts`) runs every query against a real ClickHouse and value-checks only cohort maturity, traffic grouping and views-at-age. Upload-month medians (`queryMedianViewsPerVideo`, both modes), rolling views, back-catalog share and the returning-viewer proxy have no seeded-answer check; the seeded medians in `apps/e2e/tests/analytics/language-evidence.spec.ts:207` come from FILM-1702's `querySegmentPerformance`, a different query. `getReturningViewerProxyAction` has no test and no caller | unassigned |
+| Median ≤ mean sanity on skewed fixture data | No test compares them for the upload-month median. The only skewed-data median test is the experiment fold (`packages/features/content-analytics/__tests__/watched-metrics.test.ts:64`), a different function | unassigned |

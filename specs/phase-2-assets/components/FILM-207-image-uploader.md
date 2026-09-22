@@ -1,6 +1,12 @@
+---
+spec_id: FILM-207
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-207: Image Uploader Component
 
-**Status**: ✅ Completed (2025-12-09)
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ Completed 2025-12-09)
 **Phase**: 2
 **Priority**: P0
 **Effort**: S (1-2 days)
@@ -533,33 +539,33 @@ Add to `package.json`:
 
 ### Functional
 
-- [ ] Drag and drop zone renders with upload icon
-- [ ] Click opens file picker
-- [ ] Accepts PNG, JPG, JPEG, WebP only
-- [ ] Rejects files larger than 10MB
-- [ ] Displays validation errors inline
-- [ ] Shows progress bar during upload (0-100%)
-- [ ] Displays image preview after upload
-- [ ] Preview shows remove button
-- [ ] Preview shows zoom button
-- [ ] Zoom opens modal with full-size image
-- [ ] Remove button resets to dropzone
-- [ ] onUploadComplete callback fires with URLs
-- [ ] onRemove callback fires on remove
-- [ ] Prevents multiple simultaneous uploads
-- [ ] Handles network errors gracefully
-- [ ] Retry button appears on error
+- [x] Drag and drop zone renders with upload icon — *audit:* `packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:76-118`
+- [x] Click opens file picker — *audit:* react-dropzone root and input (`packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:58-71`, `:97`)
+- [x] Accepts PNG, JPG, JPEG, WebP only — *audit:* `packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:40`
+- [x] Rejects files larger than 10MB — *audit:* `packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:65`; `packages/features/assets/__tests__/upload-validation.test.ts:90`
+- [ ] Displays validation errors inline — *audit: not met* — type and size rejections are dropped silently: `onDrop` ignores them, no `onDropRejected` (`packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:48-56`)
+- [x] Shows progress bar during upload (0-100%) — *audit:* `packages/features/assets/src/components/image-uploader/use-image-upload.ts:154-163`, `packages/features/assets/src/components/image-uploader/ImageUploadProgress.tsx:70-73`
+- [x] Displays image preview after upload — *audit:* `packages/features/assets/src/components/image-uploader/ImageUploader.tsx:95-107`
+- [x] Preview shows remove button — *audit:* `packages/features/assets/src/components/image-uploader/ImagePreview.tsx:88-97`
+- [x] Preview shows zoom button — *audit:* `packages/features/assets/src/components/image-uploader/ImagePreview.tsx:78-87`
+- [x] Zoom opens modal with full-size image — *audit:* `packages/features/assets/src/components/image-uploader/ImagePreview.tsx:115-128`
+- [x] Remove button resets to dropzone — *audit:* `packages/features/assets/src/components/image-uploader/ImageUploader.tsx:51-54`, `:69` (the editors clear `fileUrl` on remove)
+- [x] onUploadComplete callback fires with URLs — *audit:* `packages/features/assets/src/components/image-uploader/use-image-upload.ts:202` (thumbnail URL equals the image URL since c17efd37)
+- [x] onRemove callback fires on remove — *audit:* `packages/features/assets/src/components/image-uploader/ImageUploader.tsx:53`
+- [x] Prevents multiple simultaneous uploads — *audit:* dropzone hidden and disabled while uploading (`packages/features/assets/src/components/image-uploader/ImageUploader.tsx:69`, `:83`)
+- [x] Handles network errors gracefully — *audit:* `packages/features/assets/src/components/image-uploader/use-image-upload.ts:174-176`, `:203-211`
+- [x] Retry button appears on error — *audit:* `packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:140-152`
 
 ### Non-Functional
 
-- [ ] Upload completes within 10 seconds (5MB file)
-- [ ] Smooth drag/drop animations
-- [ ] Responsive on mobile, tablet, desktop
-- [ ] Keyboard accessible (Tab, Enter, Space)
-- [ ] Screen reader announces upload status
-- [ ] Focus visible on interactive elements
-- [ ] TypeScript compiles without errors
-- [ ] No ESLint warnings
+- [ ] Upload completes within 10 seconds (5MB file) — *audit: unverified* — runtime timing; nothing measures it
+- [ ] Smooth drag/drop animations — *audit: unverified* — transitions exist (`packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:79`, `:111`); smoothness is visual
+- [ ] Responsive on mobile, tablet, desktop — *audit: unverified* — needs viewport screenshots; preview actions appear only on hover
+- [x] Keyboard accessible (Tab, Enter, Space) — *audit:* focusable `role="button"` root with react-dropzone key handling (`packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:77`, `:91-94`)
+- [ ] Screen reader announces upload status — *audit: unverified* — live region while uploading (`packages/features/assets/src/components/image-uploader/ImageUploadProgress.tsx:43-44`), alert on error; success unannounced
+- [ ] Focus visible on interactive elements — *audit: not met* — zoom and remove sit in an `opacity-0` overlay shown only on hover (`packages/features/assets/src/components/image-uploader/ImagePreview.tsx:77`)
+- [x] TypeScript compiles without errors — *audit:* main CI run 35779959194 (6dfa35a4; code unchanged since): `@kit/assets:typecheck` ran uncached, no errors
+- [x] No ESLint warnings — *audit:* main CI run 35779959194: `@kit/assets:lint` ran uncached, printed nothing
 
 ---
 
@@ -799,3 +805,10 @@ describe('ImageUploader', () => {
 - **react-dropzone**: https://react-dropzone.js.org/
 - **Next.js Image**: https://nextjs.org/docs/app/api-reference/components/image
 - **Constitution**: Section 2.3 (Component Pattern)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Validation errors inline | Files react-dropzone rejects (over 10 MB, wrong type) never reach `upload()`: `onDrop` ignores rejections and there is no `onDropRejected` (`packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:48-56`), so nothing is shown | unassigned |
+| Focus visible | Zoom and remove are inside an `opacity-0` overlay revealed only by `group-hover` (`packages/features/assets/src/components/image-uploader/ImagePreview.tsx:77`) | unassigned |

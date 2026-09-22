@@ -1,10 +1,18 @@
+---
+spec_id: FILM-710
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-710: Metadata Editor
+
+> **🗑️ Retired (audit 2026-09-23).** `MetadataEditor` (with `ThumbnailSelector` and `PlatformSpecificSettingsComponent`) was rendered only inside `PublishHub`, which no page has rendered since baa752eb (2026-01-06) switched the `/publish` route to `PublishScreen`; the components are still in `packages/features/publishing/src/components/`, unused. In `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/`, the publish screen takes one title, description and tag list for every channel (`publish-settings-sidebar.tsx:52`), translates it per language (`publish-screen.tsx:907`), schedules through `ScheduleReleasePanel` (`publish-screen.tsx:1431`) and takes one thumbnail per language (`video-card.tsx:88`). It has no per-platform settings, character counters or validation, and every YouTube upload goes out as category 22, not made for kids (`packages/features/publishing/src/server/publish-actions.ts:682`, `:685`) — tracked as KB-30. Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 7 - Publishing
 - **Priority:** P1 (Post-MVP)
 - **Effort:** M (4-8 hours)
-- **Status:** ✅ DONE
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was ✅ DONE)
 - **Dependencies:** FILM-701-704 (Platform Providers)
 - **Blocks:** FILM-708 (Publish Hub)
 

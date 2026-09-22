@@ -2,6 +2,7 @@
 spec_id: FILM-1611
 title: Deep Dive Channel Selector & Orphan Wiring
 status: ✅ DONE
+audited: 2026-09-23
 effort: M
 dependencies: FILM-1606, FILM-1608, FILM-1609
 ---
@@ -120,7 +121,7 @@ on screen and lose the reason it is empty.
 - [x] The Language option calls the segment action, not the tag action
 - [x] `RevenueMixCard` renders, and every revenue category resolves to a label and a colour
 - [x] `ExportReports` receives an account id, not a slug
-- [x] `DeepDiveTab` holds its filter state in a single state object
+- [ ] ~~`DeepDiveTab` holds its filter state in a single state object~~ — *audit: retired* — state lifted to the dashboard (`packages/features/content-analytics/src/components/analytics-dashboard.tsx:79`) in 96f534e0 (FILM-1615) so Deep Dive and the Video Log share one channel; the tab passes one `filters` object (`packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:137`)
 - [x] No new ClickHouse query is added by this spec
 - [x] Loading states are rendered for every newly mounted card
 

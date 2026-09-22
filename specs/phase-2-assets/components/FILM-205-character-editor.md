@@ -1,12 +1,18 @@
+---
+spec_id: FILM-205
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-205: Character Editor Component
 
-**Status**: ✅ Completed (2025-12-08)
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ Completed 2025-12-08)
 **Phase**: 2
 **Priority**: P0
 **Effort**: L (5-8 days)
 **Dependencies**: FILM-202 (character actions), FILM-204 (AssetGallery)
 **Blocks**: None
-**Status**: ✅ Complete (2025-12-08)
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ Complete 2025-12-08)
 
 ---
 
@@ -1018,12 +1024,12 @@ The actual CharacterFormSchema includes additional fields not in original spec:
 
 ### Functional
 
-- [x] Form displays all character fields organized in sections
+- [ ] ~~Form displays all character fields organized in sections~~ — *audit: retired* — f20294cc cut the form to name, description, image and voice (`packages/features/assets/src/components/character-editor/CharacterEditorForm.tsx:39-68`)
 - [x] Basic info section always visible (name, description)
-- [x] Physical attributes in collapsible accordion
-- [x] Personality traits in collapsible accordion
-- [x] Clothing style in collapsible accordion
-- [x] Backstory in collapsible accordion
+- [ ] ~~Physical attributes in collapsible accordion~~ — *audit: retired* — section removed from the form in f20294cc; its component is no longer rendered
+- [ ] ~~Personality traits in collapsible accordion~~ — *audit: retired* — section removed from the form in f20294cc; its component is no longer rendered
+- [ ] ~~Clothing style in collapsible accordion~~ — *audit: retired* — section removed from the form in f20294cc; its component is no longer rendered
+- [ ] ~~Backstory in collapsible accordion~~ — *audit: retired* — section removed from the form in f20294cc; its component is no longer rendered
 - [x] Form validates all fields with Zod schema
 - [x] Field-level errors displayed inline
 - [x] Submit button with loading state during submission
@@ -1042,9 +1048,9 @@ The actual CharacterFormSchema includes additional fields not in original spec:
 
 - [x] Form submission uses useTransition for non-blocking UX
 - [x] Responsive layout with Tailwind (space-y, grid)
-- [x] Responsive on tablet/desktop (2-column layout for attributes)
+- [ ] ~~Responsive on tablet/desktop (2-column layout for attributes)~~ — *audit: retired* — the attribute sections were removed in f20294cc
 - [x] Keyboard navigation works (native HTML form)
-- [x] All fields have ARIA labels via FormLabel
+- [ ] All fields have ARIA labels via FormLabel — *audit: no longer true* — since 41c76442 the image's "Visual Reference" `FormLabel` sits outside any `FormField`, labelling nothing (`packages/features/assets/src/components/character-editor/sections/CharacterImageUpload.tsx:44`)
 - [x] Error messages displayed via FormMessage
 - [x] Focus management via react-hook-form
 - [x] TypeScript compiles without errors (FILM-205 specific files)
@@ -1142,3 +1148,9 @@ describe('CharacterEditor', () => {
 - **React Hook Form**: https://react-hook-form.com/
 - **Zod**: https://zod.dev/
 - **Constitution**: Section 2.3 (Component Pattern)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Labels via FormLabel | The "Visual Reference" `FormLabel` is outside any `FormField` (`packages/features/assets/src/components/character-editor/sections/CharacterImageUpload.tsx:44`), so it renders `for="undefined-form-item"` and labels no control | unassigned |

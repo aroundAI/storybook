@@ -1,3 +1,9 @@
+---
+spec_id: FILM-101d
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-101 Assets Table
 
 ## Metadata
@@ -151,30 +157,30 @@ FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamps();
 | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
 
 ## Acceptance Criteria
-- [ ] Table created successfully with all columns
-- [ ] Foreign key to projects with CASCADE delete
-- [ ] Unique constraint on (project_id, type, name)
-- [ ] Type check constraint enforces valid enum values
-- [ ] Indexes created for common query patterns
-- [ ] GIN index on metadata JSONB column
-- [ ] Timestamps auto-populate and auto-update
+- [x] Table created successfully with all columns — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:122`
+- [x] Foreign key to projects with CASCADE delete — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:124`
+- [x] Unique constraint on (project_id, type, name) — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:134`
+- [x] Type check constraint enforces valid enum values — *audit:* `apps/web/supabase/migrations/20260127225653_master_video_schema.sql:22` (widened with `master_video`, `master_title_card`)
+- [x] Indexes created for common query patterns — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:142-145`
+- [x] GIN index on metadata JSONB column — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:145`
+- [x] Timestamps auto-populate and auto-update — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:148`
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Insert asset with valid project_id succeeds
-- [ ] Insert asset with invalid type fails (check constraint)
-- [ ] Insert duplicate asset name for same project+type fails (unique constraint)
-- [ ] Insert same asset name for different types succeeds
-- [ ] Insert same asset name for different projects succeeds
-- [ ] Timestamps populate automatically on insert
-- [ ] Timestamps update automatically on update
+- [ ] Insert asset with valid project_id succeeds — *audit: not met* — no test asserts it; pgTAP inserts assets only as fixtures (`apps/web/supabase/tests/database/authors-deletable.test.sql:62`)
+- [ ] Insert asset with invalid type fails (check constraint) — *audit: not met* — no test of the constraint; only the Zod enum is tested (`packages/features/assets/__tests__/asset-actions.test.ts:64`)
+- [ ] Insert duplicate asset name for same project+type fails (unique constraint) — *audit: not met* — no test found
+- [ ] Insert same asset name for different types succeeds — *audit: not met* — no test found
+- [ ] Insert same asset name for different projects succeeds — *audit: not met* — no test found
+- [ ] Timestamps populate automatically on insert — *audit: not met* — no test found
+- [ ] Timestamps update automatically on update — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Deleting a project cascades to delete all its assets
-- [ ] Extension tables (character_details, voice_profiles) cascade delete
-- [ ] JSONB metadata accepts valid JSON and rejects invalid JSON
-- [ ] GIN index allows efficient JSONB queries (metadata @> '{"tags": ["protagonist"]}')
+- [ ] Deleting a project cascades to delete all its assets — *audit: not met* — no test found
+- [ ] Extension tables (character_details, voice_profiles) cascade delete — *audit: not met* — no test found; `voice_profiles` no longer exists (`apps/web/supabase/migrations/20260103075610_remove_deprecated_voice_profiles.sql:13`)
+- [ ] JSONB metadata accepts valid JSON and rejects invalid JSON — *audit: not met* — no test found
+- [ ] GIN index allows efficient JSONB queries (metadata @> '{"tags": ["protagonist"]}') — *audit: not met* — no test found
 
 ### Type-Specific Tests
 ```sql
@@ -193,10 +199,10 @@ SELECT * FROM assets WHERE project_id = 'test-project-id' AND type = 'character'
 ```
 
 ### Edge Cases
-- [ ] Very long name (255 char limit)
-- [ ] NULL description, file_url, thumbnail_url allowed
-- [ ] Empty metadata JSONB ('{}')
-- [ ] Large metadata JSONB (1MB+)
-- [ ] Query performance with 1000+ assets per project
-- [ ] Asset with file_url but no thumbnail_url
-- [ ] Asset with thumbnail_url but no file_url (valid for abstract concepts)
+- [x] Very long name (255 char limit) — *audit:* `packages/features/assets/__tests__/asset-actions.test.ts:120` ("should reject name over 255 characters", app schema)
+- [ ] NULL description, file_url, thumbnail_url allowed — *audit: not met* — no DB test; only the app schema's omitted-fields case is tested (`packages/features/assets/__tests__/asset-actions.test.ts:87`)
+- [ ] Empty metadata JSONB ('{}') — *audit: not met* — no test found
+- [ ] Large metadata JSONB (1MB+) — *audit: not met* — no test found
+- [ ] Query performance with 1000+ assets per project — *audit: not met* — no test found
+- [ ] Asset with file_url but no thumbnail_url — *audit: not met* — no test found
+- [ ] Asset with thumbnail_url but no file_url (valid for abstract concepts) — *audit: not met* — no test found

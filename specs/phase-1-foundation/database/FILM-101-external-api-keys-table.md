@@ -1,10 +1,16 @@
+---
+spec_id: FILM-101n
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-101 External API Keys Table
 
 ## Metadata
 - **Phase:** 1
 - **Priority:** P0
 - **Effort:** XS
-- **Status:** ✅ COMPLETE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ COMPLETE)
 - **Completed:** 2025-12-05
 - **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
 - **Dependencies:** None (depends on existing accounts)
@@ -156,28 +162,28 @@ if (byokKey) {
 | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
 
 ## Acceptance Criteria
-- [ ] Table created with all columns
-- [ ] Unique constraint on (account_id, provider)
-- [ ] Provider enum constraint enforced
-- [ ] encrypted_key is TEXT (supports variable-length encrypted strings)
-- [ ] Can mark key as inactive without deletion
-- [ ] last_used_at tracks usage
+- [x] Table created with all columns — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:284`
+- [x] Unique constraint on (account_id, provider) — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:293`
+- [x] Provider enum constraint enforced — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:292`
+- [x] encrypted_key is TEXT (supports variable-length encrypted strings) — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:288`
+- [x] Can mark key as inactive without deletion — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:289`
+- [ ] last_used_at tracks usage — *audit: not met* — nothing writes it when a key is used; the only write sets it to null on save (`apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts:111`)
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Insert key with valid provider succeeds
-- [ ] Insert key with invalid provider fails
-- [ ] Insert duplicate key for same account+provider fails (unique constraint)
-- [ ] Insert key for different provider succeeds
-- [ ] Timestamps populate automatically
+- [ ] Insert key with valid provider succeeds — *audit: not met* — no test found
+- [ ] Insert key with invalid provider fails — *audit: not met* — no test found
+- [ ] Insert duplicate key for same account+provider fails (unique constraint) — *audit: not met* — no test found
+- [ ] Insert key for different provider succeeds — *audit: not met* — no test found
+- [ ] Timestamps populate automatically — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Retrieve active key for account+provider
-- [ ] Inactive keys are excluded from queries
-- [ ] Update last_used_at on key retrieval
-- [ ] Deactivate key (set is_active = FALSE)
-- [ ] Reactivate key (set is_active = TRUE)
+- [x] Retrieve active key for account+provider — *audit:* `packages/features/audio-generation/__tests__/config-loader.test.ts:85`
+- [x] Inactive keys are excluded from queries — *audit:* `packages/features/audio-generation/__tests__/config-loader.test.ts:85` (asserts the `is_active` filter)
+- [ ] Update last_used_at on key retrieval — *audit: not met* — no test found; no code updates it
+- [ ] Deactivate key (set is_active = FALSE) — *audit: not met* — no test found
+- [ ] Reactivate key (set is_active = TRUE) — *audit: not met* — no test found
 
 ### Security Tests
 ```typescript
@@ -195,9 +201,15 @@ validateApiKeyFormat('openai', 'sk-1234567890abcdefghijklmnopqrstuvwxyz'); // Sh
 ```
 
 ### Edge Cases
-- [ ] Very long API key (2000+ characters)
-- [ ] Key rotation (deactivate old, add new)
-- [ ] Missing key for provider (falls back to platform key)
-- [ ] Multiple accounts with same provider (different keys)
-- [ ] Key never used (last_used_at = NULL)
-- [ ] Invalid encrypted_key (decryption fails - handle gracefully)
+- [ ] Very long API key (2000+ characters) — *audit: not met* — no test found
+- [ ] Key rotation (deactivate old, add new) — *audit: not met* — no test found
+- [x] Missing key for provider (falls back to platform key) — *audit:* `packages/features/audio-generation/__tests__/config-loader.test.ts:103`
+- [ ] Multiple accounts with same provider (different keys) — *audit: not met* — no test found
+- [ ] Key never used (last_used_at = NULL) — *audit: not met* — no test found
+- [ ] Invalid encrypted_key (decryption fails - handle gracefully) — *audit: not met* — no test found
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| `last_used_at` tracks usage | No key reader updates it; `saveApiKeyAction` writes null (`apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts:111`), and `git log -S last_used_at` shows no writer ever existed | unassigned |

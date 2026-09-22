@@ -1,7 +1,8 @@
 ---
 id: FILM-1112
 title: Movie Act Context Bridge
-status: done
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: medium
 effort: L
 dependencies: [FILM-1110, FILM-1111]
@@ -389,8 +390,8 @@ export function validateAgainstBridge(
 - [x] `buildActContextBridge` extracts state via LLM
 - [x] `formatBridgeForPrompt` produces readable output
 - [x] `validateAgainstBridge` catches dead character resurrection
-- [x] Movie generation uses bridges between acts
-- [x] Context is correctly populated for 3-act and 5-act structures
+- [ ] Movie generation uses bridges between acts — *audit: no longer true* — `act_context_bridges` is never written or read; `buildActContextBridge` has no caller (only 15f9940f)
+- [ ] Context is correctly populated for 3-act and 5-act structures — *audit: no longer true* — nothing populates bridges; the agent tool covers acts 1–3 only (`packages/features/episodes/src/agent/skills/act-context-skill.ts:48`)
 
 ---
 
@@ -472,4 +473,11 @@ describe('Act Context Bridge', () => {
 
 ## Implementation Status
 
-**Implemented** in PR #177 — merged 2026-02-09
+**🟡 PARTIAL** (audit 2026-09-23; was **Implemented** in PR #177 — merged 2026-02-09)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Movie generation uses bridges between acts | The story agent's `extractActContext` returns a bridge inside one run and drops it; nothing stores it or feeds the next act | owner |
+| 3-act and 5-act structures | Nothing populates `act_context_bridges` | owner |

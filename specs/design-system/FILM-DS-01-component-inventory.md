@@ -1,3 +1,9 @@
+---
+spec_id: FILM-DS-01
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-DS-01: Component Inventory
 
 ## Metadata
@@ -144,7 +150,7 @@ Studio Layout
 ## Acceptance Criteria
 
 - [x] All required components are identified and categorized
-- [x] Each component has clear ownership (package)
+- [ ] Each component has clear ownership (package) — *audit: no longer true* — §2 owners stale: ShotGrid/ShotCard in apps/web, timeline in @kit/edit-suite (old one deleted 5f44d0e1), VideoPlayer in @kit/public-sharing; §3–4 name none
 - [x] Effort estimates are provided for planning
 - [x] Component hierarchy shows relationships
 - [x] No duplicate components across packages
@@ -175,3 +181,9 @@ export { PipelineProgress } from './pipeline-progress';
 
 - [ ] Should we create a `@kit/studio-ui` package for shared studio components? (non-blocking)
 - [ ] Should `TimelineEditor` be extracted to its own package for reuse? (post-MVP)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Each component has clear ownership (package) | §2's owners no longer match the code: ShotGrid/ShotCard live in `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/`, the timeline in `packages/features/edit-suite/src/components/timeline/timeline.tsx`, VideoPlayer in `packages/features/public-sharing/src/components/video-player.tsx`. §3–§4 name no package. CharacterCard, GenerationStatusBadge, ProgressRing and PromptEditor were never built (placeholder comments removed in 18906820) | unassigned |

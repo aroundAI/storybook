@@ -1,3 +1,9 @@
+---
+spec_id: FILM-716
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-716: Master Video Record Keeping
 
 ## 1. Product Requirements Document (PRD)

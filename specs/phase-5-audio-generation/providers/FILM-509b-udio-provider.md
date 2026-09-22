@@ -1,3 +1,9 @@
+---
+spec_id: FILM-509b
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-509b: Udio Music Generation Provider
 
 ## Metadata
@@ -382,7 +388,7 @@ interface UdioStatusResponse {
 ### Unit Tests
 - [x] Test prompt validation (min/max length)
 - [x] Test duration validation
-- [x] Test style schema validation
+- [ ] Test style schema validation — *audit: no longer true* — no Udio style schema or test exists in `packages/features/audio-generation`
 - [x] Test status mapping
 - [x] Test cost estimation
 
@@ -390,7 +396,7 @@ interface UdioStatusResponse {
 - [x] Test full generation flow with mock API
 - [x] Test extension flow
 - [x] Test variation generation
-- [ ] Test webhook callback handling (N/A - no webhooks in current implementation)
+- [ ] Test webhook callback handling (N/A - no webhooks in current implementation) — *audit: not met* — no test found; no Udio webhook exists, as the item says
 
 ---
 

@@ -2,6 +2,7 @@
 spec_id: FILM-1607
 title: Absolute Subscriber Snapshots
 status: ✅ DONE
+audited: 2026-09-23
 effort: M
 dependencies: FILM-1602, FILM-1612
 ---
@@ -416,7 +417,7 @@ fits in one PostgREST response.
 - [x] A clamped day re-bases the forward walk, so sustained drift is absorbed once rather than clamping every subsequent day into a sawtooth
 - [x] An upward clamp lands on the largest value the band admits — one below its exclusive upper bound — never on the bound itself, whichever rounding direction §2 settles on
 - [x] A series whose first anchor is rounded seeds at `count` and reports that day `clamped`
-- [x] `getSubscriberSeriesAction` takes an `accountId` uuid scope, not a slug, and passes it to `assertScopeAccess` unchanged
+- [x] `getSubscriberSeriesAction` takes an `accountId` uuid scope, not a slug, and passes it to `assertScopeAccess` unchanged — *audit:* widened to the uuid `ScopeSchema` (project or account) in d7a7056c, still passed unchanged: `packages/features/content-analytics/src/server/subscriber-series-actions.ts:87`
 - [x] The action returns one series per connection and never sums across channels
 - [x] The shortfall alert is measured against eligible-and-attempted connections, and does not fire while `CLICKHOUSE_ENABLED` is false
 - [x] Days preceding the first anchor are reconstructed backwards wherever a delta exists, and only pre-delta days are omitted

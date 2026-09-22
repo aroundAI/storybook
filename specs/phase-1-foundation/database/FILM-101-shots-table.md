@@ -1,3 +1,9 @@
+---
+spec_id: FILM-101c
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-101 Shots Table
 
 ## Metadata
@@ -128,31 +134,31 @@ FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamps();
 | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
 
 ## Acceptance Criteria
-- [ ] Table created successfully with all columns
-- [ ] Foreign key to episodes with CASCADE delete
-- [ ] Unique constraint on (episode_id, sequence_number)
-- [ ] Status check constraint enforces valid enum values
-- [ ] Duration check constraint enforces 1-60 seconds
-- [ ] Indexes created for common query patterns
-- [ ] Timestamps auto-populate and auto-update
+- [x] Table created successfully with all columns — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:313`
+- [x] Foreign key to episodes with CASCADE delete — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:315`
+- [x] Unique constraint on (episode_id, sequence_number) — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:331`
+- [x] Status check constraint enforces valid enum values — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:329`
+- [x] Duration check constraint enforces 1-60 seconds — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:330`
+- [x] Indexes created for common query patterns — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:341-345`; the sequence index is partial since `apps/web/supabase/migrations/20251209061319_add-missing-shots-columns.sql:32`
+- [x] Timestamps auto-populate and auto-update — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:348`
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Insert shot with valid episode_id succeeds
-- [ ] Insert shot with invalid status fails (check constraint)
-- [ ] Insert shot with duration_seconds = 0 fails (check constraint)
-- [ ] Insert shot with duration_seconds = 61 fails (check constraint)
-- [ ] Insert duplicate sequence_number for same episode fails (unique constraint)
-- [ ] Insert same sequence_number for different episodes succeeds
-- [ ] Timestamps populate automatically on insert
+- [ ] Insert shot with valid episode_id succeeds — *audit: not met* — no test found
+- [ ] Insert shot with invalid status fails (check constraint) — *audit: not met* — no test found
+- [ ] Insert shot with duration_seconds = 0 fails (check constraint) — *audit: not met* — no test found
+- [ ] Insert shot with duration_seconds = 61 fails (check constraint) — *audit: not met* — no test found
+- [ ] Insert duplicate sequence_number for same episode fails (unique constraint) — *audit: not met* — no test found
+- [ ] Insert same sequence_number for different episodes succeeds — *audit: not met* — no test found
+- [ ] Timestamps populate automatically on insert — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Deleting an episode cascades to delete all its shots
-- [ ] Query shots ordered by sequence_number returns correct order
-- [ ] Can reorder shots by updating sequence_numbers
-- [ ] Generation job ID can be NULL (shot not yet generated)
-- [ ] JSONB generation_metadata accepts valid JSON
+- [ ] Deleting an episode cascades to delete all its shots — *audit: not met* — no test found
+- [ ] Query shots ordered by sequence_number returns correct order — *audit: not met* — no test found
+- [ ] Can reorder shots by updating sequence_numbers — *audit: not met* — no test found
+- [ ] Generation job ID can be NULL (shot not yet generated) — *audit: not met* — no test found
+- [ ] JSONB generation_metadata accepts valid JSON — *audit: not met* — no test found
 
 ### Status Workflow Test
 ```sql
@@ -168,9 +174,9 @@ UPDATE shots SET status = 'approved' WHERE id = 'test-shot-id';
 ```
 
 ### Edge Cases
-- [ ] Very long prompt (10,000+ characters)
-- [ ] NULL camera_direction allowed
-- [ ] Empty scene_description and action_description allowed
-- [ ] Query performance with 100+ shots per episode
-- [ ] Reordering all shots in an episode (batch update)
-- [ ] Shot with completed status but NULL video_url (error case)
+- [ ] Very long prompt (10,000+ characters) — *audit: not met* — no test found
+- [ ] NULL camera_direction allowed — *audit: not met* — no test found
+- [ ] Empty scene_description and action_description allowed — *audit: not met* — no test found
+- [ ] Query performance with 100+ shots per episode — *audit: not met* — no test found
+- [ ] Reordering all shots in an episode (batch update) — *audit: not met* — no test found
+- [ ] Shot with completed status but NULL video_url (error case) — *audit: not met* — no test found

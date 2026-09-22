@@ -1,3 +1,9 @@
+---
+spec_id: FILM-810
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-810: Revenue Tracking
 
 ## Metadata
@@ -6,7 +12,7 @@
 - **Effort:** L (1-3 days)
 - **Dependencies:** FILM-805 (Analytics Dashboard), FILM-801-803 (Platform Analytics Providers), Platform Connections
 - **Blocks:** None
-- **Status:** ✅ DONE (2025-12-11)
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE 2025-12-11)
 
 ---
 
@@ -752,21 +758,21 @@ export function RevenueDashboard({ accountId }: RevenueDashboardProps) {
 ### Functional
 
 - [x] Revenue records can be fetched from YouTube Analytics API
-- [x] Manual revenue entries can be created and edited
+- [ ] Manual revenue entries can be created and edited — *audit: no longer true* — an entry in a second currency for the same day, scope and category replaces the first: KB-23
 - [x] Revenue summary displays total, daily average, and RPM
 - [x] Revenue breakdown shows data by platform and content
 - [x] Revenue trends are calculated correctly
 - [x] Monthly/yearly projections are calculated with confidence levels
-- [x] Revenue reports can be generated and exported
-- [ ] Revenue alerts are created for significant changes (Future enhancement)
+- [ ] Revenue reports can be generated and exported — *audit: no longer true* — `generateRevenueReportAction` stores a `revenue_reports` row, writes no file, and nothing calls it (since e84ba285) — `packages/features/content-analytics/src/server/revenue-actions.ts:611`
+- [x] Revenue alerts are created for significant changes (Future enhancement) — *audit:* `packages/features/content-analytics/src/server/revenue-alerts.ts:116` (FILM-1508, run by the sync; rises above 3× the prior average and milestones — no alert for a drop), test `packages/features/content-analytics/__tests__/revenue-alerts.test.ts:113`
 
 ### Non-Functional
 
 - [x] Revenue data is fetched with pagination for large datasets
-- [x] Dashboard loads within 2 seconds
-- [x] Currency formatting respects user locale
-- [x] All revenue data is properly secured via RLS
-- [x] TypeScript compiles without errors
+- [ ] Dashboard loads within 2 seconds — *audit: unverified* — needs a timed load on a production build; KB-13 measured RLS adding ~1s per 36,500 revenue rows
+- [ ] Currency formatting respects user locale — *audit: no longer true* — every formatter pins `'en-US'`, since e84ba285 — `packages/features/content-analytics/src/lib/money.ts:166`, `packages/features/content-analytics/src/lib/format.ts:57`
+- [ ] All revenue data is properly secured via RLS — *audit: unverified* — pgTAP covers `revenue_records` only (`apps/web/supabase/tests/database/revenue-records-rls.test.sql`); `revenue_reports` and `revenue_alerts` policies need their own
+- [ ] TypeScript compiles without errors — *audit: unverified* — needs `pnpm typecheck`, not run in this read-only audit
 
 ---
 
@@ -774,18 +780,18 @@ export function RevenueDashboard({ accountId }: RevenueDashboardProps) {
 
 ### Unit Tests
 
-- [ ] Test revenue summary calculation
-- [ ] Test RPM calculation
-- [ ] Test trend detection logic
-- [ ] Test projection confidence levels
-- [ ] Test currency formatting
+- [x] Test revenue summary calculation — *audit:* `packages/features/content-analytics/__tests__/revenue-by-currency.test.ts:46`
+- [x] Test RPM calculation — *audit:* `packages/features/content-analytics/__tests__/revenue-by-currency.test.ts:75`
+- [x] Test trend detection logic — *audit:* `packages/features/content-analytics/__tests__/revenue-by-currency.test.ts:88`
+- [ ] Test projection confidence levels — *audit: not met* — no test asserts `confidenceLevel`; `revenue-by-currency.test.ts:235` checks the estimate only
+- [x] Test currency formatting — *audit:* `packages/features/content-analytics/__tests__/money.test.ts:93` (`formatMoney`)
 
 ### Integration Tests
 
-- [ ] Test YouTube Analytics API revenue fetch
-- [ ] Test manual revenue entry flow
-- [ ] Test report generation
-- [ ] Test RLS policies
+- [x] Test YouTube Analytics API revenue fetch — *audit:* `packages/features/content-analytics/__tests__/youtube-analytics.test.ts:160` (mocked API)
+- [x] Test manual revenue entry flow — *audit:* `apps/e2e/tests/revenue/revenue.spec.ts:16`
+- [ ] Test report generation — *audit: not met* — no test found
+- [x] Test RLS policies — *audit:* `apps/web/supabase/tests/database/revenue-records-rls.test.sql:8` (`revenue_records` only)
 
 ### Manual Testing
 
@@ -855,3 +861,11 @@ export function RevenueDashboard({ accountId }: RevenueDashboardProps) {
 - **FILM-801-803**: Platform Analytics Providers
 - **YouTube Analytics API**: https://developers.google.com/youtube/analytics
 - **Constitution**: Section 6 (Cost Tracking)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Manual revenue entries can be created and edited | Currency is not in `revenue_records`' unique key or the action's lookup, so a second currency on the same day, scope and category silently replaces the first | KB-23 |
+| Revenue reports can be generated and exported | `generateRevenueReportAction` (`revenue-actions.ts:611`) inserts a `revenue_reports` summary row with a `file_format` label but produces no file, and no UI calls it. The general Export Reports (FILM-809) takes revenue from ClickHouse `revenue_cents`, which every writer sets to `0` (KB-16, *Remaining*) | unassigned |
+| Currency formatting respects user locale | `formatCurrencyAmount` (`money.ts:158,166`) and `formatCurrency` (`format.ts:57`) pass `'en-US'` to `Intl` | unassigned |

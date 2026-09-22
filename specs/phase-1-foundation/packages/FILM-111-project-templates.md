@@ -1,4 +1,12 @@
+---
+spec_id: FILM-111
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-111: Project Templates
+
+> **🗑️ Retired (audit 2026-09-23).** The template library route (`/studio/templates`) and `packages/features/film-studio/src/server/template-actions.ts` were deleted with `@kit/film-studio` in `5f44d0e1` (2026-02-19). Nothing replaces it: the project-creation form has no template option, and the `project_templates` table (`apps/web/supabase/migrations/20251209144544_add-project-templates.sql`) and `packages/features/film-studio-schemas/src/template.ts` survive unused. Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 1 - Foundation
@@ -6,7 +14,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-110 (Project Extension), FILM-104 (Film Studio Package)
 - **Blocks:** None
-- **Status:** COMPLETED
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was COMPLETED)
 - **PR:** #58
 
 ---

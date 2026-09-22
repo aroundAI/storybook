@@ -1,7 +1,8 @@
 ---
 spec_id: FILM-1601
 title: Analytics Correctness Bugs & Revenue Delete RLS
-status: ✅ DONE
+status: 🟡 PARTIAL
+audited: 2026-09-23
 effort: M
 dependencies: FILM-1506, FILM-1508
 ---
@@ -43,12 +44,12 @@ Shipped in PR #232 (folded into the Phase 15 PR rather than shipped separately).
 
 - [x] Channel-level revenue rows appear in `totalRevenueCents`, `byType` and the trend comparison
 - [x] `subscribers_gained` stores gross; net is derived as `gained - lost`
-- [x] Channel-level revenue rows are deletable by `has_account_access` holders
+- [ ] ~~Channel-level revenue rows are deletable by `has_account_access` holders~~ — *audit: retired* — narrowed on purpose to owner or author of a manual row in 967160fa (#256); channel rows stay deletable: `apps/web/supabase/migrations/20260916010318_revenue-records-source-and-authorship.sql:65`
 - [x] RPM denominator includes published videos that earned nothing
 - [x] `cohort_views_to_date` is bounded by upload date, not metric date (unit-tested)
-- [x] `viewsPerVideo` counts videos with no metric rows
+- [x] `viewsPerVideo` counts videos with no metric rows — *audit:* field replaced by cohort medians (1b02afde), still a LEFT JOIN from the dimension side: `packages/clickhouse/src/queries-advanced.ts:737`; test `packages/clickhouse/__tests__/queries-advanced.test.ts:959`
 - [x] The taxonomy gate counts distinct tagged videos, not assignments
-- [x] Raw CSV ships real impressions, top traffic source and tags
+- [ ] Raw CSV ships real impressions, top traffic source and tags — *audit: not met* — source and tags are per-day, but every daily row carries the video's period-total impressions (`apps/web/app/api/reports/scheduled/route.ts:517`), as shipped in d8c635c1
 
 ## 5. Verification
 
@@ -62,3 +63,9 @@ pnpm typecheck && pnpm lint
 ## 6. Risk
 
 The RLS change is the only one reaching outside analytics. It only **widens** permission, and only to `has_account_access` holders, matching the already-shipped create/update policies.
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Raw CSV ships real impressions | Each per-day row's `impressions` is the video's total for the whole report period (`queryQualityMetricsForVideos`, `apps/web/app/api/reports/scheduled/route.ts:247,517`), so summing the column multiplies it by the day count; per-day figures exist in `video_reach_daily` but are not read. CTR and AVD are likewise period rates on daily rows (`:518-519`) | unassigned |

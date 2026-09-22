@@ -1,7 +1,8 @@
 ---
 id: FILM-1121
 title: Fact Management UI Components
-status: done
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: high
 effort: L
 dependencies: [FILM-1120]
@@ -552,14 +553,14 @@ export const searchFactsAction = enhanceAction(
 
 ## Acceptance Criteria
 
-- [x] FactLibrary shows all facts with search/filter
+- [ ] FactLibrary shows all facts with search/filter — *audit: no longer true* — only the first 50 render (`apps/web/app/home/[account]/studio/[projectSlug]/settings/facts/page.tsx:73`), no pager, though the full total is shown
 - [x] FactCard displays claim, citation, status, usage
-- [x] AddFactForm validates input and creates fact
-- [x] DOI lookup auto-fills citation
-- [x] FactVerificationDialog allows marking verified/disputed
-- [x] Only DOCUMENTARY projects see Facts section
+- [ ] AddFactForm validates input and creates fact — *audit: unverified* — no E2E drives the form (read-only audit); client schema skips the server's URL rule (`packages/features/episodes/src/components/facts/add-fact-form.tsx:80`)
+- [ ] DOI lookup auto-fills citation — *audit: unverified* — CrossRef call at `packages/features/episodes/src/components/facts/add-fact-form.tsx:118`; no test, needs a vendor response
+- [ ] FactVerificationDialog allows marking verified/disputed — *audit: no longer true* — KB-18: the update policy refuses both states; `verifyFactAction`/`disputeFactAction` use the user's client
+- [ ] Only DOCUMENTARY projects see Facts section — *audit: no longer true* — Fact Library link shows for every editable project (`apps/web/app/home/[account]/studio/[projectSlug]/settings/page.tsx:389`); never gated (811ab9e8)
 - [x] addVerifiedFactAction creates fact with simplified claim
-- [x] searchFactsAction uses full-text search
+- [x] searchFactsAction uses full-text search — *audit:* no `searchFactsAction` exists; the search is `getProjectFactsAction`, `packages/features/episodes/src/server/fact-actions.ts:298`
 
 ---
 
@@ -586,3 +587,11 @@ export const searchFactsAction = enhanceAction(
 
 - **FILM-1122**: Researcher role uses fact search
 - **FILM-1123**: Fact-checker uses verification
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| FactVerificationDialog allows marking verified/disputed | The `verified_facts` UPDATE policy's `WITH CHECK` only admits `unverified`/`pending_review`, and both actions write with the user's client (`packages/features/episodes/src/server/fact-actions.ts:182`, `:219`); reproduced in KB-18 | KB-18 |
+| Only DOCUMENTARY projects see Facts section | The Fact Library link sits in the Canon settings section behind `permissions.canEdit` only (`apps/web/app/home/[account]/studio/[projectSlug]/settings/page.tsx:389`); no route or link checks the content type, and it never did (811ab9e8) | unassigned |
+| FactLibrary shows all facts with search/filter | The page asks for `limit: 50, offset: 0` (`apps/web/app/home/[account]/studio/[projectSlug]/settings/facts/page.tsx:73`) and `FactLibrary` has no pager, so facts past the 50th cannot be reached | unassigned |

@@ -2,6 +2,7 @@
 spec_id: FILM-1610
 title: Experiment Log & Per-Video Notes
 status: ✅ DONE
+audited: 2026-09-23
 effort: M
 dependencies: FILM-1602, FILM-1603, FILM-1605
 ---

@@ -1,13 +1,16 @@
 ---
 id: FILM-1006
 title: LLM Role Separation
-status: implemented
+status: 🗑️ RETIRED
+audited: 2026-09-23
 priority: high
 effort: M
 dependencies: [FILM-304]
 ---
 
 # FILM-1006: LLM Role Separation
+
+> **🗑️ Retired (audit 2026-09-23).** The planner, writer, editor and stylist role prompts and `llm-role-orchestrator.ts` were deleted as dead code in 2f23eb4e (#220, 2026-05-23). Story generation runs the agent orchestrator instead (Story Director → Viral Analyst → Continuity Guardian), `packages/features/episodes/src/agent/story-orchestrator.ts`; the "LLM Role Separation" toggle left in canon settings is saved but no generation code reads it. Kept as a record; not outstanding work.
 
 ## Overview
 

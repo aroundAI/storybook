@@ -1,9 +1,15 @@
+---
+spec_id: FILM-502
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-502: Voice Generation Server Action
 
 **Phase**: 5
 **Priority**: P0
 **Effort**: M (3-5 days)
-**Status**: ✅ DONE
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
 **Dependencies**: FILM-501 (ElevenLabs provider), FILM-502b (Audio provider factory - deferred)
 **Blocks**: FILM-503, FILM-505, FILM-506
 
@@ -791,39 +797,39 @@ pending → generating → completed
 
 ### Functional
 
-- [x] `generateDialogueVoiceAction` successfully generates audio for valid dialogue line
-- [x] `generateDialogueVoiceAction` uploads audio to correct storage path (`dialogue/{episode_id}/{dialogue_line_id}.mp3`)
-- [x] `generateDialogueVoiceAction` updates dialogue_lines.audio_url with public URL
-- [x] `generateDialogueVoiceAction` updates dialogue_lines.status to 'completed'
-- [x] `generateDialogueVoiceAction` stores generation metadata (cost, duration, settings)
-- [x] `generateDialogueVoiceAction` retrieves voice settings from character's voice profile
-- [x] `generateDialogueVoiceAction` uses default voice settings if no profile exists
-- [x] `generateDialogueVoiceAction` checks budget before generation via RPC
-- [x] `generateDialogueVoiceAction` throws error if budget exceeded
-- [x] `generateDialogueVoiceAction` increments account usage after successful generation
-- [x] `generateDialogueVoiceAction` records cost in generation_jobs table
-- [x] `generateDialogueVoiceAction` sets status to 'failed' on error
-- [x] `generateDialogueVoiceAction` stores error message in metadata on failure
-- [x] `generateDialogueVoiceAction` respects overwriteExisting flag
-- [x] `generateDialogueVoiceAction` reverts status if job creation fails
-- [x] `generateVoiceFromTextAction` generates audio for raw text
-- [x] `generateVoiceFromTextAction` uploads to temp storage (`temp/{user_id}/{timestamp}.mp3`)
-- [x] `generateVoiceFromTextAction` records cost in generation_jobs
-- [x] `generateVoiceFromTextAction` checks budget before generation via RPC
-- [x] `generateVoiceFromTextAction` increments account usage after successful generation
-- [x] Both actions enforce authentication via `requireUser`
-- [x] Both actions validate audioBuffer before upload
-- [x] Both actions enforce RLS policies (via Supabase client)
+- [ ] `generateDialogueVoiceAction` successfully generates audio for valid dialogue line — *audit: unverified* — since `e8e8d78b` the studio uses `generateDialogueVoiceAsyncAction` → SQS → `apps/web/lambda/voice-worker/voice-generation.ts:193`; no test drives it
+- [x] `generateDialogueVoiceAction` uploads audio to correct storage path (`dialogue/{episode_id}/{dialogue_line_id}.mp3`) — *audit:* `apps/web/lambda/voice-worker/voice-generation.ts:226`, now `…/{dialogue_line_id}_{timestamp}.mp3` in R2, the timestamp busting the CDN cache
+- [x] `generateDialogueVoiceAction` updates dialogue_lines.audio_url with public URL — *audit:* `apps/web/lambda/voice-worker/voice-generation.ts:253`
+- [x] `generateDialogueVoiceAction` updates dialogue_lines.status to 'completed' — *audit:* `apps/web/lambda/voice-worker/voice-generation.ts:254`
+- [x] `generateDialogueVoiceAction` stores generation metadata (cost, duration, settings) — *audit:* `apps/web/lambda/voice-worker/voice-generation.ts:239`
+- [ ] ~~`generateDialogueVoiceAction` retrieves voice settings from character's voice profile~~ — *audit: retired* — `voice_profiles` was dropped in `05ec0ae9`; settings are the defaults (`packages/features/audio-generation/src/server/voice-queries.ts:44`)
+- [x] `generateDialogueVoiceAction` uses default voice settings if no profile exists — *audit:* `packages/features/audio-generation/src/server/voice-queries.ts:52`
+- [ ] `generateDialogueVoiceAction` checks budget before generation via RPC — *audit: no longer true* — the live single-line path (since `e8e8d78b`) never calls `check_account_budget`; only batch does
+- [ ] `generateDialogueVoiceAction` throws error if budget exceeded — *audit: no longer true* — no budget check on the live single-line path, so nothing refuses
+- [ ] `generateDialogueVoiceAction` increments account usage after successful generation — *audit: no longer true* — neither the async action nor voice-worker calls `increment_account_usage`
+- [ ] `generateDialogueVoiceAction` records cost in generation_jobs table — *audit: no longer true* — no `generation_jobs` row is created; voice-worker's `markJob*` filter on `reference_type='episode'` (`apps/web/lambda/llm-worker/utils/job-tracking.ts:38`) and match nothing
+- [x] `generateDialogueVoiceAction` sets status to 'failed' on error — *audit:* `apps/web/lambda/voice-worker/voice-generation.ts:283`
+- [x] `generateDialogueVoiceAction` stores error message in metadata on failure — *audit:* `apps/web/lambda/voice-worker/voice-generation.ts:287`
+- [ ] `generateDialogueVoiceAction` respects overwriteExisting flag — *audit: no longer true* — voice-worker parses `overwriteExisting` (`apps/web/lambda/voice-worker/voice-generation.ts:36`) but never reads it; the async action never checks existing audio
+- [x] `generateDialogueVoiceAction` reverts status if job creation fails — *audit:* the async action reverts to `pending` when queueing fails (`packages/features/audio-generation/src/server/voice-actions.ts:587`)
+- [ ] ~~`generateVoiceFromTextAction` generates audio for raw text~~ — *audit: retired* — no caller: only the unmounted package `VoiceAssignment` imports it (`packages/features/audio-generation/src/components/VoiceAssignment.tsx:44`); voices are chosen in the character editor (FILM-205)
+- [ ] ~~`generateVoiceFromTextAction` uploads to temp storage (`temp/{user_id}/{timestamp}.mp3`)~~ — *audit: retired* — `generateVoiceFromTextAction` has no caller (see above)
+- [ ] ~~`generateVoiceFromTextAction` records cost in generation_jobs~~ — *audit: retired* — `generateVoiceFromTextAction` has no caller (see above)
+- [ ] ~~`generateVoiceFromTextAction` checks budget before generation via RPC~~ — *audit: retired* — `generateVoiceFromTextAction` has no caller (see above)
+- [ ] ~~`generateVoiceFromTextAction` increments account usage after successful generation~~ — *audit: retired* — `generateVoiceFromTextAction` has no caller (see above)
+- [x] Both actions enforce authentication via `requireUser` — *audit:* the live async action, `packages/features/audio-generation/src/server/voice-actions.ts:457`
+- [ ] Both actions validate audioBuffer before upload — *audit: no longer true* — voice-worker uploads the response body without checking it (`apps/web/lambda/voice-worker/voice-generation.ts:222`)
+- [x] Both actions enforce RLS policies (via Supabase client) — *audit:* the async action reads the line through the user's client (`packages/features/audio-generation/src/server/voice-actions.ts:469`) before queueing; the worker then runs as service role
 
 ### Non-Functional
 
-- [x] Actions complete within 60 seconds (timeout configured)
-- [x] Database updates use generation_jobs for tracking
-- [x] Actions are idempotent (idempotency_key in jobs)
-- [x] All errors logged with context
-- [x] API keys never exposed in logs (uses env var)
-- [x] TypeScript compiles without errors
-- [x] No ESLint warnings (uses eslint-disable with explanation)
+- [ ] Actions complete within 60 seconds (timeout configured) — *audit: unverified* — runtime timing; the action only queues, and the worker's limit is 5 minutes (`sst.config.ts:907`)
+- [ ] Database updates use generation_jobs for tracking — *audit: no longer true* — the live path writes no `generation_jobs` row (see the cost item above)
+- [ ] Actions are idempotent (idempotency_key in jobs) — *audit: no longer true* — no job row or key on the live path; an SQS redelivery generates and uploads again
+- [x] All errors logged with context — *audit:* `packages/features/audio-generation/src/server/voice-actions.ts:582`; `apps/web/lambda/voice-worker/voice-generation.ts:301`
+- [x] API keys never exposed in logs (uses env var) — *audit:* the key now comes from `external_api_keys` (`apps/web/lambda/voice-worker/voice-generation.ts:184`) and is used only in the request header (`:198`)
+- [ ] TypeScript compiles without errors — *audit: no longer true* — KB-14: voice-worker is never typechecked; its `'dialogue_voice_generation'` is not a `GenerationJobType` (`apps/web/lambda/llm-worker/utils/job-tracking.ts:11`)
+- [x] No ESLint warnings (uses eslint-disable with explanation) — *audit:* CI run 35779959194 (`main` at `6dfa35a4`): `@kit/audio-generation:lint` and `web:lint` (its `**/*.ts?(x)` glob covers `lambda/`) executed with no output
 
 ---
 
@@ -1204,3 +1210,14 @@ if (count >= MAX_CONCURRENT_GENERATIONS) {
 - **Constitution**: Section 5.2 (Generation Job Errors)
 - **Constitution**: Section 6 (Cost Tracking)
 - **Supabase Storage Documentation**: https://supabase.com/docs/guides/storage
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Checks budget via RPC; refuses when over budget | neither the async action nor voice-worker calls `check_account_budget` (batch does: `packages/features/audio-generation/src/server/batch-actions.ts:268`) | unassigned |
+| Increments account usage | no `increment_account_usage` call on the live path | unassigned |
+| Cost recorded in `generation_jobs`; tracking; idempotency key | no `generation_jobs` row is created; voice-worker's `markJob*` updates filter on `reference_type='episode'` with a line id and match nothing (`apps/web/lambda/llm-worker/utils/job-tracking.ts:38`) | unassigned |
+| Respects `overwriteExisting` | parsed but never read (`apps/web/lambda/voice-worker/voice-generation.ts:36`) | unassigned |
+| Validates the audio buffer before upload | the response body is uploaded unchecked (`apps/web/lambda/voice-worker/voice-generation.ts:222`) | unassigned |
+| TypeScript compiles without errors | voice-worker is outside every tsconfig; `'dialogue_voice_generation'` is not a `GenerationJobType` | KB-14 |

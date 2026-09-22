@@ -2,6 +2,7 @@
 spec_id: FILM-1501
 title: ClickHouse v2 Data Model & Migration Runner
 status: ✅ DONE
+audited: 2026-09-23
 effort: M
 dependencies: FILM-1201
 ---
@@ -94,12 +95,12 @@ FROM video_metrics FINAL;
 
 ## 4. Acceptance Criteria
 
-- [ ] `pnpm --filter @kit/clickhouse migrate` applies pending migrations in order and is a no-op on re-run
-- [ ] Double-inserting the same (video, platform, day) row yields exactly one row under `SELECT … FINAL`, with the latest values
-- [ ] All 8 existing query functions return correct results against the compatibility view
-- [ ] `queryLatestSnapshots` returns the latest snapshot strictly before the given date per video
-- [ ] No package reads `video_metrics` expecting multiple rows per day (grep verified before merge)
-- [ ] `DROP TABLE video_daily_stats` removes the old MV's implicit storage (no `.inner.*` remnants)
+- [x] `pnpm --filter @kit/clickhouse migrate` applies pending migrations in order and is a no-op on re-run — *audit:* `packages/clickhouse/src/migrations/run.ts:63` (skips recorded names), `.github/workflows/workflow.yml:141`
+- [ ] Double-inserting the same (video, platform, day) row yields exactly one row under `SELECT … FINAL`, with the latest values — *audit: unverified* — engine is right (`002_metrics_v2.ts:41`); CI's re-insert assertion covers `channel_subscribers`, not `video_metrics`
+- [ ] All 8 existing query functions return correct results against the compatibility view — *audit: unverified* — CI runs all 8 against the view (`packages/clickhouse/scripts/verify-queries.ts:373`) but checks only that they execute
+- [x] `queryLatestSnapshots` returns the latest snapshot strictly before the given date per video — *audit:* `packages/clickhouse/src/queries.ts:150`, `packages/clickhouse/__tests__/clickhouse.test.ts:205`
+- [x] No package reads `video_metrics` expecting multiple rows per day (grep verified before merge) — *audit:* readers use `video_daily_stats`, a view over `FINAL` (`packages/clickhouse/src/migrations/006_gross_subscribers.ts:29`); no raw non-`FINAL` read in `src`
+- [ ] `DROP TABLE video_daily_stats` removes the old MV's implicit storage (no `.inner.*` remnants) — *audit: unverified* — ClickHouse behaviour; needs `SHOW TABLES` on a server migrated 001→002
 
 ## 5. Verification
 

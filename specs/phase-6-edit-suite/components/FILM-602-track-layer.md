@@ -1,10 +1,16 @@
+---
+spec_id: FILM-602
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-602: Track Layer
 
 ## Metadata
 - **Phase:** 6 - Edit Suite
 - **Priority:** P1 (Post-MVP)
 - **Effort:** L (1-3 days)
-- **Status:** ✅ DONE (implemented with FILM-601)
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE (implemented with FILM-601))
 - **Dependencies:** FILM-601 (Timeline Editor) ✅, FILM-DS-02 (Design Tokens)
 - **Blocks:** FILM-604 (Auto-Stitch)
 
@@ -362,32 +368,32 @@ function formatTime(seconds: number): string {
 
 ## Acceptance Criteria
 
-- [ ] Track header displays name and controls
-- [ ] Mute/solo/lock buttons work
-- [ ] Volume slider adjusts track volume
-- [ ] Clips render at correct position/width
-- [ ] Clips show thumbnail or waveform
-- [ ] Click selects clip
-- [ ] Shift+Click adds to selection
-- [ ] Double-click opens clip editor
-- [ ] Drag moves clip horizontally
-- [ ] Resize handles adjust clip edges
-- [ ] Locked tracks prevent editing
-- [ ] Drop zone accepts assets
+- [x] Track header displays name and controls — *audit:* `packages/features/edit-suite/src/components/timeline/track-row.tsx:88` (phase 14 edit suite; the FILM-602 `track-layer.tsx` went in 5f44d0e1)
+- [ ] Mute/solo/lock buttons work — *audit: not met* — mute/solo reach audio gain (`packages/features/edit-suite/src/lib/audio-engine.ts:140`); lock refuses only asset drops (`packages/features/edit-suite/src/components/timeline/track-row.tsx:210`)
+- [x] Volume slider adjusts track volume — *audit:* `packages/features/edit-suite/src/components/timeline/track-row.tsx:130` → track gain `packages/features/edit-suite/src/lib/audio-engine.ts:137`
+- [x] Clips render at correct position/width — *audit:* `packages/features/edit-suite/src/components/timeline/clip-block.tsx:111`
+- [x] Clips show thumbnail or waveform — *audit:* `packages/features/edit-suite/src/components/timeline/clip-block.tsx:449` (thumbnails), line 460 (waveform)
+- [x] Click selects clip — *audit:* `packages/features/edit-suite/src/components/timeline/clip-block.tsx:137`
+- [x] Shift+Click adds to selection — *audit:* `packages/features/edit-suite/src/components/timeline/clip-block.tsx:141`
+- [ ] ~~Double-click opens clip editor~~ — *audit: retired* — phase 14 replaced the clip editor with an Inspector panel shown on selection (`packages/features/edit-suite/src/components/inspector/inspector-panel.tsx:35`), still placeholders (see PHASE-14)
+- [x] Drag moves clip horizontally — *audit:* `packages/features/edit-suite/src/components/timeline/clip-block.tsx:248`
+- [x] Resize handles adjust clip edges — *audit:* `packages/features/edit-suite/src/components/timeline/clip-block.tsx:273` (left), line 297 (right)
+- [ ] Locked tracks prevent editing — *audit: not met* — `ClipBlock` gets no lock state (`packages/features/edit-suite/src/components/timeline/track-row.tsx:303`), so locked clips still move, trim and delete
+- [x] Drop zone accepts assets — *audit:* `packages/features/edit-suite/src/components/timeline/track-row.tsx:217` (drop → `ADD_CLIP`, line 234)
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test clip positioning calculations
-- [ ] Test mute/lock state changes
-- [ ] Test volume range validation
+- [ ] Test clip positioning calculations — *audit: not met* — no test found (the edit suite has none)
+- [ ] Test mute/lock state changes — *audit: not met* — no test found (the edit suite has none)
+- [ ] Test volume range validation — *audit: not met* — no test found (the edit suite has none)
 
 ### Integration Tests
-- [ ] Test drag-and-drop interactions
-- [ ] Test resize handle dragging
-- [ ] Test asset drop handling
+- [ ] Test drag-and-drop interactions — *audit: not met* — no test found (the edit suite has none)
+- [ ] Test resize handle dragging — *audit: not met* — no test found (the edit suite has none)
+- [ ] Test asset drop handling — *audit: not met* — no test found (the edit suite has none)
 
 ---
 
@@ -404,3 +410,9 @@ function formatTime(seconds: number): string {
 
 - [ ] Should we support clip splitting? (post-MVP)
 - [ ] Should we show gain/envelope automation? (post-MVP)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Mute/solo/lock buttons work; locked tracks prevent editing | Lock refuses only asset drops (`packages/features/edit-suite/src/components/timeline/track-row.tsx:210`); `ClipBlock` never receives the lock state, so clips on a locked track still move, trim and delete | unassigned |

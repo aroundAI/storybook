@@ -1,3 +1,9 @@
+---
+spec_id: FILM-808
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-808: AI Insights
 
 ## Metadata
@@ -6,7 +12,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-805 (Analytics Dashboard), @kit/llm
 - **Blocks:** None
-- **Status:** DONE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was DONE)
 
 ---
 
@@ -408,15 +414,15 @@ Note: Prompt template file was not created as the implementation uses direct @ki
 
 ## Acceptance Criteria
 
-- [x] Generates natural language summary of performance
-- [x] Identifies 3-4 key trends in data
-- [x] Provides specific content recommendations
-- [x] Suggests optimal posting times
-- [x] Analyzes audience demographics and behavior
-- [x] Explains why top content performed well
-- [x] Lists actionable items for improvement
-- [x] Caches insights to avoid repeated LLM calls
-- [x] Shows loading state during generation
+- [ ] Generates natural language summary of performance — *audit: no longer true* — the worker generates it, but the panel reads fields off the delivered `{ success, data }` wrapper, so nothing shows (5b88db3a) — `packages/features/content-analytics/src/components/ai-insights.tsx:52`, `apps/web/lambda/llm-worker/index.ts:291`
+- [ ] Identifies 3-4 key trends in data — *audit: no longer true* — the prompt asks for no trends, the worker returns `trends: []`, the panel renders none — `apps/web/lambda/llm-worker/handlers/analytics-insights.ts:144`
+- [ ] Provides specific content recommendations — *audit: no longer true* — generated but never shown (the `{ success, data }` wrapper, as for the summary) — `packages/features/content-analytics/src/components/ai-insights.tsx:130`
+- [ ] Suggests optimal posting times — *audit: no longer true* — asked for as `postingStrategy` but never shown (wrapper); no posting-time data is sent — `ai-insights.tsx:140`
+- [ ] Analyzes audience demographics and behavior — *audit: no longer true* — the dashboard sends `audience: undefined`, so there is nothing to analyse; output never shown — `packages/features/content-analytics/src/components/analytics-dashboard.tsx:215`
+- [ ] Explains why top content performed well — *audit: no longer true* — the worker discards `topPerformers` (returns `[]`) and the dashboard sends no `topContent` — `analytics-insights.ts:148`, `analytics-dashboard.tsx:214`
+- [ ] Lists actionable items for improvement — *audit: no longer true* — generated but never shown (the `{ success, data }` wrapper) — `ai-insights.tsx:157`
+- [ ] Caches insights to avoid repeated LLM calls — *audit: no longer true* — react-query caches the queued `null` for an hour, not the insights; the worker stores nothing (e2d42522) — `ai-insights.tsx:72-76`
+- [ ] Shows loading state during generation — *audit: no longer true* — the skeleton shows only while enqueuing; `llmStatus` never becomes `pending` because `trigger()` is never called — `ai-insights.tsx:83`, `packages/ui/src/hooks/use-llm-job.ts:76`
 - [x] Allows manual refresh of insights
 
 ---
@@ -428,8 +434,8 @@ Note: Prompt template file was not created as the implementation uses direct @ki
 - [x] Test insights JSON parsing
 
 ### Integration Tests
-- [ ] Test with mocked LLM response
-- [ ] Test caching behavior
+- [ ] Test with mocked LLM response — *audit: not met* — no test found
+- [ ] Test caching behavior — *audit: not met* — no test found
 
 ---
 
@@ -458,3 +464,13 @@ Note: Prompt template file was not created as the implementation uses direct @ki
 - Only send aggregate metrics to LLM, not PII
 - Don't send actual comments/content text
 - Anonymize audience demographics before sending
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Summary, recommendations, posting times, audience, action items shown | One cause: the worker sends the handler's `{ success, data }` as `result` (`llm-worker/index.ts:291`), and `ai-insights.tsx:52` stores it without unwrapping `.data`, so `insights?.summary` and every list read `undefined`. Other consumers unwrap (`ideation-screen.tsx:91`). Found by reading; not reproduced | unassigned |
+| Key trends | No `trends` in the prompt (`insights-generation.json`) or the worker's output (`analytics-insights.ts:144`), and no trends section in the panel | unassigned |
+| Audience demographics, why top content performed | `analytics-dashboard.tsx:214-215` send `topContent` and `audience` as `undefined`; the worker also replaces the LLM's `topPerformers` with `[]` (`analytics-insights.ts:148`) | unassigned |
+| Caches insights | Only the queued `null` is cached (`ai-insights.tsx:72-76`); the insights live in component state and are lost when the tab unmounts, while a new request is suppressed for an hour | unassigned |
+| Loading state during generation | `llmStatus === 'pending'` (`ai-insights.tsx:83`) is unreachable: only `trigger()` sets it (`use-llm-job.ts:76`), and the panel calls the action directly | unassigned |

@@ -836,6 +836,9 @@ and then make it pass — not to patch seven lines.
   "average engagement rate of 0.0%" the same way; `OverviewGrid` renders `0`
   for every total when `analytics` is `null`; the metric row's **Revenue $0**
   is ClickHouse `revenue_cents`, which every writer sets to `0`.
+- Found in the 2026-09-23 spec audit (FILM-805, by reading): the project metric row draws hard-coded
+  `watchTimeSeconds: 0` and `subscribersGained: 0` as measurements
+  (`packages/features/content-analytics/src/components/analytics-dashboard.tsx:192-193`).
 
 ---
 
@@ -897,7 +900,7 @@ UPDATE.
 - [ ] pgTAP, red first: a member cannot UPDATE an immutable event, cannot insert one naming another author, and can delete one only if their role allows it
 - [ ] User deletion (KB-1) still succeeds against a user who authored an immutable event, name snapshot intact
 - [ ] Every `FOR ALL` policy lacking `WITH CHECK` is listed, with a decision beside each
-- [ ] Canon UI still creates and removes events — existing E2E green
+- [ ] Canon UI still creates events — shown by an E2E written for this fix. *(Corrected 2026-09-23: there is no canon E2E to keep green, and no UI removes events — `deleteImmutableEventAction` has no caller.)*
 
 ---
 
@@ -962,6 +965,8 @@ nobody having been able to use it.
 - FILM-1123 (fact-checker role) and FILM-1121 (fact management UI) are marked
   done. When this is fixed, check their acceptance criteria against what
   actually runs — a form needs driving, not reading.
+
+**It reaches further than the dialog** (found in the 2026-09-23 spec audit, by reading): season analysis only passes *verified* facts to generation (`packages/features/episodes/src/server/external-context-actions.ts:401`), so it never receives any; and `runFactCheck` needs verified facts, so it always exits early (`packages/features/episodes/src/lib/documentary/fact-checker.ts:120`). FILM-1121, 1122, 1123, 1140 and 1143 are 🟡 PARTIAL on this entry.
 
 ### Acceptance criteria
 
@@ -1417,6 +1422,329 @@ that should not need to exist.
 
 ---
 
+## KB-26 — Any signed-in user can read every account's uploaded research sources
+
+**Severity:** High — a cross-tenant read of text a creator uploaded as their own
+research. No one is exposed today only because the owner is the only account;
+fixing it is a precondition before a second one. **Found:** the spec audit of
+FILM-1135 (2026-09-23); reproduced by the coordinator. **Open.**
+
+`external_content` holds both the shared news/research cache and every user
+upload — `uploadSourceAction`
+(`packages/features/episodes/src/server/source-upload-actions.ts:99-110`) writes
+the uploaded text there with the admin client. The table has no account or
+project column, and its read policy is:
+
+```sql
+create policy "Authenticated users can view content" on external_content
+  for select to authenticated using (true);
+-- 20260211200000_create_external_context_tables.sql:91-94
+```
+
+So the full `content` of every upload is readable, through the Data API, by
+any authenticated user in any account. Three more effects of the same design
+(read, not reproduced):
+
+- An upload's `external_sources` row is upserted `onConflict: 'slug'`, the
+  slug being the lower-cased name — two accounts uploading a source with the
+  same name share one row, and the second overwrites the first's URL and
+  category. An upload named like a seeded source ("Reuters") rewrites that
+  global row as `manual` / `tier_3` for every tenant
+  (`source-upload-actions.ts:78`, `:87`).
+- Upload names are visible to every account (`"Anyone can view active
+  sources"`, `using (is_active = true)`).
+- Any user who owns **some** account can add, edit or deactivate the
+  platform-wide `external_sources` registry: `requireAccountOwner`
+  (`external-context-actions.ts:215`) checks for an owner membership anywhere,
+  and the write then goes through the admin client (`:243`, `:288`, `:326`).
+
+### Reproduced (local database, 2026-09-23, in a rolled-back transaction)
+
+A source and a content row inserted the way the upload action writes them,
+then read as `authenticated` with a fresh random `sub` that belongs to no
+account:
+
+| Statement | Result |
+|---|---|
+| `select count(*), max(title), max(content) from external_content where external_id = 'manual-audit-probe'` | **1 row** — `Private research notes`, `CONFIDENTIAL draft text` |
+
+Rolled back.
+
+### Proposed fix
+
+- Give uploads an owner: `account_id` (and `project_id`, if uploads belong to
+  a project) on `external_content`, set by the action — or move uploads to a
+  table of their own. Shared cache rows (news, providers) keep a null owner.
+- Replace the `using (true)` read policy: shared rows readable by any
+  authenticated user, owned rows only by members of that account
+  (`has_role_on_account`).
+- Key uploaded `external_sources` by account as well as slug, or stop
+  upserting them by name.
+- **Fix the class:** list every `using (true)` policy granted to
+  `authenticated` in `apps/web/supabase/migrations/`, and say beside each why
+  the table holds nothing account-scoped.
+
+### Acceptance criteria
+
+- [ ] pgTAP, red first: a user in another account cannot read an uploaded source's content; a member of the uploading account can; shared news rows stay readable
+- [ ] Two accounts uploading a source with the same name get two sources, neither overwriting the other
+- [ ] Every `using (true)` policy granted to `authenticated` is listed, with a decision beside each
+
+---
+
+## KB-27 — Any signed-in user can write canon into any project
+
+**Severity:** High — a cross-tenant write. A user with no access to a project
+can add permanent canon to it and overwrite an episode's canon summary, and
+the forged event carries no author. **Found:** the spec audit of FILM-1002
+(2026-09-23); reproduced by the coordinator. **Open.**
+
+`commit_canon_changes`
+(`apps/web/supabase/migrations/20260130004332_add_commit_canon_changes_function.sql`)
+is `SECURITY DEFINER`, sets no `search_path`, checks no membership, and is
+granted to `authenticated` (`:77`). It inserts `immutable_events` for whatever
+`p_project_id` it is given and merges `canonSummary` / `sentimentScore` into
+whatever `p_episode_id` it is given — the two are not even checked against each
+other. `commitCanonChangesAction`
+(`packages/features/episodes/src/server/canon-actions.ts:1201`) passes the
+client's ids through. Row-level security does not apply inside the function, so
+a direct `rpc('commit_canon_changes', …)` from any session reaches every
+project. (`anon` has no `EXECUTE`; checked.)
+
+### Reproduced (local database, 2026-09-23, in a rolled-back transaction)
+
+As `authenticated` with a fresh random `sub` that belongs to no account,
+against a seeded episode in another account's project:
+
+| Statement | Result |
+|---|---|
+| `has_role_on_account(<the project's account>)` | `false` |
+| `select count(*) from projects where id = <project>` | `0` — the stranger cannot see the project |
+| `select commit_canon_changes(<project>, <episode>, 1, 1, '[{"type":"death",…}]', 'FORGED canon summary', 0.10)` | `{"eventsCreated": 1, "summaryStored": true}` |
+| afterwards, as postgres | 1 new `immutable_events` row, `created_by` NULL; the episode's `canonSummary` is `FORGED canon summary` |
+
+Rolled back.
+
+### Proposed fix
+
+- Inside the function: require `has_role_on_account` for the project's
+  account, require the episode to belong to that project, set
+  `created_by = auth.uid()`, and `set search_path = ''` with qualified names.
+  Or make it `SECURITY INVOKER` and let KB-17's policies decide — which needs
+  KB-17 fixed first.
+- **Fix the class:** list every `SECURITY DEFINER` function granted to
+  `authenticated` in `apps/web/supabase/migrations/`, with the membership check
+  each performs (or why it needs none). KB-11 was the same shape: a
+  definer path re-deriving access by hand, or not at all.
+
+### Acceptance criteria
+
+- [ ] pgTAP, red first: a non-member's call is refused and writes nothing; a member's call still commits; an episode from another project is refused
+- [ ] Events written by the function carry `created_by` = the caller
+- [ ] Every `SECURITY DEFINER` function granted to `authenticated` is listed with its access check, or the reason it needs none
+
+---
+
+## KB-28 — Any signed-in user can upload into any project's storage folder
+
+**Severity:** Medium — a cross-tenant write, bounded: existing files cannot
+be overwritten or deleted (those policies are scoped), but new ones can be
+planted under another project's path on a **public** bucket, with no size
+limit. **Found:** the spec audit of FILM-203 (2026-09-23); the policy read
+from the live local database and the insert reproduced by the coordinator.
+**Open.**
+
+Live policies on `storage.objects` for the `project-assets` bucket (public,
+`file_size_limit` none):
+
+| Policy | Check |
+|---|---|
+| `project_assets_insert` | `bucket_id = 'project-assets'` — nothing else ("validated at the application layer", `20251207162036_project-assets-bucket.sql:57-60`) |
+| `project_assets_update` / `_delete` | `has_role_on_project(kit.get_project_id_from_path(name))` |
+
+The application layer does not close it either. The live upload path,
+`apps/web/app/api/storage/presign/route.ts`, authorises on **read** access to
+the project (`:111-122`), and a public or unlisted project is readable by any
+signed-in user (`20260108120000_public_sharing_rls.sql:28-34`). The bucket
+name is taken from the client unchecked (`:37`, `:147`), and since c17efd37
+moved uploads to presigned URLs there is no server-side size, type or
+magic-byte check (FILM-CC-01's validator is bypassed; the client checks alone,
+`use-image-upload.ts:57`). The orphaned FILM-203 route
+(`apps/web/app/api/projects/[projectId]/assets/upload/route.ts:51-60`) has the
+same read-only check and is still deployed.
+
+### Reproduced (local database, 2026-09-23, in a rolled-back transaction)
+
+As `authenticated` with a fresh random `sub` that has no role on a seeded
+project (`has_role_on_project` → `false`): `insert into storage.objects
+(bucket_id, name, owner_id) values ('project-assets', '<that project id>/audit-probe/planted.png', auth.uid())`
+→ **INSERT 0 1**. That is the row the Storage API writes under the user's
+session. Rolled back.
+
+### Proposed fix
+
+- `project_assets_insert` checks what update and delete already check:
+  `has_role_on_project(kit.get_project_id_from_path(name))`.
+- The presign route authorises on **write** access (a project role, not
+  visibility), pins the bucket, and enforces size and type server-side — or
+  sets `file_size_limit` and `allowed_mime_types` on the bucket so storage
+  enforces them.
+- Delete the orphaned FILM-203 route (retired in the 2026-09-23 audit).
+- **Fix the class:** list every storage bucket's four policies side by side;
+  an insert looser than its delete is the shape of this bug.
+
+### Acceptance criteria
+
+- [ ] pgTAP, red first: a non-member's insert into another project's path is refused; a member's insert succeeds
+- [ ] The presign route refuses a user who can read a public project but has no role on it — test red first
+- [ ] Size and type are enforced server-side or by the bucket, not only in the browser
+- [ ] The orphaned upload route is gone
+
+---
+
+## KB-29 — Token refresh reads app credentials from a table connect stopped writing
+
+**Severity:** High if it applies to a live account, and it probably applies to
+every account connected since 2026-01-21 — the connection dies at its first
+token expiry (about an hour for YouTube), taking the analytics sync with it.
+**Found:** the spec audit of FILM-706/707 (2026-09-23); confirmed by the
+coordinator by reading. **Not run** — this entry says so rather than claim a
+reproduction it does not have. **Open.**
+
+`3238dd61` (2026-01-21, "move OAuth App Credentials to Super Admin") moved the
+YouTube and Meta app credentials to the global `oauth_app_credentials` table:
+connect and callback now call `getGlobalOAuthCredentials`
+(`apps/web/app/api/platforms/connect/youtube/route.ts:61`,
+`callback/youtube/route.ts:98`, and the same for Meta). TikTok connects with env
+keys. **Refresh was not moved.** `refreshYouTubeToken`, `refreshTikTokToken`
+and `refreshMetaToken` still call `getAccountOAuthAppAdmin(accountId, …)`
+(`packages/features/publishing/src/lib/token-refresh.ts:332`, `:377`, `:428`),
+which reads the per-account `account_oauth_apps` and returns `null` when there
+is no row (`src/server/account-oauth-actions.ts:67-90`) — no fallback to the
+global credentials. Refresh then throws "OAuth credentials not configured for
+this account" and the connection is set inactive. The only writer of
+`account_oauth_apps`, `OAuthAppConfig`, has been rendered by no page since
+that commit.
+
+The analytics sync takes the same path: `analytics-sync-cron.ts:459-460` and
+`asset-duration-sync.ts:112` call `ensureValidToken`. LinkedIn is worse: its
+refresh looks up `platform = 'linkedin'` under a `@ts-expect-error`
+(`token-refresh.ts:516-520`), which the table's `CHECK` does not allow
+(`20260102221811_add_account_oauth_apps.sql:8`), so no LinkedIn token can ever
+be refreshed. The passing unit test mocks the lookup
+(`__tests__/token-refresh.test.ts:55`), and the YouTube and TikTok refresh
+tests call `fetch` themselves before asserting it was called (`:199`, `:235`),
+so no test could have seen this.
+
+**Whether it bites the owner today depends on production data** that this entry
+does not read: an account holding a pre-2026-01-21 `account_oauth_apps` row for
+the platform refreshes fine. The owner can check with one query in the
+production dashboard — `select platform from account_oauth_apps where
+account_id = '<their account>'` — or by whether a YouTube connection stays
+active past its first hour.
+
+### Proposed fix
+
+- One source of app credentials for connect **and** refresh: refresh reads
+  `getGlobalOAuthCredentials(platform)` (env for TikTok, as connect does), with
+  a per-account override only if that is still a product decision.
+- LinkedIn gets credentials the same way, and the `@ts-expect-error` goes.
+- Replace the two self-fulfilling refresh tests with ones that call
+  `refreshTokenForPlatform` against a local listener — seen red on today's
+  code first.
+- **Fix the class:** the credential lookup is the same rule stated in two
+  places (connect, refresh); make it one function both import.
+
+### Acceptance criteria
+
+- [ ] Unit, red first: an account with global credentials and no `account_oauth_apps` row refreshes YouTube, Meta and TikTok tokens
+- [ ] LinkedIn refresh works without `@ts-expect-error`
+- [ ] Connect and refresh import one credential lookup
+- [ ] No refresh test asserts a `fetch` it made itself
+
+---
+
+## KB-30 — Every YouTube upload declares "not made for kids", with no way to change it
+
+**Severity:** Medium — a compliance risk that depends on the channel: YouTube
+requires each upload's audience to be declared (COPPA), and for a channel
+whose content is made for children a wrong declaration is the creator's
+liability. **Found:** the spec audit of FILM-710 (2026-09-23); confirmed by
+the coordinator by reading. **Open.**
+
+The live publish screen builds YouTube payloads with `platformSpecific: {}` —
+only Facebook gets a value (`{ isReel: true }`) —
+(`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:845`,
+`:872`, `:1070`, `:1113`). Both upload paths then default the audience and
+category: `madeForKids ?? false`, `categoryId ?? '22'`
+(`packages/features/publishing/src/server/publish-actions.ts:682-685`;
+`apps/web/lambda/publish-worker/handlers/youtube.ts:39-45`, which also sets
+`selfDeclaredMadeForKids: false`). The only control that could set them is in
+`platform-specific-settings.tsx`, rendered only inside `MetadataEditor`, which
+no page has rendered since `baa752eb` (FILM-710, retired in the 2026-09-23
+audit). The tags placeholder reads "animation, kids, story"
+(`publish-settings-sidebar.tsx:86`).
+
+### Proposed fix
+
+- An audience choice on the publish screen, per project or per episode, that
+  YouTube uploads send explicitly — with no default the user has not seen.
+- Category chosen the same way, or at least not silently `22`.
+- The owner decides the right audience for their own channel; the product's
+  job is to ask, not to assume.
+
+### Acceptance criteria
+
+- [ ] A YouTube publish sends the audience the user chose; with none chosen, publishing asks rather than defaulting — Playwright, asserted on the request payload, red first
+- [ ] The lambda path sends the same value as the in-app path
+
+---
+
+## KB-31 — Story ideation builds its prompt from any episode, for any caller
+
+**Severity:** Medium — an indirect cross-tenant read: a signed-in user who has
+another account's episode id gets back LLM output built from that account's
+characters, locations, verified facts and season premise. It needs the id — a
+UUID, not guessable — which is what keeps this below High. **Found:** the spec
+audit of FILM-305 (2026-09-23); confirmed by the coordinator by reading. **Not
+run**: the LLM worker consumes SQS, which has no local equivalent (phase 18
+README, *Known limits*). **Open.**
+
+`generateStoryIdeasAction`
+(`packages/features/episodes/src/server/story-actions.ts:54-117`) authenticates
+the user and queues `data.episodeId` as given — it never reads the episode
+through the user's client, so RLS is never asked. The worker runs on the
+service-role key (`apps/web/lambda/llm-worker/index.ts:71`) and
+`processStoryIdeation` builds the whole prompt context from that id
+(`apps/web/lambda/llm-worker/handlers/story-ideation.ts:65`,
+`buildEpisodeContext`), then returns the ideas to the requesting user. It also
+attributes the job's LLM usage to the caller's *first* account membership, not
+the episode's account (`story-actions.ts:74-95`).
+
+**Fix the class, not this action:** 52 call sites queue LLM jobs, across
+episodes, audio, analytics and research (`git grep -w queueLlmJob`), and the
+worker trusts every id in every payload. Each action must prove the caller can
+read what it names before queueing — a read through the user's client, the
+shape `has_role_on_account` guards everywhere else — or the worker must check
+membership itself against the payload's `userId`.
+
+### Proposed fix
+
+- Every `queueLlmJob` caller reads its target (episode, project, account)
+  through the user's client first and refuses when RLS returns nothing; the
+  payload carries the account that owns the target, not the caller's first
+  membership.
+- Or, in one place: the worker verifies `userId`'s membership of the target's
+  account before building any context.
+
+### Acceptance criteria
+
+- [ ] Unit, red first: `generateStoryIdeasAction` refuses an episode id the caller cannot read, and queues nothing
+- [ ] Every `queueLlmJob` call site is listed with the read that authorises it
+- [ ] LLM usage is attributed to the target's account
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
@@ -1435,3 +1763,60 @@ that should not need to exist.
 | KB-16 | The Overview tab drew figures nobody measured: a fixed share donut, a 70/30 revenue split, canned footers, +100% beside every metric | #300 |
 | KB-19 | A failed platform connect landed on a 404 and logged nothing | #297 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
+
+---
+
+## Leads from the 2026-09-23 spec audit — read, not reproduced
+
+**These are not entries.** The rule above holds: an entry is reproduced before
+it is written down. Thirteen auditors reading the code against the specs found
+more than 80 possible bugs; the ones below are those most likely to matter to a
+user. Each was seen in the code and has **not** been run. When one is worked,
+reproduce it first and move it up as a KB entry, or strike it here with what
+proved it wrong. Paths abbreviated with `…/studio/` are under
+`apps/web/app/home/[account]/studio/[projectSlug]/`.
+
+**Analytics correctness**
+- `channel_daily`: the reach and basic report branches write rows on one ReplacingMergeTree key, each zeroing the other's columns, so whichever lands later zeroes that day's residual watch time (a YPP input) or impressions — `packages/features/content-analytics/src/server/reporting/report-ingest.ts:349`, `:403`; `packages/clickhouse/src/migrations/003_reach_and_traffic.ts:56`
+- The Analytics-API sync re-fetches three days and overwrites Reporting-API-only columns (`subscribers_lost`, `dislikes`, `avg_view_percentage`) with zeros — `packages/features/content-analytics/src/server/ingest.ts:81`, `:124`
+- The scheduled raw CSV repeats the period's total impressions on every daily row, and CTR/AVD are period rates repeated per day — `apps/web/app/api/reports/scheduled/route.ts:517-519` (FILM-1601)
+- Instagram's never-requested `follows` is stored as `subscribers_gained = 0` — `packages/features/content-analytics/src/server/analytics-sync-cron.ts:915` (FILM-803; FILM-1712 covers the class)
+- Audience breakdowns mix fetches: `argMax` per key keeps a country or OS missing from the latest fetch at its old value — `packages/clickhouse/src/queries-detail.ts:246`
+- The YouTube backfill can stall for good behind 50 permanently failing publishes, retried first each run — `packages/features/content-analytics/src/server/backfill/youtube-backfill.ts:253`, `:20`
+
+**UI that is broken or says something untrue**
+- The AI Insights tab renders nothing: the worker's `{ success, data }` is stored without unwrapping — `packages/features/content-analytics/src/components/ai-insights.tsx:52`; the Language insights card likely crashes on the same shape — `language-insights-cards.tsx:184`, `:272`
+- The canon dashboard's Facts tab is always empty and its badge never shows — regression `3581f78f`: `…/studio/episodes/[episodeSlug]/story/_components/episode-facts-panel.tsx:61` expects an array, `packages/features/episodes/src/server/episode-fact-actions.ts:178` returns `{ facts, totalCount }` (FILM-1142)
+- Every studio page load sends a failing request: the sidebar filters `external_content.project_id`, a column that does not exist — `…/studio/layout.tsx:84`
+- Visual Studio's "Generate All Pending" and "Regenerate" toast success and do nothing; "Replace" discards the chosen file; the "Add New Shot" tile has no handler — `…/studio/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:240`, `shot-details-sidebar.tsx:332`, `:835`, `shot-grid.tsx:54`
+- An assembled VEO prompt over 2,000 characters cannot be saved: update caps `prompt` at 2000, create allows 8000 — `packages/features/episodes/src/lib/schemas/shot.schema.ts:194`
+- Edit suite: the Inspector says "Coming soon", so speed, fades and keyframes cannot be edited; the Snap toggle is never read; clips on a locked track can be moved and deleted; many edits bypass undo — `packages/features/edit-suite/src/components/inspector/inspector-panel.tsx:37`, `timeline/clip-block.tsx:172`, `timeline/track-row.tsx:303` (PHASE-14, FILM-601, FILM-602)
+- Settings still ask for, and validate against the vendor, Kling/Runway/Hailuo keys (retired) and OpenAI/Claude/Gemini keys that nothing reads — `apps/web/app/home/[account]/settings/_components/api-keys-settings.tsx:55-125`; the project form saves "Default Video Provider" and "Enable Subtitles", which nothing reads — `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:131`, `:705`
+- X and LinkedIn cannot be connected or published from the UI, yet the social-post page tells creators to "Connect one in Settings → Platforms" — `packages/features/publishing/src/components/platform-connections.tsx:90`, `packages/features/publishing/src/lib/constants.ts:45-51`, `apps/web/app/home/[account]/social-posts/[postId]/_components/social-post-detail.tsx:381`
+
+**Studio data**
+- Shots: soft-deleted rows keep their `sequence_number` under a non-partial unique key, so reorder, close-gap and add-after-delete collide, and the reorder loop ignores the error — `packages/features/episodes/src/lib/server/mutations/shot-actions.ts:425-431`, `:45`, `:125`; `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:331`
+- A deleted asset's name cannot be reused: `unique(project_id, type, name)` counts soft-deleted rows (seasons got the partial-index fix, assets did not) — `20251205125737_film-studio-tables.sql:134`
+- Story generation can drop project facts: a duplicate `verifiedFacts` key lets episode facts, or `undefined`, overwrite them — `apps/web/lambda/llm-worker/handlers/story-generation.ts:323`, `:329` (TS1117, hidden by KB-14)
+- Episode numbers can repeat: `createEpisode` relies on a unique constraint no migration creates — `packages/features/episodes/src/server/actions.ts:67`
+- Resetting an episode leaves canon rows behind: `character_states` and `state_deltas` have no DELETE policy, so the user-client delete removes nothing and raises nothing — `packages/features/episodes/src/server/actions.ts:1227`, `:1241`
+- `reel_note` is passed to the shot director and never interpolated into the prompt — `packages/features/prompt-engine/src/prompts/story-generation/scene-shot-generation.json:128`
+- The assets page caches its project lookup for an hour by slug alone, with no account in the key or the query, so another account's same-slug project can be served — `…/studio/assets/page.tsx:79-90`
+- Asset delete fails open: a failed in-use check deletes anyway — `packages/features/assets/src/lib/server/asset.queries.ts:139-143`, and bulk delete goes straight to confirmation — `packages/features/assets/src/components/asset-gallery.tsx:222-224` (FILM-201)
+
+**Audio**
+- Voice `speed` is accepted and never sent to ElevenLabs — `apps/web/lambda/voice-worker/voice-generation.ts:204`
+- Batch dialogue: an SQS redelivery counts a failure again, so a batch can close while lines are still queued; a cancelled batch keeps generating, at cost, and is then marked completed — `apps/web/lambda/voice-worker/index.ts:291`; `apps/web/supabase/migrations/20260527094643_increment_batch_progress_rpc.sql:64`
+- A 429 is treated as permanent, with no backoff, for every provider built on `fetchWithRetry` — `packages/features/audio-generation/src/lib/http.ts:72`
+
+**Publishing and vendors**
+- TikTok direct posting calls `/v2/post/publish/video/init/`, but connect never requests `video.publish`; the immediate path also sends an undocumented `privacy_level: 'PUBLIC'` and `video_upload_id` — `packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:264`, `apps/web/lambda/publish-worker/handlers/tiktok.ts:16`, `packages/features/publishing/src/oauth/tiktok/config.ts:12` (the FILM-1729 class)
+- One channel still cannot be connected for two languages: the shorts migration dropped a constraint name that never existed, so the three-column key survives — `apps/web/supabase/migrations/20260101120000_add_shorts_tables.sql:236`
+- Token refresh: a failed lock retries every second with no cap — `packages/features/publishing/src/lib/token-refresh.ts:180-183`; the expiring-connections read is unpaged, under the 1000-row cap — `packages/features/publishing/src/jobs/refresh-expiring-tokens.ts:75-81`
+
+**Facts, news and the rest**
+- Fact search passes raw input to `to_tsquery`, so a trailing space likely breaks the page, and the claim query cannot use its full-text index — `packages/features/episodes/src/server/fact-actions.ts:298`
+- Each uncached news search calls NewsAPI once per active source (12 seeded) with identical parameters — `packages/features/episodes/src/lib/server/services/context-aggregator.ts:229`
+- `/sitemap.xml` has two handlers — `apps/web/app/sitemap.ts:13`, `apps/web/app/sitemap.xml/route.ts:16`
+- Two status colours fail WCAG AA 4.5:1 on small badges — `apps/web/styles/shadcn-ui.css:51`, `:55`
+- The live Suno dialogs need `SUNO_API_KEY`, which `sst.config.ts` does not pass to the server (production config not checked, by rule) — `packages/features/audio-generation/src/server/music-actions.ts:83`

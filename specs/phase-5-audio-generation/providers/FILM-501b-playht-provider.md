@@ -1,3 +1,9 @@
+---
+spec_id: FILM-501b
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-501b: PlayHT Voice Generation Provider
 
 ## Status: DONE

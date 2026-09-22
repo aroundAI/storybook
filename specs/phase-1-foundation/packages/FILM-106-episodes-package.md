@@ -1,3 +1,9 @@
+---
+spec_id: FILM-106
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-106 @kit/episodes Package
 
 ## Metadata
@@ -6,7 +12,7 @@
 - **Effort:** S
 - **Dependencies:** None
 - **Blocks:** Phase 3 (Episode Management)
-- **Status:** ✅ COMPLETED
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ COMPLETED)
 - **PR:** https://github.com/aroundAI/storybook/pull/4
 
 ## Context
@@ -363,7 +369,7 @@ export {};
 
 ## Acceptance Criteria
 - [x] Package builds without errors
-- [x] All exports work correctly
+- [ ] All exports work correctly — *audit: no longer true* — `./server/context-builder` (`packages/features/episodes/package.json:19`) points at a file deleted in `e2d42522`
 - [x] TypeScript types exported and accessible
 - [x] Zod schemas validate correctly
 - [x] Can be imported by other packages
@@ -372,11 +378,11 @@ export {};
 ## Test Plan
 ### Unit Tests
 - [x] Package can be imported from other workspace packages
-- [x] All export paths are accessible
+- [ ] All export paths are accessible — *audit: not met* — no test found; and `./server/context-builder` resolves to nothing
 - [x] Zod schemas validate valid episode data
 - [x] Zod schemas validate valid shot data
 - [x] Zod schemas reject invalid input
-- [x] Constants are accessible
+- [ ] Constants are accessible — *audit: not met* — no test found; no consumer uses the constants in `packages/features/episodes/src/lib/constants.ts`
 
 ## Implementation Notes
 - Implemented in PR #4
@@ -384,3 +390,9 @@ export {};
 - Full CRUD server actions implemented: create, update, delete for episodes and shots
 - Reorder shots action for sequence management
 - All queries return proper typed results
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| All exports work correctly | `./server/context-builder` in `packages/features/episodes/package.json:19` maps to `src/server/context-builder.ts`, deleted in `e2d42522` (2026-01-18; the builder now lives in `apps/web/lambda/llm-worker/utils/context-builder.ts`). Nothing imports the path, so the fix is deleting the entry. | unassigned |

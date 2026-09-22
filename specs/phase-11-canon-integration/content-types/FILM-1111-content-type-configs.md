@@ -1,7 +1,8 @@
 ---
 id: FILM-1111
 title: Content Type Configurations and Memory Strategies
-status: done
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: high
 effort: M
 dependencies: [FILM-1110]
@@ -319,10 +320,10 @@ export async function buildMemoryContext(
 - [x] `MEMORY_ALLOCATIONS` defined for all 6 content types
 - [x] `getDecayFactor` returns correct value per type
 - [x] `getMemoryOptionsForContentType` works for all types
-- [x] `buildMemoryContext` uses content-type strategies
+- [ ] `buildMemoryContext` uses content-type strategies — *audit: no longer true* — strategies apply only when `projectType` is passed, and no caller passes it; scoring and decay are never used
 - [x] Unit tests for all decay functions
 - [x] Documentary type allocates 50% to sources
-- [x] News type has zero memory horizon
+- [ ] News type has zero memory horizon — *audit: no longer true* — news horizon is 1 (`packages/features/episodes/src/lib/canon/content-type-configs.ts:168`); its memory allocations are all 0 instead
 
 ---
 
@@ -387,4 +388,11 @@ describe('Memory Strategies', () => {
 
 ## Implementation Status
 
-**Implemented** in PR #176 — merged 2026-02-09
+**🟡 PARTIAL** (audit 2026-09-23; was **Implemented** in PR #176 — merged 2026-02-09)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| `buildMemoryContext` uses content-type strategies | Same gap as FILM-1110: no caller passes `projectType`; `calculatePriority` and `getDecayFactor` are reached only from tests | unassigned |
+| News type has zero memory horizon | Horizon is 1; memory is zeroed by allocation and decay instead | owner (accept, or change the config) |

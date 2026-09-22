@@ -1,6 +1,12 @@
+---
+spec_id: FILM-410
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-410: Shot Grid Component
 
-> **Status**: DONE
+> **Status**: 🟡 PARTIAL (audit 2026-09-23; was DONE)
 > **Implemented**: December 2025
 > **Location**: `packages/features/video-generation/src/components/shot-grid/`
 
@@ -322,14 +328,14 @@ onSelectionChange(rangeIds);
 
 ## Acceptance Criteria
 
-- [ ] Grid displays all shots
-- [ ] Grid is responsive (1-6 columns)
-- [ ] Shot selection works (single, multi, range)
-- [ ] Drag-and-drop reordering works
-- [ ] Status overlays display correctly
-- [ ] Video/thumbnail previews work
-- [ ] Keyboard navigation supported
-- [ ] Component is accessible (ARIA)
+- [x] Grid displays all shots — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:43` (every shot, grouped by scene; the spec's `packages/features/video-generation` grid went in 5b88db3a)
+- [ ] Grid is responsive (1-6 columns) — *audit: not met* — 2–4 columns (`grid-cols-2 md:grid-cols-3 lg:grid-cols-4`, `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:43`); the 1–6 column grid went in 5b88db3a
+- [ ] Shot selection works (single, multi, range) — *audit: not met* — single only (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:70`); Cmd/Shift multi and range select went in 5b88db3a
+- [ ] Drag-and-drop reordering works — *audit: not met* — no drag-and-drop in Visual Studio; `reorderShotsAction` (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:183`) has no caller
+- [x] Status overlays display correctly — *audit:* badge with per-status icon, incl. failed (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:138`), play overlay for completed (line 242); progress bar and Generate button went with generation (5b88db3a)
+- [x] Video/thumbnail previews work — *audit:* video → thumbnail → first/last frame → placeholder, `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:104`
+- [ ] Keyboard navigation supported — *audit: not met* — shot cards are `<div onClick>` with no tabIndex or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`); the grid's key handling went in 5b88db3a
+- [ ] Component is accessible (ARIA) — *audit: not met* — no `aria-*` attribute in any Visual Studio component; the `aria-label`/`aria-multiselectable` grid went in 5b88db3a
 
 ---
 
@@ -451,3 +457,13 @@ import { FixedSizeGrid } from 'react-window';
 - **FILM-409**: Visual Studio
 - **Constitution**: Section 2.3 (Component Pattern)
 - **Constitution**: Section 8 (Accessibility)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Grid is responsive (1-6 columns) | Today's grid is 2–4 columns (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:43`) | unassigned |
+| Shot selection (multi, range) | Single selection only (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:70`); multi/range select served batch generation, retired in 5b88db3a | owner |
+| Drag-and-drop reordering | No drag-and-drop in Visual Studio; `reorderShotsAction` (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:183`) has no caller | unassigned |
+| Keyboard navigation | Shot cards are not focusable (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`) | unassigned |
+| Component is accessible (ARIA) | No `aria-*` attribute in any Visual Studio component | unassigned |

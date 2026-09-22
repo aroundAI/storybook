@@ -1,7 +1,8 @@
 ---
 id: FILM-1122
 title: Researcher LLM Role Prompt
-status: done
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: medium
 effort: M
 dependencies: [FILM-1120, FILM-304]
@@ -308,12 +309,12 @@ export function ResearchPhaseView({ projectId, topic }) {
 
 - [x] `researcher-role.json` prompt template created
 - [x] Prompt registered in Lambda worker
-- [x] `runResearchPhase` function works correctly
-- [x] Claims correctly matched to existing verified facts
-- [x] Unverified claims marked as 'needs_source'
+- [ ] `runResearchPhase` function works correctly — *audit: no longer true* — no caller; its slug `researcher-role` (`packages/features/episodes/src/lib/documentary/researcher.ts:108`) is not a registry key (`documentary/researcher-role`)
+- [ ] Claims correctly matched to existing verified facts — *audit: no longer true* — the live researcher skill returns the LLM's matches unvalidated (`packages/features/episodes/src/agent/skills/researcher-skill.ts:74`); none can be verified (KB-18)
+- [ ] Unverified claims marked as 'needs_source' — *audit: unverified* — LLM label via the prompt rule; the enforcing `researcher.ts:129` is never called; no test or eval
 - [x] Research gaps identified
-- [x] UI shows research results with stats
-- [x] Cannot proceed to generation if critical claims unverified
+- [ ] UI shows research results with stats — *audit: no longer true* — no research-phase UI exists or ever did; results stay inside the story agent (`packages/features/episodes/src/agent/story-orchestrator.ts:283`)
+- [ ] Cannot proceed to generation if critical claims unverified — *audit: no longer true* — only an instruction to the agent (`packages/features/episodes/src/agent/skills/researcher-skill.ts:123`); no code blocks generation
 
 ---
 
@@ -392,3 +393,12 @@ describe('Researcher Role', () => {
 ## Implementation Status
 
 **Implemented** in PR #178 — merged 2026-02-10
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| `runResearchPhase` function works correctly | Nothing calls it, and its `templateSlug: 'researcher-role'` (`packages/features/episodes/src/lib/documentary/researcher.ts:108`) is not a key in `PROMPT_REGISTRY`, which registers `documentary/researcher-role` (`packages/features/prompt-engine/src/lib/server/prompt-registry.ts:113`). The role runs instead as an agent skill (`packages/features/episodes/src/agent/skills/researcher-skill.ts`) for documentary/educational stories | unassigned |
+| Claims correctly matched to existing verified facts | The skill passes the LLM's `matched_fact_id`/`confidence` through without checking them against rows; the ID check lives only in the uncalled `runResearchPhase`. No fact can reach `verified` either (KB-18) | KB-18 |
+| UI shows research results with stats | No `ResearchPhaseView` or equivalent exists in code or git history | unassigned |
+| Cannot proceed to generation if critical claims unverified | The skill tells the agent that critical claims "MUST be verified" (`researcher-skill.ts:120`); nothing in code enforces it | unassigned |

@@ -1,11 +1,19 @@
+---
+spec_id: FILM-203
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-203: Asset Upload API Route
+
+> **🗑️ Retired (audit 2026-09-23).** c17efd37 (2026-02-02) moved the image uploader off this route to presigned direct uploads, and nothing has called the route since; it is still deployed and tested (`apps/web/app/api/projects/[projectId]/assets/upload/route.ts`). Uploads now go through `apps/web/app/api/storage/presign/route.ts`, called from `packages/features/assets/src/components/image-uploader/use-image-upload.ts:131`, with client-side validation only and no generated thumbnail. Kept as a record; not outstanding work.
 
 **Phase**: 2
 **Priority**: P0
 **Effort**: M (3-5 days)
 **Dependencies**: FILM-201 (asset CRUD), FILM-CC-01 (file upload validation)
 **Blocks**: FILM-207 (ImageUploader component)
-**Status**: ✅ COMPLETED
+**Status**: 🗑️ RETIRED (audit 2026-09-23; was ✅ COMPLETED)
 **Completed**: 2025-12-07
 
 ---

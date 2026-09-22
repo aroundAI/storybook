@@ -1,3 +1,9 @@
+---
+spec_id: FILM-807
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-807: Performance Chart
 
 ## Metadata
@@ -6,7 +12,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-805 (Analytics Dashboard)
 - **Blocks:** None
-- **Status:** ✅ DONE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
 
 ---
 
@@ -428,8 +434,8 @@ export interface DailyMetric {
 - [x] Aggregate view shows combined metrics
 - [x] Hover tooltip shows date and values
 - [x] Export chart as PNG
-- [x] Responsive on mobile screens
-- [x] Legend clickable to hide/show series
+- [ ] Responsive on mobile screens — *audit: unverified* — needs a phone-width screenshot; the chart is `ResponsiveContainer` 100%, but the 7-toggle control group does not wrap (`packages/features/content-analytics/src/components/performance-chart.tsx:227`)
+- [ ] Legend clickable to hide/show series — *audit: no longer true* — a bare recharts `<Legend />` with no click handler or hidden-series state, since 2b20331f (`performance-chart.tsx:157`)
 - [x] Y-axis uses abbreviated numbers (K, M)
 
 ---
@@ -437,13 +443,13 @@ export interface DailyMetric {
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test data transformation for chart format
-- [ ] Test platform color mapping
+- [ ] Test data transformation for chart format — *audit: not met* — no test found
+- [ ] Test platform color mapping — *audit: not met* — no test found
 
 ### Visual Tests
-- [ ] Chart renders correctly with sample data
-- [ ] Responsive at different widths
-- [ ] Export generates valid image
+- [ ] Chart renders correctly with sample data — *audit: not met* — no test found
+- [ ] Responsive at different widths — *audit: not met* — no test found
+- [ ] Export generates valid image — *audit: not met* — no test found
 
 ---
 
@@ -459,3 +465,9 @@ export interface DailyMetric {
 
 - `recharts` - Charting library
 - `react-sparklines` - Mini sparkline charts (optional)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Legend clickable to hide/show series | `performance-chart.tsx:157,196` render a bare recharts `<Legend />`; recharts does not toggle series by itself and nothing tracks hidden series. True since the chart shipped (2b20331f) | unassigned |

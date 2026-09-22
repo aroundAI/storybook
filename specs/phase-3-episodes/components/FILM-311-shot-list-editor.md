@@ -1,6 +1,14 @@
+---
+spec_id: FILM-311
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-311: Shot List Editor Component
 
-**Status**: ✅ DONE
+> **🗑️ Retired (audit 2026-09-23).** The ShotListEditor (`packages/features/episodes/src/components/shot-list-editor/`) was deleted in e2d42522 (2026-01-18, "remove legacy system"), and in-app video generation went in 5b88db3a (2026-01-15). Shot editing is now the Visual Studio (FILM-409, FILM-410): `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx` and `shot-details-sidebar.tsx`, a scene-grouped card grid with a filter bar and a details sidebar, with no table, drag-and-drop or bulk actions. Kept as a record; not outstanding work.
+
+**Status**: 🗑️ RETIRED (audit 2026-09-23; was ✅ DONE)
 **Phase**: 3
 **Priority**: P0
 **Effort**: L (5-7 days)
@@ -324,7 +332,7 @@ function ShotRow({ shot, episodeId, isSelected, onSelect }: {
 
 ## Implementation Status
 
-**Status**: COMPLETED
+**Status**: 🗑️ RETIRED (audit 2026-09-23; was COMPLETED)
 **Completed Date**: 2025-12-08
 **PR**: feat/film-308-story-studio
 

@@ -1,3 +1,9 @@
+---
+spec_id: FILM-309
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-309: Story Ideation Component
 
 **Status**: ✅ DONE
@@ -332,14 +338,14 @@ function IdeaCard({ idea, isSelected, onSelect }: {
 
 ## Acceptance Criteria
 
-- [x] Premise input validates 10-500 characters
-- [x] Genre, audience, style dropdowns work
-- [x] Number of ideas slider works (1-5)
-- [x] Generate button disabled during generation
+- [ ] ~~Premise input validates 10-500 characters~~ — *audit: retired* — limit raised to 2000 in 5ddb6752 (`packages/features/episodes/src/lib/schemas/story.schema.ts:19`)
+- [ ] ~~Genre, audience, style dropdowns work~~ — *audit: retired* — genre and audience come from the project since the route screen replaced the component (e2d42522); `apps/web/lambda/llm-worker/handlers/story-ideation.ts:94`
+- [ ] Number of ideas slider works (1-5) — *audit: unverified* — slider bound at `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:226`; no Playwright spec drives it
+- [ ] Generate button disabled during generation — *audit: unverified* — `disabled` follows the job status (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:176`); no test drives it
 - [x] Ideas display in responsive card grid
-- [x] Idea cards highlight on selection
-- [x] Continue button only enabled when idea selected
-- [x] Toast notifications on success/error
+- [ ] ~~Idea cards highlight on selection~~ — *audit: retired* — clicking a card opens the refine modal (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:133`); cards keep no selected state
+- [ ] ~~Continue button only enabled when idea selected~~ — *audit: retired* — no Continue button; confirming the refine modal starts the story (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:138`)
+- [ ] Toast notifications on success/error — *audit: unverified* — toasts on the job result (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:94`); no test drives ideation
 
 ---
 

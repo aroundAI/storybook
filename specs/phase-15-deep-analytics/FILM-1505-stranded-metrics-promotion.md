@@ -2,6 +2,7 @@
 spec_id: FILM-1505
 title: Promote Stranded Metrics to Queryable Schema
 status: ✅ DONE
+audited: 2026-09-23
 effort: M
 dependencies: FILM-1502, FILM-1504
 ---
@@ -67,11 +68,11 @@ ORDER BY (project_id, platform, video_id, dimension, key);
 
 ## 4. Acceptance Criteria
 
-- [ ] One `syncSinglePublishById` run populates: extended `video_metrics` columns, `video_retention_curves`, `video_audience`
-- [ ] `getProjectAudienceDataAction` returns real demographics/geography (Audience tab shows data)
-- [ ] `getGeographyByLanguage` returns per-country rows
-- [ ] Re-sync replaces (not duplicates) retention curve points and audience rows
-- [ ] YouTube ad vs Premium revenue split reaches `revenue_records` categories (FILM-1508)
+- [ ] One `syncSinglePublishById` run populates: extended `video_metrics` columns, `video_retention_curves`, `video_audience` — *audit: unverified* — needs a live YouTube sync; writes at `packages/features/content-analytics/src/server/analytics-sync-cron.ts:746`–`:751`; this path fills only `avg_view_duration_seconds` of the three columns (`ingest.ts:138`), as §3 designs
+- [x] `getProjectAudienceDataAction` returns real demographics/geography (Audience tab shows data) — *audit:* `apps/e2e/tests/audience/audience-evidence.spec.ts:285`, `packages/features/content-analytics/__tests__/project-audience.test.ts:172`
+- [ ] `getGeographyByLanguage` returns per-country rows — *audit: unverified* — reads country rows (`packages/features/content-analytics/src/server/language-analytics.ts:719`); no test runs it (mocked in `language-insights-actions.test.ts:48`)
+- [x] Re-sync replaces (not duplicates) retention curve points and audience rows — *audit:* reads take `argMax(…, fetched_at)` per point/key: `packages/clickhouse/src/queries-detail.ts:114`, `:246`
+- [x] YouTube ad vs Premium revenue split reaches `revenue_records` categories (FILM-1508) — *audit:* `packages/features/content-analytics/__tests__/youtube-analytics.test.ts:160`, `packages/features/content-analytics/src/server/analytics-sync-cron.ts:1222`
 
 ## 5. Verification
 

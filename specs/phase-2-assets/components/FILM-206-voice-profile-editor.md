@@ -1,6 +1,14 @@
+---
+spec_id: FILM-206
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-206: Voice Profile Editor Component
 
-**Status**: ✅ Completed (2025-12-08)
+> **🗑️ Retired (audit 2026-09-23).** a70af938 (2025-12-25) removed voice-profile assets (the Voices tab and "Create Voice Profile"), and 05ec0ae9 (2026-01-03) dropped the `voice_profiles` table; nothing renders `VoiceProfileEditor` any more (it is still exported, unused, at `packages/features/assets/src/components/index.ts:25`). Each character now stores an ElevenLabs voice ID (`character_details.elevenlabs_voice_id`), chosen in the character editor (`packages/features/assets/src/components/character-editor/sections/CharacterVoiceSelector.tsx`) or in Audio Studio's voice assignment panel (`packages/features/audio-generation/src/components/VoiceAssignment.tsx`). Kept as a record; not outstanding work.
+
+**Status**: 🗑️ RETIRED (audit 2026-09-23; was ✅ Completed 2025-12-08)
 **Phase**: 2
 **Priority**: P0
 **Effort**: M (3-5 days)

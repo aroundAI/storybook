@@ -1,3 +1,9 @@
+---
+spec_id: FILM-804
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-804: Analytics Sync Cron
 
 ## Status: COMPLETE ✅
@@ -415,11 +421,11 @@ export const getSyncStatusAction = enhanceAction(
 - [x] Syncs new content more frequently - Adaptive schedule: hourly (<1d), 6h (1-7d), daily (7-30d), weekly (>90d)
 - [x] Older content synced less often - Schedule logic in `schedule.ts`
 - [x] Handles token refresh before sync - Uses `ensureValidToken()` from `@kit/publishing`
-- [x] Stores daily snapshots - Upserts to `content_analytics` with `(publish_id, snapshot_date)` unique key
-- [x] Updates existing snapshots - Uses Supabase upsert with `onConflict`
+- [x] Stores daily snapshots - Upserts to `content_analytics` with `(publish_id, snapshot_date)` unique key — *audit:* now ClickHouse `video_snapshots` (`packages/features/content-analytics/src/server/analytics-sync-cron.ts:829`); `content_analytics` was dropped in 947c7ae9
+- [x] Updates existing snapshots - Uses Supabase upsert with `onConflict` — *audit:* now `ReplacingMergeTree(fetched_at)` ordered by `snapshot_date` (`packages/clickhouse/src/migrations/002_metrics_v2.ts:59`)
 - [x] Handles sync failures gracefully - Tracks `consecutive_failures` in publish metadata, stops after 5
 - [x] Logs errors for debugging - Structured logging with `@kit/shared/logger`
-- [x] Manual sync trigger works - `manualSyncAction` and `syncSinglePublishById` functions
+- [ ] Manual sync trigger works - `manualSyncAction` and `syncSinglePublishById` functions — *audit: unverified* — both exist (`packages/features/content-analytics/src/server/sync-actions.ts:35`, `analytics-sync-cron.ts:1021`); no test drives them and no UI calls `manualSyncAction`
 - [x] Respects API rate limits - `PlatformRateLimiter` with sliding window (YouTube 10/min, TikTok 20/min, Instagram 30/min)
 
 ---
@@ -427,12 +433,12 @@ export const getSyncStatusAction = enhanceAction(
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test schedule calculation
-- [ ] Test age-based sync frequency
+- [x] Test schedule calculation — *audit:* `packages/features/content-analytics/__tests__/ingest.test.ts:284` (`getSyncSchedule` tiers)
+- [x] Test age-based sync frequency — *audit:* `packages/features/content-analytics/__tests__/ingest.test.ts:288` (the 30–90 and >90 day tiers only)
 
 ### Integration Tests
-- [ ] Test sync flow with mocked providers
-- [ ] Test error handling and retry
+- [ ] Test sync flow with mocked providers — *audit: not met* — no test found; only publish selection is tested (`packages/features/content-analytics/__tests__/sync-unauthorised-connections.test.ts:82`)
+- [x] Test error handling and retry — *audit:* `packages/features/content-analytics/__tests__/sync-authorisation.test.ts:76` (a publish given up on after five failures, and when it is retried)
 
 ---
 

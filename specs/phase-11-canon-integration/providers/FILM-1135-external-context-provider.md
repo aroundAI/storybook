@@ -1,7 +1,8 @@
 ---
 id: FILM-1135
 title: External Context Provider Interface
-status: done
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: high
 effort: L
 dependencies: []
@@ -853,8 +854,8 @@ export function getExternalContentRequirements(contentType: ContentType): {
 - [x] `ArchiveOrgProvider` implements interface — `providers/archive-org-provider.ts`
 - [x] `ExternalContextAggregator` routes to correct providers — `services/context-aggregator.ts`
 - [x] Cache TTL varies by content type (6h news, 168h research, 720h historical)
-- [x] Content types correctly map to provider categories
-- [x] RLS policies protect data access — authenticated read, admin write for cache
+- [ ] Content types correctly map to provider categories — *audit: no longer true* — no mapping exists (`getExternalContentRequirements` never in git history); `requiresExternalContext` only feeds `includeSources` (`packages/features/episodes/src/lib/canon/memory-strategies.ts:222`), read only by tests
+- [ ] RLS policies protect data access — authenticated read, admin write for cache — *audit: no longer true* — private uploads now land here (`packages/features/episodes/src/server/source-upload-actions.ts:101`); the read policy is `USING (true)` for every signed-in user — reproduced as KB-26
 - [x] Full-text search works on cached content — generated `fts` tsvector + GIN index (migration `20260211200001`)
 
 ---
@@ -938,3 +939,10 @@ describe('ExternalContextAggregator', () => {
 - **FILM-1131**: Update to use `external_content` table
 - **FILM-1132**: Update to use `ExternalContextAggregator`
 - **FILM-1120**: Integrate with research providers for fact verification
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Content types correctly map to provider categories | The `getExternalContentRequirements` mapping in "Content Type Integration" was never written (no match in code or `git log -S`). `CONTENT_TYPE_CONFIGS` has only a `requiresExternalContext` boolean (`packages/features/episodes/src/lib/canon/content-type-configs.ts:128`), which names no categories; it feeds `includeSources` in `getMemoryOptionsForContentType` (`packages/features/episodes/src/lib/canon/memory-strategies.ts:222`), which only tests read. Callers pass a category by hand | unassigned |
+| RLS policies protect data access — authenticated read, admin write for cache | The policies are as designed: `external_content` SELECT is `TO authenticated USING (true)` (`apps/web/supabase/migrations/20260211200000_create_external_context_tables.sql:150`). But FILM-1141's upload now writes a user's uploaded document text into this table with no project or account column (`packages/features/episodes/src/server/source-upload-actions.ts:101`), so any signed-in user of any account can select it — reproduced by the coordinator in a rolled-back transaction | KB-26 |

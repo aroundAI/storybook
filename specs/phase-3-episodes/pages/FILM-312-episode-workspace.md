@@ -1,6 +1,12 @@
+---
+spec_id: FILM-312
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-312: Episode Workspace Page
 
-**Status**: ✅ DONE
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
 **Phase**: 3
 **Priority**: P0
 **Effort**: L (5-7 days)
@@ -281,25 +287,25 @@ export async function generateMetadata({ params }: PageProps) {
 - [x] Page loads episode data on mount
 - [x] Breadcrumb navigation works correctly
 - [x] Episode title displays with status badge
-- [x] Four tabs display (Story, Visuals, Audio, Edit)
-- [x] Story Studio tab is fully functional
-- [x] Other tabs show "Coming Soon" placeholders
+- [ ] ~~Four tabs display (Story, Visuals, Audio, Edit)~~ — *audit: retired* — superseded by seven stage tabs, Ideation to Publish (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:29`)
+- [ ] Story Studio tab is fully functional — *audit: unverified* — no Playwright spec drives the story stages (ideation, story, screenplay)
+- [ ] ~~Other tabs show "Coming Soon" placeholders~~ — *audit: retired* — those tabs shipped as the visual, audio, edit-suite and publish routes
 - [x] Tabs unlock based on episode status
-- [x] Active tab persists in URL query params
+- [ ] ~~Active tab persists in URL query params~~ — *audit: retired* — the tab is the route path now (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:159`)
 - [x] Quick actions menu displays options
-- [x] Responsive layout on mobile and desktop
+- [ ] Responsive layout on mobile and desktop — *audit: unverified* — visual; needs a render at phone width
 - [x] Loading states display appropriately
 - [x] Error handling shows user-friendly messages
 - [x] 404 page shown for non-existent episodes
 
 ### Non-Functional
 
-- [x] Page loads within 1 second
-- [x] Smooth transitions between tabs
+- [ ] Page loads within 1 second — *audit: unverified* — runtime timing; needs a timed load
+- [ ] Smooth transitions between tabs — *audit: unverified* — visual; needs a rendered check
 - [x] TypeScript compiles without errors
-- [x] No ESLint warnings
+- [ ] No ESLint warnings — *audit: unverified* — linting is outside the audit rules; settle with `pnpm --filter web lint`
 - [x] Metadata generated for SEO
-- [ ] Accessibility (keyboard navigation, ARIA labels) - inherited from base components
+- [ ] Accessibility (keyboard navigation, ARIA labels) - inherited from base components — *audit: not met* — the icon-only back link has no accessible name (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:55`); the tabs expose no current tab
 
 ---
 
@@ -487,3 +493,9 @@ useEffect(() => {
 - **Next.js Metadata**: https://nextjs.org/docs/app/building-your-application/optimizing/metadata
 - **Constitution**: Section 2.3 (Component Pattern)
 - **Constitution**: Section 8 (Accessibility)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Accessibility (keyboard navigation, ARIA labels) | the icon-only back link has no accessible name (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:55`); the tab bar sets no `aria-current` or tab roles (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:159`) | unassigned |

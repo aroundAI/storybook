@@ -1,7 +1,8 @@
 ---
 id: FILM-1004
 title: Memory Context Builder
-status: implemented
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: high
 effort: M
 dependencies: [FILM-1001]
@@ -830,18 +831,25 @@ export function MemoryContextPreview({
 
 ## Acceptance Criteria
 
-- [ ] Builds complete context from database
-- [ ] Tracks token usage accurately (±10% of actual)
-- [ ] Enforces budget limits with configurable threshold
-- [ ] Prioritizes content by scoring algorithm
-- [ ] Redistributes unused budget dynamically
-- [ ] Applies memory horizon decay
-- [ ] Handles overflow gracefully
-- [ ] Formats context for prompt injection
-- [ ] **New**: Formats context for UI display (Memory Context Preview)
-- [ ] Performance: < 200ms build time
-- [ ] Unit tests for budget calculations
-- [ ] Unit tests for priority scoring
-- [ ] Integration test with real database
+- [ ] Builds complete context from database — *audit: not met* — `episode_summaries` and `world_states` have no writer anywhere, so those sections are always empty (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:355`)
+- [ ] Tracks token usage accurately (±10% of actual) — *audit: unverified* — estimate is JSON length ÷ 4 (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:63`); no test compares it with a tokenizer
+- [ ] Enforces budget limits with configurable threshold — *audit: unverified* — loaders stop at category caps (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:123`); world state only truncates atmosphere; no test
+- [ ] Prioritizes content by scoring algorithm — *audit: not met* — `calculatePriority` (`packages/features/episodes/src/lib/canon/memory-strategies.ts:238`) is never called; loaders keep `created_at` order
+- [ ] Redistributes unused budget dynamically — *audit: not met* — per-category budgets are fixed (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:450`); no redistribution code exists
+- [ ] Applies memory horizon decay — *audit: not met* — horizon is a hard episode window (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:339`); `getDecayFactor` is reached only from tests
+- [ ] Handles overflow gracefully — *audit: unverified* — items past a category cap are dropped (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:123`); no test exercises overflow
+- [x] Formats context for prompt injection — *audit:* `packages/features/episodes/src/lib/canon/memory-context-builder.ts:519`
+- [ ] **New**: Formats context for UI display (Memory Context Preview) — *audit: not met* — never imported or rendered (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/memory-context-preview.tsx:55`; only commit: 88a122b0)
+- [ ] Performance: < 200ms build time — *audit: unverified* — needs a timed run against a seeded project; no benchmark exists
+- [ ] Unit tests for budget calculations — *audit: not met* — tests cover allocation tables only (`packages/features/episodes/__tests__/memory-strategies.test.ts:32`), not the builder's token budgets
+- [x] Unit tests for priority scoring — *audit:* `packages/features/episodes/__tests__/memory-strategies.test.ts:146`
+- [ ] Integration test with real database — *audit: not met* — no test found
 
+## Remaining (audit 2026-09-23)
 
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Builds complete context from database | Nothing writes `episode_summaries` or `world_states` (the canon commit stores the summary in `episodes.metadata` instead), so two of five sections are always empty | unassigned |
+| Scoring, redistribution, horizon decay | `calculatePriority` and `getDecayFactor` exist and are tested but unused; budgets are fixed per category | unassigned |
+| Formats context for UI display | Memory Context Preview is built but never rendered | FILM-1007 |
+| Budget-calculation unit tests; integration test | No test exercises `buildMemoryContext` | unassigned |

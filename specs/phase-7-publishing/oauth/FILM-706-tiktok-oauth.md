@@ -1,3 +1,9 @@
+---
+spec_id: FILM-706
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-706: TikTok OAuth
 
 ## Metadata
@@ -6,7 +12,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-CC-03 (OAuth Token Refresh), SPIKE-03 (TikTok OAuth Quirks)
 - **Blocks:** FILM-702 (TikTok Provider), FILM-708 (Publish Hub)
-- **Status:** ✅ Complete
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ Complete)
 - **Implemented:** 2025-12-07
 
 ---
@@ -411,29 +417,29 @@ export const disconnectTikTokAction = enhanceAction(
 
 ## Acceptance Criteria
 
-- [ ] Connect button redirects to TikTok authorization page
-- [ ] PKCE code challenge is properly generated
-- [ ] Callback exchanges code for tokens with code verifier
-- [ ] User info (open_id, display_name) is retrieved and stored
-- [ ] Tokens are encrypted before storage
-- [ ] Refresh token rotation is handled correctly
-- [ ] Token refresh updates both access and refresh tokens
-- [ ] Disconnect revokes token at TikTok
-- [ ] State/nonce prevents CSRF attacks
+- [x] Connect button redirects to TikTok authorization page — *audit:* `apps/web/app/api/platforms/connect/tiktok/route.ts:108`
+- [x] PKCE code challenge is properly generated — *audit:* `packages/features/publishing/src/oauth/tiktok/config.ts:43` (S256); sent at `apps/web/app/api/platforms/connect/tiktok/route.ts:104`
+- [x] Callback exchanges code for tokens with code verifier — *audit:* `apps/web/app/api/platforms/callback/tiktok/route.ts:122`
+- [x] User info (open_id, display_name) is retrieved and stored — *audit:* `apps/web/app/api/platforms/callback/tiktok/route.ts:157`, `apps/web/app/api/platforms/callback/tiktok/route.ts:195`
+- [x] Tokens are encrypted before storage — *audit:* `apps/web/app/api/platforms/callback/tiktok/route.ts:185`
+- [ ] Refresh token rotation is handled correctly — *audit: not met* — refresh reads `account_oauth_apps` (`packages/features/publishing/src/lib/token-refresh.ts:377`); connect uses env keys, and nothing writes that table since 3238dd61 — KB-29
+- [x] Token refresh updates both access and refresh tokens — *audit:* `packages/features/publishing/src/lib/token-refresh.ts:206`, `packages/features/publishing/src/lib/token-refresh.ts:213`
+- [x] Disconnect revokes token at TikTok — *audit:* `packages/features/publishing/src/oauth/tiktok/disconnect.ts:51`
+- [x] State/nonce prevents CSRF attacks — *audit:* `apps/web/app/api/platforms/callback/tiktok/route.ts:78`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:156`
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test PKCE code verifier generation
-- [ ] Test code challenge generation
-- [ ] Test state encoding/decoding
+- [ ] Test PKCE code verifier generation — *audit: not met* — no test found
+- [ ] Test code challenge generation — *audit: not met* — no test found
+- [x] Test state encoding/decoding — *audit:* `apps/e2e/tests/platform-connections/connect-failure.spec.ts:126`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:172`
 
 ### Integration Tests
-- [ ] Test OAuth flow with mocked TikTok endpoints
-- [ ] Test token refresh with rotation
-- [ ] Test disconnect flow
+- [ ] Test OAuth flow with mocked TikTok endpoints — *audit: not met* — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)
+- [ ] Test token refresh with rotation — *audit: not met* — `packages/features/publishing/__tests__/token-refresh.test.ts:235` calls `fetch` itself and asserts it; no product code runs
+- [ ] Test disconnect flow — *audit: not met* — no test found
 
 ---
 
@@ -474,3 +480,9 @@ export const disconnectTikTokAction = enhanceAction(
 
 - [ ] Should we support TikTok for Business accounts? (post-MVP)
 - [ ] Should we use union_id for cross-app identification? (future)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Refresh token rotation is handled correctly | Refresh takes the app credentials from `account_oauth_apps` (`packages/features/publishing/src/lib/token-refresh.ts:377`), but TikTok connect uses `TIKTOK_CLIENT_KEY` (`apps/web/app/api/platforms/connect/tiktok/route.ts:87`) and no page has written that table since 3238dd61 (2026-01-21). An account without a row from before then fails its first refresh and is marked inactive. The test that should catch it mocks the lookup (`packages/features/publishing/__tests__/token-refresh.test.ts:55`) | KB-29 |

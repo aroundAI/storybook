@@ -2,6 +2,7 @@
 spec_id: FILM-1801
 title: Vendor Base-URL Resolver
 status: ✅ DONE
+audited: 2026-09-23
 effort: L
 dependencies: none; do with or after FILM-1723 (same files)
 ---

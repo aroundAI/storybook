@@ -1,3 +1,9 @@
+---
+spec_id: FILM-101b
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-101 Episodes Table
 
 ## Metadata
@@ -194,32 +200,32 @@ FOR EACH ROW EXECUTE FUNCTION increment_episode_version();
 | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
 
 ## Acceptance Criteria
-- [ ] Table created successfully with all columns
-- [ ] Foreign keys with correct ON DELETE behavior (CASCADE for project, SET NULL for season)
-- [ ] Status check constraint enforces valid enum values
-- [ ] Partial indexes created for active episodes only
-- [ ] Soft delete column (deleted_at) present
-- [ ] Version column for optimistic locking
-- [ ] Timestamps auto-populate and auto-update
-- [ ] Version increments automatically on UPDATE
+- [x] Table created successfully with all columns — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:57`
+- [x] Foreign keys with correct ON DELETE behavior (CASCADE for project, SET NULL for season) — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:59-60`
+- [x] Status check constraint enforces valid enum values — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:76`
+- [x] Partial indexes created for active episodes only — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:89-92`
+- [x] Soft delete column (deleted_at) present — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:75`
+- [x] Version column for optimistic locking — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:72`
+- [x] Timestamps auto-populate and auto-update — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:98`
+- [x] Version increments automatically on UPDATE — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:103-115`
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Insert episode with valid project_id succeeds
-- [ ] Insert episode with invalid status fails (check constraint)
-- [ ] Insert episode with NULL season_id succeeds (for films)
-- [ ] Timestamps populate automatically on insert
-- [ ] Timestamps update automatically on update
-- [ ] Version starts at 1 on insert
-- [ ] Version increments on update
+- [ ] Insert episode with valid project_id succeeds — *audit: not met* — no test asserts it; pgTAP files insert episodes only as fixtures (`apps/web/supabase/tests/database/authors-deletable.test.sql:58`)
+- [ ] Insert episode with invalid status fails (check constraint) — *audit: not met* — no test found
+- [ ] Insert episode with NULL season_id succeeds (for films) — *audit: not met* — no test found
+- [ ] Timestamps populate automatically on insert — *audit: not met* — no test found
+- [ ] Timestamps update automatically on update — *audit: not met* — no test found
+- [ ] Version starts at 1 on insert — *audit: not met* — no test found
+- [ ] Version increments on update — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Deleting a project cascades to delete all episodes
-- [ ] Deleting a season sets episode.season_id to NULL
-- [ ] Soft delete: setting deleted_at excludes from active queries
-- [ ] Optimistic locking: concurrent updates with stale version fail
-- [ ] JSONB columns accept valid JSON and reject invalid JSON
+- [ ] Deleting a project cascades to delete all episodes — *audit: not met* — no test found
+- [ ] Deleting a season sets episode.season_id to NULL — *audit: not met* — no test found
+- [ ] Soft delete: setting deleted_at excludes from active queries — *audit: not met* — no test found
+- [ ] Optimistic locking: concurrent updates with stale version fail — *audit: not met* — no test found
+- [ ] JSONB columns accept valid JSON and reject invalid JSON — *audit: not met* — no test found
 
 ### Optimistic Locking Test
 ```sql
@@ -239,8 +245,8 @@ COMMIT;
 ```
 
 ### Edge Cases
-- [ ] Very long title (255 char limit)
-- [ ] Negative duration_seconds (should be prevented at app level)
-- [ ] NULL story_data, screenplay_data, shot_list allowed
-- [ ] Large JSONB objects (10MB+ - test performance)
-- [ ] Query performance with 1000+ episodes per project
+- [x] Very long title (255 char limit) — *audit:* `packages/features/episodes/__tests__/schemas.test.ts:184` ("should reject title exceeding max length", app schema)
+- [ ] Negative duration_seconds (should be prevented at app level) — *audit: not met* — no test found
+- [ ] NULL story_data, screenplay_data, shot_list allowed — *audit: not met* — no test found
+- [ ] Large JSONB objects (10MB+ - test performance) — *audit: not met* — no test found
+- [ ] Query performance with 1000+ episodes per project — *audit: not met* — no test found

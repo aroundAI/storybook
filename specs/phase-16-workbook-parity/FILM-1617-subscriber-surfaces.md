@@ -2,6 +2,7 @@
 spec_id: FILM-1617
 title: Subscriber Surfaces
 status: ✅ DONE
+audited: 2026-09-23
 effort: S
 dependencies: FILM-1607, FILM-1611, FILM-1618
 ---

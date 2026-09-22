@@ -1,3 +1,9 @@
+---
+spec_id: FILM-101j
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-101 Platform Connections Table
 
 ## Metadata
@@ -141,27 +147,27 @@ FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamps();
 | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
 
 ## Acceptance Criteria
-- [ ] Table created with all columns
-- [ ] Unique constraint on (account_id, platform, platform_account_id)
-- [ ] Platform enum constraint enforced
-- [ ] Indexes for token expiration queries
-- [ ] Timestamps auto-update
-- [ ] Can store multiple connections per account (e.g., 2 YouTube channels)
+- [x] Table created with all columns — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:213`
+- [x] Unique constraint on (account_id, platform, platform_account_id) — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:227`; OAuth upserts depend on it (`apps/web/app/api/platforms/callback/youtube/route.ts:265`)
+- [x] Platform enum constraint enforced — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:226`
+- [x] Indexes for token expiration queries — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:241`
+- [x] Timestamps auto-update — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:245`
+- [x] Can store multiple connections per account (e.g., 2 YouTube channels) — *audit:* `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:227` (the key includes `platform_account_id`)
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Insert connection with valid platform succeeds
-- [ ] Insert connection with invalid platform fails
-- [ ] Insert duplicate connection fails (unique constraint)
-- [ ] Insert with NULL tokens allowed (OAuth in progress)
-- [ ] Timestamps populate automatically
+- [ ] Insert connection with valid platform succeeds — *audit: not met* — no test asserts it; pgTAP inserts connections only as fixtures (`apps/web/supabase/tests/database/channel-analytics-settings-rls.test.sql:41`)
+- [ ] Insert connection with invalid platform fails — *audit: not met* — no test found
+- [ ] Insert duplicate connection fails (unique constraint) — *audit: not met* — no test found
+- [ ] Insert with NULL tokens allowed (OAuth in progress) — *audit: not met* — not asserted; only a tokenless fixture exercises it (`apps/web/supabase/tests/database/channel-analytics-settings-rls.test.sql:41`)
+- [ ] Timestamps populate automatically — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Query expiring tokens (expires_at < NOW + 30 minutes)
-- [ ] Query active connections only
-- [ ] Update tokens after refresh
-- [ ] Deactivate connection (set is_active = FALSE)
+- [ ] Query expiring tokens (expires_at < NOW + 30 minutes) — *audit: not met* — no test found
+- [x] Query active connections only — *audit:* `packages/features/content-analytics/__tests__/subscriber-series-actions.test.ts:152` (the inactive channel is excluded)
+- [x] Update tokens after refresh — *audit:* `packages/features/publishing/__tests__/token-refresh.test.ts:355` (Meta; X is never refreshed, KB-15)
+- [ ] Deactivate connection (set is_active = FALSE) — *audit: not met* — no test found
 
 ### Token Refresh Test
 ```sql
@@ -181,8 +187,8 @@ WHERE id = 'connection-id';
 ```
 
 ### Edge Cases
-- [ ] Connection with no refresh_token (some platforms don't provide)
-- [ ] Connection with NULL token_expires_at (non-expiring token)
-- [ ] Multiple YouTube channels for same account
-- [ ] Reactivating deactivated connection
-- [ ] Very long scopes array (100+ scopes)
+- [ ] Connection with no refresh_token (some platforms don't provide) — *audit: not met* — no test found
+- [ ] Connection with NULL token_expires_at (non-expiring token) — *audit: not met* — no test found
+- [ ] Multiple YouTube channels for same account — *audit: not met* — no test found
+- [ ] Reactivating deactivated connection — *audit: not met* — no test found
+- [ ] Very long scopes array (100+ scopes) — *audit: not met* — no test found

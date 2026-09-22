@@ -1,11 +1,19 @@
+---
+spec_id: FILM-209
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-209: Element Prompt Generation
+
+> **🗑️ Retired (audit 2026-09-23).** The generator shipped in 142057a7 (2025-12-09) but was never called: no code outside `packages/features/assets/src/lib/element-prompt/` has ever imported `generateElementPrompt` or `batchGenerateElementPrompts`, and since f20294cc no screen can set a character's element prompt. Its intended consumer, in-app Kling video generation, was removed in 5b88db3a (2026-01-15; retired on purpose, owner decision 2026-09-23). VEO 3.1 shot prompts take character descriptions from the shot pipeline's character registry instead (`buildGlobalShotContext`, `apps/web/lambda/llm-worker/utils/context-builder.ts:1407`). Kept as a record; not outstanding work.
 
 **Phase**: 2
 **Priority**: P0
 **Effort**: M (3-5 days)
 **Dependencies**: FILM-202 (character actions)
 **Blocks**: Phase 4 (Video Generation)
-**Status**: ✅ COMPLETED (2024-12-09)
+**Status**: 🗑️ RETIRED (audit 2026-09-23; was ✅ COMPLETED 2024-12-09)
 **PR**: feat/film-202-209-character-element-prompts
 
 ---

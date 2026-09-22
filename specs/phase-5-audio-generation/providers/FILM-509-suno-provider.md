@@ -1,3 +1,9 @@
+---
+spec_id: FILM-509
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-509: Suno Music Provider
 
 ## Metadata
@@ -207,11 +213,11 @@ export const generateSunoMusicAction = enhanceAction(
 ## Acceptance Criteria
 
 - [x] Suno provider implements MusicGenerationProvider interface
-- [x] Text-to-music generation works with style prompts
-- [x] Instrumental mode generates music without vocals
-- [x] Duration parameter controls output length (30-240 seconds)
+- [ ] Text-to-music generation works with style prompts — *audit: unverified* — genre, mood, tempo and tags are sent (`packages/features/audio-generation/src/providers/suno.ts:53`); Suno's use of them needs a real generation
+- [ ] Instrumental mode generates music without vocals — *audit: unverified* — the `instrumental` flag is sent (`packages/features/audio-generation/src/providers/suno.ts:59`); leaving out vocals is Suno's behaviour
+- [ ] Duration parameter controls output length (30-240 seconds) — *audit: unverified* — `duration` is sent (`packages/features/audio-generation/src/providers/suno.ts:55`), capped at 240 (`packages/features/audio-generation/src/providers/base.ts:236`); output length is Suno's behaviour
 - [x] Cost estimation returns correct value (50 cents)
-- [x] Rate limits enforced (5/min, 2 concurrent, 50/day)
+- [ ] Rate limits enforced (5/min, 2 concurrent, 50/day) — *audit: no longer true* — `getRateLimits()` only reports them (`packages/features/audio-generation/src/providers/suno.ts:126`); nothing in `apps` or `packages` reads it
 - [x] Generated audio saved to audio_tracks table
 - [x] Error handling for API failures with retry logic
 
@@ -220,15 +226,15 @@ export const generateSunoMusicAction = enhanceAction(
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test prompt validation (min/max length)
-- [ ] Test cost estimation function
-- [ ] Test status mapping function
-- [ ] Test rate limit configuration
+- [x] Test prompt validation (min/max length) — *audit:* `packages/features/audio-generation/__tests__/suno.test.ts:79`, `:90`
+- [x] Test cost estimation function — *audit:* `packages/features/audio-generation/__tests__/suno.test.ts:194`
+- [x] Test status mapping function — *audit:* `packages/features/audio-generation/__tests__/suno.test.ts:236`
+- [x] Test rate limit configuration — *audit:* `packages/features/audio-generation/__tests__/suno.test.ts:224`
 
 ### Integration Tests
-- [ ] Test full generation flow with mock API
-- [ ] Test webhook processing for completion
-- [ ] Test budget check before generation
+- [x] Test full generation flow with mock API — *audit:* `packages/features/audio-generation/__tests__/suno.test.ts:40` (submit) and `:142` (poll), tested separately
+- [ ] Test webhook processing for completion — *audit: not met* — no test found; no Suno webhook exists
+- [ ] Test budget check before generation — *audit: not met* — no test found; the live music actions check no budget
 
 ---
 
@@ -248,3 +254,9 @@ export const generateSunoMusicAction = enhanceAction(
 - API key stored encrypted in external_api_keys table
 - User content validated before sending to API
 - Generated audio scanned for policy violations
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Rate limits enforced (5/min, 2 concurrent, 50/day) | `getRateLimits()` (`packages/features/audio-generation/src/providers/suno.ts:126`) is read by nothing, so no limit applies to the live music actions (`packages/features/audio-generation/src/server/music-actions.ts:82`) | unassigned |

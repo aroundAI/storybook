@@ -1,7 +1,8 @@
 ---
 id: FILM-1103
 title: LLM-Based Canon Extraction
-status: done
+status: ✅ DONE
+audited: 2026-09-23
 priority: critical
 effort: M
 dependencies: [FILM-1005, FILM-1101]
@@ -229,10 +230,10 @@ import canonExtraction from '../../../../packages/features/prompt-engine/src/pro
 - [x] `canon-extraction.json` prompt template created and valid
 - [x] Prompt registered in Lambda worker
 - [x] `extractCanonChangesAction` uses LLM instead of regex
-- [x] Extraction correctly identifies character deaths
-- [x] Extraction correctly identifies character emotional changes
-- [x] Extraction correctly identifies plot thread openings/resolutions
-- [x] Episode summary is coherent 2-3 sentences
+- [ ] Extraction correctly identifies character deaths — *audit: unverified* — LLM output quality; no test or recorded run asserts it
+- [ ] Extraction correctly identifies character emotional changes — *audit: unverified* — LLM output quality; no test or recorded run asserts it
+- [ ] Extraction correctly identifies plot thread openings/resolutions — *audit: unverified* — LLM output quality; no test or recorded run asserts it
+- [ ] Episode summary is coherent 2-3 sentences — *audit: unverified* — LLM output quality; no test or recorded run asserts it
 - [x] Sentiment score is reasonable (0.0-1.0)
 - [x] Cost per extraction is logged
 

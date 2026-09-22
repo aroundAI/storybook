@@ -1,3 +1,9 @@
+---
+spec_id: PUBLIC-SHARING-ENG
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # Engineering Specification: Public Sharing Platform
 
 **Source PRD:** [PRD-public-sharing.md](file:///Users/shaurya/Work/projects/storybook/specs/PRD-public-sharing.md)  
@@ -1012,7 +1018,7 @@ export function ShareButton({ canonicalUrl, youtubeUrl, facebookUrl, title }: Pr
 ### Phase 4: Settings UI (Week 4-5)
 - [x] Public profile settings form
 - [x] Project visibility toggle
-- [x] Episode video link manager
+- [x] Episode video link manager — *audit:* done on the Publish page (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:727`); `video-link-manager.tsx` itself is mounted nowhere
 - [x] Slug auto-generation
 
 ---

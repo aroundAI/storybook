@@ -1,4 +1,12 @@
+---
+spec_id: FILM-405
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-405: Generate Video Server Action
+
+> **🗑️ Retired (audit 2026-09-23).** `packages/features/video-generation/src/server/actions/generate-video-action.ts` was deleted in `5b88db3a` (2026-01-15), the commit that removed `packages/features/video-generation`; the owner retired in-app video generation on purpose. Nothing replaces it: the Visual Studio writes VEO 3.1 prompts and each shot's video, generated outside the app, is uploaded with `VideoUploader` (`packages/features/episodes/src/components/video-uploader.tsx`). Kept as a record; not outstanding work.
 
 **Phase**: 4
 **Priority**: P0
@@ -267,7 +275,7 @@ Prevent duplicate submissions within 5 minutes using unique constraint.
 - [x] Action rejects duplicate submissions
 - [x] Action enforces authentication
 
-**Status: COMPLETED** - Implemented in `packages/features/video-generation/src/server/actions/generate-video-action.ts`
+**Status: 🗑️ RETIRED** (audit 2026-09-23; was COMPLETED) - Implemented in `packages/features/video-generation/src/server/actions/generate-video-action.ts`
 
 ---
 

@@ -1,3 +1,9 @@
+---
+spec_id: FILM-502b
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-502b: Audio Provider Factory
 
 ## Metadata
@@ -623,7 +629,7 @@ async function hasProviderApiKey(
 - [x] `getMusicProviderMetadata()` returns correct metadata
 - [x] `getAvailableVoiceProviders()` returns only configured providers
 - [x] `getAvailableMusicProviders()` returns only configured providers
-- [x] `clearAudioProviderCache()` invalidates cached instances
+- [x] `clearAudioProviderCache()` invalidates cached instances — *audit:* exists as `clearProviderCache()` and `clearAccountProviderCache()` (`packages/features/audio-generation/src/providers/factory.ts:141`, `:408`); tested at `packages/features/audio-generation/__tests__/factory.test.ts:353`, `:497`
 - [x] `registerVoiceProvider()` allows adding new providers at runtime
 - [x] `registerMusicProvider()` allows adding new providers at runtime
 
@@ -662,8 +668,8 @@ async function hasProviderApiKey(
 - [x] Test hasMusicProviderApiKey database error handling
 
 ### Integration Tests
-- [ ] Test with real Supabase connection (future work)
-- [ ] Test provider switching per account (future work)
+- [ ] Test with real Supabase connection (future work) — *audit: not met* — deferred at ship time: no test found
+- [ ] Test provider switching per account (future work) — *audit: not met* — deferred at ship time: no test found
 
 ---
 

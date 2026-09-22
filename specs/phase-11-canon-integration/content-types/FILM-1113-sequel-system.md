@@ -1,7 +1,8 @@
 ---
 id: FILM-1113
 title: Movie Sequel Linking System
-status: done
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: medium
 effort: M
 dependencies: [FILM-1110, FILM-1111]
@@ -339,12 +340,12 @@ export function formatParentContextsForPrompt(
 ## Acceptance Criteria
 
 - [x] `sequel_parent_contexts` table created
-- [x] `linkAsSequel` function works for single and multiple parents
-- [x] Parent context correctly identifies dead vs alive characters
-- [x] Parent immutable events inherited to sequel validation
+- [ ] `linkAsSequel` function works for single and multiple parents — *audit: unverified* — never called in the product and untested; tests cover `formatParentContextsForPrompt` only
+- [ ] Parent context correctly identifies dead vs alive characters — *audit: unverified* — logic at `packages/features/episodes/src/lib/canon/sequel-system.ts:302`; no test exercises `buildParentContext`
+- [ ] Parent immutable events inherited to sequel validation — *audit: no longer true* — no validator or generation path reads parent contexts; `getSequelParentContexts` has no caller since 15f9940f
 - [x] `formatParentContextsForPrompt` produces readable output
 - [x] Crossover movies (2+ parents) merge contexts correctly
-- [x] UI allows selecting parent movies when type=MOVIE_SEQUEL
+- [ ] UI allows selecting parent movies when type=MOVIE_SEQUEL — *audit: no longer true* — no parent selector exists in `apps/`; `ProjectTypeSchema` has no sequel type (`packages/features/film-studio-schemas/src/project.ts:6`)
 
 ---
 
@@ -441,4 +442,11 @@ describe('Sequel System', () => {
 
 ## Implementation Status
 
-**Implemented** in PR #177 — merged 2026-02-09
+**🟡 PARTIAL** (audit 2026-09-23; was **Implemented** in PR #177 — merged 2026-02-09)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Sequel linking reachable in the product | No UI, action or generation path calls `linkAsSequel`, `buildParentContext` or `getSequelParentContexts` | owner |
+| Parent canon inherited to sequel validation | Nothing reads `sequel_parent_contexts` | owner |

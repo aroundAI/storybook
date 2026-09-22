@@ -1,10 +1,16 @@
+---
+spec_id: FILM-DS-04
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-DS-04: Accessibility Requirements
 
 ## Metadata
 - **Phase:** Design System
 - **Priority:** P0 (Critical)
 - **Effort:** M (4-8 hours)
-- **Status:** DONE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was DONE)
 - **Dependencies:** FILM-DS-01 through FILM-DS-03
 - **Blocks:** All UI component implementations
 
@@ -324,18 +330,18 @@ function validateStatusContrast() {
 ### 7. Testing Checklist
 
 #### Automated Testing
-- [ ] Run axe-core on all pages
-- [ ] Validate HTML structure (headings, landmarks)
-- [ ] Check color contrast ratios
-- [ ] Verify ARIA attributes are valid
+- [ ] Run axe-core on all pages — *audit: not met* — no test found; axe-core is only a transitive dependency of eslint-plugin-jsx-a11y
+- [ ] Validate HTML structure (headings, landmarks) — *audit: not met* — no test found
+- [ ] Check color contrast ratios — *audit: not met* — no test found; `packages/branding/__tests__/color-utils.test.ts:67` tests the contrast calculator, not the app's colours
+- [x] Verify ARIA attributes are valid — *audit:* `tooling/eslint/nextjs.js:9` (next/core-web-vitals enables jsx-a11y aria-props/aria-proptypes; warn-level, so CI lint reports but never fails)
 
 #### Manual Testing
-- [ ] Navigate all functionality with keyboard only
-- [ ] Test with screen reader (VoiceOver/NVDA)
-- [ ] Verify focus order is logical
-- [ ] Check skip links work
-- [ ] Test at 200% zoom
-- [ ] Test with high contrast mode
+- [ ] Navigate all functionality with keyboard only — *audit: not met* — no test or recorded pass found
+- [ ] Test with screen reader (VoiceOver/NVDA) — *audit: not met* — no test or recorded pass found
+- [ ] Verify focus order is logical — *audit: not met* — no test or recorded pass found
+- [ ] Check skip links work — *audit: not met* — there are no skip links to check
+- [ ] Test at 200% zoom — *audit: not met* — no test or recorded pass found
+- [ ] Test with high contrast mode — *audit: not met* — no test or recorded pass found
 
 ### File Changes
 
@@ -350,14 +356,14 @@ function validateStatusContrast() {
 
 ## Acceptance Criteria
 
-- [x] All interactive elements are keyboard accessible (useRovingTabIndex hook)
-- [x] Focus is never lost during navigation (useFocusTrap hook)
-- [x] Status changes are announced to screen readers (StatusAnnouncer component)
-- [x] Color contrast meets WCAG AA (4.5:1) (validateContrast utility)
-- [x] Icons have text alternatives or labels (documentation provided)
-- [x] Modals trap focus appropriately (useFocusTrap hook)
-- [x] Skip links allow bypassing navigation (SkipLinks component)
-- [ ] axe-core reports no critical violations (requires integration testing)
+- [ ] All interactive elements are keyboard accessible (useRovingTabIndex hook) — *audit: no longer true* — shot cards are unfocusable `<div onClick>`s (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`); useRovingTabIndex was never mounted, deleted 5f44d0e1
+- [ ] Focus is never lost during navigation (useFocusTrap hook) — *audit: no longer true* — hand-rolled modals unmount with focus inside and restore nothing (`packages/features/edit-suite/src/components/export/export-dialog.tsx:212`); useFocusTrap deleted unused in 5f44d0e1
+- [ ] Status changes are announced to screen readers (StatusAnnouncer component) — *audit: no longer true* — toasts and `@kit/ui` Alerts (`role="alert"`) announce, but export progress (`packages/features/edit-suite/src/components/export/export-dialog.tsx:392`) and bulk-generate statuses have no live region; StatusAnnouncer never mounted
+- [ ] Color contrast meets WCAG AA (4.5:1) (validateContrast utility) — *audit: no longer true* — `--status-processing` 3.95:1 and `--status-error` 4.41:1 against their foregrounds (`apps/web/styles/shadcn-ui.css:51`), used for badge text
+- [ ] Icons have text alternatives or labels (documentation provided) — *audit: no longer true* — a scan finds at least 39 of 84 icon-only buttons with no aria-label, title or text, e.g. `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-header.tsx:320`
+- [ ] Modals trap focus appropriately (useFocusTrap hook) — *audit: no longer true* — `@kit/ui` dialogs (Radix) trap focus, but `packages/features/edit-suite/src/components/export/export-dialog.tsx:217` is hand-rolled with no trap
+- [ ] Skip links allow bypassing navigation (SkipLinks component) — *audit: no longer true* — no skip link anywhere in `apps/web`; SkipLinks was never mounted and was deleted in 5f44d0e1
+- [ ] axe-core reports no critical violations (requires integration testing) — *audit: not met* — deferred at ship time: axe-core integration testing; no axe usage in `apps/e2e`
 
 ---
 
@@ -375,3 +381,15 @@ function validateStatusContrast() {
 
 - [ ] Should we support reduced motion preferences for animations? (nice-to-have)
 - [ ] Should generated videos have auto-captions? (post-MVP)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| All interactive elements are keyboard accessible | Shot cards and the "Add New Shot" tile are unfocusable `<div>`s (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`, `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:55`); the shipped `useRovingTabIndex` was never mounted and was deleted in 5f44d0e1 | FILM-410 |
+| Focus is never lost during navigation | The export dialog unmounts with focus inside it and nothing returns focus to its trigger (`packages/features/edit-suite/src/components/export/export-dialog.tsx:212`, opened from `packages/features/edit-suite/src/components/toolbar.tsx:271`) | unassigned |
+| Status changes are announced to screen readers | Toasts, `@kit/ui` Alerts (`role="alert"`, `packages/ui/src/shadcn/alert.tsx:32`) and `packages/features/assets/src/components/image-uploader/ImageUploadProgress.tsx:43` announce, but edit-suite export progress (`packages/features/edit-suite/src/components/export/export-dialog.tsx:392`) and bulk-generate statuses have no live region | unassigned |
+| Color contrast meets WCAG AA (4.5:1) | Computed from `apps/web/styles/shadcn-ui.css`: `--status-processing` 3.95:1 (dark 3.05:1) and `--status-error` 4.41:1 (dark 3.79:1) against their foregrounds; badge text is `text-xs` | unassigned |
+| Icons have text alternatives or labels | A scan of every `<Button size="icon">` found 39 of 84 with no aria-label, title, sr-only or visible text, and 6 more whose label depends on a runtime expression, e.g. `apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/audio-asset-card.tsx:146` | unassigned |
+| Modals trap focus appropriately | Two hand-rolled overlays have no `role="dialog"`, focus trap or Escape: `packages/features/edit-suite/src/components/export/export-dialog.tsx:217` and `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx:887` | unassigned |
+| Skip links allow bypassing navigation | No skip link exists in `apps/web` | unassigned |

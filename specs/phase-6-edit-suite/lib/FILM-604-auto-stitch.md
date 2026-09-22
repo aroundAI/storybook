@@ -1,10 +1,18 @@
+---
+spec_id: FILM-604
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-604: Auto-Stitch Logic
+
+> **🗑️ Retired (audit 2026-09-23).** Superseded by the phase 14 edit suite's client-side auto-assembly (`packages/features/edit-suite/src/lib/auto-assemble.ts`, run on first open from `packages/features/edit-suite/src/components/edit-suite-provider.tsx:529`), which writes relational `edit_*` rows instead of `episode.metadata.timeline` and reports no warnings or gaps. `packages/features/episodes/src/lib/auto-stitch.ts` and `autoStitchAction` (`packages/features/episodes/src/server/auto-stitch-action.ts:62`) survive with their unit tests; `autoStitchAction` is the only non-test user of `auto-stitch.ts`, and nothing has called it since the audio studio dropped the call in `b7f7cb53` (2026-05-27). Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 6 - Edit Suite
 - **Priority:** P1 (Post-MVP)
 - **Effort:** L (1-3 days)
-- **Status:** ✅ Done
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was ✅ Done)
 - **Dependencies:** FILM-601 (Timeline Editor) ✅, FILM-602 (Track Layer) ⚠️
 - **Blocks:** Video export/rendering
 

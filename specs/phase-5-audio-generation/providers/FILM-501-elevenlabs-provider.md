@@ -1,3 +1,9 @@
+---
+spec_id: FILM-501
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-501: ElevenLabs Voice Generation Provider
 
 **Phase**: 5
@@ -632,29 +638,29 @@ function calculateCost(characterCount: number, tier: string = 'starter'): number
 
 ### Functional
 
-- [ ] `generateVoice()` successfully generates audio with valid input
-- [ ] `generateVoice()` respects voice settings (stability, similarity_boost, style, speed)
-- [ ] `generateVoice()` returns audio buffer with correct format
-- [ ] `generateVoice()` calculates cost accurately based on character count
-- [ ] `generateVoice()` throws error for text exceeding 5000 characters
-- [ ] `generateVoice()` throws error for invalid voice ID
-- [ ] `listVoices()` returns all available voices from ElevenLabs
-- [ ] `listVoices()` filters voices by language, gender, age, accent
-- [ ] `listVoices()` includes voice preview URLs
-- [ ] `cloneVoice()` creates custom voice from audio samples
-- [ ] `cloneVoice()` validates audio file count (1-25)
-- [ ] Provider retries failed requests with exponential backoff (max 5 retries)
-- [ ] Provider handles rate limit errors gracefully
-- [ ] Provider validates API key before making requests
+- [x] `generateVoice()` successfully generates audio with valid input — *audit:* `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:70`
+- [x] `generateVoice()` respects voice settings (stability, similarity_boost, style, speed) — *audit:* `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:95`
+- [x] `generateVoice()` returns audio buffer with correct format — *audit:* `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:88`
+- [x] `generateVoice()` calculates cost accurately based on character count — *audit:* `packages/features/audio-generation/src/providers/elevenlabs.ts:72`; `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:519`
+- [x] `generateVoice()` throws error for text exceeding 5000 characters — *audit:* `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:218`
+- [x] `generateVoice()` throws error for invalid voice ID — *audit:* `packages/features/audio-generation/__tests__/http.test.ts:168` (a "Bad voice id" 422 throws, not retried); `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:227`
+- [x] `listVoices()` returns all available voices from ElevenLabs — *audit:* named `getVoices()`; `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:283`
+- [ ] `listVoices()` filters voices by language, gender, age, accent — *audit: not met* — language is read from the accent label (`packages/features/audio-generation/src/providers/elevenlabs.ts:167`), so filtering by `'en'` drops accented voices
+- [x] `listVoices()` includes voice preview URLs — *audit:* `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:369`
+- [x] `cloneVoice()` creates custom voice from audio samples — *audit:* `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:404`
+- [x] `cloneVoice()` validates audio file count (1-25) — *audit:* `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:448`, `:470`
+- [x] Provider retries failed requests with exponential backoff (max 5 retries) — *audit:* `packages/features/audio-generation/src/lib/http.ts:36` (5 attempts by default); `packages/features/audio-generation/__tests__/http.test.ts:87`, `:110`
+- [ ] Provider handles rate limit errors gracefully — *audit: not met* — a 429 counts as a permanent 4xx and is thrown at once (`packages/features/audio-generation/src/lib/http.ts:72`, since `b7f7cb53`); the spec wants backoff
+- [ ] Provider validates API key before making requests — *audit: not met* — nothing checks the key before a request; the base class only stores the config (`packages/features/audio-generation/src/providers/base.ts:127`)
 
 ### Non-Functional
 
-- [ ] Voice generation completes within 30 seconds
-- [ ] Provider supports concurrent requests (up to 10)
-- [ ] All errors are logged with context
-- [ ] API keys are never logged or exposed
-- [ ] TypeScript compiles without errors
-- [ ] No ESLint warnings
+- [ ] Voice generation completes within 30 seconds — *audit: unverified* — runtime timing against ElevenLabs; each attempt times out at 30 s by default (`packages/features/audio-generation/src/lib/http.ts:14`)
+- [ ] Provider supports concurrent requests (up to 10) — *audit: unverified* — no test; the class keeps no per-request state, and nothing reads `getRateLimits()` (`packages/features/audio-generation/src/providers/elevenlabs.ts:284`)
+- [ ] All errors are logged with context — *audit: not met* — the provider never logs; it rethrows with provider and operation context (`packages/features/audio-generation/src/lib/http.ts:95`)
+- [x] API keys are never logged or exposed — *audit:* the key is used only in the `xi-api-key` header (`packages/features/audio-generation/src/providers/elevenlabs.ts:53`); nothing in `src/providers/` or `src/lib/http.ts` logs
+- [x] TypeScript compiles without errors — *audit:* CI run 35779959194 (`main` at `6dfa35a4`): `@kit/audio-generation:typecheck` executed clean; the package is unchanged since
+- [x] No ESLint warnings — *audit:* CI run 35779959194: `@kit/audio-generation:lint` executed with no output
 
 ---
 
@@ -1122,3 +1128,12 @@ async function generateBatch(lines: DialogueLine[]): Promise<GenerateVoiceResult
 - **Constitution**: Section 2.2 (Server Actions Pattern)
 - **Constitution**: Section 4.2 (API Keys)
 - **Constitution**: Section 5.2 (Generation Job Errors)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| `listVoices()` filters by language | `language` is mapped from `labels.accent` (`packages/features/audio-generation/src/providers/elevenlabs.ts:167`) and filtered with `includes` (`:190`), so a language code filters against accent names | unassigned |
+| Rate-limit handling | a 429 is thrown at once as a permanent 4xx (`packages/features/audio-generation/src/lib/http.ts:72`, since `b7f7cb53`); the spec asks for backoff. Only `apps/web/lambda/voice-worker/index.ts:256` retries 429s, and it does not use this provider | unassigned |
+| API key validated before requests | no check anywhere in the provider (`packages/features/audio-generation/src/providers/base.ts:127`) | unassigned |
+| All errors logged with context | the provider has no logger; errors are rethrown with context (`packages/features/audio-generation/src/lib/http.ts:95`) and logging is left to callers | unassigned |

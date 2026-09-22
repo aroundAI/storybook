@@ -1,6 +1,12 @@
+---
+spec_id: FILM-505
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-505: Audio Studio Component
 
-**Status**: ✅ DONE
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
 **Phase**: 5
 **Priority**: P0
 **Effort**: L (5-8 days)
@@ -421,31 +427,31 @@ if (batchStatus?.status === 'processing') {
 
 ### Functional
 
-- [x] Audio Studio loads without errors
-- [x] Episode title displays correctly
-- [x] Character list displays in sidebar
-- [x] Dialogue tab shows all dialogue lines
-- [x] Music tab shows all music tracks
-- [x] Settings tab displays configuration options
-- [x] Tab navigation works correctly
-- [x] Audio player appears when audio selected
-- [x] Play/pause controls work
-- [x] Batch generate button triggers batch action
-- [x] Progress indicator updates in real-time
-- [x] Success/error notifications display
-- [x] Keyboard shortcuts work
-- [x] Responsive layout on mobile/tablet
-- [x] Real-time status updates via polling
+- [x] Audio Studio loads without errors — *audit:* judged against the live route-local studio (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/page.tsx`), which replaced this spec's package `AudioStudio` in `f7cdfa21` (that component still exists, mounted nowhere); `apps/e2e/tests/refusals/refusals.po.ts:210` opens it and drives it on the production build
+- [x] Episode title displays correctly — *audit:* the episode layout's header renders it above every studio (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:77`)
+- [ ] ~~Character list displays in sidebar~~ — *audit: retired* — the studio's voice panel was removed in `ae019639`; voices are assigned in the character editor (FILM-205)
+- [x] Dialogue tab shows all dialogue lines — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/audio-studio-screen.tsx:121`
+- [x] Music tab shows all music tracks — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/audio-studio-screen.tsx:132`
+- [ ] ~~Settings tab displays configuration options~~ — *audit: retired* — the tabs are Dialogue, Music and SFX (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/audio-studio-header.tsx:21`); audio settings moved to project settings (`apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/audio-settings-form.tsx`)
+- [ ] Tab navigation works correctly — *audit: unverified* — no test switches tabs; the buttons are at `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/audio-studio-header.tsx:106`
+- [ ] ~~Audio player appears when audio selected~~ — *audit: retired* — the timeline redesign (`e737c138`) plays a clip from its block's popover (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:268`); there is no player panel
+- [ ] Play/pause controls work — *audit: unverified* — no test; music and SFX blocks toggle play and pause (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx:796`), dialogue blocks only play
+- [x] Batch generate button triggers batch action — *audit:* `apps/e2e/tests/refusals/refusals.po.ts:212` clicks `generate-all-dialogue` and receives the batch action's refusal
+- [ ] Progress indicator updates in real-time — *audit: unverified* — no test watches the bar; it re-renders on each 3-second poll (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/use-batch-generation.ts:179`)
+- [x] Success/error notifications display — *audit:* `apps/e2e/tests/refusals/action-refusals.spec.ts:26` asserts the toast's text
+- [ ] Keyboard shortcuts work — *audit: not met* — no key handler anywhere under `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/`
+- [ ] Responsive layout on mobile/tablet — *audit: unverified* — visual; needs renders at phone and tablet widths
+- [x] Real-time status updates via polling — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/use-batch-generation.ts:179` (every 3 s), resumed on load (`:113`)
 
 ### Non-Functional
 
-- [x] Component loads within 1 second
-- [x] Tab switching is instant (<100ms)
-- [x] No UI freezing during operations
-- [x] Smooth animations and transitions
-- [x] Accessible (keyboard navigation, ARIA labels)
-- [x] TypeScript compiles without errors
-- [x] No ESLint warnings
+- [ ] Component loads within 1 second — *audit: unverified* — runtime timing; needs a measured load
+- [ ] Tab switching is instant (<100ms) — *audit: unverified* — runtime timing; needs a measurement
+- [ ] No UI freezing during operations — *audit: unverified* — runtime behaviour; needs a profiled session
+- [ ] Smooth animations and transitions — *audit: unverified* — visual
+- [ ] Accessible (keyboard navigation, ARIA labels) — *audit: not met* — dialogue blocks are clickable `div`s with no role, tabIndex or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:456`)
+- [x] TypeScript compiles without errors — *audit:* CI run 35779959194 (`main` at `6dfa35a4`): `web:typecheck` executed clean; these files are unchanged since
+- [x] No ESLint warnings — *audit:* CI run 35779959194: `web:lint` executed with no output
 
 ---
 
@@ -711,3 +717,10 @@ const DialogueListVirtualized = ({ lines }) => (
 - **FILM-507**: Voice Assignment Component
 - **FILM-508**: Audio Player Component
 - **Constitution**: Section 8 (Accessibility)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Keyboard shortcuts work | no key handler anywhere under the live `audio-studio/` route | unassigned |
+| Accessible (keyboard navigation, ARIA labels) | dialogue blocks are clickable `div`s with no role, tabIndex or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:456`); the studio has two `aria-label`s in all | unassigned |

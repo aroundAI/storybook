@@ -1,3 +1,9 @@
+---
+spec_id: FILM-CC-01
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-CC-01: File Upload Validation
 
 ## Metadata
@@ -283,13 +289,13 @@ export const UploadResponseSchema = z.object({
 - [x] Test valid MIME types pass
 - [x] Test invalid MIME types fail
 - [x] Test extension/MIME type mismatch detection
-- [x] Test magic byte verification for each supported type
+- [ ] Test magic byte verification for each supported type — *audit: not met* — only JPEG, PNG and WebM are tested (`packages/features/assets/__tests__/upload-validation.test.ts:254`); GIF, WebP, MP3, WAV, OGG, MP4, MOV are not
 - [x] Test filename sanitization removes dangerous characters
 - [x] Test path traversal attempts are blocked
 
 ### Integration Tests
-- [ ] Test full upload flow with valid file
-- [ ] Test upload rejection preserves no partial data
+- [x] Test full upload flow with valid file — *audit:* `apps/web/app/api/projects/[projectId]/assets/upload/__tests__/route.test.ts:194` (storage mocked)
+- [x] Test upload rejection preserves no partial data — *audit:* `apps/web/app/api/projects/[projectId]/assets/upload/__tests__/route.test.ts:376`
 
 ---
 

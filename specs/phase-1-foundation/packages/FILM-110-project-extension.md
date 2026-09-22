@@ -1,3 +1,9 @@
+---
+spec_id: FILM-110
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # FILM-110 Project Extension for Film Studio
 
 ## Metadata
@@ -387,35 +393,35 @@ export async function createFilmStudioProject(data: unknown) {
 | UPDATE | `packages/features/projects/src/lib/types.ts` (Add FilmStudioProject type) |
 
 ## Acceptance Criteria
-- [ ] Project creation form includes all Film Studio fields
-- [ ] Form is organized into logical sections
-- [ ] Validation works correctly using Zod schemas
-- [ ] Smart defaults are applied based on platform selection
-- [ ] Settings are saved to projects.settings JSONB column
-- [ ] Form provides helpful descriptions and examples
-- [ ] Multi-select for platforms works correctly
-- [ ] Required fields are enforced
-- [ ] Form submission creates project with Film Studio settings
-- [ ] Settings can be edited after project creation
+- [x] Project creation form includes all Film Studio fields — *audit:* `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:353` — all 11 `settings.*` fields render
+- [x] Form is organized into logical sections — *audit:* `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:282` — the four specified cards
+- [x] Validation works correctly using Zod schemas — *audit:* `packages/features/film-studio-schemas/__tests__/project.test.ts:85`; resolver at `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:184`
+- [ ] Smart defaults are applied based on platform selection — *audit: unverified* — needs a component or E2E test; the effect at `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:219` is untested
+- [ ] Settings are saved to projects.settings JSONB column — *audit: unverified* — `projects` has no `settings` column; the action writes `projects.metadata` (`apps/web/app/home/[account]/studio/projects/new/_lib/server/create-film-project.action.ts:59`) and no test reads it back
+- [x] Form provides helpful descriptions and examples — *audit:* `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:391`, placeholder at `:295`
+- [ ] Multi-select for platforms works correctly — *audit: unverified* — needs a component or E2E test; `togglePlatform` (`apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:262`) is untested
+- [x] Required fields are enforced — *audit:* `packages/features/film-studio-schemas/__tests__/project.test.ts:109`; name rule at `apps/web/app/home/[account]/studio/projects/new/_lib/schema.ts:10`
+- [ ] Form submission creates project with Film Studio settings — *audit: unverified* — needs an E2E of a successful create; `apps/e2e/tests/refusals/refusals.po.ts:99` drives only the duplicate-name refusal
+- [ ] Settings can be edited after project creation — *audit: unverified* — an edit path exists (`apps/web/app/home/[account]/studio/[projectSlug]/settings/_lib/server/update-studio-settings.action.ts:30`) but reaches only 4 of the 11 creation settings (style, audience, rating, language), and is untested
 
 ## Test Plan
 ### Unit Tests
-- [ ] Form validation with valid data passes
-- [ ] Form validation with invalid data fails
-- [ ] Smart defaults are applied correctly
-- [ ] Multi-select platform selector works
-- [ ] Aspect ratio suggestions match platform
+- [x] Form validation with valid data passes — *audit:* `packages/features/film-studio-schemas/__tests__/project.test.ts:85`
+- [x] Form validation with invalid data fails — *audit:* `packages/features/film-studio-schemas/__tests__/project.test.ts:109`
+- [ ] Smart defaults are applied correctly — *audit: not met* — no test found
+- [ ] Multi-select platform selector works — *audit: not met* — no test found
+- [ ] Aspect ratio suggestions match platform — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Complete project creation flow works end-to-end
-- [ ] Settings are persisted to database correctly
-- [ ] Settings can be retrieved and displayed
-- [ ] Settings can be updated
-- [ ] Default values are applied to new episodes/shots
+- [ ] Complete project creation flow works end-to-end — *audit: not met* — no test found; the only E2E through the form ends in the duplicate-name refusal
+- [ ] Settings are persisted to database correctly — *audit: not met* — no test found
+- [ ] Settings can be retrieved and displayed — *audit: not met* — no test found
+- [ ] Settings can be updated — *audit: not met* — no test found
+- [ ] Default values are applied to new episodes/shots — *audit: not met* — no test found
 
 ### E2E Tests
-- [ ] User can create a Film Studio project with all settings
-- [ ] Form shows validation errors appropriately
-- [ ] User can navigate between form sections
-- [ ] Settings are preserved when navigating away and back
-- [ ] Created project displays settings correctly in project details
+- [ ] User can create a Film Studio project with all settings — *audit: not met* — no test found
+- [ ] Form shows validation errors appropriately — *audit: not met* — no test found
+- [ ] User can navigate between form sections — *audit: not met* — no test found
+- [ ] Settings are preserved when navigating away and back — *audit: not met* — no test found
+- [ ] Created project displays settings correctly in project details — *audit: not met* — no test found

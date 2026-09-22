@@ -1,3 +1,9 @@
+---
+spec_id: FILM-409
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-409: Visual Studio Component
 
 **Phase**: 4
@@ -5,7 +11,7 @@
 **Effort**: L (6-7 days)
 **Dependencies**: FILM-405 (generate-video-action)
 **Blocks**: None
-**Status**: ✅ Complete
+**Status**: 🟡 PARTIAL (audit 2026-09-23; was ✅ Complete)
 **Completed**: 2025-12-11
 **PR**: [#76](https://github.com/aroundAI/storybook/pull/76)
 
@@ -322,21 +328,21 @@ supabase
 
 ## Acceptance Criteria
 
-- [x] Component displays all shots in grid
+- [x] Component displays all shots in grid — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:848` (filters default to none, line 69)
   - ✅ Uses `ShotGrid` component with `useShotsQuery` hook (lines 62, 261-272)
-- [x] Component supports shot selection
+- [x] Component supports shot selection — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:851` (one shot at a time; multi-select went with batch generation in 5b88db3a)
   - ✅ Multi-select via `state.selectedShotIds` with Select All/Deselect All (lines 134-142)
-- [x] Component triggers video generation
+- [ ] ~~Component triggers video generation~~ — *audit: retired* — in-app generation removed in 5b88db3a; video is uploaded per shot (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-details-sidebar.tsx:869`)
   - ✅ `generateMutation` calls `generateVideoAction`/`batchGenerateVideosAction` (lines 72-131)
-- [x] Component shows real-time status updates
+- [ ] ~~Component shows real-time status updates~~ — *audit: retired* — shot status came from video generation (5b88db3a); only the shot-list job result arrives live (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:82`)
   - ✅ `useShotsRealtime` hook subscribes to Supabase Realtime (lines 65-69)
-- [x] Component displays progress for generating shots
+- [ ] ~~Component displays progress for generating shots~~ — *audit: retired* — `GenerationProgress` removed with video generation in 5b88db3a
   - ✅ `GenerationProgress` component shown when processing shots exist (lines 255-257)
-- [x] Component handles errors gracefully
+- [x] Component handles errors gracefully — *audit:* every server call is caught and toasted, e.g. `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-details-sidebar.tsx:379`, `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/frame-uploader.tsx:84`
   - ✅ Error state with retry button (lines 200-215), toast on mutation error (lines 126-130)
-- [x] Component is keyboard accessible
+- [ ] Component is keyboard accessible — *audit: no longer true* — shot cards are `<div onClick>` with no tabIndex or key handler, so a shot cannot be opened from the keyboard (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`); the labelled component went in 5b88db3a
   - ✅ All buttons have aria-labels, uses semantic HTML via @kit/ui components
-- [x] Component works on mobile (responsive)
+- [ ] Component works on mobile (responsive) — *audit: unverified* — needs a phone-width screenshot: the header row has no breakpoints or wrap (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:757`) and the details sidebar is a fixed `w-96`
   - ✅ Uses flex layouts, responsive gap/padding in header (visual-studio-header.tsx)
 
 ---
@@ -422,3 +428,9 @@ describe('VisualStudio', () => {
 - **FILM-411**: GenerationProgress component
 - **FILM-405**: Generate video action
 - **Constitution**: Section 2.3 (Component Pattern)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Component is keyboard accessible | Shot cards are `<div onClick>` with no tabIndex or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`), so a shot's details cannot be opened from the keyboard; no Visual Studio component carries an `aria-*` attribute | unassigned |

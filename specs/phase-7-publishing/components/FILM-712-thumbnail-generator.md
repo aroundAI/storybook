@@ -1,10 +1,16 @@
+---
+spec_id: FILM-712
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-712: Thumbnail Generator
 
 ## Metadata
 - **Phase:** 7 - Publishing
 - **Priority:** P1 (Post-MVP Enhancement)
 - **Effort:** M (4-8 hours)
-- **Status:** ✅ DONE
+- **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
 - **Dependencies:** FILM-708 (Publish Hub), FILM-401 (Kling Provider)
 - **Blocks:** None
 
@@ -436,28 +442,28 @@ export const setThumbnailPrimaryAction = enhanceAction(
 
 ## Acceptance Criteria
 
-- [ ] Extract 12 key frames from video
-- [ ] Face detection prioritizes frames with faces
-- [ ] Platform-specific sizes (YouTube 1280x720, TikTok 1080x1920, Instagram 1080x1080)
-- [ ] Text overlay with customizable position
-- [ ] AI enhancement option improves frame quality
-- [ ] AI generation creates thumbnail from prompt
-- [ ] Set thumbnail as primary for episode
-- [ ] Download thumbnails
+- [ ] Extract 12 key frames from video — *audit: not met* — never built: `packages/features/publishing/src/components/thumbnail-generator.tsx` never existed; only the edit suite's timeline extracts frames, for display (`packages/features/edit-suite/src/components/timeline/thumbnail-strip.tsx:109`)
+- [ ] Face detection prioritizes frames with faces — *audit: not met* — no working face detection: the only `detectFacesAction` is a lip-sync stub that returns nothing (`packages/features/audio-generation/src/server/lip-sync-actions.ts:104`)
+- [ ] Platform-specific sizes (YouTube 1280x720, TikTok 1080x1920, Instagram 1080x1080) — *audit: not met* — thumbnails are stored one per language (`episode_thumbnails`, `apps/web/supabase/migrations/20260103042141_add_episode_thumbnails.sql`); no per-platform sizes
+- [ ] Text overlay with customizable position — *audit: not met* — no thumbnail overlay; the only text overlays are on video in the edit suite (`packages/features/edit-suite/src/components/preview/text-overlay-canvas.tsx`)
+- [ ] AI enhancement option improves frame quality — *audit: not met* — no AI thumbnail code anywhere
+- [ ] AI generation creates thumbnail from prompt — *audit: not met* — no AI thumbnail code anywhere
+- [ ] Set thumbnail as primary for episode — *audit: not met* — `setDefaultThumbnailAction` exists (`packages/features/episodes/src/server/thumbnail-actions.ts:444`); its only UI is unmounted since baa752eb
+- [ ] Download thumbnails — *audit: not met* — no reachable download: only the never-rendered `UploadOnlyMode` has one (`packages/features/publishing/src/components/upload-only-mode.tsx:197`); the publish screen previews and uploads only (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/video-card.tsx:88`)
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test frame extraction timing calculations
-- [ ] Test platform size configurations
-- [ ] Test overlay data validation
+- [ ] Test frame extraction timing calculations — *audit: not met* — no test found
+- [ ] Test platform size configurations — *audit: not met* — no test found
+- [ ] Test overlay data validation — *audit: not met* — no test found
 
 ### Integration Tests
-- [ ] Test full thumbnail generation workflow
-- [ ] Test primary thumbnail setting
-- [ ] Test AI enhancement integration
+- [ ] Test full thumbnail generation workflow — *audit: not met* — no test found
+- [ ] Test primary thumbnail setting — *audit: not met* — no test found
+- [ ] Test AI enhancement integration — *audit: not met* — no test found
 
 ---
 
@@ -468,3 +474,16 @@ export const setThumbnailPrimaryAction = enhanceAction(
 | Video processing failed | Show error, suggest uploading a different format |
 | AI generation failed | Fall back to frame extraction |
 | Face detection failed | Continue without face prioritization |
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Extract 12 key frames | Never built: none of the spec's files under `packages/features/publishing/src/` (`components/thumbnail-generator.tsx`, `server/thumbnail-actions.ts`, `lib/image-processing.ts`) nor its `thumbnails` table ever existed. What exists is one uploaded thumbnail per language (`episode_thumbnails`, via `packages/features/episodes/src/server/thumbnail-actions.ts`) | owner |
+| Face detection | Never built for thumbnails; the only `detectFacesAction` is a stub in the retired lip-sync feature that returns an empty list | owner |
+| Platform-specific sizes | Never built; thumbnails are per language, not per platform | owner |
+| Text overlay | Never built for thumbnails (the edit suite's text overlays apply to video) | owner |
+| AI enhancement | Never built | owner |
+| AI generation from a prompt | Never built | owner |
+| Set thumbnail as primary | The action exists; its only UI (`episode-thumbnail-settings.tsx`) has been unmounted since baa752eb (2026-01-06) | unassigned |
+| Download thumbnails | Not reachable: the only thumbnail download is in the never-rendered `UploadOnlyMode` (`packages/features/publishing/src/components/upload-only-mode.tsx:197`; see FILM-713) | owner |

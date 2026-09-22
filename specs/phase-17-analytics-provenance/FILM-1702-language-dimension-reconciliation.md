@@ -2,6 +2,7 @@
 spec_id: FILM-1702
 title: Language Dimension Reconciliation
 status: ✅ DONE
+audited: 2026-09-23
 effort: L
 dependencies: FILM-1606
 ---

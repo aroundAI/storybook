@@ -1,4 +1,12 @@
+---
+spec_id: FILM-107
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-107 @kit/video-generation Package
+
+> **🗑️ Retired (audit 2026-09-23).** `@kit/video-generation` (Kling, Runway and Hailuo providers, webhooks, polling) was deleted in `5b88db3a` (2026-01-15, 94 files); the owner retired in-app video generation on purpose (decision 2026-09-23). The Visual Studio now writes VEO 3.1 prompts, and video made outside the app is uploaded through `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/frame-uploader.tsx`. Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** 1
@@ -6,7 +14,7 @@
 - **Effort:** S
 - **Dependencies:** None
 - **Blocks:** Phase 4 (Video Generation)
-- **Status:** ✅ COMPLETED
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was ✅ COMPLETED)
 - **PR:** https://github.com/aroundAI/storybook/pull/4
 
 ## Context

@@ -1,7 +1,8 @@
 ---
 id: FILM-1132
 title: News Aggregator Service
-status: done
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: high
 effort: L
 dependencies: [FILM-1135, FILM-1130, FILM-1131]
@@ -321,7 +322,7 @@ export const getNewsTopicContextAction = enhanceAction(
 
 - [x] `NewsStoryService` created using `ExternalContextAggregator`
 - [x] `discoverTopStories()` returns clustered stories
-- [x] Stories include balanced perspectives (left, center, right)
+- [ ] Stories include balanced perspectives (left, center, right) — *audit: no longer true* — articles never carry a bias label (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:94`), so every article lands in `center`
 - [x] Entity extraction merges across articles
 - [x] Topic context includes summary
 - [x] Server actions exported
@@ -351,3 +352,9 @@ export const getNewsTopicContextAction = enhanceAction(
 
 - **FILM-1133**: News Anchor Role (uses NewsStoryService)
 - **FILM-1134**: Producer Role (uses NewsStoryService)
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Stories include balanced perspectives (left, center, right) | `getBalancedSources` buckets by `article.biasLabel` and sends unlabelled items to `center` (`packages/features/episodes/src/types/news-sources.ts:35`). `NewsAPIProvider` never sets `biasLabel` (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:94`), and the aggregator loads sources without `bias_label` or `config` (`packages/features/episodes/src/lib/server/services/context-aggregator.ts:100`), so the seeded outlets' labels never reach an article. Left and right are always empty | unassigned |

@@ -1,4 +1,12 @@
+---
+spec_id: FILM-CC-02
+status: 🗑️ RETIRED
+audited: 2026-09-23
+---
+
 # FILM-CC-02: Webhook Security
+
+> **🗑️ Retired (audit 2026-09-23).** Every provider webhook receiver went with in-app video generation in `5b88db3a` (2026-01-15): the routes `apps/web/app/api/generation/webhooks/kling` and `…/hailuo`, the shared handler `packages/features/video-generation/src/webhooks/handler.ts`, the Kling and Hailuo verifiers, and their security tests. Nothing replaces them: no provider calls back into the app today. An ElevenLabs verifier survives, tested but wired to no route (`packages/features/audio-generation/src/webhooks/verifiers/elevenlabs.ts`). Kept as a record; not outstanding work.
 
 ## Metadata
 - **Phase:** Cross-Cutting Concern
@@ -6,7 +14,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** None
 - **Blocks:** FILM-407 (Kling Webhook), all provider webhooks
-- **Status:** ✅ Complete
+- **Status:** 🗑️ RETIRED (audit 2026-09-23; was ✅ Complete)
 - **Implemented:** 2025-12-05
 - **PR:** [#6](https://github.com/aroundAI/storybook/pull/6)
 

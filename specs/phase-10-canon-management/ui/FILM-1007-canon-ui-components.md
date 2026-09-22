@@ -1,7 +1,8 @@
 ---
 id: FILM-1007
 title: Canon UI Components
-status: implemented
+status: 🟡 PARTIAL
+audited: 2026-09-23
 priority: high
 effort: L
 ---
@@ -449,22 +450,22 @@ States:
 ## Acceptance Criteria
 
 ### Project Settings
-- [ ] Canon Dashboard shows health metrics and configuration
-- [ ] Settings persist to `projects.metadata.canon`
-- [ ] Events, Threads, Characters pages render correctly
-- [ ] CRUD operations work for all canon entities
+- [x] Canon Dashboard shows health metrics and configuration — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/issue-summary-popover.tsx:222`, `apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/canon-settings-form.tsx:124`
+- [ ] Settings persist to `projects.metadata.canon` — *audit: unverified* — action merges into `metadata.canon` (`apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/canon-settings-actions.ts:40`); no E2E saves and reloads
+- [ ] Events, Threads, Characters pages render correctly — *audit: unverified* — no such pages; they are tabs in the story canon panel (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/canon-dashboard.tsx:127`); rendering never checked
+- [ ] CRUD operations work for all canon entities — *audit: not met* — UI only creates and lists events and threads; no edit or delete UI; character and world states are read-only
 
 ### Episode Integration
-- [ ] Canon Health Badge visible in episode header
-- [ ] Memory Context Preview shows on Ideation tab
-- [ ] Inline warnings display on Story generation
-- [ ] Continuity Sidebar shows scene constraints
-- [ ] Publish extracts and confirms canon changes
+- [x] Canon Health Badge visible in episode header — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:121`
+- [ ] Memory Context Preview shows on Ideation tab — *audit: not met* — `memory-context-preview.tsx` is never imported; the ideation page does not render it (only commit: 88a122b0)
+- [x] Inline warnings display on Story generation — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/story-screen.tsx:252`
+- [ ] Continuity Sidebar shows scene constraints — *audit: not met* — no continuity sidebar in the screenplay route; `ContinuitySidebar` never existed (`git log -S` finds nothing)
+- [ ] Publish extracts and confirms canon changes — *audit: unverified* — generator mounted (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1371`); no E2E drives extract then commit
 
 ### Responsive Design
-- [ ] All components work on desktop (1280px+)
-- [ ] Collapsible panels for mobile
-- [ ] Sidebar hides on narrow screens
+- [ ] All components work on desktop (1280px+) — *audit: unverified* — visual; needs a browser check at 1280px, none recorded
+- [x] Collapsible panels for mobile — *audit:* `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/story-screen.tsx:329`
+- [ ] Sidebar hides on narrow screens — *audit: not met* — the Continuity Sidebar it refers to does not exist
 
 ---
 
@@ -475,3 +476,11 @@ States:
 - [FILM-1004](../lib/FILM-1004-memory-context-builder.md) - Context building
 - [FILM-1005](../server/FILM-1005-canon-actions.md) - Server actions
 - [ROUTES.md](../ROUTES.md) - Route specifications
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| CRUD operations for all canon entities | No UI edits or deletes events or threads, or records character or world states (`deleteImmutableEventAction`, `updateNarrativeThreadAction`, `updateCharacterStateAction` have no UI caller) | unassigned |
+| Memory Context Preview on Ideation | Built but never rendered | unassigned |
+| Continuity Sidebar, and hiding it on narrow screens | Never built | owner |

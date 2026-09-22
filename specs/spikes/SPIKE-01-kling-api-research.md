@@ -1,3 +1,9 @@
+---
+spec_id: SPIKE-01
+status: ✅ DONE
+audited: 2026-09-23
+---
+
 # SPIKE-01: Kling API Research via PiAPI
 
 ## Metadata
@@ -119,15 +125,15 @@ Kling AI is our chosen video generation provider, accessed via PiAPI (piapi.ai) 
 
 ## Success Criteria
 
-- [ ] Complete API parameter documentation created
-- [ ] 100+ successful video generation requests completed
-- [ ] Average generation time measured for 5s and 10s videos
-- [ ] All error codes documented with reproduction steps
-- [ ] Webhook payload format fully documented
-- [ ] Rate limits and quotas clearly identified
-- [ ] Element prompt effectiveness evaluated with examples
-- [ ] Retry strategy recommendations documented
-- [ ] Test script created for ongoing API validation
+- [x] Complete API parameter documentation created — *audit:* `docs/kling-api-reference.md:37`
+- [ ] ~~100+ successful video generation requests completed~~ — *audit: retired* — empirical testing was deferred to implementation (line 20 note); the Kling integration went in 5b88db3a
+- [ ] ~~Average generation time measured for 5s and 10s videos~~ — *audit: retired* — only documented estimates exist (`docs/kling-api-reference.md:466`); nothing measured before Kling went in 5b88db3a
+- [ ] ~~All error codes documented with reproduction steps~~ — *audit: retired* — codes listed without reproduction steps (`docs/kling-api-reference.md:416`); Kling removed in 5b88db3a
+- [x] Webhook payload format fully documented — *audit:* `docs/kling-api-reference.md:334`
+- [ ] ~~Rate limits and quotas clearly identified~~ — *audit: retired* — doc records only that none are documented (`docs/kling-api-reference.md:441`); limit testing deferred, Kling removed 5b88db3a
+- [ ] ~~Element prompt effectiveness evaluated with examples~~ — *audit: retired* — no evaluation or examples (`docs/examples/kling-samples/` never created); Kling removed in 5b88db3a
+- [x] Retry strategy recommendations documented — *audit:* `docs/kling-integration-guide.md:527`
+- [ ] ~~Test script created for ongoing API validation~~ — *audit: retired* — `packages/features/video-generation/__tests__/kling-provider.test.ts` was deleted with the Kling provider in 5b88db3a
 
 ## Deliverables
 

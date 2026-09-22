@@ -1,8 +1,14 @@
+---
+spec_id: FILM-1140
+status: 🟡 PARTIAL
+audited: 2026-09-23
+---
+
 # FILM-1140: Research Hub UI
 
 | Field | Value |
 |-------|-------|
-| **Status** | ✅ DONE |
+| **Status** | 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE) |
 | **Priority** | P1 |
 | **Estimate** | 8h |
 | **Dependencies** | FILM-1135 (ExternalContextProvider) |
@@ -220,9 +226,19 @@ export async function deleteFactAction(factId: string);
 ## Acceptance Criteria
 
 - [x] `/research` route accessible from sidebar
-- [x] Sources list shows all project sources with CRUD
-- [x] Facts list shows extracted facts with verification toggle
-- [x] Empty state guides user based on content type
-- [x] Source counts show in sidebar nav item
-- [x] Proper loading and error states
-- [x] Mobile responsive layout
+- [ ] Sources list shows all project sources with CRUD — *audit: no longer true* — no edit in the hub (`updateExternalSourceAction` has no caller); sources are global, not per project
+- [ ] Facts list shows extracted facts with verification toggle — *audit: no longer true* — the Facts tab only links out (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:274`); verifying is refused (KB-18)
+- [ ] Empty state guides user based on content type — *audit: no longer true* — one generic empty state (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:193`); content type never read
+- [ ] Source counts show in sidebar nav item — *audit: no longer true* — the sources half filters `external_content` by `project_id`, a column it lacks (`apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:84`)
+- [ ] Proper loading and error states — *audit: no longer true* — shows "No sources configured" until the client fetch returns (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:189`)
+- [ ] Mobile responsive layout — *audit: unverified* — responsive classes present (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:135`); needs a phone-width screenshot
+
+## Remaining (audit 2026-09-23)
+
+| Criterion | Why it is open | Closed by |
+|---|---|---|
+| Sources list shows all project sources with CRUD | The hub lists and soft-deletes sources and adds them via `AddSourceDialog`, but offers no edit; `updateExternalSourceAction` (`packages/features/episodes/src/server/external-context-actions.ts:288`) has no caller. `external_sources` is global by design (`external-context-actions.ts:351`), so there are no "project sources" | unassigned |
+| Facts list shows extracted facts with verification toggle | The hub's Facts tab is a card linking to the Facts Library (`research-hub-page.tsx:274`); there, verification is always refused | KB-18 |
+| Empty state guides user based on content type | `page.tsx` selects `metadata` but never passes a content type; the empty state is fixed text (`research-hub-page.tsx:193`) | unassigned |
+| Source counts show in sidebar nav item | The count is `researchSources + researchFacts` (`apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx:494`); `researchSources` queries `external_content.project_id` (`layout.tsx:84`), which no migration or generated type defines, so that request errors and only facts are counted | unassigned |
+| Proper loading and error states | `sources` starts as `[]` (`research-hub-page.tsx:88`) and the empty state renders whenever it is empty (`:189`), so every load first shows "No sources configured"; `loadData` catches nothing | unassigned |
