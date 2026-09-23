@@ -1,7 +1,7 @@
 # KB-55 — Engineering Design Document
 
 **Ticket:** KB-55, "storage buckets used in code that no migration creates" (`audio`, `audio-assets`, `videos`). Filed by the lead from KB-28's audit (`specs/plans/KB-28-edd.md` §8.3, §8.4, §31). Related: KB-56 (the `reports` bucket refuses personal-account owners), KB-57 (no storage-level project check on audio, report and shorts paths on R2; follows this ticket), KB-38 (R2 presigned uploads don't bind type or size), FILM-711 (Shorts Clipper, RETIRED).
-**Branch:** `fix/kb-55-storage-buckets`, based on `origin/fix/kb-28-project-assets-insert-scope` (PR #313) @ `f9943881`. Stacked because the proposed `audio` policies call KB-28's `public.can_write_project_storage(path)` and its path resolver, and the tests reuse KB-28's E2E helpers (`seedProjectMember`, `storageUploadAs`, `storageObjectExists`) and its pgTAP layout. None of these exist on `main`.
+**Branch:** `fix/kb-55-storage-buckets`, based on `origin/fix/kb-28-project-assets-insert-scope` (PR #313) @ `27a578e8` (after KB-28's rebase onto `main`; its migration is now `20260923042517_kb28-project-write-scope.sql`, so this ticket's migration sorts after that). Stacked because the proposed `audio` policies call KB-28's `public.can_write_project_storage(path)` and its path resolver, and the tests reuse KB-28's E2E helpers (`seedProjectMember`, `storageUploadAs`, `storageObjectExists`) and its pgTAP layout. None of these exist on `main`.
 **Size:** S–M. One migration, three small code changes, one package removal (if D1 = remove), a pgTAP file, two Vitest files and one Playwright spec.
 **Status:** Phase 1 (plan). Nothing is implemented. Every decision the owner needs is in §31.
 
@@ -11,7 +11,7 @@
 
 Everything below was executed, not read. The run used a `db reset` from this worktree (so the schema is KB-28's branch), real GoTrue users, the real Storage API, the real `@kit/storage` factory, and a `next dev` server on :3120 driven by Playwright. Scripts and raw output: `$SP/kb55/` (`locked-repro.sh`, `probes.mjs`, `kb55-adapter-probe.mts`, `shorts-repro.spec.ts`, `out/`).
 
-**Sandbox.** Every Node process (the dev server and its workers, the adapter probe) ran with `NODE_OPTIONS=--require $SP/kb55/net-guard.cjs`. That preload refuses any socket that is not loopback (Google Fonts excepted, for `next/font`) and logs the host. It was proven first: `fetch('https://example.com')` and `fetch('https://sandbox.r2.cloudflarestorage.com/x')` were both refused, while `http://127.0.0.1:55321` returned 200. R2 was configured with invented values only (`R2_ACCOUNT_ID=kb55-sandbox`, `R2_PUBLIC_URL=https://r2-public.kb55.invalid`). In the adapter probe, `S3Client.prototype.send` was replaced by a recorder, so no R2 command was sent anywhere. No production credential or config value was read or used.
+**Sandbox.** Every Node process (the dev server and its workers, the adapter probe) ran with `NODE_OPTIONS=--require $SP/kb55/net-guard.cjs`. That preload refuses any socket that is not loopback (Google Fonts excepted, for `next/font`) and logs the host. It was proven first: `fetch('https://example.com')` and `fetch('https://sandbox.r2.cloudflarestorage.com/x')` were both refused, while `http://127.0.0.1:55321` returned 200. R2 was configured with invented values only (`R2_ACCOUNT_ID=kb55-sandbox`, `R2_PUBLIC_URL=https://r2-public.kb55.invalid`). In the adapter probe, `S3Client.prototype.send` was replaced by a recorder, so no R2 command was sent anywhere. No production credential or config value was read or used. Across the dev-server runs, the guard's log shows exactly one refused host, `registry.npmjs.org`, three times (npx's version check). No vendor host and no R2 host was attempted. The first two passes were cut short: the page failure (§0.4) broke the original script. Their probe and adapter results are identical to the final pass (diffed); the control row in §0.4 comes from pass 2. Base for passes 2–3: `27a578e8`.
 
 ### 0.1 Buckets and policies that exist (`storage.buckets`, `pg_policies`)
 
@@ -56,17 +56,34 @@ No migration creates any other bucket (search of `apps/web/supabase/migrations/*
 
 ### 0.4 Shorts, driven through the real page
 
-SHORTS_RESULTS_PLACEHOLDER
+Fixture: a team owner, their project, and an episode whose shot is flagged `shorts_candidate` (viral score 8). The shot's `video_url` is a real 3-second mp4 in `project-assets`. `ffmpeg` came from `ffmpeg-static` and was on the dev server's PATH, except in run C.
+
+**What the user sees.** The owner opens `/home/<team>/studio/<project>/episodes/<episode>/shorts-studio`. The whole page is the app's error page: "Ouch! :| Sorry, something went wrong." There are 0 Generate buttons. The server log shows `Error: Failed to fetch shorts candidates: column shots.veo_prompt does not exist` (`shorts-queries.ts:94`). The column appears in no migration (search, with `shots.video_url` as the positive control). The query was written with it in `5bbe24bc` (2026-01-01). So the page has never rendered a candidate on a migrated database. It is identical on all three runs.
+
+**The action itself.** The UI can't reach it, so `generateShortAction` was called through its real Next.js action endpoint (`Next-Action: 7fbf463d…`, found in the dev build), from the signed-in page, with the owner's cookies:
+
+| Run | Provider | ffmpeg | `videos` bucket | Action result (returned to the caller) | `shorts` row |
+|---|---|---|---|---|---|
+| A | supabase | yes | absent | `{"success":false,"error":"Failed to upload: Bucket not found"}` | `failed`, same error |
+| **Control** | supabase | yes | **created by hand for this run, then deleted** | `{"success":true,…,"videoUrl":".../object/public/videos/shorts/<ep>/<id>.mp4"}` | `ready` |
+| B | **r2 (sandbox)** | yes | absent | `{"success":false,"error":"Failed to upload: Bucket not found"}`. R2 isn't used at all | `failed`, same error |
+| C | r2 (sandbox) | **no** | absent | `{"success":false,"error":"Command failed: ffmpeg … /bin/sh: ffmpeg: command not found"}` | `failed`, same error |
+
+The control shows that, locally, the missing bucket is the only storage blocker. Run B shows `STORAGE_PROVIDER=r2` changes nothing, because the action bypasses the adapter. Run C shows what happens where the web runtime has no `ffmpeg` (§8.1: the repo's SST `Nextjs` function doesn't bundle it). Even then, `ShortsCandidatesList` discards `success:false` (`shorts-candidates-list.tsx:77-88`), so a user who did reach the button would see the spinner stop and nothing else. Screenshots: `$SP/kb55/out/*-page.png`, `$SP/kb55/out-control/`.
 
 ### 0.5 Scheduled report on the R2 configuration
 
-SCHEDULED_RESULTS_PLACEHOLDER
+The existing `apps/e2e/tests/analytics/raw-export-evidence.spec.ts` was run against the **R2-sandbox** dev server (run B), with ClickHouse enabled. It seeds a team, publishes and ClickHouse metrics, calls `GET /api/reports/scheduled` with the cron secret, and opens the delivered email in the local mail catcher. It then follows the link, which must match `/storage/v1/object/sign/`, and checks the CSV. Result: **1 passed**. So a scheduled report is stored and signed on **Supabase Storage** while `STORAGE_PROVIDER=r2`. With R1–R3 (the export action's exact calls as a team owner), that covers both report writers.
 
 ### 0.6 What this means
 
 1. **In production (R2), the audio paths work, as far as storage goes.** Every audio upload goes through `getStorageAdapter()`, which follows `STORAGE_PROVIDER` (A1, A2). The `audio` and `audio-assets` names are key prefixes in the one R2 bucket.
 2. **On the local stack, in CI, and on any Supabase-provider environment, every audio upload fails** (S1–S3, B2–B4). That covers TTS dialogue, voice preview, SFX, music and the audio library. `STORAGE_PROVIDER` defaults to `supabase` when unset (`packages/features/storage/src/factory.ts:31-45`), and `scripts/local-env.sh:88` sets it explicitly. The audio library also fails for a second reason: it never passes a client (S3).
-3. **Shorts fail on every provider**, because `generate-short-action.ts:252` calls Supabase Storage directly into a bucket that doesn't exist (B1, §0.4). The page is also linked from nowhere, and FILM-711 is RETIRED (§8.1).
+3. **Shorts fail on every provider, at three layers.**
+   - The page can't list a single candidate: `shorts-queries.ts` selects `shots.veo_prompt`, a column no migration has ever created (PostgREST 42703, §0.4). So no Generate button is ever shown.
+   - Called directly, the action fails at storage, because `generate-short-action.ts:252` calls Supabase Storage directly into a `videos` bucket that doesn't exist (B1, §0.4). `STORAGE_PROVIDER` makes no difference.
+   - Without `ffmpeg` in the web runtime, it fails before that (§0.4).
+   - The page is also linked from nowhere, and FILM-711 is RETIRED (§8.1).
 4. **Reports work on every provider, and always on Supabase Storage**, whatever `STORAGE_PROVIDER` says (R1–R3, §0.5). Their policies are tenant-safe (R5–R8, R10), with two gaps: personal-account owners are refused (R4 = KB-56) and there is no MIME list (R11).
 
 ---
@@ -264,7 +281,7 @@ Audio: vendor bytes (server) → action → adapter → object (R2 key or Supaba
 
 ## 14. Database Design and Changes
 
-One hand-written migration, `apps/web/supabase/migrations/<UTC ts>_kb55-storage-buckets.sql`, with a timestamp newer than KB-28's `20260923024605`:
+One hand-written migration, `apps/web/supabase/migrations/<UTC ts>_kb55-storage-buckets.sql`, with a timestamp newer than KB-28's `20260923042517`:
 
 1. `insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values ('audio','audio',true,52428800,array['audio/mpeg']), ('audio-assets','audio-assets',true,52428800, <AUDIO_LIBRARY_TYPES>) on conflict (id) do update set public = excluded.public, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;`
    `<AUDIO_LIBRARY_TYPES>` = `audio/mpeg, audio/wav, audio/x-wav, audio/mp4, audio/x-m4a` (the dialog's list, `upload-audio-dialog.tsx:35-41`), moved to one exported constant that the dialog, the action (D4) and the migration test share. The `on conflict … do update` keeps the migration correct on an environment where someone created the bucket by hand.
@@ -304,6 +321,7 @@ It uploads to `STORAGE_BUCKETS.reports` and creates the signed URL, with the sam
 **D1 = remove shorts:** delete `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/shorts-studio/` and `packages/features/shorts/`; remove `"@kit/shorts"` from `apps/web/package.json`; run `pnpm install` (the lockfile loses one importer link) and typecheck. Tables `shorts` and `short_publications` and the `shots.shorts_candidate` column stay. The LLM shot generator still writes `shorts_candidate`, and the episode layout reads it.
 
 **D1-B = repair shorts (if chosen instead):**
+- Fix the candidates query: drop `veo_prompt` from `shorts-queries.ts` (the column doesn't exist), or it lists nothing.
 - Replace `adminClient.storage.from('videos')` with `getStorageAdapter(adminClient).upload(STORAGE_BUCKETS.videos, …)`, adding `videos` to the constant and the migration.
 - Show `result.error` in `ShortsCandidatesList`.
 - Link the page from somewhere (owner to say where), or it stays unreachable.
@@ -418,7 +436,7 @@ Question to answer: does the built artifact store and serve audio, and deliver a
 | Create `audio`/`audio-assets` buckets for Supabase envs | Make local/CI use R2 or `local` | The local stack is Supabase everywhere; `STORAGE_PROVIDER=local` bypasses every RLS test; R2 can't be used without real credentials |
 | `audio` writes keyed on project (`can_write_project_storage`) | Server-only (no user policy) and switch SFX/music to the admin client | Keeps the actions' clients as they are, and gives the Supabase provider a project check for free. Paths without a project stay server-only |
 | Reports stay on Supabase (D2) | Public R2 bucket (A3); a private R2 bucket | Public is unsafe (§19). A private bucket needs owner-created infrastructure, and all authorisation moves into app code (KB-57). It can follow later behind `report-storage.ts` |
-| Remove shorts (D1) | Repair (D1-B) | The page is unreachable, the spec is RETIRED, the live shorts flow is elsewhere, and repair also needs ffmpeg in the web runtime |
+| Remove shorts (D1) | Repair (D1-B) | The page is unreachable. It has never listed a candidate since it was added (`veo_prompt`, 2026-01-01). The spec is RETIRED, the live shorts flow is elsewhere, and repair also needs ffmpeg in the web runtime |
 | One constant + source-scan test | Per-bucket comments | A comment can't fail. The test would have caught `audio`, `audio-assets`, `videos` and `storybook-assets` |
 | Point export at `project-assets` (D3) | Create a `storybook-assets` bucket | The name comes from an env var that a migration can't know |
 
@@ -438,7 +456,8 @@ Question to answer: does the built artifact store and serve audio, and deliver a
 **Decisions for the owner (my recommended default first):**
 
 - **D1: Shorts generator.** **Remove** the orphaned `shorts-studio` route and the `@kit/shorts` package (lockfile: one workspace importer entry). Keep the tables.
-  - Alternative D1-B: repair it through the adapter to a `videos` prefix, with a `videos` bucket for Supabase, and show errors. D1-B also needs Q1's answer and a link to the page.
+  - Why: the page crashes to the error page for everyone (`veo_prompt`, §0.4); it is linked from nowhere; FILM-711 is RETIRED; live shorts are uploaded on the publish screen, into R2.
+  - Alternative D1-B: repair it. That means fixing the candidates query, uploading through the adapter to a `videos` prefix (with a `videos` bucket for Supabase), showing errors, and linking the page. D1-B also needs Q1's answer.
   - Alternative D1-C: remove only the route and the generator, and keep the package (no lockfile change).
 - **D2: Reports.** **Keep on Supabase Storage (private), on every provider**, as the one named exception to "all runtime uploads go to R2", behind one `report-storage.ts`. Include KB-56 and the CSV/PDF MIME list.
   - Alternative D2-alt: route reports through the adapter into a **separate private R2 bucket** that the owner creates (`R2_PRIVATE_BUCKET_NAME`), add `getSignedDownloadUrl` to `StorageAdapter` (R2 = presigned GET, max 7 days; Supabase = `createSignedUrl`), and move the account check into the actions. It touches `adapters/r2.ts`, which KB-38 also changes. **Not** the existing public bucket (§19).
