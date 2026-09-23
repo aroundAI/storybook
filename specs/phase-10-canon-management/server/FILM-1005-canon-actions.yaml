@@ -97,7 +97,7 @@ acceptance_criteria:
     evidence: "packages/features/episodes/src/server/canon-actions.ts:187, packages/features/episodes/src/server/canon-actions.ts:514"
   - text: "Authorization checks on all actions via RLS"
     met: false
-    reason: "not met — `commitCanonChangesAction` calls SECURITY DEFINER `commit_canon_changes`, which checks no membership (`apps/web/supabase/migrations/20260130004332_add_commit_canon_changes_function.sql:16`); KB-27, KB-17"
+    reason: "not met — `deleteImmutableEventAction` lets any account member delete canon (KB-17). `commit_canon_changes` (SECURITY DEFINER) now requires the episode in the project and `can_write_project` (`apps/web/supabase/migrations/20260923044106_kb27-canon-write-scope.sql`; KB-27)"
   - text: "Audit logging for all mutations with context"
     met: false
     reason: "not met — only character-state inserts write `state_deltas` (`packages/features/episodes/src/server/canon-actions.ts:349`); deletes and thread edits unrecorded; authorship forgeable (KB-17)"
@@ -133,8 +133,8 @@ acceptance_criteria:
     reason: "not met — no test found"
 remaining:
   - criterion: "Authorization checks on all actions via RLS"
-    reason: "`commit_canon_changes` bypasses RLS and checks no membership; `deleteImmutableEventAction` says \"admin only\" but any member can delete"
-    closed_by: "KB-17 (delete); KB-27 (RPC)"
+    reason: "`deleteImmutableEventAction` says \"admin only\" but any member can delete. (The RPC half was closed by KB-27.)"
+    closed_by: "KB-17"
   - criterion: "Audit logging; state deltas for rollback"
     reason: "Only character-state changes write a delta, with no actor; nothing reads deltas"
     closed_by: "unassigned"
