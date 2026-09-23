@@ -1,3 +1,509 @@
-# KB-55 EDD (stub)
+# KB-55 — Engineering Design Document
 
-Storage buckets used in code that no migration creates (`audio`, `audio-assets`, `videos`). Phase 1 in progress.
+**Ticket:** KB-55, "storage buckets used in code that no migration creates" (`audio`, `audio-assets`, `videos`). Filed by the lead from KB-28's audit (`specs/plans/KB-28-edd.md` §8.3, §8.4, §31). Related: KB-56 (the `reports` bucket refuses personal-account owners), KB-57 (no storage-level project check on audio, report and shorts paths on R2; follows this ticket), KB-38 (R2 presigned uploads don't bind type or size), FILM-711 (Shorts Clipper, RETIRED).
+**Branch:** `fix/kb-55-storage-buckets`, based on `origin/fix/kb-28-project-assets-insert-scope` (PR #313) @ `f9943881`. Stacked because the proposed `audio` policies call KB-28's `public.can_write_project_storage(path)` and its path resolver, and the tests reuse KB-28's E2E helpers (`seedProjectMember`, `storageUploadAs`, `storageObjectExists`) and its pgTAP layout. None of these exist on `main`.
+**Size:** S–M. One migration, three small code changes, one package removal (if D1 = remove), a pgTAP file, two Vitest files and one Playwright spec.
+**Status:** Phase 1 (plan). Nothing is implemented. Every decision the owner needs is in §31.
+
+---
+
+## 0. What running it showed (2026-09-23, local stack, under the DB lock)
+
+Everything below was executed, not read. The run used a `db reset` from this worktree (so the schema is KB-28's branch), real GoTrue users, the real Storage API, the real `@kit/storage` factory, and a `next dev` server on :3120 driven by Playwright. Scripts and raw output: `$SP/kb55/` (`locked-repro.sh`, `probes.mjs`, `kb55-adapter-probe.mts`, `shorts-repro.spec.ts`, `out/`).
+
+**Sandbox.** Every Node process (the dev server and its workers, the adapter probe) ran with `NODE_OPTIONS=--require $SP/kb55/net-guard.cjs`. That preload refuses any socket that is not loopback (Google Fonts excepted, for `next/font`) and logs the host. It was proven first: `fetch('https://example.com')` and `fetch('https://sandbox.r2.cloudflarestorage.com/x')` were both refused, while `http://127.0.0.1:55321` returned 200. R2 was configured with invented values only (`R2_ACCOUNT_ID=kb55-sandbox`, `R2_PUBLIC_URL=https://r2-public.kb55.invalid`). In the adapter probe, `S3Client.prototype.send` was replaced by a recorder, so no R2 command was sent anywhere. No production credential or config value was read or used.
+
+### 0.1 Buckets and policies that exist (`storage.buckets`, `pg_policies`)
+
+| Bucket | public | size limit | MIME list | Policies on `storage.objects` |
+|---|---|---|---|---|
+| `account_image` | yes | none | none | one `FOR ALL` policy keyed on the file name |
+| `project-assets` | yes | 500 MB | 11 types (KB-28) | select: bucket only; insert/update/delete: `can_write_project_storage(name)` (KB-28) |
+| `reports` | **no** | none | none | select/insert/delete: `has_role_on_account(kit.get_account_id_from_report_path(name))`; **no update policy** |
+| `audio`, `audio-assets`, `videos` | **do not exist** | — | — | — |
+
+No migration creates any other bucket (search of `apps/web/supabase/migrations/*.sql` for `storage.buckets`; the positive control finds all three that do exist).
+
+### 0.2 Storage API probes, as real users
+
+| # | Who / what | Result |
+|---|---|---|
+| R1 | Team owner uploads `reports/exports/<team>/…csv` (what `report-actions.ts` does) | **200** |
+| R2–R3 | Team owner signs a download URL; anyone follows it | 200 / 200, file returned |
+| **R4** | **Personal-account owner uploads `exports/<own personal account>/…` (KB-56)** | **403 "new row violates row-level security policy"** |
+| R5 | Stranger uploads into `exports/<team>/…` | 403 ✔ |
+| R6–R7 | Stranger signs, or reads through `/authenticated/`, the owner's report | 404 ✔ |
+| R8 | Anon reads through `/public/` | 404 "Bucket not found" (private bucket) ✔ |
+| R9 | Team owner overwrites own report with `x-upsert` | 403 (no update policy; the app never upserts reports, so harmless) |
+| R10 | Team owner writes `scheduled/<random uuid>/…` | 403 ✔ |
+| R11 | Team owner writes `text/html` into `reports` | **200**. There is no MIME list |
+| B1 | Service role uploads `videos/shorts/<episode>/x.mp4` (what shorts does) | **404 "Bucket not found"** |
+| B2 | Service role uploads `audio/dialogue/<episode>/x.mp3` (TTS dialogue) | **404 "Bucket not found"** |
+| B3 | Team owner uploads `audio/<project>/sfx/x.mp3` (SFX and music, user client) | **404 "Bucket not found"** |
+| B4 | Service role uploads `audio-assets/music/x.mp3` (audio library) | **404 "Bucket not found"** |
+
+### 0.3 The real `@kit/storage` factory
+
+| # | Provider | Call (as the app makes it) | Result |
+|---|---|---|---|
+| S1 | supabase | `getStorageAdapter(admin).upload('audio', 'dialogue/<ep>/line_1.mp3', …)` (`voice-actions.ts:293-303`) | **throws "Storage upload failed: Bucket not found"** |
+| S2 | supabase | `getStorageAdapter(userClient).upload('audio', '<project>/sfx/a.mp3', …)` (`sfx-actions.ts:83-92`, `elevenlabs-music-actions.ts:76-85`) | **throws "Bucket not found"** |
+| S3 | supabase | `getStorageAdapter().upload('audio-assets', …)` with no client (`audio-asset-actions.ts:574,691,834`) | **throws "Supabase client is required for supabase storage provider"**. A bucket alone would not fix this |
+| A1 | r2 (sandbox) | dialogue → `audio` | ok. `PutObject {Bucket: <R2_BUCKET_NAME>, Key: "audio/dialogue/<ep>/line_1.mp3"}`, public URL `<R2_PUBLIC_URL>/audio/…` |
+| A2 | r2 (sandbox) | audio library → `audio-assets` | ok. Key `audio-assets/music/a.mp3` |
+| A3 | r2 (sandbox) | a report, *if it were routed through the adapter* | ok. Key `reports/exports/<team>/r.csv`, public URL `<R2_PUBLIC_URL>/reports/…` (see §19) |
+| A5 | r2 | Does the adapter have a signed **download** method? | **No.** `StorageAdapter` has only upload, signed upload, public URL, delete, exists and read |
+
+### 0.4 Shorts, driven through the real page
+
+SHORTS_RESULTS_PLACEHOLDER
+
+### 0.5 Scheduled report on the R2 configuration
+
+SCHEDULED_RESULTS_PLACEHOLDER
+
+### 0.6 What this means
+
+1. **In production (R2), the audio paths work, as far as storage goes.** Every audio upload goes through `getStorageAdapter()`, which follows `STORAGE_PROVIDER` (A1, A2). The `audio` and `audio-assets` names are key prefixes in the one R2 bucket.
+2. **On the local stack, in CI, and on any Supabase-provider environment, every audio upload fails** (S1–S3, B2–B4). That covers TTS dialogue, voice preview, SFX, music and the audio library. `STORAGE_PROVIDER` defaults to `supabase` when unset (`packages/features/storage/src/factory.ts:31-45`), and `scripts/local-env.sh:88` sets it explicitly. The audio library also fails for a second reason: it never passes a client (S3).
+3. **Shorts fail on every provider**, because `generate-short-action.ts:252` calls Supabase Storage directly into a bucket that doesn't exist (B1, §0.4). The page is also linked from nowhere, and FILM-711 is RETIRED (§8.1).
+4. **Reports work on every provider, and always on Supabase Storage**, whatever `STORAGE_PROVIDER` says (R1–R3, §0.5). Their policies are tenant-safe (R5–R8, R10), with two gaps: personal-account owners are refused (R4 = KB-56) and there is no MIME list (R11).
+
+---
+
+## 1. Start With the User
+
+**Who.** A creator working in a project's Audio studio or audio library: generating dialogue voices, sound effects and music, previewing a voice, or uploading their own audio. Also an account owner exporting or scheduling an analytics report. And the owner, who runs local and CI environments and wants every runtime upload to land in R2 in production.
+
+**Problem.** On any environment where storage is Supabase (every developer machine and CI today, and production too if `STORAGE_PROVIDER` were ever unset), generating or uploading audio ends in "Storage upload failed: Bucket not found". The generation itself may already have been paid for at the vendor. Nothing in local or CI can exercise the audio pipeline end to end, so its defects surface only in production. Separately, the shorts generator page fails for everyone, silently: the button spins and stops, and nothing tells the user it failed.
+
+**After the fix:**
+- On every provider, generated and uploaded audio is stored, and plays from the URL the app saves. In production that is R2, unchanged.
+- A report export (download link) and a scheduled report (emailed link) keep working, stay private, and work for a personal-account owner as well as a team member (KB-56).
+- The broken shorts generator is either removed (recommended, D1) or repaired and able to report failure.
+- A future upload into a bucket no migration creates fails a unit test, not a user.
+
+**What the user sees.** Audio: the existing success state (the clip appears in the timeline or library and plays). Reports: the existing "Download" link or email. No new UI. Failure surfaces are unchanged, except that shorts no longer fail silently (under D1 the page is gone; under D1-B it shows an error).
+
+**Persists:** stored audio objects and the URLs saved in `audio_assets`, `dialogue_lines` and similar rows; report objects (private) and their signed links until expiry. **Does not persist:** a failed upload (no object, no URL saved).
+
+## 2. Define the Complete User Journey
+
+| Stage | User action | System response | User-visible result | Next |
+|---|---|---|---|---|
+| Entry | Opens a project's Audio studio or audio library (team workspace) | Page loads (RSC) | Generate and upload controls | Generate or upload |
+| Generate SFX/music | Enters a prompt, clicks Generate | Action inserts the asset row, calls the vendor, uploads to `audio` (`<projectId>/{sfx,music}/<assetId>.mp3`) | Spinner, then the clip appears and plays | Use in timeline |
+| Generate dialogue | Generates a line's voice | Action uploads to `audio` (`dialogue/<episodeId>/<lineId>_<ts>.mp3`, admin client) | The line shows a playable clip | Regenerate |
+| Voice preview | Previews a voice | Action uploads to `audio` (`temp/<userId>/<ts>.mp3`, admin client) | Preview plays | — |
+| Library upload | Picks a file (mp3/wav/m4a, ≤ 50 MB per the dialog) | Action uploads to `audio-assets` (`<type>/<ts>-<name>`) | The asset appears in the library | — |
+| Export report | Analytics → Export → Generate | Action uploads to `reports` (`exports/<accountId>/…`), signs a 1-hour URL | "Download" link | Download |
+| Scheduled report | (cron) | Route uploads to `reports` (`scheduled/<reportId>/…`, admin client), signs a 7-day URL, emails it | Email with link | Download |
+| Refresh / re-entry | Reloads | URLs read from the database | Same clips and links | — |
+| Session expired | Any action | Action refuses (auth) | Existing error text | Sign in |
+| Storage down | Any upload | Adapter throws; the action's existing error path | Existing error text; for audio, the asset row is marked failed where the action does so today | Retry |
+
+## 3. Explicitly Define the Happy Path
+
+Canonical path, and the one the Playwright spec drives: **a project member uploads an mp3 to the audio library on the local (Supabase) provider.**
+
+1. The member opens `/home/<team>/studio/<project>/audio-library` and clicks Upload. The dialog accepts `audio/mpeg` under 50 MB (`upload-audio-dialog.tsx:35-42`).
+2. The dialog calls `uploadAudioFileAndCreateAssetAction({projectId, audioType:'music', name, fileBase64, fileName, contentType:'audio/mpeg', fileSizeBytes})`.
+3. The action authenticates. It checks `contentType` against the audio allowlist (D4). It builds the storage adapter **with the admin client** (the change for S3), and uploads to `audio-assets` at `music/<ts>-<name>.mp3`.
+4. Supabase provider: the bucket exists (new migration) and admits `audio/mpeg`. The service role writes the object. R2 provider: `PutObject` under the `audio-assets/` prefix, as today.
+5. The action inserts the `audio_assets` row with the public URL.
+6. The library lists the asset, and its URL fetches 200 with `audio/mpeg`. **Success:** the object exists, the row holds its URL, and the page renders it. On `main`, step 3 throws "Supabase client is required…" (S3).
+
+## 4. Define Every Important Alternate Path
+
+| Trigger | System behaviour | User-visible | Recovery | Final state |
+|---|---|---|---|---|
+| Stranger calls the Storage API into `audio/<victim project>/…` | `audio` insert policy: `can_write_project_storage` false → 403 | — | — | Nothing stored |
+| Project viewer or stranger writes `audio/dialogue/…` or `temp/…` directly | Path doesn't resolve to a project → 403 (only the service role writes these) | — | — | Nothing stored |
+| Any user writes to `audio-assets` directly | No authenticated write policy → 403 | — | — | Nothing stored |
+| Library upload with a non-audio type (e.g. `text/html`) | Action refuses before upload (D4); on Supabase the bucket MIME list also refuses | "This file type isn't supported." (returned as a value) | Pick an audio file | Nothing stored |
+| Library file above the server-action body limit | Next refuses the request before the action runs (pre-existing; see §31) | Existing error toast | Smaller file | Nothing stored |
+| Personal-account owner exports a report | `reports` policy now uses `has_account_access` → allowed (KB-56) | Download link | — | Report stored |
+| Stranger exports with another account's id | Data read is RLS-filtered to nothing → "No data found…" refusal; the storage policy would also refuse | Refusal text | — | Nothing stored |
+| Report file of a wrong type | Bucket MIME list refuses (only CSV/PDF) | Existing "Failed to generate report" | — | Nothing stored |
+| Shorts page (D1 = remove) | Route no longer exists → 404 | Not found | — | — |
+| Shorts page (D1-B = repair), ffmpeg missing or upload fails | Action returns `{success:false,error}`; the list shows it | Error text under the candidate | Retry | Row `failed` with `processing_error` |
+| Vendor succeeded, upload failed | Existing action error paths (asset marked failed where implemented) | Existing error text | Retry | Unchanged from today, but the bucket error no longer occurs |
+
+## 5. Establish the User-Facing Contract
+
+- **Audio actions:** inputs and outputs unchanged. `uploadAudioFileAndCreateAssetAction` adds one refusal, returned as a value: "This file type isn't supported." (KB-6 pattern).
+- **Report actions:** unchanged. Downloads are signed URLs: 1 hour for exports, 7 days for scheduled reports, as today.
+- **Permissions (Supabase storage level):**
+  - `audio`: write needs `can_write_project` on the path's project; paths without a project (dialogue, temp) are writable only by the server.
+  - `audio-assets`: writable only by the server.
+  - `reports`: read, insert and delete need `has_account_access` (owner or member).
+  - On R2, storage has no per-user rule, and the gate is the action (KB-57).
+- **Visibility:** `audio` and `audio-assets` are public, like `project-assets`, matching R2 where the whole bucket is public by URL. `reports` stays private.
+- **UI states:** no new ones.
+
+## 6. Convert the User Experience Into Functional Requirements
+
+| ID | Requirement | Verification |
+|---|---|---|
+| FR-1 | A migration creates bucket `audio`: public, `allowed_mime_types = {audio/mpeg}`, a 50 MB size limit | pgTAP (bucket row); B2/B3 re-run → 200 |
+| FR-2 | A migration creates bucket `audio-assets`: public, the audio library's type list (FR-9), 50 MB | pgTAP; B4 re-run → 200 |
+| FR-3 | `audio` policies: select by bucket; insert/update/delete `can_write_project_storage(name)`. So project writers can store `<projectId>/…`, and nobody but the service role can store `dialogue/…` or `temp/…` | pgTAP: writer ok, viewer/stranger refused, dialogue path refused for authenticated |
+| FR-4 | `audio-assets` has no authenticated write policy (server-only writes) | pgTAP: owner insert refused |
+| FR-5 | `audio-asset-actions.ts` passes the admin client to `getStorageAdapter` at its three upload sites, so the Supabase provider works | Vitest (red: "Supabase client is required"); E2E library upload |
+| FR-6 | `reports` select/insert/delete use `public.has_account_access(...)` instead of `has_role_on_account` (**KB-56**) | pgTAP: personal owner insert ok (red first), team member ok, stranger refused |
+| FR-7 | `reports` gets `allowed_mime_types = {text/csv, application/pdf}` and a 50 MB limit | pgTAP bucket row; R11 re-run → refused |
+| FR-8 | *(D1 = remove)* The orphaned shorts generator is deleted: the `shorts-studio` route and the `@kit/shorts` package. No code refers to a `videos` bucket any more | grep with positive control; typecheck; route 404 |
+| FR-8b | *(D1-B = repair instead)* `generate-short-action.ts` uploads through `getStorageAdapter(adminClient)` to `videos`; the migration creates `videos`; the list shows `result.error` | E2E Generate → Ready on Supabase; on R2 (sandbox, recorder) the key is `videos/shorts/…` |
+| FR-9 | Every storage bucket or prefix name the code writes comes from one module (`STORAGE_BUCKETS` in `@kit/storage`), and a unit test fails if any Supabase bucket in it is not created by a migration, or if a string literal bucket name is passed to `.upload(`, `storage.from(` or `getSignedUploadUrl(` anywhere else | Vitest (red today on `audio`, `audio-assets`, `videos` and the export dialog's `storybook-assets`) |
+| FR-10 | Report storage calls live in one module (`report-storage.ts`) used by both report writers. It states why reports stay on Supabase Storage (D2) | grep; existing raw-export E2E still green |
+| FR-11 | *(D3)* The edit-suite export uploads to `project-assets` instead of `NEXT_PUBLIC_R2_BUCKET_NAME ?? 'storybook-assets'`, so it works on the Supabase provider; the presign route's second allowed bucket is removed | Vitest route test (existing, adjusted); FR-9 test |
+| FR-12 | `uploadAudioFileAndCreateAssetAction` refuses a `contentType` outside the audio list, before upload, as a returned value *(D4)* | Vitest (red: `text/html` reaches `upload`) |
+
+## 7. Define Non-Functional Requirements
+
+- **Security:**
+  - No new public write path. New buckets deny all direct user writes except project writers into `audio/<projectId>/…`.
+  - `reports` stays private.
+  - The MIME lists on `audio`, `audio-assets` and `reports` stop `text/html`, and other active content, from being stored on the Supabase storage domain (R11 today).
+- **Parity:** the same action writes the same logical path on both providers. Only the physical location differs (Supabase bucket vs R2 key prefix). Covered by the recorder test.
+- **Performance:** unchanged. One policy check per write on Supabase (two index lookups, per KB-28).
+- **Compatibility:** existing R2 objects and URLs are untouched. No data migration.
+- **Observability:** unchanged logs. Upload failures already log with context.
+- **Cost:** none. Production stays on R2; reports are small files on Supabase Storage, as today.
+- No new dependencies. The lockfile changes only if D1 removes `@kit/shorts` (one workspace importer entry, generated by `pnpm install`).
+
+## 8. Analyze the Existing System
+
+### 8.1 Components
+
+- **Provider selection:** `getStorageProvider()` reads `STORAGE_PROVIDER`: `local | r2 | b2`, anything else → `supabase` (`packages/features/storage/src/factory.ts:31-45`). The content/path router (`routing.ts`) runs only when `STORAGE_PROVIDER` is `smart`/`auto`, and nothing calls it (KB-28 §8.1).
+- **R2 adapter:** one bucket (`R2_BUCKET_NAME`); the `bucket` argument becomes a key prefix (`adapters/r2.ts:78,100`). Public URL = `${R2_PUBLIC_URL}/${bucket}/${path}` (`:123-135`), so everything in the bucket is readable by URL. The endpoint is hard-wired to `https://${accountId}.r2.cloudflarestorage.com` (`:59-66`), so a local S3 server can't stand in without a code change (relevant to KB-38).
+- **Supabase adapter:** `client.storage.from(bucket)`. RLS applies when the client is a user's (`adapters/supabase.ts`).
+- **`StorageAdapter` interface** (`types.ts:46-116`): no signed-download method (A5).
+- **Local and CI:** `STORAGE_PROVIDER=supabase` (`scripts/local-env.sh:88`); the `apps/web/.env*` files don't set it, so it defaults to `supabase` there too. Production is R2 (owner). I have not read production config.
+- **Lambda workers** (`apps/web/lambda/{llm,voice,render}-worker`) write through their own `uploadToR2()` (`llm-worker/utils/r2-storage.ts:51`), which ignores `STORAGE_PROVIDER` and always uses R2 (`audio/…` keys, render outputs). Not in this ticket's path; recorded for completeness.
+- **Shorts:** `@kit/shorts` is imported only by `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/shorts-studio/` (grep, positive control: the page's own import). No link, tab or navigation reaches that route: `episode-tabs.tsx:13-19` lists story/visual/audio/edit/publish. FILM-711 is RETIRED and says so (`specs/phase-7-publishing/components/FILM-711-shorts-clipper.yaml`, `retirement`). Live short-form video is uploaded per language on the publish screen, through presign into `project-assets` (`publish/_components/shorts-section.tsx`, `upload-video-dialog.tsx`), and so goes to R2 in production. The generator runs `ffmpeg` in the web server process (`generate-short-action.ts:245-246`). This repo's SST config bundles ffmpeg only into the render-worker Lambda (`sst.config.ts:836-896`, `ffmpeg-static`), not into the `Nextjs` function (`:982`).
+- **Reports:** `report-actions.ts:333-367` (`uploadAndGetSignedUrl`, user client, `exports/<accountId>/…`, 1-hour signed URL) and `api/reports/scheduled/route.ts:557-570` (admin client, `scheduled/<reportId>/…`, 7-day signed URL, emailed). The export UI (`ExportReports`) is mounted only in the team analytics page, which resolves `[account]` through `loadTeamWorkspace` (`analytics/page.tsx:40-80`). So a personal-account owner cannot reach it in the UI today. The action, however, accepts any `accountId`, and KB-56's refusal is real at the storage layer (R4). Reports contain per-video revenue (`revenueCents`), so they are private data.
+
+### 8.2 Every direct `storage.from(…)` (and other adapter bypass) in the code
+
+Search: `rg -U '\.storage\s*\.from\('` over `apps` and `packages`, TS/JS. Positive control: the adapter's own calls in `adapters/supabase.ts` are found. A wider `rg '\.storage\b'` finds the rest.
+
+| Site | Client | Bucket | Runtime reach | Verdict |
+|---|---|---|---|---|
+| `packages/features/storage/src/adapters/supabase.ts:37-115` | given | given | The adapter itself | Correct place |
+| `packages/features/shorts/src/server/generate-short-action.ts:252-266` | admin | `videos` (missing) | Orphaned page (§8.1) | **Fails on every provider** (B1, §0.4). D1 |
+| `packages/features/content-analytics/src/server/report-actions.ts:341-355` | user | `reports` | Team analytics → Export | Works; always Supabase. D2 |
+| `apps/web/app/api/reports/scheduled/route.ts:559-568` | admin | `reports` | Cron | Works; always Supabase (§0.5). D2 |
+| `packages/ui/src/hooks/use-supabase-upload.tsx:159` | browser | caller's | Only `apps/dev-tool`'s FileUploader story (`FileUploader` has no web-app importer) | Not a runtime path. Left alone |
+| `packages/features/assets/src/lib/upload/storage-client.ts:128` (`getBucket`) | given | given | `bucketExists()`, re-exported, no caller outside the package | Dead. Left alone, noted |
+| Lambda `uploadToR2` (3 workers) | R2 creds | `audio` prefix and render outputs | SQS workers | Always R2, bypasses the factory by design. Noted |
+
+### 8.3 Bucket names the code writes vs buckets migrations create
+
+| Name in code | Where | Created by a migration? |
+|---|---|---|
+| `project-assets` | presign callers, thumbnail/intro deletes | yes (`20251207162036`) |
+| `account_image` | `uploadAvatar` (broken, KB-53) | yes (`20260903072156`) |
+| `reports` | report writers | yes (`20251211142551`) |
+| `audio` | `voice-actions.ts:296,739`, `sfx-actions.ts:89`, `elevenlabs-music-actions.ts:82`, `core/sfx-core.ts:76`, `core/elevenlabs-music-core.ts:80` | **no** |
+| `audio-assets` | `audio-asset-actions.ts:577,694,839` | **no** |
+| `videos` | `generate-short-action.ts:253,265` | **no** |
+| `NEXT_PUBLIC_R2_BUCKET_NAME ?? 'storybook-assets'` | `edit-suite/src/lib/export-upload.ts:9-10` (KB-28's constant) | **no**. The same class as KB-55, not named in the ticket. KB-28 A2 kept it for R2; on Supabase the export fails. D3 |
+
+### 8.4 Where the change enters
+
+At one new migration (buckets and policies; KB-56), at `audio-asset-actions.ts` (client and type check), at the report storage module, at the shorts package (removal), at the export dialog constant (D3), and at a new `STORAGE_BUCKETS` module with its guard test.
+
+## 9. Define the Desired System Behavior
+
+| User action | App logic | Service | Data | Response | Visible |
+|---|---|---|---|---|---|
+| Generate SFX/music | Unchanged action → `getStorageAdapter(userClient).upload(STORAGE_BUCKETS.audio, '<P>/sfx/<id>.mp3')` | Supabase: RLS `can_write_project_storage` ✓. R2: PutObject `audio/<P>/…` | `audio_assets.file_url` | ok | Clip plays |
+| Dialogue / preview | Unchanged → admin client → `audio` | Supabase: service role. R2: PutObject | dialogue line URL | ok | Clip plays |
+| Library upload | Type check → `getStorageAdapter(admin).upload(STORAGE_BUCKETS.audioAssets, …)` | Supabase bucket (MIME ✓) or R2 | `audio_assets` row | ok / refusal value | Asset listed |
+| Export report | `report-storage.uploadReport(userClient, 'exports/<acct>/…')` + `signReport(…, 3600)` | Supabase `reports` (policy: `has_account_access`) | object | signed URL | Download link |
+| Scheduled report | `report-storage.uploadReport(admin, 'scheduled/<id>/…')` + `signReport(…, 604800)` | Supabase `reports` | object | signed URL | Email |
+| Stranger writes directly to `audio`/`audio-assets`/`reports` | — | RLS refuses | — | 403 | — |
+
+## 10. High-Level Architecture
+
+No new components. Two storage classes, made explicit:
+
+1. **Public media** (`project-assets`, `audio`, `audio-assets`): goes through `getStorageAdapter()` and follows `STORAGE_PROVIDER`. In production that means R2, one public bucket, with the name as a key prefix. On Supabase it is a public bucket per name, with RLS as a second gate.
+2. **Private documents** (`reports`): **stay on Supabase Storage on every provider** (D2 default), through one module, with RLS and signed URLs. The reason: R2 here is a single bucket that is public by URL (A3 shows a report key would be served from `R2_PUBLIC_URL`), and a presigned GET URL reveals the object key, which the public domain would then serve without expiry. Moving reports to R2 safely needs a second, private R2 bucket (D2 alternative).
+
+The `STORAGE_BUCKETS` constant is the single list of storage targets. The guard test binds it to the migrations, and KB-57 adds its per-target project checks against the same list.
+
+## 11. Architecture and Flow Diagrams
+
+```
+               STORAGE_BUCKETS (one list)          migrations/*.sql
+               projectAssets audio audioAssets ──▶ Vitest: every Supabase bucket is created;
+               accountImage reports                no string-literal bucket names elsewhere
+                     │
+  public media ──────┼─ getStorageAdapter(client) ─┬─ STORAGE_PROVIDER=r2 ──▶ R2 PutObject  <bucket>/<path>
+  (audio, library,   │                              │                         (one public bucket)
+   covers, shots…)   │                              └─ supabase ──▶ bucket <name> + RLS
+                     │                                             audio: can_write_project_storage(name)
+                     │                                             audio-assets: service role only
+  private docs ──────┴─ report-storage.ts ─────────── always ──▶ Supabase bucket 'reports' (private)
+  (reports)            uploadReport / signReport                  RLS: has_account_access(account of path)
+                                                                  signed URL 1 h (export) / 7 d (email)
+```
+
+## 12. End-to-End Data Flow
+
+Audio: vendor bytes (server) → action → adapter → object (R2 key or Supabase object) → public URL → saved in `audio_assets` / dialogue rows → rendered `<audio>`. Library: browser file → base64 in the server-action body → type check → adapter → object → row. Reports: ClickHouse + Postgres → CSV/PDF buffer (server) → `reports` object → signed URL → UI link or email → recipient downloads.
+
+**Loss points (pre-existing, unchanged):** a vendor call that succeeds followed by a failed upload wastes the generation; an upload that succeeds followed by a failed row insert leaves an orphan object. **Stale:** signed report URLs expire by design.
+
+## 13. Data Model
+
+`storage.buckets` gets rows `audio` and `audio-assets` (and `videos` only under D1-B). `storage.objects` is unchanged apart from policies. No application tables change. Authoritative for "which project an `audio` object belongs to" is `kit.get_project_id_from_path(name)` (KB-28), which resolves `<uuid>/…`. Authoritative for "whose report" is `kit.get_account_id_from_report_path(name)` (existing).
+
+## 14. Database Design and Changes
+
+One hand-written migration, `apps/web/supabase/migrations/<UTC ts>_kb55-storage-buckets.sql`, with a timestamp newer than KB-28's `20260923024605`:
+
+1. `insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values ('audio','audio',true,52428800,array['audio/mpeg']), ('audio-assets','audio-assets',true,52428800, <AUDIO_LIBRARY_TYPES>) on conflict (id) do update set public = excluded.public, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;`
+   `<AUDIO_LIBRARY_TYPES>` = `audio/mpeg, audio/wav, audio/x-wav, audio/mp4, audio/x-m4a` (the dialog's list, `upload-audio-dialog.tsx:35-41`), moved to one exported constant that the dialog, the action (D4) and the migration test share. The `on conflict … do update` keeps the migration correct on an environment where someone created the bucket by hand.
+2. `audio` policies on `storage.objects`: `audio_select` (select, authenticated, `bucket_id = 'audio'`); `audio_insert` / `audio_update` (using and with check) / `audio_delete`: `bucket_id = 'audio' and public.can_write_project_storage(name)`. `audio-assets`: **no** authenticated policies, so only the service role writes. Reads go through the public URL.
+3. **KB-56:** `drop policy reports_select|reports_insert|reports_delete` and recreate each with `public.has_account_access(kit.get_account_id_from_report_path(name))`. That function is `security definer`, granted to `authenticated`, and is true for the account's primary owner (personal or team) or any member (`20251210201500_fix-account-rls-helpers.sql:83-117`).
+4. `update storage.buckets set allowed_mime_types = array['text/csv','application/pdf'], file_size_limit = 52428800 where id = 'reports';`
+5. *(D1-B only)* the `videos` bucket, public, `video/mp4`, 500 MB, no authenticated policies.
+
+**Mirror:** `apps/web/supabase/schemas/35-scheduled-reports.sql` (the reports policies). A new `schemas/37-media-storage.sql` for the audio buckets? Per CLAUDE.md, mirror "if that table has a schema file". `storage.objects` policies are mirrored per bucket today (`16-storage.sql`, `33-project-assets-storage.sql`), so I'll add one. **Types:** no public-schema change, so `typegen` output shouldn't change. It is run anyway, and the diff is checked to be empty.
+
+**Existing data:** none changes. **Locking:** policy DDL briefly locks `storage.objects`. **Rollback:** drop the new policies and buckets (empty on production, since production writes to R2), and restore the three `reports` policies. Not recommended, because it re-breaks local/CI audio and KB-56.
+
+## 15. Low-Level Design
+
+**`packages/features/storage/src/buckets.ts`** (new, exported from `@kit/storage` and from a client-safe subpath, since it is only constants):
+```ts
+export const STORAGE_BUCKETS = {
+  projectAssets: 'project-assets',
+  accountImage: 'account_image',
+  audio: 'audio',
+  audioAssets: 'audio-assets',
+  reports: 'reports',
+} as const;
+```
+`PROJECT_ASSETS_BUCKET` (`@kit/assets`, two copies: `lib/constants.ts:20`, `lib/upload/storage-client.ts:15`) re-exports `STORAGE_BUCKETS.projectAssets`, so there is one definition.
+
+**Audio call sites** replace the string literals with `STORAGE_BUCKETS.audio` / `.audioAssets` (the six `'audio'` sites and three `'audio-assets'` sites in §8.3). In `audio-asset-actions.ts` the three `getStorageAdapter()` calls become `getStorageAdapter(getSupabaseServerAdminClient())`. The admin client matters only on the Supabase provider, where `audio-assets` is server-write-only by design. On R2 the client is ignored, as today. This is safe because the write key is built by the action, not the caller. The action's own project check is KB-57.
+
+**D4, type check:** `uploadAudioFileAndCreateAssetAction`'s schema keeps `contentType: z.string()`. The handler returns `{ok:false, error:"This file type isn't supported."}` via `returnRefusals`/`ActionRefusal` when `contentType ∉ AUDIO_LIBRARY_TYPES`, before upload. Today any type passes through to R2 with that `Content-Type` on a public domain (A2 records `ContentType` passthrough; the schema is `audio-asset-actions.ts:797-806`).
+
+**`packages/features/content-analytics/src/server/report-storage.ts`** (new, `server-only`):
+```ts
+export async function storeReport(client, path, buffer, contentType, expiresInSeconds): Promise<{ url: string; expiresAt: Date }>
+```
+It uploads to `STORAGE_BUCKETS.reports` and creates the signed URL, with the same error texts as today. `report-actions.ts:333-367` and `api/reports/scheduled/route.ts:557-570` call it: the export action with the user client, the cron route with the admin client. Its header states the D2 decision and why. Under D2-alt, this is the one function to change.
+
+**D1 = remove shorts:** delete `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/shorts-studio/` and `packages/features/shorts/`; remove `"@kit/shorts"` from `apps/web/package.json`; run `pnpm install` (the lockfile loses one importer link) and typecheck. Tables `shorts` and `short_publications` and the `shots.shorts_candidate` column stay. The LLM shot generator still writes `shorts_candidate`, and the episode layout reads it.
+
+**D1-B = repair shorts (if chosen instead):**
+- Replace `adminClient.storage.from('videos')` with `getStorageAdapter(adminClient).upload(STORAGE_BUCKETS.videos, …)`, adding `videos` to the constant and the migration.
+- Show `result.error` in `ShortsCandidatesList`.
+- Link the page from somewhere (owner to say where), or it stays unreachable.
+- Production needs `ffmpeg` in the web runtime (§31, Q1).
+
+**D3, export dialog:** `EXPORT_UPLOAD_BUCKET` becomes `STORAGE_BUCKETS.projectAssets`. The presign route's allowlist then has one entry (KB-28's two-entry set collapses). Already-exported videos keep their stored URLs. New exports on R2 land under `project-assets/…` instead of `<R2_BUCKET_NAME>/…`.
+
+**Guard test** (`apps/web/app/api/storage/__tests__/storage-buckets.test.ts`, in `apps/web` because CI's unit job runs `pnpm --filter web test`; KB-28 moved its MIME test there for the same reason):
+- (a) For each value in `STORAGE_BUCKETS`, some migration inserts it into `storage.buckets`.
+- (b) A scan of `apps/**` and `packages/**` source (excluding tests and `node_modules`) for `.upload('`, `.from('` directly after `.storage`, and `getSignedUploadUrl('` / `storage.delete('` with a string-literal first argument finds none. Bucket names must come from the constant.
+- (c) The `audio-assets` MIME array in the migration equals `AUDIO_LIBRARY_TYPES`.
+
+## 16. API and Event Design
+
+No routes are added. `POST /api/storage/presign` loses the second allowed bucket under D3 (its only sender changes in the same PR). Server actions keep their signatures; `uploadAudioFileAndCreateAssetAction` gains one returned refusal. Under D1, `generateShortAction`, `generateAllShortsAction`, `publishShortAction` and `deleteShortAction` disappear, along with their action IDs in the build manifest. Their only importer is the deleted page. There are no events.
+
+## 17. State and Lifecycle Design
+
+Objects are absent or present, as in KB-28. Report objects have no expiry of their own; only their links expire. Retention of report files is outside this ticket (§31). Shorts rows (`pending → processing → ready | failed`) exist only under D1-B.
+
+## 18. Failure and Error Handling
+
+| Failure | Behaviour | Visible | Recovery |
+|---|---|---|---|
+| Bucket missing (a Supabase environment where the migration hasn't run) | Adapter throws "Bucket not found"; the action's existing error path | Existing error text | Run migrations |
+| MIME refused by bucket | Adapter throws | Existing error text | — |
+| Library type refused (D4) | Returned value | "This file type isn't supported." | Pick audio |
+| Report upload refused (policy) | Throws inside the action → existing refusal/500 path (`returnRefusals`) | "Failed to generate report" | — |
+| Storage outage | Unchanged | Unchanged | Retry |
+
+## 19. Security
+
+- **New buckets are not a new write surface.**
+  - `audio` direct writes need project write access (KB-28's rule, the owner's 2026-09-23 decision).
+  - `audio-assets` accepts only the service role.
+  - Both are proven with pgTAP as second users.
+- **Stored active content:** MIME lists on `audio`, `audio-assets` and `reports` (R11 stored `text/html` today). On R2 the only type gate is the action (D4 for the library; the other audio writers set `audio/mpeg` themselves).
+- **Reports stay private (D2).** Moving them into the public R2 bucket (A3) would publish per-video revenue at a guessable-by-timestamp key (`exports/<accountId>/<ms>-analytics-report-<date>.csv`). The emailed presigned link would also disclose the key, which the public domain then serves forever. Rejected unless a private R2 bucket exists (D2-alt).
+- **KB-56 widens `reports` access** from "has a membership row" to "owner or member". The only new principal is the personal account's owner, on their own account. `has_account_access` is `security definer` with `search_path = ''` and returns only a boolean about the caller.
+- **Removing shorts (D1)** also removes an action that `fetch()`es a URL read from `shots.video_url` on the server (`generate-short-action.ts:226`), a column project members can write. That is an SSRF-shaped path, which goes away with the code.
+- **On R2 there is still no storage-level project check** for audio or reports. That is KB-57 (§31).
+- **Secrets:** none. Only local demo keys and invented R2 values were used.
+
+## 20. Performance and Scale
+
+Two index lookups per `audio` write on Supabase. Nothing changes on R2. The guard test scans source once per unit run, which takes milliseconds.
+
+## 21. Accessibility and Client Behavior
+
+No new UI. The one new message (D4) uses the dialog's existing error region. Under D1-B, the shorts list would gain an error line (`role="alert"`). Otherwise not applicable.
+
+## 22. Observability and Operations
+
+Existing logs are unchanged. **Operations note for the owner:** production, on R2, doesn't depend on the new buckets. The migration still runs there (deploy runs every migration) and creates two empty buckets and changes the `reports` policies. The owner can confirm with `select id, public, allowed_mime_types from storage.buckets;` after deploy. It is read-only, and the owner runs it, not me.
+
+## 23. Configuration and Feature Flags
+
+No new variables or flags. `STORAGE_PROVIDER` semantics are unchanged. D3 removes the export dialog's dependence on `NEXT_PUBLIC_R2_BUCKET_NAME`, whose value I haven't read. D2-alt would add one variable (`R2_PRIVATE_BUCKET_NAME`) whose value the owner supplies.
+
+## 24. Compatibility
+
+- **R2:** all existing keys and URLs are unchanged, except that new edit-suite exports go under `project-assets/` (D3).
+- **Supabase environments:** audio starts working; reports admit personal owners; reports refuse non-CSV/PDF types (the app writes only those two).
+- **Client/server:** the action signatures are compatible.
+- **Removing `@kit/shorts`:** unreachable code only.
+
+## 25. Migration and Rollout Strategy
+
+Standard deploy: migrations, then the app. Nothing to backfill. Rollback: revert the app. The migration's changes are additive, except the `reports` policy swap, which reverts cleanly. Stacked on #313: this PR's migration timestamp must sort after KB-28's, and it is rebased onto `main` per the brief once #313 merges.
+
+## 26. Testing Strategy
+
+| Layer | File | Cases | Red first? |
+|---|---|---|---|
+| pgTAP | `apps/web/supabase/tests/database/media-report-storage-rls.test.sql`, `plan(N)` fixed | Fixtures: team T (owner A, member M), personal owner U, stranger S, project P of T (A owner, M member, viewer V). **Buckets:** `audio`/`audio-assets` rows with expected public/limit/MIME; `reports` MIME/limit. **audio:** A and M insert `<P>/sfx/x.mp3` ok; V and S refused; A refused on `dialogue/<ep>/x.mp3` and `temp/<A>/x.mp3`; A updates and deletes own; S deletes 0 rows. **audio-assets:** A insert refused. **reports:** U inserts `exports/<U>/…` ok (**KB-56**); A and M insert `exports/<T>/…` ok; S refused on `exports/<T>/…`; S select sees 0 rows; U select on `exports/<T>/…` 0 rows | Yes. On the branch base, the bucket rows are missing, the audio inserts fail with FK/bucket errors, and U's insert is refused. Each is recorded |
+| Vitest | `apps/web/app/api/storage/__tests__/storage-buckets.test.ts` | FR-9 (a)–(c) | Yes. It fails today naming `audio`, `audio-assets`, `videos` and `storybook-assets` |
+| Vitest | `packages/features/audio-generation/__tests__/audio-asset-upload.test.ts` (and added to CI's unit list if that package isn't in it; checked before writing) | Supabase provider: the action gives the factory a client (red: "Supabase client is required"). D4: `text/html` → refusal value, `upload` not called; `audio/mpeg` → `upload('audio-assets', …)`. R2 provider with a recording `send`: key `audio-assets/music/…` | Yes |
+| Vitest | existing `app/api/storage/presign/__tests__/route.test.ts` | D3: export path now to `project-assets` 200; the old `storybook-assets` bucket 400 | Yes (the second case) |
+| Playwright | `apps/e2e/tests/storage/media-storage.spec.ts` | Seeded team, project and member (API seeding). **Member uploads an mp3 twice through the real audio-library dialog** (the second submission); both assets listed; each URL fetches 200 `audio/mpeg`. Stranger's direct Storage API write to `audio/<P>/…` and `audio-assets/…` → 403. Reports: the existing `raw-export-evidence.spec.ts` stays green (scheduled path through `report-storage.ts`). Evidence screenshots behind `CAPTURE_EVIDENCE=1` | The upload case is run on the base branch first and fails ("Supabase client is required"); the stranger case fails before the policies (bucket missing → 404, recorded as the reason) |
+| Repro | `$SP/kb55/probes.mjs` and `kb55-adapter-probe.mts` re-run | B2–B4 → 200; R4 → 200; R11 → refused; S1–S3 → ok | Before/after table in the PR |
+
+Red-before-green: each guard is reverted in isolation (bucket insert, each policy, the KB-56 swap, the admin-client change, the type check, the constant) and its test is watched failing for the stated reason.
+
+**Not driven:** SFX, music and TTS generation end to end. They need ElevenLabs, which has no sandbox override in `@kit/shared/vendors`, and this ticket must not reach a real vendor. Their storage step is covered by the exact adapter call (S1/S2) and by pgTAP.
+
+## 27. Production-Build Verification
+
+`pnpm --filter web build:test`, then `NODE_ENV=test VENDOR_SANDBOX=1 next start -p 3120` with the net-guard preload. Pre-flight: the server aborts if `reportIgnoredVendorOverrides` logs anything, and a `fetch('https://example.com')` from a probe route or script under the same preload must be refused before the run starts. Two passes:
+
+- **Supabase provider:** the Playwright media spec plus `raw-export-evidence.spec.ts`.
+- **R2 sandbox values:** only the route-level and refusal cases. An actual R2 upload from a production build can't be observed without a real endpoint or KB-38's endpoint override, so the R2 key layout is proven by the recorder test instead, and this is stated as a limit.
+
+Question to answer: does the built artifact store and serve audio, and deliver a report, as §3 says? Under D1, it also confirms `/…/shorts-studio` returns 404 in the build.
+
+## 28. Requirement Traceability
+
+| User outcome | Flow | Req | Design | Component | Data/API | Test | Prod verification |
+|---|---|---|---|---|---|---|---|
+| Audio stores on every provider | Generate/upload | FR-1, 2, 5 | §14.1, §15 | migration, audio-asset-actions | `storage.buckets` | pgTAP, Vitest, E2E | test:prod (Supabase); recorder (R2) |
+| Nobody plants audio into another project | Stranger | FR-3, 4 | §14.2 | RLS | `storage.objects` | pgTAP, E2E stranger | — |
+| Personal owners can export | Export | FR-6 | §14.3 | RLS | reports | pgTAP (red) | — |
+| Only real media and reports stored | Upload | FR-7, 12 | §14.4, §15 | bucket, action | — | pgTAP, Vitest, R11 re-run | — |
+| No bucket drift again | — | FR-9 | §15 | constant + test | migrations | Vitest (red) | CI |
+| Shorts not silently broken | Shorts | FR-8 / 8b | §15 | removal / repair | — | grep+typecheck / E2E | test:prod 404 |
+| Export works on Supabase too | Edit export | FR-11 | §15 | export dialog, route | presign | route test | — |
+| Reports private everywhere | Export/schedule | FR-10 | §10, §15 | report-storage | reports | raw-export E2E | test:prod |
+
+## 29. Architectural Alternatives and Trade-offs
+
+| Decision | Alternatives | Why this one |
+|---|---|---|
+| Create `audio`/`audio-assets` buckets for Supabase envs | Make local/CI use R2 or `local` | The local stack is Supabase everywhere; `STORAGE_PROVIDER=local` bypasses every RLS test; R2 can't be used without real credentials |
+| `audio` writes keyed on project (`can_write_project_storage`) | Server-only (no user policy) and switch SFX/music to the admin client | Keeps the actions' clients as they are, and gives the Supabase provider a project check for free. Paths without a project stay server-only |
+| Reports stay on Supabase (D2) | Public R2 bucket (A3); a private R2 bucket | Public is unsafe (§19). A private bucket needs owner-created infrastructure, and all authorisation moves into app code (KB-57). It can follow later behind `report-storage.ts` |
+| Remove shorts (D1) | Repair (D1-B) | The page is unreachable, the spec is RETIRED, the live shorts flow is elsewhere, and repair also needs ffmpeg in the web runtime |
+| One constant + source-scan test | Per-bucket comments | A comment can't fail. The test would have caught `audio`, `audio-assets`, `videos` and `storybook-assets` |
+| Point export at `project-assets` (D3) | Create a `storybook-assets` bucket | The name comes from an env var that a migration can't know |
+
+## 30. Risk Register
+
+| Risk | Impact | Detection | Mitigation | Contingency |
+|---|---|---|---|---|
+| R1: some audio writer uses a path whose first segment isn't the project id, but a user client | That write is refused on Supabase | pgTAP + E2E + the inventory in §8.3 | Inventory: only SFX/music use the user client, with `<projectId>/…` | Add the shape to KB-28's resolver |
+| R2: the production Supabase project has a hand-made `audio`/`videos` bucket with other settings | The migration overwrites limits (on conflict update) | The owner's §22 query | Production doesn't write to them (R2) | Adjust in a follow-up |
+| R3: removing `@kit/shorts` deletes something the owner meant to revive | Code loss (in git history) | Owner review (D1) | Tables kept; git history | Restore from git |
+| R4: a caller relied on `storybook-assets/…` R2 keys for exports | New exports under a new prefix | — | Stored URLs are absolute; old objects untouched | Keep the old prefix on R2 only (D3 "no") |
+| R5: the source-scan test flags a legitimate literal | CI red | The test's message names the file | Allow-list inside the test for the adapter itself | — |
+| R6: the base64 server-action body cap makes the library E2E flaky on file size | Test fails for an unrelated reason | — | Use a small mp3 (< 200 KB) | — |
+
+## 31. Open Questions and Assumptions
+
+**Decisions for the owner (my recommended default first):**
+
+- **D1: Shorts generator.** **Remove** the orphaned `shorts-studio` route and the `@kit/shorts` package (lockfile: one workspace importer entry). Keep the tables.
+  - Alternative D1-B: repair it through the adapter to a `videos` prefix, with a `videos` bucket for Supabase, and show errors. D1-B also needs Q1's answer and a link to the page.
+  - Alternative D1-C: remove only the route and the generator, and keep the package (no lockfile change).
+- **D2: Reports.** **Keep on Supabase Storage (private), on every provider**, as the one named exception to "all runtime uploads go to R2", behind one `report-storage.ts`. Include KB-56 and the CSV/PDF MIME list.
+  - Alternative D2-alt: route reports through the adapter into a **separate private R2 bucket** that the owner creates (`R2_PRIVATE_BUCKET_NAME`), add `getSignedDownloadUrl` to `StorageAdapter` (R2 = presigned GET, max 7 days; Supabase = `createSignedUrl`), and move the account check into the actions. It touches `adapters/r2.ts`, which KB-38 also changes. **Not** the existing public bucket (§19).
+- **D3: Edit-suite export bucket.** **Yes:** point it at `project-assets`, and collapse KB-28's two-bucket presign allowlist to one. Otherwise the export keeps failing on every Supabase environment, and `storybook-assets` remains a bucket "used in code that no migration creates".
+- **D4: Audio library content type.** **Yes:** refuse non-audio types in `uploadAudioFileAndCreateAssetAction` (same file I edit for S3). Otherwise leave it to KB-57.
+- **D5: Scope of KB-56.** **Include** it here (a three-policy swap in this migration, proven by pgTAP). Note that no UI reaches the personal-owner case today: export is team-only.
+
+**Questions:**
+- **Q1 (only if D1-B):** does production's web runtime have `ffmpeg`? In this repo's SST config it doesn't (§8.1). §0.4 shows what happens without it.
+- **Q2:** retention of report files. Nothing deletes them today, on either path. That is outside this ticket; it could be filed against KB-20's retention work.
+
+**Assumptions:**
+- Production is `STORAGE_PROVIDER=r2` (owner). I read no production value.
+- The production Supabase project has had every migration applied, so `reports` exists there.
+
+**What KB-57 needs from this design:**
+1. `STORAGE_BUCKETS` as the list of targets to check.
+2. The per-target write sites, each with a project or account available:
+   - SFX/music `uploadAudioToStorage(client, projectId, …)`
+   - dialogue (`episodeId` → project)
+   - voice preview `temp/<userId>` (user-scoped; no project)
+   - library `audio-assets/<type>/<ts>-<name>` (**no project id in the key**; KB-57 should prefix `<projectId>/` so a check, and the Supabase policy, can key on it)
+   - reports `exports/<accountId>` (`has_account_access` in the action)
+3. On R2 every check must be in the action. The Supabase policies here are the second gate only on Supabase.
+
+**Out of scope, found here (for the lead to file or fold):**
+- **Server-action body limit (unverified hypothesis):** the audio library sends the file base64 in a server-action body. `next.config.mjs` sets no `serverActions.bodySizeLimit` (Next's default is 1 MB), while the dialog allows 50 MB. Files over roughly 700 KB may be refused before the action runs. Not run here.
+- `ShortsCandidatesList` calls `useMemo` after an early return (`shorts-candidates-list.tsx:92-113`), a hooks-order bug. Moot under D1.
+- `bucketExists()` in `@kit/assets` is dead code.
+- Report files are never deleted (Q2).
+
+## 32. Implementation Plan
+
+1. **Tests first, red on the base:** the pgTAP file (under the DB lock, after a reset from this worktree), the bucket guard Vitest, the audio-asset Vitest, and the Playwright media spec. Record each failure.
+2. **Constant:** `STORAGE_BUCKETS` + `AUDIO_LIBRARY_TYPES`; replace the literals (§8.3); `PROJECT_ASSETS_BUCKET` re-exports.
+3. **Migration** (§14) → `migration up` → typegen (expect no diff) → mirror schemas → pgTAP green → red-before-green per policy.
+4. **Audio-asset action:** admin client + D4 type check → Vitest green.
+5. **Reports:** `report-storage.ts`; both callers use it → raw-export E2E green.
+6. **D1:** delete the route and package, `pnpm install`, grep (positive control: `@kit/storage` imports still found), typecheck. (Or D1-B per the owner.)
+7. **D3:** export constant → presign route test adjusted → green.
+8. Playwright on a :3120 dev server, then the production build (§27). Re-run the probes → before/after table.
+9. `pnpm typecheck`, `pnpm lint:fix`, `pnpm format:fix`. Add the KB-55 entry to FILM-CC-04 if the lead hasn't, mark it Fixed with the PR number, and add one Fixed-table row. Mark KB-56 too if D5 = include.
+
+## 33. Definition of Done
+
+- Every bucket name the code writes is a migration-created bucket or an R2-only prefix listed in `STORAGE_BUCKETS`, and a CI unit test enforces it.
+- On the Supabase provider, audio generation storage (dialogue, preview, SFX, music) and the audio library store objects that play. Proven by re-running S1–S3 and B2–B4, and by E2E for the library.
+- On R2 (sandboxed recorder) the keys are unchanged.
+- Reports are private, work for personal owners (KB-56), and refuse non-CSV/PDF types.
+- Shorts: removed (D1), or repaired and visible on failure (D1-B).
+- pgTAP, Vitest and Playwright all ran red first. Typecheck, lint and format are clean. The production-build pass is recorded.
+
+## 34. Final Consistency Pass
+
+**Forward.**
+- Problem: uploads target buckets that don't exist on Supabase environments, shorts fail everywhere, and reports refuse personal owners.
+- Outcome: every runtime upload works on every provider. R2 stays the production home for media; reports stay private on Supabase by decision.
+- Flow: unchanged for users.
+- System: the new buckets and policies, one constant with a guard test, one report module, and the shorts removal.
+- Tests: pgTAP, Vitest, E2E and a repro re-run.
+- Production: test:prod plus the owner's bucket query.
+
+**Reverse.**
+- Production after deploy: media writes still go to R2 under the same keys. The migration adds two unused buckets and a safer `reports` policy on Supabase.
+- Reports are still written to Supabase and signed there.
+- The shorts page is gone (D1).
+- Locally and in CI, the audio features now store their output, and the test suite can see it.
+- This matches §1. The one user-visible production difference is the removal of an unreachable page, and, under D3, new edit-suite exports under a different key prefix, with no visible change.
