@@ -7,77 +7,32 @@
 import { execFile } from 'child_process';
 import { createHash } from 'crypto';
 import { lookup } from 'dns/promises';
-import {
-  createWriteStream,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  statSync,
-  unlinkSync,
-} from 'fs';
-import { tmpdir } from 'os';
+import { createWriteStream, existsSync, statSync } from 'fs';
 import { join } from 'path';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
+
+import type {
+  RenderClip as EditClip,
+  RenderProject as EditProject,
+  RenderTrack as EditTrack,
+} from '../render-input';
 
 // ──────────────────────────────────────────
 // Types
 // ──────────────────────────────────────────
 
-interface EditProject {
-  id: string;
-  width: number;
-  height: number;
-  fps: number;
-}
-
-interface EditTrack {
-  id: string;
-  type: string;
-  name: string;
-  sort_order: number;
-  volume: number;
-  is_muted: boolean;
-}
-
-interface EditClip {
-  id: string;
-  track_id: string;
-  media_url: string | null;
-  start_ms: number;
-  end_ms: number;
-  in_point_ms: number;
-  out_point_ms: number;
-  volume: number;
-  speed: number;
-  fade_in_ms: number;
-  fade_out_ms: number;
-  language: string | null;
-}
-
-interface EditTransition {
-  id: string;
-  from_clip_id: string;
-  to_clip_id: string;
-  type: string;
-  duration_ms: number;
-}
-
-interface EditKeyframe {
-  id: string;
-  clip_id: string;
-  property: string;
-  offset_ms: number;
-  value: number;
-}
-
 interface RenderInput {
   project: EditProject;
   tracks: EditTrack[];
   clips: EditClip[];
-  transitions: EditTransition[];
-  keyframes: EditKeyframe[];
   language: string;
+  /**
+   * Where media and the output are written. Owned by the caller, which
+   * removes it once the output has been uploaded: this module never deletes
+   * the file it returns (KB-32 — it used to, before the upload read it).
+   */
+  workDir: string;
   onProgress: (progress: number) => Promise<void>;
 }
 
@@ -89,8 +44,6 @@ interface RenderResult {
 // ──────────────────────────────────────────
 // Constants
 // ──────────────────────────────────────────
-
-const WORK_DIR = join(tmpdir(), 'render');
 
 // Resolve FFmpeg binary path:
 // 1. ffmpeg-static npm package (bundled in Lambda via nodejs.install)
@@ -179,13 +132,13 @@ async function validateMediaUrl(url: string): Promise<void> {
  * Uses content hash for deduplication.
  * Validates URL against allowlist and private IP ranges (SSRF protection).
  */
-async function downloadMedia(url: string): Promise<string> {
+async function downloadMedia(url: string, workDir: string): Promise<string> {
   // SSRF protection
   await validateMediaUrl(url);
 
   const hash = createHash('md5').update(url).digest('hex');
   const ext = url.split('.').pop()?.split('?')[0] || 'mp4';
-  const localPath = join(WORK_DIR, `${hash}.${ext}`);
+  const localPath = join(workDir, `${hash}.${ext}`);
 
   // Skip if already downloaded
   if (existsSync(localPath)) {
@@ -211,6 +164,7 @@ async function downloadMedia(url: string): Promise<string> {
  */
 async function downloadAllMedia(
   clips: EditClip[],
+  workDir: string,
   onProgress: (progress: number) => Promise<void>,
 ): Promise<Map<string, string>> {
   const mediaMap = new Map<string, string>();
@@ -223,7 +177,7 @@ async function downloadAllMedia(
     const batch = clipsWithMedia.slice(i, i + BATCH_SIZE);
     const results = await Promise.all(
       batch.map(async (clip) => {
-        const localPath = await downloadMedia(clip.media_url!);
+        const localPath = await downloadMedia(clip.media_url!, workDir);
         return { clipId: clip.id, localPath };
       }),
     );
@@ -246,7 +200,7 @@ async function downloadAllMedia(
 /**
  * Build FFmpeg filter_complex command from edit project data
  */
-function buildFFmpegArgs(
+export function buildFFmpegArgs(
   project: EditProject,
   tracks: EditTrack[],
   clips: EditClip[],
@@ -425,6 +379,10 @@ function buildFFmpegArgs(
     '128k',
     '-ar',
     '48000',
+    // 4:2:0, or a non-4:2:0 source (stills, screen captures) yields H.264
+    // High 4:4:4, which Safari, QuickTime and most hardware decoders refuse.
+    '-pix_fmt',
+    'yuv420p',
     '-movflags',
     '+faststart',
     '-r',
@@ -482,75 +440,46 @@ function runFFmpeg(
 }
 
 // ──────────────────────────────────────────
-// Cleanup
-// ──────────────────────────────────────────
-
-function cleanupWorkDir(): void {
-  try {
-    const files = readdirSync(WORK_DIR);
-    for (const file of files) {
-      try {
-        unlinkSync(join(WORK_DIR, file));
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
-  } catch {
-    // Work dir doesn't exist or can't be read
-  }
-}
-
-// ──────────────────────────────────────────
 // Main render function
 // ──────────────────────────────────────────
 
 export async function processFFmpegRender(
   input: RenderInput,
 ): Promise<RenderResult> {
-  const { project, tracks, clips, language, onProgress } = input;
+  const { project, tracks, clips, language, workDir, onProgress } = input;
 
-  // Ensure work directory exists
-  if (!existsSync(WORK_DIR)) {
-    mkdirSync(WORK_DIR, { recursive: true });
-  }
+  // 1. Download all media (0-40% progress)
+  console.log(`[FFmpeg] Downloading ${clips.length} clips...`);
+  const mediaMap = await downloadAllMedia(clips, workDir, onProgress);
 
-  try {
-    // 1. Download all media (0-40% progress)
-    console.log(`[FFmpeg] Downloading ${clips.length} clips...`);
-    const mediaMap = await downloadAllMedia(clips, onProgress);
+  // 2. Build FFmpeg command (instant)
+  const outputPath = join(workDir, `output_${project.id}_${language}.mp4`);
+  const ffmpegArgs = buildFFmpegArgs(
+    project,
+    tracks,
+    clips,
+    mediaMap,
+    outputPath,
+  );
 
-    // 2. Build FFmpeg command (instant)
-    const outputPath = join(WORK_DIR, `output_${project.id}_${language}.mp4`);
-    const ffmpegArgs = buildFFmpegArgs(
-      project,
-      tracks,
-      clips,
-      mediaMap,
-      outputPath,
-    );
+  // 3. Calculate total duration for progress tracking
+  const maxEndMs = Math.max(...clips.map((c) => c.end_ms), 0);
+  const totalDurationSec = maxEndMs / 1000;
 
-    // 3. Calculate total duration for progress tracking
-    const maxEndMs = Math.max(...clips.map((c) => c.end_ms), 0);
-    const totalDurationSec = maxEndMs / 1000;
+  // 4. Run FFmpeg (40-100% progress)
+  await runFFmpeg(ffmpegArgs, totalDurationSec, async (p) => {
+    await onProgress(0.4 + p * 0.6); // 40-100%
+  });
 
-    // 4. Run FFmpeg (40-100% progress)
-    await runFFmpeg(ffmpegArgs, totalDurationSec, async (p) => {
-      await onProgress(0.4 + p * 0.6); // 40-100%
-    });
+  // 5. Return output path for streaming upload (avoids loading entire video into RAM)
+  const { size } = statSync(outputPath);
 
-    // 5. Return output path for streaming upload (avoids loading entire video into RAM)
-    const { size } = statSync(outputPath);
+  console.log(
+    `[FFmpeg] Render complete: ${size} bytes (${(size / 1024 / 1024).toFixed(1)} MB)`,
+  );
 
-    console.log(
-      `[FFmpeg] Render complete: ${size} bytes (${(size / 1024 / 1024).toFixed(1)} MB)`,
-    );
-
-    return {
-      outputPath,
-      durationMs: maxEndMs,
-    };
-  } finally {
-    // Clean up temp files
-    cleanupWorkDir();
-  }
+  return {
+    outputPath,
+    durationMs: maxEndMs,
+  };
 }

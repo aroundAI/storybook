@@ -54,6 +54,10 @@ export default defineConfig({
         __dirname,
         '../../packages/shared/src/vendors/index.ts',
       ),
+      '@kit/shared/pagination': path.resolve(
+        __dirname,
+        '../../packages/shared/src/pagination/index.ts',
+      ),
       '@kit/supabase/server-client': path.resolve(
         __dirname,
         '../../packages/supabase/src/clients/server-client.ts',

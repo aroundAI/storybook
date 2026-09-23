@@ -24,7 +24,22 @@ import {
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
 import type { SQSBatchResponse, SQSEvent } from 'aws-lambda';
+import { createHash } from 'crypto';
+import { createReadStream, mkdtempSync, rmSync, statSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import ws from 'ws';
+
+import type { Database } from '@kit/supabase/database';
+
+import {
+  type RenderClip,
+  type RenderProject,
+  RenderStageError,
+  type RenderTrack,
+  loadRenderInput,
+  selectRenderClips,
+} from './render-input';
 
 // Initialize DynamoDB client
 const ddbClient = new DynamoDBClient({});
@@ -42,7 +57,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
   );
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
@@ -166,70 +181,27 @@ async function processRender(job: RenderJobMessage): Promise<void> {
     `[Render] Starting render for project ${editProjectId}, language: ${language}`,
   );
 
-  // 1. Update status to 'rendering' and fetch project in one round-trip
-  const { data: project, error: projectError } = await supabase
-    .from('edit_projects')
-    .update({
-      render_status: 'rendering',
-      render_started_at: new Date().toISOString(),
-      render_error: null,
-    })
-    .eq('id', editProjectId)
-    .select(
-      'id, episode_id, render_status, render_url, metadata, canvas_width, canvas_height, fps, duration_ms',
-    )
-    .single();
+  // 1-2. Mark 'rendering' and read the project, tracks and clips
+  const input = await loadRenderInput(supabase, editProjectId).catch(
+    (error: unknown) => {
+      if (error instanceof RenderStageError) {
+        console.error(`[Render] ${error.message}`, {
+          editProjectId,
+          language,
+          ...error.detail,
+        });
+      }
 
-  if (projectError || !project) {
-    throw new Error(`Edit project not found: ${editProjectId}`);
-  }
+      throw error;
+    },
+  );
+
+  const { project, tracks } = input;
 
   await sendRenderStatus(userId, editProjectId, 'rendering', { progress: 0 });
 
-  // 2. Fetch tracks, clips, transitions, keyframes
-  const { data: tracks } = await supabase
-    .from('edit_tracks')
-    .select('id, edit_project_id, type, sort_order, is_muted, name, volume')
-    .eq('edit_project_id', editProjectId)
-    .order('sort_order');
-
-  const trackIds = (tracks ?? []).map((t) => t.id);
-
-  const { data: clips } = await supabase
-    .from('edit_clips')
-    .select(
-      'id, track_id, start_ms, duration_ms, source_url, source_type, volume, is_active, language, params, content_type, trim_start_ms, trim_end_ms, sync_group_id',
-    )
-    .in('track_id', trackIds)
-    .order('start_ms');
-
-  const clipIds = (clips ?? []).map((c) => c.id);
-
-  const [{ data: transitions }, { data: keyframes }] = await Promise.all([
-    supabase
-      .from('edit_transitions')
-      .select('id, clip_id, type, duration_ms, params')
-      .in('clip_id', clipIds),
-    supabase
-      .from('edit_keyframes')
-      .select('id, clip_id, property, time_ms, value, easing')
-      .in('clip_id', clipIds),
-  ]);
-
-  // 3. Filter clips by language, activation status, and track mute state
-  const activeClips = (clips ?? []).filter((clip) => {
-    // Skip deactivated clips
-    if (!clip.is_active) return false;
-
-    const track = (tracks ?? []).find((t) => t.id === clip.track_id);
-    if (!track || track.is_muted) return false;
-
-    // Non-dialogue clips are always included (if active + unmuted)
-    if (track.type !== 'dialogue') return true;
-
-    // For dialogue clips, filter by language
-    return !clip.language || clip.language === language;
-  });
+  // 3. Keep the clips this language's render includes
+  const activeClips = selectRenderClips(tracks, input.clips, language);
 
   await sendRenderStatus(userId, editProjectId, 'rendering', {
     progress: 10,
@@ -239,20 +211,51 @@ async function processRender(job: RenderJobMessage): Promise<void> {
     `[Render] Found ${activeClips.length} active clips for language '${language}'`,
   );
 
+  // The output must outlive the render: the upload and the hash below read
+  // it. This directory is removed only once they have (finally, below).
+  const workDir = mkdtempSync(join(tmpdir(), 'render-'));
+
+  try {
+    await renderUploadAndRecord({
+      project,
+      tracks,
+      clips: activeClips,
+      language,
+      workDir,
+      userId,
+      editProjectId,
+    });
+  } finally {
+    rmSync(workDir, { recursive: true, force: true });
+  }
+}
+
+async function renderUploadAndRecord({
+  project,
+  tracks,
+  clips,
+  language,
+  workDir,
+  userId,
+  editProjectId,
+}: {
+  project: RenderProject;
+  tracks: RenderTrack[];
+  clips: RenderClip[];
+  language: string;
+  workDir: string;
+  userId: string;
+  editProjectId: string;
+}): Promise<void> {
   // 4. Import and run FFmpeg render handler
   const { processFFmpegRender } = await import('./handlers/ffmpeg-render');
 
   const result = await processFFmpegRender({
-    // @ts-expect-error KB-32: this worker selects edit_* columns that do not exist; the renderer expects the real ones
     project,
-    tracks: tracks ?? [],
-    // @ts-expect-error KB-32: edit_clips has end_ms/in_point_ms/out_point_ms/speed/fades, not what this worker selects
-    clips: activeClips,
-    // @ts-expect-error KB-32: edit_transitions has from_clip_id/to_clip_id, not clip_id
-    transitions: transitions ?? [],
-    // @ts-expect-error KB-32: edit_keyframes has offset_ms, not time_ms
-    keyframes: keyframes ?? [],
+    tracks,
+    clips,
     language,
+    workDir,
     onProgress: async (progress: number) => {
       await sendRenderStatus(userId, editProjectId, 'rendering', {
         progress: 10 + Math.round(progress * 0.8), // 10-90% for FFmpeg
@@ -266,8 +269,6 @@ async function processRender(job: RenderJobMessage): Promise<void> {
 
   // 5. Upload result to R2 using streaming (avoids loading entire video into RAM)
   const { uploadToR2 } = await import('./utils/r2-storage');
-  const { createReadStream, statSync } = await import('fs');
-  const { createHash } = await import('crypto');
   const fileStream = createReadStream(result.outputPath);
   const uploadResult = await uploadToR2(
     'renders',
@@ -294,12 +295,15 @@ async function processRender(job: RenderJobMessage): Promise<void> {
     });
 
     // Check if a master_video asset with this hash already exists for the project
+    // A compilation's edit project has no episode, so no master asset.
     const episodeId = project.episode_id;
-    const { data: episode } = await supabase
-      .from('episodes')
-      .select('project_id')
-      .eq('id', episodeId)
-      .single();
+    const { data: episode } = episodeId
+      ? await supabase
+          .from('episodes')
+          .select('project_id')
+          .eq('id', episodeId)
+          .single()
+      : { data: null };
 
     const projectId = episode?.project_id;
 
@@ -351,7 +355,7 @@ async function processRender(job: RenderJobMessage): Promise<void> {
       }
 
       // Link master asset to episode (only for primary language renders)
-      if (masterAssetId && language === 'en') {
+      if (masterAssetId && episodeId && language === 'en') {
         await supabase
           .from('episodes')
           .update({ master_video_asset_id: masterAssetId })
