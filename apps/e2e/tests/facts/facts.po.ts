@@ -1,0 +1,169 @@
+import { Locator, Page, expect } from '@playwright/test';
+
+import {
+  SeededProject,
+  SeededTeam,
+  insertRow,
+  readRows,
+  seedMembership,
+  seedProject,
+  seedTeamAccount,
+  seedUser,
+  uniqueStamp,
+} from '../utils/seed';
+import { signInAs } from '../utils/session';
+
+const SERVICE_ROLE_KEY =
+  process.env.E2E_SUPABASE_SERVICE_ROLE_KEY ??
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
+
+const service = { key: SERVICE_ROLE_KEY };
+
+export interface SeededFact {
+  id: string;
+  claim: string;
+}
+
+export interface FactRow {
+  id: string;
+  verification_status: string;
+  verified_by: string | null;
+  verified_by_name: string | null;
+  verification_notes: string | null;
+}
+
+/**
+ * The Fact Library (KB-18): a seeded team whose owner is the project's owner,
+ * with facts written through the service role — adding a fact has its own
+ * form, and is not what these specs are about.
+ */
+export class FactsPageObject {
+  constructor(private readonly page: Page) {}
+
+  async seedProjectWithFacts(count: number) {
+    const team = await seedTeamAccount({ emailPrefix: 'kb18' });
+    const project = await seedProject(team);
+    const stamp = uniqueStamp().slice(0, 8);
+
+    const facts: SeededFact[] = [];
+
+    for (let i = 1; i <= count; i++) {
+      const claim = `Fact ${i} ${stamp}: the lighthouse was first lit in 18${40 + i}`;
+
+      const row = await insertRow<{ id: string }>(
+        'verified_facts',
+        {
+          project_id: project.id,
+          claim,
+          source_type: 'historical_record',
+          source_citation: `Harbour Board minutes, volume ${i}`,
+        },
+        service,
+      );
+
+      facts.push({ id: row.id, claim });
+    }
+
+    return { team, project, facts };
+  }
+
+  /** A member of the team who is on the project as a plain `member`. */
+  async seedProjectMember(team: SeededTeam, project: SeededProject) {
+    const member = await seedUser('kb18-member');
+
+    await seedMembership(member.userId, team.accountId, 'member');
+    await insertRow(
+      'project_members',
+      { project_id: project.id, user_id: member.userId, role: 'member' },
+      service,
+    );
+
+    return member;
+  }
+
+  signIn(user: { email: string; password: string }) {
+    return signInAs(this.page, user);
+  }
+
+  async goto(team: SeededTeam, project: SeededProject) {
+    await this.page.goto(
+      `/home/${team.slug}/studio/${project.slug}/settings/facts`,
+    );
+    await expect(
+      this.page.locator('[data-test="fact-card"]').first(),
+    ).toBeVisible();
+  }
+
+  /**
+   * The card on screen. While a streamed page is still being swapped in, the
+   * server's copy of the list can sit hidden in the DOM beside it, and a
+   * strict locator then finds two of every card.
+   */
+  card(fact: SeededFact): Locator {
+    return this.page
+      .locator(`[data-test="fact-card"][data-fact-id="${fact.id}"]`)
+      .filter({ visible: true });
+  }
+
+  status(fact: SeededFact): Locator {
+    return this.card(fact).locator('[data-test="fact-status"]');
+  }
+
+  verifyButton(fact: SeededFact): Locator {
+    return this.card(fact).locator('[data-test="fact-verify-button"]');
+  }
+
+  dialog(): Locator {
+    return this.page.locator('[data-test="fact-review-dialog"]');
+  }
+
+  notes(): Locator {
+    return this.dialog().locator('[data-test="fact-review-notes"]');
+  }
+
+  async openReview(fact: SeededFact) {
+    await this.verifyButton(fact).click();
+    await expect(this.dialog()).toBeVisible();
+    await expect(
+      this.dialog().locator('[data-test="fact-review-claim"]'),
+    ).toHaveText(fact.claim);
+  }
+
+  confirmVerified() {
+    return this.dialog().locator('[data-test="fact-confirm-verified"]').click();
+  }
+
+  markDisputed() {
+    return this.dialog().locator('[data-test="fact-mark-disputed"]').click();
+  }
+
+  successToast(text: string): Locator {
+    return this.page
+      .locator('[data-sonner-toast][data-type="success"]')
+      .filter({ hasText: text });
+  }
+
+  errorToast(): Locator {
+    return this.page.locator('[data-sonner-toast][data-type="error"]').first();
+  }
+
+  async openDetails(fact: SeededFact) {
+    await this.card(fact).getByRole('link', { name: 'Details' }).click();
+    await this.page.waitForURL(`**/settings/facts/${fact.id}`);
+  }
+
+  verifiedBy(): Locator {
+    return this.page.locator('[data-test="fact-verified-by"]');
+  }
+
+  async readFacts(facts: SeededFact[]) {
+    const rows = await readRows<FactRow>(
+      'verified_facts',
+      `select=id,verification_status,verified_by,verified_by_name,verification_notes&id=in.(${facts
+        .map((f) => f.id)
+        .join(',')})`,
+    );
+
+    return new Map(rows.map((row) => [row.id, row]));
+  }
+}
