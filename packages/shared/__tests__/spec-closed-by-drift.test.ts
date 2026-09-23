@@ -1,5 +1,5 @@
+import { load } from 'js-yaml';
 import { readFileSync, readdirSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { join, relative, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -41,16 +41,6 @@ import { describe, expect, it } from 'vitest';
 const REPO = resolve(__dirname, '../../..');
 const SPECS_DIR = join(REPO, 'specs');
 const KNOWN_BUGS = join(SPECS_DIR, 'cross-cutting/FILM-CC-04-known-bugs.md');
-
-// No workspace package depends on a YAML parser directly; `js-yaml` is
-// publicly hoisted through `@eslint/eslintrc` (`*eslint*` in `.npmrc`), so it
-// is resolved from there rather than adding a dependency to the lockfile.
-interface YamlParser {
-  load(source: string): unknown;
-}
-const yaml = createRequire(
-  createRequire(__filename).resolve('@eslint/eslintrc/package.json'),
-)('js-yaml') as YamlParser;
 
 const KB_ID = /\bKB-\d+\b/g;
 const SPEC_ID = /\b(?:FILM|SPIKE)-(?:[A-Z]{2}-)?\d+[a-z]?\b/g;
@@ -195,7 +185,7 @@ function listYaml(dir: string): string[] {
 function loadRepoSpecs(): SpecRecord[] {
   return listYaml(SPECS_DIR).map((path) => ({
     file: relative(REPO, path),
-    data: yaml.load(readFileSync(path, 'utf8')),
+    data: load(readFileSync(path, 'utf8')),
   }));
 }
 
