@@ -185,3 +185,18 @@ export {
   toDimLanguage,
 } from '../lib/language-dimension';
 export type { LanguageDimension } from '../lib/language-dimension';
+
+export {
+  PURGE_CHANNEL_TABLES,
+  PURGE_INDEX_TABLE,
+  PURGE_VIDEO_TABLES,
+  purgeConnectionFromClickHouse,
+  purgeStatements,
+  queryConnectionVideoIds,
+} from '../purge';
+export type {
+  PurgeOutcome,
+  PurgeStatement,
+  PurgeTable,
+  PurgeTarget,
+} from '../purge';

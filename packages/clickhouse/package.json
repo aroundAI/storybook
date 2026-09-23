@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "migrate": "tsx src/migrations/run.ts",
-    "verify": "tsx scripts/verify-queries.ts"
+    "verify": "tsx scripts/verify-queries.ts",
+    "verify:purge": "tsx scripts/verify-purge.ts"
   },
   "prettier": "@kit/prettier-config",
   "exports": {
