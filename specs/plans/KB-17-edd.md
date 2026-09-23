@@ -219,7 +219,52 @@ back navigation: the dialog holds no server state.
 
 ### 8.2 Reproduction (measured)
 
-<!-- MEASURED-TABLE -->
+2026-09-23 05:15 UTC. `supabase db reset` from this worktree (HEAD
+`8e7314dc`, which is KB-27 + KB-28). Six real users were created through
+GoTrue's admin API and signed in with passwords. Each request is a PostgREST
+call with that user's own JWT.
+
+- Team account "KB17 Team": owner **Olga**, and account members **Mia**,
+  **Vic** and **Tom**.
+- Project P: `project_members` has Olga as owner, Mia as member and Vic as
+  viewer. Tom has no project row.
+- **Sol** owns a personal account with his own project. **Xan** is outside
+  both.
+- Seven events in P were written by Olga as `postgres`. Positive control R0:
+  Mia reads all 7.
+
+| # | Request (as) | HTTP / rows | Row afterwards |
+|---|---|---|---|
+| R1 | PATCH `description='REWRITTEN canon', created_by=Vic` (Mia, member) | **200, 1 row** | `REWRITTEN canon`, `created_by` = Vic, `created_by_name` = **"Vic Viewer"**. The name follows the forged id |
+| R2 | DELETE Olga's event (Mia) | **200, 1 row** | gone |
+| R3a | PATCH description (Vic, **viewer**) | **200, 1 row** | `viewer rewrote` |
+| R3b | DELETE (Vic, viewer) | **200, 1 row** | gone |
+| R3c | POST new event (Vic, viewer) | **201** | written |
+| R4a | DELETE (Tom, team member, **no project row**) | **200, 1 row** | gone |
+| R4b | POST (Tom) | **201** | written |
+| R5 | POST with `created_by` = Olga and `created_by_name` = "Anyone" (Mia) | **201** | `forged canon`, `created_by` = Olga, `created_by_name` = **"Olga Owner"** |
+| R6 | POST with `established_in` = an episode of **Xan's** project (Mia) | **201** | written |
+| R7a | GET own project's canon (Sol, **personal owner**) | 200, **0 rows** (1 exists) | — |
+| R7b | POST into own project (Sol) | **403 42501** | not written |
+| R8 | GET / PATCH / DELETE P's canon (Xan, outsider). Control | 200, 0 / 0 / 0 rows | unchanged |
+| R9 | PATCH `project_id` → Xan's project (Mia) | **403 42501** | unchanged: the USING clause doubles as WITH CHECK |
+
+Schema measurements (`measure.sql`):
+
+| # | What | Result |
+|---|---|---|
+| M1 | Table privileges | `anon`, `authenticated` and `service_role` **all** have DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE |
+| M2 | Policies | one: `immutable_events_project_access`, ALL, `{authenticated}`, USING yes, WITH CHECK **no** |
+| M3 | Triggers | one: `immutable_events_snapshot_creator_name` (BEFORE INSERT OR UPDATE) |
+| M5 | A probe BEFORE UPDATE trigger during `delete from auth.users` (rolled back) | fired once per authored row: **`pg_trigger_depth() = 2`**, `current_user = postgres`, `new.created_by` NULL, author row already gone, **every other column unchanged** |
+| M6 | Rows with NULL author | 0 of 9 |
+
+**The KB is confirmed and wider than written.** Rewrite, delete and
+forged-author insert are open not just to members (R1, R2, R5) but to
+project **viewers** and to team members who are **not on the project** (R3,
+R4). Personal-account owners are locked out of their own canon (R7). One
+claim in the KB is narrower in practice: a row cannot be moved to another
+tenant's project (R9).
 
 ### 8.3 Every path that writes or deletes `immutable_events`
 
@@ -368,7 +413,7 @@ create policy "immutable_events_delete" on public.immutable_events
 
 -- grants: no UPDATE for end users (a PATCH gets 42501, not a silent 0 rows)
 revoke update, truncate, references, trigger on public.immutable_events from authenticated;
-revoke all on public.immutable_events from anon;     -- exact list fixed by M1 (§8.2)
+revoke all on public.immutable_events from anon;     -- M1: anon holds all seven today
 
 -- write-once, for every role
 create or replace function public.immutable_events_refuse_update()
@@ -501,7 +546,29 @@ id, new author and new `created_at`).
 
 ### 19.1 Class sweep: every `FOR ALL` policy without `WITH CHECK` (AC-3)
 
-<!-- SWEEP-TABLE -->
+Measured from the live schema (`pg_policies where cmd = 'ALL' and
+with_check is null`, M4), not by grep, because later migrations drop and
+recreate policies. 17 policies:
+
+| Table | Policy | Author/immutability claim? | Decision |
+|---|---|---|---|
+| `public.immutable_events` | `immutable_events_project_access` | **yes**: canon "cannot be contradicted"; `created_by` + KB-1 name | **Fixed by KB-17** |
+| `public.narrative_threads` | `narrative_threads_project_access` | no author column; mutable by design (status, payoffs) | Not KB-17. Its **write predicate** is `has_role_on_account`, so viewers and non-project members can write, against the owner's canon write rule. Follow-up KB (number from the lead) |
+| `public.world_states` | `world_states_project_access` | no; mutable by design (`updated_at`) | same follow-up |
+| `public.episode_summaries` | `episode_summaries_access` | no; a regenerated cache | same follow-up |
+| `public.act_context_bridges` | `act_context_bridges_project_access` | no; a derived cache | same follow-up |
+| `public.sequel_parent_contexts` | `sequel_parent_contexts_project_access` | no; a derived cache of the parent's canon | same follow-up |
+| `public.accounts`, `accounts_memberships`, `invitations`, `notifications`, `order_items`, `orders`, `role_permissions`, `subscription_items`, `subscriptions` | `restrict_mfa_*` (9) | n/a | **Correct as is.** These are Makerkit's `AS RESTRICTIVE` MFA gates (`20250302043537_mfa-rls-super-admin.sql`, 9 of 9 restrictive). A restrictive USING also constrains the new row, and they grant nothing |
+| `cron.job`, `cron.job_run_details` | `cron_*_policy` | n/a | Extension-owned (pg_cron). Out of scope |
+
+Same class, different shape (not `FOR ALL`, so not in M4, but the same
+authorship hole): **`character_states`**. Its INSERT policy
+(`20260128225704_canon_management.sql:253-261`) does not pin `created_by`, so
+a member can insert a state change in a colleague's name. It also still uses
+`has_role_on_account`. **`state_deltas`** ("immutable log") has DELETE
+granted (`20260607183439`) and relies on the absence of a DELETE policy
+(FILM-1002 `remaining:`, unassigned). Both belong in the follow-up KB, and
+D4 applies.
 
 ## 20. Performance and Scale
 
@@ -587,13 +654,13 @@ team member without a project row T, personal-account owner S, outsider X.
 
 | Case | Assertion | Red today? |
 |---|---|---|
-| I1 read | O, M, V, T see P's events. S sees their own. X sees none | **S red** (0 rows today) |
-| I2 insert | M as self ✓. M naming O → 42501. V, T → 42501. S in own project ✓. X → 42501. M with a foreign `established_in` → 42501 | **M-naming-O red, V/T red, S red, foreign-episode red** (pending M-table) |
+| I1 read | O, M, V, T see P's events. S sees their own. X sees none | **S red** (0 rows today, R7a) |
+| I2 insert | M as self ✓. M naming O → 42501. V, T → 42501. S in own project ✓. X → 42501. M with a foreign `established_in` → 42501 | **red**: M naming O succeeds (R5), V/T succeed (R3c, R4b), S is refused (R7b), foreign episode succeeds (R6) |
 | I3 update, end users | M and O PATCH description → 42501 privilege error; M sets `created_by` → 42501; row unchanged | **red** (member rewrite succeeds today) |
 | I4 update, privileged | as `postgres` and `service_role`: description change → trigger exception; row unchanged | **red** |
 | I5 nested non-clearing update | a test-local trigger on a temp table updates an event's description at depth 2 → exception | red |
 | I6 user deletion | delete the author from `auth.users` → lives; `created_by` null; `created_by_name` kept | green before and after (the guard) |
-| I7 delete | M ✓ (1 row). O ✓. V, T → 0 rows. X → 0 rows | **V/T red** |
+| I7 delete | M ✓ (1 row). O ✓. V, T → 0 rows. X → 0 rows | **V/T red** (R3b, R4a) |
 | I8 RPC | M calls `commit_canon_changes` → event `created_by` = M, `created_by_name` = M's name | green (pins KB-27 §19 i) |
 | I9 shape | `policies_are(...)` = the three policies. `table_privs_are` for `authenticated` = SELECT, INSERT, DELETE and for `anon` = none. `trigger_is` for the refusal | red |
 
@@ -757,7 +824,11 @@ applies.
 7. **Production build C2**, sandboxed (§27).
 8. **Records:** KB-17 entry → Fixed with the PR number, plus one row in the
    Fixed table. FILM-1002 and FILM-1005: flip the criteria KB-17 closes and
-   clear the matching `remaining:` rows. Add the §19.1 list to KB-17's entry.
+   clear the matching `remaining:` rows. FILM-1002's criterion "Policies use
+   existing `has_role_on_account` function" stops being true for
+   `immutable_events` (it moves to the owner's predicates), so reword that
+   criterion's evidence rather than leave it false. Add the §19.1 list to
+   KB-17's entry.
 9. `pnpm typecheck`, `pnpm lint:fix`, `pnpm format:fix`. Push, then open the PR
    against `fix/kb-27-commit-canon-membership` with the first line "Stacked on
    #316 — retarget to main after #316 merges."
