@@ -89,8 +89,8 @@ retirement:
     `f7cdfa21` (2025-12-18). Nothing replaces a standalone waveform player: the audio
     studio's timelines play clips through a bare `Audio` element
     (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:277`),
-    and the edit suite draws its own clip waveforms
-    (`packages/features/edit-suite/src/components/timeline/waveform.tsx`). The component
+    and the edit suite drew its own clip waveforms until it was retired
+    (FILM-607). The component
     still exists unused. Kept as a record; not outstanding work.
   replacement: null
 open_questions: []

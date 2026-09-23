@@ -16,7 +16,7 @@ summary: >
 acceptance_criteria:
   - text: "Working POC that stitches 10 videos with transitions"
     met: false
-    reason: "retired — `packages/features/video-rendering/poc/` was deleted in 5b88db3a; the edit suite now exports via `packages/features/edit-suite/src/lib/ffmpeg-builder.ts:101`"
+    reason: "retired — `packages/features/video-rendering/poc/` was deleted in 5b88db3a; the edit suite that later exported through FFmpeg was retired in FILM-607; no FFmpeg pipeline remains"
   - text: "Audio synchronization working correctly"
     met: false
     reason: "retired — the PoC's audio mixer (`packages/features/video-rendering/src/ffmpeg/audio-mixer.ts`) was deleted in 5b88db3a"

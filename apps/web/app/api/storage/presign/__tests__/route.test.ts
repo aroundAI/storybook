@@ -6,7 +6,6 @@ import {
   UPLOAD_CONSTRAINTS,
   sanitizeFilename,
 } from '@kit/assets/upload-validation';
-import { EXPORT_UPLOAD_BUCKET } from '@kit/edit-suite/export-upload';
 import { R2StorageAdapter } from '@kit/storage';
 
 import { POST } from '../route';
@@ -91,11 +90,10 @@ const coverUpload = {
   size: 184_320,
 };
 
-// The export dialog's exact bucket expression and path
-// (packages/features/edit-suite/src/components/export/export-dialog.tsx).
-const exportUpload = {
-  bucket: EXPORT_UPLOAD_BUCKET,
-  path: `projects/${PROJECT}/assets/master_video/export_en_1790000000000.mp4`,
+// A master video, as the Publish page's master-asset manager uploads one.
+const masterVideoUpload = {
+  bucket: 'project-assets',
+  path: `projects/${PROJECT}/assets/master_video/master_en_1790000000000.mp4`,
   contentType: 'video/mp4',
   size: 52_428_800,
 };
@@ -250,24 +248,13 @@ describe('POST /api/storage/presign — Supabase provider', () => {
   ])('refuses %s', async (_label, path) => {
     asWriter(true);
 
-    const res = await presign({ ...exportUpload, path });
+    const res = await presign({ ...masterVideoUpload, path });
 
     expect(res.status).toBe(400);
     await expect(res.json()).resolves.toEqual({
       error: 'Invalid storage path format',
     });
     expect(mockCreateSignedUploadUrl).not.toHaveBeenCalled();
-  });
-
-  it("accepts the export dialog's bucket and path for a project member", async () => {
-    asWriter(true);
-
-    const res = await presign(exportUpload);
-
-    expect(res.status).toBe(200);
-    expect(mockRpc).toHaveBeenCalledWith('can_write_project_storage', {
-      path: exportUpload.path,
-    });
   });
 });
 
@@ -332,23 +319,6 @@ describe('POST /api/storage/presign — R2 provider', () => {
       expiresIn: 900,
     });
     expect(mockCreateSignedUploadUrl).not.toHaveBeenCalled();
-  });
-
-  it("signs the export dialog's upload for a project member", async () => {
-    asWriter(true);
-
-    const res = await presign(exportUpload);
-
-    expect(res.status).toBe(200);
-    expect(signR2).toHaveBeenCalledWith(
-      EXPORT_UPLOAD_BUCKET,
-      exportUpload.path,
-      {
-        contentType: 'video/mp4',
-        contentLength: exportUpload.size,
-        expiresIn: 900,
-      },
-    );
   });
 
   // KB-38: the URL binds a type and an exact length, so both must be the

@@ -57,8 +57,8 @@ retirement:
     audio studio's language tabs
     (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/language-tab-bar.tsx`).
     The `dubbed_versions` and `dubbed_dialogue_lines` tables remain; nothing writes them,
-    though the edit suite's media bin still reads them
-    (`packages/features/edit-suite/src/server/media-bin-queries.ts:123`). Kept as a record;
+    though the edit suite's media bin read them until it was retired (FILM-607).
+    Kept as a record;
     not outstanding work.
   replacement: "packages/features/audio-generation/src/server/translate-dialogue-action.ts"
 open_questions: []

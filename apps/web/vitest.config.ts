@@ -142,10 +142,6 @@ export default defineConfig({
         __dirname,
         '../../packages/features/assets/src/lib/index.ts',
       ),
-      '@kit/edit-suite/export-upload': path.resolve(
-        __dirname,
-        '../../packages/features/edit-suite/src/lib/export-upload.ts',
-      ),
       '@kit/storage/client': path.resolve(
         __dirname,
         '../../packages/features/storage/src/client.ts',

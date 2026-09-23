@@ -5,14 +5,11 @@ import {
   uploadWithPresignedUrl,
 } from '@kit/storage/client';
 
-// Not a package export: the export dialog is its only caller.
-import { uploadToR2Presigned } from '../../../../../../../packages/features/edit-suite/src/lib/presigned-upload';
-
 /**
  * KB-38: the upload URL is signed for one type and one exact byte count.
- * The two browser helpers that ask for it must declare the size of exactly
- * the body they then PUT, and PUT with exactly the headers the route
- * returned. A helper that gets either wrong fails in production with a 403
+ * The browser helper that asks for it must declare the size of exactly the
+ * body it then PUTs, and PUT with exactly the headers the route returned.
+ * (A second helper, in the Edit Suite, went with it in FILM-607.) A helper that gets either wrong fails in production with a 403
  * from storage.
  */
 
@@ -118,70 +115,5 @@ describe('@kit/storage/client', () => {
       'X-T': '1',
     });
     expect(result).toEqual({ url: signed.publicUrl, path: PATH });
-  });
-});
-
-describe('@kit/edit-suite/presigned-upload', () => {
-  class FakeXhr {
-    static last: FakeXhr;
-    headers: Record<string, string> = {};
-    method = '';
-    url = '';
-    sent: unknown;
-    status = 200;
-    upload = { addEventListener: vi.fn() };
-    private listeners: Record<string, () => void> = {};
-
-    constructor() {
-      FakeXhr.last = this;
-    }
-
-    addEventListener(event: string, listener: () => void) {
-      this.listeners[event] = listener;
-    }
-
-    open(method: string, url: string) {
-      this.method = method;
-      this.url = url;
-    }
-
-    setRequestHeader(name: string, value: string) {
-      this.headers[name] = value;
-    }
-
-    send(body: unknown) {
-      this.sent = body;
-      queueMicrotask(() => this.listeners.load?.());
-    }
-  }
-
-  it('declares blob.size and PUTs that blob with the returned headers', async () => {
-    vi.stubGlobal('XMLHttpRequest', FakeXhr);
-
-    const blob = new Blob([new Uint8Array(4321)], { type: 'video/mp4' });
-
-    // A header the helper could not have made up, so the test can tell
-    // "sent what the route returned" from "sent its own Content-Type".
-    const returned = { 'Content-Type': 'video/mp4', 'X-Signed-For': 'kb-38' };
-
-    fetchMock.mockResolvedValueOnce(json({ ...signed, headers: returned }));
-
-    const result = await uploadToR2Presigned(blob, {
-      bucket: 'storybook-assets',
-      path: 'projects/p/assets/master_video/export_en_1.mp4',
-      contentType: 'video/mp4',
-    });
-
-    expect(presignBody()).toEqual({
-      bucket: 'storybook-assets',
-      path: 'projects/p/assets/master_video/export_en_1.mp4',
-      contentType: 'video/mp4',
-      size: 4321,
-    });
-    expect(FakeXhr.last.method).toBe('PUT');
-    expect(FakeXhr.last.url).toBe(signed.uploadUrl);
-    expect(FakeXhr.last.sent).toBe(blob);
-    expect(FakeXhr.last.headers).toEqual(returned);
-    expect(result.publicUrl).toBe(signed.publicUrl);
   });
 });

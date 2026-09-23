@@ -72,26 +72,6 @@
       "pattern": "uploadWithPresignedUrl declares file.size"
     },
     {
-      "name": "C3 edit-suite export declares no size",
-      "file": "packages/features/edit-suite/src/lib/presigned-upload.ts",
-      "find": "    body: JSON.stringify({ bucket, path, contentType, size }),",
-      "replace": "    body: JSON.stringify({ bucket, path, contentType }),",
-      "kind": "unit",
-      "cwd": "apps/web",
-      "test": "app/api/storage/presign/__tests__/presign-client.test.ts",
-      "pattern": "declares blob.size"
-    },
-    {
-      "name": "C4 edit-suite export ignores the returned headers",
-      "file": "packages/features/edit-suite/src/lib/presigned-upload.ts",
-      "find": "  await uploadWithProgress(uploadUrl, blob, headers, onProgress);",
-      "replace": "  await uploadWithProgress(uploadUrl, blob, { 'Content-Type': contentType }, onProgress);",
-      "kind": "unit",
-      "cwd": "apps/web",
-      "test": "app/api/storage/presign/__tests__/presign-client.test.ts",
-      "pattern": "declares blob.size"
-    },
-    {
       "name": "C5 an uploader calls the route itself",
       "file": "packages/features/assets/src/components/image-uploader/use-image-upload.ts",
       "find": "        const { uploadUrl, publicUrl, headers } = await requestPresignedUpload({",

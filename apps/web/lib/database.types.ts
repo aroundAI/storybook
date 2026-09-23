@@ -5488,37 +5488,9 @@ export type Database = {
         }
         Returns: Database["public"]["Tables"]["invitations"]["Row"][]
       }
-      batch_assemble_edit_project: {
-        Args: {
-          p_active_language?: string
-          p_clips?: string
-          p_episode_id: string
-          p_fps?: number
-          p_height?: number
-          p_keyframes?: string
-          p_sync_groups?: string
-          p_tracks?: string
-          p_user_id: string
-          p_width?: number
-        }
-        Returns: Json
-      }
       batch_create_shots: {
         Args: { p_episode_id: string; p_shots: Json }
         Returns: string[]
-      }
-      batch_save_edit_project: {
-        Args: {
-          p_deleted_clip_ids?: Json
-          p_deleted_keyframe_ids?: Json
-          p_dirty_clips?: Json
-          p_dirty_keyframes?: Json
-          p_dirty_tracks?: Json
-          p_edit_project_id: string
-          p_new_clips?: Json
-          p_new_keyframes?: Json
-        }
-        Returns: Json
       }
       bulk_reset_episodes_to_stage: {
         Args: {
@@ -5589,17 +5561,6 @@ export type Database = {
           p_voice_asset_id?: string
         }
         Returns: string
-      }
-      create_edit_project_with_tracks: {
-        Args: {
-          p_active_language?: string
-          p_default_tracks?: Json
-          p_episode_id: string
-          p_fps?: number
-          p_height?: number
-          p_width?: number
-        }
-        Returns: Json
       }
       create_invitation: {
         Args: { account_id: string; email: string; role: string }
@@ -5880,10 +5841,6 @@ export type Database = {
           total_cost_cents: number
         }[]
       }
-      get_project_id_for_edit_project: {
-        Args: { p_edit_project_id: string }
-        Returns: string
-      }
       get_project_members: {
         Args: { target_project_id: string }
         Returns: {
@@ -6087,10 +6044,6 @@ export type Database = {
         Returns: Database["public"]["Enums"]["verification_status_enum"]
       }
       soft_delete_episode: { Args: { p_episode_id: string }; Returns: boolean }
-      split_edit_clip: {
-        Args: { p_clip_id: string; p_split_at_ms: number }
-        Returns: Json
-      }
       team_account_workspace: {
         Args: { account_slug: string }
         Returns: {

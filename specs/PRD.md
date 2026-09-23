@@ -397,6 +397,8 @@ Since assets are project-scoped, users may need to reuse assets across projects.
 
 #### Module 6: Edit Suite
 
+> **Retired 2026-09-23 (FILM-607).** The owner retired the whole Edit Suite; this section is kept as history. Videos are edited outside the app and uploaded on the Publish tab.
+
 | Feature | Description | Priority |
 |---------|-------------|----------|
 | Timeline Editor | Multi-track video/audio editing | P0 |

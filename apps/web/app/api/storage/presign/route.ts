@@ -31,7 +31,6 @@ import {
   type UploadCategory,
   uploadCategoryForType,
 } from '@kit/assets/upload-validation';
-import { EXPORT_UPLOAD_BUCKET } from '@kit/edit-suite/export-upload';
 import { getLogger } from '@kit/shared/logger';
 import { getStorageAdapter } from '@kit/storage';
 import { requireUser } from '@kit/supabase/require-user';
@@ -44,10 +43,7 @@ const DEFAULT_EXPIRES_IN = 900; // 15 minutes default
  * The buckets the app's uploaders send. On R2 each is a key prefix inside
  * `R2_BUCKET_NAME`; on Supabase each is a bucket.
  */
-const ALLOWED_BUCKETS: ReadonlySet<string> = new Set([
-  PROJECT_ASSETS_BUCKET,
-  EXPORT_UPLOAD_BUCKET,
-]);
+const ALLOWED_BUCKETS: ReadonlySet<string> = new Set([PROJECT_ASSETS_BUCKET]);
 
 /**
  * The path shapes the uploaders write, each naming its project:

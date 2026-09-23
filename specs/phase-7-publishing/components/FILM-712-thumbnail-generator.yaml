@@ -33,7 +33,7 @@ component:
 acceptance_criteria:
   - text: "Extract 12 key frames from video"
     met: false
-    reason: "not met — never built: `packages/features/publishing/src/components/thumbnail-generator.tsx` never existed; only the edit suite's timeline extracts frames, for display (`packages/features/edit-suite/src/components/timeline/thumbnail-strip.tsx:109`)"
+    reason: "not met — never built: `packages/features/publishing/src/components/thumbnail-generator.tsx` never existed; the only frame extraction was the edit suite timeline's, for display, retired with FILM-607"
   - text: "Face detection prioritizes frames with faces"
     met: false
     reason: "not met — no working face detection: the only `detectFacesAction` is a lip-sync stub that returns nothing (`packages/features/audio-generation/src/server/lip-sync-actions.ts:104`)"
@@ -42,7 +42,7 @@ acceptance_criteria:
     reason: "not met — thumbnails are stored one per language (`episode_thumbnails`, `apps/web/supabase/migrations/20260103042141_add_episode_thumbnails.sql`); no per-platform sizes"
   - text: "Text overlay with customizable position"
     met: false
-    reason: "not met — no thumbnail overlay; the only text overlays are on video in the edit suite (`packages/features/edit-suite/src/components/preview/text-overlay-canvas.tsx`)"
+    reason: "not met — no thumbnail overlay; the only text overlays were on video in the edit suite, retired with FILM-607"
   - text: "AI enhancement option improves frame quality"
     met: false
     reason: "not met — no AI thumbnail code anywhere"
@@ -88,7 +88,7 @@ remaining:
     reason: "Never built; thumbnails are per language, not per platform"
     closed_by: "owner"
   - criterion: "Text overlay"
-    reason: "Never built for thumbnails (the edit suite's text overlays apply to video)"
+    reason: "Never built for thumbnails (the edit suite's text overlays applied to video; retired with FILM-607)"
     closed_by: "owner"
   - criterion: "AI enhancement"
     reason: "Never built"

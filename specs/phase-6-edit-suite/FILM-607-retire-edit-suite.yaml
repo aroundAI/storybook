@@ -3,7 +3,8 @@ title: "Retire the Edit Suite"
 phase: 6
 phase_name: "Edit Suite"
 category: feature
-status: DRAFT
+status: PARTIAL
+audited: "2026-09-23"
 effort: M
 dependencies:
   - spec_id: "KB-28"
@@ -30,29 +31,33 @@ acceptance_criteria:
     met: true
     evidence: "`apps/e2e/tests/episodes/workspace-tabs.spec.ts` W1–W3 green on dev and on three cold starts of a sandboxed `build:test`/`start:test` production build; W1 and W3 red with the tab and page restored; `…/_components/__tests__/episode-workspace-tabs.test.tsx` and its unit guard W1 RED"
   - text: "`packages/features/edit-suite/` and `apps/web/lambda/render-worker/` deleted; `@kit/edit-suite` gone from `apps/web/package.json` and `pnpm-lock.yaml` (with `mp4box`)"
-    met: false
-    reason: "open — DRAFT, not yet implemented"
+    met: true
+    evidence: "PR B: 58 + 3 files deleted; `apps/web/package.json` and `pnpm-lock.yaml` (61 lines, removals only, `mp4box` included); `pnpm typecheck` 47/47 tasks"
   - text: "`sst.config.ts` has no `StorybookRenderDLQ`, `StorybookRenderQueue`, render worker, `renderQueue` link, `RENDER_QUEUE_URL` or `renderQueue.arn`, and no `ffmpeg-static`"
-    met: false
-    reason: "open — DRAFT, not yet implemented"
+    met: true
+    evidence: "PR B: `sst.config.ts` (101 lines out); G1 scans it for every name listed"
   - text: "`apps/web/websocket/default.ts` has no `edit-operation` or `cursor-update` case; its tests stay green"
-    met: false
-    reason: "open — DRAFT, not yet implemented"
+    met: true
+    evidence: "PR B: both cases removed (131 lines); `pnpm --filter web test` 42 files, 818 tests green"
   - text: "The five functions are dropped; `edit_projects`, `edit_tracks`, `edit_clips`, `edit_keyframes`, `edit_transitions` and `dialogue_sync_groups` keep their rows and are read-only to `authenticated` (or dropped, if the owner decides so — Decision D3); pgTAP proves it, including that deleting an episode or a shot still cascades"
-    met: false
-    reason: "open — DRAFT, not yet implemented"
+    met: true
+    evidence: "`apps/web/supabase/migrations/20260923082656_film607-retire-edit-suite.sql`; `edit-suite-retired.test.sql` R1–R6, 24/24 green, red on part A's schema; guards R1, R2 (grant) and R2 (policy) RED"
   - text: "`master_video` assets, `episodes.master_video_asset_id` and every storage object are untouched"
-    met: false
-    reason: "open — DRAFT, not yet implemented"
+    met: true
+    evidence: "No storage statement in either migration; pgTAP R7 (type still accepted, `episodes.master_video_asset_id` kept)"
   - text: "A repo-scan guard fails if any retired name reappears in `apps/`, `packages/` or `sst.config.ts` (migration history excepted); red on `main` naming every file; entries in `tooling/mutation-guards/film-607.json` seen RED"
-    met: false
-    reason: "open — DRAFT, not yet implemented"
+    met: true
+    evidence: "`apps/web/test/film-607-edit-suite-retired.test.ts` red before the removal (13 files named), green after; unit guards G1 and W1 RED"
   - text: "Types regenerated; `pnpm typecheck` (including the lambda config), lint, unit tests, pgTAP and a sandboxed production build green; the build has no `edit-suite` route or server action"
-    met: false
-    reason: "open — DRAFT, not yet implemented"
+    met: true
+    evidence: "Types regenerated (only the five functions leave); typecheck, lint, unit, full pgTAP and a sandboxed `build:test` green; the build's route and server-reference manifests have no `edit-suite` entry"
   - text: "FILM-601 and FILM-602 RETIRED with a `retirement:` block; PHASE-14 marked retired; KB-32, KB-40, KB-62, KB-64, KB-65, KB-67, KB-68 and KB-69 resolved by removal; KB-47's render producer struck; INDEX.md rows and counts updated"
     met: false
-    reason: "open — DRAFT, not yet implemented"
+    reason: "all but one: KB-47's entry exists only on #315 (KB-31), so its render-producer bullet cannot be struck here. The shared-record edits themselves (FILM-CC-04, INDEX.md) are in the lead's batch records PR"
+remaining:
+  - criterion: "KB-47's render-producer bullet struck"
+    reason: "KB-47's entry is added by #315 (KB-31), not yet merged; strike `render-actions.ts` from it after that PR merges"
+    closed_by: "KB-47"
 open_questions: []
 feature:
   database:
