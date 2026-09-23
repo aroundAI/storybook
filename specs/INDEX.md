@@ -487,7 +487,7 @@ graph TD
 | FILM-1102 | [Memory Context Injection](./phase-11-canon-integration/integration/FILM-1102-memory-context-injection.yaml) | 🟡 PARTIAL | M | #175 | FILM-1004 |
 | FILM-1103 | [LLM-based Canon Extraction](./phase-11-canon-integration/integration/FILM-1103-llm-canon-extraction.yaml) | ✅ DONE | M | #175 | FILM-1005 |
 | FILM-1104 | [Validation Integration](./phase-11-canon-integration/integration/FILM-1104-validation-integration.yaml) | 🟡 PARTIAL | M | #175 | FILM-1003 |
-| FILM-1110 | [Content Type Enum](./phase-11-canon-integration/content-types/FILM-1110-content-type-enum.yaml) | ✅ DONE | S | #176, FILM-1110 PR | - |
+| FILM-1110 | [Content Type Enum](./phase-11-canon-integration/content-types/FILM-1110-content-type-enum.yaml) | ✅ DONE | S | #176, #311 | - |
 | FILM-1111 | [Content Type Configs](./phase-11-canon-integration/content-types/FILM-1111-content-type-configs.yaml) | 🟡 PARTIAL | M | #176 | FILM-1110 |
 | FILM-1112 | [Act Context Bridge](./phase-11-canon-integration/content-types/FILM-1112-act-context-bridge.yaml) | 🟡 PARTIAL | L | #177 | FILM-1110 |
 | FILM-1113 | [Sequel System](./phase-11-canon-integration/content-types/FILM-1113-sequel-system.yaml) | 🟡 PARTIAL | M | #177 | FILM-1110 |
