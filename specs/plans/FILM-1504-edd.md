@@ -1091,3 +1091,34 @@ The two directions converge.
 | **FILM-1601** (correctness bugs) | Raw-CSV per-day impressions from `video_reach_daily` (their remaining item) | Correct per-day reach rows (unchanged table, and no longer carrying a fabricated `engaged_views`) | Reading per-day reach in `scheduled/route.ts:517` |
 | **FILM-1602** (per-channel YPP) | Per-connection `channel_daily` watch time. D1 corrupted exactly this leg per channel | D1 fixed | The Σ per-channel = pooled regression guard (their `remaining:`) |
 | **Phase 17** | Waits on phase 16 | — | — |
+
+### Appendix — implementation notes (approved 2026-09-23 with every recommended default)
+
+Where the implementation differs from the text above. None of these
+changes behaviour or scope.
+
+- **CTR check name.** §15 called the pure check `assertCtrIsRatio`. It
+  shipped as `findCtrOutOfRange(rows): number | null` in `csv-parsers.ts`,
+  and the ingest throws `ReachCtrUnitError` itself. That keeps the parser
+  total and puts the throw next to the watermark logic it affects.
+- **T2 drives the whole job.** T2 calls `runReportingIngestJob` with fakes
+  instead of exporting `ingestReportCsv`. That gave every guard an honest
+  red on `origin/main`, where `ingestReportCsv` is not exported. The pure
+  helpers `planReportBatch` and `accumulateChannelReach` are exported and
+  unit-tested directly.
+- **Report order across runs.** Within one run the ingest walks jobs in
+  registry order, so the order two reports land in is set by which run
+  collects each. T3's order tests therefore deliver each report to a
+  separate run, as production does.
+- **The fakes compare watermarks as instants.** Postgres returns
+  `…+00:00` and the fixtures use `…Z`. A string comparison re-listed the
+  watermark report. That made the first red run on `origin/main` look
+  worse than the real bug, and I caught it before recording evidence.
+- **Shared ClickHouse handed back in main's shape.** After T3–T5, the two
+  dropped columns were re-added and the `011` record deleted from
+  `_migrations`. Teammates on `main` would otherwise have had their quality
+  query fail against the shared container. `011` is `IF [NOT] EXISTS`
+  throughout, so this branch re-applies it cleanly.
+- **Follow-up (owner decision D5).** Store engaged views for matched videos
+  from `channel_basic_a3` in a nullable `video_metrics` column. The lead
+  will number it.

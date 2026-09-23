@@ -181,17 +181,19 @@ const EXPECTED = {
 describe.skipIf(!process.env.REPORT_INGEST_LOCAL_STACK)(
   'runReportingIngestJob against local Postgres and ClickHouse',
   () => {
-    const admin = getSupabaseServerAdminClient();
+    // A function, not a value: the describe body runs at collection even
+    // when skipped, and the client validates its environment eagerly.
+    const admin = () => getSupabaseServerAdminClient();
 
     beforeAll(async () => {
-      const { data: project, error: projectError } = await admin
+      const { data: project, error: projectError } = await admin()
         .from('projects')
         .select('account_id')
         .eq('id', FIXTURE_PROJECT)
         .single();
       if (projectError) throw projectError;
 
-      const { data: connection, error: connectionError } = await admin
+      const { data: connection, error: connectionError } = await admin()
         .from('platform_connections')
         .insert({
           account_id: project.account_id,
@@ -205,7 +207,7 @@ describe.skipIf(!process.env.REPORT_INGEST_LOCAL_STACK)(
       if (connectionError) throw connectionError;
       state.connectionId = connection.id;
 
-      const { data: episode, error: episodeError } = await admin
+      const { data: episode, error: episodeError } = await admin()
         .from('episodes')
         .insert({
           project_id: FIXTURE_PROJECT,
@@ -216,7 +218,7 @@ describe.skipIf(!process.env.REPORT_INGEST_LOCAL_STACK)(
         .single();
       if (episodeError) throw episodeError;
 
-      const { error: publishError } = await admin.from('publishes').insert({
+      const { error: publishError } = await admin().from('publishes').insert({
         episode_id: episode.id,
         platform: 'youtube',
         platform_connection_id: connection.id,
@@ -231,7 +233,7 @@ describe.skipIf(!process.env.REPORT_INGEST_LOCAL_STACK)(
     afterAll(async () => {
       if (!state.connectionId) return;
       // Cascades to the publish and the job registry rows.
-      await admin
+      await admin()
         .from('platform_connections')
         .delete()
         .eq('id', state.connectionId);
@@ -241,7 +243,7 @@ describe.skipIf(!process.env.REPORT_INGEST_LOCAL_STACK)(
       await runReportingIngestJob();
       await runReportingIngestJob();
 
-      const { data } = await admin
+      const { data } = await admin()
         .from('youtube_report_jobs')
         .select('report_type_id')
         .eq('platform_connection_id', state.connectionId);
@@ -309,7 +311,7 @@ describe.skipIf(!process.env.REPORT_INGEST_LOCAL_STACK)(
     });
 
     it('lands matched rows once per video/day, whatever the number of deliveries', async () => {
-      const { data: publish } = await admin
+      const { data: publish } = await admin()
         .from('publishes')
         .select('id')
         .eq('platform_connection_id', state.connectionId)
@@ -356,7 +358,7 @@ describe.skipIf(!process.env.REPORT_INGEST_LOCAL_STACK)(
     // out of the residual. Otherwise it is counted twice: per video, and in
     // channel_daily.
     it('empties the residual when a redelivered day has every video matched', async () => {
-      const { data: episode } = await admin
+      const { data: episode } = await admin()
         .from('episodes')
         .insert({
           project_id: FIXTURE_PROJECT,
@@ -365,7 +367,7 @@ describe.skipIf(!process.env.REPORT_INGEST_LOCAL_STACK)(
         })
         .select('id')
         .single();
-      await admin.from('publishes').insert({
+      await admin().from('publishes').insert({
         episode_id: episode!.id,
         platform: 'youtube',
         platform_connection_id: state.connectionId,

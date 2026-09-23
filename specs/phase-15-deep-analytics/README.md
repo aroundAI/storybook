@@ -36,9 +36,10 @@ FILM-1501+1502 must merge in quick succession with the analytics sync cron disab
 ## Verification status
 
 **Audited against the code on 2026-09-23.** Of the 51 acceptance boxes across
-the ten live specs, 23 are ticked with evidence, 8 are not met, and 20 are
+the ten live specs, 28 are ticked with evidence, 6 are not met, and 19 are
 unverified — they need a live database, a vendor account or a deploy to
-settle. FILM-1504, 1506, 1507, 1509 and 1511 are 🟡 PARTIAL, each with a
+settle. (FILM-1504's completion moved five boxes to ticked the same day; its
+one left is the owner's YouTube Studio cross-check.) FILM-1504, 1506, 1507, 1509 and 1511 are 🟡 PARTIAL, each with a
 *Remaining* section; the rest are ✅ DONE. The evidence sits beside each box.
 
 This section used to say every box was unchecked, and that the phase-15 types

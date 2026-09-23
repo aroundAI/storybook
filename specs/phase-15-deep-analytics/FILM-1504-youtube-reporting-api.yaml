@@ -21,30 +21,27 @@ summary: >
   Uses the already-granted `yt-analytics.readonly` scope. Reporting API rows replace Analytics-API rows for the same (video, day) via later `inserted_at` (ReplacingMergeTree — FILM-1501).
 acceptance_criteria:
   - text: "Report jobs auto-created for every active YouTube connection (rows in `youtube_report_jobs`)"
-    met: false
-    reason: "unverified — needs a live YouTube connection; path exists (`packages/features/content-analytics/src/server/reporting/report-ingest.ts:124` → `ensureReportJobs`)"
+    met: true
+    evidence: "fake vendor, real Postgres (owner decision D6): four rows after two runs, `packages/features/content-analytics/__tests__/report-ingest.local-stack.test.ts:240`; production bundle against a local fixture Reporting API, FILM-1504 PR. Created even while ClickHouse is off: `packages/features/content-analytics/__tests__/report-ingest-run.test.ts:365`"
   - text: "CSV parsers handle fixture files for all four report types, including header-only (empty) reports"
-    met: false
-    reason: "not met — no `channel_combined_a3` fixture; header-only tested only for the basic parser (`packages/features/content-analytics/__tests__/csv-parsers.test.ts:47`)"
+    met: true
+    evidence: "Google's documented headers for all five shapes the ingest reads (`channel_basic_a3`, `channel_combined_a3`, `channel_traffic_source_a3`, `channel_reach_basic_a1`, `channel_reach_combined_a1`) in `packages/features/content-analytics/__tests__/fixtures/youtube-reporting/`; `packages/features/content-analytics/__tests__/csv-parsers.test.ts:170`, header-only and empty `:318`"
   - text: "Matched rows land in `video_metrics` / `video_reach_daily` / `video_traffic_sources`; re-delivery does not duplicate"
-    met: false
-    reason: "unverified — inserts at `packages/features/content-analytics/src/server/reporting/report-ingest.ts:316`, `:356`, `:416`; no test runs `ingestReportCsv`"
+    met: true
+    evidence: "fake vendor, real ClickHouse (owner decision D6): `packages/features/content-analytics/__tests__/report-ingest.local-stack.test.ts:311` (one row per video/day after four deliveries), `:294`"
   - text: "Unmatched channel videos aggregate into `channel_daily` (counted + logged, never dropped silently)"
-    met: false
-    reason: "not met — reach and basic branches insert zero-seeded rows on one key (`packages/features/content-analytics/src/server/reporting/report-ingest.ts:349`, `:403`); under `FINAL` the later zeroes the other"
+    met: true
+    evidence: "core residual in `channel_daily`, reach residual in its own `channel_reach_daily` (migration `packages/clickhouse/src/migrations/011_channel_reach_residual.ts`), so neither report erases the other: `packages/features/content-analytics/__tests__/report-ingest.local-stack.test.ts:257`, `:276`, CI `packages/clickhouse/scripts/verify-queries.ts:572`; logged per report `packages/features/content-analytics/__tests__/report-ingest-run.test.ts:485`. Unmatched traffic-source rows are counted, not stored: no residual table has a source column"
   - text: "Watermark (`last_report_created_after`) advances; already-ingested reports are skipped"
-    met: false
-    reason: "unverified — advances at `packages/features/content-analytics/src/server/reporting/report-ingest.ts:263`, sent as `createdAfter`; the skip is YouTube's filter, needs a live job"
+    met: true
+    evidence: "saved per report, never inside a run of equal createTimes, held while ClickHouse is off or a report is refused: `packages/features/content-analytics/__tests__/report-ingest-run.test.ts:392`, `:415`, `:365`, `:463`. The skip is YouTube's documented `createdAfter` filter (developers.google.com/youtube/reporting/v1/reports); the production-bundle run's second pass sent it and downloaded nothing, against a fake that applies it"
   - text: "One video/day cross-checked against YouTube Studio (views, impressions, CTR)"
     met: false
-    reason: "unverified — a manual check against YouTube Studio on a real channel"
+    reason: "unverified — a manual check against YouTube Studio on a real channel, by the owner after the FILM-1503 cutover. It also settles the CTR unit: Google's definition says both 'percentage' and 'clicks divided by impressions'; the ingest assumes a ratio and refuses any report with a CTR above 1"
 remaining:
-  - criterion: "Parser fixtures for all four report types, incl. header-only"
-    reason: "No `channel_combined_a3` fixture; header-only and empty-file cases are tested only for `parseChannelBasicReport` (`packages/features/content-analytics/__tests__/csv-parsers.test.ts:47`). The code returns `[]` for them, but no test shows it"
-    closed_by: "unassigned"
-  - criterion: "Unmatched videos never dropped silently in `channel_daily`"
-    reason: "The reach branch (`report-ingest.ts:349`) and the basic branch (`:403`) each insert a `channel_daily` row with the other's columns zeroed, on the same `(connection_id, metric_date)` key (`packages/clickhouse/src/migrations/003_reach_and_traffic.ts:56`). Readers use `channel_daily FINAL` (`packages/clickhouse/src/queries-advanced.ts:841`), so whichever report lands later zeroes the residual views and watch time (the YPP input) or the impressions for that day"
-    closed_by: "unassigned"
+  - criterion: "One video/day cross-checked against YouTube Studio"
+    reason: "Needs a real channel's reports and Studio side by side, which only the owner can do, and only once production ClickHouse exists (FILM-1503 cutover). Everything else is verified against fixtures, the local stack and the production bundle"
+    closed_by: "owner"
 open_questions: []
 feature:
   database:
@@ -53,6 +50,7 @@ feature:
       - "video_reach_daily"
       - "video_traffic_sources"
       - "channel_daily"
+      - "channel_reach_daily"
       - "video_metrics"
     columns_added: []
   queries: []
@@ -72,6 +70,34 @@ feature:
       - "downloadReport(url)"
       - "reportTypes.list (live-verify report types)"
 notes: |
+  ## 0. Completion (2026-09-23) — design in `specs/plans/FILM-1504-edd.md`
+
+  - **Residual clobber fixed.** The reach and core reports each wrote a whole
+    `channel_daily` row with the other's columns zeroed, on one key, so the
+    later one erased the earlier under `FINAL` — reproduced as YPP watch time
+    reading 0 s where 1,800 s was true. The reach residual now has its own
+    table, `channel_reach_daily` (ClickHouse migration 011), mirroring
+    `video_reach_daily`. Every reported date gets a residual row, zero when
+    every video matched, so a redelivered day replaces its old residual.
+  - **No figure YouTube did not report.** Neither reach report has an
+    `engaged_views` column; it was read anyway and stored as 0. Migration 011
+    drops `video_reach_daily.engaged_views` and `channel_daily.impressions`
+    (never written once reach moved out); `VideoQualityMetrics.engagedViews`
+    is gone (it had no reader).
+  - **Nothing discarded while ClickHouse is off.** Inserts no-op then, but the
+    watermark used to advance anyway. Now jobs are ensured and nothing is
+    downloaded; the FILM-1503 runbook resets watermarks at cutover.
+  - **Watermark** is saved per report, never inside a run of equal
+    `createTime`s (the job-creation backfill), and a failed save is reported.
+  - **CTR unit guard.** A reach report with any CTR above 1 is refused and
+    logged, watermark held, until the unit is confirmed against a real report.
+  - **Follow-up, not done here:** engaged views for *matched* videos. The
+    core report carries them and they are parsed, then dropped;
+    `video_metrics` has no column, and adding one needs to be nullable —
+    the hourly Analytics-API sync does not write it, so `DEFAULT 0` would be
+    a default read as a measurement.
+  - **Deploy order:** ClickHouse migration 011 before the app.
+
   ## 1. Overview
 
   > [!IMPORTANT]
@@ -98,7 +124,7 @@ notes: |
   -- RLS: account chain via platform_connections.account_id → has_role_on_account
   ```
 
-  ### ClickHouse — `003_reach_and_traffic.ts`
+  ### ClickHouse — `003_reach_and_traffic.ts` (as first shipped; see §0 for 011)
 
   ```sql
   CREATE TABLE video_reach_daily (
@@ -141,7 +167,11 @@ notes: |
   ## 5. Verification
 
   ```bash
-  pnpm --filter @kit/content-analytics test   # parser fixtures
+  pnpm --filter @kit/content-analytics test   # parser fixtures, ingest guards
+  # the ingest against local Postgres + ClickHouse, fake vendor
+  set -a; . deployment/config/local.env; set +a
+  REPORT_INGEST_LOCAL_STACK=1 pnpm --filter @kit/content-analytics test report-ingest.local-stack
+  pnpm --filter @kit/clickhouse verify         # includes the residual check
   curl -X POST -H "Authorization: Bearer $CRON_SECRET" localhost:3000/api/analytics/reports-ingest
   # after 24–48h: SELECT count() FROM video_reach_daily
   pnpm sst diff
