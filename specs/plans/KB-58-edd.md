@@ -11,6 +11,27 @@ Engineering Design Document. Follows `specs/PLAN_TEMPLATE.md`, all 34 sections.
 | Author / date | kb-58-r2 teammate (takes over from kb-58, whose worktree was removed), 2026-09-23 |
 | Size | M: ~35 files touched, mostly one-line directive removals and moves; no migration; one form call site |
 
+### Changes since approval (Phase 2)
+
+- **Base is `origin/main`.** #310 merged, so this is no longer stacked.
+- **Edit Suite excluded.** FILM-607 is retiring it, so `media-bin-queries.ts` and `getMediaBinDataAction` were dropped from the decision table. Both guards skip `packages/features/edit-suite/` through a named `RETIRING_PATHS` entry, to be removed when that directory is gone.
+- **Barrels split (not foreseen in §15).** Client components import `@kit/audio-generation/server` and `@kit/publishing/server` to get actions. Once the moved functions stopped being `'use server'`, re-exporting their `server-only` modules from those barrels would bundle them for the browser.
+  - Those barrels now hold actions only.
+  - The publishing readers moved to a new `@kit/publishing/server/queries` subpath, used by three pages.
+  - `voice-queries`, `project-audio-settings` and `audio-asset-library` left the audio barrel; every caller already imported them relatively.
+- **`processScheduledPublishes` added to `NEVER_REGISTERED`**, because it runs the publish cron through the admin client.
+- **Build figures.** The `build:test` before D6 registers 357 actions, and none of the 16 secret or admin-client names. Before/after for each name:
+
+  | Name | Registered on main (49b851d6) | Registered on branch |
+  |---|---|---|
+  | `getApiKeyForProvider`, `executeLLM`, `loadAndRenderPrompt`, `logLLMUsage` | yes | no |
+  | `encrypt`, `decrypt`, `isEncrypted` | yes | no |
+  | `getGlobalOAuthCredentials`, `getAccountOAuthApp`, `getAccountOAuthAppAdmin`, `refreshTikTokToken` | yes | no (deleted by #310) |
+  | `getAccessToken`, `validatePlatformToken` | yes | no |
+  | `getAccountElevenLabsApiKey`, `getProjectElevenLabsApiKey` | yes | no |
+  | `processScheduledPublishes` | yes | no |
+  | total actions | 408 | 357 (the three `create-film-project` exports are still registered, pending D6) |
+
 ### What was measured (run, not inferred)
 
 Everything here is static or build-based. **No action was called on a running server**, and no script that sends action POSTs was written. That was the lead's scope rule.
