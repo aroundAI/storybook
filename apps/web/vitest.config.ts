@@ -126,6 +126,22 @@ export default defineConfig({
         __dirname,
         '../../packages/features/assets/src/lib/upload/index.ts',
       ),
+      '@kit/assets/lib': path.resolve(
+        __dirname,
+        '../../packages/features/assets/src/lib/index.ts',
+      ),
+      '@kit/edit-suite/export-upload': path.resolve(
+        __dirname,
+        '../../packages/features/edit-suite/src/lib/export-upload.ts',
+      ),
+      '@kit/storage/client': path.resolve(
+        __dirname,
+        '../../packages/features/storage/src/client.ts',
+      ),
+      '@kit/storage': path.resolve(
+        __dirname,
+        '../../packages/features/storage/src/index.ts',
+      ),
       '@kit/ui/alert': path.resolve(
         __dirname,
         '../../packages/ui/src/shadcn/alert.tsx',

@@ -89,67 +89,28 @@ export async function createFilmProject(
 
 /**
  * Update project cover image URL in metadata
- * Uses SECURITY DEFINER RPC to bypass RLS recursion
+ * Uses SECURITY DEFINER RPC to bypass RLS recursion. The function refuses a
+ * caller who cannot edit the project (42501, KB-28); that refusal is returned
+ * rather than thrown, so a production build shows it as written (KB-6).
  */
 export async function updateProjectCoverImage(
   projectId: string,
   coverImageUrl: string,
-): Promise<void> {
+): Promise<ActionResult<null>> {
   const client = getSupabaseServerClient();
 
-  // Call SECURITY DEFINER function to bypass RLS
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (client.rpc as any)('update_project_cover_image', {
+  const { error } = await client.rpc('update_project_cover_image', {
     p_project_id: projectId,
     p_cover_image_url: coverImageUrl,
   });
 
+  if (error?.code === '42501') {
+    return { ok: false, error: "You can't change this project's cover." };
+  }
+
   if (error) {
     throw new Error(`Failed to update cover image: ${error.message}`);
   }
-}
 
-/**
- * Upload project cover image using the storage adapter
- * Respects STORAGE_PROVIDER env var (local or supabase)
- */
-export async function uploadProjectCoverImage(
-  projectId: string,
-  formData: FormData,
-): Promise<{ success: boolean; url?: string; error?: string }> {
-  const { getStorageAdapter } = await import('@kit/storage');
-  const client = getSupabaseServerClient();
-
-  const file = formData.get('file') as File;
-  if (!file) {
-    return { success: false, error: 'No file provided' };
-  }
-
-  const fileExt = file.name.split('.').pop() || 'jpeg';
-  const filePath = `${projectId}/cover.${fileExt}`;
-
-  try {
-    // Convert File to Buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // Use storage adapter (respects STORAGE_PROVIDER=local)
-    const storage = getStorageAdapter(client);
-    const result = await storage.upload('project-assets', filePath, buffer, {
-      contentType: file.type,
-      cacheControl: '3600',
-      upsert: true,
-    });
-
-    // Update project metadata with cover URL
-    await updateProjectCoverImage(projectId, result.url);
-
-    return { success: true, url: result.url };
-  } catch (error) {
-    console.error('[Cover Upload] Failed:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Upload failed',
-    };
-  }
+  return { ok: true, data: null };
 }

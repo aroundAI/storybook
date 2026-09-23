@@ -16,7 +16,8 @@
         "./types": "./src/lib/types.ts",
         "./components": "./src/components/index.ts",
         "./state": "./src/state/types.ts",
-        "./server/actions": "./src/server/actions.ts"
+        "./server/actions": "./src/server/actions.ts",
+        "./export-upload": "./src/lib/export-upload.ts"
     },
     "devDependencies": {
         "@aws-sdk/client-sqs": "^3.968.0",

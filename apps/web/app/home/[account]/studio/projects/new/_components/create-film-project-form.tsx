@@ -242,7 +242,7 @@ export function CreateFilmProjectForm({
             const uploadResult = await uploadProjectCover(coverFile, projectId);
 
             // Update project metadata with cover URL
-            await updateProjectCoverImage(projectId, uploadResult.url);
+            await unwrap(updateProjectCoverImage(projectId, uploadResult.url));
           } catch (uploadError) {
             console.error('Cover image upload failed:', uploadError);
             toast.error(

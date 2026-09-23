@@ -757,3 +757,95 @@ export async function seedScheduledReport(input: {
 
   return row.id;
 }
+
+/**
+ * Uploads through the Storage API as a signed-in user, with that user's own
+ * token and the public anon key — exactly what anyone holding a session can
+ * do without going through the app (KB-28). Returns the Storage API's answer
+ * rather than throwing, because refusals are what the callers assert.
+ */
+export async function storageUploadAs(
+  user: { email: string; password: string },
+  bucket: string,
+  name: string,
+  body: Buffer | string,
+  contentType: string,
+): Promise<{ status: number; body: string }> {
+  const session = await post('/auth/v1/token?grant_type=password', ANON_KEY, {
+    email: user.email,
+    password: user.password,
+  });
+
+  const response = await fetch(
+    `${SUPABASE_URL}/storage/v1/object/${bucket}/${name}`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: ANON_KEY,
+        Authorization: `Bearer ${session.access_token as string}`,
+        'Content-Type': contentType,
+      },
+      body: typeof body === 'string' ? body : Uint8Array.from(body),
+    },
+  );
+
+  return { status: response.status, body: await response.text() };
+}
+
+/** Gives a user a role on a project, as the project's members page would. */
+export async function seedProjectMember(
+  projectId: string,
+  userId: string,
+  role: 'owner' | 'admin' | 'member' | 'viewer' = 'member',
+): Promise<void> {
+  await insertRow(
+    'project_members',
+    { project_id: projectId, user_id: userId, role },
+    { key: SERVICE_ROLE_KEY },
+  );
+}
+
+/** Reads rows through PostgREST as a signed-in user, under their RLS. */
+export async function readRowsAs<T>(
+  user: { email: string; password: string },
+  table: string,
+  query: string,
+): Promise<T[]> {
+  const session = await post('/auth/v1/token?grant_type=password', ANON_KEY, {
+    email: user.email,
+    password: user.password,
+  });
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+    headers: {
+      apikey: ANON_KEY,
+      Authorization: `Bearer ${session.access_token as string}`,
+    },
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`read ${table} failed (${response.status}): ${text}`);
+  }
+
+  return JSON.parse(text) as T[];
+}
+
+/** Whether an object exists, asked with the service role. */
+export async function storageObjectExists(
+  bucket: string,
+  name: string,
+): Promise<boolean> {
+  const response = await fetch(
+    `${SUPABASE_URL}/storage/v1/object/info/${bucket}/${name}`,
+    {
+      headers: {
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      },
+    },
+  );
+
+  return response.status === 200;
+}
