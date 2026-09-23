@@ -280,6 +280,15 @@ Two rules of thumb earned the hard way:
 - **A mocked client cannot reject your SQL.** Anything that talks to ClickHouse
   or Postgres needs a run against the real thing before it is believed.
 
+**A docs-only change skips the heavy CI jobs.** When every changed file matches
+`**/*.md`, `specs/**` or `docs/**` (`scripts/ci/docs-only.sh`), the TypeScript,
+database, ClickHouse, E2E, format and mutation-shard jobs are skipped, and
+📚 Docs checks runs the unit suites (several read `docs/` and `specs/`), KB-80's
+records guard and the mutation guards that target `specs/` or `docs/`. Every
+other `.json` and `.yaml` is code: prompts, locales, `package.json`, the
+mutation guards and the lockfile are all read by a build or a test. So is a
+change to the classifier or `workflow.yml`, which always runs the full suite.
+
 ---
 
 ## Local environment: Supabase *and* ClickHouse
