@@ -22,7 +22,7 @@ import { runAgent } from '@kit/agent';
 import type { AgentRunResult } from '@kit/agent';
 
 import type { EpisodeViralQuality, ViralDimensionScores } from '../lib/types';
-import { continuitySkill } from './skills/continuity-skill';
+import { createContinuitySkill } from './skills/continuity-skill';
 import { reelScoutSkill } from './skills/reel-scout-skill';
 import { screenplayDirectorSkill } from './skills/screenplay-director-skill';
 import { shotDirectorSkill } from './skills/shot-director-skill';
@@ -111,7 +111,10 @@ export async function runContentOrchestrator(
         skills: [
           storyDirectorSkill,
           viralAnalystSkill,
-          continuitySkill,
+          createContinuitySkill({
+            client: supabase,
+            projectId: input.projectId,
+          }),
           reelScoutSkill,
           screenplayDirectorSkill,
           shotDirectorSkill,

@@ -17,6 +17,11 @@ import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { buildMemoryContext } from '../lib/canon/memory-context-builder';
+import {
+  MAX_MEMORY_HORIZON,
+  MIN_MEMORY_HORIZON,
+  effectiveMemoryHorizon,
+} from '../lib/canon/memory-horizon';
 import type {
   AddImmutableEventInput,
   BuildMemoryContextInput,
@@ -93,7 +98,12 @@ const BuildMemoryContextSchema = z.object({
   projectId: z.string().uuid(),
   episodeNumber: z.number().int().positive(),
   tokenBudgetPercent: z.number().min(1).max(50).optional(),
-  memoryHorizon: z.number().int().min(1).max(100).optional(),
+  memoryHorizon: z
+    .number()
+    .int()
+    .min(MIN_MEMORY_HORIZON)
+    .max(MAX_MEMORY_HORIZON)
+    .optional(),
 });
 
 const GetCanonHealthSchema = z.object({
@@ -646,7 +656,7 @@ export const getActiveThreadsAction = enhanceAction(
  */
 export const buildMemoryContextAction = enhanceAction(
   async (data: BuildMemoryContextInput) => {
-    return buildMemoryContext(data);
+    return buildMemoryContext(getSupabaseServerClient(), data);
   },
   {
     schema: BuildMemoryContextSchema,
@@ -714,7 +724,9 @@ export const getCanonHealthAction = enhanceAction(
 
     // Filter to stale threads only — threads untouched for memoryHorizon episodes
     const currentEpisodeNumber = episodesResult.data?.number ?? 0;
-    const staleThreshold = canonSettings.memoryHorizon;
+    const staleThreshold = effectiveMemoryHorizon(
+      project?.metadata,
+    ).memoryHorizon;
 
     const staleThreads = (allActiveThreads ?? []).filter((thread) => {
       const openedEpNumber =
@@ -799,6 +811,9 @@ export const updateCanonSettingsAction = enhanceAction(
       canon: {
         ...currentCanon,
         ...data.settings,
+        ...(data.settings.memoryHorizon !== undefined && {
+          memoryHorizonMode: 'custom' as const,
+        }),
       },
     };
 
@@ -825,7 +840,12 @@ export const updateCanonSettingsAction = enhanceAction(
       settings: z.object({
         enabled: z.boolean().optional(),
         roleSeparation: z.boolean().optional(),
-        memoryHorizon: z.number().int().min(1).max(100).optional(),
+        memoryHorizon: z
+          .number()
+          .int()
+          .min(MIN_MEMORY_HORIZON)
+          .max(MAX_MEMORY_HORIZON)
+          .optional(),
         enforcement: z.enum(['flexible', 'strict']).optional(),
         contentType: z.enum(['series', 'movie', 'factual', 'news']).optional(),
       }),

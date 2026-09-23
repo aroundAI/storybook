@@ -8,7 +8,15 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import type { CanonSettings } from '@kit/episodes';
-import { DEFAULT_CANON_SETTINGS } from '@kit/episodes';
+import {
+  DEFAULT_CANON_SETTINGS,
+  MAX_MEMORY_HORIZON,
+  MIN_MEMORY_HORIZON,
+  PROJECT_TYPE_LABELS,
+  contentTypeMemoryHorizon,
+  savedMemoryHorizonOverride,
+} from '@kit/episodes';
+import type { ProjectType } from '@kit/film-studio-schemas/project';
 import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import { Badge } from '@kit/ui/badge';
@@ -47,7 +55,13 @@ import { updateCanonSettingsAction } from './canon-settings-actions';
 const CanonSettingsSchema = z.object({
   enabled: z.boolean(),
   roleSeparation: z.boolean(),
-  memoryHorizon: z.number().min(1).max(20),
+  // null = automatic: the content type's horizon applies (FILM-1110)
+  memoryHorizon: z
+    .number()
+    .int()
+    .min(MIN_MEMORY_HORIZON)
+    .max(MAX_MEMORY_HORIZON)
+    .nullable(),
   enforcement: z.enum(['flexible', 'strict']),
   contentType: z.enum(['series', 'movie', 'factual', 'news']),
 });
@@ -56,11 +70,13 @@ type CanonSettingsFormData = z.infer<typeof CanonSettingsSchema>;
 
 interface CanonSettingsFormProps {
   projectId: string;
+  projectType: ProjectType;
   currentSettings: CanonSettings | null | undefined;
 }
 
 export function CanonSettingsForm({
   projectId,
+  projectType,
   currentSettings,
 }: CanonSettingsFormProps) {
   const [isPending, startTransition] = useTransition();
@@ -75,7 +91,7 @@ export function CanonSettingsForm({
     defaultValues: {
       enabled: settings.enabled,
       roleSeparation: settings.roleSeparation,
-      memoryHorizon: settings.memoryHorizon,
+      memoryHorizon: savedMemoryHorizonOverride(currentSettings) ?? null,
       enforcement: settings.enforcement,
       contentType: settings.contentType,
     },
@@ -85,12 +101,19 @@ export function CanonSettingsForm({
 
   const onSubmit = useCallback(
     (data: CanonSettingsFormData) => {
+      // The horizon is saved as a choice only if the user moved the slider;
+      // otherwise whatever was loaded (usually automatic) is kept.
+      const horizonMoved = form.getFieldState('memoryHorizon').isDirty;
+      const memoryHorizon = horizonMoved
+        ? data.memoryHorizon
+        : (form.formState.defaultValues?.memoryHorizon ?? null);
+
       startTransition(async () => {
         try {
           await unwrap(
             updateCanonSettingsAction({
               projectId,
-              settings: data,
+              settings: { ...data, memoryHorizon },
             }),
           );
           toast.success('Canon settings saved');
@@ -137,6 +160,7 @@ export function CanonSettingsForm({
                     <Switch
                       checked={field.value}
                       onCheckedChange={field.onChange}
+                      data-test="canon-enabled-switch"
                     />
                   </FormControl>
                 </FormItem>
@@ -228,23 +252,17 @@ export function CanonSettingsForm({
                   control={form.control}
                   name="memoryHorizon"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Memory Horizon: {field.value} episodes
-                      </FormLabel>
-                      <FormControl>
-                        <Slider
-                          min={1}
-                          max={20}
-                          step={1}
-                          value={[field.value]}
-                          onValueChange={([value]) => field.onChange(value)}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        How many prior episodes to consider for context
-                      </FormDescription>
-                    </FormItem>
+                    <MemoryHorizonField
+                      value={field.value}
+                      automaticHorizon={contentTypeMemoryHorizon(projectType)}
+                      projectType={projectType}
+                      onChange={field.onChange}
+                      onReset={() =>
+                        form.setValue('memoryHorizon', null, {
+                          shouldDirty: true,
+                        })
+                      }
+                    />
                   )}
                 />
 
@@ -286,6 +304,7 @@ export function CanonSettingsForm({
               <Button
                 type="submit"
                 disabled={isPending || !form.formState.isDirty}
+                data-test="canon-settings-save"
               >
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save Changes
@@ -295,5 +314,71 @@ export function CanonSettingsForm({
         </Form>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * The slider always shows the horizon generation will use: the user's
+ * choice when there is one, otherwise the content type's.
+ */
+function MemoryHorizonField({
+  value,
+  automaticHorizon,
+  projectType,
+  onChange,
+  onReset,
+}: {
+  value: number | null;
+  automaticHorizon: number;
+  projectType: ProjectType;
+  onChange: (value: number) => void;
+  onReset: () => void;
+}) {
+  const isAutomatic = value === null;
+  const effective = value ?? automaticHorizon;
+  const unit = effective === 1 ? 'episode' : 'episodes';
+  const mode = isAutomatic
+    ? `automatic, ${PROJECT_TYPE_LABELS[projectType]}`
+    : 'custom';
+
+  return (
+    <FormItem>
+      <div className="flex items-center justify-between gap-2">
+        <FormLabel data-test="canon-memory-horizon-label">
+          Memory Horizon: {effective} {unit} ({mode})
+        </FormLabel>
+
+        <If condition={!isAutomatic}>
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            className="h-auto p-0"
+            onClick={onReset}
+            data-test="canon-memory-horizon-reset"
+          >
+            Reset to automatic
+          </Button>
+        </If>
+      </div>
+      <FormControl>
+        <Slider
+          min={MIN_MEMORY_HORIZON}
+          max={MAX_MEMORY_HORIZON}
+          step={1}
+          value={[effective]}
+          onValueChange={([next]) => {
+            if (next !== undefined) {
+              onChange(next);
+            }
+          }}
+          data-test="canon-memory-horizon-slider"
+        />
+      </FormControl>
+      <FormDescription>
+        How many prior episodes to consider for context. Automatic uses the
+        project type&apos;s default.
+      </FormDescription>
+    </FormItem>
   );
 }

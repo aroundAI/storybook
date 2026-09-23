@@ -3,7 +3,7 @@ title: "Content Type Configurations"
 phase: 11
 phase_name: "Canon Integration & Content Types"
 category: feature
-status: PARTIAL
+status: DONE
 audited: "2026-09-23"
 effort: S
 dependencies: []
@@ -22,7 +22,7 @@ feature:
 acceptance_criteria:
   - text: "`ContentTypeConfig` interface defined"
     met: true
-    evidence: null
+    evidence: "packages/features/episodes/src/lib/canon/content-type-configs.ts:19"
   - text: "`CONTENT_TYPE_CONFIGS` mapping created for all project types"
     met: true
     evidence: null
@@ -30,8 +30,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "Memory context builder uses config for budget allocation"
-    met: false
-    reason: "no longer true — no caller passes `projectType`, and `getProjectContentType` (`packages/features/episodes/src/lib/canon/content-type-configs.ts:209`) is never called"
+    met: true
+    evidence: "packages/features/episodes/src/lib/canon/memory-context-builder.ts — resolves the type from `projects.metadata`; asserted per type in `__tests__/memory-context-builder.test.ts` and against a real database by `scripts/verify-memory-context.ts` (CI: Supabase DB job)"
   - text: "Project type retrieved from settings.projectType (not new column)"
     met: true
     evidence: null
@@ -39,13 +39,27 @@ acceptance_criteria:
     met: true
     evidence: null
 test_plan:
-  unit: []
-  integration: []
-  e2e: []
-remaining:
-  - criterion: "Memory context builder uses config for budget allocation"
-    reason: "`buildMemoryContext` applies the config only when given `projectType`; no caller passes one (`BuildMemoryContextSchema` has no such field), so the default split and a 10-episode horizon always apply"
-    closed_by: "unassigned"
+  unit:
+    - text: "Budgets, split and horizon for all 7 types, fallbacks and overrides"
+      met: true
+      evidence: "packages/features/episodes/__tests__/memory-context-builder.test.ts"
+    - text: "Horizon precedence and the legacy untouched-10 rule"
+      met: true
+      evidence: "packages/features/episodes/__tests__/memory-horizon.test.ts"
+    - text: "Continuity tools read only the project bound at construction"
+      met: true
+      evidence: "packages/features/episodes/__tests__/continuity-skill.test.ts"
+    - text: "The builder loads and runs in the LLM Lambda bundle"
+      met: true
+      evidence: "apps/web/lambda/llm-worker/__tests__/canon-bundle.test.ts"
+  integration:
+    - text: "Real-database build per content type (columns, horizon windowing)"
+      met: true
+      evidence: "packages/features/episodes/scripts/verify-memory-context.ts"
+  e2e:
+    - text: "Canon settings slider shows the effective horizon; untouched save stays automatic"
+      met: true
+      evidence: "apps/e2e/tests/canon/canon-memory-horizon.spec.ts"
 open_questions: []
 notes: |
   Priority (source frontmatter): high
@@ -345,4 +359,26 @@ notes: |
 
   ## Implementation Status
 
-  **🟡 PARTIAL** (audit 2026-09-23; was **Implemented** in PR #176 — merged 2026-02-09)
+  **✅ DONE** (FILM-1110 EDD, `specs/plans/FILM-1110-edd.md`; was PARTIAL at the
+  2026-09-23 audit, first implemented in PR #176 — merged 2026-02-09)
+
+  What changed from the design above, and why:
+
+  - **One allocation table.** `ContentTypeConfig.allocations` was removed;
+    token allocation lives only in FILM-1111's `MEMORY_ALLOCATIONS`. The two
+    tables disagreed for every type and neither was read by anything live.
+  - **The type is resolved inside the builder**, from `projects.metadata`,
+    validated against `ProjectTypeSchema` (fallback `series`) — no caller
+    has to pass it. `getProjectContentType` was replaced by the pure
+    `resolveProjectType(metadata)`, importable from client code.
+  - **The client is injected**: `buildMemoryContext(client, input)`. The
+    builder imported the Next.js cookie client, whose `server-only` guard
+    throws in the LLM Lambda bundle, so every generation-time build failed
+    silently.
+  - **Two column fixes**: characters are read by `assets.type` and summaries
+    windowed on `episodes.number`; both reads returned HTTP 400 before.
+  - **Horizon precedence** (`memory-horizon.ts`): explicit argument → the
+    user's Canon settings choice → the content type → 10. The Canon
+    settings slider now shows the horizon in effect and stores a number
+    only when moved; a stored 10 saved before this change reads as
+    automatic.

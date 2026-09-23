@@ -6,6 +6,9 @@
  */
 import type { ProjectType } from '@kit/film-studio-schemas/project';
 
+import type { ProjectTypeSource } from './content-type-configs';
+import type { MemoryHorizonMode, MemoryHorizonSource } from './memory-horizon';
+
 // =============================================================================
 // DATABASE ENTITY TYPES (matching Supabase schema)
 // =============================================================================
@@ -193,9 +196,29 @@ export interface MemoryContext {
   worldState?: WorldState;
   metadata: {
     builtAt: string;
+    /** The content type the budgets and horizon were taken from (FILM-1110) */
+    projectType: ProjectType;
+    projectTypeSource: ProjectTypeSource;
     memoryHorizon: number;
+    memoryHorizonSource: MemoryHorizonSource;
+    /** Token budget per category, before loading */
+    budgets: MemoryBudgets;
     totalTokensUsed: number;
   };
+}
+
+/**
+ * Token budget per category. `parentContext` (FILM-1113) and
+ * `sourcesCitations` (FILM-1111/FILM-1135) are reserved but not yet filled.
+ */
+export interface MemoryBudgets {
+  immutableEvents: number;
+  characterStates: number;
+  worldStates: number;
+  narrativeThreads: number;
+  episodeSummaries: number;
+  parentContext: number;
+  sourcesCitations: number;
 }
 
 /**
@@ -380,7 +403,15 @@ export interface RoleExecutionResult {
 export interface CanonSettings {
   enabled: boolean;
   roleSeparation: boolean;
-  memoryHorizon: number;
+  /**
+   * Episodes of history to include, when the user chose a number; `null`
+   * means automatic (the content type's horizon). Read it through
+   * `savedMemoryHorizonOverride`, which also handles saves from before
+   * `memoryHorizonMode` existed.
+   */
+  memoryHorizon: number | null;
+  /** Absent on settings saved before FILM-1110. */
+  memoryHorizonMode?: MemoryHorizonMode;
   enforcement: 'flexible' | 'strict';
   contentType: 'series' | 'movie' | 'factual' | 'news';
 }
@@ -388,7 +419,8 @@ export interface CanonSettings {
 export const DEFAULT_CANON_SETTINGS: CanonSettings = {
   enabled: false,
   roleSeparation: false,
-  memoryHorizon: 10,
+  memoryHorizon: null,
+  memoryHorizonMode: 'automatic',
   enforcement: 'flexible',
   contentType: 'series',
 };
