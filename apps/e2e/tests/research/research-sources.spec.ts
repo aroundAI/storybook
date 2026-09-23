@@ -71,6 +71,14 @@ function sourceRows(page: Page, name: string) {
   return page.locator('[data-test="research-source-row"]', { hasText: name });
 }
 
+/**
+ * The list loads client-side, so an absence asserted before it arrives
+ * passes against an empty page. A seeded shared source proves it has loaded.
+ */
+async function waitForSourceList(page: Page) {
+  await expect(sourceRows(page, 'Reuters')).toHaveCount(1);
+}
+
 test.describe('Research sources are private to their project (KB-26)', () => {
   test('an upload is readable by its project and nobody else', async ({
     page,
@@ -87,6 +95,7 @@ test.describe('Research sources are private to their project (KB-26)', () => {
     // the dialog has reset, must reuse her source rather than add a second.
     await signInAs(page, alice);
     await page.goto(researchPath(alice, aliceProject));
+    await waitForSourceList(page);
 
     await uploadThroughDialog(
       page,
@@ -103,10 +112,17 @@ test.describe('Research sources are private to their project (KB-26)', () => {
     await expect(sourceRows(page, name)).toHaveCount(1);
 
     if (capture) {
-      await page.screenshot({ path: `${OUT}/01-alice-hub-after-two-uploads.png` });
+      await sourceRows(page, name).scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: `${OUT}/01-alice-hub-after-two-uploads.png`,
+        fullPage: true,
+      });
     }
 
-    const aliceContent = await readRows<{ project_id: string; is_upload: boolean }>(
+    const aliceContent = await readRows<{
+      project_id: string;
+      is_upload: boolean;
+    }>(
       'external_content',
       `project_id=eq.${aliceProject.id}&select=project_id,is_upload`,
     );
@@ -117,10 +133,18 @@ test.describe('Research sources are private to their project (KB-26)', () => {
     const bobToken = await tokenFor(bob);
 
     expect(
-      await readAs(bobToken, 'external_content', `project_id=eq.${aliceProject.id}&select=title,content`),
+      await readAs(
+        bobToken,
+        'external_content',
+        `project_id=eq.${aliceProject.id}&select=title,content`,
+      ),
     ).toEqual([]);
     expect(
-      await readAs(bobToken, 'external_sources', `project_id=eq.${aliceProject.id}&select=name`),
+      await readAs(
+        bobToken,
+        'external_sources',
+        `project_id=eq.${aliceProject.id}&select=name`,
+      ),
     ).toEqual([]);
 
     // Making the project public lets Bob read the project, and still not the
@@ -132,7 +156,11 @@ test.describe('Research sources are private to their project (KB-26)', () => {
       await readAs(bobToken, 'projects', `id=eq.${aliceProject.id}&select=id`),
     ).toHaveLength(1);
     expect(
-      await readAs(bobToken, 'external_content', `project_id=eq.${aliceProject.id}&select=title`),
+      await readAs(
+        bobToken,
+        'external_content',
+        `project_id=eq.${aliceProject.id}&select=title`,
+      ),
     ).toEqual([]);
 
     // Bob uploads a source with the same name into his own project.
@@ -141,14 +169,30 @@ test.describe('Research sources are private to their project (KB-26)', () => {
 
     await signInAs(bobPage, bob);
     await bobPage.goto(researchPath(bob, bobProject));
+    await waitForSourceList(bobPage);
     await expect(sourceRows(bobPage, name)).toHaveCount(0);
 
     if (capture) {
-      await bobPage.screenshot({ path: `${OUT}/02-bob-hub-before-upload.png` });
+      await bobPage.screenshot({
+        path: `${OUT}/02-bob-hub-without-alices-upload.png`,
+        fullPage: true,
+      });
     }
 
-    await uploadThroughDialog(bobPage, name, 'Bob has his own notes on 7 topics.');
+    await uploadThroughDialog(
+      bobPage,
+      name,
+      'Bob has his own notes on 7 topics.',
+    );
     await expect(sourceRows(bobPage, name)).toHaveCount(1);
+
+    if (capture) {
+      await sourceRows(bobPage, name).scrollIntoViewIfNeeded();
+      await bobPage.screenshot({
+        path: `${OUT}/03-bob-hub-after-same-name-upload.png`,
+        fullPage: true,
+      });
+    }
 
     const sources = await readRows<{ project_id: string }>(
       'external_sources',
