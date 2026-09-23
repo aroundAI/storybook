@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -11,16 +12,23 @@ import { BatchAssembleSchema, BatchSaveSchema } from '../lib/schemas';
 import { mapEditProjectRow } from '../lib/types';
 import type { BatchAssembleResult, BatchSaveResult } from '../lib/types';
 import { getEditSuiteClient } from './db-client';
+import { throwIfWriteRefused } from './write-refusal';
 
 /**
- * Batch-creates an entire edit project from auto-assembly.
- * Creates: project → tracks → clips → sync groups → keyframes atomically
- * via a PostgreSQL function (single transaction).
+ * Batch-creates an entire edit project from auto-assembly, replacing any
+ * existing one. Creates: project → tracks → clips → sync groups → keyframes
+ * atomically via a PostgreSQL function (single transaction).
  *
  * The client-side auto-assembly algorithm builds the arrays and calls this
  * single server action to persist everything atomically.
+ *
+ * Who may assemble is decided by the function, from the session: the
+ * project's owner, admins and members (`can_write_project`, KB-40). It is
+ * reachable over PostgREST directly, so the rule has to live there, and a
+ * second copy here would only drift from it.
  */
-export const batchAssembleAction = enhanceAction(
+export const batchAssembleAction = returnRefusals(
+  enhanceAction(
   async (data): Promise<{ success: true; result: BatchAssembleResult }> => {
     const logger = await getLogger();
     const ctx = { name: 'editSuite.batchAssemble', episodeId: data.episodeId };
@@ -36,39 +44,11 @@ export const batchAssembleAction = enhanceAction(
 
     const client = getEditSuiteClient();
 
-    // Verify user has access to this episode (IDOR protection)
-    // Join episode → project → account to verify ownership
-    const { data: episode, error: episodeError } = await client
-      .from('episodes')
-      .select('id, projects!inner(id, account_id)')
-      .eq('id', data.episodeId)
-      .is('deleted_at', null)
-      .single();
-
-    if (episodeError || !episode) {
-      throw new Error('Episode not found or access denied');
-    }
-
-    // Verify the user is a member of the account that owns this project
-    const accountId = (episode as { projects: { account_id: string } }).projects
-      .account_id;
-    const { data: membership, error: memberError } = await client
-      .from('accounts_memberships')
-      .select('account_id')
-      .eq('account_id', accountId)
-      .eq('user_id', user.id)
-      .single();
-
-    if (memberError || !membership) {
-      throw new Error('Access denied: not a member of the project account');
-    }
-
     // Call the atomic RPC function
     const { data: result, error: rpcError } = await client.rpc(
       'batch_assemble_edit_project',
       {
         p_episode_id: data.episodeId,
-        p_user_id: user.id,
         p_width: data.width,
         p_height: data.height,
         p_fps: data.fps,
@@ -79,6 +59,12 @@ export const batchAssembleAction = enhanceAction(
         p_sync_groups: JSON.stringify(data.syncGroups),
       },
     );
+
+    if (rpcError?.code === '42501') {
+      logger.warn({ ...ctx, error: rpcError }, 'Batch assemble refused');
+    }
+
+    throwIfWriteRefused(rpcError, 'assemble its timeline');
 
     if (rpcError) {
       logger.error(
@@ -135,6 +121,7 @@ export const batchAssembleAction = enhanceAction(
     };
   },
   { schema: BatchAssembleSchema },
+  ),
 );
 
 /**

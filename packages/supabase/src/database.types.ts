@@ -5474,7 +5474,6 @@ export type Database = {
           p_keyframes?: string
           p_sync_groups?: string
           p_tracks?: string
-          p_user_id: string
           p_width?: number
         }
         Returns: Json

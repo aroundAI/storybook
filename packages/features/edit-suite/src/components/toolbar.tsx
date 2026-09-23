@@ -52,6 +52,7 @@ export function Toolbar() {
     canRedo,
     forceSave,
     assemblyStatus,
+    assemblyError,
     runAutoAssembly,
     episodeId,
     availableLanguages,
@@ -208,6 +209,7 @@ export function Toolbar() {
         {/* Auto-Assemble — shown when no project is loaded */}
         {!data.project && episodeId && (
           <ToolbarButton
+            data-test="edit-suite-auto-assemble"
             variant="primary"
             disabled={assemblyStatus === 'assembling'}
             onClick={() => void runAutoAssembly(episodeId)}
@@ -222,7 +224,13 @@ export function Toolbar() {
         )}
 
         {assemblyStatus === 'error' && (
-          <span className="text-[11px] text-red-400">Assembly failed</span>
+          <span
+            data-test="edit-suite-assembly-error"
+            role="alert"
+            className="text-[11px] text-red-400"
+          >
+            {assemblyError}
+          </span>
         )}
 
         <span
@@ -285,7 +293,9 @@ function ToolbarButton({
   title,
   active,
   variant,
+  'data-test': dataTest,
 }: {
+  'data-test'?: string;
   children: React.ReactNode;
   disabled?: boolean;
   onClick?: () => void;
@@ -304,6 +314,7 @@ function ToolbarButton({
             : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-700',
         disabled && 'cursor-not-allowed opacity-40',
       )}
+      data-test={dataTest}
       disabled={disabled}
       onClick={onClick}
       title={title}

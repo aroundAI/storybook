@@ -27,6 +27,8 @@ import {
 } from 'react';
 import type { Dispatch, MutableRefObject, ReactNode } from 'react';
 
+import { refusalMessage } from '@kit/next/action-result';
+
 import { useEditSuiteWebSocket } from '../hooks/use-edit-suite-websocket';
 import type { AudioEngine } from '../lib/audio-engine';
 import type { PlaybackEngine } from '../lib/playback-engine';
@@ -95,6 +97,8 @@ export interface CommandContextValue {
   canRedo: boolean;
   forceSave: () => void;
   assemblyStatus: AssemblyStatus;
+  /** What to show when assembly failed: a refusal as written, or a fallback */
+  assemblyError: string | null;
   runAutoAssembly: (episodeId: string) => void;
   episodeId: string | undefined;
   playbackEngineRef: MutableRefObject<PlaybackEngine | null>;
@@ -132,7 +136,11 @@ export function EditSuiteProvider({
   );
   const undoManagerRef = useRef(new UndoManager());
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [assemblyStatus, setAssemblyStatus] = useState<AssemblyStatus>('idle');
+  const [assembly, setAssembly] = useState<{
+    status: AssemblyStatus;
+    error: string | null;
+  }>({ status: 'idle', error: null });
+  const assemblyStatus = assembly.status;
   const playbackEngineRef = useRef<PlaybackEngine | null>(null);
   const audioEngineRef = useRef<AudioEngine | null>(null);
 
@@ -522,7 +530,7 @@ export function EditSuiteProvider({
     async (episodeId: string) => {
       if (assemblyStatus === 'assembling') return;
 
-      setAssemblyStatus('assembling');
+      setAssembly({ status: 'assembling', error: null });
 
       try {
         const { autoAssemble } = await import('../lib/auto-assemble');
@@ -559,10 +567,13 @@ export function EditSuiteProvider({
           throw new Error('Failed to load project after assembly');
         }
 
-        setAssemblyStatus('done');
+        setAssembly({ status: 'done', error: null });
       } catch (error) {
         console.error('Auto-assembly failed:', error);
-        setAssemblyStatus('error');
+        setAssembly({
+          status: 'error',
+          error: refusalMessage(error, 'Assembly failed'),
+        });
       }
     },
     [assemblyStatus, dispatch],
@@ -646,6 +657,7 @@ export function EditSuiteProvider({
       canRedo: undoManagerRef.current.canRedo,
       forceSave: performSave,
       assemblyStatus,
+      assemblyError: assembly.error,
       runAutoAssembly,
       episodeId: episodeIdProp,
       playbackEngineRef,
@@ -659,6 +671,7 @@ export function EditSuiteProvider({
       redo,
       performSave,
       assemblyStatus,
+      assembly.error,
       runAutoAssembly,
       episodeIdProp,
       availableLanguages,

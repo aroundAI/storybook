@@ -416,7 +416,7 @@ export async function autoAssemble(params: AutoAssembleParams) {
 
   // 3. Persist atomically via server action
   const { batchAssembleAction } = await import('../server/actions');
-  const result = await batchAssembleAction(payload);
+  const result = await unwrap(batchAssembleAction(payload));
 
   if (!result.success) {
     throw new Error('Auto-assembly failed');
