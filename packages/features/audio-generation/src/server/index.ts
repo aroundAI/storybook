@@ -1,7 +1,7 @@
+// Actions only: client components import this barrel, so a `server-only`
+// library re-exported here would be bundled for the browser (KB-58).
 export * from './actions';
-export * from './queries';
 export * from './voice-actions';
-export * from './voice-queries';
 export * from './voice-clone-actions';
 export * from './voice-profile-actions';
 export * from './batch-actions';
@@ -18,8 +18,6 @@ export * from './episode-audio-actions';
 export * from './audio-cue-actions';
 // ElevenLabs Connection
 export * from './elevenlabs-connection.actions';
-// Project Audio Settings
-export * from './project-audio-settings';
 // Bulk data loader for Audio Studio
 export * from './audio-studio-bulk-action';
 // Constants (for UI dropdowns)

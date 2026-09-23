@@ -7,7 +7,6 @@ export {
 export {
   getShortsCandidates,
   getShortsForEpisode,
-  getShortById,
   type ShortCandidate,
   type Short,
   type ShortPublication,

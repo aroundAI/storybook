@@ -21,33 +21,6 @@ export interface AccountOAuthApp {
 }
 
 /**
- * Get all OAuth apps for an account
- */
-export async function getAccountOAuthApps(
-  accountId: string,
-): Promise<AccountOAuthApp[]> {
-  const client = getSupabaseServerClient();
-
-  const { data, error } = await client
-    .from('account_oauth_apps')
-    .select('id, account_id, platform, client_id, created_at, updated_at')
-    .eq('account_id', accountId);
-
-  if (error || !data) {
-    return [];
-  }
-
-  return data.map((row) => ({
-    id: row.id,
-    accountId: row.account_id,
-    platform: row.platform as 'youtube' | 'tiktok' | 'meta',
-    clientId: row.client_id,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }));
-}
-
-/**
  * Save OAuth app credentials for an account
  */
 const SaveOAuthAppSchema = z.object({

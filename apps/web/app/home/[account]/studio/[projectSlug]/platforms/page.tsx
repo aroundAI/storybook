@@ -10,7 +10,7 @@ import {
 import {
   getAccountPlatformConnections,
   getProjectPublishingConfigs,
-} from '@kit/publishing/server';
+} from '@kit/publishing/server/queries';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import {
   Card,

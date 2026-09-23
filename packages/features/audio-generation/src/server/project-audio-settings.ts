@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 import { decrypt } from '@kit/shared/crypto';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -96,23 +96,6 @@ export async function getProjectTTSModel(projectId: string): Promise<string> {
   if (!model) {
     throw new Error(
       `No TTS model configured for project. Please configure audio settings in Project Settings.`,
-    );
-  }
-
-  return model;
-}
-
-/**
- * Get the ElevenLabs SFX model for a project
- * Throws if no model is configured - requires explicit configuration
- */
-export async function getProjectSFXModel(projectId: string): Promise<string> {
-  const settings = await getProjectAudioSettings(projectId);
-  const model = settings?.elevenlabs?.sfx_model;
-
-  if (!model) {
-    throw new Error(
-      `No SFX model configured for project. Please configure audio settings in Project Settings.`,
     );
   }
 

@@ -1,5 +1,3 @@
-'use server';
-
 import 'server-only';
 
 import type { LanguageDimension, SegmentConfidence } from '@kit/clickhouse';
@@ -33,8 +31,8 @@ interface LanguageReadOptions {
   endDate?: Date;
   /**
    * Which language the figures are grouped by. Resolved through
-   * `resolveLanguageDimension` rather than trusted: this is a `'use server'`
-   * module, so every export is an endpoint and the value can be anything.
+   * `resolveLanguageDimension` rather than trusted: the actions that call
+   * these pass it through from their input, which can be anything.
    */
   dimension?: LanguageDimension;
 }

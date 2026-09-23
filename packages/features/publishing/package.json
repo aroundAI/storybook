@@ -33,6 +33,7 @@
     "./components/upload-only-mode": "./src/components/upload-only-mode.tsx",
     "./server/connection-actions": "./src/server/connection-actions.ts",
     "./server/oauth-app-credentials": "./src/server/oauth-app-credentials.ts",
+    "./server/queries": "./src/server/publishing-queries.ts",
     "./server/upload-only": "./src/server/upload-only-actions.ts",
     "./lib/export-package-types": "./src/lib/export-package-types.ts",
     "./lib/schemas/upload-only": "./src/lib/schemas/upload-only.schema.ts",

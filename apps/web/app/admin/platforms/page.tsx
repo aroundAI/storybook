@@ -2,7 +2,7 @@ import { headers } from 'next/headers';
 
 import { AdminGuard } from '@kit/admin/components/admin-guard';
 import { GlobalOAuthAppConfig } from '@kit/publishing/components';
-import { getGlobalOAuthApps } from '@kit/publishing/server';
+import { getGlobalOAuthApps } from '@kit/publishing/server/queries';
 import { PageBody, PageHeader } from '@kit/ui/page';
 
 export const metadata = {

@@ -14,10 +14,8 @@ import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { ElevenLabsSfxProvider } from '../providers/elevenlabs-sfx';
-import {
-  findOrCreateAudioAsset,
-  updateAudioAssetAction,
-} from './audio-asset-actions';
+import { updateAudioAssetAction } from './audio-asset-actions';
+import { findOrCreateAudioAsset } from './audio-asset-library';
 import { getProjectElevenLabsApiKey } from './project-audio-settings';
 
 // =============================================================================

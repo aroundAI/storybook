@@ -1,5 +1,3 @@
-'use server';
-
 import 'server-only';
 
 import { getLogger } from '@kit/shared/logger';

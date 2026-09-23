@@ -46,8 +46,8 @@ import {
   getSmartDefaults,
 } from '../_lib/schema';
 import {
-  createFilmProject,
-  updateProjectCoverImage,
+  createFilmProjectAction,
+  updateProjectCoverImageAction,
 } from '../_lib/server/create-film-project.action';
 import { CoverImageUpload } from './cover-image-upload';
 
@@ -229,7 +229,8 @@ export function CreateFilmProjectForm({
       try {
         // 1. Create the project
         const { projectId, projectSlug } = await unwrap(
-          createFilmProject(accountSlug, {
+          createFilmProjectAction({
+            accountSlug,
             name: data.name,
             description: data.description,
             settings: data.settings,
@@ -242,7 +243,12 @@ export function CreateFilmProjectForm({
             const uploadResult = await uploadProjectCover(coverFile, projectId);
 
             // Update project metadata with cover URL
-            await unwrap(updateProjectCoverImage(projectId, uploadResult.url));
+            await unwrap(
+              updateProjectCoverImageAction({
+                projectId,
+                coverImageUrl: uploadResult.url,
+              }),
+            );
           } catch (uploadError) {
             console.error('Cover image upload failed:', uploadError);
             toast.error(

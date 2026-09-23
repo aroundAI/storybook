@@ -1,5 +1,8 @@
-'use server';
-
+/**
+ * A library, not a `'use server'` module (KB-58): every export of one of
+ * those is an endpoint anyone can call. No `server-only` either: the LLM
+ * worker Lambda imports this, and `server-only` throws outside Next.
+ */
 /**
  * LLM Usage Analytics
  *

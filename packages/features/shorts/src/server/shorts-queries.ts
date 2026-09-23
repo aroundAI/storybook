@@ -1,5 +1,3 @@
-'use server';
-
 import 'server-only';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -218,79 +216,4 @@ export async function getShortsForEpisode(episodeId: string): Promise<Short[]> {
       publications: short.short_publications ?? [],
     }),
   );
-}
-
-/**
- * Get a single short by ID
- */
-export async function getShortById(shortId: string): Promise<Short | null> {
-  const client = getSupabaseServerClient();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (client as any)
-    .from('shorts')
-    .select(
-      `
-      id,
-      episode_id,
-      source_shot_id,
-      start_seconds,
-      end_seconds,
-      duration_seconds,
-      title,
-      caption,
-      hashtags,
-      viral_score,
-      hook_type,
-      standalone_summary,
-      video_url_9x16,
-      video_url_original,
-      thumbnail_url,
-      status,
-      processing_error,
-      created_at,
-      short_publications (
-        id,
-        short_id,
-        platform,
-        language,
-        status,
-        platform_url,
-        scheduled_at,
-        published_at,
-        views,
-        likes
-      )
-    `,
-    )
-    .eq('id', shortId)
-    .single();
-
-  if (error) {
-    return null;
-  }
-
-  return {
-    id: data.id,
-    episodeId: data.episode_id,
-    sourceShot: data.source_shot_id
-      ? { id: data.source_shot_id, sequenceNumber: 0 }
-      : null,
-    startSeconds: data.start_seconds,
-    endSeconds: data.end_seconds,
-    durationSeconds: data.duration_seconds,
-    title: data.title,
-    caption: data.caption,
-    hashtags: data.hashtags,
-    viralScore: data.viral_score,
-    hookType: data.hook_type,
-    standaloneSummary: data.standalone_summary,
-    videoUrl9x16: data.video_url_9x16,
-    videoUrlOriginal: data.video_url_original,
-    thumbnailUrl: data.thumbnail_url,
-    status: data.status,
-    processingError: data.processing_error,
-    createdAt: data.created_at,
-    publications: data.short_publications ?? [],
-  };
 }

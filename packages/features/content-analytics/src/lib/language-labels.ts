@@ -135,10 +135,10 @@ export function languageFromKey(key: string): string | null {
 }
 
 /**
- * A dimension from input nobody validated. `language-analytics.ts` is a
- * `'use server'` module, so each export is an endpoint that can be called
- * with anything; an unknown value falls back to the default rather than
- * indexing a lookup with it.
+ * A dimension from input nobody validated: the actions that call
+ * `language-analytics.ts` pass it through from their input, which can be
+ * anything; an unknown value falls back to the default rather than indexing
+ * a lookup with it.
  */
 export function resolveLanguageDimension(value: unknown): LanguageDimension {
   return (

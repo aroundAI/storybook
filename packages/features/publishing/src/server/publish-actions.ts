@@ -30,7 +30,7 @@ import { TikTokProvider } from '../providers/tiktok';
 import { TwitterProvider } from '../providers/twitter';
 // Import providers
 import { YouTubeProvider } from '../providers/youtube';
-import { getAccessToken } from './connection-actions';
+import { getAccessToken } from './connection-tokens';
 
 // Initialize SQS client
 const sqsClient = new SQSClient({
