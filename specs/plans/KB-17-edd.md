@@ -221,7 +221,11 @@ back navigation: the dialog holds no server state.
 
 2026-09-23 05:15 UTC. `supabase db reset` from this worktree (HEAD
 `8e7314dc`, which is KB-27 + KB-28). Six real users were created through
-GoTrue's admin API and signed in with passwords. Each request is a PostgREST
+GoTrue's admin API and signed in with passwords. (Measured on #316's
+previous head `10279b59`. After #316 was rebased onto #313's new tip
+(head `b0e2e090`, migration renamed to `20260923044106`), `repro.sh` is
+rerun as step 0 of §32 before any code changes, so the red baseline is
+taken on the real base.) Each request is a PostgREST
 call with that user's own JWT.
 
 - Team account "KB17 Team": owner **Olga**, and account members **Mia**,
@@ -271,11 +275,11 @@ tenant's project (R9).
 | Path | Runs as | Verb | Access check today | Affected by KB-17 policies? |
 |---|---|---|---|---|
 | `addImmutableEventAction` (`packages/features/episodes/src/server/canon-actions.ts:189-239`), called by `add-event-dialog.tsx:125` | user JWT | INSERT, `created_by: user.id` | RLS | **Yes**: FR-4/5/6, FR-10 |
-| `commit_canon_changes` RPC (`20260923031953_kb27-canon-write-scope.sql:33-93`), called by `commitCanonChangesAction` ← `episode-summary-generator.tsx:141` | SECURITY DEFINER | INSERT, `created_by = auth.uid()` | episode ∈ project, `can_write_project` (KB-27) | No (definer). Already matches FR-4/5/6; I8 pins it |
+| `commit_canon_changes` RPC (`20260923044106_kb27-canon-write-scope.sql:33-93`), called by `commitCanonChangesAction` ← `episode-summary-generator.tsx:141` | SECURITY DEFINER | INSERT, `created_by = auth.uid()` | episode ∈ project, `can_write_project` (KB-27) | No (definer). Already matches FR-4/5/6; I8 pins it |
 | Lambda story generation `commitStoryCanon` (`apps/web/lambda/llm-worker/utils/commit-story-canon.ts:104-162`) | service role | DELETE all events `established_in` the episode, then INSERT auto events with `created_by = job user` | job authorisation (KB-31 in flight) | No (service role bypasses RLS). Never UPDATEs, so the trigger is unaffected |
 | `deleteImmutableEventAction` (`canon-actions.ts:272-306`) | user JWT | DELETE by id | RLS only; doc comment says "admin only" | **Yes**: FR-7, FR-11. **No caller** in the app |
 | `resetEpisodeAction`, `resetToStoryboardAction` / `resetToStageHandler` (`packages/features/episodes/src/server/actions.ts:1212, 1848, 1991`) | user JWT | DELETE `established_in = episode`, errors non-fatal | RLS | **Yes**: with D1 default (writers) no change; with D1 = owner/admin a member's reset would silently keep the canon |
-| `bulk_reset_episodes_to_stage` (`20260923031953…:107-283`) | SECURITY DEFINER | DELETE for stages draft/story | every episode in `p_account_id` and `can_write_project` (KB-27) | No (definer), D2 |
+| `bulk_reset_episodes_to_stage` (`20260923044106…:107-283`) | SECURITY DEFINER | DELETE for stages draft/story | every episode in `p_account_id` and `can_write_project` (KB-27) | No (definer), D2 |
 | Episode hard delete (cascade) | `episodes_delete` policy: personal owner or project owner/admin (`20260201100000_fix_episodes_rls.sql:34`) | CASCADE | owner/admin | No |
 | Project delete (cascade) | project owner | CASCADE | — | No |
 | User delete (FK SET NULL) | GoTrue / admin | nested UPDATE of `created_by` | — | **Yes**: the trigger exception (FR-2/3) |
@@ -387,7 +391,7 @@ snapshot, authoritative after the author is deleted.
 
 One hand-written migration, `apps/web/supabase/migrations/<UTC
 timestamp>_kb17-immutable-events-immutable.sql`, timestamped after
-KB-27's `20260923031953`. No new tables, columns, indexes or constraints.
+KB-27's `20260923044106` (the newest migration on the base, #316 head `b0e2e090`). No new tables, columns, indexes or constraints.
 
 ```sql
 -- policies: one per verb (replaces immutable_events_project_access)
