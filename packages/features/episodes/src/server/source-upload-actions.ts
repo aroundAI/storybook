@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
+import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -248,10 +249,18 @@ const extractFactsFromContent = enhanceAction(
 
       const chunks = chunkTextForExtraction(data.content);
 
+      // KB-31: queueLlmJob needs a target; the access gate above is KB-26's
+      const target = await authorizeProjectTarget(supabase, data.projectId);
+
+      if (!target) {
+        throw new ActionRefusal(PROJECT_WRITE_REFUSAL);
+      }
+
       for (const chunk of chunks) {
         await queueLlmJob({
           jobType: 'fact-extraction',
           userId: user.id,
+          target,
           payload: {
             content: chunk,
             projectId: data.projectId,

@@ -10,6 +10,7 @@ import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
+import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
@@ -383,6 +384,14 @@ const createEpisodeWithContext = enhanceAction(
       try {
         const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
+        // The creator may still lack a writing role on the project (an
+        // account member not in project_members): no story for them (KB-31)
+        const target = await authorizeEpisodeTarget(client, episode.id);
+
+        if (!target) {
+          throw new Error('Cannot write to this project; story not queued');
+        }
+
         // Create generation job entry
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (client as any).from('generation_jobs').insert({
@@ -399,6 +408,7 @@ const createEpisodeWithContext = enhanceAction(
         await queueLlmJob({
           jobType: 'story-generation',
           userId: user.id,
+          target,
           payload: {
             episodeId: episode.id,
             title: data.title,

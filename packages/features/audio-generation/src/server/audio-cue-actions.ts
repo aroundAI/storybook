@@ -9,6 +9,7 @@
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -253,16 +254,20 @@ export const generateAudioForCueAction = enhanceAction(
       };
     }
 
-    // Extract project_id from the nested join
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const projectId = (cue.episodes as any)?.seasons?.project_id;
-    if (!projectId) {
+    // The worker spends the project's ElevenLabs key and writes the cue on
+    // the service-role key, so the caller must be able to write to the
+    // cue's project (KB-31) — before the cue is marked generating
+    const target = await authorizeEpisodeTarget(client, cue.episode_id);
+
+    if (!target?.projectId) {
       return {
         success: false,
         status: 'failed',
-        error: 'Could not determine project ID',
+        error: 'Cue not found',
       };
     }
+
+    const { projectId } = target;
 
     try {
       // 1. Update cue status to 'generating'
@@ -277,6 +282,7 @@ export const generateAudioForCueAction = enhanceAction(
       await queueLlmJob({
         jobType: 'audio-file-generation',
         userId: user.id,
+        target,
         payload: {
           cueId: data.cueId,
           projectId,
@@ -426,21 +432,19 @@ export const generateAudioCuesAction = enhanceAction(
       };
     }
 
-    // Validate episode exists and has shots
-    const { data: episode, error: episodeError } = await client
-      .from('episodes')
-      .select('id, project_id, season_id')
-      .eq('id', data.episodeId)
-      .is('deleted_at', null)
-      .single();
+    // The worker writes audio cues on the service-role key: the caller must
+    // be able to write to the episode's project, not merely read it (KB-31)
+    const target = await authorizeEpisodeTarget(client, data.episodeId);
 
-    if (episodeError || !episode) {
+    if (!target?.projectId) {
       return {
         success: false,
         queued: false,
         error: 'Episode not found',
       };
     }
+
+    const { accountId, projectId } = target;
 
     // Check that the episode has shots (audio cue generation depends on them)
     const { count: shotCount } = await client
@@ -458,15 +462,6 @@ export const generateAudioCuesAction = enhanceAction(
       };
     }
 
-    // Get project for account context
-    const { data: project } = await client
-      .from('projects')
-      .select('account_id')
-      .eq('id', episode.project_id)
-      .single();
-
-    const accountId = project?.account_id ?? 'unknown';
-
     try {
       const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
@@ -477,7 +472,7 @@ export const generateAudioCuesAction = enhanceAction(
         job_type: 'audio_cue_generation',
         status: 'queued',
         account_id: accountId,
-        project_id: episode.project_id,
+        project_id: projectId,
         idempotency_key: `audio-cues-${data.episodeId}-${Date.now()}`,
         input_data: { episodeId: data.episodeId },
       });
@@ -492,10 +487,10 @@ export const generateAudioCuesAction = enhanceAction(
       await queueLlmJob({
         jobType: 'audio-cue-generation',
         userId: user.id,
+        target,
         payload: {
           episodeId: data.episodeId,
-          projectId: episode.project_id,
-          accountId,
+          projectId,
         },
       });
 

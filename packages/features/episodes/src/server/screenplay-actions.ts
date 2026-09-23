@@ -1,6 +1,8 @@
 'use server';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
+import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import type { Screenplay } from '@kit/prompt-engine/schemas';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -168,6 +170,12 @@ export const convertToScreenplayAction = enhanceAction(
       windowMs: 60_000,
     });
 
+    const target = await authorizeEpisodeTarget(client, data.episodeId);
+
+    if (!target) {
+      throw new ActionRefusal('Episode not found');
+    }
+
     // Fetch episode with project info
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: episodeError } = await (client as any)
@@ -247,6 +255,7 @@ export const convertToScreenplayAction = enhanceAction(
     await queueLlmJob({
       jobType: 'screenplay-conversion',
       userId: user.id,
+      target,
       payload: {
         episodeId: data.episodeId,
         dialogueStyle: data.dialogueStyle,

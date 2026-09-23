@@ -8,6 +8,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface AnalyticsInsightsPayload {
   projectId: string;
+  /** The project's account, stamped by queueLlmJob from its target (KB-31). */
+  accountId: string;
   analytics: {
     totals: {
       views: number;
@@ -130,7 +132,7 @@ export async function processAnalyticsInsights(
       },
       context: {
         name: 'generate-analytics-insights',
-        accountId: data.projectId,
+        accountId: data.accountId,
         userId: data.userId,
       },
     });

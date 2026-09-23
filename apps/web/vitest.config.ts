@@ -94,6 +94,10 @@ export default defineConfig({
         __dirname,
         '../../packages/supabase/src/auth-callback.service.ts',
       ),
+      '@kit/prompt-engine/server': path.resolve(
+        __dirname,
+        '../../packages/features/prompt-engine/src/lib/server/index.ts',
+      ),
       '@kit/next/actions': path.resolve(
         __dirname,
         '../../packages/next/src/actions/index.ts',

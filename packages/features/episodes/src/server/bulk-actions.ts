@@ -3,6 +3,7 @@
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { authorizeEpisodeTargets } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -84,37 +85,34 @@ export const batchGenerateIdeasAction = enhanceAction(
 
     logger.info(ctx, `Batch queuing ${data.episodes.length} ideation jobs`);
 
-    // Resolve account ID once
-    const { data: membership } = await client
-      .from('accounts_memberships')
-      .select('account_id')
-      .eq('user_id', user.id)
-      .limit(1);
-
-    let accountId = membership?.[0]?.account_id;
-    if (!accountId) {
-      const { data: personal } = await client
-        .from('accounts')
-        .select('id')
-        .eq('primary_owner_user_id', user.id)
-        .limit(1);
-      accountId = personal?.[0]?.id ?? user.id;
-    }
+    // Each episode's own project must be writable by the caller: the worker
+    // builds the prompt from its canon on the service-role key (KB-31)
+    const { allowed } = await authorizeEpisodeTargets(
+      client,
+      data.episodes.map((ep) => ep.episodeId),
+    );
 
     const { queueLlmJob } = await import('@kit/prompt-engine/server');
     const failed: BatchQueueResult['failed'] = [];
     let queued = 0;
 
     for (const ep of data.episodes) {
+      const target = allowed.get(ep.episodeId);
+
+      if (!target) {
+        failed.push({ episodeId: ep.episodeId, error: 'Episode not found' });
+        continue;
+      }
+
       try {
         await queueLlmJob({
           jobType: 'story-ideation',
           userId: user.id,
+          target,
           payload: {
             episodeId: ep.episodeId,
             premise: ep.premise,
             numberOfIdeas: ep.numberOfIdeas,
-            accountId,
             userId: user.id,
           },
         });
@@ -160,6 +158,7 @@ export const batchGenerateStoriesAction = enhanceAction(
     );
 
     const episodeIds = data.episodes.map((ep) => ep.episodeId);
+    const { allowed } = await authorizeEpisodeTargets(client, episodeIds);
 
     // Batch-fetch all episodes in one query
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -181,11 +180,12 @@ export const batchGenerateStoriesAction = enhanceAction(
     let queued = 0;
 
     for (const ep of data.episodes) {
+      const target = allowed.get(ep.episodeId);
       const episode = episodeMap.get(ep.episodeId) as
         | Record<string, unknown>
         | undefined;
 
-      if (!episode) {
+      if (!target || !episode) {
         failed.push({ episodeId: ep.episodeId, error: 'Episode not found' });
         continue;
       }
@@ -220,6 +220,7 @@ export const batchGenerateStoriesAction = enhanceAction(
         await queueLlmJob({
           jobType: 'story-generation',
           userId: user.id,
+          target,
           payload: {
             episodeId: ep.episodeId,
             title: ep.title,
@@ -287,6 +288,7 @@ export const batchConvertScreenplaysAction = enhanceAction(
     logger.info(ctx, `Batch queuing ${data.episodes.length} screenplay jobs`);
 
     const episodeIds = data.episodes.map((ep) => ep.episodeId);
+    const { allowed } = await authorizeEpisodeTargets(client, episodeIds);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episodes } = await (client as any)
@@ -307,11 +309,12 @@ export const batchConvertScreenplaysAction = enhanceAction(
     let queued = 0;
 
     for (const ep of data.episodes) {
+      const target = allowed.get(ep.episodeId);
       const episode = episodeMap.get(ep.episodeId) as
         | Record<string, unknown>
         | undefined;
 
-      if (!episode) {
+      if (!target || !episode) {
         failed.push({ episodeId: ep.episodeId, error: 'Episode not found' });
         continue;
       }
@@ -352,6 +355,7 @@ export const batchConvertScreenplaysAction = enhanceAction(
         await queueLlmJob({
           jobType: 'screenplay-conversion',
           userId: user.id,
+          target,
           payload: {
             episodeId: ep.episodeId,
             dialogueStyle: ep.dialogueStyle,
@@ -417,6 +421,7 @@ export const batchGenerateShotsAction = enhanceAction(
     );
 
     const episodeIds = data.episodes.map((ep) => ep.episodeId);
+    const { allowed } = await authorizeEpisodeTargets(client, episodeIds);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episodes } = await (client as any)
@@ -437,11 +442,12 @@ export const batchGenerateShotsAction = enhanceAction(
     let queued = 0;
 
     for (const ep of data.episodes) {
+      const target = allowed.get(ep.episodeId);
       const episode = episodeMap.get(ep.episodeId) as
         | Record<string, unknown>
         | undefined;
 
-      if (!episode) {
+      if (!target || !episode) {
         failed.push({ episodeId: ep.episodeId, error: 'Episode not found' });
         continue;
       }
@@ -454,8 +460,7 @@ export const batchGenerateShotsAction = enhanceAction(
         continue;
       }
 
-      const project = episode.project as { account_id?: string } | undefined;
-      const accountId = project?.account_id ?? 'unknown';
+      const { accountId } = target;
 
       jobEntries.push({
         reference_type: 'episode',
@@ -472,6 +477,7 @@ export const batchGenerateShotsAction = enhanceAction(
         await queueLlmJob({
           jobType: 'shot-generation',
           userId: user.id,
+          target,
           payload: {
             episodeId: ep.episodeId,
             version: episode.version as number,
@@ -546,6 +552,7 @@ export const batchCreateAssetsAction = enhanceAction(
     );
 
     const episodeIds = data.episodes.map((ep) => ep.episodeId);
+    const { allowed } = await authorizeEpisodeTargets(client, episodeIds);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episodes } = await (client as any)
@@ -566,12 +573,23 @@ export const batchCreateAssetsAction = enhanceAction(
     let queued = 0;
 
     for (const ep of data.episodes) {
+      const target = allowed.get(ep.episodeId);
       const episode = episodeMap.get(ep.episodeId) as
         | Record<string, unknown>
         | undefined;
 
-      if (!episode) {
+      if (!target || !episode) {
         failed.push({ episodeId: ep.episodeId, error: 'Episode not found' });
+        continue;
+      }
+
+      // The worker writes the extracted assets into `projectId`, so it must
+      // be this episode's own project, not whichever one the caller named
+      if (target.projectId !== data.projectId) {
+        failed.push({
+          episodeId: ep.episodeId,
+          error: 'Episode is not in this project',
+        });
         continue;
       }
 
@@ -584,8 +602,7 @@ export const batchCreateAssetsAction = enhanceAction(
         continue;
       }
 
-      const project = episode.project as { account_id?: string } | undefined;
-      const accountId = project?.account_id ?? 'unknown';
+      const { accountId } = target;
 
       jobEntries.push({
         reference_type: 'episode',
@@ -602,6 +619,7 @@ export const batchCreateAssetsAction = enhanceAction(
         await queueLlmJob({
           jobType: 'asset-creation',
           userId: user.id,
+          target,
           payload: {
             episodeId: ep.episodeId,
             projectId: data.projectId,

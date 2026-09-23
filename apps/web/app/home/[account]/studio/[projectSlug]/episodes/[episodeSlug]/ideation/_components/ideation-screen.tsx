@@ -19,6 +19,7 @@ import {
   GenerateStoryIdeasSchema,
 } from '@kit/episodes/schemas';
 import { generateStoryIdeasAction } from '@kit/episodes/server';
+import { unwrap } from '@kit/next/action-result';
 import type { StoryIdea } from '@kit/prompt-engine/schemas';
 import { Button } from '@kit/ui/button';
 import {
@@ -113,7 +114,7 @@ export function IdeationScreen({
 
   const onSubmit = form.handleSubmit((data: GenerateStoryIdeasInput) => {
     triggerLlm(async () => {
-      const result = await generateStoryIdeasAction(data);
+      const result = await unwrap(generateStoryIdeasAction(data));
       // If local dev (synchronous), process immediately
       if (result.success && result.data) {
         setIdeas(result.data.ideas);

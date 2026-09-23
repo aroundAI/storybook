@@ -9,7 +9,9 @@
  * NOTE: The actual LLM processing and database insertion logic has been
  * moved to apps/web/lambda/llm-worker/handlers/shot-generation.ts
  */
+import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
+import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -47,6 +49,12 @@ export const generateShotListAction = enhanceAction(
       windowMs: 60_000,
     });
 
+    const target = await authorizeEpisodeTarget(client, data.episodeId);
+
+    if (!target) {
+      throw new ActionRefusal('Episode not found');
+    }
+
     // Fetch episode with screenplay_data for validation
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: episodeError } = await (client as any)
@@ -71,15 +79,7 @@ export const generateShotListAction = enhanceAction(
       );
     }
 
-    // Get project for account context
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: project } = await (client as any)
-      .from('projects')
-      .select('account_id')
-      .eq('id', episode.project_id)
-      .single();
-
-    const accountId = project?.account_id ?? 'unknown';
+    const { accountId } = target;
 
     // Queue to Lambda for processing
     const { queueLlmJob } = await import('@kit/prompt-engine/server');
@@ -116,6 +116,7 @@ export const generateShotListAction = enhanceAction(
     await queueLlmJob({
       jobType: 'shot-generation',
       userId: user.id,
+      target,
       payload: {
         episodeId: data.episodeId,
         version: episode.version,

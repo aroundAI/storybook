@@ -5,6 +5,7 @@ import 'server-only';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -70,15 +71,20 @@ export const translateDialogueToLanguageAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Get episode to retrieve accountId
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: episode } = await (client as any)
-      .from('episodes')
-      .select('id, project:projects(account_id)')
-      .eq('id', input.episodeId)
-      .single();
+    // The worker reads the episode's dialogue and inserts the translation on
+    // the service-role key: the caller must be able to write to its project
+    // (KB-31)
+    const target = await authorizeEpisodeTarget(client, input.episodeId);
 
-    const accountId = episode?.project?.account_id ?? 'unknown';
+    if (!target) {
+      logger.warn(
+        { name: 'translate-dialogue', episodeId: input.episodeId },
+        'llm-job.refused',
+      );
+      return { success: false, translatedCount: 0, error: 'Episode not found' };
+    }
+
+    const { accountId } = target;
 
     const ctx = {
       name: 'translate-dialogue',
@@ -96,6 +102,7 @@ export const translateDialogueToLanguageAction = enhanceAction(
     await queueLlmJob({
       jobType: 'translate-dialogue',
       userId: user.id,
+      target,
       payload: {
         episodeId: input.episodeId,
         targetLanguage: input.targetLanguage,
