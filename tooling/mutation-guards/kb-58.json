@@ -49,6 +49,26 @@
       "replace": "  {},",
       "cwd": "packages/features/accounts",
       "test": "__tests__/refresh-auth-session.test.ts"
+    },
+    {
+      "name": "createFilmProjectAction runs without a session",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/studio/projects/new/_lib/server/create-film-project.action.ts",
+      "find": "        accountSlug,\n      },\n    };\n  },\n  {},",
+      "replace": "        accountSlug,\n      },\n    };\n  },\n  { auth: false },",
+      "cwd": "apps/web",
+      "test": "app/home/[account]/studio/projects/new/__tests__/create-film-project.action.test.ts",
+      "pattern": "createFilmProjectAction sends a caller without a session"
+    },
+    {
+      "name": "updateProjectCoverImageAction runs without a session",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/studio/projects/new/_lib/server/create-film-project.action.ts",
+      "find": "    return { ok: true, data: null };\n  },\n  {},",
+      "replace": "    return { ok: true, data: null };\n  },\n  { auth: false },",
+      "cwd": "apps/web",
+      "test": "app/home/[account]/studio/projects/new/__tests__/create-film-project.action.test.ts",
+      "pattern": "updateProjectCoverImageAction sends a caller without a session"
     }
   ]
 }

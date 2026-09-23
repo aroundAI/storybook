@@ -21,7 +21,7 @@ import {
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
-import { updateProjectCoverImage } from '../../../projects/new/_lib/server/create-film-project.action';
+import { updateProjectCoverImageAction } from '../../../projects/new/_lib/server/create-film-project.action';
 
 interface ProjectCoverSettingsProps {
   projectId: string;
@@ -69,7 +69,12 @@ export function ProjectCoverSettings({
           const uploadResult = await uploadProjectCover(file, projectId);
 
           // Update project metadata with new cover URL
-          await unwrap(updateProjectCoverImage(projectId, uploadResult.url));
+          await unwrap(
+            updateProjectCoverImageAction({
+              projectId,
+              coverImageUrl: uploadResult.url,
+            }),
+          );
 
           // Update current URL and clear preview
           setCurrentUrl(uploadResult.url);
@@ -92,7 +97,9 @@ export function ProjectCoverSettings({
     startTransition(async () => {
       try {
         // Update project metadata to remove cover URL
-        await unwrap(updateProjectCoverImage(projectId, ''));
+        await unwrap(
+          updateProjectCoverImageAction({ projectId, coverImageUrl: '' }),
+        );
 
         setCurrentUrl(null);
         setPreviewUrl(null);

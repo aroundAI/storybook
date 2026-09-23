@@ -2,6 +2,7 @@
 
 import type { StudioProjectSettings } from '@kit/film-studio-schemas/project';
 import type { ActionResult } from '@kit/next/action-result';
+import { enhanceAction } from '@kit/next/actions';
 import type { Json } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -20,72 +21,84 @@ function generateSlug(name: string): string {
 /**
  * Create Film Studio project and return project data for client-side redirect
  * Returns project ID and slug so client can upload cover image before redirecting
+ *
+ * An `enhanceAction`, so a caller without a session is sent to sign in
+ * before anything runs (KB-58: a plain export of a `'use server'` module is an
+ * endpoint that checks nobody).
  */
-export async function createFilmProject(
-  accountSlug: string,
-  formData: {
+export const createFilmProjectAction = enhanceAction(
+  async ({
+    accountSlug,
+    ...formData
+  }: {
+    accountSlug: string;
     name: string;
     description?: string;
     settings: StudioProjectSettings;
-  },
-): Promise<
-  ActionResult<{ projectId: string; projectSlug: string; accountSlug: string }>
-> {
-  const client = getSupabaseServerClient();
+  }): Promise<
+    ActionResult<{
+      projectId: string;
+      projectSlug: string;
+      accountSlug: string;
+    }>
+  > => {
+    const client = getSupabaseServerClient();
 
-  // Get account ID from slug
-  const { data: account, error: accountError } = await client
-    .from('accounts')
-    .select('id')
-    .eq('slug', accountSlug)
-    .single();
+    // Get account ID from slug
+    const { data: account, error: accountError } = await client
+      .from('accounts')
+      .select('id')
+      .eq('slug', accountSlug)
+      .single();
 
-  if (accountError || !account) {
-    throw new Error('Account not found');
-  }
-
-  // Generate slug from project name
-  const slug = generateSlug(formData.name);
-
-  // Create the project with Film Studio settings in metadata
-  // Cast metadata to satisfy TypeScript - the JSON column accepts any serializable object
-  const { data: project, error } = await client
-    .from('projects')
-    .insert({
-      account_id: account.id,
-      name: formData.name,
-      slug,
-      description: formData.description ?? null,
-      metadata: formData.settings as unknown as Json,
-      status: 'active',
-    })
-    .select('id, slug')
-    .single();
-
-  if (error) {
-    // `unique (account_id, slug)`: the slug is derived from the name, so the
-    // one failure a user causes here is reusing a name. Returned, because a
-    // production build replaces the message of a thrown error (KB-6).
-    if (error.code === '23505') {
-      return {
-        ok: false,
-        error:
-          'A project with this name already exists in this workspace. Choose a different name.',
-      };
+    if (accountError || !account) {
+      throw new Error('Account not found');
     }
 
-    throw new Error(`Failed to create project: ${error.message}`);
-  }
+    // Generate slug from project name
+    const slug = generateSlug(formData.name);
 
-  return {
-    ok: true,
-    data: {
-      projectId: project.id,
-      projectSlug: project.slug ?? slug,
-      accountSlug,
-    },
-  };
-}
+    // Create the project with Film Studio settings in metadata
+    // Cast metadata to satisfy TypeScript - the JSON column accepts any serializable object
+    const { data: project, error } = await client
+      .from('projects')
+      .insert({
+        account_id: account.id,
+        name: formData.name,
+        slug,
+        description: formData.description ?? null,
+        metadata: formData.settings as unknown as Json,
+        status: 'active',
+      })
+      .select('id, slug')
+      .single();
+
+    if (error) {
+      // `unique (account_id, slug)`: the slug is derived from the name, so the
+      // one failure a user causes here is reusing a name. Returned, because a
+      // production build replaces the message of a thrown error (KB-6).
+      if (error.code === '23505') {
+        return {
+          ok: false,
+          error:
+            'A project with this name already exists in this workspace. Choose a different name.',
+        };
+      }
+
+      throw new Error(`Failed to create project: ${error.message}`);
+    }
+
+    return {
+      ok: true,
+      data: {
+        projectId: project.id,
+        projectSlug: project.slug ?? slug,
+        accountSlug,
+      },
+    };
+  },
+  {},
+);
 
 /**
  * Update project cover image URL in metadata
@@ -93,24 +106,30 @@ export async function createFilmProject(
  * caller who cannot edit the project (42501, KB-28); that refusal is returned
  * rather than thrown, so a production build shows it as written (KB-6).
  */
-export async function updateProjectCoverImage(
-  projectId: string,
-  coverImageUrl: string,
-): Promise<ActionResult<null>> {
-  const client = getSupabaseServerClient();
+export const updateProjectCoverImageAction = enhanceAction(
+  async ({
+    projectId,
+    coverImageUrl,
+  }: {
+    projectId: string;
+    coverImageUrl: string;
+  }): Promise<ActionResult<null>> => {
+    const client = getSupabaseServerClient();
 
-  const { error } = await client.rpc('update_project_cover_image', {
-    p_project_id: projectId,
-    p_cover_image_url: coverImageUrl,
-  });
+    const { error } = await client.rpc('update_project_cover_image', {
+      p_project_id: projectId,
+      p_cover_image_url: coverImageUrl,
+    });
 
-  if (error?.code === '42501') {
-    return { ok: false, error: "You can't change this project's cover." };
-  }
+    if (error?.code === '42501') {
+      return { ok: false, error: "You can't change this project's cover." };
+    }
 
-  if (error) {
-    throw new Error(`Failed to update cover image: ${error.message}`);
-  }
+    if (error) {
+      throw new Error(`Failed to update cover image: ${error.message}`);
+    }
 
-  return { ok: true, data: null };
-}
+    return { ok: true, data: null };
+  },
+  {},
+);
