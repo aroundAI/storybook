@@ -589,7 +589,7 @@ drop policy platform_connections_delete on public.platform_connections;  -- deci
 - **Types:** `pnpm supabase:web:typegen` (generated, never edited). The generated
   file is shared with every teammate — regenerate after rebasing, never merge by hand.
 
-**PR B migration** `<ts>_kb20-vendor-data-purges.sql`:
+**PR B migration** `20260923153604_kb20-vendor-data-purges.sql`:
 
 ```sql
 create table public.vendor_data_purges (
