@@ -504,6 +504,12 @@ function DisconnectedConnectionRow({
               />
             </p>
           )}
+          {connection.vendorDataPurge && (
+            <VendorDataPurgeLine
+              purge={connection.vendorDataPurge}
+              platformName={platform.name}
+            />
+          )}
         </div>
       </div>
 
@@ -517,6 +523,35 @@ function DisconnectedConnectionRow({
         <Trans i18nKey="platforms:reconnect" defaults="Reconnect" />
       </Button>
     </div>
+  );
+}
+
+/** When the platform's statistics were, or will be, deleted (KB-22 part B). */
+function VendorDataPurgeLine({
+  purge,
+  platformName,
+}: {
+  purge: { completedAt: string | null; dueBy: string };
+  platformName: string;
+}) {
+  const done = purge.completedAt !== null;
+  const date = new Date(done ? purge.completedAt! : purge.dueBy);
+
+  return (
+    <p
+      className="text-xs text-muted-foreground"
+      data-test="vendor-data-purge"
+      data-state={done ? 'deleted' : 'due'}
+    >
+      <Trans
+        i18nKey={
+          done
+            ? 'platforms:disconnected.statisticsDeleted'
+            : 'platforms:disconnected.statisticsDue'
+        }
+        values={{ platform: platformName, date: format(date, 'd MMM yyyy') }}
+      />
+    </p>
   );
 }
 

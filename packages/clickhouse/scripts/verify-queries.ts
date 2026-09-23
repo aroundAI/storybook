@@ -39,6 +39,7 @@ import {
   queryBackCatalogShare,
   queryChannelWatchWindow,
   queryCohortMedians,
+  queryConnectionVideoIds,
   queryDailyStats,
   queryDailyTimeSeries,
   queryDailyTimeSeriesByPlatform,
@@ -1117,6 +1118,11 @@ async function languageFixtureSteps() {
   });
 
   await step('queryVideoLanguages', () => queryVideoLanguages({ scope }));
+  // KB-22 part B: the purge's lookup from a connection to its videos. The
+  // purge itself deletes, so it is exercised by `verify:purge`, not here.
+  await step('queryConnectionVideoIds', () =>
+    queryConnectionVideoIds('00000000-0000-4000-8000-0000000000c2'),
+  );
   await step('queryLanguagePairs', () => queryLanguagePairs({ scope }));
 
   const totalsBy = async (kind: 'language' | 'channel_language') => {

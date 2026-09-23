@@ -5245,6 +5245,54 @@ export type Database = {
           },
         ]
       }
+      vendor_data_purges: {
+        Row: {
+          account_id: string | null
+          attempts: number
+          completed_at: string | null
+          connection_id: string
+          due_by: string
+          id: string
+          last_error: string | null
+          platform: string
+          reason: string
+          requested_at: string
+          result: Json | null
+          run_after: string
+          started_at: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          attempts?: number
+          completed_at?: string | null
+          connection_id: string
+          due_by: string
+          id?: string
+          last_error?: string | null
+          platform: string
+          reason: string
+          requested_at?: string
+          result?: Json | null
+          run_after?: string
+          started_at?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          attempts?: number
+          completed_at?: string | null
+          connection_id?: string
+          due_by?: string
+          id?: string
+          last_error?: string | null
+          platform?: string
+          reason?: string
+          requested_at?: string
+          result?: Json | null
+          run_after?: string
+          started_at?: string | null
+        }
+        Relationships: []
+      }
       verified_facts: {
         Row: {
           category: string | null
@@ -5989,6 +6037,10 @@ export type Database = {
         }[]
       }
       plan_dialogue_timeline: { Args: { p_updates: Json }; Returns: number }
+      purge_connection_vendor_rows: {
+        Args: { p_connection_id: string }
+        Returns: Json
+      }
       remove_episode_from_threads_touched: {
         Args: { p_episode_id: string; p_project_id: string }
         Returns: undefined

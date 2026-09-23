@@ -1331,6 +1331,41 @@ export default $config({
 
     console.log(`✓ Subscriber snapshot cron configured (daily at 02:00 UTC)`);
 
+    // Vendor Data Purge Cron (KB-20 item 3 / KB-22 part B) - deletes queued
+    // connections' vendor statistics: YouTube's within 7 days of an in-app
+    // disconnect (its API policies), and a deleted account's. Hourly, so the
+    // policy window is met with room for failed runs to retry.
+    const vendorDataPurgeCron = new sst.aws.Cron(
+      'StorybookVendorDataPurgeCron',
+      {
+        job: {
+          handler: 'apps/web/lambda/vendor-data-purge/index.handler',
+          timeout: '5 minutes',
+          memory: '256 MB',
+          architecture: 'arm64',
+          link: [web],
+          environment: {
+            API_URL: web.url,
+            CRON_SECRET: process.env.CRON_SECRET || '',
+          },
+          transform: {
+            function: {
+              kmsKeyArn: kmsKey.arn,
+            },
+          },
+          permissions: [
+            {
+              actions: ['kms:Decrypt'],
+              resources: [kmsKey.arn],
+            },
+          ],
+        },
+        schedule: 'rate(1 hour)',
+      },
+    );
+
+    console.log(`✓ Vendor data purge cron configured (hourly)`);
+
     // Scheduled Publish Cron - Queries for due publishes and queues them
     // Runs every 5 minutes, sends each publish job to SQS for processing
     const scheduledPublishCron = new sst.aws.Cron(
