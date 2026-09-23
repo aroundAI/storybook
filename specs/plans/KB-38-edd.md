@@ -411,6 +411,19 @@ No flags. The fix is not optional. No new env variables: `endpoint` is a constru
 
 **Browser-level R2 proof (not committed as a test):** a one-off Playwright script (Chromium) that PUTs a `File` via `fetch` and via `XMLHttpRequest` to URLs from the real adapter pointed at MinIO. It shows that browsers send the exact `Content-Length` and the returned `Content-Type`, and that a mismatch is refused. Output goes into the PR. Everything runs against 127.0.0.1.
 
+**Results (2026-09-23, after rebasing onto #313 @ `27a578e8`):**
+
+| Check | Result |
+|---|---|
+| Signer unit, `s3-presign.test.ts` | 10/10 pass. Red on the original signing: 6 fail (`SignedHeaders=host`, checksum present, identical signatures for different length or type) |
+| MinIO integration, `s3-presign.s3-local.test.ts` (real R2 adapter, MinIO RELEASE.2025-09-07) | 5/5 pass. Red on the original signing: the 4 mismatch cases are stored (1 pass, 4 fail) |
+| Route, `route.test.ts` | 32/32 pass. Red on KB-28's route: 11 fail (missing or invalid size signs, ceilings not applied, old argument shape) |
+| Helpers, `presign-client.test.ts`; structural, `presign-callers.test.ts` | 4/4 and 2/2 pass. The structural test was red on the pre-change tree with exactly U2, U3 and U4 |
+| Mutation guards, `tooling/mutation-guards/kb-38.json` | 10/10 RED. One (edit-suite headers) first STAYED GREEN, because the fake response's headers equalled the helper's own; the test now returns a header the helper cannot invent |
+| Web unit suite | 44 files, 842 pass, 5 skipped (the MinIO file without `S3_LOCAL_ENDPOINT`) |
+| `pnpm typecheck` | 48/49 tasks. The one failure is main's known `canon-bundle.test.ts` `esbuild` error (#320), not this branch |
+| Browser, Chromium 140 against MinIO | `fetch` and XHR, a 1000 B `File` with the returned headers: 200, stored 1000 B `image/png`. A 5000 B `File` by `fetch` and by XHR: 403, not stored. `Content-Type: text/html`: 403, not stored. The PUTs are cross-origin with a CORS preflight, as from the app |
+
 ## 27. Production-Build Verification
 
 `pnpm --filter web build:test`, then `NODE_ENV=test VENDOR_SANDBOX=1 next start -p 3117`, sandboxed per the brief:
