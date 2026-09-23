@@ -719,7 +719,7 @@ Nobody has looked, which is the bug.
 
 ## KB-15 — X connections are never refreshed
 
-> **Fixed (2026-09-23), #KB15PR.** Reproduced first: on the local stack the
+> **Fixed (2026-09-23), #326.** Reproduced first: on the local stack the
 > real cron job deactivated an expired X connection with `Unknown platform:
 > twitter` and **zero** requests to X. `refreshXToken` now refreshes X with
 > the client's Basic auth, and stores whatever refresh token X returns.
@@ -2036,7 +2036,7 @@ every canon string at the tool boundary, as sources are.
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
 | KB-52 | Every signed-in user could read, rewrite, forge and delete every account's `llm_usage_analytics` rows: a policy with no `TO` clause and `using (true)`; writes are now service-role only, and a pgTAP guard fails any new policy of that shape | #321 |
-| KB-15 | X connections were never refreshed (`Unknown platform: twitter` deactivated each at its first expiry); and the cron job refreshed only inside the 5-minute buffer, so tokens on every platform lapsed for up to 25 minutes between runs | #KB15PR |
+| KB-15 | X connections were never refreshed (`Unknown platform: twitter` deactivated each at its first expiry); and the cron job refreshed only inside the 5-minute buffer, so tokens on every platform lapsed for up to 25 minutes between runs | #326 |
 
 ---
 
