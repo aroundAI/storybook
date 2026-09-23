@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(21);
+select plan(25);
 
 -- FILM-CC-04 KB-1, owner decision 2026-09-22. Deleting a user nulls every
 -- authorship key (authors-deletable.test.sql). Two of those columns are audit
@@ -42,24 +42,25 @@ insert into public.episodes (id, project_id, number, title)
   values ('d1d1d1d1-0000-4000-8000-000000000002', 'd1d1d1d1-0000-4000-8000-000000000001',
           1, 'Snapshot episode');
 
--- First, before anything else has touched the table: a member writes an event
--- in the name of a user whose account they cannot read. The policy lets a
--- member name any created_by (as it did before this column existed); the name
--- still belongs to that id. That is why the trigger is SECURITY DEFINER — what
--- a record says must not depend on who wrote it.
---
--- It has to come first to be able to fail. Postgres keeps an SQL function's
--- plan for the life of its call site, which here is the transaction: had a
--- privileged insert run before this one, the lookup would go on reading
--- accounts without row security and an invoker trigger would pass too.
+-- First: a member tries to write an event in the name of a user whose
+-- account they cannot read. Before KB-17 the policy let a member name any
+-- created_by, and this case proved the name still followed the id -- the
+-- reason the snapshot trigger is SECURITY DEFINER. Since KB-17 the insert
+-- policy pins created_by to the caller, so a member can no longer stage it:
+-- the insert itself is refused. (Definer and service-role writers set the
+-- author themselves; immutable-events-immutable.test.sql covers them.)
 select makerkit.authenticate_as('forger');
 
-insert into public.immutable_events
-    (id, project_id, event_type, event_key, established_in, season, episode_number,
-     description, created_by, created_by_name)
-  values ('d1d1d1d1-0000-4000-8000-00000000000a', 'd1d1d1d1-0000-4000-8000-000000000001',
-          'death', 'character:stranger:dead', 'd1d1d1d1-0000-4000-8000-000000000002',
-          1, 1, 'Event in a stranger''s name', tests.get_supabase_uid('stranger'), 'Fred Forger');
+select throws_ok(
+  $$ insert into public.immutable_events
+       (id, project_id, event_type, event_key, established_in, season, episode_number,
+        description, created_by, created_by_name)
+     values ('d1d1d1d1-0000-4000-8000-00000000000a', 'd1d1d1d1-0000-4000-8000-000000000001',
+             'death', 'character:stranger:dead', 'd1d1d1d1-0000-4000-8000-000000000002',
+             1, 1, 'Event in a stranger''s name', tests.get_supabase_uid('stranger'), 'Fred Forger') $$,
+  '42501', null,
+  'A member cannot write an event in someone else''s name (KB-17)'
+);
 
 update public.verified_facts set verified_by_name = 'Vera Verifier'
   where id = 'd1d1d1d1-0000-4000-8000-000000000007';
@@ -120,8 +121,12 @@ insert into public.verified_facts (id, project_id, claim, source_type, verified_
   values ('d1d1d1d1-0000-4000-8000-000000000007', 'd1d1d1d1-0000-4000-8000-000000000001',
           'A forged fact', 'other', 'Vera Verifier');
 
-update public.immutable_events set created_by_name = 'Vera Verifier'
-  where id = 'd1d1d1d1-0000-4000-8000-000000000006';
+select throws_ok(
+  $$ update public.immutable_events set created_by_name = 'Vera Verifier'
+      where id = 'd1d1d1d1-0000-4000-8000-000000000006' $$,
+  '42501', 'permission denied for table immutable_events',
+  'A member cannot update an event at all (KB-17)'
+);
 
 set local role postgres;
 
@@ -132,9 +137,9 @@ select is(
 );
 
 select is(
-  (select created_by_name from public.immutable_events where id = 'd1d1d1d1-0000-4000-8000-00000000000a'),
-  'Sam Stranger',
-  'The name is the id''s, even when the writer cannot read that user''s account'
+  (select count(*)::int from public.immutable_events where id = 'd1d1d1d1-0000-4000-8000-00000000000a'),
+  0,
+  'The event in a stranger''s name was never written'
 );
 
 select is(
@@ -147,8 +152,12 @@ select is(
 update public.verified_facts set verified_by_name = 'Somebody Else', verification_notes = 'checked'
   where id = 'd1d1d1d1-0000-4000-8000-000000000004';
 
-update public.immutable_events set created_by_name = 'Somebody Else', description = 'Edited'
-  where id = 'd1d1d1d1-0000-4000-8000-000000000003';
+select throws_ok(
+  $$ update public.immutable_events set created_by_name = 'Somebody Else', description = 'Edited'
+      where id = 'd1d1d1d1-0000-4000-8000-000000000003' $$,
+  '42501', 'immutable_events rows cannot be changed',
+  'Nor can a privileged caller: events are write-once (KB-17)'
+);
 
 select is(
   (select verified_by_name from public.verified_facts where id = 'd1d1d1d1-0000-4000-8000-000000000004'),
@@ -230,8 +239,12 @@ select is(
 -- rewritten, not cleared, not by a member and not by a privileged caller.
 update public.verified_facts set verified_by_name = 'Somebody Else'
   where id = 'd1d1d1d1-0000-4000-8000-000000000004';
-update public.immutable_events set created_by_name = null
-  where id = 'd1d1d1d1-0000-4000-8000-000000000003';
+select throws_ok(
+  $$ update public.immutable_events set created_by_name = null
+      where id = 'd1d1d1d1-0000-4000-8000-000000000003' $$,
+  '42501', 'immutable_events rows cannot be changed',
+  'immutable_events: a privileged caller cannot clear the orphaned name (KB-17 refuses the update outright)'
+);
 
 select is(
   (select verified_by_name from public.verified_facts where id = 'd1d1d1d1-0000-4000-8000-000000000004'),

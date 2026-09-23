@@ -193,6 +193,15 @@ function mapNarrativeThread(row: NarrativeThreadRow): NarrativeThread {
 // =============================================================================
 
 /**
+ * One refusal for every canon write the database turns down (KB-17): not a
+ * writer on the project, or no such event. It names neither, so it reveals
+ * nothing about what exists.
+ */
+const CANON_WRITE_REFUSAL = "You can't change this project's canon.";
+
+const INSUFFICIENT_PRIVILEGE = '42501';
+
+/**
  * Adds an immutable event to the canon.
  */
 const addImmutableEvent = enhanceAction(
@@ -228,6 +237,10 @@ const addImmutableEvent = enhanceAction(
       })
       .select()
       .single();
+
+    if (error?.code === INSUFFICIENT_PRIVILEGE) {
+      throw new ActionRefusal(CANON_WRITE_REFUSAL);
+    }
 
     if (error) {
       console.error('Error adding immutable event:', error);
@@ -277,9 +290,13 @@ export const getImmutableEventsAction = enhanceAction(
 );
 
 /**
- * Deletes an immutable event (admin only, with confirmation).
+ * Deletes an immutable event, with confirmation. The database allows it to
+ * the project's writers -- owner, admin or member (KB-17, `can_write_project`)
+ * -- and refuses it to anyone else by matching no row, which is reported as a
+ * refusal rather than a success. Events are never edited: a correction is a
+ * delete and a new event.
  */
-export const deleteImmutableEventAction = enhanceAction(
+const deleteImmutableEvent = enhanceAction(
   async (data: { eventId: string; confirm: boolean }) => {
     if (!data.confirm) {
       throw new Error(
@@ -289,14 +306,19 @@ export const deleteImmutableEventAction = enhanceAction(
 
     const client = getSupabaseServerClient();
 
-    const { error } = await client
+    const { data: deleted, error } = await client
       .from('immutable_events')
       .delete()
-      .eq('id', data.eventId);
+      .eq('id', data.eventId)
+      .select('id');
 
     if (error) {
       console.error('Error deleting immutable event:', error);
       throw new Error(`Failed to delete immutable event: ${error.message}`);
+    }
+
+    if (!deleted?.length) {
+      throw new ActionRefusal(CANON_WRITE_REFUSAL);
     }
 
     revalidatePath(
@@ -313,6 +335,8 @@ export const deleteImmutableEventAction = enhanceAction(
     }),
   },
 );
+
+export const deleteImmutableEventAction = returnRefusals(deleteImmutableEvent);
 
 // =============================================================================
 // CHARACTER STATE ACTIONS
