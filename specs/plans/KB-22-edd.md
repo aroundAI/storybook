@@ -59,6 +59,29 @@ calendar days it also removes the per-video statistics…".
    re-exports the first.
 8. The red checks are kept as CI mutation guards (`tooling/mutation-guards/kb-22.json`).
 
+**Deviations found while implementing PR B:**
+
+9. **ClickHouse's `video_id` is the Postgres publish id** (`dim-sync.ts`,
+   `analytics-sync-cron.ts`), not the platform's content id as §12/§15
+   assumed. The purge keys the per-video tables on the connection's publish
+   ids (a UUID set, so no platform predicate is needed — and the video tables'
+   `platform` is an `Enum8` that a Facebook/X value would throw on) plus what
+   `video_dim` attributes to the connection.
+10. **`channel_reach_daily` is purged too.** FILM-1504 (#312) merged while this
+    was in flight and added it, keyed by `connection_id`. A listed table the
+    server does not have is skipped and recorded as `absent`, so the purge
+    works on either side of that migration; `verify:purge` fails if the
+    server holds a table the lists do not name.
+11. The Postgres half is one `security definer` function,
+    `purge_connection_vendor_rows` (service role only), rather than PostgREST
+    calls from the job — one transaction, and pgTAP tests exactly what runs.
+12. `queryConnectionVideoIds` is exercised by `verify-queries.ts` too
+    (FILM-1610's coverage guard requires every exported query there).
+13. The data-deletion page's account-deletion bullet now says the statistics
+    go within 7 calendar days (decision 6); the YouTube dialog sentence gets
+    "— normally within the hour" back now that the job exists. Both are
+    flagged for the owner in PR B.
+
 **Decisions this builds on, not reopens** (KB-20, "Decided (owner, 2026-09-22)"):
 disconnecting does not delete history; YouTube is carved out — its statistics are
 deleted within 7 calendar days of an in-app disconnect and within 30 of a
@@ -566,7 +589,7 @@ drop policy platform_connections_delete on public.platform_connections;  -- deci
 - **Types:** `pnpm supabase:web:typegen` (generated, never edited). The generated
   file is shared with every teammate — regenerate after rebasing, never merge by hand.
 
-**PR B migration** `<ts>_kb20-vendor-data-purges.sql`:
+**PR B migration** `20260923153604_kb20-vendor-data-purges.sql`:
 
 ```sql
 create table public.vendor_data_purges (
