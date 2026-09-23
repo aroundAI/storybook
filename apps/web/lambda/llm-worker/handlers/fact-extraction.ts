@@ -9,6 +9,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 interface FactExtractionPayload {
   content: string;
   projectId: string;
+  /** The project's account, stamped by queueLlmJob from its target (KB-31). */
+  accountId: string;
   sourceTitle: string;
   sourceCitation?: string;
   userId: string;
@@ -59,7 +61,7 @@ export async function processFactExtraction(
     },
     context: {
       name: 'fact-extraction',
-      accountId: data.projectId,
+      accountId: data.accountId,
       userId: data.userId,
     },
   });

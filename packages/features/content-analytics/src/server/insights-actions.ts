@@ -4,7 +4,9 @@ import 'server-only';
 
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -124,12 +126,21 @@ export const generateInsightsAction = enhanceAction(
       };
     }
 
+    // A project job: the caller must be able to write to the project, and
+    // the job's usage is recorded on the project's account (KB-31)
+    const target = await authorizeProjectTarget(client, projectId);
+
+    if (!target) {
+      throw new ActionRefusal('Project not found');
+    }
+
     // Always queue to Lambda for processing
     const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
     await queueLlmJob({
       jobType: 'analytics-insights',
       userId: user.id,
+      target,
       payload: {
         projectId,
         analytics,

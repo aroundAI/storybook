@@ -15,6 +15,7 @@ import {
   PROJECT_WRITE_REFUSAL,
   canWriteProject,
 } from '@kit/episodes/lib/server/project-write-access';
+import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -114,11 +115,22 @@ export async function POST(request: Request) {
     if (extractFacts) {
       const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
+      // KB-31: queueLlmJob needs a target; the access gate above is KB-26's
+      const target = await authorizeProjectTarget(client, projectId);
+
+      if (!target) {
+        return NextResponse.json(
+          { error: PROJECT_WRITE_REFUSAL },
+          { status: 403 },
+        );
+      }
+
       // Queue fact extraction for each chunk
       for (const chunk of chunks) {
         await queueLlmJob({
           jobType: 'fact-extraction',
           userId: user.id,
+          target,
           payload: {
             content: chunk,
             projectId,

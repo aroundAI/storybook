@@ -26,6 +26,19 @@ vi.mock('@kit/supabase/server-client', () => ({
       state.rpcArgs.push(args);
       return { data: state.canWrite, error: null };
     },
+    // KB-31's `authorizeProjectTarget` reads the project for its account
+    // after this route's gate, then asks `can_write_project` again.
+    from: () => {
+      const query = {
+        select: () => query,
+        eq: () => query,
+        maybeSingle: async () => ({
+          data: { id: PROJECT, account_id: 'account-1' },
+          error: null,
+        }),
+      };
+      return query;
+    },
   }),
 }));
 

@@ -4,7 +4,9 @@ import 'server-only';
 
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -111,12 +113,21 @@ export const generateLanguageInsightsAction = enhanceAction(
       };
     }
 
+    // The reads above are account-scoped; queueing a project job needs
+    // project write access, and records usage on the project's account (KB-31)
+    const target = await authorizeProjectTarget(client, projectId);
+
+    if (!target) {
+      throw new ActionRefusal('Project not found');
+    }
+
     // Always queue to Lambda for processing
     const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
     await queueLlmJob({
       jobType: 'language-insights',
       userId: user.id,
+      target,
       payload: {
         projectId,
         languagePerformance: labelledPerformance,

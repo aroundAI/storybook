@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
+import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -46,6 +47,12 @@ const refineStoryHandler = enhanceAction(
       maxRequests: 30,
       windowMs: 60_000,
     });
+
+    const target = await authorizeEpisodeTarget(client, data.episodeId);
+
+    if (!target) {
+      throw new ActionRefusal('Episode not found');
+    }
 
     // Verify episode exists and has a story
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -100,9 +107,10 @@ const refineStoryHandler = enhanceAction(
     await queueLlmJob({
       jobType: 'story-refinement',
       userId: user.id,
+      target,
       payload: {
         episodeId: data.episodeId,
-        projectId: data.projectId,
+        projectId: target.projectId,
         feedback: data.feedback,
         userId: user.id,
       },
@@ -139,6 +147,12 @@ const refineScreenplayHandler = enhanceAction(
       maxRequests: 30,
       windowMs: 60_000,
     });
+
+    const target = await authorizeEpisodeTarget(client, data.episodeId);
+
+    if (!target) {
+      throw new ActionRefusal('Episode not found');
+    }
 
     // Verify episode exists and has a screenplay
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -195,9 +209,10 @@ const refineScreenplayHandler = enhanceAction(
     await queueLlmJob({
       jobType: 'screenplay-refinement',
       userId: user.id,
+      target,
       payload: {
         episodeId: data.episodeId,
-        projectId: data.projectId,
+        projectId: target.projectId,
         feedback: data.feedback,
         userId: user.id,
       },

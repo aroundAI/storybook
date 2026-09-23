@@ -19,6 +19,7 @@ import {
   GenerateStoryIdeasSchema,
 } from '@kit/episodes/schemas';
 import { generateStoryIdeasAction } from '@kit/episodes/server';
+import { unwrap } from '@kit/next/action-result';
 import type { StoryIdea } from '@kit/prompt-engine/schemas';
 import { Button } from '@kit/ui/button';
 import {
@@ -113,7 +114,7 @@ export function IdeationScreen({
 
   const onSubmit = form.handleSubmit((data: GenerateStoryIdeasInput) => {
     triggerLlm(async () => {
-      const result = await generateStoryIdeasAction(data);
+      const result = await unwrap(generateStoryIdeasAction(data));
       // If local dev (synchronous), process immediately
       if (result.success && result.data) {
         setIdeas(result.data.ideas);
@@ -173,6 +174,7 @@ export function IdeationScreen({
               </span>
               <Button
                 type="submit"
+                data-test="ideation-generate"
                 disabled={
                   isPending || llmStatus === 'pending' || premiseLength < 10
                 }
@@ -285,6 +287,7 @@ export function IdeationScreen({
                     <FormControl>
                       <Textarea
                         id="premise"
+                        data-test="ideation-premise"
                         placeholder="Once upon a time..."
                         className="cinema-story-text min-h-[200px] resize-none border-none bg-transparent p-0 shadow-none placeholder:text-slate-600 focus-visible:ring-0 sm:text-2xl"
                         {...field}

@@ -467,7 +467,9 @@ export async function processShotGeneration(
     // 7. Queue Audio Refinement Job (The Dedicated Audio Pass)
     // We decouple audio generation to ensure coherence across shots (merging music, coherent SFX)
     console.log('[Shot Generation] Queuing audio refinement job');
-    const { queueLlmJob } = await import('@kit/prompt-engine/server');
+    const { chainedLlmJobTarget, queueLlmJob } = await import(
+      '@kit/prompt-engine/server'
+    );
 
     // Create generation job entry for tracking audio cue generation
     const audioJobData = {
@@ -495,6 +497,12 @@ export async function processShotGeneration(
     await queueLlmJob({
       jobType: 'audio-cue-generation',
       userId: data.userId,
+      // The same episode this job's producer authorised (KB-31)
+      target: chainedLlmJobTarget({
+        accountId: data.accountId,
+        projectId: data.projectId,
+        episodeId: data.episodeId,
+      }),
       payload: {
         episodeId: data.episodeId,
         projectId: data.projectId,

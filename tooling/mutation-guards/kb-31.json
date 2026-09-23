@@ -1,0 +1,75 @@
+{
+  "feature": "KB-31",
+  "mutations": [
+    {
+      "name": "L1 an episode job authorised by a readable row, not project write access",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/server/llm-job-target.ts",
+      "find": "  if (!(await canWriteProject(client, row.project_id))) return null;\n",
+      "replace": "",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/llm-job-target.test.ts",
+      "pattern": "can read but not write"
+    },
+    {
+      "name": "L2 a batch of episode jobs authorised by readable rows",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/server/llm-job-target.ts",
+      "find": "    if (accountId && writable.get(row.project_id)) {",
+      "replace": "    if (accountId) {",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/llm-job-target.test.ts",
+      "pattern": "splits a batch"
+    },
+    {
+      "name": "L3 a project job authorised by a readable row",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/server/llm-job-target.ts",
+      "find": "  if (!(await canWriteProject(client, projectId))) return null;\n",
+      "replace": "",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/llm-job-target.test.ts",
+      "pattern": "readable project the caller cannot write to"
+    },
+    {
+      "name": "L4 the caller's accountId survives into the job",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/server/sqs-helper.ts",
+      "find": "    accountId: target.accountId,",
+      "replace": "    accountId: payload.accountId ?? target.accountId,",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/llm-job-target.test.ts",
+      "pattern": "stamps the target"
+    },
+    {
+      "name": "L5 a payload may name a project other than its target's",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/server/sqs-helper.ts",
+      "find": "    if (named !== undefined && named !== authorised) {",
+      "replace": "    if (false) {",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/llm-job-target.test.ts",
+      "pattern": "names a project other than"
+    },
+    {
+      "name": "L6 batch asset creation writes into whichever project the caller names",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/bulk-actions.ts",
+      "find": "      if (target.projectId !== data.projectId) {",
+      "replace": "      if (false) {",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/llm-job-authorization.test.ts",
+      "pattern": "another project"
+    },
+    {
+      "name": "L7 worker bills the project id as the account",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/analytics-insights.ts",
+      "find": "        accountId: data.accountId,",
+      "replace": "        accountId: data.projectId,",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/usage-attribution.test.ts",
+      "pattern": "analytics insights"
+    }
+  ]
+}

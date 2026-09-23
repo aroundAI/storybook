@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { noTenantLlmJobTarget } from '@kit/prompt-engine/llm-job-target';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 const PublishVideoSchema = z.object({
@@ -157,9 +158,11 @@ export const batchTranslateMetadataAction = enhanceAction(
     } = await client.auth.getUser();
     const userId = user?.id || 'system';
 
+    // The caller's own text: no tenant rows are read or written (KB-31)
     await queueLlmJob({
       jobType: 'batch-translate-metadata',
       userId,
+      target: noTenantLlmJobTarget(userId),
       payload: { items: itemsToTranslate },
     });
 
