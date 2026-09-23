@@ -8,6 +8,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { ScreenplayScene } from '@kit/episodes/agent/screenplay-orchestrator';
+
 import {
   markJobCompleted,
   markJobFailed,
@@ -22,24 +24,6 @@ interface ScreenplayConversionPayload {
   accountId: string;
   userId: string;
   projectId: string;
-}
-
-interface DialogueLine {
-  character: string;
-  dialogue: string;
-  parenthetical?: string;
-  sceneNumber: number;
-}
-
-interface ScreenplayScene {
-  number: number;
-  heading: string;
-  location: string;
-  timeOfDay: string;
-  description: string;
-  action: string[];
-  dialogue: DialogueLine[];
-  transitions?: string;
 }
 
 interface ScreenplayOutput {
@@ -75,7 +59,8 @@ export async function processScreenplayConversion(
   payload: Record<string, unknown>,
   supabase: SupabaseClient,
 ): Promise<ScreenplayConversionResult> {
-  const data = payload as ScreenplayConversionPayload;
+  // SQS payload: cast, not validated (KB-33).
+  const data = payload as unknown as ScreenplayConversionPayload;
 
   console.log(
     `[Screenplay Conversion] Processing for episode ${data.episodeId}`,
@@ -95,7 +80,11 @@ export async function processScreenplayConversion(
         `,
       )
       .eq('id', data.episodeId)
-      .single();
+      .single()
+      // Many-to-one embed: an object, not the array the untyped client infers.
+      .overrideTypes<{
+        project: { id: string; account_id: string; metadata: unknown } | null;
+      }>();
 
     if (episodeError || !episode) {
       throw new Error(`Episode not found: ${episodeError?.message}`);

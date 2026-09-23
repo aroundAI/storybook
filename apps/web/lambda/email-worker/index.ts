@@ -12,6 +12,7 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
+import type { StandardUnit } from '@aws-sdk/client-cloudwatch';
 import type { SQSEvent, SQSRecord } from 'aws-lambda';
 import ws from 'ws';
 
@@ -38,7 +39,9 @@ const _supabase = createClient(supabaseUrl, supabaseServiceKey, {
     persistSession: false,
   },
   realtime: {
-    transport: ws,
+    // ws is the WHATWG client the realtime transport expects; @types/ws leads
+    // with a server-mode `new (address: null)` overload that defeats inference.
+    transport: ws as unknown as typeof WebSocket,
   },
 });
 
@@ -49,7 +52,7 @@ const _supabase = createClient(supabaseUrl, supabaseServiceKey, {
 async function publishMetric(
   metricName: string,
   value: number,
-  unit: string = 'Count',
+  unit: StandardUnit = 'Count',
 ) {
   try {
     const { CloudWatchClient, PutMetricDataCommand } = await import(

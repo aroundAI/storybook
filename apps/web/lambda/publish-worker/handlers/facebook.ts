@@ -1,9 +1,8 @@
 /**
  * Facebook Upload Handler
  */
+import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
 import { META_GRAPH_BASE, META_GRAPH_VIDEO_BASE } from '@kit/shared/vendors';
-
-import type { PublishJobMessage } from '../index';
 
 export async function uploadToFacebook(
   accessToken: string,

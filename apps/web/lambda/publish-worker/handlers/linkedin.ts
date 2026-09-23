@@ -1,9 +1,8 @@
 /**
  * LinkedIn Upload Handler
  */
+import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
 import { vendorUrl } from '@kit/shared/vendors';
-
-import type { PublishJobMessage } from '../index';
 
 export async function uploadToLinkedIn(
   accessToken: string,

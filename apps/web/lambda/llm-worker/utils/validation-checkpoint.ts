@@ -70,6 +70,7 @@ export async function runValidationCheckpoint(
       characters: Array<{
         characterId: string;
         name: string;
+        role: string;
         emotionalArc?: string;
       }>;
     };

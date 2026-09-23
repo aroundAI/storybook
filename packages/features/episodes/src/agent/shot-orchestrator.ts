@@ -77,6 +77,15 @@ export interface GeneratedShotResult {
     avoid: string;
     fullPrompt: string;
   };
+  // Continuity fields the shot director emits (shot-director-skill.ts) and
+  // the llm-worker persists onto `shots`.
+  transitionType?: string;
+  frameStrategy?: string;
+  primarySubject?: { type: string; name: string };
+  firstFrameDescription?: string | null;
+  lastFrameDescription?: string | null;
+  locationArea?: string | null;
+  locationEnvironmentDescription?: string | null;
 }
 
 export interface ReelSceneAnalysis {

@@ -10,11 +10,6 @@ import { z } from 'zod';
 
 import { vendorUrl } from '@kit/shared/vendors';
 
-import {
-  markJobCompleted,
-  markJobFailed,
-  markJobProcessing,
-} from '../utils/job-tracking';
 import { uploadToR2 } from '../utils/r2-storage';
 
 const DialogueVoiceGenerationPayloadSchema = z.object({
@@ -139,11 +134,6 @@ export async function processDialogueVoiceGeneration(
   console.log(
     `[Dialogue Voice Gen] Processing dialogue line ${data.dialogueLineId}`,
   );
-  await markJobProcessing(
-    supabase,
-    data.dialogueLineId,
-    'dialogue_voice_generation',
-  );
 
   try {
     // 1. Validate text is not empty (safety check - validation also done in action)
@@ -228,16 +218,6 @@ export async function processDialogueVoiceGeneration(
       })
       .eq('id', data.dialogueLineId);
 
-    await markJobCompleted(
-      supabase,
-      data.dialogueLineId,
-      'dialogue_voice_generation',
-      {
-        audioUrl,
-        duration: estimatedDuration,
-      },
-    );
-
     console.log(
       `[Dialogue Voice Gen] Completed dialogue line ${data.dialogueLineId}, audio: ${audioUrl}`,
     );
@@ -262,13 +242,6 @@ export async function processDialogueVoiceGeneration(
         },
       })
       .eq('id', data.dialogueLineId);
-
-    await markJobFailed(
-      supabase,
-      data.dialogueLineId,
-      'dialogue_voice_generation',
-      errorMsg,
-    );
 
     console.error(
       `[Dialogue Voice Gen] Failed dialogue line ${data.dialogueLineId}:`,

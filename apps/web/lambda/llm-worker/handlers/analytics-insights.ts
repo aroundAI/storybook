@@ -75,7 +75,8 @@ export async function processAnalyticsInsights(
   payload: Record<string, unknown>,
   supabase: SupabaseClient,
 ): Promise<InsightsResult> {
-  const data = payload as AnalyticsInsightsPayload;
+  // SQS payload: cast, not validated (KB-33).
+  const data = payload as unknown as AnalyticsInsightsPayload;
 
   console.log(`[Analytics Insights] Processing for project ${data.projectId}`);
 

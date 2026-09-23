@@ -6,9 +6,8 @@ import { createReadStream, promises as fsPromises } from 'fs';
 import { OAuth2Client } from 'google-auth-library';
 import { Readable } from 'stream';
 
+import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
 import { vendorUrl } from '@kit/shared/vendors';
-
-import type { PublishJobMessage } from '../index';
 
 export async function uploadToYouTube(
   accessToken: string,

@@ -41,7 +41,8 @@ export async function processFactExtraction(
   payload: Record<string, unknown>,
   supabase: SupabaseClient,
 ): Promise<FactExtractionResult> {
-  const data = payload as FactExtractionPayload;
+  // SQS payload: cast, not validated (KB-33).
+  const data = payload as unknown as FactExtractionPayload;
 
   console.log(
     `[Fact Extraction] Starting extraction for project ${data.projectId}`,

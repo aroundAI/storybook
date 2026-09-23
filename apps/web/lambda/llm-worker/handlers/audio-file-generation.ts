@@ -8,11 +8,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { z } from 'zod';
 
-import {
-  markJobCompleted,
-  markJobFailed,
-  markJobProcessing,
-} from '../utils/job-tracking';
 import { uploadToR2 } from '../utils/r2-storage';
 
 const AudioFileGenerationPayloadSchema = z.object({
@@ -155,7 +150,6 @@ export async function processAudioFileGeneration(
   console.log(
     `[Audio File Gen] Processing cue ${data.cueId} (${data.cueType})`,
   );
-  await markJobProcessing(supabase, data.cueId, 'audio_file_generation');
 
   try {
     // Fetch API key from external_api_keys via project → account lookup
@@ -223,11 +217,6 @@ export async function processAudioFileGeneration(
         .update({ audio_asset_id: result.assetId, status: 'placed' })
         .eq('id', data.cueId);
 
-      await markJobCompleted(supabase, data.cueId, 'audio_file_generation', {
-        assetId: result.assetId,
-        fileUrl: result.fileUrl,
-      });
-
       console.log(
         `[Audio File Gen] Cue ${data.cueId} completed with asset ${result.assetId}`,
       );
@@ -239,13 +228,6 @@ export async function processAudioFileGeneration(
         .update({ status: 'failed' })
         .eq('id', data.cueId);
 
-      await markJobFailed(
-        supabase,
-        data.cueId,
-        'audio_file_generation',
-        result.error ?? 'Generation failed',
-      );
-
       console.error(
         `[Audio File Gen] Cue ${data.cueId} failed: ${result.error}`,
       );
@@ -253,19 +235,10 @@ export async function processAudioFileGeneration(
       return { success: false, cueId: data.cueId };
     }
   } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-
     await supabase
       .from('audio_cues')
       .update({ status: 'failed' })
       .eq('id', data.cueId);
-
-    await markJobFailed(
-      supabase,
-      data.cueId,
-      'audio_file_generation',
-      errorMsg,
-    );
 
     console.error(`[Audio File Gen] Cue ${data.cueId} error:`, error);
 

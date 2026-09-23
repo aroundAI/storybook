@@ -56,7 +56,8 @@ export async function processTranslateDialogue(
   payload: Record<string, unknown>,
   supabase: SupabaseClient,
 ): Promise<TranslateDialogueResult> {
-  const data = payload as TranslateDialoguePayload;
+  // SQS payload: cast, not validated (KB-33).
+  const data = payload as unknown as TranslateDialoguePayload;
 
   console.log(
     `[Translate Dialogue] Starting AGENTIC pipeline for episode ${data.episodeId} to ${data.targetLanguage}`,

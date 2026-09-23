@@ -74,7 +74,8 @@ export async function processAssetCreation(
   payload: Record<string, unknown>,
   supabase: SupabaseClient,
 ): Promise<AssetCreationResult> {
-  const data = payload as AssetCreationPayload;
+  // SQS payload: cast, not validated (KB-33).
+  const data = payload as unknown as AssetCreationPayload;
 
   console.log(
     `[Asset Creation] Processing for episode ${data.episodeId}, project ${data.projectId}`,

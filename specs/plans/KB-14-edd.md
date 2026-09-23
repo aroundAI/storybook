@@ -6,7 +6,42 @@
 | Severity | Medium. Nothing is known broken, and nothing would tell us if it were |
 | Branch | `fix/kb-14-typecheck-lambdas` from `origin/main` @ `49b851d6` |
 | Size | M. Config plus about 60 small edits across 30 files, one one-statement migration, one pgTAP file |
-| Status | Plan. Waiting for owner approval |
+| Status | Approved 2026-09-23 with all recommended defaults (D1–D8). KB-32–KB-35 filed |
+
+### Deviations found while implementing (Phase 2)
+
+1. **Two of the three devDependencies were not added.** Adding `@aws-sdk/client-s3` or
+   `@aws-sdk/client-sqs` to `apps/web`, even pinned to the versions already in the
+   lockfile, makes pnpm re-resolve the shared `@smithy/*` graph. That dropped 20
+   duplicate patch versions, and it broke `@kit/storage`'s own typecheck: two
+   errors, `S3Client` vs the presigner's `Client` ("separate declarations of a
+   private property"). Instead, `lambda/tsconfig.json` maps those two module names
+   (`paths`) to the copies the workspace already installs for `@kit/storage` and
+   `@kit/publishing`. Only `@types/ws` is added. Its lockfile change keeps every
+   resolved version (it rewrites only eslint's peer-suffix keys).
+2. **`@types/ws` surfaced 6 new errors.** The workers pass `ws` as supabase-js's
+   `realtime.transport`, and `@types/ws`'s first constructor overload
+   (`address: null`, server mode) defeats assignability to
+   `WebSocketLikeConstructor`. Each site is `ws as unknown as typeof WebSocket`,
+   with the reason in a comment. That makes a cast between two third-party
+   typings, not in-repo types. The total handled is therefore 83 − 9 + 6 = 80
+   after the config.
+3. **One new real finding, fixed.** With `PublishJobMessage` resolving properly,
+   `scheduled-publish` was seen to enqueue messages without `type`. The consumer
+   defaults a missing type to `'publish'` (`publish-worker/index.ts:526`), so
+   nothing broke. The message now says `type: 'publish'` explicitly. That is a
+   one-field runtime change to the SQS body, which the consumer handles
+   identically.
+4. **`schemas/30-film-studio.sql` had already drifted.** Its CHECK listed
+   `transcription`/`translation` and lacked two values the migrations allow. It now
+   mirrors the new migration exactly.
+5. **Bundle identity (§27), measured.**
+   - 8 of 11 workers are code-identical. Their raw bytes differ only by the
+     preserved comments.
+   - `llm-worker`, `voice-worker` and `scheduled-publish` differ only by the
+     intended changes: the removed dead branch, duplicate key, unused binding and
+     tracking calls; `?? ''`; the `.overrideTypes()` calls, which pass through at
+     runtime; and `type: 'publish'`.
 
 **Reading guide.** This is a tooling fix, so the "user" in §§1–5 is the engineer or
 reviewer who relies on `pnpm typecheck` and CI's **ʦ TypeScript** job. It is
