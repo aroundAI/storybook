@@ -3179,7 +3179,7 @@ Spec `evidence` and `reason` citations name a `path:line`, and nothing checks th
 
 ## KB-82 — Records KB-80 found stale: KB-75, the SPIKE links and FILM-1728
 
-**Found:** KB-80 (2026-09-23). **Fixed** in #BATCH.
+**Found:** KB-80 (2026-09-23). **Fixed** in this batch-records PR (`docs/batch-records-2026-09-23`).
 
 - KB-75 (#324) had no entry and no *Fixed* row, so a `closed_by: "KB-75"` would
   never have been reported. Both are added here.
@@ -3227,7 +3227,7 @@ Spec `evidence` and `reason` citations name a `path:line`, and nothing checks th
 | KB-22 | Disconnecting a platform deleted the creator's own records — manual revenue, tags, experiment membership, YPP targets — through a cascade, behind a dialog that described something else; and the vendor's statistics it should delete were kept for ever | #317, #KB22B |
 | KB-75 | The Unit Tests job's mutation guards outgrew its timeout, so it was cancelled on `main` and on PRs; the unit guards now run sharded | #324 |
 | KB-80 | Specs kept open items waiting on fixed bugs and finished specs (FILM-305, FILM-502, FILM-503 on KB-14); a guard now fails any `closed_by` that names finished work | #328 |
-| KB-82 | KB-75 had no record, INDEX linked the spikes to files that no longer exist, and FILM-1728 said the lambdas were untyped | #BATCH |
+| KB-82 | KB-75 had no record, INDEX linked the spikes to files that no longer exist, and FILM-1728 said the lambdas were untyped | this batch-records PR (`docs/batch-records-2026-09-23`) |
 
 ---
 
