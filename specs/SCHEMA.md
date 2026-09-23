@@ -252,3 +252,8 @@ list is more useful to a reader than a paragraph.
 - A `dependencies[].spec_id` and a `remaining[].closed_by` that looks like
   `FILM-\d+` or `KB-\d+` should resolve to a real spec or a real entry in
   `FILM-CC-04-known-bugs.md`. Nothing enforces that automatically yet.
+- An item that is not `met: true` never has a `closed_by` naming finished
+  work: a KB in FILM-CC-04's *Fixed* table, or a spec that is DONE or
+  RETIRED. When you fix a KB or finish a spec, `git grep 'closed_by: "<ID>"'`
+  and reconcile every hit against the code. Enforced by
+  `packages/shared/__tests__/spec-closed-by-drift.test.ts` (KB-80).

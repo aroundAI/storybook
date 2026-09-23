@@ -76,8 +76,8 @@ acceptance_criteria:
     met: false
     reason: "unverified — per-call cost is logged (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:666`) from `packages/llm/src/pricing.ts`; rates not checked against vendor prices"
   - text: "TypeScript compiles without errors"
-    met: false
-    reason: "not met — the actions compile, but the worker handlers fail a typecheck (`apps/web/lambda/llm-worker/handlers/story-generation.ts:329`); nothing runs one (KB-14)"
+    met: true
+    evidence: "`pnpm typecheck` runs `web`'s `typecheck`, whose second half is `tsc --noEmit -p lambda/tsconfig.json` (`apps/web/package.json:23`); that config includes every worker file (`apps/web/lambda/tsconfig.json:23`) and CI's TypeScript job runs it (`.github/workflows/workflow.yml:45`) — KB-14, #309. Passes on `main` at `b21bd33e` (KB-80), with `@kit/episodes`' own `tsc --noEmit`; `handlers/story-ideation.ts` and `handlers/story-generation.ts` are in the lambda program"
   - text: "No ESLint warnings"
     met: false
     reason: "unverified — linting is outside the audit rules; settle with `pnpm --filter @kit/episodes lint`"
@@ -95,9 +95,6 @@ remaining:
   - criterion: "All actions respect RLS policies"
     reason: "`generateStoryIdeasAction` never reads the episode through RLS, and the service-role worker builds its context from any `episodeId` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:65`)"
     closed_by: "KB-31"
-  - criterion: "TypeScript compiles without errors"
-    reason: "type errors in the worker handlers (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:58`, `apps/web/lambda/llm-worker/handlers/story-generation.ts:329`)"
-    closed_by: "KB-14"
 open_questions: []
 notes: |
   ## Source header
