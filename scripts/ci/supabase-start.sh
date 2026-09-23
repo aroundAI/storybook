@@ -3,29 +3,29 @@
 # `supabase start` for CI, used by every job that runs a local Supabase.
 # Arguments are passed through: supabase-start.sh -x studio,imgproxy
 #
-# Two defences against ghcr.io refusing image pulls with `toomanyrequests`,
-# which failed #336 twice on 2026-09-23 while the same pulls from a
-# developer machine succeeded:
+# Two defences against image pulls refused with `toomanyrequests`, which
+# failed #336's CI on 2026-09-23 from 17:47 UTC onwards:
 #
-# 1. Log in to ghcr.io when GHCR_TOKEN is set. Anonymous pulls from GitHub's
-#    runners share one limit across every runner; an authenticated pull is
-#    counted against this repository's token instead. The login is stored in
-#    the runner's Docker config, so later pulls in the same job — pg_prove,
-#    pulled by `supabase test db` in the mutation guards — use it too.
+# 1. Clear SUPABASE_INTERNAL_IMAGE_REGISTRY. `supabase/setup-cli` exports it
+#    as `ghcr.io`, which pins every pull to ghcr.io alone. Unset, CLI 2.117.0
+#    tries public.ecr.aws, then ghcr.io, then Docker Hub — the order a
+#    developer machine uses. ghcr.io refused runner pulls whether logged in
+#    or not and whether pulled in parallel or one at a time, while
+#    public.ecr.aws served all nine images (diagnostic run 35903103102). An
+#    empty value counts as unset to the CLI, and it is written to GITHUB_ENV
+#    so later steps (pg_prove in the database guards, `supabase stop`) pull
+#    from the same place.
 # 2. Retry with a backoff measured in minutes. The CLI's own retry waits 4s
-#    then 8s; the outage it has to outlast lasted at least five minutes.
-#    Images pulled by a failed attempt stay in the Docker cache, so each
-#    attempt only fetches what is still missing.
+#    then 8s, which cannot outlast an outage of minutes. Images pulled by a
+#    failed attempt stay in the Docker cache, so each attempt only fetches
+#    what is still missing.
 set -uo pipefail
 
 backoff=${SUPABASE_START_BACKOFF:-60 120 240}
 
-if [ -n "${GHCR_TOKEN:-}" ]; then
-  if printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "${GHCR_USER:-github-actions}" --password-stdin >/dev/null; then
-    echo "supabase-start: logged in to ghcr.io"
-  else
-    echo "supabase-start: ghcr.io login failed; pulling anonymously" >&2
-  fi
+export SUPABASE_INTERNAL_IMAGE_REGISTRY=
+if [ -n "${GITHUB_ENV:-}" ]; then
+  echo "SUPABASE_INTERNAL_IMAGE_REGISTRY=" >> "$GITHUB_ENV"
 fi
 
 attempt=1

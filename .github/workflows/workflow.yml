@@ -261,10 +261,7 @@ jobs:
 
       - name: Start Supabase (applies every migration)
         working-directory: apps/web
-        # Logs in to ghcr.io and retries with backoff: see the script.
-        env:
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GHCR_USER: ${{ github.actor }}
+        # Pulls from public.ecr.aws first and retries with backoff: see the script.
         run: ../../scripts/ci/supabase-start.sh
 
       # `CLAUDE.md` has told people to run typegen after a migration since
@@ -277,10 +274,12 @@ jobs:
       #
       # Scoped to the `public` schema, and that is not a softening. The first
       # version of this step diffed the whole generated file and failed on one
-      # column — `storage.buckets.versioning_status` — because CI pulls its
+      # column — `storage.buckets.versioning_status` — because CI pulled its
       # service images from ghcr.io (see SUPABASE_INTERNAL_IMAGE_REGISTRY)
       # while a developer's machine pulls them from public.ecr.aws, and the
-      # two registries ship different storage-api builds. Gating on the whole
+      # two registries ship different storage-api builds. CI now tries
+      # public.ecr.aws first too (scripts/ci/supabase-start.sh), but can
+      # still fall back to ghcr.io, so the point stands. Gating on the whole
       # file gates on Supabase's release schedule; gating on `public` gates on
       # what our own migrations control. The script explains the rest.
       - name: Types are generated, not hand-written
@@ -612,10 +611,7 @@ jobs:
       # Same exclusions as ⚫️ Test, for the same reasons.
       - name: Supabase Server
         working-directory: apps/web
-        # Logs in to ghcr.io and retries with backoff: see the script.
-        env:
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GHCR_USER: ${{ github.actor }}
+        # Pulls from public.ecr.aws first and retries with backoff: see the script.
         run: ../../scripts/ci/supabase-start.sh -x studio,imgproxy,logflare,vector
 
       - name: Wait for ClickHouse
@@ -767,10 +763,7 @@ jobs:
       # Same exclusions as ⚫️ Test, for the same reasons.
       - name: Supabase Server
         working-directory: apps/web
-        # Logs in to ghcr.io and retries with backoff: see the script.
-        env:
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GHCR_USER: ${{ github.actor }}
+        # Pulls from public.ecr.aws first and retries with backoff: see the script.
         run: ../../scripts/ci/supabase-start.sh -x studio,imgproxy,logflare,vector
 
       - name: Wait for ClickHouse
@@ -932,10 +925,7 @@ jobs:
       # `supabase/setup-cli` installed, which is the one pinned above.
       - name: Supabase Server
         working-directory: apps/web
-        # Logs in to ghcr.io and retries with backoff: see the script.
-        env:
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GHCR_USER: ${{ github.actor }}
+        # Pulls from public.ecr.aws first and retries with backoff: see the script.
         run: ../../scripts/ci/supabase-start.sh -x studio,imgproxy,logflare,vector
 
       # No credential export step. apps/web/.env.test already carries the
