@@ -915,7 +915,7 @@ UPDATE.
 reach `verified` or `disputed` through the app, for any user, owner included.
 Nothing is corrupted, and nothing downstream can trust a status the UI cannot
 set. **Found:** KB-1 (#290), 2026-09-22, reported as a lead from reading;
-reproduced below. **Fixed** in #KB18PR — see *Fixed (#KB18PR)* at the end of
+reproduced below. **Fixed** in #314 — see *Fixed (#314)* at the end of
 this entry.
 
 `verifyFactAction` and `disputeFactAction`
@@ -981,7 +981,7 @@ nobody having been able to use it.
 - [x] A refusal reaches the user as a readable message in a production build
 - [x] FILM-1121 / FILM-1123 criteria re-checked against the running feature, corrections noted in those specs
 
-### Fixed (#KB18PR)
+### Fixed (#314)
 
 Driven through the UI before the fix, as the project's owner: *Confirm
 Verified* showed "Failed to verify fact", *Mark Disputed* "Failed to dispute
@@ -2050,7 +2050,7 @@ every canon string at the tool boundary, as sources are.
 | KB-19 | A failed platform connect landed on a 404 and logged nothing | #297 |
 | KB-29 | Token refresh read app credentials from a table nothing had written since 2026-01-21, so connections died at their first expiry; LinkedIn could never refresh | #310 |
 | KB-41 | Any signed-in user could list any project's members with their emails, public or private; `get_project_members` now requires access to the project's account | #319 |
-| KB-18 | No fact could be verified or disputed, by anyone: the update policy refused both states and the actions wrote through it; the actions' account-role check also turned some reviews and deletes into silent no-ops | #KB18PR |
+| KB-18 | No fact could be verified or disputed, by anyone: the update policy refused both states and the actions wrote through it; the actions' account-role check also turned some reviews and deletes into silent no-ops | #314 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
 | KB-52 | Every signed-in user could read, rewrite, forge and delete every account's `llm_usage_analytics` rows: a policy with no `TO` clause and `using (true)`; writes are now service-role only, and a pgTAP guard fails any new policy of that shape | #321 |

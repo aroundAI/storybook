@@ -24,7 +24,7 @@ acceptance_criteria:
     evidence: null
   - text: "`runFactCheck` function validates content correctly"
     met: false
-    reason: "not met — no caller, and its slug `fact-checker-role` is unregistered (`packages/features/episodes/src/lib/documentary/fact-checker.ts:134`); facts can now reach `verified` (KB-18, #KB18PR), so that is no longer what stops it"
+    reason: "not met — no caller, and its slug `fact-checker-role` is unregistered (`packages/features/episodes/src/lib/documentary/fact-checker.ts:134`); facts can now reach `verified` (KB-18, #314), so that is no longer what stops it"
   - text: "Critical issues are properly identified"
     met: false
     reason: "unverified — LLM judgement in the live skill (`packages/features/episodes/src/agent/skills/fact-checker-skill.ts:72`); no test or eval; read-only audit, not run"
@@ -48,7 +48,7 @@ remaining:
       is not a registry key; the live agent skill uses
       `documentary/fact-checker-role`
       (`packages/features/episodes/src/agent/skills/fact-checker-skill.ts:58`).
-      It reads only `verified` facts (`:81`); since KB-18 (#KB18PR) those can
+      It reads only `verified` facts (`:81`); since KB-18 (#314) those can
       exist, so it would no longer always exit at "cannot fact-check" (`:120`)
       — but it is still never run
     closed_by: "unassigned"

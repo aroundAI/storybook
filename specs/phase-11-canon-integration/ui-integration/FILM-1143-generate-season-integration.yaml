@@ -31,7 +31,7 @@ acceptance_criteria:
     evidence: null
   - text: "External facts passed to season analysis"
     met: false
-    reason: "unverified — only `verified` facts are sent (`packages/features/episodes/src/server/external-context-actions.ts:401`); since KB-18 (#KB18PR) they can exist, but no season analysis has been driven with one"
+    reason: "unverified — only `verified` facts are sent (`packages/features/episodes/src/server/external-context-actions.ts:401`); since KB-18 (#314) they can exist, but no season analysis has been driven with one"
   - text: "Memory context includes external facts"
     met: true
     evidence: null
@@ -69,7 +69,7 @@ remaining:
     reason: >
       The dialog sends `getVerifiedFactsAction` results, which keep only
       `verification_status = 'verified'` (`external-context-actions.ts:401`).
-      Until KB-18 (#KB18PR) no fact could reach that state; now one can, but
+      Until KB-18 (#314) no fact could reach that state; now one can, but
       no test or run has shown a verified fact arriving in the analysis
       request
     closed_by: "unassigned"
