@@ -5,7 +5,7 @@
  * frames and videos, episode thumbnails, master assets and exports.
  *
  * Mirrors migrations 20251207162036_project-assets-bucket.sql and
- * 20260923024605_kb28-project-write-scope.sql. The database is built from
+ * 20260923042517_kb28-project-write-scope.sql. The database is built from
  * migrations/; this file is documentation.
  * -------------------------------------------------------
  */

@@ -785,7 +785,7 @@ export async function storageUploadAs(
         Authorization: `Bearer ${session.access_token as string}`,
         'Content-Type': contentType,
       },
-      body,
+      body: typeof body === 'string' ? body : Uint8Array.from(body),
     },
   );
 
