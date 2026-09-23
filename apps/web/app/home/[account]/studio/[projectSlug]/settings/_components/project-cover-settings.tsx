@@ -8,7 +8,7 @@ import { useCallback, useState, useTransition } from 'react';
 
 import { ImageIcon, Loader2, Trash2, Upload } from 'lucide-react';
 
-import { refusalMessage } from '@kit/next/action-result';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { uploadProjectCover } from '@kit/storage/client';
 import { Button } from '@kit/ui/button';
 import {
@@ -69,7 +69,7 @@ export function ProjectCoverSettings({
           const uploadResult = await uploadProjectCover(file, projectId);
 
           // Update project metadata with new cover URL
-          await updateProjectCoverImage(projectId, uploadResult.url);
+          await unwrap(updateProjectCoverImage(projectId, uploadResult.url));
 
           // Update current URL and clear preview
           setCurrentUrl(uploadResult.url);
@@ -92,14 +92,14 @@ export function ProjectCoverSettings({
     startTransition(async () => {
       try {
         // Update project metadata to remove cover URL
-        await updateProjectCoverImage(projectId, '');
+        await unwrap(updateProjectCoverImage(projectId, ''));
 
         setCurrentUrl(null);
         setPreviewUrl(null);
 
         toast.success('Cover image removed');
-      } catch {
-        toast.error('Failed to remove cover image');
+      } catch (removeError) {
+        toast.error(refusalMessage(removeError, 'Failed to remove cover image'));
       }
     });
   }, [projectId]);

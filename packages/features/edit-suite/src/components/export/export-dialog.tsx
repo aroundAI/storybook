@@ -15,6 +15,7 @@ import { refusalMessage } from '@kit/next/action-result';
 import { cn } from '@kit/ui/utils';
 
 import { useExportWorker } from '../../hooks/use-export-worker';
+import { EXPORT_UPLOAD_BUCKET } from '../../lib/export-upload';
 import { buildFFmpegCommand } from '../../lib/ffmpeg-builder';
 import { uploadToR2Presigned } from '../../lib/presigned-upload';
 import {
@@ -88,7 +89,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
           : `export_${selectedLang}_${timestamp}.mp4`;
 
       const result = await uploadToR2Presigned(exportState.resultBlob, {
-        bucket: process.env.NEXT_PUBLIC_R2_BUCKET_NAME ?? 'storybook-assets',
+        bucket: EXPORT_UPLOAD_BUCKET,
         path: `projects/${projectId}/assets/master_video/${filename}`,
         contentType: 'video/mp4',
         onProgress: setUploadProgress,
