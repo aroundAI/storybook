@@ -259,7 +259,7 @@ canon read returned `[]`.
 | `commit_canon_changes` | **none** | **KB-27** — measured |
 | `bulk_reset_episodes_to_stage` | checks the episodes belong to `p_account_id`, never that the caller may act for `p_account_id`; the check skips soft-deleted episodes, the deletes do not | **Hole ×2, measured.** (a) naming the victim's account: `{"errors": [], "reset_count": 1}`, victim's `story_data` NULL, its canon event gone. (b) naming **own** account with a victim's soft-deleted episode: `{"errors": [], "reset_count": 0}` — looks harmless — and the victim's canon event is deleted. Canon-deleting. Its migration header says it "uses SECURITY DEFINER … with explicit authorization checks" (`20260608014516_bulk-reset-episodes-rpc.sql:6`) |
 | `batch_assemble_edit_project` | membership of the **caller-supplied** `p_user_id`, not `auth.uid()`; `search_path=public` | **Hole, measured**: passing the owner's id replaced the victim episode's edit project; passing own id refused. **KB-40** (Open) |
-| `get_project_members` | **none** | **Hole, measured**: returned the victim owner's email. **KB-41** (Open) |
+| `get_project_members` | **none** | **Hole, measured**: returned the victim owner's email. **KB-41** (filed Open; since fixed in #319) |
 | `update_project_cover_image` | **none** | **Hole, measured**: victim's `coverImageUrl` set to `https://attacker.example/x.png` (HTTP 204). **Fixed by KB-28** (this branch's base) |
 | `check_account_budget` | **none** | **Low, measured**: returned `true` for the victim account; raises "Account not found" otherwise (existence oracle). **KB-42** (Open) |
 | `batch_create_shots` | `project_members` owner/admin/member via `auth.uid()` | OK (by reading) |
@@ -521,7 +521,8 @@ rather than widened here, since it would change client code (Decision 4).
 - **Audit:** no audit-log row for canon commits today; unchanged.
 - **Remaining holes found by this sweep, filed Open, not fixed here:**
   KB-40 `batch_assemble_edit_project` (High), KB-41 `get_project_members`
-  (High), KB-42 `check_account_budget` (Low), all measured.
+  (High; since fixed in #319), KB-42 `check_account_budget` (Low), all
+  measured.
   `update_project_cover_image` is fixed by KB-28 (this branch's base).
   `remove_episode_from_threads_touched` is recorded under KB-40's entry.
 
