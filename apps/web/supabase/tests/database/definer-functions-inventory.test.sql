@@ -14,8 +14,8 @@ begin;
 --
 -- Merge order: this list is exact as of KB-27 (after KB-18 and KB-28). A PR
 -- that merges after it and adds a definer function adds one line here; one
--- that revokes a function removes its line (FILM-607 revoked
--- batch_assemble_edit_project, closing KB-40).
+-- that revokes a function removes its line (FILM-607 revoked, then dropped,
+-- the Edit Suite's assemble function, closing KB-40).
 --
 -- I2: none of them may run without a pinned search_path.
 
