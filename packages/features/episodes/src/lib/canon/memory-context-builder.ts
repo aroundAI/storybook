@@ -12,6 +12,7 @@
  * worker's own client in the Lambda.
  */
 import type { ProjectType } from '@kit/film-studio-schemas/project';
+import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import type { Database } from '@kit/supabase/database';
 import type { createLambdaAdminClient } from '@kit/supabase/lambda-admin-client';
 
@@ -26,6 +27,7 @@ import {
 import {
   type MemoryAllocation,
   getMemoryOptionsForContentType,
+  rankByPriority,
 } from './memory-strategies';
 import type {
   BuildMemoryContextInput,
@@ -41,6 +43,7 @@ import type {
   NarrativeThread,
   NarrativeThreadStatus,
   NarrativeThreadType,
+  SourceCitation,
   TokenBudget,
   WorldState,
 } from './types';
@@ -100,27 +103,67 @@ function truncateToTokenBudget(text: string, maxTokens: number): string {
 // DATA LOADING FUNCTIONS
 // =============================================================================
 
+type Row<T extends keyof Database['public']['Tables']> =
+  Database['public']['Tables'][T]['Row'];
+
 /**
- * Loads immutable events for a project.
+ * Keeps items in order until the next one would overflow the budget.
+ * Callers pass items already in priority order, so what is cut is the tail.
+ */
+function fitToBudget<T>(items: T[], tokenBudget: number): T[] {
+  let currentTokens = 0;
+  const result: T[] = [];
+
+  for (const item of items) {
+    const tokens = estimateTokens(item);
+    if (currentTokens + tokens > tokenBudget) break;
+    result.push(item);
+    currentTokens += tokens;
+  }
+
+  return result;
+}
+
+/**
+ * Loads immutable events for a project, oldest first.
+ *
+ * Every row is read (paged): past PostgREST's 1,000-row cap the newest
+ * events would otherwise never be considered. Events are never ranked by
+ * decay — CANON_001 reads deaths from this list, and an early death must
+ * not age out of it (owner decision D1, FILM-1111).
  */
 async function loadImmutableEvents(
   client: CanonReadClient,
   projectId: string,
   tokenBudget: number,
 ): Promise<ImmutableEvent[]> {
-  const { data, error } = await client
-    .from('immutable_events')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: true });
+  if (tokenBudget <= 0) return [];
 
-  if (error) {
+  let rows: Row<'immutable_events'>[];
+
+  try {
+    rows = await fetchAllRows<Row<'immutable_events'>>(
+      (from, to) =>
+        client
+          .from('immutable_events')
+          .select('*')
+          .eq('project_id', projectId)
+          .order('id')
+          .range(from, to),
+      'immutable_events',
+    );
+  } catch (error) {
     console.error('Error loading immutable events:', error);
     return [];
   }
 
-  // Prioritize by recency and importance
-  const events: ImmutableEvent[] = (data ?? []).map((row) => ({
+  rows.sort(
+    (a, b) =>
+      (a.created_at ?? '').localeCompare(b.created_at ?? '') ||
+      a.id.localeCompare(b.id),
+  );
+
+  const events: ImmutableEvent[] = rows.map((row) => ({
     id: row.id,
     projectId: row.project_id,
     eventType: row.event_type as ImmutableEventType,
@@ -134,63 +177,73 @@ async function loadImmutableEvents(
     createdBy: row.created_by ?? undefined,
   }));
 
-  // Fit within budget
-  let currentTokens = 0;
-  const result: ImmutableEvent[] = [];
-
-  for (const event of events) {
-    const tokens = estimateTokens(event);
-    if (currentTokens + tokens > tokenBudget) break;
-    result.push(event);
-    currentTokens += tokens;
-  }
-
-  return result;
+  return fitToBudget(events, tokenBudget);
 }
 
 /**
- * Loads latest character states for a project.
- * Gets most recent state per character per state type.
+ * Loads every character of a project with its latest states (at most 10
+ * per character, newest first). Ranking and fitting happen in the caller,
+ * once the states' episode numbers are known.
  */
-async function loadCharacterStates(
+async function loadCharacters(
   client: CanonReadClient,
   projectId: string,
   tokenBudget: number,
 ): Promise<CharacterStateContext[]> {
-  // Get characters for this project
-  const { data: assets, error: assetsError } = await client
-    .from('assets')
-    .select('id, name')
-    .eq('project_id', projectId)
-    .eq('type', 'character');
+  if (tokenBudget <= 0) return [];
 
-  if (assetsError) {
-    console.error('Error loading character assets:', assetsError);
+  let assets: Array<Pick<Row<'assets'>, 'id' | 'name'>>;
+
+  try {
+    assets = await fetchAllRows<Pick<Row<'assets'>, 'id' | 'name'>>(
+      (from, to) =>
+        client
+          .from('assets')
+          .select('id, name')
+          .eq('project_id', projectId)
+          .eq('type', 'character')
+          .order('id')
+          .range(from, to),
+      'assets',
+    );
+  } catch (error) {
+    console.error('Error loading character assets:', error);
     return [];
   }
 
-  if (!assets || assets.length === 0) {
+  if (assets.length === 0) {
     return [];
   }
 
-  // Batch-fetch all character states in a single query
-  const assetIds = assets.map((a) => a.id);
+  let allStates: Row<'character_states'>[];
 
-  const { data: allStates, error: statesError } = await client
-    .from('character_states')
-    .select('*')
-    .in('character_id', assetIds)
-    .order('created_at', { ascending: false });
-
-  if (statesError) {
-    console.error('Error loading character states:', statesError);
+  try {
+    allStates = await fetchAllByIds<Row<'character_states'>>(
+      assets.map((a) => a.id),
+      (chunk, from, to) =>
+        client
+          .from('character_states')
+          .select('*')
+          .in('character_id', chunk)
+          .order('id')
+          .range(from, to),
+      'character_states',
+    );
+  } catch (error) {
+    console.error('Error loading character states:', error);
     return [];
   }
+
+  allStates.sort(
+    (a, b) =>
+      (b.created_at ?? '').localeCompare(a.created_at ?? '') ||
+      b.id.localeCompare(a.id),
+  );
 
   // Group states by character_id, keeping at most 10 per character
-  const statesByCharacter = new Map<string, typeof allStates>();
+  const statesByCharacter = new Map<string, Row<'character_states'>[]>();
 
-  for (const state of allStates ?? []) {
+  for (const state of allStates) {
     const existing = statesByCharacter.get(state.character_id) ?? [];
     if (existing.length < 10) {
       existing.push(state);
@@ -198,10 +251,7 @@ async function loadCharacterStates(
     }
   }
 
-  const characterContexts: CharacterStateContext[] = [];
-  let currentTokens = 0;
-
-  for (const asset of assets) {
+  return assets.map((asset) => {
     const states = statesByCharacter.get(asset.id) ?? [];
 
     const currentStates: CharacterState[] = states.map((row) => ({
@@ -223,21 +273,13 @@ async function loadCharacterStates(
       .flatMap((s) => s.newConstraints ?? [])
       .filter(Boolean);
 
-    const context: CharacterStateContext = {
+    return {
       characterId: asset.id,
       characterName: asset.name,
       currentStates,
       constraints,
     };
-
-    const tokens = estimateTokens(context);
-    if (currentTokens + tokens > tokenBudget) break;
-
-    characterContexts.push(context);
-    currentTokens += tokens;
-  }
-
-  return characterContexts;
+  });
 }
 
 /**
@@ -249,6 +291,8 @@ async function loadWorldState(
   episodeId: string | null,
   tokenBudget: number,
 ): Promise<WorldState | undefined> {
+  if (tokenBudget <= 0) return undefined;
+
   let query = client
     .from('world_states')
     .select('*')
@@ -296,26 +340,36 @@ async function loadWorldState(
 }
 
 /**
- * Loads active narrative threads for a project.
+ * Loads every open or progressed narrative thread of a project (paged).
+ * Ranking and fitting happen in the caller.
  */
 async function loadActiveThreads(
   client: CanonReadClient,
   projectId: string,
   tokenBudget: number,
 ): Promise<NarrativeThread[]> {
-  const { data, error } = await client
-    .from('narrative_threads')
-    .select('*')
-    .eq('project_id', projectId)
-    .in('status', ['open', 'progressed'])
-    .order('updated_at', { ascending: false });
+  if (tokenBudget <= 0) return [];
 
-  if (error) {
+  let rows: Row<'narrative_threads'>[];
+
+  try {
+    rows = await fetchAllRows<Row<'narrative_threads'>>(
+      (from, to) =>
+        client
+          .from('narrative_threads')
+          .select('*')
+          .eq('project_id', projectId)
+          .in('status', ['open', 'progressed'])
+          .order('id')
+          .range(from, to),
+      'narrative_threads',
+    );
+  } catch (error) {
     console.error('Error loading narrative threads:', error);
     return [];
   }
 
-  const threads: NarrativeThread[] = (data ?? []).map((row) => ({
+  return rows.map((row) => ({
     id: row.id,
     projectId: row.project_id,
     threadName: row.thread_name,
@@ -330,37 +384,28 @@ async function loadActiveThreads(
     createdAt: row.created_at ?? new Date().toISOString(),
     updatedAt: row.updated_at ?? new Date().toISOString(),
   }));
-
-  // Fit within budget
-  let currentTokens = 0;
-  const result: NarrativeThread[] = [];
-
-  for (const thread of threads) {
-    const tokens = estimateTokens(thread);
-    if (currentTokens + tokens > tokenBudget) break;
-    result.push(thread);
-    currentTokens += tokens;
-  }
-
-  return result;
 }
 
 /**
- * Loads episode summaries within memory horizon.
+ * Loads episode summaries within memory horizon, ranked by recency for the
+ * project's type.
  */
 async function loadEpisodeSummaries(
   client: CanonReadClient,
   projectId: string,
+  projectType: ProjectType,
   currentEpisodeNumber: number,
   memoryHorizon: number,
   tokenBudget: number,
 ): Promise<EpisodeSummary[]> {
+  if (tokenBudget <= 0) return [];
+
   // Get episodes within horizon
   const startEpisode = Math.max(1, currentEpisodeNumber - memoryHorizon);
 
   const { data: episodes, error: episodesError } = await client
     .from('episodes')
-    .select('id')
+    .select('id, number')
     .eq('project_id', projectId)
     .gte('number', startEpisode)
     .lt('number', currentEpisodeNumber);
@@ -370,13 +415,12 @@ async function loadEpisodeSummaries(
     return [];
   }
 
-  const episodeIds = episodes.map((e) => e.id);
+  const episodeNumbers = new Map(episodes.map((e) => [e.id, e.number]));
 
   const { data, error } = await client
     .from('episode_summaries')
     .select('*')
-    .in('episode_id', episodeIds)
-    .order('created_at', { ascending: false });
+    .in('episode_id', [...episodeNumbers.keys()]);
 
   if (error) {
     console.error('Error loading episode summaries:', error);
@@ -396,18 +440,113 @@ async function loadEpisodeSummaries(
     updatedAt: row.updated_at ?? new Date().toISOString(),
   }));
 
-  // Fit within budget
-  let currentTokens = 0;
-  const result: EpisodeSummary[] = [];
+  const ranked = rankByPriority(
+    summaries.map((summary) => ({
+      item: summary,
+      id: summary.id,
+      episode: episodeNumbers.get(summary.episodeId),
+    })),
+    currentEpisodeNumber,
+    projectType,
+  );
 
-  for (const summary of summaries) {
-    const tokens = estimateTokens(summary);
-    if (currentTokens + tokens > tokenBudget) break;
-    result.push(summary);
-    currentTokens += tokens;
+  return fitToBudget(
+    ranked.map((r) => r.item),
+    tokenBudget,
+  );
+}
+
+/**
+ * The most facts a source read considers. The smallest a loaded fact can
+ * be is ~16 tokens (a uuid and a one-character claim as JSON), so 200 fill
+ * a 3,200-token source budget — above every type's default (documentary
+ * and news: 2,000). Because the server orders the facts, the first 200 are
+ * exactly the ones a complete read would fit. A caller that raises
+ * `tokenBudgetPercent` past that bound gets the top 200 by confidence.
+ */
+const SOURCE_CANDIDATE_LIMIT = 200;
+
+/**
+ * Loads the project's verified facts as sources, highest confidence first
+ * (FILM-1111, owner decision D2). Unverified, disputed and retracted facts
+ * are never loaded — the same rule `researcher.ts` and `fact-checker.ts`
+ * apply. Types with no source budget issue no query.
+ */
+async function loadSources(
+  client: CanonReadClient,
+  projectId: string,
+  tokenBudget: number,
+): Promise<SourceCitation[]> {
+  if (tokenBudget <= 0) return [];
+
+  const { data, error } = await client
+    .from('verified_facts')
+    .select(
+      'id, claim, source_citation, source_title, category, confidence_score',
+    )
+    .eq('project_id', projectId)
+    .eq('verification_status', 'verified')
+    .order('confidence_score', { ascending: false, nullsFirst: false })
+    .order('id')
+    .limit(SOURCE_CANDIDATE_LIMIT);
+
+  if (error) {
+    console.error('Error loading verified facts:', error);
+    return [];
   }
 
-  return result;
+  const sources: SourceCitation[] = (data ?? []).map((row) => ({
+    factId: row.id,
+    claim: row.claim,
+    citation: row.source_citation ?? undefined,
+    sourceTitle: row.source_title ?? undefined,
+    category: row.category ?? undefined,
+    confidence: row.confidence_score ?? undefined,
+  }));
+
+  return fitToBudget(sources, tokenBudget);
+}
+
+/**
+ * Project-wide episode numbers for the episode ids threads and character
+ * states name. On failure every item ranks as "episode unknown": kept, last.
+ */
+async function resolveEpisodeNumbers(
+  client: CanonReadClient,
+  episodeIds: string[],
+): Promise<Map<string, number>> {
+  if (episodeIds.length === 0) return new Map();
+
+  try {
+    const rows = await fetchAllByIds<{ id: string; number: number }>(
+      episodeIds,
+      (chunk, from, to) =>
+        client
+          .from('episodes')
+          .select('id, number')
+          .in('id', chunk)
+          .order('id')
+          .range(from, to),
+      'episodes',
+    );
+
+    return new Map(rows.map((row) => [row.id, row.number]));
+  } catch (error) {
+    console.error('Error resolving episode numbers:', error);
+    return new Map();
+  }
+}
+
+/** The latest of the given episodes, by number; undefined if none resolve */
+function latestEpisode(
+  episodeIds: string[],
+  episodeNumbers: Map<string, number>,
+): number | undefined {
+  const numbers = episodeIds
+    .map((id) => episodeNumbers.get(id))
+    .filter((n): n is number => n !== undefined);
+
+  return numbers.length > 0 ? Math.max(...numbers) : undefined;
 }
 
 // =============================================================================
@@ -494,20 +633,64 @@ export async function buildMemoryContext(
 
   const budgets = allocateTokenBudget(maxTokens, options.allocation);
 
+  const { projectType } = resolvedType;
+
   // Load all data in parallel
-  const [immutableEvents, characterStates, activeThreads, recentSummaries] =
+  const [immutableEvents, characters, threads, recentSummaries, sources] =
     await Promise.all([
       loadImmutableEvents(client, projectId, budgets.immutableEvents),
-      loadCharacterStates(client, projectId, budgets.characterStates),
+      loadCharacters(client, projectId, budgets.characterStates),
       loadActiveThreads(client, projectId, budgets.narrativeThreads),
       loadEpisodeSummaries(
         client,
         projectId,
+        projectType,
         episodeNumber,
         memoryHorizon,
         budgets.episodeSummaries,
       ),
+      loadSources(client, projectId, budgets.sourcesCitations),
     ]);
+
+  // Rank threads and characters by the episode they were last active in
+  // (FILM-1111), then fit each to its budget.
+  const episodeNumbers = await resolveEpisodeNumbers(client, [
+    ...threads.flatMap((t) => [t.openedAt, ...(t.episodesTouched ?? [])]),
+    ...characters.flatMap((c) => c.currentStates.map((s) => s.episodeId)),
+  ]);
+
+  const activeThreads = fitToBudget(
+    rankByPriority(
+      threads.map((thread) => ({
+        item: thread,
+        id: thread.id,
+        episode: latestEpisode(
+          [thread.openedAt, ...(thread.episodesTouched ?? [])],
+          episodeNumbers,
+        ),
+        mentions: thread.episodesTouched?.length,
+      })),
+      episodeNumber,
+      projectType,
+    ).map((r) => r.item),
+    budgets.narrativeThreads,
+  );
+
+  const characterStates = fitToBudget(
+    rankByPriority(
+      characters.map((character) => ({
+        item: character,
+        id: character.characterId,
+        episode: latestEpisode(
+          character.currentStates.map((s) => s.episodeId),
+          episodeNumbers,
+        ),
+      })),
+      episodeNumber,
+      projectType,
+    ).map((r) => r.item),
+    budgets.characterStates,
+  );
 
   // Load world state (depends on having recent summaries)
   const latestEpisodeId = recentSummaries[0]?.episodeId ?? null;
@@ -525,6 +708,7 @@ export async function buildMemoryContext(
     worldStates: estimateTokens(worldState),
     narrativeThreads: estimateTokens(activeThreads),
     episodeSummaries: estimateTokens(recentSummaries),
+    sourcesCitations: estimateTokens(sources),
   };
 
   const totalUsed = Object.values(actualUsage).reduce((a, b) => a + b, 0);
@@ -540,9 +724,11 @@ export async function buildMemoryContext(
     `[MemoryContext] project=${projectId}` +
       ` type=${resolvedType.projectType}(${resolvedType.source})` +
       ` budget=${maxTokens} horizon=${memoryHorizon}(${memoryHorizonSource})` +
+      ` decay=${options.decayFunction}` +
       ` events=${immutableEvents.length} characters=${characterStates.length}` +
       ` threads=${activeThreads.length} summaries=${recentSummaries.length}` +
-      ` world=${worldState ? 1 : 0} tokens=${totalUsed}`,
+      ` world=${worldState ? 1 : 0} sources=${sources.length}` +
+      ` tokens=${totalUsed}`,
   );
 
   return {
@@ -554,12 +740,14 @@ export async function buildMemoryContext(
     activeThreads,
     recentSummaries,
     worldState,
+    sources,
     metadata: {
       builtAt: new Date().toISOString(),
       projectType: resolvedType.projectType,
       projectTypeSource: resolvedType.source,
       memoryHorizon,
       memoryHorizonSource,
+      decayFunction: options.decayFunction,
       budgets,
       totalTokensUsed: totalUsed,
     },

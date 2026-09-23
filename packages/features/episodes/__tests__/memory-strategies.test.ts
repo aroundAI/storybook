@@ -5,6 +5,7 @@ import {
   calculatePriority,
   getDecayFactor,
   getMemoryOptionsForContentType,
+  rankByPriority,
 } from '../src/lib/canon/memory-strategies';
 
 describe('Memory Strategies (FILM-1111)', () => {
@@ -114,7 +115,7 @@ describe('Memory Strategies (FILM-1111)', () => {
       const options = getMemoryOptionsForContentType('series');
       expect(options.memoryHorizon).toBe(50);
       expect(options.maxTokenPercentage).toBe(18);
-      expect(options.decayFunction).toBe('linear');
+      expect(options.decayFunction).toBe('exponential');
       expect(options.includeParentContext).toBe(false);
       expect(options.includeSources).toBe(false);
     });
@@ -201,6 +202,98 @@ describe('Memory Strategies (FILM-1111)', () => {
       const result = calculatePriority(baseItem, 10, 5, 'series');
       expect(result.reason).toContain('decay=');
       expect(result.reason).toContain('distance=5');
+    });
+  });
+
+  // ===========================================================================
+  // RANKING (memory context builder)
+  // ===========================================================================
+
+  describe('rankByPriority', () => {
+    const names = (ranked: Array<{ item: { name: string } }>) =>
+      ranked.map((r) => r.item.name);
+
+    // Series at episode 60, hand-computed: 0.95^5 × 1.2 = 0.9285 (four
+    // touches earn the mention boost), 0.95^30 = 0.2146, 0.95^58 = 0.0510.
+    it('orders series threads by decayed score with the mention boost', () => {
+      const ranked = rankByPriority(
+        [
+          { id: 'a', item: { name: 'T-old' }, episode: 2, mentions: 2 },
+          { id: 'b', item: { name: 'T-mid' }, episode: 30, mentions: 1 },
+          { id: 'c', item: { name: 'T-hot' }, episode: 55, mentions: 4 },
+        ],
+        60,
+        'series',
+      );
+
+      expect(names(ranked)).toEqual(['T-hot', 'T-mid', 'T-old']);
+      expect(ranked.map((r) => Number(r.score.toFixed(4)))).toEqual([
+        0.9285, 0.2146, 0.051,
+      ]);
+    });
+
+    it('lets four touches outrank a slightly more recent single touch', () => {
+      // 0.95^3 = 0.8574 vs 0.95^5 × 1.2 = 0.9285
+      const ranked = rankByPriority(
+        [
+          { id: 'a', item: { name: 'once' }, episode: 57, mentions: 1 },
+          { id: 'b', item: { name: 'often' }, episode: 55, mentions: 4 },
+        ],
+        60,
+        'series',
+      );
+
+      expect(names(ranked)).toEqual(['often', 'once']);
+    });
+
+    it('clamps an item from a later episode to distance 0', () => {
+      // Unclamped, series would score 0.95^-2 = 1.108
+      const [first] = rankByPriority(
+        [{ id: 'a', item: { name: 'later' }, episode: 62 }],
+        60,
+        'series',
+      );
+
+      expect(first!.score).toBe(1);
+    });
+
+    it('keeps items whose episode is unknown, ranked last', () => {
+      const ranked = rankByPriority(
+        [
+          { id: 'a', item: { name: 'unknown' } },
+          { id: 'b', item: { name: 'ancient' }, episode: 1 },
+        ],
+        60,
+        'series',
+      );
+
+      expect(names(ranked)).toEqual(['ancient', 'unknown']);
+    });
+
+    it('breaks equal scores by episode, newest first, then by id', () => {
+      // Movie decay is flat (1.0): every score ties.
+      const ranked = rankByPriority(
+        [
+          { id: 'b', item: { name: 'ep3-b' }, episode: 3 },
+          { id: 'x', item: { name: 'ep9' }, episode: 9 },
+          { id: 'a', item: { name: 'ep3-a' }, episode: 3 },
+        ],
+        10,
+        'movie',
+      );
+
+      expect(names(ranked)).toEqual(['ep9', 'ep3-a', 'ep3-b']);
+    });
+
+    it('never removes an item, however low its score (owner decision D1)', () => {
+      const candidates = Array.from({ length: 5 }, (_, i) => ({
+        id: String(i),
+        item: { name: `n${i}` },
+        episode: i + 1,
+      }));
+
+      expect(rankByPriority(candidates, 200, 'series')).toHaveLength(5);
+      expect(rankByPriority(candidates, 200, 'news')).toHaveLength(5);
     });
   });
 });

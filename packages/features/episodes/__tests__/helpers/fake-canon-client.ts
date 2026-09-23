@@ -25,10 +25,21 @@ export function createFakeCanonClient(tables: Record<string, FakeTable> = {}) {
       const recorded: RecordedQuery = { table, calls: [] };
       queries.push(recorded);
 
-      const result = () => ({
-        data: tables[table]?.error ? null : (tables[table]?.rows ?? []),
-        error: tables[table]?.error ?? null,
-      });
+      // `range(from, to)` slices the rows, as PostgREST pages them, so a
+      // paged read (`fetchAllRows`) ends on an empty page.
+      let window: [from: number, to: number] | undefined;
+
+      const result = () => {
+        const rows = tables[table]?.rows ?? [];
+        return {
+          data: tables[table]?.error
+            ? null
+            : window
+              ? rows.slice(window[0], window[1] + 1)
+              : rows,
+          error: tables[table]?.error ?? null,
+        };
+      };
 
       const single = () => {
         const { data, error } = result();
@@ -42,6 +53,11 @@ export function createFakeCanonClient(tables: Record<string, FakeTable> = {}) {
         ) => Promise.resolve(result()).then(resolve, reject),
         maybeSingle: single,
         single,
+        range: (from: number, to: number) => {
+          recorded.calls.push(['range', from, to]);
+          window = [from, to];
+          return query;
+        },
       };
 
       for (const method of [

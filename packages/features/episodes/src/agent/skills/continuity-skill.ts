@@ -16,6 +16,7 @@ import type { Skill } from '@kit/agent';
 import { createTool, toolError, toolSuccess } from '@kit/agent';
 
 import type { CanonReadClient } from '../../lib/canon/memory-context-builder';
+import { sanitizeForPrompt } from '../../lib/sanitize-for-prompt';
 
 export interface ContinuitySkillDeps {
   /** Client the canon is read with: the worker's own in the Lambda */
@@ -61,7 +62,7 @@ export function createContinuitySkill(deps: ContinuitySkillDeps): Skill {
         });
 
         return toolSuccess({
-          summary: `Loaded memory context: ${context.immutableEvents.length} immutable events, ${context.characterStates.length} characters, ${context.activeThreads.length} threads, ${context.recentSummaries.length} summaries`,
+          summary: `Loaded memory context: ${context.immutableEvents.length} immutable events, ${context.characterStates.length} characters, ${context.activeThreads.length} threads, ${context.recentSummaries.length} summaries, ${context.sources.length} verified sources`,
           immutableEvents: context.immutableEvents.map(
             (e: {
               eventKey: string;
@@ -95,6 +96,12 @@ export function createContinuitySkill(deps: ContinuitySkillDeps): Skill {
                 activeConflicts: context.worldState.activeConflicts,
               }
             : null,
+          // Verified facts come from uploaded documents: the least trusted
+          // text in the context, so it is sanitised before the model sees it.
+          sources: context.sources.map((source) => ({
+            claim: sanitizeForPrompt(source.claim),
+            citation: source.citation ? sanitizeForPrompt(source.citation) : '',
+          })),
           tokensUsed: context.metadata.totalTokensUsed,
         });
       } catch (error) {

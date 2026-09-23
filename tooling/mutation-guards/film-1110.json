@@ -25,8 +25,8 @@
       "name": "B1 Characters are read by a column that does not exist",
       "kind": "unit",
       "file": "packages/features/episodes/src/lib/canon/memory-context-builder.ts",
-      "find": "    .eq('type', 'character');",
-      "replace": "    .eq('asset_type', 'character');",
+      "find": "          .eq('type', 'character')\n",
+      "replace": "          .eq('asset_type', 'character')\n",
       "cwd": "packages/features/episodes",
       "test": "__tests__/memory-context-builder.test.ts",
       "pattern": "selects characters by assets.type"
