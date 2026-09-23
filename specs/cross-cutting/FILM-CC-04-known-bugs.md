@@ -1945,6 +1945,7 @@ the prompt.
 | KB-19 | A failed platform connect landed on a 404 and logged nothing | #297 |
 | KB-29 | Token refresh read app credentials from a table nothing had written since 2026-01-21, so connections died at their first expiry; LinkedIn could never refresh | #310 |
 | KB-28 | Any signed-in user could upload into any project's storage folder, and owners could not replace or delete their own files | #313 |
+| KB-40 | Any signed-in user could replace any episode's edit project by naming its owner's user id; project viewers and team members without a project role could too. Now `can_write_project` on the session user. (The KB-40 entry itself is written in KB-27's #316: whichever merges second marks it **Fixed** there.) | #PR_KB40 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
 

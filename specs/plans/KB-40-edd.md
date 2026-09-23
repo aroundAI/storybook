@@ -3,7 +3,12 @@
 **Ticket:** KB-40, "`batch_assemble_edit_project` trusts a caller-supplied `p_user_id`" (severity High, a cross-tenant destructive write). KB-27's class sweep found it on 2026-09-23. Its FILM-CC-04 entry is written in KB-27's PR, which has not merged, so it is not on `main` yet.
 **Branch:** `fix/kb-40-edit-project-write-scope`, stacked on `fix/kb-28-project-assets-insert-scope` (#313) @ `f9943881`. It needs `public.can_write_project`, which that PR creates.
 **Size:** S. One migration, one server action, a two-line client change, a pgTAP file, a Playwright spec and mutation guards.
-**Status:** Phase 1 (plan). Nothing is implemented yet.
+**Status:** Implemented (Phase 2). Approved by the owner on 2026-09-23 with every recommended default (D1–D6). The sibling RPCs are KB-62; `remove_episode_from_threads_touched` is KB-63.
+
+**Deviations from the approved design** (none changes user-visible behaviour or scope):
+- **A unit test and a unit guard were added** (§26 said none). The refusal mapping became a shared helper (`write-refusal.ts`), and the mutation-guard README says a server-module line is guarded by a unit entry, not an e2e one. So `packages/features/edit-suite/__tests__/write-refusal.test.ts` tests it, and `@kit/edit-suite` joins `scripts/test-units.sh`. That needed a `vitest.config.ts` and a `server-only` mock in the package.
+- **The E2E red check reverts the rule at the database** (to account membership, as before KB-40) with the app unchanged. It does not revert the whole branch: the pre-fix toolbar has no `data-test` hooks, so a full revert would fail at the locator, not for the stated reason.
+- **The refusal span carries `role="alert"`**, so a screen reader announces it.
 
 ---
 
@@ -379,7 +384,7 @@ Today T1 would *not* throw when it names the owner, so the red run proves the te
 
 **4. Direct-attack re-run:** `$SP/kb40/repro.sh` against the fixed DB. The expected results go in the PR as a before/after table.
 
-**5. Unit:** none added. The action is a thin mapping covered by P3/P4 on a production build. The edit-suite package has no Vitest suite (`--passWithNoTests`), and mocking Supabase would test the mock.
+**5. Unit:** `packages/features/edit-suite/__tests__/write-refusal.test.ts` covers the shared mapping: `42501` becomes the `ActionRefusal` sentence, and every other code or no error is left to the caller. A unit mutation guard (the code match changed) goes RED. The action itself is not unit-tested: mocking Supabase would test the mock, and P3/P4 drive it for real.
 
 **6. KB-6 guard:** `packages/next/__tests__/kb6-caught-action-message.test.ts` must stay green. The client reads the message only through `refusalMessage`.
 
