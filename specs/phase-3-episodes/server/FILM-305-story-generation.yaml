@@ -58,8 +58,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "All actions respect RLS policies"
-    met: false
-    reason: "no longer true — KB-31: story ideation builds its prompt from any episode, for any caller (`apps/web/lambda/llm-worker/index.ts:71`)"
+    met: true
+    evidence: "KB-31, #315: both story actions queue their LLM job only after `authorizeEpisodeTarget` (`packages/features/episodes/src/server/story-actions.ts:79`, `:156`), which asks `can_write_project` on the episode's project as the caller (`packages/features/prompt-engine/src/lib/server/llm-job-target.ts:85`); `queueLlmJob` requires that target and sends only its ids (`packages/features/prompt-engine/src/lib/server/sqs-helper.ts:87`, `:90`). Red on the old code: `packages/features/episodes/__tests__/llm-job-authorization.test.ts` (27 tests, green on main)"
   - text: "Supports Claude, GPT-4, and Gemini providers"
     met: true
     evidence: null
@@ -92,9 +92,6 @@ remaining:
   - criterion: "`generateFullStoryAction` handles optimistic locking"
     reason: "the version guard was dropped from the worker's write (f64c9648, 669b66e3) because the orchestrator bumps `version` mid-run (`apps/web/lambda/llm-worker/handlers/story-generation.ts:471`)"
     closed_by: "owner"
-  - criterion: "All actions respect RLS policies"
-    reason: "`generateStoryIdeasAction` never reads the episode through RLS, and the service-role worker builds its context from any `episodeId` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:65`)"
-    closed_by: "KB-31"
 open_questions: []
 notes: |
   ## Source header

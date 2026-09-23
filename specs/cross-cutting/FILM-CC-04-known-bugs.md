@@ -221,6 +221,20 @@ block a merge; it does hide the screenshots a reviewer wants to see.
 that — not from a guess (`supabase stop` before `start` cannot help on a
 fresh VM, and a change that cannot be shown red first proves nothing).
 
+
+### CI runner flakes (added 2026-09-23, filed by the lead)
+
+Each passed on a single re-run. Re-run once, and tell the lead: CI minutes are
+rationed.
+
+- `next/font`'s Google Fonts fetch fails in the build (`loader.js:122`,
+  TypeError); job 107032726972 (FILM-1504, #312).
+- `supabase start` fails on the runner: Docker cannot bind host port 55324
+  (inbucket), "address already in use" (KB-28, #313; E2E guards 1 and
+  Supabase DB).
+- Docker's "unable to remove filesystem … exit 125" during the pgTAP
+  mutation-guard run reports a false NOT GREEN (KB-17, #330; job
+  107161869233).
 ---
 
 ## KB-4 — `config.toml` still points `db diff` at `schemas/`
@@ -868,7 +882,7 @@ accounts. Any member of a team can silently rewrite or remove the canon
 record the continuity validator treats as fixed, and put someone else's
 name on it. **Found:** KB-1 (#290), 2026-09-22, while adding the author-name
 snapshot: the brief asked that "any immutability guard still refuse ordinary
-edits", and there was no guard to ask. **Open.**
+edits", and there was no guard to ask. **Fixed** in #330.
 
 The table has one policy and, before #290, no triggers:
 
@@ -916,10 +930,63 @@ UPDATE.
 
 ### Acceptance criteria
 
-- [ ] pgTAP, red first: a member cannot UPDATE an immutable event, cannot insert one naming another author, and can delete one only if their role allows it
-- [ ] User deletion (KB-1) still succeeds against a user who authored an immutable event, name snapshot intact
-- [ ] Every `FOR ALL` policy lacking `WITH CHECK` is listed, with a decision beside each
-- [ ] Canon UI still creates events — shown by an E2E written for this fix. *(Corrected 2026-09-23: there is no canon E2E to keep green, and no UI removes events — `deleteImmutableEventAction` has no caller.)*
+- [x] pgTAP, red first: a member cannot UPDATE an immutable event, cannot insert one naming another author, and can delete one only if their role allows it
+- [x] User deletion (KB-1) still succeeds against a user who authored an immutable event, name snapshot intact
+- [x] Every `FOR ALL` policy lacking `WITH CHECK` is listed, with a decision beside each
+- [x] Canon UI still creates events — shown by an E2E written for this fix. *(Corrected 2026-09-23: there is no canon E2E to keep green, and no UI removes events — `deleteImmutableEventAction` has no caller.)*
+
+### Fixed (#330)
+
+The owner's decisions of 2026-09-23 (EDD `specs/plans/KB-17-edd.md`):
+- **Reads** are on account membership (`has_account_access`).
+- **Adding and deleting** follow the project-write rule (`can_write_project`,
+  KB-28), and the author must be the writer (D1).
+- **Bulk reset** already follows that rule, so it is unchanged (D2).
+- **Nobody may ever edit an event** (D3). A correction is a delete plus a new
+  event, which names whoever added it.
+
+`apps/web/supabase/migrations/20260923075604_kb17-immutable-events-immutable.sql`:
+
+- The `FOR ALL` policy is replaced by one policy per verb, with no UPDATE
+  policy.
+- `anon` loses every privilege. `authenticated` keeps SELECT, INSERT and
+  DELETE.
+- A BEFORE UPDATE trigger refuses every update, for every role, except the
+  `auth.users` foreign key clearing a deleted author and nothing else.
+
+`addImmutableEventAction` and `deleteImmutableEventAction` return "You can't
+change this project's canon." as a value. The second one no longer reports
+success after a delete that matched nothing.
+
+The fix was wider than the entry above. Project viewers and team members
+with no project row could also rewrite, delete and forge events. The owner of
+a personal account could neither read nor add canon in their own project. So
+the continuity validator checked their stories against an empty canon.
+
+Tests:
+- `apps/web/supabase/tests/database/immutable-events-immutable.test.sql`:
+  39 cases, red on the base.
+- `audit-author-snapshot.test.sql`: its four updates and its forged insert
+  now expect a refusal.
+- `packages/features/episodes/__tests__/canon-event-actions.test.ts`.
+- `apps/e2e/tests/canon/canon-events.spec.ts`, which includes a production
+  build.
+- `tooling/mutation-guards/kb-17.json`: 10 guards, all RED.
+
+**Every `FOR ALL` policy without `WITH CHECK`** (live schema, 2026-09-23), with
+the owner's decision (D4: fix only `immutable_events` here):
+
+| Table | Policy | Decision |
+|---|---|---|
+| `immutable_events` | `immutable_events_project_access` | Fixed here |
+| `narrative_threads`, `world_states`, `episode_summaries`, `act_context_bridges`, `sequel_parent_contexts` | `*_project_access` / `episode_summaries_access` | **KB-76**: writes on `has_role_on_account`, so viewers write (reproduced) |
+| `accounts`, `accounts_memberships`, `invitations`, `notifications`, `order_items`, `orders`, `role_permissions`, `subscription_items`, `subscriptions` | `restrict_mfa_*` | Correct as is: Makerkit's `AS RESTRICTIVE` MFA gates grant nothing, and a restrictive `USING` also constrains the new row |
+| `cron.job`, `cron.job_run_details` | `cron_*_policy` | Owned by the pg_cron extension; out of scope |
+
+The same authorship hole in a different shape is `character_states`, whose
+insert does not pin `created_by`. The append-only logs are also granted
+DELETE. Both are filed as **KB-77**. Story regeneration deletes canon added
+by hand, filed as **KB-78**.
 
 ---
 
@@ -1204,7 +1271,7 @@ not implement. Item 3 exists so that items 1–2 never have to.
 - [x] Privacy policy carries the three YouTube-required items — each cited to the policy text in #294 (§III.A.1, §III.A.2.c, §III.A.2.i)
 - [x] Owner has decided what disconnect deletes (2026-09-22: keep until asked; then, on the YouTube conflict, option A — see above)
 - [x] Vendor retention/revocation clauses quoted and cited for YouTube and Meta; TikTok **[not verified]** (its terms were unreachable from this network); the conflict was brought to the owner and decided
-- [ ] Item 3: after a disconnect (or on request), vendor-sourced rows for that connection are gone from ClickHouse and Postgres within the stated window; manual entries untouched — pgTAP/ClickHouse test with seeded rows, red first. **Precondition before a second account**; until then the YouTube windows are met by hand (`docs/data-deletion-runbook.md`)
+- [x] Item 3: after a disconnect (or on request), vendor-sourced rows for that connection are gone from ClickHouse and Postgres within the stated window; manual entries untouched — pgTAP/ClickHouse test with seeded rows, red first — **KB-22 part B (#334)**: the `vendor_data_purges` queue and the hourly `vendor-data-purge` job; a YouTube in-app disconnect and an account deletion queue themselves, a request is one insert (runbook B). The 30-day case (revoked at Google / token that cannot be renewed) stays manual until KB-29's fix has run long enough to trust (owner decision D5)
 - [x] Runbook (#289) updated in #294: both blockers marked resolved, the URLs to paste kept in each vendor's form table
 
 ---
@@ -1263,7 +1330,9 @@ point** (standing owner rule). Every proof is local.
 click, behind a dialog that describes something else. **Found:** KB-20's
 drafting (2026-09-22), when "what does disconnect remove?" turned out to have
 an answer nobody had written down. It also corrects KB-20, whose first version
-asserted the opposite. **Open.**
+asserted the opposite. **Fixed — #317 (disconnect keeps the row and every
+record under it) and #334 (the vendor-data deletion job, KB-20 item 3).**
+Design: `specs/plans/KB-22-edd.md`.
 
 The disconnect dialog says, in full (`platforms:disconnectDescription`):
 *"This will remove access to {{accountName}}. You won't be able to publish to
@@ -1337,11 +1406,11 @@ is about.
 
 ### Acceptance criteria
 
-- [ ] pgTAP, red first: disconnecting leaves `publishes`, manual `revenue_records`, `publish_tags`, `experiment_publishes`, `channel_analytics_settings` intact
-- [ ] Reconnecting the same platform account restores the connection to its publishes; analytics resume without duplicates
-- [ ] The deletion job removes one connection's vendor rows from all seven ClickHouse tables and `source='api'` revenue — and nothing else; tested with two connections seeded side by side, against the real local ClickHouse
-- [ ] Dialog copy matches behaviour; Playwright covers disconnect → reconnect, asserting the manual revenue figure is still there **after** reconnect; screenshots in the PR
-- [ ] No production data or credentials are used to verify any of this
+- [x] pgTAP, red first: disconnecting leaves `publishes`, manual `revenue_records`, `publish_tags`, `experiment_publishes`, `channel_analytics_settings` intact — `platform-connection-disconnect.test.sql` (also project/episode publishing defaults, manual tasks, an experiment's channel scope; a member's and the service role's direct `DELETE` refused; account deletion still succeeds)
+- [x] Reconnecting the same platform account restores the connection to its publishes; analytics resume without duplicates — pgTAP upsert case; Playwright through the real YouTube callback, same row id (#317); `syncEligibility` treats a reconnected grant as eligible (unit-tested); a purge clears `publishes.metadata.sync`, so the sync re-collects from the publish date into the same ReplacingMergeTree keys (#334, pgTAP)
+- [x] The deletion job removes one connection's vendor rows from every ClickHouse table (the seven `video_*`, `channel_daily`, `channel_subscribers`, and FILM-1504's `channel_reach_daily`) and `source='api'` revenue — and nothing else; tested with two connections seeded side by side, against the real local ClickHouse — `pnpm --filter @kit/clickhouse verify:purge`, `vendor-data-purges.test.sql` (#334)
+- [x] Dialog copy matches behaviour; Playwright covers disconnect → reconnect, asserting the manual revenue figure is still there **after** reconnect; screenshots in the PR — `disconnect-keeps-records.spec.ts`; the copy's per-platform flags are bound to `REVOKERS` by `revokers.test.ts`
+- [x] No production data or credentials are used to verify any of this — local stack, a generated local `ENCRYPTION_KEY`, fake app credentials, a local stand-in for Google
 
 ---
 
@@ -1477,7 +1546,8 @@ that should not need to exist.
 **Severity:** High — a cross-tenant read of text a creator uploaded as their own
 research. No one is exposed today only because the owner is the only account;
 fixing it is a precondition before a second one. **Found:** the spec audit of
-FILM-1135 (2026-09-23); reproduced by the coordinator. **Open.**
+FILM-1135 (2026-09-23); reproduced by the coordinator. **Fixed** in #318
+(stacked on KB-28's #313, for `can_write_project`); see *Fixed* below.
 
 `external_content` holds both the shared news/research cache and every user
 upload — `uploadSourceAction`
@@ -1536,9 +1606,55 @@ Rolled back.
 
 ### Acceptance criteria
 
-- [ ] pgTAP, red first: a user in another account cannot read an uploaded source's content; a member of the uploading account can; shared news rows stay readable
-- [ ] Two accounts uploading a source with the same name get two sources, neither overwriting the other
-- [ ] Every `using (true)` policy granted to `authenticated` is listed, with a decision beside each
+- [x] pgTAP, red first: a user in another account cannot read an uploaded source's content; a member of the uploading account can; shared news rows stay readable (`research-uploads-rls.test.sql`, 22 cases; 11 fail with main's policies restored)
+- [x] Two accounts uploading a source with the same name get two sources, neither overwriting the other (pgTAP; E2E `research/research-sources.spec.ts`)
+- [x] Every `using (true)` policy granted to `authenticated` is listed, with a decision beside each (table below)
+
+### Fixed
+
+Plan: `specs/plans/KB-26-edd.md`.
+
+- **Owner.** `external_content` and `external_sources` gain `project_id`
+  (FK to projects, delete cascade). `external_content` gains `is_upload`, and
+  `project_id is not null ⇒ is_upload`.
+- **Read rule.** An upload is readable only by an owner, admin or member row
+  in `project_members` (`can_write_project`, KB-28). Membership of the account
+  alone is not enough, and neither is a public or unlisted project, which every
+  signed-in user can read. Shared cache rows stay readable by every signed-in
+  user.
+- **Old uploads.** Uploads made before the fix record no owner. They are
+  hidden, not deleted, until the owner reattaches them (runbook in the PR).
+- **Slugs.** Source slugs are unique per project
+  (`unique nulls not distinct (project_id, slug)`), so "Reuters" uploaded into
+  a project no longer rewrites the shared one.
+- **Write paths.** These need `can_write_project` before any write or queued
+  job: `uploadSourceContentAction`, `extractFactsFromContentAction` (same
+  class) and `POST /api/research/upload` (same read-means-write flaw, found by
+  KB-28). Both actions return refusals as values.
+- **Aggregator.** The process-wide aggregator loads shared sources only.
+- **Hub.** The hub lists shared sources plus the current project's. The
+  sidebar's research-source count, which had been failing on the missing
+  `project_id` column, now counts the project's uploads.
+
+**Not fixed here:**
+- Registry writes by an owner of *any* account (`requireAccountOwner`,
+  `external-context-actions.ts:215`) are **KB-37**.
+- Story ideation billed to the caller's first membership (`story-actions.ts`,
+  `bulk-actions.ts`) is **KB-31**, acceptance 3.
+
+**Every policy granted to signed-in users (or `public`) whose condition is
+literally `true`**, measured on the migrated local database with `pg_policies`.
+The probe also matched conditions that test only a flag column, such as the
+old `is_active = true`; none remain.
+
+| Table | Policy | Account-scoped data? | Decision |
+|---|---|---|---|
+| `external_content` | Authenticated users can view content | yes: uploads | **Replaced** by `external_content_read` (this fix) |
+| `external_sources` | Anyone can view active sources (`is_active = true`) | yes: upload names | **Replaced** by `external_sources_read` (this fix) |
+| `config` | public config can be read by authenticated users | no: one platform-wide row of feature/billing settings | keep |
+| `roles` | roles_read | no: role names and hierarchy | keep |
+| `role_permissions` | role_permissions_read | no: role → permission map | keep |
+| `llm_usage_analytics` | Service role can manage LLM analytics: `FOR ALL`, **no `TO` clause, so `public`**, `using (true) with check (true)` | **yes**: `account_id`, `user_id`, `error_message`, `request_config` | **Fixed — KB-52 (#321).** The policy name says service role, but it applies to every role (`20251212000000_create_llm_usage_analytics.sql:44-47`). Reproduced locally on 2026-09-23 by a signed-in user with no memberships: read another account's row, including `error_message` (1 row); deleted it (HTTP 204, 0 rows left). Anonymous callers are refused at the schema (`42501`) |
 
 ---
 
@@ -1547,7 +1663,7 @@ Rolled back.
 **Severity:** High — a cross-tenant write. A user with no access to a project
 can add permanent canon to it and overwrite an episode's canon summary, and
 the forged event carries no author. **Found:** the spec audit of FILM-1002
-(2026-09-23); reproduced by the coordinator. **Open.**
+(2026-09-23); reproduced by the coordinator. **Fixed** in #316.
 
 `commit_canon_changes`
 (`apps/web/supabase/migrations/20260130004332_add_commit_canon_changes_function.sql`)
@@ -1587,15 +1703,90 @@ Rolled back.
   each performs (or why it needs none). KB-11 was the same shape: a
   definer path re-deriving access by hand, or not at all.
 
+### Fix (#316)
+
+Design: `specs/plans/KB-27-edd.md`. Reproduced again first, as a second real
+GoTrue user over PostgREST with their own token (not a forged `sub`),
+including the mismatched-ids variant: the stranger's own project and the
+victim's episode wrote an event into the stranger's project *and* overwrote
+the victim's summary. Every event the function had ever written, the owner's
+own included, had `created_by` NULL.
+
+- **Rule (owner's decision, 2026-09-23):** KB-28's
+  `public.can_write_project` — owner, admin or member in `project_members`.
+  A role on the account is not enough: a team member with no project row is
+  refused (they already were by `episodes_update`), and sees the existing
+  generic "Failed to commit canon changes". A personal-account owner passes
+  through the creator's owner row (personal accounts have no membership row:
+  0 of 7 locally).
+- `commit_canon_changes`: the episode must be in the project; one `42501`
+  for every refusal, so the call is no longer an existence oracle;
+  `created_by = auth.uid()`; `search_path = ''`; the metadata merge is one
+  statement; errors keep their own SQLSTATE.
+- **Sibling, same fix:** `bulk_reset_episodes_to_stage` checked the episodes
+  against the account the caller *named*, not the caller. Reproduced: a
+  stranger naming the victim's account wiped the story and canon
+  (`reset_count 1`), and a stranger naming **their own** account with the
+  victim's soft-deleted episode got `reset_count 0` while the victim's canon
+  was deleted. Now every id must be an episode (soft-deleted or not) in a
+  project of that account the caller can write.
+- `remove_episode_from_threads_touched` (called by bulk reset): search_path
+  pinned. It has no check and is not granted to `authenticated`; the
+  single-episode reset calls it over RPC and so always logs a "non-fatal"
+  permission error. Do not grant it without adding a check.
+
+**Every `SECURITY DEFINER` function `authenticated` can execute** (in
+`public` and `kit`, on this branch; measured from `pg_proc`). The list is
+pinned by `definer-functions-inventory.test.sql`, which fails when it
+changes, with each function's check beside it.
+
+| Function | Access check |
+|---|---|
+| `commit_canon_changes` | episode in project, `can_write_project` (this fix) |
+| `bulk_reset_episodes_to_stage` | every episode in the named account, `can_write_project` (this fix) |
+| `batch_assemble_edit_project` | membership of a caller-supplied `p_user_id` — KB-40: revoked in #327, dropped with the Edit Suite in #329 |
+| `get_project_members` | access to the project's account (KB-41, #319) |
+| `check_account_budget` | none — **KB-42, open** |
+| `update_project_cover_image` | `can_write_project` (KB-28) |
+| `set_fact_verification` | `can_edit_project` on the fact's project (KB-18, #314) |
+| `can_write_project`, `can_write_project_storage`, `kit.get_project_id_from_path` | KB-28's rule itself; the last returns only an id |
+| `batch_create_shots`, `create_character_with_details`, `update_episode_with_lock` | `project_members` owner/admin/member |
+| `soft_delete_episode` | `project_members` owner/admin |
+| `get_project_generation_costs` | `project_members`, any role |
+| `get_account_projects` | personal owner or `has_role_on_account` |
+| `increment_template_usage` | system template, or owner/role on its account |
+| `is_team_member` | the caller's own membership |
+| `has_role_on_account`, `has_account_access`, `can_edit_project`, `is_project_owner`, `user_owns_account`, `get_current_account_id`, `is_mfa_compliant` | none needed: each answers a question about the caller |
+| `verify_nonce` | none needed: the token is the credential |
+
+**Tests:** `canon-commit-access.test.sql` (27), `bulk-reset-access.test.sql`
+(16), `definer-functions-inventory.test.sql` (2), each red case seen red on
+the pre-fix functions; seven mutation guards in
+`tooling/mutation-guards/kb-27.json`, each `RED`.
+
+**For KB-17:** this function stays `SECURITY DEFINER`, so KB-17's
+`immutable_events` policies will not apply inside it (it already writes the
+caller as author), and its DELETE rule will not bind bulk reset. The table's
+`has_role_on_account` policy is now wider than this function for team
+members without a project row and narrower for personal owners;
+`can_write_project` is the INSERT predicate that matches. See EDD §19.
+
 ### Acceptance criteria
 
-- [ ] pgTAP, red first: a non-member's call is refused and writes nothing; a member's call still commits; an episode from another project is refused
-- [ ] Events written by the function carry `created_by` = the caller
-- [ ] Every `SECURITY DEFINER` function granted to `authenticated` is listed with its access check, or the reason it needs none
+- [x] pgTAP, red first: a non-member's call is refused and writes nothing; a member's call still commits; an episode from another project is refused — `canon-commit-access.test.sql` T1–T4c, T7
+- [x] Events written by the function carry `created_by` = the caller — T4b, T5, T7
+- [x] Every `SECURITY DEFINER` function granted to `authenticated` is listed with its access check, or the reason it needs none — the table above, pinned by `definer-functions-inventory.test.sql`
 
 ---
 
 ## KB-28 — Any signed-in user can upload into any project's storage folder
+
+> **Note (FILM-607, 2026-09-23):** the Edit Suite's export dialog, one of the
+> callers this entry's fix allowlists (`EXPORT_UPLOAD_BUCKET`), never produced
+> the path the allowlist signs. It built `projects/<id>/…` from the **edit
+> project's** id, which the presign route looks up in `projects` and refuses
+> with a 403, so no export upload ever reached storage. The Edit Suite is
+> retired; FILM-607 part B removes that allowlist entry once #313 has merged.
 
 **Severity:** Medium — a cross-tenant write, bounded: existing files cannot
 be overwritten or deleted (those policies are scoped), but new ones can be
@@ -1771,9 +1962,13 @@ audit). The tags placeholder reads "animation, kids, story"
 another account's episode id gets back LLM output built from that account's
 characters, locations, verified facts and season premise. It needs the id — a
 UUID, not guessable — which is what keeps this below High. **Found:** the spec
-audit of FILM-305 (2026-09-23); confirmed by the coordinator by reading. **Not
-run**: the LLM worker consumes SQS, which has no local equivalent (phase 18
-README, *Known limits*). **Open.**
+audit of FILM-305 (2026-09-23); **reproduced** 2026-09-23 with two real users
+against the local stack, the real action under B's session and the real worker
+handler on the service-role key (only SQS and the LLM captured): B's prompt
+carried all five of A's canary strings, and once A's project was public B
+queued a story overwrite on it. **Fixed** in #315: every `queueLlmJob` needs a
+target that only `can_write_project` (KB-28), asked as the caller, can produce.
+Design and the call-site table: `specs/plans/KB-31-edd.md` §8.3.
 
 `generateStoryIdeasAction`
 (`packages/features/episodes/src/server/story-actions.ts:54-117`) authenticates
@@ -1804,13 +1999,20 @@ membership itself against the payload's `userId`.
 
 ### Acceptance criteria
 
-- [ ] Unit, red first: `generateStoryIdeasAction` refuses an episode id the caller cannot read, and queues nothing
-- [ ] Every `queueLlmJob` call site is listed with the read that authorises it
-- [ ] LLM usage is attributed to the target's account
+- [x] Unit, red first: `generateStoryIdeasAction` refuses an episode id the caller cannot read — or can read but not write — and queues nothing (`packages/features/episodes/__tests__/llm-job-authorization.test.ts`)
+- [x] Every `queueLlmJob` call site is listed with the read that authorises it — all 24, in `specs/plans/KB-31-edd.md` §8.3
+- [x] LLM usage is attributed to the target's account — `queueLlmJob` stamps it; three worker handlers that billed the project id fixed
 
 ---
 
 ## KB-32 — Every edit-suite export render fails before FFmpeg runs
+
+> **Resolved by removal (FILM-607, 2026-09-23).** The Edit Suite is retired:
+> the render worker, both render queues and the export dialog are deleted, so
+> no render can be requested. No render ever finished, so no rendered file or
+> `master_video` asset exists to clean up. Kept here as the record of what was
+> found. Its follow-ups KB-64, KB-65, KB-67, KB-68 and KB-69 go with it; KB-66
+> (untyped clients in the other lambdas) stays open.
 
 **Severity:** High — the export button can never produce a video. It fails
 at step 1, before any rendering or cost. **Found:** KB-14, 2026-09-23.
@@ -1971,6 +2173,703 @@ the prompt.
 
 ---
 
+## KB-36 — TikTok credentials saved at /admin/platforms are ignored by connect and refresh
+
+**Found:** KB-29 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Open.**
+
+TikTok credentials saved at `/admin/platforms` are ignored by connect and refresh.
+
+---
+
+## KB-37 — Shared research-source registry: the "owner of any account" check
+
+**Found:** KB-26 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Open.**
+
+Split out of KB-26's decision D3: writes to the shared research-source registry are allowed to the owner of any account, and an owner has no enforced MFA.
+
+---
+
+## KB-38 — R2 upload URLs don't bind content type or size
+
+**Severity:** Medium on the production upload path: a project writer, or
+anyone holding one of their upload URLs for its 15 minutes, can store any
+bytes, of any type (`text/html` included) and any size, under the project's
+path on the public R2 domain. Authorisation is not affected. KB-28 already
+limits who gets a URL. **Found:** KB-28 (#313), 2026-09-23. **Fixed** in #323.
+
+Production stores every browser upload in Cloudflare R2 (owner). The R2
+adapter passed `ContentType` to `PutObjectCommand`
+(`packages/features/storage/src/adapters/r2.ts:102-110`), but
+`@aws-sdk/s3-request-presigner` removes `content-type` from the signature
+unless it is named in `signableHeaders` (`dist-cjs/index.js:49`,
+`unsignableHeaders.add("content-type")`). The URL was signed with
+`X-Amz-SignedHeaders=host`, so it bound only the key. Supabase bucket limits
+(KB-28) do not apply on R2, and R2 has no POST-policy uploads, so an exact
+signed `Content-Length` is the only size bound a presigned R2 upload can carry.
+The URL also carried `x-amz-checksum-crc32=AAAAAA==`, the checksum of an empty
+body (SDK ≥ 3.729 adds one by default). Uploads work in production today
+(owner), so R2 does not enforce it.
+
+### Reproduced (local MinIO, 2026-09-23)
+
+A URL signed today for a 1000-byte `image/png` accepted, and stored, a
+`text/html` PUT, a PUT with no type, a 5000-byte body and a 500-byte body. With
+the fix, each is refused (403 `SignatureDoesNotMatch`, or 400 for the missing
+type) and nothing is stored. Chromium, via `fetch` and XHR, stores the matching
+upload and is refused a larger one or another type.
+
+### Fix
+
+- R2 and B2 sign `content-type` and `content-length` and carry no request
+  checksum (`adapters/s3-presign.ts`).
+- The presign route requires `size`. It caps it at the `UPLOAD_CONSTRAINTS`
+  limit for the declared type (image 10 MB, video 500 MB, audio 50 MB), signs
+  the type it checked, and returns the headers the PUT must send.
+- Every browser uploader goes through one of two helpers that declare the
+  body's size and send those headers.
+- The audio library's server-side upload, which takes a type from the client,
+  went to KB-57.
+
+### Acceptance criteria
+
+- [x] Unit, red first: an R2 or B2 URL signs `content-length;content-type;host` and no checksum
+- [x] Against a real S3 server, red first: a different type, no type, a larger body and a smaller body are refused and store nothing
+- [x] The route requires a size and refuses one over the limit for its type, red first
+- [x] Every browser uploader declares its body's size and sends the returned headers (unit, structural test, E2E through the cover upload on a production build)
+- [ ] After deploy, the owner uploads one cover in production: R2's handling of a signed `Content-Length` is proven only there
+
+---
+
+## KB-39 — The project intro upload is rejected by the presign route's path pattern
+
+**Found:** KB-28 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Open.**
+
+The project intro upload is rejected by the presign route's path pattern.
+
+---
+
+## KB-40 — Any signed-in user can replace any episode's edit project
+
+**Severity:** High — a cross-tenant destructive write. **Found:** KB-27's
+class sweep of SECURITY DEFINER functions, 2026-09-23. **Fixed** in #327
+(FILM-607 part A): EXECUTE on all five Edit Suite functions is revoked from
+the API roles (`apps/web/supabase/migrations/20260923075426_film607-revoke-edit-suite-functions.sql`)
+and the Edit Suite tab is gone. #329 (FILM-607 part B) then dropped the
+functions with the Edit Suite (`20260923082656_film607-retire-edit-suite.sql`).
+
+`batch_assemble_edit_project`
+(`apps/web/supabase/migrations/20260226170054_fix-batch-assemble-replace-existing.sql:16`)
+is `SECURITY DEFINER`, granted to `authenticated`, and authorises by checking
+that `p_user_id` — a parameter — is a member of the episode's account. It
+never compares `p_user_id` with `auth.uid()`. It then deletes the episode's
+edit project (tracks, clips, keyframes, transitions and sync groups go with it
+by cascade) and writes a new one. `search_path` is `public`, not `''`.
+
+The only caller, `packages/features/edit-suite/src/server/batch-actions.ts:68`,
+checks membership itself and passes the session user's id, so the product
+path is safe; a direct `rpc` naming someone else is not.
+
+### Reproduced (local database, 2026-09-23, as a second real user over PostgREST)
+
+A fresh user with only a personal account, against a **public** project of
+another account (whose project and episode ids that user can list):
+
+| Request, with the stranger's own token | Result |
+|---|---|
+| `rpc/batch_assemble_edit_project` with the victim episode and `p_user_id` = the victim owner's id | `{"projectId": "762b10cf-…", "keyframeCount": 0, …}`; as postgres, the victim episode has 1 edit project |
+| the same with `p_user_id` = the stranger's own id | `P0001 Access denied: user is not a member of the project account` |
+
+The owner's user id is on the public project row (`projects.created_by`),
+which the public read policy returns — by reading, not executed.
+
+### Proposed fix
+
+Check `public.can_write_project` of the episode's project for `auth.uid()`,
+and drop `p_user_id` (or refuse when it differs from `auth.uid()`); set
+`search_path = ''`. Update its line in `definer-functions-inventory.test.sql`.
+
+### Acceptance criteria
+
+- [ ] pgTAP, red first: a caller who cannot write the episode's project is refused whatever `p_user_id` says, and nothing is deleted; a project writer still assembles
+- [ ] The edit suite's assemble still works through the action
+
+---
+
+## KB-41 — Any signed-in user can list any project's members and their emails
+
+**Severity:** High — cross-tenant personal data. **Found:** KB-27's class
+sweep, 2026-09-23. **Fixed** in #319: `get_project_members` now requires
+access to the project's account.
+
+`get_project_members` (`apps/web/supabase/migrations/20251016143639_projects.sql:247`,
+granted to `authenticated` at `:283`) is `SECURITY DEFINER` and checks
+nothing: it returns every member of whatever project it is given, with each
+member's name, email and picture from `accounts`. Caller:
+`packages/features/projects/src/lib/server/project.queries.ts:124`.
+
+### Reproduced (local database, 2026-09-23, as a second real user over PostgREST)
+
+| Request, with the stranger's own token | Result |
+|---|---|
+| `rpc/get_project_members` with another account's public project | `[{"role":"owner","user_email":"kb27b-owner@storybook.dev"}]` |
+
+Project ids of public and unlisted projects are listable by any signed-in
+user, so the id is not a secret.
+
+### Proposed fix
+
+Require that the caller can read the project as a member (a `project_members`
+row, or a role on its account — decide which), not merely see it because it
+is public; decide whether viewers see emails.
+
+### Acceptance criteria
+
+- [x] pgTAP, red first: a stranger, and a reader of a public project, get nothing; a project member gets the list — #319
+- [x] The project members screen still lists its members — #319
+
+---
+
+## KB-42 — Any signed-in user can read any account's budget status
+
+**Severity:** Low — one boolean and an existence oracle. **Found:** KB-27's
+class sweep, 2026-09-23. **Open.**
+
+`check_account_budget`
+(`apps/web/supabase/migrations/20251211090557_add-account-budget-tracking.sql:57`,
+granted to `authenticated` at `:89`) is `SECURITY DEFINER` and checks
+nothing. It answers whether any account's usage plus an estimate is within its
+budget, and raises `Account not found: <id>` for an id that is not an account.
+Caller: `packages/features/audio-generation/src/server/voice-queries.ts:65`.
+
+### Reproduced (local database, 2026-09-23, as a second real user over PostgREST)
+
+| Request, with the stranger's own token | Result |
+|---|---|
+| `rpc/check_account_budget` with another account's id | `true` |
+
+### Proposed fix
+
+Refuse unless `has_account_access(p_account_id)`, and return the same answer
+for "no such account" as for "not yours".
+
+### Acceptance criteria
+
+- [ ] pgTAP, red first: a stranger is refused for another account and for a non-existent id alike; a member gets the answer
+- [ ] Voice generation's budget check still passes for a member
+
+---
+
+## KB-43 — Any member can read a connection's encrypted tokens
+
+**Severity:** Low — ciphertext, not tokens, and only to people already in the
+account; but more than a member needs. **Found:** KB-22's planning,
+2026-09-23, from the live catalog. **Open.**
+
+`platform_connections_read` is `using (has_account_access(account_id))` with
+no column restriction, and `authenticated` holds `SELECT` on the whole table,
+so any member can select `access_token_encrypted` and
+`refresh_token_encrypted` through PostgREST. Nothing in the browser needs
+them: every decrypt happens on the server, which can use the service role.
+
+### Proposed fix
+
+Revoke column `SELECT` on the two token columns from `authenticated` (or move
+the tokens to a table only the service role reads), then check every
+user-client select of `platform_connections` for `*` or a token column —
+`connection-actions.ts`'s disconnect read selects `access_token_encrypted`
+through the user client today, and would need the admin client after an
+explicit access check.
+
+### Acceptance criteria
+
+- [ ] pgTAP: a member selecting either token column is refused; selecting the other columns still works
+
+---
+
+## KB-44 — `anon` holds TRUNCATE on `platform_connections`
+
+**Severity:** Low — not reachable through PostgREST, which has no TRUNCATE;
+but row-level security does not apply to TRUNCATE, so any other path that
+runs SQL as `anon` could empty the table. **Found:** KB-22's planning,
+2026-09-23 (`information_schema.role_table_grants`). **Open.**
+
+`anon` holds `TRUNCATE, REFERENCES, TRIGGER, INSERT, SELECT, UPDATE, DELETE`
+on `public.platform_connections` — Supabase's default grant, never revoked for
+this table (`30-film-studio.sql` revokes from `authenticated` and
+`service_role` only). Likely the same on other tables created the same way;
+not yet counted.
+
+### Proposed fix
+
+`revoke all on public.platform_connections from anon;` and a sweep of the
+schema for tables where `anon` holds more than it needs, with a pgTAP guard
+listing the grants `anon` is allowed.
+
+### Acceptance criteria
+
+- [ ] `anon` holds no privilege on `platform_connections`; a pgTAP test asserts the grant list
+
+---
+
+## KB-45 — Vendor revoke calls ignore the HTTP response
+
+**Severity:** Low — a failed revoke looked exactly like a successful one, in
+the logs and to the user. **Found:** KB-22's planning, 2026-09-23. **Fixed in
+part by KB-22 PR A (#317).**
+
+Every disconnect `await`ed `fetch(revokeUrl…)` and never read the response
+(`oauth/{youtube,tiktok,meta,twitter}/disconnect.ts` on `main` before
+KB-22), so Google answering 400 was indistinguishable from 200. KB-22's
+`requestRevocation` now reads the status and classifies it (`revoked`,
+`vendor_refused`, `unreachable`, with a 10-second timeout), and the disconnect
+action logs the outcome with the HTTP status for YouTube, TikTok and Meta —
+unit-tested against a local listener, seen red with the status ignored (#317).
+
+**Still open:** a refused or unreachable revoke is only a log line. The
+creator is not told, and no operator alert fires; the data-deletion page's
+advice to check at the platform (section 4) is the only mitigation. X and
+LinkedIn have no revoke at all — KB-25.
+
+### Acceptance criteria
+
+- [x] The revoke response is read and logged, with its status — KB-22 PR A (#317)
+- [ ] A refused or unreachable revoke is surfaced (to the creator, or as an operator alert) — owner to decide which
+
+---
+
+## KB-46 — Voice preview spends a public episode owner's ElevenLabs key
+
+**Severity:** High if confirmed — any signed-in user spends another account's
+vendor credit. **Found:** by reading, during KB-31 (2026-09-23). **Not
+reproduced.** **Open.**
+
+`generateVoiceFromTextAction`
+(`packages/features/audio-generation/src/server/voice-actions.ts:627`)
+authorises by reading the episode through the user's client. The public-sharing
+policy on `episodes` returns the row for **every signed-in user** when the
+project is public or unlisted, so the read proves nothing. The action then
+loads that account's ElevenLabs key and budget and generates audio with it.
+The same "readable is not writable" shape KB-31 fixed for LLM jobs.
+
+**Proposed fix:** authorise with `can_write_project` on the episode's project,
+as `@kit/prompt-engine/llm-job-target` does, before reading the key.
+
+---
+
+## KB-47 — The voice, publish and render queues were not surveyed for caller-supplied ids
+
+**Severity:** unknown until surveyed; High if any worker trusts a payload id
+the way the LLM worker did. **Found:** KB-31 (2026-09-23) surveyed only
+`queueLlmJob`. **Not reproduced.** **Open.**
+
+These producers send SQS messages to workers that run on the service-role key,
+and were not checked for an authorising read before the send:
+
+- `packages/features/audio-generation/src/server/voice-queue-helper.ts:90`
+- `packages/features/publishing/src/server/publish-actions.ts:960`, `:1039`
+- ~~`packages/features/edit-suite/src/server/render-actions.ts:146`, `:226`~~ — removed with the
+  Edit Suite (FILM-607, #329). It authorised by account membership, and an
+  RLS update matching no row still sent the SQS message (KB-32's report)
+
+**Proposed fix:** list each producer with the read that authorises its target,
+as KB-31 did; give each queue a typed target like `queueLlmJob`'s.
+
+---
+
+## KB-48 — `audio_cues` and `episode_facts` policies leave out personal-account owners
+
+**Severity:** Medium — a personal account's owner cannot use their own data.
+**Found:** KB-31 (2026-09-23). **Open.**
+
+- `episode_facts` — **reproduced**: the policies test `accounts_memberships`
+  only, and a personal account's owner has no membership row, so A's own
+  insert linking a fact to A's episode was refused (42501) during the KB-31
+  reproduction; the harness had to seed it with the service role.
+- `audio_cues_select_policy` — **read, not reproduced**: it tests
+  `has_role_on_account(p.account_id)` only, which is false for a personal
+  owner without a role row, so they should not be able to read their own cues.
+- `shot_transitions` (`accounts_memberships` only) and `audio_assets`
+  (`has_role_on_account`) — **read, not reproduced**; added by the lead from
+  KB-52's policy sweep.
+
+**Proposed fix:** use the owner-or-role rule the other studio tables use
+(`primary_owner_user_id = auth.uid()` for personal accounts, or
+`has_account_access`), with a pgTAP case per table for a personal owner.
+
+---
+
+## KB-49 — The LLM worker has no check of its own on the payload's user
+
+**Severity:** Low — defence in depth; KB-31 authorises every producer.
+**Found:** KB-31 (2026-09-23), its approved follow-up D5. **Open.**
+
+`apps/web/lambda/llm-worker/index.ts` builds context and writes on the
+service-role key for whatever the payload names. KB-31 closed that at the
+producers, where the caller's session is. What remains:
+
+- a job queued before a user's project role is revoked still runs;
+- a future producer that skips the typed target, by casting, is caught only by
+  review.
+
+**Proposed fix:** before dispatch, the worker checks that `userId` holds a
+writing `project_members` role on the payload's project (the rule
+`can_write_project` encodes), and refuses the job otherwise.
+
+---
+
+## KB-50 — `channel_basic_a3` engaged views are parsed, then dropped
+
+**Found:** FILM-1504 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Open.**
+
+`channel_basic_a3` engaged views are parsed and then dropped; keeping them needs a nullable `video_metrics` column.
+
+---
+
+## KB-51 — `youtube_report_jobs` RLS has no pgTAP test
+
+**Found:** FILM-1504 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Open.**
+
+The row-level security on `youtube_report_jobs` has no pgTAP test.
+
+---
+
+## KB-52 — Any signed-in user can read and delete every account's LLM usage rows
+
+**Severity:** High — a cross-tenant read **and delete**, reproduced.
+**Found:** KB-26's inventory of `using (true)` policies, 2026-09-23. **Fixed** in #321 (see *Fixed*).
+
+`public.llm_usage_analytics` has this policy:
+
+```sql
+create policy "Service role can manage LLM analytics"
+  on public.llm_usage_analytics
+  using (true)
+  with check (true);
+-- 20251212000000_create_llm_usage_analytics.sql:44-47
+```
+
+The name says service role, but there is no `TO` clause, so the policy
+applies to `public`, which is every role. It is `FOR ALL`, so every signed-in
+user can select, insert, update and delete every row. The rows expose
+`account_id`, `user_id`, `template_slug`, `llm_provider`, `llm_model`, token
+counts and costs, `error_message`, `request_config` and `response_metadata`.
+
+### Reproduced (local database, 2026-09-23, under the DB lock)
+
+A row was inserted as `postgres` for a seeded team account, with
+`error_message = 'PRIVATE PROMPT TEXT'`. Then a fresh user was created
+through GoTrue, with no memberships in any account, and signed in for a JWT.
+
+| As | Request | Result |
+|---|---|---|
+| the stranger | `GET /rest/v1/llm_usage_analytics?template_slug=eq.kb26-probe&select=account_id,error_message` | **1 row**: the other account's `account_id`, `PRIVATE PROMPT TEXT` |
+| the stranger | `DELETE /rest/v1/llm_usage_analytics?template_slug=eq.kb26-probe` | **HTTP 204**; 0 rows left |
+| anon (no JWT) | `GET /rest/v1/llm_usage_analytics?select=account_id&limit=1` | `42501 permission denied for schema public` |
+
+### Proposed fix
+
+- Give the manage policy `TO service_role`. Logging writes through the admin
+  client, so nothing else needs to write.
+- Replace the read policy with a member-scoped SELECT (for example
+  `public.has_role_on_account(account_id)`, plus the personal-account owner),
+  or super admins only if the table is meant as a platform view. The current
+  "Admins can view all LLM analytics" is
+  `exists (select 1 from public.accounts where id = llm_usage_analytics.account_id)`.
+  It checks no role at all, so it admits **anyone who can see the account**,
+  which includes every signed-in user for an account whose profile is public.
+- pgTAP, red first, run as real roles.
+
+### Acceptance criteria
+
+- [ ] pgTAP, red first: a user of another account can neither read nor delete a row; a member of the row's account can read it; the service role can still write
+- [ ] The read rule is stated beside the policy, and every reader of the table is checked against it
+
+---
+
+## KB-53 — Avatar upload is broken
+
+**Found:** KB-28 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Open.**
+
+Avatar upload is broken on `main`: the presign path and the `account_image` filename check disagree.
+
+---
+
+## KB-54 — Intro and thumbnail replacement deletes compute the wrong object key
+
+**Found:** KB-28 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Open.**
+
+The best-effort deletes of an old intro or thumbnail compute the wrong object key, so they delete nothing.
+
+---
+
+## KB-55 — Storage buckets the code writes to, which no migration creates
+
+**Severity:** Medium — nothing that runs before production could exercise
+audio, and one feature was broken everywhere. **Found:** KB-28's storage
+audit (2026-09-23). **Fixed** in #332; design and reproduction in
+`specs/plans/KB-55-edd.md`.
+
+Code wrote to `audio`, `audio-assets` and `videos`; migrations created only
+`account_image`, `project-assets` and `reports`. Reproduced on the local
+stack (Storage API as real users, the real `@kit/storage` factory, a dev
+server):
+
+- **Audio on the Supabase provider** (every local and CI environment): TTS
+  dialogue, voice preview, SFX, music and the audio library all failed with
+  "Storage upload failed: Bucket not found". The audio library also called
+  `getStorageAdapter()` with no client, which throws "Supabase client is
+  required" before any bucket is involved. On R2 (production) the same calls
+  wrote `audio/…` and `audio-assets/…` keys, so production audio stored.
+- **Shorts, on every provider:** the `shorts-studio` page crashed to the error
+  page (`shots.veo_prompt` has never existed), and the action wrote with
+  Supabase directly into the missing `videos` bucket, whatever
+  `STORAGE_PROVIDER` said. The page was linked from nowhere; FILM-711 is
+  RETIRED.
+- The edit-suite export's `storybook-assets` prefix is the same class; it is
+  removed with the Edit Suite by FILM-607.
+
+Fix: the migration creates `audio` (project writers, KB-28's rule) and
+`audio-assets` (server-written only), both with MIME lists; the audio library
+passes the admin client and refuses non-audio types; `@kit/storage/buckets`
+is the one list of storage targets, and a unit test binds it to the
+migrations and to every bucket name passed to storage; the orphaned shorts
+generator (route and `@kit/shorts`) is removed. Reports stay on private
+Supabase Storage by owner decision, through one `report-storage.ts`.
+
+### Acceptance criteria
+
+- [x] Every bucket name the code writes is created by a migration, and a CI unit test fails otherwise (red on `audio`, `audio-assets`, `videos`)
+- [x] Audio stores on the Supabase provider: pgTAP, unit test (red: "Supabase client is required") and a Playwright upload through the real dialog
+- [x] The shorts generator no longer ships broken (removed)
+
+---
+
+## KB-56 — The reports bucket refuses personal-account owners
+
+**Severity:** Low — no UI reaches it today (report export is team-only), but
+the action accepts any account id. **Found:** KB-28's storage audit.
+**Fixed** in #332, with KB-55.
+
+`reports_*` policies used `has_role_on_account`, which reads
+`accounts_memberships`; a personal account's owner has no row there, so
+their own `exports/<accountId>/…` upload was refused (reproduced: 403 "new
+row violates row-level security policy"). The policies now use
+`has_account_access` (primary owner or member), and the bucket takes only
+CSV and PDF (it had stored `text/html`).
+
+### Acceptance criteria
+
+- [x] pgTAP, red first: a personal-account owner writes and reads their own report; no one else's
+- [x] A stranger still cannot write, read or delete another account's reports
+
+---
+
+## KB-57 — Audio, report and shorts upload paths have no storage-level project check on R2
+
+**Found:** KB-28 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Open.**
+
+The audio, report and shorts upload paths have no storage-level project check on R2.
+
+---
+
+## KB-58 — `'use server'` library modules registered secret-returning functions as unauthenticated server actions
+
+**Severity:** High (defence in depth). **Found:** the 2026-09-23 audit
+(KB-52's lead), measured from a production build of `49b851d6`. **Fixed** in
+#331.
+
+Every export of a module that starts with `'use server'` is a server action:
+an endpoint anyone can POST to, with arguments of their choosing. The repo
+also used the directive to mean "server code", so plain helpers were exported
+from such modules. `import 'server-only'` does not stop registration:
+`encryption.ts` had both and was registered.
+
+A `build:test` of `49b851d6` registered **408** actions. **55** of them were
+plain functions with no wrapper. Among them:
+
+| Function | What a caller got |
+|---|---|
+| `getApiKeyForProvider` | the OpenAI / Anthropic / Gemini / DeepSeek key from env |
+| `encrypt`, `decrypt` | an oracle under `ENCRYPTION_KEY` |
+| `getAccessToken`, `validatePlatformToken` | any connection's decrypted token, through the service-role client |
+| `getGlobalOAuthCredentials`, `getAccountOAuthAppAdmin` | decrypted OAuth client secrets (deleted by KB-29, #310) |
+| `getAccountElevenLabsApiKey`, `getProjectElevenLabsApiKey` | an account's decrypted ElevenLabs key (RLS-bounded) |
+| `executeLLM` | an LLM call on the platform's keys for a caller-chosen `accountId`, logged through the service-role client |
+| `processScheduledPublishes` | a run of the publish cron |
+
+**Proven:**
+- They were registered with no wrapper.
+- Their action IDs appear in no client chunk and no prerendered page. Only 3 plain IDs did, all harmless or already checked by RLS.
+- `middleware.ts` passes action POSTs through on `/home/*`.
+- Next 15.5 only warns when `Origin` is missing.
+
+**Not proven:** a live call, which was never attempted. The IDs are salted per
+build with a random key (`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` is unset), so an
+outside caller would first need an ID. That is why this is High, not Critical.
+**No key rotation is required on this evidence.** The middleware pass-through
+and the `Origin` behaviour are correct as they are (EDD §19).
+
+### Fix
+
+- The directive was removed from 13 library modules. `server-only` was added wherever no Lambda imports the module.
+- Helpers moved out of action modules into new library modules: `connection-tokens.ts`, `publishing-queries.ts` (at `@kit/publishing/server/queries`), `upload-only-format.ts` and `audio-asset-library.ts`.
+- 15 exports with no production caller were deleted.
+- Four real actions became `enhanceAction`s:
+  - `createFilmProjectAction` and `updateProjectCoverImageAction` now need a session.
+  - `refreshAuthSession` uses `auth: false`. It runs mid-MFA, and it is on an explicit allowlist.
+- Barrels that client components import hold actions only.
+- **Two guards share one classifier.**
+  - `packages/next/__tests__/use-server-exports.test.ts` fails on any `'use server'` export that is not rooted in `enhanceAction`.
+  - `action-manifest.guard.test.ts` reads the built manifest. It fails on an unwrapped registered action, or on any of 20 secret-returning names, even wrapped. It runs after the CI build and before both deploys.
+- After the fix, the build registers only wrapped actions, and none of those names.
+
+Out of scope: `apps/dev-tool`, which is never deployed, and the Edit Suite,
+which FILM-607 is retiring.
+
+### Acceptance criteria
+
+- [x] No secret-returning or admin-client function is registered in the production build
+- [x] Every registered action is an `enhanceAction` export, enforced on the source and on the built manifest
+- [x] Both guards and the wraps shown red with the fix removed (`tooling/mutation-guards/kb-58.json`)
+
+---
+
+## KB-59 — A committed migration creates a login role that can read every public table
+
+**Found:** KB-52 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Open.**
+
+`apps/web/supabase/migrations/20260205114500_create_readonly_viewer.sql` creates a LOGIN role with a password committed in the repo, and grants it SELECT on all public tables. Potentially Critical; the owner must check production.
+
+**Owner decision (2026-09-23):** it is a test user. The owner declined a drop migration: do not drop or alter `myfriends` / `readonly_viewer`.
+
+---
+
+## KB-60 — "Allow public read of public accounts" exposes every column, including email
+
+**Found:** KB-41 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Open.**
+
+The "Allow public read of public accounts" policy exposes every column of a public personal account, including its email. Low.
+
+---
+
+## KB-61 — A `.delete()` without `.select()` reports success when RLS matched no row
+
+**Found:** KB-18 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Open.**
+
+`.delete()` without `.select()` reports success when RLS matched no row. The pattern is widespread.
+
+---
+
+## KB-62 — Edit Suite save, create and split functions had no access check, and were not granted
+
+**Found:** KB-40 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Resolved by removal** in #329: FILM-607 removed the Edit Suite, and this with it.
+
+`batch_save_edit_project`, `create_edit_project_with_tracks` and `split_edit_clip` were SECURITY DEFINER with no access check, and not granted, so Edit Suite auto-save, split and create failed for everyone (42501 measured at the RPC). They were revoked in #327 and dropped in #329.
+
+---
+
+## KB-63 — `remove_episode_from_threads_touched` has no check and is not granted
+
+**Found:** KB-40 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Open.**
+
+`remove_episode_from_threads_touched` has no access check and is not granted, so a single-episode reset leaves stale thread ids (after KB-27).
+
+---
+
+## KB-64 — Browser Export dropped the target language's inactive dub clips
+
+**Found:** KB-32 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Resolved by removal** in #329: FILM-607 removed the Edit Suite, and this with it.
+
+Browser Export dropped the target language's inactive dub clips (`export-dialog.tsx:149`), the same rule as the server render.
+
+---
+
+## KB-65 — Server render ignored gaps, transitions, keyframes and title tracks
+
+**Found:** KB-32 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Resolved by removal** in #329: FILM-607 removed the Edit Suite, and this with it.
+
+The server render ignored `start_ms` gaps (so audio drifted), transitions, keyframes and title tracks.
+
+---
+
+## KB-66 — Five lambdas build untyped Supabase clients
+
+**Found:** KB-32 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Open.**
+
+Five lambdas build untyped Supabase clients (about 130 `.from()` calls), so column drift is invisible to `tsc`.
+
+---
+
+## KB-67 — Export render status arrived only over the WebSocket
+
+**Found:** KB-32 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Resolved by removal** in #329: FILM-607 removed the Edit Suite, and this with it.
+
+The export dialog learned a render's status only over the WebSocket, so a finished render was not shown after a reload; `getRenderStatusAction` was unused.
+
+---
+
+## KB-68 — `ffmpeg-static` was unpinned
+
+**Found:** KB-32 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Resolved by removal** in #329: FILM-607 removed the Edit Suite, and this with it.
+
+`ffmpeg-static` was unpinned in `sst.config.ts`.
+
+---
+
+## KB-69 — The ffmpeg-render SSRF guard proceeded when DNS lookup failed
+
+**Found:** KB-32 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Resolved by removal** in #329: FILM-607 removed the Edit Suite, and this with it.
+
+The SSRF guard in `ffmpeg-render.ts` (`:166-170`) proceeded when its DNS lookup failed.
+
+---
+
+## KB-70 — `STORAGE_PROVIDER=s3` in the config templates silently means Supabase
+
+**Severity:** Low. It bites only a deploy made from a template, but then
+without warning. **Found:** KB-38 (2026-09-23), by reading. **Open.**
+
+The deployment templates set `STORAGE_PROVIDER=s3`
+(`deployment/config/production.env.example:55`, `staging.env.example:54`,
+`tailorist.env.example:58`, in the config submodule), and so do the root
+`.env.aws.example:38` and `.env.hybrid.example:32`. `getStorageProvider()`
+(`packages/features/storage/src/factory.ts:31-45`) knows `local`, `r2`, `b2`
+and `supabase`, and maps anything else, `s3` included, to `supabase` through
+its `default` branch. There is no S3 adapter. A deploy from a template would
+store every upload in Supabase Storage and log nothing.
+
+### Proposed fix
+
+- Unknown `STORAGE_PROVIDER` values fail at startup instead of falling back.
+- The templates name a provider that exists (`r2` for production), or say
+  which to choose.
+
+### Acceptance criteria
+
+- [ ] Unit, red first: `getStorageProvider()` rejects `s3` and any other unknown value
+- [ ] No template sets a provider the factory does not know
+
+---
+
 ## KB-71 — Season outlines never load a documentary's facts: they read a field nothing writes
 
 **Severity:** Medium — a factual season is outlined without the facts it is
@@ -2047,6 +2946,250 @@ every canon string at the tool boundary, as sources are.
 
 ---
 
+## KB-73 — The audio library sends files as base64 in a server-action body
+
+**Found:** KB-55 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Open.**
+
+The audio library sends base64 in a server-action body, and `next.config` sets no `bodySizeLimit` (1 MB default) while the dialog allows 50 MB. Unverified.
+
+---
+
+## KB-74 — Report files in the `reports` bucket are never deleted
+
+**Found:** KB-55 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Open.**
+
+Report files in the `reports` bucket are never deleted (KB-20 retention).
+
+---
+
+## KB-75 — The Unit Tests job's mutation guards outgrew the job's timeout
+
+**Found:** the lead, from KB-31's CI runs (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Fixed** in #324.
+
+The unit mutation guards (about 11 minutes, 263 entries) ran inside 🧪 Unit Tests and
+exceeded its timeout, so the job was cancelled on `main` and on PRs. #324 shards
+`run.py --kind unit` like the E2E guards: the 🧪 Unit guards jobs.
+
+---
+
+## KB-76 — Any account member, viewers included, can write five canon tables
+
+**Severity:** Medium — an integrity hole inside an account. A project
+viewer, or a team member with no role on the project, can add, rewrite and
+delete a project's narrative threads, world states, episode summaries, act
+bridges and sequel contexts. **Found:** KB-17's class sweep, 2026-09-23.
+**Open.**
+
+Each of these tables has one policy, `FOR ALL … USING
+(has_role_on_account(account))` with no `WITH CHECK`
+(`apps/web/supabase/migrations/20260128225704_canon_management.sql:267-325`,
+`20260210041000_act_context_bridge_and_sequel.sql:50,100`):
+`narrative_threads_project_access`, `world_states_project_access`,
+`episode_summaries_access`, `act_context_bridges_project_access`,
+`sequel_parent_contexts_project_access`. `has_role_on_account` is true for
+every account member whatever their project role, so it lets viewers write,
+against the owner's project-write rule of 2026-09-23 (`can_write_project`,
+KB-28). It is also false for a personal-account owner, who has no membership
+row. A missing `WITH CHECK` does not open a cross-tenant move here, because
+Postgres reuses the `USING` clause as the check (measured for
+`immutable_events` in KB-17).
+
+### Reproduced (local database, 2026-09-23, rolled-back transaction, `authenticated` with the user's claims)
+
+| As | Statement | Result |
+|---|---|---|
+| project **viewer** | insert `narrative_threads`, `world_states`, `episode_summaries`, `act_context_bridges`, `sequel_parent_contexts` | **INSERT 1** each |
+| project viewer | update the owner's thread's description | **UPDATE 1** |
+| project viewer | delete the owner's thread | **DELETE 1** |
+| team member, **no project row** | insert `world_states`; upsert `episode_summaries` | **INSERT 1** each |
+
+### Proposed fix
+
+KB-17's shape for each table: reads on `has_account_access`, writes on
+`can_write_project` (per verb, with `WITH CHECK`), a pgTAP suite per table
+that is red first, and callers checked for refusals as values (KB-6).
+
+### Acceptance criteria
+
+- [ ] pgTAP, red first: a viewer and a non-project member cannot insert, update or delete any of the five; a writer can; a personal-account owner can
+- [ ] No `FOR ALL` policy without `WITH CHECK` remains on a canon table
+
+---
+
+## KB-77 — Character-state authorship is forgeable, and the append-only canon logs are granted DELETE
+
+**Severity:** Low–Medium — integrity inside an account. **Found:** KB-17's
+class sweep, 2026-09-23. **Open.**
+
+- `character_states_insert`
+  (`apps/web/supabase/migrations/20260128225704_canon_management.sql:253-261`)
+  checks `has_role_on_account` and nothing about `created_by`. So any
+  account member, viewers included, can record a character's state change in
+  a colleague's name. This is the same hole KB-17 closed for
+  `immutable_events`.
+- `20260607183439_grant_canon_delete_permissions.sql` granted DELETE on
+  `character_states` and `state_deltas`, both "append-only". `authenticated`
+  holds all seven table privileges on both. A delete fails only because no
+  DELETE policy exists, which means one permissive policy added later would
+  open it (FILM-1002 "Append-only tables restricted to SELECT/INSERT").
+  The grant was added for the single-episode resets
+  (`packages/features/episodes/src/server/actions.ts:1227,1241,1862,1875,2005,2018`),
+  whose deletes of these logs therefore match no row, and they treat that as
+  success. A reset leaves the episode's character states and deltas behind.
+  That is measured for `state_deltas` below, and inferred for
+  `character_states`, which has no DELETE policy either.
+
+### Reproduced (local database, 2026-09-23, rolled-back transaction, `authenticated` with the user's claims)
+
+| As | Statement | Result |
+|---|---|---|
+| project member | insert `character_states` with `created_by` = the project owner | **INSERT 1**, recorded author = the owner |
+| project viewer | insert `character_states` | **INSERT 1** |
+| project member | delete a `state_deltas` row | DELETE 0: refused only by the missing policy |
+| — | privileges of `authenticated` on `state_deltas` / `character_states` | DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE on both |
+
+### Proposed fix
+
+Pin `created_by = auth.uid()` on the `character_states` insert, and move its
+policies to `has_account_access` / `can_write_project`. Revoke UPDATE,
+DELETE and TRUNCATE on both logs from `authenticated`, checking first that
+`resetEpisodeAction` and `resetToStageHandler` (which delete from them
+through RLS, and whose need was the reason for `20260607183439`) either
+still work or move to the definer bulk-reset path. pgTAP, red first.
+
+### Acceptance criteria
+
+- [ ] pgTAP, red first: a member cannot insert a character state naming another author; a viewer cannot insert one
+- [ ] `authenticated` holds no UPDATE, DELETE or TRUNCATE on `character_states` or `state_deltas`, and single-episode reset still works (E2E or pgTAP)
+
+---
+
+## KB-78 — Regenerating a story deletes canon that was added by hand
+
+**Severity:** Medium — silent data loss inside a project. **Found:** KB-17's
+plan, 2026-09-23. **Open.**
+
+Story generation begins its canon commit with `cleanupEpisodeCanon`
+(`apps/web/lambda/llm-worker/utils/commit-story-canon.ts:104-122`). That
+deletes every `immutable_events` row `established_in` the episode, and every
+`character_states` and `narrative_threads` row of it, using the service
+role. The filter is the episode alone. So a canon event a writer added by
+hand in *Story → Canon → Add Event*, or committed from the publish page, is
+deleted along with the auto-generated events it was meant to outlive. It is
+replaced only by whatever the new generation extracts. The auto-generated
+events carry `metadata.auto_generated = true`
+(`commit-story-canon.ts:153`), so the two can be told apart. Nothing
+reports the deletion.
+
+### Reproduced (local stack, 2026-09-23, the real function with the local service role)
+
+One episode held a hand-added event (`metadata` null) and an auto-generated
+one (`metadata.auto_generated = true`):
+
+| | `immutable_events` established in the episode |
+|---|---|
+| before `cleanupEpisodeCanon` | `manual:mara-dead`, `auto:old-fact` |
+| after | *(none)* |
+
+### Proposed fix
+
+Delete only what generation produced (`metadata->>'auto_generated' =
+'true'` for events, and the equivalent marker for states and threads), or
+ask before discarding canon added by hand. Decide with the owner which one;
+a regenerated story that contradicts hand-added canon is then refused by
+the continuity validator, which may be what the owner wants.
+
+### Acceptance criteria
+
+- [ ] A test, red first: regenerating a story keeps a hand-added event established in that episode
+- [ ] Auto-generated events are still replaced on regeneration
+
+---
+
+## KB-79 — The audio library can take only one upload
+
+**Severity:** Low — the first upload works; every later one has no way in.
+**Found:** KB-55, reproduced by driving the page (Playwright, dev server,
+2026-09-23; screenshot of the library after one upload:
+`$SP/kb55/verify/evidence-green/kb55-02-library-after-upload.png`, attached to
+the KB-55 PR). **Open.**
+
+- The **Upload** button is rendered only in the empty state
+  (`apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/audio-asset-grid.tsx:142`).
+  Once the library holds one asset, the header offers **Generate** alone, so
+  there is no way to upload a second file.
+- The list is held in `useState(initialAssets)`
+  (`…/audio-library/_components/audio-library-client.tsx:31`). The
+  `router.refresh()` after an upload (`:40`) re-renders the server component
+  with new props, which that state ignores, so the new asset appears only
+  after a full reload.
+
+The KB-55 E2E (`apps/e2e/tests/storage/media-storage.spec.ts`) uploads once
+and reloads; it cannot assert the second submission until this is fixed.
+
+### Acceptance criteria
+
+- [ ] An Upload control is available when the library is not empty
+- [ ] A new upload appears in the list without a reload
+- [ ] The E2E drives two uploads in a row and sees both
+
+---
+
+## KB-80 — Spec records point at finished work
+
+> **Fixed (2026-09-23), #328.** A guard now fails any spec whose open item
+> waits on a Fixed KB or a DONE/RETIRED spec, and the records it found are
+> reconciled against the code.
+
+**Severity:** Low — records only, but a dependency query over `closed_by`
+reported finished work as open. **Found:** the lead, 2026-09-23.
+
+A spec lists what is left as `remaining: [{criterion, reason, closed_by}]`
+(`specs/SCHEMA.md`). Fixing a KB or finishing a spec did not update the specs
+pointing at it: after KB-14 (#309) put the lambdas under `tsc`, FILM-305,
+FILM-502 and FILM-503 still each had "TypeScript compiles without errors"
+open, `closed_by: "KB-14"`.
+
+**Reproduced** (`main` at `b21bd33e`): the guard below lists exactly those
+three and nothing else.
+
+**Fixed.** `packages/shared/__tests__/spec-closed-by-drift.test.ts` parses
+every spec YAML and fails on any item with a `closed_by` that is not
+`met: true` when an id in it is a KB in the *Fixed* table below (a
+`(part)` row does not count) or whose entry opens **Fixed**, or a spec whose
+`status` is DONE or RETIRED. It prints `spec_id → closed_by (why)`. A second
+test requires every entry that opens **Fixed** to have its *Fixed* row. The
+three items were checked against the code (`pnpm typecheck` passes and covers
+voice-worker and both story handlers) and marked met; mutation guards
+`tooling/mutation-guards/kb-80.json`.
+
+---
+
+## KB-81 — `path:line` citations in specs drift when code moves
+
+**Found:** KB-80 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
+**Open.**
+
+Spec `evidence` and `reason` citations name a `path:line`, and nothing checks them: when code moves, they point at the wrong line (FILM-502 and FILM-503 after #309, where about 15 shifted). A citation checker would close it.
+
+---
+
+## KB-82 — Records KB-80 found stale: KB-75, the SPIKE links and FILM-1728
+
+**Found:** KB-80 (2026-09-23). **Fixed** in this batch-records PR (`docs/batch-records-2026-09-23`).
+
+- KB-75 (#324) had no entry and no *Fixed* row, so a `closed_by: "KB-75"` would
+  never have been reported. Both are added here.
+- `specs/INDEX.md` linked SPIKE-01 to SPIKE-05 to `.md` files, which have been
+  `.yaml` since #307. The links now name the YAML files.
+- FILM-1728's notes said `apps/web/lambda/` is not typechecked (KB-14). It is,
+  since #309, and the notes now say so.
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
@@ -2072,6 +3215,19 @@ every canon string at the tool boundary, as sources are.
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
 | KB-52 | Every signed-in user could read, rewrite, forge and delete every account's `llm_usage_analytics` rows: a policy with no `TO` clause and `using (true)`; writes are now service-role only, and a pgTAP guard fails any new policy of that shape | #321 |
 | KB-15 | X connections were never refreshed (`Unknown platform: twitter` deactivated each at its first expiry); and the cron job refreshed only inside the 5-minute buffer, so tokens on every platform lapsed for up to 25 minutes between runs | #326 |
+| KB-17 | Canon events could be rewritten, deleted and re-attributed by any account member, viewers included, and inserted in a colleague's name; personal-account owners could not read or add their own | #330 |
+| KB-27 | Any signed-in user could write canon into any project, and bulk-reset (deleting the canon of) any account's episodes | #316 |
+| KB-31 | Any signed-in user could have the LLM worker build prompts from, and write into, another account's episodes and projects by naming their ids | #315 |
+| KB-26 | Any signed-in user could read every account's uploaded research, and same-name uploads overwrote each other's source | #318 |
+| KB-38 | R2 upload URLs bound only the object key, so any type and any size could be stored with one | #323 |
+| KB-55, KB-56 | Audio buckets no migration created (every audio upload failed off R2), a shorts generator broken on every provider, and a reports bucket that refused personal-account owners | #332 |
+| KB-58 | Library modules marked `'use server'` registered 55 unauthenticated server actions, among them the LLM vendor keys, an `ENCRYPTION_KEY` oracle and any connection's decrypted token | #331 |
+| KB-40 | Any signed-in user could replace any episode's edit project through `batch_assemble_edit_project`: EXECUTE on all five Edit Suite functions revoked from the API roles, and the Edit Suite tab and route removed (FILM-607 stop-gap; the Edit Suite is retired) | #327 |
+| KB-32, KB-62, KB-64, KB-65, KB-67, KB-68, KB-69 | The Edit Suite: server render always failed, edits were never saved, and its SECURITY DEFINER functions had no access check; Browser Export, render status, the ffmpeg pin and the SSRF guard follow-ups | #329 (removed) |
+| KB-22 | Disconnecting a platform deleted the creator's own records — manual revenue, tags, experiment membership, YPP targets — through a cascade, behind a dialog that described something else; and the vendor's statistics it should delete were kept for ever | #317, #334 |
+| KB-75 | The Unit Tests job's mutation guards outgrew its timeout, so it was cancelled on `main` and on PRs; the unit guards now run sharded | #324 |
+| KB-80 | Specs kept open items waiting on fixed bugs and finished specs (FILM-305, FILM-502, FILM-503 on KB-14); a guard now fails any `closed_by` that names finished work | #328 |
+| KB-82 | KB-75 had no record, INDEX linked the spikes to files that no longer exist, and FILM-1728 said the lambdas were untyped | this batch-records PR (`docs/batch-records-2026-09-23`) |
 
 ---
 
@@ -2099,7 +3255,7 @@ proved it wrong. Paths abbreviated with `…/studio/` are under
 - Every studio page load sends a failing request: the sidebar filters `external_content.project_id`, a column that does not exist — `…/studio/layout.tsx:84`
 - Visual Studio's "Generate All Pending" and "Regenerate" toast success and do nothing; "Replace" discards the chosen file; the "Add New Shot" tile has no handler — `…/studio/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:240`, `shot-details-sidebar.tsx:332`, `:835`, `shot-grid.tsx:54`
 - An assembled VEO prompt over 2,000 characters cannot be saved: update caps `prompt` at 2000, create allows 8000 — `packages/features/episodes/src/lib/schemas/shot.schema.ts:194`
-- Edit suite: the Inspector says "Coming soon", so speed, fades and keyframes cannot be edited; the Snap toggle is never read; clips on a locked track can be moved and deleted; many edits bypass undo — `packages/features/edit-suite/src/components/inspector/inspector-panel.tsx:37`, `timeline/clip-block.tsx:172`, `timeline/track-row.tsx:303` (PHASE-14, FILM-601, FILM-602)
+- ~~Edit suite: the Inspector says "Coming soon", so speed, fades and keyframes cannot be edited; the Snap toggle is never read; clips on a locked track can be moved and deleted; many edits bypass undo — `packages/features/edit-suite/src/components/inspector/inspector-panel.tsx:37`, `timeline/clip-block.tsx:172`, `timeline/track-row.tsx:303` (PHASE-14, FILM-601, FILM-602)~~ **Resolved by removal:** the Edit Suite is retired (FILM-607).
 - Settings still ask for, and validate against the vendor, Kling/Runway/Hailuo keys (retired) and OpenAI/Claude/Gemini keys that nothing reads — `apps/web/app/home/[account]/settings/_components/api-keys-settings.tsx:55-125`; the project form saves "Default Video Provider" and "Enable Subtitles", which nothing reads — `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:131`, `:705`
 - X and LinkedIn cannot be connected or published from the UI, yet the social-post page tells creators to "Connect one in Settings → Platforms" — `packages/features/publishing/src/components/platform-connections.tsx:90`, `packages/features/publishing/src/lib/constants.ts:45-51`, `apps/web/app/home/[account]/social-posts/[postId]/_components/social-post-detail.tsx:381`
 

@@ -242,8 +242,8 @@ notes: |
     nothing we request is among them.
   - The bundle carries one version. Bundle the publish lambda as SST does
     (FILM-1723's esbuild check): exactly one "v26.0", no other Graph version
-    literal. apps/web/lambda/ is not typechecked (KB-14), so the bundle is the
-    evidence.
+    literal. The bundle is the evidence for what ships; apps/web/lambda/ is
+    also typechecked since KB-14 (#309).
   - A live token refresh — the owner's, after deploy. FILM-1725 Check D (one
     forced Meta refresh at the first deploy carrying FILM-1723) must be re-run at
     the first deploy carrying this. If Check D has not yet run for v23.0, one run
@@ -310,8 +310,8 @@ notes: |
   3. The lambda handlers duplicate the providers. handlers/instagram.ts is
      a second copy of the container → poll → publish flow;
      handlers/facebook.ts a second (non-resumable) upload path. A field that
-     changes semantics must be fixed twice, and KB-14 means the lambda copy is
-     not even typechecked.
+     changes semantics must be fixed twice. (Both copies are typechecked
+     since KB-14, #309.)
   4. Meta sends deprecation warnings on live responses and we drop them.
      Graph answers with an X-Business-Use-Case-Usage / x-app-usage header
      pair and, for deprecated fields, a warning/__debug__ object in the
@@ -349,8 +349,7 @@ notes: |
   C. One implementation per flow. Move the Instagram container flow and the
   Facebook upload flow into the providers (@kit/publishing) and have the lambda
   handlers call them. The lambda already bundles @kit/shared; bundling
-  @kit/publishing's provider modules is the same esbuild step. Until KB-14
-  lands this also puts that code under tsc for the first time. If the
+  @kit/publishing's provider modules is the same esbuild step. If the
   non-resumable graph-video path exists for a reason (very large files? a
   timeout?), keep it as a provider option, not a second file.
 
