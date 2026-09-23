@@ -17,8 +17,8 @@ sources), KB-40 and KB-42 (siblings from the same sweep).
 - D3: outsiders and unknown ids get an empty result.
 - D4: a one-off Playwright run on :3112 with screenshots, and no permanent
   spec.
-- D5: KB-27 has not merged, so this PR adds only the Fixed-table row, and the
-  entry text stays in KB-27's PR.
+- D5: KB-27 (#316, stacked on #313) has not merged, so this PR adds only the
+  Fixed-table row, and the entry text stays in #316.
 - D6: sibling S-1 (§8 sweep D) is filed as **KB-60** and is not fixed here.
 
 Evidence labels used throughout: **measured** means it was run on the local
