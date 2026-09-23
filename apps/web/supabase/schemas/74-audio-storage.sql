@@ -1,6 +1,6 @@
 /*
  * Audio storage buckets (KB-55). Mirror of
- * migrations/20260923075906_kb55-storage-buckets.sql; the migration is what
+ * migrations/20260923135041_kb55-storage-buckets.sql; the migration is what
  * builds the database.
  *
  * On R2 these names are key prefixes in one bucket; on the Supabase provider

@@ -35,18 +35,6 @@ const SKIP_DIRS = new Set([
 ]);
 
 /**
- * The one bucket name the code uses that no migration creates and that is
- * not in STORAGE_BUCKETS: the edit-suite export's R2 prefix
- * (`NEXT_PUBLIC_R2_BUCKET_NAME ?? 'storybook-assets'`). FILM-607 retires the
- * Edit Suite and deletes the file, at which point the stale-entry test below
- * fails and this entry must be removed. It is an allowlist rather than a
- * comment so that it cannot outlive its reason.
- */
-const REMOVED_BY_FILM_607: Record<string, string> = {
-  'storybook-assets': 'packages/features/edit-suite/src/lib/export-upload.ts',
-};
-
-/**
  * Shapes in which a bucket name reaches storage as a string literal. The
  * adapter's own methods take (bucket, path, …); Supabase's client takes
  * `.storage.from(bucket)`; the browser helper takes (file, bucket, path).
@@ -185,32 +173,5 @@ describe('storage buckets (KB-55)', () => {
     expect(bucketMimeTypes(STORAGE_BUCKETS.reports)?.sort()).toEqual(
       [...REPORT_TYPES].sort(),
     );
-  });
-
-  describe('temporary exception: storybook-assets (FILM-607)', () => {
-    for (const [name, file] of Object.entries(REMOVED_BY_FILM_607)) {
-      it(`${name} is still used by ${file}, or this entry is stale`, () => {
-        let source = '';
-        try {
-          source = readFileSync(path.join(ROOT, file), 'utf8');
-        } catch {
-          // deleted
-        }
-
-        expect(
-          source.includes(`'${name}'`),
-          `stale allowlist entry: FILM-607 has landed, delete REMOVED_BY_FILM_607['${name}']`,
-        ).toBe(true);
-      });
-
-      it(`${name} is used nowhere else`, () => {
-        const elsewhere = SOURCE_ROOTS.flatMap(sourceFiles)
-          .filter((f) => path.relative(ROOT, f) !== file)
-          .filter((f) => code(f).includes(`'${name}'`))
-          .map((f) => path.relative(ROOT, f));
-
-        expect(elsewhere).toEqual([]);
-      });
-    }
   });
 });
