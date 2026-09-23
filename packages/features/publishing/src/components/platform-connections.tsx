@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 
 import { refusalMessage, unwrap } from '@kit/next/action-result';
-
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import {
   AlertDialog,
@@ -63,13 +62,13 @@ import {
   refreshConnectionAction,
   updateConnectionLanguageAction,
 } from '../server/connection-actions';
-import { disconnectCopyFor } from './disconnect-copy';
 import type {
   ConnectionStatus,
   PlatformConfig,
   PlatformConnection,
   PlatformType,
 } from '../types';
+import { disconnectCopyFor } from './disconnect-copy';
 
 const TikTokIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">

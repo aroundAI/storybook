@@ -1,7 +1,7 @@
 import { Page, expect, test } from '@playwright/test';
+import { randomUUID, webcrypto } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { type Server, createServer } from 'node:http';
-import { randomUUID, webcrypto } from 'node:crypto';
 
 import { daysAgo } from '../revenue/revenue-currency.po';
 import {
@@ -26,8 +26,9 @@ import { signInAs } from '../utils/session';
  *
  * Seeded, per test: a YouTube channel with one published video carrying a
  * **$50.00 sponsorship typed in by hand** and $12.34 of synced ads, plus one
- * post scheduled on the channel. Pre-fix, the revenue total reads $62.34
- * before the disconnect and nothing after it.
+ * post scheduled on the channel. Measured on `main` before the fix: the
+ * revenue total read "$62" before the disconnect and "$0" after it, and the
+ * connection, the publish and the manual row were all gone.
  *
  * The reconnect test drives the real `/api/platforms/callback/youtube`, with
  * a local listener standing in for Google's token and Data APIs (FILM-1801's
@@ -42,7 +43,13 @@ async function capture(page: Page, name: string) {
   if (!process.env.CAPTURE_EVIDENCE) return;
 
   mkdirSync(OUT, { recursive: true });
-  await page.screenshot({ path: `${OUT}/kb-22-${name}.png`, fullPage: true });
+  // The dialog fades in; a capture mid-animation is half transparent.
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every((animation) => animation.playState !== 'running'),
+  );
+  await page.screenshot({ path: `${OUT}/kb-22-${name}.png` });
 }
 
 interface Fixture {
@@ -116,7 +123,9 @@ async function revenueTotal(page: Page, team: SeededTeam) {
   await page.goto(`/home/${team.slug}/studio/analytics`);
 
   const value = page
-    .locator('[data-test="revenue-tile-total"] [data-test="revenue-tile-value"]')
+    .locator(
+      '[data-test="revenue-tile-total"] [data-test="revenue-tile-value"]',
+    )
     .first();
 
   await expect(value).toBeVisible();
@@ -160,7 +169,8 @@ test.describe('Disconnecting a platform keeps the creator’s records (KB-22)', 
     const fixture = await seedChannelWithHistory(page);
 
     const before = await revenueTotal(page, fixture.team);
-    expect(before).toContain('62.34');
+    // $50.00 typed in + $12.34 synced; the tile rounds to whole units.
+    expect(before).toBe('$62');
 
     await openPlatforms(page, fixture.team);
     await expect(row(page, fixture.connectionId)).toHaveAttribute(
@@ -193,10 +203,14 @@ test.describe('Disconnecting a platform keeps the creator’s records (KB-22)', 
       'disconnected',
     );
     await expect(
-      row(page, fixture.connectionId).locator('[data-test="disconnected-since"]'),
+      row(page, fixture.connectionId).locator(
+        '[data-test="disconnected-since"]',
+      ),
     ).toContainText('Your records from this channel are kept');
     await expect(
-      row(page, fixture.connectionId).locator('[data-test="reconnect-connection"]'),
+      row(page, fixture.connectionId).locator(
+        '[data-test="reconnect-connection"]',
+      ),
     ).toBeVisible();
     await capture(page, '02-row-disconnected');
 
@@ -229,9 +243,13 @@ test.describe('Disconnecting a platform keeps the creator’s records (KB-22)', 
     page,
   }) => {
     const team = await seedTeamAccount({ emailPrefix: 'kb22-tiktok' });
-    const connectionId = await seedYouTubeConnection(team.accountId, 'acme.tok', {
-      platform: 'tiktok',
-    });
+    const connectionId = await seedYouTubeConnection(
+      team.accountId,
+      'acme.tok',
+      {
+        platform: 'tiktok',
+      },
+    );
 
     await signInAs(page, team);
     await openPlatforms(page, team);
@@ -246,7 +264,9 @@ test.describe('Disconnecting a platform keeps the creator’s records (KB-22)', 
     await expect(
       dialog.locator('a[href="/data-deletion#request"]'),
     ).toBeVisible();
-    await expect(dialog.locator('[data-test="disconnect-scheduled"]')).toHaveCount(0);
+    await expect(
+      dialog.locator('[data-test="disconnect-scheduled"]'),
+    ).toHaveCount(0);
     await capture(page, '04-dialog-tiktok');
 
     await page.keyboard.press('Escape');
@@ -263,10 +283,14 @@ test.describe('Disconnecting a platform keeps the creator’s records (KB-22)', 
     const team = await seedTeamAccount({ emailPrefix: 'kb22-meta' });
     const pageId = `page-${randomUUID()}`;
 
-    const facebookId = await seedYouTubeConnection(team.accountId, 'Acme Page', {
-      platform: 'facebook',
-      platformAccountId: pageId,
-    });
+    const facebookId = await seedYouTubeConnection(
+      team.accountId,
+      'Acme Page',
+      {
+        platform: 'facebook',
+        platformAccountId: pageId,
+      },
+    );
     const instagramId = await seedYouTubeConnection(team.accountId, 'acme.ig', {
       platform: 'instagram',
       platformAccountId: `ig-${randomUUID()}`,
@@ -278,7 +302,9 @@ test.describe('Disconnecting a platform keeps the creator’s records (KB-22)', 
 
     const dialog = await disconnect(page, instagramId);
 
-    await expect(dialog.locator('[data-test="disconnect-linked"]')).toContainText(
+    await expect(
+      dialog.locator('[data-test="disconnect-linked"]'),
+    ).toContainText(
       'Acme Page is connected through the same Facebook login and is disconnected with it.',
     );
     await capture(page, '05-dialog-instagram-linked');
@@ -344,7 +370,9 @@ test.describe('Disconnecting a platform keeps the creator’s records (KB-22)', 
         );
       });
 
-      await expect(page).toHaveURL(/settings\/platforms\?success=youtube_connected/);
+      await expect(page).toHaveURL(
+        /settings\/platforms\?success=youtube_connected/,
+      );
       await expect(row(page, fixture.connectionId)).toHaveAttribute(
         'data-status',
         'active',

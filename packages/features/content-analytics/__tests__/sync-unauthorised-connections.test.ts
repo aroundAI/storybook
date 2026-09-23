@@ -135,7 +135,10 @@ describe('fetchPublishesForSync', () => {
   it('skips a channel the creator disconnected, without counting it as unauthorised (KB-22)', async () => {
     const result = await fetchPublishesForSync(
       clientWith(
-        [publish('kept', 'youtube', 'c-live'), publish('gone', 'youtube', 'c-gone')],
+        [
+          publish('kept', 'youtube', 'c-live'),
+          publish('gone', 'youtube', 'c-gone'),
+        ],
         [
           { id: 'c-live', scopes: [YT_ANALYTICS], metadata: {} },
           {

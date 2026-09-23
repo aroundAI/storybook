@@ -3,4 +3,3 @@ export {
   type MetaOAuthState,
   type FacebookPage,
 } from './config';
-

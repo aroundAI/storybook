@@ -343,8 +343,8 @@ async function PrivacyPolicyPage() {
                     disconnect in this app, and within 30 calendar days if you
                     revoke access at Google or your authorisation lapses and
                     cannot be renewed. Disconnecting keeps your own records —
-                    what was published through that account and the revenue
-                    you entered; the Data Deletion page below says exactly what
+                    what was published through that account and the revenue you
+                    entered; the Data Deletion page below says exactly what
                     stays and what goes.
                   </p>
                   <p>

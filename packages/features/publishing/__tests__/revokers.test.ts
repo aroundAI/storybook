@@ -130,12 +130,10 @@ describe('revokeAtVendor', () => {
       access_token_encrypted: 'enc:page-token',
     });
 
-    expect(seen.map((request) => `${request.method} ${request.path}`)).toEqual(
-      [
-        expect.stringMatching(/^DELETE \/v[\d.]+\/me\/permissions$/),
-        expect.stringMatching(/^DELETE \/v[\d.]+\/me\/permissions$/),
-      ],
-    );
+    expect(seen.map((request) => `${request.method} ${request.path}`)).toEqual([
+      expect.stringMatching(/^DELETE \/v[\d.]+\/me\/permissions$/),
+      expect.stringMatching(/^DELETE \/v[\d.]+\/me\/permissions$/),
+    ]);
     expect(seen[0]?.query).toBe('?access_token=page-token');
   });
 
@@ -203,7 +201,10 @@ describe('revokeAtVendor', () => {
     const { revokeAtVendor } = await sandboxedRevokers();
 
     expect(
-      await revokeAtVendor({ platform: 'youtube', access_token_encrypted: null }),
+      await revokeAtVendor({
+        platform: 'youtube',
+        access_token_encrypted: null,
+      }),
     ).toEqual({ status: 'no_token' });
     expect(
       await revokeAtVendor({

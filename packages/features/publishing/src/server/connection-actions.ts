@@ -211,7 +211,9 @@ export const countScheduledPublishesAction = returnRefusals(
         .eq('status', 'scheduled');
 
       if (error) {
-        throw new Error(`Failed to count scheduled publishes: ${error.message}`);
+        throw new Error(
+          `Failed to count scheduled publishes: ${error.message}`,
+        );
       }
 
       return { count: count ?? 0 };
