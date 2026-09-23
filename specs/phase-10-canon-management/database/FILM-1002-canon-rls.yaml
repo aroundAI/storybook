@@ -37,7 +37,7 @@ acceptance_criteria:
     reason: "unverified — every read policy checks `has_role_on_account`; no pgTAP cross-account test exists"
   - text: "Attack vector analysis completed and all vectors mitigated"
     met: false
-    reason: "not met — project_id injection open via `commit_canon_changes` (SECURITY DEFINER, no membership check, `apps/web/supabase/migrations/20260130004332_add_commit_canon_changes_function.sql:16`; reproduced as KB-27); state modification open (KB-17)"
+    reason: "not met — state modification open (KB-17). Project_id injection via `commit_canon_changes` closed by KB-27 (`apps/web/supabase/migrations/20260923031953_kb27-canon-write-scope.sql`: episode in project, `can_write_project`; `apps/web/supabase/tests/database/canon-commit-access.test.sql`)"
   - text: "Test cases documented for security validation"
     met: true
     evidence: "FILM-1002 \"Test Cases\" section (kept in notes)"
@@ -53,8 +53,8 @@ remaining:
     reason: "`20260607183439_grant_canon_delete_permissions.sql` granted DELETE on `character_states` and `state_deltas`; RLS alone now blocks deletes"
     closed_by: "unassigned"
   - criterion: "All attack vectors mitigated"
-    reason: "`commit_canon_changes` is SECURITY DEFINER, executable by `authenticated`, and checks no membership: a caller can insert events into, and overwrite `episodes.metadata` of, any project"
-    closed_by: "KB-27"
+    reason: "State modification: any member can rewrite, delete or re-author an `immutable_events` row. (Project_id injection through `commit_canon_changes` was closed by KB-27.)"
+    closed_by: "KB-17"
 open_questions: []
 notes: |
   Priority (source frontmatter): high

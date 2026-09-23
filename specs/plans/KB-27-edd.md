@@ -363,7 +363,7 @@ account that owns a project is authoritative for canon access.
 
 ## 14. Database Design and Changes
 
-One hand-written migration, `apps/web/supabase/migrations/<UTC timestamp>_kb27-definer-canon-access.sql`:
+One hand-written migration, `apps/web/supabase/migrations/20260923031953_kb27-canon-write-scope.sql`:
 
 1. `create or replace function public.commit_canon_changes(...)` — same
    signature and return type; `security definer`, `set search_path = ''`,
@@ -726,7 +726,7 @@ change and is not planned.
    approved `bulk-reset-access.test.sql` and
    `definer-functions-inventory.test.sql`; reset from this branch; run them
    against `main`'s functions; record each red case and its reason.
-2. **Migration**: write `<ts>_kb27-definer-canon-access.sql`; `migration up`
+2. **Migration**: write `20260923031953_kb27-canon-write-scope.sql`; `migration up`
    (or reset); rerun pgTAP → green. Mirror bulk reset into
    `schemas/22-bulk-reset-rpc.sql`.
 3. **Types**: `pnpm supabase:web:typegen` → expect no diff.

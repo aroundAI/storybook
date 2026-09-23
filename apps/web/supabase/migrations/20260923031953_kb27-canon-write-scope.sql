@@ -1,12 +1,109 @@
--- =============================================================================
--- Bulk Reset Episodes to Stage
--- =============================================================================
--- Atomically resets multiple episodes to a specified pipeline stage.
--- Replaces the N+1 client-side loop with a single RPC call.
--- Uses SECURITY DEFINER for atomicity. Access: every episode must be in a
--- project of p_account_id that the caller can write (KB-27).
--- =============================================================================
+/*
+ * KB-27: canon writes, and the bulk reset that deletes canon, need the
+ * project-write rule.
+ *
+ * Both functions are SECURITY DEFINER and granted to `authenticated`, so
+ * PostgREST exposes them as /rest/v1/rpc/<name> and row-level security does
+ * not apply inside them. Before this migration:
+ *
+ *   commit_canon_changes checked nothing. Any signed-in user could add
+ *   permanent canon to any project and overwrite any episode's canon
+ *   summary, with project and episode ids that were not even checked
+ *   against each other, and every event it wrote had no author.
+ *
+ *   bulk_reset_episodes_to_stage checked that the episodes belonged to the
+ *   account the caller NAMED, never that the caller could act for it, and
+ *   skipped soft-deleted episodes in that check while deleting their canon.
+ *
+ * Both were reproduced as a second real user over PostgREST (FILM-CC-04
+ * KB-27). The rule, the owner's decision of 2026-09-23, is KB-28's
+ * public.can_write_project: owner, admin or member in project_members.
+ * Tests: tests/database/canon-commit-access.test.sql,
+ * bulk-reset-access.test.sql, definer-functions-inventory.test.sql.
+ */
 
+-- ------------------------------------------------------------------
+-- commit_canon_changes
+-- ------------------------------------------------------------------
+-- Same signature and result. Every refusal (no such episode, an episode of
+-- another project, not a writer, not signed in) raises the same 42501, so
+-- the call does not reveal which ids exist. No catch-all handler: the old
+-- one re-raised everything as P0001, hiding 42501 and 23505, and an error
+-- already rolls back the whole call.
+create or replace function public.commit_canon_changes(
+  p_project_id uuid,
+  p_episode_id uuid,
+  p_season integer,
+  p_episode_number integer,
+  p_events jsonb,
+  p_episode_summary text,
+  p_sentiment_score numeric(3,2)
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_events_created integer := 0;
+begin
+  if v_uid is null
+     or not exists (
+       select 1 from public.episodes e
+       where e.id = p_episode_id and e.project_id = p_project_id
+     )
+     or not public.can_write_project(p_project_id) then
+    raise exception 'No access to this project''s canon' using errcode = '42501';
+  end if;
+
+  if jsonb_array_length(coalesce(p_events, '[]'::jsonb)) > 0 then
+    insert into public.immutable_events (
+      project_id, event_type, event_key, description,
+      established_in, season, episode_number, created_by
+    )
+    select
+      p_project_id,
+      ev->>'type',
+      ev->>'eventKey',
+      ev->>'description',
+      p_episode_id,
+      p_season,
+      p_episode_number,
+      v_uid
+    from jsonb_array_elements(p_events) as ev;
+
+    get diagnostics v_events_created = row_count;
+  end if;
+
+  -- One statement, so a concurrent metadata write cannot be lost between a
+  -- read and this write.
+  update public.episodes
+  set metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object(
+    'canonSummary', p_episode_summary,
+    'sentimentScore', p_sentiment_score
+  )
+  where id = p_episode_id;
+
+  return jsonb_build_object(
+    'eventsCreated', v_events_created,
+    'summaryStored', true
+  );
+end;
+$$;
+
+revoke all on function public.commit_canon_changes(uuid, uuid, integer, integer, jsonb, text, numeric) from public, anon;
+grant execute on function public.commit_canon_changes(uuid, uuid, integer, integer, jsonb, text, numeric) to authenticated, service_role;
+
+comment on function public.commit_canon_changes(uuid, uuid, integer, integer, jsonb, text, numeric) is
+  'Atomically commits canon changes (immutable events + episode metadata). Requires the episode to be in the project and can_write_project(project); events are authored by the caller.';
+
+-- ------------------------------------------------------------------
+-- bulk_reset_episodes_to_stage
+-- ------------------------------------------------------------------
+-- Only step 1 changes; the rest is the body from
+-- 20260608014516_bulk-reset-episodes-rpc.sql. p_account_id stays: the
+-- action writes its audit rows under it.
 CREATE OR REPLACE FUNCTION public.bulk_reset_episodes_to_stage(
   p_episode_ids UUID[],
   p_target_stage TEXT,  -- 'draft', 'story', 'screenplay', 'storyboard'
@@ -190,3 +287,12 @@ GRANT EXECUTE ON FUNCTION public.bulk_reset_episodes_to_stage(UUID[], TEXT, UUID
 
 COMMENT ON FUNCTION public.bulk_reset_episodes_to_stage IS
   'Atomically resets multiple episodes to a specified pipeline stage. Refuses unless every episode is in a project of p_account_id that the caller can write (can_write_project), then cancels active generation jobs and performs stage-specific data cleanup in a single transaction.';
+
+-- ------------------------------------------------------------------
+-- remove_episode_from_threads_touched
+-- ------------------------------------------------------------------
+-- Called from the bulk reset above in definer context. It has no access
+-- check and is NOT granted to authenticated -- keep it that way: granting it
+-- would open a cross-tenant write. Its body already qualifies its table;
+-- pin the search_path like every other definer function.
+alter function public.remove_episode_from_threads_touched(uuid, uuid) set search_path = '';

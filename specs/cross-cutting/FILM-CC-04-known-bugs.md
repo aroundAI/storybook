@@ -1547,7 +1547,7 @@ Rolled back.
 **Severity:** High — a cross-tenant write. A user with no access to a project
 can add permanent canon to it and overwrite an episode's canon summary, and
 the forged event carries no author. **Found:** the spec audit of FILM-1002
-(2026-09-23); reproduced by the coordinator. **Open.**
+(2026-09-23); reproduced by the coordinator. **Fixed** in #KB27PR.
 
 `commit_canon_changes`
 (`apps/web/supabase/migrations/20260130004332_add_commit_canon_changes_function.sql`)
@@ -1587,11 +1587,78 @@ Rolled back.
   each performs (or why it needs none). KB-11 was the same shape: a
   definer path re-deriving access by hand, or not at all.
 
+### Fix (#KB27PR)
+
+Design: `specs/plans/KB-27-edd.md`. Reproduced again first, as a second real
+GoTrue user over PostgREST with their own token (not a forged `sub`),
+including the mismatched-ids variant: the stranger's own project and the
+victim's episode wrote an event into the stranger's project *and* overwrote
+the victim's summary. Every event the function had ever written, the owner's
+own included, had `created_by` NULL.
+
+- **Rule (owner's decision, 2026-09-23):** KB-28's
+  `public.can_write_project` — owner, admin or member in `project_members`.
+  A role on the account is not enough: a team member with no project row is
+  refused (they already were by `episodes_update`), and sees the existing
+  generic "Failed to commit canon changes". A personal-account owner passes
+  through the creator's owner row (personal accounts have no membership row:
+  0 of 7 locally).
+- `commit_canon_changes`: the episode must be in the project; one `42501`
+  for every refusal, so the call is no longer an existence oracle;
+  `created_by = auth.uid()`; `search_path = ''`; the metadata merge is one
+  statement; errors keep their own SQLSTATE.
+- **Sibling, same fix:** `bulk_reset_episodes_to_stage` checked the episodes
+  against the account the caller *named*, not the caller. Reproduced: a
+  stranger naming the victim's account wiped the story and canon
+  (`reset_count 1`), and a stranger naming **their own** account with the
+  victim's soft-deleted episode got `reset_count 0` while the victim's canon
+  was deleted. Now every id must be an episode (soft-deleted or not) in a
+  project of that account the caller can write.
+- `remove_episode_from_threads_touched` (called by bulk reset): search_path
+  pinned. It has no check and is not granted to `authenticated`; the
+  single-episode reset calls it over RPC and so always logs a "non-fatal"
+  permission error. Do not grant it without adding a check.
+
+**Every `SECURITY DEFINER` function `authenticated` can execute** (in
+`public` and `kit`, on this branch; measured from `pg_proc`). The list is
+pinned by `definer-functions-inventory.test.sql`, which fails when it
+changes, with each function's check beside it.
+
+| Function | Access check |
+|---|---|
+| `commit_canon_changes` | episode in project, `can_write_project` (this fix) |
+| `bulk_reset_episodes_to_stage` | every episode in the named account, `can_write_project` (this fix) |
+| `batch_assemble_edit_project` | membership of a caller-supplied `p_user_id` — **KB-40, open** |
+| `get_project_members` | access to the project's account (KB-41, #319) |
+| `check_account_budget` | none — **KB-42, open** |
+| `update_project_cover_image` | `can_write_project` (KB-28) |
+| `can_write_project`, `can_write_project_storage`, `kit.get_project_id_from_path` | KB-28's rule itself; the last returns only an id |
+| `batch_create_shots`, `create_character_with_details`, `update_episode_with_lock` | `project_members` owner/admin/member |
+| `soft_delete_episode` | `project_members` owner/admin |
+| `get_project_generation_costs` | `project_members`, any role |
+| `get_account_projects` | personal owner or `has_role_on_account` |
+| `increment_template_usage` | system template, or owner/role on its account |
+| `is_team_member` | the caller's own membership |
+| `has_role_on_account`, `has_account_access`, `can_edit_project`, `is_project_owner`, `user_owns_account`, `get_current_account_id`, `is_mfa_compliant` | none needed: each answers a question about the caller |
+| `verify_nonce` | none needed: the token is the credential |
+
+**Tests:** `canon-commit-access.test.sql` (27), `bulk-reset-access.test.sql`
+(16), `definer-functions-inventory.test.sql` (2), each red case seen red on
+the pre-fix functions; seven mutation guards in
+`tooling/mutation-guards/kb-27.json`, each `RED`.
+
+**For KB-17:** this function stays `SECURITY DEFINER`, so KB-17's
+`immutable_events` policies will not apply inside it (it already writes the
+caller as author), and its DELETE rule will not bind bulk reset. The table's
+`has_role_on_account` policy is now wider than this function for team
+members without a project row and narrower for personal owners;
+`can_write_project` is the INSERT predicate that matches. See EDD §19.
+
 ### Acceptance criteria
 
-- [ ] pgTAP, red first: a non-member's call is refused and writes nothing; a member's call still commits; an episode from another project is refused
-- [ ] Events written by the function carry `created_by` = the caller
-- [ ] Every `SECURITY DEFINER` function granted to `authenticated` is listed with its access check, or the reason it needs none
+- [x] pgTAP, red first: a non-member's call is refused and writes nothing; a member's call still commits; an episode from another project is refused — `canon-commit-access.test.sql` T1–T4c, T7
+- [x] Events written by the function carry `created_by` = the caller — T4b, T5, T7
+- [x] Every `SECURITY DEFINER` function granted to `authenticated` is listed with its access check, or the reason it needs none — the table above, pinned by `definer-functions-inventory.test.sql`
 
 ---
 
@@ -2047,6 +2114,113 @@ every canon string at the tool boundary, as sources are.
 
 ---
 
+## KB-40 — Any signed-in user can replace any episode's edit project
+
+**Severity:** High — a cross-tenant destructive write. **Found:** KB-27's
+class sweep of SECURITY DEFINER functions, 2026-09-23. **Open.**
+
+`batch_assemble_edit_project`
+(`apps/web/supabase/migrations/20260226170054_fix-batch-assemble-replace-existing.sql:16`)
+is `SECURITY DEFINER`, granted to `authenticated`, and authorises by checking
+that `p_user_id` — a parameter — is a member of the episode's account. It
+never compares `p_user_id` with `auth.uid()`. It then deletes the episode's
+edit project (tracks, clips, keyframes, transitions and sync groups go with it
+by cascade) and writes a new one. `search_path` is `public`, not `''`.
+
+The only caller, `packages/features/edit-suite/src/server/batch-actions.ts:68`,
+checks membership itself and passes the session user's id, so the product
+path is safe; a direct `rpc` naming someone else is not.
+
+### Reproduced (local database, 2026-09-23, as a second real user over PostgREST)
+
+A fresh user with only a personal account, against a **public** project of
+another account (whose project and episode ids that user can list):
+
+| Request, with the stranger's own token | Result |
+|---|---|
+| `rpc/batch_assemble_edit_project` with the victim episode and `p_user_id` = the victim owner's id | `{"projectId": "762b10cf-…", "keyframeCount": 0, …}`; as postgres, the victim episode has 1 edit project |
+| the same with `p_user_id` = the stranger's own id | `P0001 Access denied: user is not a member of the project account` |
+
+The owner's user id is on the public project row (`projects.created_by`),
+which the public read policy returns — by reading, not executed.
+
+### Proposed fix
+
+Check `public.can_write_project` of the episode's project for `auth.uid()`,
+and drop `p_user_id` (or refuse when it differs from `auth.uid()`); set
+`search_path = ''`. Update its line in `definer-functions-inventory.test.sql`.
+
+### Acceptance criteria
+
+- [ ] pgTAP, red first: a caller who cannot write the episode's project is refused whatever `p_user_id` says, and nothing is deleted; a project writer still assembles
+- [ ] The edit suite's assemble still works through the action
+
+---
+
+## KB-41 — Any signed-in user can list any project's members and their emails
+
+**Severity:** High — cross-tenant personal data. **Found:** KB-27's class
+sweep, 2026-09-23. **Fixed** in #319: `get_project_members` now requires
+access to the project's account.
+
+`get_project_members` (`apps/web/supabase/migrations/20251016143639_projects.sql:247`,
+granted to `authenticated` at `:283`) is `SECURITY DEFINER` and checks
+nothing: it returns every member of whatever project it is given, with each
+member's name, email and picture from `accounts`. Caller:
+`packages/features/projects/src/lib/server/project.queries.ts:124`.
+
+### Reproduced (local database, 2026-09-23, as a second real user over PostgREST)
+
+| Request, with the stranger's own token | Result |
+|---|---|
+| `rpc/get_project_members` with another account's public project | `[{"role":"owner","user_email":"kb27b-owner@storybook.dev"}]` |
+
+Project ids of public and unlisted projects are listable by any signed-in
+user, so the id is not a secret.
+
+### Proposed fix
+
+Require that the caller can read the project as a member (a `project_members`
+row, or a role on its account — decide which), not merely see it because it
+is public; decide whether viewers see emails.
+
+### Acceptance criteria
+
+- [x] pgTAP, red first: a stranger, and a reader of a public project, get nothing; a project member gets the list — #319
+- [x] The project members screen still lists its members — #319
+
+---
+
+## KB-42 — Any signed-in user can read any account's budget status
+
+**Severity:** Low — one boolean and an existence oracle. **Found:** KB-27's
+class sweep, 2026-09-23. **Open.**
+
+`check_account_budget`
+(`apps/web/supabase/migrations/20251211090557_add-account-budget-tracking.sql:57`,
+granted to `authenticated` at `:89`) is `SECURITY DEFINER` and checks
+nothing. It answers whether any account's usage plus an estimate is within its
+budget, and raises `Account not found: <id>` for an id that is not an account.
+Caller: `packages/features/audio-generation/src/server/voice-queries.ts:65`.
+
+### Reproduced (local database, 2026-09-23, as a second real user over PostgREST)
+
+| Request, with the stranger's own token | Result |
+|---|---|
+| `rpc/check_account_budget` with another account's id | `true` |
+
+### Proposed fix
+
+Refuse unless `has_account_access(p_account_id)`, and return the same answer
+for "no such account" as for "not yours".
+
+### Acceptance criteria
+
+- [ ] pgTAP, red first: a stranger is refused for another account and for a non-existent id alike; a member gets the answer
+- [ ] Voice generation's budget check still passes for a member
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
@@ -2068,6 +2242,7 @@ every canon string at the tool boundary, as sources are.
 | KB-41 | Any signed-in user could list any project's members with their emails, public or private; `get_project_members` now requires access to the project's account | #319 |
 | KB-18 | No fact could be verified or disputed, by anyone: the update policy refused both states and the actions wrote through it; the actions' account-role check also turned some reviews and deletes into silent no-ops | #314 |
 | KB-28 | Any signed-in user could upload into any project's storage folder, and owners could not replace or delete their own files | #313 |
+| KB-27 | Any signed-in user could write canon into any project, and bulk-reset (deleting the canon of) any account's episodes | #KB27PR |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
 | KB-52 | Every signed-in user could read, rewrite, forge and delete every account's `llm_usage_analytics` rows: a policy with no `TO` clause and `using (true)`; writes are now service-role only, and a pgTAP guard fails any new policy of that shape | #321 |
