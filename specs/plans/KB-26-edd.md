@@ -261,8 +261,8 @@ search. Duplicates: same-name re-upload gives 1 source and N contents
 
 ## 14. Database Design and Changes
 
-Migration `apps/web/supabase/migrations/20260923025501_kb26_scope_research_uploads.sql`
-(runs after KB-28's `20260923024605_kb28-project-write-scope.sql`, which creates `can_write_project`):
+Migration `apps/web/supabase/migrations/20260923044054_kb26_scope_research_uploads.sql`
+(runs after KB-28's `20260923042517_kb28-project-write-scope.sql`, which creates `can_write_project`):
 
 - Guard: `DO` block raising if `server_version_num < 150000`.
 - `external_content`: `+ project_id uuid references projects on delete cascade`,
