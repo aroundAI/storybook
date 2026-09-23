@@ -2051,7 +2051,7 @@ every canon string at the tool boundary, as sources are.
 
 **Severity:** Medium — nothing that runs before production could exercise
 audio, and one feature was broken everywhere. **Found:** KB-28's storage
-audit (2026-09-23). **Fixed** in #PR_KB55; design and reproduction in
+audit (2026-09-23). **Fixed** in #332; design and reproduction in
 `specs/plans/KB-55-edd.md`.
 
 Code wrote to `audio`, `audio-assets` and `videos`; migrations created only
@@ -2093,7 +2093,7 @@ Supabase Storage by owner decision, through one `report-storage.ts`.
 
 **Severity:** Low — no UI reaches it today (report export is team-only), but
 the action accepts any account id. **Found:** KB-28's storage audit.
-**Fixed** in #PR_KB55, with KB-55.
+**Fixed** in #332, with KB-55.
 
 `reports_*` policies used `has_role_on_account`, which reads
 `accounts_memberships`; a personal account's owner has no row there, so
@@ -2159,7 +2159,7 @@ and reloads; it cannot assert the second submission until this is fixed.
 | KB-41 | Any signed-in user could list any project's members with their emails, public or private; `get_project_members` now requires access to the project's account | #319 |
 | KB-18 | No fact could be verified or disputed, by anyone: the update policy refused both states and the actions wrote through it; the actions' account-role check also turned some reviews and deletes into silent no-ops | #314 |
 | KB-28 | Any signed-in user could upload into any project's storage folder, and owners could not replace or delete their own files | #313 |
-| KB-55, KB-56 | Audio buckets no migration created (every audio upload failed off R2), a shorts generator broken on every provider, and a reports bucket that refused personal-account owners | #PR_KB55 |
+| KB-55, KB-56 | Audio buckets no migration created (every audio upload failed off R2), a shorts generator broken on every provider, and a reports bucket that refused personal-account owners | #332 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
 | KB-52 | Every signed-in user could read, rewrite, forge and delete every account's `llm_usage_analytics` rows: a policy with no `TO` clause and `using (true)`; writes are now service-role only, and a pgTAP guard fails any new policy of that shape | #321 |
