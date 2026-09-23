@@ -17,9 +17,7 @@ const ROOT = resolve(__dirname, '../../../../../../..');
 /** The route as a string literal: something a request is sent to */
 const ROUTE_LITERAL = /['"`]\/api\/storage\/presign['"`]/;
 
-const ALLOWED = [
-  'packages/features/storage/src/client/presigned-upload.ts',
-];
+const ALLOWED = ['packages/features/storage/src/client/presigned-upload.ts'];
 
 const SKIP = new Set([
   'node_modules',

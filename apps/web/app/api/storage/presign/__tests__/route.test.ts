@@ -256,7 +256,6 @@ describe('POST /api/storage/presign — Supabase provider', () => {
     });
     expect(mockCreateSignedUploadUrl).not.toHaveBeenCalled();
   });
-
 });
 
 describe('POST /api/storage/presign — R2 provider', () => {
@@ -321,7 +320,6 @@ describe('POST /api/storage/presign — R2 provider', () => {
     });
     expect(mockCreateSignedUploadUrl).not.toHaveBeenCalled();
   });
-
 
   // KB-38: the URL binds a type and an exact length, so both must be the
   // ones the route checked.
