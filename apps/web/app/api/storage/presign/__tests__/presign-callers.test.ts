@@ -5,10 +5,10 @@ import { describe, expect, it } from 'vitest';
 /**
  * KB-38: an upload URL is signed for one declared size, so every uploader
  * must declare the byte length of exactly the body it PUTs, and send the
- * headers the route returns. That is written once, in two helpers — the
- * shared `@kit/storage/client` one, and the edit-suite's own (that package
- * does not depend on `@kit/storage`). An uploader that calls the route
- * itself can forget either, and in production its uploads would fail.
+ * headers the route returns. That is written once, in the shared
+ * `@kit/storage/client` helper (the Edit Suite had a second; it went in
+ * FILM-607). An uploader that calls the route itself can forget either,
+ * and in production its uploads would fail.
  *
  * So: no other source file may send a request to the route.
  */
@@ -19,7 +19,6 @@ const ROUTE_LITERAL = /['"`]\/api\/storage\/presign['"`]/;
 
 const ALLOWED = [
   'packages/features/storage/src/client/presigned-upload.ts',
-  'packages/features/edit-suite/src/lib/presigned-upload.ts',
 ];
 
 const SKIP = new Set([

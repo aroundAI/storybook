@@ -30,11 +30,11 @@ const SKIP_DIRS = new Set([
 ]);
 
 /**
- * Being deleted by FILM-607 (Edit Suite retirement), whose stop-gap takes it
- * out of the build. Converting its actions here would only conflict with that
- * deletion. Remove this entry when the directory is gone.
+ * Directories being deleted by another change, which this audit skips rather
+ * than converting. Empty: the Edit Suite package was the only one, and
+ * FILM-607 removed it.
  */
-export const RETIRING_PATHS = ['packages/features/edit-suite/'];
+export const RETIRING_PATHS: readonly string[] = [];
 
 /**
  * Wrappers that add behaviour around a finished `enhanceAction` but do not
