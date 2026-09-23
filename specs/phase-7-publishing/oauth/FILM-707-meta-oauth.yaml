@@ -51,8 +51,8 @@ acceptance_criteria:
     met: true
     evidence: "`apps/web/app/api/platforms/callback/meta/route.ts:293`"
   - text: "Token refresh works for both platforms"
-    met: false
-    reason: "not met — `refreshMetaToken` reads `account_oauth_apps` (`packages/features/publishing/src/lib/token-refresh.ts:428`); connect uses global credentials, and nothing writes that table since 3238dd61 — KB-29"
+    met: true
+    evidence: "KB-29: `refreshMetaToken` gets the global Meta app from the lookup connect and the callback use (`packages/features/publishing/src/lib/token-refresh.ts:370`, `packages/features/publishing/src/lib/token-refresh.ts:383`, `apps/web/app/api/platforms/connect/meta/route.ts:64`, `apps/web/app/api/platforms/callback/meta/route.ts:108`); Instagram and Facebook both map to it. Driven against a local Graph listener (`packages/features/publishing/__tests__/token-refresh.test.ts:365`)"
   - text: "Disconnect removes related connections"
     met: true
     evidence: "`packages/features/publishing/src/oauth/meta/disconnect.ts:83`, `packages/features/publishing/src/oauth/meta/disconnect.ts:98` (it also cascades further: KB-22)"
@@ -73,15 +73,18 @@ test_plan:
       reason: "not met — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)"
     - text: "Test token refresh"
       met: true
-      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:332`"
+      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:365`"
     - text: "Test Instagram-Page linking"
       met: false
-      reason: "not met — callback linking untested; only refresh's use of `linked_page_id` is (`packages/features/publishing/__tests__/token-refresh.test.ts:284`)"
+      reason: "not met — callback linking untested; only refresh's use of `linked_page_id` is (`packages/features/publishing/__tests__/token-refresh.test.ts:367`)"
   e2e: []
 remaining:
-  - criterion: "Token refresh works for both platforms"
-    reason: "`refreshMetaToken` takes the app secret from `account_oauth_apps` (`packages/features/publishing/src/lib/token-refresh.ts:428`); Meta connect has used `oauth_app_credentials` since 3238dd61 (2026-01-21) and nothing writes the former, so an account without an older row fails its refresh and is marked inactive. The passing test mocks the lookup (`packages/features/publishing/__tests__/token-refresh.test.ts:55`)"
-    closed_by: "KB-29"
+  - criterion: "Consent screen shows correct permissions"
+    reason: "Meta renders it; needs a consent run on the owner's app (App Review pending, KB-20)"
+    closed_by: "owner"
+  - criterion: "User can select which Pages to connect"
+    reason: "No in-app choice: every Page `/me/accounts` returns is connected (`apps/web/app/api/platforms/callback/meta/route.ts:221`)"
+    closed_by: "unassigned"
 open_questions:
   - "Should we support multiple Pages per connection? (post-MVP)"
   - "Should we store Page category for filtering? (future)"

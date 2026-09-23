@@ -56,7 +56,7 @@ provider:
 acceptance_criteria:
   - text: "OAuth 2.0 connection flow works for personal accounts"
     met: false
-    reason: "unverified — success path never run or tested (failure branches only: `apps/e2e/tests/platform-connections/connect-failure.spec.ts`); refresh can never find credentials (`packages/features/publishing/src/lib/token-refresh.ts:520`)"
+    reason: "unverified — success path never run or tested (failure branches only: `apps/e2e/tests/platform-connections/connect-failure.spec.ts`). Refresh is fixed by KB-29: it uses the env app connect uses (`packages/features/publishing/__tests__/token-refresh.test.ts:410`)"
   - text: "OAuth 2.0 connection flow works for company pages"
     met: false
     reason: "no longer true — company connect stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:174`); no organization is chosen; no UI offers `type=company`"
@@ -105,7 +105,7 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "OAuth 2.0 connection flow works for personal accounts (unverified)"
-    reason: "The success path has never been run or tested. And a LinkedIn token can never be refreshed: `refreshLinkedInToken` looks up `account_oauth_apps` with platform `linkedin` (`packages/features/publishing/src/lib/token-refresh.ts:520`), which that table's CHECK forbids (`apps/web/supabase/migrations/20260102221811_add_account_oauth_apps.sql:8`), so every connection is marked inactive when its 60-day token expires"
+    reason: "The success path has never been run or tested. (Refresh, which could never find credentials, is fixed by KB-29: `packages/features/publishing/__tests__/token-refresh.test.ts:410`)"
     closed_by: "unassigned"
   - criterion: "OAuth 2.0 connection flow works for company pages"
     reason: "Company connect still stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:174`); `getOrganizations` has no caller and no UI passes `type=company`. Organization publishing never existed (`urn:li:organization` appears nowhere in history)"

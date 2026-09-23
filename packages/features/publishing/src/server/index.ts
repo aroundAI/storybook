@@ -33,7 +33,6 @@ export {
 } from './project-publishing-actions';
 
 export {
-  getAccountOAuthApp,
   getAccountOAuthApps,
   saveAccountOAuthAppAction,
   deleteAccountOAuthAppAction,
@@ -42,7 +41,6 @@ export {
 
 export {
   getGlobalOAuthApps,
-  getGlobalOAuthCredentials,
   saveGlobalOAuthAppAction,
   deleteGlobalOAuthAppAction,
   type GlobalOAuthApp,

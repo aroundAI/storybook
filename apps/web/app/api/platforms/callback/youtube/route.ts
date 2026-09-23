@@ -94,8 +94,10 @@ async function handleCallback(request: NextRequest) {
   }
 
   // Get global OAuth credentials (configured by super admin)
-  const { getGlobalOAuthCredentials } = await import('@kit/publishing/server');
-  const credentials = await getGlobalOAuthCredentials('youtube');
+  const { getOAuthAppCredentials } = await import(
+    '@kit/publishing/server/oauth-app-credentials'
+  );
+  const credentials = await getOAuthAppCredentials('youtube');
 
   if (!credentials) {
     return fail({ code: 'not_configured', branch: 'credentials_missing' });

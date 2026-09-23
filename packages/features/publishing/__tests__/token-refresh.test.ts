@@ -1,6 +1,10 @@
+import { randomBytes } from 'node:crypto';
+import { type Server, createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import {
-  type Mock,
+  afterAll,
   afterEach,
+  beforeAll,
   beforeEach,
   describe,
   expect,
@@ -8,359 +12,476 @@ import {
   vi,
 } from 'vitest';
 
-import { META_GRAPH_BASE, META_OAUTH_TOKEN_URL } from '@kit/shared/vendors';
+/**
+ * KB-29. Every refresh case runs the real `ensureValidToken` →
+ * `refreshTokenForPlatform` path. Only two things are stood in for:
+ *
+ * - the vendors, by a local HTTP listener reached through the FILM-1801
+ *   sandbox (`VENDOR_URL_*`), so the request the product code builds is the
+ *   thing asserted - not a request this file made itself, which is what the
+ *   YouTube and TikTok cases here used to do;
+ * - the database, by `fakeDb`, which answers per table. A table it holds no
+ *   rows for answers the way PostgREST does for a missing row. The old
+ *   version of this file mocked the credential lookup to always succeed,
+ *   which is how refresh reading a table nothing writes went unseen.
+ *
+ * `@kit/shared/crypto` is real, with a generated key.
+ */
 
-import {
-  type Platform,
-  ensureValidToken,
-  formatPlatformName,
-  getExpiryBuffer,
-} from '../src/lib/token-refresh';
+type Row = Record<string, unknown>;
 
-// Mock server-only
-vi.mock('server-only', () => ({}));
+const { fakeDb, logged } = vi.hoisted(() => {
+  const tables: Record<string, Row[]> = {};
+  const updates: Array<{ table: string; patch: Row }> = [];
 
-// Mock the crypto module. This lived at `../src/lib/crypto` until that file
-// was deleted as dead code in 96c9e20e; token-refresh.ts now imports from
-// `@kit/shared/crypto`, so mocking the old path silently mocked nothing.
-vi.mock('@kit/shared/crypto', () => ({
-  encrypt: vi.fn((value: string) => Promise.resolve(`encrypted:${value}`)),
-  decrypt: vi.fn((value: string) =>
-    Promise.resolve(value.replace('encrypted:', '')),
-  ),
+  interface Result {
+    data: unknown;
+    error: unknown;
+  }
+
+  class Query {
+    private op: 'select' | 'update' = 'select';
+    private patch: Row = {};
+    private returning = false;
+    private readonly filters: Array<[string, unknown]> = [];
+
+    constructor(private readonly table: string) {}
+
+    select() {
+      if (this.op === 'update') this.returning = true;
+      return this;
+    }
+
+    update(patch: Row) {
+      this.op = 'update';
+      this.patch = patch;
+      return this;
+    }
+
+    eq(column: string, value: unknown) {
+      this.filters.push([column, value]);
+      return this;
+    }
+
+    single() {
+      return Promise.resolve(this.run('single'));
+    }
+
+    maybeSingle() {
+      return Promise.resolve(this.run('maybeSingle'));
+    }
+
+    then<A = Result, B = never>(
+      onfulfilled?: ((value: Result) => A | PromiseLike<A>) | null,
+      onrejected?: ((reason: unknown) => B | PromiseLike<B>) | null,
+    ): Promise<A | B> {
+      return Promise.resolve(this.run('many')).then(onfulfilled, onrejected);
+    }
+
+    private run(mode: 'single' | 'maybeSingle' | 'many'): Result {
+      const rows = (tables[this.table] ?? []).filter((row) =>
+        this.filters.every(([column, value]) => row[column] === value),
+      );
+
+      if (this.op === 'update') {
+        for (const row of rows) Object.assign(row, this.patch);
+        updates.push({ table: this.table, patch: this.patch });
+        return { data: this.returning ? rows : null, error: null };
+      }
+
+      if (mode === 'many') return { data: rows, error: null };
+      if (rows[0]) return { data: { ...rows[0] }, error: null };
+      if (mode === 'maybeSingle') return { data: null, error: null };
+
+      return {
+        data: null,
+        error: { code: 'PGRST116', message: 'no rows returned' },
+      };
+    }
+  }
+
+  const logged = {
+    error: [] as Array<[Row, string]>,
+    warn: [] as Array<[Row, string]>,
+    info: [] as Array<[Row, string]>,
+  };
+
+  return {
+    fakeDb: {
+      tables,
+      updates,
+      client: { from: (table: string) => new Query(table) },
+      reset() {
+        for (const key of Object.keys(tables)) delete tables[key];
+        updates.length = 0;
+      },
+    },
+    logged,
+  };
+});
+
+vi.mock('@kit/supabase/server-admin-client', () => ({
+  getSupabaseServerAdminClient: () => fakeDb.client,
 }));
 
-/**
- * PostgREST builders resolve to `{ data, error }`; typing the terminal
- * methods as that shape is what lets a test override them.
- */
-interface QueryResult {
-  data: unknown;
-  error: { message: string } | null;
+vi.mock('@kit/shared/logger', () => ({
+  getLogger: async () => ({
+    error: (ctx: Row, msg: string) => logged.error.push([ctx, msg]),
+    warn: (ctx: Row, msg: string) => logged.warn.push([ctx, msg]),
+    info: (ctx: Row, msg: string) => logged.info.push([ctx, msg]),
+    debug: () => undefined,
+  }),
+}));
+
+interface VendorRequest {
+  method: string;
+  path: string;
+  query: URLSearchParams;
+  form: URLSearchParams;
+  authorization?: string;
 }
 
-// Mock Supabase client
-const mockSupabase = {
-  from: vi.fn(() => mockSupabase),
-  select: vi.fn(() => mockSupabase),
-  eq: vi.fn(() => mockSupabase),
-  lt: vi.fn(() => mockSupabase),
-  order: vi.fn(() => mockSupabase),
-  update: vi.fn(() => mockSupabase),
-  single: vi.fn(
-    (): Promise<QueryResult> => Promise.resolve({ data: null, error: null }),
-  ),
-};
+const requests: VendorRequest[] = [];
+let vendorStatus = 200;
+let server: Server;
+let origin: string;
 
-vi.mock('../src/server/account-oauth-actions', () => ({
-  getAccountOAuthAppAdmin: vi.fn(() =>
-    Promise.resolve({
-      clientId: 'test-facebook-app-id',
-      clientSecret: 'test-facebook-app-secret',
-    }),
-  ),
-}));
+function vendorResponse(path: string) {
+  if (vendorStatus !== 200) {
+    return { error: 'invalid_grant', error_description: 'Token revoked' };
+  }
 
-// token-refresh.ts runs from background workers with no user session, so it
-// uses the admin client. Mocking `server-client` left the real admin client to
-// be constructed, which threw on the unset NEXT_PUBLIC_SUPABASE_* env vars.
-vi.mock('@kit/supabase/server-admin-client', () => ({
-  getSupabaseServerAdminClient: () => mockSupabase,
-}));
+  if (path.endsWith('/me/accounts')) {
+    return {
+      data: [
+        { id: 'page-0', access_token: 'other-page-token' },
+        { id: 'page-1', access_token: 'new-page-token' },
+      ],
+    };
+  }
 
-describe('Token Refresh', () => {
-  const validKey =
-    '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+  return {
+    access_token: 'new-access-token',
+    refresh_token: 'rotated-refresh-token',
+    expires_in: 3600,
+    refresh_expires_in: 31536000,
+  };
+}
 
-  beforeEach(() => {
-    vi.stubEnv('TOKEN_ENCRYPTION_KEY', validKey);
-    vi.stubEnv('YOUTUBE_CLIENT_ID', 'test-youtube-client-id');
-    vi.stubEnv('YOUTUBE_CLIENT_SECRET', 'test-youtube-client-secret');
-    vi.stubEnv('TIKTOK_CLIENT_KEY', 'test-tiktok-client-key');
-    vi.stubEnv('TIKTOK_CLIENT_SECRET', 'test-tiktok-client-secret');
-    vi.stubEnv('FACEBOOK_APP_ID', 'test-facebook-app-id');
-    vi.stubEnv('FACEBOOK_APP_SECRET', 'test-facebook-app-secret');
-
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
-  describe('formatPlatformName', () => {
-    it('should format youtube correctly', () => {
-      expect(formatPlatformName('youtube')).toBe('YouTube');
-    });
-
-    it('should format tiktok correctly', () => {
-      expect(formatPlatformName('tiktok')).toBe('TikTok');
-    });
-
-    it('should format instagram correctly', () => {
-      expect(formatPlatformName('instagram')).toBe('Instagram');
-    });
-
-    it('should format facebook correctly', () => {
-      expect(formatPlatformName('facebook')).toBe('Facebook');
-    });
-
-    it('should return unknown platforms as-is', () => {
-      expect(formatPlatformName('unknown' as Platform)).toBe('unknown');
-    });
-  });
-
-  describe('getExpiryBuffer', () => {
-    it('should return 5 minutes in milliseconds', () => {
-      expect(getExpiryBuffer()).toBe(5 * 60 * 1000);
-    });
-  });
-
-  describe('ensureValidToken', () => {
-    it('should return NOT_FOUND when connection does not exist', async () => {
-      mockSupabase.single.mockResolvedValueOnce({
-        data: null,
-        error: { message: 'Not found' },
+beforeAll(async () => {
+  server = createServer((request, response) => {
+    let body = '';
+    request.on('data', (chunk) => (body += chunk));
+    request.on('end', () => {
+      const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+      requests.push({
+        method: request.method ?? '',
+        path: url.pathname,
+        query: url.searchParams,
+        form: new URLSearchParams(body),
+        authorization: request.headers.authorization,
       });
-
-      // Dynamically import to get fresh module with mocks
-      const { ensureValidToken } = await import('../src/lib/token-refresh');
-
-      const result = await ensureValidToken('non-existent-id');
-
-      expect(result.valid).toBe(false);
-      expect(result.error).toBe('NOT_FOUND');
+      response.statusCode = vendorStatus;
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify(vendorResponse(url.pathname)));
     });
+  });
 
-    it('should return CONNECTION_INACTIVE when connection is inactive', async () => {
-      mockSupabase.single.mockResolvedValueOnce({
-        data: {
-          id: 'conn-1',
-          is_active: false,
-          platform: 'youtube',
-          account_id: 'account-1',
-        },
-        error: null,
-      });
+  await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+  origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+});
 
-      const { ensureValidToken } = await import('../src/lib/token-refresh');
+afterAll(async () => {
+  await new Promise((done) => server.close(done));
+});
 
-      const result = await ensureValidToken('conn-1');
+const realFetch = globalThis.fetch;
+let tokenRefresh: typeof import('../src/lib/token-refresh');
+let encrypt: (value: string) => Promise<string>;
 
-      expect(result.valid).toBe(false);
-      expect(result.error).toBe('CONNECTION_INACTIVE');
-      expect(result.requiresReauth).toBe(true);
+beforeEach(async () => {
+  fakeDb.reset();
+  requests.length = 0;
+  vendorStatus = 200;
+  logged.error.length = 0;
+  logged.warn.length = 0;
+  logged.info.length = 0;
+
+  vi.stubEnv('NODE_ENV', 'test');
+  vi.stubEnv('VENDOR_SANDBOX', '1');
+  for (const vendor of [
+    'GOOGLE_TOKEN',
+    'TIKTOK',
+    'META_GRAPH',
+    'LINKEDIN_OAUTH',
+  ]) {
+    vi.stubEnv(`VENDOR_URL_${vendor}`, origin);
+  }
+  vi.stubEnv('ENCRYPTION_KEY', randomBytes(32).toString('base64'));
+  vi.stubEnv('TIKTOK_CLIENT_KEY', 'env-tiktok-client-key');
+  vi.stubEnv('TIKTOK_CLIENT_SECRET', 'env-tiktok-client-secret');
+  vi.stubEnv('LINKEDIN_CLIENT_ID', 'env-linkedin-client-id');
+  vi.stubEnv('LINKEDIN_CLIENT_SECRET', 'env-linkedin-client-secret');
+
+  // A request that escapes the sandbox fails here instead of reaching a vendor.
+  vi.stubGlobal('fetch', (input: string | URL, init?: RequestInit) => {
+    const url = new URL(String(input));
+    if (url.origin !== origin) {
+      throw new Error(`escaped the vendor sandbox: ${url.origin}`);
+    }
+    return realFetch(input, init);
+  });
+
+  // The OAuth configs resolve their hosts at import, after the env above.
+  vi.resetModules();
+  tokenRefresh = await import('../src/lib/token-refresh');
+  ({ encrypt } = await import('@kit/shared/crypto'));
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
+
+/** A global row exactly as `/admin/platforms` writes it. */
+async function seedGlobalCredentials(platform: 'youtube' | 'meta') {
+  fakeDb.tables.oauth_app_credentials = [
+    ...(fakeDb.tables.oauth_app_credentials ?? []),
+    {
+      platform,
+      client_id: `global-${platform}-client-id`,
+      client_secret_encrypted: await encrypt(
+        `global-${platform}-client-secret`,
+      ),
+    },
+  ];
+}
+
+async function seedExpiredConnection(platform: string, metadata: Row = {}) {
+  const connection = {
+    id: `conn-${platform}`,
+    account_id: 'account-1',
+    platform,
+    platform_account_id: `${platform}-account`,
+    access_token_encrypted: await encrypt('old-access-token'),
+    refresh_token_encrypted: await encrypt('old-refresh-token'),
+    is_active: true,
+    token_expires_at: new Date(Date.now() - 60_000).toISOString(),
+    metadata,
+    updated_at: '2026-09-01T00:00:00.000Z',
+  };
+
+  fakeDb.tables.platform_connections = [connection];
+  return connection;
+}
+
+function storedConnection() {
+  return fakeDb.tables.platform_connections![0]!;
+}
+
+async function decrypted(field: string) {
+  const { decrypt } = await import('@kit/shared/crypto');
+  return decrypt(storedConnection()[field] as string);
+}
+
+describe('formatPlatformName', () => {
+  it.each([
+    ['youtube', 'YouTube'],
+    ['tiktok', 'TikTok'],
+    ['instagram', 'Instagram'],
+    ['facebook', 'Facebook'],
+    ['linkedin', 'LinkedIn'],
+    ['unknown', 'unknown'],
+  ])('formats %s as %s', (platform, name) => {
+    expect(tokenRefresh.formatPlatformName(platform)).toBe(name);
+  });
+});
+
+describe('getExpiryBuffer', () => {
+  it('is 5 minutes', () => {
+    expect(tokenRefresh.getExpiryBuffer()).toBe(5 * 60 * 1000);
+  });
+});
+
+describe('ensureValidToken before any refresh', () => {
+  it('returns NOT_FOUND when the connection does not exist', async () => {
+    expect(await tokenRefresh.ensureValidToken('missing')).toEqual({
+      valid: false,
+      error: 'NOT_FOUND',
     });
+  });
 
-    it('should return valid token when not expired', async () => {
-      const futureExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+  it('returns CONNECTION_INACTIVE for an inactive connection', async () => {
+    await seedExpiredConnection('youtube');
+    storedConnection().is_active = false;
 
-      mockSupabase.single.mockResolvedValueOnce({
-        data: {
-          id: 'conn-1',
-          is_active: true,
-          platform: 'youtube',
-          account_id: 'account-1',
-          access_token_encrypted: 'encrypted:valid-access-token',
-          refresh_token_encrypted: 'encrypted:valid-refresh-token',
-          token_expires_at: futureExpiry.toISOString(),
-        },
-        error: null,
-      });
+    expect(await tokenRefresh.ensureValidToken('conn-youtube')).toEqual({
+      valid: false,
+      error: 'CONNECTION_INACTIVE',
+      requiresReauth: true,
+    });
+  });
 
-      const { ensureValidToken } = await import('../src/lib/token-refresh');
+  it('returns the stored token without calling the vendor while it is valid', async () => {
+    await seedExpiredConnection('youtube');
+    storedConnection().token_expires_at = new Date(
+      Date.now() + 60 * 60 * 1000,
+    ).toISOString();
 
-      const result = await ensureValidToken('conn-1');
+    expect(await tokenRefresh.ensureValidToken('conn-youtube')).toEqual({
+      valid: true,
+      accessToken: 'old-access-token',
+    });
+    expect(requests).toHaveLength(0);
+  });
+});
 
-      expect(result.valid).toBe(true);
-      expect(result.accessToken).toBe('valid-access-token');
+/**
+ * KB-29: an account connected after 2026-01-21 has no `account_oauth_apps`
+ * row - nothing has written that table since - so refresh must use the
+ * credentials connect used.
+ */
+describe('refresh uses the credentials connect uses (KB-29)', () => {
+  it('YouTube refreshes with the global app, with no per-account row', async () => {
+    await seedGlobalCredentials('youtube');
+    await seedExpiredConnection('youtube');
+
+    const result = await tokenRefresh.ensureValidToken('conn-youtube');
+
+    expect(result).toEqual({ valid: true, accessToken: 'new-access-token' });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.method).toBe('POST');
+    expect(requests[0]!.path).toBe('/token');
+    expect(Object.fromEntries(requests[0]!.form)).toEqual({
+      client_id: 'global-youtube-client-id',
+      client_secret: 'global-youtube-client-secret',
+      refresh_token: 'old-refresh-token',
+      grant_type: 'refresh_token',
+    });
+    expect(storedConnection().is_active).toBe(true);
+    expect(await decrypted('access_token_encrypted')).toBe('new-access-token');
+  });
+
+  it('Instagram exchanges its user token with the global Meta app on the pinned Graph version, then reads the page token', async () => {
+    await seedGlobalCredentials('meta');
+    await seedExpiredConnection('instagram', { linked_page_id: 'page-1' });
+
+    const result = await tokenRefresh.ensureValidToken('conn-instagram');
+
+    expect(result).toEqual({ valid: true, accessToken: 'new-page-token' });
+
+    const [exchange, pages] = requests;
+    const { META_GRAPH_VERSION } = await import('@kit/shared/vendors');
+
+    expect(exchange!.path).toBe(`/${META_GRAPH_VERSION}/oauth/access_token`);
+    expect(Object.fromEntries(exchange!.query)).toEqual({
+      grant_type: 'fb_exchange_token',
+      client_id: 'global-meta-client-id',
+      client_secret: 'global-meta-client-secret',
+      fb_exchange_token: 'old-refresh-token',
+    });
+    expect(pages!.path).toBe(`/${META_GRAPH_VERSION}/me/accounts`);
+    expect(pages!.query.get('access_token')).toBe('new-access-token');
+
+    // The refreshed user token is kept for the next cycle.
+    expect(await decrypted('access_token_encrypted')).toBe('new-page-token');
+    expect(await decrypted('refresh_token_encrypted')).toBe('new-access-token');
+  });
+
+  it('TikTok refreshes with the env app connect uses, and stores the rotated refresh token', async () => {
+    await seedExpiredConnection('tiktok');
+
+    const result = await tokenRefresh.ensureValidToken('conn-tiktok');
+
+    expect(result).toEqual({ valid: true, accessToken: 'new-access-token' });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.path).toBe('/v2/oauth/token/');
+    expect(Object.fromEntries(requests[0]!.form)).toEqual({
+      client_key: 'env-tiktok-client-key',
+      client_secret: 'env-tiktok-client-secret',
+      refresh_token: 'old-refresh-token',
+      grant_type: 'refresh_token',
+    });
+    expect(await decrypted('refresh_token_encrypted')).toBe(
+      'rotated-refresh-token',
+    );
+  });
+
+  it('LinkedIn refreshes with the env app connect uses', async () => {
+    await seedExpiredConnection('linkedin');
+
+    const result = await tokenRefresh.ensureValidToken('conn-linkedin');
+
+    expect(result).toEqual({ valid: true, accessToken: 'new-access-token' });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.path).toBe('/oauth/v2/accessToken');
+    expect(Object.fromEntries(requests[0]!.form)).toEqual({
+      grant_type: 'refresh_token',
+      refresh_token: 'old-refresh-token',
+      client_id: 'env-linkedin-client-id',
+      client_secret: 'env-linkedin-client-secret',
     });
   });
 });
 
-describe('Platform Token Refresh Functions', () => {
-  beforeEach(() => {
-    vi.stubEnv('YOUTUBE_CLIENT_ID', 'test-youtube-client-id');
-    vi.stubEnv('YOUTUBE_CLIENT_SECRET', 'test-youtube-client-secret');
-    vi.stubEnv('TIKTOK_CLIENT_KEY', 'test-tiktok-client-key');
-    vi.stubEnv('TIKTOK_CLIENT_SECRET', 'test-tiktok-client-secret');
-    vi.stubEnv('FACEBOOK_APP_ID', 'test-facebook-app-id');
-    vi.stubEnv('FACEBOOK_APP_SECRET', 'test-facebook-app-secret');
+describe('a refresh that cannot happen', () => {
+  it('leaves the connection active when the app is not configured, and says which source is missing', async () => {
+    await seedExpiredConnection('youtube');
 
-    // Mock global fetch
-    global.fetch = vi.fn() as Mock;
-  });
+    const result = await tokenRefresh.ensureValidToken('conn-youtube');
 
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    vi.restoreAllMocks();
-  });
+    expect(result).toEqual({
+      valid: false,
+      error: 'APP_NOT_CONFIGURED',
+      requiresReauth: false,
+    });
+    expect(requests).toHaveLength(0);
+    expect(storedConnection().is_active).toBe(true);
+    expect(storedConnection().metadata).not.toHaveProperty('is_refreshing');
+    expect(storedConnection().metadata).not.toHaveProperty(
+      'refresh_started_at',
+    );
 
-  describe('YouTube token refresh', () => {
-    it('should call Google OAuth endpoint with correct parameters', async () => {
-      const mockResponse = {
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            access_token: 'new-access-token',
-            refresh_token: 'new-refresh-token',
-            expires_in: 3600,
-          }),
-      };
-
-      (global.fetch as Mock).mockResolvedValueOnce(mockResponse);
-
-      // Call YouTube refresh directly (we'd need to export it for this test)
-      // For now, verify the fetch was called correctly
-      await global.fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: 'test-youtube-client-id',
-          client_secret: 'test-youtube-client-secret',
-          refresh_token: 'test-refresh-token',
-          grant_type: 'refresh_token',
-        }),
-      });
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://oauth2.googleapis.com/token',
-        expect.objectContaining({
-          method: 'POST',
-        }),
-      );
+    const [context] = logged.error.at(-1)!;
+    expect(context).toMatchObject({
+      app: 'youtube',
+      credentialSource: "oauth_app_credentials['youtube']",
     });
   });
 
-  describe('TikTok token refresh', () => {
-    it('should call TikTok OAuth endpoint', async () => {
-      const mockResponse = {
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            access_token: 'new-tiktok-access-token',
-            refresh_token: 'new-tiktok-refresh-token',
-            expires_in: 86400,
-          }),
-      };
+  it('names the env variables when an env-backed app is not configured, and logs no secret', async () => {
+    vi.stubEnv('TIKTOK_CLIENT_SECRET', '');
+    await seedExpiredConnection('tiktok');
 
-      (global.fetch as Mock).mockResolvedValueOnce(mockResponse);
+    const result = await tokenRefresh.ensureValidToken('conn-tiktok');
 
-      await global.fetch('https://open.tiktokapis.com/v2/oauth/token/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_key: 'test-tiktok-client-key',
-          client_secret: 'test-tiktok-client-secret',
-          refresh_token: 'test-refresh-token',
-          grant_type: 'refresh_token',
-        }),
-      });
+    expect(result.error).toBe('APP_NOT_CONFIGURED');
+    expect(storedConnection().is_active).toBe(true);
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://open.tiktokapis.com/v2/oauth/token/',
-        expect.objectContaining({
-          method: 'POST',
-        }),
-      );
+    const [context, message] = logged.error.at(-1)!;
+    expect(context).toMatchObject({
+      app: 'tiktok',
+      credentialSource: 'TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET',
     });
+    expect(JSON.stringify([context, message])).not.toContain(
+      'env-tiktok-client-key',
+    );
   });
 
-  /**
-   * Driven through `ensureValidToken`, the entry point all six callers use.
-   * The case this replaced called `fetch` itself and asserted that `fetch` had
-   * been called, so it passed whatever token-refresh.ts did (FILM-1723).
-   */
-  describe('Meta token refresh', () => {
-    const connection = {
-      id: 'conn-1',
-      account_id: 'account-1',
-      platform: 'instagram',
-      platform_account_id: 'ig-1',
-      access_token_encrypted: 'encrypted:old-page-token',
-      refresh_token_encrypted: 'encrypted:old-user-token',
-      is_active: true,
-      token_expires_at: new Date(Date.now() - 1000).toISOString(),
-      metadata: { linked_page_id: 'page-1' },
-      updated_at: '2026-09-01T00:00:00.000Z',
-    };
+  it('deactivates the connection when the vendor refuses the refresh token', async () => {
+    await seedGlobalCredentials('youtube');
+    await seedExpiredConnection('youtube');
+    vendorStatus = 400;
 
-    beforeEach(() => {
-      mockSupabase.single.mockResolvedValueOnce({
-        data: connection,
-        error: null,
-      });
-      // The first `select` is the read above; the second closes the
-      // optimistic-lock update and has to report a locked row.
-      mockSupabase.select
-        .mockImplementationOnce(() => mockSupabase)
-        .mockImplementationOnce(
-          () =>
-            Promise.resolve({
-              data: [{ id: connection.id }],
-              error: null,
-            }) as unknown as typeof mockSupabase,
-        );
+    const result = await tokenRefresh.ensureValidToken('conn-youtube');
 
-      vi.stubGlobal(
-        'fetch',
-        vi
-          .fn()
-          .mockResolvedValueOnce({
-            json: () =>
-              Promise.resolve({
-                access_token: 'new-user-token',
-                expires_in: 5184000,
-              }),
-          })
-          .mockResolvedValueOnce({
-            json: () =>
-              Promise.resolve({
-                data: [
-                  { id: 'page-0', access_token: 'other-page-token' },
-                  { id: 'page-1', access_token: 'new-page-token' },
-                ],
-              }),
-          }),
-      );
+    expect(result).toEqual({
+      valid: false,
+      error: 'REFRESH_FAILED',
+      requiresReauth: true,
     });
-
-    afterEach(() => {
-      vi.unstubAllGlobals();
-    });
-
-    it('exchanges the user token and reads the page token on the pinned Graph version', async () => {
-      const result = await ensureValidToken(connection.id);
-
-      expect(result).toEqual({ valid: true, accessToken: 'new-page-token' });
-
-      const [exchange, pages] = (fetch as Mock).mock.calls.map(
-        ([url]) => new URL(url as string),
-      );
-
-      expect(exchange!.origin + exchange!.pathname).toBe(META_OAUTH_TOKEN_URL);
-      expect(Object.fromEntries(exchange!.searchParams)).toEqual({
-        grant_type: 'fb_exchange_token',
-        client_id: 'test-facebook-app-id',
-        client_secret: 'test-facebook-app-secret',
-        fb_exchange_token: 'old-user-token',
-      });
-
-      expect(pages!.origin + pages!.pathname).toBe(
-        `${META_GRAPH_BASE}/me/accounts`,
-      );
-      expect(pages!.searchParams.get('access_token')).toBe('new-user-token');
-    });
-
-    it('stores the refreshed user token for the next cycle', async () => {
-      await ensureValidToken(connection.id);
-
-      expect(mockSupabase.update).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          access_token_encrypted: 'encrypted:new-page-token',
-          refresh_token_encrypted: 'encrypted:new-user-token',
-        }),
-      );
-    });
+    expect(requests).toHaveLength(1);
+    expect(storedConnection().is_active).toBe(false);
+    expect(storedConnection().metadata).not.toHaveProperty('is_refreshing');
   });
 });

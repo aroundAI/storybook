@@ -5,8 +5,7 @@ import 'server-only';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
-import { decrypt, encrypt } from '@kit/shared/crypto';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { encrypt } from '@kit/shared/crypto';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -19,76 +18,6 @@ export interface AccountOAuthApp {
   clientId: string;
   createdAt: string;
   updatedAt: string;
-}
-
-/**
- * Get OAuth app credentials for an account and platform
- * Requires authenticated user context (for API routes/server components)
- */
-export async function getAccountOAuthApp(
-  accountId: string,
-  platform: 'youtube' | 'tiktok' | 'meta',
-): Promise<{ clientId: string; clientSecret: string } | null> {
-  // Use regular client which respects RLS
-  // The caller (API route) must have authenticated user context
-  const client = getSupabaseServerClient();
-
-  // Verify auth context
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-
-  if (!user) {
-    return null;
-  }
-
-  const { data, error } = await client
-    .from('account_oauth_apps')
-    .select('client_id, client_secret_encrypted')
-    .eq('account_id', accountId)
-    .eq('platform', platform)
-    .single();
-
-  if (error || !data) {
-    return null;
-  }
-
-  const clientSecret = await decrypt(data.client_secret_encrypted);
-
-  return {
-    clientId: data.client_id,
-    clientSecret,
-  };
-}
-
-/**
- * Get OAuth app credentials for an account and platform
- * Uses admin client - for cron jobs and background tasks (no request context)
- */
-export async function getAccountOAuthAppAdmin(
-  accountId: string,
-  platform: 'youtube' | 'tiktok' | 'meta',
-): Promise<{ clientId: string; clientSecret: string } | null> {
-  // Use admin client for background jobs (no cookies/request context)
-  const client = getSupabaseServerAdminClient();
-
-  const { data, error } = await client
-    .from('account_oauth_apps')
-    .select('client_id, client_secret_encrypted')
-    .eq('account_id', accountId)
-    .eq('platform', platform)
-    .single();
-
-  if (error || !data) {
-    return null;
-  }
-
-  const clientSecret = await decrypt(data.client_secret_encrypted);
-
-  return {
-    clientId: data.client_id,
-    clientSecret,
-  };
 }
 
 /**

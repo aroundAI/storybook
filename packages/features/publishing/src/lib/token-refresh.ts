@@ -5,9 +5,16 @@ import { getLogger } from '@kit/shared/logger';
 import { META_GRAPH_BASE, META_OAUTH_TOKEN_URL } from '@kit/shared/vendors';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import type { OAuthApp } from '../oauth/apps';
 import { LINKEDIN_OAUTH_CONFIG } from '../oauth/linkedin/config';
 import { TIKTOK_OAUTH_CONFIG } from '../oauth/tiktok/config';
 import { YOUTUBE_OAUTH_CONFIG } from '../oauth/youtube/config';
+import {
+  AppNotConfiguredError,
+  type OAuthAppCredentials,
+  describeCredentialSource,
+  getOAuthAppCredentials,
+} from '../server/oauth-app-credentials';
 import type { PlatformConnection } from './database-types';
 
 /**
@@ -30,7 +37,9 @@ export interface TokenValidationResult {
     | 'REFRESH_FAILED'
     | 'CONNECTION_INACTIVE'
     | 'NOT_FOUND'
-    | 'NO_REFRESH_TOKEN';
+    | 'NO_REFRESH_TOKEN'
+    /** An operator fault: the connection is left active (KB-29). */
+    | 'APP_NOT_CONFIGURED';
   requiresReauth?: boolean;
 }
 
@@ -43,6 +52,18 @@ export type Platform =
   | 'instagram'
   | 'facebook'
   | 'linkedin';
+
+/**
+ * The OAuth app each platform's tokens were minted by. Exhaustive, so a
+ * platform added to `Platform` does not compile until it is mapped (KB-15).
+ */
+const PLATFORM_APP: Record<Platform, OAuthApp> = {
+  youtube: 'youtube',
+  tiktok: 'tiktok',
+  instagram: 'meta',
+  facebook: 'meta',
+  linkedin: 'linkedin',
+};
 
 /**
  * Buffer time before expiry to trigger refresh (5 minutes)
@@ -189,8 +210,8 @@ async function doEnsureValidToken(
     const refreshed = await refreshTokenForPlatform(
       connection.platform as Platform,
       refreshToken,
-      connection.account_id,
       {
+        accountId: connection.account_id,
         platformAccountId: connection.platform_account_id ?? '',
         metadata: connection.metadata as Record<string, unknown>,
       },
@@ -224,10 +245,35 @@ async function doEnsureValidToken(
     return { valid: true, accessToken: refreshed.accessToken };
   } catch (refreshError) {
     const logger = await getLogger();
+
+    // Missing app credentials are the operator's to fix, and fixing them
+    // should restore every connection - so none is torn down over it.
+    if (refreshError instanceof AppNotConfiguredError) {
+      await releaseRefreshLock(connectionId);
+      logger.error(
+        {
+          name: 'token-refresh',
+          platform: connection.platform,
+          accountId: connection.account_id,
+          app: refreshError.app,
+          credentialSource: describeCredentialSource(refreshError.app),
+        },
+        `${refreshError.message}; ${connection.platform} connection left active`,
+      );
+
+      return {
+        valid: false,
+        error: 'APP_NOT_CONFIGURED',
+        requiresReauth: false,
+      };
+    }
+
+    const app = PLATFORM_APP[connection.platform as Platform];
     logger.error(
       {
         name: 'token-refresh',
         platform: connection.platform,
+        ...(app && { app, credentialSource: describeCredentialSource(app) }),
         error: refreshError,
       },
       `Failed to refresh ${connection.platform}`,
@@ -259,6 +305,17 @@ async function doEnsureValidToken(
  * Marks a connection as inactive and clears lock
  */
 async function markConnectionInactive(connectionId: string): Promise<void> {
+  await releaseRefreshLock(connectionId, { is_active: false });
+}
+
+/**
+ * Clears the refresh lock from a connection's metadata, applying `changes`
+ * in the same update.
+ */
+async function releaseRefreshLock(
+  connectionId: string,
+  changes: Record<string, unknown> = {},
+): Promise<void> {
   const client = getSupabaseServerAdminClient();
 
   // First fetch current metadata to remove lock flags
@@ -279,7 +336,7 @@ async function markConnectionInactive(connectionId: string): Promise<void> {
   await client
     .from('platform_connections' as 'accounts')
     .update({
-      is_active: false,
+      ...changes,
       metadata: cleanMetadata,
       updated_at: new Date().toISOString(),
     } as Record<string, unknown>)
@@ -290,29 +347,42 @@ async function markConnectionInactive(connectionId: string): Promise<void> {
  * Context for platform token refresh (needed for Meta to fetch Page tokens)
  */
 interface RefreshContext {
+  accountId: string;
   platformAccountId: string;
   metadata?: Record<string, unknown>;
 }
 
 /**
- * Platform-specific token refresh implementations
+ * Platform-specific token refresh implementations. The app credentials come
+ * from the same lookup connect and the callback use (KB-29).
  */
 async function refreshTokenForPlatform(
   platform: Platform,
   refreshToken: string,
-  accountId: string,
-  context?: RefreshContext,
+  context: RefreshContext,
 ): Promise<TokenRefreshResult> {
+  const app = PLATFORM_APP[platform];
+
+  if (!app) {
+    throw new Error(`Unknown platform: ${platform}`);
+  }
+
+  const credentials = await getOAuthAppCredentials(app);
+
+  if (!credentials) {
+    throw new AppNotConfiguredError(app);
+  }
+
   switch (platform) {
     case 'youtube':
-      return refreshYouTubeToken(refreshToken, accountId);
+      return refreshYouTubeToken(refreshToken, credentials);
     case 'tiktok':
-      return refreshTikTokToken(refreshToken, accountId);
+      return refreshTikTokToken(refreshToken, credentials);
     case 'instagram':
     case 'facebook':
-      return refreshMetaToken(refreshToken, platform, accountId, context);
+      return refreshMetaToken(refreshToken, platform, credentials, context);
     case 'linkedin':
-      return refreshLinkedInToken(refreshToken, accountId);
+      return refreshLinkedInToken(refreshToken, credentials);
     default:
       throw new Error(`Unknown platform: ${platform}`);
   }
@@ -323,20 +393,8 @@ async function refreshTokenForPlatform(
  */
 async function refreshYouTubeToken(
   refreshToken: string,
-  accountId: string,
+  oauthApp: OAuthAppCredentials,
 ): Promise<TokenRefreshResult> {
-  // Fetch credentials from database (using admin client for background jobs)
-  const { getAccountOAuthAppAdmin } = await import(
-    '../server/account-oauth-actions'
-  );
-  const oauthApp = await getAccountOAuthAppAdmin(accountId, 'youtube');
-
-  if (!oauthApp) {
-    throw new Error(
-      'YouTube OAuth credentials not configured for this account',
-    );
-  }
-
   const response = await fetch(YOUTUBE_OAUTH_CONFIG.tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -368,18 +426,8 @@ async function refreshYouTubeToken(
  */
 async function refreshTikTokToken(
   refreshToken: string,
-  accountId: string,
+  oauthApp: OAuthAppCredentials,
 ): Promise<TokenRefreshResult> {
-  // Fetch credentials from database (using admin client for background jobs)
-  const { getAccountOAuthAppAdmin } = await import(
-    '../server/account-oauth-actions'
-  );
-  const oauthApp = await getAccountOAuthAppAdmin(accountId, 'tiktok');
-
-  if (!oauthApp) {
-    throw new Error('TikTok OAuth credentials not configured for this account');
-  }
-
   const response = await fetch(TIKTOK_OAUTH_CONFIG.tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -418,19 +466,9 @@ async function refreshTikTokToken(
 async function refreshMetaToken(
   userAccessToken: string,
   platform: 'instagram' | 'facebook',
-  accountId: string,
-  context?: RefreshContext,
+  oauthApp: OAuthAppCredentials,
+  context: RefreshContext,
 ): Promise<TokenRefreshResult> {
-  // Fetch credentials from database (using admin client for background jobs)
-  const { getAccountOAuthAppAdmin } = await import(
-    '../server/account-oauth-actions'
-  );
-  const oauthApp = await getAccountOAuthAppAdmin(accountId, 'meta');
-
-  if (!oauthApp) {
-    throw new Error('Meta OAuth credentials not configured for this account');
-  }
-
   // Step 1: Refresh the User Access Token
   const refreshUrl = new URL(META_OAUTH_TOKEN_URL);
   refreshUrl.searchParams.set('grant_type', 'fb_exchange_token');
@@ -456,15 +494,15 @@ async function refreshMetaToken(
   // For Instagram, use linked_page_id from metadata; for Facebook, use platformAccountId
   const pageId =
     platform === 'instagram'
-      ? (context?.metadata?.linked_page_id as string) ||
-        context?.platformAccountId
-      : context?.platformAccountId;
+      ? (context.metadata?.linked_page_id as string) ||
+        context.platformAccountId
+      : context.platformAccountId;
 
   if (!pageId) {
     // Fallback: If no page ID, return user token (will likely fail on publish)
     const logger = await getLogger();
     logger.warn(
-      { name: 'token-refresh.meta', platform, accountId },
+      { name: 'token-refresh.meta', platform, accountId: context.accountId },
       'No page ID found in context, returning user token (may lack publish permissions)',
     );
     return {
@@ -509,22 +547,8 @@ async function refreshMetaToken(
  */
 async function refreshLinkedInToken(
   refreshToken: string,
-  accountId: string,
+  oauthApp: OAuthAppCredentials,
 ): Promise<TokenRefreshResult> {
-  // Fetch credentials from database (using admin client for background jobs)
-  // LinkedIn uses 'meta' credentials as fallback (or add linkedin to platform type)
-  const { getAccountOAuthAppAdmin } = await import(
-    '../server/account-oauth-actions'
-  );
-  // @ts-expect-error linkedin not in type yet
-  const oauthApp = await getAccountOAuthAppAdmin(accountId, 'linkedin');
-
-  if (!oauthApp) {
-    throw new Error(
-      'LinkedIn OAuth credentials not configured for this account',
-    );
-  }
-
   const response = await fetch(LINKEDIN_OAUTH_CONFIG.tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

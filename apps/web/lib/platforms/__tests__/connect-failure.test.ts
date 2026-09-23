@@ -2,8 +2,11 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { OAUTH_APPS } from '@kit/publishing/oauth/apps';
+
 import {
   CONNECT_FAILURE_CODES,
+  CONNECT_PLATFORMS,
   accountIdFromUnverifiedState,
   chooseAccountSlug,
   cleanVendorText,
@@ -18,6 +21,14 @@ const ACCOUNT_ID = '7d0e2f6c-1a4b-4c8e-9f30-5b6a7c8d9e0f';
 function encodeState(value: unknown) {
   return Buffer.from(JSON.stringify(value)).toString('base64url');
 }
+
+// KB-29: one list of OAuth apps. A platform whose connect can fail must be one
+// the credential resolver knows, and the other way round.
+describe('CONNECT_PLATFORMS', () => {
+  it('names exactly the OAuth apps the credential resolver serves', () => {
+    expect([...CONNECT_PLATFORMS].sort()).toEqual([...OAUTH_APPS].sort());
+  });
+});
 
 describe('failureCodeForVendorError', () => {
   it.each([

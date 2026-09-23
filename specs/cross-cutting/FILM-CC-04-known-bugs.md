@@ -1609,12 +1609,25 @@ session. Rolled back.
 
 ## KB-29 — Token refresh reads app credentials from a table connect stopped writing
 
+> **Fixed (2026-09-23), #310.** Reproduced first on the local stack: with global
+> credentials and no `account_oauth_apps` row, YouTube, TikTok, Instagram and
+> LinkedIn refresh each returned `REFRESH_FAILED` with **zero** vendor requests
+> and deactivated the connection. Connect, callback and refresh now take app
+> credentials from one function, `getOAuthAppCredentials`
+> (`packages/features/publishing/src/server/oauth-app-credentials.ts`): the
+> global table for YouTube and Meta, env for TikTok, LinkedIn and X. Missing
+> credentials now return `APP_NOT_CONFIGURED` and leave the connection active,
+> so fixing the configuration heals every connection without a reconnect.
+> `account_oauth_apps` is no longer read (the table is kept). The admin page's
+> TikTok row is saved and ignored — KB-36. Design and the owner's pre-deploy
+> query: `specs/plans/KB-29-edd.md`.
+
 **Severity:** High if it applies to a live account, and it probably applies to
 every account connected since 2026-01-21 — the connection dies at its first
 token expiry (about an hour for YouTube), taking the analytics sync with it.
 **Found:** the spec audit of FILM-706/707 (2026-09-23); confirmed by the
-coordinator by reading. **Not run** — this entry says so rather than claim a
-reproduction it does not have. **Open.**
+coordinator by reading, then reproduced on the local stack (see the banner).
+**Fixed.**
 
 `3238dd61` (2026-01-21, "move OAuth App Credentials to Super Admin") moved the
 YouTube and Meta app credentials to the global `oauth_app_credentials` table:
@@ -1662,10 +1675,10 @@ active past its first hour.
 
 ### Acceptance criteria
 
-- [ ] Unit, red first: an account with global credentials and no `account_oauth_apps` row refreshes YouTube, Meta and TikTok tokens
-- [ ] LinkedIn refresh works without `@ts-expect-error`
-- [ ] Connect and refresh import one credential lookup
-- [ ] No refresh test asserts a `fetch` it made itself
+- [x] Unit, red first: an account with global credentials and no `account_oauth_apps` row refreshes YouTube, Meta and TikTok tokens
+- [x] LinkedIn refresh works without `@ts-expect-error`
+- [x] Connect and refresh import one credential lookup
+- [x] No refresh test asserts a `fetch` it made itself
 
 ---
 
@@ -1928,6 +1941,7 @@ the prompt.
 | KB-12 | Revenue was added across currencies | #293 |
 | KB-16 | The Overview tab drew figures nobody measured: a fixed share donut, a 70/30 revenue split, canned footers, +100% beside every metric | #300 |
 | KB-19 | A failed platform connect landed on a 404 and logged nothing | #297 |
+| KB-29 | Token refresh read app credentials from a table nothing had written since 2026-01-21, so connections died at their first expiry; LinkedIn could never refresh | #310 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
 

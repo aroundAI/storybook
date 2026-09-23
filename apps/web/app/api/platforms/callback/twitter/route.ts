@@ -5,6 +5,7 @@ import {
   TWITTER_OAUTH_CONFIG,
   TwitterOAuthState,
 } from '@kit/publishing/oauth/twitter';
+import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credentials';
 import { encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -99,17 +100,16 @@ async function handleCallback(request: NextRequest) {
     return fail({ code: 'invalid_state', branch: 'code_verifier_missing' });
   }
 
-  const clientId = process.env.TWITTER_CLIENT_ID;
-  const clientSecret = process.env.TWITTER_CLIENT_SECRET;
+  const credentials = await getOAuthAppCredentials('twitter');
 
-  if (!clientId || !clientSecret) {
+  if (!credentials) {
     return fail({ code: 'not_configured', branch: 'credentials_missing' });
   }
 
   // Exchange code for tokens - Twitter requires Basic auth
-  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString(
-    'base64',
-  );
+  const basicAuth = Buffer.from(
+    `${credentials.clientId}:${credentials.clientSecret}`,
+  ).toString('base64');
 
   const tokenResponse = await fetch(TWITTER_OAUTH_CONFIG.tokenUrl, {
     method: 'POST',

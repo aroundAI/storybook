@@ -4,6 +4,7 @@ import {
   LINKEDIN_OAUTH_CONFIG,
   LinkedInOAuthState,
 } from '@kit/publishing/oauth/linkedin';
+import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credentials';
 import { encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -87,10 +88,9 @@ async function handleCallback(request: NextRequest) {
     });
   }
 
-  const clientId = process.env.LINKEDIN_CLIENT_ID;
-  const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+  const credentials = await getOAuthAppCredentials('linkedin');
 
-  if (!clientId || !clientSecret) {
+  if (!credentials) {
     return fail({ code: 'not_configured', branch: 'credentials_missing' });
   }
 
@@ -101,8 +101,8 @@ async function handleCallback(request: NextRequest) {
     body: new URLSearchParams({
       grant_type: 'authorization_code',
       code,
-      client_id: clientId,
-      client_secret: clientSecret,
+      client_id: credentials.clientId,
+      client_secret: credentials.clientSecret,
       redirect_uri: `${appUrl}/api/platforms/callback/linkedin`,
     }),
   });

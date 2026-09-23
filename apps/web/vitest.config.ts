@@ -146,6 +146,10 @@ export default defineConfig({
         __dirname,
         '../../packages/i18n/src/i18n.server.ts',
       ),
+      '@kit/publishing/oauth/apps': path.resolve(
+        __dirname,
+        '../../packages/features/publishing/src/oauth/apps.ts',
+      ),
       '@kit': path.resolve(__dirname, '../../packages'),
       '~/lib/server/require-user-in-server-component': path.resolve(
         __dirname,
