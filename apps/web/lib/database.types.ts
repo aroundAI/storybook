@@ -5519,6 +5519,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      can_write_project: {
+        Args: { target_project_id: string }
+        Returns: boolean
+      }
+      can_write_project_storage: { Args: { path: string }; Returns: boolean }
       can_write_revenue_record: {
         Args: {
           record_author: string
