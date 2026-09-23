@@ -256,9 +256,16 @@ jobs:
         working-directory: apps/web
         run: pnpm run check:schema-drift
 
+      - name: Test the Supabase start script
+        run: bash scripts/ci/supabase-start.test.sh
+
       - name: Start Supabase (applies every migration)
         working-directory: apps/web
-        run: supabase start
+        # Logs in to ghcr.io and retries with backoff: see the script.
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: ../../scripts/ci/supabase-start.sh
 
       # `CLAUDE.md` has told people to run typegen after a migration since
       # this repo began, and nothing checked. FILM-1608 shipped a
@@ -605,7 +612,11 @@ jobs:
       # Same exclusions as ⚫️ Test, for the same reasons.
       - name: Supabase Server
         working-directory: apps/web
-        run: supabase start -x studio,imgproxy,logflare,vector
+        # Logs in to ghcr.io and retries with backoff: see the script.
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: ../../scripts/ci/supabase-start.sh -x studio,imgproxy,logflare,vector
 
       - name: Wait for ClickHouse
         run: |
@@ -756,7 +767,11 @@ jobs:
       # Same exclusions as ⚫️ Test, for the same reasons.
       - name: Supabase Server
         working-directory: apps/web
-        run: supabase start -x studio,imgproxy,logflare,vector
+        # Logs in to ghcr.io and retries with backoff: see the script.
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: ../../scripts/ci/supabase-start.sh -x studio,imgproxy,logflare,vector
 
       - name: Wait for ClickHouse
         run: |
@@ -917,7 +932,11 @@ jobs:
       # `supabase/setup-cli` installed, which is the one pinned above.
       - name: Supabase Server
         working-directory: apps/web
-        run: supabase start -x studio,imgproxy,logflare,vector
+        # Logs in to ghcr.io and retries with backoff: see the script.
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: ../../scripts/ci/supabase-start.sh -x studio,imgproxy,logflare,vector
 
       # No credential export step. apps/web/.env.test already carries the
       # local URL and the CLI's fixed public development keys — the same
