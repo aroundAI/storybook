@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { processAnalyticsInsights } from '../handlers/analytics-insights';

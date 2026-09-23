@@ -110,11 +110,7 @@ function query(table: string) {
         : { data: null, error: { message: 'not found' } },
     maybeSingle: async () => ({ data: rows[0] ?? null, error: null }),
     then: <R>(
-      resolve: (value: {
-        data: Row[] | null;
-        error: null;
-        count: number;
-      }) => R,
+      resolve: (value: { data: Row[] | null; error: null; count: number }) => R,
     ) =>
       Promise.resolve({
         data: writing ? null : rows,
@@ -164,7 +160,10 @@ beforeEach(() => {
       episode(A_EPISODE, A_PROJECT, A_ACCOUNT),
       episode(B_EPISODE, B_PROJECT, B_ACCOUNT),
     ],
-    audio_cues: [cue(A_CUE, A_EPISODE, A_PROJECT), cue(B_CUE, B_EPISODE, B_PROJECT)],
+    audio_cues: [
+      cue(A_CUE, A_EPISODE, A_PROJECT),
+      cue(B_CUE, B_EPISODE, B_PROJECT),
+    ],
     shots: [
       { id: 'a-shot', episode_id: A_EPISODE },
       { id: 'b-shot', episode_id: B_EPISODE },
@@ -187,7 +186,10 @@ describe('translateDialogueToLanguageAction', () => {
       preserveTiming: true,
     });
 
-    expect(result).toMatchObject({ success: false, error: 'Episode not found' });
+    expect(result).toMatchObject({
+      success: false,
+      error: 'Episode not found',
+    });
     expect(state.sent).toEqual([]);
   });
 

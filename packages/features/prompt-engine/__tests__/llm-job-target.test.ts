@@ -199,7 +199,10 @@ describe('authorizeProjectTarget', () => {
   it('gives a writer the project’s own account', async () => {
     const target = await authorizeProjectTarget(fakeClient(aDb()), A_PROJECT);
 
-    expect(target).toMatchObject({ accountId: A_ACCOUNT, projectId: A_PROJECT });
+    expect(target).toMatchObject({
+      accountId: A_ACCOUNT,
+      projectId: A_PROJECT,
+    });
   });
 
   it('refuses a readable project the caller cannot write to', async () => {
@@ -249,9 +252,9 @@ describe('payloadForTarget (what queueLlmJob sends)', () => {
   it('throws when a project-scoped target is used to name an episode', async () => {
     const target = await authorizeProjectTarget(fakeClient(aDb()), A_PROJECT);
 
-    expect(() =>
-      payloadForTarget(target!, { episodeId: B_EPISODE }),
-    ).toThrow('payload.episodeId is not the authorised target');
+    expect(() => payloadForTarget(target!, { episodeId: B_EPISODE })).toThrow(
+      'payload.episodeId is not the authorised target',
+    );
   });
 
   it('records a no-tenant job on the caller’s personal account', () => {

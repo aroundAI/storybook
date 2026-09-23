@@ -266,9 +266,7 @@ describe('batchGenerateIdeasAction', () => {
       queued: 1,
       failed: [{ episodeId: A_EPISODE, error: 'Episode not found' }],
     });
-    expect(state.sent.map((job) => job.payload.episodeId)).toEqual([
-      B_EPISODE,
-    ]);
+    expect(state.sent.map((job) => job.payload.episodeId)).toEqual([B_EPISODE]);
     expect(state.sent[0]!.payload.accountId).toBe(B_ACCOUNT);
   });
 });
@@ -286,7 +284,9 @@ describe('batchCreateAssetsAction', () => {
 
     expect(result).toMatchObject({
       queued: 0,
-      failed: [{ episodeId: B_EPISODE, error: 'Episode is not in this project' }],
+      failed: [
+        { episodeId: B_EPISODE, error: 'Episode is not in this project' },
+      ],
     });
     expect(state.sent).toEqual([]);
   });
@@ -355,18 +355,16 @@ const producers: Array<{
   {
     name: 'batchGenerateStoriesAction',
     run: async ({ episodeId, projectId }) =>
-      (await import('../src/server/bulk-actions')).batchGenerateStoriesAction(
-        {
-          episodes: [
-            {
-              episodeId,
-              version: 1,
-              title: 'Overwrite',
-              logline: 'Overwrite',
-            },
-          ],
-        },
-      ),
+      (await import('../src/server/bulk-actions')).batchGenerateStoriesAction({
+        episodes: [
+          {
+            episodeId,
+            version: 1,
+            title: 'Overwrite',
+            logline: 'Overwrite',
+          },
+        ],
+      }),
   },
   {
     name: 'batchConvertScreenplaysAction',

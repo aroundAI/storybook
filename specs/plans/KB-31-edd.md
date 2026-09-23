@@ -43,6 +43,37 @@ carries through §1–§34:
   `ActionRefusal`, `failed[]`, or an `error` field) without `@kit/prompt-engine`
   depending on `@kit/next`. No lockfile change.
 
+## Implementation notes (as built)
+
+Where the code differs from the text below, the code and this list win:
+
+- **Import path.** Producers import the authorisers from
+  `@kit/prompt-engine/llm-job-target`, a new subpath export, not
+  `@kit/prompt-engine/server`. That keeps the SQS client out of every action
+  module's static imports; the other producers import `queueLlmJob`
+  dynamically too. `@kit/prompt-engine/server` also re-exports them, so the
+  worker can use `chainedLlmJobTarget`.
+- **Parameter type.** The authorisers take a loosely typed client
+  (`{ from(string); rpc(string, object) }`) and narrow it internally. Checking
+  the generated Supabase client against the precise interface hit TS2589
+  (instantiation too deep) in `@kit/audio-generation`.
+- **Where refusals go.**
+  - #21 (translate) returns `{ success: false, error: 'Episode not found' }`.
+  - #19 and #20 (audio cues) keep their existing `{ success: false }`
+    shapes.
+  - #7 (auto-story on create) logs and skips, inside its existing non-fatal
+    `try`.
+  - #16 and #17 mirror KB-26's gate messages: throw in the action, 403 in
+    the route.
+- **Test wiring.** `apps/web/vitest.config.ts` gains an alias for
+  `@kit/prompt-engine/server`, because that config's catch-all `@kit` alias
+  cannot resolve package subpaths. `apps/web`'s suite includes
+  `lambda/**/__tests__`.
+- **E2E positive control.** B's generate on B's own episode gets past the
+  check, then fails at the queue locally, because there is no
+  `LLM_JOBS_QUEUE_URL`. The production build shows the generic message for
+  that. The spec asserts only that the refusal text is absent.
+
 Terms used throughout:
 
 - **Producer** — a server action or route that calls `queueLlmJob`.

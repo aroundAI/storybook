@@ -83,12 +83,15 @@ async function readableEpisodes(user: SeededTeam, episodeId: string) {
   ).json()) as { access_token: string };
 
   const rows = (await (
-    await fetch(`${SUPABASE_URL}/rest/v1/episodes?id=eq.${episodeId}&select=id`, {
-      headers: {
-        apikey: ANON_KEY,
-        Authorization: `Bearer ${session.access_token}`,
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/episodes?id=eq.${episodeId}&select=id`,
+      {
+        headers: {
+          apikey: ANON_KEY,
+          Authorization: `Bearer ${session.access_token}`,
+        },
       },
-    })
+    )
   ).json()) as unknown[];
 
   return rows.length;
@@ -126,6 +129,9 @@ async function openIdeation(
   await page.goto(
     `/home/${user.slug}/studio/${project.slug}/episodes/${episode.slug}/ideation`,
   );
+  // The page can briefly render the form twice while it hydrates; wait for
+  // the one that stays, rather than filling whichever comes first.
+  await expect(page.locator('[data-test="ideation-premise"]')).toHaveCount(1);
   await expect(page.locator('[data-test="ideation-premise"]')).toBeVisible();
 }
 
