@@ -1,79 +1,138 @@
 /*
  * -------------------------------------------------------
  * Section: Project Assets Storage Bucket
- * Creates storage bucket for project reference images
- * (character references, locations, voice avatars)
+ * Storage for project files: covers, character/location references, shot
+ * frames and videos, episode thumbnails, master assets and exports.
+ *
+ * Mirrors migrations 20251207162036_project-assets-bucket.sql and
+ * 20260923024605_kb28-project-write-scope.sql. The database is built from
+ * migrations/; this file is documentation.
  * -------------------------------------------------------
  */
 
--- Create project-assets bucket (public read for images)
+-- Public bucket: objects are readable by URL. Writes are limited to the
+-- UPLOAD_CONSTRAINTS types and the largest of its size limits (500 MB).
 insert into
-  storage.buckets (id, name, public)
+  storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values
-  ('project-assets', 'project-assets', true);
+  (
+    'project-assets',
+    'project-assets',
+    true,
+    524288000,
+    array[
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'video/mp4',
+      'video/webm',
+      'video/quicktime',
+      'audio/mpeg',
+      'audio/wav',
+      'audio/ogg',
+      'audio/mp4'
+    ]
+  );
 
--- Helper function to extract project ID from storage path
--- Path format: {projectId}/{assetId}/{filename}
-create
-or replace function kit.get_project_id_from_path (path text) returns uuid
-set
-  search_path = '' as $$
+-- The project-write rule: owner, admin or member in project_members.
+-- A viewer, or someone who can only see a public project, may not write.
+create or replace function public.can_write_project (target_project_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = '' as $$
+  select exists (
+    select 1
+    from public.project_members pm
+    where pm.project_id = target_project_id
+      and pm.user_id = auth.uid()
+      and pm.role in ('owner', 'admin', 'member')
+  );
+$$;
+
+revoke all on function public.can_write_project (uuid) from public, anon;
+grant execute on function public.can_write_project (uuid) to authenticated, service_role;
+
+-- Which project an object belongs to:
+--   <projectId>/...            -> projectId
+--   projects/<projectId>/...   -> projectId
+--   episodes/<episodeId>/...   -> episodes.project_id
+--   anything else              -> null (no writers)
+create or replace function kit.get_project_id_from_path (path text)
+returns uuid
+language plpgsql
+stable
+security definer
+set search_path = '' as $$
 declare
-  parts text[];
-  project_id_text text;
+  parts text[] := string_to_array(path, '/');
+  resolved uuid;
 begin
-  -- Split path by '/'
-  parts := string_to_array(path, '/');
-
-  -- First part is the project ID
-  if array_length(parts, 1) >= 1 then
-    project_id_text := parts[1];
-    -- Try to cast to UUID, return null if invalid
-    begin
-      return project_id_text::uuid;
-    exception when invalid_text_representation then
-      return null;
-    end;
+  if coalesce(array_length(parts, 1), 0) < 2 then
+    return null;
   end if;
 
-  return null;
+  begin
+    if parts[1] = 'projects' then
+      return parts[2]::uuid;
+    end if;
+
+    if parts[1] = 'episodes' then
+      select e.project_id into resolved
+      from public.episodes e
+      where e.id = parts[2]::uuid;
+
+      return resolved;
+    end if;
+
+    return parts[1]::uuid;
+  exception when invalid_text_representation then
+    return null;
+  end;
 end;
-$$ language plpgsql;
+$$;
 
-grant
-execute on function kit.get_project_id_from_path (text) to authenticated,
-service_role;
+grant execute on function kit.get_project_id_from_path (text) to authenticated, service_role;
 
--- RLS policy for project-assets bucket: SELECT (public bucket allows read)
--- Since bucket is public, no policy needed for SELECT
+create or replace function public.can_write_project_storage (path text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = '' as $$
+  select public.can_write_project(kit.get_project_id_from_path(path));
+$$;
 
--- RLS policy for project-assets bucket: INSERT
--- User must have role on the project
+revoke all on function public.can_write_project_storage (text) from public, anon;
+grant execute on function public.can_write_project_storage (text) to authenticated, service_role;
+
+create policy project_assets_select on storage.objects for select
+to authenticated
+using (bucket_id = 'project-assets');
+
 create policy project_assets_insert on storage.objects for insert
 to authenticated
 with check (
   bucket_id = 'project-assets'
-  and public.has_role_on_project(kit.get_project_id_from_path(name))
+  and public.can_write_project_storage(name)
 );
 
--- RLS policy for project-assets bucket: UPDATE
--- User must have role on the project
 create policy project_assets_update on storage.objects for update
 to authenticated
 using (
   bucket_id = 'project-assets'
-  and public.has_role_on_project(kit.get_project_id_from_path(name))
+  and public.can_write_project_storage(name)
 )
 with check (
   bucket_id = 'project-assets'
-  and public.has_role_on_project(kit.get_project_id_from_path(name))
+  and public.can_write_project_storage(name)
 );
 
--- RLS policy for project-assets bucket: DELETE
--- User must have role on the project
 create policy project_assets_delete on storage.objects for delete
 to authenticated
 using (
   bucket_id = 'project-assets'
-  and public.has_role_on_project(kit.get_project_id_from_path(name))
+  and public.can_write_project_storage(name)
 );
