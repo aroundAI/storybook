@@ -261,8 +261,7 @@ jobs:
 
   unit-test:
     name: 🧪 Unit Tests
-    # Unit mutation guards alone take ~11 min (263 entries, 2026-09-23); sharding them is KB-75.
-    timeout-minutes: 25
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     env:
       DO_NOT_TRACK: 1
@@ -299,11 +298,10 @@ jobs:
       # Each entry in tooling/mutation-guards/*.json breaks the code on
       # purpose and requires its test to fail. The self-test proves the
       # runner reports a mutation that changes nothing as uncaught, so a
-      # broken command cannot pass for a guard doing its job.
-      - name: Mutation guards - unit
-        run: |
-          python3 tooling/mutation-guards/run.py --self-test
-          python3 tooling/mutation-guards/run.py --kind unit
+      # broken command cannot pass for a guard doing its job. The guards
+      # themselves run in 🧪 Unit guards below (KB-75).
+      - name: Mutation guards - self-test
+        run: python3 tooling/mutation-guards/run.py --self-test
 
       - name: Generate Coverage Report
         run: pnpm --filter web test:coverage
@@ -316,6 +314,62 @@ jobs:
           name: coverage-report
           path: apps/web/coverage/
           retention-days: 7
+
+  unit-guards:
+    name: 🧪 Unit guards (${{ matrix.shard }})
+    # The unit mutation guards, sharded (KB-75). In one job they took ~11 of
+    # 🧪 Unit Tests' 15 minutes by 2026-09-23 (256 entries) and the job was
+    # cancelled mid-run, so the guards after the cutoff never ran. Each shard
+    # runs every 4th entry, ~1/4 of them, in parallel. When they grow, add a
+    # shard, not minutes.
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      DO_NOT_TRACK: 1
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      - name: Mutation guards - unit (shard ${{ matrix.shard }}/4)
+        run: python3 tooling/mutation-guards/run.py --kind unit --shard ${{ matrix.shard }}/4
+
+  unit-guards-result:
+    name: 🧪 Unit guards
+    # One stable name for branch protection to require, whatever the shard
+    # count. always(): a failed or cancelled shard must fail this, not skip it.
+    needs: unit-guards
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every unit guard shard passed
+        run: |
+          if [ "${{ needs.unit-guards.result }}" != "success" ]; then
+            echo "Unit guard shards: ${{ needs.unit-guards.result }}"
+            exit 1
+          fi
 
   e2e-guards:
     name: 🧬 E2E guards
