@@ -185,6 +185,14 @@ def load_entries():
     return entries
 
 
+def mutated_files(entry):
+    """Every file an entry rewrites: its `file`, and each `edits` item's own
+    `file` where one names a different file. None for a pgTAP entry."""
+    files = [entry['file']] if 'file' in entry else []
+    files += [edit['file'] for edit in entry.get('edits', []) if 'file' in edit]
+    return files or [None]
+
+
 def self_test(base_env):
     """The runner's own red check: a mutation that changes nothing must be
     reported as STAYED GREEN. If it came back RED, the runner would be
@@ -214,6 +222,9 @@ def main():
                         action='append', help='run only these kinds')
     parser.add_argument('--only', action='append',
                         help='run only entries whose name contains this')
+    parser.add_argument('--file-prefix', action='append', metavar='PREFIX',
+                        help='run only entries whose every mutated file starts with '
+                             'one of these, e.g. specs/ for the docs-only CI job')
     parser.add_argument('--self-test', action='store_true')
     parser.add_argument('--shard', metavar='I/N',
                         help='run every Nth selected entry, starting at I (1-based), '
@@ -240,6 +251,9 @@ def main():
         entry for entry in load_entries()
         if (not args.kind or entry['kind'] in args.kind)
         and (not args.only or any(o in entry['name'] for o in args.only))
+        and (not args.file_prefix
+             or all(path is not None and path.startswith(tuple(args.file_prefix))
+                    for path in mutated_files(entry)))
     ]
 
     if args.shard:

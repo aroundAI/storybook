@@ -11,10 +11,59 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  changes:
+    name: 🔎 Changes
+    # Docs-only fast path. A change is docs-only when its changed-file list
+    # is non-empty and every file matches `**/*.md`, `specs/**` or `docs/**`
+    # (scripts/ci/docs-only.sh, table test beside it). Then every heavy job
+    # below is skipped by its `if`, which branch protection counts as
+    # passing, and 📚 Docs checks runs what can still fail on a docs edit.
+    # Jobs are skipped rather than the workflow: a workflow skipped by
+    # `paths-ignore` reports nothing, and the required checks hang at
+    # "Expected". No usable base, an empty diff or any other file means
+    # code=true. The heavy jobs skip only on an explicit code == 'false', so
+    # a failed or blank classification runs the full suite. Editing this
+    # file or the classifier is itself code, so a change to the rule always
+    # runs the full suite.
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify the change
+        id: classify
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -z "$BASE" ] || [ -z "${BASE//0/}" ] \
+            || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "No usable base ('$BASE'): running the full suite."
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # --no-renames: a source file renamed to .md is a deleted source
+          # file, and must be listed under its old name too.
+          if ! files=$(git diff --name-only --no-renames "$BASE...HEAD"); then
+            echo "git diff failed: running the full suite."
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Changed files:"
+          printf '%s\n' "$files"
+          result=$(printf '%s\n' "$files" | bash scripts/ci/docs-only.sh)
+          echo "Result: $result"
+          echo "$result" >> "$GITHUB_OUTPUT"
+
   typescript:
     name: ʦ TypeScript
     timeout-minutes: 10
     runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     env:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_DB_WEBHOOK_SECRET: ${{ secrets.SUPABASE_DB_WEBHOOK_SECRET }}
@@ -59,9 +108,12 @@ jobs:
     # Tailwind class order depended on which file a Prettier run started
     # with, seven packages had no format script at all, and the import
     # sorter added a duplicate header comment on every run. `pnpm
-    # format:fix` repairs a failure here.
+    # format:fix` repairs a failure here. Skipped on the docs-only path:
+    # .prettierignore already excludes *.md and specs/**/*.yaml.
     timeout-minutes: 10
     runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     env:
       DO_NOT_TRACK: 1
     steps:
@@ -87,6 +139,8 @@ jobs:
     name: 🗄️ ClickHouse SQL
     timeout-minutes: 15
     runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     env:
       DO_NOT_TRACK: 1
       CLICKHOUSE_ENABLED: 'true'
@@ -152,6 +206,8 @@ jobs:
     name: 🐘 Supabase DB
     timeout-minutes: 20
     runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     env:
       DO_NOT_TRACK: 1
 
@@ -200,9 +256,13 @@ jobs:
         working-directory: apps/web
         run: pnpm run check:schema-drift
 
+      - name: Test the Supabase start script
+        run: bash scripts/ci/supabase-start.test.sh
+
       - name: Start Supabase (applies every migration)
         working-directory: apps/web
-        run: supabase start
+        # Pulls from public.ecr.aws first and retries with backoff: see the script.
+        run: ../../scripts/ci/supabase-start.sh
 
       # `CLAUDE.md` has told people to run typegen after a migration since
       # this repo began, and nothing checked. FILM-1608 shipped a
@@ -214,10 +274,12 @@ jobs:
       #
       # Scoped to the `public` schema, and that is not a softening. The first
       # version of this step diffed the whole generated file and failed on one
-      # column — `storage.buckets.versioning_status` — because CI pulls its
+      # column — `storage.buckets.versioning_status` — because CI pulled its
       # service images from ghcr.io (see SUPABASE_INTERNAL_IMAGE_REGISTRY)
       # while a developer's machine pulls them from public.ecr.aws, and the
-      # two registries ship different storage-api builds. Gating on the whole
+      # two registries ship different storage-api builds. CI now tries
+      # public.ecr.aws first too (scripts/ci/supabase-start.sh), but can
+      # still fall back to ghcr.io, so the point stands. Gating on the whole
       # file gates on Supabase's release schedule; gating on `public` gates on
       # what our own migrations control. The script explains the rest.
       - name: Types are generated, not hand-written
@@ -268,6 +330,8 @@ jobs:
     name: 🧪 Unit Tests
     timeout-minutes: 15
     runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     env:
       DO_NOT_TRACK: 1
 
@@ -292,6 +356,11 @@ jobs:
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-turbo-
+
+      # Here as well as in 📚 Docs checks: a change to the classifier is
+      # code, so this is the only job its table test runs in for that change.
+      - name: Docs-only classifier - table test
+        run: bash scripts/ci/docs-only.test.sh
 
       # One list, shared with both deploy workflows: scripts/test-units.sh.
       - name: Run Unit Tests
@@ -329,6 +398,8 @@ jobs:
     # shard, not minutes.
     timeout-minutes: 15
     runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     strategy:
       fail-fast: false
       matrix:
@@ -365,16 +436,77 @@ jobs:
     name: 🧪 Unit guards
     # One stable name for branch protection to require, whatever the shard
     # count. always(): a failed or cancelled shard must fail this, not skip it.
-    needs: unit-guards
+    #
+    # It is also the docs-only path's backstop, and the check that makes
+    # 📚 Docs checks gate the merge (that job is not itself required). It
+    # passes only when the shards passed, or when the change was classified
+    # docs-only, the shards were skipped and 📚 Docs checks passed in their
+    # place. Anything else fails, including a failed 🔎 Changes.
+    needs: [changes, unit-guards, docs-checks]
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Every unit guard shard passed
+      - name: Every unit guard shard passed, or a docs-only change passed its checks
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          CODE: ${{ needs.changes.outputs.code }}
+          SHARDS: ${{ needs.unit-guards.result }}
+          DOCS: ${{ needs.docs-checks.result }}
         run: |
-          if [ "${{ needs.unit-guards.result }}" != "success" ]; then
-            echo "Unit guard shards: ${{ needs.unit-guards.result }}"
-            exit 1
+          echo "Changes: $CHANGES (code=$CODE); unit guard shards: $SHARDS; docs checks: $DOCS"
+          if [ "$SHARDS" = success ]; then
+            exit 0
           fi
+          if [ "$CHANGES" = success ] && [ "$CODE" = false ] \
+            && [ "$SHARDS" = skipped ] && [ "$DOCS" = success ]; then
+            echo "Docs-only change: the shards were skipped by design."
+            exit 0
+          fi
+          exit 1
+
+  docs-checks:
+    name: 📚 Docs checks
+    # Runs only on the docs-only path, in place of the heavy jobs. The whole
+    # unit suite, not only KB-80's records guard: on 2026-09-23 at least
+    # eight unit suites read docs/ or specs/ at run time (vendor API
+    # versions, analytics scopes, the capability reference bindings, data
+    # provenance, FILM-1701's spec), and a hand-kept list would miss the
+    # next one. Then every unit mutation guard whose target is under specs/
+    # or docs/. 🧪 Unit guards requires this job on that path, so a failure
+    # here blocks the merge.
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'false' }}
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    env:
+      DO_NOT_TRACK: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Docs-only classifier - table test
+        run: bash scripts/ci/docs-only.test.sh
+
+      - name: Spec records guard (KB-80)
+        run: pnpm --filter @kit/shared exec vitest run __tests__/spec-closed-by-drift.test.ts
+
+      - name: Run Unit Tests
+        run: bash scripts/test-units.sh
+
+      - name: Mutation guards - self-test
+        run: python3 tooling/mutation-guards/run.py --self-test
+
+      - name: Mutation guards - those targeting specs/ and docs/
+        run: python3 tooling/mutation-guards/run.py --kind unit --file-prefix specs/ --file-prefix docs/
 
   e2e-guards:
     name: 🧬 E2E guards
@@ -403,7 +535,8 @@ jobs:
     runs-on: ubuntu-latest
     # CI minutes are rationed: the E2E mutation guards run only on pushes to
     # main (after a merge), not on every PR push. PRs still run ⚫️ Test.
-    if: ${{ vars.ENABLE_E2E_JOB == 'true' && github.event_name == 'push' }}
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && github.event_name == 'push' }}
     env:
       DO_NOT_TRACK: 1
       # The server reads ClickHouse, unlike ⚫️ Test: the evidence specs seed
@@ -478,7 +611,8 @@ jobs:
       # Same exclusions as ⚫️ Test, for the same reasons.
       - name: Supabase Server
         working-directory: apps/web
-        run: supabase start -x studio,imgproxy,logflare,vector
+        # Pulls from public.ecr.aws first and retries with backoff: see the script.
+        run: ../../scripts/ci/supabase-start.sh -x studio,imgproxy,logflare,vector
 
       - name: Wait for ClickHouse
         run: |
@@ -556,7 +690,8 @@ jobs:
     # failing.
     timeout-minutes: 30
     runs-on: ubuntu-latest
-    if: ${{ vars.ENABLE_E2E_JOB == 'true' }}
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' }}
     env:
       DO_NOT_TRACK: 1
       # The server reads ClickHouse, unlike ⚫️ Test: the evidence specs seed
@@ -628,7 +763,8 @@ jobs:
       # Same exclusions as ⚫️ Test, for the same reasons.
       - name: Supabase Server
         working-directory: apps/web
-        run: supabase start -x studio,imgproxy,logflare,vector
+        # Pulls from public.ecr.aws first and retries with backoff: see the script.
+        run: ../../scripts/ci/supabase-start.sh -x studio,imgproxy,logflare,vector
 
       - name: Wait for ClickHouse
         run: |
@@ -704,7 +840,8 @@ jobs:
     # mid-run after every earlier step had passed.
     timeout-minutes: 45
     runs-on: ubuntu-latest
-    if: ${{ vars.ENABLE_E2E_JOB == 'true' }}
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' }}
     env:
       # No Stripe. The billing specs are skipped (see ENABLE_BILLING_TESTS
       # below), so the repo needs no payment credentials to run this job.
@@ -788,7 +925,8 @@ jobs:
       # `supabase/setup-cli` installed, which is the one pinned above.
       - name: Supabase Server
         working-directory: apps/web
-        run: supabase start -x studio,imgproxy,logflare,vector
+        # Pulls from public.ecr.aws first and retries with backoff: see the script.
+        run: ../../scripts/ci/supabase-start.sh -x studio,imgproxy,logflare,vector
 
       # No credential export step. apps/web/.env.test already carries the
       # local URL and the CLI's fixed public development keys — the same
