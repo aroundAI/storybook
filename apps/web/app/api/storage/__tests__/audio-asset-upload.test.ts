@@ -158,8 +158,9 @@ describe('uploadAudioFileAndCreateAssetAction (KB-55)', () => {
       const upload = R2StorageAdapter.prototype.upload;
       vi.spyOn(R2StorageAdapter.prototype, 'upload').mockImplementation(
         async function (this: R2StorageAdapter, ...args) {
-          (this as unknown as { s3Client: { send: typeof r2Send } }).s3Client.send =
-            r2Send;
+          (
+            this as unknown as { s3Client: { send: typeof r2Send } }
+          ).s3Client.send = r2Send;
           return upload.apply(this, args);
         },
       );

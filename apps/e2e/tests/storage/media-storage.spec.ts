@@ -106,7 +106,9 @@ test.describe('Media and report storage (KB-55, KB-56)', () => {
     await expect(page.getByText(name)).toBeVisible();
 
     if (evidence) {
-      await page.screenshot({ path: `${OUT}/kb55-02-library-after-upload.png` });
+      await page.screenshot({
+        path: `${OUT}/kb55-02-library-after-upload.png`,
+      });
     }
   });
 

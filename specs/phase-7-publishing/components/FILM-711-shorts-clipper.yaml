@@ -67,10 +67,11 @@ retirement:
     in baa752eb (2026-01-06); f4efd8b9 (2026-01-18) deleted it as dead code. Short-form video is now
     uploaded per language as shorts groups on the publish screen
     (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/shorts-section.tsx`).
-    `@kit/shorts` can still cut shots flagged `shorts_candidate` to 9:16 with ffmpeg
-    (`packages/features/shorts/src/server/generate-short-action.ts:95`), but its page
-    (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/shorts-studio/page.tsx`)
-    is linked from nowhere. Kept as a record; not outstanding work.
+    `@kit/shorts` (a generator that cut shots flagged `shorts_candidate` to 9:16 with ffmpeg) and
+    its `shorts-studio` page, linked from nowhere, were removed in KB-55 (2026-09-23): the page
+    crashed on a column that never existed and the generator wrote to a storage bucket no
+    migration created. The `shorts` and `short_publications` tables remain. Kept as a record;
+    not outstanding work.
   replacement: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/shorts-section.tsx"
 open_questions: []
 notes: |

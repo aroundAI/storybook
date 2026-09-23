@@ -14,12 +14,12 @@ import {
 
 import { generateSummaryCSV } from '@kit/content-analytics/lib/csv-generator';
 import { generatePDFReport } from '@kit/content-analytics/lib/pdf-generator';
-import { storeReport } from '@kit/content-analytics/server/report-storage';
 import type {
   AnalyticsDataRow,
   ReportMetric,
   ReportSummary,
 } from '@kit/content-analytics/lib/report-types';
+import { storeReport } from '@kit/content-analytics/server/report-storage';
 import { getMailer } from '@kit/mailers';
 import { enhanceRouteHandler } from '@kit/next/routes';
 import { getLogger } from '@kit/shared/logger';

@@ -262,7 +262,10 @@ export function UploadAudioDialog({
 
           {/* Error */}
           {error && (
-            <p data-test="audio-upload-error" className="text-sm text-destructive">
+            <p
+              data-test="audio-upload-error"
+              className="text-sm text-destructive"
+            >
               {error}
             </p>
           )}
