@@ -50,6 +50,10 @@ export default defineConfig({
         __dirname,
         '../../packages/shared/src/logger/index.ts',
       ),
+      '@kit/shared/pagination': path.resolve(
+        __dirname,
+        '../../packages/shared/src/pagination/index.ts',
+      ),
       '@kit/shared/vendors': path.resolve(
         __dirname,
         '../../packages/shared/src/vendors/index.ts',
@@ -94,9 +98,9 @@ export default defineConfig({
         __dirname,
         '../../packages/supabase/src/auth-callback.service.ts',
       ),
-      '@kit/prompt-engine/server': path.resolve(
+      '@kit/prompt-engine/llm-job-target': path.resolve(
         __dirname,
-        '../../packages/features/prompt-engine/src/lib/server/index.ts',
+        '../../packages/features/prompt-engine/src/lib/server/llm-job-target.ts',
       ),
       '@kit/next/actions': path.resolve(
         __dirname,

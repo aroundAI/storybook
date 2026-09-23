@@ -77,6 +77,19 @@ vi.mock('@kit/supabase/server-client', () => ({
       return { data: state.canWrite, error: null };
     },
     from: (table: string) => {
+      // KB-31's `authorizeProjectTarget` reads the project for its account
+      // after this file's gate, then asks `can_write_project` again.
+      if (table === 'projects') {
+        const query = {
+          select: () => query,
+          eq: () => query,
+          maybeSingle: async () => ({
+            data: { id: PROJECT, account_id: 'account-1' },
+            error: null,
+          }),
+        };
+        return query;
+      }
       if (table === 'external_sources') {
         const query = {
           select: () => query,
