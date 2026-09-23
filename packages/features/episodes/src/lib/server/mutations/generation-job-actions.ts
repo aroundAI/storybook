@@ -9,8 +9,6 @@ import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import type { GenerationJobType } from '../../types';
-
 const logger = await getLogger();
 
 export type GenerationJobStatus =

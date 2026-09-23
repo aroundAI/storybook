@@ -10,7 +10,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const refreshSession = vi.fn(() => Promise.resolve({ error: null }));
 // What an aal1 cookie gets from requireUser: no user, and a redirect to MFA.
 const requireUser = vi.fn(() =>
-  Promise.resolve({ data: null, error: new Error('aal1'), redirectTo: '/auth/verify' }),
+  Promise.resolve({
+    data: null,
+    error: new Error('aal1'),
+    redirectTo: '/auth/verify',
+  }),
 );
 
 vi.mock('@kit/supabase/server-client', () => ({

@@ -79,14 +79,20 @@ describe('createFilmProjectAction', () => {
   it('sends a caller without a session to sign in, and touches nothing', async () => {
     session.signedIn = false;
 
-    await expect(createFilmProjectAction(input)).rejects.toMatchObject(toSignIn);
+    await expect(createFilmProjectAction(input)).rejects.toMatchObject(
+      toSignIn,
+    );
     expect(db.calls).toEqual([]);
   });
 
   it('creates the project for a signed-in caller', async () => {
     await expect(createFilmProjectAction(input)).resolves.toEqual({
       ok: true,
-      data: { projectId: 'proj-1', projectSlug: 'my-film', accountSlug: 'acme' },
+      data: {
+        projectId: 'proj-1',
+        projectSlug: 'my-film',
+        accountSlug: 'acme',
+      },
     });
     expect(db.calls).toEqual(['accounts', 'projects']);
   });
@@ -108,7 +114,9 @@ describe('updateProjectCoverImageAction', () => {
   it('sends a caller without a session to sign in, and touches nothing', async () => {
     session.signedIn = false;
 
-    await expect(updateProjectCoverImageAction(cover)).rejects.toMatchObject(toSignIn);
+    await expect(updateProjectCoverImageAction(cover)).rejects.toMatchObject(
+      toSignIn,
+    );
     expect(db.calls).toEqual([]);
   });
 
