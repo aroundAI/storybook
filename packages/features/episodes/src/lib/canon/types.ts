@@ -6,7 +6,7 @@
  */
 import type { ProjectType } from '@kit/film-studio-schemas/project';
 
-import type { ProjectTypeSource } from './content-type-configs';
+import type { DecayFunction, ProjectTypeSource } from './content-type-configs';
 import type { MemoryHorizonMode, MemoryHorizonSource } from './memory-horizon';
 
 // =============================================================================
@@ -178,7 +178,21 @@ export interface TokenBudget {
     episodeSummaries: number;
     narrativeThreads: number;
     worldStates: number;
+    sourcesCitations: number;
   };
+}
+
+/**
+ * A verified fact loaded into the memory context as a source (FILM-1111).
+ * Only facts with `verification_status = 'verified'` are loaded.
+ */
+export interface SourceCitation {
+  factId: string;
+  claim: string;
+  citation?: string;
+  sourceTitle?: string;
+  category?: string;
+  confidence?: number;
 }
 
 /**
@@ -194,6 +208,8 @@ export interface MemoryContext {
   activeThreads: NarrativeThread[];
   recentSummaries: EpisodeSummary[];
   worldState?: WorldState;
+  /** Verified facts, for types with a source budget (FILM-1111) */
+  sources: SourceCitation[];
   metadata: {
     builtAt: string;
     /** The content type the budgets and horizon were taken from (FILM-1110) */
@@ -201,6 +217,8 @@ export interface MemoryContext {
     projectTypeSource: ProjectTypeSource;
     memoryHorizon: number;
     memoryHorizonSource: MemoryHorizonSource;
+    /** The decay threads, characters and summaries were ranked with (FILM-1111) */
+    decayFunction: DecayFunction;
     /** Token budget per category, before loading */
     budgets: MemoryBudgets;
     totalTokensUsed: number;
@@ -208,8 +226,9 @@ export interface MemoryContext {
 }
 
 /**
- * Token budget per category. `parentContext` (FILM-1113) and
- * `sourcesCitations` (FILM-1111/FILM-1135) are reserved but not yet filled.
+ * Token budget per category. `sourcesCitations` is filled with verified
+ * facts (FILM-1111); `parentContext` is reserved for sequels (FILM-1113) and
+ * not yet filled.
  */
 export interface MemoryBudgets {
   immutableEvents: number;

@@ -269,3 +269,69 @@ export function calculatePriority(
     include,
   };
 }
+
+// =============================================================================
+// RANKING
+// =============================================================================
+
+export interface RankCandidate<T> {
+  item: T;
+  /** Stable tie-break */
+  id: string;
+  /** Project-wide episode number the item was last active in, if known */
+  episode?: number;
+  /** How many episodes touched the item (threads) */
+  mentions?: number;
+}
+
+export interface RankedItem<T> {
+  item: T;
+  /** `calculatePriority` score; -1 when the item's episode is unknown */
+  score: number;
+}
+
+const UNKNOWN_EPISODE_SCORE = -1;
+
+/**
+ * Orders memory items by `calculatePriority` for the project's type, most
+ * relevant first. The builder fits each category to its budget in this
+ * order, so under budget pressure the lowest-ranked items are the ones cut.
+ *
+ * It only orders — it never removes an item, whatever its score (owner
+ * decision D1, FILM-1111): the horizon and the budget are what remove.
+ *
+ * - Distance is clamped at 0: an item from a later episode (regenerating an
+ *   earlier one) scores as current, not above 1.
+ * - An item whose episode cannot be resolved is kept and ranked last.
+ * - Ties: higher episode first, then id, so the order is deterministic.
+ */
+export function rankByPriority<T>(
+  candidates: RankCandidate<T>[],
+  currentEpisode: number,
+  projectType: ProjectType,
+): RankedItem<T>[] {
+  const scored = candidates.map((candidate) => ({
+    candidate,
+    score:
+      candidate.episode === undefined
+        ? UNKNOWN_EPISODE_SCORE
+        : calculatePriority(
+            { createdAt: new Date(0), mentions: candidate.mentions },
+            currentEpisode,
+            Math.min(candidate.episode, currentEpisode),
+            projectType,
+          ).score,
+  }));
+
+  scored.sort(
+    (a, b) =>
+      b.score - a.score ||
+      (b.candidate.episode ?? 0) - (a.candidate.episode ?? 0) ||
+      a.candidate.id.localeCompare(b.candidate.id),
+  );
+
+  return scored.map(({ candidate, score }) => ({
+    item: candidate.item,
+    score,
+  }));
+}

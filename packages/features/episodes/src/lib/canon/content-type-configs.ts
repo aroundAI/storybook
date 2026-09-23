@@ -20,7 +20,11 @@ export interface ContentTypeConfig {
   /** Number of episodes/acts to include in memory context */
   memoryHorizon: number;
 
-  /** How memory priority decays over time */
+  /**
+   * How memory priority decays with episode distance. Names the curve
+   * `getDecayFactor` computes for the type (memory-strategies.ts); a test
+   * holds the two together.
+   */
   decayFunction: DecayFunction;
 
   /** Token budget percentage of context window for memory */
@@ -52,7 +56,7 @@ export interface ContentTypeConfig {
 export const CONTENT_TYPE_CONFIGS: Record<ProjectType, ContentTypeConfig> = {
   'short-film': {
     memoryHorizon: 10,
-    decayFunction: 'exponential',
+    decayFunction: 'linear',
     contextWindowPercent: 15,
     enforcement: 'strict',
     requiresFacts: false,
@@ -62,7 +66,7 @@ export const CONTENT_TYPE_CONFIGS: Record<ProjectType, ContentTypeConfig> = {
 
   series: {
     memoryHorizon: 50,
-    decayFunction: 'linear',
+    decayFunction: 'exponential',
     contextWindowPercent: 18,
     enforcement: 'strict',
     requiresFacts: false,
@@ -102,7 +106,7 @@ export const CONTENT_TYPE_CONFIGS: Record<ProjectType, ContentTypeConfig> = {
 
   ad: {
     memoryHorizon: 1,
-    decayFunction: 'none',
+    decayFunction: 'linear',
     contextWindowPercent: 10,
     enforcement: 'flexible',
     requiresFacts: false,

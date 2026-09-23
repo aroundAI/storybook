@@ -1,0 +1,115 @@
+{
+  "feature": "FILM-1111",
+  "mutations": [
+    {
+      "name": "R1 Ranking ignores the priority score",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-strategies.ts",
+      "find": "      b.score - a.score ||\n",
+      "replace": "      0 ||\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/memory-strategies.test.ts",
+      "pattern": "rankByPriority"
+    },
+    {
+      "name": "R2 Distance is not clamped for a later episode",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-strategies.ts",
+      "find": "            Math.min(candidate.episode, currentEpisode),\n",
+      "replace": "            candidate.episode,\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/memory-strategies.test.ts",
+      "pattern": "clamps an item from a later episode"
+    },
+    {
+      "name": "R3 Characters are fitted in table order, not ranked",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-context-builder.ts",
+      "find": "  const characterStates = fitToBudget(\n    rankByPriority(\n",
+      "replace": "  const characterStates = fitToBudget(\n    characters,\n    budgets.characterStates,\n  );\n  void fitToBudget(\n    rankByPriority(\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/memory-context-builder.test.ts",
+      "pattern": "latest episode, not table order"
+    },
+    {
+      "name": "R4 Threads lose the mention boost",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-context-builder.ts",
+      "find": "        mentions: thread.episodesTouched?.length,\n",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/memory-context-builder.test.ts",
+      "pattern": "orders threads by last-touched episode"
+    },
+    {
+      "name": "R5 Immutable events are ordered newest first",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-context-builder.ts",
+      "find": "      (a.created_at ?? '').localeCompare(b.created_at ?? '') ||\n",
+      "replace": "      (b.created_at ?? '').localeCompare(a.created_at ?? '') ||\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/memory-context-builder.test.ts",
+      "pattern": "immutable events are never decayed"
+    },
+    {
+      "name": "R6 Immutable events are read without paging",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-context-builder.ts",
+      "find": "          .range(from, to),\n      'immutable_events',",
+      "replace": "          .range(0, 999),\n      'immutable_events',",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/memory-context-builder.test.ts",
+      "pattern": "pages every event"
+    },
+    {
+      "name": "S1 Unverified facts are loaded as sources",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-context-builder.ts",
+      "find": "    .eq('verification_status', 'verified')\n",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/memory-context-builder.test.ts",
+      "pattern": "reads verified facts only"
+    },
+    {
+      "name": "S2 Types with no source budget still query facts",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-context-builder.ts",
+      "find": "  if (tokenBudget <= 0) return [];\n\n  const { data, error } = await client\n    .from('verified_facts')",
+      "replace": "  const { data, error } = await client\n    .from('verified_facts')",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/memory-context-builder.test.ts",
+      "pattern": "issues no facts query"
+    },
+    {
+      "name": "S3 Fact text reaches the agent unsanitised",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/continuity-skill.ts",
+      "find": "            claim: sanitizeForPrompt(source.claim),\n",
+      "replace": "            claim: source.claim,\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/continuity-skill.test.ts",
+      "pattern": "sanitised fact text"
+    },
+    {
+      "name": "N1 News loads a world state",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-context-builder.ts",
+      "find": "  if (tokenBudget <= 0) return undefined;\n",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/memory-context-builder.test.ts",
+      "pattern": "news carries no episode history"
+    },
+    {
+      "name": "L1 The series decay label disagrees with its curve again",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/content-type-configs.ts",
+      "find": "    memoryHorizon: 50,\n    decayFunction: 'exponential',",
+      "replace": "    memoryHorizon: 50,\n    decayFunction: 'linear',",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/content-type-configs.test.ts",
+      "pattern": "decayFunction names the curve"
+    }
+  ]
+}
