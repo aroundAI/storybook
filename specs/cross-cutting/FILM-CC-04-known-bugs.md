@@ -2047,6 +2047,84 @@ every canon string at the tool boundary, as sources are.
 
 ---
 
+## KB-38 — R2 upload URLs don't bind content type or size
+
+**Severity:** Medium on the production upload path: a project writer, or
+anyone holding one of their upload URLs for its 15 minutes, can store any
+bytes, of any type (`text/html` included) and any size, under the project's
+path on the public R2 domain. Authorisation is not affected. KB-28 already
+limits who gets a URL. **Found:** KB-28 (#313), 2026-09-23. **Fixed** in #PR.
+
+Production stores every browser upload in Cloudflare R2 (owner). The R2
+adapter passed `ContentType` to `PutObjectCommand`
+(`packages/features/storage/src/adapters/r2.ts:102-110`), but
+`@aws-sdk/s3-request-presigner` removes `content-type` from the signature
+unless it is named in `signableHeaders` (`dist-cjs/index.js:49`,
+`unsignableHeaders.add("content-type")`). The URL was signed with
+`X-Amz-SignedHeaders=host`, so it bound only the key. Supabase bucket limits
+(KB-28) do not apply on R2, and R2 has no POST-policy uploads, so an exact
+signed `Content-Length` is the only size bound a presigned R2 upload can carry.
+The URL also carried `x-amz-checksum-crc32=AAAAAA==`, the checksum of an empty
+body (SDK ≥ 3.729 adds one by default). Uploads work in production today
+(owner), so R2 does not enforce it.
+
+### Reproduced (local MinIO, 2026-09-23)
+
+A URL signed today for a 1000-byte `image/png` accepted, and stored, a
+`text/html` PUT, a PUT with no type, a 5000-byte body and a 500-byte body. With
+the fix, each is refused (403 `SignatureDoesNotMatch`, or 400 for the missing
+type) and nothing is stored. Chromium, via `fetch` and XHR, stores the matching
+upload and is refused a larger one or another type.
+
+### Fix
+
+- R2 and B2 sign `content-type` and `content-length` and carry no request
+  checksum (`adapters/s3-presign.ts`).
+- The presign route requires `size`. It caps it at the `UPLOAD_CONSTRAINTS`
+  limit for the declared type (image 10 MB, video 500 MB, audio 50 MB), signs
+  the type it checked, and returns the headers the PUT must send.
+- Every browser uploader goes through one of two helpers that declare the
+  body's size and send those headers.
+- The audio library's server-side upload, which takes a type from the client,
+  went to KB-57.
+
+### Acceptance criteria
+
+- [x] Unit, red first: an R2 or B2 URL signs `content-length;content-type;host` and no checksum
+- [x] Against a real S3 server, red first: a different type, no type, a larger body and a smaller body are refused and store nothing
+- [x] The route requires a size and refuses one over the limit for its type, red first
+- [x] Every browser uploader declares its body's size and sends the returned headers (unit, structural test, E2E through the cover upload on a production build)
+- [ ] After deploy, the owner uploads one cover in production: R2's handling of a signed `Content-Length` is proven only there
+
+---
+
+## KB-70 — `STORAGE_PROVIDER=s3` in the config templates silently means Supabase
+
+**Severity:** Low. It bites only a deploy made from a template, but then
+without warning. **Found:** KB-38 (2026-09-23), by reading. **Open.**
+
+The deployment templates set `STORAGE_PROVIDER=s3`
+(`deployment/config/production.env.example:55`, `staging.env.example:54`,
+`tailorist.env.example:58`, in the config submodule), and so do the root
+`.env.aws.example:38` and `.env.hybrid.example:32`. `getStorageProvider()`
+(`packages/features/storage/src/factory.ts:31-45`) knows `local`, `r2`, `b2`
+and `supabase`, and maps anything else, `s3` included, to `supabase` through
+its `default` branch. There is no S3 adapter. A deploy from a template would
+store every upload in Supabase Storage and log nothing.
+
+### Proposed fix
+
+- Unknown `STORAGE_PROVIDER` values fail at startup instead of falling back.
+- The templates name a provider that exists (`r2` for production), or say
+  which to choose.
+
+### Acceptance criteria
+
+- [ ] Unit, red first: `getStorageProvider()` rejects `s3` and any other unknown value
+- [ ] No template sets a provider the factory does not know
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
@@ -2068,6 +2146,7 @@ every canon string at the tool boundary, as sources are.
 | KB-41 | Any signed-in user could list any project's members with their emails, public or private; `get_project_members` now requires access to the project's account | #319 |
 | KB-18 | No fact could be verified or disputed, by anyone: the update policy refused both states and the actions wrote through it; the actions' account-role check also turned some reviews and deletes into silent no-ops | #314 |
 | KB-28 | Any signed-in user could upload into any project's storage folder, and owners could not replace or delete their own files | #313 |
+| KB-38 | R2 upload URLs bound only the object key, so any type and any size could be stored with one | #PR |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
 | KB-52 | Every signed-in user could read, rewrite, forge and delete every account's `llm_usage_analytics` rows: a policy with no `TO` clause and `using (true)`; writes are now service-role only, and a pgTAP guard fails any new policy of that shape | #321 |
