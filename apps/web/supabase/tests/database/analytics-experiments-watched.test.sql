@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(12);
+select plan(13);
 
 -- FILM-1610. The columns added to `analytics_experiments`: a generated review
 -- date that nobody can write, a review window the table itself bounds, and a
@@ -164,6 +164,23 @@ select is(
     where id = 'e0e0e0e0-0000-4000-8000-00000000000a'),
   'e0e0e0e0-0000-4000-8000-000000000001'::uuid,
   'Disconnecting the channel keeps it as the experiment''s channel'
+);
+
+-- The key's referential action, still worth holding: `set null
+-- (connection_id)`, never a bare `set null`, which would also null
+-- account_id and orphan the experiment from its account. Only account
+-- deletion removes a connection now (platform_connections_refuse_delete),
+-- so the guard is lifted here, inside this rolled-back test, to reach it.
+alter table public.platform_connections disable trigger platform_connections_refuse_delete;
+
+delete from public.platform_connections
+ where id = 'e0e0e0e0-0000-4000-8000-000000000001';
+
+select is(
+  (select connection_id from public.analytics_experiments
+    where id = 'e0e0e0e0-0000-4000-8000-00000000000a'),
+  null,
+  'Deleting the channel row nulls connection_id'
 );
 
 select is(
