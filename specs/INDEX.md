@@ -407,7 +407,7 @@ graph TD
 | FILM-513 | [retire-lip-sync](./phase-5-audio-generation/providers/FILM-513-retire-lip-sync.yaml) | DRAFT | M | FILM-1801 for the resolver entry only |
 | FILM-512 | [multi-language-dubbing](./phase-5-audio-generation/providers/FILM-512-multi-language-dubbing.yaml) | 🗑️ RETIRED (5b88db3a) | L | FILM-502, FILM-510 |
 
-### Phase 6: Edit Suite (7 specs)
+### Phase 6: Edit Suite (6 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -417,7 +417,6 @@ graph TD
 | FILM-604 | [auto-stitch](./phase-6-edit-suite/lib/FILM-604-auto-stitch.yaml) | 🗑️ RETIRED (b7f7cb53) | L | FILM-601 |
 | FILM-605 | [auto-captions](./phase-6-edit-suite/components/FILM-605-auto-captions.yaml) | 🗑️ RETIRED (5f44d0e1) | L | FILM-601 |
 | FILM-606 | [transitions-library](./phase-6-edit-suite/components/FILM-606-transitions-library.yaml) | 🗑️ RETIRED (5f44d0e1) | M | FILM-601 |
-| FILM-607 | [retire-edit-suite](./phase-6-edit-suite/FILM-607-retire-edit-suite.yaml) | DRAFT | M | KB-28, KB-27 for coordination only |
 
 ### Phase 7: Publishing (16 specs)
 
@@ -695,7 +694,7 @@ reason when not.
 | 3. Episodes | 14 | 0 | 7 | 0 | 3 | 4 |
 | 4. Video Gen | 14 | 0 | 2 | 0 | 12 | 0 |
 | 5. Audio Gen | 16 | 1 | 6 | 0 | 6 | 3 |
-| 6. Edit Suite | 7 | 1 | 2 | 0 | 4 | 0 |
+| 6. Edit Suite | 6 | 0 | 2 | 0 | 4 | 0 |
 | 7. Publishing | 16 | 0 | 7 | 0 | 3 | 6 |
 | 8. Analytics | 10 | 0 | 7 | 0 | 0 | 3 |
 | 9. Integration | 6 | 0 | 2 | 0 | 3 | 1 |
@@ -710,7 +709,7 @@ reason when not.
 | 18. Vendor Sandbox | 5 | 4 | 0 | 0 | 0 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **230** | **26** | **86** | **2** | **46** | **70** |
+| **TOTAL** | **229** | **25** | **86** | **2** | **46** | **70** |
 
 No column for In Progress: no PR is open.
 
@@ -719,7 +718,7 @@ No column for In Progress: no PR is open.
 | Scope | Total | Done | Partial | Retired | Draft / Deferred |
 |-------|-------|------|---------|---------|------------------|
 | MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 92 | 29 | 31 | 31 | 1 |
-| Post-MVP (Ph 6–9) | 39 | 10 | 18 | 10 | 1 |
+| Post-MVP (Ph 6–9) | 38 | 10 | 18 | 10 | 0 |
 | Canon (Ph 10–11) | 29 | 4 | 23 | 2 | 0 |
 | Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |
 | Edit Suite v2 (Ph 14) | 1 | 0 | 1 | 0 | 0 |
