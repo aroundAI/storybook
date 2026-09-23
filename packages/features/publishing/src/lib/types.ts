@@ -1,6 +1,5 @@
 // One definition, in ../types (KB-22 added 'disconnected'; two copies had drifted apart).
 import type { ConnectionStatus } from '../types';
-
 /**
  * Publishing Hub Types
  * Types for multi-platform video publishing
