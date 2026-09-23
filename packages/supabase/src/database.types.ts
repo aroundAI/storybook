@@ -6049,6 +6049,14 @@ export type Database = {
           title: string
         }[]
       }
+      set_fact_verification: {
+        Args: {
+          notes?: string
+          outcome: Database["public"]["Enums"]["verification_status_enum"]
+          target_fact_id: string
+        }
+        Returns: Database["public"]["Enums"]["verification_status_enum"]
+      }
       soft_delete_episode: { Args: { p_episode_id: string }; Returns: boolean }
       split_edit_clip: {
         Args: { p_clip_id: string; p_split_at_ms: number }
