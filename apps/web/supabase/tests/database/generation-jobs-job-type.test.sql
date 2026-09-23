@@ -51,18 +51,18 @@ select lives_ok(
   'a screenplay refinement can be recorded'
 );
 
--- The worker's markJobProcessing: finds the row it was given.
+-- The worker's markJobProcessing, verbatim filter: it now finds the row.
+update public.generation_jobs set status = 'processing', started_at = now()
+ where reference_type = 'episode'
+   and reference_id = '6b6b6b6b-0000-4000-8000-000000000002'
+   and job_type = 'story-refinement'
+   and status = 'queued';
+
 select is(
-  (with moved as (
-     update public.generation_jobs set status = 'processing', started_at = now()
-      where reference_type = 'episode'
-        and reference_id = '6b6b6b6b-0000-4000-8000-000000000002'
-        and job_type = 'story-refinement'
-        and status = 'queued'
-     returning 1)
-   select count(*)::int from moved),
-  1,
-  'the worker''s status update now matches the refinement row'
+  (select status from public.generation_jobs
+    where idempotency_key = 'story-refinement-kb14-1'),
+  'processing',
+  'the worker''s status update now reaches the refinement row'
 );
 
 select lives_ok(

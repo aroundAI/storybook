@@ -658,7 +658,12 @@ can be wrong. Not worth it until someone has a real account that is slow.
 
 **Severity:** Medium — nothing is known to be broken in production, and
 nothing would tell us if it were. **Found:** FILM-1723 (#284), 2026-09-22.
-**Open.**
+**Fixed** in #309 — `apps/web/lambda/tsconfig.json`, run by `web`'s
+`typecheck` script and so by `pnpm typecheck` and CI's ʦ TypeScript job.
+All 83 errors (82 when filed) are dispositioned in `specs/plans/KB-14-edd.md`
+§8.3. The real defects it surfaced are KB-32 to KB-35 below, the refinement
+job types (fixed in the same PR) and the duplicate `verifiedFacts` key
+(fixed; see the corrected audit lead).
 
 `apps/web/tsconfig.json` includes `app`, `lib`, `components`, `config`,
 `scripts` and the root files. It does not include `lambda/`, and no other
@@ -706,9 +711,9 @@ Nobody has looked, which is the bug.
 
 ### Acceptance criteria
 
-- [ ] `tsc --listFilesOnly` under CI's typecheck lists the lambda files
-- [ ] Zero type errors under `apps/web/lambda/`, each of today's 82 fixed or explained
-- [ ] A type error introduced in a handler fails CI — demonstrated, then reverted
+- [x] `tsc --listFilesOnly` under CI's typecheck lists the lambda files (51 of 51)
+- [x] Zero type errors under `apps/web/lambda/`, each of today's 82 fixed or explained
+- [x] A type error introduced in a handler fails CI — demonstrated, then reverted (runs linked in #309)
 
 ---
 
@@ -1745,6 +1750,167 @@ membership itself against the payload's `userId`.
 
 ---
 
+## KB-32 — Every edit-suite export render fails before FFmpeg runs
+
+**Severity:** High — the export button can never produce a video. It fails
+at step 1, before any rendering or cost. **Found:** KB-14, 2026-09-23.
+**Open.**
+
+`apps/web/lambda/render-worker/index.ts` asks for columns the edit-suite
+tables do not have:
+
+| Query | Selects (missing) | The table has |
+|---|---|---|
+| `edit_projects` update…select (`:170-178`) | `metadata`, `canvas_width`, `canvas_height`, `duration_ms` | `width`, `height`, `fps` |
+| `edit_clips` (`:196-199`) | `duration_ms`, `source_url`, `source_type`, `params`, `content_type`, `trim_start_ms`, `trim_end_ms` | `end_ms`, `in_point_ms`, `out_point_ms`, `media_url`, `speed`, `fade_in_ms`, `fade_out_ms` |
+| `edit_transitions` (`:207-209`) | `clip_id` | `from_clip_id`, `to_clip_id` |
+| `edit_keyframes` (`:211-213`) | `time_ms` | `offset_ms` |
+
+(`20260219083555_edit-suite-v2.sql`; no later migration adds any of them.)
+`handlers/ffmpeg-render.ts` is written against the **real** columns
+(`project.width` for the scale filter, `clip.in_point_ms`, …), so the two
+halves of the worker disagree. KB-14's typecheck shows it as four errors at
+the `processFFmpegRender` call, marked `@ts-expect-error KB-32`. Those markers
+fail the build (TS2578) as soon as this is fixed, and must be removed then.
+
+### Reproduced (local database, 2026-09-23, through supabase-js as the worker's service role)
+
+The worker's step-1 request, verbatim, against a seeded `edit_projects` row:
+
+| Request | Result |
+|---|---|
+| `update edit_projects set render_status='rendering' … select id, …, metadata, canvas_width, canvas_height, fps, duration_ms` | `42703 column edit_projects.canvas_height does not exist` |
+| `render_status` afterwards | `none` — the update never happened |
+| Control: `select id, width, height, fps` on the same row | `{"width":1920,"height":1080,"fps":30}` |
+
+So the worker throws `Edit project not found` on every job. Reachable from
+`packages/features/edit-suite/src/components/export/export-dialog.tsx` via
+`render-actions.ts`.
+
+### Proposed fix
+
+- Select the real columns and map them to the renderer's types in one place.
+  Better still, type the worker's client with `Database` so a missing column
+  is a compile error.
+- Rebuild the clip filter (`is_active`, `language`, the track mute) on the
+  real columns.
+
+### Acceptance criteria
+
+- [ ] No `KB-32` marker remains under `apps/web/lambda/`
+- [ ] Red first: the step-1 query above succeeds against a local database
+- [ ] One export renders end to end from seeded clips, and its output duration and resolution are checked
+
+---
+
+## KB-33 — LLM-worker payloads are cast, not validated
+
+**Severity:** Low — nothing is known to send a bad payload, and a bad one
+fails late and obscurely rather than doing harm. **Found:** KB-14, 2026-09-23.
+**Open.**
+
+Twelve `llm-worker` handlers take `payload: Record<string, unknown>` straight
+off SQS and cast it to their payload type:
+`analytics-insights`, `asset-creation`, `batch-translate-metadata`,
+`fact-extraction`, `language-insights`, `screenplay-conversion`,
+`season-analysis`, `season-outline`, `shot-generation`, `story-generation`,
+`story-ideation` and `translate-dialogue` (each marked `KB-33` at the cast).
+`story-refinement` and `screenplay-refinement` do the same. Nothing checks
+the shape, so a missing or renamed field surfaces as `undefined` somewhere
+deep in the handler — typically in a prompt, or in a query that then matches
+nothing. Three handlers already validate with zod at this boundary
+(`audio-cue-generation`, `audio-file-generation`, `dialogue-voice-generation`).
+
+**Reproduced:** under KB-14's typecheck each of the twelve was TS2352
+("neither type sufficiently overlaps") before it was made an explicit
+`as unknown as` cast. The cast is what the code always did at runtime; the
+marker records that it is unvalidated.
+
+### Proposed fix
+
+- One zod schema per payload, parsed at the top of each handler, exported
+  from where the producer (`queueLlmJob` caller) can use it too, so the two
+  sides share one definition.
+- Audit each producer before tightening a schema: a schema stricter than what
+  is sent would reject real jobs.
+
+### Acceptance criteria
+
+- [ ] No `KB-33` marker remains under `apps/web/lambda/`
+- [ ] Each payload has one schema, used by its producer and its handler
+- [ ] Unit: a payload missing a required field is refused with a message naming it
+
+---
+
+## KB-34 — The WebSocket handlers are not typechecked
+
+**Severity:** Medium — the same gap KB-14 closed for `lambda/`, on the code
+that authenticates every realtime connection. **Found:** KB-14, 2026-09-23.
+**Open.**
+
+`apps/web/websocket/` (the SST handlers `connect`, `disconnect`, `default`,
+plus `utils/` and tests — 10 files) is included by no tsconfig.
+
+**Reproduced** (2026-09-23, KB-14's lambda config pointed at `websocket/`):
+**133 errors**. 119 are in `__tests__/`, which call the handlers with one
+argument where the `Handler` type takes three and read `statusCode` off a
+`void | …` result. 14 are in the handlers:
+
+- `connect.ts:26-46` ×9: `event.headers` / `queryStringParameters`, which
+  `aws-lambda`'s `APIGatewayProxyWebsocketEventV2` does not declare (the
+  `$connect` event carries them at runtime — likely a type gap, to confirm)
+- `default.ts:212-214` ×3: properties read off a union without narrowing
+- `default.ts:32`: the `ws` realtime transport typing KB-14 met in the lambdas
+- `utils/auth.ts:1`: `jose` does not resolve from `apps/web`
+
+### Proposed fix
+
+Mirror KB-14: `apps/web/websocket/tsconfig.json`, a third command in `web`'s
+`typecheck` script, then triage the 133 the same way.
+
+### Acceptance criteria
+
+- [ ] `tsc --listFilesOnly` under CI's typecheck lists the websocket files
+- [ ] Zero type errors under `apps/web/websocket/`, each fixed or explained
+- [ ] A type error introduced in a handler fails CI — demonstrated, then reverted
+
+---
+
+## KB-35 — Semantic previous-episode search never ran in the LLM worker
+
+**Severity:** Low — a feature gap, not a regression: story prompts have always
+used the sequential previous episodes. **Found:** KB-14, 2026-09-23.
+**Open.** The dead code was removed in KB-14's PR; this entry records the gap.
+
+`buildEpisodeContext` (`apps/web/lambda/llm-worker/utils/context-builder.ts`)
+had a branch that fetched thematically similar episodes through
+`@kit/embeddings/voyage-client` when called with `useSemanticSearch = true`.
+It could not run, three ways over:
+
+- **No caller turned it on.** All six callers (`story-ideation`,
+  `story-generation`, `shot-generation`, `screenplay-conversion`,
+  `story-refinement`, `screenplay-refinement`) used the default `false`.
+- **The module does not resolve from the worker.** `@kit/embeddings` is not a
+  dependency of `apps/web` (`require.resolve` fails from there; TS2307 under
+  KB-14's check). esbuild downgrades an unresolvable `import()` inside `try`
+  to a warning, so the bundle would have thrown at runtime and fallen back.
+- **It would have thrown if it had resolved.** `voyage-client.ts` imports
+  `server-only` and calls `getSupabaseServerAdminClient`, both Next-side.
+
+### Proposed fix
+
+If semantic continuity is wanted: a worker-safe embeddings client (no
+`server-only`, the worker's own service client), a dependency the bundle can
+resolve, and callers that opt in — then a test that the similar episodes reach
+the prompt.
+
+### Acceptance criteria
+
+- [ ] Owner decides whether semantic previous-episode context is wanted
+- [ ] If so: one caller opts in and a test shows similar episodes in the prompt
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
@@ -1763,6 +1929,7 @@ membership itself against the payload's `userId`.
 | KB-16 | The Overview tab drew figures nobody measured: a fixed share donut, a 70/30 revenue split, canned footers, +100% beside every metric | #300 |
 | KB-19 | A failed platform connect landed on a 404 and logged nothing | #297 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
+| KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
 
 ---
 
@@ -1797,7 +1964,7 @@ proved it wrong. Paths abbreviated with `…/studio/` are under
 **Studio data**
 - Shots: soft-deleted rows keep their `sequence_number` under a non-partial unique key, so reorder, close-gap and add-after-delete collide, and the reorder loop ignores the error — `packages/features/episodes/src/lib/server/mutations/shot-actions.ts:425-431`, `:45`, `:125`; `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:331`
 - A deleted asset's name cannot be reused: `unique(project_id, type, name)` counts soft-deleted rows (seasons got the partial-index fix, assets did not) — `20251205125737_film-studio-tables.sql:134`
-- Story generation can drop project facts: a duplicate `verifiedFacts` key lets episode facts, or `undefined`, overwrite them — `apps/web/lambda/llm-worker/handlers/story-generation.ts:323`, `:329` (TS1117, hidden by KB-14)
+- ~~Story generation can drop project facts: a duplicate `verifiedFacts` key lets episode facts, or `undefined`, overwrite them — `apps/web/lambda/llm-worker/handlers/story-generation.ts:323`, `:329` (TS1117, hidden by KB-14)~~ **Resolved by KB-14 (#309), and overstated:** both keys were built from the same rows — the facts linked to this episode through `episode_facts` (`context-builder.ts` `fetchEpisodeFacts` and the linked-facts query) — and differed only in framing ("NON-NEGOTIABLE constraints" vs "use accurately"). No fact was dropped. The later key always won at runtime, so KB-14 removed the earlier one and kept the prompt exactly as it was (owner decision, 2026-09-23).
 - Episode numbers can repeat: `createEpisode` relies on a unique constraint no migration creates — `packages/features/episodes/src/server/actions.ts:67`
 - Resetting an episode leaves canon rows behind: `character_states` and `state_deltas` have no DELETE policy, so the user-client delete removes nothing and raises nothing — `packages/features/episodes/src/server/actions.ts:1227`, `:1241`
 - `reel_note` is passed to the shot director and never interpolated into the prompt — `packages/features/prompt-engine/src/prompts/story-generation/scene-shot-generation.json:128`
