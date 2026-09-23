@@ -383,28 +383,44 @@ describe('POST /api/storage/presign — R2 provider', () => {
     expect(signR2).not.toHaveBeenCalled();
   });
 
-  it.each([0, -1, 1.5, '1000'])(
-    'refuses a size of %j',
-    async (size) => {
-      asWriter(true);
+  it.each([0, -1, 1.5, '1000'])('refuses a size of %j', async (size) => {
+    asWriter(true);
 
-      const res = await presign({ ...coverUpload, size });
+    const res = await presign({ ...coverUpload, size });
 
-      expect(res.status).toBe(400);
-      expect(signR2).not.toHaveBeenCalled();
-    },
-  );
+    expect(res.status).toBe(400);
+    expect(signR2).not.toHaveBeenCalled();
+  });
 
   it.each([
-    ['image', 'image/png', UPLOAD_CONSTRAINTS.image.maxSize, 'images may be at most 10 MB'],
-    ['video', 'video/mp4', UPLOAD_CONSTRAINTS.video.maxSize, 'videos may be at most 500 MB'],
-    ['audio', 'audio/mpeg', UPLOAD_CONSTRAINTS.audio.maxSize, 'audio files may be at most 50 MB'],
+    [
+      'image',
+      'image/png',
+      UPLOAD_CONSTRAINTS.image.maxSize,
+      'images may be at most 10 MB',
+    ],
+    [
+      'video',
+      'video/mp4',
+      UPLOAD_CONSTRAINTS.video.maxSize,
+      'videos may be at most 500 MB',
+    ],
+    [
+      'audio',
+      'audio/mpeg',
+      UPLOAD_CONSTRAINTS.audio.maxSize,
+      'audio files may be at most 50 MB',
+    ],
   ])(
     'signs %s at exactly its ceiling and refuses one byte more',
     async (_category, contentType, maxSize, message) => {
       asWriter(true);
 
-      const atMax = await presign({ ...coverUpload, contentType, size: maxSize });
+      const atMax = await presign({
+        ...coverUpload,
+        contentType,
+        size: maxSize,
+      });
       expect(atMax.status).toBe(200);
       expect(signR2).toHaveBeenLastCalledWith(
         'project-assets',

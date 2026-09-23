@@ -94,8 +94,8 @@
     {
       "name": "C5 an uploader calls the route itself",
       "file": "packages/features/assets/src/components/image-uploader/use-image-upload.ts",
-      "find": "        const { uploadUrl, publicUrl, headers } =\n          await requestPresignedUpload({",
-      "replace": "        void fetch('/api/storage/presign');\n        const { uploadUrl, publicUrl, headers } =\n          await requestPresignedUpload({",
+      "find": "        const { uploadUrl, publicUrl, headers } = await requestPresignedUpload({",
+      "replace": "        void fetch('/api/storage/presign');\n        const { uploadUrl, publicUrl, headers } = await requestPresignedUpload({",
       "kind": "unit",
       "cwd": "apps/web",
       "test": "app/api/storage/presign/__tests__/presign-callers.test.ts"

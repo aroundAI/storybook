@@ -272,7 +272,12 @@ test.describe('Project storage (KB-28)', () => {
     const path = `projects/${project.id}/assets/character/sized-${Date.now()}.png`;
     const ask = (extra: Record<string, unknown>) =>
       page.request.post('/api/storage/presign', {
-        data: { bucket: 'project-assets', path, contentType: 'image/png', ...extra },
+        data: {
+          bucket: 'project-assets',
+          path,
+          contentType: 'image/png',
+          ...extra,
+        },
       });
 
     const unsized = await ask({});

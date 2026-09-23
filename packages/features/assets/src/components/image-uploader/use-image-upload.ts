@@ -129,13 +129,12 @@ export function useImageUpload(
         // /projects/[projectId]/assets/[type]/[filename]
         const storagePath = `projects/${projectId}/assets/${assetType}/${filename}`;
 
-        const { uploadUrl, publicUrl, headers } =
-          await requestPresignedUpload({
-            bucket: PROJECT_ASSETS_BUCKET,
-            path: storagePath,
-            contentType: file.type,
-            size: file.size,
-          });
+        const { uploadUrl, publicUrl, headers } = await requestPresignedUpload({
+          bucket: PROJECT_ASSETS_BUCKET,
+          path: storagePath,
+          contentType: file.type,
+          size: file.size,
+        });
 
         // 3b. Upload to R2 with Progress
         await new Promise<void>((resolve, reject) => {

@@ -16,7 +16,8 @@ import { uploadToR2Presigned } from '../../../../../../../packages/features/edit
  * from storage.
  */
 
-const PATH = 'projects/11111111-3800-4000-8000-000000000001/assets/covers/c.png';
+const PATH =
+  'projects/11111111-3800-4000-8000-000000000001/assets/covers/c.png';
 
 const signed = {
   uploadUrl: 'https://storage.test/signed',
@@ -94,19 +95,28 @@ describe('@kit/storage/client', () => {
     fetchMock
       .mockResolvedValueOnce(
         // X-T: a header the helper could not have made up itself
-        json({ ...signed, headers: { 'Content-Type': 'image/png', 'X-T': '1' } }),
+        json({
+          ...signed,
+          headers: { 'Content-Type': 'image/png', 'X-T': '1' },
+        }),
       )
       .mockResolvedValueOnce(new Response(null, { status: 200 }));
 
     const result = await uploadWithPresignedUrl(file, 'project-assets', PATH);
 
-    expect(presignBody()).toMatchObject({ contentType: 'image/png', size: 1500 });
+    expect(presignBody()).toMatchObject({
+      contentType: 'image/png',
+      size: 1500,
+    });
 
     const [putUrl, putInit] = fetchMock.mock.calls[1] as [string, RequestInit];
     expect(putUrl).toBe(signed.uploadUrl);
     expect(putInit.method).toBe('PUT');
     expect(putInit.body).toBe(file);
-    expect(putInit.headers).toEqual({ 'Content-Type': 'image/png', 'X-T': '1' });
+    expect(putInit.headers).toEqual({
+      'Content-Type': 'image/png',
+      'X-T': '1',
+    });
     expect(result).toEqual({ url: signed.publicUrl, path: PATH });
   });
 });

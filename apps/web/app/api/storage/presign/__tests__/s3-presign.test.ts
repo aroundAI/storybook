@@ -15,7 +15,8 @@ import { B2StorageAdapter, R2StorageAdapter } from '@kit/storage';
  * Dummy credentials: signing is local, nothing is sent.
  */
 
-const PATH = 'projects/11111111-3800-4000-8000-000000000001/assets/covers/c.png';
+const PATH =
+  'projects/11111111-3800-4000-8000-000000000001/assets/covers/c.png';
 
 function r2() {
   return new R2StorageAdapter({
