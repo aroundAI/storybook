@@ -7,8 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
-import { decrypt, encrypt } from '@kit/shared/crypto';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { encrypt } from '@kit/shared/crypto';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 export interface GlobalOAuthApp {
@@ -43,38 +42,6 @@ export async function getGlobalOAuthApps(): Promise<GlobalOAuthApp[]> {
     createdAt: app.created_at,
     updatedAt: app.updated_at,
   }));
-}
-
-/**
- * Get OAuth credentials for a platform (for OAuth flow - server-side only)
- * Uses admin client to bypass RLS for OAuth callback handling
- */
-export async function getGlobalOAuthCredentials(
-  platform: 'youtube' | 'tiktok' | 'meta',
-): Promise<{ clientId: string; clientSecret: string } | null> {
-  const client = getSupabaseServerAdminClient();
-
-  const { data, error } = await client
-    .from('oauth_app_credentials')
-    .select('client_id, client_secret_encrypted')
-    .eq('platform', platform)
-    .single();
-
-  if (error || !data) {
-    console.error(`Error fetching ${platform} OAuth credentials:`, error);
-    return null;
-  }
-
-  try {
-    const clientSecret = await decrypt(data.client_secret_encrypted);
-    return {
-      clientId: data.client_id,
-      clientSecret,
-    };
-  } catch (e) {
-    console.error(`Error decrypting ${platform} client secret:`, e);
-    return null;
-  }
 }
 
 const SaveGlobalOAuthAppSchema = z.object({

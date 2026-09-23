@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { parseMetaGrantedPermissions } from '@kit/publishing/oauth/analytics-scopes';
 import { META_OAUTH_CONFIG, MetaOAuthState } from '@kit/publishing/oauth/meta';
-import { getGlobalOAuthCredentials } from '@kit/publishing/server';
+import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credentials';
 import { encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -105,7 +105,7 @@ async function handleCallback(request: NextRequest) {
   }
 
   // Get global OAuth credentials (configured by super admin)
-  const credentials = await getGlobalOAuthCredentials('meta');
+  const credentials = await getOAuthAppCredentials('meta');
 
   if (!credentials) {
     return fail({ code: 'not_configured', branch: 'credentials_missing' });

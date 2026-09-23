@@ -6,6 +6,7 @@ import {
   generateCodeChallenge,
   generateCodeVerifier,
 } from '@kit/publishing/oauth/tiktok';
+import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credentials';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -84,11 +85,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const clientKey = process.env.TIKTOK_CLIENT_KEY;
+  const credentials = await getOAuthAppCredentials('tiktok');
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 
-  if (!clientKey || !appUrl) {
-    logger.error(ctx, 'Missing TIKTOK_CLIENT_KEY or NEXT_PUBLIC_APP_URL');
+  if (!credentials || !appUrl) {
+    logger.error(ctx, 'Missing TikTok app credentials or NEXT_PUBLIC_APP_URL');
     return NextResponse.json(
       { error: 'TikTok OAuth not configured' },
       { status: 500 },
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
   }
 
   const params = new URLSearchParams({
-    client_key: clientKey,
+    client_key: credentials.clientId,
     redirect_uri: `${appUrl}/api/platforms/callback/tiktok`,
     response_type: 'code',
     scope: TIKTOK_OAUTH_CONFIG.scopes.join(','), // TikTok uses comma-separated

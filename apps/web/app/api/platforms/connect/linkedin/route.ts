@@ -4,6 +4,7 @@ import {
   LINKEDIN_OAUTH_CONFIG,
   LinkedInOAuthState,
 } from '@kit/publishing/oauth/linkedin';
+import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credentials';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -65,11 +66,14 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const clientId = process.env.LINKEDIN_CLIENT_ID;
+  const credentials = await getOAuthAppCredentials('linkedin');
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 
-  if (!clientId || !appUrl) {
-    logger.error(ctx, 'Missing LINKEDIN_CLIENT_ID or NEXT_PUBLIC_APP_URL');
+  if (!credentials || !appUrl) {
+    logger.error(
+      ctx,
+      'Missing LinkedIn app credentials or NEXT_PUBLIC_APP_URL',
+    );
     return NextResponse.json(
       { error: 'LinkedIn OAuth not configured' },
       { status: 500 },
@@ -82,7 +86,7 @@ export async function GET(request: NextRequest) {
     : LINKEDIN_OAUTH_CONFIG.scopes.personal;
 
   const params = new URLSearchParams({
-    client_id: clientId,
+    client_id: credentials.clientId,
     redirect_uri: `${appUrl}/api/platforms/callback/linkedin`,
     response_type: 'code',
     scope: scopes.join(' '),

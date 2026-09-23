@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { META_OAUTH_CONFIG, MetaOAuthState } from '@kit/publishing/oauth/meta';
-import { getGlobalOAuthCredentials } from '@kit/publishing/server';
+import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credentials';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Get global OAuth credentials (configured by super admin)
-  const credentials = await getGlobalOAuthCredentials('meta');
+  const credentials = await getOAuthAppCredentials('meta');
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
 

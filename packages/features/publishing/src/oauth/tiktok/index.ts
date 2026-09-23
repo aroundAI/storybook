@@ -5,4 +5,3 @@ export {
 } from './config';
 export type { TikTokOAuthState } from './config';
 export { disconnectTikTokAction } from './disconnect';
-export { refreshTikTokToken } from './refresh';

@@ -493,7 +493,15 @@ behave as today.
 
 No HTTP API change. Internal TypeScript interfaces:
 - `getOAuthAppCredentials(app: OAuthApp): Promise<OAuthAppCredentials | null>`,
-  exported from `@kit/publishing/server`.
+  exported from **`@kit/publishing/server/oauth-app-credentials`**.
+  *Phase 2 deviation:* the plan said the `@kit/publishing/server` barrel.
+  `next build` refused that, because client components import that barrel
+  (`social-post-detail.tsx`, `publish-screen.tsx`, `delete-all-dialog.tsx`).
+  Every module in the barrel had been `'use server'`, which is safe to import
+  from the client. A plain `server-only` module is not. So the resolver has its
+  own export path and stays out of the barrel.
+- `OAUTH_APPS` / `OAuthApp` are exported from `@kit/publishing/oauth/apps`, a
+  pure module, so the connect-failure page's list can be bound to it (T8).
 - `TokenValidationResult.error`: `+ 'APP_NOT_CONFIGURED'`, additive.
 - `@kit/publishing/server` **no longer exports** `getGlobalOAuthCredentials` or
   `getAccountOAuthApp`. Their only importers are the routes this PR updates;
@@ -545,6 +553,20 @@ the user a reconnect.
   after, and reports the result. Either way, the fix moves the secret reader
   into a plain `server-only` module and deletes the other, so the question
   stops mattering.
+
+  *Measured in Phase 2 on the `build:test` bundle:*
+  - `getGlobalOAuthCredentials`, `getAccountOAuthApp`,
+    `getAccountOAuthAppAdmin` and `getOAuthAppCredentials` are absent from
+    `server-reference-manifest.json`.
+  - `decrypt` and `encrypt` from `@kit/shared/crypto`, also a `'use server'`
+    file, **are** registered as actions. Their IDs appear in none of the
+    291 client chunks, so they are not reachable from the browser in this
+    build.
+  - Positive control: the IDs of `saveGlobalOAuthAppAction` and
+    `saveAccountOAuthAppAction`, which client components do use, are found in
+    client JS.
+  - The same question on `main` was not measured (it would need a second full
+    build). It is moot now that the readers are gone.
 - **Least privilege.** The service role reads `oauth_app_credentials` through
   its explicit `service_role` SELECT policy. No RLS changes.
 - **Logging.** Only the app name and the credential **source name** (a table
@@ -658,7 +680,7 @@ runs through `scripts/test-units.sh:45`. The harness has two parts:
 | T4 | LinkedIn with env keys: request sent with `LINKEDIN_CLIENT_ID` | always fails today | FR-2 |
 | T5 | Global row absent: `{ valid:false, error:'APP_NOT_CONFIGURED', requiresReauth:false }`; `is_active` **not** set false; lock cleared; log context names the source and contains no secret | today it deactivates | FR-4, FR-7 |
 | T6 | Structural: scan `apps/web/app` and `packages/features/publishing/src` for `process.env.(TIKTOK\|LINKEDIN\|TWITTER)_CLIENT_` and for any `oauth_app_credentials` / `account_oauth_apps` select of `client_secret_encrypted`. Only the resolver may match, plus an explicit allowlist: `oauth/{tiktok,twitter}/disconnect.ts` (Decision 4) and the admin-UI actions (no secret read). **Positive control**: the scan must find the resolver itself, or the test fails, so a broken glob cannot pass vacuously | env reads in 6 routes and `oauth/tiktok/refresh.ts` | FR-3 |
-| T7 | Vendor rejects (`400 invalid_grant`): deactivated, `REFRESH_FAILED` (pins the unchanged path) | green before and after; it guards FR-4 from over-reaching | §18 |
+| T7 | Vendor rejects (`400 invalid_grant`): deactivated, `REFRESH_FAILED` (pins the unchanged path) | red on `main` too (0 requests: refresh never reached the vendor); green after. It guards FR-4 from over-reaching | §18 |
 | T8 | `apps/web/lib/__tests__`: `CONNECT_PLATFORMS` (`connect-failure.ts:10`) equals `OAUTH_APPS` as a set, so the two lists of OAuth apps cannot drift | new | FR-6 |
 
 The self-fulfilling cases at `token-refresh.test.ts:199-266` and the

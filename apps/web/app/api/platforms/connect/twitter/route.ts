@@ -6,6 +6,7 @@ import {
   generateCodeChallenge,
   generateCodeVerifier,
 } from '@kit/publishing/oauth/twitter';
+import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credentials';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -64,11 +65,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const clientId = process.env.TWITTER_CLIENT_ID;
+  const credentials = await getOAuthAppCredentials('twitter');
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 
-  if (!clientId || !appUrl) {
-    logger.error(ctx, 'Missing TWITTER_CLIENT_ID or NEXT_PUBLIC_APP_URL');
+  if (!credentials || !appUrl) {
+    logger.error(ctx, 'Missing X app credentials or NEXT_PUBLIC_APP_URL');
     return NextResponse.json(
       { error: 'Twitter OAuth not configured' },
       { status: 500 },
@@ -76,7 +77,7 @@ export async function GET(request: NextRequest) {
   }
 
   const params = new URLSearchParams({
-    client_id: clientId,
+    client_id: credentials.clientId,
     redirect_uri: `${appUrl}/api/platforms/callback/twitter`,
     response_type: 'code',
     scope: TWITTER_OAUTH_CONFIG.scopes.join(' '), // Twitter uses space-separated scopes

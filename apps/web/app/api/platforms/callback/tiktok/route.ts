@@ -5,6 +5,7 @@ import {
   TIKTOK_OAUTH_CONFIG,
   TikTokOAuthState,
 } from '@kit/publishing/oauth/tiktok';
+import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credentials';
 import { encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -102,10 +103,9 @@ async function handleCallback(request: NextRequest) {
   // Note: State deletion moved to after successful connection storage
   // to allow retry on token exchange failure
 
-  const clientKey = process.env.TIKTOK_CLIENT_KEY;
-  const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
+  const credentials = await getOAuthAppCredentials('tiktok');
 
-  if (!clientKey || !clientSecret) {
+  if (!credentials) {
     return fail({ code: 'not_configured', branch: 'credentials_missing' });
   }
 
@@ -114,8 +114,8 @@ async function handleCallback(request: NextRequest) {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_key: clientKey,
-      client_secret: clientSecret,
+      client_key: credentials.clientId,
+      client_secret: credentials.clientSecret,
       code,
       grant_type: 'authorization_code',
       redirect_uri: `${appUrl}/api/platforms/callback/tiktok`,

@@ -1,0 +1,85 @@
+{
+  "feature": "KB-29",
+  "mutations": [
+    {
+      "name": "Refresh stops getting the credentials connect uses",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "  const credentials = await getOAuthAppCredentials(app);\n",
+      "replace": "  const credentials: OAuthAppCredentials | null = null;\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "YouTube refreshes with the global app"
+    },
+    {
+      "name": "YouTube credentials move to env, away from the table connect reads",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/oauth-app-credentials.ts",
+      "find": "  youtube: { kind: 'table' },\n",
+      "replace": "  youtube: {\n    kind: 'env',\n    clientId: 'YOUTUBE_CLIENT_ID',\n    clientSecret: 'YOUTUBE_CLIENT_SECRET',\n  },\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "YouTube refreshes with the global app"
+    },
+    {
+      "name": "An env app counts as configured without its secret",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/oauth-app-credentials.ts",
+      "find": "    return clientId && clientSecret ? { clientId, clientSecret } : null;\n",
+      "replace": "    return clientId ? { clientId, clientSecret: clientSecret ?? '' } : null;\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "names the env variables when an env-backed app is not configured"
+    },
+    {
+      "name": "A missing app deactivates the connection again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "    if (refreshError instanceof AppNotConfiguredError) {\n",
+      "replace": "    if (false && refreshError instanceof AppNotConfiguredError) {\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "leaves the connection active when the app is not configured"
+    },
+    {
+      "name": "A missing app leaves the refresh lock set",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "      await releaseRefreshLock(connectionId);\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "leaves the connection active when the app is not configured"
+    },
+    {
+      "name": "A callback reads its app credentials from env directly again",
+      "kind": "unit",
+      "file": "apps/web/app/api/platforms/callback/tiktok/route.ts",
+      "find": "  const credentials = await getOAuthAppCredentials('tiktok');\n",
+      "replace": "  const credentials = process.env.TIKTOK_CLIENT_SECRET\n    ? { clientId: process.env.TIKTOK_CLIENT_KEY!, clientSecret: process.env.TIKTOK_CLIENT_SECRET }\n    : await getOAuthAppCredentials('tiktok');\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/oauth-app-credentials-single-source.test.ts",
+      "pattern": "no other file names an app credential env variable"
+    },
+    {
+      "name": "The admin list reads the client secret again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/global-oauth-actions.ts",
+      "find": "    .select('id, platform, client_id, created_at, updated_at')\n",
+      "replace": "    .select('id, platform, client_id, client_secret_encrypted, created_at, updated_at')\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/oauth-app-credentials-single-source.test.ts",
+      "pattern": "no other file reads a client secret from the database"
+    },
+    {
+      "name": "The OAuth app list and the connect-failure list drift apart",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/apps.ts",
+      "find": "  'twitter',\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/connect-failure.test.ts",
+      "pattern": "names exactly the OAuth apps the credential resolver serves"
+    }
+  ]
+}
