@@ -87,7 +87,13 @@ vi.mock('../src/providers/youtube/youtube-reporting', () => ({
       }),
       listReports: async (jobId: string, createdAfter?: string) =>
         (ours ? (state.reports.get(jobId) ?? []) : [])
-          .filter((r) => !createdAfter || r.createTime > createdAfter)
+          // Instants, not strings: the watermark comes back from Postgres
+          // as `…+00:00`, the fixtures say `…Z`.
+          .filter(
+            (r) =>
+              !createdAfter ||
+              Date.parse(r.createTime) > Date.parse(createdAfter),
+          )
           .map((r) => ({ ...r, startTime: '', endTime: '' })),
       downloadReport: async (url: string) => state.files.get(url) ?? '',
     };
@@ -245,20 +251,25 @@ describe.skipIf(!process.env.REPORT_INGEST_LOCAL_STACK)(
       );
     });
 
+    // Within one run the ingest walks jobs in registry order, so the order
+    // two reports land in is set by which run collects each — as it is in
+    // production, where they are generated hours apart.
     it('keeps the core residual when the reach report lands second', async () => {
       deliver('channel_basic_a3', fixture('channel_basic_a3'));
+      const first = await runReportingIngestJob();
+
       deliver(
         'channel_reach_combined_a1',
         fixture('channel_reach_combined_a1'),
       );
+      const second = await runReportingIngestJob();
 
-      const result = await runReportingIngestJob();
       const got = await readBack();
 
       // eslint-disable-next-line no-console
       console.table({ 'basic → reach': got, expected: EXPECTED });
 
-      expect(result.errors).toEqual([]);
+      expect([...first.errors, ...second.errors]).toEqual([]);
       expect(got).toEqual(EXPECTED);
     });
 
@@ -267,9 +278,11 @@ describe.skipIf(!process.env.REPORT_INGEST_LOCAL_STACK)(
         'channel_reach_combined_a1',
         fixture('channel_reach_combined_a1'),
       );
-      deliver('channel_basic_a3', fixture('channel_basic_a3'));
-
       await runReportingIngestJob();
+
+      deliver('channel_basic_a3', fixture('channel_basic_a3'));
+      await runReportingIngestJob();
+
       const got = await readBack();
 
       // eslint-disable-next-line no-console

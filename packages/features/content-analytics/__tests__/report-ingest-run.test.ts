@@ -185,7 +185,9 @@ vi.mock('../src/providers/youtube/youtube-reporting', () => ({
     // exactly the watermark is not listed again.
     listReports: async (jobId: string, createdAfter?: string) =>
       (vendor.reports.get(jobId) ?? []).filter(
-        (report) => !createdAfter || report.createTime > createdAfter,
+        (report) =>
+          !createdAfter ||
+          Date.parse(report.createTime) > Date.parse(createdAfter),
       ),
     downloadReport: async (url: string) => {
       vendor.downloads.push(url);
