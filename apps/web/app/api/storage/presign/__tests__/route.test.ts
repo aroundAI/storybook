@@ -2,7 +2,10 @@ import { NextRequest } from 'next/server';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { sanitizeFilename } from '@kit/assets/upload-validation';
+import {
+  UPLOAD_CONSTRAINTS,
+  sanitizeFilename,
+} from '@kit/assets/upload-validation';
 import { EXPORT_UPLOAD_BUCKET } from '@kit/edit-suite/export-upload';
 import { R2StorageAdapter } from '@kit/storage';
 
@@ -85,6 +88,7 @@ const coverUpload = {
   bucket: 'project-assets',
   path: `projects/${PROJECT}/assets/covers/cover-1.png`,
   contentType: 'image/png',
+  size: 184_320,
 };
 
 // The export dialog's exact bucket expression and path
@@ -93,6 +97,7 @@ const exportUpload = {
   bucket: EXPORT_UPLOAD_BUCKET,
   path: `projects/${PROJECT}/assets/master_video/export_en_1790000000000.mp4`,
   contentType: 'video/mp4',
+  size: 52_428_800,
 };
 
 function asWriter(canWrite: boolean) {
@@ -150,6 +155,21 @@ describe('POST /api/storage/presign — Supabase provider', () => {
       'project-assets',
       coverUpload.path,
     );
+    await expect(res.json()).resolves.toMatchObject({
+      headers: { 'Content-Type': 'image/png' },
+    });
+  });
+
+  it('caps the declared size on this provider too', async () => {
+    asWriter(true);
+
+    const res = await presign({ ...coverUpload, size: 12 * 1024 * 1024 });
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({
+      error: 'File is 12 MB; images may be at most 10 MB',
+    });
+    expect(mockCreateSignedUploadUrl).not.toHaveBeenCalled();
   });
 
   it('refuses a bucket the app does not upload to', async () => {
@@ -189,6 +209,7 @@ describe('POST /api/storage/presign — Supabase provider', () => {
       bucket: 'project-assets',
       path: `projects/${PROJECT}/assets/audio/track.mp3`,
       contentType: 'audio/mpeg',
+      size: 4_000_000,
     };
 
     asWriter(true);
@@ -208,6 +229,7 @@ describe('POST /api/storage/presign — Supabase provider', () => {
       bucket: 'project-assets',
       path: `projects/${PROJECT}/shots/${SHOT}/video/${name}`,
       contentType: 'video/mp4',
+      size: 10_000_000,
     });
 
     expect(res.status).toBe(200);
@@ -263,11 +285,12 @@ describe('POST /api/storage/presign — R2 provider', () => {
 
     signR2 = vi
       .spyOn(R2StorageAdapter.prototype, 'getSignedUploadUrl')
-      .mockResolvedValue({
+      .mockImplementation(async (_bucket, _path, request) => ({
         uploadUrl: 'https://r2.test/signed',
         publicUrl: 'https://r2.test/public',
         expiresIn: 900,
-      });
+        headers: { 'Content-Type': request.contentType },
+      }));
   });
 
   it('refuses a public-project reader before the R2 signer is reached', async () => {
@@ -303,12 +326,11 @@ describe('POST /api/storage/presign — R2 provider', () => {
     const res = await presign(coverUpload);
 
     expect(res.status).toBe(200);
-    expect(signR2).toHaveBeenCalledWith(
-      'project-assets',
-      coverUpload.path,
-      'image/png',
-      900,
-    );
+    expect(signR2).toHaveBeenCalledWith('project-assets', coverUpload.path, {
+      contentType: 'image/png',
+      contentLength: coverUpload.size,
+      expiresIn: 900,
+    });
     expect(mockCreateSignedUploadUrl).not.toHaveBeenCalled();
   });
 
@@ -321,8 +343,86 @@ describe('POST /api/storage/presign — R2 provider', () => {
     expect(signR2).toHaveBeenCalledWith(
       EXPORT_UPLOAD_BUCKET,
       exportUpload.path,
-      'video/mp4',
-      900,
+      {
+        contentType: 'video/mp4',
+        contentLength: exportUpload.size,
+        expiresIn: 900,
+      },
     );
   });
+
+  // KB-38: the URL binds a type and an exact length, so both must be the
+  // ones the route checked.
+  it('signs the lower-cased type it checked, and returns the headers to send', async () => {
+    asWriter(true);
+
+    const res = await presign({ ...coverUpload, contentType: 'IMAGE/PNG' });
+
+    expect(res.status).toBe(200);
+    expect(signR2).toHaveBeenCalledWith('project-assets', coverUpload.path, {
+      contentType: 'image/png',
+      contentLength: coverUpload.size,
+      expiresIn: 900,
+    });
+    await expect(res.json()).resolves.toMatchObject({
+      uploadUrl: 'https://r2.test/signed',
+      headers: { 'Content-Type': 'image/png' },
+    });
+  });
+
+  it('refuses a missing size before the R2 signer is reached', async () => {
+    asWriter(true);
+
+    const { size: _size, ...withoutSize } = coverUpload;
+    const res = await presign(withoutSize);
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({
+      error: 'Missing required fields: bucket, path, contentType, size',
+    });
+    expect(signR2).not.toHaveBeenCalled();
+  });
+
+  it.each([0, -1, 1.5, '1000'])(
+    'refuses a size of %j',
+    async (size) => {
+      asWriter(true);
+
+      const res = await presign({ ...coverUpload, size });
+
+      expect(res.status).toBe(400);
+      expect(signR2).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['image', 'image/png', UPLOAD_CONSTRAINTS.image.maxSize, 'images may be at most 10 MB'],
+    ['video', 'video/mp4', UPLOAD_CONSTRAINTS.video.maxSize, 'videos may be at most 500 MB'],
+    ['audio', 'audio/mpeg', UPLOAD_CONSTRAINTS.audio.maxSize, 'audio files may be at most 50 MB'],
+  ])(
+    'signs %s at exactly its ceiling and refuses one byte more',
+    async (_category, contentType, maxSize, message) => {
+      asWriter(true);
+
+      const atMax = await presign({ ...coverUpload, contentType, size: maxSize });
+      expect(atMax.status).toBe(200);
+      expect(signR2).toHaveBeenLastCalledWith(
+        'project-assets',
+        coverUpload.path,
+        { contentType, contentLength: maxSize, expiresIn: 900 },
+      );
+
+      signR2.mockClear();
+
+      const over = await presign({
+        ...coverUpload,
+        contentType,
+        size: maxSize + 1,
+      });
+      expect(over.status).toBe(400);
+      const { error } = (await over.json()) as { error: string };
+      expect(error).toContain(message);
+      expect(signR2).not.toHaveBeenCalled();
+    },
+  );
 });

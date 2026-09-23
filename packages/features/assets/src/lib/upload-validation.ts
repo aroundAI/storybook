@@ -61,6 +61,25 @@ export const ALLOWED_PROJECT_ASSET_TYPES: readonly string[] = [
 ];
 
 /**
+ * The category whose limits apply to a MIME type, or null if no category
+ * lists it. The presign route uses it to cap the size an upload URL is signed
+ * for (KB-38).
+ */
+export function uploadCategoryForType(
+  contentType: string,
+): UploadCategory | null {
+  const categories = Object.keys(UPLOAD_CONSTRAINTS) as UploadCategory[];
+
+  return (
+    categories.find((category) =>
+      (UPLOAD_CONSTRAINTS[category].allowedTypes as readonly string[]).includes(
+        contentType,
+      ),
+    ) ?? null
+  );
+}
+
+/**
  * Validation error codes
  */
 export type ValidationErrorCode =

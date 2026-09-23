@@ -5,22 +5,32 @@
  * Lambda payload limit.
  *
  * POST /api/storage/presign
- * Body: { bucket, path, contentType, expiresIn? }
+ * Body: { bucket, path, contentType, size, expiresIn? }
  *
- * Returns: { uploadUrl, publicUrl, expiresIn }
+ * Returns: { uploadUrl, publicUrl, expiresIn, headers }
  *
  * This route is the write gate for every provider. On Supabase the bucket
  * policies check the same rule again when the URL is signed; on R2 nothing
  * else checks it, because an R2 presigned URL is signed with the app's own
- * credentials (KB-28). Binding the content length into the R2 signature is
- * KB-38.
+ * credentials (KB-28).
+ *
+ * On R2 the URL is signed for the declared type and exact byte count
+ * (KB-38), so the storage refuses a PUT that sends anything else. The PUT
+ * must carry `headers` exactly; the browser sets Content-Length from the
+ * body, which must be `size` bytes. On Supabase the bucket's own type and
+ * size limits apply to the PUT instead.
  */
 import { NextRequest, NextResponse } from 'next/server';
 
 import { z } from 'zod';
 
 import { PROJECT_ASSETS_BUCKET } from '@kit/assets/lib';
-import { ALLOWED_PROJECT_ASSET_TYPES } from '@kit/assets/upload-validation';
+import {
+  ALLOWED_PROJECT_ASSET_TYPES,
+  UPLOAD_CONSTRAINTS,
+  type UploadCategory,
+  uploadCategoryForType,
+} from '@kit/assets/upload-validation';
 import { EXPORT_UPLOAD_BUCKET } from '@kit/edit-suite/export-upload';
 import { getLogger } from '@kit/shared/logger';
 import { getStorageAdapter } from '@kit/storage';
@@ -57,8 +67,22 @@ const PresignRequestSchema = z.object({
   bucket: z.string().min(1),
   path: z.string().min(1),
   contentType: z.string().min(1),
+  /** Exact byte length of the body the PUT will send (KB-38) */
+  size: z.number().int().positive(),
   expiresIn: z.number().optional(),
 });
+
+const CATEGORY_NOUN: Record<UploadCategory, string> = {
+  image: 'images',
+  video: 'videos',
+  audio: 'audio files',
+};
+
+function megabytes(bytes: number) {
+  const mb = bytes / (1024 * 1024);
+
+  return Number.isInteger(mb) ? String(mb) : mb.toFixed(1);
+}
 
 export async function POST(request: NextRequest) {
   const logger = await getLogger();
@@ -77,14 +101,18 @@ export async function POST(request: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Missing required fields: bucket, path, contentType' },
+        { error: 'Missing required fields: bucket, path, contentType, size' },
         { status: 400 },
       );
     }
 
-    const { bucket, path, contentType, expiresIn } = parsed.data;
+    const { bucket, path, size, expiresIn } = parsed.data;
+    const contentType = parsed.data.contentType.toLowerCase();
     const refuse = (reason: string, error: string, status: number) => {
-      logger.warn({ userId: user.id, bucket, path, reason }, 'Presign refused');
+      logger.warn(
+        { userId: user.id, bucket, path, contentType, size, reason },
+        'Presign refused',
+      );
       return NextResponse.json({ error }, { status });
     };
 
@@ -96,8 +124,20 @@ export async function POST(request: NextRequest) {
       return refuse('path', 'Invalid storage path format', 400);
     }
 
-    if (!ALLOWED_PROJECT_ASSET_TYPES.includes(contentType.toLowerCase())) {
+    const category = uploadCategoryForType(contentType);
+
+    if (!ALLOWED_PROJECT_ASSET_TYPES.includes(contentType) || !category) {
       return refuse('type', `Content type not allowed: ${contentType}`, 400);
+    }
+
+    const maxSize = UPLOAD_CONSTRAINTS[category].maxSize;
+
+    if (size > maxSize) {
+      return refuse(
+        'size',
+        `File is ${megabytes(size)} MB; ${CATEGORY_NOUN[category]} may be at most ${megabytes(maxSize)} MB`,
+        400,
+      );
     }
 
     // The same rule the project-assets bucket policies apply: owner, admin
@@ -127,17 +167,17 @@ export async function POST(request: NextRequest) {
 
     const storage = getStorageAdapter(client);
 
-    const result = await storage.getSignedUploadUrl(
-      bucket,
-      path,
+    const result = await storage.getSignedUploadUrl(bucket, path, {
       contentType,
-      exp,
-    );
+      contentLength: size,
+      expiresIn: exp,
+    });
 
     return NextResponse.json({
       uploadUrl: result.uploadUrl,
       publicUrl: result.publicUrl,
       expiresIn: result.expiresIn,
+      headers: result.headers,
     });
   } catch (error) {
     logger.error({ error }, 'Presign URL error');
