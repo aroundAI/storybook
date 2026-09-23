@@ -178,10 +178,9 @@ async function DataDeletionPage() {
                   4).
                 </li>
                 <li>
-                  It does not yet remove the per-video statistics described in
-                  section 1, which are held in a separate analytics store. Email{' '}
-                  <ContactLink email={contactEmail} /> and we will delete them
-                  as described in section 1.
+                  Within 7 calendar days it also removes the per-video
+                  statistics described in section 1, which are held in a
+                  separate analytics store.
                 </li>
                 <li>
                   If deleting fails, or you can no longer sign in, email us and

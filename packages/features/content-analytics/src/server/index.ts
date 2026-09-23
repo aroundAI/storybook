@@ -213,6 +213,8 @@ export type {
 
 export { captureSubscriberSnapshots } from './subscriber-snapshot';
 export type { SubscriberCaptureResult } from './subscriber-snapshot';
+export { runVendorDataPurges } from './vendor-data-purge';
+export type { VendorDataPurgeRunResult } from './vendor-data-purge';
 export { getSubscriberSeriesAction } from './subscriber-series-actions';
 // From its source, not the action module: in a 'use server' file every
 // export is compiled as a runtime binding, and a type has none.
