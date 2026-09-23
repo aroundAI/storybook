@@ -1477,9 +1477,7 @@ that should not need to exist.
 **Severity:** High — a cross-tenant read of text a creator uploaded as their own
 research. No one is exposed today only because the owner is the only account;
 fixing it is a precondition before a second one. **Found:** the spec audit of
-FILM-1135 (2026-09-23); reproduced by the coordinator. **Fixed** in the PR
-that adds this entry (stacked on KB-28's `can_write_project`); see *Fixed*
-below.
+FILM-1135 (2026-09-23); reproduced by the coordinator. **Open.**
 
 `external_content` holds both the shared news/research cache and every user
 upload — `uploadSourceAction`
@@ -1538,55 +1536,9 @@ Rolled back.
 
 ### Acceptance criteria
 
-- [x] pgTAP, red first: a user in another account cannot read an uploaded source's content; a member of the uploading account can; shared news rows stay readable (`research-uploads-rls.test.sql`, 22 cases; 11 fail with main's policies restored)
-- [x] Two accounts uploading a source with the same name get two sources, neither overwriting the other (pgTAP; E2E `research/research-sources.spec.ts`)
-- [x] Every `using (true)` policy granted to `authenticated` is listed, with a decision beside each (table below)
-
-### Fixed
-
-Plan: `specs/plans/KB-26-edd.md`.
-
-- **Owner.** `external_content` and `external_sources` gain `project_id`
-  (FK to projects, delete cascade). `external_content` gains `is_upload`, and
-  `project_id is not null ⇒ is_upload`.
-- **Read rule.** An upload is readable only by an owner, admin or member row
-  in `project_members` (`can_write_project`, KB-28). Membership of the account
-  alone is not enough, and neither is a public or unlisted project, which every
-  signed-in user can read. Shared cache rows stay readable by every signed-in
-  user.
-- **Old uploads.** Uploads made before the fix record no owner. They are
-  hidden, not deleted, until the owner reattaches them (runbook in the PR).
-- **Slugs.** Source slugs are unique per project
-  (`unique nulls not distinct (project_id, slug)`), so "Reuters" uploaded into
-  a project no longer rewrites the shared one.
-- **Write paths.** These need `can_write_project` before any write or queued
-  job: `uploadSourceContentAction`, `extractFactsFromContentAction` (same
-  class) and `POST /api/research/upload` (same read-means-write flaw, found by
-  KB-28). Both actions return refusals as values.
-- **Aggregator.** The process-wide aggregator loads shared sources only.
-- **Hub.** The hub lists shared sources plus the current project's. The
-  sidebar's research-source count, which had been failing on the missing
-  `project_id` column, now counts the project's uploads.
-
-**Not fixed here:**
-- Registry writes by an owner of *any* account (`requireAccountOwner`,
-  `external-context-actions.ts:215`) are **KB-37**.
-- Story ideation billed to the caller's first membership (`story-actions.ts`,
-  `bulk-actions.ts`) is **KB-31**, acceptance 3.
-
-**Every policy granted to signed-in users (or `public`) whose condition is
-literally `true`**, measured on the migrated local database with `pg_policies`.
-The probe also matched conditions that test only a flag column, such as the
-old `is_active = true`; none remain.
-
-| Table | Policy | Account-scoped data? | Decision |
-|---|---|---|---|
-| `external_content` | Authenticated users can view content | yes: uploads | **Replaced** by `external_content_read` (this fix) |
-| `external_sources` | Anyone can view active sources (`is_active = true`) | yes: upload names | **Replaced** by `external_sources_read` (this fix) |
-| `config` | public config can be read by authenticated users | no: one platform-wide row of feature/billing settings | keep |
-| `roles` | roles_read | no: role names and hierarchy | keep |
-| `role_permissions` | role_permissions_read | no: role → permission map | keep |
-| `llm_usage_analytics` | Service role can manage LLM analytics: `FOR ALL`, **no `TO` clause, so `public`**, `using (true) with check (true)` | **yes**: `account_id`, `user_id`, `error_message`, `request_config` | **Fixed — KB-52 (#321).** The policy name says service role, but it applies to every role (`20251212000000_create_llm_usage_analytics.sql:44-47`). Reproduced locally on 2026-09-23 by a signed-in user with no memberships: read another account's row, including `error_message` (1 row); deleted it (HTTP 204, 0 rows left). Anonymous callers are refused at the schema (`42501`) |
+- [ ] pgTAP, red first: a user in another account cannot read an uploaded source's content; a member of the uploading account can; shared news rows stay readable
+- [ ] Two accounts uploading a source with the same name get two sources, neither overwriting the other
+- [ ] Every `using (true)` policy granted to `authenticated` is listed, with a decision beside each
 
 ---
 
@@ -2092,59 +2044,6 @@ every canon string at the tool boundary, as sources are.
 
 - [ ] A thread touched in the previous episode is not reported stale (unit test, seen red first)
 - [ ] Every string the continuity tools return to the model passes `sanitizeForPrompt` (unit test)
-
----
-
-## KB-52 — Any signed-in user can read and delete every account's LLM usage rows
-
-**Severity:** High — a cross-tenant read **and delete**, reproduced.
-**Found:** KB-26's inventory of `using (true)` policies, 2026-09-23. **Fixed** in #321 (see *Fixed*).
-
-`public.llm_usage_analytics` has this policy:
-
-```sql
-create policy "Service role can manage LLM analytics"
-  on public.llm_usage_analytics
-  using (true)
-  with check (true);
--- 20251212000000_create_llm_usage_analytics.sql:44-47
-```
-
-The name says service role, but there is no `TO` clause, so the policy
-applies to `public`, which is every role. It is `FOR ALL`, so every signed-in
-user can select, insert, update and delete every row. The rows expose
-`account_id`, `user_id`, `template_slug`, `llm_provider`, `llm_model`, token
-counts and costs, `error_message`, `request_config` and `response_metadata`.
-
-### Reproduced (local database, 2026-09-23, under the DB lock)
-
-A row was inserted as `postgres` for a seeded team account, with
-`error_message = 'PRIVATE PROMPT TEXT'`. Then a fresh user was created
-through GoTrue, with no memberships in any account, and signed in for a JWT.
-
-| As | Request | Result |
-|---|---|---|
-| the stranger | `GET /rest/v1/llm_usage_analytics?template_slug=eq.kb26-probe&select=account_id,error_message` | **1 row**: the other account's `account_id`, `PRIVATE PROMPT TEXT` |
-| the stranger | `DELETE /rest/v1/llm_usage_analytics?template_slug=eq.kb26-probe` | **HTTP 204**; 0 rows left |
-| anon (no JWT) | `GET /rest/v1/llm_usage_analytics?select=account_id&limit=1` | `42501 permission denied for schema public` |
-
-### Proposed fix
-
-- Give the manage policy `TO service_role`. Logging writes through the admin
-  client, so nothing else needs to write.
-- Replace the read policy with a member-scoped SELECT (for example
-  `public.has_role_on_account(account_id)`, plus the personal-account owner),
-  or super admins only if the table is meant as a platform view. The current
-  "Admins can view all LLM analytics" is
-  `exists (select 1 from public.accounts where id = llm_usage_analytics.account_id)`.
-  It checks no role at all, so it admits **anyone who can see the account**,
-  which includes every signed-in user for an account whose profile is public.
-- pgTAP, red first, run as real roles.
-
-### Acceptance criteria
-
-- [ ] pgTAP, red first: a user of another account can neither read nor delete a row; a member of the row's account can read it; the service role can still write
-- [ ] The read rule is stated beside the policy, and every reader of the table is checked against it
 
 ---
 
