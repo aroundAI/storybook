@@ -1557,7 +1557,9 @@ be overwritten or deleted (those policies are scoped), but new ones can be
 planted under another project's path on a **public** bucket, with no size
 limit. **Found:** the spec audit of FILM-203 (2026-09-23); the policy read
 from the live local database and the insert reproduced by the coordinator.
-**Open.**
+**Fixed** in #313: one project-write rule (`can_write_project`) on every
+`project-assets` write verb and in the presign route, bucket type and size
+limits, the cover-image function guarded, the orphaned routes deleted.
 
 Live policies on `storage.objects` for the `project-assets` bucket (public,
 `file_size_limit` none):
@@ -1600,10 +1602,10 @@ session. Rolled back.
 
 ### Acceptance criteria
 
-- [ ] pgTAP, red first: a non-member's insert into another project's path is refused; a member's insert succeeds
-- [ ] The presign route refuses a user who can read a public project but has no role on it — test red first
-- [ ] Size and type are enforced server-side or by the bucket, not only in the browser
-- [ ] The orphaned upload route is gone
+- [x] pgTAP, red first: a non-member's insert into another project's path is refused; a member's insert succeeds
+- [x] The presign route refuses a user who can read a public project but has no role on it — test red first
+- [x] Size and type are enforced server-side or by the bucket, not only in the browser (on R2, size is KB-38)
+- [x] The orphaned upload route is gone
 
 ---
 
@@ -1942,6 +1944,7 @@ the prompt.
 | KB-16 | The Overview tab drew figures nobody measured: a fixed share donut, a 70/30 revenue split, canned footers, +100% beside every metric | #300 |
 | KB-19 | A failed platform connect landed on a 404 and logged nothing | #297 |
 | KB-29 | Token refresh read app credentials from a table nothing had written since 2026-01-21, so connections died at their first expiry; LinkedIn could never refresh | #310 |
+| KB-28 | Any signed-in user could upload into any project's storage folder, and owners could not replace or delete their own files | #313 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
 
