@@ -15,7 +15,7 @@
     "revokeAsks": "We'll also ask {{platform}} to revoke our access.",
     "revokeNotYet": "We don't yet ask {{platform}} to revoke our access — remove it in {{platform}}'s settings too.",
     "kept": "Kept: your record of what was published, revenue you entered, tags, experiments and channel targets. Reconnect this channel and they're attached again.",
-    "vendorDataYouTube": "YouTube's policies require us to delete the statistics we collected from YouTube for this channel. We delete them within 7 days — normally within the hour. If you reconnect, we collect them again from YouTube.",
+    "vendorDataYouTube": "YouTube's policies require us to delete the statistics we collected from YouTube for this channel. We delete them within 7 days. If you reconnect, we collect them again from YouTube.",
     "vendorDataKept": "Statistics already collected from {{platform}} are kept until you ask us to delete them.",
     "howToAsk": "How to ask",
     "linked": "{{linkedName}} is connected through the same Facebook login and is disconnected with it.",
@@ -23,9 +23,7 @@
     "scheduled_other": "{{count}} scheduled posts on this channel won't go out unless you reconnect before their time."
   },
   "disconnected": {
-    "since": "Disconnected on {{date}}. Your records from this channel are kept.",
-    "statisticsDeleted": "Statistics collected from {{platform}} were deleted on {{date}}.",
-    "statisticsDue": "Statistics collected from {{platform}} will be deleted by {{date}}."
+    "since": "Disconnected on {{date}}. Your records from this channel are kept."
   },
   "disconnectToast": {
     "done": "Disconnected {{accountName}}. Your records are kept.",

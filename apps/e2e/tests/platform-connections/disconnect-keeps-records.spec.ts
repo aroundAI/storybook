@@ -5,12 +5,6 @@ import { type Server, createServer } from 'node:http';
 
 import { daysAgo } from '../revenue/revenue-currency.po';
 import {
-  countClickHouse,
-  insertClickHouse,
-  seedVideoDim,
-  seedVideoMetrics,
-} from '../utils/clickhouse';
-import {
   SeededTeam,
   deleteRows,
   insertRow,
@@ -21,7 +15,6 @@ import {
   seedTeamAccount,
   seedYouTubeConnection,
   serviceRoleAuth,
-  updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
 
@@ -61,7 +54,6 @@ async function capture(page: Page, name: string) {
 
 interface Fixture {
   team: SeededTeam;
-  projectId: string;
   connectionId: string;
   channelId: string;
   publishId: string;
@@ -113,7 +105,7 @@ async function seedChannelWithHistory(page: Page): Promise<Fixture> {
 
   await signInAs(page, team);
 
-  return { team, projectId: project.id, connectionId, channelId, publishId };
+  return { team, connectionId, channelId, publishId };
 }
 
 function row(page: Page, connectionId: string) {
@@ -220,12 +212,6 @@ test.describe('Disconnecting a platform keeps the creator’s records (KB-22)', 
         '[data-test="reconnect-connection"]',
       ),
     ).toBeVisible();
-    // Part B: the YouTube purge is queued, and the row says by when.
-    await expect(
-      row(page, fixture.connectionId).locator(
-        '[data-test="vendor-data-purge"]',
-      ),
-    ).toHaveAttribute('data-state', 'due');
     await capture(page, '02-row-disconnected');
 
     const record = await connectionRecord(fixture.connectionId);
@@ -251,138 +237,6 @@ test.describe('Disconnecting a platform keeps the creator’s records (KB-22)', 
 
     expect(await revenueTotal(page, fixture.team)).toBe(before);
     await capture(page, '03-revenue-after-disconnect');
-  });
-
-  /**
-   * Part B, through the job's real route. Needs the server's CRON_SECRET in
-   * this run's environment; CI's E2E job does not set one, so there this
-   * skips and the job is covered by its unit tests, pgTAP and verify:purge.
-   */
-  test('the purge deletes what YouTube gave us and keeps what the creator typed in', async ({
-    page,
-  }) => {
-    test.skip(
-      !process.env.CRON_SECRET,
-      'Needs CRON_SECRET to call the cron route',
-    );
-
-    const fixture = await seedChannelWithHistory(page);
-    // With a server that reads the local ClickHouse, the statistics the
-    // purge must delete are there to delete (CLICKHOUSE_EVIDENCE, as the
-    // other evidence specs). Without, the job records `clickhouse: disabled`.
-    const withClickHouse = Boolean(process.env.CLICKHOUSE_EVIDENCE);
-    const inClickHouse = async () => ({
-      video_dim: await countClickHouse(
-        'video_dim',
-        `video_id = '${fixture.publishId}'`,
-      ),
-      video_metrics: await countClickHouse(
-        'video_metrics',
-        `video_id = '${fixture.publishId}'`,
-      ),
-      channel_daily: await countClickHouse(
-        'channel_daily',
-        `connection_id = '${fixture.connectionId}'`,
-      ),
-    });
-
-    if (withClickHouse) {
-      const video = {
-        videoId: fixture.publishId,
-        projectId: fixture.projectId,
-        accountId: fixture.team.accountId,
-        connectionId: fixture.connectionId,
-        title: 'Sponsored video',
-        publishedAt: new Date(Date.now() - 10 * 86_400_000),
-      };
-
-      await seedVideoDim(video);
-      await seedVideoMetrics(video, [{ ageDays: 1, views: 500 }]);
-      await insertClickHouse('channel_daily', [
-        {
-          connection_id: fixture.connectionId,
-          metric_date: daysAgo(2),
-          views: 500,
-          watch_time_seconds: 0,
-          engaged_views: 0,
-          impressions: 0,
-        },
-      ]);
-
-      expect(await inClickHouse()).toEqual({
-        video_dim: 1,
-        video_metrics: 1,
-        channel_daily: 1,
-      });
-    }
-
-    await openPlatforms(page, fixture.team);
-    await (await disconnect(page, fixture.connectionId))
-      .locator('[data-test="confirm-disconnect"]')
-      .click();
-    await expect(row(page, fixture.connectionId)).toHaveAttribute(
-      'data-status',
-      'disconnected',
-    );
-
-    // The purge waits an hour for in-flight syncs; the test does not.
-    await updateRows(
-      'vendor_data_purges',
-      `connection_id=eq.${fixture.connectionId}`,
-      { run_after: new Date().toISOString() },
-    );
-
-    const response = await page.request.get('/api/cron/vendor-data-purge', {
-      headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` },
-    });
-
-    expect(response.ok()).toBe(true);
-
-    const [purge] = await readRows<{
-      completed_at: string | null;
-      last_error: string | null;
-      result: {
-        postgres: { revenue_records_api: number };
-        clickhouse: 'disabled' | { status: 'deleted' };
-      };
-    }>(
-      'vendor_data_purges',
-      `connection_id=eq.${fixture.connectionId}&select=completed_at,last_error,result`,
-    );
-
-    expect(purge?.last_error).toBeNull();
-    expect(purge?.completed_at).not.toBeNull();
-    expect(purge?.result.postgres.revenue_records_api).toBe(1);
-
-    if (withClickHouse) {
-      expect(purge?.result.clickhouse).toMatchObject({ status: 'deleted' });
-      expect(await inClickHouse()).toEqual({
-        video_dim: 0,
-        video_metrics: 0,
-        channel_daily: 0,
-      });
-    } else {
-      expect(purge?.result.clickhouse).toBe('disabled');
-    }
-
-    await openPlatforms(page, fixture.team);
-    await expect(
-      row(page, fixture.connectionId).locator(
-        '[data-test="vendor-data-purge"]',
-      ),
-    ).toHaveAttribute('data-state', 'deleted');
-    await capture(page, '08-row-statistics-deleted');
-
-    const revenue = await readRows<{ source: string; revenue_cents: number }>(
-      'revenue_records',
-      `publish_id=eq.${fixture.publishId}&select=source,revenue_cents`,
-    );
-
-    expect(revenue).toEqual([{ source: 'manual', revenue_cents: 5_000 }]);
-
-    // $62 before: the $12.34 YouTube reported is gone, the $50.00 typed in stays.
-    expect(await revenueTotal(page, fixture.team)).toBe('$50');
-    await capture(page, '09-revenue-after-purge');
   });
 
   test('a platform whose statistics are kept says so, and links to how to ask', async ({

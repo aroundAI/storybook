@@ -53,11 +53,6 @@ export const getConnectionsAction = enhanceAction(
     }
 
     const followerCounts = await resolveFollowerCounts(connections ?? []);
-    const purges = await latestVendorDataPurges(
-      (connections ?? [])
-        .filter((conn) => conn.disconnected_at)
-        .map((conn) => conn.id),
-    );
 
     return (
       connections?.map((conn) => {
@@ -91,7 +86,6 @@ export const getConnectionsAction = enhanceAction(
           }),
           tokenExpiresAt: conn.token_expires_at,
           disconnectedAt: conn.disconnected_at ?? null,
-          vendorDataPurge: purges.get(conn.id),
           linkedAccountName: linkedMetaAccountName(conn, connections ?? []),
           createdAt: conn.created_at,
           updatedAt: conn.updated_at,
@@ -329,43 +323,6 @@ function determineStatus(connection: DBPlatformConnection): ConnectionStatus {
   }
 
   return 'active';
-}
-
-/**
- * The latest vendor-data purge of each disconnected connection (KB-22 part
- * B), for the Settings row: when the platform's statistics were, or will be,
- * deleted. Read through the user's client — members may read their own
- * account's purges.
- */
-async function latestVendorDataPurges(connectionIds: string[]) {
-  const latest = new Map<
-    string,
-    { completedAt: string | null; dueBy: string }
-  >();
-
-  if (connectionIds.length === 0) return latest;
-
-  const client = getSupabaseServerClient();
-  const { data, error } = await client
-    .from('vendor_data_purges')
-    .select('connection_id, completed_at, due_by, requested_at')
-    .in('connection_id', connectionIds)
-    .order('requested_at', { ascending: false });
-
-  if (error) {
-    throw new Error('Failed to fetch vendor data purges');
-  }
-
-  for (const purge of data ?? []) {
-    if (!latest.has(purge.connection_id)) {
-      latest.set(purge.connection_id, {
-        completedAt: purge.completed_at,
-        dueBy: purge.due_by,
-      });
-    }
-  }
-
-  return latest;
 }
 
 /**

@@ -1159,7 +1159,7 @@ not implement. Item 3 exists so that items 1–2 never have to.
 - [x] Privacy policy carries the three YouTube-required items — each cited to the policy text in #294 (§III.A.1, §III.A.2.c, §III.A.2.i)
 - [x] Owner has decided what disconnect deletes (2026-09-22: keep until asked; then, on the YouTube conflict, option A — see above)
 - [x] Vendor retention/revocation clauses quoted and cited for YouTube and Meta; TikTok **[not verified]** (its terms were unreachable from this network); the conflict was brought to the owner and decided
-- [x] Item 3: after a disconnect (or on request), vendor-sourced rows for that connection are gone from ClickHouse and Postgres within the stated window; manual entries untouched — pgTAP/ClickHouse test with seeded rows, red first — **KB-22 part B (#322)**: the `vendor_data_purges` queue and the hourly `vendor-data-purge` job; a YouTube in-app disconnect and an account deletion queue themselves, a request is one insert (runbook B). The 30-day case (revoked at Google / token that cannot be renewed) stays manual until KB-29's fix has run long enough to trust (owner decision D5)
+- [ ] Item 3: after a disconnect (or on request), vendor-sourced rows for that connection are gone from ClickHouse and Postgres within the stated window; manual entries untouched — pgTAP/ClickHouse test with seeded rows, red first. **Precondition before a second account**; until then the YouTube windows are met by hand (`docs/data-deletion-runbook.md`)
 - [x] Runbook (#289) updated in #294: both blockers marked resolved, the URLs to paste kept in each vendor's form table
 
 ---
@@ -1218,9 +1218,9 @@ point** (standing owner rule). Every proof is local.
 click, behind a dialog that describes something else. **Found:** KB-20's
 drafting (2026-09-22), when "what does disconnect remove?" turned out to have
 an answer nobody had written down. It also corrects KB-20, whose first version
-asserted the opposite. **Fixed — #317 (disconnect keeps the row and every
-record under it) and #322 (the vendor-data deletion job, KB-20 item 3).**
-Design: `specs/plans/KB-22-edd.md`.
+asserted the opposite. **Fixed in part — PR A (#317): disconnect keeps the
+row and every record under it; the vendor-data deletion job (KB-20 item 3) is
+PR B, stacked on it.** Design: `specs/plans/KB-22-edd.md`.
 
 The disconnect dialog says, in full (`platforms:disconnectDescription`):
 *"This will remove access to {{accountName}}. You won't be able to publish to
@@ -1295,8 +1295,8 @@ is about.
 ### Acceptance criteria
 
 - [x] pgTAP, red first: disconnecting leaves `publishes`, manual `revenue_records`, `publish_tags`, `experiment_publishes`, `channel_analytics_settings` intact — `platform-connection-disconnect.test.sql` (also project/episode publishing defaults, manual tasks, an experiment's channel scope; a member's and the service role's direct `DELETE` refused; account deletion still succeeds)
-- [x] Reconnecting the same platform account restores the connection to its publishes; analytics resume without duplicates — pgTAP upsert case; Playwright through the real YouTube callback, same row id (#317); `syncEligibility` treats a reconnected grant as eligible (unit-tested); a purge clears `publishes.metadata.sync`, so the sync re-collects from the publish date into the same ReplacingMergeTree keys (#322, pgTAP)
-- [x] The deletion job removes one connection's vendor rows from every ClickHouse table (the seven `video_*`, `channel_daily`, `channel_subscribers`, and FILM-1504's `channel_reach_daily`) and `source='api'` revenue — and nothing else; tested with two connections seeded side by side, against the real local ClickHouse — `pnpm --filter @kit/clickhouse verify:purge`, `vendor-data-purges.test.sql` (#322)
+- [ ] Reconnecting the same platform account restores the connection to its publishes; analytics resume without duplicates — **restores: done** (pgTAP upsert case; Playwright through the real YouTube callback, same row id). *Resume* is `syncEligibility` treating a reconnected grant as eligible (unit-tested); the re-collection after a YouTube purge is PR B
+- [ ] The deletion job removes one connection's vendor rows from all **nine** ClickHouse tables (the seven `video_*` plus `channel_daily` and `channel_subscribers`) and `source='api'` revenue — and nothing else; tested with two connections seeded side by side, against the real local ClickHouse — **PR B**
 - [x] Dialog copy matches behaviour; Playwright covers disconnect → reconnect, asserting the manual revenue figure is still there **after** reconnect; screenshots in the PR — `disconnect-keeps-records.spec.ts`; the copy's per-platform flags are bound to `REVOKERS` by `revokers.test.ts`
 - [x] No production data or credentials are used to verify any of this — local stack, a generated local `ENCRYPTION_KEY`, fake app credentials, a local stand-in for Google
 
@@ -2024,7 +2024,6 @@ LinkedIn have no revoke at all — KB-25.
 | KB-29 | Token refresh read app credentials from a table nothing had written since 2026-01-21, so connections died at their first expiry; LinkedIn could never refresh | #310 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
-| KB-22 | Disconnecting a platform deleted the creator's own records — manual revenue, tags, experiment membership, YPP targets — through a cascade, behind a dialog that described something else; and the vendor's statistics it should delete were kept for ever | #317, #322 |
 
 ---
 

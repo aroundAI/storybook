@@ -1,10 +1,7 @@
 # Data deletion — the operator's side of `/data-deletion`
 
-`/data-deletion` promises three things. Since KB-22 part B (KB-20 item 3) a
-job does the deleting — the hourly `vendor-data-purge` cron works through
-`public.vendor_data_purges` — and the operator's part is to queue what only a
-person can: a request by email, and (until KB-29 lands) a YouTube token that
-can no longer be renewed.
+`/data-deletion` promises three things, and until KB-20 item 3 automates them
+every one is done by hand by whoever reads `privacy@storybook.digital`:
 
 | Trigger | Window the page promises | Where it comes from |
 |---|---|---|
@@ -13,17 +10,9 @@ can no longer be renewed.
 | Access revoked at Google, or a YouTube token that can no longer be refreshed | **30 calendar days** | III.D / III.E.4 |
 | Any other platform, no request | never — kept until asked | Owner decision, 2026-09-22 (Meta's terms allow it; TikTok's could not be read) |
 
-| Trigger | Who queues the purge | Procedure |
-|---|---|---|
-| Account deleted | the database (`vendor_data_purges_on_delete`) | none — check it ran (below) |
-| YouTube disconnected in the app | the database (`vendor_data_purges_on_disconnect`), runs after 1 hour | none — check it ran |
-| A request by email | **the operator**: one insert | B |
-| YouTube revoked at Google / token cannot be renewed | **the operator**, by hand, until KB-29 lands (owner decision D5) | D |
-
-Each queued row runs within the hour after `run_after` and records what it
-deleted in `result`. A row still open past `due_by` is logged at **error** as
-`vendor-data-purge.overdue` — that line is the breach of the page's promise,
-and the alert to set up.
+Nothing automates any row of this table yet. **Before a second account is
+onboarded, KB-20 item 3 must exist** — the owner being both the only user and
+the operator is what makes "we delete within 7 days" true today.
 
 ## Where the data is
 
@@ -42,20 +31,18 @@ platform deletion: `revenue_records` rows with `source = 'api'` on the
 connection's publishes, and the connection's `youtube_report_jobs`. Rows with
 `source = 'manual'` are the creator's own and are never part of it.
 
-**ClickHouse.** No cascade and no TTL; the purge job
-(`packages/clickhouse/src/purge.ts`) is the only thing that deletes from it,
-and its lists are the authoritative set — `verify:purge` fails if the server
-holds a table they do not name:
+**ClickHouse.** Nine tables, no cascade, no TTL, nothing in the app deletes
+from them:
 
 | Table | Keyed by |
 |---|---|
 | `video_dim` | `video_id`; carries `account_id`, `connection_id`, `platform` |
-| `video_metrics`, `video_snapshots`, `video_reach_daily`, `video_traffic_sources`, `video_audience`, `video_retention_curves` | `video_id` — **the Postgres publish id**, not the platform's video id |
-| `channel_daily`, `channel_subscribers`, `channel_reach_daily` (FILM-1504) | `connection_id` |
+| `video_metrics`, `video_snapshots`, `video_reach_daily`, `video_traffic_sources`, `video_audience`, `video_retention_curves` | `video_id` |
+| `channel_daily`, `channel_subscribers` | `connection_id` |
 
-`video_dim` is the index into the per-video tables: `video_dim.connection_id`
-says which videos were a connection's — including after its account is
-deleted and the Postgres rows are gone.
+`video_dim` is the index into the other seven: `video_dim.connection_id` says
+which videos were a connection's — including after its account is deleted and
+the Postgres rows are gone.
 
 ## Procedures
 
@@ -69,77 +56,78 @@ with `clickhouse-client` or the HTTP interface against the deployment's server.
 1. Postgres: the user deletes their account from Settings → Danger Zone, or you
    do it for them from the admin area. Confirm with
    `select id from public.accounts where id = '<ACCOUNT_ID>';` → no row.
-2. ClickHouse: nothing to run. Deleting the account deleted its connections,
-   and each queued a purge (`reason = 'connection_deleted'`) that the hourly job
-   runs. Check:
+2. ClickHouse, by account:
 
 ```sql
-select connection_id, platform, completed_at, last_error, result
-  from public.vendor_data_purges
- where account_id = '<ACCOUNT_ID>' and reason = 'connection_deleted';
-```
+-- what is there, and which connections it belonged to
+SELECT connection_id, platform, count() AS videos
+FROM video_dim WHERE account_id = '<ACCOUNT_ID>'
+GROUP BY connection_id, platform;
 
-   Every row should have `completed_at` within the hour. As a last resort, if
-   the job cannot run, the statements it issues are in
-   `packages/clickhouse/src/purge.ts` (`purgeStatements`): every per-video
-   table by `video_id IN (the connection's publish ids)`, every per-channel
-   table by `connection_id`, `video_dim` last.
+-- the seven video tables; video_dim goes LAST, it is the index the others use
+ALTER TABLE video_metrics          DELETE WHERE video_id IN (SELECT video_id FROM video_dim WHERE account_id = '<ACCOUNT_ID>');
+ALTER TABLE video_snapshots        DELETE WHERE video_id IN (SELECT video_id FROM video_dim WHERE account_id = '<ACCOUNT_ID>');
+ALTER TABLE video_reach_daily      DELETE WHERE video_id IN (SELECT video_id FROM video_dim WHERE account_id = '<ACCOUNT_ID>');
+ALTER TABLE video_traffic_sources  DELETE WHERE video_id IN (SELECT video_id FROM video_dim WHERE account_id = '<ACCOUNT_ID>');
+ALTER TABLE video_audience         DELETE WHERE video_id IN (SELECT video_id FROM video_dim WHERE account_id = '<ACCOUNT_ID>');
+ALTER TABLE video_retention_curves DELETE WHERE video_id IN (SELECT video_id FROM video_dim WHERE account_id = '<ACCOUNT_ID>');
+-- the two channel tables, one statement per connection_id from the first query
+ALTER TABLE channel_daily       DELETE WHERE connection_id = '<CONNECTION_ID>';
+ALTER TABLE channel_subscribers DELETE WHERE connection_id = '<CONNECTION_ID>';
+-- last
+ALTER TABLE video_dim DELETE WHERE account_id = '<ACCOUNT_ID>';
+```
 
 ### B. "Delete only what you got from <platform>"
 
 1. Find the connection:
-   `select id, account_id, platform, platform_account_name, disconnected_at from public.platform_connections where account_id = '<ACCOUNT_ID>';`
-2. Queue it — the job does the rest within the hour, Postgres and ClickHouse
-   both, and leaves manual entries alone:
+   `select id, platform, platform_account_name, disconnected_at from public.platform_connections where account_id = '<ACCOUNT_ID>';`
+2. Postgres — the vendor's rows only; manual entries stay:
    ```sql
-   insert into public.vendor_data_purges
-     (connection_id, account_id, platform, reason, due_by)
-   values
-     ('<CONNECTION_ID>', '<ACCOUNT_ID>', '<PLATFORM>', 'request', now() + interval '7 days');
+   delete from public.revenue_records r
+    using public.publishes p
+    where p.id = r.publish_id
+      and p.platform_connection_id = '<CONNECTION_ID>'
+      and r.source = 'api';
+   delete from public.youtube_report_jobs where platform_connection_id = '<CONNECTION_ID>';
+   -- so a reconnect collects the history again rather than resuming after it
+   update public.publishes
+      set metadata = metadata - 'sync', duration_seconds = null
+    where platform_connection_id = '<CONNECTION_ID>';
    ```
-   To stop collecting as well, ask the creator to disconnect it (or do it for
-   them): the purge deletes what is held, and a live connection would collect
-   again at the next sync.
+3. ClickHouse: procedure A's statements with `connection_id = '<CONNECTION_ID>'`
+   in place of the `account_id` predicate, `video_dim` last.
 
 ### C. A YouTube connection was disconnected in the app — within 7 days
 
-Nothing to do: the disconnect queued the purge. Check that it ran:
+The connection is still in Postgres, marked disconnected:
 
 ```sql
-select c.platform_account_name, c.disconnected_at, v.completed_at, v.last_error
-  from public.platform_connections c
-  left join public.vendor_data_purges v
-    on v.connection_id = c.id and v.reason = 'in_app_disconnect'
- where c.platform = 'youtube' and c.disconnected_at is not null
- order by c.disconnected_at desc;
+select id, platform_account_name, disconnected_at
+  from public.platform_connections
+ where platform = 'youtube' and disconnected_at is not null;
 ```
 
-A row with no `completed_at` a day after the disconnect means the job is
-failing: `last_error` says why.
+Then procedure B steps 2 and 3 for each id. (Before KB-22 a disconnect had
+already deleted the Postgres rows, manual ones included; it no longer does.)
 
 ### D. Revoked at Google, or the YouTube token can no longer be refreshed — within 30 days
 
 The hourly sync fails for that connection. Disconnect it in the app if it is
-still listed (Settings → Platforms) — which wipes its tokens, keeps the
-creator's records and queues the purge (procedure C). Automating this case is
-deferred until KB-29 lands (owner decision D5): today KB-29's refresh bug
-makes renewals fail for reasons of ours, not the creator's.
+still listed (Settings → Platforms) — which wipes its tokens and keeps the
+creator's records — then procedure C.
 
 ## After every run
 
-The job counts every table back to zero after its deletes and fails the purge
-otherwise, so `completed_at` set with `last_error` null is the proof. Its
-`result` says what went, per table; `clickhouse: "disabled"` means the
-deployment had ClickHouse off, so nothing had been written there.
-
 ```sql
-select requested_at, completed_at, result
-  from public.vendor_data_purges
- where connection_id = '<CONNECTION_ID>'
- order by requested_at desc;
+-- ClickHouse mutations are asynchronous; wait until nothing is pending …
+SELECT table, command, is_done FROM system.mutations WHERE is_done = 0;
+-- … then prove the rows are gone
+SELECT count() FROM video_dim WHERE account_id = '<ACCOUNT_ID>';   -- 0
+SELECT count() FROM channel_daily WHERE connection_id = '<CONNECTION_ID>';   -- 0
 ```
 
-Reply to the requester that it is done. The `vendor_data_purges` row is the
-audit record — date, account, connection, reason and what was deleted — so
-there is nothing else to note. Deleting here changes nothing on the platform itself — the page says so,
+Reply to the requester that it is done, and note the date, the account id,
+which procedure ran and the `system.mutations` ids somewhere the next audit can
+find. Deleting here changes nothing on the platform itself — the page says so,
 and so should the reply.

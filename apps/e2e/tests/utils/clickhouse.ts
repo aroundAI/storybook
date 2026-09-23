@@ -75,13 +75,6 @@ export async function deleteClickHouse(table: string, where: string) {
 }
 
 /** `YYYY-MM-DD HH:MM:SS` in UTC, the format every DateTime column takes. */
-/** `SELECT count()` over one table, for a spec that checks rows are gone. */
-export async function countClickHouse(table: string, where: string) {
-  const text = await run(`SELECT count() FROM ${table} WHERE ${where}`);
-
-  return Number(text.trim());
-}
-
 export function clickHouseDateTime(date: Date) {
   return date.toISOString().slice(0, 19).replace('T', ' ');
 }

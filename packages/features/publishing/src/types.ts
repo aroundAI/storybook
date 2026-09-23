@@ -28,8 +28,6 @@ export interface PlatformConnection {
   tokenExpiresAt: string | null;
   /** When the creator disconnected it in the app (KB-22); null while connected. */
   disconnectedAt?: string | null;
-  /** The latest deletion of its vendor statistics (KB-22 part B), if any. */
-  vendorDataPurge?: { completedAt: string | null; dueBy: string };
   /** The Instagram account or Facebook Page disconnected together with this one. */
   linkedAccountName?: string;
   createdAt: string;
