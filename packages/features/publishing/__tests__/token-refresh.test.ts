@@ -362,7 +362,7 @@ describe('refresh uses the credentials connect uses (KB-29)', () => {
     expect(await decrypted('access_token_encrypted')).toBe('new-access-token');
   });
 
-  it('Instagram exchanges its user token with the global Meta app, then reads the page token', async () => {
+  it('Instagram exchanges its user token with the global Meta app on the pinned Graph version, then reads the page token', async () => {
     await seedGlobalCredentials('meta');
     await seedExpiredConnection('instagram', { linked_page_id: 'page-1' });
 
