@@ -1,10 +1,14 @@
 /**
  * Memory Context Builder
- * Phase 10: FILM-1004, content types: FILM-1110
+ * Phase 10: FILM-1004, content types: FILM-1110, strategies: FILM-1111
  *
  * Builds token-budgeted context from canon data for LLM generation. The
  * budget, its split and the episode horizon follow the project's type
- * (`projects.metadata.projectType`).
+ * (`projects.metadata.projectType`). Within each budget, threads, characters
+ * and summaries are ordered by the type's priority score (`rankByPriority`),
+ * so what a full budget cuts is the least recently active canon (immutable
+ * events are never ranked — see `loadImmutableEvents`); types with
+ * a source budget also load the project's verified facts.
  *
  * The Supabase client is injected, never imported: this module is loaded by
  * the LLM Lambda, where the Next.js cookie client's `server-only` guard

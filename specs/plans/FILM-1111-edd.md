@@ -9,6 +9,27 @@
 | Waiting on this | FILM-1112 (act bridge), FILM-1113 (sequels) |
 | Author / date | teammate `film-1111`, 2026-09-23 |
 
+**Decisions (owner, 2026-09-23), all as recommended:** D1 — decay orders,
+never removes; immutable events are never scored. D2 — `sourcesCitations` is
+the project's verified facts, by confidence, at most 200, sanitised for the
+agent. D3 — `parentContext` moves to FILM-1113. D4 — news keeps horizon 1; the
+criterion becomes "News carries no episode history". D5 — the three
+`decayFunction` labels are corrected. KB-71 and KB-72 were assigned by the
+lead for the reported leads (§8, §31).
+
+**As built — where the code differs from the plan below, and why:**
+
+| Plan | As built | Why |
+|---|---|---|
+| `metadata.decay = { function, dropped }`; log `dropped=` | `metadata.decayFunction`; log `decay=<fn> … sources=<n>` | Under D1 nothing is ever dropped, so `dropped` would always be 0 |
+| `RankedItem` carries `include` | `RankedItem = { item, score }` | Same: the threshold is not applied (D1) |
+| A character's episode is its newest state's | The highest episode number among its (≤ 10) states | "Last active in" should not depend on insert order when an earlier episode is regenerated |
+| `assets` read left byte-identical (guard B1) | Paged too (`fetchAllRows`); FILM-1110's guard B1 repinned to the new line and still RED | Ranking characters needs every character, the same rule as the other ranked reads |
+| — | A loader whose budget is 0 issues no read — world state included | FR-9 needed it: the world-state loader returned a row at a 0 budget, so a news build carried history |
+| — | `canon-bundle.test.ts`'s stub client gains `range` | Its stub had no `range`, so FILM-1110's guard D1 went NOT GREEN on the real code; one word, a separate hunk from hotfix #320 |
+| — | `verify-memory-context.ts` scenarios run inside `scenario()` | On main's builder one scenario threw and hid the others' red results |
+| §3's happy path: threads T-hot, T-mid, T-old | Tests add T-once (touched only in episode 57) | Without it, removing the mention boost left the builder test green (guard R4) |
+
 **Reading order for a reviewer in a hurry:** §8 (what is true today, and
 one finding that changes what "decay" can do), §29 (the choices), §31 (the
 decisions asked of the owner), §32 (the work).
@@ -116,8 +137,8 @@ Mara (last state ep 3); summaries for eps 10–59.
    Mara (0.95⁵⁷=0.05). Summaries: ep 59 first, down to ep 10.
 5. **Fit.** Each category is filled in rank order until its budget
    (threads 1,440, characters 1,800, summaries 720 tokens) would overflow.
-6. **Returned.** `MemoryContext` with the ranked lists; `metadata.decay =
-   { function: 'exponential', … }`; log line
+6. **Returned.** `MemoryContext` with the ranked lists;
+   `metadata.decayFunction = 'exponential'`; log line
    `[MemoryContext] project=P type=series(metadata) budget=7200 horizon=50(content-type) decay=exponential … sources=0`.
 7. **User sees** the story generate; the agent's canon is the story's live
    threads and characters rather than a database-order sample.
@@ -163,12 +184,11 @@ line:
   sourceTitle?, category?, confidence? }`, only `verified` facts of the
   project, highest confidence first, fitted to `budgets.sourcesCitations`.
   Empty when the type has no source budget.
-- **Metadata.** `metadata.decay = { function: DecayFunction; dropped: {
-  narrativeThreads; episodeSummaries } }` (`dropped` is always 0 under D1-a);
+- **Metadata.** `metadata.decayFunction: DecayFunction`;
   `tokenBudget.byCategory.sourcesCitations`.
 - **Tool result.** `buildMemoryContext` tool gains `sources: [{ claim,
   citation }]` (sanitised) and a `sources` count in its summary line.
-- **Log line** gains ` decay=<function> dropped=<n> sources=<n>`.
+- **Log line** gains ` decay=<function>` and ` sources=<n>`.
 - **Permissions:** unchanged (FILM-1110 §19): user client + RLS in Next.js;
   service role bound to the job's project in the Lambda.
 - **Errors:** none user-facing added.
@@ -188,9 +208,9 @@ line:
 | **FR-7** | No `verified_facts` read for types with no source budget | No cost for narrative types | — | Read skipped | Series build issues no `verified_facts` query | — | Unit (call record) |
 | **FR-8** | Fact text returned to the agent passes `sanitizeForPrompt` | Facts come from uploaded documents (fact extraction) — the least trusted text in the context | Tool result | Sanitised `claim`, `citation` | Injection markers neutralised | Raw text to the LLM | Unit |
 | **FR-9** | A news build returns no narrative items even when narrative rows exist, and returns its facts | "News has no history" (D4) | news project with rows | Budgets 0 | 0 events/characters/threads/summaries; sources > 0 | Narrative items leak in | Unit; real-DB verify |
-| **FR-10** | `CONTENT_TYPE_CONFIGS[t].decayFunction` names the curve `getDecayFactor(t, ·)` actually computes, for every type | Two definitions disagree for three types today (§8 F-2); the reported `metadata.decay.function` must be true | — | Labels corrected | Property test: `none`/`topic_match` ⇒ constant; `linear` ⇒ constant step until the floor; `exponential` ⇒ constant ratio | — | Unit (red on today's labels) |
+| **FR-10** | `CONTENT_TYPE_CONFIGS[t].decayFunction` names the curve `getDecayFactor(t, ·)` actually computes, for every type | Two definitions disagree for three types today (§8 F-2); the reported `metadata.decayFunction` must be true | — | Labels corrected | Property test: `none`/`topic_match` ⇒ constant; `linear` ⇒ constant step until the floor; `exponential` ⇒ constant ratio | — | Unit (red on today's labels) |
 | **FR-11** | Reads whose rows are ranked are paged to completion (`fetchAllRows` / `fetchAllByIds`) | Ranking a truncated set silently ranks the wrong set (CLAUDE.md, "Reading more than 1000 rows"); FILM-1110 §12 deferred the "newest events never considered past 1,000" case here | — | `immutable_events`, `narrative_threads`, `character_states`, `episodes` lookup | Fake with 1,200 rows: all considered | Only first 1,000 | Unit (fake with `range`) |
-| **FR-12** | The build logs decay function, dropped count and sources count | §22 — only way to tell "no facts" from "facts not read" | Build | Log line | Line present | — | Unit asserts the line |
+| **FR-12** | The build logs its decay function and sources count | §22 — only way to tell "no facts" from "facts not read" | Build | Log line | Line present | — | Unit asserts the line |
 | **FR-13** | The builder still loads in the Lambda bundle | FILM-1110's bundle guard; `@kit/shared/pagination` is new to this module | — | — | FILM-1110's bundle test stays green | Import throws | Existing bundle test |
 
 ---
@@ -327,7 +347,7 @@ buildMemoryContext(client, {projectId, episodeNumber})
   │      score = calculatePriority({mentions}, current, max(itemEp≤…), type).score
   │      order: score desc, episode desc, id
   ├─ fit each list to its budget (unchanged fit loop)
-  └─ world_states (unchanged) ─► MemoryContext{…, sources, metadata.decay} + log line
+  └─ world_states (unchanged) ─► MemoryContext{…, sources, metadata.decayFunction} + log line
 
 continuity tool ─► toolSuccess({… , sources: sanitize(claim, citation)})
 ```
@@ -439,7 +459,7 @@ export function rankByPriority<T>(
   (`200`) → map → fit.
 - Fit loops unchanged (stop at first overflow).
 - Result: `sources`, `tokenBudget.byCategory.sourcesCitations`,
-  `metadata.decay = { function: options.decayFunction, dropped: {…} }`; log
+  `metadata.decayFunction = options.decayFunction` (as built — see the table at the top); log
   line extended.
 - Under D1-b (if chosen): the ranked lists of threads and summaries are
   filtered by `include` before fitting, and `dropped` counts them.
@@ -455,7 +475,7 @@ is not touched.
 ### `types.ts`
 
 `SourceCitation`; `MemoryContext.sources`; `TokenBudget.byCategory.sourcesCitations`;
-`MemoryContext.metadata.decay`.
+`MemoryContext.metadata.decayFunction`.
 
 ### Test helper
 
@@ -473,11 +493,11 @@ No transactions, locking, retries or caching.
 
 | Interface | Change | Compatibility |
 |---|---|---|
-| `buildMemoryContext(client, input)` | Signature unchanged; result gains `sources`, `metadata.decay`, `tokenBudget.byCategory.sourcesCitations` | Additive; no consumer constructs a `MemoryContext` (`git grep` — only the builder) |
+| `buildMemoryContext(client, input)` | Signature unchanged; result gains `sources`, `metadata.decayFunction`, `tokenBudget.byCategory.sourcesCitations` | Additive; no consumer constructs a `MemoryContext` (`git grep` — only the builder) |
 | `buildMemoryContextAction` | Input unchanged; output additive | Additive |
 | Agent tool `buildMemoryContext` | Result gains `sources` | Additive; the LLM sees more fields |
 | `rankByPriority`, `RankCandidate`, `RankedItem`, `SourceCitation` | New exports | Additive |
-| `CONTENT_TYPE_CONFIGS.*.decayFunction` | Three values corrected | Read only by `getMemoryOptionsForContentType` → `metadata.decay.function` and tests |
+| `CONTENT_TYPE_CONFIGS.*.decayFunction` | Three values corrected | Read only by `getMemoryOptionsForContentType` → `metadata.decayFunction` and tests |
 
 No endpoints, events, pagination contracts or rate limits.
 
@@ -558,10 +578,9 @@ could show the new fields (Memory Context Preview) is not rendered
 ## 22. Observability and Operations
 
 - **Log line** (one per build), extended:
-  `[MemoryContext] project=<id> type=documentary(metadata) budget=4000 horizon=5(content-type) decay=topic_match dropped=0 events=… characters=… threads=… summaries=… world=… sources=12 tokens=…`
+  `[MemoryContext] project=<id> type=documentary(metadata) budget=4000 horizon=5(content-type) decay=topic_match events=… characters=… threads=… summaries=… world=… sources=12 tokens=…`
 - **Reading it:** `sources=0` on a documentary with verified facts means the
-  read failed (its own error line precedes it); `dropped>0` appears only under
-  D1-b.
+  read failed (its own error line precedes it).
 - No metrics, dashboards or alerts are added (none exist for this pipeline).
 
 ---
@@ -614,7 +633,7 @@ Each test is written to fail first on `main` for the stated reason.
 | Unit | Documentary: `verified_facts` queried with `eq verification_status verified`, the two `order`s and `limit 200`; facts fitted to 2,000 tokens; `sources` in result; series issues **no** `verified_facts` query | FR-6, FR-7 | No such read |
 | Unit | News with rows in every narrative table: 0 events/characters/threads/summaries; `sources` non-empty | FR-9 | `sources` absent |
 | Unit (`continuity-skill.test.ts`) | Tool result carries `sources`; a claim containing `<system>…</system>` and `IGNORE PREVIOUS` comes back neutralised | FR-8 | No `sources` |
-| Unit | Log line contains `decay=exponential dropped=0 … sources=0` | FR-12 | Fields absent |
+| Unit | Log line contains `decay=topic_match … sources=1` | FR-12 | Fields absent |
 | **Bundle** (FILM-1110's `canon-bundle.test.ts`) | Still green with `@kit/shared/pagination` imported | FR-13 | — (regression guard) |
 | **Real DB** (`scripts/verify-memory-context.ts`, extended) | New scenarios: (a) series, 60 episodes, T-hot/T-mid/T-old and Jon/Mara as §3, small `tokenBudgetPercent` → first thread T-hot, first character Jon; (b) documentary with one verified, one unverified, one disputed fact → `sources` = exactly the verified one; (c) news with narrative rows + a verified fact → 0 narrative, 1 source. Existing FILM-1110 scenarios unchanged | FR-1, FR-6, FR-9 against real PostgREST (filters, `nullsFirst`, `.in` chunking) | (a) T-old/Mara first or absent; (b)(c) `sources` 0 |
 | Mutation guards (`tooling/mutation-guards/film-1111.json`) | Unit entries: skip ranking (return candidates unsorted); drop the distance clamp; score immutable events; remove the `verification_status` filter (call-shape test); skip sanitisation; restore a wrong decay label | Each guard stays a guard | — |
@@ -651,7 +670,7 @@ The production artifact that runs this code is the **LLM Lambda bundle**.
 | Deaths never decay out | §4 | FR-4 | events exempt | builder | `immutable_events` | Unit + guard | — |
 | Factual projects see verified facts | §3 documentary | FR-6–FR-8 | `loadSources`; tool result | builder, skill | `verified_facts` | Unit; verify (b) | `sources=N` in CloudWatch (§25) |
 | News carries no history | §4 news | FR-9 | budgets 0 | builder | — | Unit; verify (c) | `type=news … sources=N`, narrative 0 |
-| Reported decay is the real one | — | FR-10 | labels | configs | `metadata.decay.function` | Property unit test | Log line |
+| Reported decay is the real one | — | FR-10 | labels | configs | `metadata.decayFunction` | Property unit test | Log line |
 | Operator can tell | — | FR-12 | log line | builder | — | Unit | CloudWatch |
 | Still loads in the Lambda | — | FR-13 | pure imports | builder | — | Bundle test | — |
 
@@ -781,7 +800,7 @@ Each stage is a commit.
 2. **`content-type-configs.ts`** — three labels (D5).
 3. **`memory-strategies.ts`** — `rankByPriority`.
 4. **`types.ts`** — `SourceCitation`, `sources`, `byCategory.sourcesCitations`,
-   `metadata.decay`.
+   `metadata.decayFunction`.
 5. **`memory-context-builder.ts`** — paging, episode lookup, ranking,
    `loadSources`, metadata, log line.
 6. **`continuity-skill.ts`** — `sources` in the tool result, sanitised.
@@ -803,20 +822,27 @@ Rollback at any stage: revert.
 
 ## 33. Definition of Done
 
-- [ ] Threads, characters and summaries ranked by `calculatePriority`; §9
-      scores asserted; order verified against a real database (verify (a)).
-- [ ] Immutable events unscored and paged; guard seen red.
-- [ ] Documentary/educational/news builds return verified facts only
-      (verify (b)); narrative types issue no facts query.
-- [ ] News returns no narrative items with rows present (verify (c)).
-- [ ] Decay labels agree with `getDecayFactor` (property test red on base).
-- [ ] Fact text sanitised in the tool result (unit; guard red).
-- [ ] Every new guard in `film-1111.json` seen RED; FILM-1110's still RED-able.
-- [ ] Bundle test green; `@kit/episodes` unit tests green; typecheck, lint,
-      format clean.
-- [ ] FILM-1111 spec updated (`remaining: []` if D1–D4 resolved), FILM-1113
-      reason updated (D3), INDEX row; siblings (F-7, F-8, unsanitised canon
-      strings, season-outline/three fields) reported in the PR.
+- [x] Threads, characters and summaries ranked by `calculatePriority`; §9
+      scores asserted; order verified against a real database (verify (a):
+      threads T-hot, T-once, T-mid, T-old; characters Jon, Mara; Jon alone
+      when one fits — red on main: T-old first, Mara first).
+- [x] Immutable events unscored and paged; guards R5, R6 seen red.
+- [x] Documentary/educational/news builds return verified facts only
+      (verify (b): the two verified facts, 0.9 then 0.6, of five seeded);
+      narrative types issue no facts query (guard S2).
+- [x] News returns no narrative items with rows present, world state
+      included (verify (c); guard N1).
+- [x] Decay labels agree with `getDecayFactor` (property test red on main
+      for short-film, series, ad; guard L1).
+- [x] Fact text sanitised in the tool result (unit; guard S3).
+- [x] Every new guard in `film-1111.json` seen RED (11/11); FILM-1110's 8
+      unit guards still RED (B1 repinned).
+- [x] Bundle test green; `@kit/episodes` unit tests green (464); lint and
+      format clean; typecheck clean except the known
+      `canon-bundle.test.ts(22,30)` TS2307 that hotfix #320 fixes.
+- [x] FILM-1111 spec DONE (`remaining` removed), FILM-1113 reason updated
+      (D3), INDEX row and counts; KB-71 and KB-72 written as Open entries
+      (both reproduced); F-8 reported in the PR.
 
 ---
 

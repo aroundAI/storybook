@@ -3,7 +3,7 @@ title: "Content Type Configurations and Memory Strategies"
 phase: 11
 phase_name: "Canon Integration & Content Types"
 category: feature
-status: PARTIAL
+status: DONE
 audited: "2026-09-23"
 effort: M
 dependencies:
@@ -34,28 +34,39 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "`buildMemoryContext` uses content-type strategies"
-    met: false
-    reason: "partly met — since FILM-1110 the builder resolves the project type itself and applies `MEMORY_ALLOCATIONS`, the type's horizon and `contextWindowPercent` for every caller; scoring (`calculatePriority`) and decay (`getDecayFactor`) are still never used"
+    met: true
+    evidence: "packages/features/episodes/src/lib/canon/memory-context-builder.ts:662 — threads, characters and summaries are ordered by `rankByPriority` (`memory-strategies.ts:308`, i.e. `calculatePriority`/`getDecayFactor` for the project's type) before budget fitting; `sourcesCitations` is filled with verified facts (`loadSources`, :475). Asserted in `__tests__/memory-context-builder.test.ts` and against a real database by `scripts/verify-memory-context.ts` (CI: Supabase DB job). `parentContext` moved to FILM-1113 (owner decision D3)"
   - text: "Unit tests for all decay functions"
     met: true
     evidence: null
   - text: "Documentary type allocates 50% to sources"
     met: true
     evidence: null
-  - text: "News type has zero memory horizon"
-    met: false
-    reason: "no longer true — news horizon is 1 (`packages/features/episodes/src/lib/canon/content-type-configs.ts:168`); its memory allocations are all 0 instead"
+  - text: "News carries no episode history"
+    met: true
+    evidence: "Reworded by the owner (D4, 2026-09-23) from \"News type has zero memory horizon\": the horizon stays 1 (the shared 1–100 bound), and every narrative budget is 0, so a news build loads no events, characters, threads, summaries or world state — asserted with rows present in `__tests__/memory-context-builder.test.ts` (\"news carries no episode history\") and by `scripts/verify-memory-context.ts`"
 test_plan:
-  unit: []
-  integration: []
+  unit:
+    - text: "rankByPriority: hand-computed series scores, mention boost, distance clamp, unknown episode kept last, deterministic ties, never removes"
+      met: true
+      evidence: "packages/features/episodes/__tests__/memory-strategies.test.ts"
+    - text: "Each type's `decayFunction` label names the curve `getDecayFactor` computes"
+      met: true
+      evidence: "packages/features/episodes/__tests__/content-type-configs.test.ts"
+    - text: "Builder ranks threads and characters, keeps events oldest first over every page, loads verified facts only for types with a source budget, news returns nothing narrative"
+      met: true
+      evidence: "packages/features/episodes/__tests__/memory-context-builder.test.ts"
+    - text: "Fact text is sanitised in the agent's tool result"
+      met: true
+      evidence: "packages/features/episodes/__tests__/continuity-skill.test.ts"
+    - text: "Every guard seen red under its mutation"
+      met: true
+      evidence: "tooling/mutation-guards/film-1111.json (11 entries)"
+  integration:
+    - text: "Real-database ranking at episode 60, verified-only sources, news without history"
+      met: true
+      evidence: "packages/features/episodes/scripts/verify-memory-context.ts"
   e2e: []
-remaining:
-  - criterion: "`buildMemoryContext` uses content-type strategies"
-    reason: "FILM-1110 closed the allocation half (the builder resolves the type and uses `MEMORY_ALLOCATIONS`, which is now the only allocation table). Still open: `calculatePriority` and `getDecayFactor` are reached only from tests; the `sourcesCitations` and `parentContext` budgets are computed (`MemoryContext.metadata.budgets`) but nothing fills them"
-    closed_by: "unassigned"
-  - criterion: "News type has zero memory horizon"
-    reason: "Horizon is 1; memory is zeroed by allocation and decay instead"
-    closed_by: "owner (accept, or change the config)"
 open_questions: []
 notes: |
   Priority (source frontmatter): high
@@ -409,4 +420,19 @@ notes: |
 
   ## Implementation Status
 
-  **🟡 PARTIAL** (audit 2026-09-23; was **Implemented** in PR #176 — merged 2026-02-09)
+  **✅ DONE** (FILM-1111 EDD, `specs/plans/FILM-1111-edd.md`; audit 2026-09-23 had
+  it PARTIAL; first implemented in PR #176 — merged 2026-02-09)
+
+  Owner decisions (2026-09-23): D1 decay orders, never removes; immutable
+  events are never scored. D2 `sourcesCitations` = the project's verified
+  facts, by confidence, at most 200, sanitised for the agent. D3
+  `parentContext` belongs to FILM-1113. D4 news keeps horizon 1; the
+  criterion became "News carries no episode history". D5 the `decayFunction`
+  labels of short-film (linear), series (exponential) and ad (linear) were
+  corrected to what `getDecayFactor` computes.
+
+  Known limit, stated rather than hidden: canon rows carry no importance, so
+  with only distance and touch count every decay curve ranks by recency
+  (plus the thread touch boost); the curve shapes would matter only with a
+  removal threshold, which D1 declined. Documentary "topic match" is not
+  possible with today's data.
