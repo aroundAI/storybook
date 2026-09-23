@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  FACT_REFUSALS,
-  factRefusal,
-} from '../../server/fact-review-refusals';
+import { FACT_REFUSALS, factRefusal } from '../../server/fact-review-refusals';
 
 /**
  * KB-18. The rules themselves — who may review, from which state — live in
@@ -49,8 +46,9 @@ vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => client,
 }));
 
-const { verifyFactAction, disputeFactAction, deleteFactAction } =
-  await import('../../server/fact-actions');
+const { verifyFactAction, disputeFactAction, deleteFactAction } = await import(
+  '../../server/fact-actions'
+);
 
 const FACT = '11111111-1111-4111-8111-111111111111';
 const PROJECT = '22222222-2222-4222-8222-222222222222';
@@ -80,7 +78,9 @@ describe('factRefusal', () => {
 
   it('is not a refusal for anything it does not know', () => {
     expect(factRefusal({ code: 'XX000' }, 'verify')).toBeNull();
-    expect(factRefusal({ code: '55000', details: 'weird' }, 'verify')).toBeNull();
+    expect(
+      factRefusal({ code: '55000', details: 'weird' }, 'verify'),
+    ).toBeNull();
     expect(factRefusal({ code: '22023' }, 'verify')).toBeNull();
     expect(factRefusal({}, 'verify')).toBeNull();
   });
@@ -137,7 +137,11 @@ describe('verifyFactAction / disputeFactAction', () => {
   it('returns a stale review as a value naming the current status', async () => {
     rpcResult({
       data: null,
-      error: { code: '55000', details: 'verified', message: 'Fact is already verified' },
+      error: {
+        code: '55000',
+        details: 'verified',
+        message: 'Fact is already verified',
+      },
     });
 
     await expect(

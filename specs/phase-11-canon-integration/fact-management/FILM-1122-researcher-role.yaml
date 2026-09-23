@@ -27,7 +27,7 @@ acceptance_criteria:
     reason: "no longer true — no caller; its slug `researcher-role` (`packages/features/episodes/src/lib/documentary/researcher.ts:108`) is not a registry key (`documentary/researcher-role`)"
   - text: "Claims correctly matched to existing verified facts"
     met: false
-    reason: "no longer true — the live researcher skill returns the LLM's matches unvalidated (`packages/features/episodes/src/agent/skills/researcher-skill.ts:74`); none can be verified (KB-18)"
+    reason: "no longer true — the live researcher skill returns the LLM's matches unvalidated (`packages/features/episodes/src/agent/skills/researcher-skill.ts:74`); facts can be verified since KB-18 (#KB18PR), so this is now the only gap"
   - text: "Unverified claims marked as 'needs_source'"
     met: false
     reason: "unverified — LLM label via the prompt rule; the enforcing `researcher.ts:129` is never called; no test or eval"
@@ -56,8 +56,9 @@ remaining:
     reason: >
       The skill passes the LLM's `matched_fact_id`/`confidence` through
       without checking them against rows; the ID check lives only in the
-      uncalled `runResearchPhase`. No fact can reach `verified` either (KB-18)
-    closed_by: "KB-18"
+      uncalled `runResearchPhase`. (Facts can reach `verified` since KB-18,
+      #KB18PR, which was the other half of this.)
+    closed_by: "unassigned"
   - criterion: "UI shows research results with stats"
     reason: >
       No `ResearchPhaseView` or equivalent exists in code or git history

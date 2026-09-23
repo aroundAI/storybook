@@ -27,8 +27,8 @@ acceptance_criteria:
     met: false
     reason: "unverified — CrossRef call at `packages/features/episodes/src/components/facts/add-fact-form.tsx:118`; no test, needs a vendor response"
   - text: "FactVerificationDialog allows marking verified/disputed"
-    met: false
-    reason: "no longer true — KB-18: the update policy refuses both states; `verifyFactAction`/`disputeFactAction` use the user's client"
+    met: true
+    evidence: "KB-18 (#KB18PR): `apps/e2e/tests/facts/fact-verification.spec.ts` verifies one fact and disputes another through the dialog, reloads, and reads both rows back; `public.set_fact_verification` (`apps/web/supabase/migrations/20260923024455_kb18-fact-verification.sql`) is the write, owner/admin only"
   - text: "Only DOCUMENTARY projects see Facts section"
     met: false
     reason: "no longer true — Fact Library link shows for every editable project (`apps/web/app/home/[account]/studio/[projectSlug]/settings/page.tsx:389`); never gated (811ab9e8)"
@@ -39,13 +39,6 @@ acceptance_criteria:
     met: true
     evidence: "no searchFactsAction exists; the search is getProjectFactsAction, packages/features/episodes/src/server/fact-actions.ts:298"
 remaining:
-  - criterion: "FactVerificationDialog allows marking verified/disputed"
-    reason: >
-      The `verified_facts` UPDATE policy's `WITH CHECK` only admits
-      `unverified`/`pending_review`, and both actions write with the user's
-      client (`packages/features/episodes/src/server/fact-actions.ts:182`,
-      `:219`); reproduced in KB-18
-    closed_by: "KB-18"
   - criterion: "Only DOCUMENTARY projects see Facts section"
     reason: >
       The Fact Library link sits in the Canon settings section behind

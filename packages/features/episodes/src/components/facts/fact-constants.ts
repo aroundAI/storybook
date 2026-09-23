@@ -33,7 +33,7 @@ export function isReviewable(status: string) {
   return REVIEWABLE_STATUSES.has(status);
 }
 
-export const STATUS_OPTIONS =Object.entries(STATUS_LABELS).map(
+export const STATUS_OPTIONS = Object.entries(STATUS_LABELS).map(
   ([value, label]) => ({
     value,
     label,

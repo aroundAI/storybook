@@ -135,8 +135,10 @@ fact-checker) now receives it.
   - fallback: "Could not verify the fact. Try again." / "Could not dispute the fact. Try again."
   - delete `FORBIDDEN`: "Only the project's owner or admins can delete facts."; delete `NOT_FOUND`: reuse NOT_FOUND.
 - **Permissions/visibility**: *Verify* button rendered only when the caller is
-  project owner/admin **and** the fact is `unverified` (existing card rule,
-  `fact-card.tsx:111`). Delete menu item likewise (Decision 3).
+  project owner/admin **and** the fact is `unverified` or `pending_review`
+  (`isReviewable` in `fact-constants.ts`, the function's own rule — the card
+  used to check `unverified` only). Delete menu item only for owner/admin
+  (Decision 4).
 - **Data displayed**: status badge (list and detail); detail page adds
   "Verified by {verified_by_name ?? 'a deleted user'} · {date}" when
   `verified_at` is set.
@@ -775,6 +777,20 @@ the dialog's old close-on-any-outcome → note-preserved assertion red.
    the wrong slug; FILM-1122 ID check still uncalled); `INDEX.md` rows only if
    a status changes.
 8. `pnpm lint:fix`, `pnpm format:fix`, sibling grep, PR with screenshots.
+
+**As built (deviations from the above, none changing behaviour or scope):**
+
+- T16: `anon` has no `usage` on schema `public` here, so calling the function
+  as anon is refused at the schema and proves nothing about its grant. The case
+  asks `has_function_privilege` instead: anon and public may not execute,
+  authenticated may.
+- The refusal cases each use their own fact (f06, f11–f14). Sharing one made
+  the role-check mutation fail the later cases for "already verified" instead
+  of their own reason.
+- The E2E card locator filters to visible cards: during a streamed render the
+  server's copy of the list can sit hidden beside the hydrated one.
+- The facts specs join the revenue specs in `playwright.config.ts`'s
+  team-accounts `testIgnore`, since they seed through `create_team_account`.
 
 ## 33. Definition of Done
 

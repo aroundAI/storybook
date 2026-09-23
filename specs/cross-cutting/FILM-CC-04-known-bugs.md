@@ -915,7 +915,8 @@ UPDATE.
 reach `verified` or `disputed` through the app, for any user, owner included.
 Nothing is corrupted, and nothing downstream can trust a status the UI cannot
 set. **Found:** KB-1 (#290), 2026-09-22, reported as a lead from reading;
-reproduced below. **Open.**
+reproduced below. **Fixed** in #KB18PR — see *Fixed (#KB18PR)* at the end of
+this entry.
 
 `verifyFactAction` and `disputeFactAction`
 (`packages/features/episodes/src/server/fact-actions.ts`) check that the
@@ -975,10 +976,40 @@ nobody having been able to use it.
 
 ### Acceptance criteria
 
-- [ ] pgTAP, red first: owner and admin can verify and dispute; a member cannot; nobody can set `verified_by` to another user
-- [ ] Playwright: verify a fact, reload, it is still verified and shows who verified it; dispute another — asserted on the **second** action as well as the first; screenshots in the PR
-- [ ] A refusal reaches the user as a readable message in a production build
-- [ ] FILM-1121 / FILM-1123 criteria re-checked against the running feature, corrections noted in those specs
+- [x] pgTAP, red first: owner and admin can verify and dispute; a member cannot; nobody can set `verified_by` to another user
+- [x] Playwright: verify a fact, reload, it is still verified and shows who verified it; dispute another — asserted on the **second** action as well as the first; screenshots in the PR
+- [x] A refusal reaches the user as a readable message in a production build
+- [x] FILM-1121 / FILM-1123 criteria re-checked against the running feature, corrections noted in those specs
+
+### Fixed (#KB18PR)
+
+Driven through the UI before the fix, as the project's owner: *Confirm
+Verified* showed "Failed to verify fact", *Mark Disputed* "Failed to dispute
+fact"; the dialog closed and dropped the note; both rows stayed `unverified`.
+
+- **The path.** `public.set_fact_verification`
+  (`20260923024455_kb18-fact-verification.sql`) is the only end-user way into
+  `verified` or `disputed`: an owner or admin of the fact's *project*
+  (`can_edit_project`), `verified_by = auth.uid()` with no parameter to name
+  anyone else, and only from `unverified` or `pending_review` — a review from a
+  stale page is refused, not applied. The member UPDATE policy is unchanged.
+- **Two more defects the entry did not name, fixed with it.** The actions
+  checked the *account* role while the policies check the *project* role: an
+  account owner off the project passed the check, then verified or deleted
+  nothing, and was told it worked. `deleteFactAction` now asks the project rule
+  first and refuses a delete that removed no row. And the dialog closed on
+  failure, losing the user's notes; it now closes only on success.
+- **Refusals are values** (KB-6): not the project's owner or an admin; the
+  fact no longer exists; already verified/disputed/retracted; a dispute needs
+  a reason.
+- Verify and Delete are shown only to the project's owners and admins; the
+  detail page says who verified a fact.
+- Tests: `verified-facts-review.test.sql` (32 cases, each guard seen to fail
+  when removed from the function); `fact-review.test.ts` (8 action cases fail
+  on the old actions); `apps/e2e/tests/facts/` on a production build.
+- Downstream specs re-checked: FILM-1121's dialog criterion is met. FILM-1122,
+  1123, 1140 and 1143 no longer wait on this entry, but none is met by it:
+  each still has its own gap, now recorded there as `unassigned`.
 
 ---
 
@@ -2019,6 +2050,7 @@ every canon string at the tool boundary, as sources are.
 | KB-19 | A failed platform connect landed on a 404 and logged nothing | #297 |
 | KB-29 | Token refresh read app credentials from a table nothing had written since 2026-01-21, so connections died at their first expiry; LinkedIn could never refresh | #310 |
 | KB-41 | Any signed-in user could list any project's members with their emails, public or private; `get_project_members` now requires access to the project's account | #319 |
+| KB-18 | No fact could be verified or disputed, by anyone: the update policy refused both states and the actions wrote through it; the actions' account-role check also turned some reviews and deletes into silent no-ops | #KB18PR |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
 | KB-52 | Every signed-in user could read, rewrite, forge and delete every account's `llm_usage_analytics` rows: a policy with no `TO` clause and `using (true)`; writes are now service-role only, and a pgTAP guard fails any new policy of that shape | #321 |
