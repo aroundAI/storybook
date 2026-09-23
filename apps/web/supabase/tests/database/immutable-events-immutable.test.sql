@@ -311,8 +311,16 @@ select throws_ok(
 select tests.clear_authentication();
 set local role postgres;
 
+-- The id is looked up once, before the delete. tests.get_supabase_uid is
+-- VOLATILE, so in the DELETE's WHERE it would run for every row scanned and
+-- see the statement's own deletion: once the author's row was gone, the next
+-- lookup raised "User with identifier kb17_author not found". Whether a row
+-- came after it depended on the heap order of auth.users, which is why this
+-- failed only sometimes, and only after other suites had run.
+select set_config('kb17.author', tests.get_supabase_uid('kb17_author')::text, true);
+
 select lives_ok(
-  $$ delete from auth.users where id = tests.get_supabase_uid('kb17_author') $$,
+  $$ delete from auth.users where id = current_setting('kb17.author')::uuid $$,
   'I6: the author of an event can be deleted'
 );
 
