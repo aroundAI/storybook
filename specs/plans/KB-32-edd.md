@@ -220,7 +220,33 @@ inferred rows. The four markers at `index.ts:246, 249, 251, 253` record it.
 requests sent through supabase-js as the worker's service role; script in the
 PR evidence.)
 
-RESULTS_PLACEHOLDER
+Run 2026-09-23 04:13:36–04:14:05Z (lock held 29 s; fixture deleted before release):
+
+| # | Request (verbatim from `index.ts`) | Result |
+|---|---|---|
+| 1 | `update edit_projects set render_status='rendering' … select id, episode_id, render_status, render_url, metadata, canvas_width, canvas_height, fps, duration_ms` | `42703 column edit_projects.canvas_height does not exist` |
+| | `render_status` before / after | `none` / `none`. The whole update is rejected |
+| 2 | `edit_clips select … duration_ms, source_url, source_type, … params, content_type, trim_start_ms, trim_end_ms …` | `42703 column edit_clips.duration_ms does not exist` |
+| 3 | `edit_transitions select id, clip_id, … .in('clip_id', …)` | `42703 column edit_transitions.clip_id does not exist` |
+| 4 | `edit_keyframes select … time_ms …` | `42703 column edit_keyframes.time_ms does not exist` |
+| 1c | Control: same update, `select id, episode_id, render_status, width, height, fps` | `{"render_status":"rendering","width":1280,"height":720,"fps":30}` |
+| 2c–4c | Controls on real columns | All four clips (numeric `volume`/`speed` arrive as JSON numbers), the transition, the keyframe |
+
+Worker filter (`index.ts:220-232`) applied to the real rows:
+
+| Language | Clips kept | Should be |
+|---|---|---|
+| `en` | V1, EN line, V2 | same |
+| `es` | V1, V2 | V1, **ES dub**, V2. The dub is dropped because it is inactive in the EN preview |
+
+From the code (the handler itself is run red in Phase 2, T6), the worker then
+throws `"Edit project not found: <id>"` and its catch block stores that as
+`render_error` with `failed` (`index.ts:183-185, 419-430`). The 42703 is
+discarded, so the stored error is false.
+
+Scripts (session scratchpad `kb32/`): `seed.sql`, `repro-db.mjs`,
+`run-db-repro.sh` (lock → reset → seed → repro → delete → release),
+`repro-output-deleted.ts` (§8.4). Phase 2 folds them into T6.
 
 ### 8.4 Reproduced: the output is deleted before upload (real FFmpeg, no DB)
 
