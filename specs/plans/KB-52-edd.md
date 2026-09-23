@@ -6,9 +6,9 @@
 |---|---|
 | Ticket | KB-52 (FILM-CC-04; entry text lands with KB-26's PR) — severity **High**, cross-tenant read, write and delete |
 | Branch | `fix/kb-52-llm-usage-analytics-rls`, from `origin/main` @ `49b851d6` |
-| Size | S: one policy migration (plus 17 `alter policy … to authenticated`), one executor change, 8 one-line caller edits, two pgTAP files, one unit test |
+| Size | S: one policy migration (plus 16 `alter policy … to authenticated`), one executor change, 8 one-line caller edits, two pgTAP files, one unit test |
 | Author | teammate `kb-52`, 2026-09-23 |
-| Status | **Plan — awaiting owner approval** |
+| Status | **Approved 2026-09-23 with defaults D1–D3; implemented** |
 
 ---
 
@@ -278,7 +278,7 @@ hit is one of the harmless shapes below.
 | 1 | `llm_usage_analytics` (ALL) | `{public}`, `true` | yes (`account_id`, `user_id`, errors, config) | **cross-tenant read/write/delete: reproduced §8.3** | replace (§14) | **fix** |
 | 2 | `social_posts` (S/I/U/D) | `{public}`, predicate = own personal account ∪ memberships | yes | none: `anon` lacks schema `USAGE`; for any other role `auth.uid()` is null, so the predicate is false | `alter policy … to authenticated` | **fix (hygiene, zero behaviour change)**, D2 |
 | 3 | `batch_generation_jobs` (S/I/U) | `{public}`, memberships ∪ `account_id = auth.uid()` | yes | none (as above) | `to authenticated` | **fix (hygiene)**, D2 |
-| 4 | `shot_transitions` (S/I/U/D) | `{public}`, predicate = `accounts_memberships` only | yes (via episode) | none cross-tenant. **Separate lead:** personal-account owners have no membership row, so they cannot read or write their own transitions | `to authenticated`; the personal-owner lead goes to the lead for a KB number | **fix (hygiene)**, D2; the personal-owner bug is **not** fixed here |
+| 4 | `shot_transitions` (S/I/U/D) | `{public}`, predicate = `accounts_memberships` only | yes (via episode) | none cross-tenant. Personal-account owners have no membership row, so they are locked out of their own transitions: **folded into KB-48** | `to authenticated`; the personal-owner exclusion is KB-48's | **fix (hygiene)**, D2; the personal-owner exclusion is **not** fixed here (KB-48) |
 | 5 | `audio_assets` (S/I/U/D) | `{public}`, `has_role_on_account(p.account_id)` | yes (via project) | none cross-tenant. Same personal-owner exclusion (the KB-48 class) | `to authenticated` | **fix (hygiene)**, D2 |
 | 6 | `nonces` (S) | `{public}`, `user_id = auth.uid()` | user-scoped (Makerkit OTP) | none | `to authenticated` | **fix (hygiene)**, D2 |
 | 7 | `verified_facts` (S/I/U/D) | `{public}`, project-membership predicates | yes | none (as above) | `to authenticated` | **no: KB-18 (`fix/kb-18-fact-verify-dispute`) edits these policies**. Allowlisted in the guard until it lands |
@@ -391,7 +391,7 @@ grant all on public.llm_usage_analytics to service_role;   -- already held; expl
   how this bug happened.
 - **Sibling tables (§8.4 rows 2–6, D2):** in the same migration, one
   `alter policy "<name>" on public.<table> to authenticated;` per policy
-  (17 statements: social_posts 4, batch_generation_jobs 3, shot_transitions 4,
+  (16 statements: social_posts 4, batch_generation_jobs 3, shot_transitions 4,
   audio_assets 4, nonces 1). This changes only the role list, never a
   predicate or a grant. `verified_facts` and `audio_cues` are left to
   KB-18/KB-27 (allowlisted in the guard).
@@ -543,7 +543,8 @@ is needed.
 |---|---|---|---|
 | pgTAP (CI Supabase DB job) | new `apps/web/supabase/tests/database/llm-usage-analytics-rls.test.sql`, `plan(N)` | R1: personal owner reads own; team member reads team's; outsider reads 0; R6: null-account row invisible; R2: authenticated INSERT (own and foreign account), UPDATE, DELETE each `throws_ok '42501'`; anon SELECT `42501`; R3: `policies_are(['llm_usage_analytics_read'])`, `policy_roles_are(…, '{authenticated}')`, `table_privs_are` for anon/authenticated | Run the file against `origin/main`'s schema before writing the migration; it must fail on the outsider read and the writes. Mutation guards re-create the old policy / re-grant DELETE |
 | pgTAP, class guard (CI) | new `apps/web/supabase/tests/database/policy-shape.test.sql`: (1) `is_empty`: no `public`-schema policy has roles `{public}`, except on the allowlisted tables `verified_facts` (KB-18) and `audio_cues` (KB-27/KB-48); (2) `is_empty`: no INSERT/UPDATE/DELETE/ALL policy to `public`/`anon`/`authenticated` has `USING` or `WITH CHECK` = `true`; (3) SELECT `using (true)` to those roles only on `config`, `roles`, `role_permissions`, `external_content` (KB-26) | R3, R7: the class cannot come back unnoticed | Seen red on `origin/main`'s schema (it lists row 1 and rows 2–6); mutation guard adds `create policy kb52_probe on public.social_posts using (true)` |
-| pgTAP, zero behaviour change on rows 2–6 | in `policy-shape.test.sql`: as the owner, a member and an outsider, count visible rows in each of the 5 tables, with results compared against fixed expectations seeded in the file | the `to authenticated` edit changes no one's visibility | Same expectations must pass on `origin/main`'s schema (a *pass* before and after is the proof here, not red→green) |
+| pgTAP, zero behaviour change on rows 2–6 | in `policy-shape.test.sql`: owner and outsider row counts on `social_posts` and `nonces` (the two that seed without an episode graph) | the `to authenticated` edit changes no one's visibility | Pass on `origin/main`'s schema and after: a pass on both sides is the proof here, not red→green |
+| Evidence, zero behaviour change on all 16 | `pg_policies` dumped before and after `migration up`, in the same locked run: `qual` and `with_check` compared byte for byte | only `roles` changed | — |
 | Unit (`@kit/prompt-engine`, in `scripts/test-units.sh`) | new `packages/features/prompt-engine/__tests__/llm-executor-usage-client.test.ts`: mocks `./prompt-loader`, `@kit/llm` (`createLLMClient`, `logLLMUsage`), logger, `@kit/supabase/lambda-admin-client`. **Success path** and **failure path** each assert `logLLMUsage` was called with the service-role client sentinel. A third case: `createLambdaAdminClient()` → `null` means the LLM result is still returned and the error is logged | R4 | Written first against current code with a test that injects a session sentinel as `supabaseClient` (cast); it fails on current code because the sentinel is used. Then the fix. Mutation guard: re-introduce `config.supabaseClient ??` in `recordUsage` |
 | Type | `pnpm typecheck` | R5 | Temporarily re-add `supabaseClient: supabase` in `fact-checker.ts` → excess-property error |
 | Execution (PR evidence, local) | `$SP/kb52/repro.sh` re-run after the migration: same two real users through PostgREST | the attack fails; victim still reads own row; victim's session insert refused | Before-run output in §8.3 |
@@ -590,7 +591,7 @@ vendor sandboxing is needed.
 | Lambda handlers not typechecked (KB-14) keep passing the field | Low | None functionally (extra property ignored at runtime) | Deleted by hand; grep zero |
 | Service-role env missing in some runtime | Low, already required by 39 callers | Row loss, logged | Clear error message |
 | Conflict with KB-31 in 3 handler files | Certain, trivial | Rebase conflict | Agreed with KB-31: adjacent lines, second to rebase resolves |
-| Sibling `to authenticated` edits change someone's visibility | Very low: role list only; `anon` has no schema `USAGE`, other roles have null `auth.uid()` | Feature regression | Zero-change row counts in `policy-shape.test.sql` pass before and after |
+| Sibling `to authenticated` edits change someone's visibility | Very low: role list only; `anon` has no schema `USAGE`, other roles have null `auth.uid()` | Feature regression | Zero-change counts in `policy-shape.test.sql` pass before and after; `pg_policies` expressions identical before/after |
 | The class guard fails another ticket's migration (e.g. KB-18 re-creating a `verified_facts` policy with no `TO`) | Medium | Red CI for them | Allowlist by table for `verified_facts`/`audio_cues`, noted in Overlap; the failure message names the policy and says to add `TO authenticated` |
 
 ## 31. Open Questions and Assumptions
@@ -599,7 +600,7 @@ vendor sandboxing is needed.
   the table, and the owner reads via SQL. If an admin cost screen is built, add
   `or public.is_super_admin()` then, with its pgTAP case.
 - **D2 (owner):** sibling tables. Only `llm_usage_analytics` has the
-  exploitable shape. **Default:** also `alter … to authenticated` the 17
+  exploitable shape. **Default:** also `alter … to authenticated` the 16
   no-`TO` policies on the five uncontested tables that hold account or user
   data (§8.4 rows 2–6). There is zero behaviour change, and it lets the
   class-guard test be strict. `verified_facts`/`audio_cues` are allowlisted
@@ -631,16 +632,38 @@ vendor sandboxing is needed.
    `pnpm lint:fix`, `pnpm format:fix`.
 8. Commit, push, PR with before/after tables.
 
+**Implementation notes: where the build differed from the plan** (none of
+them changes behaviour or scope):
+
+- **16 sibling policies, not 17.** The count is social_posts 4, batch_generation_jobs 3,
+  shot_transitions 4, audio_assets 4 and nonces 1. The class guard's red run
+  listed exactly these 16 plus the KB-52 policy.
+- **Zero-change proof.** The row counts cover `social_posts` and `nonces`. For all
+  16, `pg_policies` was dumped before and after `migration up` in one locked
+  run: every `cmd`, `USING` and `WITH CHECK` is identical, and only `roles`
+  changed from `{public}` to `{authenticated}`.
+- **Three lambda handlers** (`analytics-insights`, `batch-translate-metadata`,
+  `language-insights`) used their `supabase` parameter only for the removed
+  injection. It is renamed `_supabase` (lint) and the dispatch signature in
+  `llm-worker/index.ts` is unchanged. These lines sit next to KB-14's and
+  KB-31's edits in the same files.
+- **`readonly_viewer`.** `postgres` is not a member of the role, so `set role`
+  was refused, and the owner ruled the role must not be altered (KB-59). Its
+  narrowing is structural instead: every policy it could match was `TO public`,
+  and pgTAP now asserts those policies are `TO authenticated`.
+- **Personal-owner exclusion on `shot_transitions`/`audio_assets`.** Folded
+  into KB-48 by the lead; not fixed here.
+
 ## 33. Definition of Done
 
-- [ ] `llm-usage-analytics-rls.test.sql` and `policy-shape.test.sql` green on the branch, seen red on `origin/main`'s schema (zero-change counts pass on both)
-- [ ] Every `kb-52.json` mutation reports RED
-- [ ] Unit test green, and seen red before the executor change
-- [ ] `repro.sh` after: outsider SELECT `[]`, UPDATE/DELETE/INSERT `42501`; victim reads own row; row survives
-- [ ] `git grep -n "supabaseClient" -- packages/features apps/web/lambda` shows no `executeLLM` caller
-- [ ] Sweep query shows no remaining row for the tables fixed here
-- [ ] Typegen byte-identical; `pnpm typecheck`, lint and format clean
-- [ ] FILM-CC-04 Fixed row; schema files mirrored; PR body lists the sweep with recommendations
+- [x] `llm-usage-analytics-rls.test.sql` and `policy-shape.test.sql` green on the branch, seen red on `origin/main`'s schema (zero-change counts pass on both)
+- [x] Every `kb-52.json` mutation reports RED
+- [x] Unit test green, and seen red before the executor change
+- [x] `repro.sh` after: outsider SELECT `[]`, UPDATE/DELETE/INSERT `42501`; victim reads own row; row survives
+- [x] `git grep -n "supabaseClient" -- packages/features apps/web/lambda` shows no `executeLLM` caller
+- [x] Sweep query shows no remaining row for the tables fixed here
+- [x] Typegen byte-identical; `pnpm typecheck`, lint and format clean
+- [x] FILM-CC-04 Fixed row; schema files mirrored; PR body lists the sweep with recommendations
 
 ## 34. Final Consistency Pass
 

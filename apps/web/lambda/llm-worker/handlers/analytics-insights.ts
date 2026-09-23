@@ -73,7 +73,7 @@ function calculateChanges(
 
 export async function processAnalyticsInsights(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  _supabase: SupabaseClient,
 ): Promise<InsightsResult> {
   // SQS payload: cast, not validated (KB-33).
   const data = payload as unknown as AnalyticsInsightsPayload;
@@ -133,7 +133,6 @@ export async function processAnalyticsInsights(
         accountId: data.projectId,
         userId: data.userId,
       },
-      supabaseClient: supabase,
     });
 
     console.log('[Analytics Insights] Generated insights successfully');

@@ -38,7 +38,7 @@ interface LanguageInsightsResult {
 
 export async function processLanguageInsights(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  _supabase: SupabaseClient,
 ): Promise<LanguageInsightsResult> {
   // SQS payload: cast, not validated (KB-33).
   const data = payload as unknown as LanguageInsightsPayload;
@@ -94,7 +94,6 @@ export async function processLanguageInsights(
         accountId: data.projectId,
         userId: data.userId,
       },
-      supabaseClient: supabase,
     });
 
     console.log('[Language Insights] Generated insights successfully');

@@ -113,7 +113,6 @@ export async function runResearchPhase(
       target_claims: sanitizeForPrompt(targetClaims?.join('\n') ?? ''),
     },
     context: { name: 'researcher-role', accountId, userId },
-    supabaseClient: supabase,
   });
 
   const research = result.data.research;

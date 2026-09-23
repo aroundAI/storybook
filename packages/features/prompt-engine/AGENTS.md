@@ -279,6 +279,11 @@ All executions are automatically logged to `llm_usage_analytics` table:
 - Success/failure status
 - Request/response metadata
 
+Rows are written by the service role only: `executeLLM` logs through the
+service-role client for every caller and takes no client from you. A
+signed-in user can read the rows of accounts they own or belong to, and
+cannot write any (KB-52).
+
 Query analytics:
 
 ```sql

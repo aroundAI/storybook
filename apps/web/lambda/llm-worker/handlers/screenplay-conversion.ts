@@ -292,7 +292,6 @@ export async function processScreenplayConversion(
           accountId: data.accountId,
           userId: data.userId,
         },
-        supabaseClient: supabase,
       });
 
       const score = qualityResult.data?.overallScore ?? 0;
