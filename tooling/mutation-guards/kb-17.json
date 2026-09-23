@@ -1,0 +1,71 @@
+{
+  "feature": "FILM-CC-04 KB-17",
+  "mutations": [
+    {
+      "name": "KB-17 write-once trigger dropped",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/immutable-events-immutable.test.sql",
+      "sql": "drop trigger immutable_events_refuse_update on public.immutable_events;"
+    },
+    {
+      "name": "KB-17 trigger exception lets a nested update change more than the author",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/immutable-events-immutable.test.sql",
+      "sql": "create or replace function public.immutable_events_refuse_update() returns trigger language plpgsql set search_path = '' as $$ begin if pg_trigger_depth() > 1 and old.created_by is not null and new.created_by is null then return new; end if; raise exception 'immutable_events rows cannot be changed' using errcode = '42501'; end; $$;"
+    },
+    {
+      "name": "KB-17 UPDATE granted back to authenticated",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/immutable-events-immutable.test.sql",
+      "sql": "grant update on public.immutable_events to authenticated; create policy kb17_update_back on public.immutable_events for update to authenticated using (public.can_write_project(project_id));"
+    },
+    {
+      "name": "KB-17 insert does not pin the author",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/immutable-events-immutable.test.sql",
+      "sql": "drop policy immutable_events_insert on public.immutable_events; create policy immutable_events_insert on public.immutable_events for insert to authenticated with check (public.can_write_project(project_id) and exists (select 1 from public.episodes e where e.id = immutable_events.established_in and e.project_id = immutable_events.project_id));"
+    },
+    {
+      "name": "KB-17 insert on account membership instead of the project-write rule",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/immutable-events-immutable.test.sql",
+      "sql": "drop policy immutable_events_insert on public.immutable_events; create policy immutable_events_insert on public.immutable_events for insert to authenticated with check (created_by = (select auth.uid()) and exists (select 1 from public.projects p where p.id = immutable_events.project_id and public.has_account_access(p.account_id)) and exists (select 1 from public.episodes e where e.id = immutable_events.established_in and e.project_id = immutable_events.project_id));"
+    },
+    {
+      "name": "KB-17 insert does not check the episode is in the project",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/immutable-events-immutable.test.sql",
+      "sql": "drop policy immutable_events_insert on public.immutable_events; create policy immutable_events_insert on public.immutable_events for insert to authenticated with check (created_by = (select auth.uid()) and public.can_write_project(project_id));"
+    },
+    {
+      "name": "KB-17 delete on account membership instead of the project-write rule",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/immutable-events-immutable.test.sql",
+      "sql": "drop policy immutable_events_delete on public.immutable_events; create policy immutable_events_delete on public.immutable_events for delete to authenticated using (exists (select 1 from public.projects p where p.id = immutable_events.project_id and public.has_role_on_account(p.account_id)));"
+    },
+    {
+      "name": "KB-17 read back on has_role_on_account (personal owners locked out)",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/immutable-events-immutable.test.sql",
+      "sql": "drop policy immutable_events_read on public.immutable_events; create policy immutable_events_read on public.immutable_events for select to authenticated using (exists (select 1 from public.projects p where p.id = immutable_events.project_id and public.has_role_on_account(p.account_id)));"
+    },
+    {
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/canon-actions.ts",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/canon-event-actions.test.ts",
+      "name": "KB-17 add action throws the RLS refusal instead of returning it",
+      "find": "    if (error?.code === INSUFFICIENT_PRIVILEGE) {\n      throw new ActionRefusal(CANON_WRITE_REFUSAL);\n    }\n\n",
+      "replace": ""
+    },
+    {
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/canon-actions.ts",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/canon-event-actions.test.ts",
+      "name": "KB-17 delete action reports success when nothing was deleted",
+      "find": "    if (!deleted?.length) {\n      throw new ActionRefusal(CANON_WRITE_REFUSAL);\n    }\n",
+      "replace": ""
+    }
+  ]
+}
