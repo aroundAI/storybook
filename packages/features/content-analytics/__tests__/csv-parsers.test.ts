@@ -1,6 +1,9 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  findCtrOutOfRange,
   parseChannelBasicReport,
   parseReachReport,
   parseTrafficSourceReport,
@@ -101,10 +104,10 @@ describe('parseTrafficSourceReport', () => {
 
 describe('parseReachReport', () => {
   const csv = [
-    'date,channel_id,video_id,video_thumbnail_impressions,video_thumbnail_impressions_ctr,engaged_views',
-    '20260610,UC123,vidA,1000,0.05,40',
-    '20260610,UC123,vidA,3000,0.03,90',
-    '20260611,UC123,vidA,500,0.06,20',
+    'date,channel_id,video_id,video_thumbnail_impressions,video_thumbnail_impressions_ctr',
+    '20260610,UC123,vidA,1000,0.05',
+    '20260610,UC123,vidA,3000,0.03',
+    '20260611,UC123,vidA,500,0.06',
   ].join('\n');
 
   it('aggregates impressions and view-weights CTR', () => {
@@ -116,7 +119,6 @@ describe('parseReachReport', () => {
     expect(day1.impressions).toBe(4000);
     // (0.05*1000 + 0.03*3000) / 4000 = 0.035
     expect(day1.impressionsCtr).toBeCloseTo(0.035, 6);
-    expect(day1.engagedViews).toBe(130);
   });
 
   it('returns empty when required columns are missing', () => {
@@ -139,5 +141,189 @@ describe('traffic source code lookup', () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0]!.source).toBe('TS_constructor');
+  });
+});
+
+/**
+ * Fixture files for every report shape the ingest downloads (FILM-1504).
+ *
+ * Headers are Google's documented column lists for each report type
+ * (https://developers.google.com/youtube/reporting/v1/reports/channel_reports,
+ * read 2026-09-23). Values are chosen so every expectation below can be
+ * computed by hand, and so the three core-metric reports agree with each
+ * other the way YouTube's do: views and watch time for a video/day are the
+ * same whichever report's dimensions they were split across.
+ *
+ * Each type is also run header-only — YouTube's "no data that day" — and as
+ * an empty file.
+ */
+const FIXTURES = join(import.meta.dirname, 'fixtures', 'youtube-reporting');
+
+function fixture(name: string): string {
+  return readFileSync(join(FIXTURES, `${name}.csv`), 'utf8');
+}
+
+function headerOnly(name: string): string {
+  return `${fixture(name).split('\n')[0]}\n`;
+}
+
+describe('report fixtures', () => {
+  describe('channel_basic_a3', () => {
+    const rows = parseChannelBasicReport(fixture('channel_basic_a3'));
+    const vidA = rows.find((r) => r.youtubeVideoId === 'vidA')!;
+    const vidX = rows.find((r) => r.youtubeVideoId === 'vidX')!;
+
+    it('collapses the subscribed/country dimensions to one row per video/day', () => {
+      expect(rows).toHaveLength(2);
+      expect(rows.every((r) => r.date === '2026-09-10')).toBe(true);
+    });
+
+    it('sums counts and converts watch minutes to seconds', () => {
+      expect(vidA).toMatchObject({
+        views: 150, // 100 + 50
+        engagedViews: 135, // 90 + 45
+        likes: 15,
+        dislikes: 1,
+        comments: 3,
+        shares: 1,
+        watchTimeSeconds: 900, // (10 + 5) min
+        subscribersGained: 3,
+        subscribersLost: 1,
+      });
+      expect(vidX).toMatchObject({
+        views: 400, // 300 + 100
+        engagedViews: 330,
+        watchTimeSeconds: 1800, // (20.5 + 9.5) min
+        subscribersGained: 3,
+        subscribersLost: 1,
+      });
+    });
+
+    it('view-weights the average duration and percentage', () => {
+      // (4.1 × 300 + 5.7 × 100) / 400
+      expect(vidX.avgViewDurationSeconds).toBeCloseTo(4.5, 9);
+      // (30 × 300 + 35 × 100) / 400
+      expect(vidX.avgViewPercentage).toBeCloseTo(31.25, 9);
+      expect(vidA.avgViewDurationSeconds).toBeCloseTo(6, 9);
+    });
+  });
+
+  describe('channel_combined_a3', () => {
+    const rows = parseChannelBasicReport(fixture('channel_combined_a3'));
+
+    it('collapses playback/traffic/device dimensions to the basic report’s totals', () => {
+      const basic = parseChannelBasicReport(fixture('channel_basic_a3'));
+
+      for (const id of ['vidA', 'vidX']) {
+        const combined = rows.find((r) => r.youtubeVideoId === id)!;
+        const core = basic.find((r) => r.youtubeVideoId === id)!;
+
+        expect(combined.views).toBe(core.views);
+        expect(combined.watchTimeSeconds).toBe(core.watchTimeSeconds);
+        expect(combined.engagedViews).toBe(core.engagedViews);
+      }
+    });
+  });
+
+  describe('channel_traffic_source_a3', () => {
+    const rows = parseTrafficSourceReport(
+      fixture('channel_traffic_source_a3'),
+    );
+    const by = (id: string, source: string) =>
+      rows.find((r) => r.youtubeVideoId === id && r.source === source);
+
+    it('aggregates to one row per video/day/source, with codes named', () => {
+      expect(rows).toHaveLength(4);
+      expect(by('vidA', 'SUBSCRIBER')).toMatchObject({
+        views: 75, // 30 + 45
+        watchTimeMinutes: 7.5, // 4 + 3.5
+      });
+      expect(by('vidA', 'RELATED_VIDEO')).toMatchObject({
+        views: 75,
+        watchTimeMinutes: 7.5,
+      });
+      expect(by('vidX', 'YT_SEARCH')).toMatchObject({
+        views: 350,
+        watchTimeMinutes: 25,
+      });
+      expect(by('vidX', 'TS_99')).toMatchObject({
+        views: 50,
+        watchTimeMinutes: 5,
+      });
+    });
+
+    it('splits the same views the basic report counts, and no others', () => {
+      const basic = parseChannelBasicReport(fixture('channel_basic_a3'));
+
+      for (const id of ['vidA', 'vidX']) {
+        const split = rows
+          .filter((r) => r.youtubeVideoId === id)
+          .reduce((sum, r) => sum + r.views, 0);
+
+        expect(split).toBe(basic.find((r) => r.youtubeVideoId === id)!.views);
+      }
+    });
+  });
+
+  describe.each(['channel_reach_basic_a1', 'channel_reach_combined_a1'])(
+    '%s',
+    (name) => {
+      const rows = parseReachReport(fixture(name));
+      const vidA = rows.find((r) => r.youtubeVideoId === 'vidA')!;
+      const vidX = rows.find((r) => r.youtubeVideoId === 'vidX')!;
+
+      it('sums impressions and impression-weights CTR', () => {
+        expect(rows).toHaveLength(2);
+        expect(vidA.impressions).toBe(4000);
+        // combined: (0.05 × 2000 + 0.03 × 2000) / 4000
+        expect(vidA.impressionsCtr).toBeCloseTo(0.04, 9);
+        expect(vidX.impressions).toBe(4000);
+        // combined: (0.04 × 1000 + 0.06 × 3000) / 4000
+        expect(vidX.impressionsCtr).toBeCloseTo(0.055, 9);
+      });
+
+      // Neither reach report has an engaged_views column. Reading one
+      // anyway yields 0 for every row — a figure YouTube never reported,
+      // stored as if it had been.
+      it('does not produce an engaged-views figure the report does not carry', () => {
+        expect(fixture(name).split('\n')[0]).not.toContain('engaged_views');
+
+        for (const row of rows) {
+          expect(row).not.toHaveProperty('engagedViews');
+        }
+      });
+    },
+  );
+
+  describe('findCtrOutOfRange', () => {
+    it('passes a report whose CTRs are ratios', () => {
+      expect(
+        findCtrOutOfRange(parseReachReport(fixture('channel_reach_basic_a1'))),
+      ).toBeNull();
+    });
+
+    it('names the largest CTR when the file is in percent', () => {
+      const percent = fixture('channel_reach_basic_a1')
+        .replace(',0.04', ',4.0')
+        .replace(',0.055', ',5.5');
+
+      expect(findCtrOutOfRange(parseReachReport(percent))).toBeCloseTo(5.5, 9);
+    });
+  });
+
+  describe.each([
+    ['channel_basic_a3', parseChannelBasicReport],
+    ['channel_combined_a3', parseChannelBasicReport],
+    ['channel_traffic_source_a3', parseTrafficSourceReport],
+    ['channel_reach_basic_a1', parseReachReport],
+    ['channel_reach_combined_a1', parseReachReport],
+  ] as const)('%s with no data', (name, parse) => {
+    it('returns no rows for a header-only report', () => {
+      expect(parse(headerOnly(name))).toEqual([]);
+    });
+
+    it('returns no rows for an empty file', () => {
+      expect(parse('')).toEqual([]);
+    });
   });
 });

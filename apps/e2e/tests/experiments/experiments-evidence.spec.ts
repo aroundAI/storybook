@@ -164,7 +164,6 @@ test.describe('Experiment log — evidence', () => {
         metric_date: metricDate,
         impressions: 1000,
         impressions_ctr: 0.1,
-        engaged_views: 0,
       },
       {
         project_id: team.projectId,
@@ -173,7 +172,6 @@ test.describe('Experiment log — evidence', () => {
         metric_date: metricDate,
         impressions: 9000,
         impressions_ctr: 0.02,
-        engaged_views: 0,
       },
     ]);
 
@@ -226,7 +224,6 @@ test.describe('Experiment log — evidence', () => {
         metric_date: started!.started_at,
         impressions: 4000,
         impressions_ctr: 0.05,
-        engaged_views: 0,
       },
     ]);
 

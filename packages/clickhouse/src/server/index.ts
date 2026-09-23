@@ -14,6 +14,7 @@ export {
 
 export {
   insertChannelDaily,
+  insertChannelReachDaily,
   insertVideoMetrics,
   insertVideoReachDaily,
   insertVideoSnapshots,
@@ -133,6 +134,7 @@ export type {
   AnalyticsPlatform,
   AudienceDimension,
   ChannelDaily,
+  ChannelReachDaily,
   DailyDataPoint,
   DailyPlatformBreakdown,
   DailyStats,

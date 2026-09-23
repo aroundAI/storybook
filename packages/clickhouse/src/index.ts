@@ -37,6 +37,7 @@ export type {
   AnalyticsPlatform,
   AudienceDimension,
   ChannelDaily,
+  ChannelReachDaily,
   DailyDataPoint,
   DailyPlatformBreakdown,
   DailyStats,

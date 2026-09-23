@@ -38,13 +38,25 @@ export interface TrafficSourceReportRow {
   watchTimeMinutes: number;
 }
 
-/** Per-video per-day reach metrics from channel_reach_*_a1. */
+/**
+ * Per-video per-day reach metrics from channel_reach_*_a1.
+ *
+ * No engaged views: neither reach report has that column (Google's channel
+ * report reference lists only the two thumbnail metrics). It used to be read
+ * anyway, and a missing column parses as 0, so every stored value was a
+ * figure YouTube never reported (FILM-1504).
+ */
 export interface ReachReportRow {
   date: string;
   youtubeVideoId: string;
   impressions: number;
+  /**
+   * Impression-weighted within the video/day, as a ratio (0.05 = 5 %).
+   * Google's definition says both "percentage" and "clicks divided by
+   * impressions"; `findCtrOutOfRange` is what keeps a percentage file from
+   * being stored 100× too high.
+   */
   impressionsCtr: number;
-  engagedViews: number;
 }
 
 /**
@@ -267,7 +279,6 @@ export function parseReachReport(csv: string): ReachReportRow[] {
   if (dateIdx < 0 || videoIdx < 0 || impressionsIdx < 0) return [];
 
   const ctrIdx = columnIndex(headers, 'video_thumbnail_impressions_ctr');
-  const engagedIdx = columnIndex(headers, 'engaged_views');
 
   const byKey = new Map<string, ReachReportRow & { ctrWeightedSum: number }>();
 
@@ -285,13 +296,11 @@ export function parseReachReport(csv: string): ReachReportRow[] {
       youtubeVideoId: videoId,
       impressions: 0,
       impressionsCtr: 0,
-      engagedViews: 0,
       ctrWeightedSum: 0,
     };
 
     existing.impressions += impressions;
     existing.ctrWeightedSum += ctr * impressions;
-    existing.engagedViews += numberAt(row, engagedIdx);
 
     byKey.set(key, existing);
   }
@@ -300,4 +309,24 @@ export function parseReachReport(csv: string): ReachReportRow[] {
     ...row,
     impressionsCtr: row.impressions > 0 ? ctrWeightedSum / row.impressions : 0,
   }));
+}
+
+/**
+ * The largest CTR in a reach report when it exceeds 1, else null.
+ *
+ * A ratio cannot exceed 1, so any value above it means the file is in
+ * percent and every CTR in it would be stored 100× too high — and render as
+ * "520 %" or trip the low-CTR flag backwards. The ingest refuses such a
+ * report rather than guess a rescale (FILM-1504). A percent file whose every
+ * video had CTR ≤ 1 % would slip past, which for a whole channel-day is
+ * implausible; the check exists to make the likely error loud.
+ */
+export function findCtrOutOfRange(rows: ReachReportRow[]): number | null {
+  let max = 0;
+
+  for (const row of rows) {
+    if (row.impressionsCtr > max) max = row.impressionsCtr;
+  }
+
+  return max > 1 ? max : null;
 }

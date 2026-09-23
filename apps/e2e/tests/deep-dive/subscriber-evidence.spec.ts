@@ -136,7 +136,6 @@ test.describe('FILM-1617 — evidence', () => {
           metric_date: shift(d.metricDate),
           views: 0,
           watch_time_seconds: 0,
-          impressions: 0,
           engaged_views: 0,
           subscribers_gained: Math.max(0, d.net),
           subscribers_lost: Math.max(0, -d.net),

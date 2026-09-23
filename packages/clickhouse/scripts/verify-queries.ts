@@ -25,6 +25,7 @@ import type { MetricFamily } from '../src/lib/data-provenance';
 import {
   getClickHouseClient,
   insertChannelDaily,
+  insertChannelReachDaily,
   insertRetentionCurves,
   insertSubscriberSnapshot,
   insertVideoAudience,
@@ -279,7 +280,6 @@ async function seed() {
         metric_date: '2026-01-11',
         impressions: 4000,
         impressions_ctr: 0.05,
-        engaged_views: 90,
       },
     ]),
   );
@@ -356,10 +356,20 @@ async function seed() {
         metric_date: '2026-01-11',
         views: 25,
         watch_time_seconds: 300,
-        impressions: 0,
         engaged_views: 0,
         subscribers_gained: 1,
         subscribers_lost: 0,
+      },
+    ]),
+  );
+
+  await step('insertChannelReachDaily', () =>
+    insertChannelReachDaily([
+      {
+        connection_id: CHANNEL,
+        metric_date: '2026-01-11',
+        impressions: 900,
+        impressions_ctr: 0.05,
       },
     ]),
   );
@@ -557,6 +567,73 @@ async function queries() {
  */
 async function assertions() {
   const scope = { projectId: PROJECT };
+
+  await step(
+    'assert: a later reach residual leaves the core residual intact (FILM-1504)',
+    async () => {
+      // The two residual reports for one channel-day, in the order they
+      // usually arrive: core first, reach second. When both wrote
+      // channel_daily, the reach row's zeroes won under FINAL and YPP watch
+      // time and residual subscribers read back as 0.
+      const connection = '77777777-7777-7777-7777-777777777777';
+      const day = new Date(Date.now() - 3 * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+
+      await insertChannelDaily([
+        {
+          connection_id: connection,
+          metric_date: day,
+          views: 400,
+          watch_time_seconds: 1800,
+          engaged_views: 330,
+          subscribers_gained: 3,
+          subscribers_lost: 1,
+        },
+      ]);
+      await insertChannelReachDaily([
+        {
+          connection_id: connection,
+          metric_date: day,
+          impressions: 4000,
+          impressions_ctr: 0.055,
+        },
+      ]);
+
+      const watch = await queryChannelWatchWindow({
+        connectionIds: [connection],
+        windowDays: 30,
+      });
+      const deltas = await querySubscriberDeltas({
+        connectionIds: [connection],
+        from: day,
+        to: day,
+      });
+      const reach = await getClickHouseClient().query({
+        query: `
+          SELECT impressions, round(impressions_ctr, 4) AS ctr
+          FROM channel_reach_daily FINAL
+          WHERE connection_id = {connection:UUID} AND metric_date = {day:Date}`,
+        query_params: { connection, day },
+        format: 'JSONEachRow',
+      });
+
+      const got = JSON.stringify({
+        watch: watch.watchTimeSeconds,
+        net: deltas.map((d) => d.net),
+        reach: await reach.json(),
+      });
+      const want = JSON.stringify({
+        watch: 1800,
+        net: [2],
+        reach: [{ impressions: '4000', ctr: 0.055 }],
+      });
+
+      if (got !== want) throw new Error(`expected ${want}, got ${got}`);
+
+      return { watch: watch.watchTimeSeconds };
+    },
+  );
 
   await step(
     'assert: an unknown asset duration is null, not zero (FILM-1710)',
@@ -1472,7 +1549,6 @@ async function scanScopeSteps() {
           ...at(index),
           impressions: 1,
           impressions_ctr: 0,
-          engaged_views: 0,
         })),
         insertVideoReachDaily,
       );

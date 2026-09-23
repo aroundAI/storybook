@@ -1,0 +1,5 @@
+date,channel_id,video_id,traffic_source_type,traffic_source_detail,operating_system,device_type,video_thumbnail_impressions,video_thumbnail_impressions_ctr
+20260910,UCfixture,vidA,3,,5,1,2000,0.05
+20260910,UCfixture,vidA,7,vidZ,6,2,2000,0.03
+20260910,UCfixture,vidX,5,,5,1,1000,0.04
+20260910,UCfixture,vidX,5,,6,2,3000,0.06

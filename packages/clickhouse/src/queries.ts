@@ -15,6 +15,7 @@ import { getClickHouseClient, isClickHouseEnabled } from './client';
 import type {
   AggregatedTotals,
   ChannelDaily,
+  ChannelReachDaily,
   DailyDataPoint,
   DailyPlatformBreakdown,
   DailyPlatformMetricsRow,
@@ -70,7 +71,7 @@ export async function insertVideoSnapshots(
 }
 
 /**
- * Insert thumbnail reach rows (impressions/CTR/engaged views) per video/day.
+ * Insert thumbnail reach rows (impressions/CTR) per video/day.
  */
 export async function insertVideoReachDaily(
   rows: VideoReachDaily[],
@@ -113,6 +114,26 @@ export async function insertChannelDaily(rows: ChannelDaily[]): Promise<void> {
 
   await client.insert({
     table: 'channel_daily',
+    values: rows,
+    format: 'JSONEachRow',
+  });
+}
+
+/**
+ * Insert the channel reach residual — impressions for videos not published
+ * through the platform. Its own table, never `channel_daily`: the two come
+ * from separately delivered reports and would erase each other on a shared
+ * key (FILM-1504).
+ */
+export async function insertChannelReachDaily(
+  rows: ChannelReachDaily[],
+): Promise<void> {
+  if (rows.length === 0 || !isClickHouseEnabled()) return;
+
+  const client = getClickHouseClient();
+
+  await client.insert({
+    table: 'channel_reach_daily',
     values: rows,
     format: 'JSONEachRow',
   });
