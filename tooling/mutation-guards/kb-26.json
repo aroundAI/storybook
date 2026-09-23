@@ -1,0 +1,79 @@
+{
+  "feature": "KB-26",
+  "mutations": [
+    {
+      "name": "KB26 U1 Upload no longer asks can_write_project",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/source-upload-actions.ts",
+      "find": "    if (!(await canWriteProject(userClient, data.projectId))) {\n      throw new ActionRefusal(PROJECT_WRITE_REFUSAL);\n    }\n",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/research-upload-access.test.ts",
+      "pattern": "refuses, as a value"
+    },
+    {
+      "name": "KB26 U2 Fact extraction no longer asks can_write_project",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/source-upload-actions.ts",
+      "find": "    if (!(await canWriteProject(supabase, data.projectId))) {\n      throw new ActionRefusal(PROJECT_WRITE_REFUSAL);\n    }\n",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/research-upload-access.test.ts",
+      "pattern": "reader of a public project"
+    },
+    {
+      "name": "KB26 U3 Upload sources keyed by slug alone again",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/source-upload-actions.ts",
+      "find": "{ onConflict: 'project_id,slug' }",
+      "replace": "{ onConflict: 'slug' }",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/research-upload-access.test.ts",
+      "pattern": "keyed per project"
+    },
+    {
+      "name": "KB26 U4 Research upload route accepts any reader of the project",
+      "kind": "unit",
+      "file": "apps/web/app/api/research/upload/route.ts",
+      "find": "    if (!(await canWriteProject(client, projectId))) {",
+      "replace": "    if (false && !(await canWriteProject(client, projectId))) {",
+      "cwd": "apps/web",
+      "test": "app/api/research/upload/__tests__/route.test.ts",
+      "pattern": "refuses a caller"
+    },
+    {
+      "name": "KB26 U5 Aggregator singleton loads project sources too",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/server/services/context-aggregator.ts",
+      "find": "      .is('project_id', null);",
+      "replace": "      ;",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/research-upload-access.test.ts",
+      "pattern": "loads shared sources only"
+    },
+    {
+      "name": "KB26 P1 Upload content readable by every signed-in user again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/research-uploads-rls.test.sql",
+      "sql": "drop policy external_content_read on public.external_content; create policy external_content_read on public.external_content for select to authenticated using (true);"
+    },
+    {
+      "name": "KB26 P2 Upload content readable by anyone who can read the project",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/research-uploads-rls.test.sql",
+      "sql": "drop policy external_content_read on public.external_content; create policy external_content_read on public.external_content for select to authenticated using (not is_upload or exists (select 1 from public.projects p where p.id = external_content.project_id));"
+    },
+    {
+      "name": "KB26 P3 Upload source names visible to every signed-in user again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/research-uploads-rls.test.sql",
+      "sql": "drop policy external_sources_read on public.external_sources; create policy external_sources_read on public.external_sources for select to authenticated using (is_active);"
+    },
+    {
+      "name": "KB26 P4 Source slugs unique across all projects again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/research-uploads-rls.test.sql",
+      "sql": "alter table public.external_sources drop constraint external_sources_project_slug_key; alter table public.external_sources add constraint external_sources_slug_key unique (slug);"
+    }
+  ]
+}

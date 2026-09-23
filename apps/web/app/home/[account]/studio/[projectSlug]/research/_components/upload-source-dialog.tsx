@@ -17,6 +17,7 @@ import {
   fetchUrlContentAction,
   uploadSourceContentAction,
 } from '@kit/episodes/server';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -213,22 +214,26 @@ export function UploadSourceDialog({
       try {
         // Phase 1: Upload
         setPhase('uploading');
-        await uploadSourceContentAction({
-          name: name.trim(),
-          content: content.trim(),
-          category: category as (typeof SOURCE_CATEGORIES)[number],
-          projectId,
-          sourceUrl: url.trim() || undefined,
-        });
+        await unwrap(
+          uploadSourceContentAction({
+            name: name.trim(),
+            content: content.trim(),
+            category: category as (typeof SOURCE_CATEGORIES)[number],
+            projectId,
+            sourceUrl: url.trim() || undefined,
+          }),
+        );
 
         // Phase 2: Extract
         setPhase('extracting');
-        const result = await extractFactsFromContentAction({
-          content: content.trim(),
-          projectId,
-          sourceTitle: name.trim(),
-          sourceCitation: url.trim() || name.trim(),
-        });
+        const result = await unwrap(
+          extractFactsFromContentAction({
+            content: content.trim(),
+            projectId,
+            sourceTitle: name.trim(),
+            sourceCitation: url.trim() || name.trim(),
+          }),
+        );
 
         // Phase 3: Complete
         setPhase('complete');
@@ -248,9 +253,11 @@ export function UploadSourceDialog({
           onOpenChange(false);
           resetForm();
         }, 800);
-      } catch {
+      } catch (error) {
         setPhase('idle');
-        toast.error('Failed to upload and extract facts');
+        toast.error(
+          refusalMessage(error, 'Failed to upload and extract facts'),
+        );
       }
     });
   };
@@ -326,6 +333,7 @@ export function UploadSourceDialog({
               <Label htmlFor="upload-name">Source Name *</Label>
               <Input
                 id="upload-name"
+                data-test="upload-source-name"
                 placeholder="e.g., WHO Report 2024"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -373,6 +381,7 @@ export function UploadSourceDialog({
             <TabsContent value="paste" className="mt-3">
               <Textarea
                 placeholder="Paste article text, research content, or any source material..."
+                data-test="upload-source-paste"
                 value={pastedContent}
                 onChange={(e) => setPastedContent(e.target.value)}
                 rows={8}
@@ -385,6 +394,7 @@ export function UploadSourceDialog({
               <div className="flex gap-2">
                 <Input
                   placeholder="https://example.com/article"
+                  data-test="upload-source-url"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   className="flex-1"
@@ -471,6 +481,7 @@ export function UploadSourceDialog({
             Cancel
           </Button>
           <Button
+            data-test="upload-source-submit"
             onClick={() => handleSubmit(activeTab)}
             disabled={
               isPending ||

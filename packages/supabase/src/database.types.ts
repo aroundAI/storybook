@@ -2544,9 +2544,11 @@ export type Database = {
           fts: unknown
           id: string
           image_url: string | null
+          is_upload: boolean
           journal: string | null
           language: string | null
           peer_reviewed: boolean | null
+          project_id: string | null
           published_at: string | null
           source_id: string
           title: string
@@ -2570,9 +2572,11 @@ export type Database = {
           fts?: unknown
           id?: string
           image_url?: string | null
+          is_upload?: boolean
           journal?: string | null
           language?: string | null
           peer_reviewed?: boolean | null
+          project_id?: string | null
           published_at?: string | null
           source_id: string
           title: string
@@ -2596,9 +2600,11 @@ export type Database = {
           fts?: unknown
           id?: string
           image_url?: string | null
+          is_upload?: boolean
           journal?: string | null
           language?: string | null
           peer_reviewed?: boolean | null
+          project_id?: string | null
           published_at?: string | null
           source_id?: string
           title?: string
@@ -2607,6 +2613,13 @@ export type Database = {
           url?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "external_content_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "external_content_source_id_fkey"
             columns: ["source_id"]
@@ -2633,6 +2646,7 @@ export type Database = {
           logo_url: string | null
           name: string
           peer_reviewed: boolean | null
+          project_id: string | null
           provider_type: string
           rate_limit_per_hour: number | null
           slug: string
@@ -2656,6 +2670,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           peer_reviewed?: boolean | null
+          project_id?: string | null
           provider_type: string
           rate_limit_per_hour?: number | null
           slug: string
@@ -2679,6 +2694,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           peer_reviewed?: boolean | null
+          project_id?: string | null
           provider_type?: string
           rate_limit_per_hour?: number | null
           slug?: string
@@ -2686,7 +2702,15 @@ export type Database = {
           usage_reset_at?: string | null
           website_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "external_sources_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fact_extraction_jobs: {
         Row: {

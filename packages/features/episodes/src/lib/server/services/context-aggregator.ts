@@ -98,7 +98,11 @@ export class ExternalContextAggregator {
     const { data: sources, error } = await supabase
       .from('external_sources')
       .select('id, category, provider_type, credibility_tier')
-      .eq('is_active', true);
+      .eq('is_active', true)
+      // Shared sources only. This instance is cached for the whole process,
+      // built from whichever caller's RLS view arrived first, so a
+      // project's own sources (KB-26) must never enter it.
+      .is('project_id', null);
 
     if (error) {
       console.error(
