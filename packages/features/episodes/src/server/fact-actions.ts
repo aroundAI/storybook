@@ -4,10 +4,14 @@ import { revalidatePath } from 'next/cache';
 
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { SOURCE_TYPES } from '../components/facts/fact-constants';
+import { FACT_REFUSALS, factRefusal } from './fact-review-refusals';
+import type { FactAction } from './fact-review-refusals';
 import { mapFactRow } from './fact-row-mapper';
 import type { VerifiedFactRow } from './fact-row-mapper';
 
@@ -16,36 +20,35 @@ import type { VerifiedFactRow } from './fact-row-mapper';
 // =============================================================================
 
 /**
- * Require that the user is an owner or admin on the project's account.
- * Throws if the user lacks permission.
+ * Review a fact through `public.set_fact_verification` (KB-18), which alone
+ * decides who may and from which state; `verified_by` is set there from the
+ * session. A refusal becomes an `ActionRefusal` the user can read; anything
+ * else stays thrown.
  */
-async function requireProjectRole(projectId: string, userId: string) {
+async function reviewFact(
+  action: Exclude<FactAction, 'delete'>,
+  factId: string,
+  notes: string | null,
+) {
   const client = getSupabaseServerClient();
 
-  // Look up the account that owns this project
-  const { data: project } = await client
-    .from('projects')
-    .select('account_id')
-    .eq('id', projectId)
-    .single();
+  const { data: status, error } = await client.rpc('set_fact_verification', {
+    target_fact_id: factId,
+    outcome: action === 'verify' ? 'verified' : 'disputed',
+    notes: notes ?? undefined,
+  });
 
-  if (!project?.account_id) {
-    throw new Error('Project not found');
+  if (error) {
+    const refusal = factRefusal(error, action);
+
+    if (refusal) {
+      throw new ActionRefusal(refusal);
+    }
+
+    throw new Error(`Failed to ${action} fact: ${error.message}`);
   }
 
-  // Check user's role on the account
-  const { data: membership } = await client
-    .from('accounts_memberships')
-    .select('account_role')
-    .eq('account_id', project.account_id)
-    .eq('user_id', userId)
-    .single();
-
-  if (!membership || !['owner', 'admin'].includes(membership.account_role)) {
-    throw new Error(
-      'Unauthorized: Only owners and admins can verify or dispute facts.',
-    );
-  }
+  return status;
 }
 
 // =============================================================================
@@ -176,106 +179,100 @@ export const addVerifiedFactAction = enhanceAction(
 );
 
 /**
- * Mark a fact as verified.
- * Requires owner or admin role on the project's account.
+ * Mark a fact as verified, by the signed-in user.
+ * Only the project's owner or admins; only an unverified or pending fact.
  */
-export const verifyFactAction = enhanceAction(
-  async (data, user) => {
-    const client = getSupabaseServerClient();
+export const verifyFactAction = returnRefusals(
+  enhanceAction(
+    async (data) => {
+      const status = await reviewFact(
+        'verify',
+        data.factId,
+        data.verificationNotes || null,
+      );
 
-    // RBAC: require owner or admin role
-    await requireProjectRole(data.projectId, user!.id);
+      revalidatePath(data.basePath);
 
-    const { error } = await client
-      .from('verified_facts')
-      .update({
-        verification_status: 'verified',
-        verified_by: user?.id,
-        verified_at: new Date().toISOString(),
-        verification_notes: data.verificationNotes || null,
-        updated_by: user?.id,
-      })
-      .eq('id', data.factId)
-      .eq('project_id', data.projectId);
-
-    if (error) {
-      throw new Error(`Failed to verify fact: ${error.message}`);
-    }
-
-    revalidatePath(data.basePath);
-
-    return { success: true };
-  },
-  {
-    schema: VerifyFactSchema,
-    auth: true,
-  },
+      return { status };
+    },
+    {
+      schema: VerifyFactSchema,
+      auth: true,
+    },
+  ),
 );
 
 /**
- * Mark a fact as disputed.
- * Requires owner or admin role on the project's account.
+ * Mark a fact as disputed, with the reason.
+ * Only the project's owner or admins; only an unverified or pending fact.
  */
-export const disputeFactAction = enhanceAction(
-  async (data, user) => {
-    const client = getSupabaseServerClient();
+export const disputeFactAction = returnRefusals(
+  enhanceAction(
+    async (data) => {
+      const status = await reviewFact(
+        'dispute',
+        data.factId,
+        data.disputeReason,
+      );
 
-    // RBAC: require owner or admin role
-    await requireProjectRole(data.projectId, user!.id);
+      revalidatePath(data.basePath);
 
-    const { error } = await client
-      .from('verified_facts')
-      .update({
-        verification_status: 'disputed',
-        verification_notes: data.disputeReason,
-        updated_by: user?.id,
-      })
-      .eq('id', data.factId)
-      .eq('project_id', data.projectId);
-
-    if (error) {
-      throw new Error(`Failed to dispute fact: ${error.message}`);
-    }
-
-    revalidatePath(data.basePath);
-
-    return { success: true };
-  },
-  {
-    schema: DisputeFactSchema,
-    auth: true,
-  },
+      return { status };
+    },
+    {
+      schema: DisputeFactSchema,
+      auth: true,
+    },
+  ),
 );
 
 /**
- * Delete a verified fact.
- * Requires owner or admin role on the project's account.
+ * Delete a fact. Only the project's owner or admins — the rule the DELETE
+ * policy applies, asked first so a refusal is said rather than returned as a
+ * delete that removed nothing.
  */
-export const deleteFactAction = enhanceAction(
-  async (data, user) => {
-    const client = getSupabaseServerClient();
+export const deleteFactAction = returnRefusals(
+  enhanceAction(
+    async (data) => {
+      const client = getSupabaseServerClient();
 
-    // RBAC: require owner or admin role
-    await requireProjectRole(data.projectId, user!.id);
+      const { data: canEdit, error: roleError } = await client.rpc(
+        'can_edit_project',
+        { target_project_id: data.projectId },
+      );
 
-    const { error } = await client
-      .from('verified_facts')
-      .delete()
-      .eq('id', data.factId)
-      .eq('project_id', data.projectId);
+      if (roleError) {
+        throw new Error(`Failed to delete fact: ${roleError.message}`);
+      }
 
-    if (error) {
-      throw new Error(`Failed to delete fact: ${error.message}`);
-    }
+      if (!canEdit) {
+        throw new ActionRefusal(FACT_REFUSALS.deleteForbidden);
+      }
 
-    revalidatePath(data.basePath);
+      const { data: deleted, error } = await client
+        .from('verified_facts')
+        .delete()
+        .eq('id', data.factId)
+        .eq('project_id', data.projectId)
+        .select('id');
 
-    return { success: true };
-  },
-  {
-    schema: DeleteFactSchema,
-    auth: true,
-  },
+      if (error) {
+        throw new Error(`Failed to delete fact: ${error.message}`);
+      }
+
+      if (!deleted?.length) {
+        throw new ActionRefusal(FACT_REFUSALS.notFound);
+      }
+
+      revalidatePath(data.basePath);
+
+      return { deleted: true };
+    },
+    {
+      schema: DeleteFactSchema,
+      auth: true,
+    },
+  ),
 );
 
 /**
