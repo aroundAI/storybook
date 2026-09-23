@@ -135,9 +135,7 @@ function fixedFromBanners(markdown: string): Map<string, string> {
     const id = /^## (KB-\d+)/.exec(entry)?.[1];
     if (!id) continue;
     const lead = entry.split(/\n### /)[0] ?? '';
-    const paragraph = lead
-      .split(/\n\s*\n/)
-      .find((p) => BANNER.test(p));
+    const paragraph = lead.split(/\n\s*\n/).find((p) => BANNER.test(p));
     const banner = paragraph ? BANNER.exec(paragraph)?.[0] : undefined;
     if (paragraph && banner && !/in part|\(part\)/i.test(paragraph)) {
       fixed.set(id, `entry banner ${banner}`);
@@ -146,10 +144,7 @@ function fixedFromBanners(markdown: string): Map<string, string> {
   return fixed;
 }
 
-function findViolations(
-  specs: SpecRecord[],
-  knownBugs: string,
-): string[] {
+function findViolations(specs: SpecRecord[], knownBugs: string): string[] {
   const fixed = new Map([
     ...fixedFromBanners(knownBugs),
     ...fixedFromTable(knownBugs),
@@ -210,10 +205,7 @@ describe('KB-80: spec closed_by pointers do not name finished work', () => {
     // A scan that found nothing would pass for the wrong reason.
     expect(specs.length).toBeGreaterThan(200);
 
-    const violations = findViolations(
-      specs,
-      readFileSync(KNOWN_BUGS, 'utf8'),
-    );
+    const violations = findViolations(specs, readFileSync(KNOWN_BUGS, 'utf8'));
 
     // One line per violation: spec_id → closed_by (why) — "item".
     expect(violations).toEqual([]);
@@ -317,17 +309,22 @@ describe('KB-80: spec closed_by pointers do not name finished work', () => {
       }
     });
 
-    it.each(['KB-2', 'KB-6', 'KB-7', 'KB-99', 'FILM-903', 'unassigned', 'owner'])(
-      'leaves closed_by %s alone',
-      (closedBy) => {
-        expect(
-          findViolations(
-            [pointing(closedBy), spec('FILM-903', 'PARTIAL')],
-            knownBugs,
-          ),
-        ).toEqual([]);
-      },
-    );
+    it.each([
+      'KB-2',
+      'KB-6',
+      'KB-7',
+      'KB-99',
+      'FILM-903',
+      'unassigned',
+      'owner',
+    ])('leaves closed_by %s alone', (closedBy) => {
+      expect(
+        findViolations(
+          [pointing(closedBy), spec('FILM-903', 'PARTIAL')],
+          knownBugs,
+        ),
+      ).toEqual([]);
+    });
 
     it('ignores a met criterion that keeps its closed_by', () => {
       expect(findViolations([pointing('KB-10', true)], knownBugs)).toEqual([]);
