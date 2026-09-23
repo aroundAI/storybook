@@ -519,7 +519,7 @@ disconnect has exactly one purge row per disconnect event.
 
 ## 14. Database Design and Changes
 
-**PR A migration** `<ts>_kb22-disconnect-keeps-records.sql` (hand-written; mirrored
+**PR A migration** `20260923140320_kb22-disconnect-keeps-records.sql` (hand-written; mirrored
 into `schemas/32-platform-connections.sql`, `30-film-studio.sql`,
 `73-channel-analytics-settings.sql`):
 

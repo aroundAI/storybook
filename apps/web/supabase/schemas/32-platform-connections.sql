@@ -103,7 +103,7 @@ CREATE TRIGGER platform_connections_set_timestamps
 
 -- KB-22: writing a token is reconnecting, and clears disconnected_at; and the
 -- one definition of disconnect. Bodies in
--- migrations/20260923030147_kb22-disconnect-keeps-records.sql.
+-- migrations/20260923140320_kb22-disconnect-keeps-records.sql.
 CREATE TRIGGER platform_connections_reconnect
   BEFORE INSERT OR UPDATE ON public.platform_connections
   FOR EACH ROW EXECUTE FUNCTION public.platform_connections_clear_disconnected();

@@ -48,7 +48,7 @@ acceptance_criteria:
     evidence: "`packages/features/publishing/src/oauth/youtube/revoke.ts` (moved from `disconnect.ts` by KB-22)"
   - text: "Disconnect removes connection from database"
     met: true
-    evidence: "Changed by KB-22: disconnect wipes the stored tokens and keeps the row, so the channel's records survive — `disconnect_platform_connection` (`apps/web/supabase/migrations/20260923030147_kb22-disconnect-keeps-records.sql`)"
+    evidence: "Changed by KB-22: disconnect wipes the stored tokens and keeps the row, so the channel's records survive — `disconnect_platform_connection` (`apps/web/supabase/migrations/20260923140320_kb22-disconnect-keeps-records.sql`)"
   - text: "State/nonce prevents CSRF attacks"
     met: true
     evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:79`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:156`"
