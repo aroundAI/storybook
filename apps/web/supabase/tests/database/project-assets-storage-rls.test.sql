@@ -157,7 +157,7 @@ select lives_ok(
 );
 select lives_ok(
   $$ insert into storage.objects (bucket_id, name, owner_id) values ('project-assets', 'projects/cccccccc-2800-4000-8000-000000000001/assets/master_video/export_en_1.mp4', auth.uid()::text) $$,
-  'The owner may upload the edit-suite export path'
+  'The owner may upload a master_video path'
 );
 select lives_ok(
   $$ insert into storage.objects (bucket_id, name, owner_id) values ('project-assets', 'episodes/cccccccc-2800-4000-8000-000000000011/thumbnails/o.png', auth.uid()::text) $$,
