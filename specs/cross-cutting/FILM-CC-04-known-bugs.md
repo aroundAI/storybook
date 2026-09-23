@@ -1218,7 +1218,7 @@ point** (standing owner rule). Every proof is local.
 click, behind a dialog that describes something else. **Found:** KB-20's
 drafting (2026-09-22), when "what does disconnect remove?" turned out to have
 an answer nobody had written down. It also corrects KB-20, whose first version
-asserted the opposite. **Fixed in part — PR A (this PR): disconnect keeps the
+asserted the opposite. **Fixed in part — PR A (#317): disconnect keeps the
 row and every record under it; the vendor-data deletion job (KB-20 item 3) is
 PR B, stacked on it.** Design: `specs/plans/KB-22-edd.md`.
 
@@ -1982,7 +1982,7 @@ listing the grants `anon` is allowed.
 
 **Severity:** Low — a failed revoke looked exactly like a successful one, in
 the logs and to the user. **Found:** KB-22's planning, 2026-09-23. **Fixed in
-part by KB-22 PR A (this PR).**
+part by KB-22 PR A (#317).**
 
 Every disconnect `await`ed `fetch(revokeUrl…)` and never read the response
 (`oauth/{youtube,tiktok,meta,twitter}/disconnect.ts` on `main` before
@@ -1990,7 +1990,7 @@ KB-22), so Google answering 400 was indistinguishable from 200. KB-22's
 `requestRevocation` now reads the status and classifies it (`revoked`,
 `vendor_refused`, `unreachable`, with a 10-second timeout), and the disconnect
 action logs the outcome with the HTTP status for YouTube, TikTok and Meta —
-unit-tested against a local listener, seen red with the status ignored.
+unit-tested against a local listener, seen red with the status ignored (#317).
 
 **Still open:** a refused or unreachable revoke is only a log line. The
 creator is not told, and no operator alert fires; the data-deletion page's
@@ -1999,7 +1999,7 @@ LinkedIn have no revoke at all — KB-25.
 
 ### Acceptance criteria
 
-- [x] The revoke response is read and logged, with its status — KB-22 PR A
+- [x] The revoke response is read and logged, with its status — KB-22 PR A (#317)
 - [ ] A refused or unreachable revoke is surfaced (to the creator, or as an operator alert) — owner to decide which
 
 ---
