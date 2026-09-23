@@ -2047,6 +2047,68 @@ every canon string at the tool boundary, as sources are.
 
 ---
 
+## KB-55 — Storage buckets the code writes to, which no migration creates
+
+**Severity:** Medium — nothing that runs before production could exercise
+audio, and one feature was broken everywhere. **Found:** KB-28's storage
+audit (2026-09-23). **Fixed** in #PR_KB55; design and reproduction in
+`specs/plans/KB-55-edd.md`.
+
+Code wrote to `audio`, `audio-assets` and `videos`; migrations created only
+`account_image`, `project-assets` and `reports`. Reproduced on the local
+stack (Storage API as real users, the real `@kit/storage` factory, a dev
+server):
+
+- **Audio on the Supabase provider** (every local and CI environment): TTS
+  dialogue, voice preview, SFX, music and the audio library all failed with
+  "Storage upload failed: Bucket not found". The audio library also called
+  `getStorageAdapter()` with no client, which throws "Supabase client is
+  required" before any bucket is involved. On R2 (production) the same calls
+  wrote `audio/…` and `audio-assets/…` keys, so production audio stored.
+- **Shorts, on every provider:** the `shorts-studio` page crashed to the error
+  page (`shots.veo_prompt` has never existed), and the action wrote with
+  Supabase directly into the missing `videos` bucket, whatever
+  `STORAGE_PROVIDER` said. The page was linked from nowhere; FILM-711 is
+  RETIRED.
+- The edit-suite export's `storybook-assets` prefix is the same class; it is
+  removed with the Edit Suite by FILM-607.
+
+Fix: the migration creates `audio` (project writers, KB-28's rule) and
+`audio-assets` (server-written only), both with MIME lists; the audio library
+passes the admin client and refuses non-audio types; `@kit/storage/buckets`
+is the one list of storage targets, and a unit test binds it to the
+migrations and to every bucket name passed to storage; the orphaned shorts
+generator (route and `@kit/shorts`) is removed. Reports stay on private
+Supabase Storage by owner decision, through one `report-storage.ts`.
+
+### Acceptance criteria
+
+- [x] Every bucket name the code writes is created by a migration, and a CI unit test fails otherwise (red on `audio`, `audio-assets`, `videos`)
+- [x] Audio stores on the Supabase provider: pgTAP, unit test (red: "Supabase client is required") and a Playwright upload through the real dialog
+- [x] The shorts generator no longer ships broken (removed)
+
+---
+
+## KB-56 — The reports bucket refuses personal-account owners
+
+**Severity:** Low — no UI reaches it today (report export is team-only), but
+the action accepts any account id. **Found:** KB-28's storage audit.
+**Fixed** in #PR_KB55, with KB-55.
+
+`reports_*` policies used `has_role_on_account`, which reads
+`accounts_memberships`; a personal account's owner has no row there, so
+their own `exports/<accountId>/…` upload was refused (reproduced: 403 "new
+row violates row-level security policy"). The policies now use
+`has_account_access` (primary owner or member), and the bucket takes only
+CSV and PDF (it had stored `text/html`).
+
+### Acceptance criteria
+
+- [x] pgTAP, red first: a personal-account owner writes and reads their own report; no one else's
+- [x] A stranger still cannot write, read or delete another account's reports
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
@@ -2068,6 +2130,7 @@ every canon string at the tool boundary, as sources are.
 | KB-41 | Any signed-in user could list any project's members with their emails, public or private; `get_project_members` now requires access to the project's account | #319 |
 | KB-18 | No fact could be verified or disputed, by anyone: the update policy refused both states and the actions wrote through it; the actions' account-role check also turned some reviews and deletes into silent no-ops | #314 |
 | KB-28 | Any signed-in user could upload into any project's storage folder, and owners could not replace or delete their own files | #313 |
+| KB-55, KB-56 | Audio buckets no migration created (every audio upload failed off R2), a shorts generator broken on every provider, and a reports bucket that refused personal-account owners | #PR_KB55 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
 | KB-52 | Every signed-in user could read, rewrite, forge and delete every account's `llm_usage_analytics` rows: a policy with no `TO` clause and `using (true)`; writes are now service-role only, and a pgTAP guard fails any new policy of that shape | #321 |

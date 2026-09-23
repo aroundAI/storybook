@@ -134,6 +134,11 @@ select is(
   'audio: the owner may replace their own object (SFX/music upsert)'
 );
 
+-- storage.protect_delete refuses a direct DELETE unless this is set. The
+-- Storage API sets it for its own deletes, which these cases stand in for;
+-- RLS still decides which rows the DELETE can see.
+set local storage.allow_delete_query = 'true';
+
 select makerkit.authenticate_as('kb55_stranger');
 delete from storage.objects where bucket_id = 'audio' and name = 'dddddddd-5500-4000-8000-000000000001/music/m.mp3';
 
