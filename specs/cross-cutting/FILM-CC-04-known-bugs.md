@@ -988,7 +988,7 @@ Verified* showed "Failed to verify fact", *Mark Disputed* "Failed to dispute
 fact"; the dialog closed and dropped the note; both rows stayed `unverified`.
 
 - **The path.** `public.set_fact_verification`
-  (`20260923024455_kb18-fact-verification.sql`) is the only end-user way into
+  (`20260923042421_kb18-fact-verification.sql`) is the only end-user way into
   `verified` or `disputed`: an owner or admin of the fact's *project*
   (`can_edit_project`), `verified_by = auth.uid()` with no parameter to name
   anyone else, and only from `unverified` or `pending_review` — a review from a

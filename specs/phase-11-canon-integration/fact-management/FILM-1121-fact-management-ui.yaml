@@ -28,7 +28,7 @@ acceptance_criteria:
     reason: "unverified — CrossRef call at `packages/features/episodes/src/components/facts/add-fact-form.tsx:118`; no test, needs a vendor response"
   - text: "FactVerificationDialog allows marking verified/disputed"
     met: true
-    evidence: "KB-18 (#314): `apps/e2e/tests/facts/fact-verification.spec.ts` verifies one fact and disputes another through the dialog, reloads, and reads both rows back; `public.set_fact_verification` (`apps/web/supabase/migrations/20260923024455_kb18-fact-verification.sql`) is the write, owner/admin only"
+    evidence: "KB-18 (#314): `apps/e2e/tests/facts/fact-verification.spec.ts` verifies one fact and disputes another through the dialog, reloads, and reads both rows back; `public.set_fact_verification` (`apps/web/supabase/migrations/20260923042421_kb18-fact-verification.sql`) is the write, owner/admin only"
   - text: "Only DOCUMENTARY projects see Facts section"
     met: false
     reason: "no longer true — Fact Library link shows for every editable project (`apps/web/app/home/[account]/studio/[projectSlug]/settings/page.tsx:389`); never gated (811ab9e8)"

@@ -334,7 +334,10 @@ this change:
 
 ## 14. Database Design and Changes
 
-**One new migration** `apps/web/supabase/migrations/<UTC>_kb18-fact-verification.sql`:
+**One new migration** `apps/web/supabase/migrations/20260923042421_kb18-fact-verification.sql`
+(first written as `20260923024455_…`; renamed on rebase so it sorts after
+main's `20260923025438_generation_jobs_refinement_job_types.sql`, since
+`supabase db push` refuses a migration older than the newest applied):
 
 ```sql
 create or replace function public.set_fact_verification(
@@ -749,7 +752,8 @@ the dialog's old close-on-any-outcome → note-preserved assertion red.
   column for its full-text criterion) must not rename or reorder the BEFORE
   UPDATE triggers (`enforce_verified_facts_update` must sort before
   `verified_facts_snapshot_verifier_name`).
-- Its migration timestamp must sort after this one; regenerate types after.
+- Its migration timestamp must sort after `20260923042421_kb18-fact-verification.sql`
+  (and after anything newer on main when it lands); regenerate types after.
 - Known side effect it may hit: the unchanged UPDATE policy's `WITH CHECK`
   refuses **any** user-client edit of a verified fact that keeps it verified
   (e.g. editing tags) — content edits work only because the trigger first
@@ -758,7 +762,7 @@ the dialog's old close-on-any-outcome → note-preserved assertion red.
 
 ## 32. Implementation Plan
 
-1. **Migration** `<UTC>_kb18-fact-verification.sql` (§14). Under DB lock:
+1. **Migration** `20260923042421_kb18-fact-verification.sql` (§14). Under DB lock:
    `db reset`, `typegen`. *Rollback*: drop function.
 2. **pgTAP** `verified-facts-review.test.sql` (§26) → green; then the
    mutation reds one at a time, restore. Also rerun
