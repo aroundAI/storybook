@@ -1771,9 +1771,13 @@ audit). The tags placeholder reads "animation, kids, story"
 another account's episode id gets back LLM output built from that account's
 characters, locations, verified facts and season premise. It needs the id — a
 UUID, not guessable — which is what keeps this below High. **Found:** the spec
-audit of FILM-305 (2026-09-23); confirmed by the coordinator by reading. **Not
-run**: the LLM worker consumes SQS, which has no local equivalent (phase 18
-README, *Known limits*). **Open.**
+audit of FILM-305 (2026-09-23); **reproduced** 2026-09-23 with two real users
+against the local stack, the real action under B's session and the real worker
+handler on the service-role key (only SQS and the LLM captured): B's prompt
+carried all five of A's canary strings, and once A's project was public B
+queued a story overwrite on it. **Fixed** in #315: every `queueLlmJob` needs a
+target that only `can_write_project` (KB-28), asked as the caller, can produce.
+Design and the call-site table: `specs/plans/KB-31-edd.md` §8.3.
 
 `generateStoryIdeasAction`
 (`packages/features/episodes/src/server/story-actions.ts:54-117`) authenticates
@@ -1804,9 +1808,84 @@ membership itself against the payload's `userId`.
 
 ### Acceptance criteria
 
-- [ ] Unit, red first: `generateStoryIdeasAction` refuses an episode id the caller cannot read, and queues nothing
-- [ ] Every `queueLlmJob` call site is listed with the read that authorises it
-- [ ] LLM usage is attributed to the target's account
+- [x] Unit, red first: `generateStoryIdeasAction` refuses an episode id the caller cannot read — or can read but not write — and queues nothing (`packages/features/episodes/__tests__/llm-job-authorization.test.ts`)
+- [x] Every `queueLlmJob` call site is listed with the read that authorises it — all 24, in `specs/plans/KB-31-edd.md` §8.3
+- [x] LLM usage is attributed to the target's account — `queueLlmJob` stamps it; three worker handlers that billed the project id fixed
+
+---
+
+## KB-46 — Voice preview spends a public episode owner's ElevenLabs key
+
+**Severity:** High if confirmed — any signed-in user spends another account's
+vendor credit. **Found:** by reading, during KB-31 (2026-09-23). **Not
+reproduced.** **Open.**
+
+`generateVoiceFromTextAction`
+(`packages/features/audio-generation/src/server/voice-actions.ts:627`)
+authorises by reading the episode through the user's client. The public-sharing
+policy on `episodes` returns the row for **every signed-in user** when the
+project is public or unlisted, so the read proves nothing. The action then
+loads that account's ElevenLabs key and budget and generates audio with it.
+The same "readable is not writable" shape KB-31 fixed for LLM jobs.
+
+**Proposed fix:** authorise with `can_write_project` on the episode's project,
+as `@kit/prompt-engine/llm-job-target` does, before reading the key.
+
+---
+
+## KB-47 — The voice, publish and render queues were not surveyed for caller-supplied ids
+
+**Severity:** unknown until surveyed; High if any worker trusts a payload id
+the way the LLM worker did. **Found:** KB-31 (2026-09-23) surveyed only
+`queueLlmJob`. **Not reproduced.** **Open.**
+
+These producers send SQS messages to workers that run on the service-role key,
+and were not checked for an authorising read before the send:
+
+- `packages/features/audio-generation/src/server/voice-queue-helper.ts:90`
+- `packages/features/publishing/src/server/publish-actions.ts:960`, `:1039`
+- `packages/features/edit-suite/src/server/render-actions.ts:146`, `:226`
+
+**Proposed fix:** list each producer with the read that authorises its target,
+as KB-31 did; give each queue a typed target like `queueLlmJob`'s.
+
+---
+
+## KB-48 — `audio_cues` and `episode_facts` policies leave out personal-account owners
+
+**Severity:** Medium — a personal account's owner cannot use their own data.
+**Found:** KB-31 (2026-09-23). **Open.**
+
+- `episode_facts` — **reproduced**: the policies test `accounts_memberships`
+  only, and a personal account's owner has no membership row, so A's own
+  insert linking a fact to A's episode was refused (42501) during the KB-31
+  reproduction; the harness had to seed it with the service role.
+- `audio_cues_select_policy` — **read, not reproduced**: it tests
+  `has_role_on_account(p.account_id)` only, which is false for a personal
+  owner without a role row, so they should not be able to read their own cues.
+
+**Proposed fix:** use the owner-or-role rule the other studio tables use
+(`primary_owner_user_id = auth.uid()` for personal accounts, or
+`has_account_access`), with a pgTAP case per table for a personal owner.
+
+---
+
+## KB-49 — The LLM worker has no check of its own on the payload's user
+
+**Severity:** Low — defence in depth; KB-31 authorises every producer.
+**Found:** KB-31 (2026-09-23), its approved follow-up D5. **Open.**
+
+`apps/web/lambda/llm-worker/index.ts` builds context and writes on the
+service-role key for whatever the payload names. KB-31 closed that at the
+producers, where the caller's session is. What remains:
+
+- a job queued before a user's project role is revoked still runs;
+- a future producer that skips the typed target, by casting, is caught only by
+  review.
+
+**Proposed fix:** before dispatch, the worker checks that `userId` holds a
+writing `project_members` role on the payload's project (the rule
+`can_write_project` encodes), and refuses the job otherwise.
 
 ---
 
@@ -2068,6 +2147,7 @@ every canon string at the tool boundary, as sources are.
 | KB-41 | Any signed-in user could list any project's members with their emails, public or private; `get_project_members` now requires access to the project's account | #319 |
 | KB-18 | No fact could be verified or disputed, by anyone: the update policy refused both states and the actions wrote through it; the actions' account-role check also turned some reviews and deletes into silent no-ops | #314 |
 | KB-28 | Any signed-in user could upload into any project's storage folder, and owners could not replace or delete their own files | #313 |
+| KB-31 | Any signed-in user could have the LLM worker build prompts from, and write into, another account's episodes and projects by naming their ids | #315 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
 | KB-52 | Every signed-in user could read, rewrite, forge and delete every account's `llm_usage_analytics` rows: a policy with no `TO` clause and `using (true)`; writes are now service-role only, and a pgTAP guard fails any new policy of that shape | #321 |
