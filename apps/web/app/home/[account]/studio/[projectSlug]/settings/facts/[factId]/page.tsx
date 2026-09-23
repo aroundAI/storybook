@@ -121,6 +121,7 @@ async function FactDetailPage({ params }: FactDetailPageProps) {
               )}
             </div>
             <Badge
+              data-test="fact-status"
               className={
                 STATUS_STYLES[fact.verification_status] ??
                 STATUS_STYLES.unverified
@@ -245,14 +246,20 @@ async function FactDetailPage({ params }: FactDetailPageProps) {
           {fact.verification_notes && (
             <div>
               <span className="text-muted-foreground">Verification Notes:</span>
-              <p className="mt-1">{fact.verification_notes}</p>
+              <p className="mt-1" data-test="fact-verification-notes">
+                {fact.verification_notes}
+              </p>
             </div>
           )}
 
           {fact.verified_at && (
-            <div className="flex items-center gap-1">
+            <div
+              className="flex items-center gap-1"
+              data-test="fact-verified-by"
+            >
               <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-muted-foreground">Verified:</span>{' '}
+              <span className="text-muted-foreground">Verified by</span>{' '}
+              {fact.verified_by_name ?? 'a deleted user'} ·{' '}
               {new Date(fact.verified_at).toLocaleDateString()}
             </div>
           )}

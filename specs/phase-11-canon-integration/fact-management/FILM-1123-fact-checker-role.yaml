@@ -24,7 +24,7 @@ acceptance_criteria:
     evidence: null
   - text: "`runFactCheck` function validates content correctly"
     met: false
-    reason: "no longer true — no caller; needs `verified` facts, which KB-18 prevents (`packages/features/episodes/src/lib/documentary/fact-checker.ts:81`); slug `fact-checker-role` unregistered"
+    reason: "not met — no caller, and its slug `fact-checker-role` is unregistered (`packages/features/episodes/src/lib/documentary/fact-checker.ts:134`); facts can now reach `verified` (KB-18, #314), so that is no longer what stops it"
   - text: "Critical issues are properly identified"
     met: false
     reason: "unverified — LLM judgement in the live skill (`packages/features/episodes/src/agent/skills/fact-checker-skill.ts:72`); no test or eval; read-only audit, not run"
@@ -43,14 +43,15 @@ acceptance_criteria:
 remaining:
   - criterion: "`runFactCheck` function validates content correctly"
     reason: >
-      Nothing calls it. It reads only `verified` facts
-      (`packages/features/episodes/src/lib/documentary/fact-checker.ts:81`)
-      and returns "cannot fact-check" when there are none (`:120`), which is
-      always, since no fact can be verified (KB-18). Its `templateSlug:
-      'fact-checker-role'` (`:134`) is also not a registry key; the live agent
-      skill uses `documentary/fact-checker-role`
-      (`packages/features/episodes/src/agent/skills/fact-checker-skill.ts:58`)
-    closed_by: "KB-18"
+      Nothing calls it, and its `templateSlug: 'fact-checker-role'`
+      (`packages/features/episodes/src/lib/documentary/fact-checker.ts:134`)
+      is not a registry key; the live agent skill uses
+      `documentary/fact-checker-role`
+      (`packages/features/episodes/src/agent/skills/fact-checker-skill.ts:58`).
+      It reads only `verified` facts (`:81`); since KB-18 (#314) those can
+      exist, so it would no longer always exit at "cannot fact-check" (`:120`)
+      — but it is still never run
+    closed_by: "unassigned"
   - criterion: "UI shows results with severity-based styling"
     reason: >
       No `FactCheckResults` component or equivalent exists in code or git

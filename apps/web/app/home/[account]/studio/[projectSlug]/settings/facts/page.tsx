@@ -5,6 +5,7 @@ import { ArrowLeft, BookCheck } from 'lucide-react';
 
 import { FactLibrary } from '@kit/episodes/components';
 import { getProjectFactsAction } from '@kit/episodes/server';
+import { getProjectPermissions } from '@kit/projects/queries';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { Button } from '@kit/ui/button';
 import { Heading } from '@kit/ui/heading';
@@ -65,14 +66,17 @@ async function FactsPage({ params, searchParams }: FactsPageProps) {
   const status = validStatuses.find((s) => s === filters.status);
 
   // Use shared action to fetch facts (single source of query logic)
-  const result = await getProjectFactsAction({
-    projectId: project.id,
-    search: filters.q,
-    category: filters.category,
-    status,
-    limit: 50,
-    offset: 0,
-  });
+  const [result, permissions] = await Promise.all([
+    getProjectFactsAction({
+      projectId: project.id,
+      search: filters.q,
+      category: filters.category,
+      status,
+      limit: 50,
+      offset: 0,
+    }),
+    getProjectPermissions(project.id),
+  ]);
 
   const basePath = `/home/${account}/studio/${projectSlug}/settings/facts`;
 
@@ -97,6 +101,7 @@ async function FactsPage({ params, searchParams }: FactsPageProps) {
         total={result.total}
         basePath={basePath}
         projectId={project.id}
+        canReview={permissions.canEdit}
       />
     </div>
   );

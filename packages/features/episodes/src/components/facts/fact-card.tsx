@@ -24,7 +24,7 @@ import {
 import { toast } from '@kit/ui/sonner';
 
 import type { MappedFact } from '../../server/fact-row-mapper';
-import { STATUS_LABELS, STATUS_STYLES } from './fact-constants';
+import { STATUS_LABELS, STATUS_STYLES, isReviewable } from './fact-constants';
 
 interface FactCardProps {
   fact: MappedFact;
@@ -49,7 +49,11 @@ export function FactCard({
   };
 
   return (
-    <Card className="transition-shadow hover:shadow-md">
+    <Card
+      className="transition-shadow hover:shadow-md"
+      data-test="fact-card"
+      data-fact-id={fact.id}
+    >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           {/* Left: claim, citation, tags */}
@@ -81,6 +85,7 @@ export function FactCard({
           {/* Right: status, confidence, actions */}
           <div className="flex shrink-0 flex-col items-end gap-1.5">
             <Badge
+              data-test="fact-status"
               className={
                 STATUS_STYLES[fact.verificationStatus] ??
                 STATUS_STYLES.unverified
@@ -108,8 +113,13 @@ export function FactCard({
             <Link href={`${basePath}/${fact.id}`}>Details</Link>
           </Button>
 
-          {fact.verificationStatus === 'unverified' && onVerify && (
-            <Button variant="ghost" size="sm" onClick={onVerify}>
+          {isReviewable(fact.verificationStatus) && onVerify && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onVerify}
+              data-test="fact-verify-button"
+            >
               <Check className="mr-1 h-3.5 w-3.5" />
               Verify
             </Button>
@@ -131,7 +141,12 @@ export function FactCard({
           <div className="ml-auto">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  data-test="fact-actions-menu"
+                >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>

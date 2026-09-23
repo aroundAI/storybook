@@ -31,7 +31,7 @@ acceptance_criteria:
     evidence: null
   - text: "External facts passed to season analysis"
     met: false
-    reason: "no longer true — only `verified` facts are sent (`packages/features/episodes/src/server/external-context-actions.ts:401`); KB-18 means none exist"
+    reason: "unverified — only `verified` facts are sent (`packages/features/episodes/src/server/external-context-actions.ts:401`); since KB-18 (#314) they can exist, but no season analysis has been driven with one"
   - text: "Memory context includes external facts"
     met: true
     evidence: null
@@ -68,9 +68,11 @@ remaining:
   - criterion: "External facts passed to season analysis"
     reason: >
       The dialog sends `getVerifiedFactsAction` results, which keep only
-      `verification_status = 'verified'` (`external-context-actions.ts:401`);
-      no fact can reach that state, so `externalFacts` is always `undefined`
-    closed_by: "KB-18"
+      `verification_status = 'verified'` (`external-context-actions.ts:401`).
+      Until KB-18 (#314) no fact could reach that state; now one can, but
+      no test or run has shown a verified fact arriving in the analysis
+      request
+    closed_by: "unassigned"
   - criterion: "News projects show API connection status"
     reason: >
       Rendered only when `contentType === 'news'`

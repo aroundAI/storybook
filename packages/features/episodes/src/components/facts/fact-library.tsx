@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 
 import { Plus, Search } from 'lucide-react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +36,11 @@ import {
 } from '../../server/fact-actions';
 import type { MappedFact } from '../../server/fact-row-mapper';
 import { FactCard } from './fact-card';
-import { CATEGORY_OPTIONS, STATUS_OPTIONS } from './fact-constants';
+import {
+  CATEGORY_OPTIONS,
+  STATUS_OPTIONS,
+  isReviewable,
+} from './fact-constants';
 import { FactVerificationDialog } from './fact-verification-dialog';
 
 interface FactLibraryProps {
@@ -43,6 +48,12 @@ interface FactLibraryProps {
   total: number;
   basePath: string;
   projectId: string;
+  /**
+   * Whether the viewer is an owner or admin of the project, who alone may
+   * verify, dispute or delete a fact. Only hides the controls; the database
+   * refuses everyone else regardless.
+   */
+  canReview: boolean;
 }
 
 export function FactLibrary({
@@ -50,6 +61,7 @@ export function FactLibrary({
   total,
   basePath,
   projectId,
+  canReview,
 }: FactLibraryProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -78,42 +90,36 @@ export function FactLibrary({
     [searchQuery, selectedCategory, selectedStatus, basePath, router],
   );
 
+  // These reject on a refusal, so the dialog can stay open with the notes
+  // the user typed and show why (KB-18).
   const handleVerify = useCallback(
     async (factId: string, notes: string) => {
-      startTransition(async () => {
-        try {
-          await verifyFactAction({
-            factId,
-            projectId,
-            basePath,
-            verificationNotes: notes,
-          });
-          toast.success('Fact verified');
-          router.refresh();
-        } catch {
-          toast.error('Failed to verify fact');
-        }
-      });
+      await unwrap(
+        verifyFactAction({
+          factId,
+          projectId,
+          basePath,
+          verificationNotes: notes,
+        }),
+      );
+      toast.success('Fact verified');
+      router.refresh();
     },
     [projectId, basePath, router],
   );
 
   const handleDispute = useCallback(
     async (factId: string, reason: string) => {
-      startTransition(async () => {
-        try {
-          await disputeFactAction({
-            factId,
-            projectId,
-            basePath,
-            disputeReason: reason,
-          });
-          toast.success('Fact marked as disputed');
-          router.refresh();
-        } catch {
-          toast.error('Failed to dispute fact');
-        }
-      });
+      await unwrap(
+        disputeFactAction({
+          factId,
+          projectId,
+          basePath,
+          disputeReason: reason,
+        }),
+      );
+      toast.success('Fact marked as disputed');
+      router.refresh();
     },
     [projectId, basePath, router],
   );
@@ -122,11 +128,13 @@ export function FactLibrary({
     async (factId: string) => {
       startTransition(async () => {
         try {
-          await deleteFactAction({ factId, projectId, basePath });
+          await unwrap(deleteFactAction({ factId, projectId, basePath }));
           toast.success('Fact deleted');
           router.refresh();
-        } catch {
-          toast.error('Failed to delete fact');
+        } catch (error) {
+          toast.error(
+            refusalMessage(error, 'Could not delete the fact. Try again.'),
+          );
         } finally {
           setDeletingFactId(null);
         }
@@ -217,11 +225,13 @@ export function FactLibrary({
               fact={fact}
               basePath={basePath}
               onVerify={
-                fact.verificationStatus === 'unverified'
+                canReview && isReviewable(fact.verificationStatus)
                   ? () => setVerifyingFact(fact)
                   : undefined
               }
-              onDelete={() => setDeletingFactId(fact.id)}
+              onDelete={
+                canReview ? () => setDeletingFactId(fact.id) : undefined
+              }
             />
           ))}
         </div>
@@ -230,6 +240,7 @@ export function FactLibrary({
       {/* Verification Dialog */}
       {verifyingFact && (
         <FactVerificationDialog
+          key={verifyingFact.id}
           fact={verifyingFact}
           open={!!verifyingFact}
           onOpenChange={(open) => {

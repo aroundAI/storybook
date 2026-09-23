@@ -22,6 +22,17 @@ export const STATUS_LABELS: Record<string, string> = {
   retracted: 'Retracted',
 };
 
+/**
+ * The states a fact can be verified or disputed from — the rule
+ * `public.set_fact_verification` enforces (KB-18), mirrored here only to
+ * decide whether to offer the button. The database remains the judge.
+ */
+const REVIEWABLE_STATUSES = new Set(['unverified', 'pending_review']);
+
+export function isReviewable(status: string) {
+  return REVIEWABLE_STATUSES.has(status);
+}
+
 export const STATUS_OPTIONS = Object.entries(STATUS_LABELS).map(
   ([value, label]) => ({
     value,
