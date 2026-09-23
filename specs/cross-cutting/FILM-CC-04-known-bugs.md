@@ -2053,7 +2053,7 @@ every canon string at the tool boundary, as sources are.
 anyone holding one of their upload URLs for its 15 minutes, can store any
 bytes, of any type (`text/html` included) and any size, under the project's
 path on the public R2 domain. Authorisation is not affected. KB-28 already
-limits who gets a URL. **Found:** KB-28 (#313), 2026-09-23. **Fixed** in #PR.
+limits who gets a URL. **Found:** KB-28 (#313), 2026-09-23. **Fixed** in #323.
 
 Production stores every browser upload in Cloudflare R2 (owner). The R2
 adapter passed `ContentType` to `PutObjectCommand`
@@ -2146,7 +2146,7 @@ store every upload in Supabase Storage and log nothing.
 | KB-41 | Any signed-in user could list any project's members with their emails, public or private; `get_project_members` now requires access to the project's account | #319 |
 | KB-18 | No fact could be verified or disputed, by anyone: the update policy refused both states and the actions wrote through it; the actions' account-role check also turned some reviews and deletes into silent no-ops | #314 |
 | KB-28 | Any signed-in user could upload into any project's storage folder, and owners could not replace or delete their own files | #313 |
-| KB-38 | R2 upload URLs bound only the object key, so any type and any size could be stored with one | #PR |
+| KB-38 | R2 upload URLs bound only the object key, so any type and any size could be stored with one | #323 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
 | KB-52 | Every signed-in user could read, rewrite, forge and delete every account's `llm_usage_analytics` rows: a policy with no `TO` clause and `using (true)`; writes are now service-role only, and a pgTAP guard fails any new policy of that shape | #321 |
