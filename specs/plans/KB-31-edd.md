@@ -21,7 +21,7 @@ carries through §1–§34:
 
 - **The rule is project write access, not account membership.** Every
   episode- or project-scoped job requires `public.can_write_project(project_id)`
-  (KB-28, `20260923024605_kb28-project-write-scope.sql`): owner, admin or
+  (KB-28, `20260923042517_kb28-project-write-scope.sql`): owner, admin or
   member in `project_members`, evaluated through the user's client.
   Visibility never grants access. A team member with no `project_members`
   row, and a project `viewer`, are refused — intended and accepted.

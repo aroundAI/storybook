@@ -1814,81 +1814,6 @@ membership itself against the payload's `userId`.
 
 ---
 
-## KB-46 — Voice preview spends a public episode owner's ElevenLabs key
-
-**Severity:** High if confirmed — any signed-in user spends another account's
-vendor credit. **Found:** by reading, during KB-31 (2026-09-23). **Not
-reproduced.** **Open.**
-
-`generateVoiceFromTextAction`
-(`packages/features/audio-generation/src/server/voice-actions.ts:627`)
-authorises by reading the episode through the user's client. The public-sharing
-policy on `episodes` returns the row for **every signed-in user** when the
-project is public or unlisted, so the read proves nothing. The action then
-loads that account's ElevenLabs key and budget and generates audio with it.
-The same "readable is not writable" shape KB-31 fixed for LLM jobs.
-
-**Proposed fix:** authorise with `can_write_project` on the episode's project,
-as `@kit/prompt-engine/llm-job-target` does, before reading the key.
-
----
-
-## KB-47 — The voice, publish and render queues were not surveyed for caller-supplied ids
-
-**Severity:** unknown until surveyed; High if any worker trusts a payload id
-the way the LLM worker did. **Found:** KB-31 (2026-09-23) surveyed only
-`queueLlmJob`. **Not reproduced.** **Open.**
-
-These producers send SQS messages to workers that run on the service-role key,
-and were not checked for an authorising read before the send:
-
-- `packages/features/audio-generation/src/server/voice-queue-helper.ts:90`
-- `packages/features/publishing/src/server/publish-actions.ts:960`, `:1039`
-- `packages/features/edit-suite/src/server/render-actions.ts:146`, `:226`
-
-**Proposed fix:** list each producer with the read that authorises its target,
-as KB-31 did; give each queue a typed target like `queueLlmJob`'s.
-
----
-
-## KB-48 — `audio_cues` and `episode_facts` policies leave out personal-account owners
-
-**Severity:** Medium — a personal account's owner cannot use their own data.
-**Found:** KB-31 (2026-09-23). **Open.**
-
-- `episode_facts` — **reproduced**: the policies test `accounts_memberships`
-  only, and a personal account's owner has no membership row, so A's own
-  insert linking a fact to A's episode was refused (42501) during the KB-31
-  reproduction; the harness had to seed it with the service role.
-- `audio_cues_select_policy` — **read, not reproduced**: it tests
-  `has_role_on_account(p.account_id)` only, which is false for a personal
-  owner without a role row, so they should not be able to read their own cues.
-
-**Proposed fix:** use the owner-or-role rule the other studio tables use
-(`primary_owner_user_id = auth.uid()` for personal accounts, or
-`has_account_access`), with a pgTAP case per table for a personal owner.
-
----
-
-## KB-49 — The LLM worker has no check of its own on the payload's user
-
-**Severity:** Low — defence in depth; KB-31 authorises every producer.
-**Found:** KB-31 (2026-09-23), its approved follow-up D5. **Open.**
-
-`apps/web/lambda/llm-worker/index.ts` builds context and writes on the
-service-role key for whatever the payload names. KB-31 closed that at the
-producers, where the caller's session is. What remains:
-
-- a job queued before a user's project role is revoked still runs;
-- a future producer that skips the typed target, by casting, is caught only by
-  review.
-
-**Proposed fix:** before dispatch, the worker checks that `userId` holds a
-writing `project_members` role on the payload's project (the rule
-`can_write_project` encodes), and refuses the job otherwise.
-
----
-
 ## KB-32 — Every edit-suite export render fails before FFmpeg runs
 
 **Severity:** High — the export button can never produce a video. It fails
@@ -2047,6 +1972,81 @@ the prompt.
 
 - [ ] Owner decides whether semantic previous-episode context is wanted
 - [ ] If so: one caller opts in and a test shows similar episodes in the prompt
+
+---
+
+## KB-46 — Voice preview spends a public episode owner's ElevenLabs key
+
+**Severity:** High if confirmed — any signed-in user spends another account's
+vendor credit. **Found:** by reading, during KB-31 (2026-09-23). **Not
+reproduced.** **Open.**
+
+`generateVoiceFromTextAction`
+(`packages/features/audio-generation/src/server/voice-actions.ts:627`)
+authorises by reading the episode through the user's client. The public-sharing
+policy on `episodes` returns the row for **every signed-in user** when the
+project is public or unlisted, so the read proves nothing. The action then
+loads that account's ElevenLabs key and budget and generates audio with it.
+The same "readable is not writable" shape KB-31 fixed for LLM jobs.
+
+**Proposed fix:** authorise with `can_write_project` on the episode's project,
+as `@kit/prompt-engine/llm-job-target` does, before reading the key.
+
+---
+
+## KB-47 — The voice, publish and render queues were not surveyed for caller-supplied ids
+
+**Severity:** unknown until surveyed; High if any worker trusts a payload id
+the way the LLM worker did. **Found:** KB-31 (2026-09-23) surveyed only
+`queueLlmJob`. **Not reproduced.** **Open.**
+
+These producers send SQS messages to workers that run on the service-role key,
+and were not checked for an authorising read before the send:
+
+- `packages/features/audio-generation/src/server/voice-queue-helper.ts:90`
+- `packages/features/publishing/src/server/publish-actions.ts:960`, `:1039`
+- `packages/features/edit-suite/src/server/render-actions.ts:146`, `:226`
+
+**Proposed fix:** list each producer with the read that authorises its target,
+as KB-31 did; give each queue a typed target like `queueLlmJob`'s.
+
+---
+
+## KB-48 — `audio_cues` and `episode_facts` policies leave out personal-account owners
+
+**Severity:** Medium — a personal account's owner cannot use their own data.
+**Found:** KB-31 (2026-09-23). **Open.**
+
+- `episode_facts` — **reproduced**: the policies test `accounts_memberships`
+  only, and a personal account's owner has no membership row, so A's own
+  insert linking a fact to A's episode was refused (42501) during the KB-31
+  reproduction; the harness had to seed it with the service role.
+- `audio_cues_select_policy` — **read, not reproduced**: it tests
+  `has_role_on_account(p.account_id)` only, which is false for a personal
+  owner without a role row, so they should not be able to read their own cues.
+
+**Proposed fix:** use the owner-or-role rule the other studio tables use
+(`primary_owner_user_id = auth.uid()` for personal accounts, or
+`has_account_access`), with a pgTAP case per table for a personal owner.
+
+---
+
+## KB-49 — The LLM worker has no check of its own on the payload's user
+
+**Severity:** Low — defence in depth; KB-31 authorises every producer.
+**Found:** KB-31 (2026-09-23), its approved follow-up D5. **Open.**
+
+`apps/web/lambda/llm-worker/index.ts` builds context and writes on the
+service-role key for whatever the payload names. KB-31 closed that at the
+producers, where the caller's session is. What remains:
+
+- a job queued before a user's project role is revoked still runs;
+- a future producer that skips the typed target, by casting, is caught only by
+  review.
+
+**Proposed fix:** before dispatch, the worker checks that `userId` holds a
+writing `project_members` role on the payload's project (the rule
+`can_write_project` encodes), and refuses the job otherwise.
 
 ---
 
