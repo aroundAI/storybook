@@ -1,7 +1,7 @@
 # KB-55 — Engineering Design Document
 
 **Ticket:** KB-55, "storage buckets used in code that no migration creates" (`audio`, `audio-assets`, `videos`). Filed by the lead from KB-28's audit (`specs/plans/KB-28-edd.md` §8.3, §8.4, §31). Related: KB-56 (the `reports` bucket refuses personal-account owners), KB-57 (no storage-level project check on audio, report and shorts paths on R2; follows this ticket), KB-38 (R2 presigned uploads don't bind type or size), FILM-711 (Shorts Clipper, RETIRED).
-**Branch:** `fix/kb-55-storage-buckets`, based on `origin/fix/kb-28-project-assets-insert-scope` (PR #313) @ `fe745265` (after KB-28's rebase onto `main` 45223675; its migration is now `20260923042517_kb28-project-write-scope.sql`, so this ticket's migration sorts after that). Stacked because the proposed `audio` policies call KB-28's `public.can_write_project_storage(path)` and its path resolver, and the tests reuse KB-28's E2E helpers (`seedProjectMember`, `storageUploadAs`, `storageObjectExists`) and its pgTAP layout. None of these exist on `main`.
+**Branch:** `fix/kb-55-storage-buckets`, based on `origin/fix/kb-28-project-assets-insert-scope` (PR #313) @ `8a56f937` (after KB-28's rebase onto `main` b21bd33e; its migration is now `20260923042517_kb28-project-write-scope.sql`, so this ticket's migration sorts after that). Stacked because the proposed `audio` policies call KB-28's `public.can_write_project_storage(path)` and its path resolver, and the tests reuse KB-28's E2E helpers (`seedProjectMember`, `storageUploadAs`, `storageObjectExists`) and its pgTAP layout. None of these exist on `main`.
 **Size:** S–M. One migration, three small code changes, one package removal (if D1 = remove), a pgTAP file, two Vitest files and one Playwright spec.
 **Status:** Implemented (Phase 2). Approved 2026-09-23 with every default: D1 remove shorts, D2 reports stay on private Supabase Storage, D3 withdrawn (FILM-607), D4 refuse non-audio types, D5 include KB-56. §0a records what changed between the plan and the implementation.
 
@@ -426,7 +426,7 @@ Standard deploy: migrations, then the app. Nothing to backfill. Rollback: revert
 
 Red-before-green: each guard is reverted in isolation (bucket insert, each policy, the KB-56 swap, the admin-client change, the type check, the constant) and its test is watched failing for the stated reason.
 
-**Results (2026-09-23, local stack, base `fe745265`):**
+**Results (2026-09-23, local stack, base `fe745265`; key checks re-run on `8a56f937`, see below):**
 
 | Check | Result |
 |---|---|
