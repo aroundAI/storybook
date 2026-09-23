@@ -99,9 +99,9 @@ values
   ('60700000-0000-4000-8000-0000000000b1', '60700000-0000-4000-8000-0000000000e1', 'video', 'Video', 0),
   ('60700000-0000-4000-8000-0000000000b2', '60700000-0000-4000-8000-0000000000e2', 'video', 'Video', 0);
 
-insert into public.edit_clips (id, track_id, source_shot_id, start_ms, end_ms)
+insert into public.edit_clips (id, track_id, source_shot_id, start_ms, end_ms, out_point_ms)
 values ('60700000-0000-4000-8000-0000000000c1', '60700000-0000-4000-8000-0000000000b1',
-        '60700000-0000-4000-8000-0000000000a1', 0, 4000);
+        '60700000-0000-4000-8000-0000000000a1', 0, 4000, 4000);
 
 -- ==================================
 -- R3: the owner still reads; a stranger reads nothing
