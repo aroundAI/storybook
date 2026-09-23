@@ -62,7 +62,6 @@ export async function processFactExtraction(
       accountId: data.projectId,
       userId: data.userId,
     },
-    supabaseClient: supabase,
   });
 
   const facts = result?.data?.facts;

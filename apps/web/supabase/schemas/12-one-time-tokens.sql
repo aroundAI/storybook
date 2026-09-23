@@ -45,6 +45,7 @@ ALTER TABLE public.nonces ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can read their own nonces"
   ON public.nonces
   FOR SELECT
+  TO authenticated
   USING (
     user_id = (select auth.uid())
   );

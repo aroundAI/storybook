@@ -45,7 +45,6 @@ export async function buildActContextBridge(
       act_number: actNumber,
     },
     context: { name: 'act-context-bridge', accountId: '', userId: '' },
-    supabaseClient: supabase,
   });
 
   const bridge = extraction.data.bridge;

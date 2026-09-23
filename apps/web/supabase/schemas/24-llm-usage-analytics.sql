@@ -44,36 +44,20 @@ CREATE INDEX IF NOT EXISTS idx_llm_usage_analytics_account_executed
 -- Enable RLS
 ALTER TABLE public.llm_usage_analytics ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
-
--- Users can view their own account's LLM usage
-CREATE POLICY "Users can view own account LLM usage"
+-- RLS Policies (KB-52; migration 20260923041957_kb52-llm-usage-analytics-rls.sql)
+--
+-- Reads on account access: owner or member. A personal account's owner has no
+-- membership row, which is why this is has_account_access and not
+-- has_role_on_account. No super-admin policy: no screen reads this table.
+CREATE POLICY llm_usage_analytics_read
   ON public.llm_usage_analytics
   FOR SELECT
   TO authenticated
-  USING (
-    account_id IN (
-      SELECT id FROM public.accounts WHERE primary_owner_user_id = auth.uid()
-      UNION
-      SELECT account_id FROM public.accounts_memberships WHERE user_id = auth.uid()
-    )
-  );
+  USING (public.has_account_access(account_id));
 
--- Super admins can view all LLM usage
-CREATE POLICY "Super admins can view all LLM usage"
-  ON public.llm_usage_analytics
-  FOR SELECT
-  TO authenticated
-  USING (public.is_super_admin());
-
--- Service role can insert (for analytics logging from server)
-CREATE POLICY "Service role can insert LLM usage"
-  ON public.llm_usage_analytics
-  FOR INSERT
-  TO service_role
-  WITH CHECK (true);
-
--- Grant permissions
+-- Writes by the service role only. It bypasses RLS, so it needs no policy;
+-- a "service role" policy written without TO applies to every role, which
+-- is how KB-52 happened. anon and authenticated hold no write privilege.
+REVOKE ALL ON public.llm_usage_analytics FROM anon, authenticated;
 GRANT SELECT ON public.llm_usage_analytics TO authenticated;
-GRANT INSERT ON public.llm_usage_analytics TO service_role;
-GRANT ALL ON public.llm_usage_analytics TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.llm_usage_analytics TO service_role;

@@ -115,14 +115,6 @@ export interface LLMExecutionConfig {
 
   /** Optional: Enable schema validation (default: true if schema exists) */
   validateSchema?: boolean;
-
-  /**
-   * Optional: Supabase client for analytics logging.
-   * Required for Lambda execution (pass the service_role client).
-   * If not provided, will use getSupabaseServerAdminClient() (Next.js only).
-   */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabaseClient?: any;
 }
 
 /**
