@@ -54,7 +54,8 @@ export async function processSeasonOutline(
   payload: Record<string, unknown>,
   supabase: SupabaseClient,
 ): Promise<SeasonOutlineResult> {
-  const data = payload as SeasonOutlinePayload;
+  // SQS payload: cast, not validated (KB-33).
+  const data = payload as unknown as SeasonOutlinePayload;
 
   console.log(
     `[Season Outline] Starting AGENTIC pipeline for ${data.episodeCount} episodes`,

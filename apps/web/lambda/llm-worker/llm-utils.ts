@@ -9,23 +9,9 @@ import { createLLMClient } from '@kit/llm';
 
 import { type PromptTemplate, getPromptTemplate } from './prompt-registry';
 
-interface PromptLLMConfig {
-  provider: string;
-  model: string;
-  max_tokens?: number;
-  temperature?: number;
-  response_format?: string;
-}
+type PromptLLMConfig = PromptTemplate['llm'];
 
-interface PromptOutputConfig {
-  type: 'array' | 'object' | 'text';
-  wrapper_key?: string;
-  schema_for_llm?: string;
-  schema?: {
-    type: 'zod';
-    definition: string;
-  };
-}
+type PromptOutputConfig = NonNullable<PromptTemplate['output']>;
 
 interface RenderedPrompt {
   templateSlug: string;

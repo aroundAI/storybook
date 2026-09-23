@@ -48,7 +48,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     persistSession: false,
   },
   realtime: {
-    transport: ws,
+    // ws is the WHATWG client the realtime transport expects; @types/ws leads
+    // with a server-mode `new (address: null)` overload that defeats inference.
+    transport: ws as unknown as typeof WebSocket,
   },
 });
 
@@ -241,10 +243,14 @@ async function processRender(job: RenderJobMessage): Promise<void> {
   const { processFFmpegRender } = await import('./handlers/ffmpeg-render');
 
   const result = await processFFmpegRender({
+    // @ts-expect-error KB-32: this worker selects edit_* columns that do not exist; the renderer expects the real ones
     project,
     tracks: tracks ?? [],
+    // @ts-expect-error KB-32: edit_clips has end_ms/in_point_ms/out_point_ms/speed/fades, not what this worker selects
     clips: activeClips,
+    // @ts-expect-error KB-32: edit_transitions has from_clip_id/to_clip_id, not clip_id
     transitions: transitions ?? [],
+    // @ts-expect-error KB-32: edit_keyframes has offset_ms, not time_ms
     keyframes: keyframes ?? [],
     language,
     onProgress: async (progress: number) => {
@@ -283,7 +289,6 @@ async function processRender(job: RenderJobMessage): Promise<void> {
       const hash = createHash('sha256');
       const stream = createReadStream(result.outputPath);
       stream.on('error', reject);
-      // @ts-expect-error Node.js Buffer is compatible with hash.update() at runtime
       stream.on('data', (d) => hash.update(d));
       stream.on('end', () => resolve(hash.digest('hex')));
     });

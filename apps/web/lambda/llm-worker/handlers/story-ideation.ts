@@ -55,7 +55,8 @@ export async function processStoryIdeation(
   payload: Record<string, unknown>,
   supabase: SupabaseClient,
 ): Promise<StoryIdeationResult> {
-  const data = payload as StoryIdeationPayload;
+  // SQS payload: cast, not validated (KB-33).
+  const data = payload as unknown as StoryIdeationPayload;
 
   console.log(
     `[Story Ideation] Starting AGENTIC pipeline for episode ${data.episodeId}`,

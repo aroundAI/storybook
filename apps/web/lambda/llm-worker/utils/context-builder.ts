@@ -159,13 +159,11 @@ export interface EpisodeContext {
  *
  * @param episodeId - UUID of the episode
  * @param supabase - Supabase client instance
- * @param useSemanticSearch - Whether to use semantic search for previous episodes (Phase 2.5)
  * @returns Complete episode context for prompt injection
  */
 export async function buildEpisodeContext(
   episodeId: string,
   supabase: SupabaseClient,
-  useSemanticSearch: boolean = false,
 ): Promise<EpisodeContext> {
   const client = supabase;
 
@@ -200,7 +198,19 @@ export async function buildEpisodeContext(
     )
     .eq('id', episodeId)
     .is('deleted_at', null)
-    .single();
+    .single()
+    // The untyped client types every embed as an array; both are many-to-one
+    // (episodes.project_id, episodes.season_id), so PostgREST returns objects.
+    .overrideTypes<{
+      project: { id: string; metadata: unknown } | null;
+      season: {
+        id: string;
+        number: number;
+        name: string;
+        description: string | null;
+        direction_notes: string | null;
+      } | null;
+    }>();
 
   if (episodeError || !episode) {
     console.error(`[buildEpisodeContext] Query failed:`, {
@@ -241,6 +251,7 @@ export async function buildEpisodeContext(
       targetAudience?: string;
       videoStyle?: string;
       projectType?: ProjectType;
+      projectAestheticStyle?: string;
       recurringElements?: Array<{
         id?: string;
         name?: string;
@@ -292,47 +303,13 @@ export async function buildEpisodeContext(
   // 5. Fetch verified facts linked to this episode (for factual content types)
   const verifiedFacts = await fetchEpisodeFacts(episodeId, client);
 
-  // 6. Fetch previous episodes (semantic or sequential)
-  let previousEpisodes: EpisodeContext['previousEpisodes'] = [];
-
-  if (useSemanticSearch && process.env.VOYAGE_API_KEY && episode.season_id) {
-    try {
-      // Use semantic search to find thematically relevant episodes
-      const { searchSimilarEpisodes } = await import(
-        '@kit/embeddings/voyage-client'
-      );
-
-      const results = await searchSimilarEpisodes({
-        query: storyData.premise ?? episode.description ?? '',
-        seasonId: episode.season_id,
-        excludeId: episodeId,
-        limit: 3,
-        threshold: 0.75,
-      });
-
-      previousEpisodes = results.map((ep) => ({
-        number: ep.number,
-        title: ep.title,
-        summary: ep.story_summary,
-      }));
-    } catch {
-      console.warn(
-        '[Context Builder] Semantic search failed, falling back to sequential',
-      );
-      previousEpisodes = await fetchSequentialEpisodes(
-        episode.season_id,
-        episode.number,
-        supabase,
-      );
-    }
-  } else {
-    // Fallback to sequential episodes
-    previousEpisodes = await fetchSequentialEpisodes(
-      episode.season_id,
-      episode.number,
-      supabase,
-    );
-  }
+  // 6. Fetch previous episodes. Sequential only: semantic search never ran
+  // in the worker (KB-35).
+  const previousEpisodes = await fetchSequentialEpisodes(
+    episode.season_id,
+    episode.number,
+    supabase,
+  );
 
   // 6. Fetch linked verified facts for this episode
   let episodeFacts: EpisodeContext['episodeFacts'] = [];
@@ -1427,7 +1404,9 @@ export async function buildGlobalShotContext(
     )
     .eq('id', episodeId)
     .is('deleted_at', null)
-    .single();
+    .single()
+    // Many-to-one embed: an object, not the array the untyped client infers.
+    .overrideTypes<{ project: { id: string; metadata: unknown } | null }>();
 
   if (episodeError || !episode) {
     throw new Error(

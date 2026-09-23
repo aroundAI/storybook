@@ -40,7 +40,8 @@ export async function processLanguageInsights(
   payload: Record<string, unknown>,
   supabase: SupabaseClient,
 ): Promise<LanguageInsightsResult> {
-  const data = payload as LanguageInsightsPayload;
+  // SQS payload: cast, not validated (KB-33).
+  const data = payload as unknown as LanguageInsightsPayload;
 
   console.log(`[Language Insights] Processing for project ${data.projectId}`);
 

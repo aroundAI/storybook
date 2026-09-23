@@ -40,7 +40,8 @@ export async function processBatchTranslateMetadata(
   payload: Record<string, unknown>,
   supabase: SupabaseClient,
 ): Promise<BatchTranslateResult> {
-  const data = payload as BatchTranslatePayload;
+  // SQS payload: cast, not validated (KB-33).
+  const data = payload as unknown as BatchTranslatePayload;
 
   console.log(`[Batch Translate] Processing ${data.items.length} items`);
 

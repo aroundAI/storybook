@@ -58,10 +58,9 @@ export interface PromptTemplate {
     type: 'array' | 'object' | 'text';
     wrapper_key?: string;
     schema_for_llm?: string;
-    schema?: {
-      type: 'zod';
-      definition: string;
-    };
+    // Not read by the worker. Most prompts carry a zod definition; some
+    // (extract-asset-description, batch-translate-metadata) a JSON Schema.
+    schema?: { type: 'zod'; definition: string } | Record<string, unknown>;
   };
 }
 

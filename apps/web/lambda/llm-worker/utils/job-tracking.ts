@@ -8,9 +8,15 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+// The job types the worker tracks. Each must be allowed by the
+// generation_jobs_job_type_check constraint (latest:
+// 20260923025438_generation_jobs_refinement_job_types.sql), or every
+// update below matches no row.
 export type GenerationJobType =
   | 'story'
+  | 'story-refinement'
   | 'screenplay'
+  | 'screenplay-refinement'
   | 'shot_list'
   | 'translate-dialogue'
   | 'audio_cue_generation';

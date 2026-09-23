@@ -292,7 +292,7 @@ describe('Email Worker Lambda', () => {
 function createSQSRecord(
   emailJob: {
     to: string;
-    from: string;
+    from?: string;
     subject?: string;
     html?: string;
     text?: string;

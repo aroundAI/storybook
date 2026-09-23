@@ -46,7 +46,7 @@ try {
   const parts = supabaseServiceKey.split('.');
   if (parts.length === 3) {
     const payload = JSON.parse(
-      Buffer.from(parts[1], 'base64').toString('utf8'),
+      Buffer.from(parts[1] ?? '', 'base64').toString('utf8'),
     );
     console.log(`[Supabase Init] JWT Role: ${payload.role}`);
     console.log(
@@ -74,7 +74,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     persistSession: false,
   },
   realtime: {
-    transport: ws,
+    // ws is the WHATWG client the realtime transport expects; @types/ws leads
+    // with a server-mode `new (address: null)` overload that defeats inference.
+    transport: ws as unknown as typeof WebSocket,
   },
 });
 

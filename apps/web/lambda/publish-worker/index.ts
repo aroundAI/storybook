@@ -55,7 +55,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     persistSession: false,
   },
   realtime: {
-    transport: ws,
+    // ws is the WHATWG client the realtime transport expects; @types/ws leads
+    // with a server-mode `new (address: null)` overload that defeats inference.
+    transport: ws as unknown as typeof WebSocket,
   },
 });
 

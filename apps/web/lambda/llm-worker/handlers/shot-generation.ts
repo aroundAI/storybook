@@ -32,9 +32,13 @@ interface ScreenplayScene {
   timeOfDay: string;
   description: string;
   action: string[];
+  estimatedDuration?: number;
+  // Stored screenplays carry the line as `text` (orchestrator output) or, in
+  // older rows, `dialogue`.
   dialogue: Array<{
     character: string;
-    dialogue: string;
+    text?: string;
+    dialogue?: string;
     parenthetical?: string;
   }>;
 }
@@ -56,7 +60,8 @@ export async function processShotGeneration(
   payload: Record<string, unknown>,
   supabase: SupabaseClient,
 ): Promise<ShotGenerationResult> {
-  const data = payload as ShotGenerationPayload;
+  // SQS payload: cast, not validated (KB-33).
+  const data = payload as unknown as ShotGenerationPayload;
 
   console.log(`[Shot Generation] Processing for episode ${data.episodeId}`);
 
@@ -174,14 +179,10 @@ export async function processShotGeneration(
           action,
           dialogue: (s.dialogue ?? []).map((d) => ({
             character: d.character,
-            text:
-              ((d as Record<string, unknown>).text as string) ??
-              d.dialogue ??
-              '',
+            text: d.text ?? d.dialogue ?? '',
             parenthetical: d.parenthetical,
           })),
-          estimatedDuration: (s as Record<string, unknown>)
-            .estimatedDuration as number | undefined,
+          estimatedDuration: s.estimatedDuration,
         };
       }),
       charactersVeoContext: charactersFormatted,

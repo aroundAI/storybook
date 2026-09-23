@@ -13,7 +13,7 @@ import { createClient } from '@supabase/supabase-js';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import ws from 'ws';
 
-import type { PublishJobMessage } from '../publish-worker/index';
+import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
 
 const sqsClient = new SQSClient({});
 
@@ -37,7 +37,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     persistSession: false,
   },
   realtime: {
-    transport: ws,
+    // ws is the WHATWG client the realtime transport expects; @types/ws leads
+    // with a server-mode `new (address: null)` overload that defeats inference.
+    transport: ws as unknown as typeof WebSocket,
   },
 });
 
@@ -168,7 +170,10 @@ export async function handler(): Promise<ScheduledPublishResult> {
     .eq('status', 'scheduled')
     .lte('scheduled_at', now.toISOString())
     .order('scheduled_at', { ascending: true })
-    .limit(50);
+    .limit(50)
+    // episodes and projects are many-to-one embeds: objects, not the arrays
+    // the untyped client infers.
+    .overrideTypes<ScheduledPublish[], { merge: false }>();
 
   if (error) {
     console.error(`[Cron] Database query failed:`, error);
@@ -185,7 +190,7 @@ export async function handler(): Promise<ScheduledPublishResult> {
   let queued = 0;
   let skipped = 0;
 
-  for (const publish of duePublishes as ScheduledPublish[]) {
+  for (const publish of duePublishes) {
     // Resolve video URL based on language
     const videoUrl = resolveVideoUrl(publish);
 
@@ -228,6 +233,7 @@ export async function handler(): Promise<ScheduledPublishResult> {
 
     // Build the job message
     const message: PublishJobMessage = {
+      type: 'publish',
       publishId: publish.id,
       userId,
       platform: publish.platform as PublishJobMessage['platform'],

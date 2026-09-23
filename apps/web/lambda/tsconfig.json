@@ -1,0 +1,25 @@
+{
+  // The workers are bundled by SST/esbuild, which strips types without
+  // checking them; this config is what checks them (KB-14). It runs as the
+  // second half of `web`'s `typecheck` script, so `pnpm typecheck` and CI's
+  // TypeScript job include it.
+  "extends": "@kit/tsconfig/base.json",
+  "compilerOptions": {
+    "incremental": false,
+    // SST installs these into the worker bundles (`nodejs.install` in
+    // sst.config.ts), so apps/web does not depend on them. Adding them to
+    // apps/web re-resolves the shared @smithy graph and breaks
+    // @kit/storage's presigner types, so the checker reads the copies the
+    // workspace already installs for the packages that do depend on them.
+    "paths": {
+      "@aws-sdk/client-s3": [
+        "../../../packages/features/storage/node_modules/@aws-sdk/client-s3"
+      ],
+      "@aws-sdk/client-sqs": [
+        "../../../packages/features/publishing/node_modules/@aws-sdk/client-sqs"
+      ]
+    }
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
+}

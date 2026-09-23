@@ -21,7 +21,6 @@ import {
   formatLocationsForPrompt,
   formatPreviousEpisodesForPrompt,
   formatRecurringElementsForPrompt,
-  formatVerifiedFactsForPrompt,
 } from '../utils/context-builder';
 import {
   type ContentStyle,
@@ -233,7 +232,8 @@ export async function processStoryGeneration(
   payload: Record<string, unknown>,
   supabase: SupabaseClient,
 ): Promise<StoryGenerationResult> {
-  const data = payload as StoryGenerationPayload;
+  // SQS payload: cast, not validated (KB-33).
+  const data = payload as unknown as StoryGenerationPayload;
 
   console.log(
     `[Story Generation] Starting AGENTIC pipeline for episode ${data.episodeId}`,
@@ -289,12 +289,6 @@ export async function processStoryGeneration(
           : ''),
     );
 
-    // Format verified facts for factual content types
-    const verifiedFactsContext =
-      episodeContext.verifiedFacts.length > 0
-        ? formatVerifiedFactsForPrompt(episodeContext.verifiedFacts)
-        : undefined;
-
     // 3. Run the Stage 1 Story Orchestrator
     const { runStoryOrchestrator } = await import(
       '@kit/episodes/agent/story-orchestrator'
@@ -320,7 +314,6 @@ export async function processStoryGeneration(
         episodeNumber: episodeContext.episodeNumber ?? 1,
         accountId: data.accountId,
         contentType: episodeContext.projectType,
-        verifiedFacts: verifiedFactsContext,
         charactersContext,
         locationsContext,
         seasonContext: seasonContext + directionNotes,

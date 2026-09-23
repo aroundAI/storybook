@@ -94,7 +94,8 @@ export async function processSeasonAnalysis(
   _supabase: SupabaseClient,
 ): Promise<{ success: boolean; data: AnalysisResult }> {
   const { projectId, roadmap, externalFacts } =
-    payload as SeasonAnalysisPayload;
+    // SQS payload: cast, not validated (KB-33).
+    payload as unknown as SeasonAnalysisPayload;
 
   console.log(
     `[Season Analysis] Processing for project ${projectId}, facts: ${externalFacts?.length ?? 0}`,
