@@ -422,6 +422,9 @@ No flags. The fix is not optional. No new env variables: `endpoint` is a constru
 | Mutation guards, `tooling/mutation-guards/kb-38.json` | 10/10 RED. One (edit-suite headers) first STAYED GREEN, because the fake response's headers equalled the helper's own; the test now returns a header the helper cannot invent |
 | Web unit suite | 44 files, 842 pass, 5 skipped (the MinIO file without `S3_LOCAL_ENDPOINT`) |
 | `pnpm typecheck` | 48/49 tasks. The one failure is main's known `canon-bundle.test.ts` `esbuild` error (#320), not this branch |
+| E2E `storage/project-assets-upload`, dev server :3117 (Supabase provider, pre-flight: no `R2_*`/`B2_*`, `VENDOR_SANDBOX=1`) | 5/5 pass, including the owner's two cover uploads, which declare `size` equal to each PNG's byte length and PUT `image/png` |
+| E2E red: the shared helper declares `size: 0` | The cover case fails ("Cover image updated successfully" never shows; the route refuses the presign), 4 retries; the other 4 cases pass |
+| E2E, production build (`build:test`, `NODE_ENV=test VENDOR_SANDBOX=1 next start -p 3117`) | 5/5 pass. Neither server log names an R2 or B2 host |
 | Browser, Chromium 140 against MinIO | `fetch` and XHR, a 1000 B `File` with the returned headers: 200, stored 1000 B `image/png`. A 5000 B `File` by `fetch` and by XHR: 403, not stored. `Content-Type: text/html`: 403, not stored. The PUTs are cross-origin with a CORS preflight, as from the app |
 
 ## 27. Production-Build Verification
