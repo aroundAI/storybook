@@ -24,7 +24,7 @@ strategy:
     - "Niche channel — Niche: Philosophy / Strategy; Character Anchor: The Architect (Silent Sage); Archetype: The Stoic Guide; Target Audience: Professionals, Thinkers; Brand Vibe: Minimalist, Calm, Abstract; Key Languages: En, Hi"
     - "Each niche channel maps to a Team Account → Project in Storybook. This section maps every operational concept to code."
     - "Posting schedule — YouTube Long: 2x Weekly (implementation: `schedule-release-panel.tsx` → cron `process-scheduled-publishes.ts`)"
-    - "Posting schedule — YouTube Shorts: 1x Daily (implementation: `packages/features/shorts/`)"
+    - "Posting schedule — YouTube Shorts: 1x Daily (implementation: shorts groups on the publish screen, `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/shorts-section.tsx`; `packages/features/shorts/` was removed in KB-55)"
     - "Posting schedule — TikTok/Reels: 2x Daily (implementation: Platform-specific publish via `publish-actions.ts`)"
     - "Posting schedule — Languages: En (primary), Es/Hi (24h later) (implementation: Batch translate → staggered schedule)"
     - "Revenue assumption — RPM (Revenue Per Mille): US ($5), IN ($1), ES ($2)."
@@ -307,7 +307,7 @@ notes: |
   | Format | Frequency | Implementation |
   |--------|-----------|----------------|
   | YouTube Long | 2x Weekly | `schedule-release-panel.tsx` → cron `process-scheduled-publishes.ts` |
-  | YouTube Shorts | 1x Daily | `packages/features/shorts/` |
+  | YouTube Shorts | 1x Daily | Shorts groups on the publish screen, `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/shorts-section.tsx` |
   | TikTok/Reels | 2x Daily | Platform-specific publish via `publish-actions.ts` |
   | Languages | En (primary), Es/Hi (24h later) | Batch translate → staggered schedule |
 
@@ -319,7 +319,7 @@ notes: |
 
   | Feature | Code Path |
   |---------|-----------|
-  | Shorts package | `packages/features/shorts/` |
+  | Shorts upload (per language) | `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/shorts-section.tsx` (the `packages/features/shorts/` generator was removed in KB-55) |
   | Magic clips (AI-generated cuts) | `packages/features/prompt-engine/src/prompts/publishing/magic-clips.json` |
 
   ## 7. Engineering Map: Analytics & Revenue Tracking
@@ -531,7 +531,7 @@ notes: |
   | Canon DB schema | `apps/web/supabase/migrations/20260128225704_canon_management.sql` |
   | Prompt templates | `packages/features/prompt-engine/src/prompts/` |
   | Assets (characters) | `packages/features/assets/src/` |
-  | Shorts | `packages/features/shorts/` |
+  | Shorts | `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/shorts-section.tsx` |
   | Batch episodes | `packages/features/episodes/src/server/batch-episode-actions.ts` |
   | Duration scaling | `packages/features/episodes/src/lib/duration-scaling.ts` |
   | Continuity checking | `packages/features/episodes/src/components/continuity-checker.tsx` |

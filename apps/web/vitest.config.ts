@@ -102,6 +102,14 @@ export default defineConfig({
         __dirname,
         '../../packages/features/prompt-engine/src/lib/server/llm-job-target.ts',
       ),
+      '@kit/next/action-result': path.resolve(
+        __dirname,
+        '../../packages/next/src/refusals/action-result.ts',
+      ),
+      '@kit/next/refusals': path.resolve(
+        __dirname,
+        '../../packages/next/src/refusals/with-refusals.ts',
+      ),
       '@kit/next/actions': path.resolve(
         __dirname,
         '../../packages/next/src/actions/index.ts',
@@ -149,6 +157,10 @@ export default defineConfig({
       '@kit/assets/lib': path.resolve(
         __dirname,
         '../../packages/features/assets/src/lib/index.ts',
+      ),
+      '@kit/storage/buckets': path.resolve(
+        __dirname,
+        '../../packages/features/storage/src/buckets.ts',
       ),
       '@kit/storage/client': path.resolve(
         __dirname,
