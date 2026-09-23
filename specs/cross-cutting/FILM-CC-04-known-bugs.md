@@ -1767,7 +1767,9 @@ membership itself against the payload's `userId`.
 
 **Severity:** High — the export button can never produce a video. It fails
 at step 1, before any rendering or cost. **Found:** KB-14, 2026-09-23.
-**Open.**
+**Open — paused 2026-09-23:** the owner is retiring the Edit Suite
+(FILM-607), which removes this worker. Unfinished fix on branch
+`fix/kb-32-render-worker-columns`; design in `specs/plans/KB-32-edd.md`.
 
 `apps/web/lambda/render-worker/index.ts` asks for columns the edit-suite
 tables do not have:
@@ -1813,6 +1815,18 @@ So the worker throws `Edit project not found` on every job. Reachable from
 - [ ] No `KB-32` marker remains under `apps/web/lambda/`
 - [ ] Red first: the step-1 query above succeeds against a local database
 - [ ] One export renders end to end from seeded clips, and its output duration and resolution are checked
+
+### Paused (2026-09-23, FILM-607 Edit Suite sunset)
+
+The branch fixes the columns (typed client, `render-worker/render-input.ts`)
+and two more defects found by running the worker with a real FFmpeg: the
+renderer deleted its output before the upload read it, and a language
+render dropped that language's dub (the filter used the preview's
+`is_active`). Unit tests and six mutation guards are red-checked. The
+end-to-end evidence run (`render-evidence.test.ts`) was written but never
+completed, so none of the criteria above is claimed. The producer's
+authorisation gap (`render-actions.ts` checks account membership, not
+`can_write_project`) is recorded under KB-47.
 
 ---
 
@@ -1921,6 +1935,120 @@ the prompt.
 
 - [ ] Owner decides whether semantic previous-episode context is wanted
 - [ ] If so: one caller opts in and a test shows similar episodes in the prompt
+
+---
+
+## KB-64 — Browser Export drops the target language's inactive dub clips
+
+**Severity:** Medium — a Browser Export in a language other than the preview's
+has no dialogue. **Found:** KB-32, 2026-09-23. **Open.**
+
+The KB-32 language rule, on the client path. `handleBrowserExport` filters
+`c.isActive && c.mediaUrl` before it looks at the language
+(`packages/features/edit-suite/src/components/export/export-dialog.tsx:149`),
+and `is_active` is the preview toggle: `SET_LANGUAGE` flips it on every clip
+with a language, and auto-assemble writes non-preview dubs as inactive. The
+dialog's own FFmpeg preview (`:112-118`) applies the correct rule.
+
+### Acceptance criteria
+
+- [ ] Browser Export in L includes L's dub clips whatever the preview language (one rule, shared with `selectRenderClips` in the render worker)
+- [ ] Playwright: preview EN, export ES, and the export includes the ES clips; screenshots in the PR
+
+---
+
+## KB-65 — Server render ignores gaps, transitions, keyframes and titles
+
+**Severity:** Medium — a server render can differ from the preview.
+**Found:** KB-32, 2026-09-23. **Open.** (Owner decision D2: fidelity kept as
+it was in KB-32.)
+
+`apps/web/lambda/render-worker/handlers/ffmpeg-render.ts`:
+- Video clips are concatenated in `start_ms` order (`:228`, `:297`), so a
+  gap in the video track disappears. Audio is placed by `adelay` at its
+  timeline start, so audio after a gap drifts ahead of the picture.
+- Transitions and keyframes are not rendered. The worker no longer reads them.
+- `title` tracks are not rendered; `upload` tracks are treated as video
+  (`:226`), where the client builder treats them as audio.
+
+The dialog's FFmpeg preview (`lib/ffmpeg-builder.ts`, `xfade` and volume
+keyframes) shows a command the server does not run.
+
+### Acceptance criteria
+
+- [ ] One FFmpeg builder (or one shared rule set) for the preview and the server render
+- [ ] A render with a video gap keeps audio in sync (probe-checked, like `render-evidence.test.ts`)
+- [ ] Transitions and volume keyframes render, or the dialog stops advertising them
+
+---
+
+## KB-66 — Five lambdas build untyped Supabase clients
+
+**Severity:** Medium — the KB-32 class: a select naming a column that does
+not exist compiles and fails only at runtime. **Found:** KB-32, 2026-09-23.
+**Open.**
+
+`createClient(url, key)` without `Database` in `voice-worker/index.ts:71`,
+`publish-worker/index.ts:52`, `llm-worker/index.ts:71`,
+`scheduled-publish/index.ts:34`, `email-worker/index.ts:36` (all under
+`apps/web/lambda/`), about 130 `.from()` calls. The render worker was typed in
+KB-32. Its typecheck error (not just an `any`) is what made the
+mismatch visible.
+
+### Acceptance criteria
+
+- [ ] Every lambda client is `createClient<Database>`; each error it surfaces is fixed or filed
+- [ ] Red: a wrong column in one worker fails `pnpm typecheck`
+
+---
+
+## KB-67 — The render status isn't shown after a reload
+
+**Severity:** Low — a finished server render can't be found from the
+dialog after a page reload. **Found:** KB-32, 2026-09-23. **Open.**
+
+The edit suite's `renderStatus` starts at `'idle'`
+(`packages/features/edit-suite/src/state/types.ts:172`) and changes only on
+the WebSocket's `render-status-changed`. `edit_projects.render_status` and
+`render_url` are never read into it. `getRenderStatusAction` ("fallback when
+WebSocket is unavailable", `server/render-actions.ts:275`) has no caller.
+
+### Acceptance criteria
+
+- [ ] The dialog shows the stored status and download link after a reload
+- [ ] Playwright: a seeded `completed` render shows "Download" on first open
+
+---
+
+## KB-68 — `ffmpeg-static` is unpinned in `sst.config.ts`
+
+**Severity:** Low. **Found:** KB-32, 2026-09-23. **Open.**
+
+The render worker's `nodejs.install` lists `'ffmpeg-static'` with no version
+(`sst.config.ts:894`), so a deploy installs whatever is latest. KB-32 was
+verified against 5.3.0 (FFmpeg 6.0), the latest on 2026-09-23. A new major
+could change filter behaviour unseen.
+
+### Acceptance criteria
+
+- [ ] The deployed `ffmpeg-static` version is pinned and matches the one the evidence test documents
+
+---
+
+## KB-69 — The ffmpeg-render SSRF guard proceeds when the DNS lookup fails
+
+**Severity:** Low. **Found:** KB-32, 2026-09-23. **Open.**
+
+`validateMediaUrl` checks the resolved address against private ranges, but on
+a lookup failure it logs "DNS lookup failed … proceeding" and allows the
+fetch (`apps/web/lambda/render-worker/handlers/ffmpeg-render.ts:121-122`).
+`fetch` then resolves the name itself, unchecked. With `R2_PUBLIC_URL` unset,
+the origin allow-list is empty too, so any https URL passes.
+
+### Acceptance criteria
+
+- [ ] A lookup failure refuses the URL (or the fetch uses the address that was checked)
+- [ ] Unit test: a lookup failure refuses; a private address refuses
 
 ---
 

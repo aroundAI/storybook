@@ -6,7 +6,51 @@
 | Severity | High. The server-render buttons in the export dialog can never produce a video |
 | Branch | `fix/kb-32-render-worker-columns` from `origin/fix/kb-14-typecheck-lambdas` @ `6961478c` (stacked on #309) |
 | Size | S–M. Two worker files, three new test files, one mutation-guard file. No migration, no UI change |
-| Status | Draft for owner review |
+| Status | Approved 2026-09-23 (D1–D5 as recommended; D6, D7 out of scope). **Paused the same day:** the owner is retiring the Edit Suite (FILM-607), which removes this worker |
+
+### Paused for FILM-607: what the removal must handle
+
+Branch `fix/kb-32-render-worker-columns` (rebased on main `ef44ffce`, not
+pushed) has the fix, unit tests and mutation guards. The end-to-end evidence
+run never completed (§26 T6). Nothing below was changed on main by KB-32.
+
+- **`sst.config.ts`** (line numbers on `ef44ffce`): `StorybookRenderDLQ`
+  (`:412`), `StorybookRenderQueue` with its redrive policy (`:423-439`), the
+  `renderQueue.subscribe` worker (`:836-900`), `renderQueue` in the web
+  server's `link` (`:1001`), `RENDER_QUEUE_URL` (`:1100`), and
+  `renderQueue.arn` in the web role's `sqs:SendMessage` policy (`:1222`).
+  Removing the queue drops any messages still in it and in the DLQ. Check the
+  DLQ depth first if anything should be kept.
+- **`ffmpeg-static`** appears only in the render worker's `nodejs.install`
+  (`sst.config.ts:894`) and `handlers/ffmpeg-render.ts`. It isn't in any
+  `package.json` or the lockfile, so removing the worker removes it entirely.
+- **`master_video` assets are shared. Keep the type.** The worker creates an
+  `assets` row of type `master_video` per render and, for `en`, sets
+  `episodes.master_video_asset_id`. The Publish page's master-asset manager
+  (`…/publish/_components/master-asset-manager.tsx:72`) uploads
+  `master_video` assets directly, and `episodes/src/server/actions.ts:544-652`
+  reads and sets the link. Only the worker's writer goes. The CHECK value,
+  the column and existing rows stay, because published videos may point
+  at rendered masters.
+- **R2 objects left behind:** server renders at
+  `renders/<editProjectId>/<language>/output.mp4` (the worker's `uploadToR2`
+  bucket prefix `renders`), and Browser Export uploads at
+  `projects/<projectId>/assets/master_video/export_<lang|all>_<ts>.mp4`
+  (`export-dialog.tsx`). A rendered file referenced by a `master_video` asset
+  must not be deleted with the feature.
+- **Also tied to server render:** `edit_projects.render_*` columns,
+  `packages/features/edit-suite/src/server/render-actions.ts` (and its
+  re-exports in `server/actions.ts:41-43`), the WebSocket
+  `render-status-changed` message (`hooks/use-edit-suite-websocket.ts`), and
+  `renderStatus`/`renderProgress` in the edit-suite state.
+- **Follow-ups filed by KB-32 that the sunset makes moot:** KB-64, KB-65,
+  KB-67 and KB-68 are Edit Suite or render-worker only. KB-69 (the SSRF guard)
+  goes with `ffmpeg-render.ts`. KB-66 (untyped clients in five *other*
+  lambdas) stays relevant.
+- **Reusable beyond the Edit Suite:** the `vitest.setup.ts` guard lets any
+  lambda test opt into `// @vitest-environment node`. happy-dom's `fetch`
+  enforces browser CORS, so a Node worker's HTTP calls can't be tested under
+  it (measured: a local POST was refused as cross-origin).
 
 **What this plan found beyond the ticket.** The ticket names one defect (the
 column names). Reading the worker and running it with real FFmpeg found two
