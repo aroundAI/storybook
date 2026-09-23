@@ -6,21 +6,52 @@
 |---|---|
 | Ticket | KB-31 — "Story ideation builds its prompt from any episode, for any caller" (`specs/cross-cutting/FILM-CC-04-known-bugs.md`, `## KB-31`) |
 | Branch | `fix/kb-31-llm-job-target-authz` from `origin/main` @ `49b851d6` |
-| Status | Plan — awaiting owner approval |
+| Status | **Approved with changes (rev 2, 2026-09-23)** — see *Owner decisions* below |
+| Base | stacked on `fix/kb-28-project-assets-insert-scope` (KB-28 adds `public.can_write_project`) |
 | Reproduced | **Yes**, 2026-09-23, two real users on the local Supabase stack (§8.4) |
 
 Reading guide: §1–§7 say what the user gets; §8 is what the code does today,
 with the reproduction; §9–§17 are the design; §18–§27 how it fails, is
 secured, tested and verified; §28–§34 trace, trade off and close.
 
+## Owner decisions (rev 2)
+
+The owner approved the plan with one change of rule, which this revision
+carries through §1–§34:
+
+- **The rule is project write access, not account membership.** Every
+  episode- or project-scoped job requires `public.can_write_project(project_id)`
+  (KB-28, `20260923024605_kb28-project-write-scope.sql`): owner, admin or
+  member in `project_members`, evaluated through the user's client.
+  Visibility never grants access. A team member with no `project_members`
+  row, and a project `viewer`, are refused — intended and accepted.
+- **Account-only jobs** (no project) may keep `has_account_access`. There are
+  **none** among the 24 call sites: every job names an episode or a project,
+  except `batch-translate-metadata`, which names no tenant row at all (§8.3 #18).
+- **D2 confirmed**: no generation on another account's public or unlisted project.
+- **D3 withdrawn**: the analytics read helpers (`scope-access.ts`,
+  `has_account_access`) stay where they are; reads remain account-level; the
+  FILM-1615 guards are not retargeted. Nothing moves into `@kit/supabase`.
+- **D1, D4–D8 approved as proposed.** Sibling leads get KB numbers from the lead.
+- **Scope handoff**: KB-26 owns the authorisation lines in
+  `source-upload-actions.ts` (`extractFactsFromContentAction`) and
+  `apps/web/app/api/research/upload/route.ts`; this PR makes only the
+  mechanical `target:` change there.
+- **Implementation detail changed by the rule**: the authorisers live in
+  `@kit/prompt-engine` (as planned) and **return `null`** instead of throwing,
+  so each producer delivers the refusal the way D4 says (throw
+  `ActionRefusal`, `failed[]`, or an `error` field) without `@kit/prompt-engine`
+  depending on `@kit/next`. No lockfile change.
+
 Terms used throughout:
 
 - **Producer** — a server action or route that calls `queueLlmJob`.
 - **Target** — the episode or project a job's worker will read or write,
   and the account that owns it.
-- **Member** — a user for whom `public.has_account_access(account_id)` is
-  true: the account's primary owner, or anyone with a role on it. The same
-  rule the analytics guard uses (`packages/features/content-analytics/src/server/scope-access.ts:85-100`, FILM-1615).
+- **Writer** — a user for whom `public.can_write_project(project_id)` is
+  true: owner, admin or member in `project_members` for that project (KB-28).
+  The project creator is its owner through the `add_project_owner` trigger.
+  (Rev 1 used account membership, `has_account_access`; replaced — see above.)
 - **Viewer** — a signed-in user who can *read* a row only because its
   project or episode is `public` or `unlisted`.
 
@@ -43,7 +74,7 @@ Terms used throughout:
 
 - Their characters, locations, season premises, verified facts, episode
   premises, dialogue and analytics are used to build prompts **only** for
-  requests made by a member of their account.
+  requests made by a writer of that project.
 - Nothing another user does can make a worker overwrite their story,
   screenplay, dialogue, shots, audio cues or assets, or add assets and facts
   to their project — including when they have made the project public or
@@ -59,14 +90,14 @@ Medium). Making a project public — the product's sharing feature — removed
 even that for thirteen other producers (eight job types), because an id on a shared page is not a
 secret and the actions accept any episode they can *read*.
 
-**Success.** A request that names a target the caller is not a member of is
+**Success.** A request that names a target the caller cannot write to is
 refused at the server action, before anything is queued; the caller sees
 "Episode not found" (or "Project not found"), worded the same whether the row
 does not exist or is someone else's. A member's request behaves exactly as
 today.
 
 **Failure** (what must never happen after the fix): a job queued whose
-episode, project or account the requester is not a member of; a job whose
+episode or project the requester cannot write to; a job whose
 `accountId` differs from its target's account.
 
 **What persists.** Nothing new. A refused request writes no `generation_jobs`
@@ -99,7 +130,7 @@ Canonical case: a member generates story ideas for their own episode.
 3. **Processing.** `enhanceAction` validates the schema; `requireUser`
    authenticates. `authorizeEpisodeTarget(client, episodeId)` reads
    `episodes (id, project_id, projects(account_id))` **through the user's
-   client**, then calls `has_account_access(account_id)` as that user.
+   client**, then calls `can_write_project(project_id)` as that user.
    Both succeed.
 4. **Data read.** One `episodes` row, one RPC. **Data changed:** none by the
    action (as today).
@@ -115,12 +146,13 @@ Canonical case: a member generates story ideas for their own episode.
 | Trigger | System behaviour | User-visible behaviour | Recovery | Final state |
 |---|---|---|---|---|
 | Episode id of another account (private project) | RLS returns no row → `ActionRefusal('Episode not found')` | "Episode not found" | None needed | Nothing queued, nothing written |
-| Episode id of another account's **public/unlisted** project | Row is readable (public policy) but `has_account_access` is false → same refusal, same words | "Episode not found" | — | Nothing queued |
+| Episode id of another account's **public/unlisted** project | Row is readable (public policy) but `can_write_project` is false → same refusal, same words | "Episode not found" | — | Nothing queued |
+| Team member of the owning account with no `project_members` row, or a project `viewer` | `can_write_project` false → refusal (owner-accepted) | "Episode not found" | A project admin adds them as member | Nothing queued |
 | Episode deleted (soft) in another tab | `deleted_at is null` filter → no row → refusal | "Episode not found" | Reload the page | Nothing queued |
-| Member removed from the account mid-session | `has_account_access` false → refusal | "Episode not found" | — | Nothing queued |
+| Writer removed from the project mid-session | `can_write_project` false → refusal | "Episode not found" | — | Nothing queued |
 | Batch action with a mix of own and foreign ids | Own ids queued; foreign ids appended to the existing `failed[]` with "Episode not found" | Existing per-episode failure display | — | Only authorised jobs queued |
 | `batchCreateAssetsAction` whose `projectId` is not the episode's project | Refused per episode ("Episode is not in this project") | Per-episode failure | — | Nothing queued for it |
-| `has_account_access` RPC errors (DB down) | Thrown as an unexpected error, **not** a refusal (we do not know the answer) | Existing generic failure message | Retry | Nothing queued |
+| `can_write_project` RPC errors (DB down) | Thrown as an unexpected error, **not** a refusal (we do not know the answer) | Existing generic failure message | Retry | Nothing queued |
 | Invalid / missing input | Schema validation (unchanged) | Existing form error | Fix input | — |
 | Queue unavailable (no `LLM_JOBS_QUEUE_URL`) | Unchanged: `queueLlmJob` throws after authorisation | Existing error | — | Nothing queued |
 | Duplicate submission | Unchanged (rate limit, idempotency keys as today) | — | — | — |
@@ -147,16 +179,18 @@ Order matters: authorisation runs **before** the action's own
   this project". The same text for "does not exist" and "not yours", so a
   refusal does not confirm that an id exists (as `assertProjectAccess` does).
 - **Loading / empty / success states:** unchanged.
-- **Permissions:** generation on a target requires membership of the target's
-  account (§19). Read access through public sharing no longer suffices.
+- **Permissions:** generation on a target requires `can_write_project` on the
+  target's project (§19). Read access — public sharing, account membership
+  without a project role, or the `viewer` role — does not suffice.
 - **Visibility rules / editable data:** unchanged.
 
 ## 6. Convert the User Experience Into Functional Requirements
 
 | ID | Requirement | Trigger → processing → result | Verification |
 |---|---|---|---|
-| FR-1 | A producer refuses a target whose account the caller is not a member of, before any write or queue message | Generate → resolve target via user client → `has_account_access` → refuse | Unit (red first), Playwright two-user |
-| FR-2 | Membership, not readability, authorises: a public/unlisted target is refused to a non-member | as FR-1 with a public project | Unit case; two-user harness (§8.4 probe 6) |
+| FR-1 | A producer refuses a target whose project the caller cannot write to, before any write or queue message | Generate → resolve target via user client → `can_write_project(project_id)` as the user → refuse | Unit (red first), Playwright two-user |
+| FR-2 | Project write access, not readability or account membership, authorises: a public/unlisted target is refused to a non-writer; so is an account member without a writing `project_members` role | as FR-1 with a public project; and with a `viewer` row | Unit cases; two-user harness (§8.4 probe 6); E2E |
+| FR-2a | Account-only jobs (no project) use `has_account_access` | — | **None exist** among the 24 sites; `batch-translate-metadata` names no tenant row (#18) | Review (§8.3) |
 | FR-3 | `queueLlmJob` cannot be called without an authorised target (compile-time) | Type: `target: LlmJobTarget`, constructible only by the authoriser | `pnpm typecheck`; mutation guard |
 | FR-4 | A job's `accountId` is the target's account | Set by `queueLlmJob` from the target, overriding any payload value | Unit |
 | FR-5 | A job's `episodeId`/`projectId` in the payload must equal the target's; mismatch throws before sending | Guard inside `queueLlmJob` | Unit; covers `batchCreateAssetsAction` |
@@ -166,9 +200,10 @@ Order matters: authorisation runs **before** the action's own
 | FR-9 | Every `queueLlmJob` call site is listed with the read that authorises it | §8.3 table, kept in FILM-CC-04 | Review; `git grep -w queueLlmJob` count matches |
 
 Edge cases: an episode with `project:projects(...)` null (orphaned) → refused
-("Episode not found"); a personal account's owner (no membership row) →
-allowed, because `has_account_access` covers primary owners
-(`scope-access.ts:78-82` explains why `has_role_on_account` alone is wrong).
+("Episode not found"); a personal account's owner → allowed on projects they
+created (the `add_project_owner` trigger makes the creator the project's
+`owner`); a project created with the service role has no `project_members`
+row and so no writers — refused, like every other write to it since KB-28.
 
 ## 7. Define Non-Functional Requirements
 
@@ -209,8 +244,12 @@ allowed, because `has_account_access` covers primary owners
   `TO anon, authenticated`, alongside the membership policy
   (`apps/web/supabase/migrations/20260108120000_public_sharing_rls.sql:28-55`).
   Live `pg_policies` confirms both on the reset database (§8.4).
-- **`has_account_access(p_account_id)`**: owner or role; used by the analytics
-  guard `assertProjectAccess` (`content-analytics/src/server/scope-access.ts:85-128`).
+- **`can_write_project(target_project_id)`** (KB-28): owner/admin/member in
+  `project_members`; `SECURITY DEFINER`, granted to `authenticated`. The one
+  project-write rule; KB-28's storage policies and KB-26 build on it.
+- **`has_account_access(p_account_id)`**: owner or role on the account; the
+  analytics *read* guard (`content-analytics/src/server/scope-access.ts:85-128`).
+  Unchanged by this PR.
 
 ### 8.2 The defect, and the class
 
@@ -277,8 +316,22 @@ reproduced one, not separately run.
 | 23 | `content-analytics/src/server/language-insights-actions.ts:117` | language-insights | `assertScopeAccess` inside the reads (`language-analytics.ts:144`) → empty → returns before queueing | usage account = `projectId` (`language-insights.ts:93`) | Safe; usage dropped by FK |
 | 24 | `apps/web/lambda/llm-worker/handlers/shot-generation.ts:494` | audio-cue-generation (chained) | ids from a job whose producer was authorised | inserts `audio_cues` | Safe iff its producer is |
 
-**This PR fixes all 24** (Decision 1): every producer goes through the
-authoriser; #24 uses an explicitly named chained constructor (§15).
+**This PR fixes all 24** (Decision 1). The authorisation each gets after the
+fix (rev 2):
+
+| # | After the fix | Scope |
+|---|---|---|
+| 1, 2, 3, 4, 6, 15, 20, 21 | `authorizeEpisodeTarget` → `can_write_project(episode.project_id)` | episode |
+| 10, 11, 12, 13 | `authorizeEpisodeTargets` (paged, one RPC per distinct project) | episode |
+| 14 | `authorizeEpisodeTargets`, then refuse where `target.projectId ≠ data.projectId` | episode |
+| 7 | `authorizeEpisodeTarget` on the episode just created; skip auto-story (logged) if refused | episode |
+| 19 | `authorizeEpisodeTarget(cue.episode_id)` before the cue is marked `generating` | episode |
+| 5, 8, 9, 22, 23 | `authorizeProjectTarget` → `can_write_project(project_id)` | project |
+| 16, 17 | `authorizeProjectTarget`, placed after KB-26's gate — **mechanical `target:` edit only; KB-26 owns the gate** | project |
+| 18 | `noTenantLlmJobTarget(userId)` — the caller's own text, no tenant row read | none |
+| 24 | `chainedLlmJobTarget(payload)` — the ids of a job that was authorised at its producer | as parent |
+
+Account-only (no project) jobs that would keep `has_account_access`: **none**.
 
 ### 8.4 Reproduction (before the fix)
 
@@ -302,7 +355,7 @@ Harness: `$SP/kb31-repro.local.test.ts` (not committed); log:
 | 3 | Real `processStoryIdeation(<that payload>, serviceRoleClient)`; prompt captured at `runAgent` | A's character ✔, location ✔, season premise ✔, verified fact ✔, genre ✔ all present in the prompt built for B; usage context `accountId = B` |
 | 4 | B calls `batchGenerateIdeasAction` with A's episode | `{ queued: 1, failed: [] }`, payload names A's episode |
 | 5 | B calls `batchCreateAssetsAction({ projectId: <A's project>, episodes: [<B's own episode>] })` | `{ queued: 1 }`; payload `projectId = <A's project>` |
-| 6 | A sets the project `visibility = 'public'`; B reads the episode; B calls `has_account_access(A)`; B calls `generateFullStoryAction` on A's episode | read returns the row; `has_account_access` → **false**; action returns `{ success: true, queued: true }` with a `story-generation` job for A's episode, `accountId = A` |
+| 6 | A sets the project `visibility = 'public'`; B reads the episode; B calls `has_account_access(A)`; B calls `generateFullStoryAction` on A's episode | read returns the row; `has_account_access` → **false** (and B has no `project_members` row, so `can_write_project` is false too); action returns `{ success: true, queued: true }` with a `story-generation` job for A's episode, `accountId = A` |
 
 Live policies on the reset database (`pg_policies`): `episodes` has
 `episodes_read` (membership) **and** "Allow public read of
@@ -343,8 +396,8 @@ the service role). Both are **KB-18-adjacent**; reported, not fixed here.
 
 | User action | Application logic | Service interaction | Data operation | Response | User-visible |
 |---|---|---|---|---|---|
-| Generate (single target) | action → `authorizeEpisodeTarget` / `authorizeProjectTarget` | PostgREST as user; RPC `has_account_access` as user | read 1 row | `LlmJobTarget` or `ActionRefusal` | proceeds / refusal text |
-| Generate (batch) | `authorizeEpisodeTargets(ids)` | one paged read, one RPC per distinct account | read ≤ n rows | `Map<id, target>` + denied ids | per-episode results |
+| Generate (single target) | action → `authorizeEpisodeTarget` / `authorizeProjectTarget` | PostgREST as user; RPC `can_write_project` as user | read 1 row | `LlmJobTarget` or `null` → producer refuses | proceeds / refusal text |
+| Generate (batch) | `authorizeEpisodeTargets(ids)` | one paged read, one RPC per distinct project | read ≤ n rows | `Map<id, target>` + denied ids | per-episode results |
 | Queue | `queueLlmJob({ jobType, userId, target, payload })` | SQS | — | message with `accountId`/`projectId`/`episodeId` from the target | unchanged |
 | Worker | unchanged, except FR-8 attribution | — | — | — | unchanged |
 
@@ -352,24 +405,22 @@ the service role). Both are **KB-18-adjacent**; reported, not fixed here.
 
 No new components. One boundary is moved: **the trust boundary for LLM job
 ids moves from "the worker trusts whatever the producer sent" to "the only
-way to produce a message is through an object that proves membership"**.
+way to produce a message is through an object that proves project write access"**.
 
-- **`@kit/supabase/account-access`** (new export, server-only): the single
-  membership rule — `assertAccountAccess(client, accountId)`,
-  `assertProjectAccess(client, projectId) → accountId`, using
-  `has_account_access`. Moved from `content-analytics/src/server/scope-access.ts`
-  (Decision 3), which re-imports it. Why `@kit/supabase`: every producer
-  package and `@kit/content-analytics` already depend on it; `@kit/prompt-engine`
-  does too.
+- **`public.can_write_project`** (KB-28, SQL): the one project-write rule.
+  Not reimplemented in TypeScript; the authorisers call it by RPC.
 - **`@kit/prompt-engine/server` — `llm-job-target.ts`** (new): the target
-  type and the authorisers for episodes and projects, built on the above.
+  type and the authorisers for episodes and projects. No `server-only`
+  import, because the worker imports `@kit/prompt-engine/server` for the
+  chained constructor and `server-only` crashes in Lambda
+  (`llm-executor.ts:658`).
 - **`queueLlmJob`**: requires a `target`; stamps and cross-checks ids.
 - **Worker**: unchanged trust model (Decision 5), three attribution lines
   (Decision 6).
 
 Why at the producer and not the worker: the acceptance criterion is that the
 **action** refuses and queues nothing; only the producer holds the user's
-session, so only it can ask RLS and `has_account_access` *as the user*.
+session, so only it can ask RLS and `can_write_project` *as the user*.
 
 ## 11. Architecture and Flow Diagrams
 
@@ -393,8 +444,8 @@ Browser(B) ──action(episodeId=X)──▶ action
                                      │ requireUser ✔
                                      │ authorizeEpisodeTarget(userClient, X)
                                      │   ├─ select episodes(id, project_id, projects(account_id))  [RLS as B]
-                                     │   └─ rpc has_account_access(account_id)                    [as B]
-                                     │        ├─ no row / false ──▶ ActionRefusal("Episode not found") ──▶ B
+                                     │   └─ rpc can_write_project(project_id)                     [as B]
+                                     │        ├─ no row / false ──▶ null ──▶ ActionRefusal("Episode not found") ──▶ B
                                      │        └─ true ──▶ LlmJobTarget{accountId, projectId, episodeId}
                                      ▼
                                   queueLlmJob({target, payload})
@@ -437,37 +488,29 @@ Authoritative sources used by the new check:
 | Datum | Authority |
 |---|---|
 | Which account owns an episode | `episodes.project_id → projects.account_id` |
-| Whether a user is a member | `public.has_account_access(account_id)` evaluated as that user |
+| Whether a user may write to a project | `public.can_write_project(project_id)` evaluated as that user (KB-28) |
 | Which account a job's usage belongs to | the target's `account_id` (derived, never caller-supplied) |
 
 Invariant introduced (held in the type system, not a comment): **every
 `queueLlmJob` message carries `accountId` equal to its target's owning
 account, and a producer could only build that target after the caller was
-shown to be a member.**
+shown to be a writer of the target's project.**
 
 ## 14. Database Design and Changes
 
 **None.** No migration, no policy change, no typegen. The public-sharing
 SELECT policies stay: public pages need them. The fix stops treating them as
 authorisation. No pgTAP is added because no policy changes; the RPC it relies
-on is exercised by the FILM-1615 guards already.
+on, `can_write_project`, is covered by KB-28's pgTAP suite
+(`project-assets-storage-rls.test.sql`), on the branch this PR stacks on.
 
 ## 15. Low-Level Design
 
-### 15.1 `@kit/supabase/account-access` (moved, one rule)
+### 15.1 ~~`@kit/supabase/account-access`~~ (withdrawn in rev 2)
 
-```ts
-// packages/supabase/src/account-access.ts  — 'server-only'
-export async function hasAccountAccess(client, accountId): Promise<boolean>   // rpc; throws on RPC error
-export async function assertAccountAccess(client, accountId): Promise<string> // throws AccessDenied
-export async function assertProjectAccess(client, projectId): Promise<string> // → account_id
-```
-
-`content-analytics/src/server/scope-access.ts` keeps `assertScopeAccess` and
-imports these; its existing tests and the FILM-1615 mutation guards S0/S0b
-are retargeted to the new file (same `find`/`replace` strings).
-The thrown type stays a plain `Error` there, as today, so analytics
-behaviour is unchanged; the LLM authoriser converts to `ActionRefusal`.
+D3 was withdrawn: the analytics helpers stay in `scope-access.ts` and
+keep `has_account_access` for reads. The LLM authorisers call KB-28's
+`can_write_project` directly. Nothing moves.
 
 ### 15.2 `llm-job-target.ts`
 
@@ -480,21 +523,27 @@ export interface LlmJobTarget {
   readonly [authorised]: true;          // not constructible outside this module
 }
 
-authorizeEpisodeTarget(client, episodeId): Promise<LlmJobTarget>
+authorizeEpisodeTarget(client, episodeId): Promise<LlmJobTarget | null>
   row ← episodes.select('id, project_id, project:projects(account_id)')
                 .eq('id', episodeId).is('deleted_at', null).maybeSingle()   // as the user
-  if !row?.project?.account_id → ActionRefusal('Episode not found')
-  if !(await hasAccountAccess(client, account_id)) → ActionRefusal('Episode not found')
+  if !row?.project?.account_id → null
+  if !(await canWriteProject(client, row.project_id)) → null     // rpc can_write_project; throws on RPC error
   return { accountId, projectId: row.project_id, episodeId }
 
 authorizeEpisodeTargets(client, ids): Promise<{ allowed: Map<id, LlmJobTarget>; denied: string[] }>
   rows ← fetchAllByIds(ids, …same select…, ordered by id)
-  accounts ← distinct account_ids → hasAccountAccess each (normally one)
-  allowed/denied by row presence and account access
+  projects ← distinct project_ids → canWriteProject each (normally one)
+  allowed/denied by row presence and write access
 
-authorizeProjectTarget(client, projectId): Promise<LlmJobTarget>
-  accountId ← assertProjectAccess (converted to ActionRefusal('Project not found'))
-  return { accountId, projectId }
+authorizeProjectTarget(client, projectId): Promise<LlmJobTarget | null>
+  row ← projects.select('id, account_id').eq('id', projectId).maybeSingle()   // as the user
+  if !row || !(await canWriteProject(client, projectId)) → null
+  return { accountId: row.account_id, projectId }
+
+Producers turn `null` into the refusal D4 prescribes:
+  throw new ActionRefusal('Episode not found' | 'Project not found'),
+  or failed.push({ episodeId, error: 'Episode not found' }),
+  or return { success: false, error: 'Episode not found' }.
 
 noTenantLlmJobTarget(): LlmJobTarget        // batch-translate-metadata only: reads no rows
   → { accountId: <caller's own personal account id = user.id> }
@@ -528,6 +577,8 @@ action's. Specific changes:
 - #1, #10 drop the first-membership lookup (`story-actions.ts:74-95`,
   `bulk-actions.ts:86-101`) entirely.
 - #14 authorises each episode, refuses when `target.projectId !== data.projectId`.
+- #16, #17 (KB-26's files): only `const target = await authorizeProjectTarget(…)`
+  after KB-26's existing gate, and `target` passed to `queueLlmJob`.
 - #21 refuses in its existing `{ success: false, error }` shape.
 - #22, #23 authorise the project (attribution), #23 keeps its analytics guard.
 - #24 `chainedLlmJobTarget`.
@@ -551,8 +602,8 @@ No transactions, locks, retries, caches or flags are introduced.
 ## 16. API and Event Design
 
 **Server actions:** inputs unchanged. Output changes listed in §5. Auth:
-unchanged (`requireUser`). **Authorisation: new — membership of the target's
-account.** Errors: `ActionRefusal` messages in §5.
+unchanged (`requireUser`). **Authorisation: new — `can_write_project` on the
+target's project.** Errors: `ActionRefusal` messages in §5.
 
 **SQS message `llm-jobs` (producer → llm-worker):**
 
@@ -579,7 +630,7 @@ transition or written.
 |---|---|---|---|
 | Target not visible | `ActionRefusal` | "Episode not found" / "Project not found" | — |
 | Visible but not a member | `ActionRefusal`, same text | same | — |
-| `has_account_access` RPC error | thrown `Error` (not a refusal) | existing generic failure | retry |
+| `can_write_project` RPC error | thrown `Error` (not a refusal) | existing generic failure | retry |
 | Payload id ≠ target id | thrown `Error` in `queueLlmJob` | generic failure; logged as a bug | fix the producer (a test covers every producer) |
 | Batch partly denied | denied → `failed[]` | per-episode failure | — |
 | Queue send fails | unchanged | unchanged | unchanged |
@@ -587,8 +638,12 @@ transition or written.
 ## 19. Security
 
 - **Authentication:** unchanged (`requireUser`).
-- **Authorisation:** membership (`has_account_access`) of the target's account,
-  evaluated **as the user**, never with the service role.
+- **Authorisation:** project write access — `can_write_project(project_id)`,
+  owner/admin/member in `project_members` (KB-28) — evaluated **as the user**,
+  never with the service role. Visibility never grants it; nor does account
+  membership without a project role; nor does the project `viewer` role.
+  Account-scoped jobs with no project would use `has_account_access`; there
+  are none (§8.3).
 - **Trust boundary:** producers are the only code with the user's session;
   the worker keeps trusting its queue (only the app can send to it — SST
   linking). Decision 5 records the defence-in-depth option.
@@ -605,19 +660,23 @@ transition or written.
 - **Secrets:** none touched. No production credentials or config are used
   or needed.
 
-**What this fix newly permits** (workflow question 3): nothing a member could
-not do before. It newly *forbids* one thing that may have been relied on:
-generating on a public/unlisted project you do not belong to. No product
-flow does that (all generate controls live under `/home/<account>/studio`,
-which requires membership to render), so nothing legitimate is lost.
+**What this fix newly permits** (workflow question 3): nothing a writer could
+not do before. It newly *forbids*:
+- generating on a public/unlisted project you do not belong to (no product
+  flow does this);
+- generating as an account member who is not in the project's
+  `project_members`, or who is a `viewer` there. The studio pages still render
+  for them (they are account-scoped), so they now see "Episode not found" /
+  "Project not found" on Generate. **Owner-accepted.** They regain it when a
+  project admin adds them as `member`.
 
 ## 20. Performance and Scale
 
 Expected traffic: generation clicks, human-paced (the rate limits are
 30–120/min per user). Per request: ≤ 1 extra read (most producers already
 read the same row) and 1 RPC; batch actions: 1 paged read + 1 RPC per
-distinct account. `has_account_access` is a `SECURITY DEFINER` lookup on
-indexed membership columns. No measurable change to LLM latency (seconds to
+distinct project. `can_write_project` is a `SECURITY DEFINER` `exists` on
+`project_members (project_id, user_id)`. No measurable change to LLM latency (seconds to
 minutes) is possible from this.
 
 ## 21. Accessibility and Client Behavior
@@ -669,18 +728,19 @@ E2E job). Rollback: revert the PR; no data to restore.
 
 | Layer | Test | Proves | Red before green |
 |---|---|---|---|
-| Unit — `@kit/prompt-engine` (in CI) | `__tests__/llm-job-target.test.ts` | no row → refusal; row + `has_account_access=false` → refusal with the **same** text; member → target with the row's account; RPC error → thrown, not a refusal; `queueLlmJob` stamps `accountId`, rejects payload/target id mismatch | Remove the `hasAccountAccess` call → the public-project case goes green-to-red |
-| Unit — `@kit/supabase` (in CI) | `__tests__/account-access.test.ts` (moved from content-analytics' scope-access cases) | owner/role/none | existing FILM-1615 guards retargeted |
+| Unit — `@kit/prompt-engine` (in CI) | `__tests__/llm-job-target.test.ts` | no row → `null`; row + `can_write_project=false` → `null`; writer → target with the row's account and project; the RPC is called with the **row's** `project_id`; RPC error → thrown, not `null`; `queueLlmJob` stamps `accountId`, rejects payload/target id mismatch | Remove the `canWriteProject` call → the readable-but-not-writer case goes red |
 | Unit — `@kit/episodes` (in CI) | `__tests__/llm-job-authorization.test.ts` | **Acceptance 1**: `generateStoryIdeasAction` refuses an unreadable episode and a readable-but-foreign one, and `queueLlmJob` is not called; member → queued with the **episode's** account (Acceptance 3) even when the caller's first membership is another account; `batchGenerateIdeasAction` splits allowed/denied; `batchCreateAssetsAction` refuses a foreign `projectId`; one case per remaining episodes producer asserting it calls the authoriser before queueing | Written and run against `main` first: must fail (queued) |
 | Unit — `@kit/audio-generation` | `translate-dialogue-action.test.ts`, `audio-cue-actions.test.ts` | #19–21 refuse | red on `main`. **`@kit/audio-generation` is not in `scripts/test-units.sh`** — this PR adds it (after confirming its existing tests pass) |
 | Unit — `@kit/content-analytics` (in CI) | extend `insights-actions` / `language-insights-actions` tests | project authorised, `accountId` is the project's account | red on `main` |
 | Unit — worker handlers | `analytics-insights`, `language-insights`, `fact-extraction` pass `data.accountId` | FR-8 | red on `main` (they pass `projectId`) — where they run is checked against KB-14's typecheck work first |
-| Mutation guards (CI) | `tooling/mutation-guards/kb-31.json` | removing the membership call, restoring the first-membership lookup, or dropping the id cross-check each makes its test fail | the runner itself proves it |
+| Mutation guards (CI) | `tooling/mutation-guards/kb-31.json` | removing the `can_write_project` call, restoring the first-membership lookup, or dropping the id cross-check each makes its test fail | the runner itself proves it |
 | Two-user, real DB (local, evidence) | the §8.4 harness re-run after the fix | probes 2, 4, 5, 6 now refuse and queue nothing; probe 3 cannot be reached | the before-run in §8.4 is the red |
 | E2E — Playwright, production build (CI) | `apps/e2e/tests/studio/llm-job-tenant-isolation.spec.ts`: seed A (project, season, episode) and B (own project and episode) through the API; sign in as B; open B's own ideation page; rewrite the server-action request's `episodeId` to A's; assert the page shows **"Episode not found"**; repeat with A's project public; assert no `generation_jobs` row for A's episode (service-role read) | Refusal reaches the user as written in a prod build (FR-7) and holds for public projects (FR-2) | On `main` the same spec fails: the action gets past the (absent) check and dies on "LLM_JOBS_QUEUE_URL not configured", which the prod build replaces with a generic sentence |
 
 Every producer in §8.3 has at least one unit case; the E2E covers the
-ticket's own path end to end. No pgTAP (no policy change).
+ticket's own path end to end, including a positive control (B on B's own
+episode is **not** refused). No pgTAP here (no policy change;
+`can_write_project` is covered by KB-28's suite).
 
 ## 27. Production-Build Verification
 
@@ -697,7 +757,8 @@ harness runs the real worker handler with those two captured.
 
 | User outcome | User flow | Requirement | Design | Component | Data/API | Test | Production verification |
 |---|---|---|---|---|---|---|---|
-| My canon is used only for my account's requests | §2 row 2′ | FR-1, FR-2 | §15.2 | `llm-job-target.ts`, `account-access.ts` | `has_account_access` RPC | prompt-engine + episodes unit; two-user harness | E2E on `test:prod` |
+| My canon is used only for my project's writers' requests | §2 row 2′ | FR-1, FR-2 | §15.2 | `llm-job-target.ts` | `can_write_project` RPC (KB-28) | prompt-engine + episodes unit; two-user harness | E2E on `test:prod` |
+| Account-only jobs use account access | — | FR-2a | §8.3 (none exist) | — | `has_account_access` | review | — |
 | No one can write into my episodes/projects via a job | §4 rows 1–2, 5 | FR-1, FR-2, FR-5, FR-6 | §15.3, §15.4 | every producer | SQS payload ids | per-producer unit; mutation guards | E2E (public case) |
 | Guard cannot be skipped by a new producer | — | FR-3 | §15.2 branded type | `queueLlmJob` | — | `pnpm typecheck`; guard | CI typecheck |
 | Usage billed to the right account | §3 step 7 | FR-4, FR-8 | §15.3, §15.6 | `queueLlmJob`, 3 handlers | `llm_usage_analytics.account_id` | unit | Operator check in §22 |
@@ -709,16 +770,19 @@ harness runs the real worker handler with those two captured.
 | Decision | Alternatives | Chosen because |
 |---|---|---|
 | Authorise at the producer | (a) worker checks `userId` membership before dispatch; (b) both | Only the producer can return a refusal to the user (acceptance 1) and ask as the user. (a) alone would still queue, spend, and report asynchronously. (b) is Decision 5 — defence in depth, deferred for KB-14 overlap. |
-| Membership via `has_account_access` | RLS read only (the ticket's first proposal) | Reproduced wrong: probe 6 — a public project's episode is readable by every signed-in user. `has_role_on_account` alone would lock out personal-account owners. |
+| Project write access via `can_write_project` (owner's rev-2 choice) | RLS read only (ticket's proposal); account membership `has_account_access` (rev 1) | RLS read reproduced wrong (probe 6). The owner chose project-level write over account-level: a job writes the project's content, so the rule for writing a project (KB-28) is the rule for queueing a job on it — one rule, shared with storage. Cost: account members without a project role are refused. |
 | Type-enforced target in `queueLlmJob` | per-call-site checks with no type change | 24 sites, 4 packages, and new producers arrive often; a check that can be forgotten will be (the ticket is that instance). Cost: every call site touched once. |
-| One rule in `@kit/supabase` | keep content-analytics' copy and write a second | CLAUDE.md "fix the class": the same rule in two places diverges. Cost: moving FILM-1615 code and retargeting two guards. |
+| Call KB-28's SQL function, not a TS copy | reimplement the role check in TS | One rule in one place (SQL), shared with the storage policies. (Rev 1's `@kit/supabase` move was withdrawn with D3.) |
+| Authorisers return `null`, producers refuse | authorisers throw `ActionRefusal` | Delivery differs per producer (D4); and `@kit/prompt-engine` would need `@kit/next`, a new dependency edge and lockfile change. |
 | Refuse with one message for missing and foreign | distinct messages | Distinct messages confirm existence of another tenant's id. |
 
 ## 30. Risk Register
 
 | Risk | Impact | Detection | Mitigation | Contingency |
 |---|---|---|---|---|
-| A legitimate flow is refused (e.g. a role not covered by `has_account_access`) | Members cannot generate | E2E positive control; unit "member" cases; refusal-rate log | Same function analytics has used since FILM-1615 | Revert; widen the rule |
+| Account members without a `project_members` writing role are refused | Some team members lose Generate on projects they were never added to | Refusal-rate log; support questions | Owner-accepted; the fix is to add them to the project | Widen `can_write_project` together with KB-28/KB-26 |
+| A legitimate writer is refused | Writers cannot generate | E2E positive control; unit "writer" cases | Same function KB-28's storage policies use | Revert |
+| KB-28's PR changes `can_write_project` before merge | Rule drift | Rebase | Stacked PR; retarget after KB-28 merges | Rebase |
 | A producer's extra columns read moved/dropped | action misvalidates status/version | per-producer unit | keep each action's own validation read | fix forward |
 | Touching 24 call sites collides with parallel tickets | merge conflicts | Overlap warnings; rebase before PR | small, mechanical diffs per site | resolve on rebase |
 | Ideation client breaks on the new result shape | ideation unusable | E2E drives the page; typecheck | `unwrap` in the one caller | revert that file |
@@ -745,8 +809,8 @@ harness runs the real worker handler with those two captured.
 2. **Red tests.** Write the episodes/prompt-engine/audio/analytics unit tests
    against `main`; watch each fail for the stated reason (queued / wrong
    account).
-3. **Move the rule.** `@kit/supabase/account-access` + export; content-analytics
-   imports it; retarget `film-1615.json` S0/S0b; its tests stay green.
+3. ~~Move the rule~~ (withdrawn, D3). Rebase onto KB-28 for `can_write_project`
+   and its generated types.
 4. **Authoriser + `queueLlmJob` type.** `llm-job-target.ts`; `queueLlmJob`
    requires `target`. Typecheck now fails at all 24 sites — the checklist.
 5. **Producers**, package by package (episodes → audio → analytics → route →
@@ -781,12 +845,12 @@ only members' requests touch an account's data, and usage is billed there.
 User action: press Generate. Expectation: members unchanged; others refused
 with "Episode not found". System: authorise the target as the user before
 queueing (§15). Data: none changes; ids and `accountId` in messages become
-the target's. Architecture: one membership rule, one authoriser, a typed
+the target's. Architecture: one project-write rule (KB-28's), one authoriser, a typed
 queue entry. Tests: red-first units per producer, mutation guards, two-user
 harness, production-build E2E. Deploy: app and Lambda, any order. Verify:
 §27.
 
-**Reverse.** Production will: read one row and call `has_account_access` as
+**Reverse.** Production will: read one row and call `can_write_project` as
 the user for each Generate; refuse or queue a message whose ids and account
 are the target's; workers unchanged except three attribution fields. User
 behaviour produced: members see no difference; non-members are refused
@@ -794,4 +858,4 @@ before anything is written or spent. That satisfies §2's flow and FR-1–FR-9,
 which deliver §1's outcome.
 
 The two directions meet. The one residual gap — a job queued before a
-membership is revoked still runs — is recorded (§12, Decision 5), not hidden.
+project role is revoked still runs — is recorded (§12, Decision 5), not hidden.
