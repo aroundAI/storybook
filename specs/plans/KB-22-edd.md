@@ -4,7 +4,13 @@
 with **KB-20 item 3** (the vendor-data deletion mechanism). Severity High.
 **Branch:** `fix/kb-22-disconnect-keeps-records` from `origin/main` (49b851d6).
 **Status:** Approved 2026-09-23 (all ten decisions at their defaults; §5
-wording approved). PR A implemented; PR B stacked on it.
+wording approved). PR A implemented (#317); PR B stacked on it (#322).
+
+**Confirmed by the owner, 2026-09-23, after implementation:** (1) deviation 6
+below — a `BEFORE DELETE` trigger in place of `NO ACTION` foreign keys;
+(2) PR A's YouTube dialog line without "— normally within the hour", which
+PR B restores with the job; (3) PR B's data-deletion page bullet, "Within 7
+calendar days it also removes the per-video statistics…".
 
 **Deviations found while implementing PR A** (none changes user-visible scope):
 
