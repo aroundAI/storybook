@@ -37,7 +37,7 @@ acceptance_criteria:
     reason: "unverified — every read policy checks `has_role_on_account`; no pgTAP cross-account test exists"
   - text: "Attack vector analysis completed and all vectors mitigated"
     met: false
-    reason: "not met — state modification open (KB-17). Project_id injection via `commit_canon_changes` closed by KB-27 (`apps/web/supabase/migrations/20260923031953_kb27-canon-write-scope.sql`: episode in project, `can_write_project`; `apps/web/supabase/tests/database/canon-commit-access.test.sql`)"
+    reason: "not met — state modification open (KB-17). Project_id injection via `commit_canon_changes` closed by KB-27 (`apps/web/supabase/migrations/20260923044106_kb27-canon-write-scope.sql`: episode in project, `can_write_project`; `apps/web/supabase/tests/database/canon-commit-access.test.sql`)"
   - text: "Test cases documented for security validation"
     met: true
     evidence: "FILM-1002 \"Test Cases\" section (kept in notes)"
