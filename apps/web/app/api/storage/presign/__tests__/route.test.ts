@@ -46,7 +46,10 @@ vi.mock('@kit/supabase/server-client', () => {
     eq: () => readable,
     single: () =>
       Promise.resolve({
-        data: { id: '11111111-2800-4000-8000-000000000001', project_id: '11111111-2800-4000-8000-000000000001' },
+        data: {
+          id: '11111111-2800-4000-8000-000000000001',
+          project_id: '11111111-2800-4000-8000-000000000001',
+        },
         error: null,
       }),
   };
@@ -158,7 +161,12 @@ describe('POST /api/storage/presign — Supabase provider', () => {
     expect(mockCreateSignedUploadUrl).not.toHaveBeenCalled();
   });
 
-  it.each(['image/svg+xml', 'text/html', 'application/pdf', 'video/x-matroska'])(
+  it.each([
+    'image/svg+xml',
+    'text/html',
+    'application/pdf',
+    'video/x-matroska',
+  ])(
     'refuses %s, which UPLOAD_CONSTRAINTS does not list',
     async (contentType) => {
       asWriter(true);
@@ -206,9 +214,15 @@ describe('POST /api/storage/presign — Supabase provider', () => {
   });
 
   it.each([
-    ['a parent segment after an underscore folder', `projects/${PROJECT}/assets/a_b/../x.mp4`],
+    [
+      'a parent segment after an underscore folder',
+      `projects/${PROJECT}/assets/a_b/../x.mp4`,
+    ],
     ['a bare .. filename', `projects/${PROJECT}/assets/master_video/..`],
-    ['a .. inside the filename', `projects/${PROJECT}/assets/master_video/a..b.mp4`],
+    [
+      'a .. inside the filename',
+      `projects/${PROJECT}/assets/master_video/a..b.mp4`,
+    ],
     ['an empty segment', `projects/${PROJECT}/assets//x.mp4`],
     ['an extra segment', `projects/${PROJECT}/assets/master_video/a_b/x.mp4`],
   ])('refuses %s', async (_label, path) => {

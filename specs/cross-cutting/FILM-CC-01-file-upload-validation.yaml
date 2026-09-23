@@ -82,10 +82,10 @@ test_plan:
   integration:
     - text: "Test full upload flow with valid file"
       met: true
-      evidence: "apps/web/app/api/projects/[projectId]/assets/upload/__tests__/route.test.ts:194 (storage mocked)"
+      evidence: "apps/e2e/tests/storage/project-assets-upload.spec.ts (owner cover through settings and the presign route, into real local storage; KB-28 deleted the FILM-203 route and the test previously cited)"
     - text: "Test upload rejection preserves no partial data"
       met: true
-      evidence: "apps/web/app/api/projects/[projectId]/assets/upload/__tests__/route.test.ts:376"
+      evidence: "apps/e2e/tests/storage/project-assets-upload.spec.ts (refused uploads leave no object: storageObjectExists is false; KB-28 deleted the FILM-203 route and the test previously cited)"
   e2e: []
 open_questions:
   - "[ ] Should we implement virus scanning? (post-MVP, non-blocking)"
