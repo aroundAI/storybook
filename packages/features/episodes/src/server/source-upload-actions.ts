@@ -2,11 +2,17 @@
 
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import {
+  PROJECT_WRITE_REFUSAL,
+  canWriteProject,
+} from '../lib/server/project-write-access';
 import { SOURCE_CATEGORIES } from '../types/external-context';
 
 // =============================================================================
@@ -37,54 +43,44 @@ const ExtractFactsSchema = z.object({
 // =============================================================================
 
 /**
- * Upload source content and create an external_content entry.
- * Creates a source if needed, then caches the content.
- * Requires account owner role for authorization.
+ * Store an uploaded source in a project (KB-26).
+ *
+ * The upload belongs to `projectId`: both rows carry it, and RLS lets only
+ * that project's owner/admin/member read them. The caller must hold such a
+ * row, since reading the project is not enough (public projects are readable
+ * by everyone). Refused before any write.
  */
-export const uploadSourceContentAction = enhanceAction(
+const uploadSourceContent = enhanceAction(
   async (data: z.infer<typeof UploadSourceSchema>) => {
-    // Authorization: verify user is an owner of at least one account
     const userClient = getSupabaseServerClient();
-    const {
-      data: { user },
-    } = await userClient.auth.getUser();
 
-    if (!user) {
-      throw new Error('Authentication required');
-    }
-
-    const { count } = await userClient
-      .from('accounts_memberships')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('account_role', 'owner');
-
-    if (!count || count === 0) {
-      throw new Error('Only account owners can upload sources');
+    if (!(await canWriteProject(userClient, data.projectId))) {
+      throw new ActionRefusal(PROJECT_WRITE_REFUSAL);
     }
 
     const admin = getSupabaseServerAdminClient();
 
-    // Generate slug from name
     const slug = data.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
       .slice(0, 100);
 
-    // Upsert source to prevent race condition on concurrent uploads
+    // Keyed per project: another project's source, or a shared one such as
+    // "reuters", is never matched, so never overwritten.
     const { data: source, error: sourceError } = await admin
       .from('external_sources')
       .upsert(
         {
           name: data.name,
           slug,
+          project_id: data.projectId,
           category: data.category,
           provider_type: 'manual',
           credibility_tier: 'tier_3',
           website_url: data.sourceUrl ?? null,
         },
-        { onConflict: 'slug' },
+        { onConflict: 'project_id,slug' },
       )
       .select('id')
       .single();
@@ -95,13 +91,14 @@ export const uploadSourceContentAction = enhanceAction(
 
     const sourceId = source.id;
 
-    // Create external content entry
     const externalId = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const { data: content, error: contentError } = await admin
       .from('external_content')
       .insert({
         external_id: externalId,
         source_id: sourceId,
+        project_id: data.projectId,
+        is_upload: true,
         title: data.name,
         content: data.content,
         url: data.sourceUrl ?? `manual://${slug}`,
@@ -121,6 +118,8 @@ export const uploadSourceContentAction = enhanceAction(
     schema: UploadSourceSchema,
   },
 );
+
+export const uploadSourceContentAction = returnRefusals(uploadSourceContent);
 
 /**
  * Fetch content from a URL (basic text extraction).
@@ -225,7 +224,7 @@ export const fetchUrlContentAction = enhanceAction(
  * For content over 500 chars: queues an LLM-based extraction job via SQS.
  * For short content: uses a quick regex-based heuristic as a fast fallback.
  */
-export const extractFactsFromContentAction = enhanceAction(
+const extractFactsFromContent = enhanceAction(
   async (data: z.infer<typeof ExtractFactsSchema>) => {
     const supabase = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(supabase);
@@ -234,15 +233,10 @@ export const extractFactsFromContentAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Verify user has access to the project (RLS enforced)
-    const { data: project, error: projectError } = await supabase
-      .from('projects')
-      .select('id')
-      .eq('id', data.projectId)
-      .single();
-
-    if (projectError || !project) {
-      throw new Error('Project not found or access denied');
+    // Writing facts needs a project_members row; reading the project is not
+    // enough, because public projects are readable by everyone (KB-26).
+    if (!(await canWriteProject(supabase, data.projectId))) {
+      throw new ActionRefusal(PROJECT_WRITE_REFUSAL);
     }
 
     // For substantial content, use LLM-based extraction via Lambda
@@ -320,4 +314,8 @@ export const extractFactsFromContentAction = enhanceAction(
     auth: true,
     schema: ExtractFactsSchema,
   },
+);
+
+export const extractFactsFromContentAction = returnRefusals(
+  extractFactsFromContent,
 );

@@ -118,6 +118,18 @@ export default defineConfig({
         __dirname,
         '../../packages/mailers/core/src/index.ts',
       ),
+      '@kit/episodes/lib/server/project-write-access': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/lib/server/project-write-access.ts',
+      ),
+      '@kit/episodes/lib/server/pdf-extractor': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/lib/server/pdf-extractor.ts',
+      ),
+      '@kit/prompt-engine/server': path.resolve(
+        __dirname,
+        '../../packages/features/prompt-engine/src/lib/server/index.ts',
+      ),
       '@kit/assets/upload-validation': path.resolve(
         __dirname,
         '../../packages/features/assets/src/lib/upload-validation.ts',

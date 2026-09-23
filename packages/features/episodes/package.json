@@ -38,7 +38,8 @@
     "./lib/openclaw-manifest": "./src/lib/openclaw-manifest.ts",
     "./lib/fcpxml-generator": "./src/lib/fcpxml-generator.ts",
     "./server/transition-analyzer": "./src/server/transition-analyzer.ts",
-    "./lib/server/pdf-extractor": "./src/lib/server/pdf-extractor.ts"
+    "./lib/server/pdf-extractor": "./src/lib/server/pdf-extractor.ts",
+    "./lib/server/project-write-access": "./src/lib/server/project-write-access.ts"
   },
   "dependencies": {
     "@kit/agent": "workspace:*",
