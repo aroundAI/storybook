@@ -166,7 +166,7 @@ A project **member** M auto-assembles an episode that has shots.
   - There are no Lambda, worker or service-role callers.
 - **The action's own check:** `batch-actions.ts:39-64` reads the episode, then `accounts_memberships` for the session user. It is the same wide rule, and it excludes personal-account owners. It throws plain `Error`s, which a production build replaces with a generic sentence (KB-6).
 - **Table RLS** (`20260219083555_edit-suite-v2.sql:310-360`): `edit_projects` insert/update allow `project_members` owner/admin/member; delete allows owner/admin only; read uses account role or personal owner. The SECURITY DEFINER function bypasses all of these.
-- **Rule function:** `public.can_write_project(uuid)` (KB-28, `20260923024605_kb28-project-write-scope.sql:23-39`), `security definer`, `search_path = ''`, using `auth.uid()`.
+- **Rule function:** `public.can_write_project(uuid)` (KB-28, `20260923042517_kb28-project-write-scope.sql:23-39`), `security definer`, `search_path = ''`, using `auth.uid()`.
 - **Schema file:** `apps/web/supabase/schemas/36-edit-suite.sql` holds the tables but **not** the RPCs, so there is nothing to mirror.
 - **Generated types:** `apps/web/lib/database.types.ts:5467` and `packages/supabase/src/database.types.ts:5467` list `p_user_id`. The edit-suite client is typed `any` (`server/db-client.ts`), so the TypeScript is unaffected. The types must still be regenerated.
 
