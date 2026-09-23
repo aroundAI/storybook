@@ -444,7 +444,7 @@ acceptance_criteria:
     evidence: "apps/web/supabase/migrations/20260128225704_canon_management.sql:45"
   - text: "RLS policies applied and tested"
     met: false
-    reason: "not met — applied (`apps/web/supabase/migrations/20260128225704_canon_management.sql:230`), but no pgTAP test asserts a canon access rule; the one member-role insert (`apps/web/supabase/tests/database/audit-author-snapshot.test.sql:57`) tests the name trigger — KB-17"
+    reason: "not met — `immutable_events` is covered by `apps/web/supabase/tests/database/immutable-events-immutable.test.sql` (KB-17: reads, inserts, deletes, and no updates by any role); the other five canon tables have no pgTAP test of an access rule, and their policies let any account member write (KB-76)"
   - text: "TypeScript types generated: `pnpm supabase:web:typegen`"
     met: true
     evidence: "packages/supabase/src/database.types.ts:2851"
@@ -457,8 +457,8 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "RLS policies applied and tested"
-    reason: "No pgTAP test asserts a canon access rule. The one member-role statement, `audit-author-snapshot.test.sql:57`, checks the name trigger — and succeeds while naming another user as author. The `immutable_events` policy (`FOR ALL`, no `WITH CHECK`) lets any member update, delete and re-author events"
-    closed_by: "KB-17"
+    reason: "`immutable_events` is tested (KB-17). `narrative_threads`, `world_states`, `episode_summaries` and the other canon tables have no pgTAP test of an access rule, and a project viewer can write them"
+    closed_by: "KB-76"
 open_questions: []
 notes: |
   Priority (source frontmatter): high
