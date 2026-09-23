@@ -1,7 +1,7 @@
 # KB-38 — Engineering Design Document
 
 **Ticket:** KB-38, "R2 presigned uploads don't bind content type or size" (reserved by KB-28 in the lead's KB list; its FILM-CC-04 entry is added by this PR, §31 D4). Found by KB-28, whose EDD records it at §8.1, §8.4, §19 and R3 (`specs/plans/KB-28-edd.md` on `fix/kb-28-project-assets-insert-scope`).
-**Branch:** `fix/kb-38-r2-presign-bind-type-size`, stacked on `origin/fix/kb-28-project-assets-insert-scope` @ `27a578e8` (#313, open; rebased from `f9943881` after #313 moved onto main `ef44ffce`).
+**Branch:** `fix/kb-38-r2-presign-bind-type-size`, stacked on `origin/fix/kb-28-project-assets-insert-scope` @ `fe745265` (#313, open; rebased from `f9943881`, then `27a578e8`, as #313 followed main to `45223675`).
 **Size:** S–M. No migration. An adapter change, a route change within KB-28's route, one shared client helper, five uploaders, tests.
 **Status:** Implemented (Phase 2). Approved 2026-09-23 with every recommended default (D1–D4). §0a records the owner's answers and what changed between plan and code.
 
