@@ -81,6 +81,7 @@ notes: |
 
   1. Disable `StorybookAnalyticsSyncCron` (or deploy with it paused).
   2. Merge FILM-1501 + FILM-1502; run `pnpm --filter @kit/clickhouse migrate` (drops corrupt data, creates v2).
+     2a. Reset the Reporting API watermarks, before the first run with ClickHouse enabled (FILM-1504): `update youtube_report_jobs set last_report_created_after = null;`. Until FILM-1504's fix shipped, a run with ClickHouse off downloaded reports and advanced the watermark while every insert no-opped. The reset makes the next ingest collect every report YouTube still holds (60 days; 30 for the job-creation backfill). Harmless when the column is already null, and re-ingesting is idempotent.
   3. Trigger `/api/analytics/backfill` repeatedly (respecting quota) until `BackfillBatchResult.remaining === 0`.
   4. Re-enable the sync cron.
   5. Spot-check dashboard totals against YouTube Studio for 2–3 videos.

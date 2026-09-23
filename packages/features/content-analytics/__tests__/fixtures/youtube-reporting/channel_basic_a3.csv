@@ -1,0 +1,5 @@
+date,channel_id,video_id,live_or_on_demand,subscribed_status,country_code,views,comments,likes,dislikes,videos_added_to_playlists,videos_removed_from_playlists,shares,watch_time_minutes,average_view_duration_seconds,average_view_duration_percentage,annotation_click_through_rate,annotation_close_rate,annotation_impressions,annotation_clickable_impressions,annotation_closable_impressions,annotation_clicks,annotation_closes,card_click_rate,card_teaser_click_rate,card_impressions,card_teaser_impressions,card_clicks,card_teaser_clicks,subscribers_gained,subscribers_lost,red_views,red_watch_time_minutes,engaged_views
+20260910,UCfixture,vidA,ON_DEMAND,SUBSCRIBED,US,100,2,10,0,1,0,1,10.0,6.0,40.0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,0,0,0,90
+20260910,UCfixture,vidA,ON_DEMAND,UNSUBSCRIBED,GB,50,1,5,1,0,0,0,5.0,6.0,40.0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,45
+20260910,UCfixture,vidX,ON_DEMAND,UNSUBSCRIBED,US,300,0,3,0,0,0,0,20.5,4.1,30.0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,1,0,0,250
+20260910,UCfixture,vidX,ON_DEMAND,SUBSCRIBED,US,100,0,1,0,0,0,0,9.5,5.7,35.0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,80

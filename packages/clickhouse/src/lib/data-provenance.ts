@@ -65,6 +65,10 @@ export type MetricFamily = (typeof METRIC_FAMILIES)[number];
  * `video_snapshots` and `video_dim` are deliberately absent: one is the
  * baseline store a `derived` figure is computed from and the other is a
  * dimension table, so no card shows either.
+ *
+ * `channel_reach_daily` (FILM-1504) is listed so its writer is bound like
+ * every other, though no family names it yet: the channel-wide reach card
+ * that would read it is FILM-1511's.
  */
 export type SourceTable =
   | 'video_metrics'
@@ -72,6 +76,7 @@ export type SourceTable =
   | 'video_retention_curves'
   | 'video_reach_daily'
   | 'channel_daily'
+  | 'channel_reach_daily'
   | 'channel_subscribers'
   | 'video_audience';
 
@@ -542,7 +547,6 @@ export const CAPABILITY_MATRIX: Record<
         fields: [
           'video_thumbnail_impressions',
           'video_thumbnail_impressions_ctr',
-          'engaged_views',
         ],
       },
     },
@@ -902,6 +906,7 @@ export const TABLE_WRITERS: Record<SourceTable, string> = {
   video_retention_curves: 'insertRetentionCurves',
   video_reach_daily: 'insertVideoReachDaily',
   channel_daily: 'insertChannelDaily',
+  channel_reach_daily: 'insertChannelReachDaily',
   channel_subscribers: 'insertSubscriberSnapshot',
   video_audience: 'insertVideoAudience',
 };
@@ -942,6 +947,10 @@ export const WRITER_CALL_SITES: Record<SourceTable, readonly string[]> = {
     `${CONTENT_ANALYTICS}/server/reporting/report-ingest.ts`,
   ],
   channel_daily: [
+    VERIFY_SCRIPT,
+    `${CONTENT_ANALYTICS}/server/reporting/report-ingest.ts`,
+  ],
+  channel_reach_daily: [
     VERIFY_SCRIPT,
     `${CONTENT_ANALYTICS}/server/reporting/report-ingest.ts`,
   ],

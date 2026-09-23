@@ -1,0 +1,6 @@
+date,channel_id,video_id,live_or_on_demand,subscribed_status,country_code,playback_location_type,traffic_source_type,device_type,operating_system,views,watch_time_minutes,average_view_duration_seconds,average_view_duration_percentage,red_views,red_watch_time_minutes,engaged_views
+20260910,UCfixture,vidA,ON_DEMAND,SUBSCRIBED,US,0,3,1,5,60,6.0,6.0,40.0,0,0,55
+20260910,UCfixture,vidA,ON_DEMAND,SUBSCRIBED,US,0,3,2,6,40,4.0,6.0,40.0,0,0,35
+20260910,UCfixture,vidA,ON_DEMAND,UNSUBSCRIBED,GB,0,7,1,5,50,5.0,6.0,40.0,0,0,45
+20260910,UCfixture,vidX,ON_DEMAND,UNSUBSCRIBED,US,0,5,1,5,300,20.5,4.1,30.0,0,0,250
+20260910,UCfixture,vidX,ON_DEMAND,SUBSCRIBED,US,0,5,2,6,100,9.5,5.7,35.0,0,0,80

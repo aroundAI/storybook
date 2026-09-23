@@ -251,7 +251,6 @@ export async function seedVideoReach(
       ),
       impressions: day.impressions,
       impressions_ctr: day.ctr,
-      engaged_views: 0,
     })),
   );
 }

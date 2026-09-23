@@ -120,8 +120,9 @@ export interface VideoSnapshot {
 }
 
 /**
- * Thumbnail reach row (impressions, CTR, engaged views) per video/day.
- * Sourced from the YouTube Reporting API reach reports.
+ * Thumbnail reach row (impressions, CTR) per video/day.
+ * Sourced from the YouTube Reporting API reach reports, which carry no
+ * engaged views — migration 011 dropped the column that pretended to.
  */
 export interface VideoReachDaily {
   project_id: string;
@@ -130,7 +131,6 @@ export interface VideoReachDaily {
   metric_date: string;
   impressions: number;
   impressions_ctr: number;
-  engaged_views: number;
 }
 
 /**
@@ -149,13 +149,16 @@ export interface VideoTrafficSource {
 /**
  * Channel-level rollup row for videos not published through the platform,
  * keyed by connection. Keeps channel-wide totals (YPP watch hours) accurate.
+ *
+ * Written from `channel_basic_a3` only. The reach residual lives in
+ * `ChannelReachDaily`: sharing this key with a second report made the later
+ * report's zeroes erase the earlier one's figures (FILM-1504).
  */
 export interface ChannelDaily {
   connection_id: string;
   metric_date: string;
   views: number;
   watch_time_seconds: number;
-  impressions: number;
   engaged_views: number;
   /**
    * Required, not optional (FILM-1618). Both columns are `UInt32 DEFAULT 0`
@@ -168,6 +171,20 @@ export interface ChannelDaily {
    */
   subscribers_gained: number;
   subscribers_lost: number;
+}
+
+/**
+ * Channel reach residual: thumbnail impressions for videos not published
+ * through the platform, per connection and day (FILM-1504, migration 011).
+ * Every field is required, for FILM-1618's reason — an omitted JSONEachRow
+ * field becomes a silent zero.
+ */
+export interface ChannelReachDaily {
+  connection_id: string;
+  metric_date: string;
+  impressions: number;
+  /** Impression-weighted over the residual videos, as a ratio (0..1). */
+  impressions_ctr: number;
 }
 
 /**

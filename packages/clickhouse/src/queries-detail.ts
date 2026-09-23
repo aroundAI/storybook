@@ -273,7 +273,6 @@ export interface VideoQualityMetrics {
   impressions: number;
   /** View-weighted click-through rate, 0..1. */
   impressionsCtr: number;
-  engagedViews: number;
   /** View-weighted average view duration, seconds. */
   avgViewDurationSeconds: number;
   /** View-weighted average view percentage, 0..100. */
@@ -417,7 +416,6 @@ async function queryQualityMetricsForVideosSingle(input: {
       video_id,
       sum(impressions) as impressions,
       sum(ctr_weighted) as ctr_weighted,
-      sum(engaged_views) as engaged_views,
       sum(views) as views,
       sum(avd_weighted) as avd_weighted,
       sum(avp_weighted) as avp_weighted
@@ -426,7 +424,6 @@ async function queryQualityMetricsForVideosSingle(input: {
         video_id,
         impressions,
         impressions_ctr * impressions as ctr_weighted,
-        engaged_views,
         0 as views, 0 as avd_weighted, 0 as avp_weighted
       FROM video_reach_daily FINAL
       WHERE video_id IN {videoIds: Array(String)} ${where}
@@ -435,7 +432,7 @@ async function queryQualityMetricsForVideosSingle(input: {
 
       SELECT
         video_id,
-        0 as impressions, 0 as ctr_weighted, 0 as engaged_views,
+        0 as impressions, 0 as ctr_weighted,
         views,
         avg_view_duration_seconds * views as avd_weighted,
         avg_view_percentage * views as avp_weighted
@@ -455,7 +452,6 @@ async function queryQualityMetricsForVideosSingle(input: {
     video_id: string;
     impressions: number;
     ctr_weighted: number;
-    engaged_views: number;
     views: number;
     avd_weighted: number;
     avp_weighted: number;
@@ -469,7 +465,6 @@ async function queryQualityMetricsForVideosSingle(input: {
       impressions,
       impressionsCtr:
         impressions > 0 ? Number(row.ctr_weighted) / impressions : 0,
-      engagedViews: Number(row.engaged_views),
       avgViewDurationSeconds: views > 0 ? Number(row.avd_weighted) / views : 0,
       avgViewPercentage: views > 0 ? Number(row.avp_weighted) / views : 0,
     });

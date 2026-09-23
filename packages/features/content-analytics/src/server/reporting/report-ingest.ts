@@ -4,12 +4,15 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
   insertChannelDaily,
+  insertChannelReachDaily,
   insertVideoMetrics,
   insertVideoReachDaily,
   insertVideoTrafficSources,
+  isClickHouseEnabled,
 } from '@kit/clickhouse/server';
 import type {
   ChannelDaily,
+  ChannelReachDaily,
   VideoMetric,
   VideoReachDaily,
   VideoTrafficSource,
@@ -22,8 +25,12 @@ import {
   YOUTUBE_REPORT_TYPES,
   createYouTubeReportingProvider,
 } from '../../providers/youtube/youtube-reporting';
-import type { YouTubeReportingProvider } from '../../providers/youtube/youtube-reporting';
+import type {
+  YouTubeReport,
+  YouTubeReportingProvider,
+} from '../../providers/youtube/youtube-reporting';
 import {
+  findCtrOutOfRange,
   parseChannelBasicReport,
   parseReachReport,
   parseTrafficSourceReport,
@@ -37,13 +44,34 @@ const MAX_REPORTS_PER_JOB_PER_RUN = 20;
 
 export interface ReportIngestResult {
   success: boolean;
+  /**
+   * False in production until the FILM-1503 cutover. Jobs are still
+   * ensured then, so YouTube keeps generating, but nothing is downloaded
+   * and no watermark moves: every insert would silently no-op, and a
+   * watermark past a report nobody stored discards it for good.
+   */
+  clickhouseEnabled: boolean;
   connectionsProcessed: number;
   jobsEnsured: number;
   reportsIngested: number;
+  /** Reports refused as unsafe to store (a CTR in percent). Never skipped. */
+  reportsRefused: number;
   rowsMatched: number;
   rowsUnmatched: number;
   errors: Array<{ connectionId: string; error: string }>;
   durationMs: number;
+}
+
+/**
+ * A reach report whose CTR cannot be a ratio. Refused, not rescaled: the
+ * report stays behind the watermark and is retried until the unit is
+ * settled, which is loud; a guess would be wrong silently.
+ */
+class ReachCtrUnitError extends Error {
+  constructor(readonly maxCtr: number) {
+    super(`Reach report CTR ${maxCtr} is not a ratio (expected 0..1)`);
+    this.name = 'ReachCtrUnitError';
+  }
 }
 
 interface ConnectionRow {
@@ -72,8 +100,12 @@ interface PublishRef {
  * and lands the rows in ClickHouse. Rows for videos published through the
  * platform replace the Analytics-API rows for the same days (later
  * inserted_at wins under ReplacingMergeTree); unmatched channel videos
- * aggregate into channel_daily so channel-wide numbers (YPP watch hours)
+ * aggregate into the channel residual — channel_daily for the core report,
+ * channel_reach_daily for reach — so channel-wide numbers (YPP watch hours)
  * stay accurate.
+ *
+ * With ClickHouse disabled (production until the FILM-1503 cutover) the
+ * jobs are still ensured, but nothing is downloaded and no watermark moves.
  */
 export async function runReportingIngestJob(): Promise<ReportIngestResult> {
   const logger = await getLogger();
@@ -81,17 +113,27 @@ export async function runReportingIngestJob(): Promise<ReportIngestResult> {
   const startTime = Date.now();
 
   const client = getSupabaseServerAdminClient();
+  const clickhouseEnabled = isClickHouseEnabled();
 
   const result: ReportIngestResult = {
     success: true,
+    clickhouseEnabled,
     connectionsProcessed: 0,
     jobsEnsured: 0,
     reportsIngested: 0,
+    reportsRefused: 0,
     rowsMatched: 0,
     rowsUnmatched: 0,
     errors: [],
     durationMs: 0,
   };
+
+  if (!clickhouseEnabled) {
+    logger.info(
+      ctx,
+      'ClickHouse disabled — report jobs are ensured, reports are left at YouTube until it is enabled',
+    );
+  }
 
   // Paged: this is the driver loop for all report ingestion, so a channel
   // past the cap would silently never be collected from at all.
@@ -124,6 +166,8 @@ export async function runReportingIngestJob(): Promise<ReportIngestResult> {
       const jobs = await ensureReportJobs(client, provider, connection.id);
       result.jobsEnsured += jobs.length;
 
+      if (!clickhouseEnabled) continue;
+
       for (const job of jobs) {
         const ingested = await ingestJobReports(
           client,
@@ -132,6 +176,7 @@ export async function runReportingIngestJob(): Promise<ReportIngestResult> {
           job,
         );
         result.reportsIngested += ingested.reportsIngested;
+        result.reportsRefused += ingested.reportsRefused;
         result.rowsMatched += ingested.rowsMatched;
         result.rowsUnmatched += ingested.rowsUnmatched;
       }
@@ -145,7 +190,7 @@ export async function runReportingIngestJob(): Promise<ReportIngestResult> {
     }
   }
 
-  result.success = result.errors.length === 0;
+  result.success = result.errors.length === 0 && result.reportsRefused === 0;
   result.durationMs = Date.now() - startTime;
 
   logger.info({ ...ctx, ...result, errors: undefined }, 'Report ingest done');
@@ -225,7 +270,38 @@ async function ensureReportJobs(
 }
 
 /**
+ * Which reports to process this run, and where the watermark may move after
+ * each one (FILM-1504).
+ *
+ * `reports` must be sorted by `createTime` ascending, as the provider
+ * returns them. The watermark is sent back as `createdAfter`, which lists
+ * reports created *after* it — so moving it to a `createTime` that a
+ * not-yet-processed report shares would skip that report for good. A run of
+ * equal `createTime`s is the shape of the backfill YouTube generates when a
+ * job is created, and the per-run cap can fall inside it. So a report
+ * advances the watermark only when it is the last of its `createTime` in
+ * the whole list; otherwise `advanceTo` is null and the watermark holds.
+ *
+ * A report with no `createTime` never advances it.
+ */
+export function planReportBatch(
+  reports: YouTubeReport[],
+  cap: number,
+): Array<{ report: YouTubeReport; advanceTo: string | null }> {
+  return reports.slice(0, cap).map((report, index) => {
+    const next = reports[index + 1]?.createTime;
+    const closesGroup = report.createTime !== '' && next !== report.createTime;
+
+    return { report, advanceTo: closesGroup ? report.createTime : null };
+  });
+}
+
+/**
  * Downloads and ingests reports for one job past its watermark.
+ *
+ * The watermark is saved as each group of reports completes, so a failure
+ * part-way resumes after the last report written rather than re-downloading
+ * the run. It never moves past a report whose rows were not written.
  */
 async function ingestJobReports(
   client: Client,
@@ -234,57 +310,142 @@ async function ingestJobReports(
   job: JobRow,
 ): Promise<{
   reportsIngested: number;
+  reportsRefused: number;
   rowsMatched: number;
   rowsUnmatched: number;
 }> {
+  const logger = await getLogger();
+  const ctx = {
+    name: 'youtube-report-ingest',
+    connectionId: connection.id,
+    reportType: job.report_type_id,
+  };
+
   const reports = await provider.listReports(
     job.youtube_job_id,
     job.last_report_created_after ?? undefined,
   );
 
   let reportsIngested = 0;
+  let reportsRefused = 0;
   let rowsMatched = 0;
   let rowsUnmatched = 0;
-  let watermark = job.last_report_created_after;
 
-  for (const report of reports.slice(0, MAX_REPORTS_PER_JOB_PER_RUN)) {
+  for (const { report, advanceTo } of planReportBatch(
+    reports,
+    MAX_REPORTS_PER_JOB_PER_RUN,
+  )) {
     const csv = await provider.downloadReport(report.downloadUrl);
 
-    const ingested = await ingestReportCsv(
-      client,
-      connection,
-      job.report_type_id,
-      csv,
+    let ingested: IngestedReport;
+
+    try {
+      ingested = await ingestReportCsv(
+        client,
+        connection,
+        job.report_type_id,
+        csv,
+      );
+    } catch (error) {
+      if (!(error instanceof ReachCtrUnitError)) throw error;
+
+      // Stop this job here: every later report would move the watermark
+      // past this one. Other jobs and connections carry on.
+      reportsRefused++;
+      logger.error(
+        { ...ctx, reportId: report.reportId, maxCtr: error.maxCtr },
+        'Reach report refused: CTR is not a ratio, so storing it would be 100× off. Watermark held.',
+      );
+      break;
+    }
+
+    if (ingested.unparsedHeader !== null) {
+      logger.warn(
+        { ...ctx, reportId: report.reportId, header: ingested.unparsedHeader },
+        'Report has data rows but no recognised columns — nothing stored',
+      );
+    }
+
+    logger.info(
+      {
+        ...ctx,
+        reportId: report.reportId,
+        startTime: report.startTime,
+        matched: ingested.matched,
+        unmatched: ingested.unmatched,
+        residualDates: ingested.residualDates,
+      },
+      'Report ingested',
     );
 
     rowsMatched += ingested.matched;
     rowsUnmatched += ingested.unmatched;
     reportsIngested++;
-    watermark = report.createTime;
+
+    if (advanceTo) {
+      const { error } = await client
+        .from('youtube_report_jobs')
+        .update({
+          last_report_created_after: advanceTo,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', job.id);
+
+      // Re-processing is idempotent, so a lost write costs a re-download;
+      // saying nothing would hide a registry that has stopped accepting them.
+      if (error) {
+        throw new Error(`Failed to save report watermark: ${error.message}`);
+      }
+    }
   }
 
-  if (watermark !== job.last_report_created_after) {
-    await client
-      .from('youtube_report_jobs')
-      .update({
-        last_report_created_after: watermark,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', job.id);
-  }
+  return { reportsIngested, reportsRefused, rowsMatched, rowsUnmatched };
+}
 
-  return { reportsIngested, rowsMatched, rowsUnmatched };
+interface IngestedReport {
+  matched: number;
+  unmatched: number;
+  /** Dates given a channel-residual row, zero rows included. */
+  residualDates: number;
+  /** The header of a report that had data rows but parsed to none. */
+  unparsedHeader: string | null;
+}
+
+/** Lines after the header that carry anything. */
+function hasDataRows(csv: string): boolean {
+  return csv.split(/\r?\n/).filter((line) => line.trim().length > 0).length > 1;
+}
+
+function headerOf(csv: string): string {
+  return (csv.split(/\r?\n/)[0] ?? '').trim();
 }
 
 /**
  * Parses one report CSV and lands its rows in the right ClickHouse tables.
+ *
+ * Every date a report covers gets a channel-residual row, zero when every
+ * video matched a publish. A redelivered day must replace the residual it
+ * wrote before: if a video matched since, writing nothing would leave it
+ * counted in both the per-video table and the residual.
  */
 async function ingestReportCsv(
   client: Client,
   connection: ConnectionRow,
   reportTypeId: string,
   csv: string,
-): Promise<{ matched: number; unmatched: number }> {
+): Promise<IngestedReport> {
+  const counted = (
+    matched: number,
+    unmatched: number,
+    residualDates: number,
+    parsedRows: number,
+  ): IngestedReport => ({
+    matched,
+    unmatched,
+    residualDates,
+    unparsedHeader: parsedRows === 0 && hasDataRows(csv) ? headerOf(csv) : null,
+  });
+
   if (reportTypeId === 'channel_traffic_source_a3') {
     const rows = parseTrafficSourceReport(csv);
     const refs = await resolvePublishRefs(
@@ -313,8 +474,10 @@ async function ingestReportCsv(
       });
     }
 
+    // Unmatched traffic rows are counted, not stored: there is no residual
+    // table with a source column (see queries-advanced.ts on traffic share).
     await insertVideoTrafficSources(trafficRows);
-    return { matched: trafficRows.length, unmatched };
+    return counted(trafficRows.length, unmatched, 0, rows.length);
   }
 
   if (
@@ -322,6 +485,11 @@ async function ingestReportCsv(
     reportTypeId === 'channel_reach_basic_a1'
   ) {
     const rows = parseReachReport(csv);
+
+    // Before anything is written: a percent file must not land at all.
+    const maxCtr = findCtrOutOfRange(rows);
+    if (maxCtr !== null) throw new ReachCtrUnitError(maxCtr);
+
     const refs = await resolvePublishRefs(
       client,
       connection.id,
@@ -329,11 +497,14 @@ async function ingestReportCsv(
     );
 
     const reachRows: VideoReachDaily[] = [];
-    const channelRows = new Map<string, ChannelDaily>();
+    const residual = new Map<string, ChannelReachAccumulator>();
     let unmatched = 0;
 
     for (const row of rows) {
       const ref = refs.get(row.youtubeVideoId);
+      // Seeded for every reported date, matched or not — see above.
+      accumulateChannelReach(residual, row.date, 0, 0);
+
       if (ref) {
         reachRows.push({
           project_id: ref.projectId,
@@ -342,20 +513,24 @@ async function ingestReportCsv(
           metric_date: row.date,
           impressions: row.impressions,
           impressions_ctr: row.impressionsCtr,
-          engaged_views: row.engagedViews,
         });
       } else {
         unmatched++;
-        accumulateChannelDaily(channelRows, connection.id, row.date, {
-          impressions: row.impressions,
-          engaged_views: row.engagedViews,
-        });
+        accumulateChannelReach(
+          residual,
+          row.date,
+          row.impressions,
+          row.impressionsCtr,
+        );
       }
     }
 
+    // Its own table, never channel_daily: the reach and core reports
+    // arrive separately, and on a shared key the later one's zeroes erased
+    // the other's figures under FINAL (FILM-1504).
     await insertVideoReachDaily(reachRows);
-    await insertChannelDaily(Array.from(channelRows.values()));
-    return { matched: reachRows.length, unmatched };
+    await insertChannelReachDaily(toChannelReachRows(residual, connection.id));
+    return counted(reachRows.length, unmatched, residual.size, rows.length);
   }
 
   // channel_basic_a3 / channel_combined_a3 — per-video per-day core metrics
@@ -372,6 +547,9 @@ async function ingestReportCsv(
 
   for (const row of rows) {
     const ref = refs.get(row.youtubeVideoId);
+    // Seeded for every reported date, matched or not — see above.
+    accumulateChannelDaily(channelRows, connection.id, row.date, {});
+
     if (ref) {
       metricRows.push({
         project_id: ref.projectId,
@@ -415,19 +593,62 @@ async function ingestReportCsv(
   if (reportTypeId === 'channel_basic_a3') {
     await insertVideoMetrics(metricRows);
     await insertChannelDaily(Array.from(channelRows.values()));
-    return { matched: metricRows.length, unmatched };
+    return counted(metricRows.length, unmatched, channelRows.size, rows.length);
   }
 
-  return { matched: 0, unmatched: 0 };
+  return counted(0, 0, 0, rows.length);
+}
+
+interface ChannelReachAccumulator {
+  impressions: number;
+  ctrWeighted: number;
+}
+
+/**
+ * Accumulates one channel reach-residual entry per date, with CTR carried
+ * as an impression-weighted sum so it can be averaged across videos.
+ * Exported for testing, like `accumulateChannelDaily`.
+ */
+export function accumulateChannelReach(
+  map: Map<string, ChannelReachAccumulator>,
+  date: string,
+  impressions: number,
+  ctr: number,
+): void {
+  const existing = map.get(date) ?? { impressions: 0, ctrWeighted: 0 };
+
+  existing.impressions += impressions;
+  existing.ctrWeighted += ctr * impressions;
+
+  map.set(date, existing);
+}
+
+/**
+ * A day with no residual impressions stores CTR 0 beside impressions 0.
+ * Every reader weights CTR by impressions, so it contributes nothing — the
+ * same convention `video_reach_daily` already follows.
+ */
+function toChannelReachRows(
+  map: Map<string, ChannelReachAccumulator>,
+  connectionId: string,
+): ChannelReachDaily[] {
+  return Array.from(map, ([date, { impressions, ctrWeighted }]) => ({
+    connection_id: connectionId,
+    metric_date: date,
+    impressions,
+    impressions_ctr: impressions > 0 ? ctrWeighted / impressions : 0,
+  }));
 }
 
 /**
  * Accumulates one channel-residual row per date.
  *
  * Exported for testing: it is the pure core of this module, and it is where
- * FILM-1618 lived. `add` omits a field for reports that do not carry it —
- * reach reports have no subscriber columns — so every field is defaulted
- * rather than assumed present.
+ * FILM-1618 lived. Every field of `add` is defaulted rather than assumed
+ * present, so an empty `add` seeds the date with a zero row.
+ *
+ * Core-report (`channel_basic_a3`) figures only. The reach residual goes
+ * through `accumulateChannelReach` to its own table (FILM-1504).
  */
 export function accumulateChannelDaily(
   map: Map<string, ChannelDaily>,
@@ -440,7 +661,6 @@ export function accumulateChannelDaily(
     metric_date: date,
     views: 0,
     watch_time_seconds: 0,
-    impressions: 0,
     engaged_views: 0,
     subscribers_gained: 0,
     subscribers_lost: 0,
@@ -448,7 +668,6 @@ export function accumulateChannelDaily(
 
   existing.views += add.views ?? 0;
   existing.watch_time_seconds += add.watch_time_seconds ?? 0;
-  existing.impressions += add.impressions ?? 0;
   existing.engaged_views += add.engaged_views ?? 0;
   existing.subscribers_gained += add.subscribers_gained ?? 0;
   existing.subscribers_lost += add.subscribers_lost ?? 0;
