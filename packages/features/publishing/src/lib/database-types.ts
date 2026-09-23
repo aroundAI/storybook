@@ -16,6 +16,8 @@ export interface PlatformConnection {
   metadata: Record<string, unknown>;
   is_active: boolean;
   language: string; // Target language for this channel (en, hi, es, pt, etc.)
+  /** Set when disconnected in the app (KB-22); the row and its history stay. */
+  disconnected_at?: string | null;
   created_at: string;
   updated_at: string;
 }

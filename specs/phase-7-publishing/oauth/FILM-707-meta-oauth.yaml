@@ -55,7 +55,7 @@ acceptance_criteria:
     evidence: "KB-29: `refreshMetaToken` gets the global Meta app from the lookup connect and the callback use (`packages/features/publishing/src/lib/token-refresh.ts:370`, `packages/features/publishing/src/lib/token-refresh.ts:383`, `apps/web/app/api/platforms/connect/meta/route.ts:64`, `apps/web/app/api/platforms/callback/meta/route.ts:108`); Instagram and Facebook both map to it. Driven against a local Graph listener (`packages/features/publishing/__tests__/token-refresh.test.ts:365`)"
   - text: "Disconnect removes related connections"
     met: true
-    evidence: "`packages/features/publishing/src/oauth/meta/disconnect.ts:83`, `packages/features/publishing/src/oauth/meta/disconnect.ts:98` (it also cascades further: KB-22)"
+    evidence: "The linked Instagram account / Facebook Page is disconnected with it — `disconnect_platform_connection` (`apps/web/supabase/migrations/20260923140320_kb22-disconnect-keeps-records.sql`); since KB-22 the rows are kept, not deleted"
   - text: "Proper error messages for permission issues"
     met: true
     evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:94` (KB-19, #297)"

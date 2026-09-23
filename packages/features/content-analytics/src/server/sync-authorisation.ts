@@ -21,11 +21,14 @@ export interface ConnectionGrant {
   grantedAt: string | null;
   /** Requirement ids the vendor refused despite the scope being held. */
   accountGated: string[];
+  /** Set when the creator disconnected the channel in the app (KB-22). */
+  disconnectedAt: string | null;
 }
 
 export function toConnectionGrant(row: {
   scopes?: string[] | null;
   metadata?: unknown;
+  disconnected_at?: string | null;
 }): ConnectionGrant {
   const grantedAt =
     typeof row.metadata === 'object' && row.metadata !== null
@@ -36,6 +39,7 @@ export function toConnectionGrant(row: {
     scopes: row.scopes ?? null,
     grantedAt: typeof grantedAt === 'string' ? grantedAt : null,
     accountGated: readAccountGated(row.metadata),
+    disconnectedAt: row.disconnected_at ?? null,
   };
 }
 
@@ -49,7 +53,13 @@ export type SyncEligibility =
    */
   | 'not_authorised'
   /** Failed too often, or was refused, since the creator last authorised. */
-  | 'suppressed';
+  | 'suppressed'
+  /**
+   * The creator disconnected the channel (KB-22). It holds no token, so a call
+   * cannot succeed; skipped without counting as a failure, so the publish is
+   * eligible again the moment the channel is reconnected.
+   */
+  | 'disconnected';
 
 export function syncEligibility(input: {
   platform: string;
@@ -58,6 +68,10 @@ export function syncEligibility(input: {
   maxConsecutiveFailures: number;
 }): SyncEligibility {
   const { platform, sync, grant } = input;
+
+  if (grant?.disconnectedAt) {
+    return 'disconnected';
+  }
 
   // No connection row at all is left to the token check, which reports it.
   if (

@@ -145,14 +145,14 @@ async function DataDeletionPage() {
               </ul>
 
               <p data-test="retention-disconnect">
-                Disconnecting also removes our records of what was published
-                through that account and any revenue entries attached to them,
-                including ones you typed in yourself — export anything you want
-                to keep first. The per-video statistics already in our analytics
-                store are kept until you ask us to delete them (section 1), with
-                one exception: YouTube&apos;s API policies require us to delete
-                the YouTube statistics we hold within 7 calendar days of a
-                disconnect, so for YouTube that is what happens.
+                Disconnecting keeps your own records: what was published through
+                that account, revenue you entered, tags, experiments and channel
+                targets all stay, and reconnecting the same account attaches
+                them to it again. The statistics already collected from the
+                platform are kept until you ask us to delete them (section 1),
+                with one exception: YouTube&apos;s API policies require us to
+                delete the YouTube statistics we hold within 7 calendar days of
+                a disconnect, so for YouTube that is what happens.
               </p>
             </div>
           </Section>

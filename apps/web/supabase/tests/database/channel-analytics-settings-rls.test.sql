@@ -4,7 +4,7 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 -- A fixed count rather than no_plan(): a file that aborts partway through
 -- still reports the tests it managed to run, which reads like a nearly-
 -- passing suite. With a plan, stopping early is a plan mismatch.
-select plan(25);
+select plan(26);
 
 -- FILM-1608. Two tables are exercised here:
 --
@@ -324,28 +324,41 @@ select lives_ok(
 );
 
 -- ==================================
--- Cascades
+-- Referential actions
 -- ==================================
--- `on delete cascade` on both foreign keys, run as postgres because this is
--- about the referential action rather than a policy. Worth proving rather
--- than assuming: in FILM-1609 a referential action fired a row trigger that a
--- new guard rejected, and every account with one revenue row became
--- undeletable — including through account deletion.
+-- Run as postgres because this is about the referential action rather than a
+-- policy. Worth proving rather than assuming: in FILM-1609 a referential
+-- action fired a row trigger that a new guard rejected, and every account
+-- with one revenue row became undeletable — including through account
+-- deletion.
+--
+-- KB-22 changed the channel side. The key is still `on delete cascade`, but
+-- a disconnect used to delete the connection and so took the creator's YPP
+-- targets with it; a connection is now deleted only with its account
+-- (`platform_connections_refuse_delete`), so the cascade runs only then.
 
 set local role postgres;
 
-delete from public.platform_connections
-where id = 'c0ffee11-0000-4000-8000-000000000001';
+select throws_ok(
+  $$ delete from public.platform_connections
+      where id = 'c0ffee11-0000-4000-8000-000000000001' $$,
+  '23001',
+  null,
+  'A channel with an override cannot be deleted on its own (KB-22)'
+);
 
 select is(
   (select count(*)::int from public.channel_analytics_settings
    where connection_id = 'c0ffee11-0000-4000-8000-000000000001'),
-  0,
-  'Deleting a channel takes its override with it'
+  1,
+  '… and the override is still there'
 );
 
 select lives_ok(
-  $$ delete from public.accounts where id = current_setting('cas.other')::uuid $$,
+  $$ do $d$ begin
+       delete from public.accounts where id = current_setting('cas.other')::uuid;
+       set constraints all immediate;
+     end $d$ $$,
   'An account with analytics overrides can still be deleted'
 );
 

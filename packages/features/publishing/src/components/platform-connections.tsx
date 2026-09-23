@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import {
   AlertCircle,
   BarChart3,
@@ -12,16 +12,17 @@ import {
   Facebook,
   Globe,
   Instagram,
+  Loader2,
   Plus,
   RefreshCw,
-  Trash2,
+  Unplug,
   Youtube,
 } from 'lucide-react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -55,6 +56,7 @@ import type {
   AnalyticsAccessEntry,
 } from '../oauth/analytics-scopes';
 import {
+  countScheduledPublishesAction,
   disconnectPlatformAction,
   getConnectionsAction,
   refreshConnectionAction,
@@ -66,6 +68,7 @@ import type {
   PlatformConnection,
   PlatformType,
 } from '../types';
+import { disconnectCopyFor } from './disconnect-copy';
 
 const TikTokIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -302,24 +305,6 @@ function ConnectionRow({
     },
   });
 
-  const disconnectMutation = useMutation({
-    mutationFn: () =>
-      disconnectPlatformAction({
-        connectionId: connection.id,
-        platform: connection.platform,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['platform-connections', accountId],
-      });
-      setShowDisconnect(false);
-      toast.success('Account disconnected');
-    },
-    onError: () => {
-      toast.error('Failed to disconnect account. Please try again.');
-    },
-  });
-
   const languageMutation = useMutation({
     mutationFn: (language: string) =>
       updateConnectionLanguageAction({
@@ -339,9 +324,20 @@ function ConnectionRow({
     },
   });
 
+  if (connection.status === 'disconnected') {
+    return (
+      <DisconnectedConnectionRow connection={connection} platform={platform} />
+    );
+  }
+
   return (
     <>
-      <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3">
+      <div
+        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/30 p-3"
+        data-test="connection-row"
+        data-connection-id={connection.id}
+        data-status={connection.status}
+      >
         <div className="flex items-center gap-3">
           <Avatar>
             <AvatarImage src={connection.profileImageUrl} />
@@ -373,7 +369,7 @@ function ConnectionRow({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Language Selector */}
           <Select
             value={connection.language ?? 'en'}
@@ -426,8 +422,10 @@ function ConnectionRow({
             size="sm"
             onClick={() => setShowDisconnect(true)}
             title="Disconnect"
+            aria-label={`Disconnect ${connection.accountName}`}
+            data-test="disconnect-connection"
           >
-            <Trash2 className="h-4 w-4 text-destructive" />
+            <Unplug className="h-4 w-4 text-destructive" />
           </Button>
         </div>
       </div>
@@ -448,38 +446,239 @@ function ConnectionRow({
         />
       )}
 
-      <AlertDialog open={showDisconnect} onOpenChange={setShowDisconnect}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              <Trans
-                i18nKey="platforms:disconnectTitle"
-                defaults="Disconnect {platform}?"
-                values={{ platform: platform.name }}
-              />
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              <Trans
-                i18nKey="platforms:disconnectDescription"
-                defaults="This will remove access to {accountName}. You won't be able to publish to this account until you reconnect."
-                values={{ accountName: connection.accountName }}
-              />
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              <Trans i18nKey="common:cancel" defaults="Cancel" />
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => disconnectMutation.mutate()}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              <Trans i18nKey="platforms:disconnect" defaults="Disconnect" />
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {showDisconnect && (
+        <DisconnectDialog
+          connection={connection}
+          platform={platform}
+          accountId={accountId}
+          onClose={() => setShowDisconnect(false)}
+        />
+      )}
     </>
+  );
+}
+
+/**
+ * A channel the creator disconnected (KB-22). Its history is still attached
+ * to it; reconnecting the same account re-attaches the connection itself.
+ */
+function DisconnectedConnectionRow({
+  connection,
+  platform,
+}: {
+  connection: PlatformConnection;
+  platform: PlatformConfig;
+}) {
+  const disconnectedAt = connection.disconnectedAt
+    ? new Date(connection.disconnectedAt)
+    : null;
+
+  return (
+    <div
+      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed p-3 opacity-80"
+      data-test="connection-row"
+      data-connection-id={connection.id}
+      data-status="disconnected"
+    >
+      <div className="flex items-center gap-3">
+        <Avatar className="grayscale">
+          <AvatarImage src={connection.profileImageUrl} />
+          <AvatarFallback>
+            {connection.accountName?.[0]?.toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{connection.accountName}</span>
+            <ConnectionStatusBadge status="disconnected" />
+          </div>
+          {disconnectedAt && !isNaN(disconnectedAt.getTime()) && (
+            <p
+              className="text-xs text-muted-foreground"
+              data-test="disconnected-since"
+            >
+              <Trans
+                i18nKey="platforms:disconnected.since"
+                defaults="Disconnected on {date}. Your records from this channel are kept."
+                values={{ date: format(disconnectedAt, 'd MMM yyyy') }}
+              />
+            </p>
+          )}
+        </div>
+      </div>
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => initiateOAuth(platform.id, connection.accountSlug)}
+        data-test="reconnect-connection"
+      >
+        <RefreshCw className="mr-1 h-4 w-4" />
+        <Trans i18nKey="platforms:reconnect" defaults="Reconnect" />
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Says what disconnecting does on this platform, before it is done. Every
+ * sentence is chosen by `disconnectCopyFor`, whose flags are held to the
+ * code's behaviour by `disconnect-copy.test.ts`.
+ */
+function DisconnectDialog({
+  connection,
+  platform,
+  accountId,
+  onClose,
+}: {
+  connection: PlatformConnection;
+  platform: PlatformConfig;
+  accountId: string;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const copy = disconnectCopyFor(connection.platform);
+  const names = { accountName: connection.accountName };
+
+  const scheduled = useQuery({
+    queryKey: ['scheduled-publishes-count', connection.id],
+    queryFn: () =>
+      unwrap(countScheduledPublishesAction({ connectionId: connection.id })),
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: () =>
+      unwrap(disconnectPlatformAction({ connectionId: connection.id })),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({
+        queryKey: ['platform-connections', accountId],
+      });
+      onClose();
+
+      if (result.alreadyDisconnected) {
+        toast.info(
+          <Trans
+            i18nKey="platforms:disconnectToast.already"
+            defaults="{accountName} was already disconnected."
+            values={names}
+          />,
+        );
+        return;
+      }
+
+      toast.success(
+        <Trans
+          i18nKey="platforms:disconnectToast.done"
+          defaults="Disconnected {accountName}. Your records are kept."
+          values={names}
+        />,
+      );
+    },
+    onError: (error) => {
+      toast.error(
+        refusalMessage(
+          error,
+          `Could not disconnect ${connection.accountName}. Try again.`,
+        ),
+      );
+    },
+  });
+
+  const scheduledCount = scheduled.data?.count ?? 0;
+
+  return (
+    <AlertDialog open onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent data-test="disconnect-dialog">
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            <Trans
+              i18nKey="platforms:disconnectTitle"
+              defaults="Disconnect {accountName}?"
+              values={names}
+            />
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p data-test="disconnect-access">
+                <Trans
+                  i18nKey="platforms:disconnectDialog.access"
+                  values={{ ...names, platform: platform.name }}
+                />{' '}
+                <Trans
+                  i18nKey={copy.revokeKey}
+                  values={{ platform: platform.name }}
+                />
+              </p>
+
+              {connection.linkedAccountName && (
+                <p data-test="disconnect-linked">
+                  <Trans
+                    i18nKey="platforms:disconnectDialog.linked"
+                    values={{ linkedName: connection.linkedAccountName }}
+                  />
+                </p>
+              )}
+
+              <p data-test="disconnect-kept">
+                <Trans i18nKey="platforms:disconnectDialog.kept" />
+              </p>
+
+              <p data-test="disconnect-vendor-data">
+                <Trans
+                  i18nKey={copy.vendorDataKey}
+                  values={{ platform: platform.name }}
+                />
+                {copy.linksToDataDeletion && (
+                  <>
+                    {' '}
+                    <a
+                      href="/data-deletion#request"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
+                    >
+                      <Trans i18nKey="platforms:disconnectDialog.howToAsk" />
+                    </a>
+                  </>
+                )}
+              </p>
+
+              {scheduledCount > 0 && (
+                <p
+                  className="font-medium text-foreground"
+                  data-test="disconnect-scheduled"
+                >
+                  <Trans
+                    i18nKey="platforms:disconnectDialog.scheduled"
+                    values={{ count: scheduledCount }}
+                  />
+                </p>
+              )}
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={disconnectMutation.isPending}>
+            <Trans i18nKey="common:cancel" defaults="Cancel" />
+          </AlertDialogCancel>
+          <Button
+            variant="destructive"
+            onClick={() => disconnectMutation.mutate()}
+            disabled={disconnectMutation.isPending}
+            aria-busy={disconnectMutation.isPending}
+            data-test="confirm-disconnect"
+          >
+            {disconnectMutation.isPending && (
+              <Loader2
+                className="mr-1 h-4 w-4 animate-spin"
+                aria-label="Disconnecting"
+              />
+            )}
+            <Trans i18nKey="platforms:disconnect" defaults="Disconnect" />
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -627,6 +826,12 @@ function ConnectionStatusBadge({ status }: { status: ConnectionStatus }) {
       label: 'Error',
       i18nKey: 'platforms:status.error',
       className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    },
+    disconnected: {
+      icon: Unplug,
+      label: 'Disconnected',
+      i18nKey: 'platforms:status.disconnected',
+      className: 'text-muted-foreground',
     },
   };
 

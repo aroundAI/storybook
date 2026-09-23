@@ -21,13 +21,10 @@ const ENV_NAME =
 const SECRET_READ = /select\(\s*['"`][^'"`]*client_secret_encrypted/;
 
 /**
- * Pending, by name. KB-22 owns the disconnect flows; they move onto the
- * resolver after it merges.
+ * Pending, by name. Empty since KB-22 moved the disconnect flows' revoke
+ * calls (`oauth/{tiktok,twitter}/revoke.ts`) onto the resolver.
  */
-const PENDING: Record<string, RegExp> = {
-  'packages/features/publishing/src/oauth/tiktok/disconnect.ts': ENV_NAME,
-  'packages/features/publishing/src/oauth/twitter/disconnect.ts': ENV_NAME,
-};
+const PENDING: Record<string, RegExp> = {};
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

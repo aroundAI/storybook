@@ -355,7 +355,7 @@ export async function fetchPublishesForSync(
       continue;
     }
 
-    if (eligibility === 'suppressed') {
+    if (eligibility === 'suppressed' || eligibility === 'disconnected') {
       continue;
     }
 
@@ -407,12 +407,13 @@ async function fetchConnectionGrants(
     id: string;
     scopes: string[] | null;
     metadata: unknown;
+    disconnected_at: string | null;
   }>(
     ids,
     (chunk, from, to) =>
       client
         .from('platform_connections')
-        .select('id, scopes, metadata')
+        .select('id, scopes, metadata, disconnected_at')
         .in('id', chunk)
         .order('id')
         .range(from, to),
@@ -1112,14 +1113,24 @@ export async function syncSinglePublishById(
   // `suppressed` is deliberately not refused here: a person asking for a sync
   // is allowed to retry what the schedule gave up on. A missing scope is
   // different — the call cannot succeed, so it is not made.
-  if (
-    syncEligibility({
-      platform,
-      sync: (publish.metadata as PublishMetadata | null)?.sync,
-      grant,
-      maxConsecutiveFailures: MAX_CONSECUTIVE_FAILURES,
-    }) === 'not_authorised'
-  ) {
+  const eligibility = syncEligibility({
+    platform,
+    sync: (publish.metadata as PublishMetadata | null)?.sync,
+    grant,
+    maxConsecutiveFailures: MAX_CONSECUTIVE_FAILURES,
+  });
+
+  if (eligibility === 'disconnected') {
+    return {
+      publishId,
+      success: false,
+      error:
+        'This channel was disconnected. Reconnect it from Settings → Platforms to collect its analytics again.',
+      errorType: 'not_authorised',
+    };
+  }
+
+  if (eligibility === 'not_authorised') {
     return {
       publishId,
       success: false,

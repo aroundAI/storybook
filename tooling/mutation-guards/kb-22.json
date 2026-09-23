@@ -1,0 +1,94 @@
+{
+  "feature": "KB-22",
+  "mutations": [
+    {
+      "name": "U1 The disconnect action deletes the row again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/connection-actions.ts",
+      "find": "      const { data: rows, error } = await client.rpc(",
+      "replace": "      await client.from('platform_connections').delete().eq('id', connectionId);\n      const { data: rows, error } = await client.rpc(",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/connection-actions.test.ts",
+      "pattern": "never deletes the row"
+    },
+    {
+      "name": "U2 A disconnected channel is eligible for sync",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/sync-authorisation.ts",
+      "find": "  if (grant?.disconnectedAt) {\n    return 'disconnected';\n  }\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/sync-authorisation.test.ts",
+      "pattern": "KB-22"
+    },
+    {
+      "name": "U3 The sync job stops skipping a disconnected channel",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/analytics-sync-cron.ts",
+      "find": "if (eligibility === 'suppressed' || eligibility === 'disconnected') {",
+      "replace": "if (eligibility === 'suppressed') {",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/sync-unauthorised-connections.test.ts",
+      "pattern": "KB-22"
+    },
+    {
+      "name": "U4 A refused revoke reads as success (KB-45)",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/revoke-request.ts",
+      "find": "      status: response.ok ? 'revoked' : 'vendor_refused',",
+      "replace": "      status: 'revoked',",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/revokers.test.ts",
+      "pattern": "KB-45"
+    },
+    {
+      "name": "U5 The dialog promises a revoke the code does not make",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/components/disconnect-copy.ts",
+      "find": "  twitter: false,\n  linkedin: false,\n};\n\n/**\n * Whether the statistics",
+      "replace": "  twitter: true,\n  linkedin: false,\n};\n\n/**\n * Whether the statistics",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/revokers.test.ts",
+      "pattern": "agree about revocation"
+    },
+    {
+      "name": "U6 Application code deletes a connection row",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/connection-actions.ts",
+      "find": "      revalidatePath(`/home/[account]/settings`, 'page');\n\n      return {\n        disconnected,",
+      "replace": "      await client\n        .from('platform_connections')\n        .delete()\n        .eq('id', connectionId);\n      revalidatePath(`/home/[account]/settings`, 'page');\n\n      return {\n        disconnected,",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/no-connection-delete.test.ts"
+    },
+    {
+      "name": "P1 A connection can be deleted on its own again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/platform-connection-disconnect.test.sql",
+      "sql": "drop trigger platform_connections_refuse_delete on public.platform_connections;"
+    },
+    {
+      "name": "P2 Disconnect deletes the row, as it did before KB-22",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/platform-connection-disconnect.test.sql",
+      "sql": "drop trigger platform_connections_refuse_delete on public.platform_connections; create or replace function public.disconnect_platform_connection(p_connection_id uuid) returns table (id uuid, already_disconnected boolean) language sql security invoker set search_path = '' as $$ delete from public.platform_connections pc where pc.id = p_connection_id returning pc.id, false; $$;"
+    },
+    {
+      "name": "P3 Writing a token no longer reconnects",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/platform-connection-disconnect.test.sql",
+      "sql": "drop trigger platform_connections_reconnect on public.platform_connections;"
+    },
+    {
+      "name": "P4 Members may delete connections through PostgREST again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/platform-connection-disconnect.test.sql",
+      "sql": "create policy \"platform_connections_delete\" on public.platform_connections for delete to authenticated using (public.has_account_access(account_id));"
+    },
+    {
+      "name": "P5 A disconnected row may keep its token",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/platform-connection-disconnect.test.sql",
+      "sql": "alter table public.platform_connections drop constraint platform_connections_disconnected_holds_no_token;"
+    }
+  ]
+}

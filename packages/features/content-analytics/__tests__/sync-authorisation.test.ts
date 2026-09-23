@@ -11,8 +11,12 @@ const MAX = 5;
 const TIKTOK_PUBLISH_ONLY = ['user.info.basic', 'video.upload'];
 const TIKTOK_WITH_ANALYTICS = [...TIKTOK_PUBLISH_ONLY, 'video.list'];
 
-function grant(scopes: string[] | null, grantedAt: string | null = null) {
-  return { scopes, grantedAt, accountGated: [] };
+function grant(
+  scopes: string[] | null,
+  grantedAt: string | null = null,
+  disconnectedAt: string | null = null,
+) {
+  return { scopes, grantedAt, accountGated: [], disconnectedAt };
 }
 
 describe('syncEligibility', () => {
@@ -172,6 +176,7 @@ describe('toConnectionGrant', () => {
       scopes: ['a'],
       grantedAt: '2026-09-22T00:00:00.000Z',
       accountGated: ['youtube.revenue'],
+      disconnectedAt: null,
     });
   });
 
@@ -180,6 +185,61 @@ describe('toConnectionGrant', () => {
       scopes: null,
       grantedAt: null,
       accountGated: [],
+      disconnectedAt: null,
     });
+  });
+
+  it('carries the disconnect time (KB-22)', () => {
+    expect(
+      toConnectionGrant({
+        scopes: null,
+        metadata: null,
+        disconnected_at: '2026-09-23T00:00:00.000Z',
+      }).disconnectedAt,
+    ).toBe('2026-09-23T00:00:00.000Z');
+  });
+});
+
+describe('syncEligibility — a disconnected channel (KB-22)', () => {
+  const YOUTUBE_FULL = [
+    'https://www.googleapis.com/auth/youtube.readonly',
+    'https://www.googleapis.com/auth/yt-analytics.readonly',
+  ];
+
+  it('is not tried: it holds no token, so the call cannot succeed', () => {
+    expect(
+      syncEligibility({
+        platform: 'youtube',
+        sync: undefined,
+        grant: grant(YOUTUBE_FULL, null, '2026-09-23T00:00:00.000Z'),
+        maxConsecutiveFailures: MAX,
+      }),
+    ).toBe('disconnected');
+  });
+
+  it('wins over a scope verdict, so it is not counted as not authorised', () => {
+    expect(
+      syncEligibility({
+        platform: 'tiktok',
+        sync: undefined,
+        grant: grant(TIKTOK_PUBLISH_ONLY, null, '2026-09-23T00:00:00.000Z'),
+        maxConsecutiveFailures: MAX,
+      }),
+    ).toBe('disconnected');
+  });
+
+  it('is eligible again once reconnected, whatever failed while it was away', () => {
+    expect(
+      syncEligibility({
+        platform: 'youtube',
+        sync: {
+          requires_reauth: true,
+          consecutive_failures: MAX,
+          last_failed_at: '2026-09-23T01:00:00.000Z',
+        },
+        grant: grant(YOUTUBE_FULL, '2026-09-24T00:00:00.000Z', null),
+        maxConsecutiveFailures: MAX,
+      }),
+    ).toBe('eligible');
   });
 });

@@ -5,4 +5,3 @@ export {
   xClientAuthorization,
 } from './config';
 export type { TwitterOAuthState } from './config';
-export { disconnectTwitterAction } from './disconnect';

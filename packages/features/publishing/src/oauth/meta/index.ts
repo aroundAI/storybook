@@ -3,5 +3,3 @@ export {
   type MetaOAuthState,
   type FacebookPage,
 } from './config';
-
-export { disconnectMetaAction } from './disconnect';
