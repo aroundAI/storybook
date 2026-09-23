@@ -719,9 +719,23 @@ Nobody has looked, which is the bug.
 
 ## KB-15 — X connections are never refreshed
 
+> **Fixed (2026-09-23), #KB15PR.** Reproduced first: on the local stack the
+> real cron job deactivated an expired X connection with `Unknown platform:
+> twitter` and **zero** requests to X. `refreshXToken` now refreshes X with
+> the client's Basic auth, and stores whatever refresh token X returns.
+> `Platform` is one list, bound to the `platform_connections` CHECK by a test,
+> with no cast and an exhaustive dispatch. Reproducing it found a wider
+> defect, fixed here too: the cron job selected tokens an hour ahead but
+> refreshed only inside the 5-minute buffer, so on **every** platform tokens
+> lapsed for up to 25 minutes between runs, and it counted untouched rows as
+> refreshed. It now refreshes what it selects, and the publish worker refuses
+> exactly what the app would refresh first. One live refresh against X waits
+> on credentials (FILM-1729, FILM-1725 Check E). Existing X connections need
+> one reconnect. Design: `specs/plans/KB-15-edd.md`.
+
 **Severity:** Medium — every X connection stops working two hours after it
 is made. Masked today, because X video publishing does not work for another
-reason (FILM-1729). **Found:** FILM-1723 (#284), 2026-09-22. **Open.**
+reason (FILM-1729). **Found:** FILM-1723 (#284), 2026-09-22. **Fixed.**
 
 `TWITTER_OAUTH_CONFIG` requests `offline.access` "for refresh tokens" and
 records a two-hour access token with a 180-day refresh token
@@ -766,9 +780,9 @@ expired token, and sees `Unknown platform: twitter`.
 
 ### Acceptance criteria
 
-- [ ] Unit: an expired X connection is refreshed and the **rotated** refresh token stored; seen red first with `Unknown platform: twitter`
-- [ ] `Platform` is derived, not restated; no `as Platform` cast remains; the switch is exhaustive under `tsc`
-- [ ] The publish lambda's token check agrees with the app's for X
+- [x] Unit: an expired X connection is refreshed and the **rotated** refresh token stored; seen red first with `Unknown platform: twitter` — `packages/features/publishing/__tests__/token-refresh.test.ts`, "X refresh (KB-15)"
+- [x] `Platform` is derived, not restated; no `as Platform` cast remains; the switch is exhaustive under `tsc` — `src/lib/platforms.ts` and `__tests__/platforms.test.ts`; removing X's mapping or case fails `tsc`
+- [x] The publish lambda's token check agrees with the app's for X — one rule, `isWithinRefreshWindow`, in both (`apps/web/lambda/publish-worker/__tests__/token.test.ts`); and the cron job now refreshes everything it selects, so a token is never left expired between runs
 - [ ] One live refresh against X *(deferred with FILM-1729 — no credentials)*
 
 ---
@@ -2022,6 +2036,7 @@ every canon string at the tool boundary, as sources are.
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
 | KB-52 | Every signed-in user could read, rewrite, forge and delete every account's `llm_usage_analytics` rows: a policy with no `TO` clause and `using (true)`; writes are now service-role only, and a pgTAP guard fails any new policy of that shape | #321 |
+| KB-15 | X connections were never refreshed (`Unknown platform: twitter` deactivated each at its first expiry); and the cron job refreshed only inside the 5-minute buffer, so tokens on every platform lapsed for up to 25 minutes between runs | #KB15PR |
 
 ---
 

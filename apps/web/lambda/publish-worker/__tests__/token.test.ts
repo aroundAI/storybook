@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+
 import { randomBytes } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -75,7 +76,11 @@ describe('checkConnectionToken', () => {
 
   it('keeps its user-visible refusals word for word', async () => {
     expect(
-      await checkConnectionToken('conn-x', fakeClient(await xConnection(-1)), NOW),
+      await checkConnectionToken(
+        'conn-x',
+        fakeClient(await xConnection(-1)),
+        NOW,
+      ),
     ).toEqual({ valid: false, error: EXPIRED_TEXT });
 
     expect(

@@ -337,9 +337,7 @@ async function addConnection(platform: string, minutesLeft: number) {
     access_token_encrypted: await encrypt('old-access-token'),
     refresh_token_encrypted: await encrypt('old-refresh-token'),
     is_active: true,
-    token_expires_at: new Date(
-      Date.now() + minutesLeft * 60_000,
-    ).toISOString(),
+    token_expires_at: new Date(Date.now() + minutesLeft * 60_000).toISOString(),
     metadata: {},
     updated_at: '2026-09-01T00:00:00.000Z',
   };

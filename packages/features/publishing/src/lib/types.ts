@@ -2,7 +2,6 @@
  * Publishing Hub Types
  * Types for multi-platform video publishing
  */
-
 import type { Platform } from './platforms';
 
 export type { Platform };

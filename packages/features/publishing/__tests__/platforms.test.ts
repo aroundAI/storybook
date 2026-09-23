@@ -12,7 +12,10 @@ import { PLATFORMS, isPlatform } from '../src/lib/platforms';
  * unrefreshed.
  */
 
-const MIGRATIONS = resolve(__dirname, '../../../../apps/web/supabase/migrations');
+const MIGRATIONS = resolve(
+  __dirname,
+  '../../../../apps/web/supabase/migrations',
+);
 
 /** The values of every CHECK on `platform_connections.platform`, in order. */
 function platformChecks() {
@@ -21,11 +24,20 @@ function platformChecks() {
   for (const file of readdirSync(MIGRATIONS).sort()) {
     if (!file.endsWith('.sql')) continue;
 
-    for (const statement of readFileSync(resolve(MIGRATIONS, file), 'utf8').split(';')) {
+    for (const statement of readFileSync(
+      resolve(MIGRATIONS, file),
+      'utf8',
+    ).split(';')) {
       const definesTable =
-        /create\s+table\s+(if\s+not\s+exists\s+)?(public\.)?platform_connections\s*\(/i.test(statement) ||
-        /alter\s+table\s+(only\s+)?(public\.)?platform_connections\b/i.test(statement);
-      const check = /check\s*\(\s*platform\s+in\s*\(([^)]*)\)\s*\)/i.exec(statement);
+        /create\s+table\s+(if\s+not\s+exists\s+)?(public\.)?platform_connections\s*\(/i.test(
+          statement,
+        ) ||
+        /alter\s+table\s+(only\s+)?(public\.)?platform_connections\b/i.test(
+          statement,
+        );
+      const check = /check\s*\(\s*platform\s+in\s*\(([^)]*)\)\s*\)/i.exec(
+        statement,
+      );
 
       if (definesTable && check) {
         checks.push(

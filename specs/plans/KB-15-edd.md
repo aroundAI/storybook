@@ -7,7 +7,7 @@ Engineering Design Document. Follows `specs/PLAN_TEMPLATE.md`, all 34 sections.
 | Ticket | KB-15 (`specs/cross-cutting/FILM-CC-04-known-bugs.md`, `## KB-15`) |
 | Severity | Medium |
 | Related | KB-29 (#310, the base), FILM-CC-03 (OAuth Token Refresh), FILM-1723 (X API v2), FILM-1725 Check E, FILM-1729 (X `media.write`) |
-| Branch / base | `fix/kb-15-x-token-refresh` / `origin/fix/kb-29-refresh-global-credentials` @ `b8a3a4b9` (stacked on #310) |
+| Branch / base | `fix/kb-15-x-token-refresh` / `main` (planned stacked on #310 @ `b8a3a4b9`; rebased onto `main` @ `ef44ffce` after #310 merged) |
 | Author / date | kb-15 teammate, 2026-09-23 |
 | Size | S: about 12 files, no migration, no UI |
 
@@ -734,9 +734,14 @@ rotated token per call:
 
 Publish worker, new `lambda/publish-worker/__tests__/token.test.ts` (fake
 client; tokens encrypted with **`@kit/shared/crypto`** and decrypted by the
-worker's own `crypto.ts`, so it also proves the two formats agree). The file
-starts with `// @vitest-environment node`, because `apps/web`'s default is
-happy-dom and the test needs Node's WebCrypto:
+worker's own `crypto.ts`, so it also proves the two formats agree).
+*Phase 2 deviation:* the plan said to pin the `node` environment. That breaks
+`apps/web`'s setup file (`window.matchMedia`), and the default happy-dom
+environment has WebCrypto, so the test runs as is. `apps/web/vitest.config.ts`
+gains two aliases, `@kit/shared/crypto` and `@kit/publishing/lib/token-expiry`.
+A catch-all `'@kit'` alias maps any unlisted `@kit/*` subpath onto
+`packages/`, so it misresolves; KB-29 aliased `@kit/publishing/oauth/apps` for
+the same reason:
 
 | ID | Test | Red on the base because | Covers |
 |---|---|---|---|
@@ -772,6 +777,19 @@ under the DB lock, adding a YouTube row with 50 minutes left. Expected:
 are unchanged), pgTAP (no policy change), load tests.
 
 ## 27. Production-Build Verification
+
+**Run 2026-09-23, 04:51:10–04:51:42Z** (DB lock taken first, then a heavy
+slot). Pre-flight 1 was the real resolver under the run's environment:
+`PREFLIGHT OK: all 29 vendors resolve to http://127.0.0.1:3195`. It was shown
+to fail without `VENDOR_SANDBOX` and with `NODE_ENV=production`. Pre-flight 2
+found no `vendor-overrides` line in the server log. With no secret the cron
+route returned 401; with it, 200 and `{ checked: 2, refreshed: 2, failed: 0 }`.
+The listener received two `POST /2/oauth2/token`, each with the expected Basic
+header and a form of only `grant_type` and `refresh_token`. Both X rows were
+active afterwards with 120 minutes left and the rotated refresh token stored.
+E1 in the same hold (the real DB, vitest) gave `{ checked: 4, refreshed: 4,
+failed: 0 }`: one request per row, the two 50-minute rows included, and every
+row active with its rotated token stored.
 
 Applies, because the change runs in the web app's server bundle through a
 cron route, and the host resolution (`vendorUrl` at module load in
