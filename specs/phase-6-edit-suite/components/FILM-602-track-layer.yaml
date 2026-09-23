@@ -3,7 +3,7 @@ title: "Track Layer"
 phase: 6
 phase_name: "Edit Suite"
 category: component
-status: PARTIAL
+status: RETIRED
 audited: "2026-09-23"
 effort: L
 dependencies:
@@ -73,10 +73,15 @@ test_plan:
       met: false
       reason: "not met — no test found (the edit suite has none)"
   e2e: []
-remaining:
-  - criterion: "Mute/solo/lock buttons work; locked tracks prevent editing"
-    reason: "Lock refuses only asset drops (`packages/features/edit-suite/src/components/timeline/track-row.tsx:210`); `ClipBlock` never receives the lock state, so clips on a locked track still move, trim and delete"
-    closed_by: "unassigned"
+retirement:
+  commit: null
+  date: "2026-09-23"
+  what_happened: >
+    Retired with the whole Edit Suite on 2026-09-23 (FILM-607). The track row
+    (`packages/features/edit-suite/src/components/timeline/track-row.tsx`) was deleted
+    with the package, and the lock gap this spec recorded as remaining went with it.
+    Kept as a record; not outstanding work.
+  replacement: null
 open_questions:
   - "[ ] Should we support clip splitting? (post-MVP)"
   - "[ ] Should we show gain/envelope automation? (post-MVP)"

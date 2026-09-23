@@ -3730,6 +3730,8 @@ export class ElevenLabsProvider implements VoiceGenerationProvider {
 
 ## PHASE 6: Edit Suite (Priority: P1)
 
+> **Retired 2026-09-23 (FILM-607).** The owner retired the whole Edit Suite; this section is kept as history. Videos are edited outside the app and uploaded on the Publish tab.
+
 ### 6.1 Timeline Editor
 
 #### Task 6.1.1: Create TimelineEditor Component

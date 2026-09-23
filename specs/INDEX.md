@@ -127,6 +127,7 @@ graph TD
         FILM-601 --> FILM-604[Auto-Stitch]
         FILM-601 --> FILM-605[Auto-Captions]
         FILM-601 --> FILM-606[Transitions Library]
+        FILM-607[Retire Edit Suite] --> FILM-608[Drop Edit Suite tables]
     end
 
     subgraph "Phase 7: Publishing"
@@ -253,10 +254,10 @@ graph TD
 ```
 
 ### Phase 6: Edit Suite
+Retired 2026-09-23 (FILM-607). The only open work is FILM-608, dropping the kept tables.
 ```
-1. FILM-601 (Timeline Editor) - Core component
-2. FILM-602 (Track Layer) | FILM-603 (Clip Editor)
-3. FILM-604 (Auto-Stitch)
+1. FILM-607 (Retire the Edit Suite)
+2. FILM-608 (Drop the retired Edit Suite tables) - after the owner reads production
 ```
 
 ### Phase 7: Publishing
@@ -411,8 +412,8 @@ graph TD
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-601 | [timeline-editor](./phase-6-edit-suite/components/FILM-601-timeline-editor.yaml) | 🟡 PARTIAL | XL | FILM-DS-03 |
-| FILM-602 | [track-layer](./phase-6-edit-suite/components/FILM-602-track-layer.yaml) | 🟡 PARTIAL | L | FILM-601 |
+| FILM-601 | [timeline-editor](./phase-6-edit-suite/components/FILM-601-timeline-editor.yaml) | 🗑️ RETIRED (FILM-607) | XL | FILM-DS-03 |
+| FILM-602 | [track-layer](./phase-6-edit-suite/components/FILM-602-track-layer.yaml) | 🗑️ RETIRED (FILM-607) | L | FILM-601 |
 | FILM-603 | [clip-editor](./phase-6-edit-suite/components/FILM-603-clip-editor.yaml) | 🗑️ RETIRED (5f44d0e1) | L | FILM-601 |
 | FILM-604 | [auto-stitch](./phase-6-edit-suite/lib/FILM-604-auto-stitch.yaml) | 🗑️ RETIRED (b7f7cb53) | L | FILM-601 |
 | FILM-605 | [auto-captions](./phase-6-edit-suite/components/FILM-605-auto-captions.yaml) | 🗑️ RETIRED (5f44d0e1) | L | FILM-601 |
@@ -522,11 +523,11 @@ graph TD
 
 ### Phase 14: Edit Suite v2 (1 spec)
 
-One engineering document rather than task specs. Shipped in c3de1674 ("complete Phase 14").
+One engineering document rather than task specs. Shipped in c3de1674 ("complete Phase 14"); retired with the whole Edit Suite on 2026-09-23 (FILM-607).
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| PHASE-14 | [edit-suite-v2](./phase-14-edit-suite-v2/ENGINEERING.md) | 🟡 PARTIAL | — | — |
+| PHASE-14 | [edit-suite-v2](./phase-14-edit-suite-v2/ENGINEERING.md) | 🗑️ RETIRED (FILM-607) | — | — |
 
 ### Phase 15: Deep Analytics Discipline (11 specs)
 
@@ -702,7 +703,7 @@ reason when not.
 | 11. Canon Integ | 22 | 0 | 17 | 0 | 1 | 4 |
 | 12. Scale | 2 | 0 | 0 | 0 | 0 | 2 |
 | 13. Hook Opt | 2 | 0 | 0 | 0 | 2 | 0 |
-| 14. Edit Suite v2 | 1 | 0 | 1 | 0 | 0 | 0 |
+| 14. Edit Suite v2 | 1 | 0 | 0 | 0 | 1 | 0 |
 | 15. Deep Analytics | 11 | 0 | 5 | 0 | 1 | 5 |
 | 16. Workbook Parity | 17 | 0 | 2 | 0 | 0 | 15 |
 | 17. Analytics Provenance | 30 | 20 | 5 | 2 | 0 | 3 |
@@ -721,7 +722,7 @@ No column for In Progress: no PR is open.
 | Post-MVP (Ph 6–9) | 38 | 10 | 18 | 10 | 0 |
 | Canon (Ph 10–11) | 29 | 4 | 23 | 2 | 0 |
 | Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |
-| Edit Suite v2 (Ph 14) | 1 | 0 | 1 | 0 | 0 |
+| Edit Suite v2 (Ph 14) | 1 | 0 | 0 | 1 | 0 |
 | Deep Analytics (Ph 15) | 11 | 5 | 5 | 1 | 0 |
 | Workbook Parity (Ph 16) | 17 | 15 | 2 | 0 | 0 |
 | Provenance & Signal (Ph 17) | 30 | 3 | 5 | 0 | 22 |

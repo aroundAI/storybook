@@ -34,7 +34,7 @@ acceptance_criteria:
     reason: "no longer true — no touch handlers anywhere in `apps/web` or `packages`; useTouchGestures never mounted, deleted 5f44d0e1"
   - text: "Timeline has simplified mobile view (future implementation in FILM-601)"
     met: false
-    reason: "not met — deferred at ship time: mobile timeline; `packages/features/edit-suite` has no breakpoint variants or mobile view"
+    reason: "not met — deferred at ship time: mobile timeline; the only timeline editor was retired with the Edit Suite (FILM-607)"
   - text: "Modals become full-screen sheets on mobile"
     met: false
     reason: "no longer true — `@kit/ui` DialogContent is a centred `max-w-lg` dialog at every width (`packages/ui/src/shadcn/dialog.tsx:38`); nothing swaps in a sheet"
@@ -43,7 +43,7 @@ acceptance_criteria:
     reason: "unverified — responsive sizes exist (e.g. `apps/web/app/home/[account]/studio/[projectSlug]/_components/hero-banner.tsx:38`); \"appropriately\" needs screenshots per breakpoint"
   - text: "No horizontal overflow at any breakpoint"
     met: false
-    reason: "no longer true — the export dialog is a fixed `w-[680px]` (`packages/features/edit-suite/src/components/export/export-dialog.tsx:218`) with no narrow-screen variant"
+    reason: "no longer true — unverified — the example, the Edit Suite export dialog fixed at `w-[680px]`, was retired with the Edit Suite (FILM-607); no other surface has been checked"
 remaining:
   - criterion: "Sidebar collapses to sheet on tablet/mobile"
     reason: >
@@ -65,9 +65,8 @@ remaining:
     closed_by: "owner"
   - criterion: "No horizontal overflow at any breakpoint"
     reason: >
-      The edit-suite export dialog is fixed at 680px
-      (`packages/features/edit-suite/src/components/export/export-dialog.tsx:218`) and
-      the edit suite has no mobile gate
+      The example, the Edit Suite export dialog fixed at 680px, was retired with the Edit Suite (FILM-607); no
+      other surface has been measured at narrow widths
     closed_by: "unassigned"
 open_questions:
   - "Should we support offline mode for mobile? (post-MVP)"

@@ -17,7 +17,7 @@ acceptance_criteria:
     evidence: null
   - text: "Each component has clear ownership (package)"
     met: false
-    reason: "no longer true — §2 owners stale: ShotGrid/ShotCard in apps/web, timeline in @kit/edit-suite (old one deleted 5f44d0e1), VideoPlayer in @kit/public-sharing; §3–4 name none"
+    reason: "no longer true — §2 owners stale: ShotGrid/ShotCard in apps/web, the timeline gone (5f44d0e1, then the Edit Suite in FILM-607), VideoPlayer in @kit/public-sharing; §3–4 name none"
   - text: "Effort estimates are provided for planning"
     met: true
     evidence: null
@@ -32,8 +32,7 @@ remaining:
     reason: >
       §2's owners no longer match the code: ShotGrid/ShotCard live in
       `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/`,
-      the timeline in
-      `packages/features/edit-suite/src/components/timeline/timeline.tsx`, VideoPlayer
+      the timeline is gone (the Edit Suite was retired, FILM-607), VideoPlayer
       in `packages/features/public-sharing/src/components/video-player.tsx`. §3–§4 name
       no package. CharacterCard, GenerationStatusBadge, ProgressRing and PromptEditor
       were never built (placeholder comments removed in 18906820)

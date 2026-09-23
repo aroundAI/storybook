@@ -11,7 +11,7 @@ dependencies:
     note: "episodes-table"
 summary: >
   The `audio_tracks` table stores music, sound effects, and composite dialogue tracks for episodes.
-  Tracks have timeline positioning (start time, duration, volume) for the edit suite.
+  Tracks have timeline positioning (start time, duration, volume); the edit suite that also read them was retired (FILM-607).
 database_table:
   table_name: "audio_tracks"
   migration: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql"

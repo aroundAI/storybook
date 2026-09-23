@@ -56,7 +56,7 @@ specs/
 ├── phase-3-episodes/              # Episodes, story, screenplay, shot lists
 ├── phase-4-video-generation/      # In-app video generation (retired); Visual Studio
 ├── phase-5-audio-generation/      # Voice, music, cloning
-├── phase-6-edit-suite/            # The original timeline editor; replaced by phase 14
+├── phase-6-edit-suite/            # The timeline editor; the whole Edit Suite retired (FILM-607)
 ├── phase-7-publishing/            # Multi-platform publishing
 ├── phase-8-analytics/             # Cross-platform analytics
 ├── phase-9-integration/           # Navigation, settings, dashboard
@@ -64,7 +64,7 @@ specs/
 ├── phase-11-canon-integration/    # Canon in generation; content types; facts; news
 ├── phase-12-scale/                # ClickHouse; network strategy
 ├── phase-13-hook-optimization/    # Retired
-├── phase-14-edit-suite-v2/        # Edit suite v2 (one Markdown engineering doc, not a task spec)
+├── phase-14-edit-suite-v2/        # Edit suite v2 (one Markdown engineering doc); retired (FILM-607)
 ├── phase-15-deep-analytics/       # Analytics discipline
 ├── phase-16-workbook-parity/      # Workbook parity
 ├── phase-17-analytics-provenance/ # Provenance and signal

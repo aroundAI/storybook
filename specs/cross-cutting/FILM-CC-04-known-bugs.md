@@ -1597,6 +1597,13 @@ Rolled back.
 
 ## KB-28 — Any signed-in user can upload into any project's storage folder
 
+> **Note (FILM-607, 2026-09-23):** the Edit Suite's export dialog, one of the
+> callers this entry's fix allowlists (`EXPORT_UPLOAD_BUCKET`), never produced
+> the path the allowlist signs. It built `projects/<id>/…` from the **edit
+> project's** id, which the presign route looks up in `projects` and refuses
+> with a 403, so no export upload ever reached storage. The Edit Suite is
+> retired; FILM-607 part B removes that allowlist entry once #313 has merged.
+
 **Severity:** Medium — a cross-tenant write, bounded: existing files cannot
 be overwritten or deleted (those policies are scoped), but new ones can be
 planted under another project's path on a **public** bucket, with no size
@@ -1811,6 +1818,13 @@ membership itself against the payload's `userId`.
 ---
 
 ## KB-32 — Every edit-suite export render fails before FFmpeg runs
+
+> **Resolved by removal (FILM-607, 2026-09-23).** The Edit Suite is retired:
+> the render worker, both render queues and the export dialog are deleted, so
+> no render can be requested. No render ever finished, so no rendered file or
+> `master_video` asset exists to clean up. Kept here as the record of what was
+> found. Its follow-ups KB-64, KB-65, KB-67, KB-68 and KB-69 go with it; KB-66
+> (untyped clients in the other lambdas) stays open.
 
 **Severity:** High — the export button can never produce a video. It fails
 at step 1, before any rendering or cost. **Found:** KB-14, 2026-09-23.
@@ -2099,7 +2113,7 @@ proved it wrong. Paths abbreviated with `…/studio/` are under
 - Every studio page load sends a failing request: the sidebar filters `external_content.project_id`, a column that does not exist — `…/studio/layout.tsx:84`
 - Visual Studio's "Generate All Pending" and "Regenerate" toast success and do nothing; "Replace" discards the chosen file; the "Add New Shot" tile has no handler — `…/studio/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:240`, `shot-details-sidebar.tsx:332`, `:835`, `shot-grid.tsx:54`
 - An assembled VEO prompt over 2,000 characters cannot be saved: update caps `prompt` at 2000, create allows 8000 — `packages/features/episodes/src/lib/schemas/shot.schema.ts:194`
-- Edit suite: the Inspector says "Coming soon", so speed, fades and keyframes cannot be edited; the Snap toggle is never read; clips on a locked track can be moved and deleted; many edits bypass undo — `packages/features/edit-suite/src/components/inspector/inspector-panel.tsx:37`, `timeline/clip-block.tsx:172`, `timeline/track-row.tsx:303` (PHASE-14, FILM-601, FILM-602)
+- ~~Edit suite: the Inspector says "Coming soon", so speed, fades and keyframes cannot be edited; the Snap toggle is never read; clips on a locked track can be moved and deleted; many edits bypass undo — `packages/features/edit-suite/src/components/inspector/inspector-panel.tsx:37`, `timeline/clip-block.tsx:172`, `timeline/track-row.tsx:303` (PHASE-14, FILM-601, FILM-602)~~ **Resolved by removal:** the Edit Suite is retired (FILM-607).
 - Settings still ask for, and validate against the vendor, Kling/Runway/Hailuo keys (retired) and OpenAI/Claude/Gemini keys that nothing reads — `apps/web/app/home/[account]/settings/_components/api-keys-settings.tsx:55-125`; the project form saves "Default Video Provider" and "Enable Subtitles", which nothing reads — `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:131`, `:705`
 - X and LinkedIn cannot be connected or published from the UI, yet the social-post page tells creators to "Connect one in Settings → Platforms" — `packages/features/publishing/src/components/platform-connections.tsx:90`, `packages/features/publishing/src/lib/constants.ts:45-51`, `apps/web/app/home/[account]/social-posts/[postId]/_components/social-post-detail.tsx:381`
 
