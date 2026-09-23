@@ -1605,8 +1605,8 @@ interface CanonChanges {
 ### Learn More
 
 - **[ARCHITECTURE.md](../../specs/phase-10-canon-management/ARCHITECTURE.md)** - Complete system architecture
-- **[FILM-1003-continuity-validator.md](../../specs/phase-10-canon-management/lib/FILM-1003-continuity-validator.md)** - All 9 validation rules in detail
-- **[FILM-1006-llm-role-separation.md](../../specs/phase-10-canon-management/prompts/FILM-1006-llm-role-separation.md)** - Role pipeline algorithms
+- **[FILM-1003-continuity-validator.yaml](../specs/phase-10-canon-management/lib/FILM-1003-continuity-validator.yaml)** - All 9 validation rules in detail
+- **[FILM-1006-llm-role-separation.yaml](../specs/phase-10-canon-management/prompts/FILM-1006-llm-role-separation.yaml)** - Role pipeline algorithms
 
 ### Hands-On Practice
 

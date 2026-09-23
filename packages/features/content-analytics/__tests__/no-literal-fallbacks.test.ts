@@ -133,15 +133,17 @@ describe('every audience dimension is read, or recorded as unread', () => {
     const spec = readFileSync(
       resolve(
         __dirname,
-        '../../../../specs/phase-17-analytics-provenance/FILM-1701-audience-truth-up.md',
+        '../../../../specs/phase-17-analytics-provenance/FILM-1701-audience-truth-up.yaml',
       ),
       'utf8',
     );
 
     for (const [dimension, entry] of entries) {
-      expect(spec, dimension).toContain(
-        `| \`${dimension}\` | ${entry.status} |`,
+      const pattern = new RegExp(
+        `dimension:\\s*["']?${dimension}["']?\\b[\\s\\S]{0,120}?status:\\s*["']?${entry.status}["']?\\b`,
       );
+
+      expect(pattern.test(spec), `${dimension} (${entry.status})`).toBe(true);
     }
   });
 });

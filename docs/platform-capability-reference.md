@@ -940,7 +940,7 @@ credentials. The third cannot: X has no sandbox, Free/Basic/Pro closed to new
 signups on 2026-02-06, and the question *is* whether a non-Enterprise token works.
 
 The two that have not run are tracked in
-[FILM-1725](../specs/phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.md),
+[FILM-1725](../specs/phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.yaml),
 with the trigger that should bring each back. They are deferred, not dropped —
 nothing below may be restated as fact until its check has run.
 

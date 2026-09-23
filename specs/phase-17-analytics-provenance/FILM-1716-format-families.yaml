@@ -1,0 +1,163 @@
+spec_id: "FILM-1716"
+title: "Format Families"
+phase: 17
+phase_name: "Analytics Provenance and Signal"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-1710"
+    note: null
+summary: >
+  Short-form and long-form are different products with different funnels,
+  and no spec in the repository segments analytics by them. This spec
+  introduces a format family axis — short_vertical, long_vertical,
+  long_horizontal, teaser, trailer, clip, live — mapped from video_dim's
+  content_type and platform rather than read from either, since
+  content_type alone has only four values (three of which behave as
+  long-form) and does not capture orientation or surface. Duration cannot
+  yet refine the mapping because video_dim.duration_seconds is the
+  episode's duration until FILM-1710 lands.
+acceptance_criteria:
+  - text: "Format family is a first-class type, distinct from content_type"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "The mapping is explicit and exported, not inferred at call sites"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "Every content_type present in video_dim has a mapping, asserted against the live table"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "A new content_type fails CI rather than defaulting"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "teaser and trailer resolve to a family and are not dropped"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "The same clip on two platforms can resolve to different families"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "A publish with no asset duration falls back to its declared type rather than being guessed"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "Either DimScope accepts a list of content types, or the one-to-one restriction is documented and enforced"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "No consumer keys a lookup on 'short' | 'long'"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+open_questions: []
+feature:
+  database:
+    tables: ["video_dim"]
+    columns_added: []
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
+notes: |
+  ## Overview
+
+  Short-form and long-form are different products with different funnels,
+  and no spec in the repository segments analytics by them. A grep across
+  `specs/` for "shorts vs long" returns nothing.
+
+  The distinction is not cosmetic. In short-form the viewer did not ask
+  for the video — the first question is why didn't they swipe. In
+  long-form they chose it — the first question is why did they click. CTR
+  is central to one and meaningless to the other. A single benchmark pool
+  mixing both produces a number that describes neither.
+
+  ## content_type is not the answer, but it is the input
+
+  `video_dim.content_type` is `'full' | 'short' | 'teaser' | 'trailer'`
+  (`migrations/005_video_dim.ts:19`, CHECK at `30-film-studio.sql:539`).
+
+  Two problems with reading it directly: four values, three of which
+  behave as long-form — any lookup keyed on `'short' | 'long'` silently
+  drops `teaser` and `trailer`. It does not capture orientation or surface
+  — a 45-second vertical clip on YouTube and the same clip on Instagram
+  are creatively alike and analytically different — different feeds,
+  different view definitions, different viewer intent.
+
+  So the axis is a format family, mapped from `content_type` and platform
+  rather than read from either:
+
+  ```
+  short_vertical . long_vertical . long_horizontal . teaser . trailer . clip . live
+  ```
+
+  `FORMAT_BY_CONTENT_TYPE` is exported, and `verify-queries.ts` asserts
+  that every `content_type` actually present in `video_dim` has a
+  mapping, following FILM-1703's live-check pattern. A new content type
+  then fails CI rather than falling silently out of every lookup.
+
+  ## Duration cannot classify format yet
+
+  The obvious implementation — classify by duration — is unavailable
+  until FILM-1710 lands, because `video_dim.duration_seconds` is the
+  episode's duration. In the live fixture, Instagram and TikTok publishes
+  marked `short` average ~1,550 seconds.
+
+  So this spec depends on FILM-1710, and until the asset duration exists
+  the mapping is driven by `content_type` and platform alone. Once it
+  exists, duration can refine the family — but a publish whose asset
+  duration is null must fall back to the declared type rather than being
+  guessed into a family.
+
+  ## What the family axis is for
+
+  Three consumers, all of which need it before they are correct:
+  FILM-1714 keys its signal map on platform x format x stage — YouTube
+  long Hook is CTR; YouTube short Hook has no honest primary at all.
+  FILM-1715 never relaxes the format axis when finding comparable videos
+  — a Short benchmarked against long-form is nonsense. FILM-1717 compares
+  creative attributes within a family, because a hook mechanism that works
+  in a 20-second vertical is not evidence about a 20-minute horizontal.
+
+  ## Scope constraint worth stating now
+
+  `DimScope.contentType` is a single string (`queries-advanced.ts:25`)
+  and `buildDimConditions` binds one value. A family spanning several
+  content types — `long_horizontal` covering `full`, `teaser` and
+  `trailer`, say — cannot be expressed without widening the scope to
+  accept a list.
+
+  Either widen it here, or restrict v1 to families that map one-to-one and
+  record the limitation. Do not emit a query that silently filters to the
+  first value.
+
+  ## Out of scope
+
+  - Adding new `content_type` values. This spec maps what exists.
+  - Per-family thresholds or benchmarks — FILM-1715.
+  - `live` as a real ingest path; it is in the vocabulary so the axis does
+    not need widening later, and maps to nothing until live publishing
+    exists.
+
+  ## Verification
+
+  ```bash
+  pnpm --filter @kit/clickhouse test
+  ./scripts/local-env.sh verify
+  pnpm turbo typecheck --force && pnpm lint
+  ```
+
+  Pure mapping, unit-testable. The live check is the one that matters over
+  time:
+
+  ```sql
+  SELECT DISTINCT platform, content_type FROM video_dim FINAL;
+  ```
+
+  must be fully covered by `FORMAT_BY_CONTENT_TYPE`, and the test must be
+  seen failing by adding an unmapped content type to the fixture.
+
+  ## Risk
+
+  The vocabulary could grow indefinitely — every surface on every platform
+  is a candidate family. The discipline is that a family must change how a
+  video is analysed, not merely describe it. If two families always
+  produce the same signal map and the same benchmark pool, they are one
+  family with two names, and the taxonomy work belongs in FILM-1717
+  instead.

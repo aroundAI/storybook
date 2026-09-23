@@ -1,0 +1,302 @@
+spec_id: "FILM-101n"
+title: "External API Keys Table"
+phase: 1
+phase_name: "Foundation"
+category: database_table
+status: PARTIAL
+audited: "2026-09-23"
+effort: XS
+dependencies: []
+summary: >
+  The `external_api_keys` table implements Bring Your Own Key (BYOK) functionality, allowing users
+  to use their own API keys for external services (Kling, Runway, ElevenLabs, Suno, Claude, OpenAI).
+  Keys are encrypted and never stored in plaintext.
+database_table:
+  table_name: "external_api_keys"
+  migration: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql"
+  columns:
+    - name: "id"
+      type: "UUID"
+      nullable: false
+      default: "gen_random_uuid()"
+      description: "Primary key"
+    - name: "account_id"
+      type: "UUID"
+      nullable: false
+      default: null
+      description: "Account owning this key"
+    - name: "provider"
+      type: "VARCHAR(50)"
+      nullable: false
+      default: null
+      description: "Service provider (see enum)"
+    - name: "encrypted_key"
+      type: "TEXT"
+      nullable: false
+      default: null
+      description: "Encrypted API key"
+    - name: "is_active"
+      type: "BOOLEAN"
+      nullable: false
+      default: "TRUE"
+      description: "Key is active for use"
+    - name: "last_used_at"
+      type: "TIMESTAMPTZ"
+      nullable: true
+      default: "NULL"
+      description: "Last time key was used"
+    - name: "created_at"
+      type: "TIMESTAMPTZ"
+      nullable: false
+      default: "NOW()"
+      description: "Creation timestamp"
+  indexes:
+    - name: "idx_external_api_keys_account_id"
+      columns: ["account_id"]
+      unique: false
+    - name: "idx_external_api_keys_provider"
+      columns: ["account_id", "provider"]
+      unique: false
+    - name: "idx_external_api_keys_active"
+      columns: ["account_id", "is_active"]
+      unique: false
+    - name: null
+      columns: ["account_id", "provider"]
+      unique: true
+  foreign_keys: []
+  rls_enabled: null
+acceptance_criteria:
+  - text: "Table created with all columns"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:284"
+  - text: "Unique constraint on (account_id, provider)"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:293"
+  - text: "Provider enum constraint enforced"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:292"
+  - text: "encrypted_key is TEXT (supports variable-length encrypted strings)"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:288"
+  - text: "Can mark key as inactive without deletion"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:289"
+  - text: "last_used_at tracks usage"
+    met: false
+    reason: "not met — nothing writes it when a key is used; the only write sets it to null on save (apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts:111)"
+test_plan:
+  unit:
+    - text: "Insert key with valid provider succeeds"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert key with invalid provider fails"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert duplicate key for same account+provider fails (unique constraint)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert key for different provider succeeds"
+      met: false
+      reason: "not met — no test found"
+    - text: "Timestamps populate automatically"
+      met: false
+      reason: "not met — no test found"
+  integration:
+    - text: "Retrieve active key for account+provider"
+      met: true
+      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:85"
+    - text: "Inactive keys are excluded from queries"
+      met: true
+      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:85 (asserts the is_active filter)"
+    - text: "Update last_used_at on key retrieval"
+      met: false
+      reason: "not met — no test found; no code updates it"
+    - text: "Deactivate key (set is_active = FALSE)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Reactivate key (set is_active = TRUE)"
+      met: false
+      reason: "not met — no test found"
+  e2e: []
+  edge_cases:
+    - text: "Very long API key (2000+ characters)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Key rotation (deactivate old, add new)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Missing key for provider (falls back to platform key)"
+      met: true
+      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:103"
+    - text: "Multiple accounts with same provider (different keys)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Key never used (last_used_at = NULL)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Invalid encrypted_key (decryption fails - handle gracefully)"
+      met: false
+      reason: "not met — no test found"
+remaining:
+  - criterion: "last_used_at tracks usage"
+    reason: "No key reader updates it; saveApiKeyAction writes null (apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts:111), and git log -S last_used_at shows no writer ever existed"
+    closed_by: "unassigned"
+open_questions: []
+notes: |
+  Sections of the Markdown spec that have no typed field, kept verbatim. Moved to typed fields: the Context paragraph (summary), the column table (database_table.columns), index names and columns, unique keys and foreign keys (database_table), the acceptance criteria and test-plan checklists and the Remaining table (remaining).
+
+  ## Metadata
+  - **Phase:** 1
+  - **Priority:** P0
+  - **Effort:** XS
+  - **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ COMPLETE)
+  - **Completed:** 2025-12-05
+  - **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
+  - **Dependencies:** None (depends on existing accounts)
+  - **Blocks:** Phase 4 (video generation), Phase 5 (audio generation)
+
+  ## Specification
+
+  ### Table Definition
+  ```sql
+  CREATE TABLE external_api_keys (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    account_id UUID NOT NULL,
+    provider VARCHAR(50) NOT NULL,
+    encrypted_key TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+    last_used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    CHECK (provider IN ('kling', 'runway', 'hailuo', 'elevenlabs', 'playht', 'suno', 'claude', 'openai', 'gemini')),
+    UNIQUE(account_id, provider)
+  );
+  ```
+
+  ### Provider Enum Values
+  - `kling` - Kling AI video generation (via PiAPI)
+  - `runway` - Runway ML video generation
+  - `hailuo` - Hailuo video generation
+  - `elevenlabs` - ElevenLabs voice synthesis
+  - `playht` - Play.ht voice synthesis
+  - `suno` - Suno music generation
+  - `claude` - Anthropic Claude (for story/screenplay)
+  - `openai` - OpenAI GPT (for story/screenplay)
+  - `gemini` - Google Gemini (for story/screenplay)
+
+  ### Indexes
+  ```sql
+  CREATE INDEX idx_external_api_keys_account_id ON external_api_keys(account_id);
+  CREATE INDEX idx_external_api_keys_provider ON external_api_keys(account_id, provider);
+  CREATE INDEX idx_external_api_keys_active ON external_api_keys(account_id, is_active)
+    WHERE is_active = TRUE;
+  ```
+
+  ### Constraints
+  - **Primary Key**: `id`
+  - **Unique**: `(account_id, provider)` - one key per provider per account
+  - **Check Constraint**: `provider` in enum values
+
+  ### Security
+  **Key Encryption Pattern:**
+  ```typescript
+  import { encrypt, decrypt } from '@kit/shared/crypto';
+
+  async function storeApiKey(accountId: string, provider: string, apiKey: string) {
+    // Validate key format (provider-specific)
+    validateApiKeyFormat(provider, apiKey);
+
+    // Encrypt before storing
+    const encryptedKey = await encrypt(apiKey);
+
+    await client.from('external_api_keys').insert({
+      account_id: accountId,
+      provider,
+      encrypted_key: encryptedKey,
+      is_active: true,
+    });
+  }
+
+  async function getApiKey(accountId: string, provider: string): Promise<string | null> {
+    const { data } = await client
+      .from('external_api_keys')
+      .select('encrypted_key, is_active')
+      .eq('account_id', accountId)
+      .eq('provider', provider)
+      .eq('is_active', true)
+      .single();
+
+    if (!data) return null;
+
+    // Decrypt on retrieval
+    const apiKey = await decrypt(data.encrypted_key);
+
+    // Update last_used_at
+    await client
+      .from('external_api_keys')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('account_id', accountId)
+      .eq('provider', provider);
+
+    return apiKey;
+  }
+  ```
+
+  **Key Validation:**
+  ```typescript
+  function validateApiKeyFormat(provider: string, key: string) {
+    const patterns: Record<string, RegExp> = {
+      openai: /^sk-[A-Za-z0-9]{32,}$/,
+      claude: /^sk-ant-api\d{2}-[A-Za-z0-9-_]{95}$/,
+      elevenlabs: /^[a-f0-9]{32}$/,
+      // ... other providers
+    };
+
+    const pattern = patterns[provider];
+    if (pattern && !pattern.test(key)) {
+      throw new Error(`Invalid API key format for ${provider}`);
+    }
+  }
+  ```
+
+  ### Billing Integration
+  When BYOK is used, costs are tracked but not charged to the user's account:
+
+  ```typescript
+  // Check if user has BYOK for provider
+  const byokKey = await getApiKey(accountId, provider);
+
+  if (byokKey) {
+    // Use user's key - don't deduct credits
+    await generateWithUserKey(byokKey, input);
+
+    // Track cost for analytics, but don't charge
+    await recordCost(jobId, costCents, { byok: true });
+  } else {
+    // Use platform key - deduct credits
+    await checkCredits(accountId, estimatedCost);
+    await generateWithPlatformKey(input);
+    await deductCredits(accountId, actualCost);
+  }
+  ```
+
+  ## File Changes
+  | Action | Path |
+  |--------|------|
+  | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
+
+  ## Test Plan
+
+  ### Security Tests
+  ```typescript
+  // Test encryption round-trip
+  const originalKey = 'sk-test-1234567890abcdef';
+  const encrypted = await encrypt(originalKey);
+  const decrypted = await decrypt(encrypted);
+
+  assert(decrypted === originalKey);
+  assert(encrypted !== originalKey); // Ensure it's actually encrypted
+
+  // Test key validation
+  validateApiKeyFormat('openai', 'sk-1234'); // Should fail
+  validateApiKeyFormat('openai', 'sk-1234567890abcdefghijklmnopqrstuvwxyz'); // Should pass
+  ```

@@ -1,0 +1,669 @@
+spec_id: "FILM-715"
+title: "LinkedIn Provider"
+phase: 7
+phase_name: "Publishing"
+category: provider
+status: PARTIAL
+audited: "2026-09-23"
+effort: M
+dependencies:
+  - spec_id: "FILM-708"
+    note: null
+  - spec_id: null
+    note: "OAuth Infrastructure"
+summary: >
+  LinkedIn supports native video publishing for personal profiles and company pages. This is
+  valuable for B2B content creators, educational series, and professional content marketing.
+  LinkedIn videos get higher organic reach compared to shared links.
+provider:
+  vendor: "LinkedIn API v2"
+  file_path: "packages/features/publishing/src/providers/linkedin/linkedin-provider.ts"
+  base_url: "https://api.linkedin.com/v2"
+  auth: "OAuth 2.0 bearer user access token (constructor takes clientId, clientSecret)"
+  endpoints:
+    - method: POST
+      path: "/videos?action=initializeUpload"
+      purpose: "initialize the video upload"
+    - method: PUT
+      path: "{uploadUrl returned by initializeUpload}"
+      purpose: "upload the video binary"
+    - method: POST
+      path: "/videos?action=finalizeUpload"
+      purpose: "finalize the upload"
+    - method: GET
+      path: "/videos/{videoUrn}"
+      purpose: "poll video processing status"
+    - method: POST
+      path: "/posts"
+      purpose: "create the post"
+    - method: GET
+      path: "/socialActions/{contentId}"
+      purpose: "read post metrics"
+    - method: DELETE
+      path: "/posts/{contentId}"
+      purpose: "delete the post"
+    - method: null
+      path: "https://www.linkedin.com/oauth/v2/authorization"
+      purpose: "authorization URL"
+    - method: POST
+      path: "https://www.linkedin.com/oauth/v2/accessToken"
+      purpose: "exchange the code for tokens"
+    - method: null
+      path: "https://api.linkedin.com/v2/me"
+      purpose: "read the member profile in the callback"
+  rate_limits: null
+  webhooks: []
+acceptance_criteria:
+  - text: "OAuth 2.0 connection flow works for personal accounts"
+    met: false
+    reason: "unverified — success path never run or tested (failure branches only: `apps/e2e/tests/platform-connections/connect-failure.spec.ts`); refresh can never find credentials (`packages/features/publishing/src/lib/token-refresh.ts:520`)"
+  - text: "OAuth 2.0 connection flow works for company pages"
+    met: false
+    reason: "no longer true — company connect stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:174`); no organization is chosen; no UI offers `type=company`"
+  - text: "Video upload with proper initialization and finalization"
+    met: true
+    evidence: null
+  - text: "Post composition with character limit enforcement"
+    met: true
+    evidence: null
+  - text: "Hashtag tracking in composer"
+    met: true
+    evidence: null
+  - text: "Analytics retrieval (impressions, likes, comments, shares)"
+    met: false
+    reason: "no longer true — `getPostMetrics` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:319`) has no caller; no LinkedIn metrics are read anywhere"
+  - text: "Delete post functionality"
+    met: false
+    reason: "no longer true — `deletePost` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:346`) has no caller; unpublish skips LinkedIn (`apps/web/lambda/publish-worker/index.ts:257-264`)"
+  - text: "Video duration validation (10 min personal, 15 min company)"
+    met: false
+    reason: "no longer true — only the never-mounted `LinkedInComposer` checks duration (`packages/features/publishing/src/components/linkedin-composer.tsx:42`); the provider checks size (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:45`)"
+test_plan:
+  unit:
+    - text: "Test character counting"
+      met: false
+      reason: "not met — no test found"
+    - text: "Test hashtag extraction"
+      met: false
+      reason: "not met — no test found"
+    - text: "Test video duration validation for personal vs company"
+      met: false
+      reason: "not met — no test found"
+  integration:
+    - text: "Test OAuth flow with mock API"
+      met: false
+      reason: "not met — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)"
+    - text: "Test video upload initialization"
+      met: false
+      reason: "not met — no test found"
+    - text: "Test post creation"
+      met: false
+      reason: "not met — no test found"
+    - text: "Test analytics retrieval"
+      met: false
+      reason: "not met — no test found"
+  e2e: []
+remaining:
+  - criterion: "OAuth 2.0 connection flow works for personal accounts (unverified)"
+    reason: "The success path has never been run or tested. And a LinkedIn token can never be refreshed: `refreshLinkedInToken` looks up `account_oauth_apps` with platform `linkedin` (`packages/features/publishing/src/lib/token-refresh.ts:520`), which that table's CHECK forbids (`apps/web/supabase/migrations/20260102221811_add_account_oauth_apps.sql:8`), so every connection is marked inactive when its 60-day token expires"
+    closed_by: "unassigned"
+  - criterion: "OAuth 2.0 connection flow works for company pages"
+    reason: "Company connect still stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:174`); `getOrganizations` has no caller and no UI passes `type=company`. Organization publishing never existed (`urn:li:organization` appears nowhere in history)"
+    closed_by: "unassigned"
+  - criterion: "Analytics retrieval"
+    reason: "`getPostMetrics` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:319`) has no caller"
+    closed_by: "unassigned"
+  - criterion: "Delete post functionality"
+    reason: "`deletePost` has no caller; unpublish skips LinkedIn at the vendor (`apps/web/lambda/publish-worker/index.ts:257-264`)"
+    closed_by: "unassigned"
+  - criterion: "Video duration validation"
+    reason: "Only the never-mounted `LinkedInComposer` checks it"
+    closed_by: "unassigned"
+open_questions: []
+notes: |
+  ## Metadata
+  - **Phase:** 7 - Publishing
+  - **Priority:** P2 (Future Enhancement)
+  - **Effort:** M (4-8 hours)
+  - **Status:** 🟡 PARTIAL (audit 2026-09-23; was DONE)
+  - **Dependencies:** FILM-708 (Publish Hub), OAuth Infrastructure
+  - **Blocks:** None
+
+  ## Specification
+  ### Requirements
+
+  1. **OAuth 2.0 Integration**: Connect LinkedIn personal accounts and company pages
+  2. **Video Upload**: Upload videos up to 10 minutes (personal) or 15 minutes (company)
+  3. **Post Composition**: Write professional posts with video
+  4. **Targeting**: Optional audience targeting for company pages
+  5. **Analytics Integration**: Track video views, engagement, and reach
+
+  ### Platform Limits
+
+  ```typescript
+  // packages/features/publishing/src/providers/linkedin/limits.ts
+
+  export const LINKEDIN_LIMITS = {
+    video: {
+      personal: {
+        maxDuration: 600, // 10 minutes
+        maxSize: 5 * 1024 * 1024 * 1024, // 5 GB
+      },
+      company: {
+        maxDuration: 900, // 15 minutes
+        maxSize: 5 * 1024 * 1024 * 1024,
+      },
+      minDuration: 3, // 3 seconds
+      aspectRatios: ['16:9', '9:16', '1:1', '4:3'],
+      supportedFormats: ['mp4', 'avi', 'mov', 'flv'],
+    },
+    post: {
+      maxLength: 3000, // characters
+      maxHashtags: 30,
+    },
+  };
+  ```
+
+  ### Provider Implementation
+
+  ```typescript
+  // packages/features/publishing/src/providers/linkedin/linkedin-provider.ts
+
+  import { PublishingProvider, PublishInput, PublishResult, PlatformConnection } from '../types';
+  import { LINKEDIN_LIMITS } from './limits';
+
+  export class LinkedInProvider implements PublishingProvider {
+    name = 'linkedin';
+    private clientId: string;
+    private clientSecret: string;
+    private baseUrl = 'https://api.linkedin.com/v2';
+
+    constructor(clientId: string, clientSecret: string) {
+      this.clientId = clientId;
+      this.clientSecret = clientSecret;
+    }
+
+    async publish(input: PublishInput, connection: PlatformConnection): Promise<string> {
+      const maxDuration = connection.metadata?.isCompanyPage
+        ? LINKEDIN_LIMITS.video.company.maxDuration
+        : LINKEDIN_LIMITS.video.personal.maxDuration;
+
+      // Validate video duration
+      if (input.video.duration > maxDuration) {
+        throw new Error(`Video too long. Maximum ${maxDuration} seconds.`);
+      }
+
+      // Step 1: Register video upload
+      const uploadRequest = await this.registerUpload(input.video, connection);
+
+      // Step 2: Upload video to LinkedIn
+      await this.uploadVideo(input.video.url, uploadRequest, connection);
+
+      // Step 3: Create post with video
+      const postUrn = await this.createPost({
+        text: input.metadata.description,
+        videoUrn: uploadRequest.videoUrn,
+        authorUrn: connection.platformAccountId,
+      }, connection);
+
+      return postUrn;
+    }
+
+    private async registerUpload(
+      video: { url: string; size: number },
+      connection: PlatformConnection
+    ): Promise<{ uploadUrl: string; videoUrn: string }> {
+      const response = await fetch(`${this.baseUrl}/videos?action=initializeUpload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${connection.accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+        body: JSON.stringify({
+          initializeUploadRequest: {
+            owner: connection.platformAccountId,
+            fileSizeBytes: video.size,
+            uploadCaptions: false,
+            uploadThumbnail: false,
+          },
+        }),
+      });
+
+      const data = await response.json();
+      return {
+        uploadUrl: data.value.uploadInstructions[0].uploadUrl,
+        videoUrn: data.value.video,
+      };
+    }
+
+    private async uploadVideo(
+      videoUrl: string,
+      uploadRequest: { uploadUrl: string; videoUrn: string },
+      connection: PlatformConnection
+    ): Promise<void> {
+      // Download video
+      const videoResponse = await fetch(videoUrl);
+      const videoBlob = await videoResponse.blob();
+
+      // Upload to LinkedIn
+      await fetch(uploadRequest.uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${connection.accessToken}`,
+          'Content-Type': 'application/octet-stream',
+        },
+        body: videoBlob,
+      });
+
+      // Finalize upload
+      await fetch(`${this.baseUrl}/videos?action=finalizeUpload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${connection.accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+        body: JSON.stringify({
+          finalizeUploadRequest: {
+            video: uploadRequest.videoUrn,
+            uploadToken: '',
+            uploadedPartIds: [],
+          },
+        }),
+      });
+
+      // Wait for processing
+      await this.waitForProcessing(uploadRequest.videoUrn, connection);
+    }
+
+    private async createPost(
+      params: { text: string; videoUrn: string; authorUrn: string },
+      connection: PlatformConnection
+    ): Promise<string> {
+      const response = await fetch(`${this.baseUrl}/posts`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${connection.accessToken}`,
+          'Content-Type': 'application/json',
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+        body: JSON.stringify({
+          author: params.authorUrn,
+          commentary: params.text,
+          visibility: 'PUBLIC',
+          distribution: {
+            feedDistribution: 'MAIN_FEED',
+            targetEntities: [],
+            thirdPartyDistributionChannels: [],
+          },
+          content: {
+            media: {
+              title: params.text.substring(0, 100),
+              id: params.videoUrn,
+            },
+          },
+          lifecycleState: 'PUBLISHED',
+          isReshareDisabledByAuthor: false,
+        }),
+      });
+
+      const data = await response.json();
+      return data.id;
+    }
+
+    async getStatus(contentId: string, connection: PlatformConnection): Promise<PublishResult> {
+      const response = await fetch(
+        `${this.baseUrl}/socialActions/${encodeURIComponent(contentId)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${connection.accessToken}`,
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      return {
+        status: 'published',
+        platformUrl: `https://www.linkedin.com/feed/update/${contentId}`,
+        metrics: {
+          views: data.totalShareStatistics?.impressionCount || 0,
+          likes: data.totalShareStatistics?.likeCount || 0,
+          comments: data.totalShareStatistics?.commentCount || 0,
+          shares: data.totalShareStatistics?.shareCount || 0,
+        },
+      };
+    }
+
+    async delete(contentId: string, connection: PlatformConnection): Promise<void> {
+      await fetch(`${this.baseUrl}/posts/${encodeURIComponent(contentId)}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${connection.accessToken}`,
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+      });
+    }
+
+    getAuthUrl(state: string, redirectUri: string): string {
+      const params = new URLSearchParams({
+        response_type: 'code',
+        client_id: this.clientId,
+        redirect_uri: redirectUri,
+        scope: 'r_liteprofile w_member_social r_organization_social w_organization_social',
+        state,
+      });
+      return `https://www.linkedin.com/oauth/v2/authorization?${params}`;
+    }
+
+    async exchangeToken(code: string, redirectUri: string): Promise<TokenResponse> {
+      const response = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          client_id: this.clientId,
+          client_secret: this.clientSecret,
+          redirect_uri: redirectUri,
+        }),
+      });
+
+      return response.json();
+    }
+
+    private async waitForProcessing(videoUrn: string, connection: PlatformConnection): Promise<void> {
+      let attempts = 0;
+      const maxAttempts = 60; // 5 minutes max
+
+      while (attempts < maxAttempts) {
+        const response = await fetch(
+          `${this.baseUrl}/videos/${encodeURIComponent(videoUrn)}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${connection.accessToken}`,
+              'X-Restli-Protocol-Version': '2.0.0',
+            },
+          }
+        );
+
+        const data = await response.json();
+
+        if (data.status === 'AVAILABLE') {
+          return;
+        }
+
+        if (data.status === 'FAILED') {
+          throw new Error(`Video processing failed: ${data.failedReason || 'Unknown error'}`);
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds
+        attempts++;
+      }
+
+      throw new Error('Video processing timeout');
+    }
+  }
+
+  interface TokenResponse {
+    access_token: string;
+    expires_in: number;
+    refresh_token?: string;
+    refresh_token_expires_in?: number;
+    scope: string;
+  }
+  ```
+
+  ### OAuth Routes
+
+  ```typescript
+  // apps/web/app/api/platforms/connect/linkedin/route.ts
+
+  import { NextRequest, NextResponse } from 'next/server';
+  import { LinkedInProvider } from '@kit/publishing/providers';
+  import { generateState, saveOAuthState } from '@kit/publishing/lib/oauth';
+
+  export async function GET(request: NextRequest) {
+    const accountSlug = request.nextUrl.searchParams.get('account');
+    const isCompanyPage = request.nextUrl.searchParams.get('type') === 'company';
+
+    const state = generateState();
+    await saveOAuthState(state, { accountSlug, platform: 'linkedin', isCompanyPage });
+
+    const provider = new LinkedInProvider(
+      process.env.LINKEDIN_CLIENT_ID!,
+      process.env.LINKEDIN_CLIENT_SECRET!
+    );
+
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/platforms/callback/linkedin`;
+    const authUrl = provider.getAuthUrl(state, redirectUri);
+
+    return NextResponse.redirect(authUrl);
+  }
+  ```
+
+  ```typescript
+  // apps/web/app/api/platforms/callback/linkedin/route.ts
+
+  import { NextRequest, NextResponse } from 'next/server';
+  import { LinkedInProvider } from '@kit/publishing/providers';
+  import { getOAuthState, clearOAuthState } from '@kit/publishing/lib/oauth';
+  import { getSupabaseServerClient } from '@kit/supabase/server-client';
+  import { encrypt } from '@kit/shared/encryption';
+
+  export async function GET(request: NextRequest) {
+    const code = request.nextUrl.searchParams.get('code');
+    const state = request.nextUrl.searchParams.get('state');
+    const error = request.nextUrl.searchParams.get('error');
+
+    if (error) {
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_APP_URL}/settings/platforms?error=${error}`
+      );
+    }
+
+    if (!code || !state) {
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_APP_URL}/settings/platforms?error=missing_params`
+      );
+    }
+
+    // Verify state
+    const oauthState = await getOAuthState(state);
+    if (!oauthState) {
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_APP_URL}/settings/platforms?error=invalid_state`
+      );
+    }
+
+    const provider = new LinkedInProvider(
+      process.env.LINKEDIN_CLIENT_ID!,
+      process.env.LINKEDIN_CLIENT_SECRET!
+    );
+
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/platforms/callback/linkedin`;
+
+    try {
+      // Exchange code for tokens
+      const tokens = await provider.exchangeToken(code, redirectUri);
+
+      // Get user profile
+      const profileResponse = await fetch('https://api.linkedin.com/v2/me', {
+        headers: {
+          'Authorization': `Bearer ${tokens.access_token}`,
+        },
+      });
+      const profile = await profileResponse.json();
+
+      // Save connection
+      const client = getSupabaseServerClient();
+      await client.from('platform_connections').upsert({
+        account_id: oauthState.accountId,
+        platform: 'linkedin',
+        platform_account_id: `urn:li:person:${profile.id}`,
+        platform_account_name: `${profile.localizedFirstName} ${profile.localizedLastName}`,
+        access_token_encrypted: encrypt(tokens.access_token),
+        refresh_token_encrypted: tokens.refresh_token ? encrypt(tokens.refresh_token) : null,
+        token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+        scopes: tokens.scope.split(' '),
+        is_active: true,
+        metadata: { isCompanyPage: oauthState.isCompanyPage },
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'account_id,platform,platform_account_id',
+      });
+
+      await clearOAuthState(state);
+
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_APP_URL}/settings/platforms?success=linkedin`
+      );
+    } catch (err) {
+      console.error('LinkedIn OAuth error:', err);
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_APP_URL}/settings/platforms?error=oauth_failed`
+      );
+    }
+  }
+  ```
+
+  ### LinkedIn Composer Component
+
+  ```typescript
+  // packages/features/publishing/src/components/linkedin-composer.tsx
+
+  'use client';
+
+  import { useState } from 'react';
+  import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
+  import { Textarea } from '@kit/ui/textarea';
+  import { Button } from '@kit/ui/button';
+  import { Badge } from '@kit/ui/badge';
+  import { Hash, AlertCircle, Building2, User } from 'lucide-react';
+  import { LINKEDIN_LIMITS } from '../providers/linkedin/limits';
+
+  interface LinkedInComposerProps {
+    initialText: string;
+    isCompanyPage?: boolean;
+    onSave: (text: string) => void;
+  }
+
+  export function LinkedInComposer({ initialText, isCompanyPage = false, onSave }: LinkedInComposerProps) {
+    const [text, setText] = useState(initialText);
+
+    const charCount = text.length;
+    const isOverLimit = charCount > LINKEDIN_LIMITS.post.maxLength;
+    const hashtagCount = (text.match(/#\w+/g) || []).length;
+
+    const maxDuration = isCompanyPage
+      ? LINKEDIN_LIMITS.video.company.maxDuration
+      : LINKEDIN_LIMITS.video.personal.maxDuration;
+
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Compose LinkedIn Post</CardTitle>
+            <Badge variant="outline" className="flex items-center gap-1">
+              {isCompanyPage ? (
+                <>
+                  <Building2 className="h-3 w-3" />
+                  Company Page
+                </>
+              ) : (
+                <>
+                  <User className="h-3 w-3" />
+                  Personal Profile
+                </>
+              )}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Share your professional insights..."
+            rows={6}
+            className={isOverLimit ? 'border-red-500' : ''}
+          />
+
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2">
+              <Badge variant="outline" className="flex items-center gap-1">
+                <Hash className="h-3 w-3" />
+                {hashtagCount}
+              </Badge>
+              <Badge variant="secondary">
+                Max video: {Math.floor(maxDuration / 60)}:{(maxDuration % 60).toString().padStart(2, '0')}
+              </Badge>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-sm ${
+                  isOverLimit ? 'text-red-500' : 'text-muted-foreground'
+                }`}
+              >
+                {charCount}/{LINKEDIN_LIMITS.post.maxLength}
+              </span>
+              <Button onClick={() => onSave(text)} disabled={isOverLimit}>
+                Save
+              </Button>
+            </div>
+          </div>
+
+          {isOverLimit && (
+            <div className="flex items-center gap-2 text-sm text-red-500">
+              <AlertCircle className="h-4 w-4" />
+              Post is too long. Please shorten to {LINKEDIN_LIMITS.post.maxLength} characters.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+  ```
+
+  ### File Changes
+
+  | Action | Path |
+  |--------|------|
+  | CREATE | `packages/features/publishing/src/providers/linkedin/linkedin-provider.ts` |
+  | CREATE | `packages/features/publishing/src/providers/linkedin/limits.ts` |
+  | CREATE | `packages/features/publishing/src/providers/linkedin/index.ts` |
+  | CREATE | `packages/features/publishing/src/components/linkedin-composer.tsx` |
+  | CREATE | `apps/web/app/api/platforms/connect/linkedin/route.ts` |
+  | CREATE | `apps/web/app/api/platforms/callback/linkedin/route.ts` |
+  | MODIFY | `packages/features/publishing/src/providers/index.ts` |
+
+  ## Environment Variables
+  ```env
+  LINKEDIN_CLIENT_ID=
+  LINKEDIN_CLIENT_SECRET=
+  ```
+
+  ## Error Handling
+  | Error | User Experience |
+  |-------|-----------------|
+  | Video too long | Show duration limit based on account type |
+  | Post too long | Real-time character counter |
+  | Upload failed | Retry with exponential backoff |
+  | Rate limited | Show wait time, queue for later |
+  | Invalid scope | Prompt to reconnect with correct permissions |
+
+  ## Security Considerations
+  - OAuth tokens stored encrypted in database
+  - Refresh tokens used to maintain access without re-authorization
+  - Company page access requires additional organization permissions
+  - All API calls use HTTPS
+
+  ## References
+  - **FILM-708**: Publish Hub
+  - **FILM-714**: Twitter/X Provider (similar pattern)
+  - **LinkedIn Marketing API**: https://learn.microsoft.com/en-us/linkedin/marketing/
+  - **LinkedIn Video API**: https://learn.microsoft.com/en-us/linkedin/marketing/integrations/community-management/shares/videos-api

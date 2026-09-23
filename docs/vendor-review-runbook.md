@@ -74,7 +74,7 @@ route names a scope the vendor has not approved for our app, does the creator ge
 working consent screen with the scope left out, or an error that blocks connecting
 altogether? Nobody knows for TikTok or Meta until it is tried. Record what you see in
 the results table at the end of this part, and in
-`specs/phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.md` §3c.
+`specs/phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.yaml` §3c.
 
 ## The go / no-go rule
 

@@ -1,0 +1,321 @@
+spec_id: "FILM-1725"
+title: "Deferred Vendor Verifications"
+phase: 17
+phase_name: "Analytics Provenance and Signal"
+category: feature
+status: DEFERRED
+effort: S
+dependencies:
+  - spec_id: "FILM-1721"
+    note: null
+summary: >
+  FILM-1721 named three empirical checks able to falsify a row in the
+  capability reference; only one could run. This spec is the holding pen for
+  every vendor-verification question the team cannot currently pay to
+  answer — a paid X credential, a TikTok sandbox app, an Instagram insights
+  permission, live Meta or X connections — so each stays a tracked, dated
+  question with an exact command and a trigger to revisit, rather than
+  quietly hardening into an assumed fact. It is deferred, not dropped: it is
+  complete only when every check has run and its answer is recorded, not
+  when a decision is made to skip it.
+acceptance_criteria:
+  - text: "Check A run, and its result recorded in FILM-1721's ledger with a date"
+    met: false
+    reason: "not run — X has no sandbox and closed Free/Basic/Pro to new signups on 2026-02-06; needs a paid pay-per-use token"
+  - text: "If Enterprise-only is confirmed, the /2/media/analytics field names are removed from the reference's x/enterprise-analytics block or marked unreachable, so the guard stops treating them as requestable"
+    met: false
+    reason: "blocked on Check A"
+  - text: "If it is not Enterprise-only, the historical window is measured and the \"30d from post creation\" ceiling is restated per endpoint"
+    met: false
+    reason: "blocked on Check A"
+  - text: "Check B run, and any field the endpoint does not return is added to the reference's forbidden block"
+    met: false
+    reason: "not run — needs a TikTok sandbox app with video.list granted to a test user; cheap but not on FILM-1721's critical path"
+  - text: "Check C run on the pinned version, and the result recorded against the 2026-04-22 rows in the reference"
+    met: false
+    reason: "not run — needs instagram_manage_insights, which has never been requested"
+  - text: "Check D run against one production Meta connection, and the result recorded against FILM-1723's open acceptance criterion"
+    met: false
+    reason: "not run — no Meta app credentials or connected Page outside production"
+  - text: "Check E run once media.write is held, and the result recorded there too"
+    met: false
+    reason: "not run — no X token; X has no sandbox (see Check A)"
+  - text: "Check F run per vendor before FILM-1711's scopes reach production, and the result recorded in docs/vendor-review-status.md"
+    met: false
+    reason: "not run — needs each vendor's app credentials and a test account; local and CI have neither. Owner decision 2026-09-22: FILM-1711's PR merges as-is, and this check gates the deploy"
+  - text: "Check G run; if a non-partner channel gets zero rows rather than a 403, fetchRevenue's reading of the gate is corrected"
+    met: false
+    reason: "not run — needs a real YouTube token, and for part 3 a monetised channel"
+  - text: "Check H run for TikTok and Instagram, with the date recorded"
+    met: false
+    reason: "not run — needs the two vendor reviews in docs/vendor-review-status.md, or a sandbox app (TikTok) and a role account (Meta)"
+  - text: "docs/platform-capability-reference.md open-questions table no longer lists either check, and every row it does list still names an owner"
+    met: false
+    reason: "not yet — depends on Checks A and B closing"
+open_questions: []
+notes: |
+  ## 1. Why this exists
+
+  FILM-1721 named three empirical checks, each able to falsify a row in the
+  reference. One ran and resolved more than expected. Two could not run, for
+  reasons that no amount of care would have changed — one needs a paid
+  credential, the other an app registration.
+
+  A third was added on 2026-09-21 (Check C). Its original question — which
+  Instagram aggregate names exist — was settled the same day from documentation,
+  so what remains is narrower: whether our pinned Graph version returns them in
+  practice.
+
+  Their answers are not unknowable. They are unknown to us, today, at a price we
+  have not chosen to pay. That is a different thing from an open research
+  question, and it deserves to be tracked rather than reasoned around. This spec
+  is where they wait.
+
+  Deferred, not dropped. The failure mode this prevents is the one FILM-1721
+  was written against: an unanswered question quietly becoming an assumed fact
+  because it sat in a prose paragraph nobody re-read. Each check below carries the
+  exact question, the exact command, what it blocks, and the event that should
+  bring it back.
+
+  The reference is correct in the meantime. Every claim that depends on one of
+  these checks is in FILM-1721's inferred ledger and must be labelled inferred
+  wherever it is used. Nothing here licenses filling a gap with a guess.
+
+  ## 2. Check A — is /2/media/analytics callable below Enterprise?
+
+  The single most consequential open question in the phase, because it decides
+  whether X can be benchmarked past 30 days, and therefore whether X can enter the
+  signal model at all.
+
+  | | |
+  |---|---|
+  | Question | Does GET /2/media/analytics return data on a pay-per-use token, or 403? And what is its historical window? |
+  | Status today | Inferred that it is Enterprise-only |
+  | Evidence for the inference | An explicit comparison table on X's Enterprise introduction lists engagement metrics as Enterprise-only; neither endpoint appears as a billable line item on the pay-per-use schedule; /2/media/analytics is absent from the published rate-limit table |
+  | Evidence against | Both endpoints live in the standard docs.x.com/x-api/ namespace and their own reference pages state no tier requirement |
+  | Why it cannot be settled now | X has no sandbox, and closed Free/Basic/Pro to new signups on 2026-02-06. Only pay-per-use credits and Enterprise remain. The question is whether a non-Enterprise token works, so only a real token answers it |
+  | Cost to settle | One pay-per-use credit purchase. Enterprise pricing is unpublished; the widely-cited ~$42k/month figure is third-party, not X |
+  | Blocks | FILM-1727's Enterprise tier and its >30-day window — not X itself, which ships on the pay-per-use path, and not Facebook (FILM-1720) |
+
+  ```bash
+  # Settles the tier gate and, with a start_time beyond 30 days, the window.
+  # A 403 confirms the inference. A 200 falsifies the comparison table.
+  curl -s -H "Authorization: Bearer $X_PAY_PER_USE_TOKEN" \
+    "https://api.x.com/2/media/analytics?media_keys=<key>&granularity=total&start_time=2026-01-01T00:00:00Z&end_time=2026-02-01T00:00:00Z"
+  ```
+
+  The 30-day wall is documented and is not in question. "Non-public, organic,
+  and promoted metrics are only available for posts created within the last 30
+  days", gated on the post's creation date, not the requested range. That
+  applies to the degraded media.non_public_metrics path, which is reachable on an
+  ordinary token. What is undocumented is the window on /2/media/analytics. The
+  legacy enterprise Engagement API allowed 365 days in 4-week spans — a prior,
+  not a fact, and it must not be written down as one.
+
+  If the answer is Enterprise-only, X's ceiling is playback_0_count …
+  playback_100_count and view_count on posts under 30 days old, with no watch
+  time and no time series. FILM-1727 should be planned against that, not against
+  the hope of the richer endpoint.
+
+  ## 3. Check B — the TikTok Display API field list, confirmed live
+
+  | | |
+  |---|---|
+  | Question | Does /v2/video/query/ return exactly the 16 documented fields, and does duration behave as the published asset's duration? |
+  | Status today | Documented; not empirically confirmed |
+  | Why it did not run | Needs a sandbox app with video.list granted to a test user. Registration is free and app review is not required for sandbox — so this one is cheap, and was left only because it is not on FILM-1721's critical path |
+  | Cost to settle | A free developer registration and a test video. Third-party reports put production app review at 1–2 weeks, but sandbox needs none |
+  | Blocks | Nothing outright. Confirms FILM-1710's source for duration, and the field list FILM-1712 will request |
+
+  ```bash
+  curl -s -X POST \
+    "https://open.tiktokapis.com/v2/video/query/?fields=id,duration,view_count,like_count,comment_count,share_count" \
+    -H "Authorization: Bearer $TIKTOK_SANDBOX_TOKEN" \
+    -H 'Content-Type: application/json' \
+    -d '{"filters":{"video_ids":["<test-video-id>"]}}'
+  ```
+
+  A field named in the request but absent from the response body is a field the
+  vendor does not have — record it in the reference's Names that must not appear
+  in our code block, where the guard will then enforce it.
+
+  This one should be folded into FILM-1711 when that spec is picked up,
+  since FILM-1711 has to register the scope anyway and will hold a working token.
+  It is listed here so it is not lost if FILM-1711 slips.
+
+  ## 3b. Check C — do the 2026-04-22 Instagram fields come back on our version
+
+  Added 2026-09-21, and narrowed the same day. It first asked which of two naming
+  families exists, after an earlier pass took the short names from a blog post.
+  The Instagram changelog (developers.facebook.com/docs/instagram-platform/changelog)
+  answers that: both, one number reached two ways — *_count as Media node
+  fields, short names as insights metrics — and facebook_views is a media
+  insights metric. Those are now in the reference's field index.
+
+  | | |
+  |---|---|
+  | Question | Does the pinned Graph version return reposts_count, saved_count, shares_count and the total_* aggregates for our media? |
+  | Status today | Names documented and indexed; version behaviour inferred from the changelog's "applies to all versions" |
+  | Why a call is still worth making | We pin v23.0, released 2025-05-29, before these fields existed. The changelog says they apply to all versions; one response confirms it, and costs nothing once we hold the permission |
+  | Why it did not run | Needs instagram_manage_insights, which we have never requested |
+  | Cost to settle | One call, once FILM-1711 lands. Effectively free at that point |
+  | Blocks | Nothing outright. FILM-1712 can request the fields now; this confirms they arrive |
+
+  ```bash
+  # Once insights permission is held. Both should return on v23.0 if "all versions" holds.
+  curl -s "https://graph.facebook.com/v23.0/<IG_MEDIA_ID>?fields=total_views_count,total_like_count,total_comments_count,reposts_count,saved_count,shares_count&access_token=$TOKEN"
+  curl -s "https://graph.facebook.com/v23.0/<IG_MEDIA_ID>/insights?metric=total_views,total_likes,total_comments&access_token=$TOKEN"
+  ```
+
+  If they do not come back on v23.0, repeat on a current version before
+  concluding anything — which would make FILM-1712's Instagram work depend on
+  FILM-1723 as well as FILM-1711.
+
+  The lesson. This check was over-corrected twice in one day: first a blog post
+  was taken as fact, then two disagreeing pages were taken as proof nothing was
+  known. A name is settled by a first-party reference page or a live response —
+  and the changelog is a first-party reference page.
+
+  ## 3c. Checks D and E — the two live calls FILM-1723 could not make
+
+  Added 2026-09-22. FILM-1723 pinned every Meta call to Graph v23.0 and
+  moved X publishing to api.x.com and /2/media/upload. Its guards prove the
+  pins are used consistently. They cannot prove a vendor accepts the requests,
+  and neither fixture nor CI holds a Meta or an X connection.
+
+  | | Check D — Meta token refresh | Check E — X media upload |
+  |---|---|---|
+  | Question | Does fb_exchange_token followed by /me/accounts succeed on v23.0 for a real connection? | Does the v2 chunked upload (/initialize, /{id}/append, /{id}/finalize, STATUS) accept our requests and return a postable media id? |
+  | Status today | Inferred to work: v21-v23 change nothing on either endpoint, and the same requests were being served as v20.0 before the pin | Inferred from X's reference pages. Known to be refused today: the endpoint needs the media.write scope, which TWITTER_OAUTH_CONFIG.scopes does not request |
+  | Why it did not run | No Meta app credentials or connected Page outside production | No X token; X has no sandbox (see Check A) |
+  | Cost to settle | One forced refresh of one production connection | Add media.write, re-authorise one X connection, publish one video |
+  | Blocks | Nothing outright; a failure would mean Instagram and Facebook connections expire unrenewed | X video publishing, which the v1.1 endpoint's retirement had already broken |
+
+  ```bash
+  # D. Read-only half, safe against production: confirms the pin is honoured.
+  curl -sI "https://graph.facebook.com/v23.0/me" | grep -i facebook-api-version
+  # D. The decisive half: force one refresh and read the result.
+  #    ensureValidToken(<meta connection id>, true)  ->  { valid: true, ... }
+
+  # E. After media.write is granted:
+  curl -s -X POST https://api.x.com/2/media/upload/initialize \
+    -H "Authorization: Bearer $X_USER_TOKEN" -H 'Content-Type: application/json' \
+    -d '{"media_type":"video/mp4","total_bytes":1024,"media_category":"tweet_video"}'
+  # Expected: 200 with data.id. A 403 means the scope is still missing.
+  ```
+
+  ## 3d. Checks F, G and H — what FILM-1711 could not run
+
+  Added 2026-09-22 by FILM-1711, which requested the analytics scopes and
+  built everything that can be built without a vendor credential. It holds none,
+  so the criteria below stayed open there and wait here. (D and E are taken by
+  FILM-1723.)
+
+  ### Check F — do the newly requested scopes survive each vendor's consent screen?
+
+  | | |
+  |---|---|
+  | Question | When the connect route asks for a scope the vendor has not approved for our app, does the creator get a working consent screen with the scope dropped, or an error that blocks connecting altogether? One answer per vendor: TikTok (video.list, user.info.stats), Meta (instagram_manage_insights), Google (yt-analytics-monetary.readonly) |
+  | Status today | Unknown on all three. The callbacks record what was granted rather than what was asked for, so a dropped scope is recorded truthfully; an error page would break publishing connections too |
+  | Why it did not run | Needs each vendor's app credentials and a test account. Local and CI have neither |
+  | Cost to settle | One connect per vendor on a staging deploy, before production. The steps, what to expect and the go/no-go rule are in docs/vendor-review-runbook.md Part 1; record the filled-in results table from there under this check. Owner decision 2026-09-22: FILM-1711's PR merges as it is, and this check gates the deploy |
+  | Blocks | Deploying FILM-1711's config change to production. Tracked in docs/vendor-review-status.md |
+
+  ```bash
+  # After connecting a test account on staging, read what was recorded:
+  select platform, scopes, metadata->>'scopes_granted_at'
+  from platform_connections order by updated_at desc limit 5;
+  ```
+
+  ### Check G — what does YouTube return for revenue, with and without the scope?
+
+  | | |
+  |---|---|
+  | Question | (1) Did the old mixed query — revenue metrics beside views on a token without yt-analytics-monetary.readonly — fail outright, or return without the revenue columns? (2) With the scope held, what does a channel outside the Partner Program get: a 403, or zero rows? (3) Does a Partner Program channel's sync write non-zero revenue_records rows with source = 'api'? |
+  | Status today | (1) and (2) are hypotheses. The provider reads a non-quota 403 on the revenue query as account_type_gated; if non-partner channels get zero rows instead, they will read as authorised with no revenue, which is wrong in the quiet direction |
+  | Why it did not run | Needs a real YouTube token, and for (3) a monetised channel |
+  | Cost to settle | Three calls |
+  | Blocks | FILM-1711's last three criteria; FILM-1726's premise that the pipeline delivers |
+
+  ```bash
+  # (1) on a token WITHOUT the monetary scope — the old shape:
+  curl -s -H "Authorization: Bearer $YT_TOKEN" \
+    "https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&startDate=2026-08-01&endDate=2026-09-01&metrics=views,estimatedRevenue&filters=video==$VIDEO_ID"
+  # (2) and (3) on a token WITH it — the new shape:
+  curl -s -H "Authorization: Bearer $YT_MONETARY_TOKEN" \
+    "https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&startDate=2026-08-01&endDate=2026-09-01&metrics=estimatedRevenue,estimatedAdRevenue,estimatedRedPartnerRevenue&filters=video==$VIDEO_ID"
+  ```
+
+  If (2) is zero rows rather than a 403, fetchRevenue needs another signal for the
+  gate — channels.list?part=status or the monetisation details — and FILM-1703's
+  account_type_gated entry for YouTube revenue needs the same correction.
+
+  ### Check H — do TikTok and Instagram analytics return data once authorised?
+
+  | | |
+  |---|---|
+  | Question | With video.list granted, does getVideoAnalytics return data rather than TikTokAnalyticsScopeError? With instagram_manage_insights granted, does getMediaInsights? |
+  | Status today | Never observed. Until it is, no claim about either platform's numbers is verified |
+  | Why it did not run | Needs the two vendor reviews in docs/vendor-review-status.md, or a sandbox app (TikTok) and a role account (Meta) |
+  | Cost to settle | One sync each. Folds in Checks B and C, which need the same tokens |
+  | Blocks | FILM-1711 §7; FILM-1712's estimate |
+
+  ## 4. What is not deferred
+
+  This spec covers questions we cannot answer. It does not cover work we simply
+  have not done, and the distinction matters — confusing the two is what a
+  "limited" label does to a creator.
+
+  The authorisation gaps FILM-1721 surfaced are ordinary work with known answers,
+  owned elsewhere:
+
+  | Gap | Owner |
+  |---|---|
+  | TikTok requests user.info.basic + video.upload, but the analytics code calls /v2/video/query/ and /v2/user/info/ | FILM-1711 |
+  | Meta requests instagram_basic + instagram_content_publish, but the insights code calls /{media-id}/insights | FILM-1711 |
+  | YouTube requests yt-analytics.readonly but not yt-analytics-monetary.readonly, while fetchTotals asks for three revenue metrics | FILM-1711 |
+  | No Facebook or X analytics provider exists in code at all | FILM-1720 (Facebook), FILM-1727 (X) |
+  | Graph v18.0 (expired 2026-01-26) and v19.0 (expired 2026-05-21) were both pinned in live code | FILM-1723 - done 2026-09-22, one pin at v23.0 |
+  | X publishing requests no media.write scope, which /2/media/upload requires | unowned - FILM-1711 audits analytics scopes only, and FILM-1723 excluded scope changes |
+
+  None of those needs a vendor answer. They need a decision and an afternoon.
+
+  ## 5. When to bring this back
+
+  Un-defer Check A on any of:
+
+  - FILM-1727 is scheduled, and its Enterprise tier needs a plan that is not a guess
+  - Someone buys X pay-per-use credits for any reason — the check costs one call
+  - X publishes tier information for the analytics endpoints, or changes its
+    access tiers again (it has done so twice since 2025)
+
+  Un-defer Check C the moment FILM-1711 holds an Instagram token — it costs one
+  call.
+
+  Un-defer Check D at the first production deploy carrying FILM-1723 - it is
+  one forced refresh. Un-defer Check E when media.write is added to the X
+  scopes, whichever spec does that.
+
+  Un-defer Check B on any of:
+
+  - FILM-1711 starts — fold it in rather than running it separately
+  - FILM-1710's TikTok leg is picked up and wants duration confirmed
+
+  Re-read this spec when phase 17's signal half is planned. If either check is
+  still unanswered then, the decision is to plan against the pessimistic reading
+  and say so, not to defer again silently.
+
+  ## 7. Risk
+
+  The risk is not that these go unanswered. It is that the phase gets planned as
+  though they were answered optimistically — an X integration scoped against
+  /2/media/analytics, a TikTok field list taken as confirmed — and the cost
+  surfaces during implementation instead of during planning. That is the exact
+  shape of the mistake FILM-1721 exists to prevent, which is why these are a
+  tracked spec and not a bullet in a README.
+feature:
+  database: null
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null

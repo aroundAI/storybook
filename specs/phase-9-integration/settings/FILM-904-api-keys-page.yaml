@@ -1,0 +1,643 @@
+spec_id: "FILM-904"
+title: "API Keys Page"
+phase: 9
+phase_name: "Integration"
+category: page
+status: DONE
+audited: "2026-09-23"
+effort: M
+dependencies:
+  - spec_id: "FILM-101n"
+    note: "external_api_keys table"
+summary: >-
+  The API Keys page allows users to manage their own API keys for external services (BYOK
+  - Bring Your Own Key). This enables users to use their own Kling, ElevenLabs, Runway,
+  and other provider accounts, bypassing the platform's shared quota.
+page:
+  route: "/home/[account]/settings/api-keys"
+  file_path: "apps/web/app/home/[account]/settings/api-keys/page.tsx"
+  components_used:
+    - "ApiKeysSettings"
+acceptance_criteria:
+  - text: "Lists all supported providers by category"
+    met: true
+    evidence: null
+  - text: "Shows configured vs unconfigured status"
+    met: true
+    evidence: null
+  - text: "Masked key display (••••••XXXX)"
+    met: true
+    evidence: null
+  - text: "Add/Update key dialog"
+    met: true
+    evidence: null
+  - text: "Test key validation before saving"
+    met: true
+    evidence: null
+  - text: "Visual feedback for valid/invalid keys"
+    met: true
+    evidence: null
+  - text: "Delete key option"
+    met: true
+    evidence: null
+  - text: "Link to provider documentation"
+    met: true
+    evidence: null
+  - text: "Keys encrypted at rest"
+    met: true
+    evidence: null
+  - text: "BYOK keys used in priority over platform keys (requires provider integration)"
+    met: false
+    reason: "not met — deferred at ship time: only ElevenLabs reads stored keys (no platform key); LLM and video keys are never read — `packages/features/audio-generation/src/providers/config-loader.ts:48` (BYOK-first loader, no production caller)"
+test_plan:
+  unit:
+    - text: "Test key masking function"
+      met: false
+      reason: "not met — no test found"
+    - text: "Test provider categorization"
+      met: false
+      reason: "not met — no test found"
+  integration:
+    - text: "Test key save/retrieve encryption"
+      met: true
+      evidence: "`packages/shared/__tests__/crypto.test.ts:32` (the AES-GCM round trip the key actions use)"
+    - text: "Test key validation endpoints"
+      met: false
+      reason: "not met — no test found"
+  e2e: []
+open_questions: []
+notes: |-
+  ## Metadata
+
+  - **Phase:** 9 - Integration
+  - **Priority:** P2 (Post-MVP)
+  - **Effort:** M (4-8 hours)
+  - **Status:** DONE
+  - **Dependencies:** FILM-101n (external_api_keys table)
+  - **Blocks:** FILM-401 (Kling Provider), FILM-501 (ElevenLabs Provider)
+
+  ## Specification
+
+  ### Requirements
+
+  1. **Key Management**: Add, update, remove API keys for each provider
+  2. **Secure Storage**: Keys encrypted at rest
+  3. **Validation**: Test key validity before saving
+  4. **Usage Priority**: User keys take priority over platform keys
+  5. **Provider Status**: Show which providers are configured
+  6. **Key Masking**: Display masked keys (last 4 chars only)
+
+  ### API Keys Page Component
+
+  ```typescript
+  // apps/web/app/home/[account]/settings/api-keys/page.tsx
+
+  import { Metadata } from 'next';
+  import { withI18n } from '@kit/i18n/server';
+  import { ApiKeysSettings } from '@kit/film-studio/components/api-keys-settings';
+
+  export const metadata: Metadata = {
+    title: 'API Keys | Settings',
+    description: 'Manage your external service API keys',
+  };
+
+  async function ApiKeysPage({ params }: { params: { account: string } }) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">API Keys</h1>
+          <p className="text-muted-foreground">
+            Connect your own API keys to use your personal quotas for AI services.
+          </p>
+        </div>
+
+        <ApiKeysSettings accountSlug={params.account} />
+      </div>
+    );
+  }
+
+  export default withI18n(ApiKeysPage);
+  ```
+
+  ### API Keys Settings Component
+
+  ```typescript
+  // packages/features/film-studio/src/components/api-keys-settings.tsx
+
+  'use client';
+
+  import { useState } from 'react';
+  import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+  import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@kit/ui/card';
+  import { Button } from '@kit/ui/button';
+  import { Badge } from '@kit/ui/badge';
+  import { Input } from '@kit/ui/input';
+  import { Label } from '@kit/ui/label';
+  import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+  } from '@kit/ui/dialog';
+  import { Alert, AlertDescription } from '@kit/ui/alert';
+  import { CheckCircle, XCircle, Key, ExternalLink, Loader2, Trash2 } from 'lucide-react';
+  import {
+    getApiKeysAction,
+    saveApiKeyAction,
+    deleteApiKeyAction,
+    validateApiKeyAction,
+  } from '../server/api-keys-actions';
+
+  interface Provider {
+    id: string;
+    name: string;
+    description: string;
+    category: 'video' | 'audio' | 'llm';
+    docsUrl: string;
+    keyFormat: string;
+  }
+
+  const PROVIDERS: Provider[] = [
+    {
+      id: 'kling',
+      name: 'Kling (via PiAPI)',
+      description: 'AI video generation with Kling models',
+      category: 'video',
+      docsUrl: 'https://piapi.ai/docs',
+      keyFormat: 'Bearer token',
+    },
+    {
+      id: 'runway',
+      name: 'Runway',
+      description: 'Runway Gen-3 video generation',
+      category: 'video',
+      docsUrl: 'https://docs.runwayml.com/api',
+      keyFormat: 'API key starting with rn_',
+    },
+    {
+      id: 'hailuo',
+      name: 'Hailuo/MiniMax',
+      description: 'Hailuo AI video generation',
+      category: 'video',
+      docsUrl: 'https://docs.minimax.chat',
+      keyFormat: 'API key',
+    },
+    {
+      id: 'elevenlabs',
+      name: 'ElevenLabs',
+      description: 'AI voice generation and cloning',
+      category: 'audio',
+      docsUrl: 'https://docs.elevenlabs.io',
+      keyFormat: 'API key from dashboard',
+    },
+    {
+      id: 'suno',
+      name: 'Suno',
+      description: 'AI music generation',
+      category: 'audio',
+      docsUrl: 'https://suno.ai/developers',
+      keyFormat: 'API key',
+    },
+    {
+      id: 'openai',
+      name: 'OpenAI',
+      description: 'GPT models for story generation',
+      category: 'llm',
+      docsUrl: 'https://platform.openai.com/docs',
+      keyFormat: 'Key starting with sk-',
+    },
+    {
+      id: 'anthropic',
+      name: 'Anthropic',
+      description: 'Claude models for story generation',
+      category: 'llm',
+      docsUrl: 'https://docs.anthropic.com',
+      keyFormat: 'Key starting with sk-ant-',
+    },
+  ];
+
+  interface ApiKeysSettingsProps {
+    accountSlug: string;
+  }
+
+  export function ApiKeysSettings({ accountSlug }: ApiKeysSettingsProps) {
+    const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
+    const queryClient = useQueryClient();
+
+    const { data: savedKeys } = useQuery({
+      queryKey: ['api-keys', accountSlug],
+      queryFn: () => getApiKeysAction(),
+    });
+
+    const categories = [
+      { id: 'video', label: 'Video Generation' },
+      { id: 'audio', label: 'Audio Generation' },
+      { id: 'llm', label: 'Language Models' },
+    ];
+
+    return (
+      <div className="space-y-8">
+        {categories.map((category) => (
+          <div key={category.id} className="space-y-4">
+            <h2 className="text-lg font-semibold">{category.label}</h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              {PROVIDERS.filter((p) => p.category === category.id).map((provider) => {
+                const savedKey = savedKeys?.find((k) => k.provider === provider.id);
+
+                return (
+                  <ProviderCard
+                    key={provider.id}
+                    provider={provider}
+                    savedKey={savedKey}
+                    onEdit={() => setEditingProvider(provider)}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {editingProvider && (
+          <ApiKeyDialog
+            provider={editingProvider}
+            existingKey={savedKeys?.find((k) => k.provider === editingProvider.id)}
+            onClose={() => setEditingProvider(null)}
+            onSave={() => {
+              queryClient.invalidateQueries({ queryKey: ['api-keys'] });
+              setEditingProvider(null);
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  interface ProviderCardProps {
+    provider: Provider;
+    savedKey?: { provider: string; lastFourChars: string; isActive: boolean };
+    onEdit: () => void;
+  }
+
+  function ProviderCard({ provider, savedKey, onEdit }: ProviderCardProps) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="text-base">{provider.name}</CardTitle>
+              <CardDescription className="text-sm">
+                {provider.description}
+              </CardDescription>
+            </div>
+            {savedKey ? (
+              <Badge variant={savedKey.isActive ? 'default' : 'secondary'}>
+                {savedKey.isActive ? 'Connected' : 'Inactive'}
+              </Badge>
+            ) : (
+              <Badge variant="outline">Not configured</Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            {savedKey ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Key className="h-4 w-4" />
+                <span>••••••{savedKey.lastFourChars}</span>
+              </div>
+            ) : (
+              <span className="text-sm text-muted-foreground">No key saved</span>
+            )}
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" asChild>
+                <a href={provider.docsUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </Button>
+              <Button variant="outline" size="sm" onClick={onEdit}>
+                {savedKey ? 'Update' : 'Add Key'}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  interface ApiKeyDialogProps {
+    provider: Provider;
+    existingKey?: { provider: string; lastFourChars: string; isActive: boolean };
+    onClose: () => void;
+    onSave: () => void;
+  }
+
+  function ApiKeyDialog({ provider, existingKey, onClose, onSave }: ApiKeyDialogProps) {
+    const [apiKey, setApiKey] = useState('');
+    const [validationStatus, setValidationStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+    const [error, setError] = useState<string | null>(null);
+
+    const saveMutation = useMutation({
+      mutationFn: () => saveApiKeyAction({ provider: provider.id, apiKey }),
+      onSuccess: onSave,
+      onError: (err) => setError(err.message),
+    });
+
+    const deleteMutation = useMutation({
+      mutationFn: () => deleteApiKeyAction({ provider: provider.id }),
+      onSuccess: onSave,
+      onError: (err) => setError(err.message),
+    });
+
+    const validateKey = async () => {
+      if (!apiKey) return;
+
+      setValidationStatus('validating');
+      setError(null);
+
+      try {
+        const result = await validateApiKeyAction({ provider: provider.id, apiKey });
+        setValidationStatus(result.valid ? 'valid' : 'invalid');
+        if (!result.valid) {
+          setError(result.error || 'Invalid API key');
+        }
+      } catch (err) {
+        setValidationStatus('invalid');
+        setError('Failed to validate key');
+      }
+    };
+
+    return (
+      <Dialog open onOpenChange={onClose}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {existingKey ? 'Update' : 'Add'} {provider.name} API Key
+            </DialogTitle>
+            <DialogDescription>
+              {provider.description}. Format: {provider.keyFormat}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="api-key">API Key</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="api-key"
+                  type="password"
+                  placeholder={`Enter your ${provider.name} API key`}
+                  value={apiKey}
+                  onChange={(e) => {
+                    setApiKey(e.target.value);
+                    setValidationStatus('idle');
+                    setError(null);
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  onClick={validateKey}
+                  disabled={!apiKey || validationStatus === 'validating'}
+                >
+                  {validationStatus === 'validating' ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : validationStatus === 'valid' ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  ) : validationStatus === 'invalid' ? (
+                    <XCircle className="h-4 w-4 text-red-500" />
+                  ) : (
+                    'Test'
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {validationStatus === 'valid' && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>API key is valid and working!</AlertDescription>
+              </Alert>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              Your API key is encrypted before storage. We never share your keys with third parties.
+              <a
+                href={provider.docsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-1 underline"
+              >
+                Get your API key →
+              </a>
+            </p>
+          </div>
+
+          <DialogFooter className="flex justify-between">
+            <div>
+              {existingKey && (
+                <Button
+                  variant="destructive"
+                  onClick={() => deleteMutation.mutate()}
+                  disabled={deleteMutation.isPending}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Remove Key
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => saveMutation.mutate()}
+                disabled={!apiKey || validationStatus !== 'valid' || saveMutation.isPending}
+              >
+                {saveMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Save Key
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+  ```
+
+  ### Server Actions
+
+  ```typescript
+  // packages/features/film-studio/src/server/api-keys-actions.ts
+
+  'use server';
+
+  import { enhanceAction } from '@kit/next/actions';
+  import { getSupabaseServerClient } from '@kit/supabase/server-client';
+  import { z } from 'zod';
+  import { encrypt, decrypt } from '@kit/shared/encryption';
+
+  export const getApiKeysAction = enhanceAction(
+    async (_, user) => {
+      const client = getSupabaseServerClient();
+
+      const { data: keys } = await client
+        .from('external_api_keys')
+        .select('provider, encrypted_key, is_active')
+        .eq('account_id', user.accountId);
+
+      return keys?.map((key) => ({
+        provider: key.provider,
+        lastFourChars: decrypt(key.encrypted_key).slice(-4),
+        isActive: key.is_active,
+      })) || [];
+    },
+    { auth: true }
+  );
+
+  export const saveApiKeyAction = enhanceAction(
+    async ({ provider, apiKey }, user) => {
+      const client = getSupabaseServerClient();
+      const encryptedKey = encrypt(apiKey);
+
+      const { error } = await client
+        .from('external_api_keys')
+        .upsert({
+          account_id: user.accountId,
+          provider,
+          encrypted_key: encryptedKey,
+          is_active: true,
+          last_used_at: null,
+        }, {
+          onConflict: 'account_id,provider',
+        });
+
+      if (error) throw error;
+
+      return { success: true };
+    },
+    {
+      schema: z.object({
+        provider: z.string(),
+        apiKey: z.string().min(10),
+      }),
+      auth: true,
+    }
+  );
+
+  export const deleteApiKeyAction = enhanceAction(
+    async ({ provider }, user) => {
+      const client = getSupabaseServerClient();
+
+      const { error } = await client
+        .from('external_api_keys')
+        .delete()
+        .eq('account_id', user.accountId)
+        .eq('provider', provider);
+
+      if (error) throw error;
+
+      return { success: true };
+    },
+    {
+      schema: z.object({ provider: z.string() }),
+      auth: true,
+    }
+  );
+
+  export const validateApiKeyAction = enhanceAction(
+    async ({ provider, apiKey }) => {
+      // Provider-specific validation
+      switch (provider) {
+        case 'elevenlabs':
+          return validateElevenLabsKey(apiKey);
+        case 'openai':
+          return validateOpenAIKey(apiKey);
+        case 'anthropic':
+          return validateAnthropicKey(apiKey);
+        case 'kling':
+          return validateKlingKey(apiKey);
+        default:
+          // For other providers, just check format
+          return { valid: apiKey.length > 10 };
+      }
+    },
+    {
+      schema: z.object({
+        provider: z.string(),
+        apiKey: z.string(),
+      }),
+      auth: true,
+    }
+  );
+
+  async function validateElevenLabsKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
+    try {
+      const response = await fetch('https://api.elevenlabs.io/v1/user', {
+        headers: { 'xi-api-key': apiKey },
+      });
+      return { valid: response.ok };
+    } catch {
+      return { valid: false, error: 'Failed to connect to ElevenLabs' };
+    }
+  }
+
+  async function validateOpenAIKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
+    try {
+      const response = await fetch('https://api.openai.com/v1/models', {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      return { valid: response.ok };
+    } catch {
+      return { valid: false, error: 'Failed to connect to OpenAI' };
+    }
+  }
+
+  async function validateAnthropicKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
+    if (!apiKey.startsWith('sk-ant-')) {
+      return { valid: false, error: 'Key should start with sk-ant-' };
+    }
+    return { valid: true }; // Anthropic doesn't have a simple validation endpoint
+  }
+
+  async function validateKlingKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
+    try {
+      const response = await fetch('https://api.piapi.ai/api/kling/v1/models', {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      return { valid: response.ok };
+    } catch {
+      return { valid: false, error: 'Failed to connect to Kling/PiAPI' };
+    }
+  }
+  ```
+
+  ### File Changes
+
+  | Action | Path |
+  |--------|------|
+  | CREATE | `apps/web/app/home/[account]/settings/api-keys/page.tsx` |
+  | CREATE | `packages/features/film-studio/src/components/api-keys-settings.tsx` |
+  | CREATE | `packages/features/film-studio/src/server/api-keys-actions.ts` |
+  | CREATE | `packages/features/film-studio/src/schemas/api-keys.schema.ts` |
+  | MODIFY | `packages/features/film-studio/src/server/index.ts` |
+  | MODIFY | `packages/features/film-studio/src/components/index.ts` |
+  | MODIFY | `packages/features/film-studio/package.json` |
+  | MODIFY | `apps/web/package.json` |
+  | MODIFY | `apps/web/public/locales/en/teams.json` |
+
+  ## Security Considerations
+
+  - Keys encrypted using AES-256-GCM
+  - Encryption key in environment variable
+  - Keys never logged or displayed in full
+  - Validation uses minimal API calls
+  - Rate limit validation attempts

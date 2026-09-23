@@ -1,0 +1,356 @@
+spec_id: "FILM-601"
+title: "Timeline Editor"
+phase: 6
+phase_name: "Edit Suite"
+category: component
+status: PARTIAL
+audited: "2026-09-23"
+effort: XL
+dependencies:
+  - spec_id: "FILM-409"
+    note: "Visual Studio"
+  - spec_id: "FILM-505"
+    note: "Audio Studio"
+  - spec_id: "FILM-DS-03"
+    note: "Interaction Patterns"
+summary: >
+  The Timeline Editor is the core component of the Edit Suite, allowing users to arrange video clips,
+  dialogue, music, and sound effects on a multi-track timeline. This is a complex component requiring
+  frame-accurate positioning, real-time preview, and intuitive drag-and-drop interactions.
+acceptance_criteria:
+  - text: "Timeline displays all 5 track types with clips"
+    met: true
+    evidence: "`packages/features/edit-suite/src/components/timeline/timeline.tsx:258`, per-type colours `packages/features/edit-suite/src/components/timeline/track-row.tsx:30` (phase 14 edit suite; the FILM-601 components went in 5f44d0e1)"
+  - text: "Playhead scrubs with mouse and keyboard"
+    met: true
+    evidence: "`packages/features/edit-suite/src/components/timeline/playhead.tsx:55` (drag), `packages/features/edit-suite/src/components/edit-suite-provider.tsx:431` (arrow keys step a frame)"
+  - text: "Clips can be dragged to reposition"
+    met: true
+    evidence: "`packages/features/edit-suite/src/components/timeline/clip-block.tsx:248`"
+  - text: "Clips can be resized from edges"
+    met: true
+    evidence: "`packages/features/edit-suite/src/components/timeline/clip-block.tsx:273` (left edge), line 297 (right edge)"
+  - text: "Snap-to-grid works for alignment (10px threshold, frame-based)"
+    met: false
+    reason: "no longer true — snaps only to clip edges and playhead, no frame grid, ignores the Snap toggle (`packages/features/edit-suite/src/components/timeline/clip-block.tsx:172`); old grid went in 5f44d0e1"
+  - text: "Zoom in/out changes time scale (10-500 px/sec)"
+    met: true
+    evidence: "`packages/features/edit-suite/src/state/edit-reducer.ts:50`"
+  - text: "Space bar toggles play/pause"
+    met: true
+    evidence: "`packages/features/edit-suite/src/components/edit-suite-provider.tsx:423`"
+  - text: "Undo/redo works for all operations (history starts empty, max 50 entries)"
+    met: false
+    reason: "no longer true — keyframe, transition, drop, I/O, speed and track edits bypass `UndoManager` (e.g. `packages/features/edit-suite/src/components/timeline/track-row.tsx:234`); stack is 100; old reducer went in 5f44d0e1"
+  - text: "Selection highlights clips visually (ring-2 ring-white)"
+    met: true
+    evidence: "violet border and glow instead of `ring-white`, `packages/features/edit-suite/src/components/timeline/clip-block.tsx:420`"
+  - text: "Multi-select with Shift+Click"
+    met: true
+    evidence: "`packages/features/edit-suite/src/components/timeline/clip-block.tsx:141`"
+  - text: "Video preview syncs with playhead during playback and scrubbing"
+    met: false
+    reason: "unverified — runtime sync; needs a playback run, and no edit-suite test exists"
+  - text: "Track mute/solo/lock toggles functional"
+    met: false
+    reason: "no longer true — mute/solo reach audio gain (`packages/features/edit-suite/src/lib/audio-engine.ts:140`); lock only blocks drops (`packages/features/edit-suite/src/components/timeline/track-row.tsx:210`), clips stay editable"
+  - text: "In/out point markers for loop playback"
+    met: false
+    reason: "retired — the phase 14 edit suite uses I/O to trim the selected clip (`packages/features/edit-suite/src/components/edit-suite-provider.tsx:451`); no loop playback"
+  - text: "Timecode display in MM:SS:FF format"
+    met: true
+    evidence: "`packages/features/edit-suite/src/components/preview/preview-panel.tsx:29`"
+  - text: "Use requestAnimationFrame for playback (not setInterval)"
+    met: true
+    evidence: "`packages/features/edit-suite/src/lib/playback-engine.ts:247`"
+    section: "Performance Considerations"
+  - text: "Canvas-based waveform rendering for performance"
+    met: true
+    evidence: "`packages/features/edit-suite/src/components/timeline/waveform.tsx:114`"
+    section: "Performance Considerations"
+  - text: "Refs for latest values to avoid stale closures"
+    met: true
+    evidence: "`packages/features/edit-suite/src/components/timeline/clip-block.tsx:106`"
+    section: "Performance Considerations"
+  - text: "Seek state tracking to prevent overlapping video seeks"
+    met: true
+    evidence: "re-seeks only past a 50 ms tolerance, `packages/features/edit-suite/src/components/preview/preview-canvas.tsx:175`"
+    section: "Performance Considerations"
+  - text: "Virtualize clips outside viewport (future optimization)"
+    met: true
+    evidence: "`packages/features/edit-suite/src/hooks/use-visible-clips.ts:35`, used at `packages/features/edit-suite/src/components/timeline/timeline.tsx:71`"
+    section: "Performance Considerations"
+  - text: "Debounce save operations (future optimization)"
+    met: true
+    evidence: "2 s debounce, `packages/features/edit-suite/src/components/edit-suite-provider.tsx:343`"
+    section: "Performance Considerations"
+test_plan:
+  unit:
+    - text: "Test timeline reducer for all 21 action types"
+      met: false
+      reason: "not met — no test found (the edit suite has none)"
+    - text: "Test snap-to-grid calculation with frame-based snapping"
+      met: false
+      reason: "not met — no test found"
+    - text: "Test history management (push, undo, redo, max size)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Test formatTimecode helper function"
+      met: false
+      reason: "not met — no test found"
+  integration:
+    - text: "Test drag-and-drop with mouse events and stale closure prevention"
+      met: false
+      reason: "not met — no test found"
+    - text: "Test keyboard navigation via useTimelineKeyboard"
+      met: false
+      reason: "not met — no test found; the hook went in 5f44d0e1 and edit-suite shortcuts are untested"
+    - text: "Test undo/redo stack with correct history indexing"
+      met: false
+      reason: "not met — no test found"
+    - text: "Test video sync with seek state tracking"
+      met: false
+      reason: "not met — no test found"
+  e2e:
+    - text: "Test full editing workflow"
+      met: false
+      reason: "not met — no test found"
+remaining:
+  - criterion: "Snap-to-grid (frame-based)"
+    reason: "Snapping targets only clip edges and the playhead, never a frame grid, and ignores the Snap toggle (`packages/features/edit-suite/src/components/timeline/clip-block.tsx:172`); PHASE-14 §3.5 claims both"
+    closed_by: "unassigned"
+  - criterion: "Undo/redo for all operations"
+    reason: "Keyframe, transition, media-bin drop, I/O trim, speed and track edits dispatch directly and bypass `UndoManager` (e.g. `packages/features/edit-suite/src/components/inspector/keyframe-editor.tsx:170`)"
+    closed_by: "unassigned"
+  - criterion: "Track lock"
+    reason: "Lock blocks only asset drops (`packages/features/edit-suite/src/components/timeline/track-row.tsx:210`); `ClipBlock` is never told, so clips on a locked track move, trim and delete"
+    closed_by: "unassigned"
+open_questions:
+  - "[x] Should we support multiple clip selection? **Yes - implemented with Shift+Click**"
+  - "[x] Should we include video preview? **Yes - PreviewPlayer component added**"
+  - "[ ] Should we add markers/bookmarks? (post-MVP)"
+  - "[ ] Should we add clip splitting? (post-MVP)"
+component:
+  component_name: "TimelineEditor"
+  file_path: "packages/features/edit-suite/src/components/timeline/timeline.tsx"
+  props: []
+  states: []
+  accessibility_notes: null
+notes: |
+  ## Metadata
+  - **Phase:** 6 - Edit Suite
+  - **Priority:** P1 (Post-MVP)
+  - **Effort:** XL (3-5 days)
+  - **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ Complete)
+  - **Dependencies:** FILM-409 (Visual Studio), FILM-505 (Audio Studio), FILM-DS-03 (Interaction Patterns)
+  - **Blocks:** FILM-602 (Track Layer), FILM-603 (Clip Editor), FILM-604 (Auto-Stitch)
+
+  ## Specification
+
+  ### Requirements
+
+  1. **Multi-track Timeline**: Support video, dialogue, music, SFX, and ambient tracks
+  2. **Playhead Scrubbing**: Frame-accurate seeking with keyboard and mouse (30fps default)
+  3. **Clip Manipulation**: Drag to move, resize from edges, snap to grid
+  4. **Zoom Control**: Zoom in/out with smooth transitions (10-500 px/sec)
+  5. **Real-time Preview**: Sync playback across all tracks with video preview pane
+  6. **Undo/Redo**: Full history for all editing operations (max 50 entries)
+  7. **Keyboard Shortcuts**: Professional editing shortcuts via `useTimelineKeyboard` hook
+
+  ### Component Architecture
+
+  ```
+  TimelineEditor
+  ├── PreviewPlayer (video preview synced with playhead)
+  ├── TimelineHeader
+  │   ├── PlaybackControls (play/pause, skip)
+  │   ├── TimecodeDisplay (MM:SS:FF format)
+  │   ├── ZoomControls (slider + buttons)
+  │   ├── SnapToggle
+  │   └── UndoRedo buttons
+  ├── TrackLabels (mute/solo/lock toggles)
+  ├── TimelineRuler
+  │   ├── TimeMarkers (zoom-responsive)
+  │   └── InPoint/OutPoint markers
+  ├── TrackContainer
+  │   ├── TrackLayer (video)
+  │   ├── TrackLayer (dialogue)
+  │   ├── TrackLayer (music)
+  │   ├── TrackLayer (sfx)
+  │   └── TrackLayer (ambient)
+  │       └── ClipItem (with WaveformDisplay for audio)
+  ├── Playhead (draggable)
+  └── TimelineFooter
+      └── DurationDisplay
+  ```
+
+  ### Interface Definitions (Implemented)
+
+  ```typescript
+  // packages/features/episodes/src/components/timeline-editor/types.ts
+
+  export type ClipType = 'video' | 'dialogue' | 'music' | 'sfx' | 'ambient';
+
+  export interface TimelineClip {
+    id: string;
+    trackType: ClipType;
+    name: string;
+    startFrame: number;        // Frame-based positioning (not seconds)
+    durationFrames: number;    // Frame-based duration
+    thumbnailUrl?: string;
+    videoUrl?: string;
+    waveformData?: number[];
+    shotId?: string;
+  }
+
+  export interface TimelineTrack {
+    id: string;
+    type: ClipType;
+    name: string;
+    clips: TimelineClip[];
+    isMuted: boolean;
+    isSolo: boolean;
+    isLocked: boolean;
+    height: number;
+  }
+
+  export interface TimelineState {
+    tracks: TimelineTrack[];
+    playheadFrame: number;     // Frame-based (not seconds)
+    isPlaying: boolean;
+    totalFrames: number;
+    fps: number;
+    zoom: number;              // Pixels per second
+    scrollX: number;
+    scrollY: number;
+    selectedClipIds: Set<string>;
+    selectedTrackId: string | null;
+    inPoint: number | null;    // Frame number
+    outPoint: number | null;   // Frame number
+    history: TimelineHistoryEntry[];
+    historyIndex: number;      // -1 when no history
+    snapEnabled: boolean;
+    isDragging: boolean;
+    draggedClipId: string | null;
+    resizeEdge: 'left' | 'right' | null;
+  }
+
+  export interface TimelineData {
+    tracks: TimelineTrack[];
+    totalFrames: number;
+    fps: number;
+    inPoint: number | null;
+    outPoint: number | null;
+    version: number;
+  }
+
+  // 21 action types implemented
+  export type TimelineAction =
+    | { type: 'SET_PLAYHEAD'; frame: number }
+    | { type: 'PLAY' }
+    | { type: 'PAUSE' }
+    | { type: 'TOGGLE_PLAYBACK' }
+    | { type: 'TICK' }
+    | { type: 'SET_ZOOM'; zoom: number }
+    | { type: 'ZOOM_IN' }
+    | { type: 'ZOOM_OUT' }
+    | { type: 'SET_SCROLL'; x: number; y: number }
+    | { type: 'SELECT_CLIP'; clipId: string; additive?: boolean }
+    | { type: 'SELECT_CLIPS'; clipIds: string[] }
+    | { type: 'DESELECT_ALL' }
+    | { type: 'MOVE_CLIP'; clipId: string; newStartFrame: number; newTrackId?: string }
+    | { type: 'RESIZE_CLIP'; clipId: string; newStartFrame: number; newDurationFrames: number }
+    | { type: 'DELETE_CLIPS'; clipIds: string[] }
+    | { type: 'DELETE_SELECTED' }
+    | { type: 'ADD_CLIP'; trackId: string; clip: Omit<TimelineClip, 'id'> }
+    | { type: 'SET_IN_POINT'; frame: number | null }
+    | { type: 'SET_OUT_POINT'; frame: number | null }
+    | { type: 'TOGGLE_TRACK_MUTE'; trackId: string }
+    | { type: 'TOGGLE_TRACK_SOLO'; trackId: string }
+    | { type: 'TOGGLE_TRACK_LOCK'; trackId: string }
+    | { type: 'TOGGLE_SNAP' }
+    | { type: 'UNDO' }
+    | { type: 'REDO' }
+    | { type: 'LOAD_TIMELINE'; data: TimelineData }
+    | { type: 'START_DRAG'; clipId: string; resizeEdge?: 'left' | 'right' }
+    | { type: 'END_DRAG' };
+
+  export const ZOOM_LEVELS = {
+    MIN: 10,
+    MAX: 500,
+    DEFAULT: 50,
+    STEPS: [10, 25, 50, 100, 200, 500],
+  } as const;
+
+  export const DEFAULT_TRACKS: Omit<TimelineTrack, 'id' | 'clips'>[] = [
+    { type: 'video', name: 'Video', isMuted: false, isSolo: false, isLocked: false, height: 80 },
+    { type: 'dialogue', name: 'Dialogue', isMuted: false, isSolo: false, isLocked: false, height: 60 },
+    { type: 'music', name: 'Music', isMuted: false, isSolo: false, isLocked: false, height: 60 },
+    { type: 'sfx', name: 'SFX', isMuted: false, isSolo: false, isLocked: false, height: 60 },
+    { type: 'ambient', name: 'Ambient', isMuted: false, isSolo: false, isLocked: false, height: 60 },
+  ];
+  ```
+
+  ### File Changes (Implemented)
+
+  | Action | Path | LOC |
+  |--------|------|-----|
+  | CREATE | `packages/features/episodes/src/components/timeline-editor/types.ts` | ~280 |
+  | CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-reducer.ts` | ~435 |
+  | CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-context.tsx` | ~55 |
+  | CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-editor.tsx` | ~325 |
+  | CREATE | `packages/features/episodes/src/components/timeline-editor/preview-player.tsx` | ~185 |
+  | CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-header.tsx` | ~210 |
+  | CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-ruler.tsx` | ~175 |
+  | CREATE | `packages/features/episodes/src/components/timeline-editor/playhead.tsx` | ~130 |
+  | CREATE | `packages/features/episodes/src/components/timeline-editor/track-layer.tsx` | ~75 |
+  | CREATE | `packages/features/episodes/src/components/timeline-editor/clip-item.tsx` | ~340 |
+  | CREATE | `packages/features/episodes/src/components/timeline-editor/waveform-display.tsx` | ~90 |
+  | CREATE | `packages/features/episodes/src/components/timeline-editor/index.ts` | ~25 |
+  | MODIFY | `packages/features/episodes/src/components/index.ts` | +10 |
+  | MODIFY | `packages/features/episodes/package.json` | +1 (added @kit/film-studio dependency) |
+
+  **Total:** ~2,335 lines of code
+
+  ## Implementation Details
+
+  ### Key Technical Decisions
+
+  | Decision | Choice | Rationale |
+  |----------|--------|-----------|
+  | Time units | Frame-based (not seconds) | More accurate for video editing at 30fps |
+  | State management | useReducer + Context | Complex state with undo/redo history |
+  | Keyboard shortcuts | `useTimelineKeyboard` from @kit/film-studio | Reuse existing hook with full shortcut support |
+  | Drag/resize | Custom with refs for stale closure prevention | Smooth dragging with latest state values |
+  | Video sync | Track seeking state to prevent race conditions | Queue seeks during active seek operations |
+  | Waveform rendering | Canvas API | Better performance for dense audio data |
+  | Design tokens | `timelineTrackTokens` from @kit/film-studio | Consistent track colors across components |
+  | Snapping | `snapToGrid` from @kit/film-studio | 10px threshold, frame-based snapping |
+
+  ### Dependencies Used
+
+  From `@kit/film-studio`:
+  - `useTimelineKeyboard` hook - keyboard shortcuts
+  - `timelineTrackTokens` - track colors (video: blue, dialogue: green, music: purple, sfx: amber, ambient: slate)
+  - `SNAP_THRESHOLD_PX` constant (10px)
+  - `snapToGrid` utility function
+  - `TrackType` type
+
+  From `@kit/ui`:
+  - Button, Card, Slider, ScrollArea components
+  - `cn` utility for className merging
+
+  ### Bug Fixes Applied
+
+  1. **Type export error** - Fixed ZOOM_LEVELS and DEFAULT_TRACKS being incorrectly exported as types
+  2. **History management** - Fixed initial state in undo stack causing first undo to revert to empty state
+  3. **Stale closure** - Added refs to access latest values in document event handlers during drag
+  4. **Race condition** - Track seeking state to prevent video stuttering during fast scrubbing
+  5. **Memory leak** - Added useEffect cleanup for document event listeners on component unmount
+  6. **useEffect justification** - Added comments explaining why each useEffect is necessary
+
+  ## Related PRs
+
+  - PR #79: Initial implementation
+  - Commit ff533c9: feat(episodes): implement timeline editor component (FILM-601)
+  - Commit 8a5b533: fix(episodes): address code review issues for timeline editor

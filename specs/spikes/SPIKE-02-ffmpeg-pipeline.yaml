@@ -1,0 +1,306 @@
+spec_id: "SPIKE-02"
+title: "FFmpeg Video Rendering Pipeline"
+phase: null
+phase_name: "Spikes"
+category: research_spike
+status: DONE
+audited: "2026-09-23"
+effort: M
+dependencies:
+  - spec_id: "SPIKE-01"
+    note: "sample shot videos from the Kling API"
+summary: >
+  Our episodes consist of multiple shots (videos) that need to be stitched together with
+  transitions, audio, and potentially effects. We need a robust, performant, and
+  cost-effective solution for video rendering that can scale with our user base.
+acceptance_criteria:
+  - text: "Working POC that stitches 10 videos with transitions"
+    met: false
+    reason: "retired — `packages/features/video-rendering/poc/` was deleted in 5b88db3a; the edit suite now exports via `packages/features/edit-suite/src/lib/ffmpeg-builder.ts:101`"
+  - text: "Audio synchronization working correctly"
+    met: false
+    reason: "retired — the PoC's audio mixer (`packages/features/video-rendering/src/ffmpeg/audio-mixer.ts`) was deleted in 5b88db3a"
+  - text: "Performance benchmarks for FFmpeg, Remotion, and 2+ cloud services"
+    met: true
+    evidence: null
+  - text: "Cost projection for each approach at scale"
+    met: true
+    evidence: null
+  - text: "Clear recommendation with justification"
+    met: true
+    evidence: null
+  - text: "Docker container with FFmpeg ready for deployment"
+    met: false
+    reason: "retired — `packages/features/video-rendering/Dockerfile` was deleted with server-side rendering in 5b88db3a"
+  - text: "Integration design for timeline editor"
+    met: true
+    evidence: null
+  - text: "Documentation of edge cases and limitations"
+    met: true
+    evidence: null
+open_questions: []
+research_spike:
+  question: >
+    Evaluate FFmpeg as the video rendering solution for stitching multiple shot videos
+    into a final episode, comparing it with alternatives like Remotion and cloud
+    rendering services. Determine optimal architecture (server-side vs client-side) and
+    create a proof of concept.
+  findings: []
+  recommendation: null
+  docs:
+    - "docs/video-rendering-comparison.md"
+    - "docs/ffmpeg-integration.md"
+    - "docs/rendering-benchmarks.md"
+  poc_path: "packages/features/video-rendering/poc/"
+notes: |
+  ## Metadata
+  - **Priority**: P0
+  - **Effort**: M (Medium - 3-5 days)
+  - **Timeline**: Sprint 1, Week 2
+  - **Owner**: TBD
+  - **Status**: DONE
+  - **Created**: 2025-12-04
+  - **Implemented**: 2025-12-10
+
+  ## Research Questions
+
+  ### 1. Server-Side vs Client-Side Rendering
+  - What are the pros/cons of server-side FFmpeg rendering?
+  - Is client-side FFmpeg (via WASM) viable for our use case?
+  - What are the bandwidth implications of each approach?
+  - How does user experience differ between approaches?
+  - What are the security considerations?
+
+  ### 2. Performance & Resources
+  - What is the memory usage for stitching 10 videos (5-10s each)?
+  - What CPU/GPU resources are required?
+  - How does rendering time scale with video count and duration?
+  - Can rendering be streamed or must it complete before delivery?
+  - What are the disk I/O requirements?
+
+  ### 3. FFmpeg Capabilities
+  - Can FFmpeg handle all our required operations?
+    - Video concatenation with smooth transitions
+    - Audio mixing and synchronization
+    - Basic effects (fade in/out, crossfade)
+    - Overlay text/credits
+    - Output format optimization (MP4, WebM)
+  - What is the quality loss during re-encoding?
+  - Can we do filter graphs for complex operations?
+
+  ### 4. Alternative Solutions
+  - **Remotion**: How does it compare for our use case?
+    - Cost at scale
+    - Development complexity
+    - Rendering performance
+    - Customization capabilities
+  - **Cloud Render Services** (Shotstack, Creatomate, Mux):
+    - Cost per render
+    - API capabilities
+    - Latency
+    - Reliability
+    - Lock-in risks
+
+  ### 5. Streaming & Progressive Rendering
+  - Can we stream the output as it's being rendered?
+  - Can we show progress updates to users?
+  - Is progressive download possible?
+  - What's the time-to-first-byte?
+
+  ### 6. Audio Synchronization
+  - How do we ensure audio stays in sync with video?
+  - Can we add background music under dialogue?
+  - How do we handle audio crossfades between shots?
+  - What audio formats are supported?
+
+  ### 7. Deployment & Scaling
+  - How do we deploy FFmpeg in our infrastructure?
+  - What container image size and startup time?
+  - Can rendering be parallelized across multiple workers?
+  - What are the autoscaling considerations?
+  - How do we handle failed renders?
+
+  ## Approach
+
+  ### Phase 1: Local FFmpeg Evaluation (8 hours)
+  1. Install FFmpeg locally and test basic operations
+  2. Create sample concatenation of 5 video files
+  3. Test various transition effects (cut, fade, crossfade)
+  4. Add audio track and test synchronization
+  5. Measure rendering time for different video counts
+  6. Test different output codecs and quality settings
+  7. Document FFmpeg command patterns
+
+  ### Phase 2: Server-Side Implementation POC (12 hours)
+  1. Create Node.js service with fluent-ffmpeg
+  2. Implement video concatenation endpoint
+  3. Add progress tracking via FFmpeg events
+  4. Handle file uploads and temporary storage
+  5. Implement cleanup of temporary files
+  6. Add error handling and retry logic
+  7. Create Docker container with FFmpeg
+  8. Measure memory and CPU usage under load
+  9. Test with 10+ concurrent render jobs
+
+  ### Phase 3: Client-Side Exploration (8 hours)
+  1. Test FFmpeg.wasm in browser
+  2. Implement simple concatenation demo
+  3. Measure browser memory usage
+  4. Test on different devices/browsers
+  5. Evaluate user experience and limitations
+  6. Document feasibility and constraints
+
+  ### Phase 4: Remotion Evaluation (10 hours)
+  1. Install Remotion and create sample project
+  2. Implement video stitching with Remotion
+  3. Add transitions and effects
+  4. Test rendering performance locally
+  5. Estimate cloud rendering costs
+  6. Evaluate development complexity
+  7. Compare output quality with FFmpeg
+  8. Document pros/cons vs FFmpeg
+
+  ### Phase 5: Cloud Rendering Comparison (8 hours)
+  1. **Shotstack**:
+     - Sign up and test API
+     - Create video stitching template
+     - Measure render time and cost
+     - Test error handling
+  2. **Creatomate**:
+     - Test similar workflow
+     - Compare pricing and features
+  3. **Mux**:
+     - Evaluate if suitable for stitching
+     - Compare costs
+  4. Create comparison matrix
+
+  ### Phase 6: Timeline Editor Integration (6 hours)
+  1. Design architecture for timeline -> render pipeline
+  2. Create sample timeline JSON structure
+  3. Convert timeline to FFmpeg commands or Remotion code
+  4. Test with various timeline configurations
+  5. Document integration approach
+
+  ### Phase 7: Cost & Performance Analysis (4 hours)
+  1. Calculate rendering costs at scale for each option
+  2. Project costs for 100, 1000, 10000 users
+  3. Measure and compare rendering times
+  4. Evaluate maintenance overhead
+  5. Create recommendation matrix
+
+  ## Deliverables
+
+  1. **Technical Comparison Document** (`docs/video-rendering-comparison.md`)
+     - Feature comparison matrix
+     - Performance benchmarks
+     - Cost analysis at various scales
+     - Pros/cons of each approach
+     - Final recommendation
+
+  2. **FFmpeg Integration Guide** (`docs/ffmpeg-integration.md`)
+     - Installation and setup
+     - Command patterns for common operations
+     - Node.js integration examples
+     - Error handling strategies
+     - Performance optimization tips
+
+  3. **Proof of Concept Code** (`packages/video-rendering/poc/`)
+     - FFmpeg server-side implementation
+     - FFmpeg.wasm client-side demo
+     - Remotion sample project
+     - Cloud service integration examples
+     - Timeline to FFmpeg converter
+
+  4. **Docker Configuration** (`packages/video-rendering/Dockerfile`)
+     - Optimized FFmpeg container
+     - All required codecs and libraries
+     - Minimal image size
+     - Health check scripts
+
+  5. **Performance Benchmarks** (`docs/rendering-benchmarks.md`)
+     - Rendering time vs video count/duration
+     - Memory usage profiles
+     - CPU utilization graphs
+     - Concurrent job handling
+     - Cost per render calculations
+
+  6. **Sample Outputs** (`docs/examples/rendered-videos/`)
+     - Various transition styles
+     - Different video counts (5, 10, 20 shots)
+     - With and without audio
+     - Different quality settings
+     - Edge case examples
+
+  ## Risks if Not Completed
+
+  ### Critical Risks (P0)
+  - **Wrong Technology Choice**: Choosing approach that doesn't scale or is too expensive
+  - **Performance Issues**: Underestimating rendering time impacts user experience
+  - **Cost Overruns**: Cloud rendering costs spiral out of control at scale
+  - **Technical Limitations**: Chosen solution can't handle required features
+
+  ### High Risks (P1)
+  - **Infrastructure Complexity**: FFmpeg server-side adds operational overhead
+  - **Quality Issues**: Re-encoding degrades video quality unacceptably
+  - **Audio Sync Problems**: Audio drift makes videos unwatchable
+  - **Memory Leaks**: Server crashes under load due to poor resource management
+
+  ### Medium Risks (P2)
+  - **Lock-in**: Choosing cloud provider that's hard to migrate from
+  - **Maintenance Burden**: Complex FFmpeg commands become unmaintainable
+  - **Browser Compatibility**: Client-side rendering doesn't work on all devices
+  - **Vendor Reliability**: Third-party service outages impact our platform
+
+  ## Dependencies
+
+  - Sample shot videos from Kling API (from SPIKE-01)
+  - Sample audio tracks for testing
+  - Cloud service trial accounts (Shotstack, Creatomate)
+  - Server environment for load testing
+  - Timeline editor design (doesn't need to be final)
+
+  ## Follow-up Spikes
+
+  This spike may reveal the need for:
+  - SPIKE-04: If video stitching requires deeper investigation
+  - Spike on video quality optimization if re-encoding issues found
+  - Spike on audio generation if audio mixing is complex
+
+  ## Decision Criteria
+
+  Choose FFmpeg if:
+  - Cost at scale is significantly lower
+  - We need full control over rendering
+  - Team has capacity for operational overhead
+  - Performance is comparable or better
+
+  Choose Remotion if:
+  - Development velocity is critical
+  - Cost is acceptable at our scale
+  - React-based approach fits our stack
+  - Cloud rendering is reliable enough
+
+  Choose Cloud Service if:
+  - Costs are competitive
+  - Feature set matches our needs
+  - No vendor lock-in concerns
+  - Reliability meets our SLA requirements
+
+  ## Notes
+
+  - FFmpeg is battle-tested and used by YouTube, Netflix, etc.
+  - FFmpeg.wasm is impressive but has significant limitations
+  - Cloud rendering removes infrastructure burden but adds cost
+  - Remotion is developer-friendly but may be overkill for simple stitching
+  - Consider hybrid: FFmpeg for simple stitches, Remotion for complex edits
+  - Video rendering is CPU-intensive - cost vs control tradeoff
+
+  ## References
+
+  - FFmpeg Documentation: https://ffmpeg.org/documentation.html
+  - fluent-ffmpeg (Node.js): https://github.com/fluent-ffmpeg/node-fluent-ffmpeg
+  - FFmpeg.wasm: https://ffmpegwasm.netlify.app/
+  - Remotion: https://remotion.dev
+  - Shotstack: https://shotstack.io
+  - Creatomate: https://creatomate.com
+  - Mux: https://mux.com

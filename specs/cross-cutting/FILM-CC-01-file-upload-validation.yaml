@@ -1,0 +1,351 @@
+spec_id: "FILM-CC-01"
+title: "File Upload Validation"
+phase: null
+phase_name: "Cross-Cutting Concern"
+category: cross_cutting_concern
+status: DONE
+audited: "2026-09-23"
+effort: M
+dependencies: []
+summary: >
+  The Film Studio handles significant file uploads including reference images, generated
+  videos, audio files, and thumbnails. Proper validation prevents security
+  vulnerabilities (malicious file uploads), resource exhaustion (oversized files), and
+  data corruption (wrong file types).
+cross_cutting_concern:
+  concern_name: "File Upload Validation"
+  applies_to:
+    - "image"
+    - "video"
+    - "audio"
+  rules:
+    - "File Type Validation: Validate MIME type and file extension match"
+    - "File Size Limits: Enforce per-type size limits"
+    - "Content Validation: Verify file headers match declared type"
+    - "Sanitization: Strip potentially dangerous metadata"
+    - "Error Messages: Provide clear, actionable error messages"
+  file_path: "packages/features/assets/src/lib/upload-validation.ts"
+acceptance_criteria:
+  - text: "Images over 10MB are rejected with clear error message"
+    met: true
+    evidence: null
+  - text: "Videos over 500MB are rejected with clear error message"
+    met: true
+    evidence: null
+  - text: "Audio over 50MB is rejected with clear error message"
+    met: true
+    evidence: null
+  - text: "Invalid MIME types are rejected"
+    met: true
+    evidence: null
+  - text: "Mismatched extensions are rejected"
+    met: true
+    evidence: null
+  - text: "Files with wrong magic bytes are detected"
+    met: true
+    evidence: null
+  - text: "Filenames are sanitized (no path traversal)"
+    met: true
+    evidence: null
+  - text: "Storage paths are unique and predictable"
+    met: true
+    evidence: null
+  - text: "Error messages include actionable details"
+    met: true
+    evidence: null
+test_plan:
+  unit:
+    - text: "Test each file type at exactly max size (should pass)"
+      met: true
+      evidence: null
+    - text: "Test each file type 1 byte over max size (should fail)"
+      met: true
+      evidence: null
+    - text: "Test valid MIME types pass"
+      met: true
+      evidence: null
+    - text: "Test invalid MIME types fail"
+      met: true
+      evidence: null
+    - text: "Test extension/MIME type mismatch detection"
+      met: true
+      evidence: null
+    - text: "Test magic byte verification for each supported type"
+      met: false
+      reason: "not met — only JPEG, PNG and WebM are tested (`packages/features/assets/__tests__/upload-validation.test.ts:254`); GIF, WebP, MP3, WAV, OGG, MP4, MOV are not"
+    - text: "Test filename sanitization removes dangerous characters"
+      met: true
+      evidence: null
+    - text: "Test path traversal attempts are blocked"
+      met: true
+      evidence: null
+  integration:
+    - text: "Test full upload flow with valid file"
+      met: true
+      evidence: "apps/web/app/api/projects/[projectId]/assets/upload/__tests__/route.test.ts:194 (storage mocked)"
+    - text: "Test upload rejection preserves no partial data"
+      met: true
+      evidence: "apps/web/app/api/projects/[projectId]/assets/upload/__tests__/route.test.ts:376"
+  e2e: []
+open_questions:
+  - "[ ] Should we implement virus scanning? (post-MVP, non-blocking)"
+  - "[ ] Should we auto-convert between formats (e.g., HEIC to JPEG)? (non-blocking)"
+notes: |
+  ## Metadata not held in typed fields
+  - **Priority:** P0 (Critical)
+  - **Effort:** M (4-8 hours)
+  - **Blocks:** FILM-203 (Upload Route), FILM-207 (Image Uploader)
+  - **Status:** ✅ Complete
+  - **Implemented:** 2025-12-05
+  - **PR:** [#6](https://github.com/aroundAI/storybook/pull/6)
+
+  ## Specification
+  The five Requirements are in `cross_cutting_concern.rules`.
+
+  ### Upload Constraints
+
+  ```typescript
+  // packages/features/assets/src/lib/upload-validation.ts
+
+  export const UPLOAD_CONSTRAINTS = {
+    image: {
+      maxSize: 10 * 1024 * 1024, // 10MB
+      allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const,
+      allowedExtensions: ['.jpg', '.jpeg', '.png', '.webp', '.gif'] as const,
+      magicBytes: {
+        'image/jpeg': [0xFF, 0xD8, 0xFF],
+        'image/png': [0x89, 0x50, 0x4E, 0x47],
+        'image/webp': [0x52, 0x49, 0x46, 0x46], // RIFF header
+        'image/gif': [0x47, 0x49, 0x46, 0x38],
+      },
+    },
+    video: {
+      maxSize: 500 * 1024 * 1024, // 500MB
+      allowedTypes: ['video/mp4', 'video/webm', 'video/quicktime'] as const,
+      allowedExtensions: ['.mp4', '.webm', '.mov'] as const,
+      magicBytes: {
+        'video/mp4': [0x00, 0x00, 0x00], // ftyp box (variable)
+        'video/webm': [0x1A, 0x45, 0xDF, 0xA3],
+        'video/quicktime': [0x00, 0x00, 0x00], // moov/ftyp
+      },
+    },
+    audio: {
+      maxSize: 50 * 1024 * 1024, // 50MB
+      allowedTypes: ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4'] as const,
+      allowedExtensions: ['.mp3', '.wav', '.ogg', '.m4a'] as const,
+      magicBytes: {
+        'audio/mpeg': [0xFF, 0xFB], // or ID3 tag
+        'audio/wav': [0x52, 0x49, 0x46, 0x46],
+        'audio/ogg': [0x4F, 0x67, 0x67, 0x53],
+      },
+    },
+  } as const;
+
+  export type UploadCategory = keyof typeof UPLOAD_CONSTRAINTS;
+  ```
+
+  ### Validation Interface
+
+  ```typescript
+  export interface ValidationResult {
+    valid: boolean;
+    error?: {
+      code: 'FILE_TOO_LARGE' | 'INVALID_TYPE' | 'INVALID_EXTENSION' | 'CORRUPTED_FILE' | 'UNKNOWN_ERROR';
+      message: string;
+      details?: {
+        maxSize?: number;
+        actualSize?: number;
+        expectedTypes?: readonly string[];
+        actualType?: string;
+      };
+    };
+  }
+
+  export interface ValidatedFile {
+    file: File;
+    category: UploadCategory;
+    sanitizedName: string;
+    contentType: string;
+  }
+  ```
+
+  ### Validation Functions
+
+  ```typescript
+  /**
+   * Validates a file against upload constraints
+   */
+  export async function validateUpload(
+    file: File,
+    category: UploadCategory
+  ): Promise<ValidationResult> {
+    const constraints = UPLOAD_CONSTRAINTS[category];
+
+    // 1. Check file size
+    if (file.size > constraints.maxSize) {
+      const maxMB = Math.round(constraints.maxSize / (1024 * 1024));
+      const actualMB = Math.round(file.size / (1024 * 1024) * 100) / 100;
+      return {
+        valid: false,
+        error: {
+          code: 'FILE_TOO_LARGE',
+          message: `File is ${actualMB}MB but maximum allowed is ${maxMB}MB`,
+          details: {
+            maxSize: constraints.maxSize,
+            actualSize: file.size,
+          },
+        },
+      };
+    }
+
+    // 2. Check MIME type
+    if (!constraints.allowedTypes.includes(file.type as any)) {
+      return {
+        valid: false,
+        error: {
+          code: 'INVALID_TYPE',
+          message: `File type "${file.type}" is not allowed. Accepted types: ${constraints.allowedTypes.join(', ')}`,
+          details: {
+            expectedTypes: constraints.allowedTypes,
+            actualType: file.type,
+          },
+        },
+      };
+    }
+
+    // 3. Check file extension
+    const ext = '.' + file.name.toLowerCase().split('.').pop();
+    if (!constraints.allowedExtensions.includes(ext as any)) {
+      return {
+        valid: false,
+        error: {
+          code: 'INVALID_EXTENSION',
+          message: `File extension "${ext}" is not allowed. Accepted extensions: ${constraints.allowedExtensions.join(', ')}`,
+        },
+      };
+    }
+
+    // 4. Verify magic bytes (content validation)
+    const isValidContent = await verifyMagicBytes(file, category);
+    if (!isValidContent) {
+      return {
+        valid: false,
+        error: {
+          code: 'CORRUPTED_FILE',
+          message: 'File content does not match its declared type. The file may be corrupted or mislabeled.',
+        },
+      };
+    }
+
+    return { valid: true };
+  }
+
+  /**
+   * Verifies file content matches expected magic bytes
+   */
+  async function verifyMagicBytes(file: File, category: UploadCategory): Promise<boolean> {
+    const constraints = UPLOAD_CONSTRAINTS[category];
+    const magicBytes = constraints.magicBytes[file.type as keyof typeof constraints.magicBytes];
+
+    if (!magicBytes) {
+      // No magic bytes defined for this type, skip content validation
+      return true;
+    }
+
+    const buffer = await file.slice(0, 12).arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+
+    // Check if file starts with expected magic bytes
+    for (let i = 0; i < magicBytes.length; i++) {
+      if (bytes[i] !== magicBytes[i]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Sanitizes filename for storage
+   */
+  export function sanitizeFilename(filename: string): string {
+    // Remove path traversal attempts
+    const basename = filename.split(/[\\/]/).pop() || 'file';
+
+    // Replace unsafe characters
+    const sanitized = basename
+      .replace(/[^a-zA-Z0-9._-]/g, '_')
+      .replace(/_{2,}/g, '_')
+      .toLowerCase();
+
+    // Ensure extension is preserved
+    const parts = sanitized.split('.');
+    if (parts.length > 1) {
+      const ext = parts.pop();
+      const name = parts.join('_');
+      return `${name}.${ext}`;
+    }
+
+    return sanitized;
+  }
+
+  /**
+   * Generates unique storage path for uploaded file
+   */
+  export function generateStoragePath(
+    projectId: string,
+    assetId: string,
+    fieldType: 'thumbnail' | 'file' | 'reference',
+    filename: string
+  ): string {
+    const sanitized = sanitizeFilename(filename);
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+
+    return `${projectId}/${assetId}/${fieldType}-${timestamp}-${random}-${sanitized}`;
+  }
+  ```
+
+  ### Zod Schemas
+
+  ```typescript
+  import { z } from 'zod';
+
+  export const UploadMetadataSchema = z.object({
+    assetId: z.string().uuid(),
+    projectId: z.string().uuid(),
+    fieldType: z.enum(['thumbnail', 'file', 'reference']),
+    category: z.enum(['image', 'video', 'audio']),
+  });
+
+  export const UploadResponseSchema = z.object({
+    url: z.string().url(),
+    path: z.string(),
+    size: z.number(),
+    contentType: z.string(),
+  });
+  ```
+
+  ### File Changes
+
+  | Action | Path |
+  |--------|------|
+  | CREATE | `packages/features/assets/src/lib/upload-validation.ts` |
+  | CREATE | `packages/features/assets/src/lib/upload-validation.test.ts` |
+
+  ## Security Considerations
+
+  - **Path Traversal**: Sanitize filenames to prevent `../../../etc/passwd`
+  - **Content-Type Spoofing**: Verify magic bytes, don't trust Content-Type header alone
+  - **Storage Isolation**: Files stored in project-specific paths
+  - **Size Limits**: Enforced at application layer before storage
+  - **Metadata Stripping**: Consider EXIF removal for privacy (future enhancement)
+
+  ## Error Handling
+
+  | Scenario | Error Code | User Message |
+  |----------|------------|--------------|
+  | File too large | `FILE_TOO_LARGE` | "File is X MB but maximum allowed is Y MB" |
+  | Wrong MIME type | `INVALID_TYPE` | "File type 'X' not allowed. Accepted: Y, Z" |
+  | Wrong extension | `INVALID_EXTENSION` | "Extension '.X' not allowed. Use: .Y, .Z" |
+  | Corrupted content | `CORRUPTED_FILE` | "File appears corrupted or mislabeled" |

@@ -1,0 +1,250 @@
+spec_id: "FILM-101m"
+title: "Shared Resources Table"
+phase: 1
+phase_name: "Foundation"
+category: database_table
+status: DONE
+audited: "2026-09-23"
+effort: XS
+dependencies: []
+summary: >
+  The `shared_resources` table stores organization-level assets that can be reused across projects:
+  sound effects libraries, music templates, and system-provided resources. Distinguishes between
+  user-uploaded and system resources.
+database_table:
+  table_name: "shared_resources"
+  migration: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql"
+  columns:
+    - name: "id"
+      type: "UUID"
+      nullable: false
+      default: "gen_random_uuid()"
+      description: "Primary key"
+    - name: "account_id"
+      type: "UUID"
+      nullable: false
+      default: null
+      description: "Account owning this resource"
+    - name: "type"
+      type: "VARCHAR(50)"
+      nullable: false
+      default: null
+      description: "Resource type (see enum)"
+    - name: "name"
+      type: "VARCHAR(255)"
+      nullable: false
+      default: null
+      description: "Resource name"
+    - name: "description"
+      type: "TEXT"
+      nullable: true
+      default: "NULL"
+      description: "Resource description"
+    - name: "file_url"
+      type: "TEXT"
+      nullable: true
+      default: "NULL"
+      description: "URL to resource file"
+    - name: "tags"
+      type: "TEXT[]"
+      nullable: true
+      default: "NULL"
+      description: "Searchable tags"
+    - name: "is_system"
+      type: "BOOLEAN"
+      nullable: false
+      default: "FALSE"
+      description: "System-provided resource"
+    - name: "created_at"
+      type: "TIMESTAMPTZ"
+      nullable: false
+      default: "NOW()"
+      description: "Creation timestamp"
+  indexes:
+    - name: "idx_shared_resources_account_id"
+      columns: ["account_id"]
+      unique: false
+    - name: "idx_shared_resources_type"
+      columns: ["account_id", "type"]
+      unique: false
+    - name: "idx_shared_resources_tags"
+      columns: ["tags"]
+      unique: false
+    - name: "idx_shared_resources_system"
+      columns: ["is_system", "type"]
+      unique: false
+  foreign_keys: []
+  rls_enabled: null
+acceptance_criteria:
+  - text: "Table created with all columns"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:254"
+  - text: "Type enum constraint enforced"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:264"
+  - text: "GIN index on tags array"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:275"
+  - text: "is_system flag differentiates user vs system resources"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:262"
+  - text: "Can query system resources across all accounts"
+    met: false
+    reason: "unverified — needs a pgTAP test; the read policy admits is_system rows (apps/web/supabase/migrations/20251210201500_fix-account-rls-helpers.sql:190)"
+test_plan:
+  unit:
+    - text: "Insert resource with valid type succeeds"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert resource with invalid type fails"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert with is_system = TRUE succeeds"
+      met: false
+      reason: "not met — no test found"
+    - text: "Tags array stores and retrieves correctly"
+      met: false
+      reason: "not met — no test found"
+  integration:
+    - text: "Query all SFX for account"
+      met: false
+      reason: "not met — no test found"
+    - text: "Query system resources (is_system = TRUE)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Search by tags (GIN index)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Filter by type and tags combined"
+      met: false
+      reason: "not met — no test found"
+  e2e: []
+  edge_cases:
+    - text: "Resource with no file_url (preset/config only)"
+      met: false
+      reason: "not met — no test found"
+    - text: "Empty tags array"
+      met: false
+      reason: "not met — no test found"
+    - text: "Very long tags array (100+ tags)"
+      met: false
+      reason: "not met — no test found"
+    - text: "System resource accessed by multiple accounts"
+      met: false
+      reason: "not met — no test found"
+    - text: "User trying to set is_system = TRUE (prevented at app level)"
+      met: false
+      reason: "not met — no test found; the insert policy refuses it (apps/web/supabase/migrations/20251210201500_fix-account-rls-helpers.sql:196)"
+open_questions: []
+notes: |
+  Sections of the Markdown spec that have no typed field, kept verbatim. Moved to typed fields: the Context paragraph (summary), the column table (database_table.columns), index names and columns, unique keys and foreign keys (database_table) and the acceptance criteria and test-plan checklists.
+
+  ## Metadata
+  - **Phase:** 1
+  - **Priority:** P0
+  - **Effort:** XS
+  - **Status:** ✅ COMPLETE
+  - **Completed:** 2025-12-05
+  - **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
+  - **Dependencies:** None (depends on existing accounts)
+  - **Blocks:** Phase 5 (audio generation features)
+
+  ## Specification
+
+  ### Table Definition
+  ```sql
+  CREATE TABLE shared_resources (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    account_id UUID NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    file_url TEXT,
+    tags TEXT[],
+    is_system BOOLEAN DEFAULT FALSE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    CHECK (type IN ('sfx', 'music_template', 'transition', 'overlay', 'preset'))
+  );
+  ```
+
+  ### Type Enum Values
+  - `sfx` - Sound effects (footsteps, doors, impacts, etc.)
+  - `music_template` - Music tracks available for use
+  - `transition` - Video transitions (fade, wipe, etc.)
+  - `overlay` - Visual overlays (borders, effects)
+  - `preset` - Generation presets (prompt templates)
+
+  ### Indexes
+  ```sql
+  CREATE INDEX idx_shared_resources_account_id ON shared_resources(account_id);
+  CREATE INDEX idx_shared_resources_type ON shared_resources(account_id, type);
+  CREATE INDEX idx_shared_resources_tags ON shared_resources USING GIN (tags);
+  CREATE INDEX idx_shared_resources_system ON shared_resources(is_system, type)
+    WHERE is_system = TRUE;
+  ```
+
+  ### Constraints
+  - **Primary Key**: `id`
+  - **Check Constraint**: `type` in enum values
+
+  ### Example Data
+  ```sql
+  -- User-uploaded SFX
+  INSERT INTO shared_resources (account_id, type, name, description, file_url, tags)
+  VALUES (
+    'account-123',
+    'sfx',
+    'Sword Slash',
+    'Sharp metal blade swoosh',
+    'https://storage.example.com/sfx/sword-slash.mp3',
+    ARRAY['combat', 'weapon', 'sword', 'metal']
+  );
+
+  -- System-provided music template
+  INSERT INTO shared_resources (account_id, type, name, description, file_url, tags, is_system)
+  VALUES (
+    'system-account-id',
+    'music_template',
+    'Epic Battle Theme',
+    'Orchestral battle music with rising tension',
+    'https://cdn.example.com/music/epic-battle.mp3',
+    ARRAY['orchestral', 'battle', 'epic', 'intense'],
+    TRUE
+  );
+
+  -- Generation preset
+  INSERT INTO shared_resources (account_id, type, name, description, tags)
+  VALUES (
+    'account-123',
+    'preset',
+    'Cinematic Wide Shot',
+    'Preset for cinematic establishing shots',
+    ARRAY['cinematic', 'wide', 'establishing']
+  );
+  ```
+
+  ## File Changes
+  | Action | Path |
+  |--------|------|
+  | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
+
+  ## Test Plan
+
+  ### Query Examples
+  ```sql
+  -- Get all SFX for account including system resources
+  SELECT *
+  FROM shared_resources
+  WHERE (account_id = 'account-123' OR is_system = TRUE)
+    AND type = 'sfx'
+  ORDER BY is_system DESC, name;
+
+  -- Search by tag
+  SELECT *
+  FROM shared_resources
+  WHERE account_id = 'account-123'
+    AND tags && ARRAY['combat', 'weapon'];
+
+  -- Get popular system resources (most commonly used)
+  -- (Requires usage tracking - future enhancement)
+  ```

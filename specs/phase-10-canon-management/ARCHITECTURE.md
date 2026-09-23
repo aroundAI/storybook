@@ -236,9 +236,9 @@ Total Context Window: 40,000 tokens
 ### Algorithm Details
 
 See individual spec files for full pseudocode:
-- [FILM-1003: Continuity Validator](lib/FILM-1003-continuity-validator.md) - All 9 validation rules
-- [FILM-1004: Memory Context Builder](lib/FILM-1004-memory-context-builder.md) - Token budgeting
-- [FILM-1006: LLM Role Separation](prompts/FILM-1006-llm-role-separation.md) - Orchestration
+- [FILM-1003: Continuity Validator](lib/FILM-1003-continuity-validator.yaml) - All 9 validation rules
+- [FILM-1004: Memory Context Builder](lib/FILM-1004-memory-context-builder.yaml) - Token budgeting
+- [FILM-1006: LLM Role Separation](prompts/FILM-1006-llm-role-separation.yaml) - Orchestration
 
 ---
 
@@ -434,7 +434,7 @@ interface CanonSettings {
 }
 ```
 
-**See also**: [FILM-1007: Canon UI Components](ui/FILM-1007-canon-ui-components.md)
+**See also**: [FILM-1007: Canon UI Components](ui/FILM-1007-canon-ui-components.yaml)
 
 ---
 

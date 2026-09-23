@@ -1,0 +1,498 @@
+spec_id: "FILM-1703"
+title: "Data Provenance Capability Model"
+phase: 17
+phase_name: "Analytics Provenance and Signal"
+category: feature
+status: PARTIAL
+effort: M
+dependencies:
+  - spec_id: "FILM-1721"
+    note: null
+summary: >
+  The analytics page presents YouTube, TikTok and Instagram numbers as though they were one kind of
+  thing, and the differences between what each platform natively reports, derives, has never been
+  asked for, or cannot report at all are large enough to invert a conclusion. This spec is the
+  single, pure, dependency-free definition of that truth — a four-level SupportLevel
+  (native/derived/not_ingested/unsupported) deliberately without a fifth 'fabricated' level, crossed
+  with orthogonal access/availability/window axes so that 'the platform can't' is never collapsed
+  into 'we haven't'. It ships no UI; its value is being kept honest by three test layers — a
+  structural check that every (family, platform) pair is populated, a writer-binding check that
+  fails CI the moment ingest code and the matrix disagree about what is written, and a live cross-
+  check against a real ClickHouse service.
+acceptance_criteria:
+  - text: "The module imports nothing but types, and a client component can import it without pulling in the ClickHouse driver"
+    met: true
+    evidence: "packages/clickhouse/src/lib/data-provenance.ts is pure — no ClickHouse driver, no server-only, no imports beyond types (§3)"
+  - text: "Every metric family has an entry for every value of `AnalyticsPlatform`"
+    met: true
+    evidence: "data-provenance.test.ts structural test (§5a)"
+  - text: "Adding a platform to `AnalyticsPlatform` fails the test suite until the matrix is extended"
+    met: true
+    evidence: "data-provenance.test.ts structural test (§5a)"
+  - text: "`unsupported` and `not_ingested` are distinguishable by a consumer, and every `not_ingested` entry names what blocks it"
+    met: true
+    evidence: "§5a: not_ingested requires a non-null blockedBy; unsupported requires blockedBy: null"
+  - text: "Every non-`native` entry carries a sentence written for a creator, not for a developer"
+    met: true
+    evidence: "§5a: every entry has a non-empty note"
+  - text: "Adding a writer for a table in an unlisted file fails CI"
+    met: true
+    evidence: "WRITER_CALL_SITES test (§5b)"
+  - text: "Removing a writer from a listed file fails CI"
+    met: true
+    evidence: "WRITER_CALL_SITES test (§5b)"
+  - text: "The live check reports any platform present in a table but marked `unsupported` or `not_ingested`"
+    met: true
+    evidence: "verify-queries.ts subset assertion (§5c), run against a real ClickHouse 24.8 service container on every pull request by the clickhouse-sql job"
+  - text: "The declared derivation for a platform is consistent with the `metric_source` values actually observed for it"
+    met: true
+    evidence: "§5c reconciliation against VideoMetric.metric_source"
+  - text: "No consumer restates a platform list that the matrix could have told it"
+    met: false
+    reason: "not met here, by design: this spec ships no UI (§1, §6), so the matrix has no consumer yet. The seven hardcoded claims are FILM-1701's to remove and FILM-1705's to derive; see remaining"
+  - text: "Every entry carries capability, access, availability and window"
+    met: true
+    evidence: null
+  - text: "`scope_missing`, `review_required` and `account_type_gated` are distinguishable, because they have different owners"
+    met: true
+    evidence: "§4 table: state, who resolves it, what the user is told"
+  - text: "`unknown` availability is never a default and always names its owner and question"
+    met: true
+    evidence: null
+  - text: "`DataWindow.anchoredOn` is explicit, so a job-creation-anchored window is not confused with a publish-anchored one"
+    met: true
+    evidence: null
+  - text: "Every entry traces to a cited row in FILM-1721"
+    met: true
+    evidence: "capability-matrix-reference.test.ts, reading docs/platform-capability-reference.md through the same parser as the FILM-1721 guard (§10 as built)"
+  - text: "A metric name absent from FILM-1721 cannot be added to the matrix"
+    met: true
+    evidence: "capability-matrix-reference.test.ts (§10 as built)"
+  - text: "Instagram `watch_time` is `not_ingested` with `blockedBy` naming FILM-1712 — never `unsupported`, because Instagram documents it"
+    met: true
+    evidence: "§2 correction, 2026-09-21: ig_reels_avg_watch_time and ig_reels_video_view_total_time are documented for Instagram REELS and simply never requested"
+  - text: "YouTube `revenue` is `scope_missing` naming FILM-1711 for a YPP creator, and `account_type_gated` for a non-YPP one — never `native` while the monetary scope is absent"
+    met: true
+    evidence: "§1 correction, 2026-09-21: yt-analytics-monetary.readonly is not requested; since 2026-09-09 the revenue metrics are additionally YouTube Partner Program members only"
+  - text: "When FILM-1712 or FILM-1711 lands, the entry moves to `native` in the same change that starts writing the data; the writer-binding test (§5b) fails a change that does one without the other"
+    met: true
+    evidence: "§5b writer-binding test design: a change that starts writing the data without flipping the matrix entry to native fails CI, in either direction"
+remaining:
+  - criterion: "No consumer restates a platform list that the matrix could have told it"
+    reason: "This spec ships no UI (§1, §6), so the matrix has no consumer yet. The seven hardcoded claims (overview/views-card.tsx:38-39 among them; FILM-1705 §1 lists all seven) are removed by FILM-1701 and derived from the matrix by FILM-1705."
+    closed_by: "FILM-1705"
+  - criterion: "blockedBy on the four TikTok Business-API entries (watch_time, traffic_sources, reach, geography) names the correct spec"
+    reason: "Moves from the placeholder FILM-1712 to FILM-1730 in the first change made after PR #285 merges. It cannot move earlier: the structural test requires the id to resolve to a spec file that exists on this branch, and FILM-1730's file does not yet."
+    closed_by: "FILM-1730"
+open_questions: []
+notes: |
+  ## 1. Overview
+
+  The analytics page presents numbers from three platforms as though they were
+  one kind of thing. They are not, and the differences are large enough to
+  invert a conclusion.
+
+  Established by reading every writer and confirming against a live ClickHouse:
+
+  | Data | YouTube | TikTok | Instagram |
+  |---|---|---|---|
+  | `video_traffic_sources` | native | **not ingested** | **unsupported** |
+  | `channel_daily`, `video_reach_daily`, `video_retention_curves` | native | — | — |
+  | `video_metrics` | native, true daily | **derived** — snapshot delta | **derived** — snapshot delta |
+  | Watch time | native | **not ingested** — needs a Business API app | **not ingested** — documented, never requested; **FILM-1712** |
+  | Revenue from sync | **`scope_missing`** — plumbed, unauthorised; **FILM-1711**. `account_type_gated` for non-YPP creators | — | — |
+  | `video_audience` | 7 dimensions | 3, percentage-only | 3, account-level |
+
+  Two rows corrected 2026-09-21, both in the same direction — *we haven't* was
+  being recorded as *the platform can't*:
+
+  - **Watch time.** `ig_reels_avg_watch_time` and `ig_reels_video_view_total_time`
+    are documented for Instagram REELS and simply never requested, so Instagram's
+    watch-time level is `not_ingested`, not `unsupported`. TikTok's is
+    `not_ingested` too, but for a costlier reason — a separate Business API app.
+    The two share a level and not a price, which is what the `blockedBy` field is
+    for.
+  - **Revenue.** This read `native` for YouTube unconditionally. YouTube revenue is
+    plumbed end to end — `analytics-sync-cron.ts:733-735` maps it and
+    `upsertRevenueRecords` writes it to `revenue_records` with `source = 'api'` —
+    but arrives as zero because `yt-analytics-monetary.readonly` is not requested.
+    That is `scope_missing`, and since 2026-09-09 the metrics are additionally
+    **YouTube Partner Program members only**, which is `account_type_gated` — the
+    same creator-resolved shape as TikTok's Business account, and its second
+    instance. Facebook has its own revenue surface; see FILM-1726.
+
+  `insertVideoTrafficSources` has exactly three call sites in the repository —
+  `server/reporting/report-ingest.ts:316`,
+  `apps/web/scripts/seed-local-analytics.ts:302` and
+  `packages/clickhouse/scripts/verify-queries.ts:242` — and every one hardcodes
+  `platform: 'youtube'`. The column exists on the table and in the type; in
+  practice it has never held another value.
+
+  This spec builds the single definition of those facts. It contains no UI.
+
+  ## 2. Four levels, and why a fifth would be wrong
+
+  The distinction that earns this module its keep is between *the platform can't*
+  and *we haven't*:
+
+  - **`unsupported`** — Instagram has no traffic-source concept at all. Its
+    provider type (`providers/instagram/types.ts:40-45`) has only `totals` and
+    `audience`. There is nothing to fetch.
+  - **`not_ingested`** — TikTok reports traffic sources as `impression_sources`
+    on the **Business API**, which needs a separate app registration and a TikTok
+    Business account. We have neither, so nothing arrives. The
+    `TikTokTrafficSource` shape (`providers/tiktok/types.ts`) is kept for that
+    integration: `{ source, percentage }` with human labels — `'For You'`,
+    `'Following'`, `'Sound'` — which is structurally incompatible with
+    `VideoTrafficSource` (it requires `views` and `watch_time_minutes`) and
+    lexically disjoint from `SOURCE_TO_GROUP`, so every TikTok source would land
+    in `other`. **This is our gap, not TikTok's**, on both counts: the app we
+    have not registered, and the mapping we have not written.
+
+    ⚠️ **The evidence for this changed under FILM-1721; the conclusion did not.**
+    This spec originally read "TikTok's provider *does* return traffic sources
+    (`tiktok-analytics.ts:207`)". It did not. The provider parsed a
+    `traffic_source_types` field that the Display API has never had — one of the
+    five fabricated names FILM-1721 found — so `parseTrafficSources` could only
+    ever receive `undefined`. The fabrication and the dead parse are gone. Read
+    the capability from
+    docs/platform-capability-reference.md,
+    never from our own types: that is the whole point of FILM-1721, and this
+    paragraph is what it looks like when the rule is not followed.
+  - **`derived`** — TikTok and Instagram daily metrics are snapshot deltas
+    attributed to the *fetch* day rather than the data day
+    (`server/ingest.ts:287-299`). They occupy the same columns as YouTube's true
+    daily rows and are not comparable to them.
+  - **`native`** — the platform reports it and we ingest it directly.
+
+  A single "⚠️ limited" label collapses all four, and in doing so tells a creator
+  to stop asking for something we could actually build. The four levels are the
+  product of this spec; do not add a fifth. In particular there is no
+  *fabricated* level — FILM-1701 removes the only data that would have needed
+  one, and keeping the model unable to express fabrication is what stops the next
+  person reaching for it.
+
+  ## 3. Where it lives, and why
+
+  `packages/clickhouse/src/lib/data-provenance.ts`, exported from
+  `packages/clickhouse/src/index.ts` — the client-safe barrel, beside the
+  `traffic-groups` exports.
+
+  That package rather than `content-analytics` for two reasons. Its own
+  precedent: `lib/traffic-groups.ts` states in its header that it is pure and
+  dependency-free "so a zod schema or a browser bundle can share the granularity
+  list instead of restating it and drifting". And proximity: the table
+  definitions and every insert function live in this package, so the honesty test
+  in §5 and the thing it guards are neighbours.
+
+  Pure means pure — no ClickHouse driver, no `server-only`, no imports beyond
+  types — so a client component can read it without pulling `@clickhouse/client`
+  into the bundle.
+
+  ## 4. The shape
+
+  ```ts
+  export const METRIC_FAMILIES = [
+    'engagement',       // views/likes/comments/shares   → video_metrics
+    'watch_time',       //                               → video_metrics
+    'revenue',          //                               → video_metrics
+    'traffic_sources',  //                               → video_traffic_sources
+    'retention_curve',  //                               → video_retention_curves
+    'reach',            // impressions, CTR              → video_reach_daily
+    'channel_totals',   // subscribers                   → channel_daily
+    'demographics', 'geography', 'device', 'follower_status', // → video_audience
+  ] as const;
+
+  export type SupportLevel = 'native' | 'derived' | 'not_ingested' | 'unsupported';
+
+  export type DerivationMethod =
+    | 'snapshot_delta_fetch_day'  // delta attributed to the fetch day
+    | 'percentage_only'           // provider reports share, not counts
+    | 'account_level'             // dimension describes the channel, not the asset
+    | 'publish_attribute';
+
+  export interface PlatformCapability {
+    level: SupportLevel;
+    table: SourceTable | null;          // null iff unsupported or not_ingested
+    method?: DerivationMethod;          // required iff level === 'derived'
+    note: string;                       // one sentence, rendered verbatim to users
+    nativeSources?: readonly string[];  // feeds the FILM-1708 drill-down
+    blockedBy?: string | null;          // ticket id; null iff platform-impossible
+  }
+
+  export const CAPABILITY_MATRIX:
+    Record<MetricFamily, Record<AnalyticsPlatform, PlatformCapability>>;
+  ```
+
+  ### Four axes, not one level
+
+  Research (FILM-1721) made a single level untenable. Instagram is *capable* and
+  *implemented* and still returns nothing, because we lack a permission. X is
+  capable and gated on a contract. TikTok's deep metrics are gated on something
+  neither we nor the platform controls — **the creator's account type**.
+
+  `SupportLevel` stays exactly as specced. Three orthogonal fields join it:
+
+  ```ts
+  interface PlatformCapability {
+    level: SupportLevel;         // what the platform can do, and what we built
+    access: AccessState;         // whether we are permitted
+    availability: Availability;  // whether we can obtain it commercially
+    window: DataWindow;          // how far back, anchored on what
+    ...
+  }
+
+  type AccessState =
+    | 'authorised'          // scope held AND verified against a live account
+    | 'scope_missing'       // the scope exists; our OAuth config does not ask
+    | 'review_required'     // App Review / audit needed before we may ask
+    | 'review_pending'
+    | 'review_denied'
+    | 'account_type_gated'; // e.g. TikTok Business account — the creator's call
+
+  type Availability = 'included' | 'metered' | 'tier_gated' | 'unknown';
+
+  interface DataWindow {
+    maxAgeDays: number | null;        // null = unbounded
+    anchoredOn: 'publish_date' | 'job_creation' | 'request_date';
+    stopsUpdatingAfterDays?: number;
+  }
+  ```
+
+  **This does not violate §2's "do not add a fifth level" — it is what that rule
+  was protecting.** The prohibition guards the capability axis against having
+  absence-for-any-reason collapsed into it. Adding orthogonal axes is the
+  alternative to that collapse, not an instance of it.
+
+  Each state has a different owner and a different sentence:
+
+  | State | Who resolves it | What the user is told |
+  |---|---|---|
+  | `scope_missing` | us, this sprint | "Reconnect your account" |
+  | `review_required` | us, over weeks | a roadmap item |
+  | `account_type_gated` | **the creator** | "Switch to a Business account" |
+  | `tier_gated` | a commercial decision | possibly never |
+  | `unknown` | must be resolved before it is claimed either way | nothing |
+
+  `unknown` is not a default. It means *we asked and the vendor does not
+  publish it* — X's `/2/media/analytics` historical window is the live example —
+  and it carries the owner and the question.
+
+  `DataWindow.anchoredOn` matters as much as the number. YouTube's reporting
+  backfill is 30 days from **job creation**, so it shrinks the longer we wait to
+  onboard a channel; X's is 30 days from **post creation**, so it is fixed per
+  post. Those constrain benchmarking differently.
+
+  `note` is not optional and is not developer commentary — it is the sentence a
+  creator reads when they ask why a number is missing. Writing it is part of
+  adding a matrix entry.
+
+  Accessors, which are the whole public API:
+
+  - `capabilityFor(family, platform)`
+  - `platformsWithData(family)` — levels `native | derived`; drives filter
+    dimming and replaces the hardcoded platform claim in
+    `components/overview/views-card.tsx:38-39`
+  - `coverageSummary(family, selectedPlatforms)` →
+    `{ measured, derived, absent, caveats }` — the one call a card makes
+
+  ## 5. How it is kept honest
+
+  A matrix that drifts from the pipeline is worse than no matrix, because it is
+  believed. Three layers, in `packages/clickhouse/__tests__/data-provenance.test.ts`:
+
+  **(a) Structural.** Every (family, platform) pair has an entry — so adding a
+  value to `AnalyticsPlatform` fails the suite until the matrix is extended.
+  Every entry carries all four axes. `derived` requires `method`. `native |
+  derived` require a non-null `table`. `unsupported` requires `table: null`
+  **and** `blockedBy: null`. `not_ingested` requires a non-null `blockedBy`.
+  `review_pending` and `review_denied` require a date. `unknown` availability
+  requires a named owner and the question to be answered. Every entry has a
+  non-empty `note`, and a `window` whose `anchoredOn` is set.
+
+  **(b) Writer binding — the load-bearing one.** Export
+
+  ```ts
+  export const WRITER_CALL_SITES: Record<SourceTable, readonly string[]>;
+  ```
+
+  and assert over a repository scan that every listed file still calls that
+  insert function, **and that no unlisted file calls it**. Today
+  `video_traffic_sources` lists three files (§1). A new TikTok traffic-source
+  writer added anywhere in the monorepo then fails CI, and the only way to green
+  it is to edit the matrix in the same pull request.
+
+  This is deliberately not a regex for `platform:` literals, which would break
+  the day someone passes a variable. It binds to *call sites*, which is the thing
+  that actually changes when coverage changes.
+
+  **(c) Live cross-check.** Extend `packages/clickhouse/scripts/verify-queries.ts`
+  — already run against a real ClickHouse 24.8 service container on every pull
+  request by the `clickhouse-sql` job — to assert, per family, that the platforms
+  actually present in the table are a **subset** of those the matrix marks
+  `native` or `derived`.
+
+  Subset, not equality, deliberately. Every table in a fresh fixture holds
+  `youtube` or nothing; an equality assertion would fail on any table the fixture
+  leaves empty, which is most of them. The matrix claims what the pipeline *may*
+  produce; this catches it producing more than it claims. Closing the other
+  direction — proving a `native` entry is genuinely populated — needs the
+  multi-platform fixture from FILM-1701, which is one more reason that spec
+  sequences first.
+
+  `metric_source` already exists on `VideoMetric` (`types.ts:17,44`) with values
+  `analytics_api | reporting_api | snapshot_delta | backfill`. Reconcile against
+  it rather than inventing a parallel notion of derivation: a `reporting_api` row
+  for TikTok means the matrix is wrong.
+
+  ## 6. Out of scope
+
+  - Every visual surface. No chip, no strip, no filter change — FILM-1705.
+  - Observed coverage, which is per-project and per-window rather than static —
+    FILM-1704.
+  - Ingesting TikTok traffic sources. This spec records that we don't; building
+    it is its own spec, and `blockedBy` is where its id goes.
+  - Facebook, Twitter and LinkedIn. `AnalyticsPlatform` is a three-value union
+    and the ClickHouse column is a three-value `Enum`; the wider `CHECK` on
+    `platform_connections` is a known inconsistency, recorded in the phase README
+    and settled in FILM-1705.
+
+  ## 8. Verification
+
+  ```bash
+  pnpm --filter @kit/clickhouse test
+  ./scripts/local-env.sh verify
+  pnpm turbo typecheck --force && pnpm lint
+  ```
+
+  Mutation-test the guard rather than trusting it — the suite is the deliverable:
+
+  - add a fake `insertVideoTrafficSources` call in an unlisted file; test (b) must fail
+  - flip `traffic_sources × tiktok` to `native`; test (c) must fail once the fixture has TikTok rows
+  - drop a `note`; test (a) must fail
+  - add a platform to `AnalyticsPlatform`; test (a) must fail
+
+  A guard that has never been seen failing has not been verified.
+
+  ## 9. Risk
+
+  The real risk is the matrix quietly becoming decoration — accurate on the day
+  it is written and wrong six months later. Test (b) is the entire mitigation,
+  and it only works while the matrix stays in code. If it is ever moved into the
+  database or made account-overridable, test (b) dies and the module loses its
+  reason to exist. That is the same argument `traffic-groups.ts` makes for itself
+  in its own header, and it should be treated as a locked decision.
+
+  The lesser risk is over-modelling: roughly eleven families times three
+  platforms is thirty-three entries, most of them `unsupported` with similar
+  copy. That is acceptable. Resist collapsing them with clever defaults — the
+  repetition is what makes each claim individually reviewable.
+
+  ## 10. As built
+
+  Where the implementation had to decide something this spec left open, or found
+  the spec out of date. Each is a judgement call and is recorded so it can be
+  disagreed with.
+
+  **`account_type_gated` is resolved per creator, not stored.** §7 asks one entry
+  — YouTube revenue — to be `scope_missing` for a YPP creator and
+  `account_type_gated` for a non-YPP one. A static field cannot be both, and the
+  matrix cannot know who is asking. So an entry's `access` is always *our* state
+  (`OurAccessState`, which excludes `account_type_gated` at the type level), the
+  creator's side is an optional `accountGate: { requirement, note }`, and
+  `accessFor(family, platform, { meetsAccountGate })` returns the full
+  `AccessState`. TikTok's Business-API entries carry the gate the same way: a
+  personal account is `account_type_gated`; a Business account is
+  `review_required`, because the app is still ours to register.
+
+  **TikTok and Instagram are `review_required`, not `scope_missing`.** The
+  reference's summary says "scope missing" for TikTok and "permission missing"
+  for Instagram, and also that app review is
+  mandatory for production on every TikTok scope and that Meta needs App Review
+  and Business Verification. §4's table separates the two by what the user is
+  told — "reconnect your account" against "a roadmap item" — and reconnecting
+  today would gain a creator nothing. Only YouTube revenue is `scope_missing`.
+
+  **`channel_totals` reads two tables.** §4 maps it to `channel_daily`, which only
+  YouTube writes. But "subscribers" is also `channel_subscribers` (FILM-1607),
+  which takes a daily follower level from all three platforms — and a subscriber
+  card declaring `metricFamily: 'channel_totals'` under FILM-1706 would otherwise
+  be told TikTok has nothing. So `SourceTable` gains `channel_subscribers`, and
+  TikTok and Instagram are `native` there, each note saying that channel-wide
+  daily views are not part of it. Instagram's is the one non-YouTube entry marked
+  `authorised`: `followers_count` needs only `instagram_basic`, which we hold and
+  which the connect callback exercises for every account it links.
+
+  **§1's `video_audience` row is out of date for TikTok.** "3, percentage-only"
+  described a provider that, since FILM-1721, returns `audience: undefined`
+  unconditionally — the Display API has no demographics. The matrix records
+  `demographics` as `unsupported` (no surface in the reference) and `geography` as
+  `not_ingested` (`audience_countries`, Business API). The TikTok branch of
+  `buildAudienceRows` is now dead code; removing it is not this spec's.
+
+  **TikTok's Business-API entries name FILM-1712 as their blocker, as a
+  placeholder.** FILM-1712 §4 describes that integration and recommends splitting
+  it into its own spec. Owner decision, 2026-09-22: that spec is **FILM-1730**
+  (PR #285). Its file does not exist on this branch and the suite requires
+  `blockedBy` to resolve to a spec that exists, so the four entries keep
+  `FILM-1712` here — see §11.
+
+  **Every entry carries a `reference`** — the `##` section of
+  `docs/platform-capability-reference.md` it was read from, and for every level
+  but `unsupported` the field-index block and vendor names. That is what makes
+  "traces to a cited row" and "a name absent from FILM-1721 cannot be added"
+  testable. The test lives in `@kit/content-analytics`
+  (`capability-matrix-reference.test.ts`), beside the FILM-1721 guard, so both
+  read the document through one parser.
+
+  **§5b cannot see a family that shares a table**, and the last criterion in §7
+  needs it to: Instagram watch time would arrive through the `insertVideoMetrics`
+  call that is already listed. `INGESTION_MARKERS` closes that — per absent
+  entry, the literal that starting to collect it has to introduce
+  (`ig_reels_video_view_total_time`, `yt-analytics-monetary.readonly`,
+  `business-api.tiktok.com`), asserted against the matrix both ways.
+
+  **The live check does not probe `revenue`**, and says so in its output rather
+  than skipping silently. Fixtures carry `revenue_cents` on YouTube rows to
+  exercise the sums while every pipeline writer sets a literal `0`, so a probe
+  would be testing the fixtures. It also excludes the scan-scope step's noise
+  project, which holds TikTok and Instagram rows in tables those platforms never
+  write, as rows that exist to be not read.
+
+  **§8's second mutation cannot fail test (c) yet**, as §5c itself explains:
+  claiming *more* than the pipeline produces is the direction that needs
+  FILM-1701's multi-platform fixture. Today that mutation is caught by the
+  ingestion-marker test instead. What (c) was seen to catch: `traffic_sources ×
+  youtube` flipped to `not_ingested`, and `backfill` removed from the sources a
+  `native` platform may carry — both red against a real ClickHouse 24.8.
+
+  **`nativeSources` is set nowhere.** YouTube's raw source names live in
+  `traffic-groups.ts`, which this module may not import a value from, and a second
+  hand-kept copy would drift. FILM-1708 reads them from observed rows.
+
+  Every guard has a recorded red check: `tooling/mutation-guards/film-1703.json`,
+  which CI's Unit Tests job runs.
+
+  ## 11. Remaining
+
+  Status is `🟡 PARTIAL`, not done, because one acceptance criterion is open.
+  What is left, and who closes it:
+
+  **For downstream authors (FILM-1705, 1711, 1726): a consumer that knows
+  the creator's account type must call `accessFor(family, platform,
+  { meetsAccountGate })`, never read `.access`.** The stored `access` is only
+  *our* half of the state and can never be `account_type_gated`; reading it
+  directly tells a non-YPP creator, or a creator on a personal TikTok account, to
+  reconnect for something reconnecting cannot give them.
+feature:
+  database:
+    tables: []
+    columns_added: []
+  queries:
+    - {name: "capabilityFor(family, platform)", purpose: "Accessor into CAPABILITY_MATRIX", file: "packages/clickhouse/src/lib/data-provenance.ts"}
+    - {name: "platformsWithData(family)", purpose: "Platforms at level native|derived; drives filter dimming and replaces hardcoded platform claims", file: "packages/clickhouse/src/lib/data-provenance.ts"}
+    - {name: "coverageSummary(family, selectedPlatforms)", purpose: "Returns {measured, derived, absent, caveats} — the one call a card makes", file: "packages/clickhouse/src/lib/data-provenance.ts"}
+    - {name: "accessFor(family, platform, { meetsAccountGate })", purpose: "Full AccessState including the creator's account_type_gated half, which the stored access field can never carry", file: "packages/clickhouse/src/lib/data-provenance.ts"}
+  actions: []
+  ui: []
+  provider_integration: null

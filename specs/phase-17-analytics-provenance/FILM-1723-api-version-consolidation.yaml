@@ -1,0 +1,250 @@
+spec_id: "FILM-1723"
+title: "API Version Consolidation"
+phase: 17
+phase_name: "Analytics Provenance and Signal"
+category: feature
+status: PARTIAL
+effort: M
+dependencies: []
+summary: >
+  Four different Meta Graph API versions were pinned across the codebase
+  (v18.0, v19.0, v23.0), the oldest on the OAuth token-refresh critical path
+  that also feeds analytics sync; X was still on the retired v1.1 media
+  upload endpoint and legacy api.twitter.com hosts. This spec consolidates
+  each vendor to one pinned, documented version behind a single constant,
+  with a test that fails on any stray version literal. It settled first
+  whether Graph v18.0 still responded (it did, silently served as v20.0),
+  then pinned Meta to v23.0 and moved X to api.x.com and /2/media/upload.
+  Coordinates with phase 18's FILM-1801, which makes the same vendor hosts
+  overridable for the local sandbox — both edit the same constant files.
+acceptance_criteria:
+  - text: "Whether Graph v18.0 still responds is established first, and recorded"
+    met: true
+    evidence: "It responds, as v20.0; see the 'What was found and done' section"
+  - text: "If it does not, the token-refresh failure is treated as an incident, not as part of this spec's normal flow"
+    met: true
+    evidence: "Not triggered: refresh was being served, on a substituted version, so there was no outage to escalate"
+  - text: "Exactly one Meta Graph version constant exists, with a doc-comment naming its release date and expected end-of-life"
+    met: true
+    evidence: "META_GRAPH_VERSION in packages/shared/src/vendors/meta.ts"
+  - text: "Exactly one X host/version constant exists"
+    met: true
+    evidence: "X_API_BASE in packages/shared/src/vendors/x.ts"
+  - text: "A version literal outside those constants fails a test"
+    met: true
+    evidence: "packages/shared/__tests__/vendor-api-versions.test.ts; 14 mutation guards in tooling/mutation-guards/film-1723.json"
+  - text: "X uses api.x.com and /2/media/upload"
+    met: true
+    evidence: "In code and under test; not callable until media.write is granted (see the 'What was found and done' section)"
+  - text: "The Meta upgrade accounts for the 2025-04-21 metric removals rather than only changing the number"
+    met: true
+    evidence: "None is requested anywhere Meta is called; FILM-1721's forbidden list already covers the publishing providers and lambdas, and video_views (removed in v21, which the pin crosses) was added to it"
+  - text: "Token refresh is verified against a live Meta connection after the change, not only typechecked"
+    met: false
+    reason: "Not met. No Meta credentials or connection exist outside production. Tracked as FILM-1725 Check D, to run at the first deploy carrying this change"
+  - text: "The next expected deprecation date is recorded somewhere a person will see it"
+    met: true
+    evidence: "2027-10-08: at the top of \"Graph API versions\" in docs/platform-capability-reference.md, on the constant, and bound together by a test"
+remaining:
+  - criterion: "Token refresh verified against a live Meta connection after the change, not only typechecked"
+    reason: "No Meta credentials or connection exist outside production; blocked on nothing but the deploy. FILM-1725 Check D: one forced refresh, ensureValidToken(<meta connection id>, true), at the first deploy carrying this change"
+    closed_by: "FILM-1725"
+  - criterion: "A live X media upload against /2/media/upload (verification check 3)"
+    reason: "X credentials we do not hold. FILM-1725 Check E, which follows FILM-1729 and does not hold this spec open on its own"
+    closed_by: "FILM-1725"
+open_questions: []
+notes: |
+  Coordinate with phase 18's FILM-1801, which routes every vendor host through
+  one resolver so the local sandbox can stand in for it. Both edit the same
+  constants; doing them apart edits the same lines twice.
+
+  ## 1. Four Meta Graph versions, and the oldest is on the critical path
+
+  | Pin | Where |
+  |---|---|
+  | v18.0 | publishing/src/lib/token-refresh.ts:432,475 — the OAuth refresh |
+  | v18.0 | oauth/meta/config.ts, providers/facebook/types.ts, providers/instagram/instagram-provider.ts |
+  | v19.0 | apps/web/lambda/publish-worker/handlers/{facebook,instagram}.ts |
+  | v23.0 | content-analytics/src/providers/instagram/instagram-insights.ts |
+
+  Current is v26.0 (released 2026-07-29).
+
+  ensureValidToken — which calls graph.facebook.com/v18.0/oauth/access_token
+  — is imported by the token-refresh cron, connection actions, scheduled
+  publishes, the analytics sync cron, the YouTube backfill and subscriber
+  snapshots. A dead Graph version there breaks publishing and analytics at
+  once.
+
+  ## 2. v18.0 is very likely already dead
+
+  Meta deprecates a Graph version roughly two years after release. v18.0 shipped
+  in September 2023, putting its end-of-life around September 2025 — a year
+  ago.
+
+  If that holds, Meta token refresh has been failing silently for some time and
+  every Instagram and Facebook connection has been expiring without renewal. That
+  would be a second, independent explanation for why no Meta analytics data
+  exists, alongside the missing scopes in FILM-1711 — and the two would mask each
+  other, since both produce the same symptom of no data.
+
+  This is not proven. Meta sometimes serves retired versions past their
+  nominal date, and there is no Meta connection in the local fixture to test
+  against. It is one HTTP call to settle, and it must be the first action of
+  this spec: if true, it is a live production incident and not spec work.
+
+  ## 3. X is on legacy hosts and a retired endpoint
+
+  providers/twitter/twitter-provider.ts:12-13:
+
+  ```
+  const TWITTER_API_V2   = 'https://api.twitter.com/2';
+  const TWITTER_UPLOAD_API = 'https://upload.twitter.com/1.1/media/upload.json';
+  ```
+
+  and oauth/twitter/config.ts uses api.twitter.com for token, revoke and
+  userinfo.
+
+  The current host is api.x.com, and v1.1 media upload was retired in
+  favour of /2/media/upload. So the publishing path may already be broken for
+  the same class of reason as Meta's.
+
+  ## 4. What consolidation means
+
+  One pinned version per vendor, declared once.
+
+  - A single META_GRAPH_VERSION constant, imported everywhere. Not four
+    literals in four files.
+  - The same for the X host and API version.
+  - A test that fails when a version literal appears anywhere but the constant —
+    the same shape as FILM-1703's writer-binding test, and for the same reason:
+    the guarantee has to be mechanical or it decays.
+
+  Pin deliberately, and record why. A pinned version is a decision with an
+  expiry date, so the constant carries a doc-comment naming the version, its
+  release date and its expected end-of-life. Meta's two-year cadence makes that
+  computable; upgrading becomes a scheduled task rather than an outage.
+
+  ## 5. Upgrading is not only a version bump
+
+  Moving from v18 to v26 crosses several breaking changes already documented in
+  FILM-1721 — plays, impressions, clips_replays_count and
+  ig_reels_aggregated_all_plays_count were all removed for all versions on
+  2025-04-21, and views replaced them.
+
+  So the upgrade and the metric work in FILM-1712 touch the same code and should
+  be sequenced together rather than colliding.
+
+  The Instagram analytics provider is already on v23.0 and already uses views,
+  so it is closest to correct. The publishing providers are the stale ones.
+
+  ## 6. Out of scope
+
+  - Adding any scope or permission — FILM-1711.
+  - Adding any metric — FILM-1712.
+  - The TikTok Business API, which is a new integration rather than a version
+    bump — FILM-1712.
+
+  ## 8. Verification
+
+  ```bash
+  pnpm --filter @kit/publishing test
+  pnpm --filter @kit/content-analytics test
+  pnpm turbo typecheck --force && pnpm lint
+  ```
+
+  Unit tests cannot prove a remote API version still exists, so the decisive
+  checks are live:
+
+  1. One call to graph.facebook.com/v18.0/... — does it respond, or return a
+     deprecation error?
+  2. One token refresh against a real Meta connection after the bump.
+  3. One X media upload against /2/media/upload.
+
+  A green suite here proves the constant is used consistently. It does not prove
+  the version works, and the acceptance criteria say so.
+
+  ## 9. Risk
+
+  The token refresh path is the highest-risk code in this spec. Getting it
+  wrong takes publishing down along with analytics, and it is exercised by six
+  callers. It deserves to be changed on its own, verified against a live
+  connection, and not bundled with the metric work even though they touch
+  adjacent files.
+
+  The v18 question may turn this into an incident mid-spec. That is the right
+  outcome — better to find it here than to discover it when a creator asks why
+  their Instagram stopped publishing — but it means this spec should not be
+  scheduled as routine work without someone available to act on the answer.
+
+  ## 10. What was found and done (2026-09-22)
+
+  The v18 question, settled first. Meta reports the version it served in a
+  facebook-api-version response header. Unauthenticated, against /{version}/me,
+  2026-09-21T20:00Z:
+
+  | Requested | Served |
+  |---|---|
+  | v18.0 | v20.0 |
+  | v19.0 | v20.0 |
+  | v23.0 | v23.0 |
+  | v26.0 | v26.0 |
+
+  So §2's fear did not hold — refresh was not failing — and the README's correction
+  did: every publishing call, the OAuth dialog and the token refresh were running
+  on v20.0, a version nobody chose, which itself expires 2026-09-24. Left
+  alone, the same code would have moved to v21.0 three days later.
+
+  Pinned to v23.0, not v26.0. It is the only version this repository had run
+  deliberately, so Instagram insights requests are unchanged, and the refresh path
+  moves the shortest distance from what it was actually being served. v21–v23
+  change nothing on the OAuth, Page, publishing or container endpoints we call
+  (changelogs read for each). It expires 2027-10-08; bumping it is three
+  constants, one table row and a changelog read.
+
+  Where the pins live. packages/shared/src/vendors/ — meta.ts, x.ts,
+  linkedin.ts, one file per vendor, pure constants so the lambdas can import
+  them. FILM-1801's resolver is planned for the same directory: it replaces each
+  file's private *_HOST constant with vendorUrl() and touches nothing else.
+
+  X. Hosts moved to api.x.com / x.com. The upload is a rewrite, not a
+  rename: v2 has a separate endpoint per step, takes JSON on initialize, drops the
+  command and media_id form fields, and returns the id as data.id. Both
+  implementations (the provider and the publish lambda) were rewritten and each
+  has its own test.
+
+  Three things this spec surfaced and did not fix:
+
+  - X video upload needs the media.write scope, and we do not request it.
+    §6 rules scope changes out and FILM-1711 covers analytics scopes only, so it
+    was unowned when found (now FILM-1729, see the owner decisions below). Until
+    it is added and connections re-authorised, the upload is refused with a 403
+    — which the code now names. This is not a regression: the v1.1 endpoint it
+    replaces never accepted OAuth 2.0 user tokens and is retired.
+  - LinkedIn's LinkedIn-Version: 202401 was declared twice and is now
+    declared once, unchanged. It is probably past sunset, and probably inert
+    because every call goes to /v2/. Neither could be checked without a token.
+  - Nothing under apps/web/lambda/ is typechecked — no tsconfig includes it.
+    The touched handlers were checked by hand; four others fail on a type that
+    ../index does not export.
+
+  Not verified live, per the verification section above: a Meta token refresh
+  and an X media upload. Both are FILM-1725 Checks D and E.
+
+  ## 11. Remaining — owner decisions, 2026-09-22
+
+  - Meta stays pinned at v23.0 here. The move to v26.0 is FILM-1728 (PR #285).
+  - The X media.write scope is FILM-1729 (PR #285) — deferred, because there
+    are no X credentials to re-authorise or verify with.
+  - The two defects found while doing this work are filed in FILM-CC-04
+    (PR #285): KB-14, lambdas are not typechecked — reproduced: 0 lambda files
+    in the tsc program, 82 errors when they are included; and KB-15, X
+    connections are never refreshed.
+
+  Set the status to DONE when Check D has run and its result is recorded here.
+  Check E follows FILM-1729 and does not hold this spec open on its own.
+feature:
+  database: null
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null

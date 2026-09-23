@@ -82,13 +82,13 @@ being written, both of which change work downstream:
 
 Two of FILM-1721's three empirical checks could not run: one needs a paid X
 token, the other a TikTok sandbox app. They are **deferred, not dropped** —
-[FILM-1725](./FILM-1725-deferred-vendor-verifications.md) holds the question,
+[FILM-1725](./FILM-1725-deferred-vendor-verifications.yaml) holds the question,
 the command, what each blocks, and the event that brings it back. The X one
 gates FILM-1727's Enterprise tier and is the reason that spec should not be
 scoped against `/2/media/analytics` until it is answered. X itself is not
 blocked: it ships on the pay-per-use path.
 
-**FILM-1723 and FILM-1710 are the remaining true roots.** FILM-1723 and phase 18's [FILM-1801](../phase-18-local-vendor-sandbox/FILM-1801-vendor-base-url-resolver.md) edit the same host constants — one pins a version per vendor, the other makes each host overridable for the local sandbox. Do them together, or FILM-1723 first. FILM-1701 is
+**FILM-1723 and FILM-1710 are the remaining true roots.** FILM-1723 and phase 18's [FILM-1801](../phase-18-local-vendor-sandbox/FILM-1801-vendor-base-url-resolver.yaml) edit the same host constants — one pins a version per vendor, the other makes each host overridable for the local sandbox. Do them together, or FILM-1723 first. FILM-1701 is
 independent of the reference but feeds FILM-1705. Everything else descends from
 one of them — in particular FILM-1703 now depends on FILM-1721, so it is no
 longer a starting point.
@@ -103,15 +103,15 @@ thing that would read the column, through `getRetentionCurveAction`.
 
 | Spec | Status | Effort | Covers |
 |------|--------|--------|--------|
-| [FILM-1701](./FILM-1701-audience-truth-up.md) | ✅ DONE | M | Delete two fabricated cards, plumb the third from data we already ingest, fix the seed fixture's platform bug |
-| [FILM-1702](./FILM-1702-language-dimension-reconciliation.md) | ✅ DONE | L | Two disagreeing language columns, and the `'en'` default that doubles as the unknown bucket |
-| [FILM-1703](./FILM-1703-provenance-capability-model.md) | 🟡 PARTIAL | M | The capability matrix and the tests that stop it drifting from the writers |
-| [FILM-1704](./FILM-1704-observed-coverage.md) | DRAFT | M | One query answering what data exists for this project in this window |
-| [FILM-1705](./FILM-1705-provenance-surfaces.md) | DRAFT | L | Card chip, coverage strip, filter dimming |
-| [FILM-1706](./FILM-1706-analytics-card-shell.md) | DRAFT | M | Semantic tokens, progressive disclosure, required `metricFamily` |
-| [FILM-1707](./FILM-1707-six-tab-adoption.md) | DRAFT | L | All six tabs on one shell, and the Deep Dive scope decision |
-| [FILM-1708](./FILM-1708-traffic-drill-down-colour-ramp.md) | DRAFT | M | Group → native source drill-down; eight distinguishable colours |
-| [FILM-1709](./FILM-1709-platform-filter-completion.md) | DRAFT | L | The filter reaching the four tabs it currently ignores |
+| [FILM-1701](./FILM-1701-audience-truth-up.yaml) | ✅ DONE | M | Delete two fabricated cards, plumb the third from data we already ingest, fix the seed fixture's platform bug |
+| [FILM-1702](./FILM-1702-language-dimension-reconciliation.yaml) | ✅ DONE | L | Two disagreeing language columns, and the `'en'` default that doubles as the unknown bucket |
+| [FILM-1703](./FILM-1703-provenance-capability-model.yaml) | 🟡 PARTIAL | M | The capability matrix and the tests that stop it drifting from the writers |
+| [FILM-1704](./FILM-1704-observed-coverage.yaml) | DRAFT | M | One query answering what data exists for this project in this window |
+| [FILM-1705](./FILM-1705-provenance-surfaces.yaml) | DRAFT | L | Card chip, coverage strip, filter dimming |
+| [FILM-1706](./FILM-1706-analytics-card-shell.yaml) | DRAFT | M | Semantic tokens, progressive disclosure, required `metricFamily` |
+| [FILM-1707](./FILM-1707-six-tab-adoption.yaml) | DRAFT | L | All six tabs on one shell, and the Deep Dive scope decision |
+| [FILM-1708](./FILM-1708-traffic-drill-down-colour-ramp.yaml) | DRAFT | M | Group → native source drill-down; eight distinguishable colours |
+| [FILM-1709](./FILM-1709-platform-filter-completion.yaml) | DRAFT | L | The filter reaching the four tabs it currently ignores |
 
 ### The signal half
 
@@ -142,27 +142,27 @@ FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook) ─→
 
 | Spec | Status | Effort | Covers |
 |------|--------|--------|--------|
-| [FILM-1710](./FILM-1710-asset-duration.md) | 🟡 PARTIAL | M | The published clip's real duration. A **latent** defect — `video_dim.duration_seconds` is the episode's, and today nothing reads it |
-| [FILM-1711](./FILM-1711-analytics-authorisation.md) | 🟡 PARTIAL | L | TikTok and Instagram analytics were never authorised; scope audit across all five platforms |
-| [FILM-1712](./FILM-1712-metric-recovery.md) | DRAFT | L | Request the fields we already have access to; give Instagram `reach` a column |
-| [FILM-1713](./FILM-1713-normalised-measures-velocity.md) | DRAFT | M | One definition per rate; bucketed velocity, acceleration, `growth_state` |
-| [FILM-1714](./FILM-1714-signal-model.md) | DRAFT | M | Five funnel stages, primary/supporting signals, unbound stages, the expandability test |
-| [FILM-1715](./FILM-1715-self-benchmarking.md) | DRAFT | M | Band, lift, cohort median and n against your own history; shrinkage |
-| [FILM-1716](./FILM-1716-format-families.md) | DRAFT | M | `short_vertical` … `live`, mapped from `content_type` rather than read from it |
-| [FILM-1717](./FILM-1717-content-genome.md) | DRAFT | XL | Creative mechanisms vs outcomes, discriminated against comparable losers. **v1 then v2** |
-| [FILM-1718](./FILM-1718-stage-diagnosis.md) | DRAFT | M | Distribution-vs-content and the finite failure patterns. **Does not depend on the genome** |
-| [FILM-1719](./FILM-1719-signal-surfaces.md) | DRAFT | L | The five-stage strip, three depths, evidence, "model after" |
-| [FILM-1720](./FILM-1720-facebook-analytics.md) | DRAFT | L | Facebook's provider and enum value: 57 video, 11 Reels and 4 ad-break metrics, organic/paid splits, and the `dim-sync` fix. Split from X 2026-09-21 |
-| [FILM-1721](./FILM-1721-platform-capability-reference.md) | ✅ DONE | L | **The researched truth table.** Per platform × metric × API surface × field name × scope × window, cited to vendor docs. Lives at [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md); enforced by `platform-field-names.test.ts` |
-| [FILM-1722](./FILM-1722-view-definition-registry.md) | 🟡 PARTIAL | M | What "a view" means per platform, with effective dates and the YouTube discontinuity |
-| [FILM-1723](./FILM-1723-api-version-consolidation.md) | 🟡 PARTIAL | M | One pinned version per vendor; the Graph v18 token-refresh risk; X onto `api.x.com` |
-| [FILM-1724](./FILM-1724-channel-experiments.md) | DRAFT | L | Which styles work: groups of new videos, one per style, compared at the same age; no verdict on thin samples |
-| [FILM-1725](./FILM-1725-deferred-vendor-verifications.md) | ⏸️ DEFERRED | S | The FILM-1721 checks that need a paid X token, a TikTok sandbox app, or an Instagram insights permission we do not hold |
-| [FILM-1727](./FILM-1727-x-analytics.md) | DRAFT | L | X on the pay-per-use path, Enterprise fields declared and dark; the `x`/`twitter` vocabulary; metered cost |
-| [FILM-1726](./FILM-1726-monetisation-stage.md) | DRAFT | M | The Monetisation stage re-argued, after its premise turned out to be a fact about our writers rather than the platforms |
-| [FILM-1728](./FILM-1728-meta-graph-v26-upgrade.md) | DRAFT | M | Move the single Meta pin to v26.0 (changelogs researched: nothing we call changes) **and make the next bump boring**: a served-version assertion in one `metaFetch()`, an expiry test that goes red 120 days early, one implementation per flow, the reference reconciled with the changelog. Found: v25.0 deprecated 41 Facebook insight metrics our reference still lists |
-| [FILM-1729](./FILM-1729-x-media-write-scope.md) | ⏸️ DEFERRED | S | `/2/media/upload` needs `media.write`, which we never request, so X video publishing 403s (it never worked). Deferred until X credentials exist — the same purchase unblocks FILM-1725 Check A |
-| [FILM-1730](./FILM-1730-tiktok-business-api.md) | DRAFT | XL | TikTok's real analytics — watch time, reach, traffic sources, geography — live on the Business API: a second app, a second connection, and a creator on a Business account. Split from FILM-1712 §4. Owns the four matrix entries FILM-1703 parked on a placeholder |
+| [FILM-1710](./FILM-1710-asset-duration.yaml) | 🟡 PARTIAL | M | The published clip's real duration. A **latent** defect — `video_dim.duration_seconds` is the episode's, and today nothing reads it |
+| [FILM-1711](./FILM-1711-analytics-authorisation.yaml) | 🟡 PARTIAL | L | TikTok and Instagram analytics were never authorised; scope audit across all five platforms |
+| [FILM-1712](./FILM-1712-metric-recovery.yaml) | DRAFT | L | Request the fields we already have access to; give Instagram `reach` a column |
+| [FILM-1713](./FILM-1713-normalised-measures-velocity.yaml) | DRAFT | M | One definition per rate; bucketed velocity, acceleration, `growth_state` |
+| [FILM-1714](./FILM-1714-signal-model.yaml) | DRAFT | M | Five funnel stages, primary/supporting signals, unbound stages, the expandability test |
+| [FILM-1715](./FILM-1715-self-benchmarking.yaml) | DRAFT | M | Band, lift, cohort median and n against your own history; shrinkage |
+| [FILM-1716](./FILM-1716-format-families.yaml) | DRAFT | M | `short_vertical` … `live`, mapped from `content_type` rather than read from it |
+| [FILM-1717](./FILM-1717-content-genome.yaml) | DRAFT | XL | Creative mechanisms vs outcomes, discriminated against comparable losers. **v1 then v2** |
+| [FILM-1718](./FILM-1718-stage-diagnosis.yaml) | DRAFT | M | Distribution-vs-content and the finite failure patterns. **Does not depend on the genome** |
+| [FILM-1719](./FILM-1719-signal-surfaces.yaml) | DRAFT | L | The five-stage strip, three depths, evidence, "model after" |
+| [FILM-1720](./FILM-1720-facebook-analytics.yaml) | DRAFT | L | Facebook's provider and enum value: 57 video, 11 Reels and 4 ad-break metrics, organic/paid splits, and the `dim-sync` fix. Split from X 2026-09-21 |
+| [FILM-1721](./FILM-1721-platform-capability-reference.yaml) | ✅ DONE | L | **The researched truth table.** Per platform × metric × API surface × field name × scope × window, cited to vendor docs. Lives at [docs/platform-capability-reference.md](../../docs/platform-capability-reference.md); enforced by `platform-field-names.test.ts` |
+| [FILM-1722](./FILM-1722-view-definition-registry.yaml) | 🟡 PARTIAL | M | What "a view" means per platform, with effective dates and the YouTube discontinuity |
+| [FILM-1723](./FILM-1723-api-version-consolidation.yaml) | 🟡 PARTIAL | M | One pinned version per vendor; the Graph v18 token-refresh risk; X onto `api.x.com` |
+| [FILM-1724](./FILM-1724-channel-experiments.yaml) | DRAFT | L | Which styles work: groups of new videos, one per style, compared at the same age; no verdict on thin samples |
+| [FILM-1725](./FILM-1725-deferred-vendor-verifications.yaml) | ⏸️ DEFERRED | S | The FILM-1721 checks that need a paid X token, a TikTok sandbox app, or an Instagram insights permission we do not hold |
+| [FILM-1727](./FILM-1727-x-analytics.yaml) | DRAFT | L | X on the pay-per-use path, Enterprise fields declared and dark; the `x`/`twitter` vocabulary; metered cost |
+| [FILM-1726](./FILM-1726-monetisation-stage.yaml) | DRAFT | M | The Monetisation stage re-argued, after its premise turned out to be a fact about our writers rather than the platforms |
+| [FILM-1728](./FILM-1728-meta-graph-v26-upgrade.yaml) | DRAFT | M | Move the single Meta pin to v26.0 (changelogs researched: nothing we call changes) **and make the next bump boring**: a served-version assertion in one `metaFetch()`, an expiry test that goes red 120 days early, one implementation per flow, the reference reconciled with the changelog. Found: v25.0 deprecated 41 Facebook insight metrics our reference still lists |
+| [FILM-1729](./FILM-1729-x-media-write-scope.yaml) | ⏸️ DEFERRED | S | `/2/media/upload` needs `media.write`, which we never request, so X video publishing 403s (it never worked). Deferred until X credentials exist — the same purchase unblocks FILM-1725 Check A |
+| [FILM-1730](./FILM-1730-tiktok-business-api.yaml) | DRAFT | XL | TikTok's real analytics — watch time, reach, traffic sources, geography — live on the Business API: a second app, a second connection, and a creator on a Business account. Split from FILM-1712 §4. Owns the four matrix entries FILM-1703 parked on a placeholder |
 
 **Two independent paths, deliberately.** `metrics → diagnosis` (FILM-1718)
 works without the genome, so a creator gets a usable diagnosis immediately;

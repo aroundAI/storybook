@@ -1,0 +1,388 @@
+spec_id: "FILM-406"
+title: "Batch Generate Videos Action"
+phase: 4
+phase_name: "Video Generation"
+category: server_action
+status: RETIRED
+audited: "2026-09-23"
+effort: M
+dependencies:
+  - spec_id: "FILM-405"
+    note: "generate-video-action"
+summary: >
+  Users need to generate videos for multiple shots simultaneously. The batch generation action accepts
+  an array of shot IDs, validates permissions, checks budget for all generations, and queues multiple
+  jobs atomically. This provides a better UX than generating shots one-by-one and ensures budget is
+  reserved for the entire batch.
+acceptance_criteria:
+  - text: "Action accepts up to 50 shot IDs"
+    met: true
+  - text: "Action validates all shots exist"
+    met: true
+  - text: "Action checks budget for entire batch"
+    met: true
+  - text: "Action reserves budget atomically"
+    met: true
+  - text: "Action creates jobs for all valid shots"
+    met: true
+  - text: "Action returns detailed results per shot"
+    met: true
+  - text: "Action handles partial failures gracefully"
+    met: true
+  - text: "Action supports priority levels"
+    met: true
+test_plan:
+  unit: []
+  integration: []
+  e2e: []
+retirement:
+  commit: "5b88db3a"
+  date: "2026-01-15"
+  what_happened: >
+    `packages/features/video-generation/src/server/actions/batch-generate-action.ts` was deleted in
+    `5b88db3a` (2026-01-15), the commit that removed `packages/features/video-generation`; the owner
+    retired in-app video generation on purpose. Nothing replaces it: the Visual Studio writes VEO 3.1
+    prompts and each shot's video, generated outside the app, is uploaded with `VideoUploader`
+    (`packages/features/episodes/src/components/video-uploader.tsx`). Kept as a record; not outstanding
+    work.
+  replacement: null
+open_questions: []
+server_action:
+  actions:
+    - name: "batchGenerateVideosAction"
+      file: "packages/features/video-generation/src/server/actions/batch-generate-action.ts"
+      schema: "BatchGenerateVideosSchema"
+      auth: true
+notes: |
+  **Phase**: 4
+  **Priority**: P0
+  **Effort**: M (3-4 days)
+  **Dependencies**: FILM-405 (generate-video-action)
+  **Blocks**: FILM-409 (visual-studio)
+
+  ## Requirements
+
+  ### Functional Requirements
+
+  1. **Batch Validation**
+     - Accept array of shot IDs (max 50)
+     - Validate all shots exist
+     - Check user has access to all shots
+     - Verify no shots already have videos
+
+  2. **Batch Budget Check**
+     - Calculate total estimated cost
+     - Check budget for entire batch
+     - Reserve budget atomically
+     - Roll back if any validation fails
+
+  3. **Batch Job Creation**
+     - Create all generation_jobs records
+     - Add all jobs to queue with same priority
+     - Return array of job IDs
+     - Handle partial failures gracefully
+
+  4. **Priority Management**
+     - Support batch priority (high/normal/low)
+     - All jobs in batch get same priority
+     - Process high priority batches first
+
+  ### Non-Functional Requirements
+
+  - Complete within 10 seconds for 50 shots
+  - Atomic operation (all or nothing)
+  - Return detailed error for each failed shot
+  - Log batch operations for analytics
+
+  ## Interface
+
+  ### TypeScript Types
+
+  ```typescript
+  import { z } from 'zod';
+
+  export const BatchGenerateVideosSchema = z.object({
+    shotIds: z.array(z.string().uuid()).min(1).max(50),
+    provider: z.enum(['kling', 'runway', 'luma']).optional(),
+    mode: z.enum(['std', 'pro']).optional().default('std'),
+    priority: z.enum(['high', 'normal', 'low']).optional().default('normal'),
+  });
+
+  export interface BatchGenerateResult {
+    shotId: string;
+    success: boolean;
+    generationJobId?: string;
+    error?: string;
+  }
+
+  export interface BatchGenerateResponse {
+    totalShots: number;
+    successCount: number;
+    failureCount: number;
+    totalEstimatedCostCents: number;
+    results: BatchGenerateResult[];
+  }
+  ```
+
+  ### Server Action Implementation
+
+  ```typescript
+  'use server';
+
+  import { enhanceAction } from '@kit/next/actions';
+  import { getSupabaseServerClient } from '@kit/supabase/server-client';
+  import { generateVideoAction } from './generate-video-action';
+
+  export const batchGenerateVideosAction = enhanceAction(
+    async (data, user) => {
+      const client = getSupabaseServerClient();
+      const results: BatchGenerateResult[] = [];
+      let successCount = 0;
+      let failureCount = 0;
+      let totalEstimatedCost = 0;
+
+      // Validate all shots exist and belong to same account
+      const { data: shots, error: shotsError } = await client
+        .from('shots')
+        .select('id, video_url, episodes!inner(project_id, projects!inner(account_id))')
+        .in('id', data.shotIds);
+
+      if (shotsError || !shots || shots.length !== data.shotIds.length) {
+        throw new Error('One or more shots not found');
+      }
+
+      // Check all shots belong to same account
+      const accountIds = new Set(
+        shots.map((s) => s.episodes.projects.account_id)
+      );
+      if (accountIds.size > 1) {
+        throw new Error('All shots must belong to the same account');
+      }
+
+      // Check none already have videos
+      const shotsWithVideos = shots.filter((s) => s.video_url);
+      if (shotsWithVideos.length > 0) {
+        throw new Error(
+          `${shotsWithVideos.length} shots already have videos`
+        );
+      }
+
+      // Calculate total estimated cost
+      for (const shot of shots) {
+        const provider = await createVideoProvider({
+          accountId: shot.episodes.projects.account_id,
+          provider: data.provider || 'kling',
+        });
+
+        const cost = provider.estimateCost({
+          prompt: shot.prompt,
+          duration: shot.duration.toString(),
+          aspectRatio: shot.aspect_ratio,
+          mode: data.mode,
+        });
+
+        totalEstimatedCost += cost;
+      }
+
+      // Check budget for entire batch
+      const accountId = shots[0].episodes.projects.account_id;
+      const budgetCheck = await checkAndReserveBudget(
+        accountId,
+        totalEstimatedCost
+      );
+
+      if (!budgetCheck.allowed) {
+        throw new Error(
+          `Insufficient budget for batch. Required: $${(totalEstimatedCost / 100).toFixed(2)}, Available: $${(budgetCheck.remaining / 100).toFixed(2)}`
+        );
+      }
+
+      // Generate videos for all shots
+      const priorityMap = { high: 8, normal: 5, low: 2 };
+      const priority = priorityMap[data.priority || 'normal'];
+
+      for (const shotId of data.shotIds) {
+        try {
+          const result = await generateVideoAction({
+            shotId,
+            provider: data.provider,
+            mode: data.mode,
+          });
+
+          results.push({
+            shotId,
+            success: true,
+            generationJobId: result.generationJobId,
+          });
+          successCount++;
+        } catch (error) {
+          results.push({
+            shotId,
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+          failureCount++;
+        }
+      }
+
+      return {
+        totalShots: data.shotIds.length,
+        successCount,
+        failureCount,
+        totalEstimatedCostCents: totalEstimatedCost,
+        results,
+      };
+    },
+    { schema: BatchGenerateVideosSchema, auth: true }
+  );
+  ```
+
+  ## Implementation Details
+
+  ### File Structure
+
+  ```
+  packages/features/video-generation/src/
+  ├── server/
+  │   ├── actions/
+  │   │   ├── batch-generate-action.ts     # Batch action (CREATE THIS)
+  │   │   └── __tests__/
+  │   │       └── batch-generate-action.test.ts
+  ```
+
+  ### Transaction Strategy
+
+  ```
+  1. Validate all shots
+  2. Calculate total cost
+  3. Check budget for total
+  4. Reserve budget
+  5. For each shot:
+     - Create generation job
+     - Add to queue
+     - Track result
+  6. Return summary + individual results
+  ```
+
+  ### Error Handling
+
+  **Partial Failure Strategy**: Continue processing remaining shots even if some fail. Return detailed results for each shot.
+
+  ```typescript
+  // Example result with partial failure
+  {
+    totalShots: 5,
+    successCount: 4,
+    failureCount: 1,
+    results: [
+      { shotId: '1', success: true, generationJobId: 'job-1' },
+      { shotId: '2', success: true, generationJobId: 'job-2' },
+      { shotId: '3', success: false, error: 'Shot already has video' },
+      { shotId: '4', success: true, generationJobId: 'job-4' },
+      { shotId: '5', success: true, generationJobId: 'job-5' },
+    ]
+  }
+  ```
+
+  ## File Changes
+
+  ### New Files
+
+  1. **packages/features/video-generation/src/server/actions/batch-generate-action.ts**
+
+  ### Modified Files
+
+  1. **packages/features/video-generation/src/server/index.ts** - Export action
+
+  ## Acceptance Criteria
+
+  **Status: 🗑️ RETIRED** (audit 2026-09-23; was COMPLETED) - Implemented in `packages/features/video-generation/src/server/actions/batch-generate-action.ts`
+
+  ## Test Plan
+
+  ### Unit Tests
+
+  ```typescript
+  import { describe, it, expect } from 'vitest';
+  import { batchGenerateVideosAction } from '../batch-generate-action';
+
+  describe('batchGenerateVideosAction', () => {
+    it('should generate videos for all shots', async () => {
+      const result = await batchGenerateVideosAction({
+        shotIds: ['shot-1', 'shot-2', 'shot-3'],
+      });
+
+      expect(result.successCount).toBe(3);
+      expect(result.results).toHaveLength(3);
+    });
+
+    it('should check budget for entire batch', async () => {
+      await expect(
+        batchGenerateVideosAction({
+          shotIds: ['shot-1', 'shot-2', 'shot-3'],
+        })
+      ).rejects.toThrow('Insufficient budget');
+    });
+
+    it('should handle partial failures', async () => {
+      const result = await batchGenerateVideosAction({
+        shotIds: ['shot-valid', 'shot-with-video', 'shot-valid-2'],
+      });
+
+      expect(result.successCount).toBe(2);
+      expect(result.failureCount).toBe(1);
+    });
+
+    it('should reject more than 50 shots', async () => {
+      const shotIds = Array.from({ length: 51 }, (_, i) => `shot-${i}`);
+
+      await expect(
+        batchGenerateVideosAction({ shotIds })
+      ).rejects.toThrow();
+    });
+  });
+  ```
+
+  ## Security Considerations
+
+  - Verify user has access to all shots
+  - Validate shots belong to same account
+  - Check RLS policies on all operations
+  - Rate limit batch operations per account
+
+  ## Performance Considerations
+
+  - Parallel validation of shots (Promise.all)
+  - Batch database queries where possible
+  - Limit batch size to 50 shots
+  - Use database transactions for atomicity
+
+  ### Optimization Example
+
+  ```typescript
+  // Fetch all shots in one query instead of N queries
+  const shots = await client
+    .from('shots')
+    .select('*')
+    .in('id', shotIds);
+
+  // Parallel job creation
+  const jobPromises = shotIds.map((shotId) =>
+    generateVideoAction({ shotId })
+  );
+
+  const results = await Promise.allSettled(jobPromises);
+  ```
+
+  ## Future Enhancements
+
+  1. **Progress Tracking** - Real-time progress updates for batch
+  2. **Smart Batching** - Automatically split large batches
+  3. **Batch Cancellation** - Cancel entire batch
+  4. **Batch Templates** - Save batch configurations
+
+  ## References
+
+  - **FILM-405**: Generate video action
+  - **FILM-412**: Cost tracking
+  - **Constitution**: Section 2.2 (Server Actions)

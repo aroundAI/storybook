@@ -188,5 +188,5 @@ PROJECT SETTINGS
 ## See Also
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System overview
-- [FILM-1007: Canon UI Components](ui/FILM-1007-canon-ui-components.md) - Component specs
-- [FILM-1005: Canon Actions](server/FILM-1005-canon-actions.md) - Server actions
+- [FILM-1007: Canon UI Components](ui/FILM-1007-canon-ui-components.yaml) - Component specs
+- [FILM-1005: Canon Actions](server/FILM-1005-canon-actions.yaml) - Server actions

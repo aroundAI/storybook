@@ -1,0 +1,243 @@
+spec_id: "FILM-1720"
+title: "Facebook Analytics"
+phase: 17
+phase_name: "Analytics Provenance and Signal"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-1711"
+    note: null
+  - spec_id: "FILM-1714"
+    note: null
+  - spec_id: "FILM-1721"
+    note: null
+  - spec_id: "FILM-1723"
+    note: null
+summary: >
+  Split 2026-09-21 from a combined "Facebook and X Analytics" XL spec,
+  because the two halves share almost nothing — different APIs, auth,
+  blockers and cost models — and Facebook, the larger and more valuable
+  half, should not wait on X's decisions (now FILM-1727). Facebook has a
+  publishing provider but no analytics provider at all: no AnalyticsPlatform
+  entry, no ClickHouse enum value, and read_insights is not requested. Worse,
+  Facebook publishes already get dimension rows in an unconstrained
+  video_dim.platform that can never have metrics, distorting denominators
+  today — which is why this ships before X. The video_insights edge exposes
+  57 video metrics, 11 Reels metrics and 4 ad-break metrics across four
+  distinct, non-YouTube-like view denominators, including an organic/paid
+  split no other platform offers and a revenue surface that reopens the
+  Monetisation-stage question (FILM-1726).
+acceptance_criteria:
+  - text: "The platform value is facebook, appended to the enum, never renumbering"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "All seven enum-bearing tables, AnalyticsPlatform, SyncPlatform and QueryFilters accept facebook, and the three without the enum are handled explicitly rather than assumed"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "dim-sync no longer creates dimension rows for platforms that cannot have metrics"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "Facebook's organic/paid split is preserved, not summed away"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "total_video_views_autoplayed and total_video_views_clicked_to_play are distinguishable, and neither is labelled simply \"views\""
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "Facebook's ad-break revenue metrics are either ingested or recorded as deliberately out of scope with a reason"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "Facebook's four denominators are distinguishable, and total_video_15s_views is never labelled ThruPlay"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "post_video_avg_time_watched is not presented as comparable to YouTube's average view duration"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "Facebook's absence of follower/non-follower reach is recorded, not worked around"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "Adding Facebook required no change to any signal-map consumer"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "Facebook fails the structural tests until its capability entries and stage bindings are written"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited"
+open_questions: []
+feature:
+  database:
+    tables: ["video_dim", "channel_daily", "channel_subscribers"]
+    columns_added: ["platform enum value 'facebook' on the seven analytics tables carrying Enum('youtube'=1,'tiktok'=2,'instagram'=3)"]
+  queries: []
+  actions: []
+  ui: []
+  provider_integration:
+    vendor: "Facebook (Meta)"
+    endpoints:
+      - method: GET
+        path: "/{video-id}/video_insights"
+        purpose: "Pages-only video/Reels analytics — 57 video metrics, 11 Reels metrics, 4 ad-break metrics, 2 years retention, requires a Page token with the ANALYZE task"
+notes: |
+  ## Where Facebook actually stands
+
+  | Layer | Facebook |
+  |---|---|
+  | Publishing provider | exists (FILM-704) |
+  | Analytics provider | none |
+  | Analytics API | `/{video-id}/video_insights` |
+  | OAuth | `read_insights` + the ANALYZE task — not requested |
+  | Commercial | included |
+  | `AnalyticsPlatform` | no |
+  | ClickHouse enum | no |
+
+  A Facebook connection can be created, can publish, and can carry revenue
+  rows in Postgres — and can never produce an analytics row.
+
+  Worse: `dim-sync.ts` has no platform filter and `video_dim.platform` is
+  an unconstrained `LowCardinality(String)`, so Facebook publishes do get
+  dimension rows that can never have metrics, appearing as zero-view
+  videos in any dim-driven denominator. That is a live distortion, not a
+  future one, and it is why this spec ships before FILM-1727.
+
+  ## Facebook's metrics are real, and its denominators are not ours
+
+  `GET /{video-id}/video_insights`, Pages only, 2 years of retention,
+  requiring a Page token from someone with the `ANALYZE` task. Meta's own
+  two doc pages disagree on the permission (`pages_manage_engagement` +
+  `read_insights` versus `pages_read_engagement`); request all three.
+
+  Facebook has things no other platform here offers: a real retention
+  graph (`post_video_retention_graph` — note its segment count is
+  undocumented; the 40-equal-intervals figure belongs to
+  `total_video_retention_graph`, the video metric, per FILM-1721 §8), an
+  explicit replay count (`fb_reels_replay_count`), and follows attributed
+  to a reel (`post_video_followers`).
+
+  And four more things, added 2026-09-21 after re-reading the live
+  reference. The list above was drawn from an eight-metric summary; the
+  edge carries 57 video metrics, 11 Reels metrics and 4 ad-break metrics.
+  What that omitted is not filler:
+
+  - Organic/paid splits on most view metrics. No other platform here
+    offers this — TikTok's `video_views` explicitly cannot be separated.
+    It is the only place in the product where "did this do well, or was
+    it boosted" is answerable from the platform rather than inferred.
+  - `total_video_views_autoplayed` vs `total_video_views_clicked_to_play`.
+    An intent distinction, and a better Hook signal than anything YouTube
+    exposes — particularly now that YouTube's own `views` folds autoplay
+    in and stops distinguishing them.
+  - `total_video_view_time_by_age_bucket_and_gender` — demographics
+    weighted by watch time rather than by view count. FILM-1703 models the
+    `demographics` family as counts; this does not fit that shape and
+    needs a decision.
+  - A revenue surface: `total_video_ad_break_earnings`,
+    `total_video_ad_break_ad_cpm`, `total_video_ad_break_ad_impressions`,
+    `creator_monetization_qualified_views`. Page admins only. This is what
+    puts the "no Monetisation stage" decision back in play — FILM-1726.
+
+  ### Four denominators, none of them a YouTube view
+
+  1. Impression — entered the screen, no playback, estimated
+  2. Play (`blue_reels_play_count`) — >=1 millisecond, replays excluded
+  3. 3-second view (`total_video_views`) — >=3s or nearly full length if
+     shorter
+  4. ThruPlay — an Ads metric. Not on `video_insights` at all
+
+  `total_video_15s_views` is not ThruPlay. ThruPlay is "completed or
+  >=15s, whichever first"; the organic metric has no completion clause, so
+  a short video that completes under 15s counts for one and not the
+  other. Do not label it ThruPlay.
+
+  ### The non-equivalence that will bite
+
+  `post_video_avg_time_watched` can exceed the video's own duration.
+  Replay time is in the numerator (documented); the denominator is
+  initial plays, which exclude replays (per Meta's Business Help Center —
+  the API reference does not state it, so this half is inferred).
+
+  YouTube's average view duration cannot do this. Compute our own average
+  explicitly and label the denominator rather than shipping Meta's
+  precomputed figure as comparable.
+
+  Not available: follower vs non-follower reach for video or Reels. Only
+  the page-level `page_media_view` carries `is_from_followers`.
+
+  ## The enum migration — append facebook
+
+  The platform value is `facebook`. Unlike X (FILM-1727 §4), there is no
+  vocabulary question: `oauth_states` permits `'meta'`, but that names the
+  OAuth provider shared by Facebook and Instagram, not an analytics
+  platform.
+
+  `platform` is `Enum('youtube' = 1, 'tiktok' = 2, 'instagram' = 3)` in
+  seven analytics tables — `001_create_tables.ts:17`,
+  `002_metrics_v2.ts:27` and `:48`, `003_reach_and_traffic.ts:22` and
+  `:35`, `004_extended_metrics.ts:27` and `:37`. No migration has ever
+  extended it.
+
+  The other three tables need different treatment, not the same
+  migration: `video_dim.platform` is an unconstrained
+  `LowCardinality(String)`, and `channel_daily` and `channel_subscribers`
+  carry no platform column at all.
+
+  Widening means an `ALTER TABLE ... MODIFY COLUMN` on each, plus
+  `AnalyticsPlatform` (`clickhouse/src/types.ts:11`) and `SyncPlatform`.
+  `QueryFilters.platforms` is typed as `Array(Enum(...))` at the parameter
+  level, so a widened enum must be reflected there or a valid selection
+  errors at the server.
+
+  Append only `facebook`. X appends its own value in FILM-1727, after
+  settling its name. Appending is metadata-only, so doing it twice costs
+  nothing; what must never happen is appending a value and later renaming
+  it, which rewrites every row.
+
+  ## dim-sync stops creating rows that can never have metrics
+
+  The fix is general, not Facebook-specific: `dim-sync` should create
+  dimension rows only for platforms in `AnalyticsPlatform`. Facebook is
+  the first platform to join it, which is why the fix lands here — and it
+  stops LinkedIn and X publishes polluting denominators in the meantime.
+
+  ## This is the test of FILM-1714's expandability
+
+  Facebook binds its stages to its own four denominators. If adding it
+  requires changing anything other than the enum, the type unions, the
+  capability matrix and the signal map, then FILM-1714's design did not
+  work. That is the finding, verified by the diff rather than by a test.
+  FILM-1727 runs the same test a second time, against a platform whose
+  stages bind to conversation rather than watch behaviour.
+
+  ## Out of scope
+
+  - X — FILM-1727.
+  - Snap, Threads, LinkedIn. The framework should make them additive.
+  - Pursuing Meta Advanced Access — a commercial decision this spec
+    surfaces.
+  - Whether a Monetisation stage exists — FILM-1726. This spec decides
+    only whether the ad-break metrics are ingested.
+  - Changing how the existing three platforms are analysed.
+
+  ## Verification
+
+  ```bash
+  pnpm --filter @kit/clickhouse test
+  pnpm --filter @kit/content-analytics test
+  ./scripts/local-env.sh verify
+  pnpm turbo typecheck --force && pnpm lint
+  ```
+
+  The enum migration must be verified against a table with rows, not an
+  empty one: insert under the old enum, migrate, assert existing rows
+  still read and the new value is accepted.
+
+  One live check that can falsify this spec cheaply, before
+  implementation: a `video_insights` call with `read_insights`, which
+  settles the permission ambiguity between Meta's two doc pages.
+
+  ## Risk
+
+  The enum migration touches every analytics table. Metadata-only if the
+  value is appended, a full rewrite if anything is renumbered.
+
+  Facebook publishes already pollute `video_dim` as zero-view rows. That
+  distorts denominators today, which is the argument for shipping this
+  before X.

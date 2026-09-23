@@ -1,0 +1,135 @@
+spec_id: "FILM-1511"
+title: "Deep-Dive Dashboards & Reports Completion"
+phase: 15
+phase_name: "Deep Analytics Discipline"
+category: feature
+status: PARTIAL
+audited: "2026-09-23"
+effort: L
+dependencies:
+  - spec_id: "FILM-1504"
+    note: null
+  - spec_id: "FILM-1505"
+    note: null
+  - spec_id: "FILM-1506"
+    note: null
+  - spec_id: "FILM-1507"
+    note: null
+  - spec_id: "FILM-1508"
+    note: null
+summary: >
+  Surfaces everything built in FILM-1504…1508 in the dashboards, and closes the report gaps (empty CTR/AVD columns, hardcoded-null retention, never-delivered raw export). Two PRs.
+
+  All new components follow the package's Tier A/Tier B convention: containers use TanStack `useQuery` on server actions; leaf cards are pure-prop presentational on the `AnalyticsCard` shell; every dashboard exports an `XSkeleton`; JSDoc on every prop.
+acceptance_criteria:
+  - text: "Diagnostics tab lists recent videos with impressions/CTR/AVD and cliff flags; `detectRetentionCliff` unit-tested"
+    met: true
+    evidence: "now a Deep Dive section: `apps/e2e/tests/deep-dive/diagnostics-evidence.spec.ts:42`, `packages/features/content-analytics/__tests__/retention.test.ts:126`"
+  - text: "All new cards render with data, loading skeletons, and empty states"
+    met: false
+    reason: "not met — rolling-90 and returning-viewer cards and the account-dashboard tiles were never built; their actions have no caller"
+  - text: "Generated CSV has no empty CTR/AVD columns; retention included when selected"
+    met: false
+    reason: "unverified — wired (`packages/features/content-analytics/src/server/report-actions.ts:278`, retention `:229`); no test asserts a generated CSV"
+  - text: "`raw_csv` monthly report delivers a complete per-video-per-day export"
+    met: true
+    evidence: "`apps/e2e/tests/analytics/raw-export-evidence.spec.ts:100`, `packages/features/content-analytics/__tests__/raw-export-generator.test.ts:40`"
+  - text: "`pnpm --filter web typecheck` passes"
+    met: false
+    reason: "unverified — CI runs `pnpm run typecheck` on every PR (`.github/workflows/workflow.yml:45`); not run in this audit"
+remaining:
+  - criterion: "All new cards render with data, skeletons and empty states"
+    reason: "Never built: `rolling-90-card` (`getRollingViewsAction` has no caller), `returning-viewer-proxy-card` (`getReturningViewerProxyAction` has no caller), the account dashboard's median-views and rolling-90 tiles (`company-dashboard.tsx` has neither), and traffic sources on episode analytics (the page shows the retention curve only). `git log -S` finds none of them, ever. The rest exist: `traffic-share-card.tsx` (renamed; FILM-1605 groups), median, cohort, back-catalog, YPP, tag medians and the retention curve"
+    closed_by: "unassigned"
+open_questions: []
+feature:
+  database:
+    tables:
+      - "scheduled_reports"
+    columns_added: []
+  queries:
+    - name: "detectRetentionCliff"
+      purpose: "largest consecutive-point drop > 0.15 within the first 25% of the video (pure, unit-tested)"
+      file: "lib/retention.ts"
+  actions:
+    - name: "csv-generator: real CTR (from video_reach_daily) and AVD"
+      file: "csv-generator.ts"
+    - name: "report-actions: retentionData via queryRetentionCurve"
+      file: "report-actions.ts"
+    - name: "scheduled reports route: retentionData via queryRetentionCurve"
+      file: "apps/web/app/api/reports/scheduled/route.ts"
+    - name: "raw-export-generator: per-video-per-day CSV to the reports bucket"
+      file: "raw-export-generator.ts"
+  ui:
+    - component: "Diagnostics tab"
+      file: "analytics-dashboard.tsx"
+    - component: "weekly-diagnostics-table"
+      file: "weekly-diagnostics-table.tsx"
+    - component: "retention-curve-chart"
+      file: "retention-curve-chart.tsx"
+    - component: "traffic-share-trend-card"
+      file: "traffic-share-trend-card.tsx"
+    - component: "median-views-card"
+      file: "median-views-card.tsx"
+    - component: "rolling-90-card"
+      file: "rolling-90-card.tsx"
+    - component: "cohort-curves-chart"
+      file: "cohort-curves-chart.tsx"
+    - component: "back-catalog-card"
+      file: "back-catalog-card.tsx"
+    - component: "ypp-progress-card"
+      file: "ypp-progress-card.tsx"
+    - component: "returning-viewer-proxy-card"
+      file: "returning-viewer-proxy-card.tsx"
+    - component: "Tag medians card"
+      file: null
+    - component: "account dashboard: median-views + rolling-90 tiles"
+      file: "company-dashboard.tsx"
+    - component: "episode analytics: retention curve + traffic sources"
+      file: "episode-analytics.tsx"
+    - component: "scheduled-reports-manager: raw_csv option"
+      file: "scheduled-reports-manager.tsx"
+  provider_integration: null
+notes: |
+  ## 2. PR 9a — Dashboards
+
+  ### New Diagnostics tab (`analytics-dashboard.tsx`)
+
+  `weekly-diagnostics-table.tsx` — videos published in the last N weeks with impressions, CTR, AVD, avg view %, and a **retention-cliff flag**. Cliff detection is a pure, unit-tested fn in `lib/retention.ts`:
+
+  ```typescript
+  export function detectRetentionCliff(
+    points: Array<{ elapsedRatio: number; audienceWatchRatio: number }>,
+  ): { position: number; drop: number } | null
+  // largest consecutive-point drop > 0.15 within the first 25% of the video
+  ```
+
+  ### New cards
+
+  | Component | Data | Placement |
+  |-----------|------|-----------|
+  | `retention-curve-chart.tsx` | `queryRetentionCurve` | Diagnostics detail + episode analytics |
+  | `traffic-share-trend-card.tsx` | `getTrafficShareTrendAction` | Overview: Browse+Suggested share trend |
+  | `median-views-card.tsx` | `getMedianPerformanceAction` | Median + p25–p75 band vs mean; default = views-to-date by upload month |
+  | `rolling-90-card.tsx` | `getRolling90Action` | Overview |
+  | `cohort-curves-chart.tsx` | `getCohortCurvesAction` | Insights: quarter cohorts at 30/90/180/365d |
+  | `back-catalog-card.tsx` | `getBackCatalogAction` | Insights (donut) |
+  | `ypp-progress-card.tsx` | `getYppProgressAction` | Overview (2× horizontal-progress; channel-accurate via `channel_daily`) |
+  | `returning-viewer-proxy-card.tsx` | `getReturningViewerProxyAction` | Audience |
+  | Tag medians card | `getMedianByTagAction` | Insights |
+
+  Account dashboard (`company-dashboard.tsx` via `account-dashboard-actions.ts`): median-views + rolling-90 tiles. Episode analytics (`episode-analytics.tsx`): retention curve + traffic sources.
+
+  ## 3. PR 9b — Reports
+
+  - `csv-generator.ts` — real CTR (from `video_reach_daily`) and AVD (new column) instead of empty strings.
+  - `report-actions.ts` and `apps/web/app/api/reports/scheduled/route.ts` — replace hardcoded `retentionData: null` with `queryRetentionCurve`; the export-reports retention checkbox becomes real.
+  - **Monthly raw export**: migration extending `scheduled_reports.report_type` check with `'raw_csv'`; new `raw-export-generator.ts` producing per-video-per-day CSV (metrics ⋈ reach ⋈ traffic ⋈ dim columns) to the existing `reports` bucket; option in `scheduled-reports-manager.tsx`. Delivery cron already live (FILM-1503).
+
+  ## 5. Verification
+
+  ```bash
+  pnpm --filter web typecheck && pnpm lint:fix
+  pnpm --filter @kit/content-analytics test
+  # Manual: visual pass per dashboard tab; trigger /api/reports/scheduled and open the CSV.
+  ```

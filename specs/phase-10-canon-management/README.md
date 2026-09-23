@@ -76,8 +76,8 @@ Historical context injection is limited to **15%** of token budget to prevent:
 
 | ID | Title | Status | Effort | File |
 |----|-------|--------|--------|------|
-| FILM-1001 | Canon Tables | 🟡 PARTIAL | L | [database/FILM-1001-canon-tables.md](database/FILM-1001-canon-tables.md) |
-| FILM-1002 | RLS Policies | 🟡 PARTIAL | S | [database/FILM-1002-canon-rls.md](database/FILM-1002-canon-rls.md) |
+| FILM-1001 | Canon Tables | 🟡 PARTIAL | L | [database/FILM-1001-canon-tables.yaml](database/FILM-1001-canon-tables.yaml) |
+| FILM-1002 | RLS Policies | 🟡 PARTIAL | S | [database/FILM-1002-canon-rls.yaml](database/FILM-1002-canon-rls.yaml) |
 
 **New Tables**:
 - `immutable_events` - Hard canon facts
@@ -91,26 +91,26 @@ Historical context injection is limited to **15%** of token budget to prevent:
 
 | ID | Title | Status | Effort | File |
 |----|-------|--------|--------|------|
-| FILM-1003 | Continuity Validator | 🟡 PARTIAL | L | [lib/FILM-1003-continuity-validator.md](lib/FILM-1003-continuity-validator.md) |
-| FILM-1004 | Memory Context Builder | 🟡 PARTIAL | M | [lib/FILM-1004-memory-context-builder.md](lib/FILM-1004-memory-context-builder.md) |
+| FILM-1003 | Continuity Validator | 🟡 PARTIAL | L | [lib/FILM-1003-continuity-validator.yaml](lib/FILM-1003-continuity-validator.yaml) |
+| FILM-1004 | Memory Context Builder | 🟡 PARTIAL | M | [lib/FILM-1004-memory-context-builder.yaml](lib/FILM-1004-memory-context-builder.yaml) |
 
 ### Server Actions
 
 | ID | Title | Status | Effort | File |
 |----|-------|--------|--------|------|
-| FILM-1005 | Canon Server Actions | 🟡 PARTIAL | M | [server/FILM-1005-canon-actions.md](server/FILM-1005-canon-actions.md) |
+| FILM-1005 | Canon Server Actions | 🟡 PARTIAL | M | [server/FILM-1005-canon-actions.yaml](server/FILM-1005-canon-actions.yaml) |
 
 ### Prompt Templates
 
 | ID | Title | Status | Effort | File |
 |----|-------|--------|--------|------|
-| FILM-1006 | LLM Role Separation | 🗑️ RETIRED | M | [prompts/FILM-1006-llm-role-separation.md](prompts/FILM-1006-llm-role-separation.md) |
+| FILM-1006 | LLM Role Separation | 🗑️ RETIRED | M | [prompts/FILM-1006-llm-role-separation.yaml](prompts/FILM-1006-llm-role-separation.yaml) |
 
 ### UI Layer
 
 | ID | Title | Status | Effort | File |
 |----|-------|--------|--------|------|
-| FILM-1007 | Canon UI Components | 🟡 PARTIAL | L | [ui/FILM-1007-canon-ui-components.md](ui/FILM-1007-canon-ui-components.md) |
+| FILM-1007 | Canon UI Components | 🟡 PARTIAL | L | [ui/FILM-1007-canon-ui-components.yaml](ui/FILM-1007-canon-ui-components.yaml) |
 
 ---
 

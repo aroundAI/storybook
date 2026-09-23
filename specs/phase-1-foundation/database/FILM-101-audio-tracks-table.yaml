@@ -1,0 +1,207 @@
+spec_id: "FILM-101h"
+title: "Audio Tracks Table"
+phase: 1
+phase_name: "Foundation"
+category: database_table
+status: PARTIAL
+audited: "2026-09-23"
+effort: XS
+dependencies:
+  - spec_id: "FILM-101b"
+    note: "episodes-table"
+summary: >
+  The `audio_tracks` table stores music, sound effects, and composite dialogue tracks for episodes.
+  Tracks have timeline positioning (start time, duration, volume) for the edit suite.
+database_table:
+  table_name: "audio_tracks"
+  migration: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql"
+  columns:
+    - name: "id"
+      type: "UUID"
+      nullable: false
+      default: "gen_random_uuid()"
+      description: "Primary key"
+    - name: "episode_id"
+      type: "UUID"
+      nullable: false
+      default: null
+      description: "Foreign key to episodes"
+    - name: "type"
+      type: "VARCHAR(50)"
+      nullable: false
+      default: null
+      description: "Track type (see enum)"
+    - name: "name"
+      type: "VARCHAR(255)"
+      nullable: true
+      default: "NULL"
+      description: "Track name/description"
+    - name: "file_url"
+      type: "TEXT"
+      nullable: true
+      default: "NULL"
+      description: "URL to audio file"
+    - name: "duration_seconds"
+      type: "DECIMAL(10,2)"
+      nullable: true
+      default: "NULL"
+      description: "Track duration"
+    - name: "timeline_start_seconds"
+      type: "DECIMAL(10,2)"
+      nullable: false
+      default: "0"
+      description: "Start position in timeline"
+    - name: "volume"
+      type: "DECIMAL(3,2)"
+      nullable: false
+      default: "1.0"
+      description: "Volume level (0.0-2.0)"
+    - name: "metadata"
+      type: "JSONB"
+      nullable: true
+      default: "NULL"
+      description: "Additional track metadata"
+    - name: "created_at"
+      type: "TIMESTAMPTZ"
+      nullable: false
+      default: "NOW()"
+      description: "Creation timestamp"
+  indexes:
+    - name: "idx_audio_tracks_episode"
+      columns: ["episode_id"]
+      unique: false
+    - name: "idx_audio_tracks_type"
+      columns: ["episode_id", "type"]
+      unique: false
+  foreign_keys:
+    - column: "episode_id"
+      references: "episodes(id)"
+      on_delete: "CASCADE"
+  rls_enabled: null
+acceptance_criteria:
+  - text: "Table created with all columns"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:390"
+  - text: "Foreign key with CASCADE delete"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:392"
+  - text: "Type enum constraint enforced"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:401"
+  - text: "Volume constraint (0.0-2.0) enforced"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:402"
+  - text: "Check constraints prevent negative values"
+    met: false
+    reason: "not met — the spec's duration_seconds > 0 check was never created; only volume and timeline start are checked (apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:402-403)"
+  - text: "Indexes created"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:412-413"
+test_plan:
+  unit:
+    - text: "Insert with valid episode_id succeeds"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert with invalid type fails"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert with volume > 2.0 fails"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert with negative timeline_start_seconds fails"
+      met: false
+      reason: "not met — no test found"
+    - text: "Insert with duration_seconds = 0 fails"
+      met: false
+      reason: "not met — no test found; no such check exists"
+  integration:
+    - text: "Deleting episode cascades to delete tracks"
+      met: false
+      reason: "not met — no test found"
+    - text: "Query tracks by type"
+      met: false
+      reason: "not met — no test found"
+    - text: "Order tracks by timeline_start_seconds"
+      met: false
+      reason: "not met — no test found"
+  e2e: []
+remaining:
+  - criterion: "duration_seconds > 0 check"
+    reason: "In the spec's table definition but never created: the migration checks only type, volume and timeline start (apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:401-403); git log -S finds no later addition"
+    closed_by: "unassigned"
+open_questions: []
+notes: |
+  Sections of the Markdown spec that have no typed field, kept verbatim. Moved to typed fields: the Context paragraph (summary), the column table (database_table.columns), index names and columns, unique keys and foreign keys (database_table), the acceptance criteria and test-plan checklists and the Remaining table (remaining).
+
+  ## Metadata
+  - **Phase:** 1
+  - **Priority:** P0
+  - **Effort:** XS
+  - **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ COMPLETE)
+  - **Completed:** 2025-12-05
+  - **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
+  - **Dependencies:** FILM-101 (episodes-table)
+  - **Blocks:** FILM-504 (music-generation-action), FILM-505 (audio-studio)
+
+  ## Specification
+
+  ### Table Definition
+  ```sql
+  CREATE TABLE audio_tracks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    episode_id UUID NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL,
+    name VARCHAR(255),
+    file_url TEXT,
+    duration_seconds DECIMAL(10, 2),
+    timeline_start_seconds DECIMAL(10, 2) DEFAULT 0 NOT NULL,
+    volume DECIMAL(3, 2) DEFAULT 1.0 NOT NULL,
+    metadata JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    CHECK (type IN ('music', 'sfx', 'dialogue_composite', 'ambient')),
+    CHECK (volume >= 0.0 AND volume <= 2.0),
+    CHECK (timeline_start_seconds >= 0),
+    CHECK (duration_seconds > 0)
+  );
+  ```
+
+  ### Type Enum Values
+  - `music` - Background music tracks
+  - `sfx` - Sound effects
+  - `dialogue_composite` - Merged dialogue track
+  - `ambient` - Ambient/environmental sounds
+
+  ### Indexes
+  ```sql
+  CREATE INDEX idx_audio_tracks_episode ON audio_tracks(episode_id);
+  CREATE INDEX idx_audio_tracks_type ON audio_tracks(episode_id, type);
+  ```
+
+  ### Constraints
+  - **Primary Key**: `id`
+  - **Foreign Key**: `episode_id` references `episodes(id)` ON DELETE CASCADE
+  - **Check Constraints**:
+    - `type` in enum values
+    - `volume` between 0.0 and 2.0
+    - `timeline_start_seconds` >= 0
+    - `duration_seconds` > 0
+
+  ### JSONB Schema
+  ```typescript
+  interface AudioTrackMetadata {
+    provider?: string;          // "suno", "elevenlabs", "uploaded"
+    genre?: string;             // For music tracks
+    mood?: string;              // "upbeat", "somber", "intense"
+    bpm?: number;               // Beats per minute
+    fadeIn?: number;            // Fade in duration (seconds)
+    fadeOut?: number;           // Fade out duration (seconds)
+    loop?: boolean;             // Should track loop
+    generatedAt?: string;       // ISO timestamp
+    costCents?: number;         // Generation cost
+  }
+  ```
+
+  ## File Changes
+  | Action | Path |
+  |--------|------|
+  | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |

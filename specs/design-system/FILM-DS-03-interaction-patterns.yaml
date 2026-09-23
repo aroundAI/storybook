@@ -1,0 +1,404 @@
+spec_id: "FILM-DS-03"
+title: "Interaction Patterns"
+phase: null
+phase_name: "Design System"
+category: design_guideline
+status: PARTIAL
+audited: "2026-09-23"
+effort: M
+dependencies:
+  - spec_id: "FILM-DS-01"
+    note: null
+  - spec_id: "FILM-DS-02"
+    note: null
+summary: >
+  The Film Studio requires complex interaction patterns for drag-and-drop, keyboard
+  navigation, and real-time updates. Standardizing these patterns ensures consistency
+  and accessibility.
+acceptance_criteria:
+  - text: "Shot grid supports keyboard navigation"
+    met: false
+    reason: "no longer true — shot cards are `<div onClick>` with no tabIndex or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`); the keyboard grid went in 5b88db3a"
+  - text: "Timeline supports keyboard shortcuts for playback"
+    met: true
+    evidence: "packages/features/edit-suite/src/components/edit-suite-provider.tsx:423 (Space/J/K/L, listener at :505)"
+  - text: "Drag and drop has clear visual feedback"
+    met: true
+    evidence: "packages/features/edit-suite/src/components/timeline/clip-block.tsx:425 (drag opacity and cursor), snap line at :551"
+  - text: "Loading states use skeletons (not spinners for content)"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/loading.tsx:3, apps/web/app/home/[account]/studio/[projectSlug]/episodes/loading.tsx:11"
+  - text: "Empty states include actionable next steps"
+    met: true
+    evidence: "packages/features/assets/src/components/empty-asset-state.tsx:56"
+  - text: "Error states include recovery options when possible"
+    met: true
+    evidence: "apps/web/app/error.tsx:60, apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/bulk-generate/shots-phase.tsx:355"
+  - text: "Real-time updates don't cause layout shift"
+    met: false
+    reason: "unverified — needs a layout-shift measurement while edit-suite peer edits or notifications arrive; no test measures it"
+remaining:
+  - criterion: "Shot grid supports keyboard navigation"
+    reason: >
+      The live grid's shot cards are clickable `<div>`s with no tabIndex, role or key
+      handler
+      (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`).
+      The grid that had `role="grid"` and arrow-key handling lived in
+      `@kit/video-generation` and was deleted in 5b88db3a; `useShotGridKeyboard` in
+      `@kit/film-studio` was never wired up and went in 5f44d0e1
+    closed_by: "FILM-410"
+open_questions:
+  - "Should we implement undo/redo for shot reordering? (post-MVP)"
+  - "Should timeline support touch gestures for mobile? (post-MVP)"
+design_guideline:
+  guideline_type: "Interaction Patterns"
+  applies_to:
+    - "Shot grid"
+    - "Timeline"
+    - "Asset assignment"
+    - "Loading states"
+    - "Empty states"
+    - "Error states"
+    - "Real-time updates"
+  patterns:
+    - "Shot grid reordering (drag and drop): draggable grid items with sequence update; drag feedback styles — dragging `opacity-50 scale-105 shadow-lg z-50`, drop target `ring-2 ring-primary ring-offset-2`, invalid `ring-2 ring-destructive`; a `GripVertical` drag handle labelled \"Drag to reorder\""
+    - "Timeline clip manipulation: horizontal drag with snapping (`SNAP_THRESHOLD_PX = 10`; snap points clip edges, playhead, grid lines) and `cursor-ew-resize` handles on both clip edges labelled \"Resize clip start\" / \"Resize clip end\""
+    - "Asset assignment: drag an asset onto a shot; an `AssetDropZone` accepts listed asset types and shows idle (dashed muted border), active (primary), invalid (destructive) and hasContent (solid border) states"
+    - "Shot grid keyboard: `←` `→` `↑` `↓` — Navigate shots (Grid focused)"
+    - "Shot grid keyboard: `Space` — Play/pause preview (Shot selected)"
+    - "Shot grid keyboard: `Enter` — Open shot editor (Shot selected)"
+    - "Shot grid keyboard: `Delete` / `Backspace` — Remove shot (Shot selected)"
+    - "Shot grid keyboard: `Shift+Click` — Multi-select range (Grid focused)"
+    - "Shot grid keyboard: `Cmd/Ctrl+A` — Select all (Grid focused)"
+    - "Shot grid keyboard: `Escape` — Deselect all (Any selection)"
+    - "Timeline keyboard: `Space` — Play/pause (Timeline focused)"
+    - "Timeline keyboard: `←` `→` — Scrub playhead (1 frame) (Timeline focused)"
+    - "Timeline keyboard: `Shift+←` `Shift+→` — Scrub playhead (1 second) (Timeline focused)"
+    - "Timeline keyboard: `[` — Set in-point (Playback)"
+    - "Timeline keyboard: `]` — Set out-point (Playback)"
+    - "Timeline keyboard: `Home` — Go to start (Timeline focused)"
+    - "Timeline keyboard: `End` — Go to end (Timeline focused)"
+    - "Timeline keyboard: `+` `-` — Zoom in/out (Timeline focused)"
+    - "Timeline keyboard: `Cmd/Ctrl+Z` — Undo (Global)"
+    - "Timeline keyboard: `Cmd/Ctrl+Shift+Z` — Redo (Global)"
+    - "Progressive loading: a skeleton while data loads (`ShotGridSkeleton`), a placeholder with `ProgressRing` and sr-only progress text while generating, and an optimistic status update on action"
+    - "Skeleton components: `ShotGridSkeleton` renders a responsive grid of `aspect-video` skeletons; `EpisodeCardSkeleton` renders a card-shaped skeleton"
+    - "Empty states: an `EmptyState` with icon, title, description and an optional action button, e.g. \"No episodes yet\" → Create Episode, \"No characters defined\" → Add Character"
+    - "Error states: a generation failure shows the error with a Retry button when retryable; provider unavailable shows a warning that the job is queued and retries automatically; credit limit reached links to Upgrade Plan"
+    - "Real-time updates: optimistic UI with server reconciliation — subscribe to a Supabase `postgres_changes` channel per episode and merge UPDATE payloads into the cached shots"
+    - "All keyboard shortcuts have visible hints (via Tooltip)"
+    - "Focus is managed during drag operations"
+    - "Screen readers announce status changes via `aria-live`"
+    - "Drag handles have appropriate ARIA labels"
+    - "Keyboard-only users can complete all interactions"
+  file_path: "packages/features/film-studio/src/lib/interaction-patterns.ts"
+notes: |
+  ## Metadata
+  - **Phase:** Design System
+  - **Priority:** P0 (Critical)
+  - **Effort:** M (4-8 hours)
+  - **Dependencies:** FILM-DS-01 (Component Inventory), FILM-DS-02 (Design Tokens)
+  - **Blocks:** FILM-410 (Shot Grid), FILM-601 (Timeline Editor)
+  - **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ Complete)
+  - **Implemented:** 2025-12-07
+  - **PR:** #16
+
+  ## Specification
+
+  ### 1. Drag and Drop Patterns
+
+  #### Shot Grid Reordering
+
+  ```typescript
+  // Pattern: Draggable grid items with sequence update
+
+  interface DragState {
+    isDragging: boolean;
+    draggedId: string | null;
+    dropTargetId: string | null;
+  }
+
+  // Visual feedback during drag
+  const dragStyles = {
+    dragging: 'opacity-50 scale-105 shadow-lg z-50',
+    dropTarget: 'ring-2 ring-primary ring-offset-2',
+    invalid: 'ring-2 ring-destructive',
+  };
+
+  // Drag handle affordance
+  <div className="cursor-grab active:cursor-grabbing" aria-label="Drag to reorder">
+    <GripVertical className="h-4 w-4 text-muted-foreground" />
+  </div>
+  ```
+
+  #### Timeline Clip Manipulation
+
+  ```typescript
+  // Pattern: Horizontal drag with snapping
+
+  interface ClipDragState {
+    clipId: string;
+    originalStart: number;
+    currentStart: number;
+    isResizing: 'left' | 'right' | null;
+  }
+
+  // Snapping behavior
+  const SNAP_THRESHOLD_PX = 10;
+  const SNAP_POINTS = ['clipEdges', 'playhead', 'gridLines'];
+
+  // Resize handles on clips
+  <div
+    className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/20"
+    aria-label="Resize clip start"
+  />
+  <div
+    className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/20"
+    aria-label="Resize clip end"
+  />
+  ```
+
+  #### Asset Assignment
+
+  ```typescript
+  // Pattern: Drag asset to shot for assignment
+
+  interface AssetDropZone {
+    accepts: AssetType[];
+    onDrop: (assetId: string) => void;
+  }
+
+  // Drop zone states
+  const dropZoneStyles = {
+    idle: 'border-dashed border-2 border-muted',
+    active: 'border-primary bg-primary/5',
+    invalid: 'border-destructive bg-destructive/5',
+    hasContent: 'border-solid border-border',
+  };
+  ```
+
+  ### 2. Keyboard Navigation
+
+  #### Shot Grid Navigation
+
+  (Table rows transcribed into design_guideline.patterns.)
+
+  ```typescript
+  // Implementation pattern
+  function useShotGridKeyboard(shots: Shot[], selectedIds: Set<string>) {
+    const handleKeyDown = useCallback((e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        moveSelection('next');
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        moveSelection('prev');
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        moveSelection('down', gridColumns);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        moveSelection('up', gridColumns);
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        togglePreview();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        openEditor();
+      }
+    }, [shots, selectedIds]);
+
+    return { handleKeyDown };
+  }
+  ```
+
+  #### Timeline Navigation
+
+  (Table rows transcribed into design_guideline.patterns.)
+
+  ### 3. Loading States
+
+  #### Progressive Loading Pattern
+
+  ```typescript
+  // 1. Skeleton while data loads
+  <ShotGridSkeleton count={12} />
+
+  // 2. Placeholder while generating
+  <ShotCard status="generating" progress={45}>
+    <ShotCardPlaceholder />
+    <ProgressRing progress={45} />
+    <span className="sr-only">Generating video, 45% complete</span>
+  </ShotCard>
+
+  // 3. Optimistic update on action
+  const { mutate } = useMutation({
+    mutationFn: generateVideo,
+    onMutate: async (shotId) => {
+      // Optimistically update to "generating"
+      queryClient.setQueryData(['shots', episodeId], (old) =>
+        old.map(s => s.id === shotId ? { ...s, status: 'generating' } : s)
+      );
+    },
+  });
+  ```
+
+  #### Skeleton Components
+
+  ```typescript
+  // Shot grid skeleton
+  function ShotGridSkeleton({ count }: { count: number }) {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {Array.from({ length: count }).map((_, i) => (
+          <Skeleton key={i} className="aspect-video rounded-lg" />
+        ))}
+      </div>
+    );
+  }
+
+  // Episode card skeleton
+  function EpisodeCardSkeleton() {
+    return (
+      <Card>
+        <Skeleton className="aspect-video" />
+        <CardContent className="space-y-2">
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-1/2" />
+        </CardContent>
+      </Card>
+    );
+  }
+  ```
+
+  ### 4. Empty States
+
+  ```typescript
+  interface EmptyStateProps {
+    icon: LucideIcon;
+    title: string;
+    description: string;
+    action?: {
+      label: string;
+      onClick: () => void;
+    };
+  }
+
+  function EmptyState({ icon: Icon, title, description, action }: EmptyStateProps) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="rounded-full bg-muted p-4 mb-4">
+          <Icon className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <h3 className="text-lg font-semibold mb-1">{title}</h3>
+        <p className="text-muted-foreground mb-4 max-w-sm">{description}</p>
+        {action && (
+          <Button onClick={action.onClick}>{action.label}</Button>
+        )}
+      </div>
+    );
+  }
+
+  // Usage examples
+  <EmptyState
+    icon={Film}
+    title="No episodes yet"
+    description="Create your first episode to start generating content"
+    action={{ label: 'Create Episode', onClick: handleCreate }}
+  />
+
+  <EmptyState
+    icon={Users}
+    title="No characters defined"
+    description="Add characters to maintain visual consistency across shots"
+    action={{ label: 'Add Character', onClick: handleAddCharacter }}
+  />
+  ```
+
+  ### 5. Error States
+
+  ```typescript
+  // Generation failure with retry
+  <ShotCard status="failed">
+    <Alert variant="destructive" className="absolute inset-0 m-2">
+      <XCircle className="h-4 w-4" />
+      <AlertTitle>Generation Failed</AlertTitle>
+      <AlertDescription>
+        {error.message}
+        {error.retryable && (
+          <Button variant="outline" size="sm" onClick={retry}>
+            Retry
+          </Button>
+        )}
+      </AlertDescription>
+    </Alert>
+  </ShotCard>
+
+  // Provider unavailable
+  <Alert variant="warning">
+    <AlertTriangle className="h-4 w-4" />
+    <AlertTitle>Provider Unavailable</AlertTitle>
+    <AlertDescription>
+      Kling API is experiencing issues. Your job has been queued and will
+      retry automatically when service is restored.
+    </AlertDescription>
+  </Alert>
+
+  // Cost limit reached
+  <Alert variant="destructive">
+    <CreditCard className="h-4 w-4" />
+    <AlertTitle>Credit Limit Reached</AlertTitle>
+    <AlertDescription>
+      You've used all your generation credits this month.
+      <Button variant="link" asChild>
+        <Link href="/settings/billing">Upgrade Plan</Link>
+      </Button>
+    </AlertDescription>
+  </Alert>
+  ```
+
+  ### 6. Real-Time Updates
+
+  ```typescript
+  // Pattern: Optimistic UI with server reconciliation
+
+  function useShotUpdates(episodeId: string) {
+    const queryClient = useQueryClient();
+
+    // Subscribe to real-time updates
+    useEffect(() => {
+      const channel = supabase
+        .channel(`shots:${episodeId}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'shots',
+          filter: `episode_id=eq.${episodeId}`,
+        }, (payload) => {
+          queryClient.setQueryData(['shots', episodeId], (old: Shot[]) => {
+            if (payload.eventType === 'UPDATE') {
+              return old.map(s => s.id === payload.new.id ? payload.new : s);
+            }
+            return old;
+          });
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }, [episodeId, queryClient]);
+  }
+  ```
+
+  ### File Changes
+
+  | Action | Path |
+  |--------|------|
+  | CREATE | `packages/features/film-studio/src/lib/interaction-patterns.ts` |
+  | CREATE | `packages/features/film-studio/src/hooks/use-keyboard-navigation.ts` |
+  | CREATE | `packages/features/film-studio/src/hooks/use-drag-drop.ts` |
+  | CREATE | `packages/features/film-studio/src/hooks/index.ts` |
+  | CREATE | `packages/features/film-studio/__tests__/interaction-patterns.test.ts` |
+  | UPDATE | `packages/features/film-studio/src/lib/index.ts` |
+  | UPDATE | `packages/features/film-studio/package.json` |

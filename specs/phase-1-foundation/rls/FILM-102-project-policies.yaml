@@ -1,0 +1,643 @@
+spec_id: "FILM-102b"
+title: "Project-Based Access Policies"
+phase: 1
+phase_name: "Foundation"
+category: rls_policy
+status: DONE
+audited: "2026-09-23"
+effort: M
+dependencies:
+  - spec_id: "FILM-101"
+    note: "database tables"
+  - spec_id: "FILM-102a"
+    note: null
+summary: >
+  Project-based access policies control access to all resources that belong to a project
+  (episodes, shots, assets, generations, etc.). These policies ensure that only users
+  who are members of a project can access its data.
+rls_policy:
+  table: null
+  tables:
+    - table: "seasons"
+      access_pattern: "Direct project_id FK"
+      policy_group: "Project-Scoped Tables (via project_id)"
+    - table: "episodes"
+      access_pattern: "Direct project_id FK"
+      policy_group: "Project-Scoped Tables (via project_id)"
+    - table: "shots"
+      access_pattern: "Via episode_id -> episodes.project_id"
+      policy_group: "Episode-Nested Tables (via episode_id)"
+    - table: "assets"
+      access_pattern: "Direct project_id FK"
+      policy_group: "Project-Scoped Tables (via project_id)"
+    - table: "dialogue_lines"
+      access_pattern: "Via episode_id -> episodes.project_id"
+      policy_group: "Episode-Nested Tables (via episode_id)"
+    - table: "audio_tracks"
+      access_pattern: "Via episode_id -> episodes.project_id"
+      policy_group: "Episode-Nested Tables (via episode_id)"
+    - table: "character_details"
+      access_pattern: "Via asset_id -> assets.project_id"
+      policy_group: "Asset-Nested Tables (via asset_id)"
+    - table: "voice_profiles"
+      access_pattern: "Via asset_id -> assets.project_id"
+      policy_group: "Asset-Nested Tables (via asset_id)"
+    - table: "generation_jobs"
+      access_pattern: "Direct project_id + account_id FK"
+      policy_group: "Account-Scoped Tables (via account_id)"
+    - table: "platform_connections"
+      access_pattern: "Direct account_id FK"
+      policy_group: "Account-Scoped Tables (via account_id)"
+    - table: "publishes"
+      access_pattern: "Via episode_id -> episodes.project_id"
+      policy_group: "Episode-Nested Tables (via episode_id)"
+    - table: "content_analytics"
+      access_pattern: "Via publish_id -> publishes -> episodes.project_id"
+      policy_group: "Account-Scoped Tables (via account_id)"
+    - table: "shared_resources"
+      access_pattern: "Direct account_id FK"
+      policy_group: "Account-Scoped Tables (via account_id)"
+    - table: "external_api_keys"
+      access_pattern: "Direct account_id FK"
+      policy_group: "Account-Scoped Tables (via account_id)"
+  policies:
+    - table: "seasons"
+      name: null
+      command: SELECT
+      roles: null
+      using: "account access"
+      with_check: null
+    - table: "seasons"
+      name: null
+      command: INSERT
+      roles: null
+      using: null
+      with_check: "owner/admin/member"
+    - table: "seasons"
+      name: null
+      command: UPDATE
+      roles: null
+      using: "owner/admin"
+      with_check: null
+    - table: "seasons"
+      name: null
+      command: DELETE
+      roles: null
+      using: "owner/admin"
+      with_check: null
+    - table: "episodes"
+      name: null
+      command: SELECT
+      roles: null
+      using: "account access"
+      with_check: null
+    - table: "episodes"
+      name: null
+      command: INSERT
+      roles: null
+      using: null
+      with_check: "owner/admin/member"
+    - table: "episodes"
+      name: null
+      command: UPDATE
+      roles: null
+      using: "owner/admin/member"
+      with_check: null
+    - table: "episodes"
+      name: null
+      command: DELETE
+      roles: null
+      using: "owner/admin"
+      with_check: null
+    - table: "assets"
+      name: null
+      command: SELECT
+      roles: null
+      using: "account access"
+      with_check: null
+    - table: "assets"
+      name: null
+      command: INSERT
+      roles: null
+      using: null
+      with_check: "owner/admin/member"
+    - table: "assets"
+      name: null
+      command: UPDATE
+      roles: null
+      using: "owner/admin/member"
+      with_check: null
+    - table: "assets"
+      name: null
+      command: DELETE
+      roles: null
+      using: "owner/admin"
+      with_check: null
+    - table: "shots"
+      name: null
+      command: SELECT
+      roles: null
+      using: "via episode"
+      with_check: null
+    - table: "shots"
+      name: null
+      command: INSERT
+      roles: null
+      using: null
+      with_check: "owner/admin/member"
+    - table: "shots"
+      name: null
+      command: UPDATE
+      roles: null
+      using: "owner/admin/member"
+      with_check: null
+    - table: "shots"
+      name: null
+      command: DELETE
+      roles: null
+      using: "owner/admin"
+      with_check: null
+    - table: "dialogue_lines"
+      name: null
+      command: SELECT
+      roles: null
+      using: "via episode"
+      with_check: null
+    - table: "dialogue_lines"
+      name: null
+      command: INSERT
+      roles: null
+      using: null
+      with_check: "owner/admin/member"
+    - table: "dialogue_lines"
+      name: null
+      command: UPDATE
+      roles: null
+      using: "owner/admin/member"
+      with_check: null
+    - table: "dialogue_lines"
+      name: null
+      command: DELETE
+      roles: null
+      using: "owner/admin"
+      with_check: null
+    - table: "audio_tracks"
+      name: null
+      command: SELECT
+      roles: null
+      using: "via episode"
+      with_check: null
+    - table: "audio_tracks"
+      name: null
+      command: INSERT
+      roles: null
+      using: null
+      with_check: "owner/admin/member"
+    - table: "audio_tracks"
+      name: null
+      command: UPDATE
+      roles: null
+      using: "owner/admin/member"
+      with_check: null
+    - table: "audio_tracks"
+      name: null
+      command: DELETE
+      roles: null
+      using: "owner/admin"
+      with_check: null
+    - table: "publishes"
+      name: null
+      command: SELECT
+      roles: null
+      using: "via episode"
+      with_check: null
+    - table: "publishes"
+      name: null
+      command: INSERT
+      roles: null
+      using: null
+      with_check: "owner/admin/member"
+    - table: "publishes"
+      name: null
+      command: UPDATE
+      roles: null
+      using: "owner/admin/member"
+      with_check: null
+    - table: "publishes"
+      name: null
+      command: DELETE
+      roles: null
+      using: "owner/admin"
+      with_check: null
+    - table: "character_details"
+      name: null
+      command: SELECT
+      roles: null
+      using: "via asset"
+      with_check: null
+    - table: "character_details"
+      name: null
+      command: INSERT
+      roles: null
+      using: null
+      with_check: "owner/admin/member"
+    - table: "character_details"
+      name: null
+      command: UPDATE
+      roles: null
+      using: "owner/admin/member"
+      with_check: null
+    - table: "character_details"
+      name: null
+      command: DELETE
+      roles: null
+      using: "owner/admin"
+      with_check: null
+    - table: "voice_profiles"
+      name: null
+      command: SELECT
+      roles: null
+      using: "via asset"
+      with_check: null
+    - table: "voice_profiles"
+      name: null
+      command: INSERT
+      roles: null
+      using: null
+      with_check: "owner/admin/member"
+    - table: "voice_profiles"
+      name: null
+      command: UPDATE
+      roles: null
+      using: "owner/admin/member"
+      with_check: null
+    - table: "voice_profiles"
+      name: null
+      command: DELETE
+      roles: null
+      using: "owner/admin"
+      with_check: null
+    - table: "generation_jobs"
+      name: null
+      command: SELECT
+      roles: null
+      using: "account access"
+      with_check: null
+    - table: "generation_jobs"
+      name: null
+      command: INSERT
+      roles: null
+      using: null
+      with_check: "project member"
+    - table: "generation_jobs"
+      name: null
+      command: UPDATE
+      roles: null
+      using: "account access"
+      with_check: null
+    - table: "generation_jobs"
+      name: null
+      command: DELETE
+      roles: null
+      using: "- (no delete)"
+      with_check: null
+    - table: "platform_connections"
+      name: null
+      command: SELECT
+      roles: null
+      using: "account access"
+      with_check: null
+    - table: "platform_connections"
+      name: null
+      command: INSERT
+      roles: null
+      using: null
+      with_check: "account access"
+    - table: "platform_connections"
+      name: null
+      command: UPDATE
+      roles: null
+      using: "account access"
+      with_check: null
+    - table: "platform_connections"
+      name: null
+      command: DELETE
+      roles: null
+      using: "account access"
+      with_check: null
+    - table: "shared_resources"
+      name: null
+      command: SELECT
+      roles: null
+      using: "account access + system"
+      with_check: null
+    - table: "shared_resources"
+      name: null
+      command: INSERT
+      roles: null
+      using: null
+      with_check: "account access"
+    - table: "shared_resources"
+      name: null
+      command: UPDATE
+      roles: null
+      using: "account access"
+      with_check: null
+    - table: "shared_resources"
+      name: null
+      command: DELETE
+      roles: null
+      using: "account access"
+      with_check: null
+    - table: "external_api_keys"
+      name: null
+      command: SELECT
+      roles: null
+      using: "account access"
+      with_check: null
+    - table: "external_api_keys"
+      name: null
+      command: INSERT
+      roles: null
+      using: null
+      with_check: "account access"
+    - table: "external_api_keys"
+      name: null
+      command: UPDATE
+      roles: null
+      using: "account access"
+      with_check: null
+    - table: "external_api_keys"
+      name: null
+      command: DELETE
+      roles: null
+      using: "account access"
+      with_check: null
+    - table: "content_analytics"
+      name: null
+      command: SELECT
+      roles: null
+      using: "via publish"
+      with_check: null
+    - table: "content_analytics"
+      name: null
+      command: INSERT
+      roles: null
+      using: null
+      with_check: "project member"
+    - table: "content_analytics"
+      name: null
+      command: UPDATE
+      roles: null
+      using: "project member"
+      with_check: null
+    - table: "content_analytics"
+      name: null
+      command: DELETE
+      roles: null
+      using: "- (no delete)"
+      with_check: null
+acceptance_criteria:
+  - text: "All 14 film studio tables have RLS policies"
+    met: true
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:597 — 12 remain; `voice_profiles` and `content_analytics` were dropped (`20260103075610`, `20260212080000`)"
+  - text: "Helper functions correctly identify user's project membership"
+    met: false
+    reason: "unverified — needs a pgTAP test; `has_role_on_project`/`can_perform_project_action` are only called through a mocked RPC (`packages/features/projects/__tests__/project-queries.test.ts:296`)"
+  - text: "Project owners and admins can perform elevated operations"
+    met: false
+    reason: "unverified — needs a pgTAP test; delete policies require owner/admin (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:635`) but nothing drives them"
+  - text: "Project members can read and create resources"
+    met: false
+    reason: "unverified — tested for `publishes` only (`apps/web/supabase/tests/database/publish-analytics-note-rls.test.sql:120`, `apps/web/supabase/tests/database/publish-asset-duration.test.sql:129`); the other 11 tables have no test"
+  - text: "Non-members cannot access any project data"
+    met: false
+    reason: "retired — superseded for public/unlisted projects and episodes by public sharing (PR #126): `apps/web/supabase/migrations/20260108120000_public_sharing_rls.sql:43`, `PUBLIC-SHARING-PRD`"
+  - text: "Policies work correctly with nested resources (assets via projects, shots via episodes, etc.)"
+    met: false
+    reason: "unverified — only the episode-nested `publishes` policies are tested (`apps/web/supabase/tests/database/publish-analytics-note-rls.test.sql:143`); the asset-nested and other episode-nested tables are not"
+  - text: "Account-scoped resources check account membership"
+    met: true
+    evidence: null
+  - text: "All policies use consistent patterns avoiding circular dependencies"
+    met: true
+    evidence: null
+open_questions: []
+notes: |
+  ## Metadata not held in typed fields
+  - **Priority:** P0
+  - **Status:** DONE
+  - **Blocks:** All project-scoped server actions
+
+  ## Context (continued)
+  The core security model is:
+  1. A user must be a member of a project to access its resources
+  2. Project owners and admins have elevated privileges
+  3. Members can create and update resources within projects they belong to
+  4. Viewers have read-only access
+  5. Access to nested resources flows through the project membership via joins
+
+  This approach ensures consistent security across all project-scoped tables and prevents cross-tenant data leakage.
+
+  ## Implementation Summary
+  All RLS policies are implemented in `apps/web/supabase/schemas/30-film-studio.sql` and deployed via migration `20251205125737_film-studio-tables.sql`.
+
+  ### Tables Covered (14 tables)
+  Each table and its access pattern is in `rls_policy.tables`.
+
+  ### Helper Functions (from 18-projects.sql)
+
+  ```sql
+  -- Check if user has role on project
+  public.has_role_on_project(target_project_id uuid, target_role project_role default null)
+    RETURNS boolean
+    SECURITY INVOKER
+
+  -- Check if user is project owner (bypasses RLS)
+  public.is_project_owner(target_project_id uuid)
+    RETURNS boolean
+    SECURITY DEFINER
+
+  -- Check if user can perform action on project
+  public.can_perform_project_action(target_project_id uuid, action project_action)
+    RETURNS boolean
+    SECURITY INVOKER
+  ```
+
+  ### Access Control Hierarchy
+
+  ```
+  Project Owner (role='owner')
+    |-- Full CRUD on all project resources
+    |-- Can add/remove members
+    +-- Can delete project
+
+  Project Admin (role='admin')
+    |-- Full CRUD on project resources
+    |-- Can add/remove members
+    +-- Cannot delete project
+
+  Project Member (role='member')
+    |-- Read access to all project resources
+    |-- Can create new resources
+    +-- Can update resources
+
+  Project Viewer (role='viewer')
+    +-- Read-only access to project resources
+  ```
+
+  ## RLS Policy Patterns
+
+  ### Pattern 1: Direct Project FK (seasons, episodes, assets)
+
+  ```sql
+  -- Read: Check account access (personal owner OR team membership)
+  create policy "table_read" on public.table for select
+    to authenticated using (
+      exists (
+        select 1 from public.projects p
+        where p.id = table.project_id
+        and (
+          exists(
+            select 1 from public.accounts a
+            where a.id = p.account_id
+            and a.primary_owner_user_id = auth.uid()
+            and a.is_personal_account = true
+          )
+          or
+          public.has_role_on_account(p.account_id)
+        )
+      )
+    );
+
+  -- Create: Check project membership with appropriate role
+  create policy "table_create" on public.table for insert
+    to authenticated with check (
+      exists (
+        select 1 from public.project_members pm
+        where pm.project_id = table.project_id
+        and pm.user_id = auth.uid()
+        and pm.role in ('owner', 'admin', 'member')
+      )
+    );
+
+  -- Update: Check project membership
+  create policy "table_update" on public.table for update
+    to authenticated using (
+      exists (
+        select 1 from public.project_members pm
+        where pm.project_id = table.project_id
+        and pm.user_id = auth.uid()
+        and pm.role in ('owner', 'admin', 'member')
+      )
+    );
+
+  -- Delete: Owners and admins only
+  create policy "table_delete" on public.table for delete
+    to authenticated using (
+      exists (
+        select 1 from public.project_members pm
+        where pm.project_id = table.project_id
+        and pm.user_id = auth.uid()
+        and pm.role in ('owner', 'admin')
+      )
+    );
+  ```
+
+  ### Pattern 2: Nested via Episode (shots, dialogue_lines, audio_tracks, publishes)
+
+  ```sql
+  -- Access through episode -> project
+  create policy "shots_read" on public.shots for select
+    to authenticated using (
+      exists (
+        select 1 from public.episodes e
+        join public.projects p on p.id = e.project_id
+        where e.id = shots.episode_id
+        and (
+          exists(
+            select 1 from public.accounts a
+            where a.id = p.account_id
+            and a.primary_owner_user_id = auth.uid()
+            and a.is_personal_account = true
+          )
+          or
+          public.has_role_on_account(p.account_id)
+        )
+      )
+    );
+  ```
+
+  ### Pattern 3: Nested via Asset (character_details, voice_profiles)
+
+  ```sql
+  -- Access through asset -> project
+  create policy "character_details_read" on public.character_details for select
+    to authenticated using (
+      exists (
+        select 1 from public.assets a
+        join public.projects p on p.id = a.project_id
+        where a.id = character_details.asset_id
+        and (
+          exists(
+            select 1 from public.accounts acc
+            where acc.id = p.account_id
+            and acc.primary_owner_user_id = auth.uid()
+            and acc.is_personal_account = true
+          )
+          or
+          public.has_role_on_account(p.account_id)
+        )
+      )
+    );
+  ```
+
+  ### Pattern 4: Account-Scoped Resources (platform_connections, shared_resources, external_api_keys)
+
+  ```sql
+  -- Direct account access check
+  create policy "platform_connections_read" on public.platform_connections for select
+    to authenticated using (
+      account_id in (
+        select a.id from public.accounts a
+        where a.primary_owner_user_id = auth.uid()
+        or public.has_role_on_account(a.id)
+      )
+    );
+  ```
+
+  ## Policy Matrix
+  Each table row of the four matrices is in `rls_policy.policies`, one entry per operation
+  (a condition is under `using`, or under `with_check` for INSERT); each table's matrix
+  heading is its `policy_group` in `rls_policy.tables`. The matrix gives no policy names or roles.
+
+  ## File Changes
+
+  | Action | Path | Status |
+  |--------|------|--------|
+  | IMPLEMENTED | `apps/web/supabase/schemas/30-film-studio.sql` | Lines 551-1310 |
+  | DEPLOYED | `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql` | Complete |
+
+  ## Security Considerations
+
+  ### Multi-Tenant Isolation
+  - All policies enforce project/account membership checks
+  - No shared data between different accounts/projects unless explicitly marked (is_system = true for shared_resources)
+  - READ policies check account access first, then project membership for writes
+
+  ### Circular Dependency Avoidance
+  - READ policies check via projects table -> accounts table (not project_members)
+  - This avoids circular RLS dependencies between projects and project_members
+  - WRITE policies check project_members directly since user must already have read access
+
+  ### Performance Considerations
+  - Indexes on `project_members(project_id, user_id, role)` for fast membership checks
+  - Nested resource policies use efficient EXISTS subqueries with JOINs
+  - Account access functions are marked STABLE for query optimization
+
+  ## References
+  - PostgreSQL RLS Policies: https://www.postgresql.org/docs/current/sql-createpolicy.html
+  - Supabase RLS Guide: https://supabase.com/docs/guides/auth/row-level-security
+  - FILM-101: Database schema definition
+  - FILM-102a: RLS enablement
+  - 18-projects.sql: Base projects schema with helper functions

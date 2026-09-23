@@ -1,0 +1,178 @@
+spec_id: "FILM-513"
+title: "Retire Lip-Sync (SyncLabs, Wav2Lip)"
+phase: 5
+phase_name: "Audio Generation"
+category: provider
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-1801"
+    note: "#291 — only for the resolver entry in §4.4; none for the deletion"
+summary: >
+  FILM-511 shipped a lip-sync library in one commit (`6090f5e0`) with two providers,
+  SyncLabs and Wav2Lip. The owner has said both are deprecated (2026-09-22). Exploration
+  shows there is nothing to deprecate *around* them: **the feature is unreachable in every
+  environment and has been since it was written.**
+provider:
+  vendor: "SyncLabs, Wav2Lip (being removed)"
+  file_path: "packages/features/audio-generation/src/providers/lip-sync/"
+  base_url: "https://api.synclabs.so"
+  auth: "SYNCLABS_API_KEY / WAV2LIP_API_KEY environment variables, set in no environment"
+  endpoints: []
+  rate_limits: null
+  webhooks: []
+acceptance_criteria:
+  - text: "Migration drops `lip_sync_jobs` and **refuses if the table has rows** — the refusal seen by inserting one row locally, running the migration, watching it raise, removing the row, running again"
+    met: false
+    reason: "open — not yet done; the spec is DRAFT and was not audited"
+  - text: "Types regenerated (`check:types-current` green); `lip_sync_jobs` absent from `database.types.ts`"
+    met: false
+    reason: "open — not yet done; the spec is DRAFT and was not audited"
+  - text: "Every file in §2 deleted; `pnpm typecheck`, `lint`, and `@kit/audio-generation` tests green"
+    met: false
+    reason: "open — not yet done; the spec is DRAFT and was not audited"
+  - text: "Guard test red on `main` (names every §2 file), green after; pgTAP `hasnt_table` red-then-green; both in `tooling/mutation-guards/film-513.json`"
+    met: false
+    reason: "open — not yet done; the spec is DRAFT and was not audited"
+  - text: "Zero occurrences of the four env names, `synclabs`, `wav2lip`, `lip_sync_jobs` in `packages/` and `apps/` source (migration history excepted)"
+    met: false
+    reason: "open — not yet done; the spec is DRAFT and was not audited"
+  - text: "`synclabs` removed from `VENDORS` and FILM-1801 §5 (stacked on #291 if unmerged); `vendor-api-versions.test.ts` green"
+    met: false
+    reason: "open — not yet done; the spec is DRAFT and was not audited"
+  - text: "§4.5 documents updated; FILM-511 marked RETIRED"
+    met: false
+    reason: "open — not yet done; the spec is DRAFT and was not audited"
+  - text: "PR body states that nothing user-visible changes and why no screenshots"
+    met: false
+    reason: "open — not yet done; the spec is DRAFT and was not audited"
+open_questions: []
+notes: |
+  ## 1. Why this exists
+
+  FILM-511 shipped a lip-sync library in one commit
+  (`6090f5e0`) with two providers, SyncLabs and Wav2Lip. The owner has said
+  both are deprecated (2026-09-22). Exploration shows there is nothing to
+  deprecate *around* them: **the feature is unreachable in every environment
+  and has been since it was written.**
+
+  | Fact | Where |
+  |---|---|
+  | `LipSyncEditor` is mounted nowhere — its only references are its own file and the barrel `components/index.ts:23-26` | `packages/features/audio-generation/src/components/LipSyncEditor.tsx` (448 lines) |
+  | Neither `SYNCLABS_API_KEY` nor `WAV2LIP_API_KEY` is set in any `.env*`, `sst.config.ts`, `deployment/**` or CI file | repo-wide grep |
+  | So `createAccountLipSyncProvider` throws for both providers everywhere — the actions insert a `queued` job, hit the throw, mark it `failed` | `server/lip-sync-actions.ts:261,299-305,574` |
+  | Provider is never user-selectable; `'synclabs'` is hard-coded in three places | `factory.ts:83`, `lip-sync-actions.ts:151`, `LipSyncEditor.tsx:224` |
+  | No lambda, page, route or other package imports any of it | `apps/web/lambda/**`, `apps/web/app/**` |
+  | The `lip_sync_jobs` table exists and nothing can write it successfully | `20251211141642_add-lip-sync-jobs.sql` |
+
+  Two of the six unguarded base-URL overrides in
+  FILM-CC-04 KB-21 —
+  `SYNCLABS_BASE_URL` and `WAV2LIP_API_URL` — exist only to serve this dead
+  code. Deleting the feature closes them without a guard.
+
+  ## 2. What goes
+
+  Everything below is deleted. Line counts are from `main` at `dbbd5ee8`.
+
+  **`packages/features/audio-generation/`**
+  - `src/providers/lip-sync/` — all seven files (`types.ts`, `base.ts`, `synclabs.ts`, `wav2lip.ts`, `registry.ts`, `factory.ts`, `index.ts`; 847 lines)
+  - `src/server/lip-sync-actions.ts` (661 lines) and its re-export at `src/server/index.ts:8`
+  - `src/components/LipSyncEditor.tsx` and its barrel lines `src/components/index.ts:23-26`
+  - `src/lib/schemas/lip-sync.schema.ts` and its re-export at `src/lib/schemas/index.ts:4`
+  - In `src/lib/constants.ts`: `LIP_SYNC_PROVIDERS` (`:226-229`, zero consumers), `SYNCLABS` (`:232-244`), `WAV2LIP` (`:247-259`), and the `synclabs`/`wav2lip` rows of `PROVIDER_DISPLAY_NAMES` (`:272-273`)
+  - `__tests__/lip-sync-provider.test.ts` (417 lines) and the provider assertions in `__tests__/lip-sync-schemas.test.ts` (`:18-19`, `:152-156`); the rest of that file is provider-independent and can stay if anything still imports the remaining schemas — otherwise it goes too
+  - Any lip-sync section in `packages/features/audio-generation/CLAUDE.md` / `AGENTS.md`
+
+  **Environment reads** — the four that vanish with the factory:
+  `SYNCLABS_API_KEY`, `SYNCLABS_BASE_URL` (`factory.ts:125,131`),
+  `WAV2LIP_API_KEY`, `WAV2LIP_API_URL` (`factory.ts:137,143` and
+  `constants.ts:248`, a module-level read baked at import time).
+
+  **Database** — `public.lip_sync_jobs`, with its check constraints, four RLS
+  policies, four indexes and `set_lip_sync_jobs_updated_at` trigger. The
+  migration that created it stays in history; a new migration drops it (§4.1).
+
+  **Not deleted:** the "lip-sync" *prose* in the translation skills
+  (`episodes/src/agent/skills/translation-skill.ts`, `translation-verifier-skill.ts`,
+  `translation-orchestrator.ts`, `video-prompt-guide/veo3-meta.md`) — those
+  describe dialogue timing and have no coupling to the providers.
+
+  ## 3. What does not change for a user
+
+  Nothing. No page renders the editor, no action is reachable from the UI, no
+  job has ever completed. **No screenshots are required for this PR**, and the
+  PR must say so with the reason (CLAUDE.md requires screenshots for what a user
+  *sees*; nothing a user sees changes).
+
+  ## 4. The work, in order
+
+  ### 4.1 Drop the table — safely
+
+  A hand-written migration (`apps/web/supabase/migrations/<timestamp>_drop-lip-sync-jobs.sql`):
+
+  ```sql
+  do $$
+  begin
+    if exists (select 1 from public.lip_sync_jobs) then
+      raise exception 'lip_sync_jobs is not empty (% rows); refusing to drop',
+        (select count(*) from public.lip_sync_jobs);
+    end if;
+  end $$;
+
+  drop table public.lip_sync_jobs;
+  ```
+
+  The guard clause is the point: the table is *believed* empty everywhere, and
+  a migration that would destroy rows if that belief were wrong must refuse
+  instead. Policies, indexes and the trigger go with the table. There is no
+  `schemas/` file for this table, so nothing to mirror. Then
+  `pnpm supabase:web:typegen` — generated, never hand-edited; commit the
+  `public` diff; `check:types-current` must pass. Never `supabase db diff`.
+
+  ### 4.2 Delete the code
+
+  The list in §2. Do it in one commit per group (providers; actions + editor;
+  schemas + constants; tests) so the review reads as four deletions rather than
+  one 2,000-line diff. `pnpm --filter @kit/audio-generation test` and
+  `pnpm typecheck` green after each.
+
+  ### 4.3 The guard: it stays gone
+
+  A repo-scan test in the manner of `platform-field-names.test.ts` that fails
+  if any of `SYNCLABS_API_KEY`, `SYNCLABS_BASE_URL`, `WAV2LIP_API_KEY`,
+  `WAV2LIP_API_URL`, `synclabs`, `wav2lip` or `lip_sync_jobs` appears in
+  `packages/` or `apps/` source (migrations history and this spec excluded).
+  **Red before green:** run it on `main` first — it must name every file in §2.
+  pgTAP: `hasnt_table('public', 'lip_sync_jobs')`, red on the pre-drop schema.
+  Record both in `tooling/mutation-guards/film-513.json`.
+
+  ### 4.4 The resolver entry (needs FILM-1801)
+
+  `packages/shared/src/vendors/resolver.ts:47` on the FILM-1801 branch declares
+  `synclabs: 'https://api.synclabs.so'`. Once the provider is gone that entry is
+  an unused vendor, and `vendor-api-versions.test.ts:132` derives its host rules
+  from `VENDORS`, so **remove the entry and the last `api.synclabs.so` literal
+  in the same commit** or the test fails on the orphan. Also drop `synclabs`
+  from FILM-1801 §5's list of shipped vendor names. If #291 has not merged when
+  this is implemented, do §4.1–4.3 against `main` and §4.4 as a second small
+  commit stacked on #291.
+
+  ### 4.5 Documents that currently describe the feature as live
+
+  | File | Change |
+  |---|---|
+  | `FILM-511` | `status: 🗑️ RETIRED (FILM-513)`, one line under the title saying why |
+  | `FILM-1803` | remove port-table row 4114 (Sync Labs) and the paragraph "Lip-sync returns a job that completes after a short delay…" (`:78-79`) |
+  | `FILM-1801` §9 | strike `SYNCLABS_BASE_URL`, `WAV2LIP_API_URL` from "Left alone, deliberately" |
+  | `specs/phase-18-local-vendor-sandbox/README.md:17-18` | remove "lip-sync (`SYNCLABS_BASE_URL`, `WAV2LIP_API_URL`)" from "Overridable today" |
+  | `FILM-CC-04` | KB-21: the two variables → "closed by FILM-513"; KB-6's triage list: `LipSyncEditor.tsx` row → "file deleted (FILM-513)" |
+  | `specs/INDEX.md` | FILM-511 row → RETIRED; FILM-513 row added; phase-5 count |
+
+  ## 6. Risk
+
+  **Low.** The only irreversible step is the table drop, and the migration
+  refuses to run on a non-empty table. Everything else is deletion of code
+  that no path reaches; `tsc` and the package tests are the proof that nothing
+  imported it. If lip-sync is wanted later it is a new spec against a provider
+  that exists, not a restoration of this one — the retained FILM-511 file and
+  git history hold the design.
