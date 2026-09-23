@@ -1,0 +1,70 @@
+{
+  "feature": "KB-32",
+  "mutations": [
+    {
+      "name": "KB-32 R1 A language render goes back to filtering on the preview's is_active first",
+      "kind": "unit",
+      "file": "apps/web/lambda/render-worker/render-input.ts",
+      "find": "    if (clip.language) return clip.language === language;\n\n    return clip.is_active;",
+      "replace": "    if (!clip.is_active) return false;\n    if (track.type !== 'dialogue') return true;\n    return !clip.language || clip.language === language;",
+      "cwd": "apps/web",
+      "test": "lambda/render-worker/__tests__/select-render-clips.test.ts"
+    },
+    {
+      "name": "KB-32 R2 The renderer cleans its work dir before returning the output",
+      "kind": "unit",
+      "file": "apps/web/lambda/render-worker/handlers/ffmpeg-render.ts",
+      "edits": [
+        {
+          "find": "import { createWriteStream, existsSync, statSync } from 'fs';",
+          "replace": "import { createWriteStream, existsSync, rmSync, statSync } from 'fs';"
+        },
+        {
+          "find": "  return {\n    outputPath,\n    durationMs: maxEndMs,\n  };",
+          "replace": "  rmSync(workDir, { recursive: true, force: true });\n\n  return {\n    outputPath,\n    durationMs: maxEndMs,\n  };"
+        }
+      ],
+      "cwd": "apps/web",
+      "test": "lambda/render-worker/__tests__/ffmpeg-render-output.test.ts"
+    },
+    {
+      "name": "KB-32 R3 The output pixel format is left to the source again",
+      "kind": "unit",
+      "file": "apps/web/lambda/render-worker/handlers/ffmpeg-render.ts",
+      "find": "    '-pix_fmt',\n    'yuv420p',\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "lambda/render-worker/__tests__/build-ffmpeg-args.test.ts",
+      "pattern": "4:2:0"
+    },
+    {
+      "name": "KB-32 R4 Video trims ignore the clip's source in-point",
+      "kind": "unit",
+      "file": "apps/web/lambda/render-worker/handlers/ffmpeg-render.ts",
+      "find": "    const trimStart = clip.in_point_ms / 1000;",
+      "replace": "    const trimStart = 0;",
+      "cwd": "apps/web",
+      "test": "lambda/render-worker/__tests__/build-ffmpeg-args.test.ts",
+      "pattern": "in/out points"
+    },
+    {
+      "name": "KB-32 R5 A query error on the project is reported as 'not found' again",
+      "kind": "unit",
+      "file": "apps/web/lambda/render-worker/render-input.ts",
+      "find": "  if (error) {\n    throw new RenderStageError(\n      `Could not load the edit project (${error.code})`,\n      error,\n    );\n  }\n\n  if (!project) {",
+      "replace": "  if (error || !project) {",
+      "cwd": "apps/web",
+      "test": "lambda/render-worker/__tests__/load-render-input.test.ts"
+    },
+    {
+      "name": "KB-32 R6 Clips are read from one fixed range instead of paged",
+      "kind": "unit",
+      "file": "apps/web/lambda/render-worker/render-input.ts",
+      "find": "          .order('id')\n          .range(from, to),\n      'edit_clips',",
+      "replace": "          .order('id')\n          .range(0, 999),\n      'edit_clips',",
+      "cwd": "apps/web",
+      "test": "lambda/render-worker/__tests__/load-render-input.test.ts",
+      "pattern": "every page"
+    }
+  ]
+}
