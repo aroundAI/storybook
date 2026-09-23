@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KB-32 evidence: one server render, end to end, against the real local
  * database and a real FFmpeg. Skipped unless RENDER_EVIDENCE=1, so CI (no

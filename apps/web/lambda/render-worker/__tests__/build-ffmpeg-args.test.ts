@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * The arguments the server render gives FFmpeg, built from rows in the
  * real edit-suite columns (KB-32). Values are chosen so a wrong source

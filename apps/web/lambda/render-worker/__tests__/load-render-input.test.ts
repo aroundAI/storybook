@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * How a failed read reaches `render_error` (KB-32). The worker used to turn
  * every step-1 error into "Edit project not found", which is how a 42703 —

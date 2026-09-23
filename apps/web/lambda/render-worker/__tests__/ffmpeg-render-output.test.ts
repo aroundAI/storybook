@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * KB-32: the renderer returned the path of an output its own `finally`
  * had just deleted, so the upload that followed always failed with ENOENT.
