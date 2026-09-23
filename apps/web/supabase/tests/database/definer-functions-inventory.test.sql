@@ -13,7 +13,9 @@ begin;
 -- ITS ACCESS CHECK in the comment. Review the check; do not just append.
 --
 -- Merge order: this list is exact as of KB-27 (after KB-18 and KB-28). A PR
--- that merges after it and adds a definer function adds one line here.
+-- that merges after it and adds a definer function adds one line here; one
+-- that revokes a function removes its line (FILM-607 revoked
+-- batch_assemble_edit_project, closing KB-40).
 --
 -- I2: none of them may run without a pinned search_path.
 
@@ -29,8 +31,6 @@ select results_eq(
   $$ select fn from (values
        -- returns the project id of a storage path; ids only (KB-28)
        ('kit.get_project_id_from_path'),
-       -- membership of the CALLER-SUPPLIED p_user_id, not auth.uid(): KB-40, open
-       ('public.batch_assemble_edit_project'),
        -- project_members owner/admin/member of the episode's project
        ('public.batch_create_shots'),
        -- every episode in p_account_id and can_write_project(its project) (KB-27)
