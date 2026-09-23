@@ -231,7 +231,10 @@ One hand-written migration: `apps/web/supabase/migrations/<UTC ts>_kb40-batch-as
 **`batch-actions.ts`:**
 - Delete the episode and `accounts_memberships` pre-check (`:39-64`). The RPC is the one rule. Keeping a second, different rule is how the viewer case got through.
 - Call the RPC without `p_user_id`.
-- `if (rpcError?.code === '42501') { logger.warn(ctx + error, 'Batch assemble refused'); throw new ActionRefusal(ASSEMBLE_REFUSAL); }`, where `ASSEMBLE_REFUSAL = "Only the project's owner, admins and members can assemble its timeline."`. Other errors are thrown as today.
+- Refusal mapping goes through a small shared helper, so KB-62's three sibling actions use the same rule and wording.
+  - The helper is `packages/features/edit-suite/src/server/write-refusal.ts` (`server-only`), exporting `throwIfWriteRefused(error, what)`.
+  - When `error?.code === '42501'`, it throws `new ActionRefusal(\`Only the project's owner, admins and members can ${what}.\`)`. Otherwise it returns, and the caller throws its existing error.
+  - The action calls `throwIfWriteRefused(rpcError, 'assemble its timeline')` and logs a `warn` first. Other errors are thrown as today.
 - `export const batchAssembleAction = returnRefusals(enhanceAction(…))`. The inner return shape is unchanged.
 
 **`lib/auto-assemble.ts`:**
@@ -318,7 +321,7 @@ None. A flag would leave the hole open while it was off, and the change is a str
   - The migration and the app must ship **together**. The window is one deploy (single owner, dogfooding).
   - The alternative with no window, a keep-and-ignore parameter, is weighed in §29 and Decision 1.
 - **Generated types:** regenerated. No typed caller reads `Args` for this function (the client is `any`).
-- **KB-27's `definer-functions-inventory.test.sql`** (not yet on `main`) pins the identity arguments of every definer function granted to `authenticated`. This signature change makes that test fail. Whichever PR merges second updates that line.
+- **KB-27's `definer-functions-inventory.test.sql`** (not yet on `main`) pins the **schema and name** of every definer function granted to `authenticated`, not its arguments (`schema.proname`, test line 24). The name does not change, so the test stays green. Only the row's "KB-40, open" note in KB-27's FILM-CC-04 table needs updating, by whichever PR merges second. (Corrected after KB-62 pointed it out and I checked KB-27's worktree.)
 - **Existing data:** no effect.
 
 ## 25. Migration and Rollout Strategy
@@ -424,7 +427,7 @@ Today T1 would *not* throw when it names the owner, so the red run proves the te
 - **Q1 (Decision 1):** drop `p_user_id` now, or keep it for one release? *Assume: drop.*
 - **Q2 (Decision 2):** should *replacing* an existing timeline need owner/admin, to match `edit_projects_delete`? *Assume: no, use `can_write_project` for both create and replace.*
 - **Q3 (Decision 3):** hide the button for non-writers? *Assume: no, show the refusal (this PR).*
-- **Q4 (Decision 4):** the three sibling edit-suite RPCs (`batch_save_edit_project`, `create_edit_project_with_tracks`, `split_edit_clip`).
+- **Q4 (Decision 4):** the three sibling edit-suite RPCs (`batch_save_edit_project`, `create_edit_project_with_tracks`, `split_edit_clip`). **Now tracked as KB-62,** which has its own teammate and the same pattern. KB-62 stacks on this branch, and the file ownership split is: `batchAssembleAction`, `runAutoAssembly` + assembly state, and the Auto-Assemble button/error span are KB-40's; `batchSaveAction`, `performSave` and the save-status span are KB-62's.
   - They are SECURITY DEFINER with **no** check, `search_path=public`, and **not** granted to `authenticated`. That means auto-save, split and "create project" in the Edit Suite fail today for everyone with `permission denied` (measured at the RPC as the owner; the UI path for these was not driven).
   - *Assume: out of KB-40's scope.* The lead should assign a new KB. The obvious "fix" of granting them would open three more cross-tenant writes, so it must add `can_write_project` first. `batch_save_edit_project` also takes `jsonb` parameters while the action sends `JSON.stringify` output, the double-encoding bug fixed for assemble on 2026-02-26 (read, not run).
 - **Q5 (Decision 5):** `remove_episode_from_threads_touched`. *Assume: out of KB-40's scope.*
