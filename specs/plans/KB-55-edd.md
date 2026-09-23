@@ -138,7 +138,7 @@ Canonical path, and the one the Playwright spec drives: **a project member uploa
 | Project viewer or stranger writes `audio/dialogue/…` or `temp/…` directly | Path doesn't resolve to a project → 403 (only the service role writes these) | — | — | Nothing stored |
 | Any user writes to `audio-assets` directly | No authenticated write policy → 403 | — | — | Nothing stored |
 | Library upload with a non-audio type (e.g. `text/html`) | Action refuses before upload (D4); on Supabase the bucket MIME list also refuses | "This file type isn't supported." (returned as a value) | Pick an audio file | Nothing stored |
-| Library file above the server-action body limit | Next refuses the request before the action runs (pre-existing; see §31) | Existing error toast | Smaller file | Nothing stored |
+| Library file above the server-action body limit | Next refuses the request before the action runs (pre-existing, unverified; **KB-73**, §31) | Existing error toast | Smaller file | Nothing stored |
 | Personal-account owner exports a report | `reports` policy now uses `has_account_access` → allowed (KB-56) | Download link | — | Report stored |
 | Stranger exports with another account's id | Data read is RLS-filtered to nothing → "No data found…" refusal; the storage policy would also refuse | Refusal text | — | Nothing stored |
 | Report file of a wrong type | Bucket MIME list refuses (only CSV/PDF) | Existing "Failed to generate report" | — | Nothing stored |
@@ -173,7 +173,7 @@ Canonical path, and the one the Playwright spec drives: **a project member uploa
 | FR-8b | *(D1-B = repair instead)* `generate-short-action.ts` uploads through `getStorageAdapter(adminClient)` to `videos`; the migration creates `videos`; the list shows `result.error` | E2E Generate → Ready on Supabase; on R2 (sandbox, recorder) the key is `videos/shorts/…` |
 | FR-9 | Every storage bucket or prefix name the code writes comes from one module (`STORAGE_BUCKETS` in `@kit/storage`), and a unit test fails if any Supabase bucket in it is not created by a migration, or if a string literal bucket name is passed to `.upload(`, `storage.from(` or `getSignedUploadUrl(` anywhere else | Vitest (red today on `audio`, `audio-assets`, `videos` and the export dialog's `storybook-assets`) |
 | FR-10 | Report storage calls live in one module (`report-storage.ts`) used by both report writers. It states why reports stay on Supabase Storage (D2) | grep; existing raw-export E2E still green |
-| FR-11 | *(D3)* The edit-suite export uploads to `project-assets` instead of `NEXT_PUBLIC_R2_BUCKET_NAME ?? 'storybook-assets'`, so it works on the Supabase provider; the presign route's second allowed bucket is removed | Vitest route test (existing, adjusted); FR-9 test |
+| FR-11 | ~~D3~~ **Withdrawn (coordinator, 2026-09-23):** the owner is sunsetting the Edit Suite, and FILM-607 "Retire the Edit Suite" removes the export dialog, `EXPORT_UPLOAD_BUCKET` and the render worker. This ticket does not touch `export-upload.ts` or #313's presign allowlist. The guard (FR-9) carries `storybook-assets` as a temporary, self-expiring allowlist entry (§15) | FR-9 test, check (d) |
 | FR-12 | `uploadAudioFileAndCreateAssetAction` refuses a `contentType` outside the audio list, before upload, as a returned value *(D4)* | Vitest (red: `text/html` reaches `upload`) |
 
 ## 7. Define Non-Functional Requirements
@@ -226,11 +226,11 @@ Search: `rg -U '\.storage\s*\.from\('` over `apps` and `packages`, TS/JS. Positi
 | `audio` | `voice-actions.ts:296,739`, `sfx-actions.ts:89`, `elevenlabs-music-actions.ts:82`, `core/sfx-core.ts:76`, `core/elevenlabs-music-core.ts:80` | **no** |
 | `audio-assets` | `audio-asset-actions.ts:577,694,839` | **no** |
 | `videos` | `generate-short-action.ts:253,265` | **no** |
-| `NEXT_PUBLIC_R2_BUCKET_NAME ?? 'storybook-assets'` | `edit-suite/src/lib/export-upload.ts:9-10` (KB-28's constant) | **no**. The same class as KB-55, not named in the ticket. KB-28 A2 kept it for R2; on Supabase the export fails. D3 |
+| `NEXT_PUBLIC_R2_BUCKET_NAME ?? 'storybook-assets'` | `edit-suite/src/lib/export-upload.ts:9-10` (KB-28's constant) | **no**. The same class as KB-55, not named in the ticket. KB-28 A2 kept it for R2; on Supabase the export fails. **Removed by FILM-607** (Edit Suite retired); temporary guard allowlist entry, §15 (d) |
 
 ### 8.4 Where the change enters
 
-At one new migration (buckets and policies; KB-56), at `audio-asset-actions.ts` (client and type check), at the report storage module, at the shorts package (removal), at the export dialog constant (D3), and at a new `STORAGE_BUCKETS` module with its guard test.
+At one new migration (buckets and policies; KB-56), at `audio-asset-actions.ts` (client and type check), at the report storage module, at the shorts package (removal), and at a new `STORAGE_BUCKETS` module with its guard test.
 
 ## 9. Define the Desired System Behavior
 
@@ -327,16 +327,23 @@ It uploads to `STORAGE_BUCKETS.reports` and creates the signed URL, with the sam
 - Link the page from somewhere (owner to say where), or it stays unreachable.
 - Production needs `ffmpeg` in the web runtime (§31, Q1).
 
-**D3, export dialog:** `EXPORT_UPLOAD_BUCKET` becomes `STORAGE_BUCKETS.projectAssets`. The presign route's allowlist then has one entry (KB-28's two-entry set collapses). Already-exported videos keep their stored URLs. New exports on R2 land under `project-assets/…` instead of `<R2_BUCKET_NAME>/…`.
+**Edit-suite export: not changed here.** D3 is withdrawn, because FILM-607 removes the export dialog, `EXPORT_UPLOAD_BUCKET` (`packages/features/edit-suite/src/lib/export-upload.ts`) and the render worker. `export-upload.ts` and #313's presign allowlist are left exactly as they are.
 
 **Guard test** (`apps/web/app/api/storage/__tests__/storage-buckets.test.ts`, in `apps/web` because CI's unit job runs `pnpm --filter web test`; KB-28 moved its MIME test there for the same reason):
 - (a) For each value in `STORAGE_BUCKETS`, some migration inserts it into `storage.buckets`.
 - (b) A scan of `apps/**` and `packages/**` source (excluding tests and `node_modules`) for `.upload('`, `.from('` directly after `.storage`, and `getSignedUploadUrl('` / `storage.delete('` with a string-literal first argument finds none. Bucket names must come from the constant.
 - (c) The `audio-assets` MIME array in the migration equals `AUDIO_LIBRARY_TYPES`.
+- (d) **`storybook-assets` is a temporary, self-expiring allowlist entry, not a comment.**
+  - The test file holds `const REMOVED_BY_FILM_607 = { 'storybook-assets': 'packages/features/edit-suite/src/lib/export-upload.ts' }`: the only bucket name the code uses that is neither in `STORAGE_BUCKETS` nor created by a migration.
+  - The guard asserts two things. The name still occurs in that file (it is the `?? 'storybook-assets'` fallback). And no *other* file uses it.
+  - When FILM-607 deletes the file, the first assertion fails with "stale allowlist entry: FILM-607 has landed, delete `REMOVED_BY_FILM_607`". The exception can't outlive its reason.
+  - If anyone reuses the name elsewhere in the meantime, the second assertion fails.
+  - A comment would do neither, which is why it isn't one.
+  - The file is read only by the test. Nothing in the export path changes.
 
 ## 16. API and Event Design
 
-No routes are added. `POST /api/storage/presign` loses the second allowed bucket under D3 (its only sender changes in the same PR). Server actions keep their signatures; `uploadAudioFileAndCreateAssetAction` gains one returned refusal. Under D1, `generateShortAction`, `generateAllShortsAction`, `publishShortAction` and `deleteShortAction` disappear, along with their action IDs in the build manifest. Their only importer is the deleted page. There are no events.
+No routes are added. `POST /api/storage/presign` is unchanged (D3 withdrawn; FILM-607 owns the export bucket). Server actions keep their signatures; `uploadAudioFileAndCreateAssetAction` gains one returned refusal. Under D1, `generateShortAction`, `generateAllShortsAction`, `publishShortAction` and `deleteShortAction` disappear, along with their action IDs in the build manifest. Their only importer is the deleted page. There are no events.
 
 ## 17. State and Lifecycle Design
 
@@ -379,11 +386,11 @@ Existing logs are unchanged. **Operations note for the owner:** production, on R
 
 ## 23. Configuration and Feature Flags
 
-No new variables or flags. `STORAGE_PROVIDER` semantics are unchanged. D3 removes the export dialog's dependence on `NEXT_PUBLIC_R2_BUCKET_NAME`, whose value I haven't read. D2-alt would add one variable (`R2_PRIVATE_BUCKET_NAME`) whose value the owner supplies.
+No new variables or flags. `STORAGE_PROVIDER` semantics are unchanged. `NEXT_PUBLIC_R2_BUCKET_NAME` (the export dialog's bucket) is untouched; FILM-607 removes it. D2-alt would add one variable (`R2_PRIVATE_BUCKET_NAME`) whose value the owner supplies.
 
 ## 24. Compatibility
 
-- **R2:** all existing keys and URLs are unchanged, except that new edit-suite exports go under `project-assets/` (D3).
+- **R2:** all existing keys and URLs are unchanged.
 - **Supabase environments:** audio starts working; reports admit personal owners; reports refuse non-CSV/PDF types (the app writes only those two).
 - **Client/server:** the action signatures are compatible.
 - **Removing `@kit/shorts`:** unreachable code only.
@@ -397,9 +404,8 @@ Standard deploy: migrations, then the app. Nothing to backfill. Rollback: revert
 | Layer | File | Cases | Red first? |
 |---|---|---|---|
 | pgTAP | `apps/web/supabase/tests/database/media-report-storage-rls.test.sql`, `plan(N)` fixed | Fixtures: team T (owner A, member M), personal owner U, stranger S, project P of T (A owner, M member, viewer V). **Buckets:** `audio`/`audio-assets` rows with expected public/limit/MIME; `reports` MIME/limit. **audio:** A and M insert `<P>/sfx/x.mp3` ok; V and S refused; A refused on `dialogue/<ep>/x.mp3` and `temp/<A>/x.mp3`; A updates and deletes own; S deletes 0 rows. **audio-assets:** A insert refused. **reports:** U inserts `exports/<U>/…` ok (**KB-56**); A and M insert `exports/<T>/…` ok; S refused on `exports/<T>/…`; S select sees 0 rows; U select on `exports/<T>/…` 0 rows | Yes. On the branch base, the bucket rows are missing, the audio inserts fail with FK/bucket errors, and U's insert is refused. Each is recorded |
-| Vitest | `apps/web/app/api/storage/__tests__/storage-buckets.test.ts` | FR-9 (a)–(c) | Yes. It fails today naming `audio`, `audio-assets`, `videos` and `storybook-assets` |
+| Vitest | `apps/web/app/api/storage/__tests__/storage-buckets.test.ts` | FR-9 (a)–(d) | Yes. It fails today naming `audio`, `audio-assets` and `videos`. For (d), red is shown both ways: delete the `storybook-assets` fallback from a scratch copy (stale-entry failure), and add the literal to a second file (reuse failure) |
 | Vitest | `packages/features/audio-generation/__tests__/audio-asset-upload.test.ts` (and added to CI's unit list if that package isn't in it; checked before writing) | Supabase provider: the action gives the factory a client (red: "Supabase client is required"). D4: `text/html` → refusal value, `upload` not called; `audio/mpeg` → `upload('audio-assets', …)`. R2 provider with a recording `send`: key `audio-assets/music/…` | Yes |
-| Vitest | existing `app/api/storage/presign/__tests__/route.test.ts` | D3: export path now to `project-assets` 200; the old `storybook-assets` bucket 400 | Yes (the second case) |
 | Playwright | `apps/e2e/tests/storage/media-storage.spec.ts` | Seeded team, project and member (API seeding). **Member uploads an mp3 twice through the real audio-library dialog** (the second submission); both assets listed; each URL fetches 200 `audio/mpeg`. Stranger's direct Storage API write to `audio/<P>/…` and `audio-assets/…` → 403. Reports: the existing `raw-export-evidence.spec.ts` stays green (scheduled path through `report-storage.ts`). Evidence screenshots behind `CAPTURE_EVIDENCE=1` | The upload case is run on the base branch first and fails ("Supabase client is required"); the stranger case fails before the policies (bucket missing → 404, recorded as the reason) |
 | Repro | `$SP/kb55/probes.mjs` and `kb55-adapter-probe.mts` re-run | B2–B4 → 200; R4 → 200; R11 → refused; S1–S3 → ok | Before/after table in the PR |
 
@@ -426,7 +432,7 @@ Question to answer: does the built artifact store and serve audio, and deliver a
 | Only real media and reports stored | Upload | FR-7, 12 | §14.4, §15 | bucket, action | — | pgTAP, Vitest, R11 re-run | — |
 | No bucket drift again | — | FR-9 | §15 | constant + test | migrations | Vitest (red) | CI |
 | Shorts not silently broken | Shorts | FR-8 / 8b | §15 | removal / repair | — | grep+typecheck / E2E | test:prod 404 |
-| Export works on Supabase too | Edit export | FR-11 | §15 | export dialog, route | presign | route test | — |
+| Export exception can't outlive FILM-607 | — | FR-9 (d) | §15 | guard test | — | Vitest (d) | CI once FILM-607 lands |
 | Reports private everywhere | Export/schedule | FR-10 | §10, §15 | report-storage | reports | raw-export E2E | test:prod |
 
 ## 29. Architectural Alternatives and Trade-offs
@@ -438,7 +444,7 @@ Question to answer: does the built artifact store and serve audio, and deliver a
 | Reports stay on Supabase (D2) | Public R2 bucket (A3); a private R2 bucket | Public is unsafe (§19). A private bucket needs owner-created infrastructure, and all authorisation moves into app code (KB-57). It can follow later behind `report-storage.ts` |
 | Remove shorts (D1) | Repair (D1-B) | The page is unreachable. It has never listed a candidate since it was added (`veo_prompt`, 2026-01-01). The spec is RETIRED, the live shorts flow is elsewhere, and repair also needs ffmpeg in the web runtime |
 | One constant + source-scan test | Per-bucket comments | A comment can't fail. The test would have caught `audio`, `audio-assets`, `videos` and `storybook-assets` |
-| Point export at `project-assets` (D3) | Create a `storybook-assets` bucket | The name comes from an env var that a migration can't know |
+| Self-expiring allowlist for `storybook-assets` | A comment; pointing the export at `project-assets` (withdrawn D3) | FILM-607 deletes the export, so changing it is wasted work. A comment can't fail when FILM-607 lands or when the name is reused; the allowlist entry fails in both cases |
 
 ## 30. Risk Register
 
@@ -447,7 +453,7 @@ Question to answer: does the built artifact store and serve audio, and deliver a
 | R1: some audio writer uses a path whose first segment isn't the project id, but a user client | That write is refused on Supabase | pgTAP + E2E + the inventory in §8.3 | Inventory: only SFX/music use the user client, with `<projectId>/…` | Add the shape to KB-28's resolver |
 | R2: the production Supabase project has a hand-made `audio`/`videos` bucket with other settings | The migration overwrites limits (on conflict update) | The owner's §22 query | Production doesn't write to them (R2) | Adjust in a follow-up |
 | R3: removing `@kit/shorts` deletes something the owner meant to revive | Code loss (in git history) | Owner review (D1) | Tables kept; git history | Restore from git |
-| R4: a caller relied on `storybook-assets/…` R2 keys for exports | New exports under a new prefix | — | Stored URLs are absolute; old objects untouched | Keep the old prefix on R2 only (D3 "no") |
+| R4: FILM-607 lands before this PR, or after it without deleting the guard entry | Guard (d) fails in CI | CI | The failure message names the fix (delete the entry) | Whichever PR merges second deletes the entry |
 | R5: the source-scan test flags a legitimate literal | CI red | The test's message names the file | Allow-list inside the test for the adapter itself | — |
 | R6: the base64 server-action body cap makes the library E2E flaky on file size | Test fails for an unrelated reason | — | Use a small mp3 (< 200 KB) | — |
 
@@ -461,13 +467,13 @@ Question to answer: does the built artifact store and serve audio, and deliver a
   - Alternative D1-C: remove only the route and the generator, and keep the package (no lockfile change).
 - **D2: Reports.** **Keep on Supabase Storage (private), on every provider**, as the one named exception to "all runtime uploads go to R2", behind one `report-storage.ts`. Include KB-56 and the CSV/PDF MIME list.
   - Alternative D2-alt: route reports through the adapter into a **separate private R2 bucket** that the owner creates (`R2_PRIVATE_BUCKET_NAME`), add `getSignedDownloadUrl` to `StorageAdapter` (R2 = presigned GET, max 7 days; Supabase = `createSignedUrl`), and move the account check into the actions. It touches `adapters/r2.ts`, which KB-38 also changes. **Not** the existing public bucket (§19).
-- **D3: Edit-suite export bucket.** **Yes:** point it at `project-assets`, and collapse KB-28's two-bucket presign allowlist to one. Otherwise the export keeps failing on every Supabase environment, and `storybook-assets` remains a bucket "used in code that no migration creates".
+- **D3: withdrawn (coordinator, 2026-09-23).** The owner is sunsetting the Edit Suite, and FILM-607 removes the export dialog, `EXPORT_UPLOAD_BUCKET` and the render worker. This ticket leaves `export-upload.ts` and #313's presign allowlist untouched. The bucket guard carries `storybook-assets` as a self-expiring allowlist entry (§15 (d)) that fails once FILM-607 lands. The original D3 text follows, for the record only: point it at `project-assets`, and collapse KB-28's two-bucket presign allowlist to one. Otherwise the export keeps failing on every Supabase environment, and `storybook-assets` remains a bucket "used in code that no migration creates".
 - **D4: Audio library content type.** **Yes:** refuse non-audio types in `uploadAudioFileAndCreateAssetAction` (same file I edit for S3). Otherwise leave it to KB-57.
 - **D5: Scope of KB-56.** **Include** it here (a three-policy swap in this migration, proven by pgTAP). Note that no UI reaches the personal-owner case today: export is team-only.
 
 **Questions:**
 - **Q1 (only if D1-B):** does production's web runtime have `ffmpeg`? In this repo's SST config it doesn't (§8.1). §0.4 shows what happens without it.
-- **Q2:** retention of report files. Nothing deletes them today, on either path. That is outside this ticket; it could be filed against KB-20's retention work.
+- **Q2 → KB-74:** retention of report files. Nothing deletes them today, on either path. Filed by the coordinator as **KB-74** (KB-20 retention). Outside this ticket.
 
 **Assumptions:**
 - Production is `STORAGE_PROVIDER=r2` (owner). I read no production value.
@@ -484,10 +490,10 @@ Question to answer: does the built artifact store and serve audio, and deliver a
 3. On R2 every check must be in the action. The Supabase policies here are the second gate only on Supabase.
 
 **Out of scope, found here (for the lead to file or fold):**
-- **Server-action body limit (unverified hypothesis):** the audio library sends the file base64 in a server-action body. `next.config.mjs` sets no `serverActions.bodySizeLimit` (Next's default is 1 MB), while the dialog allows 50 MB. Files over roughly 700 KB may be refused before the action runs. Not run here.
+- **KB-73: server-action body limit (unverified hypothesis):** the audio library sends the file base64 in a server-action body. `next.config.mjs` sets no `serverActions.bodySizeLimit` (Next's default is 1 MB), while the dialog allows 50 MB. Files over roughly 700 KB may be refused before the action runs. Not run here.
 - `ShortsCandidatesList` calls `useMemo` after an early return (`shorts-candidates-list.tsx:92-113`), a hooks-order bug. Moot under D1.
 - `bucketExists()` in `@kit/assets` is dead code.
-- Report files are never deleted (Q2).
+- **KB-74:** report files are never deleted (Q2).
 
 ## 32. Implementation Plan
 
@@ -497,7 +503,7 @@ Question to answer: does the built artifact store and serve audio, and deliver a
 4. **Audio-asset action:** admin client + D4 type check → Vitest green.
 5. **Reports:** `report-storage.ts`; both callers use it → raw-export E2E green.
 6. **D1:** delete the route and package, `pnpm install`, grep (positive control: `@kit/storage` imports still found), typecheck. (Or D1-B per the owner.)
-7. **D3:** export constant → presign route test adjusted → green.
+7. *(D3 withdrawn: no export change.)*
 8. Playwright on a :3120 dev server, then the production build (§27). Re-run the probes → before/after table.
 9. `pnpm typecheck`, `pnpm lint:fix`, `pnpm format:fix`. Add the KB-55 entry to FILM-CC-04 if the lead hasn't, mark it Fixed with the PR number, and add one Fixed-table row. Mark KB-56 too if D5 = include.
 
@@ -525,4 +531,4 @@ Question to answer: does the built artifact store and serve audio, and deliver a
 - Reports are still written to Supabase and signed there.
 - The shorts page is gone (D1).
 - Locally and in CI, the audio features now store their output, and the test suite can see it.
-- This matches §1. The one user-visible production difference is the removal of an unreachable page, and, under D3, new edit-suite exports under a different key prefix, with no visible change.
+- This matches §1. The one user-visible production difference is the removal of an unreachable page.
