@@ -1,9 +1,24 @@
 # KB-38 — Engineering Design Document
 
-**Ticket:** KB-38, "R2 presigned uploads don't bind content type or size" (reserved by KB-28 in the lead's KB list; there is no `## KB-38` entry in `specs/cross-cutting/FILM-CC-04-known-bugs.md` yet, see §31 Q4). Found by KB-28, whose EDD records it at §8.1, §8.4, §19 and R3 (`specs/plans/KB-28-edd.md` on `fix/kb-28-project-assets-insert-scope`).
+**Ticket:** KB-38, "R2 presigned uploads don't bind content type or size" (reserved by KB-28 in the lead's KB list; its FILM-CC-04 entry is added by this PR, §31 D4). Found by KB-28, whose EDD records it at §8.1, §8.4, §19 and R3 (`specs/plans/KB-28-edd.md` on `fix/kb-28-project-assets-insert-scope`).
 **Branch:** `fix/kb-38-r2-presign-bind-type-size`, stacked on `origin/fix/kb-28-project-assets-insert-scope` @ `f9943881` (#313, open).
 **Size:** S–M. No migration. An adapter change, a route change within KB-28's route, one shared client helper, five uploaders, tests.
-**Status:** Plan (Phase 1). Nothing implemented.
+**Status:** Implemented (Phase 2). Approved 2026-09-23 with every recommended default (D1–D4). §0a records the owner's answers and what changed between plan and code.
+
+---
+
+## 0a. Changes after approval
+
+| # | What | Why | Where |
+|---|---|---|---|
+| B1 | **Q1 answered: browser uploads work in production today.** So R2 does not reject the empty-body `x-amz-checksum-crc32=AAAAAA==` that every URL has carried since 2026-01-07. It either ignores the parameter or does not check it against the body. This change does **not** repair a broken upload path, and the plan's words saying it might are withdrawn (§30 R2, §31 Q1). | Owner | §30, §31 |
+| B2 | **Removing that checksum is still right, and safe.** It is the CRC32 of zero bytes, so it asserts nothing about the file. A server that did check it would refuse every real upload. The URL without it is exactly what SDKs before 3.729 produced, and what Cloudflare's own presigned-URL examples show. Keeping it would make correctness depend on R2 continuing to ignore a parameter the URL claims. Only the presign client drops it: server-side `upload()` keeps the SDK default, where the checksum is of the real body. MinIO accepts the URL with or without it (§0.2), so the removal is proven not to change acceptance there. | Owner's Q1, reasoning | §10, §15 |
+| B3 | **Q3 answered: 500 MB is right** for edit-suite exports and master videos. There is one list, `UPLOAD_CONSTRAINTS`. | Owner | §30 R4 |
+| B4 | **D1:** the audio library upload goes to KB-57, with the findings handed over verbatim in §31. **D2:** MinIO is not in CI. The integration test is committed but skipped unless `S3_LOCAL_ENDPOINT` is set, and its local output is in the PR. **D3:** the owner applies the env comment line; this branch does not touch `deployment/config`. **D4:** the KB-38 entry is added to FILM-CC-04, marked Fixed, with a row in the Fixed table. | Owner | §31 |
+| B5 | **KB-70** (lead-assigned) is the `STORAGE_PROVIDER=s3` → Supabase fallback. It is added to FILM-CC-04 as Open, not fixed. | Coordinator | §8.5, FILM-CC-04 |
+| B6 | **No `exports` entry for `@kit/edit-suite`.** The web Vitest config needs an explicit alias for every package sub-path, and KB-31 edits that file. So the helper test imports the edit-suite helper by relative path instead. `package.json` is untouched. | Avoids a shared-file conflict | §7, §15, §26 |
+| B7 | **`scripts/s3-local.sh`** starts the MinIO the integration test needs (pinned image `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z`, 127.0.0.1:19138, throwaway credentials, bucket created with `mc`). Docker Hub no longer serves `minio/minio`. | Makes the red/green run repeatable | §26 |
+| B8 | The integration test sends requests through `node:http`, not `fetch`: the web Vitest environment is happy-dom, whose `fetch` applies browser rules, and its setup file needs a DOM, so the node environment is unavailable. Each PUT sets `Content-Length` from its body, as a browser does. That browsers really do this is shown separately, in Chromium (§26). | Test infrastructure | §26 |
 
 ---
 
@@ -148,7 +163,7 @@ The reference path is an owner uploading a project cover (`project-cover-setting
 - **Security:** after this, a URL admits one upload of one declared type and exact size, at most the category ceiling. The ceiling comes from one list, `UPLOAD_CONSTRAINTS`.
 - **Performance:** one extra integer check in the route. The same number of requests. The browser's PUT is unchanged in size.
 - **Compatibility:** the response gains a field, and the request gains a required field. Old bundles fail cleanly with 400 until reloaded (§24).
-- **Dependencies:** none new. The lockfile is **not** changed. `@kit/edit-suite` gets one extra `exports` entry in its `package.json` (a workspace path, not a dependency), so its helper can be unit-tested from `apps/web` (§26).
+- **Dependencies:** none new. The lockfile and every `package.json` are unchanged (§0a B6).
 - **Observability:** refusals log `reason:'size'` with `{declared, limit, category}`.
 - **Cost:** it removes the unbounded-bytes-per-URL exposure. There is still no per-user quota (§19).
 
@@ -303,7 +318,7 @@ export async function uploadWithPresignedUrl(file, bucket, path)   // requestPre
 ```
 `size` is required in the type, so an uploader cannot compile without declaring it.
 
-**U2** `apps/web/lib/presigned-upload.ts`: replace its body with `export { uploadWithPresignedUrl } from '@kit/storage/client'` plus the three existing path wrappers. **U3/U4:** call `requestPresignedUpload`; XHR does `for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v)`; fetch passes `headers`. **U5:** the same change in its own helper, and a new `"./presigned-upload"` export in `packages/features/edit-suite/package.json` for the test.
+**U2** `apps/web/lib/presigned-upload.ts`: replace its body with `export { uploadWithPresignedUrl } from '@kit/storage/client'` plus the three existing path wrappers. **U3/U4:** call `requestPresignedUpload`; XHR does `for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v)`; fetch passes `headers`. **U5:** the same change in its own helper. Its test imports it by relative path (§0a B6).
 
 No retries, flags, caching, transactions or locking are involved.
 
@@ -438,9 +453,9 @@ What it cannot prove: R2 itself (no R2 calls, by rule). The R2 signing is proven
 | Risk | Impact | Detection | Mitigation | Contingency |
 |---|---|---|---|---|
 | R1: R2 rejects a signed `content-length` (Q2) | All uploads 403 | §25 gate, minutes after deploy | SigV4 semantics; MinIO passes; third-party R2 client signs it | Roll back; fall back to signing only `content-type` plus the route ceiling (size bound per URL lost) |
-| R2: today's empty-body checksum already breaks production uploads (Q1) | Uploads already failing | Owner answer to Q1 | The fix removes it either way | — |
+| R2: removing the empty-body checksum changes what R2 accepts | None expected | §25 gate | Owner (Q1): uploads work today with it, so R2 does not enforce it. The URL without it is what SDKs before 3.729 sent, and MinIO accepts both (§0a B2) | Roll back |
 | R3: a helper declares a different body than it PUTs | That uploader 403s | Helper tests, E2E | Declared from the same object PUT; typed helper | Fix the helper |
-| R4: exports or master videos > 500 MB now refused | Those uploads fail with a clear message | User report | It is the product ceiling (FILM-CC-01) | Raise the one list if the owner wants (Q3) |
+| R4: exports or master videos > 500 MB now refused | Those uploads fail with a clear message | User report | It is the product ceiling (FILM-CC-01); owner confirmed 500 MB (Q3) | Raise the one list |
 | R5: stale tabs across the deploy | One failed upload, then reload | — | Fails closed | — |
 | R6: B2 behaves differently | None (not deployed) | — | Same code | — |
 | R7: rebase conflicts with #313 or KB-31 | Merge friction | Git | Touch KB-28's files only where §15 says; avoid KB-31's files | Rebase |
@@ -448,16 +463,25 @@ What it cannot prove: R2 itself (no R2 calls, by rule). The R2 signing is proven
 ## 31. Open Questions and Assumptions
 
 **Decisions for the owner (recommended default in bold):**
-- **D1: audio library upload (`audio-asset-actions.ts:798-859`).** **Leave it to KB-57**, with the §8.3 row handed over: client `contentType` unchecked, `fileSizeBytes` never compared to the buffer, whitespace-only filename sanitising, the upload before the project check, and the `audio/x-m4a` vs `audio/mp4` product question. The alternative is to add a type and size guard here, which means editing the same function twice across two PRs.
-- **D2: MinIO in CI.** **No for now.** The integration test is committed but skipped in CI. It runs locally with `S3_LOCAL_ENDPOINT` and its output goes in the PR. Adding a MinIO service to the Unit Tests job is a small follow-up if the owner wants it guarded on every PR. (It touches `.github/workflows/workflow.yml`, which FILM-1110 also edits.)
-- **D3: the env comment lives in `deployment/config/production.env:89`, in the private submodule, not in this repo.** **Owner applies it** (a one-line, value-free change I supply exactly; below). The alternative is for me to run a line-anchored `sed` on that line in the owner's checkout, confirm with `git diff` that only line 89 changed, and leave it uncommitted for the owner. I will not clone the config repo into a worktree or push to it.
-  Proposed line 89: `# Storage - every runtime upload uses STORAGE_PROVIDER (one provider for all; the content-type router is unused). Production: Cloudflare R2`
-- **D4: KB-38's FILM-CC-04 entry does not exist.** **I add it in the PR**, already marked Fixed, touching only its own lines and one Fixed-table row. The lead may prefer to file it first.
+- **D1 (decided: KB-57): audio library upload.** Handed over verbatim:
+
+  > **`packages/features/audio-generation/src/server/audio-asset-actions.ts:798-859`, `uploadAudioFileAndCreateAssetAction`** (called by `apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/upload-audio-dialog.tsx:129-140`). It takes the file as base64 from the client and uploads it server-side through `getStorageAdapter()` to the `audio-assets` prefix. On production's R2 that is the one bucket, served from the public R2 domain.
+  > 1. `contentType` is the client's value, unchecked (`UploadAudioFileSchema`: `z.string().min(1)`). It becomes the stored object's `Content-Type`, so `text/html` is storable.
+  > 2. `fileSizeBytes` is client-sent and never compared with `buffer.length`. The stored size is whatever the base64 decodes to.
+  > 3. The key is `${audioType}/${Date.now()}-${fileName.replace(/\s+/g, '_')}`. Only whitespace is replaced, and there is no `sanitizeFilename`.
+  > 4. The object is uploaded **before** any project check. `uploadAudioAssetAction`, which inserts the row, runs after the object exists, so a caller who is not a project writer still leaves an object behind.
+  > 5. Product question inside the fix: the dialog accepts `audio/x-m4a` (`upload-audio-dialog.tsx:212`), and `UPLOAD_CONSTRAINTS.audio` lists `audio/mp4` but not `audio/x-m4a`. A server allowlist taken from `UPLOAD_CONSTRAINTS` would start refusing `.m4a` files that upload today.
+  >
+  > Every other server-side audio upload (`voice-actions.ts:295,738`, `sfx-actions.ts:89`, `elevenlabs-music-actions.ts:82`, `core/sfx-core.ts:76`, `core/elevenlabs-music-core.ts:80`, `audio-asset-actions.ts:576,693`) stores bytes the server generated, under the literal type `audio/mpeg`. None of them is this class.
+- **D2 (decided: not yet).** The integration test is committed and skipped in CI. It runs locally with `./scripts/s3-local.sh up` and `S3_LOCAL_ENDPOINT`, and its output is in the PR. Adding a MinIO service to the Unit Tests job is a small follow-up. It touches `.github/workflows/workflow.yml`, which FILM-1110 also edits.
+- **D3 (decided: the owner applies it).** The comment is at `deployment/config/production.env:89`, in the private submodule, not in this repo, and this branch does not touch it. The replacement line is in the PR's "Before deploy (owner)" section:
+  Line 89 becomes: `# Storage - every runtime upload uses STORAGE_PROVIDER (one provider for all; the content-type router is unused). Production: Cloudflare R2`
+- **D4 (decided).** The KB-38 entry is added to FILM-CC-04, marked Fixed, with one Fixed-table row. KB-70 is added beside it, Open.
 
 **Questions (the design does not depend on the answers, but the risk register does):**
-- **Q1:** Do presigned uploads succeed in production today? Since the R2 adapter landed (2026-01-07, SDK ≥ 3.964), every presigned URL has carried `x-amz-checksum-crc32=AAAAAA==`. If R2 validates it, every browser upload to R2 is failing now, and this change also repairs that. If uploads work, R2 ignores it. Either way the fix removes it. The owner can answer this from any recent cover or thumbnail.
+- **Q1 (answered: yes, uploads work).** Every presigned URL since 2026-01-07 has carried `x-amz-checksum-crc32=AAAAAA==`, and uploads succeed, so R2 does not enforce it. This change removes the parameter for correctness (§0a B2); it does not repair anything.
 - **Q2:** Does R2 enforce a signed `content-length`? It is unverified against R2 (§0.3). The §25 gate answers it on the first production upload.
-- **Q3:** Is 500 MB the right ceiling for edit-suite exports and master videos? Default: yes, one list.
+- **Q3 (answered: yes).** 500 MB is the limit for edit-suite exports and master videos.
 
 **Assumptions.** Production is R2 (owner). Browsers set `Content-Length` from a `File`/`Blob` body (to be shown in the one-off browser run, §26). No production values were read: the submodule file was searched for one comment string and only comment lines and variable names were printed.
 
@@ -483,7 +507,6 @@ What it cannot prove: R2 itself (no R2 calls, by rule). The R2 signing is proven
    - Update KB-28's route assertions; route tests green; red-before-green.
 4. **Clients:**
    - The shared helper; U2 re-export; U3, U4, U5.
-   - The `edit-suite` exports entry.
    - Helper and structural tests green; `pnpm typecheck`.
 5. **E2E:**
    - Update KB-28's spec (size, new refusals).
