@@ -1,20 +1,20 @@
 import 'server-only';
 
+import { getOAuthAppCredentials } from '../../server/oauth-app-credentials';
 import { type RevokeOutcome, requestRevocation } from '../revoke-request';
 import { TIKTOK_OAUTH_CONFIG } from './config';
 
 /**
  * Revokes the grant at TikTok. TikTok's revoke call needs the app's own
- * client key and secret, read from the environment as connect reads them
- * (KB-29 moves both to one credential resolver).
+ * client key and secret — from the same resolver connect and refresh use
+ * (KB-29), so all three agree on which app the token belongs to.
  */
 export async function revokeTikTokAccess(
   accessToken: string,
 ): Promise<RevokeOutcome> {
-  const clientKey = process.env.TIKTOK_CLIENT_KEY;
-  const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
+  const app = await getOAuthAppCredentials('tiktok');
 
-  if (!clientKey || !clientSecret) {
+  if (!app) {
     return { status: 'not_configured' };
   }
 
@@ -22,8 +22,8 @@ export async function revokeTikTokAccess(
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_key: clientKey,
-      client_secret: clientSecret,
+      client_key: app.clientId,
+      client_secret: app.clientSecret,
       token: accessToken,
     }),
   });
