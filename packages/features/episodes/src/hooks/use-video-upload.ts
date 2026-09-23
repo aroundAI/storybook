@@ -11,6 +11,7 @@ import { useCallback, useRef, useState } from 'react';
 
 import { PROJECT_ASSETS_BUCKET } from '@kit/assets/lib';
 import { sanitizeFilename } from '@kit/assets/upload-validation';
+import { requestPresignedUpload } from '@kit/storage/client';
 
 // Video constraints
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB
@@ -323,48 +324,21 @@ export function useVideoUpload(
 
       try {
         // 3a. Get presigned URLs for both files
+        // Each URL is signed for its body's exact size and type (KB-38)
         const [videoPresign, thumbnailPresign] = await Promise.all([
-          fetch('/api/storage/presign', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              bucket: PROJECT_ASSETS_BUCKET,
-              path: videoPath,
-              contentType: file.type,
-            }),
-          }).then(
-            (r) =>
-              r.json() as Promise<{
-                uploadUrl: string;
-                publicUrl: string;
-                error?: string;
-              }>,
-          ),
-          fetch('/api/storage/presign', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              bucket: PROJECT_ASSETS_BUCKET,
-              path: thumbnailPath,
-              contentType: 'image/webp',
-            }),
-          }).then(
-            (r) =>
-              r.json() as Promise<{
-                uploadUrl: string;
-                publicUrl: string;
-                error?: string;
-              }>,
-          ),
+          requestPresignedUpload({
+            bucket: PROJECT_ASSETS_BUCKET,
+            path: videoPath,
+            contentType: file.type,
+            size: file.size,
+          }),
+          requestPresignedUpload({
+            bucket: PROJECT_ASSETS_BUCKET,
+            path: thumbnailPath,
+            contentType: 'image/webp',
+            size: thumbnailBlob.size,
+          }),
         ]);
-
-        if (videoPresign.error || thumbnailPresign.error) {
-          throw new Error(
-            videoPresign.error ||
-              thumbnailPresign.error ||
-              'Failed to get presigned URLs',
-          );
-        }
 
         // 3b. Upload video directly to storage with progress tracking
         await new Promise<void>((resolve, reject) => {
@@ -400,7 +374,9 @@ export function useVideoUpload(
           );
 
           xhr.open('PUT', videoPresign.uploadUrl, true);
-          xhr.setRequestHeader('Content-Type', file.type);
+          for (const [name, value] of Object.entries(videoPresign.headers)) {
+            xhr.setRequestHeader(name, value);
+          }
           xhr.send(file);
         });
 
@@ -412,7 +388,7 @@ export function useVideoUpload(
         const thumbResponse = await fetch(thumbnailPresign.uploadUrl, {
           method: 'PUT',
           body: thumbnailBlob,
-          headers: { 'Content-Type': 'image/webp' },
+          headers: thumbnailPresign.headers,
         });
 
         if (!thumbResponse.ok) {

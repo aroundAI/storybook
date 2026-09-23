@@ -9,6 +9,7 @@
 import { useCallback, useRef, useState } from 'react';
 
 import { validateUpload } from '@kit/assets/upload-validation';
+import { requestPresignedUpload } from '@kit/storage/client';
 
 import { PROJECT_ASSETS_BUCKET } from '../../lib/constants';
 import type {
@@ -128,23 +129,12 @@ export function useImageUpload(
         // /projects/[projectId]/assets/[type]/[filename]
         const storagePath = `projects/${projectId}/assets/${assetType}/${filename}`;
 
-        const presignRes = await fetch('/api/storage/presign', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            bucket: PROJECT_ASSETS_BUCKET,
-            path: storagePath,
-            contentType: file.type,
-          }),
+        const { uploadUrl, publicUrl, headers } = await requestPresignedUpload({
+          bucket: PROJECT_ASSETS_BUCKET,
+          path: storagePath,
+          contentType: file.type,
+          size: file.size,
         });
-
-        if (!presignRes.ok) {
-          throw new Error('Failed to obtain upload URL');
-        }
-
-        const { uploadUrl, publicUrl } = await presignRes.json();
 
         // 3b. Upload to R2 with Progress
         await new Promise<void>((resolve, reject) => {
@@ -179,7 +169,10 @@ export function useImageUpload(
           );
 
           xhr.open('PUT', uploadUrl);
-          xhr.setRequestHeader('Content-Type', file.type);
+          // Exactly the headers the URL was signed for (KB-38)
+          for (const [name, value] of Object.entries(headers)) {
+            xhr.setRequestHeader(name, value);
+          }
           xhr.send(file);
         });
 

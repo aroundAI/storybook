@@ -9,6 +9,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type {
+  SignedUploadRequest,
   SignedUploadResult,
   StorageAdapter,
   UploadOptions,
@@ -54,10 +55,10 @@ export class SupabaseStorageAdapter implements StorageAdapter {
   async getSignedUploadUrl(
     bucket: string,
     path: string,
-    _contentType: string,
-    expiresIn: number = 3600,
+    { contentType, expiresIn = 3600 }: SignedUploadRequest,
   ): Promise<SignedUploadResult> {
-    // Supabase uses createSignedUploadUrl for presigned uploads
+    // The URL binds neither type nor length; the bucket's allowed_mime_types
+    // and file_size_limit apply when the PUT arrives (KB-28).
     const { data, error } = await this.client.storage
       .from(bucket)
       .createSignedUploadUrl(path);
@@ -72,6 +73,7 @@ export class SupabaseStorageAdapter implements StorageAdapter {
       uploadUrl: data.signedUrl,
       publicUrl,
       expiresIn,
+      headers: { 'Content-Type': contentType },
     };
   }
 

@@ -12,19 +12,65 @@ interface PresignedUploadResult {
   path: string;
 }
 
-interface PresignedUrlResponse {
+export interface PresignedUpload {
   uploadUrl: string;
   publicUrl: string;
   expiresIn: number;
-  error?: string;
+  /**
+   * The headers the PUT must send, exactly. On R2 they are part of the
+   * signature, and so is the body's length (KB-38).
+   */
+  headers: Record<string, string>;
+}
+
+export interface PresignRequest {
+  bucket: string;
+  path: string;
+  contentType: string;
+  /**
+   * The exact byte length of the body the PUT will send (`file.size`,
+   * `blob.size`). The URL is signed for this length; any other is refused.
+   */
+  size: number;
+  expiresIn?: number;
 }
 
 /**
- * Upload a file to R2 storage using presigned URLs
+ * Ask `/api/storage/presign` for an upload URL. The one place a browser
+ * calls the route, so no uploader can forget the size it is signed for
+ * (KB-38). Throws the route's own message when it refuses.
+ */
+export async function requestPresignedUpload(
+  request: PresignRequest,
+): Promise<PresignedUpload> {
+  const response = await fetch('/api/storage/presign', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+
+  const data = (await response.json().catch(() => ({}))) as
+    | PresignedUpload
+    | { error?: string };
+
+  if (!response.ok || !('uploadUrl' in data)) {
+    throw new Error(
+      ('error' in data && data.error) ||
+        `Failed to get presigned URL (${response.status})`,
+    );
+  }
+
+  return data;
+}
+
+/**
+ * Upload a file using a presigned URL
  *
  * Flow:
  * 1. Request presigned URL from server (small request)
- * 2. Upload file directly to R2 using presigned URL (no Lambda)
+ * 2. Upload file directly to storage using presigned URL (no Lambda)
  * 3. Return public URL
  *
  * @param file - File to upload
@@ -38,32 +84,19 @@ export async function uploadWithPresignedUrl(
   path: string,
 ): Promise<PresignedUploadResult> {
   // Step 1: Get presigned URL from our API
-  const presignResponse = await fetch('/api/storage/presign', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      bucket,
-      path,
-      contentType: file.type,
-      expiresIn: 900, // 15 minutes
-    }),
+  const presigned = await requestPresignedUpload({
+    bucket,
+    path,
+    contentType: file.type,
+    size: file.size,
+    expiresIn: 900, // 15 minutes
   });
 
-  const presignData: PresignedUrlResponse = await presignResponse.json();
-
-  if (!presignResponse.ok || presignData.error) {
-    throw new Error(presignData.error || 'Failed to get presigned URL');
-  }
-
-  // Step 2: Upload file directly to R2 using presigned URL
-  const uploadResponse = await fetch(presignData.uploadUrl, {
+  // Step 2: Upload the same file, with exactly the headers it was signed for
+  const uploadResponse = await fetch(presigned.uploadUrl, {
     method: 'PUT',
     body: file,
-    headers: {
-      'Content-Type': file.type,
-    },
+    headers: presigned.headers,
   });
 
   if (!uploadResponse.ok) {
@@ -74,7 +107,7 @@ export async function uploadWithPresignedUrl(
 
   // Step 3: Return public URL
   return {
-    url: presignData.publicUrl,
+    url: presigned.publicUrl,
     path,
   };
 }

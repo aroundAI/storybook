@@ -20,17 +20,19 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import type {
+  SignedUploadRequest,
   SignedUploadResult,
   StorageAdapter,
   UploadOptions,
   UploadResult,
 } from '../types';
+import { createPresignClient, presignPut } from './s3-presign';
 
 export class B2StorageAdapter implements StorageAdapter {
   private s3Client: S3Client;
+  private presignClient: S3Client;
   private bucketName: string;
   private publicUrl: string;
 
@@ -62,14 +64,17 @@ export class B2StorageAdapter implements StorageAdapter {
       throw new Error('B2 bucket name not configured. Set B2_BUCKET_NAME.');
     }
 
-    this.s3Client = new S3Client({
+    const config = {
       region: 'auto',
       endpoint: `https://${endpoint}`,
       credentials: {
         accessKeyId: keyId,
         secretAccessKey: applicationKey,
       },
-    });
+    };
+
+    this.s3Client = new S3Client(config);
+    this.presignClient = createPresignClient(config);
   }
 
   async upload(
@@ -98,18 +103,13 @@ export class B2StorageAdapter implements StorageAdapter {
   async getSignedUploadUrl(
     bucket: string,
     path: string,
-    contentType: string,
-    expiresIn: number = 3600,
+    { contentType, contentLength, expiresIn = 3600 }: SignedUploadRequest,
   ): Promise<SignedUploadResult> {
-    const fullPath = `${bucket}/${path}`;
-
-    const command = new PutObjectCommand({
-      Bucket: this.bucketName,
-      Key: fullPath,
-      ContentType: contentType,
-    });
-
-    const uploadUrl = await getSignedUrl(this.s3Client, command, {
+    const { uploadUrl, headers } = await presignPut(this.presignClient, {
+      bucket: this.bucketName,
+      key: `${bucket}/${path}`,
+      contentType,
+      contentLength,
       expiresIn,
     });
 
@@ -119,6 +119,7 @@ export class B2StorageAdapter implements StorageAdapter {
       uploadUrl,
       publicUrl,
       expiresIn,
+      headers,
     };
   }
 
