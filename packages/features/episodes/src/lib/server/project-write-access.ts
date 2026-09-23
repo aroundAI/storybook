@@ -1,8 +1,9 @@
 import 'server-only';
 
+import type { Database } from '@kit/supabase/database';
 import type { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-type ServerClient = ReturnType<typeof getSupabaseServerClient>;
+type ServerClient = ReturnType<typeof getSupabaseServerClient<Database>>;
 
 export const PROJECT_WRITE_REFUSAL =
   'You need to be a member of this project to add research to it.';
