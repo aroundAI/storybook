@@ -24,11 +24,11 @@ summary: >
   presign route refuses), so nothing a user made in it exists outside the edit tables.
 acceptance_criteria:
   - text: "Stop-gap (PR A): EXECUTE on all five Edit Suite functions revoked from `public`, `anon` and `authenticated`; pgTAP shows a stranger's `batch_assemble_edit_project` naming the owner refused with 42501 and the victim's edit project unchanged — red on the pre-migration schema"
-    met: false
-    reason: "open — DRAFT, not yet implemented"
+    met: true
+    evidence: "`apps/web/supabase/migrations/20260923075426_film607-revoke-edit-suite-functions.sql`; `apps/web/supabase/tests/database/edit-suite-retired.test.sql` P1–P4, 16/16 green; on main's schema 4 of 16 fail and the stranger's call replaced the victim's edit project; guard `tooling/mutation-guards/film-607.json` P1 RED"
   - text: "Stop-gap (PR A): the episode workspace shows Ideation, Story, Screenplay, Shot List, Audio and Publish and no Edit Suite tab; `/edit-suite` renders the not-found page; Playwright spec with screenshots, red on `main`"
-    met: false
-    reason: "open — DRAFT, not yet implemented"
+    met: true
+    evidence: "`apps/e2e/tests/episodes/workspace-tabs.spec.ts` W1–W3 green on dev and on three cold starts of a sandboxed `build:test`/`start:test` production build; W1 and W3 red with the tab and page restored; `…/_components/__tests__/episode-workspace-tabs.test.tsx` and its unit guard W1 RED"
   - text: "`packages/features/edit-suite/` and `apps/web/lambda/render-worker/` deleted; `@kit/edit-suite` gone from `apps/web/package.json` and `pnpm-lock.yaml` (with `mp4box`)"
     met: false
     reason: "open — DRAFT, not yet implemented"

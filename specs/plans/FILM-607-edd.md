@@ -7,7 +7,8 @@
 | Branch | `feat/film-607-retire-edit-suite` from `origin/main` @ `ef44ffce` |
 | Size | M overall, as two PRs. **PR A** (stop-gap, XS–S): one migration, the tab, the route, pgTAP and a Playwright spec. **PR B** (removal, M): ~15,300 deleted lines, one migration, `sst.config.ts`, records |
 | Supersedes | KB-40, KB-62 and KB-32 (all paused for this), and KB-64, KB-65, KB-67, KB-68, KB-69 |
-| Status | Phase 1 (plan). Nothing implemented |
+| Deviations (PR A) | (1) The tab mutation guard is a **unit** entry on a new component test (`_components/__tests__/episode-workspace-tabs.test.tsx`), not an e2e one: the e2e entry went RED once and STAYED GREEN once, because the dev server had not recompiled within `run.py`'s four-second wait. That is the flakiness `tooling/mutation-guards/README.md` warns about. The Playwright spec stays as the behavioural test. (2) The active tab carries `aria-current="page"`. The spec waits on it, because a screenshot taken mid-navigation showed the previous tab highlighted. (3) The spec retries a tab click until the URL changes (`toPass`), and polls the tab list: on a cold production server, a click before hydration was dropped once, and the layout was briefly in the DOM twice |
+| Status | Approved 2026-09-23 with every default (D1–D6), plus the owner's addition: no remnants in code, so PR B also writes FILM-608 (drop the kept tables once the owner has read production). PR A (stop-gap) implemented; PR B stacked on it |
 
 `$SP` = `/private/tmp/claude-501/-Users-xuryax-Work-code-storybook/04244c24-4477-42c9-9637-11028d9a01d4/scratchpad`.
 Line numbers are on `main` @ `ef44ffce` unless another branch is named.
