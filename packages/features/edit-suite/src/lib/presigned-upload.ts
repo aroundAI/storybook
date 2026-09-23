@@ -5,6 +5,11 @@
  * then performs a direct PUT to R2. Supports progress tracking via XHR.
  *
  * This bypasses Lambda's 6MB payload limit for client-side rendered exports.
+ *
+ * The URL is signed for the blob's exact size and type (KB-38): the request
+ * declares `blob.size`, and the PUT sends the headers the route returns.
+ * This package does not depend on `@kit/storage`, so it keeps its own copy of
+ * the request that `@kit/storage/client`'s `requestPresignedUpload` makes.
  */
 
 // ──────────────────────────────────────────
@@ -31,15 +36,23 @@ export interface PresignedUploadOptions {
 // Helper: Get presigned URL from server
 // ──────────────────────────────────────────
 
+interface PresignedUrl {
+  uploadUrl: string;
+  publicUrl: string;
+  /** The headers the PUT must send, exactly */
+  headers: Record<string, string>;
+}
+
 async function getPresignedUrl(
   bucket: string,
   path: string,
   contentType: string,
-): Promise<{ uploadUrl: string; publicUrl: string }> {
+  size: number,
+): Promise<PresignedUrl> {
   const response = await fetch('/api/storage/presign', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ bucket, path, contentType }),
+    body: JSON.stringify({ bucket, path, contentType, size }),
   });
 
   if (!response.ok) {
@@ -50,7 +63,7 @@ async function getPresignedUrl(
     );
   }
 
-  return response.json() as Promise<{ uploadUrl: string; publicUrl: string }>;
+  return response.json() as Promise<PresignedUrl>;
 }
 
 // ──────────────────────────────────────────
@@ -60,7 +73,7 @@ async function getPresignedUrl(
 function uploadWithProgress(
   url: string,
   blob: Blob,
-  contentType: string,
+  headers: Record<string, string>,
   onProgress?: (percent: number) => void,
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
@@ -86,7 +99,9 @@ function uploadWithProgress(
     xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
 
     xhr.open('PUT', url, true);
-    xhr.setRequestHeader('Content-Type', contentType);
+    for (const [name, value] of Object.entries(headers)) {
+      xhr.setRequestHeader(name, value);
+    }
     xhr.send(blob);
   });
 }
@@ -116,14 +131,15 @@ export async function uploadToR2Presigned(
   const { bucket, path, contentType, onProgress } = options;
 
   // 1. Get presigned URL from our API (handles auth + path validation)
-  const { uploadUrl, publicUrl } = await getPresignedUrl(
+  const { uploadUrl, publicUrl, headers } = await getPresignedUrl(
     bucket,
     path,
     contentType,
+    blob.size,
   );
 
-  // 2. Upload directly to R2
-  await uploadWithProgress(uploadUrl, blob, contentType, onProgress);
+  // 2. Upload the same blob directly to R2, with the headers it was signed for
+  await uploadWithProgress(uploadUrl, blob, headers, onProgress);
 
   return {
     publicUrl,
