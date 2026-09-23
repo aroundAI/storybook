@@ -31,7 +31,7 @@ acceptance_criteria:
     reason: "deferred — no X developer app with pay-per-use credentials held"
   - text: "X token refresh exists, or is shown not to be needed, with evidence"
     met: false
-    reason: "deferred — no X developer app with pay-per-use credentials held"
+    reason: "partly met — KB-15 added X refresh (`refreshXToken`), with unit evidence against a local stand-in for X; one live refresh against X is still deferred — no X developer app with pay-per-use credentials held"
   - text: "Playwright spec covers: publish refused → re-authorise → second publish accepted; screenshots of each state in the PR"
     met: false
     reason: "deferred — no X developer app with pay-per-use credentials held"

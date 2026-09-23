@@ -33,6 +33,8 @@ type Row = Record<string, unknown>;
 const { fakeDb, logged } = vi.hoisted(() => {
   const tables: Record<string, Row[]> = {};
   const updates: Array<{ table: string; patch: Row }> = [];
+  /** Returned by the update that stores refreshed tokens, when set. */
+  const failures: { tokenWrite: unknown } = { tokenWrite: null };
 
   interface Result {
     data: unknown;
@@ -43,7 +45,8 @@ const { fakeDb, logged } = vi.hoisted(() => {
     private op: 'select' | 'update' = 'select';
     private patch: Row = {};
     private returning = false;
-    private readonly filters: Array<[string, unknown]> = [];
+    private readonly filters: Array<(row: Row) => boolean> = [];
+    private sortColumn: string | null = null;
 
     constructor(private readonly table: string) {}
 
@@ -59,7 +62,24 @@ const { fakeDb, logged } = vi.hoisted(() => {
     }
 
     eq(column: string, value: unknown) {
-      this.filters.push([column, value]);
+      this.filters.push((row) => row[column] === value);
+      return this;
+    }
+
+    /** Only the `is null` form the cron job's select uses. */
+    not(column: string, operator: 'is', value: null) {
+      this.filters.push((row) => row[column] !== value);
+      return this;
+    }
+
+    /** ISO timestamps, which compare correctly as strings. */
+    lt(column: string, value: string) {
+      this.filters.push((row) => String(row[column]) < value);
+      return this;
+    }
+
+    order(column: string) {
+      this.sortColumn = column;
       return this;
     }
 
@@ -80,13 +100,21 @@ const { fakeDb, logged } = vi.hoisted(() => {
 
     private run(mode: 'single' | 'maybeSingle' | 'many'): Result {
       const rows = (tables[this.table] ?? []).filter((row) =>
-        this.filters.every(([column, value]) => row[column] === value),
+        this.filters.every((matches) => matches(row)),
       );
 
       if (this.op === 'update') {
+        if (failures.tokenWrite && 'access_token_encrypted' in this.patch) {
+          return { data: null, error: failures.tokenWrite };
+        }
         for (const row of rows) Object.assign(row, this.patch);
         updates.push({ table: this.table, patch: this.patch });
         return { data: this.returning ? rows : null, error: null };
+      }
+
+      if (this.sortColumn) {
+        const column = this.sortColumn;
+        rows.sort((a, b) => String(a[column]).localeCompare(String(b[column])));
       }
 
       if (mode === 'many') return { data: rows, error: null };
@@ -110,10 +138,12 @@ const { fakeDb, logged } = vi.hoisted(() => {
     fakeDb: {
       tables,
       updates,
+      failures,
       client: { from: (table: string) => new Query(table) },
       reset() {
         for (const key of Object.keys(tables)) delete tables[key];
         updates.length = 0;
+        failures.tokenWrite = null;
       },
     },
     logged,
@@ -146,9 +176,25 @@ let vendorStatus = 200;
 let server: Server;
 let origin: string;
 
+/** X's token endpoint issues a new refresh token on every call. */
+const x = { issued: 0, omitRefreshToken: false };
+
 function vendorResponse(path: string) {
   if (vendorStatus !== 200) {
     return { error: 'invalid_grant', error_description: 'Token revoked' };
+  }
+
+  if (path === '/2/oauth2/token') {
+    x.issued += 1;
+    return {
+      token_type: 'bearer',
+      access_token: `x-access-token-${x.issued}`,
+      ...(!x.omitRefreshToken && {
+        refresh_token: `x-rotated-refresh-token-${x.issued}`,
+      }),
+      expires_in: 7200,
+      scope: 'tweet.read tweet.write users.read offline.access',
+    };
   }
 
   if (path.endsWith('/me/accounts')) {
@@ -203,6 +249,8 @@ beforeEach(async () => {
   fakeDb.reset();
   requests.length = 0;
   vendorStatus = 200;
+  x.issued = 0;
+  x.omitRefreshToken = false;
   logged.error.length = 0;
   logged.warn.length = 0;
   logged.info.length = 0;
@@ -214,6 +262,8 @@ beforeEach(async () => {
     'TIKTOK',
     'META_GRAPH',
     'LINKEDIN_OAUTH',
+    'X_API',
+    'X_OAUTH',
   ]) {
     vi.stubEnv(`VENDOR_URL_${vendor}`, origin);
   }
@@ -222,6 +272,8 @@ beforeEach(async () => {
   vi.stubEnv('TIKTOK_CLIENT_SECRET', 'env-tiktok-client-secret');
   vi.stubEnv('LINKEDIN_CLIENT_ID', 'env-linkedin-client-id');
   vi.stubEnv('LINKEDIN_CLIENT_SECRET', 'env-linkedin-client-secret');
+  vi.stubEnv('TWITTER_CLIENT_ID', 'env-x-client-id');
+  vi.stubEnv('TWITTER_CLIENT_SECRET', 'env-x-client-secret');
 
   // A request that escapes the sandbox fails here instead of reaching a vendor.
   vi.stubGlobal('fetch', (input: string | URL, init?: RequestInit) => {
@@ -275,13 +327,35 @@ async function seedExpiredConnection(platform: string, metadata: Row = {}) {
   return connection;
 }
 
+/** Adds a connection beside any already seeded, `minutesLeft` from expiry. */
+async function addConnection(platform: string, minutesLeft: number) {
+  const connection = {
+    id: `conn-${platform}-${minutesLeft}`,
+    account_id: 'account-1',
+    platform,
+    platform_account_id: `${platform}-account`,
+    access_token_encrypted: await encrypt('old-access-token'),
+    refresh_token_encrypted: await encrypt('old-refresh-token'),
+    is_active: true,
+    token_expires_at: new Date(Date.now() + minutesLeft * 60_000).toISOString(),
+    metadata: {},
+    updated_at: '2026-09-01T00:00:00.000Z',
+  };
+
+  fakeDb.tables.platform_connections = [
+    ...(fakeDb.tables.platform_connections ?? []),
+    connection,
+  ];
+  return connection;
+}
+
 function storedConnection() {
   return fakeDb.tables.platform_connections![0]!;
 }
 
-async function decrypted(field: string) {
+async function decrypted(field: string, row: Row = storedConnection()) {
   const { decrypt } = await import('@kit/shared/crypto');
-  return decrypt(storedConnection()[field] as string);
+  return decrypt(row[field] as string);
 }
 
 describe('formatPlatformName', () => {
@@ -291,6 +365,7 @@ describe('formatPlatformName', () => {
     ['instagram', 'Instagram'],
     ['facebook', 'Facebook'],
     ['linkedin', 'LinkedIn'],
+    ['twitter', 'X'],
     ['unknown', 'unknown'],
   ])('formats %s as %s', (platform, name) => {
     expect(tokenRefresh.formatPlatformName(platform)).toBe(name);
@@ -483,5 +558,171 @@ describe('a refresh that cannot happen', () => {
     expect(requests).toHaveLength(1);
     expect(storedConnection().is_active).toBe(false);
     expect(storedConnection().metadata).not.toHaveProperty('is_refreshing');
+  });
+});
+
+/**
+ * KB-15. X was missing from refresh altogether: every X connection hit
+ * `Unknown platform: twitter` and was deactivated at its first expiry.
+ */
+describe('X refresh (KB-15)', () => {
+  const xBasic = `Basic ${Buffer.from('env-x-client-id:env-x-client-secret').toString('base64')}`;
+
+  it('refreshes an expired X connection with Basic auth from the env app connect uses', async () => {
+    await seedExpiredConnection('twitter');
+
+    const result = await tokenRefresh.ensureValidToken('conn-twitter');
+
+    expect(result).toEqual({ valid: true, accessToken: 'x-access-token-1' });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]!.method).toBe('POST');
+    expect(requests[0]!.path).toBe('/2/oauth2/token');
+    expect(requests[0]!.authorization).toBe(xBasic);
+    // A confidential client sends no id or secret in the body.
+    expect(Object.fromEntries(requests[0]!.form)).toEqual({
+      grant_type: 'refresh_token',
+      refresh_token: 'old-refresh-token',
+    });
+
+    expect(storedConnection().is_active).toBe(true);
+    expect(await decrypted('access_token_encrypted')).toBe('x-access-token-1');
+    const expiresInMs =
+      Date.parse(storedConnection().token_expires_at as string) - Date.now();
+    expect(expiresInMs).toBeGreaterThan(7190 * 1000);
+    expect(expiresInMs).toBeLessThanOrEqual(7200 * 1000);
+    expect(JSON.stringify(logged)).not.toContain('env-x-client-secret');
+  });
+
+  it('stores the rotated refresh token, and the next refresh sends it', async () => {
+    await seedExpiredConnection('twitter');
+
+    await tokenRefresh.ensureValidToken('conn-twitter');
+    const second = await tokenRefresh.ensureValidToken('conn-twitter', true);
+
+    expect(second).toEqual({ valid: true, accessToken: 'x-access-token-2' });
+    expect(requests.map((r) => r.form.get('refresh_token'))).toEqual([
+      'old-refresh-token',
+      'x-rotated-refresh-token-1',
+    ]);
+    expect(await decrypted('refresh_token_encrypted')).toBe(
+      'x-rotated-refresh-token-2',
+    );
+  });
+
+  it('keeps the stored refresh token when X returns none', async () => {
+    x.omitRefreshToken = true;
+    await seedExpiredConnection('twitter');
+
+    const result = await tokenRefresh.ensureValidToken('conn-twitter');
+
+    expect(result.valid).toBe(true);
+    expect(await decrypted('refresh_token_encrypted')).toBe(
+      'old-refresh-token',
+    );
+  });
+
+  it('deactivates the connection when X refuses the refresh token, and says so', async () => {
+    await seedExpiredConnection('twitter');
+    vendorStatus = 400;
+
+    const result = await tokenRefresh.ensureValidToken('conn-twitter');
+
+    expect(result).toEqual({
+      valid: false,
+      error: 'REFRESH_FAILED',
+      requiresReauth: true,
+    });
+    expect(requests).toHaveLength(1);
+    expect(storedConnection().is_active).toBe(false);
+
+    const [context] = logged.error.at(-1)!;
+    expect(String(context.error)).toContain('X refresh failed (400)');
+    expect(context).toMatchObject({
+      app: 'twitter',
+      credentialSource: 'TWITTER_CLIENT_ID / TWITTER_CLIENT_SECRET',
+    });
+  });
+
+  it('leaves the connection active when the X app is not configured', async () => {
+    vi.stubEnv('TWITTER_CLIENT_SECRET', '');
+    await seedExpiredConnection('twitter');
+
+    const result = await tokenRefresh.ensureValidToken('conn-twitter');
+
+    expect(result).toEqual({
+      valid: false,
+      error: 'APP_NOT_CONFIGURED',
+      requiresReauth: false,
+    });
+    expect(requests).toHaveLength(0);
+    expect(storedConnection().is_active).toBe(true);
+  });
+
+  it('refreshes an X token 4 minutes from expiry before handing it out', async () => {
+    await seedExpiredConnection('twitter');
+    storedConnection().token_expires_at = new Date(
+      Date.now() + 4 * 60_000,
+    ).toISOString();
+
+    const result = await tokenRefresh.ensureValidToken('conn-twitter');
+
+    expect(result).toEqual({ valid: true, accessToken: 'x-access-token-1' });
+    expect(requests).toHaveLength(1);
+  });
+});
+
+describe('a refresh whose tokens cannot be stored', () => {
+  it('logs the lost rotated refresh token instead of dropping it silently', async () => {
+    await seedExpiredConnection('tiktok');
+    fakeDb.failures.tokenWrite = { message: 'connection reset' };
+
+    const result = await tokenRefresh.ensureValidToken('conn-tiktok');
+
+    // The new access token is valid whether or not it was stored.
+    expect(result).toEqual({ valid: true, accessToken: 'new-access-token' });
+
+    const entry = logged.error.find(
+      ([, message]) => message === 'Refreshed tokens were not stored',
+    );
+    expect(entry?.[0]).toMatchObject({
+      platform: 'tiktok',
+      connectionId: 'conn-tiktok',
+      refreshTokenRotated: true,
+    });
+  });
+});
+
+/**
+ * KB-15, found reproducing it: the cron job selected tokens expiring within
+ * an hour but only refreshed those within the 5-minute buffer, so it counted
+ * untouched rows as refreshed and let tokens lapse for up to 25 minutes.
+ */
+describe('refreshExpiringTokens', () => {
+  it('refreshes every connection it selects, on every platform', async () => {
+    await seedGlobalCredentials('youtube');
+    const youtube = await addConnection('youtube', 50);
+    const twitter = await addConnection('twitter', 50);
+    await addConnection('linkedin', 24 * 60); // outside the window
+
+    const { refreshExpiringTokens } = await import(
+      '../src/jobs/refresh-expiring-tokens'
+    );
+    const result = await refreshExpiringTokens();
+
+    expect(requests.map((r) => r.path).sort()).toEqual([
+      '/2/oauth2/token',
+      '/token',
+    ]);
+    expect(result).toEqual({ checked: 2, refreshed: 2, failed: 0 });
+
+    for (const row of [youtube, twitter]) {
+      const minutesLeft =
+        (Date.parse(row.token_expires_at) - Date.now()) / 60_000;
+      expect(minutesLeft).toBeGreaterThan(55);
+      expect(row.is_active).toBe(true);
+    }
+    expect(await decrypted('refresh_token_encrypted', twitter)).toBe(
+      'x-rotated-refresh-token-1',
+    );
   });
 });

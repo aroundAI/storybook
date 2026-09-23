@@ -2,14 +2,9 @@
  * Publishing Hub Types
  * Types for multi-platform video publishing
  */
+import type { Platform } from './platforms';
 
-export type Platform =
-  | 'youtube'
-  | 'tiktok'
-  | 'instagram'
-  | 'facebook'
-  | 'twitter'
-  | 'linkedin';
+export type { Platform };
 
 export type ConnectionStatus = 'active' | 'expired' | 'error';
 

@@ -4,6 +4,7 @@ import { parseGrantedScopes } from '@kit/publishing/oauth/analytics-scopes';
 import {
   TWITTER_OAUTH_CONFIG,
   TwitterOAuthState,
+  xClientAuthorization,
 } from '@kit/publishing/oauth/twitter';
 import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credentials';
 import { encrypt } from '@kit/shared/crypto';
@@ -106,16 +107,13 @@ async function handleCallback(request: NextRequest) {
     return fail({ code: 'not_configured', branch: 'credentials_missing' });
   }
 
-  // Exchange code for tokens - Twitter requires Basic auth
-  const basicAuth = Buffer.from(
-    `${credentials.clientId}:${credentials.clientSecret}`,
-  ).toString('base64');
-
+  // Exchange code for tokens - X takes a confidential client's credentials
+  // by Basic auth, built by the same helper refresh uses.
   const tokenResponse = await fetch(TWITTER_OAUTH_CONFIG.tokenUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${basicAuth}`,
+      Authorization: xClientAuthorization(credentials),
     },
     body: new URLSearchParams({
       code,

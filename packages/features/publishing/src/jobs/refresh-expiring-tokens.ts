@@ -3,6 +3,7 @@ import 'server-only';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import { CRON_REFRESH_WINDOW_MS } from '../lib/token-expiry';
 import { ensureValidToken } from '../lib/token-refresh';
 
 /**
@@ -38,7 +39,7 @@ export async function refreshExpiringTokens(): Promise<RefreshJobResult> {
   const logger = await getLogger();
   const ctx = { name: 'token-refresh.job' };
   const client = getSupabaseServerAdminClient();
-  const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
+  const windowEnd = new Date(Date.now() + CRON_REFRESH_WINDOW_MS);
 
   // Find active connections expiring soon using untyped query
   // Until platform_connections table types are regenerated
@@ -77,7 +78,7 @@ export async function refreshExpiringTokens(): Promise<RefreshJobResult> {
     .select('id, platform, account_id')
     .eq('is_active', true)
     .not('token_expires_at', 'is', null)
-    .lt('token_expires_at', oneHourFromNow.toISOString())
+    .lt('token_expires_at', windowEnd.toISOString())
     .order('token_expires_at', { ascending: true });
 
   if (error) {
@@ -102,7 +103,12 @@ export async function refreshExpiringTokens(): Promise<RefreshJobResult> {
   // Process connections sequentially to avoid rate limiting
   for (const conn of expiringConnections) {
     try {
-      const result = await ensureValidToken(conn.id);
+      // Refresh now, not at the just-in-time buffer: a selected token left
+      // alone lapses before the next run, and the publish worker, which never
+      // refreshes, then refuses it (KB-15).
+      const result = await ensureValidToken(conn.id, false, {
+        refreshWithinMs: CRON_REFRESH_WINDOW_MS,
+      });
 
       if (result.valid) {
         results.refreshed++;

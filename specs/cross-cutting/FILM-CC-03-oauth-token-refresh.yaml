@@ -34,11 +34,11 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "Tokens expiring within 5 minutes are proactively refreshed"
-    met: false
-    reason: "no longer true — X connections (added in `12bbe35b`) reach `Unknown platform` and are deactivated instead (KB-15)"
+    met: true
+    evidence: "KB-15: every platform, X included (`refreshXToken`); packages/features/publishing/__tests__/token-refresh.test.ts, 'refreshes an X token 4 minutes from expiry before handing it out'"
   - text: "Expired tokens trigger refresh before API call"
-    met: false
-    reason: "no longer true — not for X (KB-15); the publish lambda (added in `16cbeb88`) refuses an expired token without refreshing (`apps/web/lambda/publish-worker/index.ts:175`)"
+    met: true
+    evidence: "KB-15: in the web app, `ensureValidToken` refreshes every platform before handing a token out (token-refresh.test.ts, 'X refresh (KB-15)'). The publish worker does not refresh, by design (owner decision, KB-15 D2): a second refresher would race the cron for rotating refresh tokens. It refuses what the app would refresh first, with the same `isWithinRefreshWindow` (apps/web/lambda/publish-worker/__tests__/token.test.ts), and SQS redelivers after the cron, which now leaves every token ≥ 30 minutes from expiry"
   - text: "Failed refresh marks connection as inactive"
     met: false
     reason: "unverified — needs a unit test; the failure path's `markConnectionInactive` (`packages/features/publishing/src/lib/token-refresh.ts:242`) is untested"
@@ -49,8 +49,8 @@ acceptance_criteria:
     met: false
     reason: "not met — the link exists only in a commented-out call (`packages/features/publishing/src/lib/token-refresh.ts:598`)"
   - text: "Background job refreshes tokens expiring within 1 hour"
-    met: false
-    reason: "no longer true — scheduled every 30 minutes (`sst.config.ts:1389`) but cannot refresh X (KB-15)"
+    met: true
+    evidence: "KB-15: it selected an hour ahead but refreshed only inside the 5-minute buffer, on every platform; it now refreshes what it selects (`CRON_REFRESH_WINDOW_MS`). token-refresh.test.ts, 'refreshExpiringTokens'; the real-DB run is in the KB-15 PR"
   - text: "Cron endpoint is protected by secret"
     met: true
     evidence: null
@@ -63,8 +63,8 @@ test_plan:
       met: true
       evidence: null
     - text: "Test near-expiry token triggers refresh"
-      met: false
-      reason: "not met — no test found; `packages/features/publishing/__tests__/token-refresh.test.ts:114` checks only the 5-minute constant"
+      met: true
+      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts, 'refreshes an X token 4 minutes from expiry before handing it out' (KB-15)"
     - text: "Test expired token triggers refresh"
       met: true
       evidence: null
@@ -82,28 +82,19 @@ test_plan:
       met: true
       evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:332"
     - text: "Test cron job processes multiple connections"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts, 'refreshExpiringTokens' — two platforms in the window, one outside it (KB-15)"
     - text: "Test concurrent refresh requests (no race conditions)"
       met: false
       reason: "not met — no test found"
   e2e: []
 remaining:
-  - criterion: "Tokens expiring within 5 minutes are proactively refreshed"
-    reason: "`Platform` omits X, so `connection.platform as Platform` reaches `default: throw` (`packages/features/publishing/src/lib/token-refresh.ts:317`) and the connection is deactivated rather than refreshed"
-    closed_by: "KB-15"
-  - criterion: "Expired tokens trigger refresh before API call"
-    reason: "Same X gap; and the publish lambda's own `ensureValidToken` returns \"Token expired\" without refreshing (`apps/web/lambda/publish-worker/index.ts:175`)"
-    closed_by: "KB-15"
   - criterion: "Failed refresh sends user notification"
     reason: "`sendReauthNotification` only logs; the `@kit/notifications` call is a TODO (`packages/features/publishing/src/lib/token-refresh.ts:576`)"
     closed_by: "unassigned"
   - criterion: "Notification includes reconnect link"
     reason: "The reconnect URL is inside the commented-out call (`packages/features/publishing/src/lib/token-refresh.ts:598`)"
     closed_by: "unassigned"
-  - criterion: "Background job refreshes tokens expiring within 1 hour"
-    reason: "The 30-minute job (`sst.config.ts:1389` → `/api/cron/token-refresh`) calls the same refresh, so X fails"
-    closed_by: "KB-15"
   - criterion: "All refresh attempts are logged"
     reason: "A successful on-demand refresh returns without a log line (`packages/features/publishing/src/lib/token-refresh.ts:224`)"
     closed_by: "unassigned"

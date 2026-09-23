@@ -54,6 +54,10 @@ export default defineConfig({
         __dirname,
         '../../packages/shared/src/vendors/index.ts',
       ),
+      '@kit/shared/crypto': path.resolve(
+        __dirname,
+        '../../packages/shared/src/crypto/index.ts',
+      ),
       '@kit/supabase/server-client': path.resolve(
         __dirname,
         '../../packages/supabase/src/clients/server-client.ts',
@@ -149,6 +153,10 @@ export default defineConfig({
       '@kit/publishing/oauth/apps': path.resolve(
         __dirname,
         '../../packages/features/publishing/src/oauth/apps.ts',
+      ),
+      '@kit/publishing/lib/token-expiry': path.resolve(
+        __dirname,
+        '../../packages/features/publishing/src/lib/token-expiry.ts',
       ),
       '@kit': path.resolve(__dirname, '../../packages'),
       '~/lib/server/require-user-in-server-component': path.resolve(
