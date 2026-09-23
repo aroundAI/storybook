@@ -1,7 +1,7 @@
 # KB-62 — Engineering Design Document
 
 **Ticket:** KB-62, "Edit Suite auto-save, clip split and project creation appear broken for everyone, and their functions have no access check". Severity High (functional, plus three latent cross-tenant writes). KB-40's reproduction found it on 2026-09-23 (`$SP/kb40/repro.out`, section S2). No FILM-CC-04 entry exists yet: the lead's `kb-reservations.txt` holds the number.
-**Branch:** `fix/kb-62-edit-suite-rpc-write-scope`, stacked on `fix/kb-28-project-assets-insert-scope` (#313) @ `f9943881`, for `public.can_write_project`. It rebases onto `fix/kb-40-edit-project-write-scope` once KB-40 is approved and pushed (agreed with kb-40, §24).
+**Branch:** `fix/kb-62-edit-suite-rpc-write-scope`, stacked on `fix/kb-28-project-assets-insert-scope` (#313) @ `27a578e8` (rebased 2026-09-23 after KB-28 was re-timestamped; the reproduction below ran at the old tip `f9943881`, same `can_write_project`), for `public.can_write_project`. It rebases onto `fix/kb-40-edit-project-write-scope` once KB-40 is approved and pushed (agreed with kb-40, §24).
 **Size:** M.
 - One migration and one schema change.
 - Three server actions.
@@ -193,7 +193,7 @@ A project **member** M opens an assembled episode with one 4 s video clip C (wit
 
 **8.5 Table RLS** (`20260219083555_edit-suite-v2.sql:305-520`): insert/update on edit tables allow `project_members` owner/admin/member; **delete** on `edit_projects`, `edit_tracks`, `edit_clips` and `dialogue_sync_groups` allows **owner/admin only**. The definer functions bypass all of it. `get_project_id_for_edit_project` (`:288-302`) claims to be "used by all RLS policies" but no policy calls it (grep); it is ungranted and out of scope.
 
-**8.6 Rule function:** `public.can_write_project(uuid)` (KB-28, `20260923024605_kb28-project-write-scope.sql:23-39`), `security definer`, `search_path = ''`, `auth.uid()`.
+**8.6 Rule function:** `public.can_write_project(uuid)` (KB-28, `20260923042517_kb28-project-write-scope.sql:23-39`), `security definer`, `search_path = ''`, `auth.uid()`.
 
 **8.7 Schema file:** `apps/web/supabase/schemas/36-edit-suite.sql` holds the tables and `get_project_id_for_edit_project`, not these RPCs. Nothing to mirror.
 
@@ -249,7 +249,7 @@ No new tables or columns. `edit_clips.id` and `edit_keyframes.id` become client-
 
 ## 14. Database Design and Changes
 
-One hand-written migration, `apps/web/supabase/migrations/<UTC ts>_kb62-edit-suite-rpc-write-scope.sql`. `create or replace` with the **same signatures** for all three. Each gets `set search_path = ''`, and all relation names are already `public.`-qualified.
+One hand-written migration, `apps/web/supabase/migrations/<UTC ts>_kb62-edit-suite-rpc-write-scope.sql`, whose timestamp must sort after KB-28's `20260923042517` (and after KB-40's). `create or replace` with the **same signatures** for all three. Each gets `set search_path = ''`, and all relation names are already `public.`-qualified.
 
 1. **`batch_save_edit_project`:**
    - Header check (§9), raising `No write access to this timeline` with `errcode = '42501'`.
