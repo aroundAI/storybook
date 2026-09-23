@@ -29,6 +29,11 @@ import { signInAs } from '../utils/session';
  * Runs against the local Supabase stack (STORAGE_PROVIDER=supabase), where
  * the bucket policies are also in play. The R2 path is covered by
  * apps/web/app/api/storage/presign/__tests__/route.test.ts.
+ *
+ * KB-38: an upload URL is signed for one declared size and type, so the
+ * cover upload also checks what the page declares and sends, and the route's
+ * size refusals are driven here. That R2 refuses a mismatched PUT is shown
+ * against a real S3 server in s3-presign.s3-local.test.ts.
  */
 
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
@@ -109,6 +114,18 @@ test.describe('Project storage (KB-28)', () => {
     const preview = page.locator('[data-test="cover-image-preview"]');
     const storedPrefix = `/project-assets/projects/${project.id}/assets/covers/`;
 
+    // KB-38: what the page declares when it asks for an upload URL, and what
+    // it then sends with the PUT.
+    const declared: { contentType: string; size: number }[] = [];
+    const putTypes: (string | undefined)[] = [];
+    page.on('request', (request) => {
+      if (request.url().endsWith('/api/storage/presign')) {
+        declared.push(request.postDataJSON());
+      } else if (request.method() === 'PUT') {
+        putTypes.push(request.headers()['content-type']);
+      }
+    });
+
     // On a production build the page can render before React attaches the
     // input's onChange, and a file chosen then is silently ignored. Choose
     // again until the handler has visibly run (it shows a preview at once);
@@ -137,6 +154,14 @@ test.describe('Project storage (KB-28)', () => {
     ).toBeVisible();
     await expect(preview).toHaveAttribute('src', new RegExp(storedPrefix));
 
+    expect(declared).toEqual([
+      expect.objectContaining({
+        contentType: 'image/png',
+        size: png(TEAL).length,
+      }),
+    ]);
+    expect(putTypes).toEqual(['image/png']);
+
     const first = (await preview.getAttribute('src'))!;
     expect((await page.request.get(first)).status()).toBe(200);
 
@@ -154,6 +179,12 @@ test.describe('Project storage (KB-28)', () => {
 
     const second = (await preview.getAttribute('src'))!;
     expect((await page.request.get(second)).status()).toBe(200);
+
+    expect(declared.map((body) => body.size)).toEqual([
+      png(TEAL).length,
+      png(AMBER).length,
+    ]);
+    expect(putTypes).toEqual(['image/png', 'image/png']);
 
     const [row] = await readRows<{ metadata: { coverImageUrl?: string } }>(
       'projects',
@@ -175,7 +206,12 @@ test.describe('Project storage (KB-28)', () => {
     const path = `projects/${project.id}/assets/character/member-${Date.now()}.png`;
 
     const presign = await page.request.post('/api/storage/presign', {
-      data: { bucket: 'project-assets', path, contentType: 'image/png' },
+      data: {
+        bucket: 'project-assets',
+        path,
+        contentType: 'image/png',
+        size: png(TEAL).length,
+      },
     });
     expect(presign.status()).toBe(200);
 
@@ -208,6 +244,7 @@ test.describe('Project storage (KB-28)', () => {
         bucket: 'project-assets',
         path: viaRoute,
         contentType: 'image/png',
+        size: png(AMBER).length,
       },
     });
     expect(presign.status()).toBe(403);
@@ -225,6 +262,38 @@ test.describe('Project storage (KB-28)', () => {
     expect(upload.status, upload.body).not.toBe(200);
     expect(upload.body).toContain('row-level security');
     expect(await storageObjectExists('project-assets', direct)).toBe(false);
+  });
+
+  test('an upload URL needs a size, within the limit for its type (KB-38)', async ({
+    page,
+  }) => {
+    await signInAs(page, team);
+
+    const path = `projects/${project.id}/assets/character/sized-${Date.now()}.png`;
+    const ask = (extra: Record<string, unknown>) =>
+      page.request.post('/api/storage/presign', {
+        data: { bucket: 'project-assets', path, contentType: 'image/png', ...extra },
+      });
+
+    const unsized = await ask({});
+    expect(unsized.status()).toBe(400);
+    expect(await unsized.json()).toEqual({
+      error: 'Missing required fields: bucket, path, contentType, size',
+    });
+
+    const tooLarge = await ask({ size: 10 * 1024 * 1024 + 1 });
+    expect(tooLarge.status()).toBe(400);
+    expect(await tooLarge.json()).toEqual({
+      error: 'File is 10.0 MB; images may be at most 10 MB',
+    });
+
+    const atLimit = await ask({ size: 10 * 1024 * 1024 });
+    expect(atLimit.status()).toBe(200);
+    expect(await atLimit.json()).toMatchObject({
+      headers: { 'Content-Type': 'image/png' },
+    });
+
+    expect(await storageObjectExists('project-assets', path)).toBe(false);
   });
 
   test('the bucket refuses a type the product does not store, even from the owner', async () => {
