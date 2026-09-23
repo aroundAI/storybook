@@ -4,8 +4,8 @@
 |---|---|
 | Ticket | [FILM-1111](../phase-11-canon-integration/content-types/FILM-1111-content-type-configs.yaml) — PARTIAL, effort M, phase 11 (priority critical) |
 | Scope | The spec's two `remaining:` items, as FILM-1110 left them: **"`buildMemoryContext` uses content-type strategies"** (decay + priority scoring; the `sourcesCitations` and `parentContext` budgets) and **"News type has zero memory horizon"** |
-| Branch / base | `feat/film-1111-content-type-configs` / `origin/feat/film-1110-content-type-budget` (e84c1810), stacked on PR #311 |
-| Depends on | FILM-1110 (#311): type resolved in the builder, injected client, one allocation table, `memory-horizon.ts` |
+| Branch / base | `feat/film-1111-content-type-configs` / `origin/main` (ef44ffce) |
+| Depends on | FILM-1110 (#311, merged as a5e024c0): type resolved in the builder, injected client, one allocation table, `memory-horizon.ts` |
 | Waiting on this | FILM-1112 (act bridge), FILM-1113 (sequels) |
 | Author / date | teammate `film-1111`, 2026-09-23 |
 
@@ -212,7 +212,7 @@ line:
 
 ## 8. Analyze the Existing System
 
-### Components (on the base branch, after FILM-1110)
+### Components (on `main`, after FILM-1110)
 
 | Component | File | Role today |
 |---|---|---|
@@ -223,7 +223,7 @@ line:
 | Validator | `…/canon/continuity-validator.ts` | CANON_001 reads deaths from `immutableEvents` (`:187`); 002/003 characters; 007 threads; 008/009 summaries |
 | Facts | `verified_facts` (migration `20260211100000`) | Project-scoped, RLS by project membership; `verification_status`, `confidence_score` |
 
-### Gap, reproduced (2026-09-23, on e84c1810)
+### Gap, reproduced (2026-09-23, on `main` ef44ffce)
 
 ```
 $ git grep -n "calculatePriority(" -- packages apps | grep -v "export function"
@@ -583,14 +583,14 @@ flag: the change is advisory context, reversible by revert.
 - Consumers of `MemoryContext` read fields by name; all additions are new
   fields. `continuity-validator` ignores `sources`.
 - Lambda and Next deploy together (one SST deploy); no skew.
-- **Stacking:** this branch contains #311. If #311 changes in review, this
-  branch rebases onto it; nothing here edits FILM-1110's guarded lines.
+- FILM-1110's guarded lines (`tooling/mutation-guards/film-1110.json`) are
+  left byte-identical, so its guards keep working.
 
 ---
 
 ## 25. Migration and Rollout Strategy
 
-- No schema or data migration. Merge after #311 (retarget to `main` first).
+- No schema or data migration. Normal merge to `main`.
 - Gate before merge: unit tests, FILM-1110's bundle test, the extended
   real-DB verify (locally under the DB lock and in CI's `🐘 Supabase DB` job,
   which already runs `pnpm --filter @kit/episodes verify`).
@@ -603,14 +603,14 @@ flag: the change is advisory context, reversible by revert.
 
 ## 26. Testing Strategy
 
-Each test is written to fail first on the base branch for the stated reason.
+Each test is written to fail first on `main` for the stated reason.
 
 | Layer | Test | Proves | Red on base because |
 |---|---|---|---|
 | Unit (`memory-strategies.test.ts`) | `rankByPriority`: §9 scores; order score→episode→id; negative distance clamped (ep 62 at current 60 → 1.0, not 1.108); unknown episode last and kept; under D1-a no item removed | FR-1, FR-3, FR-5 | Function absent |
 | Unit (`content-type-configs.test.ts`) | For every type, the label describes the curve: `none`/`topic_match` constant over d=0..60; `linear` constant step until floor; `exponential` constant ratio | FR-10 | short-film, series, ad labels wrong (F-2) |
 | Unit (`memory-context-builder.test.ts`) | Series, budget forced small (`tokenBudgetPercent`): threads come back T-hot, T-mid, T-old; characters Jon before Mara even when the `assets` rows list Mara first | FR-1, FR-2 | Threads in `updated_at` order; characters in row order |
-| Unit | Events: 1,200 rows via the fake with `range` — all considered; order oldest-first; no score applied (a death from ep 1 is first at ep 60) | FR-4, FR-11 | Unpaged read sees only the first page's worth… (fake returns all — red via the `range` call assertion) |
+| Unit | Events: 1,200 rows via the fake with `range` — all considered; order oldest-first; no score applied (a death from ep 1 is first at ep 60) | FR-4, FR-11 | The read is unpaged: no `range` call is recorded (a fake cannot truncate, so the call shape is the tripwire; `@kit/shared/pagination`'s own tests cover the paging loop) |
 | Unit | Documentary: `verified_facts` queried with `eq verification_status verified`, the two `order`s and `limit 200`; facts fitted to 2,000 tokens; `sources` in result; series issues **no** `verified_facts` query | FR-6, FR-7 | No such read |
 | Unit | News with rows in every narrative table: 0 events/characters/threads/summaries; `sources` non-empty | FR-9 | `sources` absent |
 | Unit (`continuity-skill.test.ts`) | Tool result carries `sources`; a claim containing `<system>…</system>` and `IGNORE PREVIOUS` comes back neutralised | FR-8 | No `sources` |
@@ -717,10 +717,10 @@ together instead).
 
 | # | Risk | Impact | Detection | Mitigation | Contingency |
 |---|---|---|---|---|---|
-| R1 | #311 changes in review | Rebase work | PR updates | Nothing here edits FILM-1110's guarded lines | Rebase |
+| R1 | FILM-1110's guards broken by an edit to a line they pin | Guard runner reports "find not found" | `run.py --kind unit` | Pinned lines left byte-identical (§15) | Update `film-1110.json` in the same PR |
 | R2 | Fact text used for prompt injection | Agent misled | Sanitiser unit test | `sanitizeForPrompt`; verified-only | Drop sources from the tool result |
 | R3 | Long-dormant canon cut first under pressure | Agent not reminded of an old thread/character | Log counts | Events exempt; D1-a keeps everything that fits | Raise budget % |
-| R4 | Fake client's added `range` masks a real paging bug | False green | Real-DB verify pages real tables (seeded > 500 rows? — no: covered by `@kit/shared/pagination`'s own tests; verify covers filters) | Paging helper is shared and already tested | — |
+| R4 | Fake client's added `range` masks a real paging bug | False green | The paging loop is the shared, separately tested `@kit/shared/pagination`; the real-DB verify exercises each paged query's filters and order against PostgREST | Loaders call the shared helper, not their own loop | Seed > 500 rows in the verify script |
 | R5 | Extra tokens for factual types | Cost | `llm_usage` | Bounded by the existing source budget | Lower `contextWindowPercent` |
 | R6 | Overlap: KB-18 (#314) changes how facts get verified | Semantics of "verified" | Read its diff | Reads only the existing `verified` value, as two existing readers do | — |
 | R7 | Overlap: KB-14 (#309) edits `validation-checkpoint.ts`; KB-52 edits `act-context-bridge.ts` | Conflicts | — | Neither file is edited here | — |
@@ -776,7 +776,7 @@ Each stage is a commit.
 
 1. **Tests first (red).** `rankByPriority` tests; label property test;
    builder tests (ranking, events exempt, paging, sources, news, log);
-   continuity-skill sanitisation test; fake-client `range`. Run on the base,
+   continuity-skill sanitisation test; fake-client `range`. Run on `main`,
    record each failure reason for the PR.
 2. **`content-type-configs.ts`** — three labels (D5).
 3. **`memory-strategies.ts`** — `rankByPriority`.
@@ -795,8 +795,7 @@ Each stage is a commit.
 10. **Records:** FILM-1111 spec (`met`/`evidence`, `remaining: []`, status
     DONE only if D1–D4 are resolved so every criterion is met), FILM-1113's
     reason (D3), `specs/INDEX.md` row; siblings in the PR body.
-11. Push, `gh pr create --base feat/film-1110-content-type-budget`, body
-    line 1: "Stacked on #311 — retarget to main after #311 merges."
+11. Push, `gh pr create --base main`.
 
 Rollback at any stage: revert.
 
