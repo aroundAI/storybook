@@ -99,7 +99,9 @@ export function ProjectCoverSettings({
 
         toast.success('Cover image removed');
       } catch (removeError) {
-        toast.error(refusalMessage(removeError, 'Failed to remove cover image'));
+        toast.error(
+          refusalMessage(removeError, 'Failed to remove cover image'),
+        );
       }
     });
   }, [projectId]);
@@ -144,6 +146,7 @@ export function ProjectCoverSettings({
                 <img
                   src={displayUrl}
                   alt="Cover preview"
+                  data-test="cover-image-preview"
                   className="h-full w-full rounded-lg object-cover"
                 />
                 {isPending && (
@@ -174,7 +177,14 @@ export function ProjectCoverSettings({
           </label>
 
           {/* Error Message */}
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p
+              className="text-sm text-destructive"
+              data-test="cover-image-error"
+            >
+              {error}
+            </p>
+          )}
 
           {/* Actions */}
           {currentUrl && !isPending && (

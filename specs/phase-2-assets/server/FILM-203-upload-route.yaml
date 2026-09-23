@@ -51,8 +51,8 @@ retirement:
   date: "2026-02-02"
   what_happened: >
     c17efd37 (2026-02-02) moved the image uploader off this route to presigned direct uploads, and
-    nothing has called the route since; it is still deployed and tested
-    (apps/web/app/api/projects/[projectId]/assets/upload/route.ts). Uploads now go through
+    nothing called the route after that. KB-28 (2026-09-23) deleted it and its test, because it
+    authorised uploads on read access to the project. Uploads now go through
     apps/web/app/api/storage/presign/route.ts, called from
     packages/features/assets/src/components/image-uploader/use-image-upload.ts:131, with client-side
     validation only and no generated thumbnail. Kept as a record; not outstanding work.
