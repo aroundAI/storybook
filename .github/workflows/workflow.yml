@@ -648,6 +648,15 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
 
+      # KB-58: the build decides what is a server action. Every action it
+      # registered must be an enhanceAction export, and no function that
+      # returns a secret may be registered at all.
+      - name: Server actions are all wrapped (KB-58)
+        working-directory: packages/next
+        run: npx vitest run __tests__/action-manifest.guard.test.ts
+        env:
+          ACTION_MANIFEST: ${{ github.workspace }}/apps/web/.next/server/server-reference-manifest.json
+
       # NODE_ENV=test, via the script, so .env.test is what the server reads.
       # Starting it with a bare `next start` after a `build:test` loads
       # .env.production instead, which has no EMAIL_TLS and no CRON_SECRET —

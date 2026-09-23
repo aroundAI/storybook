@@ -3,7 +3,6 @@
  * those is an endpoint anyone can call. No `server-only` either: the LLM
  * worker Lambda imports this, and `server-only` throws outside Next.
  */
-
 import type { RenderedPrompt } from '../types';
 import { PROMPT_REGISTRY } from './prompt-registry';
 

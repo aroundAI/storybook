@@ -1,13 +1,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-
 import { afterAll, describe, expect, it } from 'vitest';
 
-import {
-  type ActionManifest,
-  auditManifest,
-} from './support/use-server-audit';
+import { type ActionManifest, auditManifest } from './support/use-server-audit';
 
 /**
  * KB-58: the build decides what is an action, not the source alone. This
