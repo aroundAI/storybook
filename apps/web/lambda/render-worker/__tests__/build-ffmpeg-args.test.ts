@@ -13,8 +13,22 @@ import type { RenderClip, RenderTrack } from '../render-input';
 const project = { id: 'p', episode_id: 'e', width: 1280, height: 720, fps: 30 };
 
 const tracks: RenderTrack[] = [
-  { id: 'v', type: 'video', name: 'V', sort_order: 0, volume: 1, is_muted: false },
-  { id: 'd', type: 'dialogue', name: 'D', sort_order: 1, volume: 0.5, is_muted: false },
+  {
+    id: 'v',
+    type: 'video',
+    name: 'V',
+    sort_order: 0,
+    volume: 1,
+    is_muted: false,
+  },
+  {
+    id: 'd',
+    type: 'dialogue',
+    name: 'D',
+    sort_order: 1,
+    volume: 0.5,
+    is_muted: false,
+  },
 ];
 
 const base = {
@@ -27,9 +41,37 @@ const base = {
 };
 
 const clips: RenderClip[] = [
-  { ...base, id: 'v1', track_id: 'v', media_url: 'https://m.invalid/v1.mp4', start_ms: 0, end_ms: 2000, in_point_ms: 0, out_point_ms: 2000 },
-  { ...base, id: 'v2', track_id: 'v', media_url: 'https://m.invalid/v2.mp4', start_ms: 2000, end_ms: 3000, in_point_ms: 1000, out_point_ms: 2000 },
-  { ...base, id: 'en', track_id: 'd', media_url: 'https://m.invalid/en.m4a', start_ms: 500, end_ms: 2500, in_point_ms: 0, out_point_ms: 2000, language: 'en' },
+  {
+    ...base,
+    id: 'v1',
+    track_id: 'v',
+    media_url: 'https://m.invalid/v1.mp4',
+    start_ms: 0,
+    end_ms: 2000,
+    in_point_ms: 0,
+    out_point_ms: 2000,
+  },
+  {
+    ...base,
+    id: 'v2',
+    track_id: 'v',
+    media_url: 'https://m.invalid/v2.mp4',
+    start_ms: 2000,
+    end_ms: 3000,
+    in_point_ms: 1000,
+    out_point_ms: 2000,
+  },
+  {
+    ...base,
+    id: 'en',
+    track_id: 'd',
+    media_url: 'https://m.invalid/en.m4a',
+    start_ms: 500,
+    end_ms: 2500,
+    in_point_ms: 0,
+    out_point_ms: 2000,
+    language: 'en',
+  },
 ];
 
 const mediaMap = new Map(clips.map((c) => [c.id, `/work/${c.id}`]));
@@ -51,7 +93,9 @@ describe('buildFFmpegArgs (KB-32)', () => {
   });
 
   it('places an audio clip at its timeline start with clip × track volume', () => {
-    expect(graph).toContain('[2:a]atrim=0:2,asetpts=PTS-STARTPTS,volume=0.5,adelay=500|500');
+    expect(graph).toContain(
+      '[2:a]atrim=0:2,asetpts=PTS-STARTPTS,volume=0.5,adelay=500|500',
+    );
   });
 
   it("writes the project's frame rate", () => {

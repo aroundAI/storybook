@@ -7,7 +7,14 @@
  * needs no FFmpeg binary. Media downloads go through a stubbed `fetch` and
  * the DNS check through a mocked lookup: nothing leaves the machine.
  */
-import { chmodSync, existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -48,7 +55,14 @@ afterAll(() => {
 });
 
 const tracks: RenderTrack[] = [
-  { id: 'v', type: 'video', name: 'V', sort_order: 0, volume: 1, is_muted: false },
+  {
+    id: 'v',
+    type: 'video',
+    name: 'V',
+    sort_order: 0,
+    volume: 1,
+    is_muted: false,
+  },
 ];
 
 const clip = (id: string, start: number, end: number): RenderClip => ({

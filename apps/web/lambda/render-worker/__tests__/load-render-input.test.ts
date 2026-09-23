@@ -8,13 +8,17 @@
  * database by render-evidence.test.ts.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
+
 import { describe, expect, it } from 'vitest';
 
 import type { Database } from '@kit/supabase/database';
 
 import { RenderStageError, loadRenderInput } from '../render-input';
 
-type Result = { data: unknown; error: { code?: string; message: string } | null };
+type Result = {
+  data: unknown;
+  error: { code?: string; message: string } | null;
+};
 
 /** A chainable stand-in whose result depends on the table and the page. */
 function fakeClient(respond: (table: string, from: number) => Result) {
@@ -32,8 +36,10 @@ function fakeClient(respond: (table: string, from: number) => Result) {
           return builder;
         },
         maybeSingle: () => builder,
-        then: (resolve: (r: Result) => unknown, reject: (e: unknown) => unknown) =>
-          Promise.resolve(respond(table, from)).then(resolve, reject),
+        then: (
+          resolve: (r: Result) => unknown,
+          reject: (e: unknown) => unknown,
+        ) => Promise.resolve(respond(table, from)).then(resolve, reject),
       };
       return builder;
     },
@@ -56,12 +62,19 @@ describe('loadRenderInput errors (KB-32)', () => {
   it('reports a query error on the project as a load failure with its code, not "not found"', async () => {
     const error = await failure(() => ({
       data: null,
-      error: { code: '42703', message: 'column edit_projects.canvas_height does not exist' },
+      error: {
+        code: '42703',
+        message: 'column edit_projects.canvas_height does not exist',
+      },
     }));
 
     expect(error).toBeInstanceOf(RenderStageError);
-    expect((error as Error).message).toBe('Could not load the edit project (42703)');
-    expect((error as RenderStageError).detail?.message).toContain('canvas_height');
+    expect((error as Error).message).toBe(
+      'Could not load the edit project (42703)',
+    );
+    expect((error as RenderStageError).detail?.message).toContain(
+      'canvas_height',
+    );
   });
 
   it('reports "Edit project not found" only when no row matched', async () => {
@@ -75,11 +88,16 @@ describe('loadRenderInput errors (KB-32)', () => {
       if (table === 'edit_projects') return { data: project, error: null };
       if (table === 'edit_tracks')
         return { data: from === 0 ? [{ id: 't' }] : [], error: null };
-      return { data: null, error: { code: '42703', message: 'column edit_clips.x does not exist' } };
+      return {
+        data: null,
+        error: { code: '42703', message: 'column edit_clips.x does not exist' },
+      };
     });
 
     expect((error as Error).message).toBe('Could not load the timeline');
-    expect((error as RenderStageError).detail?.message).toContain('edit_clips.x');
+    expect((error as RenderStageError).detail?.message).toContain(
+      'edit_clips.x',
+    );
   });
 
   it('returns every page of clips', async () => {
@@ -93,7 +111,14 @@ describe('loadRenderInput errors (KB-32)', () => {
           return { data: from === 0 ? [{ id: 't' }] : [], error: null };
         // two full pages and a partial one: a single unpaged read would stop at the first
         return {
-          data: from === 0 ? page(500, 'a') : from === 500 ? page(500, 'b') : from === 1000 ? page(1, 'c') : [],
+          data:
+            from === 0
+              ? page(500, 'a')
+              : from === 500
+                ? page(500, 'b')
+                : from === 1000
+                  ? page(1, 'c')
+                  : [],
           error: null,
         };
       }),

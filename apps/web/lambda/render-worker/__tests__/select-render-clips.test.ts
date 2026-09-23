@@ -6,11 +6,14 @@ import {
   selectRenderClips,
 } from '../render-input';
 
-const track = (
-  id: string,
-  type: string,
-  is_muted = false,
-): RenderTrack => ({ id, type, name: id, sort_order: 0, volume: 1, is_muted });
+const track = (id: string, type: string, is_muted = false): RenderTrack => ({
+  id,
+  type,
+  name: id,
+  sort_order: 0,
+  volume: 1,
+  is_muted,
+});
 
 const clip = (
   id: string,
@@ -53,7 +56,7 @@ const ids = (language: string) =>
   selectRenderClips(tracks, clips, language).map((c) => c.id);
 
 describe('selectRenderClips (KB-32)', () => {
-  it("a Spanish render includes the Spanish dub although the preview shows English", () => {
+  it('a Spanish render includes the Spanish dub although the preview shows English', () => {
     expect(ids('es')).toEqual(['shot', 'es-dub']);
   });
 
