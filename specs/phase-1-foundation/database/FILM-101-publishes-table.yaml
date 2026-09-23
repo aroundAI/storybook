@@ -129,7 +129,7 @@ acceptance_criteria:
     evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:468; platform_connection_id nullable since apps/web/supabase/migrations/20251210164448_make-platform-connection-id-nullable.sql:6"
   - text: "Foreign keys with CASCADE delete"
     met: true
-    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:470-471; KB-22 records the connection cascade deleting user records"
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:470-471; the CASCADE is unchanged, but since KB-22 a connection row goes only with its account — `platform_connections_refuse_delete` in apps/web/supabase/migrations/20260923140320_kb22-disconnect-keeps-records.sql — so it reaches publishes only on account deletion"
   - text: "Status, platform, content_type enums enforced"
     met: true
     evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:485-486; status widened in apps/web/supabase/migrations/20260122205819_add_queued_publish_status.sql:8"
@@ -162,7 +162,7 @@ test_plan:
       reason: "not met — no test found"
     - text: "Deleting platform_connection cascades to delete publishes"
       met: false
-      reason: "not met — no test found; KB-22 reproduced it by hand on the local database"
+      reason: "not met, by design since KB-22 — a connection with publishes can no longer be deleted on its own (SQLSTATE 23001); the cascade runs only when its account is deleted, which apps/web/supabase/tests/database/platform-connection-disconnect.test.sql asserts removes the connection, its publishes and settings"
     - text: "Query scheduled publishes (scheduled_at < NOW, status = 'scheduled')"
       met: false
       reason: "not met — no test found"
