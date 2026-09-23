@@ -43,8 +43,8 @@ import {
   GetScheduledReportsSchema,
   UpdateScheduledReportSchema,
 } from '../lib/schemas/report.schema';
+import { storeReport } from './report-storage';
 
-const REPORTS_BUCKET = 'reports';
 const SIGNED_URL_EXPIRY_SECONDS = 3600;
 
 /** Retention curves fetched in parallel per batch. */
@@ -334,34 +334,12 @@ async function uploadAndGetSignedUrl(
   filename: string,
   contentType: string,
 ): Promise<{ url: string; expiresAt: Date }> {
-  const client = getSupabaseServerClient();
-
-  const path = `exports/${accountId}/${Date.now()}-${filename}`;
-
-  const { error: uploadError } = await client.storage
-    .from(REPORTS_BUCKET)
-    .upload(path, buffer, {
-      contentType,
-      cacheControl: '3600',
-    });
-
-  if (uploadError) {
-    throw new Error(`Failed to upload report: ${uploadError.message}`);
-  }
-
-  const { data: signedUrlData, error: signedUrlError } = await client.storage
-    .from(REPORTS_BUCKET)
-    .createSignedUrl(path, SIGNED_URL_EXPIRY_SECONDS);
-
-  if (signedUrlError || !signedUrlData) {
-    throw new Error(
-      `Failed to create download URL: ${signedUrlError?.message}`,
-    );
-  }
-
-  const expiresAt = new Date(Date.now() + SIGNED_URL_EXPIRY_SECONDS * 1000);
-
-  return { url: signedUrlData.signedUrl, expiresAt };
+  return storeReport(
+    getSupabaseServerClient(),
+    `exports/${accountId}/${Date.now()}-${filename}`,
+    { buffer, contentType, cacheControl: '3600' },
+    SIGNED_URL_EXPIRY_SECONDS,
+  );
 }
 
 /**

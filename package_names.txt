@@ -20,7 +20,6 @@
 @kit/audio-generation
 @kit/storage
 @kit/accounts
-@kit/shorts
 @kit/public-sharing
 @kit/film-studio-schemas
 @kit/team-accounts

@@ -14,6 +14,7 @@ import {
 
 import { generateSummaryCSV } from '@kit/content-analytics/lib/csv-generator';
 import { generatePDFReport } from '@kit/content-analytics/lib/pdf-generator';
+import { storeReport } from '@kit/content-analytics/server/report-storage';
 import type {
   AnalyticsDataRow,
   ReportMetric,
@@ -554,22 +555,12 @@ async function processScheduledReport(
     contentType = 'application/pdf';
   }
 
-  const path = `scheduled/${report.id}/${Date.now()}-${filename}`;
-
-  const { error: uploadError } = await adminClient.storage
-    .from('reports')
-    .upload(path, buffer, { contentType, cacheControl: '86400' });
-
-  if (uploadError) {
-    throw new Error(`Failed to upload report: ${uploadError.message}`);
-  }
-
-  const { data: signedUrlData, error: signedUrlError } =
-    await adminClient.storage.from('reports').createSignedUrl(path, 604800);
-
-  if (signedUrlError || !signedUrlData) {
-    throw new Error(`Failed to create signed URL: ${signedUrlError?.message}`);
-  }
+  const { url: downloadUrl } = await storeReport(
+    adminClient,
+    `scheduled/${report.id}/${Date.now()}-${filename}`,
+    { buffer, contentType, cacheControl: '86400' },
+    604800,
+  );
 
   const mailer = await getMailer();
   const recipients = report.recipients as string[];
@@ -586,7 +577,7 @@ async function processScheduledReport(
         reportName,
         frequency,
         dateRange,
-        downloadUrl: signedUrlData.signedUrl,
+        downloadUrl,
         recordCount: transformedData.length,
       }),
     });

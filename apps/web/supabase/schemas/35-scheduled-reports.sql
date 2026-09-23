@@ -99,10 +99,11 @@ create policy "scheduled_reports_delete" on public.scheduled_reports for delete
 -- ==================================
 -- Private bucket for generated report files (PDF/CSV)
 
+-- CSV or PDF only, 50 MB (KB-55).
 insert into
-  storage.buckets (id, name, public)
+  storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values
-  ('reports', 'reports', false);
+  ('reports', 'reports', false, 52428800, array['text/csv', 'application/pdf']);
 
 -- Helper function to extract account ID from report path
 -- Path format: exports/{timestamp}-{filename} or scheduled/{reportId}/{timestamp}-{filename}
@@ -150,28 +151,29 @@ execute on function kit.get_account_id_from_report_path (text) to authenticated,
 service_role;
 
 -- RLS policy for reports bucket: SELECT
--- User must have role on the account
+-- Owner or member of the account (KB-56)
 create policy reports_select on storage.objects for select
 to authenticated
 using (
   bucket_id = 'reports'
-  and public.has_role_on_account(kit.get_account_id_from_report_path(name))
+  and public.has_account_access(kit.get_account_id_from_report_path(name))
 );
 
 -- RLS policy for reports bucket: INSERT
--- User must have role on the account
+-- Owner or member of the account (KB-56)
 create policy reports_insert on storage.objects for insert
 to authenticated
 with check (
   bucket_id = 'reports'
-  and public.has_role_on_account(kit.get_account_id_from_report_path(name))
+  and public.has_account_access(kit.get_account_id_from_report_path(name))
 );
 
 -- RLS policy for reports bucket: DELETE
--- User must have role on the account (for cleanup)
+-- Owner or member of the account (for cleanup). KB-56: has_account_access,
+-- not has_role_on_account, which refuses a personal account's owner.
 create policy reports_delete on storage.objects for delete
 to authenticated
 using (
   bucket_id = 'reports'
-  and public.has_role_on_account(kit.get_account_id_from_report_path(name))
+  and public.has_account_access(kit.get_account_id_from_report_path(name))
 );

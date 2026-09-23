@@ -76,7 +76,6 @@
     "@kit/public-sharing": "workspace:*",
     "@kit/publishing": "workspace:*",
     "@kit/shared": "workspace:*",
-    "@kit/shorts": "workspace:*",
     "@kit/storage": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@kit/team-accounts": "workspace:*",
