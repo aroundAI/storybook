@@ -1271,7 +1271,7 @@ not implement. Item 3 exists so that items 1–2 never have to.
 - [x] Privacy policy carries the three YouTube-required items — each cited to the policy text in #294 (§III.A.1, §III.A.2.c, §III.A.2.i)
 - [x] Owner has decided what disconnect deletes (2026-09-22: keep until asked; then, on the YouTube conflict, option A — see above)
 - [x] Vendor retention/revocation clauses quoted and cited for YouTube and Meta; TikTok **[not verified]** (its terms were unreachable from this network); the conflict was brought to the owner and decided
-- [x] Item 3: after a disconnect (or on request), vendor-sourced rows for that connection are gone from ClickHouse and Postgres within the stated window; manual entries untouched — pgTAP/ClickHouse test with seeded rows, red first — **KB-22 part B (#KB22B)**: the `vendor_data_purges` queue and the hourly `vendor-data-purge` job; a YouTube in-app disconnect and an account deletion queue themselves, a request is one insert (runbook B). The 30-day case (revoked at Google / token that cannot be renewed) stays manual until KB-29's fix has run long enough to trust (owner decision D5)
+- [x] Item 3: after a disconnect (or on request), vendor-sourced rows for that connection are gone from ClickHouse and Postgres within the stated window; manual entries untouched — pgTAP/ClickHouse test with seeded rows, red first — **KB-22 part B (#334)**: the `vendor_data_purges` queue and the hourly `vendor-data-purge` job; a YouTube in-app disconnect and an account deletion queue themselves, a request is one insert (runbook B). The 30-day case (revoked at Google / token that cannot be renewed) stays manual until KB-29's fix has run long enough to trust (owner decision D5)
 - [x] Runbook (#289) updated in #294: both blockers marked resolved, the URLs to paste kept in each vendor's form table
 
 ---
@@ -1331,7 +1331,7 @@ click, behind a dialog that describes something else. **Found:** KB-20's
 drafting (2026-09-22), when "what does disconnect remove?" turned out to have
 an answer nobody had written down. It also corrects KB-20, whose first version
 asserted the opposite. **Fixed — #317 (disconnect keeps the row and every
-record under it) and #KB22B (the vendor-data deletion job, KB-20 item 3).**
+record under it) and #334 (the vendor-data deletion job, KB-20 item 3).**
 Design: `specs/plans/KB-22-edd.md`.
 
 The disconnect dialog says, in full (`platforms:disconnectDescription`):
@@ -1407,8 +1407,8 @@ is about.
 ### Acceptance criteria
 
 - [x] pgTAP, red first: disconnecting leaves `publishes`, manual `revenue_records`, `publish_tags`, `experiment_publishes`, `channel_analytics_settings` intact — `platform-connection-disconnect.test.sql` (also project/episode publishing defaults, manual tasks, an experiment's channel scope; a member's and the service role's direct `DELETE` refused; account deletion still succeeds)
-- [x] Reconnecting the same platform account restores the connection to its publishes; analytics resume without duplicates — pgTAP upsert case; Playwright through the real YouTube callback, same row id (#317); `syncEligibility` treats a reconnected grant as eligible (unit-tested); a purge clears `publishes.metadata.sync`, so the sync re-collects from the publish date into the same ReplacingMergeTree keys (#KB22B, pgTAP)
-- [x] The deletion job removes one connection's vendor rows from every ClickHouse table (the seven `video_*`, `channel_daily`, `channel_subscribers`, and FILM-1504's `channel_reach_daily`) and `source='api'` revenue — and nothing else; tested with two connections seeded side by side, against the real local ClickHouse — `pnpm --filter @kit/clickhouse verify:purge`, `vendor-data-purges.test.sql` (#KB22B)
+- [x] Reconnecting the same platform account restores the connection to its publishes; analytics resume without duplicates — pgTAP upsert case; Playwright through the real YouTube callback, same row id (#317); `syncEligibility` treats a reconnected grant as eligible (unit-tested); a purge clears `publishes.metadata.sync`, so the sync re-collects from the publish date into the same ReplacingMergeTree keys (#334, pgTAP)
+- [x] The deletion job removes one connection's vendor rows from every ClickHouse table (the seven `video_*`, `channel_daily`, `channel_subscribers`, and FILM-1504's `channel_reach_daily`) and `source='api'` revenue — and nothing else; tested with two connections seeded side by side, against the real local ClickHouse — `pnpm --filter @kit/clickhouse verify:purge`, `vendor-data-purges.test.sql` (#334)
 - [x] Dialog copy matches behaviour; Playwright covers disconnect → reconnect, asserting the manual revenue figure is still there **after** reconnect; screenshots in the PR — `disconnect-keeps-records.spec.ts`; the copy's per-platform flags are bound to `REVOKERS` by `revokers.test.ts`
 - [x] No production data or credentials are used to verify any of this — local stack, a generated local `ENCRYPTION_KEY`, fake app credentials, a local stand-in for Google
 
@@ -3224,7 +3224,7 @@ Spec `evidence` and `reason` citations name a `path:line`, and nothing checks th
 | KB-58 | Library modules marked `'use server'` registered 55 unauthenticated server actions, among them the LLM vendor keys, an `ENCRYPTION_KEY` oracle and any connection's decrypted token | #331 |
 | KB-40 | Any signed-in user could replace any episode's edit project through `batch_assemble_edit_project`: EXECUTE on all five Edit Suite functions revoked from the API roles, and the Edit Suite tab and route removed (FILM-607 stop-gap; the Edit Suite is retired) | #327 |
 | KB-32, KB-62, KB-64, KB-65, KB-67, KB-68, KB-69 | The Edit Suite: server render always failed, edits were never saved, and its SECURITY DEFINER functions had no access check; Browser Export, render status, the ffmpeg pin and the SSRF guard follow-ups | #329 (removed) |
-| KB-22 | Disconnecting a platform deleted the creator's own records — manual revenue, tags, experiment membership, YPP targets — through a cascade, behind a dialog that described something else; and the vendor's statistics it should delete were kept for ever | #317, #KB22B |
+| KB-22 | Disconnecting a platform deleted the creator's own records — manual revenue, tags, experiment membership, YPP targets — through a cascade, behind a dialog that described something else; and the vendor's statistics it should delete were kept for ever | #317, #334 |
 | KB-75 | The Unit Tests job's mutation guards outgrew its timeout, so it was cancelled on `main` and on PRs; the unit guards now run sharded | #324 |
 | KB-80 | Specs kept open items waiting on fixed bugs and finished specs (FILM-305, FILM-502, FILM-503 on KB-14); a guard now fails any `closed_by` that names finished work | #328 |
 | KB-82 | KB-75 had no record, INDEX linked the spikes to files that no longer exist, and FILM-1728 said the lambdas were untyped | this batch-records PR (`docs/batch-records-2026-09-23`) |
