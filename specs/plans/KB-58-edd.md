@@ -4,23 +4,28 @@ Engineering Design Document. Follows `specs/PLAN_TEMPLATE.md`, all 34 sections.
 
 | | |
 |---|---|
-| Ticket | KB-58 (reserved in the team's KB list; no FILM-CC-04 entry yet — this PR adds it) |
+| Ticket | KB-58 (`specs/cross-cutting/FILM-CC-04-known-bugs.md`, `## KB-58`, added by this PR) |
 | Severity | **High** (defence in depth). Not Critical: a live call was never made, by rule, and the IDs of the dangerous actions were found nowhere a browser can download (§19) |
 | Related | KB-29 (#310, deletes four of the functions), KB-28 (#313, cover-image RPC), KB-31 (#315, prompt-engine), KB-52 (`llm_usage_analytics`), KB-43 (members can read encrypted tokens), KB-6 (`returnRefusals`) |
-| Branch / base | `fix/kb-58-use-server-exports-r2` / **stacked on `fix/kb-29-refresh-global-credentials` (#310)**, which is `origin/main` @ `49b851d6` + KB-29 |
+| Branch / base | `fix/kb-58-use-server-exports-r2` / **stacked on `fix/kb-28-project-assets-insert-scope` (#313)** (D6). #310 merged before implementation |
 | Author / date | kb-58-r2 teammate (takes over from kb-58, whose worktree was removed), 2026-09-23 |
 | Size | M: ~35 files touched, mostly one-line directive removals and moves; no migration; one form call site |
 
 ### Changes since approval (Phase 2)
 
-- **Base is `origin/main`.** #310 merged, so this is no longer stacked.
+- **Base is #313.** #310 merged before implementation. #313 was still open at D6, and the owner chose to stack on it, so the two create-project actions are wrapped on top of KB-28's version.
+- **D6 done.** `createFilmProjectAction` and `updateProjectCoverImageAction` are `enhanceAction`s taking one object, and their three call sites are updated.
+  - T4/T5 unit tests: `apps/web/app/home/[account]/studio/projects/new/__tests__/create-film-project.action.test.ts`.
+  - T7 Playwright spec: `apps/e2e/tests/projects/create-film-project.spec.ts`.
+  - KB-28's cover spec, which drives the cover update through settings twice, is re-run on this branch.
+  - `getMediaBinDataAction` (T6) was dropped along with the Edit Suite.
 - **Edit Suite excluded.** FILM-607 is retiring it, so `media-bin-queries.ts` and `getMediaBinDataAction` were dropped from the decision table. Both guards skip `packages/features/edit-suite/` through a named `RETIRING_PATHS` entry, to be removed when that directory is gone.
 - **Barrels split (not foreseen in §15).** Client components import `@kit/audio-generation/server` and `@kit/publishing/server` to get actions. Once the moved functions stopped being `'use server'`, re-exporting their `server-only` modules from those barrels would bundle them for the browser.
   - Those barrels now hold actions only.
   - The publishing readers moved to a new `@kit/publishing/server/queries` subpath, used by three pages.
   - `voice-queries`, `project-audio-settings` and `audio-asset-library` left the audio barrel; every caller already imported them relatively.
 - **`processScheduledPublishes` added to `NEVER_REGISTERED`**, because it runs the publish cron through the admin client.
-- **Build figures.** The `build:test` before D6 registers 357 actions, and none of the 16 secret or admin-client names. Before/after for each name:
+- **Build figures.** The final `build:test` registers **356** actions, and the manifest guard reports **0 findings**. None of the 16 secret or admin-client names is registered. Before/after for each name:
 
   | Name | Registered on main (49b851d6) | Registered on branch |
   |---|---|---|
@@ -30,7 +35,11 @@ Engineering Design Document. Follows `specs/PLAN_TEMPLATE.md`, all 34 sections.
   | `getAccessToken`, `validatePlatformToken` | yes | no |
   | `getAccountElevenLabsApiKey`, `getProjectElevenLabsApiKey` | yes | no |
   | `processScheduledPublishes` | yes | no |
-  | total actions | 408 | 357 (the three `create-film-project` exports are still registered, pending D6) |
+  | total actions | 408 | 356, every one an `enhanceAction` export |
+
+- **V6.** OpenNext 3.1.3 was run with the sandboxed `build:test` as its build command; nothing was deployed or uploaded.
+  - `.open-next/assets` (333 files) and `.open-next/cache` (10 files) are what the deploy publishes. They contain no `.rscinfo`, no `server-reference-manifest` and no copy of the build's key.
+  - The key appears only in the private server-function bundle (2 files). That also serves as the positive control that the search works.
 
 ### What was measured (run, not inferred)
 
