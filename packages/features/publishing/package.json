@@ -45,7 +45,9 @@
     "./server/social-posts": "./src/server/social-post-actions.ts",
     "./lib/schemas/social-post": "./src/lib/schemas/social-post.schema.ts",
     "./components/social-posts": "./src/components/social-posts/index.ts",
-    "./lib/job-types": "./src/lib/job-types.ts"
+    "./lib/job-types": "./src/lib/job-types.ts",
+    "./lib/platforms": "./src/lib/platforms.ts",
+    "./lib/token-expiry": "./src/lib/token-expiry.ts"
   },
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.968.0",

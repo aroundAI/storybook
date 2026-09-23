@@ -1,11 +1,17 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { isWithinRefreshWindow } from '@kit/publishing/lib/token-expiry';
+
 import { decrypt } from './crypto';
 
 /**
- * Ensure we have a valid access token for the platform
- * Note: Token refresh is handled by a cron job (every 30 min).
- * This just decrypts and returns the token.
+ * Ensure we have a valid access token for the platform.
+ *
+ * The worker never refreshes: the web app's cron job does, every 30 minutes,
+ * and a second refresher would race it for refresh tokens that X and TikTok
+ * rotate on use. So the worker refuses exactly what the app would refresh
+ * before use - the same rule, `isWithinRefreshWindow` - and SQS redelivers
+ * the job once the cron has renewed the token (KB-15).
  */
 export async function checkConnectionToken(
   connectionId: string,
@@ -46,7 +52,16 @@ export async function checkConnectionToken(
     ? new Date(connection.token_expires_at)
     : null;
 
-  if (expiresAt && expiresAt <= now) {
+  if (expiresAt && isWithinRefreshWindow(expiresAt, now)) {
+    // The text below reaches the publish screen, so it stays as it was; the
+    // log line carries what an operator needs to tell a lagging cron from a
+    // long-dead token.
+    const minutesLeft = Math.round(
+      (expiresAt.getTime() - now.getTime()) / 60_000,
+    );
+    console.warn(
+      `[Publish Worker] ${connection.platform} token for connection ${connectionId} not refreshed yet (minutesLeft=${minutesLeft})`,
+    );
     return {
       valid: false,
       error:

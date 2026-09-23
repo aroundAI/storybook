@@ -3,13 +3,9 @@
  * Types for multi-platform video publishing
  */
 
-export type Platform =
-  | 'youtube'
-  | 'tiktok'
-  | 'instagram'
-  | 'facebook'
-  | 'twitter'
-  | 'linkedin';
+import type { Platform } from './platforms';
+
+export type { Platform };
 
 export type ConnectionStatus = 'active' | 'expired' | 'error';
 

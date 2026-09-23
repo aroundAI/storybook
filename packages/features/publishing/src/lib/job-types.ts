@@ -1,3 +1,5 @@
+import type { Platform } from './platforms';
+
 export interface BaseJobMessage {
   userId: string;
   platformConnectionId: string;
@@ -7,13 +9,7 @@ export interface BaseJobMessage {
 export interface PublishJobMessage extends BaseJobMessage {
   type: 'publish';
   publishId: string;
-  platform:
-    | 'youtube'
-    | 'tiktok'
-    | 'instagram'
-    | 'facebook'
-    | 'twitter'
-    | 'linkedin';
+  platform: Platform;
   videoUrl: string;
   title: string;
   description: string;
@@ -25,13 +21,7 @@ export interface PublishJobMessage extends BaseJobMessage {
 export interface DeleteJobMessage extends BaseJobMessage {
   type: 'delete';
   publishId: string;
-  platform:
-    | 'youtube'
-    | 'tiktok'
-    | 'instagram'
-    | 'facebook'
-    | 'twitter'
-    | 'linkedin';
+  platform: Platform;
   platformContentId: string;
   platformAccountId?: string;
 }
