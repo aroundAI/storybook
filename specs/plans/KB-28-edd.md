@@ -3,7 +3,20 @@
 **Ticket:** KB-28, "Any signed-in user can upload into any project's storage folder" (`specs/cross-cutting/FILM-CC-04-known-bugs.md`, `## KB-28`). Related: FILM-203 (RETIRED), FILM-CC-01, FILM-207.
 **Branch:** `fix/kb-28-project-assets-insert-scope` off `origin/main` @ `49b851d6`.
 **Size:** S–M. One migration, one route rewrite, orphan deletions, a pgTAP file, a Vitest file and a Playwright spec.
-**Status:** Phase 1 (plan). Nothing is implemented yet.
+**Status:** Implemented (Phase 2). Approved 2026-09-23 with owner decisions D1–D7. §0a records what changed between the plan and the implementation, and why.
+
+---
+
+## 0a. Changes after approval (owner decisions and findings during implementation)
+
+| # | What changed | Why | Where |
+|---|---|---|---|
+| A1 | **Production storage is R2** (owner, D6). The presign route is therefore the only gate on the production upload path. An R2 URL is signed with the app's own credentials, and no `storage.objects` policy sees it. The route's check runs before any signer, and is tested on both providers. | D6 answer | §8.4, §19, route test |
+| A2 | **In the R2 adapter, the `bucket` argument is a key prefix, not a bucket** (`packages/features/storage/src/adapters/r2.ts:78,100`: key = `${bucket}/${path}` inside the one `R2_BUCKET_NAME` bucket). D5 as planned (pin to `project-assets` and repoint the export dialog) would have been harmless. The coordinator's rework, which accepted only `R2_BUCKET_NAME` on R2, would have refused every live upload. Agreed instead: the route accepts exactly the prefixes the uploaders send, `project-assets` and the export dialog's `EXPORT_UPLOAD_BUCKET` (moved into one shared constant). The export dialog's behaviour is unchanged. Signing content type and length into R2 URLs is **KB-38**. | D5 re-check | §8.4, §15 |
+| A3 | **`public.can_write_project(uuid)`** is created as the one "may write to this project" rule: owner, admin or member in `project_members`. `can_write_project_storage(path)` builds on it. It was pushed first (e9359835) because KB-26 depends on it. | Coordinator's requirement | §14 |
+| A4 | **Filenames may contain `_`** (owner decision, option A). Main refused every edit-suite export (`export_en_<ts>.mp4`) and every shot video whose sanitised name has `_` with 400 "Invalid storage path format", before any permission check. The new pattern also refuses `..` anywhere; main accepted a bare `..` filename. | Found while testing the export path; owner-approved scope addition | §15, route test |
+| A5 | **The intro upload path** (`projects/<id>/intros/…`) is still refused by the pattern. That is **KB-39**, not fixed here. | D7 | §31 |
+| A6 | **Audio uploads do not reach `project-assets`**, and the provider is chosen by one env var for everything. That doesn't match the owner's statement that R2 is used "only for image and video". See §8.4 and the PR's "Before deploy (owner)". | Owner's statement checked against code | §8.4 |
 
 ---
 
@@ -114,13 +127,16 @@ Canonical path: **owner uploads a project cover** (`project-cover-settings.tsx:4
 | FR-3 | Update and delete use the same predicate, so owners can replace and delete their `projects/` and `episodes/` objects | UPDATE/DELETE policies | pgTAP (red first: U3/D2) |
 | FR-4 | `viewer` cannot write, replace or delete | Predicate role set | pgTAP |
 | FR-5 | The presign route authorises on the same predicate, not on project visibility | `rpc('can_write_project_storage')` | Vitest (red first) and E2E: S1 → 403 |
-| FR-6 | The presign route pins `bucket` to `project-assets` | Allowlist | Vitest |
+| FR-6 | The presign route accepts only the buckets (on R2: key prefixes) the uploaders send: `project-assets` and `EXPORT_UPLOAD_BUCKET` (A2) | Allowlist | Vitest on both providers |
 | FR-7 | Type is enforced server-side: the route checks `contentType` against `UPLOAD_CONSTRAINTS` (the one list FILM-CC-01 defines); the bucket's `allowed_mime_types` is the same list | Route and bucket | Vitest; E2E direct-storage upload of `text/html` refused |
 | FR-8 | Size is enforced by the bucket: `file_size_limit` = the largest `UPLOAD_CONSTRAINTS.maxSize` (500 MB) | Bucket | pgTAP asserts the column; E2E notes the local 50 MiB global cap |
 | FR-9 | The orphaned FILM-203 route is deleted, with its test | File removal | `ls`, typecheck, grep |
 | FR-10 | `update_project_cover_image` refuses callers who cannot edit the project *(decision D2)* | SQL guard + action returns a refusal | pgTAP; repro-cover |
 | FR-11 | Orphaned write paths with the same flaw are removed: `/api/publish/upload` (no project check at all, zero callers) and the `uploadProjectCoverImage` server action (zero callers) *(decision D3)* | File/function removal | grep positive control, typecheck |
 | FR-12 | A legitimate owner, and a project member, can still upload through the real UI and route | — | Playwright spec; repro L1–L4 and S3 still 200 |
+| FR-13 | The path pattern admits `_` in filenames (exports, sanitised shot-video names) and refuses `..` anywhere, empty segments and extra segments (A4) | Route | Vitest, red on main |
+| FR-14 | `public.can_write_project(uuid)` is the one "may write to this project" rule: owner, admin or member. Viewer, stranger and public-project reader get false (A3) | SQL function | pgTAP cases 1–9 |
+| FR-15 | On R2 the route's refusals happen before the signer is reached (A1) | Route | Vitest (R2 adapter selected by `STORAGE_PROVIDER=r2`, signing stubbed) |
 
 ## 7. Define Non-Functional Requirements
 
@@ -140,7 +156,8 @@ Canonical path: **owner uploads a project cover** (`project-cover-settings.tsx:4
 - **Write predicate helpers:** `has_role_on_project(pid, role default null)` (`20251016143639_projects.sql:96-110`) matches **any** role, including `viewer` (enum `:9-14`). Content tables (`assets`, `episodes`, `shots`, `episode_thumbnails`) write-gate on `role in ('owner','admin','member')`.
 - **Upload route:** `apps/web/app/api/storage/presign/route.ts`. It takes the bucket from the client unchecked (`:37`, `:147`), authorises by *reading* `projects` (`:111-122`; public/unlisted projects are readable by anyone signed in, `20260108120000_public_sharing_rls.sql:28-34`), and checks type only by prefix (`video/ audio/ image/ application/`, `:125-135`).
 - **Adapter:** `SupabaseStorageAdapter.getSignedUploadUrl` signs with the **user's** client (`packages/features/storage/src/adapters/supabase.ts:54-76`), so storage RLS is checked at signing time (I5).
-- **Provider selection:** `getStorageProvider()` (`packages/features/storage/src/factory.ts:31-45`) maps anything other than `local | r2 | b2` to `supabase`. `sst.config.ts:1068` defaults `STORAGE_PROVIDER` to `'s3'`, which therefore means the Supabase adapter. I have **not** read, and will not read, production's actual value (see D6).
+- **Provider selection:** `getStorageProvider()` (`packages/features/storage/src/factory.ts:31-45`) reads one env var, `STORAGE_PROVIDER`, and maps anything other than `local | r2 | b2` to `supabase`. Every adapter in the app comes from `getStorageAdapter()`, so one value picks the provider for every upload. The content- and path-based router (`routing.ts`, `getStorageAdapterForContentType`/`ForPath`) is only used when `STORAGE_PROVIDER` is `smart` or `auto`, and **nothing calls it** (grep, 2026-09-23). The owner confirmed production is R2 (D6). I have not read, and will not read, production's config values.
+- **R2 adapter:** `bucket` is a **key prefix** inside the single `R2_BUCKET_NAME` bucket (`r2.ts:78,100`), and the URL is signed with the app's own credentials. No `storage.objects` policy runs on the R2 path.
 - **Clients writing to `project-assets`:**
 
 | Caller | Path shape | Via |
@@ -152,8 +169,8 @@ Canonical path: **owner uploads a project cover** (`project-cover-settings.tsx:4
 | `use-video-upload.ts:317-318` | `projects/<P>/shots/<S>/{video,thumbnail}/…` | presign |
 | `episode-thumbnail-settings.tsx:442`, `publish-screen.tsx:277` | `episodes/<E>/thumbnails/…` | presign |
 | `publish-screen.tsx:717` (`uploadPublishVideo`) | `episodes/<E>/videos/…` | presign |
-| `edit-suite/export-dialog.tsx:90-92` | `projects/<P>/assets/master_video/…`, bucket `NEXT_PUBLIC_R2_BUCKET_NAME ?? 'storybook-assets'` | presign |
-| `project-intro-settings.tsx:385` | `projects/<P>/intros/…` | presign. **Already refused 400** by the route's path regex (S4); see §31 |
+| `edit-suite/export-dialog.tsx:90-92` | `projects/<P>/assets/master_video/export_<lang>_<ts>.mp4`, bucket `NEXT_PUBLIC_R2_BUCKET_NAME ?? 'storybook-assets'` | presign. **Refused 400 on main** by the path pattern (the filename has `_`); fixed here (A4) |
+| `project-intro-settings.tsx:385` | `projects/<P>/intros/…` | presign. **Already refused 400** by the route's path regex (S4); **KB-39**, not fixed here |
 | `create-film-project.action.ts:116-150` `uploadProjectCoverImage` | `<P>/cover.<ext>` | server action, user client. **Zero callers** |
 | `api/publish/upload/route.ts` | `episodes/<E>/videos/…`, `upsert:true`, **no project check at all** | route. **Zero callers** |
 | `api/projects/[projectId]/assets/upload/route.ts` (FILM-203) | `<P>/<asset>/…` | route. Read-access check `:51-60`. **Orphaned**; FILM-203 is RETIRED |
@@ -169,9 +186,32 @@ The fix enters at the bucket policies (the real gate for every client), the pres
 | `project-assets` (public) | `bucket_id` only (public bucket anyway) | **`bucket_id` only** | `has_role_on_project(get_project_id_from_path(name))` | same as update | **KB-28:** insert looser than delete (I1–I6). Update/delete resolve `projects`/`episodes` → null, so they **deny owners on every live path** (U3, D2). All three admit `viewer`. **Fixed here.** |
 | `account_image` (public) | one `FOR ALL` policy: `USING` filename-uuid = `auth.uid()` or `has_role_on_account(filename-uuid)` | `WITH CHECK` filename-uuid = `auth.uid()` or `has_permission(…,'settings.manage')` | same | same `USING` | No cross-tenant write (A1, A4, A5 refused). Insert is *stricter* than delete. B can create `<A uid>/<B uid>.png` (A2), but the policy is keyed on the file name, so that object is B's by the policy's own rule, not A's. Side finding: `uploadAvatar()` writes `<id>/avatar-<ts>.png`, which fails the uuid cast (A6, 400) **and** the presign regex (S5, 400). Avatar upload is broken today. **Not fixed here** (§31). |
 | `reports` (private) | `has_role_on_account(get_account_id_from_report_path(name))` | same | *(no policy → denied)* | same | Symmetric; no hole (Q1, Q3 refused). Side finding: a **personal** account owner is refused too (Q2), since `has_role_on_account` has no membership row for personal accounts, and `report-actions.ts:341-348` uploads with the user client. **Not fixed here** (§31). |
-| `audio`, `videos` | — | — | — | — | Written by code (`audio-generation/**` via the adapter; `shorts/generate-short-action.ts:252` with the admin client) but **created by no migration**. No bucket, no policies; uploads fail on the Supabase provider. **Not fixed here** (§31). |
+| `audio`, `audio-assets`, `videos` | — | — | — | — | Written by code (`audio-generation/**` via the adapter; `shorts/generate-short-action.ts:252` with the admin client) but **created by no migration**. No bucket, no policies; on the Supabase provider a user-client upload is refused by default, and an admin-client upload fails with no bucket. **Not fixed here** (§8.4, §31). |
 
 An insert looser than its delete occurs only in `project-assets`.
+
+### 8.4 Upload-path matrix: who writes where, on which provider, behind which gate
+
+The provider comes from `STORAGE_PROVIDER` for every factory upload (§8.1). Production is R2 (owner, D6). Rows that call `client.storage.from(…)` directly bypass the factory and always use Supabase Storage.
+
+| Uploader | Provider in production | Bucket (Supabase) / key prefix (R2) | Permission gate after KB-28 |
+|---|---|---|---|
+| Browser presign uploads (covers, FILM-207 assets, master assets, shot frames/videos/thumbnails, episode thumbnails, publish videos) | R2, via `/api/storage/presign` | `project-assets` | Route: bucket and path allowlists, type allowlist, `can_write_project_storage`. On Supabase the bucket policies re-check the same rule at signing. |
+| Edit-suite export (`export-dialog.tsx`) | R2, via presign | `EXPORT_UPLOAD_BUCKET` (`NEXT_PUBLIC_R2_BUCKET_NAME ?? 'storybook-assets'`) | Same route check. On Supabase that bucket does not exist, so the upload fails, as before. |
+| Project intro (`project-intro-settings.tsx`) | R2, via presign | `project-assets` | Refused 400 by the path pattern: **KB-39**. |
+| TTS dialogue (`voice-actions.ts:292`, `dialogue/<episodeId>/…`, admin client) | R2 (env) | `audio` | Server action only. The admin client bypasses RLS on Supabase. Not audited here. |
+| Voice preview (`voice-actions.ts:735`, `temp/<userId>/…`, admin client) | R2 (env) | `audio` | Server action only. |
+| SFX / music (`sfx-actions.ts:86`, `elevenlabs-music-actions.ts:79`, `core/*.ts`, `<projectId>/{sfx,music}/…`) | R2 (env) | `audio` | Server action only. No storage-level check on R2; on Supabase no bucket or policy exists. |
+| Audio library upload (`audio-asset-actions.ts:836`, `<audioType>/<ts>-<name>`, any client-sent content type) | R2 (env); `getStorageAdapter()` is called with no client, so it **throws** on the Supabase provider | `audio-assets` | Server action only. The path carries no project id. Not audited here. |
+| Scheduled report (`api/reports/scheduled/route.ts:559`, admin client) | **Supabase, always** (direct client) | `reports` | `reports_*` policies are bypassed by the admin client; the route is a cron endpoint. |
+| Report export (`content-analytics/report-actions.ts:341`, user client) | **Supabase, always** (direct client) | `reports` | `reports_insert` (`has_role_on_account` on `exports/<accountId>/…`). Refuses personal accounts (Q2). |
+| Shorts (`shorts/generate-short-action.ts:252`, admin client) | **Supabase, always** (direct client) | `videos` (no migration creates it) | Server action only. |
+| Avatars (`uploadAvatar`, presign) | R2, via presign | `account_image` | Refused 400 by the route (bucket and path); broken before this PR too (S5). |
+
+What this means:
+- **No live uploader sends audio into `project-assets`.** So no Supabase audio path is covered by, or affected by, the `project-assets` policies or MIME list. A route-level audio case is tested anyway (`audio/mpeg` by a writer 200, by a reader 403) because the type list admits audio. The MIME list includes `audio/mpeg`, the only fixed type the audio uploaders send. `audio-asset-actions.ts` passes any client-sent type, but to the `audio-assets` prefix, which this list does not govern.
+- **The code does not match "R2 only for image and video; audio may go through Supabase".** Every factory upload, audio included, follows the one `STORAGE_PROVIDER` value. `audio-asset-actions.ts` cannot run on the Supabase provider at all. The only uploads that always use Supabase Storage are reports and shorts, and those use buckets outside this ticket. Recorded for the owner under "Before deploy" in the PR.
+- The audio, report and shorts paths have **no storage-level project check on R2**, and their server actions were not audited here. That is outside KB-28, reported in §31.
 
 ## 9. Define the Desired System Behavior
 
@@ -230,7 +270,9 @@ Source: a browser `File` → presign request (metadata only) → validation (rou
 One hand-written migration, `apps/web/supabase/migrations/<UTC ts>_kb28-project-assets-write-scope.sql`:
 
 1. `create or replace function kit.get_project_id_from_path(path text) returns uuid`: resolves the three shapes and returns null otherwise. It becomes `security definer stable set search_path = ''`, so the `episodes` lookup does not depend on the caller's episode-read RLS. It returns only an id. Existing grants are kept.
-2. `create function public.can_write_project_storage(path text) returns boolean`, `security definer stable set search_path = ''`: `exists(select 1 from public.project_members where project_id = kit.get_project_id_from_path(path) and user_id = auth.uid() and role in ('owner','admin','member'))`. `revoke all … from public, anon; grant execute … to authenticated, service_role`. It lives in `public` so the route can call it with `.rpc()`.
+2. `create function public.can_write_project(target_project_id uuid) returns boolean`, `security definer stable set search_path = ''`: `exists(select 1 from public.project_members where project_id = target_project_id and user_id = auth.uid() and role in ('owner','admin','member'))`. `revoke all … from public, anon; grant execute … to authenticated, service_role`. This is the one project-write rule (A3); KB-26 builds on it.
+   `create function public.can_write_project_storage(path text) returns boolean` = `can_write_project(kit.get_project_id_from_path(path))`, same security settings. It lives in `public` so the route can call it with `.rpc()`.
+   As built: `apps/web/supabase/migrations/20260923024605_kb28-project-write-scope.sql`.
 3. `drop policy project_assets_insert|_update|_delete` and recreate each with `bucket_id = 'project-assets' and public.can_write_project_storage(name)` (update: both `USING` and `WITH CHECK`, which also covers a `move` to another project's path). `project_assets_select` is unchanged.
 4. `update storage.buckets set file_size_limit = 524288000, allowed_mime_types = array['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/webm','video/quicktime','audio/mpeg','audio/wav','audio/ogg','audio/mp4'] where id = 'project-assets'`.
 5. *(D2)* `create or replace function public.update_project_cover_image(…)`: add `if not public.can_edit_project(p_project_id) then raise exception 'not allowed to change this project''s cover' using errcode = '42501'; end if;` before the UPDATE.
@@ -251,7 +293,9 @@ Mirror: `apps/web/supabase/schemas/33-project-assets-storage.sql` is rewritten t
 
 `ALLOWED_PROJECT_ASSET_TYPES` is exported from `@kit/assets` next to `UPLOAD_CONSTRAINTS`. A Vitest test asserts that the migration's `allowed_mime_types` array (read from the SQL file) equals it, so the two lists cannot drift.
 
-**Edit-suite export** *(D5)*: `export-dialog.tsx:91` uses `PROJECT_ASSETS_BUCKET` instead of `NEXT_PUBLIC_R2_BUCKET_NAME ?? 'storybook-assets'`. On the Supabase provider that value names a bucket that does not exist; on R2 the "bucket" is only a key prefix.
+**Edit-suite export** *(D5, reworked, A2)*: the export dialog keeps its bucket expression. It moves verbatim into `EXPORT_UPLOAD_BUCKET` (`packages/features/edit-suite/src/lib/export-upload.ts`, exported as `@kit/edit-suite/export-upload`), which the dialog and the route both import. The route's allowlist is `{PROJECT_ASSETS_BUCKET, EXPORT_UPLOAD_BUCKET}`, whatever the provider. Its path `projects/<P>/assets/master_video/…` resolves to its project (pgTAP).
+
+**Path pattern** *(A4)*: `^(?!.*\.\.)(?:projects/<hex>/(?:assets|shots/<hex>)|episodes/<hex>)/<[A-Za-z0-9_-]+>/<[A-Za-z0-9_.-]+>$`. The filename class gains `_`, and the lookahead refuses `..` anywhere. Segments cannot be empty or contain `/`.
 
 **Cover action** *(D2)*: `updateProjectCoverImage` returns `ActionResult<void>`. When the rpc's error code is `42501` it returns `{ok:false, error:"You can't change this project's cover."}`, and other errors still throw (KB-6 `returnRefusals` semantics). Callers (`project-cover-settings.tsx:72,95`, `create-film-project-form.tsx:245`) wrap the call in `unwrap(…)`, and their existing `refusalMessage` catch shows it.
 
@@ -282,7 +326,7 @@ An object is either absent or present. Transitions: insert (writer only), replac
 - **`SECURITY DEFINER` functions:** `search_path = ''`, fully qualified names. They return only a boolean or an id, and the boolean is about the caller themself (it leaks nothing about other users). `revoke … from anon`.
 - **Stored XSS:** `text/html` and `image/svg+xml` are no longer storable in a public bucket (I6).
 - **Resource abuse:** there is now a size ceiling. There is still no per-user quota or rate limit (outside this ticket).
-- **Provider caveat:** if production signs with R2/B2, RLS is not in the path. The route's check is then the gate, and size is not bounded unless ContentLength is signed (D6).
+- **Provider (D6: production is R2):** RLS is not on the production upload path. The route's check is the gate, and runs before the signer (FR-15). The R2 URL does not bind content length or type, so size is not bounded on R2: **KB-38**. The bucket policies still matter in production, because the Supabase Storage API is reachable directly with the public anon key and a user JWT (repro I1–I6), whatever the app's provider.
 - **Cover defacement:** closed by the `can_edit_project` guard (D2).
 - **Secrets:** none. Local demo keys only; no production values were read.
 
@@ -311,7 +355,7 @@ where o.bucket_id = 'project-assets'
 
 ## 23. Configuration and Feature Flags
 
-No flags; the fix is not optional. The bucket limits are data set by the migration. `STORAGE_PROVIDER` behaviour is unchanged. `NEXT_PUBLIC_R2_BUCKET_NAME` is no longer read by the export dialog (D5).
+No flags; the fix is not optional. The bucket limits are data set by the migration. `STORAGE_PROVIDER` behaviour is unchanged. `NEXT_PUBLIC_R2_BUCKET_NAME` is still read by the export dialog, now through `EXPORT_UPLOAD_BUCKET`, which the route also reads (A2). It is a `NEXT_PUBLIC_` value, inlined at build, so the client and server bundles agree.
 
 ## 24. Compatibility
 
@@ -327,15 +371,41 @@ Standard deploy: migrations first (`scripts/deploy.sh`), then the app. There is 
 |---|---|---|---|
 | pgTAP | `apps/web/supabase/tests/database/project-assets-storage-rls.test.sql`, `select plan(N)` with a fixed N | Fixtures: owner A, member M, viewer V, stranger B, private project P with episode E, public project Q, and a project R of B's with episode ER. **Insert:** B refused on `<P>/…`, `projects/<P>/…`, `episodes/<E>/…`, `<Q>/…`; V refused; M allowed; A allowed on all three shapes; `foo/x.png`, `projects/not-a-uuid/x.png` and `<random uuid>/x.png` refused for A; A refused on `episodes/<ER>/…`. **Update:** A renames/updates own `projects/<P>/…` object (lives_ok and the row changed); B's update touches 0 rows; A cannot move an object to `projects/<R>/…`. **Delete:** A deletes own `projects/<P>/…` (1 row); B deletes 0 rows. **Select:** B reads (public, unchanged). **Bucket:** `file_size_limit` and `allowed_mime_types` equal the expected values. **Cover:** B and M `throws_ok 42501`; A `lives_ok`. Each case resets its row. | Yes. On current code the insert cases for B/V and the owner update/delete cases must fail; each is recorded |
 | Vitest | `apps/web/app/api/storage/presign/__tests__/route.test.ts` | rpc false plus a readable project → 403 (red on current code, which returns 200); bucket `reports` → 400; `text/html` / `image/svg+xml` → 400; rpc true → 200 and the adapter called with `project-assets`; unauthenticated → 401 | Yes |
-| Vitest | `packages/features/assets/__tests__/allowed-types.test.ts` | The migration's MIME array equals `ALLOWED_PROJECT_ASSET_TYPES` | Yes (fails until the migration exists) |
+| Vitest | `apps/web/app/api/storage/presign/__tests__/allowed-types.test.ts` (moved from `@kit/assets`, which CI's unit list does not run) | The migration's MIME array equals `ALLOWED_PROJECT_ASSET_TYPES`; `audio/mpeg` admitted | Yes (fails until the migration exists) |
 | Playwright | `apps/e2e/tests/storage/project-assets-upload.spec.ts` | Seed team + project (`seedTeamAccount`, `seedProject`) and a second user C; **owner drives project settings → cover input → success toast; the image URL fetches 200; then uploads a second cover (the second submission)**; a project **member** (seeded row) presigns and PUTs → 200; C (who can read the project once it is set `public`) presigns → 403 and uploads directly to the Storage API with C's token → 403; the owner uploading `text/html` directly → refused by the bucket. Evidence screenshots behind `CAPTURE_EVIDENCE=1`. | The C cases are run against unfixed code first and fail |
 | Repro | `$SP/kb28/repro.mjs` re-run | I1–I6, S1 → refused; L1–L4, S3 → 200; U3 → 200; D2 → deleted; cover → refused | Before/after table in the PR |
 
 Red-before-green: each guard is reverted in isolation (policy, route check, cover guard) and its test watched failing for the stated reason, then restored.
 
+**Results (2026-09-23, local stack, CLI 2.117.0):**
+
+| Check | Result |
+|---|---|
+| pgTAP `project-assets-storage-rls.test.sql` | 48/48 pass |
+| pgTAP, full suite (38 files) | 553 tests, all pass |
+| pgTAP red, main's definitions restored in the transaction | 22/48 fail, each for its stated reason: viewer write (4); path resolution (11–12); stranger and viewer inserts (15–19); unresolvable and foreign paths (27–31); owner replace ×2 and move guard (34–36); owner delete (39); bucket limits (41–42); cover guard (43–45) |
+| pgTAP red, the KB's proposed `has_role_on_project` policy | exactly the 3 viewer cases fail (19, 33, 38) |
+| Vitest `app/api/storage/presign/__tests__` | 24/24 pass (Supabase and R2 providers) |
+| Vitest red, origin/main's route | 13 fail: public-project reader signed (both providers), unlisted bucket (both), SVG/PDF/MKV signed, audio reader signed, export and underscore shot video refused 400, bare `..` and `a..b.mp4` signed |
+| Export path on main vs branch | main: `400 {"error":"Invalid storage path format"}`; branch: 200 with a signed URL |
+| Web unit suite | 40 files, 814 tests pass |
+| `pnpm typecheck` | 27/27 tasks |
+| Playwright, dev server :3105 | 4/4 pass |
+| Playwright red (main's route + insert policy + no bucket limits) | the stranger case fails (route signs 200) and the text/html case fails (object stored); the owner and member cases pass |
+| Playwright, production build (`NODE_ENV=test next start -p 3105`) | 4/4 pass, no retries |
+| Two-user repro after the fix, production build | table in the PR: I1–I6 and S1 refused; L1–L4, S3, U3, D2 succeed; cover defacement refused 42501 |
+
+**Not driven:** the edit-suite export dialog end to end. It uploads a Blob rendered by a WebCodecs worker from real timeline clips, which needs seeded video media and an H.264 encoder in headless Chromium. The route cases use the dialog's exact bucket expression and path, on both providers.
+
 ## 27. Production-Build Verification
 
-`pnpm --filter web-e2e test:prod -- storage/project-assets-upload` builds and serves the production bundle and runs the spec. That proves the route's JSON refusals and the cover action's returned refusal survive a production build (KB-6), and that the real upload works in the artifact that ships. It does **not** prove production's provider or bucket state; that is D6 and the §22 query.
+Run as `pnpm --filter web build:test`, then `NODE_ENV=test next start -p 3105`, then the Playwright spec and the two-user reproduction against it. `test:prod` itself binds :3010, which isn't this ticket's port. Result: 4/4, and the reproduction refuses every attack (§26).
+
+- **First run:** the owner cover test failed. The production page rendered before React attached the file input's `onChange`, so a file chosen at once was ignored.
+- **Fix:** the spec now re-chooses the file until the preview shows the handler ran. That is the suite's `toPass` idiom, and nothing uploads until the handler runs.
+- **What this proves:** the route's JSON refusals and the real upload work in the built artifact.
+- **What it cannot show:** the cover refusal in the UI. The cover card renders only for editors (`permissions.canEdit`), the same rule as the function, so no page lets a non-editor reach it. That refusal is proven at pgTAP and by the reproduction's 42501.
+- **What it does not prove:** production's R2 path end to end. No R2 calls are made, by design; the route's gate is proven with the R2 adapter selected and its signer stubbed.
 
 ## 28. Requirement Traceability
 
@@ -374,12 +444,13 @@ Red-before-green: each guard is reverted in isolation (policy, route check, cove
 
 ## 31. Open Questions and Assumptions
 
-**Decisions for the owner:** see D1–D6 in the PLAN READY report.
+**Decisions (resolved 2026-09-23):** D1 viewer excluded; D2 cover guard here; D3 orphans deleted; D4 bucket list + 500 MB for the Supabase bucket; D5 reworked (A2); D6 production is R2 (A1, KB-38 filed); D7 intro path is KB-39. Option A for underscore filenames (A4).
 
-**Assumptions.** Production signs uploads with the Supabase adapter. `sst.config.ts:1068` defaults to `s3`, which the factory maps to `supabase`. I have not read production config.
+**Assumptions.** Production signs uploads with R2 (owner, D6). Nothing here depends on production config values, and none were read. The owner's "audio may go through Supabase" does not match the code (§8.4); it is for the owner to confirm before deploy.
 
 **Out of scope, found during the audit, to be filed or folded into other tickets:**
-- `project-intro-settings.tsx:385` writes `projects/<P>/intros/…`, which the presign regex refuses (S4, 400). **Project intro upload is broken today.** Fixing it is a one-line regex change in the same file this PR edits. I propose **not** doing it here unless D7 says otherwise.
+- `project-intro-settings.tsx:385` writes `projects/<P>/intros/…`, which the presign regex refuses (S4, 400). **Project intro upload is broken.** Filed as **KB-39** (D7).
+- The audio (`audio`, `audio-assets`), report and shorts upload paths have no storage-level project check on R2, and their server actions' own checks were not audited here (§8.4).
 - `uploadAvatar()` (`packages/features/storage/src/client/presigned-upload.ts:90-99`) is refused by the presign regex (S5) and by `account_image`'s uuid cast (A6). **Avatar upload is broken today.**
 - Best-effort deletes compute the wrong key: `intro-actions.ts:134,266`, `thumbnail-actions.ts:183,320` (`slice(-2)`).
 - `audio` and `videos` buckets are written by code but created by no migration.

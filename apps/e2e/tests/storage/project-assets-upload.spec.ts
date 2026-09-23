@@ -109,12 +109,28 @@ test.describe('Project storage (KB-28)', () => {
     const preview = page.locator('[data-test="cover-image-preview"]');
     const storedPrefix = `/project-assets/projects/${project.id}/assets/covers/`;
 
+    // On a production build the page can render before React attaches the
+    // input's onChange, and a file chosen then is silently ignored. Choose
+    // again until the handler has visibly run (it shows a preview at once);
+    // nothing is uploaded until it does, so a retry cannot double-upload.
+    const chooseCover = async (buffer: Buffer, previousSrc: string | null) => {
+      await expect(async () => {
+        await input.setInputFiles({
+          name: 'cover.png',
+          mimeType: 'image/png',
+          buffer,
+        });
+        await expect(preview).toBeVisible({ timeout: 2_000 });
+        if (previousSrc) {
+          await expect(preview).not.toHaveAttribute('src', previousSrc, {
+            timeout: 2_000,
+          });
+        }
+      }).toPass({ timeout: 20_000 });
+    };
+
     // First upload
-    await input.setInputFiles({
-      name: 'cover.png',
-      mimeType: 'image/png',
-      buffer: png(TEAL),
-    });
+    await chooseCover(png(TEAL), null);
 
     await expect(
       page.getByText('Cover image updated successfully').first(),
@@ -131,11 +147,7 @@ test.describe('Project storage (KB-28)', () => {
 
     // Second upload: a new object and a new URL, and the saved metadata
     // follows it rather than keeping the first.
-    await input.setInputFiles({
-      name: 'cover-2.png',
-      mimeType: 'image/png',
-      buffer: png(AMBER),
-    });
+    await chooseCover(png(AMBER), first);
 
     await expect(preview).not.toHaveAttribute('src', first);
     await expect(preview).toHaveAttribute('src', new RegExp(storedPrefix));
