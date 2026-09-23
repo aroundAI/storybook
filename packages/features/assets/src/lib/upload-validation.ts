@@ -50,6 +50,17 @@ export const UPLOAD_CONSTRAINTS = {
 export type UploadCategory = keyof typeof UPLOAD_CONSTRAINTS;
 
 /**
+ * Every type a project may store (KB-28). The presign route refuses anything
+ * else, and the `project-assets` bucket's `allowed_mime_types` is this list,
+ * bound by apps/web/app/api/storage/presign/__tests__/allowed-types.test.ts.
+ */
+export const ALLOWED_PROJECT_ASSET_TYPES: readonly string[] = [
+  ...UPLOAD_CONSTRAINTS.image.allowedTypes,
+  ...UPLOAD_CONSTRAINTS.video.allowedTypes,
+  ...UPLOAD_CONSTRAINTS.audio.allowedTypes,
+];
+
+/**
  * Validation error codes
  */
 export type ValidationErrorCode =

@@ -136,7 +136,7 @@ using (
 -- ------------------------------------------------------------------
 -- The types are UPLOAD_CONSTRAINTS in packages/features/assets/src/lib/
 -- upload-validation.ts, which is bound to this list by
--- packages/features/assets/__tests__/allowed-types.test.ts. The size limit is
+-- apps/web/app/api/storage/presign/__tests__/allowed-types.test.ts. The size limit is
 -- the largest category there (video, 500 MB). The limits apply to new
 -- uploads only.
 update storage.buckets
