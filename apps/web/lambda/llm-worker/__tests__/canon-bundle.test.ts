@@ -61,7 +61,7 @@ const query = {
   maybeSingle: () => Promise.resolve({ data: null, error: null }),
   single: () => Promise.resolve({ data: null, error: null }),
 };
-for (const m of ['select', 'eq', 'in', 'order', 'limit', 'gte', 'lt']) {
+for (const m of ['select', 'eq', 'in', 'order', 'limit', 'gte', 'lt', 'range']) {
   query[m] = () => query;
 }
 const client = { from: (table) => { tables.push(table); return query; } };

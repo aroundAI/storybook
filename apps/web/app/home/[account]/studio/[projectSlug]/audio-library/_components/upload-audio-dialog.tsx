@@ -10,7 +10,8 @@ import { useTransition } from 'react';
 
 import { FileAudio, Loader2, Music, Upload, Volume2, X } from 'lucide-react';
 
-import { refusalMessage } from '@kit/next/action-result';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
+import { AUDIO_LIBRARY_TYPES } from '@kit/storage/buckets';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -32,13 +33,7 @@ interface UploadAudioDialogProps {
   onSuccess?: () => void;
 }
 
-const ACCEPTED_TYPES = [
-  'audio/mpeg',
-  'audio/wav',
-  'audio/x-wav',
-  'audio/mp4',
-  'audio/x-m4a',
-];
+const ACCEPTED_TYPES: readonly string[] = AUDIO_LIBRARY_TYPES;
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 export function UploadAudioDialog({
@@ -130,15 +125,17 @@ export function UploadAudioDialog({
           '@kit/audio-generation/server'
         );
 
-        await uploadAudioFileAndCreateAssetAction({
-          projectId,
-          audioType,
-          name: name.trim(),
-          fileBase64: base64,
-          fileName: file.name,
-          contentType: file.type,
-          fileSizeBytes: file.size,
-        });
+        await unwrap(
+          uploadAudioFileAndCreateAssetAction({
+            projectId,
+            audioType,
+            name: name.trim(),
+            fileBase64: base64,
+            fileName: file.name,
+            contentType: file.type,
+            fileSizeBytes: file.size,
+          }),
+        );
 
         onOpenChange(false);
         onSuccess?.();
@@ -209,6 +206,7 @@ export function UploadAudioDialog({
             <input
               ref={inputRef}
               type="file"
+              data-test="audio-upload-file"
               accept=".mp3,.wav,.m4a,audio/mpeg,audio/wav,audio/x-m4a"
               onChange={handleInputChange}
               className="hidden"
@@ -253,6 +251,7 @@ export function UploadAudioDialog({
             <Label htmlFor="upload-name">Name *</Label>
             <Input
               id="upload-name"
+              data-test="audio-upload-name"
               placeholder={
                 audioType === 'music' ? 'Background Score' : 'Door Creak'
               }
@@ -262,14 +261,25 @@ export function UploadAudioDialog({
           </div>
 
           {/* Error */}
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p
+              data-test="audio-upload-error"
+              className="text-sm text-destructive"
+            >
+              {error}
+            </p>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleUpload} disabled={isPending || !file}>
+          <Button
+            data-test="audio-upload-submit"
+            onClick={handleUpload}
+            disabled={isPending || !file}
+          >
             {isPending ? (
               <>
                 <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />

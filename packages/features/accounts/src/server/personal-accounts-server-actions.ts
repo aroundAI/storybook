@@ -16,13 +16,22 @@ import { createDeletePersonalAccountService } from './services/delete-personal-a
 const enableAccountDeletion =
   process.env.NEXT_PUBLIC_ENABLE_PERSONAL_ACCOUNT_DELETION === 'true';
 
-export async function refreshAuthSession() {
-  const client = getSupabaseServerClient();
+/**
+ * `auth: false` on purpose (KB-58's PUBLIC_ACTIONS): this runs straight after
+ * an MFA code is verified, while the cookie may still say aal1, and
+ * `requireUser` would redirect that to /auth/verify. It only refreshes the
+ * caller's own session.
+ */
+export const refreshAuthSession = enhanceAction(
+  async (_params: void) => {
+    const client = getSupabaseServerClient();
 
-  await client.auth.refreshSession();
+    await client.auth.refreshSession();
 
-  return {};
-}
+    return {};
+  },
+  { auth: false },
+);
 
 export const deletePersonalAccountAction = enhanceAction(
   async (formData: FormData, user) => {

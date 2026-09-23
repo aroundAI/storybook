@@ -8,6 +8,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface LanguageInsightsPayload {
   projectId: string;
+  /** The project's account, stamped by queueLlmJob from its target (KB-31). */
+  accountId: string;
   languagePerformance: Array<{
     language: string;
     views: number;
@@ -38,7 +40,7 @@ interface LanguageInsightsResult {
 
 export async function processLanguageInsights(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  _supabase: SupabaseClient,
 ): Promise<LanguageInsightsResult> {
   // SQS payload: cast, not validated (KB-33).
   const data = payload as unknown as LanguageInsightsPayload;
@@ -91,10 +93,9 @@ export async function processLanguageInsights(
       },
       context: {
         name: 'generate-language-insights',
-        accountId: data.projectId,
+        accountId: data.accountId,
         userId: data.userId,
       },
-      supabaseClient: supabase,
     });
 
     console.log('[Language Insights] Generated insights successfully');

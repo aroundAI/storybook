@@ -64,7 +64,7 @@
     {
       "name": "The admin list reads the client secret again",
       "kind": "unit",
-      "file": "packages/features/publishing/src/server/global-oauth-actions.ts",
+      "file": "packages/features/publishing/src/server/publishing-queries.ts",
       "find": "    .select('id, platform, client_id, created_at, updated_at')\n",
       "replace": "    .select('id, platform, client_id, client_secret_encrypted, created_at, updated_at')\n",
       "cwd": "packages/features/publishing",

@@ -562,6 +562,29 @@ no app-only path (*inferred* from "owned posts only"; see the ledger), so only a
 
 _Verified: 2026-09-14_
 
+### Token refresh (KB-15)
+
+**Documented** ([authorization code flow](https://docs.x.com/fundamentals/authentication/oauth-2-0/authorization-code),
+[user access token](https://docs.x.com/fundamentals/authentication/oauth-2-0/user-access-token)):
+- An access token lasts **two hours**.
+- A refresh token is issued only when `offline.access` is granted. We request it.
+- A refresh is `POST https://api.x.com/2/oauth2/token`, form-encoded, with
+  `grant_type=refresh_token` and `refresh_token`.
+- A confidential client authenticates by `Authorization: Basic` and needs no
+  `client_id` in the body: *"You don't need client id for confidential clients
+  with a valid Authorization Header."*
+- `refreshXToken` (`packages/features/publishing/src/lib/token-refresh.ts`)
+  sends exactly that.
+
+**Not documented:** whether the refresh token **rotates** (a new one per use,
+with the old one invalidated) and how long it lives. It is widely reported to
+rotate, so the code stores whatever refresh token X returns and keeps the
+stored one when X returns none. That is correct either way; rotation is
+*inferred*, see the [ledger](#documented-vs-inferred-ledger). One live refresh
+settles it (FILM-1729, FILM-1725 Check E).
+
+_Verified: 2026-09-23_
+
 ---
 
 ## Field index
@@ -900,6 +923,7 @@ inferred and must be labelled as such wherever they are used.
 |---|---|---|
 | X analytics endpoints are uncallable on pay-per-use | Comparison table + absence from the billing schedule. The endpoint pages say nothing | inferred |
 | X app-only auth fails | "Owned posts only" semantics | inferred |
+| X rotates the refresh token on every refresh | Widely reported; the OAuth 2.0 pages, the OAuth FAQ and the OAuth API reference say nothing either way (read 2026-09-23). `refreshXToken` is correct whether or not it holds | inferred |
 | ~~The Instagram aggregate-metric names~~ | **Resolved 2026-09-21.** The changelog documents both: `*_count` fields on the Media node, short names as insights metrics | **documented** |
 | ~~`facebook_views` exists at all~~ | **Resolved 2026-09-21.** A media insights metric, Feed/Reels/Story, per the changelog | **documented** |
 | Account insights accept `since`/`until` with `metric_type=total_value` | The reference neither states nor forbids it; `getAccountInsights` relies on it | inferred |
@@ -922,6 +946,7 @@ this document cannot make.
 
 | Question | How to settle it | Owner |
 |---|---|---|
+| Whether X rotates refresh tokens, and their lifetime | One refresh of a real X connection, reading whether `refresh_token` in the response differs from the one sent | **FILM-1725** Check E (with FILM-1729) |
 | The `/2/media/analytics` historical window and rate limit | One call with a pay-per-use token, `start_time` beyond 30 days | **FILM-1725** (deferred; gates FILM-1727's Enterprise tier) |
 | Whether `/2/media/analytics` is callable below Enterprise | The same call. A 403 settles it; a 200 falsifies the comparison table | **FILM-1725** (deferred; gates FILM-1727's Enterprise tier) |
 | X Enterprise pricing, and any per-call analytics price | Ask X sales, in writing, for the Enterprise price and any per-call analytics price | FILM-1727 |

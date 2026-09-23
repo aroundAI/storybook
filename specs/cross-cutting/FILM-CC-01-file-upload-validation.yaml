@@ -28,13 +28,13 @@ cross_cutting_concern:
 acceptance_criteria:
   - text: "Images over 10MB are rejected with clear error message"
     met: true
-    evidence: null
+    evidence: "Server-side too (KB-38): the presign route refuses a declared size over UPLOAD_CONSTRAINTS.image.maxSize, and on R2 the URL is signed for that exact length (apps/web/app/api/storage/presign/__tests__/route.test.ts, s3-presign.s3-local.test.ts)"
   - text: "Videos over 500MB are rejected with clear error message"
     met: true
-    evidence: null
+    evidence: "Server-side too (KB-38): the presign route refuses a declared size over UPLOAD_CONSTRAINTS.video.maxSize, and on R2 the URL is signed for that exact length (apps/web/app/api/storage/presign/__tests__/route.test.ts, s3-presign.s3-local.test.ts)"
   - text: "Audio over 50MB is rejected with clear error message"
     met: true
-    evidence: null
+    evidence: "Server-side too (KB-38): the presign route refuses a declared size over UPLOAD_CONSTRAINTS.audio.maxSize, and on R2 the URL is signed for that exact length (apps/web/app/api/storage/presign/__tests__/route.test.ts, s3-presign.s3-local.test.ts)"
   - text: "Invalid MIME types are rejected"
     met: true
     evidence: null
@@ -82,10 +82,10 @@ test_plan:
   integration:
     - text: "Test full upload flow with valid file"
       met: true
-      evidence: "apps/web/app/api/projects/[projectId]/assets/upload/__tests__/route.test.ts:194 (storage mocked)"
+      evidence: "apps/e2e/tests/storage/project-assets-upload.spec.ts (owner cover through settings and the presign route, into real local storage; KB-28 deleted the FILM-203 route and the test previously cited)"
     - text: "Test upload rejection preserves no partial data"
       met: true
-      evidence: "apps/web/app/api/projects/[projectId]/assets/upload/__tests__/route.test.ts:376"
+      evidence: "apps/e2e/tests/storage/project-assets-upload.spec.ts (refused uploads leave no object: storageObjectExists is false; KB-28 deleted the FILM-203 route and the test previously cited)"
   e2e: []
 open_questions:
   - "[ ] Should we implement virus scanning? (post-MVP, non-blocking)"

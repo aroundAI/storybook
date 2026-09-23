@@ -21,7 +21,7 @@ acceptance_criteria:
     reason: "no longer true — no edit in the hub (`updateExternalSourceAction` has no caller); sources are global, not per project"
   - text: "Facts list shows extracted facts with verification toggle"
     met: false
-    reason: "no longer true — the Facts tab only links out (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:274`); verifying is refused (KB-18)"
+    reason: "no longer true — the Facts tab only links out (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:274`) to the Fact Library, where verifying now works (KB-18, #314) — but the hub itself lists no facts and has no toggle"
   - text: "Empty state guides user based on content type"
     met: false
     reason: "no longer true — one generic empty state (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:193`); content type never read"
@@ -46,8 +46,9 @@ remaining:
   - criterion: "Facts list shows extracted facts with verification toggle"
     reason: >
       The hub's Facts tab is a card linking to the Facts Library
-      (`research-hub-page.tsx:274`); there, verification is always refused
-    closed_by: "KB-18"
+      (`research-hub-page.tsx:274`). Verifying works in the Library since
+      KB-18 (#314); the hub still shows no facts list or toggle of its own
+    closed_by: "unassigned"
   - criterion: "Empty state guides user based on content type"
     reason: >
       `page.tsx` selects `metadata` but never passes a content type; the empty

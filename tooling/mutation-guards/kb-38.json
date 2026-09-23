@@ -1,0 +1,84 @@
+{
+  "feature": "KB-38",
+  "mutations": [
+    {
+      "name": "S1 content-type left unsigned",
+      "file": "packages/features/storage/src/adapters/s3-presign.ts",
+      "find": "    signableHeaders: new Set(['content-type']),\n",
+      "replace": "",
+      "kind": "unit",
+      "cwd": "apps/web",
+      "test": "app/api/storage/presign/__tests__/s3-presign.test.ts",
+      "pattern": "signs content-length and content-type"
+    },
+    {
+      "name": "S2 content-length not signed",
+      "file": "packages/features/storage/src/adapters/s3-presign.ts",
+      "find": "    ContentLength: request.contentLength,\n",
+      "replace": "",
+      "kind": "unit",
+      "cwd": "apps/web",
+      "test": "app/api/storage/presign/__tests__/s3-presign.test.ts",
+      "pattern": "signs content-length and content-type"
+    },
+    {
+      "name": "S3 empty-body checksum signed into the URL",
+      "file": "packages/features/storage/src/adapters/s3-presign.ts",
+      "find": "    requestChecksumCalculation: 'WHEN_REQUIRED',\n",
+      "replace": "",
+      "kind": "unit",
+      "cwd": "apps/web",
+      "test": "app/api/storage/presign/__tests__/s3-presign.test.ts",
+      "pattern": "carries no checksum of an empty body"
+    },
+    {
+      "name": "R1 size ceiling removed",
+      "file": "apps/web/app/api/storage/presign/route.ts",
+      "find": "    if (size > maxSize) {",
+      "replace": "    if (false) {",
+      "kind": "unit",
+      "cwd": "apps/web",
+      "test": "app/api/storage/presign/__tests__/route.test.ts",
+      "pattern": "at exactly its ceiling"
+    },
+    {
+      "name": "R2 raw type signed instead of the checked one",
+      "file": "apps/web/app/api/storage/presign/route.ts",
+      "find": "    const contentType = parsed.data.contentType.toLowerCase();",
+      "replace": "    const contentType = parsed.data.contentType;",
+      "kind": "unit",
+      "cwd": "apps/web",
+      "test": "app/api/storage/presign/__tests__/route.test.ts",
+      "pattern": "signs the lower-cased type it checked"
+    },
+    {
+      "name": "C1 shared helper declares no real size",
+      "file": "packages/features/storage/src/client/presigned-upload.ts",
+      "find": "    contentType: file.type,\n    size: file.size,\n",
+      "replace": "    contentType: file.type,\n    size: 0,\n",
+      "kind": "unit",
+      "cwd": "apps/web",
+      "test": "app/api/storage/presign/__tests__/presign-client.test.ts",
+      "pattern": "uploadWithPresignedUrl declares file.size"
+    },
+    {
+      "name": "C2 shared helper ignores the returned headers",
+      "file": "packages/features/storage/src/client/presigned-upload.ts",
+      "find": "    headers: presigned.headers,\n",
+      "replace": "    headers: { 'Content-Type': file.type },\n",
+      "kind": "unit",
+      "cwd": "apps/web",
+      "test": "app/api/storage/presign/__tests__/presign-client.test.ts",
+      "pattern": "uploadWithPresignedUrl declares file.size"
+    },
+    {
+      "name": "C5 an uploader calls the route itself",
+      "file": "packages/features/assets/src/components/image-uploader/use-image-upload.ts",
+      "find": "        const { uploadUrl, publicUrl, headers } = await requestPresignedUpload({",
+      "replace": "        void fetch('/api/storage/presign');\n        const { uploadUrl, publicUrl, headers } = await requestPresignedUpload({",
+      "kind": "unit",
+      "cwd": "apps/web",
+      "test": "app/api/storage/presign/__tests__/presign-callers.test.ts"
+    }
+  ]
+}

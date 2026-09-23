@@ -8,6 +8,10 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import type { OAuthApp } from '../oauth/apps';
 import { LINKEDIN_OAUTH_CONFIG } from '../oauth/linkedin/config';
 import { TIKTOK_OAUTH_CONFIG } from '../oauth/tiktok/config';
+import {
+  TWITTER_OAUTH_CONFIG,
+  xClientAuthorization,
+} from '../oauth/twitter/config';
 import { YOUTUBE_OAUTH_CONFIG } from '../oauth/youtube/config';
 import {
   AppNotConfiguredError,
@@ -16,6 +20,10 @@ import {
   getOAuthAppCredentials,
 } from '../server/oauth-app-credentials';
 import type { PlatformConnection } from './database-types';
+import { type Platform, isPlatform } from './platforms';
+import { EXPIRY_BUFFER_MS, isWithinRefreshWindow } from './token-expiry';
+
+export type { Platform };
 
 /**
  * Result of a token refresh operation
@@ -44,16 +52,6 @@ export interface TokenValidationResult {
 }
 
 /**
- * Supported publishing platforms
- */
-export type Platform =
-  | 'youtube'
-  | 'tiktok'
-  | 'instagram'
-  | 'facebook'
-  | 'linkedin';
-
-/**
  * The OAuth app each platform's tokens were minted by. Exhaustive, so a
  * platform added to `Platform` does not compile until it is mapped (KB-15).
  */
@@ -63,12 +61,16 @@ const PLATFORM_APP: Record<Platform, OAuthApp> = {
   instagram: 'meta',
   facebook: 'meta',
   linkedin: 'linkedin',
+  twitter: 'twitter',
 };
 
-/**
- * Buffer time before expiry to trigger refresh (5 minutes)
- */
-const EXPIRY_BUFFER_MS = 5 * 60 * 1000;
+interface EnsureValidTokenOptions {
+  /**
+   * Refresh when the token expires within this long. Defaults to the
+   * just-in-time buffer; the cron job passes its own window (KB-15).
+   */
+  refreshWithinMs?: number;
+}
 
 /**
  * In-memory map to track in-flight token refresh operations.
@@ -88,6 +90,7 @@ const inFlightRefreshes = new Map<string, Promise<TokenValidationResult>>();
 export async function ensureValidToken(
   connectionId: string,
   force: boolean = false,
+  options: EnsureValidTokenOptions = {},
 ): Promise<TokenValidationResult> {
   // Check if a refresh is already in progress for this connection
   const inFlight = inFlightRefreshes.get(connectionId);
@@ -97,7 +100,7 @@ export async function ensureValidToken(
   }
 
   // Start the refresh and track it
-  const refreshPromise = doEnsureValidToken(connectionId, force);
+  const refreshPromise = doEnsureValidToken(connectionId, force, options);
   inFlightRefreshes.set(connectionId, refreshPromise);
 
   try {
@@ -115,6 +118,7 @@ export async function ensureValidToken(
 async function doEnsureValidToken(
   connectionId: string,
   force: boolean,
+  options: EnsureValidTokenOptions,
 ): Promise<TokenValidationResult> {
   const client = getSupabaseServerAdminClient();
 
@@ -155,7 +159,7 @@ async function doEnsureValidToken(
     now.getTime() - refreshStartedAt.getTime() < 2 * 60 * 1000
   ) {
     await sleep(2000); // Wait 2s
-    return ensureValidToken(connectionId, force); // Recurse/Retry
+    return ensureValidToken(connectionId, force, options); // Recurse/Retry
   }
 
   // 2. Check if token is still valid with buffer (unless forced)
@@ -166,7 +170,7 @@ async function doEnsureValidToken(
   const needsRefresh =
     force ||
     !expiresAt ||
-    expiresAt.getTime() - now.getTime() < EXPIRY_BUFFER_MS;
+    isWithinRefreshWindow(expiresAt, now, options.refreshWithinMs);
 
   if (!needsRefresh && connection.access_token_encrypted) {
     // Token still valid
@@ -201,14 +205,18 @@ async function doEnsureValidToken(
   // If lock failed (race condition), retry
   if (lockError || !lockResult || lockResult.length === 0) {
     await sleep(1000);
-    return ensureValidToken(connectionId, force);
+    return ensureValidToken(connectionId, force, options);
   }
 
   // 4. Attempt refresh
   try {
+    if (!isPlatform(connection.platform)) {
+      throw new Error(`Unknown platform: ${connection.platform}`);
+    }
+
     const refreshToken = await decrypt(connection.refresh_token_encrypted);
     const refreshed = await refreshTokenForPlatform(
-      connection.platform as Platform,
+      connection.platform,
       refreshToken,
       {
         accountId: connection.account_id,
@@ -237,10 +245,27 @@ async function doEnsureValidToken(
       );
     }
 
-    await client
+    const { error: persistError } = await client
       .from('platform_connections' as 'accounts')
       .update(updateData as Record<string, unknown>)
       .eq('id', connectionId);
+
+    // The access token is valid either way. But a vendor that rotates refresh
+    // tokens (X, TikTok) has already retired the one we hold, so the next
+    // refresh of this connection will fail - say so now (KB-15).
+    if (persistError) {
+      const logger = await getLogger();
+      logger.error(
+        {
+          name: 'token-refresh',
+          platform: connection.platform,
+          connectionId,
+          refreshTokenRotated: Boolean(refreshed.refreshToken),
+          error: persistError,
+        },
+        'Refreshed tokens were not stored',
+      );
+    }
 
     return { valid: true, accessToken: refreshed.accessToken };
   } catch (refreshError) {
@@ -268,7 +293,9 @@ async function doEnsureValidToken(
       };
     }
 
-    const app = PLATFORM_APP[connection.platform as Platform];
+    const app = isPlatform(connection.platform)
+      ? PLATFORM_APP[connection.platform]
+      : undefined;
     logger.error(
       {
         name: 'token-refresh',
@@ -288,10 +315,7 @@ async function doEnsureValidToken(
     await markConnectionInactive(connectionId);
 
     // 7. Send notification to user
-    await sendReauthNotification(
-      connection.account_id,
-      connection.platform as Platform,
-    );
+    await sendReauthNotification(connection.account_id, connection.platform);
 
     return {
       valid: false,
@@ -362,11 +386,6 @@ async function refreshTokenForPlatform(
   context: RefreshContext,
 ): Promise<TokenRefreshResult> {
   const app = PLATFORM_APP[platform];
-
-  if (!app) {
-    throw new Error(`Unknown platform: ${platform}`);
-  }
-
   const credentials = await getOAuthAppCredentials(app);
 
   if (!credentials) {
@@ -383,8 +402,12 @@ async function refreshTokenForPlatform(
       return refreshMetaToken(refreshToken, platform, credentials, context);
     case 'linkedin':
       return refreshLinkedInToken(refreshToken, credentials);
-    default:
-      throw new Error(`Unknown platform: ${platform}`);
+    case 'twitter':
+      return refreshXToken(refreshToken, credentials);
+    default: {
+      const unhandled: never = platform;
+      throw new Error(`Unknown platform: ${String(unhandled)}`);
+    }
   }
 }
 
@@ -582,17 +605,65 @@ async function refreshLinkedInToken(
 }
 
 /**
+ * Refreshes an X OAuth 2.0 token. X authenticates a confidential client by
+ * Basic auth, exactly as for the callback's code exchange. X is understood to
+ * rotate the refresh token on every use - its docs neither say so nor deny it
+ * (docs/platform-capability-reference.md) - so whatever it returns is stored,
+ * and the stored one is kept when it returns none.
+ */
+async function refreshXToken(
+  refreshToken: string,
+  oauthApp: OAuthAppCredentials,
+): Promise<TokenRefreshResult> {
+  const response = await fetch(TWITTER_OAUTH_CONFIG.tokenUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: xClientAuthorization(oauthApp),
+    },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      `X refresh failed (${response.status}): ${error.error_description ?? error.error ?? 'Unknown error'}`,
+    );
+  }
+
+  const data = await response.json();
+
+  if (
+    typeof data.access_token !== 'string' ||
+    typeof data.expires_in !== 'number'
+  ) {
+    throw new Error('X refresh failed: malformed token response');
+  }
+
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token,
+    expiresAt: new Date(Date.now() + data.expires_in * 1000),
+  };
+}
+
+const PLATFORM_NAMES: Record<Platform, string> = {
+  youtube: 'YouTube',
+  tiktok: 'TikTok',
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  linkedin: 'LinkedIn',
+  twitter: 'X',
+};
+
+/**
  * Formats platform name for display
  */
 export function formatPlatformName(platform: Platform | string): string {
-  const names: Record<string, string> = {
-    youtube: 'YouTube',
-    tiktok: 'TikTok',
-    instagram: 'Instagram',
-    facebook: 'Facebook',
-    linkedin: 'LinkedIn',
-  };
-  return names[platform] ?? platform;
+  return isPlatform(platform) ? PLATFORM_NAMES[platform] : platform;
 }
 
 /**
@@ -601,7 +672,7 @@ export function formatPlatformName(platform: Platform | string): string {
  */
 async function sendReauthNotification(
   accountId: string,
-  platform: Platform,
+  platform: string,
 ): Promise<void> {
   const logger = await getLogger();
   const ctx = { name: 'token-refresh.reauth', accountId, platform };

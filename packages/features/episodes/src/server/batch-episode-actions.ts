@@ -6,6 +6,7 @@ import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
+import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
@@ -60,18 +61,13 @@ const generateSeasonOutlineHandler = enhanceAction(
       windowMs: 60_000,
     });
 
-    // Verify project access and get account ID
-    const { data: project, error: projectError } = await client
-      .from('projects')
-      .select('id, account_id')
-      .eq('id', data.projectId)
-      .single();
+    // Project write access, not a readable row: a public project's row is
+    // readable by anyone signed in (KB-31)
+    const target = await authorizeProjectTarget(client, data.projectId);
 
-    if (projectError || !project) {
+    if (!target) {
       throw new ActionRefusal('Project not found or access denied');
     }
-
-    const accountId = project.account_id;
 
     // Always queue to Lambda for processing
     const { queueLlmJob } = await import('@kit/prompt-engine/server');
@@ -79,6 +75,7 @@ const generateSeasonOutlineHandler = enhanceAction(
     await queueLlmJob({
       jobType: 'season-outline',
       userId: user.id,
+      target,
       payload: {
         projectId: data.projectId,
         seasonId: data.seasonId,
@@ -87,7 +84,6 @@ const generateSeasonOutlineHandler = enhanceAction(
         startingNumber: data.startingNumber,
         genre: data.genre,
         style: data.style,
-        accountId,
         userId: user.id,
       },
     });
@@ -291,18 +287,11 @@ export const regenerateEpisodeOutlineAction = enhanceAction(
       windowMs: 60_000,
     });
 
-    // Verify project access and get account ID
-    const { data: project, error: projectError } = await client
-      .from('projects')
-      .select('id, account_id')
-      .eq('id', data.projectId)
-      .single();
+    const target = await authorizeProjectTarget(client, data.projectId);
 
-    if (projectError || !project) {
-      throw new Error('Project not found or access denied');
+    if (!target) {
+      throw new ActionRefusal('Project not found or access denied');
     }
-
-    const accountId = project.account_id;
 
     // Always queue to Lambda for processing
     const { queueLlmJob } = await import('@kit/prompt-engine/server');
@@ -310,13 +299,13 @@ export const regenerateEpisodeOutlineAction = enhanceAction(
     await queueLlmJob({
       jobType: 'season-outline', // Reuses season-outline handler for single episode
       userId: user.id,
+      target,
       payload: {
         projectId: data.projectId,
         seasonPremise: data.seasonPremise,
         episodeCount: 1,
         startingNumber: data.episodeNumber,
         surroundingEpisodes: data.surroundingEpisodes,
-        accountId,
         userId: user.id,
       },
     });

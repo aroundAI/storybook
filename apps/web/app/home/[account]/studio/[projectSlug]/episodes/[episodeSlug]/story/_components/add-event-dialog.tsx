@@ -150,7 +150,7 @@ export function AddEventDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" data-test="canon-add-event">
           <Plus className="mr-1 h-3 w-3" />
           Add Event
         </Button>
@@ -180,7 +180,7 @@ export function AddEventDialog({
                     defaultValue={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger data-test="canon-event-type">
                         <SelectValue placeholder="Select event type" />
                       </SelectTrigger>
                     </FormControl>
@@ -210,6 +210,7 @@ export function AddEventDialog({
                   <FormLabel>Event Key</FormLabel>
                   <FormControl>
                     <Input
+                      data-test="canon-event-key"
                       placeholder="e.g., character_name_death, location_destroyed"
                       {...field}
                     />
@@ -230,6 +231,7 @@ export function AddEventDialog({
                   <FormLabel>Description</FormLabel>
                   <FormControl>
                     <Textarea
+                      data-test="canon-event-description"
                       placeholder="Describe what happened and why it's immutable..."
                       className="min-h-[100px]"
                       {...field}
@@ -259,7 +261,11 @@ export function AddEventDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending}>
+              <Button
+                type="submit"
+                disabled={isPending}
+                data-test="canon-event-submit"
+              >
                 {isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

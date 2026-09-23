@@ -3,7 +3,8 @@
 -- =============================================================================
 -- Atomically resets multiple episodes to a specified pipeline stage.
 -- Replaces the N+1 client-side loop with a single RPC call.
--- Uses SECURITY DEFINER for atomicity with explicit authorization checks.
+-- Uses SECURITY DEFINER for atomicity. Access: every episode must be in a
+-- project of p_account_id that the caller can write (KB-27).
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.bulk_reset_episodes_to_stage(
@@ -36,14 +37,22 @@ BEGIN
   END IF;
 
   -- =========================================================================
-  -- 1. Verify ALL episodes belong to the given account
+  -- 1. Every episode must be in a project of p_account_id that the caller
+  --    can write (KB-27). Soft-deleted episodes count: the deletes below do
+  --    not filter them, so neither may this check. An id that is not an
+  --    episode at all is refused too.
   -- =========================================================================
   SELECT count(*) INTO v_unauthorized_count
-  FROM public.episodes e
-  JOIN public.projects p ON p.id = e.project_id
-  WHERE e.id = ANY(p_episode_ids)
-    AND e.deleted_at IS NULL
-    AND p.account_id != p_account_id;
+  FROM unnest(p_episode_ids) AS ids(id)
+  WHERE auth.uid() IS NULL
+     OR NOT EXISTS (
+       SELECT 1
+       FROM public.episodes e
+       JOIN public.projects p ON p.id = e.project_id
+       WHERE e.id = ids.id
+         AND p.account_id = p_account_id
+         AND public.can_write_project(p.id)
+     );
 
   IF v_unauthorized_count > 0 THEN
     RETURN jsonb_build_object(
@@ -51,7 +60,7 @@ BEGIN
       'errors', jsonb_build_array(
         jsonb_build_object(
           'episode_id', NULL,
-          'error', format('%s episode(s) do not belong to the specified account', v_unauthorized_count)
+          'error', format('You cannot reset %s of these episodes', v_unauthorized_count)
         )
       )
     );
@@ -180,4 +189,4 @@ GRANT EXECUTE ON FUNCTION public.bulk_reset_episodes_to_stage(UUID[], TEXT, UUID
 GRANT EXECUTE ON FUNCTION public.bulk_reset_episodes_to_stage(UUID[], TEXT, UUID) TO service_role;
 
 COMMENT ON FUNCTION public.bulk_reset_episodes_to_stage IS
-  'Atomically resets multiple episodes to a specified pipeline stage. Validates account ownership, cancels active generation jobs, and performs stage-specific data cleanup in a single transaction.';
+  'Atomically resets multiple episodes to a specified pipeline stage. Refuses unless every episode is in a project of p_account_id that the caller can write (can_write_project), then cancels active generation jobs and performs stage-specific data cleanup in a single transaction.';

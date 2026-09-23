@@ -14,8 +14,8 @@
  * import type { Voice, VoiceGenerationRequest } from '@kit/audio-generation/types';
  * import { VoiceGenerationRequestSchema } from '@kit/audio-generation/schemas';
  *
- * // Import server functions
- * import { getAvailableVoices } from '@kit/audio-generation/server';
+ * // Import server actions
+ * import { generateVoiceFromTextAction } from '@kit/audio-generation/server';
  *
  * // Import components
  * import { AudioPlayer } from '@kit/audio-generation/components';

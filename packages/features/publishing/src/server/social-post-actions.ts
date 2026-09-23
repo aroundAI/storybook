@@ -23,7 +23,7 @@ import {
   UpdateSocialPostSchema,
 } from '../lib/schemas/social-post.schema';
 import { createLinkedInProvider } from '../providers/linkedin';
-import { getAccessToken } from './connection-actions';
+import { getAccessToken } from './connection-tokens';
 
 interface PostVariant {
   text?: string;

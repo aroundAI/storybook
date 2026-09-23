@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 
 import { AlertTriangle, Check, X } from 'lucide-react';
 
+import { refusalMessage } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -42,14 +43,18 @@ export function FactVerificationDialog({
   const [notes, setNotes] = useState('');
   const [isPending, startTransition] = useTransition();
 
+  // Closes only on success: a refusal leaves the dialog open with the notes
+  // the user typed, and says why.
   function handleVerify() {
     startTransition(async () => {
       try {
         await onVerify(fact.id, notes);
         setNotes('');
         onOpenChange(false);
-      } catch {
-        toast.error('Failed to verify fact');
+      } catch (error) {
+        toast.error(
+          refusalMessage(error, 'Could not verify the fact. Try again.'),
+        );
       }
     });
   }
@@ -62,15 +67,17 @@ export function FactVerificationDialog({
         await onDispute(fact.id, notes);
         setNotes('');
         onOpenChange(false);
-      } catch {
-        toast.error('Failed to dispute fact');
+      } catch (error) {
+        toast.error(
+          refusalMessage(error, 'Could not dispute the fact. Try again.'),
+        );
       }
     });
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" data-test="fact-review-dialog">
         <DialogHeader>
           <DialogTitle>Verify Fact</DialogTitle>
           <DialogDescription>
@@ -81,7 +88,12 @@ export function FactVerificationDialog({
         <div className="space-y-4 py-2">
           <div>
             <Label className="text-sm font-medium">Claim</Label>
-            <p className="mt-1 text-sm text-muted-foreground">{fact.claim}</p>
+            <p
+              className="mt-1 text-sm text-muted-foreground"
+              data-test="fact-review-claim"
+            >
+              {fact.claim}
+            </p>
           </div>
 
           <div>
@@ -105,6 +117,7 @@ export function FactVerificationDialog({
             <Label htmlFor="verification-notes">Notes</Label>
             <Textarea
               id="verification-notes"
+              data-test="fact-review-notes"
               placeholder="Add verification notes or dispute reason..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -114,7 +127,12 @@ export function FactVerificationDialog({
         </div>
 
         <DialogFooter className="flex gap-2 sm:gap-0">
-          <Button onClick={handleVerify} disabled={isPending} variant="default">
+          <Button
+            onClick={handleVerify}
+            disabled={isPending}
+            variant="default"
+            data-test="fact-confirm-verified"
+          >
             <Check className="mr-1.5 h-4 w-4" />
             Confirm Verified
           </Button>
@@ -122,6 +140,7 @@ export function FactVerificationDialog({
             variant="destructive"
             onClick={handleDispute}
             disabled={isPending || !notes.trim()}
+            data-test="fact-mark-disputed"
           >
             <AlertTriangle className="mr-1.5 h-4 w-4" />
             Mark Disputed

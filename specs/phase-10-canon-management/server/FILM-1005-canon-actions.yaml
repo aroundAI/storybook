@@ -97,10 +97,10 @@ acceptance_criteria:
     evidence: "packages/features/episodes/src/server/canon-actions.ts:187, packages/features/episodes/src/server/canon-actions.ts:514"
   - text: "Authorization checks on all actions via RLS"
     met: false
-    reason: "not met — `commitCanonChangesAction` calls SECURITY DEFINER `commit_canon_changes`, which checks no membership (`apps/web/supabase/migrations/20260130004332_add_commit_canon_changes_function.sql:16`); KB-27, KB-17"
+    reason: "not met — immutable events are done: reads on `has_account_access`, add and delete on `can_write_project`, no edits by any role (KB-17, `apps/web/supabase/migrations/20260923075604_kb17-immutable-events-immutable.sql`; `apps/web/supabase/tests/database/immutable-events-immutable.test.sql`), and `deleteImmutableEventAction` now refuses a delete that matched nothing. `commit_canon_changes` requires the episode in the project and `can_write_project` (KB-27, `apps/web/supabase/migrations/20260923044106_kb27-canon-write-scope.sql`). The thread, world-state, summary and character-state actions still rely on policies that let any account member write (KB-76, KB-77)"
   - text: "Audit logging for all mutations with context"
     met: false
-    reason: "not met — only character-state inserts write `state_deltas` (`packages/features/episodes/src/server/canon-actions.ts:349`); deletes and thread edits unrecorded; authorship forgeable (KB-17)"
+    reason: "not met — only character-state inserts write `state_deltas` (`packages/features/episodes/src/server/canon-actions.ts:349`); deletes and thread edits unrecorded; immutable-event authorship is pinned to the writer (KB-17) but character-state authorship is still forgeable (KB-77)"
   - text: "State delta tracking for rollback capability"
     met: false
     reason: "not met — deltas only for character states, insert error ignored (`packages/features/episodes/src/server/canon-actions.ts:349`); nothing reads `state_deltas`"
@@ -133,8 +133,11 @@ acceptance_criteria:
     reason: "not met — no test found"
 remaining:
   - criterion: "Authorization checks on all actions via RLS"
-    reason: "`commit_canon_changes` bypasses RLS and checks no membership; `deleteImmutableEventAction` says \"admin only\" but any member can delete"
-    closed_by: "KB-17 (delete); KB-27 (RPC)"
+    reason: "Threads, world states, summaries and act bridges accept writes from any account member, viewers included (the immutable-events half was closed by KB-17, the RPC half by KB-27)"
+    closed_by: "KB-76"
+  - criterion: "Authorization checks on all actions via RLS"
+    reason: "Character-state inserts do not pin `created_by`"
+    closed_by: "KB-77"
   - criterion: "Audit logging; state deltas for rollback"
     reason: "Only character-state changes write a delta, with no actor; nothing reads deltas"
     closed_by: "unassigned"
@@ -142,7 +145,7 @@ remaining:
     reason: "None exist"
     closed_by: "unassigned"
   - criterion: "Unit and integration tests"
-    reason: "No test imports `canon-actions.ts`"
+    reason: "Only KB-17's refusal tests import `canon-actions.ts` (`packages/features/episodes/__tests__/canon-event-actions.test.ts`); nothing tests conflict detection or batch operations"
     closed_by: "unassigned"
 open_questions: []
 notes: |

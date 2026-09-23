@@ -36,6 +36,25 @@ export interface SignedUploadResult {
   publicUrl: string;
   /** Expiration time in seconds */
   expiresIn: number;
+  /**
+   * The request headers the PUT must send, exactly. On R2 and B2 they are
+   * part of the signature, so a PUT with other values is refused (KB-38).
+   * `Content-Length` is signed too but is not listed: the browser sets it
+   * from the body, which must be exactly `contentLength` bytes.
+   */
+  headers: Record<string, string>;
+}
+
+/**
+ * What a presigned upload URL is issued for (KB-38)
+ */
+export interface SignedUploadRequest {
+  /** MIME type the PUT must send */
+  contentType: string;
+  /** Exact byte length of the body the PUT must send */
+  contentLength: number;
+  /** URL expiration in seconds (default: 3600) */
+  expiresIn?: number;
 }
 
 /**
@@ -66,15 +85,13 @@ export interface StorageAdapter {
    *
    * @param bucket - The bucket/folder name
    * @param path - Path within the bucket
-   * @param contentType - MIME type of the file
-   * @param expiresIn - URL expiration in seconds (default: 3600)
-   * @returns Presigned upload URL and public URL
+   * @param request - The content type and exact size the upload may have
+   * @returns Presigned upload URL, public URL and the headers to send
    */
   getSignedUploadUrl(
     bucket: string,
     path: string,
-    contentType: string,
-    expiresIn?: number,
+    request: SignedUploadRequest,
   ): Promise<SignedUploadResult>;
 
   /**

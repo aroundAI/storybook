@@ -719,9 +719,23 @@ Nobody has looked, which is the bug.
 
 ## KB-15 — X connections are never refreshed
 
+> **Fixed (2026-09-23), #326.** Reproduced first: on the local stack the
+> real cron job deactivated an expired X connection with `Unknown platform:
+> twitter` and **zero** requests to X. `refreshXToken` now refreshes X with
+> the client's Basic auth, and stores whatever refresh token X returns.
+> `Platform` is one list, bound to the `platform_connections` CHECK by a test,
+> with no cast and an exhaustive dispatch. Reproducing it found a wider
+> defect, fixed here too: the cron job selected tokens an hour ahead but
+> refreshed only inside the 5-minute buffer, so on **every** platform tokens
+> lapsed for up to 25 minutes between runs, and it counted untouched rows as
+> refreshed. It now refreshes what it selects, and the publish worker refuses
+> exactly what the app would refresh first. One live refresh against X waits
+> on credentials (FILM-1729, FILM-1725 Check E). Existing X connections need
+> one reconnect. Design: `specs/plans/KB-15-edd.md`.
+
 **Severity:** Medium — every X connection stops working two hours after it
 is made. Masked today, because X video publishing does not work for another
-reason (FILM-1729). **Found:** FILM-1723 (#284), 2026-09-22. **Open.**
+reason (FILM-1729). **Found:** FILM-1723 (#284), 2026-09-22. **Fixed.**
 
 `TWITTER_OAUTH_CONFIG` requests `offline.access` "for refresh tokens" and
 records a two-hour access token with a 180-day refresh token
@@ -766,9 +780,9 @@ expired token, and sees `Unknown platform: twitter`.
 
 ### Acceptance criteria
 
-- [ ] Unit: an expired X connection is refreshed and the **rotated** refresh token stored; seen red first with `Unknown platform: twitter`
-- [ ] `Platform` is derived, not restated; no `as Platform` cast remains; the switch is exhaustive under `tsc`
-- [ ] The publish lambda's token check agrees with the app's for X
+- [x] Unit: an expired X connection is refreshed and the **rotated** refresh token stored; seen red first with `Unknown platform: twitter` — `packages/features/publishing/__tests__/token-refresh.test.ts`, "X refresh (KB-15)"
+- [x] `Platform` is derived, not restated; no `as Platform` cast remains; the switch is exhaustive under `tsc` — `src/lib/platforms.ts` and `__tests__/platforms.test.ts`; removing X's mapping or case fails `tsc`
+- [x] The publish lambda's token check agrees with the app's for X — one rule, `isWithinRefreshWindow`, in both (`apps/web/lambda/publish-worker/__tests__/token.test.ts`); and the cron job now refreshes everything it selects, so a token is never left expired between runs
 - [ ] One live refresh against X *(deferred with FILM-1729 — no credentials)*
 
 ---
@@ -915,7 +929,8 @@ UPDATE.
 reach `verified` or `disputed` through the app, for any user, owner included.
 Nothing is corrupted, and nothing downstream can trust a status the UI cannot
 set. **Found:** KB-1 (#290), 2026-09-22, reported as a lead from reading;
-reproduced below. **Open.**
+reproduced below. **Fixed** in #314 — see *Fixed (#314)* at the end of
+this entry.
 
 `verifyFactAction` and `disputeFactAction`
 (`packages/features/episodes/src/server/fact-actions.ts`) check that the
@@ -975,10 +990,40 @@ nobody having been able to use it.
 
 ### Acceptance criteria
 
-- [ ] pgTAP, red first: owner and admin can verify and dispute; a member cannot; nobody can set `verified_by` to another user
-- [ ] Playwright: verify a fact, reload, it is still verified and shows who verified it; dispute another — asserted on the **second** action as well as the first; screenshots in the PR
-- [ ] A refusal reaches the user as a readable message in a production build
-- [ ] FILM-1121 / FILM-1123 criteria re-checked against the running feature, corrections noted in those specs
+- [x] pgTAP, red first: owner and admin can verify and dispute; a member cannot; nobody can set `verified_by` to another user
+- [x] Playwright: verify a fact, reload, it is still verified and shows who verified it; dispute another — asserted on the **second** action as well as the first; screenshots in the PR
+- [x] A refusal reaches the user as a readable message in a production build
+- [x] FILM-1121 / FILM-1123 criteria re-checked against the running feature, corrections noted in those specs
+
+### Fixed (#314)
+
+Driven through the UI before the fix, as the project's owner: *Confirm
+Verified* showed "Failed to verify fact", *Mark Disputed* "Failed to dispute
+fact"; the dialog closed and dropped the note; both rows stayed `unverified`.
+
+- **The path.** `public.set_fact_verification`
+  (`20260923042421_kb18-fact-verification.sql`) is the only end-user way into
+  `verified` or `disputed`: an owner or admin of the fact's *project*
+  (`can_edit_project`), `verified_by = auth.uid()` with no parameter to name
+  anyone else, and only from `unverified` or `pending_review` — a review from a
+  stale page is refused, not applied. The member UPDATE policy is unchanged.
+- **Two more defects the entry did not name, fixed with it.** The actions
+  checked the *account* role while the policies check the *project* role: an
+  account owner off the project passed the check, then verified or deleted
+  nothing, and was told it worked. `deleteFactAction` now asks the project rule
+  first and refuses a delete that removed no row. And the dialog closed on
+  failure, losing the user's notes; it now closes only on success.
+- **Refusals are values** (KB-6): not the project's owner or an admin; the
+  fact no longer exists; already verified/disputed/retracted; a dispute needs
+  a reason.
+- Verify and Delete are shown only to the project's owners and admins; the
+  detail page says who verified a fact.
+- Tests: `verified-facts-review.test.sql` (32 cases, each guard seen to fail
+  when removed from the function); `fact-review.test.ts` (8 action cases fail
+  on the old actions); `apps/e2e/tests/facts/` on a production build.
+- Downstream specs re-checked: FILM-1121's dialog criterion is met. FILM-1122,
+  1123, 1140 and 1143 no longer wait on this entry, but none is met by it:
+  each still has its own gap, now recorded there as `unassigned`.
 
 ---
 
@@ -1218,9 +1263,7 @@ point** (standing owner rule). Every proof is local.
 click, behind a dialog that describes something else. **Found:** KB-20's
 drafting (2026-09-22), when "what does disconnect remove?" turned out to have
 an answer nobody had written down. It also corrects KB-20, whose first version
-asserted the opposite. **Fixed in part — PR A (#317): disconnect keeps the
-row and every record under it; the vendor-data deletion job (KB-20 item 3) is
-PR B, stacked on it.** Design: `specs/plans/KB-22-edd.md`.
+asserted the opposite. **Open.**
 
 The disconnect dialog says, in full (`platforms:disconnectDescription`):
 *"This will remove access to {{accountName}}. You won't be able to publish to
@@ -1294,11 +1337,11 @@ is about.
 
 ### Acceptance criteria
 
-- [x] pgTAP, red first: disconnecting leaves `publishes`, manual `revenue_records`, `publish_tags`, `experiment_publishes`, `channel_analytics_settings` intact — `platform-connection-disconnect.test.sql` (also project/episode publishing defaults, manual tasks, an experiment's channel scope; a member's and the service role's direct `DELETE` refused; account deletion still succeeds)
-- [ ] Reconnecting the same platform account restores the connection to its publishes; analytics resume without duplicates — **restores: done** (pgTAP upsert case; Playwright through the real YouTube callback, same row id). *Resume* is `syncEligibility` treating a reconnected grant as eligible (unit-tested); the re-collection after a YouTube purge is PR B
-- [ ] The deletion job removes one connection's vendor rows from all **nine** ClickHouse tables (the seven `video_*` plus `channel_daily` and `channel_subscribers`) and `source='api'` revenue — and nothing else; tested with two connections seeded side by side, against the real local ClickHouse — **PR B**
-- [x] Dialog copy matches behaviour; Playwright covers disconnect → reconnect, asserting the manual revenue figure is still there **after** reconnect; screenshots in the PR — `disconnect-keeps-records.spec.ts`; the copy's per-platform flags are bound to `REVOKERS` by `revokers.test.ts`
-- [x] No production data or credentials are used to verify any of this — local stack, a generated local `ENCRYPTION_KEY`, fake app credentials, a local stand-in for Google
+- [ ] pgTAP, red first: disconnecting leaves `publishes`, manual `revenue_records`, `publish_tags`, `experiment_publishes`, `channel_analytics_settings` intact
+- [ ] Reconnecting the same platform account restores the connection to its publishes; analytics resume without duplicates
+- [ ] The deletion job removes one connection's vendor rows from all seven ClickHouse tables and `source='api'` revenue — and nothing else; tested with two connections seeded side by side, against the real local ClickHouse
+- [ ] Dialog copy matches behaviour; Playwright covers disconnect → reconnect, asserting the manual revenue figure is still there **after** reconnect; screenshots in the PR
+- [ ] No production data or credentials are used to verify any of this
 
 ---
 
@@ -1559,7 +1602,9 @@ be overwritten or deleted (those policies are scoped), but new ones can be
 planted under another project's path on a **public** bucket, with no size
 limit. **Found:** the spec audit of FILM-203 (2026-09-23); the policy read
 from the live local database and the insert reproduced by the coordinator.
-**Open.**
+**Fixed** in #313: one project-write rule (`can_write_project`) on every
+`project-assets` write verb and in the presign route, bucket type and size
+limits, the cover-image function guarded, the orphaned routes deleted.
 
 Live policies on `storage.objects` for the `project-assets` bucket (public,
 `file_size_limit` none):
@@ -1602,10 +1647,10 @@ session. Rolled back.
 
 ### Acceptance criteria
 
-- [ ] pgTAP, red first: a non-member's insert into another project's path is refused; a member's insert succeeds
-- [ ] The presign route refuses a user who can read a public project but has no role on it — test red first
-- [ ] Size and type are enforced server-side or by the bucket, not only in the browser
-- [ ] The orphaned upload route is gone
+- [x] pgTAP, red first: a non-member's insert into another project's path is refused; a member's insert succeeds
+- [x] The presign route refuses a user who can read a public project but has no role on it — test red first
+- [x] Size and type are enforced server-side or by the bucket, not only in the browser (on R2, size is KB-38)
+- [x] The orphaned upload route is gone
 
 ---
 
@@ -1926,81 +1971,79 @@ the prompt.
 
 ---
 
-## KB-43 — Any member can read a connection's encrypted tokens
+## KB-71 — Season outlines never load a documentary's facts: they read a field nothing writes
 
-**Severity:** Low — ciphertext, not tokens, and only to people already in the
-account; but more than a member needs. **Found:** KB-22's planning,
-2026-09-23, from the live catalog. **Open.**
+**Severity:** Medium — a factual season is outlined without the facts it is
+supposed to distribute across episodes, silently. **Found:** FILM-1110,
+2026-09-23; recorded by FILM-1111. **Open.**
 
-`platform_connections_read` is `using (has_account_access(account_id))` with
-no column restriction, and `authenticated` holds `SELECT` on the whole table,
-so any member can select `access_token_encrypted` and
-`refresh_token_encrypted` through PostgREST. Nothing in the browser needs
-them: every decrypt happens on the server, which can use the service role.
+`apps/web/lambda/llm-worker/handlers/season-outline.ts:125` decides whether to
+load `verified_facts` from `projects.metadata.contentType`
+(`documentary` / `educational` / `factual`). Nothing writes that field:
 
-### Proposed fix
+- The new-project form saves `settings` through `StudioProjectSettingsSchema`
+  (`packages/features/film-studio-schemas/src/project.ts`), a plain `z.object`
+  with no `contentType` — zod strips it — and the type it does store is
+  `projectType` (`project.ts:64`, the positive control for the search).
+- Canon settings write `metadata.canon.contentType`
+  (`…/studio/settings/_components/canon-settings-actions.ts:24`), one level
+  down, with a different vocabulary (`series | movie | factual | news`), and
+  nothing reads it.
+- `git grep -n "contentType"` finds no other writer of project metadata.
 
-Revoke column `SELECT` on the two token columns from `authenticated` (or move
-the tokens to a table only the service role reads), then check every
-user-client select of `platform_connections` for `*` or a token column —
-`connection-actions.ts`'s disconnect read selects `access_token_encrypted`
-through the user client today, and would need the admin client after an
-explicit access check.
+So a project carries three content-type fields: `metadata.projectType`
+(authoritative, read by the memory builder through `resolveProjectType`),
+`metadata.canon.contentType` (written, never read) and `metadata.contentType`
+(read here, never written).
 
-### Acceptance criteria
-
-- [ ] pgTAP: a member selecting either token column is refused; selecting the other columns still works
-
----
-
-## KB-44 — `anon` holds TRUNCATE on `platform_connections`
-
-**Severity:** Low — not reachable through PostgREST, which has no TRUNCATE;
-but row-level security does not apply to TRUNCATE, so any other path that
-runs SQL as `anon` could empty the table. **Found:** KB-22's planning,
-2026-09-23 (`information_schema.role_table_grants`). **Open.**
-
-`anon` holds `TRUNCATE, REFERENCES, TRIGGER, INSERT, SELECT, UPDATE, DELETE`
-on `public.platform_connections` — Supabase's default grant, never revoked for
-this table (`30-film-studio.sql` revokes from `authenticated` and
-`service_role` only). Likely the same on other tables created the same way;
-not yet counted.
+**Reproduced by search** (2026-09-23), not by running a season outline — that
+needs a live LLM.
 
 ### Proposed fix
 
-`revoke all on public.platform_connections from anon;` and a sweep of the
-schema for tables where `anon` holds more than it needs, with a pgTAP guard
-listing the grants `anon` is allowed.
+Read the type with `resolveProjectType(projectMetadata)` and test
+`getContentTypeConfig(type).requiresFacts`; then retire or map
+`canon.contentType` (FILM-1143 owns the season dialog's use of it).
 
 ### Acceptance criteria
 
-- [ ] `anon` holds no privilege on `platform_connections`; a pgTAP test asserts the grant list
+- [ ] A documentary project's season outline receives its verified facts (test on the handler's fact branch)
+- [ ] One content-type field is authoritative; the other two are removed or derived from it
 
 ---
 
-## KB-45 — Vendor revoke calls ignore the HTTP response
+## KB-72 — Continuity context: CANON_007 misjudges thread staleness, and canon text reaches the agent unsanitised
 
-**Severity:** Low — a failed revoke looked exactly like a successful one, in
-the logs and to the user. **Found:** KB-22's planning, 2026-09-23. **Fixed in
-part by KB-22 PR A (#317).**
+**Severity:** Low — CANON_007 is `info`; the injection surface is the
+project's own canon, written by generation and by its members. **Found:**
+FILM-1111, 2026-09-23. **Open.**
 
-Every disconnect `await`ed `fetch(revokeUrl…)` and never read the response
-(`oauth/{youtube,tiktok,meta,twitter}/disconnect.ts` on `main` before
-KB-22), so Google answering 400 was indistinguishable from 200. KB-22's
-`requestRevocation` now reads the status and classifies it (`revoked`,
-`vendor_refused`, `unreachable`, with a 10-second timeout), and the disconnect
-action logs the outcome with the HTTP status for YouTube, TikTok and Meta —
-unit-tested against a local listener, seen red with the status ignored (#317).
+1. **CANON_007 reads a field that does not exist.**
+   `checkConnectivityFailure` (`packages/features/episodes/src/lib/canon/continuity-validator.ts:510`)
+   casts each thread to `{ openedEpisodeNumber?: number }`; `NarrativeThread`
+   has no such field and the builder never sets one, so the opened episode is
+   always 0 and "last touched" becomes the *count* of touched episodes.
+   **Reproduced** (vitest, 2026-09-23): a thread opened in episode 58 and
+   touched in 58 and 59, checked at episode 60, is reported as *"untouched for
+   58 episodes"*.
+2. **Canon strings are returned to the model verbatim.** The continuity
+   skill's `buildMemoryContext` tool
+   (`packages/features/episodes/src/agent/skills/continuity-skill.ts`) passes
+   event descriptions, thread names and character constraints to the agent
+   without `sanitizeForPrompt`; FILM-1111 sanitised only the verified facts it
+   added. **Reproduced** (vitest, 2026-09-23): an event described as
+   `<system>IGNORE PREVIOUS instructions</system>` comes back unchanged.
 
-**Still open:** a refused or unreachable revoke is only a log line. The
-creator is not told, and no operator alert fires; the data-deletion page's
-advice to check at the platform (section 4) is the only mitigation. X and
-LinkedIn have no revoke at all — KB-25.
+### Proposed fix
+
+Give the builder the thread's episode numbers (FILM-1111 already resolves
+them for ranking) and have CANON_007 use the last touched number; sanitise
+every canon string at the tool boundary, as sources are.
 
 ### Acceptance criteria
 
-- [x] The revoke response is read and logged, with its status — KB-22 PR A (#317)
-- [ ] A refused or unreachable revoke is surfaced (to the creator, or as an operator alert) — owner to decide which
+- [ ] A thread touched in the previous episode is not reported stale (unit test, seen red first)
+- [ ] Every string the continuity tools return to the model passes `sanitizeForPrompt` (unit test)
 
 ---
 
@@ -2022,8 +2065,13 @@ LinkedIn have no revoke at all — KB-25.
 | KB-16 | The Overview tab drew figures nobody measured: a fixed share donut, a 70/30 revenue split, canned footers, +100% beside every metric | #300 |
 | KB-19 | A failed platform connect landed on a 404 and logged nothing | #297 |
 | KB-29 | Token refresh read app credentials from a table nothing had written since 2026-01-21, so connections died at their first expiry; LinkedIn could never refresh | #310 |
+| KB-41 | Any signed-in user could list any project's members with their emails, public or private; `get_project_members` now requires access to the project's account | #319 |
+| KB-18 | No fact could be verified or disputed, by anyone: the update policy refused both states and the actions wrote through it; the actions' account-role check also turned some reviews and deletes into silent no-ops | #314 |
+| KB-28 | Any signed-in user could upload into any project's storage folder, and owners could not replace or delete their own files | #313 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
+| KB-52 | Every signed-in user could read, rewrite, forge and delete every account's `llm_usage_analytics` rows: a policy with no `TO` clause and `using (true)`; writes are now service-role only, and a pgTAP guard fails any new policy of that shape | #321 |
+| KB-15 | X connections were never refreshed (`Unknown platform: twitter` deactivated each at its first expiry); and the cron job refreshed only inside the 5-minute buffer, so tokens on every platform lapsed for up to 25 minutes between runs | #326 |
 
 ---
 

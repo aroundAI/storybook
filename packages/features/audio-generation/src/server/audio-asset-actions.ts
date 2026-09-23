@@ -9,11 +9,16 @@
 import crypto from 'crypto';
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
+import { STORAGE_BUCKETS, isAudioLibraryType } from '@kit/storage/buckets';
 import { requireUser } from '@kit/supabase/require-user';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { findOrCreateAudioAsset } from './audio-asset-library';
 import { getProjectElevenLabsApiKey } from './project-audio-settings';
 
 // =============================================================================
@@ -426,44 +431,6 @@ export const incrementAudioAssetUsageAction = enhanceAction(
   { schema: IncrementUsageSchema },
 );
 
-/**
- * Find or create an audio asset
- * Returns existing asset if found, creates new one if not
- */
-export async function findOrCreateAudioAsset(params: {
-  projectId: string;
-  audioType: 'music' | 'sfx';
-  prompt: string;
-  name?: string;
-  provider?: string;
-  metadata?: Record<string, unknown>;
-}): Promise<{ asset: AudioAsset; isNew: boolean }> {
-  // Try to find existing
-  const existing = await findAudioAssetByPromptAction({
-    projectId: params.projectId,
-    prompt: params.prompt,
-    audioType: params.audioType,
-  });
-
-  if (existing) {
-    // Increment usage count
-    await incrementAudioAssetUsageAction({ assetId: existing.id });
-    return { asset: existing, isNew: false };
-  }
-
-  // Create new
-  const newAsset = await createAudioAssetAction({
-    projectId: params.projectId,
-    audioType: params.audioType,
-    prompt: params.prompt,
-    name: params.name,
-    provider: params.provider ?? 'elevenlabs',
-    metadata: params.metadata,
-  });
-
-  return { asset: newAsset, isNew: true };
-}
-
 // =============================================================================
 // Generation Actions
 // =============================================================================
@@ -571,10 +538,12 @@ export const generateMusicAssetAction = enhanceAction(
       // Upload to storage
       const fileName = `music/${asset.id}.mp3`;
       const { getStorageAdapter } = await import('@kit/storage');
-      const storage = getStorageAdapter();
+      // audio-assets is server-write-only on Supabase (KB-55); on R2 the
+      // client is ignored.
+      const storage = getStorageAdapter(getSupabaseServerAdminClient());
 
       const uploadResult = await storage.upload(
-        'audio-assets',
+        STORAGE_BUCKETS.audioAssets,
         fileName,
         result.audioBuffer,
         { contentType: 'audio/mpeg' },
@@ -688,10 +657,12 @@ export const generateSfxAssetAction = enhanceAction(
       // Upload to storage
       const fileName = `sfx/${asset.id}.mp3`;
       const { getStorageAdapter } = await import('@kit/storage');
-      const storage = getStorageAdapter();
+      // audio-assets is server-write-only on Supabase (KB-55); on R2 the
+      // client is ignored.
+      const storage = getStorageAdapter(getSupabaseServerAdminClient());
 
       const uploadResult = await storage.upload(
-        'audio-assets',
+        STORAGE_BUCKETS.audioAssets,
         fileName,
         result.audioBuffer,
         { contentType: 'audio/mpeg' },
@@ -809,7 +780,7 @@ const UploadAudioFileSchema = z.object({
  * Upload an audio file as an asset (accepts base64 data)
  * Use this from client components instead of directly accessing storage
  */
-export const uploadAudioFileAndCreateAssetAction = enhanceAction(
+const uploadAudioFileAndCreateAsset = enhanceAction(
   async (data): Promise<AudioAsset> => {
     const logger = await getLogger();
     const ctx = { name: 'audioAsset.uploadFile', projectId: data.projectId };
@@ -819,6 +790,11 @@ export const uploadAudioFileAndCreateAssetAction = enhanceAction(
 
     if (authError || !user) {
       throw new Error('Authentication required');
+    }
+
+    // Stored on a public domain with this Content-Type, so only audio.
+    if (!isAudioLibraryType(data.contentType)) {
+      throw new ActionRefusal("This file type isn't supported.");
     }
 
     logger.info(
@@ -831,12 +807,12 @@ export const uploadAudioFileAndCreateAssetAction = enhanceAction(
 
     // Upload to storage
     const { getStorageAdapter } = await import('@kit/storage');
-    const storage = getStorageAdapter();
+    const storage = getStorageAdapter(getSupabaseServerAdminClient());
 
     const filePath = `${data.audioType}/${Date.now()}-${data.fileName.replace(/\s+/g, '_')}`;
 
     const uploadResult = await storage.upload(
-      'audio-assets',
+      STORAGE_BUCKETS.audioAssets,
       filePath,
       buffer,
       { contentType: data.contentType },
@@ -858,4 +834,8 @@ export const uploadAudioFileAndCreateAssetAction = enhanceAction(
     });
   },
   { schema: UploadAudioFileSchema },
+);
+
+export const uploadAudioFileAndCreateAssetAction = returnRefusals(
+  uploadAudioFileAndCreateAsset,
 );

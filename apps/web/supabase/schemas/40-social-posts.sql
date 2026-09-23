@@ -63,7 +63,7 @@ ALTER TABLE public.social_posts ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can manage social posts for accounts they belong to
 CREATE POLICY social_posts_select ON public.social_posts
-  FOR SELECT USING (
+  FOR SELECT TO authenticated USING (
     account_id IN (
       SELECT id FROM public.accounts WHERE id = auth.uid()
       UNION ALL
@@ -72,7 +72,7 @@ CREATE POLICY social_posts_select ON public.social_posts
   );
 
 CREATE POLICY social_posts_insert ON public.social_posts
-  FOR INSERT WITH CHECK (
+  FOR INSERT TO authenticated WITH CHECK (
     account_id IN (
       SELECT id FROM public.accounts WHERE id = auth.uid()
       UNION ALL
@@ -81,7 +81,7 @@ CREATE POLICY social_posts_insert ON public.social_posts
   );
 
 CREATE POLICY social_posts_update ON public.social_posts
-  FOR UPDATE USING (
+  FOR UPDATE TO authenticated USING (
     account_id IN (
       SELECT id FROM public.accounts WHERE id = auth.uid()
       UNION ALL
@@ -90,7 +90,7 @@ CREATE POLICY social_posts_update ON public.social_posts
   );
 
 CREATE POLICY social_posts_delete ON public.social_posts
-  FOR DELETE USING (
+  FOR DELETE TO authenticated USING (
     account_id IN (
       SELECT id FROM public.accounts WHERE id = auth.uid()
       UNION ALL

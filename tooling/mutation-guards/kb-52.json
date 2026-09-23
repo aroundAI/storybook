@@ -1,0 +1,71 @@
+{
+  "feature": "FILM-CC-04 KB-52",
+  "mutations": [
+    {
+      "name": "KB-52 the FOR ALL TO public using(true) policy is back",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/llm-usage-analytics-rls.test.sql",
+      "sql": "create policy \"Service role can manage LLM analytics\" on public.llm_usage_analytics using (true) with check (true);"
+    },
+    {
+      "name": "KB-52 authenticated holds write privileges again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/llm-usage-analytics-rls.test.sql",
+      "sql": "grant insert, update, delete on public.llm_usage_analytics to authenticated;"
+    },
+    {
+      "name": "KB-52 read policy narrowed to memberships (personal owners lose their own usage)",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/llm-usage-analytics-rls.test.sql",
+      "sql": "alter policy llm_usage_analytics_read on public.llm_usage_analytics using (public.has_role_on_account(account_id));"
+    },
+    {
+      "name": "KB-52 read policy back to 'any account the caller can see'",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/llm-usage-analytics-rls.test.sql",
+      "sql": "alter policy llm_usage_analytics_read on public.llm_usage_analytics using (true);"
+    },
+    {
+      "name": "KB-52 class guard: a new policy with no TO clause",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/policy-shape.test.sql",
+      "sql": "create policy kb52_probe on public.social_posts for select using (account_id = auth.uid());"
+    },
+    {
+      "name": "KB-52 class guard: a write policy with check (true) for authenticated",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/policy-shape.test.sql",
+      "sql": "create policy kb52_probe on public.social_posts for insert to authenticated with check (true);"
+    },
+    {
+      "name": "KB-52 the executor logs a successful call through the caller's client again",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/server/llm-executor.ts",
+      "find": "    // missing env vars or import errors never crash the LLM result.\n    try {\n      await recordUsage({",
+      "replace": "    // missing env vars or import errors never crash the LLM result.\n    try {\n      const injected = (config as { supabaseClient?: unknown }).supabaseClient;\n      await (injected\n        ? (e: LLMUsageEvent) => logLLMUsage(injected as never, e)\n        : recordUsage)({",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/llm-executor-usage-client.test.ts",
+      "pattern": "logs a successful call"
+    },
+    {
+      "name": "KB-52 the executor logs a failed call through the caller's client again",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/server/llm-executor.ts",
+      "find": "    // Log analytics (failure) - also inside try/catch (same reason as above)\n    try {\n      await recordUsage({",
+      "replace": "    // Log analytics (failure) - also inside try/catch (same reason as above)\n    try {\n      const injected = (config as { supabaseClient?: unknown }).supabaseClient;\n      await (injected\n        ? (e: LLMUsageEvent) => logLLMUsage(injected as never, e)\n        : recordUsage)({",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/llm-executor-usage-client.test.ts",
+      "pattern": "logs a failed call"
+    },
+    {
+      "name": "KB-52 a missing service-role client is passed on as undefined again",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/server/llm-executor.ts",
+      "find": "  if (!client) {\n    throw new Error('Service-role client unavailable: LLM usage not logged');\n  }\n\n  await logLLMUsage(client, event);",
+      "replace": "  await logLLMUsage(client ?? (undefined as never), event);",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/llm-executor-usage-client.test.ts",
+      "pattern": "no service-role client"
+    }
+  ]
+}

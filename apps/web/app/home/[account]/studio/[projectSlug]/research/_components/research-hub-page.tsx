@@ -95,7 +95,7 @@ export function ResearchHubPage({
   const loadData = useCallback(() => {
     startTransition(async () => {
       const [sourcesResult, countsResult] = await Promise.all([
-        listExternalSourcesAction({ activeOnly: true }),
+        listExternalSourcesAction({ activeOnly: true, projectId }),
         getResearchCountsAction({ projectId }),
       ]);
 
@@ -204,7 +204,7 @@ export function ResearchHubPage({
           ) : (
             <div className="space-y-3">
               {sources.map((source) => (
-                <Card key={source.id}>
+                <Card key={source.id} data-test="research-source-row">
                   <CardContent className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
                       {CATEGORY_ICONS[source.category] ?? (

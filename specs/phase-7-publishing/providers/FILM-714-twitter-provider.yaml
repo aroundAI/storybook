@@ -47,7 +47,7 @@ provider:
 acceptance_criteria:
   - text: "OAuth 2.0 connection flow works"
     met: false
-    reason: "unverified — `apps/web/app/api/platforms/connect/twitter/route.ts` and `apps/web/app/api/platforms/callback/twitter/route.ts` exist; never run: no X credentials (FILM-1729 §2); tokens never refreshed (KB-15)"
+    reason: "unverified — `apps/web/app/api/platforms/connect/twitter/route.ts` and `apps/web/app/api/platforms/callback/twitter/route.ts` exist; never run: no X credentials (FILM-1729 §2). Refresh is fixed by KB-15 (#326): `packages/features/publishing/src/lib/token-refresh.ts:405`, tested at `packages/features/publishing/__tests__/token-refresh.test.ts:568`"
   - text: "Video upload with chunked transfer"
     met: false
     reason: "not met — FILM-1729: `media.write` is never requested, so X refuses the upload (403); chunking itself is tested (`packages/features/publishing/__tests__/twitter-provider.test.ts:95`)"
@@ -90,8 +90,8 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "OAuth 2.0 connection flow works (unverified)"
-    reason: "Never run against X — no credentials are held (FILM-1729 §2) — and an X connection stops working two hours after it is made, because X tokens are never refreshed"
-    closed_by: "KB-15"
+    reason: "Never run against X: no credentials are held (FILM-1729 §2), so connect and callback have only their failure branches tested. Token refresh, the other half of this item, is fixed by KB-15 (#326; `packages/features/publishing/__tests__/token-refresh.test.ts:568`)"
+    closed_by: "owner"
   - criterion: "Video upload with chunked transfer"
     reason: "Chunking is built and tested, but `media.write` is never requested, so X refuses the upload with 403. Nothing on the publish screen sends a video to X either: its platform lists stop at YouTube, Facebook, Instagram and TikTok (`packages/features/publishing/src/lib/constants.ts:45`)"
     closed_by: "FILM-1729"

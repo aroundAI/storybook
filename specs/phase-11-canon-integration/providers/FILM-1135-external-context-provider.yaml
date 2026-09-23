@@ -44,8 +44,8 @@ acceptance_criteria:
     met: false
     reason: "no longer true — no mapping exists (`getExternalContentRequirements` never in git history); `requiresExternalContext` only feeds `includeSources` (`packages/features/episodes/src/lib/canon/memory-strategies.ts:222`), read only by tests"
   - text: "RLS policies protect data access — authenticated read, admin write for cache"
-    met: false
-    reason: "no longer true — private uploads now land here (`packages/features/episodes/src/server/source-upload-actions.ts:101`); the read policy is `USING (true)` for every signed-in user — reproduced as KB-26"
+    met: true
+    evidence: "KB-26: shared cache rows readable by any signed-in user, uploads only by owner/admin/member of their project (migration 20260923044054, pgTAP research-uploads-rls.test.sql)"
   - text: "Full-text search works on cached content"
     met: true
     evidence: "generated fts tsvector + GIN index (migration 20260211200001)"
@@ -61,17 +61,6 @@ remaining:
       (`packages/features/episodes/src/lib/canon/memory-strategies.ts:222`),
       which only tests read. Callers pass a category by hand
     closed_by: "unassigned"
-  - criterion: "RLS policies protect data access — authenticated read, admin write for cache"
-    reason: >
-      The policies are as designed: `external_content` SELECT is `TO
-      authenticated USING (true)`
-      (`apps/web/supabase/migrations/20260211200000_create_external_context_tables.sql:150`).
-      But FILM-1141's upload now writes a user's uploaded document text into
-      this table with no project or account column
-      (`packages/features/episodes/src/server/source-upload-actions.ts:101`),
-      so any signed-in user of any account can select it — reproduced by the
-      coordinator in a rolled-back transaction
-    closed_by: "KB-26"
 open_questions: []
 feature:
   database:

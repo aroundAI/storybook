@@ -36,6 +36,7 @@ pnpm --filter @kit/otp --fail-if-no-match test
 pnpm --filter @kit/supabase --fail-if-no-match test
 pnpm --filter @kit/notifications --fail-if-no-match test
 pnpm --filter @kit/episodes --fail-if-no-match test
+pnpm --filter @kit/audio-generation --fail-if-no-match test
 pnpm --filter @kit/ui --fail-if-no-match test
 pnpm --filter @kit/database-webhooks --fail-if-no-match test
 pnpm --filter @kit/email-templates --fail-if-no-match test

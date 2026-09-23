@@ -8,7 +8,7 @@ import { useCallback, useState, useTransition } from 'react';
 
 import { ImageIcon, Loader2, Trash2, Upload } from 'lucide-react';
 
-import { refusalMessage } from '@kit/next/action-result';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { uploadProjectCover } from '@kit/storage/client';
 import { Button } from '@kit/ui/button';
 import {
@@ -21,7 +21,7 @@ import {
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
-import { updateProjectCoverImage } from '../../../projects/new/_lib/server/create-film-project.action';
+import { updateProjectCoverImageAction } from '../../../projects/new/_lib/server/create-film-project.action';
 
 interface ProjectCoverSettingsProps {
   projectId: string;
@@ -69,7 +69,12 @@ export function ProjectCoverSettings({
           const uploadResult = await uploadProjectCover(file, projectId);
 
           // Update project metadata with new cover URL
-          await updateProjectCoverImage(projectId, uploadResult.url);
+          await unwrap(
+            updateProjectCoverImageAction({
+              projectId,
+              coverImageUrl: uploadResult.url,
+            }),
+          );
 
           // Update current URL and clear preview
           setCurrentUrl(uploadResult.url);
@@ -92,14 +97,18 @@ export function ProjectCoverSettings({
     startTransition(async () => {
       try {
         // Update project metadata to remove cover URL
-        await updateProjectCoverImage(projectId, '');
+        await unwrap(
+          updateProjectCoverImageAction({ projectId, coverImageUrl: '' }),
+        );
 
         setCurrentUrl(null);
         setPreviewUrl(null);
 
         toast.success('Cover image removed');
-      } catch {
-        toast.error('Failed to remove cover image');
+      } catch (removeError) {
+        toast.error(
+          refusalMessage(removeError, 'Failed to remove cover image'),
+        );
       }
     });
   }, [projectId]);
@@ -144,6 +153,7 @@ export function ProjectCoverSettings({
                 <img
                   src={displayUrl}
                   alt="Cover preview"
+                  data-test="cover-image-preview"
                   className="h-full w-full rounded-lg object-cover"
                 />
                 {isPending && (
@@ -174,7 +184,14 @@ export function ProjectCoverSettings({
           </label>
 
           {/* Error Message */}
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p
+              className="text-sm text-destructive"
+              data-test="cover-image-error"
+            >
+              {error}
+            </p>
+          )}
 
           {/* Actions */}
           {currentUrl && !isPending && (

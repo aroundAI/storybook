@@ -6,6 +6,8 @@
  */
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 
+import type { LlmJobTarget } from './llm-job-target';
+
 // Initialize SQS client
 const sqs = new SQSClient({});
 
@@ -56,14 +58,24 @@ export type LlmJobType =
  *
  * @param params.jobType - Type of job (determines which handler runs)
  * @param params.userId - User ID to send results to via WebSocket
+ * @param params.target - What the job may touch, from an authoriser in
+ *   `./llm-job-target` (KB-31). The worker runs on the service-role key, so
+ *   this is the only check between a caller and the ids it names.
  * @param params.payload - Job-specific payload data
  * @returns Promise that resolves when message is queued
  *
+ * The payload's `accountId`, `projectId` and `episodeId` are the target's:
+ * `accountId` is always stamped from it, and a payload naming a different
+ * project or episode is a programming error, thrown before anything is sent.
+ *
  * @example
  * ```typescript
+ * const target = await authorizeProjectTarget(client, projectId);
+ * if (!target) throw new ActionRefusal('Project not found');
  * await queueLlmJob({
  *   jobType: 'season-analysis',
  *   userId: user.id,
+ *   target,
  *   payload: { projectId, roadmap },
  * });
  * return { queued: true };
@@ -72,8 +84,10 @@ export type LlmJobType =
 export async function queueLlmJob(params: {
   jobType: LlmJobType;
   userId: string;
+  target: LlmJobTarget;
   payload: Record<string, unknown>;
 }): Promise<void> {
+  const payload = payloadForTarget(params.target, params.payload);
   const queueUrl = getQueueUrl();
 
   if (!queueUrl) {
@@ -92,7 +106,7 @@ export async function queueLlmJob(params: {
       MessageBody: JSON.stringify({
         jobType: params.jobType,
         userId: params.userId,
-        payload: params.payload,
+        payload,
       }),
       // Add message attributes for filtering/monitoring
       MessageAttributes: {
@@ -105,6 +119,32 @@ export async function queueLlmJob(params: {
   );
 
   console.log(`[SQS] Job queued successfully`);
+}
+
+/**
+ * The payload as sent: the target's ids, never different ones.
+ */
+export function payloadForTarget(
+  target: LlmJobTarget,
+  payload: Record<string, unknown>,
+): Record<string, unknown> {
+  for (const key of ['projectId', 'episodeId'] as const) {
+    const named = payload[key];
+    const authorised = target[key];
+
+    if (named !== undefined && named !== authorised) {
+      throw new Error(
+        `queueLlmJob: payload.${key} is not the authorised target's ${key}`,
+      );
+    }
+  }
+
+  return {
+    ...payload,
+    accountId: target.accountId,
+    ...(target.projectId !== undefined && { projectId: target.projectId }),
+    ...(target.episodeId !== undefined && { episodeId: target.episodeId }),
+  };
 }
 
 /**

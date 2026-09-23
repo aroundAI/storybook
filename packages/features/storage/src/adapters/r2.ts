@@ -20,17 +20,19 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import type {
+  SignedUploadRequest,
   SignedUploadResult,
   StorageAdapter,
   UploadOptions,
   UploadResult,
 } from '../types';
+import { createPresignClient, presignPut } from './s3-presign';
 
 export class R2StorageAdapter implements StorageAdapter {
   private s3Client: S3Client;
+  private presignClient: S3Client;
   private bucketName: string;
   private publicUrl: string;
 
@@ -40,6 +42,8 @@ export class R2StorageAdapter implements StorageAdapter {
     secretAccessKey?: string;
     bucketName?: string;
     publicUrl?: string;
+    /** Defaults to the account's R2 endpoint. Tests point it at a local S3 server. */
+    endpoint?: string;
   }) {
     const accountId = options?.accountId ?? process.env.R2_ACCOUNT_ID;
     const accessKeyId = options?.accessKeyId ?? process.env.R2_ACCESS_KEY_ID;
@@ -58,14 +62,18 @@ export class R2StorageAdapter implements StorageAdapter {
       throw new Error('R2 bucket name not configured. Set R2_BUCKET_NAME.');
     }
 
-    this.s3Client = new S3Client({
+    const config = {
       region: 'auto',
-      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+      endpoint:
+        options?.endpoint ?? `https://${accountId}.r2.cloudflarestorage.com`,
       credentials: {
         accessKeyId,
         secretAccessKey,
       },
-    });
+    };
+
+    this.s3Client = new S3Client(config);
+    this.presignClient = createPresignClient(config);
   }
 
   async upload(
@@ -94,18 +102,13 @@ export class R2StorageAdapter implements StorageAdapter {
   async getSignedUploadUrl(
     bucket: string,
     path: string,
-    contentType: string,
-    expiresIn: number = 3600,
+    { contentType, contentLength, expiresIn = 3600 }: SignedUploadRequest,
   ): Promise<SignedUploadResult> {
-    const fullPath = `${bucket}/${path}`;
-
-    const command = new PutObjectCommand({
-      Bucket: this.bucketName,
-      Key: fullPath,
-      ContentType: contentType,
-    });
-
-    const uploadUrl = await getSignedUrl(this.s3Client, command, {
+    const { uploadUrl, headers } = await presignPut(this.presignClient, {
+      bucket: this.bucketName,
+      key: `${bucket}/${path}`,
+      contentType,
+      contentLength,
       expiresIn,
     });
 
@@ -115,6 +118,7 @@ export class R2StorageAdapter implements StorageAdapter {
       uploadUrl,
       publicUrl,
       expiresIn,
+      headers,
     };
   }
 

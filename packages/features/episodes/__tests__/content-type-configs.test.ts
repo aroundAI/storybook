@@ -5,6 +5,7 @@ import {
   getContentTypeConfig,
   resolveProjectType,
 } from '../src/lib/canon/content-type-configs';
+import { getDecayFactor } from '../src/lib/canon/memory-strategies';
 
 describe('Content Type Configs (FILM-1110)', () => {
   describe('CONTENT_TYPE_CONFIGS', () => {
@@ -83,7 +84,7 @@ describe('Content Type Configs (FILM-1110)', () => {
 
     it('should return short-film config for short-film type', () => {
       const config = getContentTypeConfig('short-film');
-      expect(config.decayFunction).toBe('exponential');
+      expect(config.decayFunction).toBe('linear');
       expect(config.enforcement).toBe('strict');
     });
 
@@ -113,6 +114,43 @@ describe('Content Type Configs (FILM-1110)', () => {
         projectType: 'series',
         source: 'default',
       });
+    });
+  });
+
+  // FILM-1111: the label is what the build reports as its decay; it must name
+  // the curve `getDecayFactor` computes, not a second opinion about it.
+  describe('decayFunction names the curve getDecayFactor computes', () => {
+    const distances = Array.from({ length: 61 }, (_, d) => d);
+
+    it.each(Object.entries(CONTENT_TYPE_CONFIGS))('%s', (type, config) => {
+      const projectType = type as keyof typeof CONTENT_TYPE_CONFIGS;
+      const factors = distances.map((d) => getDecayFactor(projectType, d));
+
+      switch (config.decayFunction) {
+        case 'none':
+        case 'topic_match':
+          // No distance decay at all
+          expect(new Set(factors).size).toBe(1);
+          break;
+
+        case 'linear': {
+          // A constant step down to a floor, then flat
+          const floor = Math.min(...factors);
+          const beforeFloor = factors.filter((f) => f > floor + 1e-9);
+          const steps = beforeFloor.slice(1).map((f, i) => beforeFloor[i]! - f);
+          expect(steps.length).toBeGreaterThan(0);
+          for (const step of steps) expect(step).toBeCloseTo(steps[0]!, 9);
+          break;
+        }
+
+        case 'exponential': {
+          // A constant ratio, never reaching a floor
+          const ratios = factors.slice(1).map((f, i) => f / factors[i]!);
+          for (const ratio of ratios) expect(ratio).toBeCloseTo(ratios[0]!, 9);
+          expect(ratios[0]).toBeLessThan(1);
+          break;
+        }
+      }
     });
   });
 });

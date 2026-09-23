@@ -243,7 +243,9 @@ $$;
 grant execute on function public.get_account_projects(uuid) to authenticated;
 
 -- Get project members with user information
--- SECURITY DEFINER to bypass RLS and handle account joins
+-- SECURITY DEFINER to bypass RLS and handle account joins, so the access
+-- check below is its only guard: reads follow account membership (KB-41,
+-- migration 20260923035932_kb41-project-members-read-scope.sql)
 create or replace function public.get_project_members(
   target_project_id uuid
 ) returns table (
@@ -261,7 +263,15 @@ language plpgsql
 security definer
 set search_path = '' as $$
 begin
-  -- Return project members with user info from accounts
+  if not exists (
+    select 1
+    from public.projects p
+    where p.id = target_project_id
+      and public.has_account_access(p.account_id)
+  ) then
+    return;
+  end if;
+
   return query
   select
     pm.id,

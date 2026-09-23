@@ -138,7 +138,6 @@ export async function runFactCheck(
       required_claims: sanitizeForPrompt(requiredClaims?.join('\n') ?? ''),
     },
     context: { name: 'fact-checker-role', accountId, userId },
-    supabaseClient: supabase,
   });
 
   const check = result.data.fact_check;

@@ -16,7 +16,7 @@ import { ProjectPublishingConfigs } from '@kit/publishing/components';
 import {
   getAccountPlatformConnections,
   getProjectPublishingConfigs,
-} from '@kit/publishing/server';
+} from '@kit/publishing/server/queries';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { Badge } from '@kit/ui/badge';
 import {

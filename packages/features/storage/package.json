@@ -7,6 +7,7 @@
     "exports": {
         ".": "./src/index.ts",
         "./client": "./src/client.ts",
+        "./buckets": "./src/buckets.ts",
         "./adapters/local": "./src/adapters/local.ts",
         "./adapters/supabase": "./src/adapters/supabase.ts"
     },

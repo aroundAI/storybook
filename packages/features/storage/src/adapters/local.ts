@@ -16,6 +16,7 @@ import {
 import { dirname, join } from 'path';
 
 import type {
+  SignedUploadRequest,
   SignedUploadResult,
   StorageAdapter,
   UploadOptions,
@@ -86,8 +87,7 @@ export class LocalStorageAdapter implements StorageAdapter {
   async getSignedUploadUrl(
     _bucket: string,
     _path: string,
-    _contentType: string,
-    _expiresIn?: number,
+    _request: SignedUploadRequest,
   ): Promise<SignedUploadResult> {
     // Local storage doesn't support presigned URLs
     // For development, use the regular upload endpoint

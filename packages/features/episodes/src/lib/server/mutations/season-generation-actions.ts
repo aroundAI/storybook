@@ -2,7 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -75,12 +77,19 @@ export const analyzeSeasonRoadmapAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
+    const target = await authorizeProjectTarget(client, data.projectId);
+
+    if (!target) {
+      throw new ActionRefusal('Project not found');
+    }
+
     // Always queue to Lambda for processing
     const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
     await queueLlmJob({
       jobType: 'season-analysis',
       userId: user.id,
+      target,
       payload: {
         projectId: data.projectId,
         roadmap: data.roadmap,

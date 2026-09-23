@@ -50,9 +50,17 @@ export default defineConfig({
         __dirname,
         '../../packages/shared/src/logger/index.ts',
       ),
+      '@kit/shared/pagination': path.resolve(
+        __dirname,
+        '../../packages/shared/src/pagination/index.ts',
+      ),
       '@kit/shared/vendors': path.resolve(
         __dirname,
         '../../packages/shared/src/vendors/index.ts',
+      ),
+      '@kit/shared/crypto': path.resolve(
+        __dirname,
+        '../../packages/shared/src/crypto/index.ts',
       ),
       '@kit/supabase/server-client': path.resolve(
         __dirname,
@@ -90,6 +98,18 @@ export default defineConfig({
         __dirname,
         '../../packages/supabase/src/auth-callback.service.ts',
       ),
+      '@kit/prompt-engine/llm-job-target': path.resolve(
+        __dirname,
+        '../../packages/features/prompt-engine/src/lib/server/llm-job-target.ts',
+      ),
+      '@kit/next/action-result': path.resolve(
+        __dirname,
+        '../../packages/next/src/refusals/action-result.ts',
+      ),
+      '@kit/next/refusals': path.resolve(
+        __dirname,
+        '../../packages/next/src/refusals/with-refusals.ts',
+      ),
       '@kit/next/actions': path.resolve(
         __dirname,
         '../../packages/next/src/actions/index.ts',
@@ -114,6 +134,18 @@ export default defineConfig({
         __dirname,
         '../../packages/mailers/core/src/index.ts',
       ),
+      '@kit/episodes/lib/server/project-write-access': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/lib/server/project-write-access.ts',
+      ),
+      '@kit/episodes/lib/server/pdf-extractor': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/lib/server/pdf-extractor.ts',
+      ),
+      '@kit/prompt-engine/server': path.resolve(
+        __dirname,
+        '../../packages/features/prompt-engine/src/lib/server/index.ts',
+      ),
       '@kit/assets/upload-validation': path.resolve(
         __dirname,
         '../../packages/features/assets/src/lib/upload-validation.ts',
@@ -121,6 +153,22 @@ export default defineConfig({
       '@kit/assets/upload': path.resolve(
         __dirname,
         '../../packages/features/assets/src/lib/upload/index.ts',
+      ),
+      '@kit/assets/lib': path.resolve(
+        __dirname,
+        '../../packages/features/assets/src/lib/index.ts',
+      ),
+      '@kit/storage/buckets': path.resolve(
+        __dirname,
+        '../../packages/features/storage/src/buckets.ts',
+      ),
+      '@kit/storage/client': path.resolve(
+        __dirname,
+        '../../packages/features/storage/src/client.ts',
+      ),
+      '@kit/storage': path.resolve(
+        __dirname,
+        '../../packages/features/storage/src/index.ts',
       ),
       '@kit/ui/alert': path.resolve(
         __dirname,
@@ -149,6 +197,10 @@ export default defineConfig({
       '@kit/publishing/oauth/apps': path.resolve(
         __dirname,
         '../../packages/features/publishing/src/oauth/apps.ts',
+      ),
+      '@kit/publishing/lib/token-expiry': path.resolve(
+        __dirname,
+        '../../packages/features/publishing/src/lib/token-expiry.ts',
       ),
       '@kit': path.resolve(__dirname, '../../packages'),
       '~/lib/server/require-user-in-server-component': path.resolve(

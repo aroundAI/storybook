@@ -1,0 +1,78 @@
+spec_id: "FILM-608"
+title: "Drop the retired Edit Suite tables"
+phase: 6
+phase_name: "Edit Suite"
+category: database_table
+status: DRAFT
+effort: S
+dependencies:
+  - spec_id: "FILM-607"
+    note: "the Edit Suite's code, functions and infrastructure are gone and its tables are read-only; this spec removes what FILM-607 deliberately kept"
+summary: >
+  FILM-607 retired the Edit Suite and, under the owner's keep-until-asked rule (KB-20),
+  kept its six tables and their rows read-only rather than deleting user data unasked.
+  The owner's standing instruction for the retirement is that no remnant stays in the
+  code. This spec is the last step: once the owner has read the production row counts and
+  decided what, if anything, to export, a guarded migration drops the six tables, their
+  read policies and grants, `compilations.edit_project_id` and the schema file, and a
+  repo guard proves no Edit Suite identifier remains anywhere.
+acceptance_criteria:
+  - text: "Before the drop, the owner runs the read-only production row-count query from FILM-607's EDD §31 (`specs/plans/FILM-607-edd.md`) and records the counts here; if any table has rows, the owner decides whether to export them first (keep-until-asked, KB-20), and the decision is recorded"
+    met: false
+    reason: "open — DRAFT; needs the owner, who alone reads production"
+  - text: "A hand-written migration in the Hook Lab style (`20260919193447_remove-hook-lab.sql`) refuses to drop, raising with every table's count, while any of the six tables has rows, unless the recorded export step is acknowledged in the migration (a named constant set by the PR that records the owner's decision)"
+    met: false
+    reason: "open — DRAFT, not yet implemented"
+  - text: "The migration drops `compilations.edit_project_id` (and its foreign key), then `edit_keyframes`, `edit_transitions`, `edit_clips`, `dialogue_sync_groups`, `edit_tracks` and `edit_projects` with their read policies, grants, indexes (including `idx_edit_clips_language`) and timestamp triggers; `edit_projects.render_*` go with their table"
+    met: false
+    reason: "open — DRAFT, not yet implemented"
+  - text: "The guard's refusal is seen: a row inserted locally makes the migration raise; the row removed, it applies"
+    met: false
+    reason: "open — DRAFT, not yet implemented"
+  - text: "`apps/web/supabase/schemas/36-edit-suite.sql` deleted, and `schemas/56-compilations.sql`'s `edit_project_id` column and its Edit Suite comment removed"
+    met: false
+    reason: "open — DRAFT, not yet implemented"
+  - text: "Types regenerated (never hand-edited); no `edit_*` table or `dialogue_sync_groups` in either `database.types.ts`; `check:types-current` and `check:schema-drift` green"
+    met: false
+    reason: "open — DRAFT, not yet implemented"
+  - text: "pgTAP, red on the pre-drop schema: `hasnt_table` for all six tables and `hasnt_column('public', 'compilations', 'edit_project_id')`; FILM-607's read-only assertions in `edit-suite-retired.test.sql` replaced by these"
+    met: false
+    reason: "open — DRAFT, not yet implemented"
+  - text: "FILM-607's repo guard is extended with the six table names, `render_status`/`render_url` on `edit_projects`, and `36-edit-suite`, and scans the whole repository except migration history, specs and plans; red before the drop, green after; mutation-guard entries seen RED"
+    met: false
+    reason: "open — DRAFT, not yet implemented"
+test_plan:
+  unit:
+    - {text: "Repo guard (FILM-607's, extended) names every remaining reference before the drop", met: false, reason: "open — DRAFT"}
+  integration:
+    - {text: "pgTAP hasnt_table ×6, hasnt_column compilations.edit_project_id; guard refusal seen on a seeded row", met: false, reason: "open — DRAFT"}
+  e2e: []
+open_questions:
+  - "Production row counts, and whether the owner wants any rows exported before the drop"
+database_table:
+  table_name: "edit_projects, edit_tracks, edit_clips, edit_keyframes, edit_transitions, dialogue_sync_groups (dropped)"
+  migration: "apps/web/supabase/migrations/20260219083555_edit-suite-v2.sql"
+  columns: []
+  indexes: []
+  foreign_keys:
+    - {column: "compilations.edit_project_id", references: "edit_projects(id)", on_delete: "SET NULL — column dropped"}
+    - {column: "edit_projects.episode_id", references: "episodes(id)", on_delete: CASCADE}
+    - {column: "edit_projects.compilation_id", references: "compilations(id)", on_delete: CASCADE}
+  rls_enabled: true
+notes: |
+  Kept by FILM-607 on purpose, and removed here:
+
+  | Object | Why it survived FILM-607 |
+  |---|---|
+  | The six edit tables and their rows | keep-until-asked (KB-20); the owner had not read production |
+  | Six `*_read` policies, `SELECT` for `authenticated` | a user's own rows stayed readable while kept |
+  | `compilations.edit_project_id` | a foreign key into `edit_projects`; `compilations` itself has no code and is out of scope |
+  | `schemas/36-edit-suite.sql` | mirrors the kept tables |
+
+  Not in scope: `master_video` assets and `episodes.master_video_asset_id` (shared with
+  the Publish page), and storage objects (none were ever written by the Edit Suite — see
+  FILM-607's EDD §0). The `compilations` tables themselves are a separate question.
+
+  Why guarded rather than conditional: a drop that silently skips when rows exist makes
+  the schema depend on the environment, the drift class of #240. A guard that raises stops
+  the deploy loudly and loses nothing, which is why the export decision comes first.

@@ -38,7 +38,7 @@ interface BatchTranslateResult {
 
 export async function processBatchTranslateMetadata(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  _supabase: SupabaseClient,
 ): Promise<BatchTranslateResult> {
   // SQS payload: cast, not validated (KB-33).
   const data = payload as unknown as BatchTranslatePayload;
@@ -75,7 +75,6 @@ export async function processBatchTranslateMetadata(
         itemCount: data.items.length,
       },
       context: { name: 'batch-translate-metadata', accountId: 'system' },
-      supabaseClient: supabase,
     });
 
     // Match results by id (order doesn't matter)

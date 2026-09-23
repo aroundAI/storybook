@@ -45,7 +45,20 @@ const SearchExternalContentSchema = z.object({
 const ListSourcesSchema = z.object({
   category: z.enum(SOURCE_CATEGORIES).optional(),
   activeOnly: z.boolean().optional(),
+  /** Shared sources plus this project's uploads; shared only when absent. */
+  projectId: z.string().uuid().optional(),
 });
+
+/**
+ * PostgREST filter for "shared, or uploaded into this project" (KB-26). RLS
+ * already hides other people's projects; this also keeps the caller's own
+ * other projects out of this project's hub.
+ */
+function sharedOrProject(projectId: string | undefined) {
+  return projectId
+    ? `project_id.is.null,project_id.eq.${projectId}`
+    : 'project_id.is.null';
+}
 
 // =============================================================================
 // SEARCH ACTION
@@ -94,8 +107,9 @@ export const listExternalSourcesAction = enhanceAction(
     let query = supabase
       .from('external_sources')
       .select(
-        'id, name, slug, description, website_url, api_endpoint, category, provider_type, credibility_tier, is_active, created_at, updated_at',
+        'id, name, slug, description, website_url, api_endpoint, category, provider_type, credibility_tier, is_active, project_id, created_at, updated_at',
       )
+      .or(sharedOrProject(data.projectId))
       .order('category')
       .order('name');
 
@@ -348,10 +362,9 @@ export const deleteExternalSourceAction = enhanceAction(
 /**
  * Get counts of sources and facts for sidebar badge.
  *
- * NOTE: `external_sources` is intentionally global (not project-scoped).
- * Sources represent shared reference data (e.g., Reuters, Wikipedia) so
- * `sources` and `apiSources` counts reflect all active sources across the
- * platform. Only `facts` is filtered by project.
+ * `sources` counts the shared registry plus this project's uploads (KB-26);
+ * `apiSources` counts shared provider sources, which uploads never are.
+ * `facts` is filtered by project.
  */
 export const getResearchCountsAction = enhanceAction(
   async (data: { projectId: string }) => {
@@ -361,7 +374,8 @@ export const getResearchCountsAction = enhanceAction(
       supabase
         .from('external_sources')
         .select('id', { count: 'exact', head: true })
-        .eq('is_active', true),
+        .eq('is_active', true)
+        .or(sharedOrProject(data.projectId)),
       supabase
         .from('verified_facts')
         .select('id', { count: 'exact', head: true })

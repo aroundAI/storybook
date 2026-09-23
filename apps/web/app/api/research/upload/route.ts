@@ -11,6 +11,11 @@
  */
 import { NextResponse } from 'next/server';
 
+import {
+  PROJECT_WRITE_REFUSAL,
+  canWriteProject,
+} from '@kit/episodes/lib/server/project-write-access';
+import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -50,16 +55,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verify user has access to the project (RLS enforced)
-    const { data: project, error: projectError } = await client
-      .from('projects')
-      .select('id')
-      .eq('id', projectId)
-      .single();
-
-    if (projectError || !project) {
+    // Queuing fact extraction writes into the project, so the caller needs a
+    // project_members row. Reading the project is not enough: public and
+    // unlisted projects are readable by every signed-in user (KB-26).
+    if (!(await canWriteProject(client, projectId))) {
       return NextResponse.json(
-        { error: 'Project not found or access denied' },
+        { error: PROJECT_WRITE_REFUSAL },
         { status: 403 },
       );
     }
@@ -114,11 +115,22 @@ export async function POST(request: Request) {
     if (extractFacts) {
       const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
+      // KB-31: queueLlmJob needs a target; the access gate above is KB-26's
+      const target = await authorizeProjectTarget(client, projectId);
+
+      if (!target) {
+        return NextResponse.json(
+          { error: PROJECT_WRITE_REFUSAL },
+          { status: 403 },
+        );
+      }
+
       // Queue fact extraction for each chunk
       for (const chunk of chunks) {
         await queueLlmJob({
           jobType: 'fact-extraction',
           userId: user.id,
+          target,
           payload: {
             content: chunk,
             projectId,

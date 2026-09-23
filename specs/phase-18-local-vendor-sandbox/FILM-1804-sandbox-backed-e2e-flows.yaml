@@ -51,7 +51,7 @@ notes: |
   - platform connect (/home/[account]/settings/platforms), token refresh, disconnect;
   - publishing an episode, or social posts;
   - project creation, or any studio stage (ideation, story, screenplay, visual studio,
-    audio studio, shorts studio, edit suite);
+    audio studio, shorts studio; the edit suite was retired, FILM-607);
   - analytics for a channel the app synced itself, rather than one seeded into ClickHouse.
 
   ## 2. The flows

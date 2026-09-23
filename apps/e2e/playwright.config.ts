@@ -33,6 +33,7 @@ if (!enableTeamAccountTests) {
   // this they do not skip, they fail at setup for a reason that has
   // nothing to do with revenue.
   testIgnore.push('*revenue*.spec.ts');
+  testIgnore.push('*fact-verification*.spec.ts');
 }
 
 /**

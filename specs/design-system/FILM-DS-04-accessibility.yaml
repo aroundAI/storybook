@@ -22,10 +22,10 @@ acceptance_criteria:
     reason: "no longer true — shot cards are unfocusable `<div onClick>`s (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`); useRovingTabIndex was never mounted, deleted 5f44d0e1"
   - text: "Focus is never lost during navigation (useFocusTrap hook)"
     met: false
-    reason: "no longer true — hand-rolled modals unmount with focus inside and restore nothing (`packages/features/edit-suite/src/components/export/export-dialog.tsx:212`); useFocusTrap deleted unused in 5f44d0e1"
+    reason: "no longer true — the hand-rolled modal cited here, the Edit Suite export dialog, unmounted with focus inside and restored nothing; it was retired with the Edit Suite (FILM-607), other hand-rolled modals not re-checked; useFocusTrap deleted unused in 5f44d0e1"
   - text: "Status changes are announced to screen readers (StatusAnnouncer component)"
     met: false
-    reason: "no longer true — toasts and `@kit/ui` Alerts (`role=\"alert\"`) announce, but export progress (`packages/features/edit-suite/src/components/export/export-dialog.tsx:392`) and bulk-generate statuses have no live region; StatusAnnouncer never mounted"
+    reason: "no longer true — toasts and `@kit/ui` Alerts (`role=\"alert\"`) announce, but bulk-generate statuses have no live region (the Edit Suite export progress also had none; it was retired with FILM-607); StatusAnnouncer never mounted"
   - text: "Color contrast meets WCAG AA (4.5:1) (validateContrast utility)"
     met: false
     reason: "no longer true — `--status-processing` 3.95:1 and `--status-error` 4.41:1 against their foregrounds (`apps/web/styles/shadcn-ui.css:51`), used for badge text"
@@ -34,7 +34,7 @@ acceptance_criteria:
     reason: "no longer true — a scan finds at least 39 of 84 icon-only buttons with no aria-label, title or text, e.g. `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-header.tsx:320`"
   - text: "Modals trap focus appropriately (useFocusTrap hook)"
     met: false
-    reason: "no longer true — `@kit/ui` dialogs (Radix) trap focus, but `packages/features/edit-suite/src/components/export/export-dialog.tsx:217` is hand-rolled with no trap"
+    reason: "no longer true — `@kit/ui` dialogs (Radix) trap focus, but `audio-studio/_components/music-timeline.tsx:887` is hand-rolled with no trap (the Edit Suite export dialog was another; retired with FILM-607)"
   - text: "Skip links allow bypassing navigation (SkipLinks component)"
     met: false
     reason: "no longer true — no skip link anywhere in `apps/web`; SkipLinks was never mounted and was deleted in 5f44d0e1"
@@ -87,19 +87,17 @@ remaining:
     closed_by: "FILM-410"
   - criterion: "Focus is never lost during navigation"
     reason: >
-      The export dialog unmounts with focus inside it and nothing returns focus to its
-      trigger
-      (`packages/features/edit-suite/src/components/export/export-dialog.tsx:212`,
-      opened from `packages/features/edit-suite/src/components/toolbar.tsx:271`)
+      The example here, the Edit Suite export dialog, unmounted with focus inside it
+      and returned focus to nothing; it was retired with the Edit Suite (FILM-607). Other overlays have not been
+      re-checked
     closed_by: "unassigned"
   - criterion: "Status changes are announced to screen readers"
     reason: >
       Toasts, `@kit/ui` Alerts (`role="alert"`, `packages/ui/src/shadcn/alert.tsx:32`)
       and
       `packages/features/assets/src/components/image-uploader/ImageUploadProgress.tsx:43`
-      announce, but edit-suite export progress
-      (`packages/features/edit-suite/src/components/export/export-dialog.tsx:392`) and
-      bulk-generate statuses have no live region
+      announce, but bulk-generate statuses have no live region (the Edit Suite export
+      progress had none either; retired with FILM-607)
     closed_by: "unassigned"
   - criterion: "Color contrast meets WCAG AA (4.5:1)"
     reason: >
@@ -116,8 +114,8 @@ remaining:
     closed_by: "unassigned"
   - criterion: "Modals trap focus appropriately"
     reason: >
-      Two hand-rolled overlays have no `role="dialog"`, focus trap or Escape:
-      `packages/features/edit-suite/src/components/export/export-dialog.tsx:217` and
+      A hand-rolled overlay has no `role="dialog"`, focus trap or Escape (a second, the
+      Edit Suite export dialog, was retired with FILM-607):
       `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx:887`
     closed_by: "unassigned"
   - criterion: "Skip links allow bypassing navigation"

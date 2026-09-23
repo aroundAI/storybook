@@ -20,6 +20,7 @@
     "./providers/instagram/types": "./src/providers/instagram/types.ts",
     "./server": "./src/server/index.ts",
     "./server/types": "./src/server/types.ts",
+    "./server/report-storage": "./src/server/report-storage.ts",
     "./server/deep-dive-actions": "./src/server/deep-dive-actions.ts",
     "./server/diagnostics-actions": "./src/server/diagnostics-actions.ts",
     "./server/channels-actions": "./src/server/channels-actions.ts",

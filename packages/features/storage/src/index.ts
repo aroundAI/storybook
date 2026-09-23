@@ -10,6 +10,7 @@
 
 // Types
 export type {
+  SignedUploadRequest,
   SignedUploadResult,
   StorageAdapter,
   UploadOptions,

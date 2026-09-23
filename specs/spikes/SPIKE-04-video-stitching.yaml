@@ -33,7 +33,7 @@ acceptance_criteria:
     reason: "retired — `packages/features/video-rendering/schema/timeline.json` was deleted in 5b88db3a; a field mapping survives at `docs/video-stitching-comparison.md:212`"
   - text: "Integration code for at least 2 approaches"
     met: false
-    reason: "retired — the FFmpeg and Shotstack/Creatomate code went with `video-rendering` in 5b88db3a; the edit suite exports via `packages/features/edit-suite/src/lib/ffmpeg-builder.ts:101`"
+    reason: "retired — the FFmpeg and Shotstack/Creatomate code went with `video-rendering` in 5b88db3a; the edit suite that later exported through FFmpeg was retired in FILM-607; videos are stitched outside the app"
   - text: "Clear recommendation with justification"
     met: true
     evidence: null

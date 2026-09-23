@@ -1,6 +1,9 @@
 'use server';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
+import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import type {
   StoryGenerationOutput,
   StoryIdeationOutput,
@@ -43,8 +46,11 @@ export interface GenerateFullStoryResponse {
  *
  * Uses the story-ideation prompt template to generate 1-5 diverse story concepts.
  * In production, queues via SQS for background processing.
+ *
+ * The worker builds the prompt from the episode's canon on the service-role
+ * key, so the caller must be able to write to the episode's project (KB-31).
  */
-export const generateStoryIdeasAction = enhanceAction(
+const generateStoryIdeasHandler = enhanceAction(
   async (
     data,
   ): Promise<{
@@ -70,29 +76,15 @@ export const generateStoryIdeasAction = enhanceAction(
       windowMs: 60_000,
     });
 
-    // Get user's account for cost tracking and authorization
-    const { data: accountMemberships } = await client
-      .from('accounts_memberships')
-      .select('account_id')
-      .eq('user_id', user.id)
-      .limit(1);
+    const target = await authorizeEpisodeTarget(client, data.episodeId);
 
-    if (!accountMemberships?.length) {
-      const { data: personalAccount } = await client
-        .from('accounts')
-        .select('id')
-        .eq('primary_owner_user_id', user.id)
-        .limit(1);
-
-      if (!personalAccount?.length) {
-        logger.warn(ctx, 'User has no account for story ideation');
-        throw new Error(
-          'No account found. Please ensure you have an active account.',
-        );
-      }
+    if (!target) {
+      logger.warn(
+        { ...ctx, userId: user.id, episodeId: data.episodeId },
+        'llm-job.refused',
+      );
+      throw new ActionRefusal('Episode not found');
     }
-
-    const accountId = accountMemberships?.[0]?.account_id ?? user.id;
 
     // Always queue to Lambda for processing
     const { queueLlmJob } = await import('@kit/prompt-engine/server');
@@ -100,11 +92,11 @@ export const generateStoryIdeasAction = enhanceAction(
     await queueLlmJob({
       jobType: 'story-ideation',
       userId: user.id,
+      target,
       payload: {
         episodeId: data.episodeId,
         premise: data.premise,
         numberOfIdeas: data.numberOfIdeas,
-        accountId,
         userId: user.id,
       },
     });
@@ -115,6 +107,10 @@ export const generateStoryIdeasAction = enhanceAction(
   {
     schema: GenerateStoryIdeasSchema,
   },
+);
+
+export const generateStoryIdeasAction = returnRefusals(
+  generateStoryIdeasHandler,
 );
 
 /**
@@ -156,6 +152,12 @@ export const generateFullStoryAction = enhanceAction(
       maxRequests: 120,
       windowMs: 60_000,
     });
+
+    const target = await authorizeEpisodeTarget(client, data.episodeId);
+
+    if (!target) {
+      throw new ActionRefusal('Episode not found');
+    }
 
     // Fetch current episode with project info for validation
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -243,6 +245,7 @@ export const generateFullStoryAction = enhanceAction(
     await queueLlmJob({
       jobType: 'story-generation',
       userId: user.id,
+      target,
       payload: {
         episodeId: data.episodeId,
         title: data.title,

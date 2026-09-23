@@ -20,11 +20,11 @@ acceptance_criteria:
     met: false
     reason: "no longer true — shot cards are `<div onClick>` with no tabIndex or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`); the keyboard grid went in 5b88db3a"
   - text: "Timeline supports keyboard shortcuts for playback"
-    met: true
-    evidence: "packages/features/edit-suite/src/components/edit-suite-provider.tsx:423 (Space/J/K/L, listener at :505)"
+    met: false
+    reason: "no longer true — the only timeline with playback shortcuts was the Edit Suite's, retired with the Edit Suite (FILM-607); the audio-studio timelines have no key handling"
   - text: "Drag and drop has clear visual feedback"
-    met: true
-    evidence: "packages/features/edit-suite/src/components/timeline/clip-block.tsx:425 (drag opacity and cursor), snap line at :551"
+    met: false
+    reason: "unverified — the evidence was the Edit Suite timeline's clip drag, retired with the Edit Suite (FILM-607); no other drag surface has been checked"
   - text: "Loading states use skeletons (not spinners for content)"
     met: true
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/loading.tsx:3, apps/web/app/home/[account]/studio/[projectSlug]/episodes/loading.tsx:11"
@@ -36,7 +36,7 @@ acceptance_criteria:
     evidence: "apps/web/app/error.tsx:60, apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/bulk-generate/shots-phase.tsx:355"
   - text: "Real-time updates don't cause layout shift"
     met: false
-    reason: "unverified — needs a layout-shift measurement while edit-suite peer edits or notifications arrive; no test measures it"
+    reason: "unverified — needs a layout-shift measurement while notifications arrive; no test measures it"
 remaining:
   - criterion: "Shot grid supports keyboard navigation"
     reason: >
@@ -47,6 +47,12 @@ remaining:
       `@kit/video-generation` and was deleted in 5b88db3a; `useShotGridKeyboard` in
       `@kit/film-studio` was never wired up and went in 5f44d0e1
     closed_by: "FILM-410"
+  - criterion: "Timeline supports keyboard shortcuts for playback"
+    reason: "The Edit Suite timeline that met this was retired with the Edit Suite (FILM-607); no remaining timeline has playback shortcuts"
+    closed_by: "unassigned"
+  - criterion: "Drag and drop has clear visual feedback"
+    reason: "The Edit Suite clip drag that met this was retired with the Edit Suite (FILM-607); no other drag surface has been checked"
+    closed_by: "unassigned"
 open_questions:
   - "Should we implement undo/redo for shot reordering? (post-MVP)"
   - "Should timeline support touch gestures for mobile? (post-MVP)"

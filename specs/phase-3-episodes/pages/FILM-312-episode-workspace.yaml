@@ -33,7 +33,7 @@ acceptance_criteria:
     reason: "unverified — no Playwright spec drives the story stages (ideation, story, screenplay)"
   - text: "Other tabs show \"Coming Soon\" placeholders"
     met: false
-    reason: "retired — those tabs shipped as the visual, audio, edit-suite and publish routes"
+    reason: "retired — those tabs shipped as the visual, audio, edit-suite and publish routes; the edit suite was retired in FILM-607"
   - text: "Tabs unlock based on episode status"
     met: true
     evidence: null

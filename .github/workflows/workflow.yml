@@ -5,6 +5,11 @@ on:
   # Every pull request, not only those into main: a PR stacked on another
   # feature branch showed "no checks reported" until it was retargeted.
   pull_request:
+# CI minutes are rationed: a newer push to the same PR cancels the older run.
+# Runs on main are never cancelled, so every merge gets a complete run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   typescript:
     name: ʦ TypeScript
@@ -396,7 +401,9 @@ jobs:
         shard: [1, 2, 3, 4, 5]
     timeout-minutes: 45
     runs-on: ubuntu-latest
-    if: ${{ vars.ENABLE_E2E_JOB == 'true' }}
+    # CI minutes are rationed: the E2E mutation guards run only on pushes to
+    # main (after a merge), not on every PR push. PRs still run ⚫️ Test.
+    if: ${{ vars.ENABLE_E2E_JOB == 'true' && github.event_name == 'push' }}
     env:
       DO_NOT_TRACK: 1
       # The server reads ClickHouse, unlike ⚫️ Test: the evidence specs seed
@@ -640,6 +647,15 @@ jobs:
         run: pnpm --filter web build:test
         env:
           NODE_OPTIONS: --max-old-space-size=4096
+
+      # KB-58: the build decides what is a server action. Every action it
+      # registered must be an enhanceAction export, and no function that
+      # returns a secret may be registered at all.
+      - name: Server actions are all wrapped (KB-58)
+        working-directory: packages/next
+        run: npx vitest run __tests__/action-manifest.guard.test.ts
+        env:
+          ACTION_MANIFEST: ${{ github.workspace }}/apps/web/.next/server/server-reference-manifest.json
 
       # NODE_ENV=test, via the script, so .env.test is what the server reads.
       # Starting it with a bare `next start` after a `build:test` loads

@@ -10,7 +10,6 @@ import {
   ListOrdered,
   Lock,
   Music,
-  Scissors,
   Share2,
 } from 'lucide-react';
 
@@ -66,13 +65,6 @@ const STORY_TABS: TabConfig[] = [
 
 const POST_TABS: TabConfig[] = [
   {
-    id: 'edit-suite',
-    label: 'Edit Suite',
-    icon: Scissors,
-    path: 'edit-suite',
-    studioMode: 'post',
-  },
-  {
     id: 'publish',
     label: 'Publish',
     icon: Share2,
@@ -101,7 +93,6 @@ function getTabUnlockState(
     screenplay: hasStoryData, // Unlocked when story exists
     'shot-list': hasScreenplayData, // Unlocked when screenplay exists
     audio: hasShotList, // Unlocked when shot list exists
-    'edit-suite': hasShotList, // Unlocked when shot list exists
     publish: hasShotList, // Unlocked when shot list exists (user can upload video directly)
   };
 }
@@ -128,7 +119,6 @@ export function EpisodeWorkspaceTabs() {
     if (pathname.endsWith('/screenplay')) return 'screenplay';
     if (pathname.endsWith('/visual-studio')) return 'shot-list';
     if (pathname.endsWith('/audio-studio')) return 'audio';
-    if (pathname.endsWith('/edit-suite')) return 'edit-suite';
     if (pathname.endsWith('/publish')) return 'publish';
     return 'ideation';
   };
@@ -144,6 +134,7 @@ export function EpisodeWorkspaceTabs() {
       return (
         <div
           key={tab.id}
+          data-test={`episode-tab-${tab.id}`}
           className="flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-400 dark:text-gray-500"
           title={`Complete previous steps to unlock ${tab.label}`}
         >
@@ -157,6 +148,8 @@ export function EpisodeWorkspaceTabs() {
       <Link
         key={tab.id}
         href={`${basePath}/${tab.path}`}
+        data-test={`episode-tab-${tab.id}`}
+        aria-current={isActive ? 'page' : undefined}
         className={cn(
           'flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200',
           isActive

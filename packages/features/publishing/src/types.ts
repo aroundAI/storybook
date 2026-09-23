@@ -1,15 +1,10 @@
 /**
  * Platform connection types for managing OAuth connections to publishing platforms
  */
+import type { Platform } from './lib/platforms';
 import type { AnalyticsAccess } from './oauth/analytics-scopes';
 
-export type PlatformType =
-  | 'youtube'
-  | 'tiktok'
-  | 'instagram'
-  | 'facebook'
-  | 'twitter'
-  | 'linkedin';
+export type PlatformType = Platform;
 
 export type ConnectionStatus = 'active' | 'expired' | 'error' | 'disconnected';
 

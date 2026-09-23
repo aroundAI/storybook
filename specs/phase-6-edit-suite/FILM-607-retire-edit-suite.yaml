@@ -1,0 +1,105 @@
+spec_id: "FILM-607"
+title: "Retire the Edit Suite"
+phase: 6
+phase_name: "Edit Suite"
+category: feature
+status: PARTIAL
+audited: "2026-09-23"
+effort: M
+dependencies:
+  - spec_id: "KB-28"
+    note: "only if #313 merges first — then this spec also takes `EXPORT_UPLOAD_BUCKET` out of the presign route's allowlist; none for the rest"
+  - spec_id: "KB-27"
+    note: "only if #316 merges first — then this spec also removes `batch_assemble_edit_project` from `definer-functions-inventory.test.sql`"
+summary: >
+  The owner decided on 2026-09-23 to sunset the whole Edit Suite: it is barely used,
+  a dedicated editor does the job better, and any future editor will be redesigned from
+  scratch rather than restored. This spec removes everything Edit-Suite-specific — the
+  episode tab and route, `@kit/edit-suite`, the render worker and its SQS queues, the
+  collaborative-editing WebSocket messages and the five Edit Suite database functions —
+  and closes the live cross-tenant write in `batch_assemble_edit_project` (KB-40) first,
+  in a small stop-gap PR. The edit tables and their rows are kept, read-only, under the
+  owner's keep-until-asked rule unless the owner decides otherwise. Exploration found the
+  feature has never persisted a user's edit (KB-62), never rendered a video (KB-32) and
+  never uploaded a Browser Export (the upload path names the edit project, which the
+  presign route refuses), so nothing a user made in it exists outside the edit tables.
+acceptance_criteria:
+  - text: "Stop-gap (PR A): EXECUTE on all five Edit Suite functions revoked from `public`, `anon` and `authenticated`; pgTAP shows a stranger's `batch_assemble_edit_project` naming the owner refused with 42501 and the victim's edit project unchanged — red on the pre-migration schema"
+    met: true
+    evidence: "`apps/web/supabase/migrations/20260923075426_film607-revoke-edit-suite-functions.sql`; `apps/web/supabase/tests/database/edit-suite-retired.test.sql` P1–P4, 16/16 green; on main's schema 4 of 16 fail and the stranger's call replaced the victim's edit project; guard `tooling/mutation-guards/film-607.json` P1 RED"
+  - text: "Stop-gap (PR A): the episode workspace shows Ideation, Story, Screenplay, Shot List, Audio and Publish and no Edit Suite tab; `/edit-suite` renders the not-found page; Playwright spec with screenshots, red on `main`"
+    met: true
+    evidence: "`apps/e2e/tests/episodes/workspace-tabs.spec.ts` W1–W3 green on dev and on three cold starts of a sandboxed `build:test`/`start:test` production build; W1 and W3 red with the tab and page restored; `…/_components/__tests__/episode-workspace-tabs.test.tsx` and its unit guard W1 RED"
+  - text: "`packages/features/edit-suite/` and `apps/web/lambda/render-worker/` deleted; `@kit/edit-suite` gone from `apps/web/package.json` and `pnpm-lock.yaml` (with `mp4box`)"
+    met: true
+    evidence: "PR B: 58 + 3 files deleted; `apps/web/package.json` and `pnpm-lock.yaml` (61 lines, removals only, `mp4box` included); `pnpm typecheck` 47/47 tasks"
+  - text: "`sst.config.ts` has no `StorybookRenderDLQ`, `StorybookRenderQueue`, render worker, `renderQueue` link, `RENDER_QUEUE_URL` or `renderQueue.arn`, and no `ffmpeg-static`"
+    met: true
+    evidence: "PR B: `sst.config.ts` (101 lines out); G1 scans it for every name listed"
+  - text: "`apps/web/websocket/default.ts` has no `edit-operation` or `cursor-update` case; its tests stay green"
+    met: true
+    evidence: "PR B: both cases removed (131 lines); `pnpm --filter web test` 42 files, 818 tests green"
+  - text: "The five functions are dropped; `edit_projects`, `edit_tracks`, `edit_clips`, `edit_keyframes`, `edit_transitions` and `dialogue_sync_groups` keep their rows and are read-only to `authenticated` (or dropped, if the owner decides so — Decision D3); pgTAP proves it, including that deleting an episode or a shot still cascades"
+    met: true
+    evidence: "`apps/web/supabase/migrations/20260923082656_film607-retire-edit-suite.sql`; `edit-suite-retired.test.sql` R1–R6, 24/24 green, red on part A's schema; guards R1, R2 (grant) and R2 (policy) RED"
+  - text: "`master_video` assets, `episodes.master_video_asset_id` and every storage object are untouched"
+    met: true
+    evidence: "No storage statement in either migration; pgTAP R7 (type still accepted, `episodes.master_video_asset_id` kept)"
+  - text: "A repo-scan guard fails if any retired name reappears in `apps/`, `packages/` or `sst.config.ts` (migration history excepted); red on `main` naming every file; entries in `tooling/mutation-guards/film-607.json` seen RED"
+    met: true
+    evidence: "`apps/web/test/film-607-edit-suite-retired.test.ts` red before the removal (13 files named), green after; unit guards G1 and W1 RED"
+  - text: "Types regenerated; `pnpm typecheck` (including the lambda config), lint, unit tests, pgTAP and a sandboxed production build green; the build has no `edit-suite` route or server action"
+    met: true
+    evidence: "Types regenerated (only the five functions leave); typecheck, lint, unit, full pgTAP and a sandboxed `build:test` green; the build's route and server-reference manifests have no `edit-suite` entry"
+  - text: "FILM-601 and FILM-602 RETIRED with a `retirement:` block; PHASE-14 marked retired; KB-32, KB-40, KB-62, KB-64, KB-65, KB-67, KB-68 and KB-69 resolved by removal; KB-47's render producer struck; INDEX.md rows and counts updated"
+    met: false
+    reason: "all but one: KB-47's entry exists only on #315 (KB-31), so its render-producer bullet cannot be struck here. The shared-record edits themselves (FILM-CC-04, INDEX.md) are in the lead's batch records PR"
+remaining:
+  - criterion: "KB-47's render-producer bullet struck"
+    reason: "KB-47's entry is added by #315 (KB-31), not yet merged; strike `render-actions.ts` from it after that PR merges"
+    closed_by: "KB-47"
+open_questions: []
+feature:
+  database:
+    tables: ["edit_projects", "edit_tracks", "edit_clips", "edit_keyframes", "edit_transitions", "dialogue_sync_groups"]
+    columns_added: []
+    functions_removed:
+      - "batch_assemble_edit_project — granted to authenticated; the KB-40 hole"
+      - "batch_save_edit_project — not granted (KB-62)"
+      - "create_edit_project_with_tracks — not granted, no caller (KB-62)"
+      - "split_edit_clip — not granted, no caller (KB-62)"
+      - "get_project_id_for_edit_project — not granted, no caller; no policy uses it"
+  queries: []
+  actions:
+    - {name: "23 server actions in packages/features/edit-suite/src/server/ (edit project, track, clip, transition, keyframe, batch, media bin, render)", file: "packages/features/edit-suite/src/server/actions.ts"}
+  ui:
+    - {component: "Edit Suite tab", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx"}
+    - {component: "EditSuitePage", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/edit-suite/page.tsx"}
+  provider_integration: null
+  infrastructure_removed:
+    - "sst.config.ts: StorybookRenderDLQ, StorybookRenderQueue + redrive, renderQueue.subscribe (render worker, ffmpeg-static), renderQueue in the web link, RENDER_QUEUE_URL, renderQueue.arn in sqs:SendMessage"
+    - "apps/web/lambda/render-worker/ (index.ts, handlers/ffmpeg-render.ts, utils/r2-storage.ts)"
+    - "apps/web/websocket/default.ts: the edit-operation and cursor-update cases"
+  kept:
+    - "the six edit tables and their rows, read-only (default; Decision D3)"
+    - "assets.type 'master_video', episodes.master_video_asset_id and every master_video row — shared with the Publish page"
+    - "every storage object"
+    - "compilations (no code uses it); its edit_project_id column stays while edit_projects stays"
+notes: |
+  The inventory, the owner decisions and the ordered plan are in the
+  engineering design document, `specs/plans/FILM-607-edd.md`. In short:
+
+  | Step | PR | What |
+  |---|---|---|
+  | 1 | A (stop-gap) | Revoke EXECUTE on the five functions; remove the tab and the route |
+  | 2 | B | Delete the package, the render worker, the queues and the WebSocket cases; drop the functions; tables read-only |
+  | 3 | B | Records: FILM-601/602 RETIRED, PHASE-14 retired, KB entries resolved by removal |
+
+  Nothing a user sees changes except the missing tab. What was measured:
+
+  | Claim | Evidence |
+  |---|---|
+  | No edit is ever saved | KB-62's reproduction: `batch_save_edit_project` is not granted, and three further defects follow it |
+  | No server render ever finished | KB-32: the worker's first query selects columns that don't exist (42703) |
+  | No Browser Export was ever uploaded | `export-dialog.tsx:91-92` builds `projects/<edit project id>/…`; the presign route looks that id up in `projects` and returns 403 |
+  | No other feature reads the Edit Suite | `git grep` for the package, tables, functions, route and queue outside the package: only the tab, the page, `apps/web/package.json`, the render worker and the migrations |

@@ -1,8 +1,11 @@
-'use server';
-
+/**
+ * A library, not a `'use server'` module (KB-58): every export of one of
+ * those is an endpoint anyone can call. No `server-only` either: the LLM
+ * worker Lambda imports this, and `server-only` throws outside Next.
+ */
 import { z } from 'zod';
 
-import type { LLMProvider } from '@kit/llm';
+import type { LLMProvider, LLMUsageEvent } from '@kit/llm';
 import { LLMError, createLLMClient, logLLMUsage } from '@kit/llm';
 import { getLogger } from '@kit/shared/logger';
 
@@ -189,6 +192,28 @@ function extractJSON<T = unknown>(
     }
     throw error;
   }
+}
+
+/**
+ * Write one llm_usage_analytics row through the service-role client.
+ *
+ * The table accepts writes from the service role only (KB-52), so this never
+ * takes a client from the caller: a signed-in user's client would be refused,
+ * and logLLMUsage swallows that error, so the row would vanish unnoticed.
+ * The Lambda-safe client reads its env vars directly, avoiding the
+ * server-only import that crashes in Lambda.
+ */
+async function recordUsage(event: LLMUsageEvent) {
+  const { createLambdaAdminClient } = await import(
+    '@kit/supabase/lambda-admin-client'
+  );
+  const client = createLambdaAdminClient();
+
+  if (!client) {
+    throw new Error('Service-role client unavailable: LLM usage not logged');
+  }
+
+  await logLLMUsage(client, event);
 }
 
 /**
@@ -645,25 +670,11 @@ export async function executeLLM<T = unknown>(
       data = fullData as T;
     }
 
-    // 11. Log analytics (success) - use injected client or dynamic import for Next.js
+    // 11. Log analytics (success), always as the service role (recordUsage).
     // IMPORTANT: entire block (including client creation) is inside try/catch so that
-    // missing env vars (e.g. NEXT_PUBLIC_SUPABASE_PUBLIC_KEY in Lambda) or
-    // server-only import errors never crash the LLM result.
+    // missing env vars or import errors never crash the LLM result.
     try {
-      let client;
-      if (config.supabaseClient) {
-        client = config.supabaseClient;
-      } else {
-        // Lambda-safe: build client directly from env vars.
-        // Avoids server-only import (getSupabaseServerAdminClient) which crashes in Lambda.
-        // NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are always set in Lambda.
-        const { createLambdaAdminClient } = await import(
-          '@kit/supabase/lambda-admin-client'
-        );
-        client = createLambdaAdminClient() ?? undefined;
-      }
-
-      await logLLMUsage(client, {
+      await recordUsage({
         accountId: config.context.accountId,
         userId: config.context.userId,
         templateSlug: config.templateSlug,
@@ -722,19 +733,9 @@ export async function executeLLM<T = unknown>(
       `LLM execution failed: ${config.templateSlug}`,
     );
 
-    // Log analytics (failure) - client creation also inside try/catch (same reason as above)
+    // Log analytics (failure) - also inside try/catch (same reason as above)
     try {
-      let failureClient;
-      if (config.supabaseClient) {
-        failureClient = config.supabaseClient;
-      } else {
-        const { createLambdaAdminClient } = await import(
-          '@kit/supabase/lambda-admin-client'
-        );
-        failureClient = createLambdaAdminClient() ?? undefined;
-      }
-
-      await logLLMUsage(failureClient, {
+      await recordUsage({
         accountId: config.context.accountId,
         userId: config.context.userId,
         templateSlug: config.templateSlug,

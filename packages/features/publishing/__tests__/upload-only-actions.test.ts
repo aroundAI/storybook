@@ -5,7 +5,7 @@ import {
   formatDescriptionForPlatform,
   generateDefaultTags,
   sanitizeFilename,
-} from '../src/server/upload-only-actions';
+} from '../src/lib/upload-only-format';
 
 describe('Upload Only Actions - Helper Functions', () => {
   describe('extractContentId', () => {

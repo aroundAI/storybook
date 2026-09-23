@@ -1,0 +1,75 @@
+{
+  "feature": "KB-15",
+  "mutations": [
+    {
+      "name": "X falls out of refresh again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "    case 'twitter':\n      return refreshXToken(refreshToken, credentials);\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "refreshes an expired X connection with Basic auth"
+    },
+    {
+      "name": "X refresh sent without the client's Basic auth",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "      Authorization: xClientAuthorization(oauthApp),\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "refreshes an expired X connection with Basic auth"
+    },
+    {
+      "name": "X's rotated refresh token is dropped",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "    refreshToken: data.refresh_token,\n    expiresAt: new Date(Date.now() + data.expires_in * 1000),\n",
+      "replace": "    refreshToken: undefined,\n    expiresAt: new Date(Date.now() + data.expires_in * 1000),\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "stores the rotated refresh token, and the next refresh sends it"
+    },
+    {
+      "name": "A refresh whose tokens were not stored goes unlogged",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "    if (persistError) {\n",
+      "replace": "    if (false && persistError) {\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "logs the lost rotated refresh token"
+    },
+    {
+      "name": "The cron job waits for the 5-minute buffer again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/jobs/refresh-expiring-tokens.ts",
+      "find": "      const result = await ensureValidToken(conn.id, false, {\n        refreshWithinMs: CRON_REFRESH_WINDOW_MS,\n      });\n",
+      "replace": "      const result = await ensureValidToken(conn.id);\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "refreshes every connection it selects"
+    },
+    {
+      "name": "PLATFORMS drifts from the platform_connections CHECK",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/platforms.ts",
+      "find": "  'twitter',\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/platforms.test.ts",
+      "pattern": "is exactly the set the platform_connections CHECK allows"
+    },
+    {
+      "name": "The publish worker hands out a token the app would refresh first",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/token.ts",
+      "find": "  if (expiresAt && isWithinRefreshWindow(expiresAt, now)) {\n",
+      "replace": "  if (expiresAt && expiresAt <= now) {\n",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/token.test.ts",
+      "pattern": "refuses an X token the app would refresh first"
+    }
+  ]
+}

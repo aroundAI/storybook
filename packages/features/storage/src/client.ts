@@ -6,7 +6,12 @@
  */
 
 export {
+  requestPresignedUpload,
   uploadWithPresignedUrl,
   uploadAvatar,
   uploadProjectCover,
+} from './client/presigned-upload';
+export type {
+  PresignRequest,
+  PresignedUpload,
 } from './client/presigned-upload';

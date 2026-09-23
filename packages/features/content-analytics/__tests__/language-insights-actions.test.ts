@@ -22,9 +22,22 @@ vi.mock('@kit/shared/logger', () => ({
   getLogger: async () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }),
 }));
 
-vi.mock('@kit/supabase/server-client', () => ({
-  getSupabaseServerClient: () => ({}),
-}));
+// A writer of the project (KB-31): the project row and `can_write_project`
+vi.mock('@kit/supabase/server-client', () => {
+  const found = {
+    maybeSingle: async () => ({
+      data: { id: 'p', account_id: 'account-1' },
+      error: null,
+    }),
+  };
+
+  return {
+    getSupabaseServerClient: () => ({
+      from: () => ({ select: () => ({ eq: () => found }) }),
+      rpc: async () => ({ data: true, error: null }),
+    }),
+  };
+});
 
 vi.mock('@kit/supabase/require-user', () => ({
   requireUser: async () => ({ data: { id: 'user-1' }, error: null }),

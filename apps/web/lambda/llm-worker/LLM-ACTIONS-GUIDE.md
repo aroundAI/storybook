@@ -113,6 +113,16 @@ export const myNewAction = enhanceAction(
     const client = getSupabaseServerClient();
     const { data: user } = await requireUser(client);
 
+    // The worker runs on the service-role key and trusts every id in the
+    // payload, so authorise the target here, as the user (KB-31). A target
+    // is the only thing queueLlmJob accepts; it carries the project's
+    // account, which queueLlmJob stamps as `accountId`.
+    const target = await authorizeEpisodeTarget(client, data.episodeId); // '@kit/prompt-engine/llm-job-target'
+
+    if (!target) {
+      throw new ActionRefusal('Episode not found'); // same words for "missing" and "not yours"
+    }
+
     // Validation and pre-processing here...
 
     // Check environment
@@ -125,9 +135,9 @@ export const myNewAction = enhanceAction(
       await queueLlmJob({
         jobType: 'my-new-action', // Must match switch case
         userId: user.id,
+        target,
         payload: {
           episodeId: data.episodeId,
-          accountId,
           userId: user.id,
           // Include ALL data handler needs
         },

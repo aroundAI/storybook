@@ -1,0 +1,74 @@
+{
+  "feature": "KB-58",
+  "mutations": [
+    {
+      "name": "A library module becomes 'use server' again (decrypt is an endpoint)",
+      "kind": "unit",
+      "file": "packages/shared/src/crypto/encryption.ts",
+      "find": "import 'server-only';",
+      "replace": "'use server';\n\nimport 'server-only';",
+      "cwd": "packages/next",
+      "test": "__tests__/use-server-exports.test.ts",
+      "pattern": "exports only actions that check their caller"
+    },
+    {
+      "name": "Any wrapper is accepted as an action wrapper",
+      "kind": "unit",
+      "file": "packages/next/__tests__/support/use-server-audit.ts",
+      "find": "    if (callee !== 'enhanceAction') {",
+      "replace": "    if (callee === '') {",
+      "cwd": "packages/next",
+      "test": "__tests__/use-server-exports.test.ts",
+      "pattern": "refuses an unknown wrapper"
+    },
+    {
+      "name": "auth: false is accepted without the PUBLIC_ACTIONS allowlist",
+      "kind": "unit",
+      "file": "packages/next/__tests__/support/use-server-audit.ts",
+      "find": "    if (isAuthFalse(init.arguments[1]) && !PUBLIC_ACTIONS[`${file}#${name}`]) {",
+      "replace": "    if (isAuthFalse(init.arguments[1]) && !name) {",
+      "cwd": "packages/next",
+      "test": "__tests__/use-server-exports.test.ts",
+      "pattern": "refuses auth: false outside PUBLIC_ACTIONS"
+    },
+    {
+      "name": "A wrapped secret-returning function passes the manifest guard",
+      "kind": "unit",
+      "file": "packages/next/__tests__/support/use-server-audit.ts",
+      "find": "    if (NEVER_REGISTERED.has(entry.exportedName)) {",
+      "replace": "    if (NEVER_REGISTERED.has('')) {",
+      "cwd": "packages/next",
+      "test": "__tests__/action-manifest.guard.test.ts",
+      "pattern": "fails a never-register name"
+    },
+    {
+      "name": "refreshAuthSession requires an aal2 user (breaks MFA setup)",
+      "kind": "unit",
+      "file": "packages/features/accounts/src/server/personal-accounts-server-actions.ts",
+      "find": "  { auth: false },",
+      "replace": "  {},",
+      "cwd": "packages/features/accounts",
+      "test": "__tests__/refresh-auth-session.test.ts"
+    },
+    {
+      "name": "createFilmProjectAction runs without a session",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/studio/projects/new/_lib/server/create-film-project.action.ts",
+      "find": "        accountSlug,\n      },\n    };\n  },\n  {},",
+      "replace": "        accountSlug,\n      },\n    };\n  },\n  { auth: false },",
+      "cwd": "apps/web",
+      "test": "app/home/[account]/studio/projects/new/__tests__/create-film-project.action.test.ts",
+      "pattern": "createFilmProjectAction sends a caller without a session"
+    },
+    {
+      "name": "updateProjectCoverImageAction runs without a session",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/studio/projects/new/_lib/server/create-film-project.action.ts",
+      "find": "    return { ok: true, data: null };\n  },\n  {},",
+      "replace": "    return { ok: true, data: null };\n  },\n  { auth: false },",
+      "cwd": "apps/web",
+      "test": "app/home/[account]/studio/projects/new/__tests__/create-film-project.action.test.ts",
+      "pattern": "updateProjectCoverImageAction sends a caller without a session"
+    }
+  ]
+}
