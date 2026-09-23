@@ -1,6 +1,11 @@
 -- ==================================
--- Edit Suite v2 Database Schema
+-- Edit Suite v2 Database Schema — RETIRED (FILM-607, 2026-09-23)
 -- ==================================
+-- The Edit Suite was retired and its code removed. These tables keep their
+-- rows, read-only, until the owner decides (FILM-608 drops them): the read
+-- policies below remain, every write policy and write grant is gone
+-- (migration 20260923082656_film607-retire-edit-suite.sql), and the Edit
+-- Suite's functions are dropped.
 -- Phase 14: In-browser NLE for per-episode video editing
 -- Tables:
 --   edit_projects       — One per episode, stores canvas/render config
@@ -280,28 +285,6 @@ create index if not exists idx_edit_keyframes_clip on public.edit_keyframes(clip
 create index if not exists idx_edit_keyframes_clip_property on public.edit_keyframes(clip_id, property, offset_ms);
 
 -- ==================================
--- Section: RLS Helper Function
--- ==================================
--- Derives the project_id from an edit_project_id by joining through episodes.
--- Used by all RLS policies in this file.
-
-create or replace function public.get_project_id_for_edit_project(p_edit_project_id uuid)
-returns uuid
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select e.project_id
-  from public.episodes e
-  join public.edit_projects ep on ep.episode_id = e.id
-  where ep.id = p_edit_project_id
-  limit 1;
-$$;
-
-comment on function public.get_project_id_for_edit_project is 'Resolves project_id from an edit_project_id for RLS policies';
-
--- ==================================
 -- Section: RLS Policies — edit_projects
 -- ==================================
 
@@ -326,39 +309,6 @@ create policy "edit_projects_read" on public.edit_projects for select
     )
   );
 
-create policy "edit_projects_create" on public.edit_projects for insert
-  to authenticated with check (
-    exists (
-      select 1 from public.episodes e
-      join public.project_members pm on pm.project_id = e.project_id
-      where e.id = edit_projects.episode_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin', 'member')
-    )
-  );
-
-create policy "edit_projects_update" on public.edit_projects for update
-  to authenticated using (
-    exists (
-      select 1 from public.episodes e
-      join public.project_members pm on pm.project_id = e.project_id
-      where e.id = edit_projects.episode_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin', 'member')
-    )
-  );
-
-create policy "edit_projects_delete" on public.edit_projects for delete
-  to authenticated using (
-    exists (
-      select 1 from public.episodes e
-      join public.project_members pm on pm.project_id = e.project_id
-      where e.id = edit_projects.episode_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin')
-    )
-  );
-
 -- ==================================
 -- Section: RLS Policies — edit_tracks
 -- ==================================
@@ -374,42 +324,6 @@ create policy "edit_tracks_read" on public.edit_tracks for select
       join public.project_members pm on pm.project_id = e.project_id
       where ep.id = edit_tracks.edit_project_id
       and pm.user_id = auth.uid()
-    )
-  );
-
-create policy "edit_tracks_create" on public.edit_tracks for insert
-  to authenticated with check (
-    exists (
-      select 1 from public.edit_projects ep
-      join public.episodes e on e.id = ep.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where ep.id = edit_tracks.edit_project_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin', 'member')
-    )
-  );
-
-create policy "edit_tracks_update" on public.edit_tracks for update
-  to authenticated using (
-    exists (
-      select 1 from public.edit_projects ep
-      join public.episodes e on e.id = ep.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where ep.id = edit_tracks.edit_project_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin', 'member')
-    )
-  );
-
-create policy "edit_tracks_delete" on public.edit_tracks for delete
-  to authenticated using (
-    exists (
-      select 1 from public.edit_projects ep
-      join public.episodes e on e.id = ep.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where ep.id = edit_tracks.edit_project_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin')
     )
   );
 
@@ -430,30 +344,6 @@ create policy "dialogue_sync_groups_read" on public.dialogue_sync_groups for sel
     )
   );
 
-create policy "dialogue_sync_groups_create" on public.dialogue_sync_groups for insert
-  to authenticated with check (
-    exists (
-      select 1 from public.edit_projects ep
-      join public.episodes e on e.id = ep.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where ep.id = dialogue_sync_groups.edit_project_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin', 'member')
-    )
-  );
-
-create policy "dialogue_sync_groups_delete" on public.dialogue_sync_groups for delete
-  to authenticated using (
-    exists (
-      select 1 from public.edit_projects ep
-      join public.episodes e on e.id = ep.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where ep.id = dialogue_sync_groups.edit_project_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin')
-    )
-  );
-
 -- ==================================
 -- Section: RLS Policies — edit_clips
 -- ==================================
@@ -470,45 +360,6 @@ create policy "edit_clips_read" on public.edit_clips for select
       join public.project_members pm on pm.project_id = e.project_id
       where t.id = edit_clips.track_id
       and pm.user_id = auth.uid()
-    )
-  );
-
-create policy "edit_clips_create" on public.edit_clips for insert
-  to authenticated with check (
-    exists (
-      select 1 from public.edit_tracks t
-      join public.edit_projects ep on ep.id = t.edit_project_id
-      join public.episodes e on e.id = ep.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where t.id = edit_clips.track_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin', 'member')
-    )
-  );
-
-create policy "edit_clips_update" on public.edit_clips for update
-  to authenticated using (
-    exists (
-      select 1 from public.edit_tracks t
-      join public.edit_projects ep on ep.id = t.edit_project_id
-      join public.episodes e on e.id = ep.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where t.id = edit_clips.track_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin', 'member')
-    )
-  );
-
-create policy "edit_clips_delete" on public.edit_clips for delete
-  to authenticated using (
-    exists (
-      select 1 from public.edit_tracks t
-      join public.edit_projects ep on ep.id = t.edit_project_id
-      join public.episodes e on e.id = ep.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where t.id = edit_clips.track_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin')
     )
   );
 
@@ -532,34 +383,6 @@ create policy "edit_transitions_read" on public.edit_transitions for select
     )
   );
 
-create policy "edit_transitions_create" on public.edit_transitions for insert
-  to authenticated with check (
-    exists (
-      select 1 from public.edit_clips c
-      join public.edit_tracks t on t.id = c.track_id
-      join public.edit_projects ep on ep.id = t.edit_project_id
-      join public.episodes e on e.id = ep.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where c.id = edit_transitions.from_clip_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin', 'member')
-    )
-  );
-
-create policy "edit_transitions_delete" on public.edit_transitions for delete
-  to authenticated using (
-    exists (
-      select 1 from public.edit_clips c
-      join public.edit_tracks t on t.id = c.track_id
-      join public.edit_projects ep on ep.id = t.edit_project_id
-      join public.episodes e on e.id = ep.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where c.id = edit_transitions.from_clip_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin')
-    )
-  );
-
 -- ==================================
 -- Section: RLS Policies — edit_keyframes
 -- ==================================
@@ -580,44 +403,16 @@ create policy "edit_keyframes_read" on public.edit_keyframes for select
     )
   );
 
-create policy "edit_keyframes_create" on public.edit_keyframes for insert
-  to authenticated with check (
-    exists (
-      select 1 from public.edit_clips c
-      join public.edit_tracks t on t.id = c.track_id
-      join public.edit_projects ep on ep.id = t.edit_project_id
-      join public.episodes e on e.id = ep.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where c.id = edit_keyframes.clip_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin', 'member')
-    )
-  );
+-- ==================================
+-- Section: Retired — read-only (FILM-607)
+-- ==================================
 
-create policy "edit_keyframes_update" on public.edit_keyframes for update
-  to authenticated using (
-    exists (
-      select 1 from public.edit_clips c
-      join public.edit_tracks t on t.id = c.track_id
-      join public.edit_projects ep on ep.id = t.edit_project_id
-      join public.episodes e on e.id = ep.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where c.id = edit_keyframes.clip_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin', 'member')
-    )
-  );
+revoke insert, update, delete, truncate, references, trigger
+  on public.edit_projects, public.edit_tracks, public.edit_clips,
+     public.edit_keyframes, public.edit_transitions, public.dialogue_sync_groups
+  from public, anon, authenticated;
 
-create policy "edit_keyframes_delete" on public.edit_keyframes for delete
-  to authenticated using (
-    exists (
-      select 1 from public.edit_clips c
-      join public.edit_tracks t on t.id = c.track_id
-      join public.edit_projects ep on ep.id = t.edit_project_id
-      join public.episodes e on e.id = ep.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where c.id = edit_keyframes.clip_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin')
-    )
-  );
+revoke select
+  on public.edit_projects, public.edit_tracks, public.edit_clips,
+     public.edit_keyframes, public.edit_transitions, public.dialogue_sync_groups
+  from public, anon;
