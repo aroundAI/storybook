@@ -59,7 +59,7 @@ acceptance_criteria:
     reason: "no longer true — neither the async action nor voice-worker calls `increment_account_usage`"
   - text: "`generateDialogueVoiceAction` records cost in generation_jobs table"
     met: false
-    reason: "no longer true — no `generation_jobs` row is created; voice-worker's `markJob*` filter on `reference_type='episode'` (`apps/web/lambda/llm-worker/utils/job-tracking.ts:38`) and match nothing"
+    reason: "no longer true — no `generation_jobs` row is created or updated; voice-worker's `markJob*` calls, which filtered on `reference_type='episode'` and matched nothing, were removed by KB-14 (#309)"
   - text: "`generateDialogueVoiceAction` sets status to 'failed' on error"
     met: true
     evidence: "`apps/web/lambda/voice-worker/voice-generation.ts:283`"
@@ -112,8 +112,8 @@ acceptance_criteria:
     met: true
     evidence: "the key now comes from `external_api_keys` (`apps/web/lambda/voice-worker/voice-generation.ts:184`) and is used only in the request header (`:198`)"
   - text: "TypeScript compiles without errors"
-    met: false
-    reason: "no longer true — KB-14: voice-worker is never typechecked; its `'dialogue_voice_generation'` is not a `GenerationJobType` (`apps/web/lambda/llm-worker/utils/job-tracking.ts:11`)"
+    met: true
+    evidence: "`pnpm typecheck` runs `web`'s `typecheck`, whose second half is `tsc --noEmit -p lambda/tsconfig.json` (`apps/web/package.json:23`); that config includes every worker file (`apps/web/lambda/tsconfig.json:23`) and CI's TypeScript job runs it (`.github/workflows/workflow.yml:45`) — KB-14, #309. Passes on `main` at `b21bd33e` (KB-80), with `@kit/audio-generation`'s own `tsc --noEmit`; `voice-worker/index.ts` and `voice-worker/voice-generation.ts` are in the lambda program. The `'dialogue_voice_generation'` job-tracking calls that were not a `GenerationJobType` were removed there"
   - text: "No ESLint warnings (uses eslint-disable with explanation)"
     met: true
     evidence: "CI run 35779959194 (`main` at `6dfa35a4`): `@kit/audio-generation:lint` and `web:lint` (its `**/*.ts?(x)` glob covers `lambda/`) executed with no output"
@@ -129,7 +129,7 @@ remaining:
     reason: "no `increment_account_usage` call on the live path"
     closed_by: "unassigned"
   - criterion: "Cost recorded in `generation_jobs`; tracking; idempotency key"
-    reason: "no `generation_jobs` row is created; voice-worker's `markJob*` updates filter on `reference_type='episode'` with a line id and match nothing (`apps/web/lambda/llm-worker/utils/job-tracking.ts:38`)"
+    reason: "no `generation_jobs` row is created or updated on the live path. voice-worker's `markJob*` calls, which filtered on `reference_type='episode'` with a line id and matched nothing, were removed by KB-14 (#309); nothing replaced them"
     closed_by: "unassigned"
   - criterion: "Respects `overwriteExisting`"
     reason: "parsed but never read (`apps/web/lambda/voice-worker/voice-generation.ts:36`)"
@@ -137,9 +137,6 @@ remaining:
   - criterion: "Validates the audio buffer before upload"
     reason: "the response body is uploaded unchecked (`apps/web/lambda/voice-worker/voice-generation.ts:222`)"
     closed_by: "unassigned"
-  - criterion: "TypeScript compiles without errors"
-    reason: "voice-worker is outside every tsconfig; `'dialogue_voice_generation'` is not a `GenerationJobType`"
-    closed_by: "KB-14"
 open_questions: []
 notes: |
   ## Checklist structure in the source (added in the YAML conversion)
