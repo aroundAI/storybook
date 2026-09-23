@@ -198,6 +198,7 @@ export function CanonDashboard({
               {events.map((event) => (
                 <div
                   key={event.id}
+                  data-test="canon-event"
                   className="flex items-start gap-2 rounded-lg border border-border/60 bg-card/60 p-2.5"
                 >
                   <EventIcon eventType={event.eventType} />

@@ -330,6 +330,7 @@ export function StoryScreen({
       <>
         {/* Trigger Button - Fixed to right edge */}
         <button
+          data-test="story-sidebar-toggle"
           onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
           className={cn(
             'fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl border border-r-0 border-white/30 bg-card/70 p-3 shadow-lg backdrop-blur-xl transition-all hover:bg-card/90 dark:hover:bg-gray-800/90',
@@ -373,6 +374,7 @@ export function StoryScreen({
                   </div>
                 </button>
                 <button
+                  data-test="story-canon-tab"
                   onClick={() => setSidebarTab('canon')}
                   className={cn(
                     'flex-1 px-4 py-3 text-sm font-medium transition-colors',
