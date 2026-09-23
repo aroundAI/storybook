@@ -20,14 +20,19 @@ const PUBLISH_A = '33333333-3333-3333-3333-333333333333';
 const PUBLISH_X = '44444444-4444-4444-4444-444444444444';
 const DAY = '2026-09-10';
 
-const writers = vi.hoisted(() => ({
-  insertChannelDaily: vi.fn(async () => undefined),
-  insertChannelReachDaily: vi.fn(async () => undefined),
-  insertVideoMetrics: vi.fn(async () => undefined),
-  insertVideoReachDaily: vi.fn(async () => undefined),
-  insertVideoTrafficSources: vi.fn(async () => undefined),
-  isClickHouseEnabled: vi.fn(() => true),
-}));
+const writers = vi.hoisted(() => {
+  const writer = () =>
+    vi.fn(async (_rows: Array<Record<string, unknown>>) => undefined);
+
+  return {
+    insertChannelDaily: writer(),
+    insertChannelReachDaily: writer(),
+    insertVideoMetrics: writer(),
+    insertVideoReachDaily: writer(),
+    insertVideoTrafficSources: writer(),
+    isClickHouseEnabled: vi.fn(() => true),
+  };
+});
 
 const logger = vi.hoisted(() => ({
   info: vi.fn(),
@@ -245,7 +250,11 @@ describe('runReportingIngestJob — the channel residual', () => {
   it('writes the reach residual to channel_reach_daily and never over channel_daily', async () => {
     // Core first, reach second: the order they usually arrive in, and the
     // one where the reach row's zeroes used to erase watch time.
-    deliver('channel_basic_a3', fixture('channel_basic_a3'), '2026-09-12T01:00:00Z');
+    deliver(
+      'channel_basic_a3',
+      fixture('channel_basic_a3'),
+      '2026-09-12T01:00:00Z',
+    );
     deliver(
       'channel_reach_combined_a1',
       fixture('channel_reach_combined_a1'),
@@ -268,9 +277,7 @@ describe('runReportingIngestJob — the channel residual', () => {
     ]);
 
     expect(writers.insertChannelReachDaily).toHaveBeenCalledTimes(1);
-    const [reachResidual] = writers.insertChannelReachDaily.mock.calls[0]! as [
-      Array<Record<string, unknown>>,
-    ];
+    const [reachResidual] = writers.insertChannelReachDaily.mock.calls[0]!;
     expect(reachResidual).toHaveLength(1);
     expect(reachResidual[0]).toMatchObject({
       connection_id: CONNECTION,
@@ -297,7 +304,11 @@ describe('runReportingIngestJob — the channel residual', () => {
       ['vidA', PUBLISH_A],
       ['vidX', PUBLISH_X],
     ]);
-    deliver('channel_basic_a3', fixture('channel_basic_a3'), '2026-09-12T01:00:00Z');
+    deliver(
+      'channel_basic_a3',
+      fixture('channel_basic_a3'),
+      '2026-09-12T01:00:00Z',
+    );
     deliver(
       'channel_reach_combined_a1',
       fixture('channel_reach_combined_a1'),
@@ -338,7 +349,7 @@ describe('runReportingIngestJob — the channel residual', () => {
 
     // Header-only is YouTube's "no data that day" — not a measured zero.
     const rows = writers.insertChannelDaily.mock.calls.flatMap(
-      (call) => call[0] as unknown[],
+      ([written]) => written,
     );
     expect(rows).toEqual([]);
     expect(watermarkOf('channel_basic_a3')).toBe('2026-09-12T01:00:00Z');
@@ -351,7 +362,11 @@ describe('runReportingIngestJob — while ClickHouse is off', () => {
   // state discards it for good once YouTube's retention runs out.
   it('ensures the jobs but downloads nothing and holds every watermark', async () => {
     writers.isClickHouseEnabled.mockReturnValue(false);
-    deliver('channel_basic_a3', fixture('channel_basic_a3'), '2026-09-12T01:00:00Z');
+    deliver(
+      'channel_basic_a3',
+      fixture('channel_basic_a3'),
+      '2026-09-12T01:00:00Z',
+    );
 
     const result = await runReportingIngestJob();
 
@@ -396,9 +411,21 @@ describe('runReportingIngestJob — the watermark', () => {
   });
 
   it('advances past a group once the whole group is in the batch, report by report', async () => {
-    deliver('channel_basic_a3', fixture('channel_basic_a3'), '2026-09-12T01:00:00Z');
-    deliver('channel_basic_a3', fixture('channel_basic_a3'), '2026-09-12T01:00:00Z');
-    deliver('channel_basic_a3', fixture('channel_basic_a3'), '2026-09-13T01:00:00Z');
+    deliver(
+      'channel_basic_a3',
+      fixture('channel_basic_a3'),
+      '2026-09-12T01:00:00Z',
+    );
+    deliver(
+      'channel_basic_a3',
+      fixture('channel_basic_a3'),
+      '2026-09-12T01:00:00Z',
+    );
+    deliver(
+      'channel_basic_a3',
+      fixture('channel_basic_a3'),
+      '2026-09-13T01:00:00Z',
+    );
 
     await runReportingIngestJob();
 
@@ -412,7 +439,11 @@ describe('runReportingIngestJob — the watermark', () => {
 
   it('reports a failed watermark write instead of ignoring it', async () => {
     db.failWatermarkWrite = true;
-    deliver('channel_basic_a3', fixture('channel_basic_a3'), '2026-09-12T01:00:00Z');
+    deliver(
+      'channel_basic_a3',
+      fixture('channel_basic_a3'),
+      '2026-09-12T01:00:00Z',
+    );
 
     const result = await runReportingIngestJob();
 
@@ -450,7 +481,11 @@ describe('runReportingIngestJob — CTR unit', () => {
 
 describe('runReportingIngestJob — accounting', () => {
   it('logs matched and unmatched counts for every report', async () => {
-    deliver('channel_basic_a3', fixture('channel_basic_a3'), '2026-09-12T01:00:00Z');
+    deliver(
+      'channel_basic_a3',
+      fixture('channel_basic_a3'),
+      '2026-09-12T01:00:00Z',
+    );
     deliver(
       'channel_traffic_source_a3',
       fixture('channel_traffic_source_a3'),

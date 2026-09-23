@@ -226,9 +226,7 @@ describe('report fixtures', () => {
   });
 
   describe('channel_traffic_source_a3', () => {
-    const rows = parseTrafficSourceReport(
-      fixture('channel_traffic_source_a3'),
-    );
+    const rows = parseTrafficSourceReport(fixture('channel_traffic_source_a3'));
     const by = (id: string, source: string) =>
       rows.find((r) => r.youtubeVideoId === id && r.source === source);
 
