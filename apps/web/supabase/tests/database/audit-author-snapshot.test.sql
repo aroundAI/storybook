@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(25);
+select plan(29);
 
 -- FILM-CC-04 KB-1, owner decision 2026-09-22. Deleting a user nulls every
 -- authorship key (authors-deletable.test.sql). Two of those columns are audit
@@ -16,6 +16,7 @@ select plan(25);
 select tests.create_supabase_user('verifier', 'kb1-verifier@storybook.dev');
 select tests.create_supabase_user('forger', 'kb1-forger@storybook.dev');
 select tests.create_supabase_user('stranger', 'kb1-stranger@storybook.dev');
+select tests.create_supabase_user('mfa_writer', 'kb1-mfa-writer@storybook.dev');
 
 select makerkit.authenticate_as('verifier');
 set local role postgres;
@@ -27,28 +28,66 @@ select set_config('snap.forger', tests.get_supabase_uid('forger')::text, true);
 update public.accounts set name = 'Vera Verifier' where id = current_setting('snap.verifier')::uuid;
 update public.accounts set name = 'Fred Forger' where id = current_setting('snap.forger')::uuid;
 update public.accounts set name = 'Sam Stranger' where id = tests.get_supabase_uid('stranger');
+update public.accounts set name = 'Mona Mfa' where id = tests.get_supabase_uid('mfa_writer');
 
 insert into public.accounts_memberships (user_id, account_id, account_role)
-  values (current_setting('snap.forger')::uuid, current_setting('snap.story')::uuid, 'member');
+  values (current_setting('snap.forger')::uuid, current_setting('snap.story')::uuid, 'member'),
+         (tests.get_supabase_uid('mfa_writer'), current_setting('snap.story')::uuid, 'member');
 
 insert into public.projects (id, account_id, name, status)
   values ('d1d1d1d1-0000-4000-8000-000000000001', current_setting('snap.story')::uuid,
           'Snapshot project', 'active');
 
 insert into public.project_members (project_id, user_id, role)
-  values ('d1d1d1d1-0000-4000-8000-000000000001', current_setting('snap.forger')::uuid, 'member');
+  values ('d1d1d1d1-0000-4000-8000-000000000001', current_setting('snap.forger')::uuid, 'member'),
+         ('d1d1d1d1-0000-4000-8000-000000000001', tests.get_supabase_uid('mfa_writer'), 'member');
 
 insert into public.episodes (id, project_id, number, title)
   values ('d1d1d1d1-0000-4000-8000-000000000002', 'd1d1d1d1-0000-4000-8000-000000000001',
           1, 'Snapshot episode');
 
--- First: a member tries to write an event in the name of a user whose
--- account they cannot read. Before KB-17 the policy let a member name any
--- created_by, and this case proved the name still followed the id -- the
--- reason the snapshot trigger is SECURITY DEFINER. Since KB-17 the insert
--- policy pins created_by to the caller, so a member can no longer stage it:
--- the insert itself is refused. (Definer and service-role writers set the
--- author themselves; immutable-events-immutable.test.sql covers them.)
+-- First, before anything else has touched the table: a writer who cannot
+-- read the author's account writes an event, and the name must still be the
+-- author's. That is why the trigger is SECURITY DEFINER -- what a record says
+-- must not depend on who wrote it. Since KB-17 the author is always the
+-- writer, and the one writer who cannot read their own account is one with
+-- MFA enrolled on an aal1 session: `restrict_mfa_accounts` hides every
+-- account from them, their own included.
+--
+-- It has to come first to be able to fail. Postgres keeps an SQL function's
+-- plan for the life of its call site, which here is the transaction: had a
+-- privileged insert run before this one, the lookup would go on reading
+-- accounts without row security and an invoker trigger would pass too.
+select makerkit.authenticate_as('mfa_writer');
+select makerkit.set_mfa_factor();
+
+select is(
+  (select count(*)::int from public.accounts where id = tests.get_supabase_uid('mfa_writer')),
+  0,
+  'Precondition: a writer with MFA on an aal1 session cannot read their own account'
+);
+
+select lives_ok(
+  $$ insert into public.immutable_events
+       (id, project_id, event_type, event_key, established_in, season, episode_number,
+        description, created_by)
+     values ('d1d1d1d1-0000-4000-8000-00000000000b', 'd1d1d1d1-0000-4000-8000-000000000001',
+             'death', 'character:mfa:dead', 'd1d1d1d1-0000-4000-8000-000000000002',
+             1, 1, 'Written on an aal1 session', auth.uid()) $$,
+  'That writer can still add canon: the canon policies do not depend on MFA'
+);
+
+set local role postgres;
+select is(
+  (select created_by_name from public.immutable_events where id = 'd1d1d1d1-0000-4000-8000-00000000000b'),
+  'Mona Mfa',
+  'The name is the author''s, even when the writer cannot read that account'
+);
+
+-- Next: a member tries to write an event in someone else's name. Before
+-- KB-17 the policy allowed it, and this was the case that staged the
+-- definer check above. Since KB-17 the insert policy pins created_by to the
+-- caller, so the insert itself is refused.
 select makerkit.authenticate_as('forger');
 
 select throws_ok(
@@ -302,6 +341,24 @@ select is(
   (select created_by_name from public.immutable_events where id = 'd1d1d1d1-0000-4000-8000-000000000008'),
   null,
   'An empty display name is stored as no name'
+);
+
+-- KB-17 refuses every update, so the name's update rule is reached only by
+-- the path its migration documents: a backfill that disables the refusal
+-- trigger. Even there the name follows the id, never the caller.
+set local role postgres;
+alter table public.immutable_events disable trigger immutable_events_refuse_update;
+
+update public.immutable_events
+   set created_by = tests.get_supabase_uid('stranger'), created_by_name = 'Somebody Else'
+ where id = 'd1d1d1d1-0000-4000-8000-000000000006';
+
+alter table public.immutable_events enable trigger immutable_events_refuse_update;
+
+select is(
+  (select created_by_name from public.immutable_events where id = 'd1d1d1d1-0000-4000-8000-000000000006'),
+  'Sam Stranger',
+  'A backfill that re-points an event''s author (refusal trigger disabled) gets that author''s name'
 );
 
 select * from finish();
