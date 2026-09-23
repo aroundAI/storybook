@@ -102,6 +102,10 @@ test.describe('Media and report storage (KB-55, KB-56)', () => {
     expect(file.status()).toBe(200);
     expect(file.headers()['content-type']).toBe('audio/mpeg');
 
+    // One upload, then a reload: the library cannot take a second upload
+    // (no Upload button once it is not empty) and does not show a new asset
+    // until a reload. That is KB-79; drive the second submission here once
+    // it is fixed.
     await page.reload();
     await expect(page.getByText(name)).toBeVisible();
 

@@ -2109,6 +2109,35 @@ CSV and PDF (it had stored `text/html`).
 
 ---
 
+## KB-79 — The audio library can take only one upload
+
+**Severity:** Low — the first upload works; every later one has no way in.
+**Found:** KB-55, reproduced by driving the page (Playwright, dev server,
+2026-09-23; screenshot of the library after one upload:
+`$SP/kb55/verify/evidence-green/kb55-02-library-after-upload.png`, attached to
+the KB-55 PR). **Open.**
+
+- The **Upload** button is rendered only in the empty state
+  (`apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/audio-asset-grid.tsx:142`).
+  Once the library holds one asset, the header offers **Generate** alone, so
+  there is no way to upload a second file.
+- The list is held in `useState(initialAssets)`
+  (`…/audio-library/_components/audio-library-client.tsx:31`). The
+  `router.refresh()` after an upload (`:40`) re-renders the server component
+  with new props, which that state ignores, so the new asset appears only
+  after a full reload.
+
+The KB-55 E2E (`apps/e2e/tests/storage/media-storage.spec.ts`) uploads once
+and reloads; it cannot assert the second submission until this is fixed.
+
+### Acceptance criteria
+
+- [ ] An Upload control is available when the library is not empty
+- [ ] A new upload appears in the list without a reload
+- [ ] The E2E drives two uploads in a row and sees both
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
