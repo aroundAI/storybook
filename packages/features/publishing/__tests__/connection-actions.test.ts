@@ -389,7 +389,7 @@ describe('Connection Actions', () => {
   describe('getAccessToken', () => {
     it('should return access token when valid', async () => {
       const { getAccessToken } = await import(
-        '../src/server/connection-actions'
+        '../src/server/connection-tokens'
       );
 
       const result = await getAccessToken('conn-123');

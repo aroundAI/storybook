@@ -18,32 +18,6 @@ export interface GlobalOAuthApp {
   updatedAt: string;
 }
 
-/**
- * Get all global OAuth app credentials (for super admin UI)
- * Returns apps without secrets (secrets are never exposed to client)
- */
-export async function getGlobalOAuthApps(): Promise<GlobalOAuthApp[]> {
-  const client = getSupabaseServerClient();
-
-  const { data, error } = await client
-    .from('oauth_app_credentials')
-    .select('id, platform, client_id, created_at, updated_at')
-    .order('platform');
-
-  if (error) {
-    console.error('Error fetching global OAuth apps:', error);
-    return [];
-  }
-
-  return (data ?? []).map((app) => ({
-    id: app.id,
-    platform: app.platform as GlobalOAuthApp['platform'],
-    clientId: app.client_id,
-    createdAt: app.created_at,
-    updatedAt: app.updated_at,
-  }));
-}
-
 const SaveGlobalOAuthAppSchema = z.object({
   platform: z.enum(['youtube', 'tiktok', 'meta']),
   clientId: z.string().min(1, 'Client ID is required'),

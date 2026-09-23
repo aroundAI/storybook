@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 /**
  * Agent-Orchestrated Story Generation Action

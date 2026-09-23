@@ -363,32 +363,3 @@ function isTokenValid(expiresAt: string | null | undefined): boolean {
   const now = new Date(Date.now() + 5 * 60 * 1000);
   return expiry > now;
 }
-
-/**
- * Validate and optionally refresh a platform token
- * Returns the access token if valid, or an error
- */
-export async function validatePlatformToken(connectionId: string) {
-  return ensureValidToken(connectionId);
-}
-
-/**
- * Get a decrypted access token for a connection
- * Used by publish actions
- */
-export async function getAccessToken(
-  connectionId: string,
-): Promise<
-  | { accessToken: string; error?: never }
-  | { accessToken?: never; error: string }
-> {
-  const result = await ensureValidToken(connectionId);
-
-  if (!result.valid || !result.accessToken) {
-    return {
-      error: result.error ?? 'Token validation failed',
-    };
-  }
-
-  return { accessToken: result.accessToken };
-}

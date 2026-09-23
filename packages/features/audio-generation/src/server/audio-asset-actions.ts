@@ -14,6 +14,7 @@ import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { findOrCreateAudioAsset } from './audio-asset-library';
 import { getProjectElevenLabsApiKey } from './project-audio-settings';
 
 // =============================================================================
@@ -425,44 +426,6 @@ export const incrementAudioAssetUsageAction = enhanceAction(
   },
   { schema: IncrementUsageSchema },
 );
-
-/**
- * Find or create an audio asset
- * Returns existing asset if found, creates new one if not
- */
-export async function findOrCreateAudioAsset(params: {
-  projectId: string;
-  audioType: 'music' | 'sfx';
-  prompt: string;
-  name?: string;
-  provider?: string;
-  metadata?: Record<string, unknown>;
-}): Promise<{ asset: AudioAsset; isNew: boolean }> {
-  // Try to find existing
-  const existing = await findAudioAssetByPromptAction({
-    projectId: params.projectId,
-    prompt: params.prompt,
-    audioType: params.audioType,
-  });
-
-  if (existing) {
-    // Increment usage count
-    await incrementAudioAssetUsageAction({ assetId: existing.id });
-    return { asset: existing, isNew: false };
-  }
-
-  // Create new
-  const newAsset = await createAudioAssetAction({
-    projectId: params.projectId,
-    audioType: params.audioType,
-    prompt: params.prompt,
-    name: params.name,
-    provider: params.provider ?? 'elevenlabs',
-    metadata: params.metadata,
-  });
-
-  return { asset: newAsset, isNew: true };
-}
 
 // =============================================================================
 // Generation Actions

@@ -1,12 +1,11 @@
 /**
- * Publishing server actions
+ * Publishing server actions. Client components import this barrel, so it
+ * holds actions only: a `server-only` library re-exported here would be
+ * bundled for the browser. Reads for server components are in
+ * `@kit/publishing/server/queries` (KB-58).
  */
 
-export {
-  getConnectedPlatformsAction,
-  validatePlatformToken,
-  getAccessToken,
-} from './connection-actions';
+export { getConnectedPlatformsAction } from './connection-actions';
 
 export {
   publishToAllAction,
@@ -18,8 +17,6 @@ export {
 } from './publish-actions';
 
 export {
-  getEpisodePublishingConfigs,
-  getAccountPlatformConnections,
   updateEpisodePublishingConfigsAction,
   togglePublishingConfigAction,
   type EpisodePublishingConfig,
@@ -27,20 +24,17 @@ export {
 } from './episode-publishing-actions';
 
 export {
-  getProjectPublishingConfigs,
   updateProjectPublishingConfigsAction,
   type ProjectPublishingConfig,
 } from './project-publishing-actions';
 
 export {
-  getAccountOAuthApps,
   saveAccountOAuthAppAction,
   deleteAccountOAuthAppAction,
   type AccountOAuthApp,
 } from './account-oauth-actions';
 
 export {
-  getGlobalOAuthApps,
   saveGlobalOAuthAppAction,
   deleteGlobalOAuthAppAction,
   type GlobalOAuthApp,

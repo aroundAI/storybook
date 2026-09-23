@@ -59,8 +59,8 @@ vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => mockSupabaseClient,
 }));
 
-// Mock connection-actions
-vi.mock('../src/server/connection-actions', () => ({
+// Mock connection-tokens
+vi.mock('../src/server/connection-tokens', () => ({
   getAccessToken: vi.fn(() =>
     Promise.resolve({ accessToken: 'mock-access-token' }),
   ),

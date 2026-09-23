@@ -1,5 +1,3 @@
-'use server';
-
 import 'server-only';
 
 import { decrypt } from '@kit/shared/crypto';
