@@ -5,6 +5,11 @@ on:
   # Every pull request, not only those into main: a PR stacked on another
   # feature branch showed "no checks reported" until it was retargeted.
   pull_request:
+# CI minutes are rationed: a newer push to the same PR cancels the older run.
+# Runs on main are never cancelled, so every merge gets a complete run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   typescript:
     name: ʦ TypeScript
@@ -396,7 +401,9 @@ jobs:
         shard: [1, 2, 3, 4, 5]
     timeout-minutes: 45
     runs-on: ubuntu-latest
-    if: ${{ vars.ENABLE_E2E_JOB == 'true' }}
+    # CI minutes are rationed: the E2E mutation guards run only on pushes to
+    # main (after a merge), not on every PR push. PRs still run ⚫️ Test.
+    if: ${{ vars.ENABLE_E2E_JOB == 'true' && github.event_name == 'push' }}
     env:
       DO_NOT_TRACK: 1
       # The server reads ClickHouse, unlike ⚫️ Test: the evidence specs seed
