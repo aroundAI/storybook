@@ -643,11 +643,11 @@ Local stand-ins for every social platform and AI vendor, on local ports: statefu
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| SPIKE-01 | [kling-api-research](./spikes/SPIKE-01-kling-api-research.md) | ✅ DONE | S | - |
-| SPIKE-02 | [ffmpeg-pipeline](./spikes/SPIKE-02-ffmpeg-pipeline.md) | ✅ DONE | M | - |
-| SPIKE-03 | [tiktok-oauth-quirks](./spikes/SPIKE-03-tiktok-oauth-quirks.md) | ✅ DONE | S | - |
-| SPIKE-04 | [video-stitching](./spikes/SPIKE-04-video-stitching.md) | ✅ DONE | M | - |
-| SPIKE-05 | [character-consistency](./spikes/SPIKE-05-character-consistency.md) | ✅ DONE | M | - |
+| SPIKE-01 | [kling-api-research](./spikes/SPIKE-01-kling-api-research.yaml) | ✅ DONE | S | - |
+| SPIKE-02 | [ffmpeg-pipeline](./spikes/SPIKE-02-ffmpeg-pipeline.yaml) | ✅ DONE | M | - |
+| SPIKE-03 | [tiktok-oauth-quirks](./spikes/SPIKE-03-tiktok-oauth-quirks.yaml) | ✅ DONE | S | - |
+| SPIKE-04 | [video-stitching](./spikes/SPIKE-04-video-stitching.yaml) | ✅ DONE | M | - |
+| SPIKE-05 | [character-consistency](./spikes/SPIKE-05-character-consistency.yaml) | ✅ DONE | M | - |
 
 ### Public Sharing (2 docs)
 
