@@ -1547,7 +1547,7 @@ Rolled back.
 **Severity:** High — a cross-tenant write. A user with no access to a project
 can add permanent canon to it and overwrite an episode's canon summary, and
 the forged event carries no author. **Found:** the spec audit of FILM-1002
-(2026-09-23); reproduced by the coordinator. **Fixed** in #KB27PR.
+(2026-09-23); reproduced by the coordinator. **Fixed** in #316.
 
 `commit_canon_changes`
 (`apps/web/supabase/migrations/20260130004332_add_commit_canon_changes_function.sql`)
@@ -1587,7 +1587,7 @@ Rolled back.
   each performs (or why it needs none). KB-11 was the same shape: a
   definer path re-deriving access by hand, or not at all.
 
-### Fix (#KB27PR)
+### Fix (#316)
 
 Design: `specs/plans/KB-27-edd.md`. Reproduced again first, as a second real
 GoTrue user over PostgREST with their own token (not a forged `sub`),
@@ -2242,7 +2242,7 @@ for "no such account" as for "not yours".
 | KB-41 | Any signed-in user could list any project's members with their emails, public or private; `get_project_members` now requires access to the project's account | #319 |
 | KB-18 | No fact could be verified or disputed, by anyone: the update policy refused both states and the actions wrote through it; the actions' account-role check also turned some reviews and deletes into silent no-ops | #314 |
 | KB-28 | Any signed-in user could upload into any project's storage folder, and owners could not replace or delete their own files | #313 |
-| KB-27 | Any signed-in user could write canon into any project, and bulk-reset (deleting the canon of) any account's episodes | #KB27PR |
+| KB-27 | Any signed-in user could write canon into any project, and bulk-reset (deleting the canon of) any account's episodes | #316 |
 | — | A server action after the session ended showed "An unexpected response was received from the server" instead of going to sign-in: middleware redirected the action's request, which Next's client cannot follow. Fixed for every action under `/home` | #264 (round 5) |
 | KB-14 | The lambdas were not typechecked; with them checked, story and screenplay refinements are recorded (the job-type constraint refused them) and the duplicate `verifiedFacts` key is gone | #309 |
 | KB-52 | Every signed-in user could read, rewrite, forge and delete every account's `llm_usage_analytics` rows: a policy with no `TO` clause and `using (true)`; writes are now service-role only, and a pgTAP guard fails any new policy of that shape | #321 |
