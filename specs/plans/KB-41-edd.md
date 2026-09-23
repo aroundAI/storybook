@@ -10,7 +10,16 @@ a read, so it does not need KB-28's `can_write_project`.
 lists this function as "NONE … KB-41, open"), KB-11 (the same "public project
 opens a side door" shape, in analytics), KB-26 (a cross-tenant read of research
 sources), KB-40 and KB-42 (siblings from the same sweep).
-**Status:** plan, awaiting the owner's approval.
+**Status:** approved on 2026-09-23 with every recommended default (§31):
+- D1: the reader needs `has_account_access(project.account_id)`, with or
+  without a project row.
+- D2: those readers see all fields, including emails.
+- D3: outsiders and unknown ids get an empty result.
+- D4: a one-off Playwright run on :3112 with screenshots, and no permanent
+  spec.
+- D5: KB-27 has not merged, so this PR adds only the Fixed-table row, and the
+  entry text stays in KB-27's PR.
+- D6: sibling S-1 (§8 sweep D) is filed as **KB-60** and is not fixed here.
 
 Evidence labels used throughout: **measured** means it was run on the local
 stack on 2026-09-23 and the output is quoted. **By reading** means it was read
