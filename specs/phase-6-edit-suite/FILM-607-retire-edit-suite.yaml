@@ -53,14 +53,11 @@ acceptance_criteria:
     evidence: "Types regenerated (only the five functions leave); typecheck, lint, unit, full pgTAP and a sandboxed `build:test` green; the build's route and server-reference manifests have no `edit-suite` entry"
   - text: "FILM-601 and FILM-602 RETIRED with a `retirement:` block; PHASE-14 marked retired; KB-32, KB-40, KB-62, KB-64, KB-65, KB-67, KB-68 and KB-69 resolved by removal; KB-47's render producer struck; INDEX.md rows and counts updated"
     met: false
-    reason: "all but one: KB-47's entry exists only on #315 (KB-31), so its render-producer bullet cannot be struck here"
+    reason: "all but one: KB-47's entry exists only on #315 (KB-31), so its render-producer bullet cannot be struck here. The shared-record edits themselves (FILM-CC-04, INDEX.md) are in the lead's batch records PR"
 remaining:
   - criterion: "KB-47's render-producer bullet struck"
     reason: "KB-47's entry is added by #315 (KB-31), not yet merged; strike `render-actions.ts` from it after that PR merges"
     closed_by: "KB-47"
-  - criterion: "`EXPORT_UPLOAD_BUCKET` out of the presign allowlist"
-    reason: "It exists only on #313 (KB-28); by the lead's decision #313 keeps it and a follow-up on this spec removes it after #313 merges (G1 already names it)"
-    closed_by: "KB-28"
 open_questions: []
 feature:
   database:
