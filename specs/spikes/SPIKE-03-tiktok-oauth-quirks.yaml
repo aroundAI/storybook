@@ -15,7 +15,7 @@ summary: >
 acceptance_criteria:
   - text: "Working OAuth implementation with token refresh"
     met: true
-    evidence: "packages/features/publishing/src/oauth/tiktok/refresh.ts:18, tested at packages/features/publishing/__tests__/token-refresh.test.ts:235"
+    evidence: "packages/features/publishing/src/lib/token-refresh.ts:380, tested at packages/features/publishing/__tests__/token-refresh.test.ts:391 (the uncalled `oauth/tiktok/refresh.ts` was removed in KB-29)"
   - text: "Successful video upload to TikTok from our app"
     met: false
     reason: "unverified — needs a real upload to a TikTok account (a vendor call, outside this audit); no recorded upload found"

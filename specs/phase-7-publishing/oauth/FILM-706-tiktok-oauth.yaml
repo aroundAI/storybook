@@ -42,8 +42,8 @@ acceptance_criteria:
     met: true
     evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:185`"
   - text: "Refresh token rotation is handled correctly"
-    met: false
-    reason: "not met — refresh reads `account_oauth_apps` (`packages/features/publishing/src/lib/token-refresh.ts:377`); connect uses env keys, and nothing writes that table since 3238dd61 — KB-29"
+    met: true
+    evidence: "KB-29: refresh takes the app credentials from the lookup connect and the callback use (`packages/features/publishing/src/lib/token-refresh.ts:370`, `apps/web/app/api/platforms/connect/tiktok/route.ts:88`, `apps/web/app/api/platforms/callback/tiktok/route.ts:106`); the rotated refresh token is stored (`packages/features/publishing/__tests__/token-refresh.test.ts:391`)"
   - text: "Token refresh updates both access and refresh tokens"
     met: true
     evidence: "`packages/features/publishing/src/lib/token-refresh.ts:206`, `packages/features/publishing/src/lib/token-refresh.ts:213`"
@@ -69,16 +69,19 @@ test_plan:
       met: false
       reason: "not met — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)"
     - text: "Test token refresh with rotation"
-      met: false
-      reason: "not met — `packages/features/publishing/__tests__/token-refresh.test.ts:235` calls `fetch` itself and asserts it; no product code runs"
+      met: true
+      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:391` — drives `ensureValidToken` against a local TikTok listener and asserts the stored rotated token (KB-29)"
     - text: "Test disconnect flow"
       met: false
       reason: "not met — no test found"
   e2e: []
 remaining:
-  - criterion: "Refresh token rotation is handled correctly"
-    reason: "Refresh takes the app credentials from `account_oauth_apps` (`packages/features/publishing/src/lib/token-refresh.ts:377`), but TikTok connect uses `TIKTOK_CLIENT_KEY` (`apps/web/app/api/platforms/connect/tiktok/route.ts:87`) and no page has written that table since 3238dd61 (2026-01-21). An account without a row from before then fails its first refresh and is marked inactive. The test that should catch it mocks the lookup (`packages/features/publishing/__tests__/token-refresh.test.ts:55`)"
-    closed_by: "KB-29"
+  - criterion: "Test PKCE code verifier generation; Test code challenge generation"
+    reason: "Every acceptance criterion is met; these unit tests are not written"
+    closed_by: "unassigned"
+  - criterion: "Test OAuth flow with mocked TikTok endpoints; Test disconnect flow"
+    reason: "Only the connect failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`); the success flow and disconnect are not"
+    closed_by: "unassigned"
 open_questions:
   - "Should we support TikTok for Business accounts? (post-MVP)"
   - "Should we use union_id for cross-app identification? (future)"
