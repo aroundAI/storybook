@@ -446,6 +446,8 @@ Red-before-green: each guard is reverted in isolation (bucket insert, each polic
 | Playwright, green | `media-storage` 3/3, `project-assets-upload` (KB-28) 4/4, `raw-export-evidence` (scheduled report through `storeReport`) 1/1 |
 | Probe re-run (`$SP/kb55/probes.mjs`) | B2, B3, B4 (audio, audio-assets) 404 → **200**; R4 (personal report) 403 → **200**; R11 (`text/html` into reports) 200 → **415 invalid_mime_type**; R5–R10 unchanged; B1 (`videos`) still 404, and nothing writes it any more |
 
+**After rebasing onto `8a56f937`** (under the team lock helper): pgTAP file 28/28; full suite 43 files, 623 tests, all pass; typegen no diff; Playwright on a dev server 8/8 (`media-storage` 3, `project-assets-upload` 4, `raw-export-evidence` 1); `pnpm typecheck` 28/28; web unit suite 43 files, 826 tests. **Production build** (`NODE_ENV=test next build`, then `next start` with `VENDOR_SANDBOX=1` and the network guard, before the rebase): `media-storage` 3/3, `project-assets-upload` 4/4, `raw-export-evidence` 1/1; the build's route manifest has no `shorts-studio`.
+
 **Not driven:** SFX, music and TTS generation end to end. They need ElevenLabs, which has no sandbox override in `@kit/shared/vendors`, and this ticket must not reach a real vendor. Their storage step is covered by the exact adapter call (S1/S2) and by pgTAP.
 
 ## 27. Production-Build Verification
