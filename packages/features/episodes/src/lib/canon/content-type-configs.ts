@@ -5,8 +5,10 @@
  * Maps each ProjectType to canon management rules, memory strategies,
  * validation behaviors, and LLM role pipelines.
  */
-import type { ProjectType } from '@kit/film-studio-schemas/project';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import {
+  type ProjectType,
+  ProjectTypeSchema,
+} from '@kit/film-studio-schemas/project';
 
 // =============================================================================
 // TYPES
@@ -23,17 +25,6 @@ export interface ContentTypeConfig {
 
   /** Token budget percentage of context window for memory */
   contextWindowPercent: number;
-
-  /** Token budget allocation percentages (must sum to 100) */
-  allocations: {
-    events: number;
-    characters: number;
-    world: number;
-    threads: number;
-    summaries: number;
-    facts?: number;
-    external?: number;
-  };
 
   /** Validation strictness for continuity checks */
   enforcement: 'strict' | 'flexible' | 'none';
@@ -55,21 +46,14 @@ export interface ContentTypeConfig {
 /**
  * Configuration mapping for each project type.
  *
- * Allocation percentages within each config must sum to 100.
- * - `facts` and `external` are only present for types that need them.
+ * Token allocation per category lives in one place, `MEMORY_ALLOCATIONS`
+ * (memory-strategies.ts, FILM-1111).
  */
 export const CONTENT_TYPE_CONFIGS: Record<ProjectType, ContentTypeConfig> = {
   'short-film': {
     memoryHorizon: 10,
     decayFunction: 'exponential',
     contextWindowPercent: 15,
-    allocations: {
-      events: 35,
-      characters: 25,
-      world: 15,
-      threads: 15,
-      summaries: 10,
-    },
     enforcement: 'strict',
     requiresFacts: false,
     requiresExternalContext: false,
@@ -80,13 +64,6 @@ export const CONTENT_TYPE_CONFIGS: Record<ProjectType, ContentTypeConfig> = {
     memoryHorizon: 50,
     decayFunction: 'linear',
     contextWindowPercent: 18,
-    allocations: {
-      events: 35,
-      characters: 25,
-      world: 10,
-      threads: 20,
-      summaries: 10,
-    },
     enforcement: 'strict',
     requiresFacts: false,
     requiresExternalContext: false,
@@ -97,13 +74,6 @@ export const CONTENT_TYPE_CONFIGS: Record<ProjectType, ContentTypeConfig> = {
     memoryHorizon: 3,
     decayFunction: 'none',
     contextWindowPercent: 20,
-    allocations: {
-      events: 30,
-      characters: 30,
-      world: 15,
-      threads: 15,
-      summaries: 10,
-    },
     enforcement: 'strict',
     requiresFacts: false,
     requiresExternalContext: false,
@@ -114,15 +84,6 @@ export const CONTENT_TYPE_CONFIGS: Record<ProjectType, ContentTypeConfig> = {
     memoryHorizon: 5,
     decayFunction: 'topic_match',
     contextWindowPercent: 10,
-    allocations: {
-      events: 15,
-      characters: 10,
-      world: 10,
-      threads: 10,
-      summaries: 10,
-      facts: 25,
-      external: 20,
-    },
     enforcement: 'strict',
     requiresFacts: true,
     requiresExternalContext: true,
@@ -133,14 +94,6 @@ export const CONTENT_TYPE_CONFIGS: Record<ProjectType, ContentTypeConfig> = {
     memoryHorizon: 5,
     decayFunction: 'topic_match',
     contextWindowPercent: 12,
-    allocations: {
-      events: 20,
-      characters: 15,
-      world: 10,
-      threads: 20,
-      summaries: 15,
-      facts: 20,
-    },
     enforcement: 'flexible',
     requiresFacts: true,
     requiresExternalContext: false,
@@ -151,13 +104,6 @@ export const CONTENT_TYPE_CONFIGS: Record<ProjectType, ContentTypeConfig> = {
     memoryHorizon: 1,
     decayFunction: 'none',
     contextWindowPercent: 10,
-    allocations: {
-      events: 20,
-      characters: 40,
-      world: 20,
-      threads: 10,
-      summaries: 10,
-    },
     enforcement: 'flexible',
     requiresFacts: false,
     requiresExternalContext: false,
@@ -168,15 +114,6 @@ export const CONTENT_TYPE_CONFIGS: Record<ProjectType, ContentTypeConfig> = {
     memoryHorizon: 1,
     decayFunction: 'none',
     contextWindowPercent: 5,
-    allocations: {
-      events: 5,
-      characters: 5,
-      world: 5,
-      threads: 5,
-      summaries: 5,
-      facts: 10,
-      external: 65,
-    },
     enforcement: 'strict',
     requiresFacts: true,
     requiresExternalContext: true,
@@ -202,25 +139,40 @@ export function getContentTypeConfig(
   return config;
 }
 
+/** Short display names, e.g. "Memory Horizon: 1 episode (automatic, Ad)". */
+export const PROJECT_TYPE_LABELS: Record<ProjectType, string> = {
+  'short-film': 'Short film',
+  series: 'Series',
+  movie: 'Movie',
+  documentary: 'Documentary',
+  ad: 'Ad',
+  educational: 'Educational',
+  news: 'News',
+};
+
+/** The type a project is treated as when its metadata names none. */
+export const DEFAULT_PROJECT_TYPE: ProjectType = 'series';
+
+export type ProjectTypeSource = 'argument' | 'metadata' | 'default';
+
 /**
- * Get the project type from the project's metadata settings.
- * Falls back to `series` if not set.
+ * Reads the project type from `projects.metadata`, the authoritative field.
+ *
+ * The column is untyped JSONB, so the value is validated rather than cast:
+ * anything outside `ProjectTypeSchema` falls back to `DEFAULT_PROJECT_TYPE`.
  */
-export async function getProjectContentType(
-  projectId: string,
-): Promise<ProjectType> {
-  const client = getSupabaseServerClient();
+export function resolveProjectType(metadata: unknown): {
+  projectType: ProjectType;
+  source: Exclude<ProjectTypeSource, 'argument'>;
+} {
+  const stored =
+    metadata && typeof metadata === 'object' && 'projectType' in metadata
+      ? metadata.projectType
+      : undefined;
 
-  const { data } = await client
-    .from('projects')
-    .select('metadata')
-    .eq('id', projectId)
-    .single();
+  const parsed = ProjectTypeSchema.safeParse(stored);
 
-  const metadata = data?.metadata as
-    | { projectType?: ProjectType }
-    | null
-    | undefined;
-
-  return metadata?.projectType ?? 'series';
+  return parsed.success
+    ? { projectType: parsed.data, source: 'metadata' }
+    : { projectType: DEFAULT_PROJECT_TYPE, source: 'default' };
 }

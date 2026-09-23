@@ -87,7 +87,7 @@ export async function runValidationCheckpoint(
 
   try {
     // 1. Build memory context to get canon data
-    const memoryCtx = await buildMemoryContext({
+    const memoryCtx = await buildMemoryContext(config.supabase, {
       projectId: config.projectId,
       episodeNumber: config.episodeNumber,
     });

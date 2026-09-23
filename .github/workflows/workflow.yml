@@ -229,6 +229,22 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           pnpm --filter @kit/supabase verify
 
+      # FILM-1110: the canon memory builder read two columns that do not
+      # exist, and its unit tests (a fake client) could not see it —
+      # PostgREST's 400 was swallowed into empty sections. This builds a
+      # context per content type against the real server.
+      - name: Verify the canon memory builder against a real PostgREST
+        working-directory: apps/web
+        run: |
+          eval "$(supabase status -o env | sed 's/^/export /')"
+          export NEXT_PUBLIC_SUPABASE_URL="$API_URL"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          export E2E_SUPABASE_URL="$API_URL"
+          export E2E_SUPABASE_ANON_KEY="$ANON_KEY"
+          export E2E_SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          cd "$GITHUB_WORKSPACE"
+          pnpm --filter @kit/episodes verify
+
       # The database half of tooling/mutation-guards: each entry weakens a
       # policy, trigger or constraint inside a pgTAP file's own rolled-back
       # transaction and requires that file to fail. See the unit step.

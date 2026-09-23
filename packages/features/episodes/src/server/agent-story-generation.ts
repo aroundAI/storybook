@@ -14,8 +14,9 @@
 import { z } from 'zod';
 
 import { createTool, runAgent, toolError, toolSuccess } from '@kit/agent';
-import { continuitySkill } from '@kit/episodes/skills';
+import { createContinuitySkill } from '@kit/episodes/skills';
 import { getLogger } from '@kit/shared/logger';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 // =============================================================================
 // TOOLS
@@ -164,7 +165,7 @@ Your task is to generate a high-quality, canon-compliant story for Episode ${inp
 - Style: ${input.contentStyle}
 
 ## Workflow
-1. Call buildMemoryContext(projectId="${input.projectId}", episodeNumber=${input.episodeNumber}) to load the project canon
+1. Call buildMemoryContext(episodeNumber=${input.episodeNumber}) to load the project canon
 2. Call generateStory with the title, logline, duration, and the memory context summary
 3. Call checkContinuity with a plot skeleton derived from the story scenes and characters
 4. If violations exist with severity=error, call generateStory again — include violation corrections in the canonContext parameter
@@ -173,7 +174,12 @@ Your task is to generate a high-quality, canon-compliant story for Episode ${inp
       tools: [generateStoryTool],
 
       // Apply continuity skill: adds buildMemoryContext, checkContinuity, checkSceneContinuity
-      skills: [continuitySkill],
+      skills: [
+        createContinuitySkill({
+          client: getSupabaseServerClient(),
+          projectId: input.projectId,
+        }),
+      ],
 
       maxSteps: 8,
       budgetLimits: {

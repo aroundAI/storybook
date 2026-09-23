@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Settings } from 'lucide-react';
 
 import type { CanonSettings } from '@kit/episodes';
+import { resolveProjectType } from '@kit/episodes/lib';
 import type { ContentStyle, Genre, VideoStyle } from '@kit/film-studio-schemas';
 import {
   getAvailableProjectMembers,
@@ -380,6 +381,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
 
               <CanonSettingsForm
                 projectId={project.id}
+                projectType={resolveProjectType(project.metadata).projectType}
                 currentSettings={
                   (project.metadata as { canon?: CanonSettings } | null)
                     ?.canon ?? null

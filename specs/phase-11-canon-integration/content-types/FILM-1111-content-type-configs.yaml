@@ -35,7 +35,7 @@ acceptance_criteria:
     evidence: null
   - text: "`buildMemoryContext` uses content-type strategies"
     met: false
-    reason: "no longer true — strategies apply only when `projectType` is passed, and no caller passes it; scoring and decay are never used"
+    reason: "partly met — since FILM-1110 the builder resolves the project type itself and applies `MEMORY_ALLOCATIONS`, the type's horizon and `contextWindowPercent` for every caller; scoring (`calculatePriority`) and decay (`getDecayFactor`) are still never used"
   - text: "Unit tests for all decay functions"
     met: true
     evidence: null
@@ -51,7 +51,7 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "`buildMemoryContext` uses content-type strategies"
-    reason: "Same gap as FILM-1110: no caller passes `projectType`; `calculatePriority` and `getDecayFactor` are reached only from tests"
+    reason: "FILM-1110 closed the allocation half (the builder resolves the type and uses `MEMORY_ALLOCATIONS`, which is now the only allocation table). Still open: `calculatePriority` and `getDecayFactor` are reached only from tests; the `sourcesCitations` and `parentContext` budgets are computed (`MemoryContext.metadata.budgets`) but nothing fills them"
     closed_by: "unassigned"
   - criterion: "News type has zero memory horizon"
     reason: "Horizon is 1; memory is zeroed by allocation and decay instead"

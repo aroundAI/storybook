@@ -8,6 +8,11 @@
 | Waiting on this | FILM-1111, FILM-1112, FILM-1113, FILM-1143 (§31, "What the dependents get") |
 | Author / date | teammate `film-1110`, 2026-09-23 |
 
+**Decisions (owner, 2026-09-23):** D1 — `MEMORY_ALLOCATIONS` is the one
+allocation table; D2 — the Canon settings slider shows the horizon in effect
+and is a choice only when moved (§5, §6 FR-11–FR-14, §21, §26); D3 — the
+real-DB verify runs in CI; D4 — the Lambda fix is in scope.
+
 **Reading order for a reviewer in a hurry:** §8 (what is actually true today —
 it is worse than the spec says), §29 (the four choices), §31 (the decisions
 the owner is asked for), §32 (the work).
@@ -62,7 +67,11 @@ And measured against the code rather than the spec, the gap is wider:
   (Deaths are checked from immutable events, CANON_001, which load today
   wherever the builder runs at all.)
 
-**What they see.** There is no new screen. The effect is visible where
+**What they see.** One control changes: the Canon settings **Memory
+Horizon** slider now opens at the horizon generation really uses — "50
+episodes (automatic, Series)", "1 episode (automatic, Ad)" — instead of 10
+for every project, and stores a number only when the user moves it (D2,
+§5). Otherwise there is no new screen. The rest of the effect is visible where
 continuity already surfaces: the story agent's continuity step and the
 screenplay checkpoint's log line (`[Validation Checkpoint] SCREENPLAY: N
 errors, …`) now run with real canon instead of being skipped, and each build
@@ -96,7 +105,10 @@ FILM-1113, FILM-1135); decay and priority scoring stay unused (FILM-1111).
 | 2 | *(agent)* Continuity step calls `buildMemoryContext` | Builder reads the project's type, computes the type's budget and horizon, loads canon within it | Nothing directly; the agent's tool result now lists real counts instead of an error | Agent validates the draft |
 | 3 | *(agent)* `checkContinuity` on the draft | Same build, then `validatePlotSkeleton` | Violations, if any, drive a revision (existing loop) | Story saved |
 | 4 | Converts story to screenplay | Lambda runs the SCREENPLAY checkpoint with its own client | Checkpoint log shows counts instead of "skipped" | Continue |
-| 5 | Changes Canon settings → Memory Horizon slider, saves | `metadata.canon.memoryHorizon` saved (existing) | Toast "Canon settings saved" (existing) | Next generation honours it — **if** decision D2 is accepted |
+| 5 | Opens Settings → Story Continuity, turns canon on | Slider opens at the horizon in effect: the content type's, e.g. **"Memory Horizon: 50 episodes (automatic, Series)"** | Label and slider agree with what generation uses | Save, or move the slider |
+| 6 | Saves without touching the slider | `metadata.canon.memoryHorizon = null`, `memoryHorizonMode = 'automatic'` | Toast "Canon settings saved"; after reload still "50 episodes (automatic, Series)" | — |
+| 7 | Moves the slider to 15, saves | `memoryHorizon = 15`, `memoryHorizonMode = 'custom'` | "15 episodes (custom)" and a **Reset to automatic** link | Next generation uses 15 |
+| 8 | Clicks Reset to automatic, saves | Back to `null` / `'automatic'` | "50 episodes (automatic, Series)"; the link disappears | Next generation uses 50 |
 
 Re-entry, refresh, navigation away and cancellation behave exactly as the
 existing generation flow: the memory build is a stateless read inside a job.
@@ -159,10 +171,28 @@ browser restart: not applicable — no client state is involved.
 
 ## 5. Establish the User-Facing Contract
 
-- **Inputs the user controls:** the project's type (at creation) and, if D2
-  is accepted, the Canon settings Memory Horizon slider. Nothing new.
-- **Outputs:** no new UI. The observable contract is the `MemoryContext` the
-  builder returns and the log line it writes:
+- **Inputs the user controls:** the project's type (at creation) and the
+  Canon settings Memory Horizon slider (1–100) with its Reset to automatic
+  link.
+- **Canon settings — Memory Horizon (D2):**
+  - *Label* (`data-test="canon-memory-horizon-label"`):
+    `Memory Horizon: {n} episode|episodes ({mode})`, where `{mode}` is
+    `automatic, {type}` (e.g. `automatic, Series`, `automatic, Ad`) when the
+    user has not chosen a number, and `custom` when they have.
+  - *Slider* (`data-test="canon-memory-horizon-slider"`): opens at the same
+    `{n}` — the choice if there is one, otherwise the content type's horizon.
+  - *Reset to automatic* (`data-test="canon-memory-horizon-reset"`): shown
+    only for a custom value; clears it (the form becomes dirty; Save stores
+    automatic).
+  - *Stored:* a number only when the slider was moved (react-hook-form's
+    dirty state for the field); otherwise `null` with
+    `memoryHorizonMode: 'automatic'`. The Save button is disabled until
+    something changes (existing behaviour).
+  - *Settings saved before this change* have no `memoryHorizonMode`: a
+    stored **10** (the old form's default, saved whenever the form was saved)
+    reads as automatic; any other number reads as the user's choice.
+- **Outputs of the builder:** the observable contract is the `MemoryContext`
+  it returns and the log line it writes:
   - `tokenBudget.total` = `floor(40000 × contextWindowPercent / 100)` for the
     project's type unless the caller passes `tokenBudgetPercent`.
   - `metadata.projectType` — the type that was used.
@@ -191,8 +221,14 @@ skipped now run, and a series project's check sees further back than an ad's.
 | **FR-6** | Every generation-time caller passes a server client: the story orchestrator's continuity skill, the screenplay checkpoint, and the Next.js action | Otherwise FR-4 has no effect | — | — | Each call site compiles against the new signature | — | Typecheck; bundle test |
 | **FR-7** | The continuity tools use the project id bound when the skill is built, never one supplied by the model | The Lambda client is service-role; an LLM-chosen id would read any project | Tool call | Bound id used; tool schema has no `projectId` | Prompt-injected id has no effect | Cross-project read | Unit |
 | **FR-8** | `CONTENT_TYPE_CONFIGS` and the type resolver are importable from client code (`@kit/episodes`) | FILM-1143's banner needs them in a client component | — | No server imports in `content-type-configs.ts` | Import from a client file compiles and bundles | — | Typecheck; bundle test covers it |
-| **FR-9** | Each build logs one structured line: project, type, source of the type, total budget, horizon, horizon source, counts | §22 — the only way an operator can tell a skipped build from an empty one | Build | `console.info` (Lambda) | Line present in the verify run's output | — | Verify script asserts it; manual in PR |
-| **FR-10** | There is one allocation table, not two | Two tables with different numbers is a drift defect already present (§8) | — | Per D1 | A test binds the two shapes or one is removed | — | Unit |
+| **FR-9** | Each build logs one structured line: project, type, source of the type, total budget, horizon, horizon source, counts | §22 — the only way an operator can tell a skipped build from an empty one | Build | `console.info` (Lambda) | Line present | — | Unit test asserts the line; verify run output in the PR |
+| **FR-10** | There is one allocation table, not two | Two tables with different numbers is a drift defect already present (§8) | — | D1: `ContentTypeConfig.allocations` removed | Only `MEMORY_ALLOCATIONS` exists | — | Unit (per-type budgets) |
+| **FR-11** | The horizon is decided in one function: explicit argument → the user's Canon settings choice → the content type's horizon → 10 | D2; the builder, the canon dashboard's stale-thread threshold and the form must agree | Any build / dashboard read / form render | `resolveMemoryHorizon`, `savedMemoryHorizonOverride`, `effectiveMemoryHorizon` in `memory-horizon.ts` | Log line and `metadata.memoryHorizonSource` name the winner | — | Unit; real-DB verify (custom-horizon scenario) |
+| **FR-12** | The slider and its label show the horizon in effect | D2: a series really uses 50 while the old form showed 10 | Settings page load | Effective value from the content type unless the user chose one | "50 episodes (automatic, Series)"; "1 episode (automatic, Ad)" | Label shows 10 for a series | E2E |
+| **FR-13** | Saving without moving the slider stores automatic, never a number | D2: the old form stored its 10 on every save | Save with the field not dirty | `memoryHorizon: null`, `memoryHorizonMode: 'automatic'` | After reload still automatic; row reads `null` | Row reads 10 or 50 | E2E, reading the saved row; mutation guard F1 |
+| **FR-14** | A moved slider is a choice; Reset to automatic clears it | D2 | Slider moved / Reset clicked | `memoryHorizon: n`, `'custom'` / back to `null`, `'automatic'` | "15 episodes (custom)" survives reload; reset returns to 50 automatic | — | E2E |
+| **FR-15** | A stored 10 without `memoryHorizonMode` (saved before this change) reads as automatic; any other stored number, or any number with `'custom'`, is a choice | D2 rule 4 — and a user who now deliberately picks 10 must keep it | Reading saved settings | `savedMemoryHorizonOverride` | Legacy 10 → type horizon; new custom 10 → 10 | — | Unit; mutation guard E1 |
+| **FR-16** | One bound for the horizon (1–100) in the form, its action and the memory-context action | D2; the old slider stopped at 20 so a series' 50 could not be shown | — | `MIN_MEMORY_HORIZON` / `MAX_MEMORY_HORIZON` | All three schemas import the constants | — | Typecheck; grep |
 
 ---
 
@@ -416,7 +452,7 @@ No new entities. Authoritative sources:
 | Datum | Authoritative | Notes |
 |---|---|---|
 | Project type | `projects.metadata.projectType` | Per the spec ("not a new column"). `metadata.canon.contentType` and `metadata.contentType` are **not** authoritative (D-h, §31 Q4) |
-| Horizon override | `projects.metadata.canon.memoryHorizon` — only if D2 accepted | Present only once canon settings are saved |
+| Horizon choice | `projects.metadata.canon.memoryHorizon` (`number \| null`) + `memoryHorizonMode` (`'automatic' \| 'custom'`) | Read only through `savedMemoryHorizonOverride`. `null`/`automatic` = the type's horizon. Settings saved before this change have no mode; there a stored 10 is the old untouched default (automatic) and any other number a choice |
 | Per-type budgets / horizon | Code: `CONTENT_TYPE_CONFIGS` (+ `MEMORY_ALLOCATIONS` per D1) | Derived, not stored |
 | `MemoryContext` | Derived per request | `metadata` gains `projectType`, `projectTypeSource`, `memoryHorizonSource`, `budgets` |
 
@@ -537,7 +573,9 @@ No transactions, locking, retries or caching: a per-request read.
 | `MemoryContext.metadata` type | Gains four fields | Additive (four new fields); `MemoryContextPreview` reads only existing fields |
 | Agent tools `buildMemoryContext` / `checkContinuity` / `checkSceneContinuity` | `projectId` parameter removed | The LLM sees a smaller schema; the orchestrator prompt text (`story-orchestrator.ts:325-331`) says "buildMemoryContext then checkContinuity" without naming a project id, so it stays true. `agent-story-generation.ts:167`'s prompt names `projectId=` and is dead code; updated to match |
 | `continuitySkill` export | Replaced by `createContinuitySkill` | In-repo only |
-| `resolveProjectType`, `DEFAULT_PROJECT_TYPE` | New, exported from `@kit/episodes` | Additive |
+| `resolveProjectType`, `DEFAULT_PROJECT_TYPE`, `PROJECT_TYPE_LABELS`, `memory-horizon.ts` exports | New, exported from `@kit/episodes` (client-safe) | Additive |
+| `updateCanonSettingsAction` (settings page) | `memoryHorizon` becomes `int 1–100 \| null` (was `1–20`); the action writes `memoryHorizonMode` | Old clients do not exist (same deploy); a stored value from the old form is read by the legacy rule |
+| `CanonSettings` type | `memoryHorizon: number \| null`, `memoryHorizonMode?`; `DEFAULT_CANON_SETTINGS.memoryHorizon` is `null` | The dashboard's stale-thread threshold now reads `effectiveMemoryHorizon(metadata)` rather than the raw field |
 
 No events, endpoints, pagination or rate limits are involved.
 
@@ -618,8 +656,26 @@ guards it:
 
 ## 21. Accessibility and Client Behavior
 
-No UI is added or changed. (FILM-1143 will render the type; it inherits
-nothing here beyond the resolver.)
+The Canon settings Memory Horizon control changes (D2):
+
+- **Keyboard:** the slider is Radix's — the thumb takes focus and moves with
+  arrows, Home/End and PageUp/PageDown; the E2E drives it with the keyboard
+  only (Home, then →), so it is proven reachable without a mouse.
+- **Screen readers:** the thumb has `role="slider"` with
+  `aria-valuenow/min/max` 1–100. The label is visible text that states the
+  value and whether it is automatic. Known limitation, pre-existing and in
+  the shared `@kit/ui` Slider: `FormLabel`'s `for` targets the slider root,
+  not the thumb, so the thumb is announced by value, not by the label text.
+  Not changed here (shared component; every slider in the app has it).
+- **Reset to automatic** is a `<button type="button">` (link style), shown
+  only when a custom value exists, so it cannot submit the form by accident.
+- **States:** no loading or empty state is added; saving uses the form's
+  existing spinner and toasts. The label and slider are one source
+  (`field.value ?? automatic`), so they cannot disagree after a reset — the
+  failure mode of FILM-1609's uncontrolled selects.
+- **Localisation:** the form's existing strings are hard-coded English; the
+  new strings follow the file's convention. Type names come from
+  `PROJECT_TYPE_LABELS`.
 
 ---
 
@@ -657,6 +713,11 @@ nothing here beyond the resolver.)
 
 ## 24. Compatibility
 
+- **Projects whose canon settings were saved before this change (D2 rule
+  4):** a stored 10 — what the old form wrote on any save — becomes
+  automatic, so a series that saved the form untouched now uses 50, an ad 1.
+  A stored number other than 10 stays the user's choice. This changes the
+  effective horizon for those projects and is stated in the PR body.
 - Existing projects without `projectType` resolve to `series`: 7,200
   tokens and a 50-episode horizon, where the (unreachable) default today is
   6,000 and 10. For those projects the change is a larger budget. Stated,
@@ -700,10 +761,27 @@ Each test is written to fail first on `main` for the stated reason.
 | **Real DB** (`packages/features/episodes/scripts/verify-memory-context.ts`, new; `pnpm --filter @kit/episodes verify`) | Seeds, via service role on local Supabase, one project per type (series, documentary, ad, news) with events, a character + state, a thread, 5 episodes + summaries; calls the real builder with a real client; asserts counts per category, the resolved type, totals, horizon windowing (series ep 6 → 5 summaries; ad ep 6 → 1), and that no loader logged an error; cleans up | FR-1, FR-2, FR-5 against a real PostgREST — the only layer that can reject a column | `characters=0`, `summaries=0` (PostgREST 400), and totals 6,000 |
 | Mutation guards (`tooling/mutation-guards/film-1110.json`) | Unit entries: restore `asset_type`; restore `episode_number` (for the call-shape test); drop the stored-type read; re-add `projectId` to a tool schema; re-add the server-client import to `content-type-configs.ts` (bundle test) | That each guard stays a guard | — |
 | Typecheck | `pnpm typecheck` | All callers updated | — |
-| E2E | **None.** No form or interactive component changes; the preview panel is unrendered. Driving a full story generation needs a live LLM — out of scope for a test | — | — |
+| **E2E** (`apps/e2e/tests/canon/canon-memory-horizon.spec.ts`, seeded through the API) | (1) a series shows "50 episodes (automatic, Series)"; turning canon on and saving with the slider untouched stores `null`/`automatic` (read back from the row) and still shows 50 automatic after reload; (2) moving to 15 saves `15`/`custom`, survives reload, Reset to automatic returns to 50 and saves `null`; (3) an ad shows "1 episode (automatic, Ad)" | FR-12–FR-14 | Today's form: label reads "10 episodes", and the untouched save stores `memoryHorizon: 10` |
+| E2E evidence (`canon-memory-horizon-evidence.spec.ts`, `CAPTURE_EVIDENCE=1`) | Screenshots of each state and a measured table (label, slider value, saved row) for the PR | — | — |
+| Story generation end to end | **Not driven** — needs a live LLM. The Lambda path is covered by the bundle test and the real-DB verify | — | — |
 
 The verify script runs locally under the DB lock and, per D3, as one extra
-step in CI's `🐘 Supabase DB` job next to `@kit/supabase verify`.
+step in CI's `🐘 Supabase DB` job next to `@kit/supabase verify`. It seeds
+through the E2E helpers (`apps/e2e/tests/utils/seed.ts`) so projects are
+created as their owner, as the product creates them.
+
+Two findings from running the tests, recorded because they shaped them:
+
+- The first bundle-guard mutation (a bare `import '@kit/supabase/server-client'`)
+  **stayed green**: every workspace package declares `"sideEffects": false`,
+  so esbuild drops an unused import. The guard now mutates what a real
+  regression would look like — the builder falling back to
+  `getSupabaseServerClient()` (§29 A1's rejected alternative) — and goes red.
+- While the settings page streams in, React briefly holds the finished form
+  in a hidden container, so `[data-test=…]` matched twice for a moment and
+  Playwright's strict mode failed without retrying. A probe of three reloads
+  logged no console errors and settled at one form each time; the page
+  object now targets visible elements only.
 
 ---
 
@@ -713,15 +791,26 @@ The production artifact that matters is the **Lambda bundle**, not the Next
 build — the defect is invisible to `next build` (Next resolves `server-only`
 to its empty `react-server` entry). So:
 
-1. The bundle test (§26) reproduces SST's esbuild step and runs the result.
-2. Locally, the same bundle is run against the seeded local database with the
-   local service-role key (from `supabase status`, never a production value)
-   and the `[MemoryContext]` line is captured for the PR.
-3. `pnpm --filter web build` (heavy slot) confirms the Next side still builds
-   with the action's new call.
+1. The bundle test (§26) reproduces SST's esbuild step (`platform: node`,
+   ESM, no `react-server` condition) and runs the result in a separate
+   `node` process, so no vitest alias or transform is involved. Red on
+   `main`'s sources ("This module cannot be imported from a Client Component
+   module"), green after.
+2. The real-DB verify runs the builder with the same kind of client the
+   Lambda passes — a service-role `@supabase/supabase-js` client
+   (`createLambdaAdminClient`) — against local Supabase, with the local
+   stack's demo keys from `supabase status` (never a production value).
+   *As built, this differs from the plan:* the verify script runs the
+   builder's TypeScript under `tsx`, not the esbuild bundle against the
+   database. The two properties (loads in the bundle; reads the right
+   columns) are proven separately — step 1 and step 2 — rather than in one
+   run.
+3. `pnpm --filter web build` confirms the Next side, including the changed
+   Canon settings form, builds for production; CI's E2E job then runs the
+   new canon spec against a production build (`build:test` → `start:test`).
 
 Does the production build produce the behaviour? Steps 1–2 answer it for the
-Lambda; nothing else in production runs the builder.
+Lambda; step 3 and CI's E2E job for the settings form.
 
 ---
 
@@ -735,7 +824,8 @@ Lambda; nothing else in production runs the builder.
 | No cross-project reads | §4 row "LLM passes a projectId" | FR-7 | bound id | skill | tool schema | Unit | — (security property; test is the proof) |
 | FILM-1143 can show the type | — | FR-8 | pure resolver | configs | — | Bundle test (imports it without server deps) | FILM-1143's own |
 | One allocation table | — | FR-10 | D1 | strategies/configs | — | Unit | — |
-| Operator can tell it works | — | FR-9 | log line | builder | — | Verify asserts line | CloudWatch check (§25) |
+| Operator can tell it works | — | FR-9 | log line | builder | — | Unit test asserts line | CloudWatch check (§25) |
+| The slider shows the horizon in effect | §2 rows 5–8 | FR-11–FR-16 | `memory-horizon.ts`; form field | `canon-settings-form.tsx`, `canon-settings-actions.ts` | `metadata.canon.memoryHorizon`/`memoryHorizonMode` | E2E ×3, unit, guards E1/E2/F1 | Screenshots + measured table in the PR (prod build: §27) |
 
 No requirement lacks a test; no test lacks a requirement. The one production
 behaviour without automated verification is the post-deploy log check, which
@@ -811,7 +901,14 @@ proof, and it is the pattern CI already uses (`@kit/supabase verify`).
   (**recommended**, D1-a) or FILM-1110's `CONTENT_TYPE_CONFIGS.allocations`
   (D1-b)? *Why it matters:* they disagree for every type; the loser is
   removed or derived. *Assumed:* D1-a.
-- **D2 — Does the saved Canon settings horizon override the type's?**
+- **D2 — RESOLVED by the owner (2026-09-23):** the slider shows the horizon
+  in effect and is a choice only when moved; see §5 and FR-11–FR-16. One
+  addition beyond the owner's four rules, flagged in the PR: new saves also
+  record `memoryHorizonMode`, because rule 4 read on its own ("a stored 10 is
+  automatic") would silently turn a user's deliberate 10 into automatic from
+  now on. The 10-means-automatic rule therefore applies only to settings
+  without that marker — i.e. saved before this change. *Original question,
+  kept for the record:* **Does the saved Canon settings horizon override the type's?**
   **Recommended: yes** — the settings page tells the user the slider sets
   "how many prior episodes to consider", so ignoring it would make that page
   false. Consequence: once canon settings are saved, a series uses the slider
@@ -898,23 +995,32 @@ Rollback at any stage is a revert; no stage touches data.
 
 ## 33. Definition of Done
 
-- [ ] For each type, a real-DB build returns that type's total, split and
-      horizon (verify script, measured table in the PR).
-- [ ] Character states and episode summaries load from a real database.
-- [ ] The Lambda bundle loads the builder and the checkpoint returns
-      `canonAvailable: true` (bundle test + local run log in the PR).
-- [ ] Continuity tools cannot be pointed at another project.
-- [ ] One allocation table.
-- [ ] Every guard seen red on `main`-equivalent code, with the reason; mutation
-      guard entries recorded.
-- [ ] `pnpm typecheck`, episodes + web unit tests, `next build`, lint, format.
-- [ ] FILM-1110 `status: DONE` — its only open criterion is the builder's use
-      of the config, which the above closes. FILM-1111/1112/1113/1143 keep
-      their own open items, updated where this closes part of one.
-- [ ] Siblings reported in the PR: `act-context-bridge.ts`,
+- [x] For each type, a real-DB build returns that type's total, split and
+      horizon (verify script: 5/5 scenarios, measured table in the PR).
+- [x] Character states and episode summaries load from a real database
+      (red with `main`'s columns: `42703`, characters and summaries 0).
+- [x] The Lambda bundle loads the builder and the checkpoint returns
+      `canonAvailable: true` (bundle test; red on `main`).
+- [x] Continuity tools cannot be pointed at another project (unit; guard C1).
+- [x] One allocation table (D1).
+- [x] D2: the slider shows the horizon in effect; an untouched save stores
+      automatic; custom and reset work (E2E ×3, 12/12 over four repeats;
+      red on today's form: "10 episodes", untouched save stored `10`).
+- [x] Every guard seen red: 8 unit entries and 1 e2e entry in
+      `tooling/mutation-guards/film-1110.json`, each run and RED.
+- [x] typecheck (`@kit/episodes`, `web`; the Lambda files checked with a
+      throwaway config), unit tests (`@kit/episodes` 434/434, `web`
+      812/812), lint, format, `next build` in CI's test env (`build:test`,
+      exit 0). A plain `next build` stops at `NEXT_PUBLIC_SITE_URL` needing an
+      HTTPS production URL — not supplied, by rule.
+- [x] FILM-1110 `status: DONE`. FILM-1111 and FILM-1004 updated where this
+      closes part of them; FILM-1112/1113/1143 unchanged (§31 lists what
+      they get).
+- [x] Siblings reported in the PR: `act-context-bridge.ts`,
       `sequel-system.ts`, `documentary/helpers.ts` import the Next client (D-b
       class); `season-outline.ts:124` reads a field nothing writes (D-h);
-      R5.
+      R5; the pre-existing `role` type error at `validation-checkpoint.ts:100`
+      for KB-14.
 
 ---
 

@@ -1,0 +1,101 @@
+{
+  "feature": "FILM-1110",
+  "mutations": [
+    {
+      "name": "A1 The builder ignores the stored project type",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-context-builder.ts",
+      "find": "    : resolveProjectType(project?.metadata);",
+      "replace": "    : { projectType: 'series' as const, source: 'default' as const };",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/memory-context-builder.test.ts",
+      "pattern": "budgets follow the stored project type"
+    },
+    {
+      "name": "A2 The total budget stops following the type",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-context-builder.ts",
+      "find": "    input.tokenBudgetPercent ?? options.maxTokenPercentage;",
+      "replace": "    input.tokenBudgetPercent ?? DEFAULT_TOKEN_BUDGET_PERCENT;",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/memory-context-builder.test.ts",
+      "pattern": "budgets follow the stored project type"
+    },
+    {
+      "name": "B1 Characters are read by a column that does not exist",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-context-builder.ts",
+      "find": "    .eq('type', 'character');",
+      "replace": "    .eq('asset_type', 'character');",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/memory-context-builder.test.ts",
+      "pattern": "selects characters by assets.type"
+    },
+    {
+      "name": "B2 Summaries are windowed on a column that does not exist",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-context-builder.ts",
+      "find": "    .gte('number', startEpisode)\n    .lt('number', currentEpisodeNumber);",
+      "replace": "    .gte('episode_number', startEpisode)\n    .lt('episode_number', currentEpisodeNumber);",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/memory-context-builder.test.ts",
+      "pattern": "windows summaries"
+    },
+    {
+      "name": "C1 A continuity tool reads the project the model names",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/continuity-skill.ts",
+      "find": "    execute: async ({ episodeNumber, memoryHorizon }) => {",
+      "replace": "    execute: async ({\n      episodeNumber,\n      memoryHorizon,\n      projectId = deps.projectId,\n    }: {\n      episodeNumber: number;\n      memoryHorizon?: number;\n      projectId?: string;\n    }) => {",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/continuity-skill.test.ts",
+      "pattern": "reads only the bound project"
+    },
+    {
+      "name": "D1 The builder falls back to the Next.js client",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-context-builder.ts",
+      "edits": [
+        {
+          "find": "import type { Database } from '@kit/supabase/database';\n",
+          "replace": "import type { Database } from '@kit/supabase/database';\nimport { getSupabaseServerClient } from '@kit/supabase/server-client';\n"
+        },
+        {
+          "find": "  const { projectId, episodeNumber } = input;\n",
+          "replace": "  const { projectId, episodeNumber } = input;\n  client = client ?? getSupabaseServerClient();\n"
+        }
+      ],
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/canon-bundle.test.ts"
+    },
+    {
+      "name": "E1 An untouched 10 from the old form counts as a choice",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-horizon.ts",
+      "find": "  if (mode === undefined && stored === LEGACY_UNTOUCHED_FORM_HORIZON) {\n    return undefined;\n  }\n",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/memory-horizon.test.ts",
+      "pattern": "a legacy untouched 10"
+    },
+    {
+      "name": "E2 A saved choice no longer overrides the content type",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-horizon.ts",
+      "find": "  if (isFiniteNumber(candidates.canonOverride)) {",
+      "replace": "  if (false as boolean) {",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/memory-horizon.test.ts",
+      "pattern": "prefers the user override"
+    },
+    {
+      "name": "F1 The slider opens on a number, so an untouched save stores it",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/canon-settings-form.tsx",
+      "find": "      memoryHorizon: savedMemoryHorizonOverride(currentSettings) ?? null,",
+      "replace": "      memoryHorizon:\n        savedMemoryHorizonOverride(currentSettings) ??\n        contentTypeMemoryHorizon(projectType),",
+      "spec": "tests/canon/canon-memory-horizon.spec.ts",
+      "grep": "saving other changes keeps it automatic"
+    }
+  ]
+}

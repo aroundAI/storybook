@@ -1,12 +1,32 @@
 /**
  * Memory Context Builder
- * Phase 10: FILM-1004
+ * Phase 10: FILM-1004, content types: FILM-1110
  *
- * Builds token-budgeted context from canon data for LLM generation.
- * 15% of total token budget by default.
+ * Builds token-budgeted context from canon data for LLM generation. The
+ * budget, its split and the episode horizon follow the project's type
+ * (`projects.metadata.projectType`).
+ *
+ * The Supabase client is injected, never imported: this module is loaded by
+ * the LLM Lambda, where the Next.js cookie client's `server-only` guard
+ * throws at import. Callers pass the user's client in Next.js and the
+ * worker's own client in the Lambda.
  */
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import type { ProjectType } from '@kit/film-studio-schemas/project';
+import type { Database } from '@kit/supabase/database';
+import type { createLambdaAdminClient } from '@kit/supabase/lambda-admin-client';
 
+import {
+  type ProjectTypeSource,
+  resolveProjectType,
+} from './content-type-configs';
+import {
+  resolveMemoryHorizon,
+  savedMemoryHorizonOverride,
+} from './memory-horizon';
+import {
+  type MemoryAllocation,
+  getMemoryOptionsForContentType,
+} from './memory-strategies';
 import type {
   BuildMemoryContextInput,
   CharacterState,
@@ -16,6 +36,7 @@ import type {
   EpisodeSummary,
   ImmutableEvent,
   ImmutableEventType,
+  MemoryBudgets,
   MemoryContext,
   NarrativeThread,
   NarrativeThreadStatus,
@@ -28,9 +49,18 @@ import type {
 // CONSTANTS
 // =============================================================================
 
+/**
+ * The client the builder reads canon with. Only `from` is used, so the
+ * Next.js user client, the Lambda's service-role client and a test fake all
+ * satisfy it.
+ */
+export type CanonReadClient = Pick<
+  NonNullable<ReturnType<typeof createLambdaAdminClient<Database>>>,
+  'from'
+>;
+
 const DEFAULT_TOKEN_BUDGET_PERCENT = 15;
 const DEFAULT_CONTEXT_WINDOW_SIZE = 40000;
-const DEFAULT_MEMORY_HORIZON = 10;
 
 /**
  * Default token budget max (exported for UI consistency)
@@ -39,15 +69,6 @@ const DEFAULT_MEMORY_HORIZON = 10;
 export const DEFAULT_TOKEN_BUDGET_MAX = Math.floor(
   DEFAULT_CONTEXT_WINDOW_SIZE * (DEFAULT_TOKEN_BUDGET_PERCENT / 100),
 ); // 6000 tokens
-
-// Token budget allocation percentages
-const BUDGET_ALLOCATION = {
-  immutableEvents: 0.35, // 35% - always included
-  characterStates: 0.25, // 25% - current character states
-  worldStates: 0.1, // 10% - world state
-  narrativeThreads: 0.15, // 15% - active threads
-  episodeSummaries: 0.15, // 15% - episode summaries
-};
 
 // Rough token estimation: ~4 characters per token
 const CHARS_PER_TOKEN = 4;
@@ -83,11 +104,10 @@ function truncateToTokenBudget(text: string, maxTokens: number): string {
  * Loads immutable events for a project.
  */
 async function loadImmutableEvents(
+  client: CanonReadClient,
   projectId: string,
   tokenBudget: number,
 ): Promise<ImmutableEvent[]> {
-  const client = getSupabaseServerClient();
-
   const { data, error } = await client
     .from('immutable_events')
     .select('*')
@@ -133,20 +153,23 @@ async function loadImmutableEvents(
  * Gets most recent state per character per state type.
  */
 async function loadCharacterStates(
+  client: CanonReadClient,
   projectId: string,
   tokenBudget: number,
 ): Promise<CharacterStateContext[]> {
-  const client = getSupabaseServerClient();
-
   // Get characters for this project
   const { data: assets, error: assetsError } = await client
     .from('assets')
     .select('id, name')
     .eq('project_id', projectId)
-    .eq('asset_type', 'character');
+    .eq('type', 'character');
 
-  if (assetsError || !assets || assets.length === 0) {
+  if (assetsError) {
     console.error('Error loading character assets:', assetsError);
+    return [];
+  }
+
+  if (!assets || assets.length === 0) {
     return [];
   }
 
@@ -221,12 +244,11 @@ async function loadCharacterStates(
  * Loads current world state for a project.
  */
 async function loadWorldState(
+  client: CanonReadClient,
   projectId: string,
   episodeId: string | null,
   tokenBudget: number,
 ): Promise<WorldState | undefined> {
-  const client = getSupabaseServerClient();
-
   let query = client
     .from('world_states')
     .select('*')
@@ -277,11 +299,10 @@ async function loadWorldState(
  * Loads active narrative threads for a project.
  */
 async function loadActiveThreads(
+  client: CanonReadClient,
   projectId: string,
   tokenBudget: number,
 ): Promise<NarrativeThread[]> {
-  const client = getSupabaseServerClient();
-
   const { data, error } = await client
     .from('narrative_threads')
     .select('*')
@@ -328,13 +349,12 @@ async function loadActiveThreads(
  * Loads episode summaries within memory horizon.
  */
 async function loadEpisodeSummaries(
+  client: CanonReadClient,
   projectId: string,
   currentEpisodeNumber: number,
   memoryHorizon: number,
   tokenBudget: number,
 ): Promise<EpisodeSummary[]> {
-  const client = getSupabaseServerClient();
-
   // Get episodes within horizon
   const startEpisode = Math.max(1, currentEpisodeNumber - memoryHorizon);
 
@@ -342,10 +362,11 @@ async function loadEpisodeSummaries(
     .from('episodes')
     .select('id')
     .eq('project_id', projectId)
-    .gte('episode_number', startEpisode)
-    .lt('episode_number', currentEpisodeNumber);
+    .gte('number', startEpisode)
+    .lt('number', currentEpisodeNumber);
 
   if (episodesError || !episodes) {
+    console.error('Error loading episodes for summaries:', episodesError);
     return [];
   }
 
@@ -393,75 +414,94 @@ async function loadEpisodeSummaries(
 // MAIN FUNCTION
 // =============================================================================
 
+/** `projects.metadata.canon`, the saved Canon settings. */
+function readCanon(metadata: unknown): unknown {
+  return metadata && typeof metadata === 'object' && 'canon' in metadata
+    ? metadata.canon
+    : undefined;
+}
+
+/**
+ * Per-category token budgets for a total and an allocation (percentages).
+ * Categories the builder does not fill yet (`parentContext`,
+ * `sourcesCitations`) are still computed, so their reserve is visible.
+ */
+export function allocateTokenBudget(
+  total: number,
+  allocation: MemoryAllocation,
+): MemoryBudgets {
+  const share = (percent: number) => Math.floor((total * percent) / 100);
+
+  return {
+    immutableEvents: share(allocation.immutableEvents),
+    characterStates: share(allocation.characterStates),
+    worldStates: share(allocation.worldStates),
+    narrativeThreads: share(allocation.narrativeThreads),
+    episodeSummaries: share(allocation.episodeSummaries),
+    parentContext: share(allocation.parentContext),
+    sourcesCitations: share(allocation.sourcesCitations),
+  };
+}
+
 /**
  * Builds memory context for LLM generation.
  *
- * Token budget is limited to 15% of context window by default.
- * Memory horizon determines how many past episodes to include.
+ * The project's type (read from `projects.metadata`) decides the total
+ * budget (`contextWindowPercent` of the context window), its split
+ * (`MEMORY_ALLOCATIONS`) and the horizon, unless the caller overrides them.
  *
+ * @param client - Supabase client to read canon with (see `CanonReadClient`)
  * @param input - Build context parameters
  * @returns MemoryContext with token budget tracking
  */
 export async function buildMemoryContext(
+  client: CanonReadClient,
   input: BuildMemoryContextInput,
 ): Promise<MemoryContext> {
-  const {
-    projectId,
-    episodeNumber,
-    tokenBudgetPercent = DEFAULT_TOKEN_BUDGET_PERCENT,
-    memoryHorizon: memoryHorizonOverride,
-    projectType,
-  } = input;
+  const { projectId, episodeNumber } = input;
+
+  const { data: project, error: projectError } = await client
+    .from('projects')
+    .select('metadata')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (projectError) {
+    console.error('Error loading project metadata:', projectError);
+  }
+
+  const resolvedType: {
+    projectType: ProjectType;
+    source: ProjectTypeSource;
+  } = input.projectType
+    ? { projectType: input.projectType, source: 'argument' }
+    : resolveProjectType(project?.metadata);
+
+  const options = getMemoryOptionsForContentType(resolvedType.projectType);
+
+  const tokenBudgetPercent =
+    input.tokenBudgetPercent ?? options.maxTokenPercentage;
 
   const maxTokens = Math.floor(
     DEFAULT_CONTEXT_WINDOW_SIZE * (tokenBudgetPercent / 100),
   );
 
-  // Use content-type-specific allocations when a projectType is provided,
-  // otherwise fall back to the hardcoded defaults for backward compatibility.
-  let allocation: {
-    immutableEvents: number;
-    characterStates: number;
-    worldStates: number;
-    narrativeThreads: number;
-    episodeSummaries: number;
-  };
-  let memoryHorizon: number;
+  const { memoryHorizon, source: memoryHorizonSource } = resolveMemoryHorizon({
+    argument: input.memoryHorizon,
+    canonOverride: savedMemoryHorizonOverride(readCanon(project?.metadata)),
+    contentType: options.memoryHorizon,
+  });
 
-  if (projectType) {
-    const { getMemoryOptionsForContentType } = await import(
-      './memory-strategies'
-    );
-    const options = getMemoryOptionsForContentType(projectType);
-    allocation = {
-      immutableEvents: options.allocation.immutableEvents / 100,
-      characterStates: options.allocation.characterStates / 100,
-      worldStates: options.allocation.worldStates / 100,
-      narrativeThreads: options.allocation.narrativeThreads / 100,
-      episodeSummaries: options.allocation.episodeSummaries / 100,
-    };
-    memoryHorizon = memoryHorizonOverride ?? options.memoryHorizon;
-  } else {
-    allocation = BUDGET_ALLOCATION;
-    memoryHorizon = memoryHorizonOverride ?? DEFAULT_MEMORY_HORIZON;
-  }
-
-  // Calculate per-category budgets
-  const budgets = {
-    immutableEvents: Math.floor(maxTokens * allocation.immutableEvents),
-    characterStates: Math.floor(maxTokens * allocation.characterStates),
-    worldStates: Math.floor(maxTokens * allocation.worldStates),
-    narrativeThreads: Math.floor(maxTokens * allocation.narrativeThreads),
-    episodeSummaries: Math.floor(maxTokens * allocation.episodeSummaries),
-  };
+  const budgets = allocateTokenBudget(maxTokens, options.allocation);
 
   // Load all data in parallel
   const [immutableEvents, characterStates, activeThreads, recentSummaries] =
     await Promise.all([
-      loadImmutableEvents(projectId, budgets.immutableEvents),
-      loadCharacterStates(projectId, budgets.characterStates),
-      loadActiveThreads(projectId, budgets.narrativeThreads),
+      loadImmutableEvents(client, projectId, budgets.immutableEvents),
+      loadCharacterStates(client, projectId, budgets.characterStates),
+      loadActiveThreads(client, projectId, budgets.narrativeThreads),
       loadEpisodeSummaries(
+        client,
         projectId,
         episodeNumber,
         memoryHorizon,
@@ -472,6 +512,7 @@ export async function buildMemoryContext(
   // Load world state (depends on having recent summaries)
   const latestEpisodeId = recentSummaries[0]?.episodeId ?? null;
   const worldState = await loadWorldState(
+    client,
     projectId,
     latestEpisodeId,
     budgets.worldStates,
@@ -495,6 +536,15 @@ export async function buildMemoryContext(
     byCategory: actualUsage,
   };
 
+  console.info(
+    `[MemoryContext] project=${projectId}` +
+      ` type=${resolvedType.projectType}(${resolvedType.source})` +
+      ` budget=${maxTokens} horizon=${memoryHorizon}(${memoryHorizonSource})` +
+      ` events=${immutableEvents.length} characters=${characterStates.length}` +
+      ` threads=${activeThreads.length} summaries=${recentSummaries.length}` +
+      ` world=${worldState ? 1 : 0} tokens=${totalUsed}`,
+  );
+
   return {
     projectId,
     episodeNumber,
@@ -506,7 +556,11 @@ export async function buildMemoryContext(
     worldState,
     metadata: {
       builtAt: new Date().toISOString(),
+      projectType: resolvedType.projectType,
+      projectTypeSource: resolvedType.source,
       memoryHorizon,
+      memoryHorizonSource,
+      budgets,
       totalTokensUsed: totalUsed,
     },
   };

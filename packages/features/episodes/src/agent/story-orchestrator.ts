@@ -27,7 +27,10 @@ import type { AgentRunResult, Skill } from '@kit/agent';
 import type { ProjectType } from '@kit/film-studio-schemas/project';
 
 import type { EpisodeViralQuality, ViralDimensionScores } from '../lib/types';
-import { continuitySkill } from './skills/continuity-skill';
+import {
+  type ContinuitySkillDeps,
+  createContinuitySkill,
+} from './skills/continuity-skill';
 import { storyDirectorSkill } from './skills/story-director-skill';
 import { viralAnalystSkill } from './skills/viral-analyst-skill';
 
@@ -123,7 +126,10 @@ export async function runStoryOrchestrator(
       (input.contentType ? ` (type: ${input.contentType})` : ''),
   );
 
-  const skills = await buildSkillsForContentType(input.contentType);
+  const skills = await buildSkillsForContentType(input.contentType, {
+    client: supabase,
+    projectId: input.projectId,
+  });
   const systemPrompt = buildSystemPrompt(input.contentType);
 
   const result: AgentRunResult<StoryOrchestratorOutput> =
@@ -267,12 +273,13 @@ export async function runStoryOrchestrator(
  * All types get the base triple: Story Director + Viral Analyst + Continuity.
  */
 async function buildSkillsForContentType(
-  contentType?: ProjectType,
+  contentType: ProjectType | undefined,
+  continuity: ContinuitySkillDeps,
 ): Promise<Skill[]> {
   const baseSkills: Skill[] = [
     storyDirectorSkill,
     viralAnalystSkill,
-    continuitySkill,
+    createContinuitySkill(continuity),
   ];
 
   if (!contentType) return baseSkills;

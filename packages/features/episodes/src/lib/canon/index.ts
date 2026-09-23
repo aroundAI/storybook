@@ -19,6 +19,30 @@ export type {
   LocationRef,
 } from './sequel-system';
 
+// Content type configuration (FILM-1110) — client-safe
+export {
+  CONTENT_TYPE_CONFIGS,
+  DEFAULT_PROJECT_TYPE,
+  PROJECT_TYPE_LABELS,
+  getContentTypeConfig,
+  resolveProjectType,
+} from './content-type-configs';
+export type {
+  ContentTypeConfig,
+  DecayFunction,
+  ProjectTypeSource,
+} from './content-type-configs';
+export {
+  DEFAULT_MEMORY_HORIZON,
+  MAX_MEMORY_HORIZON,
+  MIN_MEMORY_HORIZON,
+  contentTypeMemoryHorizon,
+  effectiveMemoryHorizon,
+  resolveMemoryHorizon,
+  savedMemoryHorizonOverride,
+} from './memory-horizon';
+export type { MemoryHorizonMode, MemoryHorizonSource } from './memory-horizon';
+
 // Client-safe validation functions
 export {
   validatePlotSkeleton,

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CONTENT_TYPE_CONFIGS,
   getContentTypeConfig,
+  resolveProjectType,
 } from '../src/lib/canon/content-type-configs';
 
 describe('Content Type Configs (FILM-1110)', () => {
@@ -21,21 +22,6 @@ describe('Content Type Configs (FILM-1110)', () => {
         ]),
       );
       expect(types).toHaveLength(7);
-    });
-
-    it('should have allocations that sum to 100 for each type', () => {
-      for (const [type, config] of Object.entries(CONTENT_TYPE_CONFIGS)) {
-        const alloc = config.allocations;
-        const sum =
-          alloc.events +
-          alloc.characters +
-          alloc.world +
-          alloc.threads +
-          alloc.summaries +
-          (alloc.facts ?? 0) +
-          (alloc.external ?? 0);
-        expect(sum).toBe(100);
-      }
     });
 
     it('should have contextWindowPercent between 1 and 50', () => {
@@ -104,7 +90,29 @@ describe('Content Type Configs (FILM-1110)', () => {
     it('should return news config with external context', () => {
       const config = getContentTypeConfig('news');
       expect(config.requiresExternalContext).toBe(true);
-      expect(config.allocations.external).toBe(65);
+      expect(config.contextWindowPercent).toBe(5);
+    });
+  });
+
+  describe('resolveProjectType', () => {
+    it('reads a valid projectType from project metadata', () => {
+      expect(resolveProjectType({ projectType: 'documentary' })).toEqual({
+        projectType: 'documentary',
+        source: 'metadata',
+      });
+    });
+
+    it.each([
+      ['no metadata', null],
+      ['metadata without a type', { genre: 'drama' }],
+      ['a type outside the enum', { projectType: 'podcast' }],
+      ['a non-string type', { projectType: 7 }],
+      ['non-object metadata', 'series'],
+    ])('falls back to series for %s', (_label, metadata) => {
+      expect(resolveProjectType(metadata)).toEqual({
+        projectType: 'series',
+        source: 'default',
+      });
     });
   });
 });

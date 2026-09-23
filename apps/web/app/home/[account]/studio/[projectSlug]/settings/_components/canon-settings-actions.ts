@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 
+import { MAX_MEMORY_HORIZON, MIN_MEMORY_HORIZON } from '@kit/episodes/lib';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
@@ -12,7 +13,13 @@ const UpdateCanonSettingsSchema = z.object({
   settings: z.object({
     enabled: z.boolean(),
     roleSeparation: z.boolean(),
-    memoryHorizon: z.number().min(1).max(20),
+    // null = automatic: the project's content type decides (FILM-1110)
+    memoryHorizon: z
+      .number()
+      .int()
+      .min(MIN_MEMORY_HORIZON)
+      .max(MAX_MEMORY_HORIZON)
+      .nullable(),
     enforcement: z.enum(['flexible', 'strict']),
     contentType: z.enum(['series', 'movie', 'factual', 'news']),
   }),
@@ -37,7 +44,11 @@ const updateCanonSettings = enhanceAction(
     const currentMetadata = (project.metadata ?? {}) as Record<string, unknown>;
     const updatedMetadata = {
       ...currentMetadata,
-      canon: data.settings,
+      canon: {
+        ...data.settings,
+        memoryHorizonMode:
+          data.settings.memoryHorizon === null ? 'automatic' : 'custom',
+      },
     };
 
     // Update project

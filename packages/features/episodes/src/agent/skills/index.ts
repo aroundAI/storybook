@@ -6,12 +6,15 @@
  *
  * @example
  * ```typescript
- * import { continuitySkill, reelScoutSkill, viralAnalystSkill } from '@kit/episodes/skills';
+ * import { createContinuitySkill, reelScoutSkill } from '@kit/episodes/skills';
  * ```
  */
 
 // Core pipeline skills
-export { continuitySkill } from './continuity-skill';
+export {
+  createContinuitySkill,
+  type ContinuitySkillDeps,
+} from './continuity-skill';
 export { ideationDirectorSkill } from './ideation-director-skill';
 export { ideationEvaluatorSkill } from './ideation-evaluator-skill';
 export { storyDirectorSkill } from './story-director-skill';

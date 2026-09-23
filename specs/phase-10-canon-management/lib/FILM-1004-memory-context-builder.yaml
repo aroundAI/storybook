@@ -64,14 +64,14 @@ acceptance_criteria:
     met: false
     reason: "unverified — needs a timed run against a seeded project; no benchmark exists"
   - text: "Unit tests for budget calculations"
-    met: false
-    reason: "not met — tests cover allocation tables only (`packages/features/episodes/__tests__/memory-strategies.test.ts:32`), not the builder's token budgets"
+    met: true
+    evidence: "packages/features/episodes/__tests__/memory-context-builder.test.ts (FILM-1110)"
   - text: "Unit tests for priority scoring"
     met: true
     evidence: "packages/features/episodes/__tests__/memory-strategies.test.ts:146"
   - text: "Integration test with real database"
-    met: false
-    reason: "not met — no test found"
+    met: true
+    evidence: "packages/features/episodes/scripts/verify-memory-context.ts (FILM-1110; CI: Supabase DB job). It found `assets.asset_type` and `episodes.episode_number`, two reads that returned HTTP 400 and emptied the character and summary sections"
 remaining:
   - criterion: "Builds complete context from database"
     reason: "Nothing writes `episode_summaries` or `world_states` (the canon commit stores the summary in `episodes.metadata` instead), so two of five sections are always empty"
@@ -82,9 +82,6 @@ remaining:
   - criterion: "Formats context for UI display"
     reason: "Memory Context Preview is built but never rendered"
     closed_by: "FILM-1007"
-  - criterion: "Budget-calculation unit tests; integration test"
-    reason: "No test exercises `buildMemoryContext`"
-    closed_by: "unassigned"
 open_questions: []
 notes: |
   Priority (source frontmatter): high

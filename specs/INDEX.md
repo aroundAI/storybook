@@ -479,7 +479,7 @@ graph TD
 
 ### Phase 11: Canon Integration & Content Types (22 specs)
 
-> **Status**: 🟡 PARTIAL — built across PRs #175–178, #181–185, #188; the 2026-09-23 audit found 19 of its 22 specs with open criteria, and canon no longer reaching story generation since #213 (FILM-1102, FILM-1104). See [phase-11-canon-integration/README.md](./phase-11-canon-integration/README.md).
+> **Status**: 🟡 PARTIAL — built across PRs #175–178, #181–185, #188; the 2026-09-23 audit found 19 of its 22 specs with open criteria (18 since FILM-1110), and canon no longer reaching story generation since #213 (FILM-1102, FILM-1104). See [phase-11-canon-integration/README.md](./phase-11-canon-integration/README.md).
 
 | Task ID | Name | Status | Effort | PR | Dependencies |
 |---------|------|--------|--------|-----|-------------|
@@ -487,7 +487,7 @@ graph TD
 | FILM-1102 | [Memory Context Injection](./phase-11-canon-integration/integration/FILM-1102-memory-context-injection.yaml) | 🟡 PARTIAL | M | #175 | FILM-1004 |
 | FILM-1103 | [LLM-based Canon Extraction](./phase-11-canon-integration/integration/FILM-1103-llm-canon-extraction.yaml) | ✅ DONE | M | #175 | FILM-1005 |
 | FILM-1104 | [Validation Integration](./phase-11-canon-integration/integration/FILM-1104-validation-integration.yaml) | 🟡 PARTIAL | M | #175 | FILM-1003 |
-| FILM-1110 | [Content Type Enum](./phase-11-canon-integration/content-types/FILM-1110-content-type-enum.yaml) | 🟡 PARTIAL | S | #176 | - |
+| FILM-1110 | [Content Type Enum](./phase-11-canon-integration/content-types/FILM-1110-content-type-enum.yaml) | ✅ DONE | S | #176, FILM-1110 PR | - |
 | FILM-1111 | [Content Type Configs](./phase-11-canon-integration/content-types/FILM-1111-content-type-configs.yaml) | 🟡 PARTIAL | M | #176 | FILM-1110 |
 | FILM-1112 | [Act Context Bridge](./phase-11-canon-integration/content-types/FILM-1112-act-context-bridge.yaml) | 🟡 PARTIAL | L | #177 | FILM-1110 |
 | FILM-1113 | [Sequel System](./phase-11-canon-integration/content-types/FILM-1113-sequel-system.yaml) | 🟡 PARTIAL | M | #177 | FILM-1110 |
@@ -699,7 +699,7 @@ reason when not.
 | 8. Analytics | 10 | 0 | 7 | 0 | 0 | 3 |
 | 9. Integration | 6 | 0 | 2 | 0 | 3 | 1 |
 | 10. Canon Mgmt | 7 | 0 | 6 | 0 | 1 | 0 |
-| 11. Canon Integ | 22 | 0 | 19 | 0 | 1 | 2 |
+| 11. Canon Integ | 22 | 0 | 18 | 0 | 1 | 3 |
 | 12. Scale | 2 | 0 | 0 | 0 | 0 | 2 |
 | 13. Hook Opt | 2 | 0 | 0 | 0 | 2 | 0 |
 | 14. Edit Suite v2 | 1 | 0 | 1 | 0 | 0 | 0 |
@@ -709,7 +709,7 @@ reason when not.
 | 18. Vendor Sandbox | 5 | 4 | 0 | 0 | 0 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **229** | **25** | **88** | **2** | **46** | **68** |
+| **TOTAL** | **229** | **25** | **87** | **2** | **46** | **69** |
 
 No column for In Progress: no PR is open.
 
@@ -719,7 +719,7 @@ No column for In Progress: no PR is open.
 |-------|-------|------|---------|---------|------------------|
 | MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 92 | 29 | 31 | 31 | 1 |
 | Post-MVP (Ph 6–9) | 38 | 10 | 18 | 10 | 0 |
-| Canon (Ph 10–11) | 29 | 2 | 25 | 2 | 0 |
+| Canon (Ph 10–11) | 29 | 3 | 24 | 2 | 0 |
 | Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |
 | Edit Suite v2 (Ph 14) | 1 | 0 | 1 | 0 | 0 |
 | Deep Analytics (Ph 15) | 11 | 5 | 5 | 1 | 0 |
