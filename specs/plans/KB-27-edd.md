@@ -3,12 +3,25 @@
 **Ticket:** KB-27 — "Any signed-in user can write canon into any project"
 (`specs/cross-cutting/FILM-CC-04-known-bugs.md`, `## KB-27`). Severity High,
 cross-tenant write.
-**Branch:** `fix/kb-27-commit-canon-membership`, base `origin/main` (`49b851d6`).
+**Branch:** `fix/kb-27-commit-canon-membership`, stacked on
+`fix/kb-28-project-assets-insert-scope` (KB-28), which adds
+`public.can_write_project`.
 **Related:** KB-17 (`immutable_events` are not immutable; queued after this),
 FILM-1002 (canon RLS; its `remaining:` names KB-27 and KB-17), FILM-1005
-(canon actions; cites KB-27), KB-11 (the same shape in analytics, and the
-source of the `has_account_access` precedent).
-**Status:** plan, awaiting owner approval. Nothing below is implemented.
+(canon actions; cites KB-27), KB-11 (the same shape in analytics), KB-28
+(the project-write rule this builds on), KB-40/41/42 (siblings found here).
+**Status:** approved 2026-09-23 with one change: the owner chose the
+project-write rule (`can_write_project`: owner, admin or member in
+`project_members`) over account membership (Decision 1, §31). The sections
+below are updated to it.
+
+### Owner decisions (2026-09-23)
+
+| # | Decision |
+|---|---|
+| 1 | Committing canon and bulk reset require `public.can_write_project(P)` — owner, admin or member in `project_members` for the project — **not** `has_account_access`. Team members with an account role but no project row are refused; the owner accepted this knowing the measurement in §8. |
+| 2 | Fix `bulk_reset_episodes_to_stage` here, both holes, under the same rule per episode's project. Siblings numbered and filed Open: KB-40 `batch_assemble_edit_project`, KB-41 `get_project_members`, KB-42 `check_account_budget`. `update_project_cover_image` is fixed by KB-28. |
+| 3–7 | As proposed: keep `SECURITY DEFINER`; no action/UI change; the inventory pgTAP test (including KB-28's two functions); one manual Publish-page run with a screenshot; no backfill. |
 
 Evidence labels used throughout: **measured** = executed on the local stack
 on 2026-09-23 with the output quoted; **by reading** = read from the code
@@ -41,10 +54,18 @@ anyone wipe another tenant's story, screenplay, shots, audio and canon.
 - The other tenant: a direct call against someone else's project is refused
   with a permission error, and nothing is written. The same for bulk reset.
 
-**Success:** a non-member's call writes nothing and is refused; every member
-(team member *or* personal-account owner) still commits; events carry the
-caller as author. **Failure:** any row written by a non-member, or any
-member who could commit before and cannot now.
+**Success:** a caller who is not an owner, admin or member of the project
+writes nothing and is refused; every project writer (including a
+personal-account owner, through the creator's owner row) still commits;
+events carry the caller as author. **Failure:** any row written by a
+non-writer, or a project writer who is refused.
+
+**Accepted narrowing (Decision 1).** A team member with a role on the
+account but no `project_members` row could commit (and bulk-reset) before and
+cannot now. They were already refused by `episodes_update` on most studio
+writes, so this matches the studio's existing rule rather than adding a new
+one. They see the existing generic messages ("Failed to commit canon
+changes"; "Reset 0 episodes with 1 error(s)") — §18.
 
 **What persists:** committed events and the merged `canonSummary` /
 `sentimentScore`, as today. **What does not:** nothing from a refused call —
@@ -70,14 +91,13 @@ of the reproduction), so the refusal has no UI.
 
 ## 3. Explicitly Define the Happy Path
 
-1. A member of team account *T* (any role) opens Publish for episode *E* of
-   project *P* in *T*.
+1. An owner, admin or member of project *P* (a `project_members` row) opens
+   Publish for episode *E* of *P*.
 2. Extraction fills the card. The member clicks **Save to Canon**.
 3. The server action calls `commit_canon_changes(P, E, season, number,
    events, summary, sentiment)` with the member's session.
-4. The function resolves *P*'s account **through *E*** (the episode must
-   belong to *P*), and checks `has_account_access(account)` for the caller.
-   Passes.
+4. The function checks that *E* belongs to *P* and that
+   `can_write_project(P)` holds for the caller. Passes.
 5. It inserts the high-confidence events into `immutable_events` with
    `created_by = auth.uid()`; the KB-1 trigger fills `created_by_name`.
 6. It merges `canonSummary` and `sentimentScore` into `episodes.metadata` in
@@ -87,8 +107,9 @@ of the reproduction), so the refusal has no UI.
 8. The member sees the success toast. Success because the rows exist,
    carry the member as author, and nothing outside *P*/*E* changed.
 
-A personal-account owner on their own project follows the same path: step 4
-passes on the owner branch of `has_account_access`.
+A personal-account owner on their own project follows the same path: the
+project's creator gets an `owner` row (`add_project_creator_as_owner`), so
+step 4 passes. A team member with no project row stops at step 4.
 
 ## 4. Define Every Important Alternate Path
 
@@ -115,8 +136,9 @@ Bulk reset alternate paths are in §18.
   canon`, one message for every refusal reason so the call is not an
   existence oracle.
 - **Permissions:** a caller may commit canon for project *P* iff they are
-  the primary owner of *P*'s account or hold any role on it
-  (`has_account_access`), and the episode is *P*'s.
+  an owner, admin or member of *P* in `project_members`
+  (`can_write_project`, KB-28), and the episode is *P*'s. A `viewer` project
+  role is refused.
 - **Data now visible to the user:** events saved from the Publish page will
   show an author (`created_by`, `created_by_name`) where they showed none.
   No screen currently renders the author of an event (by reading:
@@ -127,22 +149,22 @@ Bulk reset alternate paths are in §18.
 
 | ID | Requirement | Why | Verification |
 |---|---|---|---|
-| FR-1 | `commit_canon_changes` refuses a caller without `has_account_access` on the project's account, raising `42501` before any write | The defect | pgTAP T1, T2 (red first) + HTTP rerun of the reproduction |
+| FR-1 | `commit_canon_changes` refuses a caller for whom `can_write_project(P)` is false, raising `42501` before any write | The defect; owner's rule (Decision 1) | pgTAP T1, T2, T4a, T4c (red first) + HTTP rerun of the reproduction |
 | FR-2 | It refuses when the episode is not in the given project | Measured: mismatched ids wrote into the attacker's project *and* the victim's episode | pgTAP T3 (red first) |
-| FR-3 | Events it writes carry `created_by = auth.uid()` | AC 2; authorship; KB-17 compatibility | pgTAP T4, T5 (red first: today NULL, measured) |
-| FR-4 | A team member (any role, with or without a `project_members` row) and a personal-account owner still commit | Do not break the product | pgTAP T4, T5; UI check (§26) |
+| FR-3 | Events it writes carry `created_by = auth.uid()` | AC 2; authorship; KB-17 compatibility | pgTAP T4b, T5, T7 (red first: today NULL, measured) |
+| FR-4 | A project owner/admin/member (team) and a personal-account owner still commit; a team member becomes able to commit once added as a project member | Do not break the product; Decision 1 | pgTAP T4b, T5, T7; UI check (§26) |
 | FR-5 | Function runs with `search_path = ''` and schema-qualified names | Definer-hygiene; the ticket asks for it | pgTAP inventory I2 |
 | FR-6 | A refused or failed call writes nothing (atomic) | The function's reason to exist | pgTAP T1–T3 row counts; T8 duplicate-key rollback |
-| FR-7 | `bulk_reset_episodes_to_stage` refuses a caller without `has_account_access` on `p_account_id` | Measured cross-tenant wipe (§8) | pgTAP B1 (red first) — **if approved (Decision 2)** |
-| FR-8 | `bulk_reset_episodes_to_stage` refuses unless **every** id is an episode (deleted or not) of a project in `p_account_id` | Measured: a soft-deleted episode of another tenant passes today's check even when the caller names their own account | pgTAP B2 (red first) — **if approved** |
+| FR-7 | `bulk_reset_episodes_to_stage` refuses unless the caller can write (`can_write_project`) **every** listed episode's project | Measured cross-tenant wipe (§8); Decision 2 | pgTAP B1, B5 (red first) |
+| FR-8 | …and unless **every** id is an episode (deleted or not) of a project in `p_account_id` | Measured: a soft-deleted episode of another tenant passes today's check even when the caller names their own account | pgTAP B2 (red first) |
 | FR-9 | Every `SECURITY DEFINER` function executable by `authenticated` is listed with its access check, and a test fails if that set changes without the list changing | AC 3; fix the class, durably | Inventory table (§8, and in the KB entry) + pgTAP I1 |
 
 ## 7. Define Non-Functional Requirements
 
 - **Security:** tenant isolation for canon writes (FR-1/2/7/8); no
   existence oracle; `search_path` pinned.
-- **Performance:** adds two primary-key lookups and one `has_account_access`
-  call (two more PK lookups) per commit — sub-millisecond; commits are
+- **Performance:** adds one primary-key lookup and one `can_write_project`
+  call (one unique-index lookup on `project_members`) per commit — sub-millisecond; commits are
   human-initiated, a few per episode.
 - **Compatibility:** same signature and return; generated types unchanged
   (`check:types-current` must stay clean).
@@ -236,10 +258,10 @@ canon read returned `[]`.
 |---|---|---|
 | `commit_canon_changes` | **none** | **KB-27** — measured |
 | `bulk_reset_episodes_to_stage` | checks the episodes belong to `p_account_id`, never that the caller may act for `p_account_id`; the check skips soft-deleted episodes, the deletes do not | **Hole ×2, measured.** (a) naming the victim's account: `{"errors": [], "reset_count": 1}`, victim's `story_data` NULL, its canon event gone. (b) naming **own** account with a victim's soft-deleted episode: `{"errors": [], "reset_count": 0}` — looks harmless — and the victim's canon event is deleted. Canon-deleting. Its migration header says it "uses SECURITY DEFINER … with explicit authorization checks" (`20260608014516_bulk-reset-episodes-rpc.sql:6`) |
-| `batch_assemble_edit_project` | membership of the **caller-supplied** `p_user_id`, not `auth.uid()`; `search_path=public` | **Hole, measured**: passing the owner's id replaced the victim episode's edit project; passing own id refused |
-| `get_project_members` | **none** | **Hole, measured**: returned the victim owner's email |
-| `update_project_cover_image` | **none** | **Hole, measured**: victim's `coverImageUrl` set to `https://attacker.example/x.png` (HTTP 204) |
-| `check_account_budget` | **none** | **Low, measured**: returned `true` for the victim account; raises "Account not found" otherwise (existence oracle) |
+| `batch_assemble_edit_project` | membership of the **caller-supplied** `p_user_id`, not `auth.uid()`; `search_path=public` | **Hole, measured**: passing the owner's id replaced the victim episode's edit project; passing own id refused. **KB-40** (Open) |
+| `get_project_members` | **none** | **Hole, measured**: returned the victim owner's email. **KB-41** (Open) |
+| `update_project_cover_image` | **none** | **Hole, measured**: victim's `coverImageUrl` set to `https://attacker.example/x.png` (HTTP 204). **Fixed by KB-28** (this branch's base) |
+| `check_account_budget` | **none** | **Low, measured**: returned `true` for the victim account; raises "Account not found" otherwise (existence oracle). **KB-42** (Open) |
 | `batch_create_shots` | `project_members` owner/admin/member via `auth.uid()` | OK (by reading) |
 | `create_character_with_details` | `project_members` owner/admin/member | OK (by reading) |
 | `get_account_projects` | personal owner or `has_role_on_account` | OK (by reading) |
@@ -249,6 +271,7 @@ canon read returned `[]`.
 | `soft_delete_episode` | `project_members` owner/admin | OK (by reading) |
 | `update_episode_with_lock` | `project_members` owner/admin/member | OK (by reading) |
 | `can_edit_project`, `is_project_owner`, `has_role_on_account`, `has_account_access`, `user_owns_account`, `get_current_account_id`, `is_mfa_compliant` | predicates about `auth.uid()` itself | Needs none: each answers a question about the caller |
+| `can_write_project`, `can_write_project_storage` (added by KB-28, on this branch's base) | `project_members` owner/admin/member of the (path's) project, via `auth.uid()` | Needs none beyond itself: a predicate about the caller |
 | `verify_nonce` | the token is the credential (`crypt` compare); `p_user_id` only narrows user-bound tokens | Needs none beyond the token (Makerkit upstream) |
 
 Definer functions **not** executable by `authenticated`, recorded because
@@ -266,18 +289,18 @@ are not callable (the last two are KB-18's area; untouched).
 ## 9. Define the Desired System Behavior
 
 **Save to Canon.** User action → `commitCanonChangesAction` (unchanged) →
-`rpc('commit_canon_changes')` as the user → function: resolve account via
-`projects ⋈ episodes` on (*P*, *E*) → `has_account_access` → insert events
+`rpc('commit_canon_changes')` as the user → function: *E* must be *P*'s →
+`can_write_project(P)` → insert events
 with `created_by = auth.uid()` → single-statement metadata merge → result →
 action applies thread updates under RLS → toast.
 
 **Direct call by a non-member.** PostgREST → function → access check fails →
 `42501` → PostgREST error body → nothing written.
 
-**Bulk reset (if approved).** `bulkResetToStageAction` (unchanged) →
-`rpc('bulk_reset_episodes_to_stage')` → function: stage validation → access
-check on `p_account_id` → every id must be an episode of that account
-(soft-deleted included) → unchanged cleanup → result. A refusal is returned
+**Bulk reset.** `bulkResetToStageAction` (unchanged) →
+`rpc('bulk_reset_episodes_to_stage')` → function: stage validation → every id
+must be an episode (soft-deleted included) of a project in `p_account_id`
+that the caller can write → unchanged cleanup → result. A refusal is returned
 in the existing `errors` array (the function's own convention, already
 surfaced by the action as a value, which is KB-6-compatible).
 
@@ -289,8 +312,10 @@ so a check in the server action protects nothing (measured: the attack never
 touches the action). The fix therefore lives in the database, next to the
 bypass it guards. Components: browser → Next server action (user session) →
 PostgREST → `commit_canon_changes` (definer) → `immutable_events`,
-`episodes`. Access derives from one existing helper, `has_account_access`,
-so the rule is not re-derived by hand (the KB-11 lesson).
+`episodes`. Access derives from one helper, KB-28's `can_write_project`,
+so the rule is not re-derived by hand (the KB-11 lesson), and it is the same
+rule `episodes_update`, `create_character_with_details`, `batch_create_shots`
+and `update_episode_with_lock` already apply.
 
 ## 11. Architecture and Flow Diagrams
 
@@ -302,10 +327,9 @@ commitCanonChangesAction  --rpc-->  PostgREST  <--+
    (user session)                      |
                                        v
                      commit_canon_changes  [SECURITY DEFINER, search_path='']
-                       1. account := projects p JOIN episodes e
-                                     WHERE p.id=P AND e.id=E AND e.project_id=p.id
-                       2. auth.uid() null OR account null
-                          OR NOT has_account_access(account)
+                       1. auth.uid() null
+                          OR NOT EXISTS (episode E with project_id = P)
+                          OR NOT can_write_project(P)
                               --> RAISE 42501 'No access to this project''s canon'
                        3. INSERT immutable_events (..., created_by = auth.uid())
                               --> trigger: created_by_name snapshot (KB-1)
@@ -367,17 +391,12 @@ create or replace function public.commit_canon_changes(
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare
   v_uid uuid := auth.uid();
-  v_account_id uuid;
   v_events_created integer := 0;
 begin
-  -- The episode must be this project's; the account is read through both.
-  select p.account_id into v_account_id
-    from public.projects p
-    join public.episodes e on e.project_id = p.id
-   where p.id = p_project_id and e.id = p_episode_id;
-
-  if v_uid is null or v_account_id is null
-     or not public.has_account_access(v_account_id) then
+  if v_uid is null
+     or not exists (select 1 from public.episodes e
+                     where e.id = p_episode_id and e.project_id = p_project_id)
+     or not public.can_write_project(p_project_id) then
     raise exception 'No access to this project''s canon' using errcode = '42501';
   end if;
 
@@ -402,12 +421,13 @@ end $$;
 
 Choices, each with its reason:
 
-- **`has_account_access`, not `has_role_on_account`** — measured: 0/7
-  personal accounts have a membership row, and personal owners commit today;
-  `has_role_on_account` would lock them out (Decision 1).
-- **Account-level, not `project_members`** — the canon tables' own rule is
-  account-level; most team members have no `project_members` row, so the
-  stricter rule would stop members who commit today (Decision 1).
+- **`can_write_project`, the owner's choice (Decision 1).** Owner, admin or
+  member in `project_members`. Personal-account owners pass through the
+  creator's `owner` row. Team members with only an account role are refused —
+  a measured narrowing (only the creator gets a project row by default) that
+  the owner accepted; they can be added as project members. I had proposed
+  `has_account_access`; `has_role_on_account` was rejected because it
+  excludes personal-account owners (0/7 have a membership row).
 - **The `EXCEPTION WHEN OTHERS` wrapper is removed.** It re-raised every
   error as `P0001`, which would hide `42501` and `23505`. A plpgsql error
   already aborts the statement's transaction, so the wrapper bought nothing
@@ -415,26 +435,33 @@ Choices, each with its reason:
 - **Soft-deleted episodes** are not filtered — today's behaviour; the Publish
   page cannot show one. Left as is (§31).
 - **What the fix newly permits:** nothing. It removes callers; the single
-  `UPDATE` merge is the same result without the lost-update window. The only
-  newly refused legitimate-looking caller is the service role, which has no
-  caller.
+  `UPDATE` merge is the same result without the lost-update window. Newly
+  refused: other tenants (the point), project `viewer`s, team members
+  without a project row (Decision 1), and the service role (no caller).
 
-Bulk reset (Decision 2), inserted after the empty-input short-circuit,
-replacing the current ownership count:
+Bulk reset (Decision 2), replacing the current ownership count after the
+empty-input short-circuit:
 
 ```sql
-if auth.uid() is null or not public.has_account_access(p_account_id) then
-  return jsonb_build_object('reset_count', 0, 'errors', jsonb_build_array(
-    jsonb_build_object('episode_id', null, 'error', 'You do not have access to these episodes')));
-end if;
-
 select count(*) into v_unauthorized_count
   from unnest(p_episode_ids) as ids(id)
- where not exists (select 1 from public.episodes e
+ where auth.uid() is null
+    or not exists (select 1 from public.episodes e
                      join public.projects p on p.id = e.project_id
-                    where e.id = ids.id and p.account_id = p_account_id);
--- (no deleted_at filter: the deletes below do not filter it either)
+                    where e.id = ids.id
+                      and p.account_id = p_account_id
+                      and public.can_write_project(p.id));
+-- no deleted_at filter: the deletes below do not filter it either
+
+if v_unauthorized_count > 0 then
+  return jsonb_build_object('reset_count', 0, 'errors', jsonb_build_array(
+    jsonb_build_object('episode_id', null, 'error',
+      format('You cannot reset %s of these episodes', v_unauthorized_count))));
+end if;
 ```
+
+`p_account_id` is kept: the action writes its audit rows under it, so an id
+from another of the caller's accounts must still be refused.
 
 The refusal is returned, not raised, matching the function's existing
 convention (its `EXCEPTION` block turns errors into the `errors` array, and
@@ -462,20 +489,25 @@ the table-level immutability). Episode status is not touched by commit.
 
 | Operation | Failure | System | User | Recovery |
 |---|---|---|---|---|
-| commit | no access / mismatch / missing | `42501` before writes | generic toast (action throws; prod-redacted message is fine because no legitimate user can reach it) | none needed |
+| commit | not a project writer / mismatch / missing | `42501` before writes | generic toast "Failed to commit canon changes" (the client shows no server text) | be added as a project member |
 | commit | duplicate key, bad type | rollback, native SQLSTATE | generic toast | edit and retry (pre-existing) |
 | commit | thread updates fail | logged, counts lower (unchanged) | toast shows thread count | — |
-| bulk reset | no access to `p_account_id` | `errors[0]` "You do not have access to these episodes", `reset_count 0`, nothing deleted | the existing error display in `episode-list-wrapper` / `season-header` | — |
-| bulk reset | an id not in the account | existing "N episode(s) do not belong…" error, nothing deleted | same | deselect |
+| bulk reset | any id not writable by the caller, not in `p_account_id`, or not existing | `errors[0]` "You cannot reset N of these episodes", `reset_count 0`, nothing deleted | "Reset 0 episodes with 1 error(s)" (`episode-list-wrapper`) / "Reset completed with 1 error(s)" (`season-header`) — the text of the error is not shown | be added as a project member |
 
-The action is **not** wrapped with `returnRefusals` (Decision 4): its refusal
-is unreachable from the UI, and wrapping changes the client's return shape.
+The action is **not** wrapped with `returnRefusals` (Decision 4, approved).
+Under Decision 1 the refusal *is* reachable from the UI by a team member
+without a project row, which my original rationale ("unreachable") did not
+cover. Both messages are the existing generic ones and say nothing about
+project membership; the same users already get generic failures from
+`episodes_update` elsewhere in the studio. Recorded in §31 as a follow-up
+rather than widened here, since it would change client code (Decision 4).
 
 ## 19. Security
 
 - **Tenant isolation:** FR-1/2 close the reproduced write; FR-7/8 close the
-  reproduced wipe. `has_account_access` is itself `SECURITY DEFINER` with
-  `search_path = ''` and returns false for a null `auth.uid()`.
+  reproduced wipe. `can_write_project` (KB-28) is itself `SECURITY DEFINER`
+  with `search_path = ''`, and is false for a null `auth.uid()` (no row
+  matches). It is the one project-write rule: KB-28 and KB-26 build on it.
 - **Trust boundary:** the database function, because PostgREST exposes it
   directly; action-level checks cannot guard an RPC.
 - **Existence oracle:** removed (one message for all refusals).
@@ -487,33 +519,36 @@ is unreachable from the UI, and wrapping changes the client's return shape.
   and episode ids to every signed-in user (measured, step 0), so "they would
   need the UUID" is not a mitigation for any function in §8.
 - **Audit:** no audit-log row for canon commits today; unchanged.
-- **Remaining holes found by this sweep, not fixed here unless Decision 2 says
-  so:** `batch_assemble_edit_project`, `get_project_members`,
-  `update_project_cover_image` (High/Medium, measured), `check_account_budget`
-  (Low, measured). Proposed as new KB entries for the lead to number.
+- **Remaining holes found by this sweep, filed Open, not fixed here:**
+  KB-40 `batch_assemble_edit_project` (High), KB-41 `get_project_members`
+  (High), KB-42 `check_account_budget` (Low), all measured.
+  `update_project_cover_image` is fixed by KB-28 (this branch's base).
+  `remove_episode_from_threads_touched` is recorded under KB-40's entry.
 
 ### What KB-17 will need (and why this design does not make it harder)
 
 1. **The function stays `SECURITY DEFINER`, so KB-17's new `immutable_events`
    policies will not apply inside it.** It already enforces what KB-17's
    INSERT `WITH CHECK (created_by = auth.uid())` will require — it writes
-   `auth.uid()` itself — and pgTAP T4 asserts it. KB-17's suite should call
+   `auth.uid()` itself — and pgTAP T4b/T5/T7 assert it. KB-17's suite should call
    `commit_canon_changes` once and assert the same, so the two paths cannot
    drift.
 2. **KB-17's DELETE rule will not bind `bulk_reset_episodes_to_stage`**, which
-   deletes `immutable_events` in definer context. After this PR any account
-   member (via `has_account_access`) can bulk-reset and so delete canon.
+   deletes `immutable_events` in definer context. After this PR any project
+   owner/admin/member (via `can_write_project`) can bulk-reset and so delete
+   canon.
    KB-17 must decide whether bulk reset obeys the same role rule it picks for
    deleting events, and if so add that role check inside the function.
 3. **Predicate alignment.** `immutable_events`' policy uses
    `has_role_on_account`, which excludes personal-account owners (measured:
    refused on insert into their own project; reads use the same predicate, so
    `getImmutableEventsAction` returns nothing for them — inferred, not run).
-   If KB-17 splits the policy, `has_account_access` is the predicate that
-   matches this function and KB-11's precedent. Only once the table's
-   policies and the `episodes` update policy agree with this function can it
-   be converted to `SECURITY INVOKER` without refusing members who commit
-   today.
+   It also admits team members with no project row, whom this function now
+   refuses — so today a direct insert through RLS is *wider* than the RPC for
+   them and narrower for personal-account owners. If KB-17 splits the
+   policy, `can_write_project` is the INSERT predicate that matches this
+   function (and `episodes_update`). Only once the table's policies agree
+   with it can the function become `SECURITY INVOKER`.
 4. **No UPDATE conflict.** Neither function updates `immutable_events`, so
    KB-17's refuse-every-update trigger (with KB-1's nested set-null
    exception) is unaffected.
@@ -570,15 +605,17 @@ reason, before the migration is written.
 
 **`apps/web/supabase/tests/database/canon-commit-access.test.sql`**
 (fixtures: owner of team *T* with project *P*/episode *E*; a team member of
-*T* with no `project_members` row; a member of another team *U*; a stranger;
-a personal-account owner with project *S*/episode *F*):
+*T* with no `project_members` row; a *viewer* of *P*; a member of another
+team *U*; a stranger; a personal-account owner with project *S*/episode *F*):
 
 | Case | Asserts | Red on `main` because |
 |---|---|---|
 | T1 | stranger → `throws_ok(…, '42501')`; 0 events in *P*; *E* metadata unchanged | call succeeds today |
 | T2 | member of *U* → refused; nothing written | succeeds today |
 | T3 | member of *U* with own project + *E* → refused; nothing in either project; *E* metadata unchanged | succeeds today (measured row 5) |
-| T4 | member of *T* (no `project_members`) → commits; `created_by` = member; `created_by_name` = member's name; other metadata keys kept | `created_by` NULL today |
+| T4a | member of *T* with **no project row** → refused; nothing written | succeeds today |
+| T4b | the same member **after being added as a project `member`** → commits; `created_by` = member; `created_by_name` = member's name; other metadata keys kept | `created_by` NULL today |
+| T4c | project `viewer` of *P* → refused | succeeds today |
 | T5 | personal owner on *S*/*F* → commits; `created_by` = owner | `created_by` NULL today |
 | T6 | `anon` → no execute | stays green (regression guard) |
 | T7 | owner of *T* commits to *P*/*E* (positive control) | green on `main` too; kept so a later over-tightening shows up |
@@ -586,13 +623,17 @@ a personal-account owner with project *S*/episode *F*):
 
 **`bulk-reset-access.test.sql`** (Decision 2): B1 stranger with the victim's
 account id → refused, story and canon intact; B2 caller naming own account
-with a victim's soft-deleted episode → refused, canon intact; B3 member
-resets own → `reset_count 1`, canon removed; B4 personal owner resets own →
-works.
+with a victim's soft-deleted episode → refused, canon intact; B3 project
+member resets own → `reset_count 1`, canon removed; B4 personal owner resets
+own → works; B5 team member with no project row, naming their own account →
+refused, nothing deleted.
 
 **`definer-functions-inventory.test.sql`** (Decision 5): I1 `results_eq`
 of every `SECURITY DEFINER` function executable by `authenticated` against
-the reviewed list (each line commented with its access check, from §8);
+the reviewed list (each line commented with its access check, from §8;
+includes KB-28's `can_write_project` and `can_write_project_storage`; the
+header says that whoever merges after this adds one line per new function —
+KB-18's `set_fact_verification` is the known one);
 I2 none of them lacks a `search_path` (`commit_canon_changes` fails I2 today).
 
 **Mutation guards** — `tooling/mutation-guards/kb-27.json`, `kind: pgtap`:
@@ -630,11 +671,12 @@ change and is not planned.
 |---|---|---|---|---|---|---|---|
 | Other tenants cannot write my canon | attack row §2 | FR-1 | §15 check | `commit_canon_changes` | RPC `42501` | T1, T2, guard | HTTP rerun steps 4 |
 | …nor via mismatched ids | attack | FR-2 | §15 join | same | same | T3, guard | step 5 |
-| Events say who saved them | happy path 5 | FR-3 | §15 `v_uid` | same + KB-1 trigger | `created_by(_name)` | T4, T5, guard | 9a/9b rows |
-| Members still save canon | happy path | FR-4 | §15 predicate | same | — | T4, T5 | UI run + screenshot |
+| Events say who saved them | happy path 5 | FR-3 | §15 `v_uid` | same + KB-1 trigger | `created_by(_name)` | T4b, T5, T7, guard | 9a/9b rows |
+| Project writers still save canon | happy path | FR-4 | §15 predicate | same | — | T4b, T5, T7 | UI run + screenshot |
+| Non-writers of the project cannot | alt paths | FR-1 | §15 predicate | same | RPC `42501` | T4a, T4c | — |
 | No path hijack | — | FR-5 | `search_path=''` | same | — | I2 | catalogue |
 | All-or-nothing | alt paths | FR-6 | no catch-all | same | — | T1–T3, T8 | — |
-| Other tenants cannot wipe my episodes | — | FR-7, FR-8 | §15 bulk | `bulk_reset_episodes_to_stage` | `errors[]` | B1, B2, guards | HTTP rerun step E |
+| Other tenants cannot wipe my episodes | — | FR-7, FR-8 | §15 bulk | `bulk_reset_episodes_to_stage` | `errors[]` | B1, B2, B5, guards | HTTP rerun step E |
 | Class stays closed | — | FR-9 | inventory | pgTAP | catalogue | I1, guard | KB entry table |
 
 ## 29. Architectural Alternatives and Trade-offs
@@ -642,17 +684,18 @@ change and is not planned.
 | Decision | Alternatives | Why chosen |
 |---|---|---|
 | Keep `SECURITY DEFINER` + explicit check | `SECURITY INVOKER`, letting RLS decide | Invoker, measured today, refuses personal-account owners on the event insert (`42501`), and `episodes_update` would silently update 0 rows for team members without a `project_members` row. It is right only after KB-17/FILM-1002 align the predicates (§19). |
-| `has_account_access` | `has_role_on_account`; `project_members` roles | Measured regressions for both (0/7 personal membership rows; creator-only `project_members`). Matches KB-11's rule. |
+| `can_write_project` (owner's decision) | `has_account_access` (my proposal); `has_role_on_account` | The owner chose the project rule: it is the rule `episodes_update` and the other project-scoped definer functions already use, and KB-28 made it one function. Cost, measured and accepted: team members without a project row are refused (only creators get a row by default). `has_role_on_account` would also have excluded personal-account owners (0/7 membership rows). |
 | One generic refusal message | Distinct messages | No existence oracle; no UI shows it. |
 | Raise in commit, return in bulk reset | Uniform | Each keeps its function's existing error convention and its caller's handling. |
-| No action/UI change | `returnRefusals` wrap + client change | Unreachable refusal; avoids a UI diff (and its E2E/screenshot obligations) for no user benefit. |
+| No action/UI change | `returnRefusals` wrap + client change | Approved (Decision 4). The refusal is reachable by team members without a project row under Decision 1; they get the existing generic message. Changing that is client work, recorded in §31. |
 | Inventory as a pgTAP allowlist | Doc-only list | A list in a doc drifts; a test fails the PR that adds an unreviewed definer function. Cost: every future definer function needs one line added — intended. |
 
 ## 30. Risk Register
 
 | Risk | Impact | Detection | Mitigation | Contingency |
 |---|---|---|---|---|
-| A legitimate member is refused | Cannot save canon | Toast; `42501` on this RPC | T4/T5 cover team member without `project_members` and personal owner; UI run | Check membership row; forward-fix predicate |
+| A project writer is refused | Cannot save canon | Toast; `42501` on this RPC | T4b/T5/T7 cover project member, personal owner and team owner; UI run | Check the `project_members` row |
+| A team member without a project row is refused and does not know why (accepted, Decision 1) | Confusion; generic toast | Support question | Add them as a project member | Follow-up: surface the refusal text (§31) |
 | Inventory test goes red for a parallel PR that adds a definer function | That PR's CI fails after rebase | CI | Documented in the test header; one-line fix | Add the function with its check |
 | Someone "fixes" the single reset's warning by granting `remove_episode_from_threads_touched` | New cross-tenant write | Inventory I1 would fail (it becomes callable) | Recorded in §8 and the KB entry | — |
 | Forged canon already in production | Wrong continuity constraints | Not detectable (every row from this path has NULL author) | Owner decision 7 | Owner reviews canon per project if concerned |
@@ -660,11 +703,16 @@ change and is not planned.
 
 ## 31. Open Questions and Assumptions
 
-- **Q1 (Decision 1)** Access predicate — assumed `has_account_access`.
-- **Q2 (Decision 2)** Scope of sibling fixes — assumed bulk reset in, four
-  others to new KB entries.
-- **Q3 (Decision 7)** Existing data — assumed no backfill or audit: forged
-  and genuine rows are indistinguishable (all `created_by` NULL, measured).
+- **Q1 (Decision 1) — resolved by the owner:** `can_write_project` (project
+  owner/admin/member), not `has_account_access`.
+- **Q2 (Decision 2) — resolved:** bulk reset fixed here; KB-40, KB-41, KB-42
+  filed Open; the cover-image function is KB-28's.
+- **Q3 (Decision 7) — resolved:** no backfill or audit; forged and genuine
+  rows are indistinguishable (all `created_by` NULL, measured).
+- **Open, for a follow-up:** a team member without a project row now gets a
+  generic "Failed to commit canon changes" / "Reset … with 1 error(s)". Making
+  the refusal say "ask to be added to this project" means returning it as a
+  value (`returnRefusals`) and changing both clients — outside Decision 4.
 - **Assumption:** no production caller uses the service role for this RPC
   (only caller found is the user-session action).
 - **Not addressed, recorded:** saving twice fails on the unique event key and
@@ -690,8 +738,8 @@ change and is not planned.
 8. `pnpm typecheck`, `pnpm lint:fix`, `pnpm format:fix`.
 9. **Records**: KB-27 marked Fixed + inventory table in its entry + one
    Fixed-table row; FILM-1002 `remaining` drops the KB-27 item (criterion stays
-   unmet for KB-17); FILM-1005's KB-27 mention updated. New sibling KB entries
-   only as the lead assigns them.
+   unmet for KB-17); FILM-1005's KB-27 mention updated. KB-40, KB-41, KB-42
+   entries written Open with their reproductions.
 10. Commit, push, PR.
 
 Rollback at any stage: the branch touches only the migration, tests, guards,
@@ -699,19 +747,19 @@ schema mirror and spec records.
 
 ## 33. Definition of Done
 
-- T1–T8 (and B1–B4, I1–I2 if approved) green, each seen red on `main` for its
-  stated reason; mutation guards all `RED`.
+- T1–T8 (with T4a–c), B1–B5 and I1–I2 green, each red case seen red on the
+  pre-fix functions for its stated reason; mutation guards all `RED`.
 - Reproduction rerun as the stranger: every attack refused, nothing written;
   owner and personal-owner controls succeed with `created_by` set.
 - UI: a member's Save to Canon still succeeds (screenshot).
 - `check:types-current` clean; typecheck, lint, format clean.
 - KB-27 entry Fixed with the inventory table; FILM-1002/1005 updated;
-  siblings reported to the lead.
+  KB-40/41/42 filed Open.
 
 ## 34. Final Consistency Pass
 
 **Forward.** Problem: other tenants can write canon (measured). Outcome:
-they cannot; members can, with their name on it. Flow: Save to Canon
+they cannot; project writers can, with their name on it. Flow: Save to Canon
 unchanged; direct calls refused. System: an access check inside the function
 the attack uses, since PostgREST exposes it directly. Data: no schema change;
 `created_by` populated. Tests: pgTAP red-first on the exact attack and on
@@ -719,10 +767,11 @@ both kinds of legitimate member; HTTP rerun; one UI run. Deploy: a migration,
 no ordering constraint.
 
 **Reverse.** Production after deploy: `commit_canon_changes` raises `42501`
-for anyone without owner-or-role access to the episode's project's account,
+for anyone who is not an owner, admin or member of the episode's project,
 else writes events authored by the caller and merges the summary. That
-produces: members (team or personal) see no change; others get an error and
-leave no trace. That satisfies the flow and ACs 1–2. AC 3 is met by the
+produces: project writers (team or personal) see no change; team members
+without a project row get the generic failure (accepted, Decision 1); others
+get an error and leave no trace. That satisfies the flow and ACs 1–2. AC 3 is met by the
 inventory table and the test that pins it. The two paths converge; the one
-assumption that could split them — which members count — is Decision 1,
-decided by measurement rather than by reading the policies.
+assumption that could split them — which members count — was Decision 1,
+decided by the owner with the measurement in front of them.
