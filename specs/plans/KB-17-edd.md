@@ -6,7 +6,7 @@
 | Closes | FILM-1002 `remaining:` rows "Appropriate GRANT statements" and "All attack vectors mitigated"; FILM-1005 `remaining:` row "Authorization checks on all actions via RLS" |
 | Branch | `fix/kb-17-canon-events-immutable` |
 | Base | `fix/kb-27-commit-canon-membership` (#316, stacked on #313 KB-28) |
-| Status | Plan — awaiting owner approval |
+| Status | Approved 2026-09-23 with the defaults D1–D4; implemented (see *Implementation notes* at the end) |
 | Date | 2026-09-23 |
 
 Everything marked **measured** was run on the local stack (reset to this
@@ -389,8 +389,7 @@ snapshot, authoritative after the author is deleted.
 
 ## 14. Database Design and Changes
 
-One hand-written migration, `apps/web/supabase/migrations/<UTC
-timestamp>_kb17-immutable-events-immutable.sql`, timestamped after
+One hand-written migration, `apps/web/supabase/migrations/20260923075604_kb17-immutable-events-immutable.sql`, timestamped after
 KB-27's `20260923044106` (the newest migration on the base, #316 head `b0e2e090`). No new tables, columns, indexes or constraints.
 
 ```sql
@@ -883,3 +882,30 @@ material scope change, so re-plan it.
 Both directions converge on §1. The open item that could change this is
 D1. If the owner picks owner/admin, the reverse pass changes (resets must be
 gated), and §32 marks that as a re-plan rather than an in-flight tweak.
+
+---
+
+## Implementation notes (2026-09-23)
+
+The owner approved with every default: D1 = project writers, D2 = no
+change to bulk reset, D3 = nobody edits, D4 = fix only `immutable_events`.
+The class-sweep findings are filed as KB-76 (the five `FOR ALL` canon
+tables), KB-77 (`character_states` authorship and the log DELETE grants),
+and KB-78 (story regeneration deletes canon added by hand). Each was
+reproduced before it was filed.
+
+What differs from the plan:
+
+- **Grants.** The migration runs `revoke all … from anon, authenticated`,
+  then `grant select, insert, delete … to authenticated`. The plan wrote this
+  as separate revokes. The result is the same, and `table_privs_are` pins it.
+- **Mutation guards** (`tooling/mutation-guards/kb-17.json`, not in §32):
+  eight pgTAP guards and two unit guards, all RED. CI re-runs them, so the
+  red check is recorded rather than remembered.
+- **A `data-test` on the story sidebar toggle** (`story-sidebar-toggle`).
+  The sidebar starts collapsed, so the spec must open it first.
+- **§26 I1 counts** run inline under the caller's own row-level security,
+  not through a helper function, because a `pg_temp` function is not
+  reliably callable by another role.
+- **The refusal string** stays a module constant that is not exported. A
+  `'use server'` file may export only async functions.
