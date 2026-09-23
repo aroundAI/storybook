@@ -12,9 +12,8 @@ begin;
 -- `public` or `kit` fails this test until the function is added below WITH
 -- ITS ACCESS CHECK in the comment. Review the check; do not just append.
 --
--- Merge order: this list is exact as of KB-27, stacked on KB-28. A PR that
--- merges after it and adds a definer function adds one line here -- KB-18's
--- `set_fact_verification` is one already in flight.
+-- Merge order: this list is exact as of KB-27 (after KB-18 and KB-28). A PR
+-- that merges after it and adds a definer function adds one line here.
 --
 -- I2: none of them may run without a pinned search_path.
 
@@ -68,6 +67,8 @@ select results_eq(
        ('public.is_project_owner'),
        -- requires the caller's own membership of the account
        ('public.is_team_member'),
+       -- can_edit_project (project owner/admin) of the fact's project (KB-18)
+       ('public.set_fact_verification'),
        -- project_members owner/admin
        ('public.soft_delete_episode'),
        -- project_members owner/admin/member
