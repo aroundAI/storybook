@@ -19,7 +19,23 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 
-type Esbuild = typeof import('esbuild');
+/**
+ * The part of esbuild's API this test calls. Declared here rather than
+ * imported: `apps/web` does not depend on esbuild (it is loaded through
+ * vite below), so `typeof import('esbuild')` cannot resolve under the
+ * lambda typecheck.
+ */
+interface Esbuild {
+  build(options: {
+    entryPoints: string[];
+    bundle: boolean;
+    platform: 'node';
+    format: 'esm';
+    target: string;
+    outfile: string;
+    logLevel: 'silent';
+  }): Promise<unknown>;
+}
 
 const require = createRequire(import.meta.url);
 const viteRequire = createRequire(require.resolve('vite/package.json'));
