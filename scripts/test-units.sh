@@ -43,3 +43,4 @@ pnpm --filter @kit/analytics --fail-if-no-match test
 pnpm --filter @kit/clickhouse --fail-if-no-match test
 pnpm --filter @kit/content-analytics --fail-if-no-match test
 pnpm --filter @kit/publishing --fail-if-no-match test
+pnpm --filter @kit/edit-suite --fail-if-no-match test
