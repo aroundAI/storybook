@@ -174,6 +174,7 @@ export function IdeationScreen({
               </span>
               <Button
                 type="submit"
+                data-test="ideation-generate"
                 disabled={
                   isPending || llmStatus === 'pending' || premiseLength < 10
                 }
@@ -286,6 +287,7 @@ export function IdeationScreen({
                     <FormControl>
                       <Textarea
                         id="premise"
+                        data-test="ideation-premise"
                         placeholder="Once upon a time..."
                         className="cinema-story-text min-h-[200px] resize-none border-none bg-transparent p-0 shadow-none placeholder:text-slate-600 focus-visible:ring-0 sm:text-2xl"
                         {...field}
