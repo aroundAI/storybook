@@ -3,7 +3,55 @@
 **Ticket:** KB-22 in `specs/cross-cutting/FILM-CC-04-known-bugs.md`, designed together
 with **KB-20 item 3** (the vendor-data deletion mechanism). Severity High.
 **Branch:** `fix/kb-22-disconnect-keeps-records` from `origin/main` (49b851d6).
-**Status:** Plan — awaiting owner approval. Nothing below is implemented.
+**Status:** Approved 2026-09-23 (all ten decisions at their defaults; §5
+wording approved). PR A implemented; PR B stacked on it.
+
+**Deviations found while implementing PR A** (none changes user-visible scope):
+
+1. The per-platform `disconnect*Action` server actions were removed rather
+   than kept as delegating wrappers: nothing but the router called them, and
+   a `'use server'` file exporting them would have made each a callable
+   endpoint. Their vendor calls moved to `oauth/<platform>/revoke.ts`
+   (`server-only`), composed by `oauth/revokers.ts`.
+2. The analytics sync skips a disconnected connection in `syncEligibility`
+   (not in the query, as §20 proposed): the existing `not_authorised` and
+   `suppressed` skips have the same shape, and a PostgREST filter on an
+   embedded connection would drop upload-only publishes with no connection.
+3. The YouTube dialog sentence ships in PR A without "— normally within the
+   hour": until PR B's job exists the 7-day deletion is the owner's, by hand
+   (`docs/data-deletion-runbook.md`). PR B adds the clause with the job.
+4. The privacy policy repeated the sentence the data-deletion page corrects
+   ("Disconnecting also removes our records…"); it is corrected with it.
+5. The Playwright reconnect case needs a server started with a local OAuth
+   sandbox and an `ENCRYPTION_KEY`, which CI's E2E job does not have (no
+   `ENCRYPTION_KEY` is configured anywhere locally or in CI today), so it is
+   gated on `KB22_OAUTH_SANDBOX_PORT` and runs locally; the disconnect cases
+   run everywhere.
+6. **§14's foreign-key change was wrong and is replaced** (FR-4/FR-5, §29
+   "FK action"). This EDD said `NO ACTION` "is checked at statement end, so
+   account deletion still succeeds". It is not, inside a cascade: each
+   referential step is checked as it runs, deleting an account reaches
+   `platform_connections` while the publishes are still there, and the pgTAP
+   account-deletion case **died with 23503** — every account deletion refused,
+   the KB-1 shape. `DEFERRABLE INITIALLY DEFERRED` fixed that but stopped
+   `channel_analytics_settings`' composite key refusing a cross-account
+   insert at insert time (its own pgTAP case went red). What shipped: the
+   keys are **unchanged** (still `CASCADE`), and a `BEFORE DELETE` trigger,
+   `platform_connections_refuse_delete`, refuses to delete a connection whose
+   account still exists (SQLSTATE 23001). During account deletion the account
+   row is already gone when the cascade reaches its connections, so that
+   works; every other delete — member, service role, operator — is refused,
+   including of a connection nothing yet points at. Same user-visible
+   behaviour as approved, and stricter. Runbook procedure B no longer deletes
+   the connection row.
+7. Three existing pgTAP files asserted the old behaviour and were updated:
+   `channel-analytics-settings-rls` ("deleting a channel takes its override
+   with it" → the delete is refused and the override stays),
+   `analytics-experiments-watched` ("disconnecting nulls the experiment's
+   channel" → the experiment keeps its channel). `ConnectionStatus` was
+   defined twice (`src/types.ts`, `src/lib/types.ts`); the second now
+   re-exports the first.
+8. The red checks are kept as CI mutation guards (`tooling/mutation-guards/kb-22.json`).
 
 **Decisions this builds on, not reopens** (KB-20, "Decided (owner, 2026-09-22)"):
 disconnecting does not delete history; YouTube is carved out — its statistics are

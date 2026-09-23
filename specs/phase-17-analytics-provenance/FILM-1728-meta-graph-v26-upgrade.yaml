@@ -274,7 +274,7 @@ notes: |
   | publishing/src/oauth/meta/config.ts | dialog, token, graph URLs | OAuth start; META_OAUTH_CONFIG for the two below |
   | apps/web/app/api/platforms/connect/meta/route.ts | authUrl | /dialog/oauth |
   | apps/web/app/api/platforms/callback/meta/route.ts | tokenUrl, graphUrl | code exchange, long-lived exchange, /me/accounts, /{ig-user} |
-  | publishing/src/oauth/meta/disconnect.ts | graphUrl | DELETE /me/permissions |
+  | publishing/src/oauth/meta/revoke.ts | graphUrl | DELETE /me/permissions |
   | publishing/src/lib/token-refresh.ts | META_OAUTH_TOKEN_URL, META_GRAPH_BASE | fb_exchange_token, /me/accounts |
   | publishing/src/providers/facebook/types.ts → facebook-provider.ts | META_GRAPH_BASE, META_GRAPH_VERSION (re-exported as FACEBOOK_*) | /videos, /video_reels, /{video}, /me/accounts |
   | publishing/src/providers/instagram/instagram-provider.ts | META_GRAPH_BASE | /media, /{container}, /media_publish, /{media}, /{ig-user}, /pages/search |

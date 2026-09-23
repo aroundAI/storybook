@@ -6,7 +6,9 @@ import { revalidatePath } from 'next/cache';
 
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -15,9 +17,7 @@ import { GetConnectedPlatformsSchema } from '../lib/schemas/publish.schema';
 import { ensureValidToken } from '../lib/token-refresh';
 import type { Platform } from '../lib/types';
 import { resolveAnalyticsAccess } from '../oauth/analytics-scopes';
-import { disconnectMetaAction } from '../oauth/meta/disconnect';
-import { disconnectTikTokAction } from '../oauth/tiktok/disconnect';
-import { disconnectYouTubeAction } from '../oauth/youtube/disconnect';
+import { revokeAtVendor } from '../oauth/revokers';
 import type { ConnectionStatus, PlatformType } from '../types';
 import { resolveFollowerCounts } from './follower-counts';
 
@@ -39,7 +39,7 @@ export const getConnectionsAction = enhanceAction(
         `
         id, account_id, platform, platform_account_id, platform_account_name,
         is_active, token_expires_at, scopes, metadata, language,
-        created_at, updated_at
+        disconnected_at, created_at, updated_at
       `,
       )
       .eq('account_id', data.accountId)
@@ -85,6 +85,8 @@ export const getConnectionsAction = enhanceAction(
             metadata: conn.metadata,
           }),
           tokenExpiresAt: conn.token_expires_at,
+          disconnectedAt: conn.disconnected_at ?? null,
+          linkedAccountName: linkedMetaAccountName(conn, connections ?? []),
           createdAt: conn.created_at,
           updatedAt: conn.updated_at,
           accountSlug: '', // Will be set by the caller
@@ -104,52 +106,121 @@ export const getConnectionsAction = enhanceAction(
   },
 );
 
-const DisconnectSchema = z.object({
+const ConnectionIdSchema = z.object({
   connectionId: z.string().uuid(),
-  platform: z.enum([
-    'youtube',
-    'tiktok',
-    'instagram',
-    'facebook',
-    'twitter',
-    'linkedin',
-  ]),
 });
 
+const CONNECTION_NOT_FOUND =
+  'That connection no longer exists, or you do not have access to it.';
+
 /**
- * Disconnects a platform connection by routing to the appropriate platform-specific action
+ * Disconnects a platform connection (KB-22).
+ *
+ * Asks the platform to revoke our access, then disconnects the row with
+ * `disconnect_platform_connection`: tokens wiped, row kept. It never deletes
+ * the row — that used to cascade into the channel's publishes and everything
+ * a person had attached to them. The platform is the stored one, not one the
+ * caller names.
  */
-export const disconnectPlatformAction = enhanceAction(
-  async ({ connectionId, platform }) => {
-    let result;
+export const disconnectPlatformAction = returnRefusals(
+  enhanceAction(
+    async ({ connectionId }) => {
+      const logger = await getLogger();
+      const client = getSupabaseServerClient();
 
-    switch (platform) {
-      case 'youtube':
-        result = await disconnectYouTubeAction({ connectionId });
-        break;
-      case 'tiktok':
-        result = await disconnectTikTokAction({ connectionId });
-        break;
-      case 'instagram':
-      case 'facebook':
-        result = await disconnectMetaAction({ connectionId });
-        break;
-      case 'twitter':
-      case 'linkedin':
-        result = await deleteConnection(connectionId);
-        break;
-      default:
-        throw new Error(`Unsupported platform: ${platform}`);
-    }
+      const { data: connection, error: readError } = await client
+        .from('platform_connections')
+        .select('id, platform, access_token_encrypted, disconnected_at')
+        .eq('id', connectionId)
+        .maybeSingle();
 
-    revalidatePath(`/home/[account]/settings`, 'page');
+      if (readError) {
+        throw new Error(`Failed to read connection: ${readError.message}`);
+      }
 
-    return result;
-  },
-  {
-    schema: DisconnectSchema,
-    auth: true,
-  },
+      if (!connection) {
+        throw new ActionRefusal(CONNECTION_NOT_FOUND);
+      }
+
+      const platform = connection.platform as PlatformType;
+
+      const revoke = connection.disconnected_at
+        ? ({ status: 'no_token' } as const)
+        : await revokeAtVendor({
+            platform,
+            access_token_encrypted: connection.access_token_encrypted,
+          });
+
+      const { data: rows, error } = await client.rpc(
+        'disconnect_platform_connection',
+        { p_connection_id: connectionId },
+      );
+
+      if (error) {
+        throw new Error(`Failed to disconnect connection: ${error.message}`);
+      }
+
+      if (!rows || rows.length === 0) {
+        throw new ActionRefusal(CONNECTION_NOT_FOUND);
+      }
+
+      const disconnected = rows
+        .filter((row) => !row.already_disconnected)
+        .map((row) => row.id);
+
+      logger.info(
+        {
+          name: 'oauth.disconnect',
+          connectionId,
+          platform,
+          revoke: revoke.status,
+          httpStatus: 'httpStatus' in revoke ? revoke.httpStatus : undefined,
+          disconnected,
+        },
+        'Platform connection disconnected',
+      );
+
+      revalidatePath(`/home/[account]/settings`, 'page');
+
+      return {
+        disconnected,
+        alreadyDisconnected: disconnected.length === 0,
+      };
+    },
+    {
+      schema: ConnectionIdSchema,
+      auth: true,
+    },
+  ),
+);
+
+/**
+ * How many scheduled posts are waiting on a connection, for the disconnect
+ * dialog. They are not cancelled: they go out if the channel is reconnected
+ * before their time, and fail if it is not.
+ */
+export const countScheduledPublishesAction = returnRefusals(
+  enhanceAction(
+    async ({ connectionId }) => {
+      const client = getSupabaseServerClient();
+
+      const { count, error } = await client
+        .from('publishes')
+        .select('id', { count: 'exact', head: true })
+        .eq('platform_connection_id', connectionId)
+        .eq('status', 'scheduled');
+
+      if (error) {
+        throw new Error(`Failed to count scheduled publishes: ${error.message}`);
+      }
+
+      return { count: count ?? 0 };
+    },
+    {
+      schema: ConnectionIdSchema,
+      auth: true,
+    },
+  ),
 );
 
 const RefreshSchema = z.object({
@@ -223,6 +294,10 @@ export const updateConnectionLanguageAction = enhanceAction(
  * Determines the status of a connection based on its state
  */
 function determineStatus(connection: DBPlatformConnection): ConnectionStatus {
+  if (connection.disconnected_at) {
+    return 'disconnected';
+  }
+
   // Check for error in metadata
   if (
     connection.metadata &&
@@ -249,21 +324,44 @@ function determineStatus(connection: DBPlatformConnection): ConnectionStatus {
 }
 
 /**
- * Simple connection deletion for platforms without revocation endpoints
+ * The Instagram account or Facebook Page that shares this connection's
+ * Facebook login, and is disconnected with it — the same pairing
+ * `disconnect_platform_connection` applies.
  */
-async function deleteConnection(connectionId: string) {
-  const client = getSupabaseServerClient();
+function linkedMetaAccountName(
+  connection: DBPlatformConnection,
+  connections: DBPlatformConnection[],
+): string | undefined {
+  const linkedPageId = (connection: DBPlatformConnection) =>
+    connection.metadata && typeof connection.metadata === 'object'
+      ? (connection.metadata as { linked_page_id?: unknown }).linked_page_id
+      : undefined;
 
-  const { error } = await client
-    .from('platform_connections' as 'accounts')
-    .delete()
-    .eq('id', connectionId);
+  const linked = connections.filter((other) => {
+    if (other.id === connection.id || other.disconnected_at) return false;
 
-  if (error) {
-    throw new Error('Failed to delete connection');
-  }
+    if (connection.platform === 'instagram') {
+      return (
+        other.platform === 'facebook' &&
+        other.platform_account_id === linkedPageId(connection)
+      );
+    }
 
-  return { success: true };
+    if (connection.platform === 'facebook') {
+      return (
+        other.platform === 'instagram' &&
+        linkedPageId(other) === connection.platform_account_id
+      );
+    }
+
+    return false;
+  });
+
+  const names = linked
+    .map((other) => other.platform_account_name)
+    .filter((name): name is string => Boolean(name));
+
+  return names.length > 0 ? names.join(', ') : undefined;
 }
 
 // ============================================================================
@@ -293,6 +391,8 @@ export const getConnectedPlatformsAction = enhanceAction(
       `,
       )
       .eq('account_id', accountId)
+      // A disconnected channel is history, not somewhere to publish (KB-22).
+      .is('disconnected_at', null)
       .order('platform', { ascending: true });
 
     if (error) {

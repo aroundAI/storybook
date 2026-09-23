@@ -11,7 +11,7 @@ export type PlatformType =
   | 'twitter'
   | 'linkedin';
 
-export type ConnectionStatus = 'active' | 'expired' | 'error';
+export type ConnectionStatus = 'active' | 'expired' | 'error' | 'disconnected';
 
 /**
  * Platform connection as returned from server actions
@@ -26,6 +26,10 @@ export interface PlatformConnection {
   errorMessage?: string;
   scopes: string[];
   tokenExpiresAt: string | null;
+  /** When the creator disconnected it in the app (KB-22); null while connected. */
+  disconnectedAt?: string | null;
+  /** The Instagram account or Facebook Page disconnected together with this one. */
+  linkedAccountName?: string;
   createdAt: string;
   updatedAt: string;
   accountSlug: string;

@@ -4,4 +4,3 @@ export {
   type FacebookPage,
 } from './config';
 
-export { disconnectMetaAction } from './disconnect';

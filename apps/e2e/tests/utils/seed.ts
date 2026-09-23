@@ -199,6 +199,10 @@ export async function seedYouTubeConnection(
     platform?: string;
     /** The grant the OAuth callback would have recorded (FILM-1711). */
     scopes?: string[];
+    /** The vendor's id for the channel — what a reconnect matches on (KB-22). */
+    platformAccountId?: string;
+    /** A stored token, so a disconnect has something to wipe (KB-22). */
+    accessTokenEncrypted?: string;
   } = {},
 ): Promise<string> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/platform_connections`, {
@@ -220,6 +224,12 @@ export async function seedYouTubeConnection(
       is_active: options.isActive ?? true,
       ...(options.metadata ? { metadata: options.metadata } : {}),
       ...(options.scopes ? { scopes: options.scopes } : {}),
+      ...(options.platformAccountId
+        ? { platform_account_id: options.platformAccountId }
+        : {}),
+      ...(options.accessTokenEncrypted
+        ? { access_token_encrypted: options.accessTokenEncrypted }
+        : {}),
     }),
   });
 
@@ -585,6 +595,28 @@ export async function readRows<T>(table: string, query: string): Promise<T[]> {
   }
 
   return JSON.parse(text) as T[];
+}
+
+/** The service role, for `insertRow` from a spec that seeds its own tables. */
+export function serviceRoleAuth() {
+  return { key: SERVICE_ROLE_KEY };
+}
+
+/** Deletes rows with the service role — for a spec cleaning up a global row. */
+export async function deleteRows(table: string, query: string): Promise<void> {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+    method: 'DELETE',
+    headers: {
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `delete from ${table} failed (${response.status}): ${await response.text()}`,
+    );
+  }
 }
 
 /**

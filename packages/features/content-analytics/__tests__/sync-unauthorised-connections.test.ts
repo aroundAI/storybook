@@ -51,6 +51,7 @@ function clientWith(
     id: string;
     scopes: string[] | null;
     metadata: unknown;
+    disconnected_at?: string | null;
   }>,
 ) {
   return {
@@ -127,7 +128,29 @@ describe('fetchPublishesForSync', () => {
       scopes: [YT_ANALYTICS],
       grantedAt: '2026-09-22T00:00:00.000Z',
       accountGated: [],
+      disconnectedAt: null,
     });
+  });
+
+  it('skips a channel the creator disconnected, without counting it as unauthorised (KB-22)', async () => {
+    const result = await fetchPublishesForSync(
+      clientWith(
+        [publish('kept', 'youtube', 'c-live'), publish('gone', 'youtube', 'c-gone')],
+        [
+          { id: 'c-live', scopes: [YT_ANALYTICS], metadata: {} },
+          {
+            id: 'c-gone',
+            scopes: [YT_ANALYTICS],
+            metadata: {},
+            disconnected_at: '2026-09-23T00:00:00.000Z',
+          },
+        ],
+      ),
+      50,
+    );
+
+    expect(result.publishes.map(({ id }) => id)).toEqual(['kept']);
+    expect(result.notAuthorised).toBe(0);
   });
 
   it('picks a flagged publish back up once its connection is re-authorised', async () => {

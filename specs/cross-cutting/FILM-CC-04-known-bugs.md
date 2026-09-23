@@ -1218,7 +1218,9 @@ point** (standing owner rule). Every proof is local.
 click, behind a dialog that describes something else. **Found:** KB-20's
 drafting (2026-09-22), when "what does disconnect remove?" turned out to have
 an answer nobody had written down. It also corrects KB-20, whose first version
-asserted the opposite. **Open.**
+asserted the opposite. **Fixed in part — PR A (this PR): disconnect keeps the
+row and every record under it; the vendor-data deletion job (KB-20 item 3) is
+PR B, stacked on it.** Design: `specs/plans/KB-22-edd.md`.
 
 The disconnect dialog says, in full (`platforms:disconnectDescription`):
 *"This will remove access to {{accountName}}. You won't be able to publish to
@@ -1292,11 +1294,11 @@ is about.
 
 ### Acceptance criteria
 
-- [ ] pgTAP, red first: disconnecting leaves `publishes`, manual `revenue_records`, `publish_tags`, `experiment_publishes`, `channel_analytics_settings` intact
-- [ ] Reconnecting the same platform account restores the connection to its publishes; analytics resume without duplicates
-- [ ] The deletion job removes one connection's vendor rows from all seven ClickHouse tables and `source='api'` revenue — and nothing else; tested with two connections seeded side by side, against the real local ClickHouse
-- [ ] Dialog copy matches behaviour; Playwright covers disconnect → reconnect, asserting the manual revenue figure is still there **after** reconnect; screenshots in the PR
-- [ ] No production data or credentials are used to verify any of this
+- [x] pgTAP, red first: disconnecting leaves `publishes`, manual `revenue_records`, `publish_tags`, `experiment_publishes`, `channel_analytics_settings` intact — `platform-connection-disconnect.test.sql` (also project/episode publishing defaults, manual tasks, an experiment's channel scope; a member's and the service role's direct `DELETE` refused; account deletion still succeeds)
+- [ ] Reconnecting the same platform account restores the connection to its publishes; analytics resume without duplicates — **restores: done** (pgTAP upsert case; Playwright through the real YouTube callback, same row id). *Resume* is `syncEligibility` treating a reconnected grant as eligible (unit-tested); the re-collection after a YouTube purge is PR B
+- [ ] The deletion job removes one connection's vendor rows from all **nine** ClickHouse tables (the seven `video_*` plus `channel_daily` and `channel_subscribers`) and `source='api'` revenue — and nothing else; tested with two connections seeded side by side, against the real local ClickHouse — **PR B**
+- [x] Dialog copy matches behaviour; Playwright covers disconnect → reconnect, asserting the manual revenue figure is still there **after** reconnect; screenshots in the PR — `disconnect-keeps-records.spec.ts`; the copy's per-platform flags are bound to `REVOKERS` by `revokers.test.ts`
+- [x] No production data or credentials are used to verify any of this — local stack, a generated local `ENCRYPTION_KEY`, fake app credentials, a local stand-in for Google
 
 ---
 
@@ -1921,6 +1923,84 @@ the prompt.
 
 - [ ] Owner decides whether semantic previous-episode context is wanted
 - [ ] If so: one caller opts in and a test shows similar episodes in the prompt
+
+---
+
+## KB-43 — Any member can read a connection's encrypted tokens
+
+**Severity:** Low — ciphertext, not tokens, and only to people already in the
+account; but more than a member needs. **Found:** KB-22's planning,
+2026-09-23, from the live catalog. **Open.**
+
+`platform_connections_read` is `using (has_account_access(account_id))` with
+no column restriction, and `authenticated` holds `SELECT` on the whole table,
+so any member can select `access_token_encrypted` and
+`refresh_token_encrypted` through PostgREST. Nothing in the browser needs
+them: every decrypt happens on the server, which can use the service role.
+
+### Proposed fix
+
+Revoke column `SELECT` on the two token columns from `authenticated` (or move
+the tokens to a table only the service role reads), then check every
+user-client select of `platform_connections` for `*` or a token column —
+`connection-actions.ts`'s disconnect read selects `access_token_encrypted`
+through the user client today, and would need the admin client after an
+explicit access check.
+
+### Acceptance criteria
+
+- [ ] pgTAP: a member selecting either token column is refused; selecting the other columns still works
+
+---
+
+## KB-44 — `anon` holds TRUNCATE on `platform_connections`
+
+**Severity:** Low — not reachable through PostgREST, which has no TRUNCATE;
+but row-level security does not apply to TRUNCATE, so any other path that
+runs SQL as `anon` could empty the table. **Found:** KB-22's planning,
+2026-09-23 (`information_schema.role_table_grants`). **Open.**
+
+`anon` holds `TRUNCATE, REFERENCES, TRIGGER, INSERT, SELECT, UPDATE, DELETE`
+on `public.platform_connections` — Supabase's default grant, never revoked for
+this table (`30-film-studio.sql` revokes from `authenticated` and
+`service_role` only). Likely the same on other tables created the same way;
+not yet counted.
+
+### Proposed fix
+
+`revoke all on public.platform_connections from anon;` and a sweep of the
+schema for tables where `anon` holds more than it needs, with a pgTAP guard
+listing the grants `anon` is allowed.
+
+### Acceptance criteria
+
+- [ ] `anon` holds no privilege on `platform_connections`; a pgTAP test asserts the grant list
+
+---
+
+## KB-45 — Vendor revoke calls ignore the HTTP response
+
+**Severity:** Low — a failed revoke looked exactly like a successful one, in
+the logs and to the user. **Found:** KB-22's planning, 2026-09-23. **Fixed in
+part by KB-22 PR A (this PR).**
+
+Every disconnect `await`ed `fetch(revokeUrl…)` and never read the response
+(`oauth/{youtube,tiktok,meta,twitter}/disconnect.ts` on `main` before
+KB-22), so Google answering 400 was indistinguishable from 200. KB-22's
+`requestRevocation` now reads the status and classifies it (`revoked`,
+`vendor_refused`, `unreachable`, with a 10-second timeout), and the disconnect
+action logs the outcome with the HTTP status for YouTube, TikTok and Meta —
+unit-tested against a local listener, seen red with the status ignored.
+
+**Still open:** a refused or unreachable revoke is only a log line. The
+creator is not told, and no operator alert fires; the data-deletion page's
+advice to check at the platform (section 4) is the only mitigation. X and
+LinkedIn have no revoke at all — KB-25.
+
+### Acceptance criteria
+
+- [x] The revoke response is read and logged, with its status — KB-22 PR A
+- [ ] A refused or unreachable revoke is surfaced (to the creator, or as an operator alert) — owner to decide which
 
 ---
 

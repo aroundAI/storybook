@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS public.platform_connections (
   -- this repo writes migrations by hand and does not run it.)
   language VARCHAR(5) DEFAULT 'en' NOT NULL,
   is_active BOOLEAN DEFAULT TRUE NOT NULL,
+  -- KB-22: set when disconnected in the app; tokens wiped, row kept.
+  disconnected_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
 
@@ -35,7 +37,12 @@ CREATE TABLE IF NOT EXISTS public.platform_connections (
   -- per-channel override cannot be filed under an account that does not own
   -- the channel. Adds no meaningful cost: (id, account_id) is unique wherever
   -- id already is.
-  CONSTRAINT platform_connections_id_account_key UNIQUE (id, account_id)
+  CONSTRAINT platform_connections_id_account_key UNIQUE (id, account_id),
+  -- A disconnected row holds no credential (KB-22).
+  CONSTRAINT platform_connections_disconnected_holds_no_token CHECK (
+    disconnected_at IS NULL
+    OR (access_token_encrypted IS NULL AND refresh_token_encrypted IS NULL AND NOT is_active)
+  )
 );
 
 -- Enable RLS
@@ -68,13 +75,8 @@ CREATE POLICY platform_connections_update_policy ON public.platform_connections
     public.has_role_on_account(account_id)
   );
 
--- Policy: Users can delete their own account's connections
-CREATE POLICY platform_connections_delete_policy ON public.platform_connections
-  FOR DELETE
-  TO authenticated
-  USING (
-    public.has_role_on_account(account_id)
-  );
+-- No delete policy (KB-22): disconnect is disconnect_platform_connection(),
+-- which keeps the row; only deleting the account removes it.
 
 -- Index for querying by account
 CREATE INDEX IF NOT EXISTS idx_platform_connections_account_id
@@ -98,6 +100,19 @@ CREATE INDEX IF NOT EXISTS idx_platform_connections_expires_at
 CREATE TRIGGER platform_connections_set_timestamps
   BEFORE INSERT OR UPDATE ON public.platform_connections
   FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamps();
+
+-- KB-22: writing a token is reconnecting, and clears disconnected_at; and the
+-- one definition of disconnect. Bodies in
+-- migrations/20260923030147_kb22-disconnect-keeps-records.sql.
+CREATE TRIGGER platform_connections_reconnect
+  BEFORE INSERT OR UPDATE ON public.platform_connections
+  FOR EACH ROW EXECUTE FUNCTION public.platform_connections_clear_disconnected();
+-- A connection row is deleted only with its account (KB-22).
+CREATE TRIGGER platform_connections_refuse_delete
+  BEFORE DELETE ON public.platform_connections
+  FOR EACH ROW EXECUTE FUNCTION public.platform_connections_refuse_delete();
+-- public.disconnect_platform_connection(p_connection_id uuid)
+--   returns table (id uuid, already_disconnected boolean), security invoker
 
 -- Grant permissions
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.platform_connections TO authenticated;

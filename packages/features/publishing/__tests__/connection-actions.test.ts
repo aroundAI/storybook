@@ -5,6 +5,8 @@ import type { Platform, PlatformConnection } from '../src/lib/types';
 // Mock server-only
 vi.mock('server-only', () => ({}));
 
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+
 // Mock @kit/next/actions
 vi.mock('@kit/next/actions', () => ({
   enhanceAction: (
@@ -54,11 +56,25 @@ const mockSupabaseClient = {
   from: vi.fn(() => mockSupabaseClient),
   select: vi.fn(() => mockSupabaseClient),
   eq: vi.fn(() => mockSupabaseClient),
+  is: vi.fn(() => mockSupabaseClient),
+  delete: vi.fn(() => mockSupabaseClient),
   order: vi.fn(() => mockSupabaseClient as unknown as Promise<QueryResult>),
   single: vi.fn(
     (): Promise<QueryResult> => Promise.resolve({ data: null, error: null }),
   ),
+  maybeSingle: vi.fn(
+    (): Promise<QueryResult> => Promise.resolve({ data: null, error: null }),
+  ),
+  rpc: vi.fn(
+    (): Promise<QueryResult> => Promise.resolve({ data: [], error: null }),
+  ),
 };
+
+const revokers = vi.hoisted(() => ({
+  revokeAtVendor: vi.fn(),
+}));
+
+vi.mock('../src/oauth/revokers', () => revokers);
 
 vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => mockSupabaseClient,
@@ -396,6 +412,104 @@ describe('Connection Actions', () => {
 
       expect(result).toHaveProperty('accessToken');
       expect(result.accessToken).toBe('mock-access-token');
+    });
+  });
+
+  describe('disconnectPlatformAction (KB-22)', () => {
+    const CONNECTION_ID = '11111111-0000-4000-8000-000000000001';
+
+    it('revokes at the vendor, then disconnects through the RPC — and never deletes the row', async () => {
+      mockSupabaseClient.maybeSingle.mockResolvedValueOnce({
+        data: {
+          id: CONNECTION_ID,
+          platform: 'youtube',
+          access_token_encrypted: 'enc',
+          disconnected_at: null,
+        },
+        error: null,
+      });
+      revokers.revokeAtVendor.mockResolvedValueOnce({
+        status: 'revoked',
+        httpStatus: 200,
+      });
+      mockSupabaseClient.rpc.mockResolvedValueOnce({
+        data: [{ id: CONNECTION_ID, already_disconnected: false }],
+        error: null,
+      });
+
+      const { disconnectPlatformAction } = await import(
+        '../src/server/connection-actions'
+      );
+
+      const result = await disconnectPlatformAction({
+        connectionId: CONNECTION_ID,
+      });
+
+      expect(result).toEqual({
+        ok: true,
+        data: { disconnected: [CONNECTION_ID], alreadyDisconnected: false },
+      });
+      expect(revokers.revokeAtVendor).toHaveBeenCalledWith({
+        platform: 'youtube',
+        access_token_encrypted: 'enc',
+      });
+      expect(mockSupabaseClient.rpc).toHaveBeenCalledWith(
+        'disconnect_platform_connection',
+        { p_connection_id: CONNECTION_ID },
+      );
+      expect(mockSupabaseClient.delete).not.toHaveBeenCalled();
+    });
+
+    it('does not ask the vendor again for a connection already disconnected', async () => {
+      mockSupabaseClient.maybeSingle.mockResolvedValueOnce({
+        data: {
+          id: CONNECTION_ID,
+          platform: 'tiktok',
+          access_token_encrypted: null,
+          disconnected_at: '2026-09-23T00:00:00Z',
+        },
+        error: null,
+      });
+      mockSupabaseClient.rpc.mockResolvedValueOnce({
+        data: [{ id: CONNECTION_ID, already_disconnected: true }],
+        error: null,
+      });
+
+      const { disconnectPlatformAction } = await import(
+        '../src/server/connection-actions'
+      );
+
+      const result = await disconnectPlatformAction({
+        connectionId: CONNECTION_ID,
+      });
+
+      expect(result).toEqual({
+        ok: true,
+        data: { disconnected: [], alreadyDisconnected: true },
+      });
+      expect(revokers.revokeAtVendor).not.toHaveBeenCalled();
+    });
+
+    it('returns a refusal, as a value, for a connection the caller cannot see (KB-6)', async () => {
+      mockSupabaseClient.maybeSingle.mockResolvedValueOnce({
+        data: null,
+        error: null,
+      });
+
+      const { disconnectPlatformAction } = await import(
+        '../src/server/connection-actions'
+      );
+
+      const result = await disconnectPlatformAction({
+        connectionId: CONNECTION_ID,
+      });
+
+      expect(result).toEqual({
+        ok: false,
+        error:
+          'That connection no longer exists, or you do not have access to it.',
+      });
+      expect(mockSupabaseClient.rpc).not.toHaveBeenCalled();
     });
   });
 });

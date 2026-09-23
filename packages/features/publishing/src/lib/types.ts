@@ -11,7 +11,10 @@ export type Platform =
   | 'twitter'
   | 'linkedin';
 
-export type ConnectionStatus = 'active' | 'expired' | 'error';
+// One definition, in ../types (KB-22 added 'disconnected'; two copies had drifted apart).
+import type { ConnectionStatus } from '../types';
+
+export type { ConnectionStatus };
 
 export type PublishStatus =
   | 'pending'

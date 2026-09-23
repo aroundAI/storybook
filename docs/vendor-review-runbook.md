@@ -482,7 +482,7 @@ In the order the submission guide walks through them **[cited]**
       entered in Basic Settings **[cited]**
       ([data deletion callback](https://developers.facebook.com/docs/development/create-an-app/app-dashboard/data-deletion-callback)).
       We took the second: `<APP_URL>/data-deletion` says how to disconnect (Meta:
-      `DELETE /me/permissions` in `packages/features/publishing/src/oauth/meta/disconnect.ts`,
+      `DELETE /me/permissions` in `packages/features/publishing/src/oauth/meta/revoke.ts`,
       then the stored tokens go), how to delete the account, what each removes, and how
       to ask for the rest by email — see `docs/data-deletion-runbook.md` for the
       operator's side of that promise. The callback would be a new route, e.g.

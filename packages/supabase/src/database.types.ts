@@ -3588,6 +3588,7 @@ export type Database = {
           access_token_encrypted: string | null
           account_id: string
           created_at: string
+          disconnected_at: string | null
           id: string
           is_active: boolean
           language: string
@@ -3604,6 +3605,7 @@ export type Database = {
           access_token_encrypted?: string | null
           account_id: string
           created_at?: string
+          disconnected_at?: string | null
           id?: string
           is_active?: boolean
           language?: string
@@ -3620,6 +3622,7 @@ export type Database = {
           access_token_encrypted?: string | null
           account_id?: string
           created_at?: string
+          disconnected_at?: string | null
           id?: string
           is_active?: boolean
           language?: string
@@ -5628,6 +5631,13 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      disconnect_platform_connection: {
+        Args: { p_connection_id: string }
+        Returns: {
+          already_disconnected: boolean
+          id: string
+        }[]
       }
       editable_publish_ids: {
         Args: { p_publish_ids: string[] }

@@ -873,10 +873,8 @@ create policy "platform_connections_update" on public.platform_connections for u
     public.has_account_access(account_id)
   );
 
-create policy "platform_connections_delete" on public.platform_connections for delete
-  to authenticated using (
-    public.has_account_access(account_id)
-  );
+-- platform_connections_delete dropped (KB-22): nothing in the app deletes a
+-- connection; disconnect keeps the row.
 
 -- ==================================
 -- Shared Resources RLS Policies

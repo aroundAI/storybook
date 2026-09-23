@@ -151,17 +151,19 @@ select lives_ok(
 -- ==================================
 -- Disconnecting the channel keeps the experiment
 -- ==================================
+-- KB-22: a disconnect no longer deletes the connection row (it used to, and
+-- this key's `on delete set null` then cut the experiment loose from its
+-- channel). The row stays, so the experiment keeps its channel.
 
 set local role postgres;
 
-delete from public.platform_connections
- where id = 'e0e0e0e0-0000-4000-8000-000000000001';
+select public.disconnect_platform_connection('e0e0e0e0-0000-4000-8000-000000000001');
 
 select is(
   (select connection_id from public.analytics_experiments
     where id = 'e0e0e0e0-0000-4000-8000-00000000000a'),
-  null,
-  'Deleting the channel nulls connection_id'
+  'e0e0e0e0-0000-4000-8000-000000000001'::uuid,
+  'Disconnecting the channel keeps it as the experiment''s channel'
 );
 
 select is(

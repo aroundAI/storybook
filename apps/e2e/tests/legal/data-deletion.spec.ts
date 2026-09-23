@@ -137,6 +137,11 @@ test.describe('Nothing on either page is still waiting on a decision', () => {
       page.locator('[data-test="retention-disconnect"]'),
     ).toContainText('7 calendar days');
 
+    // KB-22: disconnecting no longer deletes what the creator entered.
+    await expect(
+      page.locator('[data-test="retention-disconnect"]'),
+    ).toContainText('Disconnecting keeps your own records');
+
     await expect(page.locator('[data-test="retention-revoked"]')).toContainText(
       '30 calendar days',
     );
