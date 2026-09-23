@@ -152,3 +152,6 @@ async function getFileSize(path: string): Promise<number> {
   const stats = await fsPromises.stat(path);
   return stats.size;
 }
+
+// KB-14 red-before-green probe: this commit is reverted by the next one.
+export const kb14Probe: number = 'kb-14 injected type error';
