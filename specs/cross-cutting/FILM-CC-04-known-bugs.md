@@ -3281,7 +3281,7 @@ still work or move to the definer bulk-reset path. pgTAP, red first.
 ## KB-78 — Regenerating a story deletes canon that was added by hand
 
 **Severity:** Medium — silent data loss inside a project. **Found:** KB-17's
-plan, 2026-09-23. **Fixed** in #PR — see *Fixed (#PR)* at the end of this
+plan, 2026-09-23. **Fixed** in #347 — see *Fixed (#347)* at the end of this
 entry. One question stays open for the owner (below).
 
 Story generation begins its canon commit with `cleanupEpisodeCanon`
@@ -3324,7 +3324,7 @@ the continuity validator, which may be what the owner wants.
 The real `cleanupEpisodeCanon`, the local service role, an episode holding no
 other canon: before, `auto` and `manual`; after, *(none)*.
 
-### Fixed (#PR)
+### Fixed (#347)
 
 Owner decision (EDD KB-78, 2026-09-24): regeneration replaces what
 generation made and keeps what a person added; it does not ask.
@@ -3605,7 +3605,7 @@ confirmation dialog; or remove the menu item until it exists.
 | KB-73 | The audio library sent files as base64 in a server-action body, so anything over ~750 KB failed; it now uploads straight to storage through the presign route | #350 |
 | KB-79 | The audio library took one upload: Upload was drawn only in the empty state, and a new asset showed only after a reload | #350 |
 | KB-57 (part) | The audio library stored any signed-in user's file with the admin client, at a key naming no project, before checking the project | #350 |
-| KB-78 | Regenerating a story deleted every canon row of the episode, including events and threads a person had added; it now replaces only what generation made (`narrative_threads.auto_generated`). Whether explicit resets should keep hand-added canon is open | #PR |
+| KB-78 | Regenerating a story deleted every canon row of the episode, including events and threads a person had added; it now replaces only what generation made (`narrative_threads.auto_generated`). Whether explicit resets should keep hand-added canon is open | #347 |
 
 ---
 
