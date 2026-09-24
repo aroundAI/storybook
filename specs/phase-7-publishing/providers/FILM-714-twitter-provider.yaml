@@ -90,7 +90,7 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "OAuth 2.0 connection flow works (unverified)"
-    reason: "Never run against X: no credentials are held (FILM-1729 §2). The success path runs against a local stand-in for X (KB-86/KB-87, #PR); one live connect is FILM-1725 Check I. Token refresh is fixed by KB-15 (#326)"
+    reason: "Never run against X: no credentials are held (FILM-1729 §2). The success path runs against a local stand-in for X (KB-86/KB-87, #343); one live connect is FILM-1725 Check I. Token refresh is fixed by KB-15 (#326)"
     closed_by: "FILM-1725"
   - criterion: "Video upload with chunked transfer"
     reason: "Chunking is built and tested, but `media.write` is never requested, so X refuses the upload with 403. Nothing on the publish screen sends a video to X either: its platform lists stop at YouTube, Facebook, Instagram and TikTok (`packages/features/publishing/src/lib/constants.ts:45`)"

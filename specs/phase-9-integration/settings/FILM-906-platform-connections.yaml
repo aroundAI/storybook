@@ -27,7 +27,7 @@ page:
 acceptance_criteria:
   - text: "Lists all supported platforms (YouTube, TikTok, Instagram, Facebook, X, LinkedIn)"
     met: true
-    evidence: "`packages/features/publishing/src/components/platform-connections.tsx:105` — `PLATFORM_CARDS: Record<PlatformType, …>`, so a platform without a card does not compile (KB-86, #PR); X and LinkedIn cards, connect and disconnect driven in `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`"
+    evidence: "`packages/features/publishing/src/components/platform-connections.tsx:105` — `PLATFORM_CARDS: Record<PlatformType, …>`, so a platform without a card does not compile (KB-86, #343); X and LinkedIn cards, connect and disconnect driven in `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`"
   - text: "Shows connected accounts per platform"
     met: true
     evidence: null
