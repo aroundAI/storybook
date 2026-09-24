@@ -34,13 +34,13 @@ acceptance_criteria:
     evidence: "`packages/features/publishing/src/oauth/tiktok/config.ts:43` (S256); sent at `apps/web/app/api/platforms/connect/tiktok/route.ts:105`"
   - text: "Callback exchanges code for tokens with code verifier"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:122`"
+    evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:124`"
   - text: "User info (open_id, display_name) is retrieved and stored"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:157`, `apps/web/app/api/platforms/callback/tiktok/route.ts:195`"
+    evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:159`, `apps/web/app/api/platforms/callback/tiktok/route.ts:195`"
   - text: "Tokens are encrypted before storage"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:185`"
+    evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:187`"
   - text: "Refresh token rotation is handled correctly"
     met: true
     evidence: "KB-29: refresh takes the app credentials from the lookup connect and the callback use (`packages/features/publishing/src/lib/token-refresh.ts:389`, `apps/web/app/api/platforms/connect/tiktok/route.ts:88`, `apps/web/app/api/platforms/callback/tiktok/route.ts:106`); the rotated refresh token is stored (`packages/features/publishing/__tests__/token-refresh.test.ts:466`)"

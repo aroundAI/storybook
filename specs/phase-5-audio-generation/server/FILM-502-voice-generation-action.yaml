@@ -71,7 +71,7 @@ acceptance_criteria:
     reason: "no longer true — voice-worker parses `overwriteExisting` (`apps/web/lambda/voice-worker/voice-generation.ts:31`) but never reads it; the async action never checks existing audio"
   - text: "`generateDialogueVoiceAction` reverts status if job creation fails"
     met: true
-    evidence: "the async action reverts to `pending` when queueing fails (`packages/features/audio-generation/src/server/voice-actions.ts:587`)"
+    evidence: "the async action reverts to `pending` when queueing fails (`packages/features/audio-generation/src/server/voice-actions.ts:593`)"
   - text: "`generateVoiceFromTextAction` generates audio for raw text"
     met: false
     reason: "retired — no caller: only the unmounted package `VoiceAssignment` imports it (`packages/features/audio-generation/src/components/VoiceAssignment.tsx:44`); voices are chosen in the character editor (FILM-205)"
@@ -89,13 +89,13 @@ acceptance_criteria:
     reason: "retired — `generateVoiceFromTextAction` has no caller (see above)"
   - text: "Both actions enforce authentication via `requireUser`"
     met: true
-    evidence: "the live async action, `packages/features/audio-generation/src/server/voice-actions.ts:457`"
+    evidence: "the live async action, `packages/features/audio-generation/src/server/voice-actions.ts:456`"
   - text: "Both actions validate audioBuffer before upload"
     met: false
     reason: "no longer true — voice-worker uploads the response body without checking it (`apps/web/lambda/voice-worker/voice-generation.ts:212`)"
   - text: "Both actions enforce RLS policies (via Supabase client)"
     met: true
-    evidence: "the async action reads the line through the user's client (`packages/features/audio-generation/src/server/voice-actions.ts:469`) before queueing; the worker then runs as service role"
+    evidence: "the async action reads the line through the user's client (`packages/features/audio-generation/src/server/voice-actions.ts:468`) before queueing; the worker then runs as service role"
   - text: "Actions complete within 60 seconds (timeout configured)"
     met: false
     reason: "unverified — runtime timing; the action only queues, and the worker's limit is 5 minutes (`sst.config.ts:907`)"
@@ -123,7 +123,7 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "Checks budget via RPC; refuses when over budget"
-    reason: "neither the async action nor voice-worker calls `check_account_budget` (batch does: `packages/features/audio-generation/src/server/batch-actions.ts:268`)"
+    reason: "neither the async action nor voice-worker calls `check_account_budget` (batch does: `packages/features/audio-generation/src/server/batch-actions.ts:252`)"
     closed_by: "unassigned"
   - criterion: "Cost recorded in `generation_jobs`; tracking; idempotency key"
     reason: "no `generation_jobs` row is created or updated on the live path. voice-worker's `markJob*` calls, which filtered on `reference_type='episode'` with a line id and matched nothing, were removed by KB-14 (#309); nothing replaced them"

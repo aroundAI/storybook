@@ -51,7 +51,7 @@ acceptance_criteria:
     reason: "not met — no AI thumbnail code anywhere"
   - text: "Set thumbnail as primary for episode"
     met: false
-    reason: "not met — `setDefaultThumbnailAction` exists (`packages/features/episodes/src/server/thumbnail-actions.ts:444`); its only UI is unmounted since baa752eb"
+    reason: "not met — `setDefaultThumbnailAction` exists (`packages/features/episodes/src/server/thumbnail-actions.ts:464`); its only UI is unmounted since baa752eb"
   - text: "Download thumbnails"
     met: false
     reason: "not met — no reachable download: only the never-rendered `UploadOnlyMode` has one (`packages/features/publishing/src/components/upload-only-mode.tsx:197`); the publish screen previews and uploads only (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/video-card.tsx:88`)"

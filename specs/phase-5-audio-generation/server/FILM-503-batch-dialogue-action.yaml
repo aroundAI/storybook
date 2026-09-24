@@ -54,7 +54,7 @@ acceptance_criteria:
     evidence: null
   - text: "`batchGenerateDialogueAction` uses voice profiles when available"
     met: false
-    reason: "retired — `voice_profiles` was dropped in `05ec0ae9`; voices come from `character_details.elevenlabs_voice_id` (`packages/features/audio-generation/src/server/batch-actions.ts:110`)"
+    reason: "retired — `voice_profiles` was dropped in `05ec0ae9`; voices come from `character_details.elevenlabs_voice_id` (`packages/features/audio-generation/src/server/batch-actions.ts:99`)"
   - text: "`batchGenerateDialogueAction` supports manual voice assignments"
     met: true
     evidence: null

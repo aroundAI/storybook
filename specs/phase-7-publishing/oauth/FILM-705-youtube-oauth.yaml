@@ -27,7 +27,7 @@ oauth_flow:
 acceptance_criteria:
   - text: "Connect button redirects to Google consent screen"
     met: true
-    evidence: "`apps/web/app/api/platforms/connect/youtube/route.ts:115`; driven in `apps/e2e/tests/platform-connections/analytics-access.spec.ts:162`"
+    evidence: "`apps/web/app/api/platforms/connect/youtube/route.ts:107`; driven in `apps/e2e/tests/platform-connections/analytics-access.spec.ts:162`"
   - text: "Consent screen shows correct app name and scopes"
     met: false
     reason: "unverified — Google renders it; needs a consent run with the owner's Google app"
@@ -51,10 +51,10 @@ acceptance_criteria:
     evidence: "Changed by KB-22: disconnect wipes the stored tokens and keeps the row, so the channel's records survive — `disconnect_platform_connection` (`apps/web/supabase/migrations/20260923140320_kb22-disconnect-keeps-records.sql`)"
   - text: "State/nonce prevents CSRF attacks"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:79`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:156`"
+    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:84`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:156`"
   - text: "Expired states are rejected"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:85`"
+    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:90`"
 test_plan:
   unit:
     - text: "Test state encoding/decoding"

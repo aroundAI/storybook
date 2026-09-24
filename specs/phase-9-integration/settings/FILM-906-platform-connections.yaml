@@ -62,7 +62,7 @@ test_plan:
       reason: "not met — no test found"
     - text: "Test connection mapping (DB → PlatformConnection interface)"
       met: false
-      reason: "not met — the page's `getConnectionsAction` mapping is untested; `getConnectedPlatformsAction`'s is (`packages/features/publishing/__tests__/connection-actions.test.ts:98`)"
+      reason: "not met — the page's `getConnectionsAction` mapping is untested; `getConnectedPlatformsAction`'s is (`packages/features/publishing/__tests__/connection-actions.test.ts:129`)"
     - text: "Test schema validation for server actions"
       met: false
       reason: "not met — no test found"

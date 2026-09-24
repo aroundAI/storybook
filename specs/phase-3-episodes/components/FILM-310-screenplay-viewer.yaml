@@ -40,7 +40,7 @@ acceptance_criteria:
     reason: "unverified — \"Approve & Generate Shots\" calls `generateShotListAction` (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/screenplay/_components/screenplay-screen.tsx:173`); no test drives it"
   - text: "Regenerate button triggers conversion"
     met: false
-    reason: "retired — no Regenerate on the screenplay screen; regeneration is Reset to stage (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/quick-actions-menu.tsx:291`)"
+    reason: "retired — no Regenerate on the screenplay screen; regeneration is Reset to stage (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/quick-actions-menu.tsx:295`)"
   - text: "Loading states display correctly"
     met: true
     evidence: null
