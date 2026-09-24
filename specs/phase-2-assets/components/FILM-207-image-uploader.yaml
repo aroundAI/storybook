@@ -85,7 +85,7 @@ acceptance_criteria:
     reason: "not met — type and size rejections are dropped silently: onDrop ignores them, no onDropRejected (packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:48-56)"
   - text: "Shows progress bar during upload (0-100%)"
     met: true
-    evidence: "packages/features/assets/src/components/image-uploader/use-image-upload.ts:154-163, packages/features/assets/src/components/image-uploader/ImageUploadProgress.tsx:70-73"
+    evidence: "packages/features/assets/src/components/image-uploader/use-image-upload.ts:144-153, packages/features/assets/src/components/image-uploader/ImageUploadProgress.tsx:70-73"
   - text: "Displays image preview after upload"
     met: true
     evidence: "packages/features/assets/src/components/image-uploader/ImageUploader.tsx:95-107"
@@ -103,7 +103,7 @@ acceptance_criteria:
     evidence: "packages/features/assets/src/components/image-uploader/ImageUploader.tsx:51-54, :69 (the editors clear fileUrl on remove)"
   - text: "onUploadComplete callback fires with URLs"
     met: true
-    evidence: "packages/features/assets/src/components/image-uploader/use-image-upload.ts:202 (thumbnail URL equals the image URL since c17efd37)"
+    evidence: "packages/features/assets/src/components/image-uploader/use-image-upload.ts:195 (thumbnail URL equals the image URL since c17efd37)"
   - text: "onRemove callback fires on remove"
     met: true
     evidence: "packages/features/assets/src/components/image-uploader/ImageUploader.tsx:53"
@@ -112,7 +112,7 @@ acceptance_criteria:
     evidence: "dropzone hidden and disabled while uploading (packages/features/assets/src/components/image-uploader/ImageUploader.tsx:69, :83)"
   - text: "Handles network errors gracefully"
     met: true
-    evidence: "packages/features/assets/src/components/image-uploader/use-image-upload.ts:174-176, :203-211"
+    evidence: "packages/features/assets/src/components/image-uploader/use-image-upload.ts:164-166, :203-211"
   - text: "Retry button appears on error"
     met: true
     evidence: "packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:140-152"

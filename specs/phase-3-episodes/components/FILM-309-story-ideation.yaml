@@ -31,25 +31,25 @@ acceptance_criteria:
     reason: "retired — limit raised to 2000 in 5ddb6752 (`packages/features/episodes/src/lib/schemas/story.schema.ts:19`)"
   - text: "Genre, audience, style dropdowns work"
     met: false
-    reason: "retired — genre and audience come from the project since the route screen replaced the component (e2d42522); `apps/web/lambda/llm-worker/handlers/story-ideation.ts:94`"
+    reason: "retired — genre and audience come from the project since the route screen replaced the component (e2d42522); `apps/web/lambda/llm-worker/handlers/story-ideation.ts:95`"
   - text: "Number of ideas slider works (1-5)"
     met: false
-    reason: "unverified — slider bound at `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:226`; no Playwright spec drives it"
+    reason: "unverified — slider bound at `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:228`; no Playwright spec drives it"
   - text: "Generate button disabled during generation"
     met: false
-    reason: "unverified — `disabled` follows the job status (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:176`); no test drives it"
+    reason: "unverified — `disabled` follows the job status (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:178`); no test drives it"
   - text: "Ideas display in responsive card grid"
     met: true
     evidence: null
   - text: "Idea cards highlight on selection"
     met: false
-    reason: "retired — clicking a card opens the refine modal (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:133`); cards keep no selected state"
+    reason: "retired — clicking a card opens the refine modal (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:134`); cards keep no selected state"
   - text: "Continue button only enabled when idea selected"
     met: false
-    reason: "retired — no Continue button; confirming the refine modal starts the story (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:138`)"
+    reason: "retired — no Continue button; confirming the refine modal starts the story (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:139`)"
   - text: "Toast notifications on success/error"
     met: false
-    reason: "unverified — toasts on the job result (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:94`); no test drives ideation"
+    reason: "unverified — toasts on the job result (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:95`); no test drives ideation"
 open_questions: []
 notes: |
   ## Source header

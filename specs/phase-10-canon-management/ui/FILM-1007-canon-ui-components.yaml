@@ -22,10 +22,10 @@ component:
 acceptance_criteria:
   - text: "Canon Dashboard shows health metrics and configuration"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/issue-summary-popover.tsx:222, apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/canon-settings-form.tsx:124"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/issue-summary-popover.tsx:222, apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/canon-settings-form.tsx:147"
   - text: "Settings persist to `projects.metadata.canon`"
     met: false
-    reason: "unverified — action merges into `metadata.canon` (`apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/canon-settings-actions.ts:40`); no E2E saves and reloads"
+    reason: "unverified — action merges into `metadata.canon` (`apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/canon-settings-actions.ts:47`); no E2E saves and reloads"
   - text: "Events, Threads, Characters pages render correctly"
     met: false
     reason: "unverified — no such pages; they are tabs in the story canon panel (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/canon-dashboard.tsx:127`); rendering never checked"

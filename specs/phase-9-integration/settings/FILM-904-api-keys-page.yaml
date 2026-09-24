@@ -48,7 +48,7 @@ acceptance_criteria:
     evidence: null
   - text: "BYOK keys used in priority over platform keys (requires provider integration)"
     met: false
-    reason: "not met — deferred at ship time: only ElevenLabs reads stored keys (no platform key); LLM and video keys are never read — `packages/features/audio-generation/src/providers/config-loader.ts:48` (BYOK-first loader, no production caller)"
+    reason: "not met — deferred at ship time: only ElevenLabs reads stored keys (no platform key); LLM and video keys are never read — `packages/features/audio-generation/src/providers/config-loader.ts:46` (BYOK-first loader, no production caller)"
 test_plan:
   unit:
     - text: "Test key masking function"

@@ -49,7 +49,7 @@ acceptance_criteria:
     evidence: null
   - text: "View report history (deferred - using temporary signed URLs instead)"
     met: false
-    reason: "not met — deferred at ship time: report history; no table or UI exists, reports are signed URLs (`packages/features/content-analytics/src/server/report-actions.ts:352`)"
+    reason: "not met — deferred at ship time: report history; no table or UI exists, reports are signed URLs (`packages/features/content-analytics/src/server/report-actions.ts:331`)"
   - text: "Schedule recurring reports (weekly/monthly)"
     met: true
     evidence: null

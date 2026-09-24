@@ -55,7 +55,7 @@ remaining:
       The `getExternalContentRequirements` mapping in "Content Type
       Integration" was never written (no match in code or `git log -S`).
       `CONTENT_TYPE_CONFIGS` has only a `requiresExternalContext` boolean
-      (`packages/features/episodes/src/lib/canon/content-type-configs.ts:128`),
+      (`packages/features/episodes/src/lib/canon/content-type-configs.ts:93`),
       which names no categories; it feeds `includeSources` in
       `getMemoryOptionsForContentType`
       (`packages/features/episodes/src/lib/canon/memory-strategies.ts:222`),

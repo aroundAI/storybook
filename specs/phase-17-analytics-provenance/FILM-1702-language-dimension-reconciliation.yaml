@@ -65,7 +65,7 @@ notes: |
   `dim-sync.ts:47,163` selects it and writes it to `video_dim.language`, so it is
   the value every ClickHouse query can filter on — `buildDimConditions`
   (`queries-advanced.ts:139-142`) supports `scope.language`, and the raw CSV
-  export uses it (`apps/web/app/api/reports/scheduled/route.ts:371`).
+  export uses it (`apps/web/app/api/reports/scheduled/route.ts:372`).
 
   **Source B — `platform_connections.language`.** `varchar(5) NOT NULL DEFAULT
   'en'`, added by `20251223150000_add_platform_connection_language.sql:14-15` and
@@ -344,7 +344,7 @@ notes: |
 
   - **Asset selection in the publish pipeline** —
     `publishing/src/jobs/process-scheduled-publishes.ts:248` and
-    `apps/web/lambda/scheduled-publish/index.ts:85,222`. They choose which
+    `apps/web/lambda/scheduled-publish/index.ts:87,222`. They choose which
     *file* to upload when a scheduled publish has no language, and fall back to
     the English asset. That is a routing default, not a claim about the video:
     the row stays NULL. Changing it means deciding what a language-less

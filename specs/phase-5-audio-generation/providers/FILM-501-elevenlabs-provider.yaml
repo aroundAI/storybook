@@ -104,7 +104,7 @@ remaining:
     reason: "`language` is mapped from `labels.accent` (`packages/features/audio-generation/src/providers/elevenlabs.ts:167`) and filtered with `includes` (`:190`), so a language code filters against accent names"
     closed_by: "unassigned"
   - criterion: "Rate-limit handling"
-    reason: "a 429 is thrown at once as a permanent 4xx (`packages/features/audio-generation/src/lib/http.ts:72`, since `b7f7cb53`); the spec asks for backoff. Only `apps/web/lambda/voice-worker/index.ts:256` retries 429s, and it does not use this provider"
+    reason: "a 429 is thrown at once as a permanent 4xx (`packages/features/audio-generation/src/lib/http.ts:72`, since `b7f7cb53`); the spec asks for backoff. Only `apps/web/lambda/voice-worker/index.ts:258` retries 429s, and it does not use this provider"
     closed_by: "unassigned"
   - criterion: "API key validated before requests"
     reason: "no check anywhere in the provider (`packages/features/audio-generation/src/providers/base.ts:127`)"

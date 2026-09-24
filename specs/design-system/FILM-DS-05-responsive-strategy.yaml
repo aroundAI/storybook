@@ -22,7 +22,7 @@ summary: >
 acceptance_criteria:
   - text: "All pages render correctly at all breakpoints"
     met: false
-    reason: "unverified — needs screenshots at 390/768/1024/1280px; Playwright runs Desktop Chrome only (`apps/e2e/playwright.config.ts:136`)"
+    reason: "unverified — needs screenshots at 390/768/1024/1280px; Playwright runs Desktop Chrome only (`apps/e2e/playwright.config.ts:137`)"
   - text: "Sidebar collapses to sheet on tablet/mobile"
     met: false
     reason: "no longer true — only below 768px (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:136`); tablets keep the full sidebar (`apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:118`)"

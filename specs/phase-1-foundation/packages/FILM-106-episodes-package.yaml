@@ -49,7 +49,7 @@ acceptance_criteria:
     evidence: null
   - text: "All exports work correctly"
     met: false
-    reason: "no longer true — `./server/context-builder` (`packages/features/episodes/package.json:19`) points at a file deleted in `e2d42522`"
+    reason: "no longer true — `./server/context-builder` (`packages/features/episodes/package.json:20`) points at a file deleted in `e2d42522`"
   - text: "TypeScript types exported and accessible"
     met: true
     evidence: null
@@ -86,7 +86,7 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "All exports work correctly"
-    reason: "`./server/context-builder` in `packages/features/episodes/package.json:19` maps to `src/server/context-builder.ts`, deleted in `e2d42522` (2026-01-18; the builder now lives in `apps/web/lambda/llm-worker/utils/context-builder.ts`). Nothing imports the path, so the fix is deleting the entry."
+    reason: "`./server/context-builder` in `packages/features/episodes/package.json:20` maps to `src/server/context-builder.ts`, deleted in `e2d42522` (2026-01-18; the builder now lives in `apps/web/lambda/llm-worker/utils/context-builder.ts`). Nothing imports the path, so the fix is deleting the entry."
     closed_by: "unassigned"
 open_questions: []
 notes: |

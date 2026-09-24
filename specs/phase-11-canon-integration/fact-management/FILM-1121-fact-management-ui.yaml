@@ -16,7 +16,7 @@ summary: >
 acceptance_criteria:
   - text: "FactLibrary shows all facts with search/filter"
     met: false
-    reason: "no longer true — only the first 50 render (`apps/web/app/home/[account]/studio/[projectSlug]/settings/facts/page.tsx:73`), no pager, though the full total is shown"
+    reason: "no longer true — only the first 50 render (`apps/web/app/home/[account]/studio/[projectSlug]/settings/facts/page.tsx:75`), no pager, though the full total is shown"
   - text: "FactCard displays claim, citation, status, usage"
     met: true
     evidence: null
@@ -31,25 +31,25 @@ acceptance_criteria:
     evidence: "KB-18 (#314): `apps/e2e/tests/facts/fact-verification.spec.ts` verifies one fact and disputes another through the dialog, reloads, and reads both rows back; `public.set_fact_verification` (`apps/web/supabase/migrations/20260923042421_kb18-fact-verification.sql`) is the write, owner/admin only"
   - text: "Only DOCUMENTARY projects see Facts section"
     met: false
-    reason: "no longer true — Fact Library link shows for every editable project (`apps/web/app/home/[account]/studio/[projectSlug]/settings/page.tsx:389`); never gated (811ab9e8)"
+    reason: "no longer true — Fact Library link shows for every editable project (`apps/web/app/home/[account]/studio/[projectSlug]/settings/page.tsx:391`); never gated (811ab9e8)"
   - text: "addVerifiedFactAction creates fact with simplified claim"
     met: true
     evidence: null
   - text: "searchFactsAction uses full-text search"
     met: true
-    evidence: "no searchFactsAction exists; the search is getProjectFactsAction, packages/features/episodes/src/server/fact-actions.ts:298"
+    evidence: "no searchFactsAction exists; the search is getProjectFactsAction, packages/features/episodes/src/server/fact-actions.ts:295"
 remaining:
   - criterion: "Only DOCUMENTARY projects see Facts section"
     reason: >
       The Fact Library link sits in the Canon settings section behind
       `permissions.canEdit` only
-      (`apps/web/app/home/[account]/studio/[projectSlug]/settings/page.tsx:389`);
+      (`apps/web/app/home/[account]/studio/[projectSlug]/settings/page.tsx:391`);
       no route or link checks the content type, and it never did (811ab9e8)
     closed_by: "unassigned"
   - criterion: "FactLibrary shows all facts with search/filter"
     reason: >
       The page asks for `limit: 50, offset: 0`
-      (`apps/web/app/home/[account]/studio/[projectSlug]/settings/facts/page.tsx:73`)
+      (`apps/web/app/home/[account]/studio/[projectSlug]/settings/facts/page.tsx:75`)
       and `FactLibrary` has no pager, so facts past the 50th cannot be reached
     closed_by: "unassigned"
 open_questions: []

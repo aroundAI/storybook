@@ -41,13 +41,13 @@ acceptance_criteria:
     evidence: "KB-15: in the web app, `ensureValidToken` refreshes every platform before handing a token out (token-refresh.test.ts, 'X refresh (KB-15)'). The publish worker does not refresh, by design (owner decision, KB-15 D2): a second refresher would race the cron for rotating refresh tokens. It refuses what the app would refresh first, with the same `isWithinRefreshWindow` (apps/web/lambda/publish-worker/__tests__/token.test.ts), and SQS redelivers after the cron, which now leaves every token ≥ 30 minutes from expiry"
   - text: "Failed refresh marks connection as inactive"
     met: false
-    reason: "unverified — needs a unit test; the failure path's `markConnectionInactive` (`packages/features/publishing/src/lib/token-refresh.ts:242`) is untested"
+    reason: "unverified — needs a unit test; the failure path's `markConnectionInactive` (`packages/features/publishing/src/lib/token-refresh.ts:315`) is untested"
   - text: "Failed refresh sends user notification"
     met: false
-    reason: "not met — `sendReauthNotification` is a stub that only logs (`packages/features/publishing/src/lib/token-refresh.ts:576`)"
+    reason: "not met — `sendReauthNotification` is a stub that only logs (`packages/features/publishing/src/lib/token-refresh.ts:671`)"
   - text: "Notification includes reconnect link"
     met: false
-    reason: "not met — the link exists only in a commented-out call (`packages/features/publishing/src/lib/token-refresh.ts:598`)"
+    reason: "not met — the link exists only in a commented-out call (`packages/features/publishing/src/lib/token-refresh.ts:693`)"
   - text: "Background job refreshes tokens expiring within 1 hour"
     met: true
     evidence: "KB-15: it selected an hour ahead but refreshed only inside the 5-minute buffer, on every platform; it now refreshes what it selects (`CRON_REFRESH_WINDOW_MS`). token-refresh.test.ts, 'refreshExpiringTokens'; the real-DB run is in the KB-15 PR"
@@ -56,7 +56,7 @@ acceptance_criteria:
     evidence: null
   - text: "All refresh attempts are logged"
     met: false
-    reason: "not met — a successful on-demand refresh returns unlogged (`packages/features/publishing/src/lib/token-refresh.ts:224`); only failures and the cron job log"
+    reason: "not met — a successful on-demand refresh returns unlogged (`packages/features/publishing/src/lib/token-refresh.ts:270`); only failures and the cron job log"
 test_plan:
   unit:
     - text: "Test valid token returns immediately"
@@ -80,7 +80,7 @@ test_plan:
   integration:
     - text: "Test full refresh flow with mocked OAuth endpoints"
       met: true
-      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:332"
+      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:440"
     - text: "Test cron job processes multiple connections"
       met: true
       evidence: "packages/features/publishing/__tests__/token-refresh.test.ts, 'refreshExpiringTokens' — two platforms in the window, one outside it (KB-15)"
@@ -90,13 +90,13 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "Failed refresh sends user notification"
-    reason: "`sendReauthNotification` only logs; the `@kit/notifications` call is a TODO (`packages/features/publishing/src/lib/token-refresh.ts:576`)"
+    reason: "`sendReauthNotification` only logs; the `@kit/notifications` call is a TODO (`packages/features/publishing/src/lib/token-refresh.ts:671`)"
     closed_by: "unassigned"
   - criterion: "Notification includes reconnect link"
-    reason: "The reconnect URL is inside the commented-out call (`packages/features/publishing/src/lib/token-refresh.ts:598`)"
+    reason: "The reconnect URL is inside the commented-out call (`packages/features/publishing/src/lib/token-refresh.ts:693`)"
     closed_by: "unassigned"
   - criterion: "All refresh attempts are logged"
-    reason: "A successful on-demand refresh returns without a log line (`packages/features/publishing/src/lib/token-refresh.ts:224`)"
+    reason: "A successful on-demand refresh returns without a log line (`packages/features/publishing/src/lib/token-refresh.ts:270`)"
     closed_by: "unassigned"
 open_questions:
   - "[ ] Should we implement retry with exponential backoff for refresh failures? (non-blocking)"

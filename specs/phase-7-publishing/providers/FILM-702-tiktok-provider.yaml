@@ -44,7 +44,7 @@ acceptance_criteria:
     reason: "unverified — chunked flow built (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:53`), but its inbox-init + `video_upload_id` sequence (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:171`, `packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:275`) differs from the lambda's; no test"
   - text: "Caption and privacy settings are applied"
     met: false
-    reason: "unverified — sent (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:244`) with privacy as `'PUBLIC'`, while the lambda sends `'PUBLIC_TO_EVERYONE'` (`apps/web/lambda/publish-worker/handlers/tiktok.ts:26`); no test"
+    reason: "unverified — sent (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:244`) with privacy as `'PUBLIC'`, while the lambda sends `'PUBLIC_TO_EVERYONE'` (`apps/web/lambda/publish-worker/handlers/tiktok.ts:25`); no test"
   - text: "Duet/stitch toggles work"
     met: false
     reason: "unverified — sent as `disable_duet`/`disable_stitch` (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:246`); no live UI sets them; no test"

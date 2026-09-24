@@ -39,7 +39,7 @@ remaining:
     reason: >
       The hub lists and soft-deletes sources and adds them via
       `AddSourceDialog`, but offers no edit; `updateExternalSourceAction`
-      (`packages/features/episodes/src/server/external-context-actions.ts:288`)
+      (`packages/features/episodes/src/server/external-context-actions.ts:302`)
       has no caller. `external_sources` is global by design
       (`external-context-actions.ts:351`), so there are no "project sources"
     closed_by: "unassigned"

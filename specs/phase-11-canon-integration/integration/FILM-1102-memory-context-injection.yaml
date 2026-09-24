@@ -27,7 +27,7 @@ feature:
 acceptance_criteria:
   - text: "`buildMemoryContext` is called in story generation handler"
     met: false
-    reason: "no longer true — removed from the handler in d5f6dbdc; only the story agent's optional tool calls it (`packages/features/episodes/src/agent/skills/continuity-skill.ts:39`)"
+    reason: "no longer true — removed from the handler in d5f6dbdc; only the story agent's optional tool calls it (`packages/features/episodes/src/agent/skills/continuity-skill.ts:58`)"
   - text: "Memory context is injected into prompt variables"
     met: false
     reason: "no longer true — the story prompt gets `canon_context: ''` (`packages/features/episodes/src/agent/skills/story-director-skill.ts:193`) since d5f6dbdc"
@@ -42,7 +42,7 @@ acceptance_criteria:
     evidence: null
   - text: "Logs show memory context token usage"
     met: false
-    reason: "no longer true — the handler's log went in d5f6dbdc; the agent tool returns `tokensUsed` unlogged (`packages/features/episodes/src/agent/skills/continuity-skill.ts:76`)"
+    reason: "no longer true — the handler's log went in d5f6dbdc; the agent tool returns `tokensUsed` unlogged (`packages/features/episodes/src/agent/skills/continuity-skill.ts:105`)"
   - text: "Generated stories reference established facts appropriately"
     met: false
     reason: "unverified — story prompt receives empty `canon_context` since d5f6dbdc; no test or recorded run checks stories"

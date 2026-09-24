@@ -28,10 +28,10 @@ oauth_flow:
 acceptance_criteria:
   - text: "Connect button redirects to TikTok authorization page"
     met: true
-    evidence: "`apps/web/app/api/platforms/connect/tiktok/route.ts:108`"
+    evidence: "`apps/web/app/api/platforms/connect/tiktok/route.ts:109`"
   - text: "PKCE code challenge is properly generated"
     met: true
-    evidence: "`packages/features/publishing/src/oauth/tiktok/config.ts:43` (S256); sent at `apps/web/app/api/platforms/connect/tiktok/route.ts:104`"
+    evidence: "`packages/features/publishing/src/oauth/tiktok/config.ts:43` (S256); sent at `apps/web/app/api/platforms/connect/tiktok/route.ts:105`"
   - text: "Callback exchanges code for tokens with code verifier"
     met: true
     evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:122`"
@@ -43,16 +43,16 @@ acceptance_criteria:
     evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:185`"
   - text: "Refresh token rotation is handled correctly"
     met: true
-    evidence: "KB-29: refresh takes the app credentials from the lookup connect and the callback use (`packages/features/publishing/src/lib/token-refresh.ts:370`, `apps/web/app/api/platforms/connect/tiktok/route.ts:88`, `apps/web/app/api/platforms/callback/tiktok/route.ts:106`); the rotated refresh token is stored (`packages/features/publishing/__tests__/token-refresh.test.ts:391`)"
+    evidence: "KB-29: refresh takes the app credentials from the lookup connect and the callback use (`packages/features/publishing/src/lib/token-refresh.ts:389`, `apps/web/app/api/platforms/connect/tiktok/route.ts:88`, `apps/web/app/api/platforms/callback/tiktok/route.ts:106`); the rotated refresh token is stored (`packages/features/publishing/__tests__/token-refresh.test.ts:466`)"
   - text: "Token refresh updates both access and refresh tokens"
     met: true
-    evidence: "`packages/features/publishing/src/lib/token-refresh.ts:206`, `packages/features/publishing/src/lib/token-refresh.ts:213`"
+    evidence: "`packages/features/publishing/src/lib/token-refresh.ts:235`, `packages/features/publishing/src/lib/token-refresh.ts:242`"
   - text: "Disconnect revokes token at TikTok"
     met: true
     evidence: "`packages/features/publishing/src/oauth/tiktok/revoke.ts` (moved from `disconnect.ts` by KB-22)"
   - text: "State/nonce prevents CSRF attacks"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:78`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:156`"
+    evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:79`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:156`"
 test_plan:
   unit:
     - text: "Test PKCE code verifier generation"
@@ -70,7 +70,7 @@ test_plan:
       reason: "not met — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)"
     - text: "Test token refresh with rotation"
       met: true
-      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:391` — drives `ensureValidToken` against a local TikTok listener and asserts the stored rotated token (KB-29)"
+      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:466` — drives `ensureValidToken` against a local TikTok listener and asserts the stored rotated token (KB-29)"
     - text: "Test disconnect flow"
       met: false
       reason: "not met — no test found"

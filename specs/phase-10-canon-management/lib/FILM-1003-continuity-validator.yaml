@@ -45,7 +45,7 @@ acceptance_criteria:
     reason: "unverified — no test drives any checkpoint; the Lambda paths import `server-only` via the context builder and likely skip"
   - text: "Integration with story-actions.ts"
     met: false
-    reason: "retired — superseded: STORY validation runs as the story agent's `checkContinuity` tool (`packages/features/episodes/src/agent/skills/continuity-skill.ts:148`), d5f6dbdc"
+    reason: "retired — superseded: STORY validation runs as the story agent's `checkContinuity` tool (`packages/features/episodes/src/agent/skills/continuity-skill.ts:176`), d5f6dbdc"
   - text: "Unit tests with >80% coverage"
     met: false
     reason: "not met — no test found for `continuity-validator.ts`"
@@ -57,7 +57,7 @@ acceptance_criteria:
     evidence: "packages/features/episodes/src/lib/canon/continuity-validator.ts:215"
   - text: "Audit logging for all validations"
     met: false
-    reason: "not met — nothing persisted; the STORY tool's result is not logged, SCREENPLAY logs counts only (`apps/web/lambda/llm-worker/utils/validation-checkpoint.ts:130`)"
+    reason: "not met — nothing persisted; the STORY tool's result is not logged, SCREENPLAY logs counts only (`apps/web/lambda/llm-worker/utils/validation-checkpoint.ts:131`)"
 test_plan:
   unit: []
   integration: []
