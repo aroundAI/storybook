@@ -16,7 +16,7 @@ import { FileAudio, Loader2, Music, Upload, Volume2, X } from 'lucide-react';
 
 import { createUploadedAudioAssetAction } from '@kit/audio-generation/server';
 import { refusalMessage, unwrap } from '@kit/next/action-result';
-import { uploadWithPresignedUrl } from '@kit/storage/client';
+import { UploadRefusal, uploadWithPresignedUrl } from '@kit/storage/client';
 import {
   audioLibraryUploadPath,
   audioLibraryUploadType,
@@ -136,14 +136,14 @@ export function UploadAudioDialog({
         const path = audioLibraryUploadPath(projectId, contentType);
 
         // The presign route's refusals are written for the user ("You do not
-        // have permission…", "File is 60 MB…"); show them as they are
+        // have permission…", "File is 60 MB…"); anything else is not
         try {
           await uploadWithPresignedUrl(file, 'project-assets', path, {
             contentType,
           });
         } catch (uploadError) {
           setError(
-            uploadError instanceof Error
+            uploadError instanceof UploadRefusal
               ? uploadError.message
               : 'Failed to upload audio',
           );
