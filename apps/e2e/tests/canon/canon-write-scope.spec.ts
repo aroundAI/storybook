@@ -190,10 +190,7 @@ async function canonOfEpisode() {
       'episode_summaries',
       `episode_id=eq.${seeded.episodeId}&select=id`,
     ),
-    readRows(
-      'narrative_threads',
-      `id=eq.${seeded.openedThreadId}&select=id`,
-    ),
+    readRows('narrative_threads', `id=eq.${seeded.openedThreadId}&select=id`),
     readRows<{ episodes_touched: string[] }>(
       'narrative_threads',
       `id=eq.${seeded.touchedThreadId}&select=episodes_touched`,
@@ -228,7 +225,9 @@ test.describe('Canon write scope (KB-76, KB-77, KB-63)', () => {
     );
 
     if (evidence) {
-      await page.screenshot({ path: `${OUT}/01-viewer-add-thread-refused.png` });
+      await page.screenshot({
+        path: `${OUT}/01-viewer-add-thread-refused.png`,
+      });
     }
 
     expect(await threadNames()).toEqual([
@@ -254,7 +253,9 @@ test.describe('Canon write scope (KB-76, KB-77, KB-63)', () => {
     await expect(threads).toHaveCount(4);
 
     if (evidence) {
-      await page.screenshot({ path: `${OUT}/02-member-after-second-thread.png` });
+      await page.screenshot({
+        path: `${OUT}/02-member-after-second-thread.png`,
+      });
     }
 
     expect(await threadNames()).toEqual([
@@ -296,7 +297,9 @@ test.describe('Canon write scope (KB-76, KB-77, KB-63)', () => {
   }) => {
     await resetToStory(page, member);
 
-    await expect(page.getByText('Episode reset to Story').first()).toBeVisible();
+    await expect(
+      page.getByText('Episode reset to Story').first(),
+    ).toBeVisible();
 
     if (evidence) {
       await page.screenshot({ path: `${OUT}/04-member-reset-done.png` });

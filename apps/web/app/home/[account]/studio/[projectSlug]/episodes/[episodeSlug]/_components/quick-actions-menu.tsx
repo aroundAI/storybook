@@ -179,7 +179,9 @@ export function QuickActionsMenu({
           <DropdownMenuSeparator />
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              data-test="episode-reset-menu" className="text-amber-600 focus:text-amber-600 dark:text-amber-500 dark:focus:text-amber-500">
+              data-test="episode-reset-menu"
+              className="text-amber-600 focus:text-amber-600 dark:text-amber-500 dark:focus:text-amber-500"
+            >
               <RotateCcw className="mr-2 h-4 w-4" />
               Reset to...
             </DropdownMenuSubTrigger>
