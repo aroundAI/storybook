@@ -105,6 +105,11 @@ export class RevenuePageObject {
     return this.page.locator('[data-test="revenue-date-trigger"]');
   }
 
+  /** The currency sign in front of the amount field. */
+  amountSymbol() {
+    return this.page.locator('[data-test="revenue-amount-symbol"]');
+  }
+
   submitButton() {
     return this.page.locator('[data-test="revenue-submit"]');
   }

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  currencySymbol,
   createCurrencyPartition,
+  currencySymbol,
   foldMoney,
   formatCurrencyAmount,
   formatMoney,

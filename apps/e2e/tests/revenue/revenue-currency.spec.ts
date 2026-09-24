@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { readRows, seedTeamAccount } from '../utils/seed';
+import { signInAs } from '../utils/session';
 import { RevenueCurrencyPageObject } from './revenue-currency.po';
 import { RevenuePageObject } from './revenue.po';
 
@@ -161,10 +163,14 @@ test.describe('Revenue per currency', () => {
       'Total Revenue · USD',
       'Total Revenue · EUR',
     ]);
-    // The projection tile is deliberately not asserted here. Its window
-    // ends at the *server's* UTC today while this entry is dated the
-    // browser's today, so east of UTC the entry is outside it until UTC
-    // catches up — a two-clock limit of the projection, not of KB-12.
+    // The projection's window ends on the browser's date (KB-24), the one
+    // this entry is dated in, so it counts whatever the hour: 5000 cents on
+    // one day × 30. It used to be left unasserted, because east of UTC the
+    // entry sat outside a window ending at the server's date.
+    await expect(revenue.tileValues('projection')).toHaveText([
+      '$24,000',
+      '€1,500',
+    ]);
 
     await revenue.openTab('overview');
 
@@ -176,5 +182,133 @@ test.describe('Revenue per currency', () => {
     await expect(revenue.mixCards().nth(0)).toContainText(
       '67% of revenue comes from platform',
     );
+  });
+});
+
+/**
+ * KB-23: a second currency for the same day overwrote the first.
+ *
+ * The action found the existing entry by scope, date and category — not
+ * currency — so a $100 sponsorship saved after a €50 one replaced it, and
+ * the form reported success. Asserted on the *second* submission, and again
+ * after a reload, because that is where this form's bugs have lived
+ * (FILM-1609); and on a third, the same-currency correction, which must
+ * still replace rather than add.
+ */
+test.describe('Two currencies on one day (KB-23)', () => {
+  test('a dollar entry after a euro entry keeps both; a second euro entry replaces the first', async ({
+    page,
+  }) => {
+    const revenue = new RevenueCurrencyPageObject(page);
+    const form = new RevenuePageObject(page);
+    const team = await seedTeamAccount();
+
+    await signInAs(page, team);
+    await revenue.goToRevenue(team.slug);
+    await revenue.openTab('manual');
+
+    // The amount field is in the currency chosen, not always dollars.
+    await expect(form.amountSymbol()).toHaveText('$');
+    await form.chooseCurrency('EUR - Euro');
+    await expect(form.amountSymbol()).toHaveText('€');
+    await expect(page.getByText('Amount (EUR)')).toBeVisible();
+
+    await form.addEntry({ dollars: '50.00', category: 'Sponsorship' });
+    await form.expectSuccessToast();
+
+    // Reset to the defaults, currency included.
+    await expect(form.amountSymbol()).toHaveText('$');
+
+    await form.addEntry({ dollars: '100.00', category: 'Sponsorship' });
+    await expect(
+      page.getByText('Revenue entry added successfully').last(),
+    ).toBeVisible();
+
+    await expect(revenue.tileValues('total')).toHaveText(['$100', '€50']);
+
+    await page.reload();
+    await expect(revenue.tileValues('total')).toHaveText(['$100', '€50']);
+
+    const rows = await readRows<{ currency: string; revenue_cents: number }>(
+      'revenue_records',
+      `select=currency,revenue_cents&account_id=eq.${team.accountId}&order=currency`,
+    );
+
+    expect(rows).toEqual([
+      { currency: 'EUR', revenue_cents: 5000 },
+      { currency: 'USD', revenue_cents: 10000 },
+    ]);
+
+    // Same scope, date, category and currency: a correction, and said so.
+    await revenue.openTab('manual');
+    await form.chooseCurrency('EUR - Euro');
+    await form.addEntry({ dollars: '60.00', category: 'Sponsorship' });
+    await expect(
+      page.getByText(
+        /Revenue entry updated — this replaced the earlier EUR sponsorship figure for \d{4}-\d{2}-\d{2}/,
+      ),
+    ).toBeVisible();
+
+    await expect(revenue.tileValues('total')).toHaveText(['$100', '€60']);
+    expect(
+      await readRows<{ currency: string; revenue_cents: number }>(
+        'revenue_records',
+        `select=currency,revenue_cents&account_id=eq.${team.accountId}&order=currency`,
+      ),
+    ).toEqual([
+      { currency: 'EUR', revenue_cents: 6000 },
+      { currency: 'USD', revenue_cents: 10000 },
+    ]);
+  });
+});
+
+/**
+ * KB-24: the projection ended at the server's UTC date while an entry is
+ * dated in the browser's, so east of UTC a just-saved figure projected to 0
+ * until UTC's midnight caught up.
+ *
+ * Playwright cannot move the server's clock, so the same condition is made
+ * from the browser's side: UTC+14, with the browser's clock at or after
+ * 10:00 UTC — when Kiritimati is already on the next calendar day. The
+ * browser is moved forward by at most ten hours, well inside the one day the
+ * server accepts (FILM-1610's rule), and only when the real time is earlier.
+ */
+test.describe('The projection counts an entry saved today, east of UTC (KB-24)', () => {
+  test.use({ timezoneId: 'Pacific/Kiritimati' });
+
+  test("an entry dated the browser's today appears in the projection at once", async ({
+    page,
+  }) => {
+    const revenue = new RevenueCurrencyPageObject(page);
+    const form = new RevenuePageObject(page);
+    const team = await seedTeamAccount();
+
+    const now = new Date();
+    const utcToday = now.toISOString().slice(0, 10);
+    const tenUtc = new Date(`${utcToday}T10:05:00Z`);
+    const localTomorrow = new Date(`${utcToday}T00:00:00Z`);
+    localTomorrow.setUTCDate(localTomorrow.getUTCDate() + 1);
+
+    await signInAs(page, team);
+    await page.clock.setFixedTime(now > tenUtc ? now : tenUtc);
+    await revenue.goToRevenue(team.slug);
+    await revenue.openTab('manual');
+
+    await form.chooseCurrency('EUR - Euro');
+    await form.addEntry({ dollars: '50.00', category: 'Sponsorship' });
+    await form.expectSuccessToast();
+
+    // The condition itself, so this cannot pass vacuously: the entry is
+    // dated a day after the server's UTC date.
+    const [row] = await readRows<{ record_date: string }>(
+      'revenue_records',
+      `select=record_date&account_id=eq.${team.accountId}`,
+    );
+
+    expect(row!.record_date).toBe(localTomorrow.toISOString().slice(0, 10));
+
+    // 5000 cents on one day × 30. Before the fix: €0.
+    await revenue.openTab('overview');
+    await expect(revenue.tileValues('projection')).toHaveText(['€1,500']);
   });
 });

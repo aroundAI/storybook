@@ -47,7 +47,10 @@ import {
   parseLocalDate,
 } from '../lib/manual-revenue';
 import { currencySymbol } from '../lib/money';
-import { MANUAL_ENTRY_CATEGORIES, REVENUE_CATEGORY_LABEL } from '../lib/revenue-mix';
+import {
+  MANUAL_ENTRY_CATEGORIES,
+  REVENUE_CATEGORY_LABEL,
+} from '../lib/revenue-mix';
 import { AddManualRevenueSchema } from '../lib/schemas/revenue.schema';
 import { addManualRevenueAction } from '../server/revenue-actions';
 // Type-only, so nothing server-side is pulled into the client bundle. The
@@ -144,7 +147,7 @@ export function ManualRevenueForm({
       toast.success(
         result.replaced
           ? `Revenue entry updated — this replaced the earlier ${result.record.currency} ${(REVENUE_CATEGORY_LABEL[data.category] ?? data.category).toLowerCase()} figure for ${data.date}`
-          : 'Revenue entry added',
+          : 'Revenue entry added successfully',
       );
       form.reset(manualRevenueDefaults(accountId));
       setAmountText('');

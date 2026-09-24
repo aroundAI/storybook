@@ -67,7 +67,8 @@ type Filter = (row: Row) => boolean;
 function query(op: 'select' | 'delete' | 'update', payload?: Row) {
   const filters: Filter[] = [];
 
-  const matched = () => table.rows.filter((row) => filters.every((f) => f(row)));
+  const matched = () =>
+    table.rows.filter((row) => filters.every((f) => f(row)));
 
   const run = () => {
     const rows = matched();
@@ -187,7 +188,10 @@ describe('addManualRevenueAction (KB-23)', () => {
     await addManualRevenueAction(entry('eur', 7000));
 
     expect(table.rows).toHaveLength(1);
-    expect(table.rows[0]).toMatchObject({ currency: 'EUR', revenue_cents: 7000 });
+    expect(table.rows[0]).toMatchObject({
+      currency: 'EUR',
+      revenue_cents: 7000,
+    });
   });
 });
 
@@ -247,7 +251,10 @@ describe('getRevenueProjectionAction (KB-24)', () => {
     // 01:00 UTC. The split used to be "now minus 15 days" as an instant —
     // 9 Sep 01:00 UTC here — so a row dated 9 Sep (midnight UTC) fell in
     // the first half at this hour and the second half later in the day.
-    vi.useFakeTimers({ now: new Date('2026-09-24T01:00:00Z'), toFake: ['Date'] });
+    vi.useFakeTimers({
+      now: new Date('2026-09-24T01:00:00Z'),
+      toFake: ['Date'],
+    });
     // Window 25 Aug–24 Sep; halves 25 Aug–8 Sep and 9–24 Sep.
     streamed = [
       { record_date: '2026-09-08', currency: 'USD', cents: 1000 },
