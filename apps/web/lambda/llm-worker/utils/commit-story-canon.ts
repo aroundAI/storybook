@@ -5,7 +5,7 @@
  * LLM output so the Canon Dashboard has data to show immediately.
  *
  * Steps:
- *  0. CLEANUP — delete stale canon established by this episode
+ *  0. CLEANUP — delete the canon an earlier generation of this episode made
  *  1. immutable_events  — key events extracted from the story
  *  2. character_states  — character arcs for characters found in project assets
  *  3. episode metadata  — themes stored for analytics/categorization
@@ -60,8 +60,8 @@ export async function commitStoryCanon(
     supabase,
   } = input;
 
-  // Step 0: Remove stale canon from any previous story generation for this episode.
-  // This makes regeneration idempotent — new story replaces old canon cleanly.
+  // Step 0: Remove the canon a previous generation of this episode made.
+  // A regenerated story replaces it; canon added by hand is kept (KB-78).
   await cleanupEpisodeCanon(episodeId, supabase);
 
   const results = await Promise.allSettled([
@@ -95,29 +95,64 @@ export async function commitStoryCanon(
 
 // ─── Step 0: Cleanup ─────────────────────────────────────────────────────────
 
+const STORY_GENERATION = 'story_generation';
+
 /**
- * Deletes all canon data that was established by this specific episode.
- * Called at the start of commitStoryCanon so regeneration is idempotent.
+ * Deletes the canon a previous story generation made for this episode, so a
+ * regenerated story replaces it. Canon a person added — an event from Add
+ * Event, a thread from Add Thread or the Publish page — carries no generation
+ * marker and is kept (KB-78).
  * FK CASCADE on episode deletion handles the delete-episode case separately.
  */
 export async function cleanupEpisodeCanon(
   episodeId: string,
   supabase: SupabaseClient,
 ): Promise<void> {
-  const results = await Promise.allSettled([
-    supabase.from('immutable_events').delete().eq('established_in', episodeId),
-    supabase.from('character_states').delete().eq('episode_id', episodeId),
-    supabase.from('narrative_threads').delete().eq('opened_at', episodeId),
-  ]);
+  const deletions = [
+    {
+      table: 'immutable_events',
+      request: supabase
+        .from('immutable_events')
+        .delete()
+        .eq('established_in', episodeId)
+        .eq('metadata->>auto_generated', 'true')
+        .select('id'),
+    },
+    {
+      table: 'character_states',
+      request: supabase
+        .from('character_states')
+        .delete()
+        .eq('episode_id', episodeId)
+        .eq('trigger_event', STORY_GENERATION)
+        .select('id'),
+    },
+    {
+      table: 'narrative_threads',
+      request: supabase
+        .from('narrative_threads')
+        .delete()
+        .eq('opened_at', episodeId)
+        .eq('auto_generated', true)
+        .select('id'),
+    },
+  ];
 
-  for (const result of results) {
-    if (result.status === 'rejected') {
-      console.warn('[commitStoryCanon] Cleanup step failed:', result.reason);
-    }
-  }
+  const results = await Promise.all(
+    deletions.map(async ({ table, request }) => {
+      const { data, error } = await request;
+      if (error) {
+        console.warn(
+          `[commitStoryCanon] Cleanup of ${table} failed:`,
+          error.message,
+        );
+      }
+      return `${table} ${data?.length ?? 0}`;
+    }),
+  );
 
   console.log(
-    `[commitStoryCanon] Cleaned up stale canon for episode ${episodeId}`,
+    `[commitStoryCanon] Replaced generated canon for episode ${episodeId} (${results.join(', ')}); canon added by hand is kept`,
   );
 }
 
@@ -150,7 +185,7 @@ async function commitKeyEvents({
     season,
     episode_number: episodeNumber,
     description: text,
-    metadata: { auto_generated: true, source: 'story_generation' },
+    metadata: { auto_generated: true, source: STORY_GENERATION },
     created_by: createdBy,
   }));
 
@@ -205,7 +240,7 @@ async function commitCharacterStates({
       episode_id: episodeId,
       state_type: 'goal',
       state_value: { arc: c.arc, role: c.role },
-      trigger_event: 'story_generation',
+      trigger_event: STORY_GENERATION,
     }));
 
   if (!toInsert.length) return;
@@ -378,6 +413,7 @@ async function commitNarrativeThreadsViaLLM({
             promises: update.promises ?? [],
             episodes_touched: [episodeId],
             status: 'open',
+            auto_generated: true,
           });
           if (!error) threadsCreated++;
         } else if (update.action === 'progress') {

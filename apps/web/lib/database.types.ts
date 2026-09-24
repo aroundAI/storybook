@@ -3258,6 +3258,7 @@ export type Database = {
       }
       narrative_threads: {
         Row: {
+          auto_generated: boolean
           created_at: string | null
           description: string | null
           episodes_touched: string[] | null
@@ -3274,6 +3275,7 @@ export type Database = {
           version: number
         }
         Insert: {
+          auto_generated?: boolean
           created_at?: string | null
           description?: string | null
           episodes_touched?: string[] | null
@@ -3290,6 +3292,7 @@ export type Database = {
           version?: number
         }
         Update: {
+          auto_generated?: boolean
           created_at?: string | null
           description?: string | null
           episodes_touched?: string[] | null
