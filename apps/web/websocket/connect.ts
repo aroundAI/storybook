@@ -4,7 +4,10 @@ import {
   PutCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
+import type {
+  APIGatewayProxyStructuredResultV2,
+  APIGatewayProxyWebsocketEventV2,
+} from 'aws-lambda';
 
 import { isSuperAdminFromToken, verifySupabaseToken } from './utils/auth';
 
@@ -19,7 +22,18 @@ const MAX_CONNECTIONS_PER_USER = 5; // Maximum concurrent connections per user
  * Called when a client connects to the WebSocket API
  * Requires authentication via JWT token in Authorization header or query string
  */
-export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
+/**
+ * API Gateway delivers the upgrade request's headers and query string on
+ * `$connect`; `@types/aws-lambda`'s websocket event does not declare them.
+ */
+export type WebsocketConnectEvent = APIGatewayProxyWebsocketEventV2 & {
+  headers?: Record<string, string | undefined>;
+  queryStringParameters?: Record<string, string | undefined>;
+};
+
+export const handler = async (
+  event: WebsocketConnectEvent,
+): Promise<APIGatewayProxyStructuredResultV2> => {
   console.log('WebSocket connect event:', {
     connectionId: event.requestContext.connectionId,
     hasAuthHeader:

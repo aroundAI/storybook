@@ -1,0 +1,12 @@
+{
+  // The WebSocket handlers are bundled by SST/esbuild, which strips types
+  // without checking them; this config is what checks them (KB-34). It runs
+  // as the third part of `web`'s `typecheck` script, beside the lambdas'
+  // (KB-14), so `pnpm typecheck` and CI's TypeScript job include it.
+  "extends": "@kit/tsconfig/base.json",
+  "compilerOptions": {
+    "incremental": false
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
+}

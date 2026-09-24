@@ -9,7 +9,10 @@ import {
   GetCommand,
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
+import type {
+  APIGatewayProxyStructuredResultV2,
+  APIGatewayProxyWebsocketEventV2,
+} from 'aws-lambda';
 
 const client = new DynamoDBClient({});
 const ddb = DynamoDBDocumentClient.from(client);
@@ -25,7 +28,9 @@ const TABLE_NAME = process.env.CONNECTIONS_TABLE_NAME || '';
  * 2. Notify all peers in those channels that this user left (presence removal)
  * 3. Delete the connection record from DynamoDB
  */
-export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
+export const handler = async (
+  event: APIGatewayProxyWebsocketEventV2,
+): Promise<APIGatewayProxyStructuredResultV2> => {
   console.log('WebSocket disconnect event:', JSON.stringify(event, null, 2));
 
   const connectionId = event.requestContext.connectionId;

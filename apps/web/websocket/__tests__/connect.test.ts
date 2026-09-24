@@ -135,7 +135,7 @@ describe('WebSocket Connect Handler', () => {
       );
 
       // Check TTL is approximately 1 hour from now
-      const storedTTL = mockPutCommand.mock.calls[0][0].Item.ttl;
+      const storedTTL = mockPutCommand.mock.calls[0]![0].Item.ttl;
       expect(storedTTL).toBeGreaterThanOrEqual(now + 3500); // ~1 hour
       expect(storedTTL).toBeLessThanOrEqual(now + 3700); // ~1 hour + buffer
     });

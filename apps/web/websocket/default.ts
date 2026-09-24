@@ -13,8 +13,13 @@ import {
   ScanCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
+import type {
+  APIGatewayProxyStructuredResultV2,
+  APIGatewayProxyWebsocketEventV2,
+} from 'aws-lambda';
 import ws from 'ws';
+
+import type { Database } from '@kit/supabase/database';
 
 import { validateWebSocketMessage } from './schemas/websocket-messages.schema';
 import { isValidUUID } from './utils/validation';
@@ -27,9 +32,11 @@ const TABLE_NAME = process.env.CONNECTIONS_TABLE_NAME || '';
 // Initialize Supabase client for authorization checks
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
   realtime: {
-    transport: ws,
+    // ws is the WHATWG client the realtime transport expects; @types/ws leads
+    // with a server-mode `new (address: null)` overload that defeats inference.
+    transport: ws as unknown as typeof WebSocket,
   },
 });
 
@@ -125,6 +132,7 @@ async function canUserMessageUser(
     // Atomic query: Check if sender and target share any account_id
     // This uses a self-join to find shared team memberships in a single query,
     // eliminating the race condition window between separate queries
+    // @ts-expect-error KB-91: defined only in supabase/schemas/, which builds nothing; no migration creates it, so this RPC errors and send-to-user is refused
     const { data, error } = await supabase.rpc('check_shared_team_membership', {
       sender_user_id: senderId,
       target_user_id: targetId,
@@ -161,7 +169,9 @@ async function canUserMessageUser(
  * WebSocket $default handler
  * Called for all WebSocket messages that don't match a specific route
  */
-export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
+export const handler = async (
+  event: APIGatewayProxyWebsocketEventV2,
+): Promise<APIGatewayProxyStructuredResultV2> => {
   console.log('WebSocket default event:', JSON.stringify(event, null, 2));
 
   const connectionId = event.requestContext.connectionId;
@@ -205,7 +215,7 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
     console.log('Message received:', { action, channel, connectionId });
 
-    switch (action) {
+    switch (validatedMessage.action) {
       case 'send-to-user': {
         // Send message to all connections of a specific user (by userId)
         const {
