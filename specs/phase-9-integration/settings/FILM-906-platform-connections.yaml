@@ -75,7 +75,7 @@ test_plan:
       reason: "not met — no test found"
     - text: "Test refresh token mutation (calls ensureValidToken)"
       met: false
-      reason: "not met — no test of `refreshConnectionAction`; `ensureValidToken` itself is tested (`packages/features/publishing/__tests__/token-refresh.test.ts:119`)"
+      reason: "not met — no test of `refreshConnectionAction`; `ensureValidToken` itself is tested (`packages/features/publishing/__tests__/token-refresh.test.ts:381`)"
   e2e: []
   manual:
     - text: "Page loads at `/home/[account]/settings/platforms`"

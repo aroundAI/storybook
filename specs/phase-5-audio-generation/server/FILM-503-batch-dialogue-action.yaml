@@ -102,7 +102,7 @@ acceptance_criteria:
     evidence: "one `UPDATE … RETURNING` per line (`apps/web/supabase/migrations/20260527094643_increment_batch_progress_rpc.sql:24`)"
   - text: "Batch job is resumable after server restart (deferred - requires queue system)"
     met: true
-    evidence: "lines are SQS messages processed by `apps/web/lambda/voice-worker` (`packages/features/audio-generation/src/server/batch-actions.ts:344`); the studio resumes polling an active batch on load (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/use-batch-generation.ts:113`)"
+    evidence: "lines are SQS messages processed by `apps/web/lambda/voice-worker` (`packages/features/audio-generation/src/server/batch-actions.ts:327`); the studio resumes polling an active batch on load (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/use-batch-generation.ts:113`)"
   - text: "All errors logged with context"
     met: true
     evidence: null

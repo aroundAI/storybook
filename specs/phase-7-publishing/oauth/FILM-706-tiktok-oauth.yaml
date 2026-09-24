@@ -28,10 +28,10 @@ oauth_flow:
 acceptance_criteria:
   - text: "Connect button redirects to TikTok authorization page"
     met: true
-    evidence: "`apps/web/app/api/platforms/connect/tiktok/route.ts:109`"
+    evidence: "`apps/web/app/api/platforms/connect/tiktok/route.ts:102`"
   - text: "PKCE code challenge is properly generated"
     met: true
-    evidence: "`packages/features/publishing/src/oauth/tiktok/config.ts:43` (S256); sent at `apps/web/app/api/platforms/connect/tiktok/route.ts:105`"
+    evidence: "`packages/features/publishing/src/oauth/tiktok/config.ts:43` (S256); sent at `apps/web/app/api/platforms/connect/tiktok/route.ts:98`"
   - text: "Callback exchanges code for tokens with code verifier"
     met: true
     evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:124`"
