@@ -125,7 +125,7 @@ grant
 execute on function public.team_account_workspace (text) to authenticated,
 service_role;
 
--- VIEW "public_accounts" (KB-60, migration 20260924075728):
+-- VIEW "public_accounts" (KB-60, migration 20260924223914):
 -- the public fields of public team accounts, for public pages. Owner-rights
 -- view: accounts itself is readable by members only, so this select list and
 -- WHERE are the whole exposure. Read only.
