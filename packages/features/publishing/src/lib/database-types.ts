@@ -18,6 +18,9 @@ export interface PlatformConnection {
   language: string; // Target language for this channel (en, hi, es, pt, etc.)
   /** Set when disconnected in the app (KB-22); the row and its history stay. */
   disconnected_at?: string | null;
+  /** KB-30: the creator's YouTube declaration; null = not declared yet. */
+  youtube_made_for_kids?: boolean | null;
+  youtube_category_id?: string | null;
   created_at: string;
   updated_at: string;
 }

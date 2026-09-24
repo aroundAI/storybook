@@ -168,10 +168,10 @@ export function getDefaultPlatformSettings(
 ): PlatformSpecificSettings {
   switch (platform) {
     case 'youtube':
+      // No audience or category: those are the creator's declaration for
+      // the channel, asked for rather than assumed (KB-30).
       return {
-        categoryId: '22', // People & Blogs
         privacy: 'private',
-        madeForKids: false,
       };
     case 'tiktok':
       return {

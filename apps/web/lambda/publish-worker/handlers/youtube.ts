@@ -7,12 +7,21 @@ import { OAuth2Client } from 'google-auth-library';
 import { Readable } from 'stream';
 
 import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
+import {
+  type YouTubeChannelDeclaration,
+  resolveYouTubeDeclaration,
+} from '@kit/publishing/lib/youtube-declaration';
 import { vendorUrl } from '@kit/shared/vendors';
 
 export async function uploadToYouTube(
   accessToken: string,
   job: PublishJobMessage,
+  channel: YouTubeChannelDeclaration | null,
 ): Promise<{ contentId: string; url: string }> {
+  // KB-30: before anything is fetched or sent. With no declaration from the
+  // publish row or the channel, nothing uploads.
+  const declaration = resolveYouTubeDeclaration(job.metadata, channel);
+
   const oauth2Client = new OAuth2Client();
   oauth2Client.setCredentials({ access_token: accessToken });
   const youtube = youtubeApi({
@@ -35,13 +44,13 @@ export async function uploadToYouTube(
       title: job.title,
       description: job.description,
       tags: job.tags,
-      categoryId: (job.metadata.categoryId as string) ?? '22',
+      categoryId: declaration.categoryId,
     },
     status: {
       privacyStatus:
         (job.metadata.privacy as 'private' | 'unlisted' | 'public') ?? 'public',
-      madeForKids: (job.metadata.madeForKids as boolean) ?? false,
-      selfDeclaredMadeForKids: (job.metadata.madeForKids as boolean) ?? false,
+      madeForKids: declaration.madeForKids,
+      selfDeclaredMadeForKids: declaration.madeForKids,
     },
   };
 

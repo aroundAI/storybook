@@ -1922,11 +1922,26 @@ active past its first hour.
 
 ## KB-30 — Every YouTube upload declares "not made for kids", with no way to change it
 
+> **Fixed (2026-09-24), #KB30PR.** Reproduced first: the lambda handler, run
+> against a local stand-in for YouTube with empty metadata, sent
+> `"categoryId":"22"` and `"selfDeclaredMadeForKids":false`. It was bigger
+> than recorded — **four** upload sites defaulted, not two: the in-app cron
+> (`process-scheduled-publishes.ts`) and the retry path did too. The owner
+> decided (2026-09-24): the declaration belongs to the **YouTube channel**,
+> with **no default** — the first publish to each channel asks for the
+> audience and the category in one required dialog, nothing pre-selected.
+> `platform_connections.youtube_made_for_kids` / `youtube_category_id`
+> (nullable, no default, YouTube rows only); one resolver
+> (`packages/features/publishing/src/lib/youtube-declaration.ts`) on every
+> upload path, with no fallback — it refuses; the server refuses an
+> undeclared YouTube publish before writing any row, and snapshots the
+> declaration onto the publish row. Design: `specs/plans/KB-30-edd.md`.
+
 **Severity:** Medium — a compliance risk that depends on the channel: YouTube
 requires each upload's audience to be declared (COPPA), and for a channel
 whose content is made for children a wrong declaration is the creator's
 liability. **Found:** the spec audit of FILM-710 (2026-09-23); confirmed by
-the coordinator by reading. **Open.**
+the coordinator by reading. **Fixed** in #KB30PR.
 
 The live publish screen builds YouTube payloads with `platformSpecific: {}` —
 only Facebook gets a value (`{ isReel: true }`) —
@@ -1951,8 +1966,8 @@ audit). The tags placeholder reads "animation, kids, story"
 
 ### Acceptance criteria
 
-- [ ] A YouTube publish sends the audience the user chose; with none chosen, publishing asks rather than defaulting — Playwright, asserted on the request payload, red first
-- [ ] The lambda path sends the same value as the in-app path
+- [x] A YouTube publish sends the audience the user chose; with none chosen, publishing asks rather than defaulting — Playwright, asserted on the request payload, red first — `apps/e2e/tests/publishing/youtube-audience.spec.ts`; server refusal before any row: `packages/features/publishing/__tests__/publish-youtube-declaration.test.ts`
+- [x] The lambda path sends the same value as the in-app path — `packages/features/publishing/__tests__/youtube-declaration-parity.test.ts` runs both against one YouTube stand-in and compares the bodies each sent; `youtube-declaration-no-fallback.test.ts` fails on a `?? false` / `?? '22'` at any upload site
 
 ---
 
@@ -3335,6 +3350,7 @@ the settings key list). Add a pgTAP test listing the columns a member may read.
 | KB-82 | KB-75 had no record, INDEX linked the spikes to files that no longer exist, and FILM-1728 said the lambdas were untyped | this batch-records PR (`docs/batch-records-2026-09-23`) |
 | KB-46 | A teammate who could only read a project spent its ElevenLabs key: voice, SFX and music generation authorised by a readable row, not `can_write_project`. The public-project stranger in the original entry was blocked, by accident | #337 |
 | KB-47 (part) | The voice queue: its three producers sent jobs the service-role worker ran on the named account's key; they now authorise, and the queue requires the target. The publish queue is still open | #337 |
+| KB-30 | Every YouTube upload declared "not made for kids" and category 22, which nobody chose, on all four upload paths; each channel's audience and category are now the creator's answer, asked for on the first publish | #KB30PR |
 
 ---
 
@@ -3385,6 +3401,9 @@ proved it wrong. Paths abbreviated with `…/studio/` are under
 - TikTok direct posting calls `/v2/post/publish/video/init/`, but connect never requests `video.publish`; the immediate path also sends an undocumented `privacy_level: 'PUBLIC'` and `video_upload_id` — `packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:264`, `apps/web/lambda/publish-worker/handlers/tiktok.ts:16`, `packages/features/publishing/src/oauth/tiktok/config.ts:12` (the FILM-1729 class)
 - One channel still cannot be connected for two languages: the shorts migration dropped a constraint name that never existed, so the three-column key survives — `apps/web/supabase/migrations/20260101120000_add_shorts_tables.sql:236`
 - Token refresh: a failed lock retries every second with no cap — `packages/features/publishing/src/lib/token-refresh.ts:180-183`; the expiring-connections read is unpaged, under the 1000-row cap — `packages/features/publishing/src/jobs/refresh-expiring-tokens.ts:75-81`
+- *(Found while fixing KB-30, 2026-09-24.)* Project and episode publishing defaults are saved and never applied: project settings and the platforms page write `project_publishing_configs` (default tags, title suffix, description template, enabled) and `episode_publishing_configs`, and nothing on the publish path reads either — checked with a plain `grep -r` over `…/studio/episodes/`, `publish-actions.ts` and `src/jobs/`, with a positive control — `packages/features/publishing/src/server/project-publishing-actions.ts`, `episode-publishing-actions.ts`
+- *(Found while fixing KB-30.)* A real YouTube playlist id is refused: `playlistIds` is validated as `z.array(z.string().uuid())`, and YouTube playlist ids are not UUIDs — `packages/features/publishing/src/lib/schemas/publish.schema.ts:24`
+- *(Found while fixing KB-30.)* A YouTube upload's privacy depends on which path sends it: an immediate publish and a retry are always `public`; the in-app scheduled-publish cron sends `metadata.privacy`, else **`private`**; the SST scheduled-publish lambda sends `metadata.privacy`, else `public`. Nothing sets `metadata.privacy`, so a scheduled publish processed by the in-app cron would go up private — `packages/features/publishing/src/jobs/process-scheduled-publishes.ts` (`uploadToPlatform`), `apps/web/lambda/publish-worker/handlers/youtube.ts:41`. Which scheduler runs in production decides whether this bites; KB-30 kept each path's behaviour as it was
 
 **Facts, news and the rest**
 - Fact search passes raw input to `to_tsquery`, so a trailing space likely breaks the page, and the claim query cannot use its full-text index — `packages/features/episodes/src/server/fact-actions.ts:298`

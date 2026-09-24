@@ -31,6 +31,7 @@ import type {
   PublishJobMessage,
   SocialTextPostJobMessage,
 } from '@kit/publishing/lib/job-types';
+import type { YouTubeChannelDeclaration } from '@kit/publishing/lib/youtube-declaration';
 import { LINKEDIN_REST_VERSION, vendorUrl } from '@kit/shared/vendors';
 
 import { checkConnectionToken } from './token';
@@ -141,7 +142,11 @@ async function uploadToPlatform(
   switch (job.platform) {
     case 'youtube': {
       const { uploadToYouTube } = await import('./handlers/youtube');
-      return uploadToYouTube(accessToken, job);
+      return uploadToYouTube(
+        accessToken,
+        job,
+        await readYouTubeDeclaration(job.platformConnectionId),
+      );
     }
     case 'tiktok': {
       const { uploadToTikTok } = await import('./handlers/tiktok');
@@ -166,6 +171,30 @@ async function uploadToPlatform(
     default:
       throw new Error(`Unsupported platform: ${job.platform}`);
   }
+}
+
+/**
+ * The channel's own audience and category (KB-30). A publish row made after
+ * KB-30 carries both in its metadata; this answers for rows scheduled before
+ * it. Read at upload time, so a channel declared after a failed attempt is
+ * honoured when SQS redelivers the job.
+ */
+async function readYouTubeDeclaration(
+  connectionId: string,
+): Promise<YouTubeChannelDeclaration | null> {
+  const { data, error } = await supabase
+    .from('platform_connections')
+    .select('youtube_made_for_kids, youtube_category_id')
+    .eq('id', connectionId)
+    .single();
+
+  if (error) {
+    throw new Error(
+      `Could not read the channel's YouTube audience: ${error.message}`,
+    );
+  }
+
+  return data;
 }
 
 /**

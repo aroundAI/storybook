@@ -13,6 +13,7 @@ import {
 
 import type { SupportedLanguage } from '@kit/publishing/lib/constants';
 import { LANG_INFO } from '@kit/publishing/lib/constants';
+import { youtubeCategoryName } from '@kit/publishing/lib/youtube-declaration';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import {
@@ -35,8 +36,17 @@ import type {
   TranslationResult,
 } from './publish-types';
 
+interface YouTubeDeclarationSummary {
+  connectionId: string;
+  channelName: string;
+  madeForKids: unknown;
+  categoryId: unknown;
+}
+
 interface PublishProgressDialogProps {
   publishStage: PublishStage;
+  /** KB-30: what each YouTube upload will declare, shown before confirming. */
+  youtubeDeclarations: YouTubeDeclarationSummary[];
   translationResults: TranslationResult[];
   platformStatuses: PlatformUploadStatus[];
   publishError: string | null;
@@ -46,6 +56,7 @@ interface PublishProgressDialogProps {
 
 export function PublishProgressDialog({
   publishStage,
+  youtubeDeclarations,
   translationResults,
   platformStatuses,
   publishError,
@@ -155,6 +166,35 @@ export function PublishProgressDialog({
             </div>
           )}
 
+          {publishStage === 'confirm-translation' &&
+            youtubeDeclarations.length > 0 && (
+              <div
+                className="space-y-1 rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-700"
+                data-test="confirm-youtube-audience"
+              >
+                <p className="font-medium">YouTube will be told</p>
+                {youtubeDeclarations.map((declaration) => (
+                  <p
+                    key={declaration.connectionId}
+                    className="text-gray-600 dark:text-gray-400"
+                    data-test="confirm-youtube-audience-row"
+                    data-connection-id={declaration.connectionId}
+                  >
+                    {declaration.channelName}:{' '}
+                    {declaration.madeForKids === true
+                      ? 'Made for kids'
+                      : declaration.madeForKids === false
+                        ? 'Not made for kids'
+                        : 'Audience not set'}{' '}
+                    ·{' '}
+                    {typeof declaration.categoryId === 'string'
+                      ? youtubeCategoryName(declaration.categoryId)
+                      : 'Category not set'}
+                  </p>
+                ))}
+              </div>
+            )}
+
           {/* Uploading Stage */}
           {(publishStage === 'uploading' || publishStage === 'complete') && (
             <div className="space-y-3">
@@ -243,6 +283,7 @@ export function PublishProgressDialog({
                 <Button
                   onClick={onConfirmUpload}
                   className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white"
+                  data-test="confirm-publish"
                 >
                   <Upload className="mr-2 h-4 w-4" />
                   Confirm & Publish
@@ -250,7 +291,7 @@ export function PublishProgressDialog({
               </>
             )}
             {(publishStage === 'complete' || publishStage === 'error') && (
-              <Button onClick={onCancel}>
+              <Button onClick={onCancel} data-test="publish-dialog-close">
                 {publishStage === 'complete' ? 'Done' : 'Close'}
               </Button>
             )}

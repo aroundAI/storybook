@@ -91,6 +91,9 @@ export interface PlatformConnection {
   avatarUrl: string | null;
   tokenValid: boolean;
   language: string;
+  /** KB-30: the channel's YouTube audience and category; null = not declared yet. */
+  youtubeMadeForKids?: boolean | null;
+  youtubeCategoryId?: string | null;
   /** Latest dated level, or the count stored at connection (FILM-1617). */
   followerCount?: number | null;
   followerCountSource?: FollowerCountSource | null;

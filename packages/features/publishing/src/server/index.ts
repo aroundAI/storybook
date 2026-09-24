@@ -5,7 +5,10 @@
  * `@kit/publishing/server/queries` (KB-58).
  */
 
-export { getConnectedPlatformsAction } from './connection-actions';
+export {
+  getConnectedPlatformsAction,
+  updateYouTubeChannelSettingsAction,
+} from './connection-actions';
 
 export {
   publishToAllAction,

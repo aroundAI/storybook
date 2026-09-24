@@ -1966,6 +1966,9 @@ importers:
         specifier: ^10.6.2
         version: 10.6.2
     devDependencies:
+      '@hookform/resolvers':
+        specifier: ^4.1.3
+        version: 4.1.3(react-hook-form@7.62.0(react@19.1.1))
       '@kit/eslint-config':
         specifier: workspace:*
         version: link:../../../tooling/eslint
@@ -1996,6 +1999,9 @@ importers:
       react:
         specifier: 19.1.1
         version: 19.1.1
+      react-hook-form:
+        specifier: ^7.62.0
+        version: 7.62.0(react@19.1.1)
       typescript:
         specifier: ^5.9.2
         version: 5.9.2

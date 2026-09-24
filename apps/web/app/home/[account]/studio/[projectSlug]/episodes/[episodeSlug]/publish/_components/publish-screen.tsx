@@ -71,6 +71,7 @@ import { PublishedContentSection } from './published-content-section';
 import { ShortsSection } from './shorts-section';
 import { UnpublishDialog } from './unpublish-dialog';
 import { UploadVideoDialog } from './upload-video-dialog';
+import { useYouTubeAudienceGate } from './use-youtube-audience-gate';
 
 interface PublishScreenProps {
   episode: EpisodeWithShots;
@@ -441,6 +442,26 @@ export function PublishScreen({
     enabled: !!accountId,
   });
 
+  // KB-30: YouTube uploads declare an audience the creator chose, never a default.
+  const audienceGate = useYouTubeAudienceGate(() => void refetchConnections());
+
+  // What each YouTube channel in the pending publish will declare, read from
+  // the configs that will actually be sent — shown on the confirm step.
+  const youtubeDeclarations = pendingPlatformConfigs
+    .filter(
+      (config, index, all) =>
+        config.platform === 'youtube' &&
+        all.findIndex((c) => c.connectionId === config.connectionId) === index,
+    )
+    .map((config) => ({
+      connectionId: config.connectionId,
+      channelName:
+        (connections ?? []).find((c) => c.id === config.connectionId)
+          ?.platformAccountName ?? 'YouTube',
+      madeForKids: config.platformSpecific.madeForKids,
+      categoryId: config.platformSpecific.categoryId,
+    }));
+
   // Handle batch translation results from WebSocket
   useEffect(() => {
     const isPublishTranslating = publishStage === 'translating';
@@ -805,6 +826,14 @@ export function PublishScreen({
       return;
     }
 
+    const scheduledLanguages = new Set<string>(
+      config.schedule.map((item) => item.language),
+    );
+    const declared = await audienceGate.ensureDeclared(
+      conns.filter((c) => scheduledLanguages.has(c.language || 'en')),
+    );
+    if (!declared) return;
+
     setIsScheduling(true);
 
     // Build platform configs with scheduled times
@@ -842,7 +871,7 @@ export function PublishScreen({
             thumbnailUrl: getThumbnailForLanguage(item.language),
             language: item.language,
             scheduledAt: item.scheduledAt.toISOString(),
-            platformSpecific: {},
+            platformSpecific: audienceGate.platformSpecificFor(channel),
           });
         }
       } else {
@@ -869,8 +898,10 @@ export function PublishScreen({
             thumbnailUrl: undefined,
             language: item.language,
             scheduledAt: item.scheduledAt.toISOString(),
-            platformSpecific:
+            platformSpecific: audienceGate.platformSpecificFor(
+              channel,
               channel.platform === 'facebook' ? { isReel: true } : {},
+            ),
           });
         }
       }
@@ -911,6 +942,17 @@ export function PublishScreen({
       toast.error('No connected channels. Connect platforms first.');
       return;
     }
+
+    const publishLanguages = new Set<string>([
+      ...uploadedFullLanguages,
+      ...shortsGroups.flatMap((group) =>
+        Object.keys(group.videos).filter((lang) => group.videos[lang]),
+      ),
+    ]);
+    const declared = await audienceGate.ensureDeclared(
+      conns.filter((c) => publishLanguages.has(c.language || 'en')),
+    );
+    if (!declared) return;
 
     // Reset state
     setPublishError(null);
@@ -1067,7 +1109,7 @@ export function PublishScreen({
             : [],
           thumbnailUrl: getThumbnailForLanguage(lang as SupportedLanguage),
           language: lang,
-          platformSpecific: {},
+          platformSpecific: audienceGate.platformSpecificFor(channel),
         });
       }
     }
@@ -1110,8 +1152,10 @@ export function PublishScreen({
                   : [],
             thumbnailUrl: getThumbnailForLanguage(lang),
             language: lang,
-            platformSpecific:
+            platformSpecific: audienceGate.platformSpecificFor(
+              channel,
               channel.platform === 'facebook' ? { isReel: true } : {},
+            ),
           });
         }
       }
@@ -1303,8 +1347,11 @@ export function PublishScreen({
   return (
     <>
       {/* Publishing Progress Modal */}
+      {audienceGate.dialog}
+
       <PublishProgressDialog
         publishStage={publishStage}
+        youtubeDeclarations={youtubeDeclarations}
         translationResults={translationResults}
         platformStatuses={platformStatuses}
         publishError={publishError}
@@ -1344,6 +1391,7 @@ export function PublishScreen({
           </div>
           <Button
             onClick={handlePublish}
+            data-test="publish-all"
             disabled={
               uploadedFullLanguages.length === 0 && shortsGroups.length === 0
             }
