@@ -361,7 +361,7 @@ transform: {
 # Provider configuration (vendor agnostic)
 DATABASE_PROVIDER=supabase
 AUTH_PROVIDER=supabase
-STORAGE_PROVIDER=s3
+STORAGE_PROVIDER=r2
 EMAIL_PROVIDER=resend    # or 'ses' for production
 QUEUE_PROVIDER=sqs
 CACHE_PROVIDER=redis

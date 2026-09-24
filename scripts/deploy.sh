@@ -11,6 +11,10 @@
 #   - NEXT_PUBLIC_SUPABASE_ANON_KEY
 #   - SUPABASE_SERVICE_ROLE_KEY
 #   - DOMAIN_NAME (for production)
+#   - SUPABASE_PROJECT_REF, SUPABASE_DB_PASSWORD, SUPABASE_ACCESS_TOKEN: migrations
+#     apply before the build, and the deploy stops if they do not (KB-2).
+#     DEPLOY_SKIP_MIGRATIONS=1 skips them deliberately.
+#   - STORAGE_PROVIDER: r2 or supabase; anything else stops the deploy (KB-70)
 #   - AWS credentials (via aws configure or environment)
 ###############################################################################
 
@@ -25,6 +29,16 @@ NC='\033[0m' # No Color
 
 # Get stage from argument or default to staging
 STAGE="${1:-staging}"
+
+# Stop before anything is built or shipped (KB-2).
+fail_deploy() {
+    echo -e "${RED}❌ $1 — not deploying.${NC}"
+    shift
+    for line in "$@"; do
+        echo -e "  $line"
+    done
+    exit 1
+}
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}AWS Lambda Deployment Script${NC}"
@@ -135,6 +149,14 @@ if [ ${#MISSING_VARS[@]} -ne 0 ]; then
 fi
 
 echo -e "${GREEN}✓ All required environment variables set${NC}"
+
+# The storage providers the code implements; any other value stops the deploy
+# (KB-70). Keep in step with STORAGE_PROVIDERS in packages/features/storage/src/factory.ts.
+STORAGE_PROVIDERS="supabase r2"
+if [ -n "${STORAGE_PROVIDER:-}" ] && [[ " $STORAGE_PROVIDERS " != *" $(echo "$STORAGE_PROVIDER" | tr '[:upper:]' '[:lower:]') "* ]]; then
+    fail_deploy "STORAGE_PROVIDER=${STORAGE_PROVIDER} is not a provider this code implements" \
+        "Use one of: ${STORAGE_PROVIDERS} (production and staging use r2)"
+fi
 echo ""
 
 ###############################################################################
@@ -208,17 +230,29 @@ echo ""
 # 5. Apply Supabase Migrations
 ###############################################################################
 
+# Migrations go out before the build, and a deploy whose migrations did not
+# apply stops here: the app would otherwise run against a schema it does not
+# match (KB-2). DEPLOY_SKIP_MIGRATIONS=1 skips them deliberately, for a deploy
+# known to need none.
+if [ "${DEPLOY_SKIP_MIGRATIONS:-}" = "1" ]; then
+    echo -e "${YELLOW}⚠️  DEPLOY_SKIP_MIGRATIONS=1 — migrations NOT applied (Supabase and ClickHouse).${NC}"
+    echo ""
+else
+
 echo -e "${YELLOW}📊 Applying Supabase migrations...${NC}"
 
-# Check if SUPABASE_PROJECT_REF is set (required for remote deployments)
+if [ -z "$SUPABASE_PROJECT_REF" ]; then
+    fail_deploy "SUPABASE_PROJECT_REF is not set, so migrations cannot be applied" \
+        "Add it to deployment/config/${STAGE}.env, or set DEPLOY_SKIP_MIGRATIONS=1 if this deploy needs no migration"
+fi
+
 if [ -n "$SUPABASE_PROJECT_REF" ]; then
     echo "  Connecting to Supabase project: ${SUPABASE_PROJECT_REF}"
 
     # Check if supabase CLI is installed
     if ! command -v supabase &> /dev/null; then
-        echo -e "${YELLOW}⚠️  Supabase CLI not installed. Install it with:${NC}"
-        echo -e "  npm install -g supabase"
-        echo -e "${YELLOW}  Skipping migrations for now...${NC}"
+        fail_deploy "Supabase CLI not installed, so migrations cannot be applied" \
+            "Install it with: npm install -g supabase"
     else
         # Apply migrations
         echo "  Applying migrations..."
@@ -275,8 +309,8 @@ if [ -n "$SUPABASE_PROJECT_REF" ]; then
             if [ $PUSH_EXIT_CODE -eq 0 ]; then
                 echo -e "${GREEN}✓ Migrations applied successfully (idempotent)${NC}"
             else
-                echo -e "${RED}✗ Failed to push database migrations (exit code: $PUSH_EXIT_CODE)${NC}"
-                echo -e "  You may need to apply migrations manually"
+                fail_deploy "supabase db push failed (exit code: $PUSH_EXIT_CODE)" \
+                    "Fix the migration and re-run; db push applies only what is not yet applied"
             fi
         else
             echo -e "${RED}✗ Failed to link to Supabase project (exit code: $LINK_EXIT_CODE)${NC}"
@@ -290,13 +324,11 @@ if [ -n "$SUPABASE_PROJECT_REF" ]; then
             echo -e "    - Ensure SUPABASE_ACCESS_TOKEN is set (get from: https://supabase.com/dashboard/account/tokens)"
             echo -e "    - Ensure SUPABASE_DB_PASSWORD is correct"
             echo -e "    - Check project ref is correct: ${SUPABASE_PROJECT_REF}"
+            fail_deploy "supabase link failed (exit code: $LINK_EXIT_CODE)"
         fi
 
         cd ../..
     fi
-else
-    echo -e "${YELLOW}⚠️  SUPABASE_PROJECT_REF not set. Skipping migrations.${NC}"
-    echo -e "  To enable automatic migrations, add SUPABASE_PROJECT_REF to your deployment/config/${STAGE}.env file"
 fi
 
 echo ""
@@ -345,8 +377,8 @@ if [ "${CLICKHOUSE_ENABLED}" = "true" ] && [ -n "$CLICKHOUSE_HOST" ]; then
             done
 
             if [ "$MIGRATION_FAILED" = true ]; then
-                echo -e "${YELLOW}⚠️  ClickHouse migrations failed. Continuing deployment without ClickHouse.${NC}"
-                echo -e "  Analytics features may not work until ClickHouse is reachable."
+                fail_deploy "ClickHouse migration ${MIGRATION_NAME} failed" \
+                    "With CLICKHOUSE_ENABLED=true the app reads tables these migrations create"
             else
                 echo -e "${GREEN}✓ All ClickHouse migrations applied successfully${NC}"
             fi
@@ -356,6 +388,8 @@ else
     echo -e "${YELLOW}📊 ClickHouse migrations skipped (CLICKHOUSE_ENABLED != true)${NC}"
     echo -e "  To enable, set CLICKHOUSE_ENABLED=true and configure CLICKHOUSE_HOST in deployment/config/${STAGE}.env"
 fi
+
+fi # DEPLOY_SKIP_MIGRATIONS
 
 
 ###############################################################################

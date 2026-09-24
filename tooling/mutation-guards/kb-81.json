@@ -1,0 +1,25 @@
+{
+  "feature": "KB-81",
+  "mutations": [
+    {
+      "name": "M1 Code above cited lines moves, and the specs still name the old lines",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "import ",
+      "replace": "// planted by the KB-81 mutation guard\nimport ",
+      "cwd": "packages/shared",
+      "test": "__tests__/spec-citation-drift.test.ts",
+      "pattern": "no citation has moved"
+    },
+    {
+      "name": "M2 The line mapper stops shifting lines after an insertion",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/spec-citations/citations.ts",
+      "find": "if (before) shift += h.newCount - h.oldCount;",
+      "replace": "if (before) shift += 0;",
+      "cwd": "packages/shared",
+      "test": "__tests__/spec-citation-drift.test.ts",
+      "pattern": "mapLine"
+    }
+  ]
+}

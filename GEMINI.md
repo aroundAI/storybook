@@ -29,7 +29,7 @@ This platform supports **vendor-agnostic deployment** via SST (Serverless Stack)
 - **Database**: Supabase PostgreSQL (excellent DX, includes connection pooling)
 - **Authentication**: Supabase Auth (OAuth, MFA, magic links built-in)
 - **Hosting**: AWS Lambda via SST + OpenNext 3.8.0
-- **Storage**: AWS S3 (cheaper at scale, ~$0.023/GB)
+- **Storage**: Cloudflare R2 (zero egress; `STORAGE_PROVIDER` accepts only `r2` and `supabase`)
 - **Email**: Resend (free tier: 3K emails/month) or AWS SES (production scale)
 - **Queue**: AWS SQS (pay-per-use, $1/month typical)
 - **Cache**: Upstash Redis (serverless, 10K commands/day free)
@@ -45,7 +45,7 @@ This platform supports **vendor-agnostic deployment** via SST (Serverless Stack)
 # Example: Switch from Supabase to full AWS stack
 DATABASE_PROVIDER=postgresql  # Was: supabase
 AUTH_PROVIDER=cognito        # Was: supabase
-STORAGE_PROVIDER=s3          # Was: supabase
+STORAGE_PROVIDER=r2          # Was: supabase
 EMAIL_PROVIDER=ses           # Was: resend
 QUEUE_PROVIDER=sqs
 CACHE_PROVIDER=redis

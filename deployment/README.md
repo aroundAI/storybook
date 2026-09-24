@@ -179,7 +179,7 @@ EMAIL_PROVIDER=ses
 EMAIL_SENDER=noreply@yourdomain.com
 
 # Infrastructure Providers
-STORAGE_PROVIDER=s3
+STORAGE_PROVIDER=r2
 QUEUE_PROVIDER=sqs
 REALTIME_PROVIDER=websocket
 ```

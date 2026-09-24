@@ -967,7 +967,8 @@ export default $config({
         ...(sesConfigSetName && { AWS_SES_CONFIG_SET: sesConfigSetName }),
 
         // Infrastructure providers (use AWS for production)
-        STORAGE_PROVIDER: process.env.STORAGE_PROVIDER || 's3',
+        // Production and staging store on R2; `s3` has no adapter (KB-70).
+        STORAGE_PROVIDER: process.env.STORAGE_PROVIDER || 'r2',
         QUEUE_PROVIDER: process.env.QUEUE_PROVIDER || 'sqs',
         REALTIME_PROVIDER: process.env.REALTIME_PROVIDER || 'websocket',
 

@@ -29,9 +29,8 @@ brew services start redis
 Add to `.env.local`:
 
 ```bash
-# Storage - Use local filesystem
-STORAGE_PROVIDER=local
-STORAGE_LOCAL_PATH=~/.storybook-storage
+# Storage - local Supabase Storage (the default when STORAGE_PROVIDER is unset).
+# STORAGE_PROVIDER accepts only supabase or r2; `local` is refused (KB-70).
 
 # Jobs - Enable local workers and cron
 ENABLE_LOCAL_CRON=true
@@ -52,6 +51,9 @@ pnpm dev
 
 ### Local Storage (`@kit/storage`)
 
+> **No longer selectable (KB-70).** `STORAGE_PROVIDER` accepts only `supabase`
+> and `r2`, so this adapter cannot be chosen by configuration.
+
 Replaces Supabase Storage with local filesystem storage.
 
 ```typescript
@@ -62,7 +64,7 @@ await storage.upload('bucket', 'path/file.png', buffer, { contentType: 'image/pn
 ```
 
 **Environment Variables:**
-- `STORAGE_PROVIDER` - `local` or `supabase`
+- `STORAGE_PROVIDER` - `supabase` (default) or `r2`
 - `STORAGE_LOCAL_PATH` - Base directory for local storage
 
 **API Route:**

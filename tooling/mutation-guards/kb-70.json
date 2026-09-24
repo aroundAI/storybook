@@ -1,0 +1,45 @@
+{
+  "feature": "KB-70",
+  "mutations": [
+    {
+      "name": "M1 An unknown STORAGE_PROVIDER falls back to supabase again",
+      "kind": "unit",
+      "file": "packages/features/storage/src/factory.ts",
+      "find": "  throw new Error(\n    `Unknown STORAGE_PROVIDER",
+      "replace": "  return 'supabase';\n  throw new Error(\n    `Unknown STORAGE_PROVIDER",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/storage-provider.test.ts",
+      "pattern": "refuses"
+    },
+    {
+      "name": "M2 A template sets STORAGE_PROVIDER=s3 again",
+      "kind": "unit",
+      "file": ".env.hybrid.example",
+      "find": "STORAGE_PROVIDER=r2",
+      "replace": "STORAGE_PROVIDER=s3",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/storage-provider.test.ts",
+      "pattern": "env template"
+    },
+    {
+      "name": "M3 sst.config.ts defaults STORAGE_PROVIDER to s3 again",
+      "kind": "unit",
+      "file": "sst.config.ts",
+      "find": "process.env.STORAGE_PROVIDER || 'r2'",
+      "replace": "process.env.STORAGE_PROVIDER || 's3'",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/storage-provider.test.ts",
+      "pattern": "defaults the deployed"
+    },
+    {
+      "name": "M4 deploy.sh accepts s3 again",
+      "kind": "unit",
+      "file": "scripts/deploy.sh",
+      "find": "STORAGE_PROVIDERS=\"supabase r2\"",
+      "replace": "STORAGE_PROVIDERS=\"supabase r2 s3\"",
+      "cwd": "packages/shared",
+      "test": "__tests__/deploy-fail-closed.test.ts",
+      "pattern": "STORAGE_PROVIDER=s3"
+    }
+  ]
+}

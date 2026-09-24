@@ -25,8 +25,6 @@ export {
   getStorageAdapterForContentType,
   getStorageAdapterForPath,
   getStorageProvider,
-  isB2StorageEnabled,
-  isLocalStorageEnabled,
   isR2StorageEnabled,
 } from './factory';
 

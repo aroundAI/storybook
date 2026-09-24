@@ -1,0 +1,25 @@
+{
+  "feature": "KB-5",
+  "mutations": [
+    {
+      "name": "M1 README names the default Supabase port again",
+      "kind": "unit",
+      "file": "README.md",
+      "find": "http://localhost:55321`",
+      "replace": "http://localhost:54321`",
+      "cwd": "packages/shared",
+      "test": "__tests__/local-supabase-config.test.ts",
+      "pattern": "no doc or dev tool"
+    },
+    {
+      "name": "M2 The MCP database tool defaults to the old port again",
+      "kind": "unit",
+      "file": "packages/mcp-server/src/tools/database.ts",
+      "find": "127.0.0.1:55322",
+      "replace": "127.0.0.1:54322",
+      "cwd": "packages/shared",
+      "test": "__tests__/local-supabase-config.test.ts",
+      "pattern": "no doc or dev tool"
+    }
+  ]
+}

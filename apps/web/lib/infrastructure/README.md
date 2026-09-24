@@ -77,7 +77,7 @@ SUPABASE_SERVICE_ROLE_KEY=...
 AUTH_PROVIDER=supabase              # or cognito, auth0, clerk
 
 # Storage Provider
-STORAGE_PROVIDER=supabase           # or s3
+STORAGE_PROVIDER=supabase           # or r2
 
 # Email Provider
 EMAIL_PROVIDER=resend               # or ses, sendgrid, nodemailer
@@ -108,7 +108,7 @@ AUTH_PROVIDER=cognito
 COGNITO_USER_POOL_ID=us-east-1_xxxxxxxxx
 COGNITO_CLIENT_ID=...
 
-STORAGE_PROVIDER=s3
+STORAGE_PROVIDER=r2
 S3_BUCKET=my-app-storage
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=...
@@ -162,7 +162,7 @@ Easy to add new providers without touching application code.
    ```bash
    DATABASE_PROVIDER=postgresql
    AUTH_PROVIDER=cognito
-   STORAGE_PROVIDER=s3
+   STORAGE_PROVIDER=r2
    EMAIL_PROVIDER=ses
    ```
 

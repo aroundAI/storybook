@@ -56,11 +56,15 @@ describe('getStorageAdapter', () => {
     vi.resetModules();
   });
 
-  it('should return LocalStorageAdapter when STORAGE_PROVIDER=local', async () => {
-    process.env.STORAGE_PROVIDER = 'local';
-    const { getStorageAdapter, LocalStorageAdapter } = await import('../src');
+  it('should return R2StorageAdapter when STORAGE_PROVIDER=r2', async () => {
+    process.env.STORAGE_PROVIDER = 'r2';
+    process.env.R2_ACCOUNT_ID = 'test-account';
+    process.env.R2_ACCESS_KEY_ID = 'test-key';
+    process.env.R2_SECRET_ACCESS_KEY = 'test-secret';
+    process.env.R2_BUCKET_NAME = 'test-bucket';
+    const { getStorageAdapter, R2StorageAdapter } = await import('../src');
     const adapter = getStorageAdapter();
-    expect(adapter).toBeInstanceOf(LocalStorageAdapter);
+    expect(adapter).toBeInstanceOf(R2StorageAdapter);
   });
 
   it('should throw when STORAGE_PROVIDER=supabase without client', async () => {

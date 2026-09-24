@@ -153,7 +153,7 @@
 
 3. **Update configuration**:
    ```bash
-   STORAGE_PROVIDER=s3
+   STORAGE_PROVIDER=r2
    S3_BUCKET=your-bucket
    AWS_REGION=us-east-1
    ```
@@ -233,7 +233,7 @@ The following services can be switched via environment variables **with zero cod
 
 2. **Storage**
    - Providers: Supabase, AWS S3
-   - Config: `STORAGE_PROVIDER=s3`
+   - Config: `STORAGE_PROVIDER=r2`
    - Status: ✅ Fully abstracted via `@kit/providers-storage`
 
 3. **Email**
@@ -324,7 +324,7 @@ The following services can be switched via environment variables **with zero cod
 ```bash
 DATABASE_PROVIDER=supabase      # Keep Supabase DB + Auth
 AUTH_PROVIDER=supabase
-STORAGE_PROVIDER=s3             # Use S3 for cheaper storage
+STORAGE_PROVIDER=r2             # Cloudflare R2 (no S3 adapter exists, KB-70)
 EMAIL_PROVIDER=resend           # Free tier covers most needs
 QUEUE_PROVIDER=sqs              # Pay per use
 CACHE_PROVIDER=redis            # Upstash serverless Redis

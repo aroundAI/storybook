@@ -1,0 +1,25 @@
+{
+  "feature": "KB-4",
+  "mutations": [
+    {
+      "name": "M1 schema_paths points db diff at schemas/ again",
+      "kind": "unit",
+      "file": "apps/web/supabase/config.toml",
+      "find": "\"./schemas-are-not-a-db-diff-source--KB-4/*.sql\"",
+      "replace": "\"./schemas/*.sql\"",
+      "cwd": "packages/shared",
+      "test": "__tests__/local-supabase-config.test.ts",
+      "pattern": "matches no file"
+    },
+    {
+      "name": "M2 schema_paths removed, so the CLI falls back to supabase/schemas/",
+      "kind": "unit",
+      "file": "apps/web/supabase/config.toml",
+      "find": "  \"./schemas-are-not-a-db-diff-source--KB-4/*.sql\",\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/local-supabase-config.test.ts",
+      "pattern": "does not fall back"
+    }
+  ]
+}
