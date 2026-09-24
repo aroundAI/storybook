@@ -3644,6 +3644,19 @@ stop them, and both are easy to lose:
 Re-granting `USAGE`, or one `{public}` policy with a loose predicate, would
 expose whatever that table's grants allow. KB-52 saw the same on
 `llm_usage_analytics`.
+
+**Second count (the KB-51 teammate, #348, 2026-09-24, `has_table_privilege`
+on its own branch's database):** `anon` holds INSERT on 73 of 86 public
+tables, and all 86 have RLS on. As `anon`, `select from
+public.youtube_report_jobs` fails with `permission denied for schema
+public`, so every one of these grants is dormant until `USAGE` comes back
+(KB-88). With `USAGE` granted inside a rolled-back transaction, `anon`'s
+TRUNCATE emptied `youtube_report_jobs` for every account. #338 has since
+revoked TRUNCATE, TRIGGER and REFERENCES from `anon` and `authenticated` on
+every public table, which closes that path. SELECT, INSERT, UPDATE and DELETE
+remain, and RLS governs them. The two counts (72 and 73) were taken on
+different branches' databases; count again when this is worked.
+
 Anonymous reads are legitimate on three tables: `accounts`, `projects`
 and `episodes` have `{anon,authenticated}` SELECT policies for public pages.
 `audio_cues` and `verified_facts` have `{public}` policies (KB-52's area).
