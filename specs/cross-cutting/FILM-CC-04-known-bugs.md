@@ -2839,7 +2839,7 @@ CSV and PDF (it had stored `text/html`).
 
 **Found:** KB-28 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
 **Open** for reports; the shorts path was removed by KB-55 (#332).
-**Audio library leg fixed** in #TBD-AL (KB-73): reproduced 2026-09-24 — any
+**Audio library leg fixed** in #350 (KB-73): reproduced 2026-09-24 — any
 signed-in user's call stored a file in the public `audio-assets` prefix,
 with the admin client, before the project was checked. The library now
 uploads through the presign route (project writers only) and records only a
@@ -3117,7 +3117,7 @@ every canon string at the tool boundary, as sources are.
 
 ## KB-73 — The audio library sends files as base64 in a server-action body
 
-> **Fixed (2026-09-24), #TBD-AL.** The dialog uploads straight to storage
+> **Fixed (2026-09-24), #350.** The dialog uploads straight to storage
 > through the presign route and a small action records the key; no file
 > bytes cross a server action. Design and reproduction:
 > `specs/plans/KB-73-79-83-edd.md`.
@@ -3322,7 +3322,7 @@ the continuity validator, which may be what the owner wants.
 
 ## KB-79 — The audio library can take only one upload
 
-> **Fixed (2026-09-24), #TBD-AL**, with KB-73. The header always offers
+> **Fixed (2026-09-24), #350**, with KB-73. The header always offers
 > Upload, and the list follows the server's props, with an upload shown as
 > soon as the dialog returns it.
 
@@ -3565,9 +3565,9 @@ confirmation dialog; or remove the menu item until it exists.
 | KB-47 (part) | The voice queue: its three producers sent jobs the service-role worker ran on the named account's key; they now authorise, and the queue requires the target. The publish queue is still open | #337 |
 | KB-30 | Every YouTube upload declared "not made for kids" and category 22, which nobody chose, on all four upload paths; each channel's audience and category are now the creator's answer, asked for on the first publish | #341 |
 | KB-39, KB-53, KB-54 | No intro video and no avatar could ever be uploaded (paths the presign route refuses; the avatar bucket was not signed and its policy raised on the file name); replaced intros and thumbnails left their old files, and fixing that naively would have let a writer delete another project's files | #340 |
-| KB-73 | The audio library sent files as base64 in a server-action body, so anything over ~750 KB failed; it now uploads straight to storage through the presign route | #TBD-AL |
-| KB-79 | The audio library took one upload: Upload was drawn only in the empty state, and a new asset showed only after a reload | #TBD-AL |
-| KB-57 (part) | The audio library stored any signed-in user's file with the admin client, at a key naming no project, before checking the project | #TBD-AL |
+| KB-73 | The audio library sent files as base64 in a server-action body, so anything over ~750 KB failed; it now uploads straight to storage through the presign route | #350 |
+| KB-79 | The audio library took one upload: Upload was drawn only in the empty state, and a new asset showed only after a reload | #350 |
+| KB-57 (part) | The audio library stored any signed-in user's file with the admin client, at a key naming no project, before checking the project | #350 |
 
 ---
 
