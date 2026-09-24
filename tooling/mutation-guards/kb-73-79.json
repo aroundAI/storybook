@@ -5,8 +5,8 @@
       "name": "KB-73/79 U1 save action takes any caller's project",
       "kind": "unit",
       "file": "packages/features/audio-generation/src/server/audio-asset-actions.ts",
-      "find": "    if (!(await authorizeProjectTarget(client, data.projectId))) {",
-      "replace": "    if (!(await authorizeProjectTarget({ from: client.from.bind(client), rpc: async () => ({ data: true, error: null }) }, data.projectId))) {",
+      "find": "    if (!(await authorizeProjectTarget(client, data.projectId))) {\n      refuse('not_writable', 'Project not found');",
+      "replace": "    if (!(await authorizeProjectTarget({ from: client.from.bind(client), rpc: async () => ({ data: true, error: null }) }, data.projectId))) {\n      refuse('not_writable', 'Project not found');",
       "cwd": "apps/web",
       "test": "app/api/storage/__tests__/audio-asset-upload.test.ts",
       "pattern": "cannot write the project"
