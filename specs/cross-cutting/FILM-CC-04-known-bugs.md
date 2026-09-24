@@ -1497,9 +1497,45 @@ window alone.
 The token stays valid at X / LinkedIn until it expires on its own (X refresh
 tokens: 180 days by our own config). **Found:** KB-20's drafting (#294),
 2026-09-22, while writing down what disconnect does; re-read on `main` by the
-coordinator. **Open.**
+coordinator. **Fixed — #343 (X revokes both tokens; LinkedIn, which offers
+apps no revoke, is said so). Design: EDD `KB-25-45`.**
 
-`connection-actions.ts:130-133`:
+> **As fixed (2026-09-24).** By the time this was worked, KB-22 (#317) had
+> already replaced the `switch` below: every platform goes through
+> `revokeAtVendor` and `REVOKERS: Record<PlatformType, Revoker>`, with X and
+> LinkedIn mapped to `notImplemented`. Reproduced on `main` at 52ed2ade:
+> `revokers.test.ts` "calls nobody for X and LinkedIn yet" passed — zero
+> requests for either.
+>
+> - **X** now sends `POST /2/oauth2/revoke` twice, as a confidential client
+>   (Basic app auth, form body `token=` and nothing else — the example under
+>   "POST oauth2/revoke - Revoke Token" at
+>   docs.x.com/fundamentals/authentication/oauth-2-0/user-access-token, read
+>   2026-09-24). **The refresh token first**: the unwired code revoked only the
+>   two-hour access token, and X documents that a revoke "invalidates an
+>   access token or refresh token" without saying one takes the other.
+>   `revoked` only if X confirmed both; both are always attempted.
+> - **LinkedIn documents no revoke endpoint**, so the proposed fix below could
+>   not be built as written. Checked 2026-09-24: every page under
+>   learn.microsoft.com's LinkedIn `shared/authentication` contents — the
+>   3-legged flow (only `/oauth/v2/authorization` and `/oauth/v2/accessToken`),
+>   native PKCE, programmatic refresh tokens, client credentials, and token
+>   introspection, whose `/oauth/v2/introspectToken` reports
+>   `status: revoked` but revokes nothing. **Owner decision (2026-09-24):**
+>   no undocumented endpoint is called; the dialog, the unconfirmed-revoke
+>   warning (KB-45) and the data-deletion page say LinkedIn doesn't let apps
+>   revoke their own access and link to LinkedIn's Permitted services page.
+>   `RevokeStatus` lost `not_implemented` and gained `vendor_offers_none`, so
+>   "not yet" can no longer be expressed.
+> - **It was not reachable from the UI:** the Platforms page rendered only
+>   YouTube, TikTok, Instagram and Facebook, so an X or LinkedIn connection
+>   could not be disconnected there at all — **KB-86**, fixed in the same PR
+>   (owner decision: list both, with what does not work yet said on the card).
+>   Driven end to end against a local stand-in for X: connect, disconnect,
+>   both tokens revoked; reconnect, X refuses, the creator is warned. The live
+>   revoke waits on credentials (FILM-1725 Check I).
+
+`connection-actions.ts:130-133` (on `main` before KB-22):
 
 ```ts
 case 'twitter':
@@ -1523,7 +1559,8 @@ that should not need to exist.
 - Route `'twitter'` through the existing `disconnectTwitterAction`; add a
   LinkedIn revoke (LinkedIn documents token revocation on its OAuth 2.0
   pages — cite before writing). Design it together with KB-22, which changes
-  what `deleteConnection` itself does.
+  what `deleteConnection` itself does. *(As fixed: LinkedIn documents none —
+  see the note above.)*
 - **Fix the class:** the switch is the shape of the bug — a platform that
   lands in `default`, or in a bare `deleteConnection`, silently skips revocation.
   Make the per-platform disconnect a required member of the provider
@@ -1534,10 +1571,11 @@ that should not need to exist.
 
 ### Acceptance criteria
 
-- [ ] Disconnecting X calls X's revoke endpoint; LinkedIn calls LinkedIn's — unit-tested against a local listener, red first
-- [ ] No platform can reach `deleteConnection` without a revoke step — enforced by the type, not the switch
-- [ ] #294's "we do not yet ask the platform to revoke" sentence removed once true
-- [ ] Live revoke on X and LinkedIn — FILM-1725, blocked on credentials
+- [x] Disconnecting X calls X's revoke endpoint — unit-tested against a local listener, red first — `packages/features/publishing/__tests__/revokers.test.ts` "X (KB-25)": both tokens, refresh first, Basic auth, body `token=` only; a refusal on either call reported with its status; no call without app credentials. Seen red on `main` with `not_implemented` and zero requests. Through the production build: `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts` (connect via the page, disconnect, the stand-in for X receives both tokens)
+- [x] ~~LinkedIn calls LinkedIn's~~ **Amended (owner, 2026-09-24):** LinkedIn documents no revoke endpoint for apps (pages listed above), so none is called; LinkedIn is recorded as `vendor_offers_none` and the creator is sent to LinkedIn's settings — `revokers.test.ts` "calls nobody for LinkedIn, which offers apps no revoke"; `disconnect-copy.test.ts`
+- [x] No platform can reach a disconnect without a revoke step — enforced by the type, not the switch — `REVOKERS: Record<PlatformType, Revoker>` (KB-22, #317); KB-25 removed the `not_implemented` status, so every entry either revokes or declares the vendor offers none (`src/oauth/revoke-request.ts`)
+- [x] #294's "we do not yet ask the platform to revoke" sentence removed once true — data-deletion page §2 (`disconnect-revokes`, `disconnect-linkedin`), asserted by `apps/e2e/tests/legal/data-deletion.spec.ts`; the dialog's `revokeNotYet` key is gone and `disconnect-copy.test.ts` fails on any "not yet"
+- [ ] Live revoke on X — FILM-1725 Check I, blocked on credentials (FILM-1729)
 
 ---
 
@@ -2522,8 +2560,8 @@ are KB-85.
 ## KB-45 — Vendor revoke calls ignore the HTTP response
 
 **Severity:** Low — a failed revoke looked exactly like a successful one, in
-the logs and to the user. **Found:** KB-22's planning, 2026-09-23. **Fixed in
-part by KB-22 PR A (#317).**
+the logs and to the user. **Found:** KB-22's planning, 2026-09-23. **Fixed —
+part by KB-22 PR A (#317), the rest by #343 (with KB-25).**
 
 Every disconnect `await`ed `fetch(revokeUrl…)` and never read the response
 (`oauth/{youtube,tiktok,meta,twitter}/disconnect.ts` on `main` before
@@ -2533,15 +2571,23 @@ KB-22), so Google answering 400 was indistinguishable from 200. KB-22's
 action logs the outcome with the HTTP status for YouTube, TikTok and Meta —
 unit-tested against a local listener, seen red with the status ignored (#317).
 
-**Still open:** a refused or unreachable revoke is only a log line. The
-creator is not told, and no operator alert fires; the data-deletion page's
-advice to check at the platform (section 4) is the only mitigation. X and
-LinkedIn have no revoke at all — KB-25.
+**Still open (before #343):** a refused or unreachable revoke was only a log
+line. The creator saw the same green "Disconnected" toast either way.
+
+> **Fixed (2026-09-24), #343. Owner decision:** surface it to the creator, not
+> as an operator alert. `disconnectPlatformAction` returns
+> `revoke: { status, confirmed }` (`confirmed` = `revoked` or `no_token`), and
+> logs an unconfirmed one at `warn` instead of `info`. The dialog then shows a
+> warning toast that stays until dismissed, naming the platform and linking to
+> its own "connected apps" page — the same list the data-deletion page uses
+> (`src/components/platform-access-settings.ts`). Covers every platform:
+> refused, unreachable, app credentials missing, token unreadable, and
+> LinkedIn's no-revoke. No column records it (owner: toast only).
 
 ### Acceptance criteria
 
 - [x] The revoke response is read and logged, with its status — KB-22 PR A (#317)
-- [ ] A refused or unreachable revoke is surfaced (to the creator, or as an operator alert) — owner to decide which
+- [x] A refused or unreachable revoke is surfaced — **to the creator** (owner decision, 2026-09-24): `connection-actions.test.ts` "tells the caller, and warns, when the revoke is …" (five statuses; seen red with no `revoke` field and `info` logging); `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts` against the production build, a stand-in for Google answering 400 then 200 — warning with Google's link that stays until closed, then the green toast; seen red on `main`'s code; screenshots in #343
 
 ---
 
@@ -3766,6 +3812,91 @@ project and episode pages with an E2E as a signed-out visitor.
 - [ ] pgTAP: `anon`'s grants in `public` equal an explicit allowlist
 - [ ] A signed-out visitor still sees a public project and episode (E2E)
 
+---
+
+## KB-86 — X and LinkedIn connections are not listed on the Platforms page
+
+**Severity:** Medium — a creator could not withdraw access they had granted
+to X or LinkedIn from the only page that manages connections, and could not
+make one there either. **Found:** the 2026-09-23 spec audit (a lead);
+reproduced by KB-25's work, 2026-09-24. **Fixed — #343.**
+
+`PLATFORMS` in `packages/features/publishing/src/components/platform-connections.tsx`
+listed YouTube, TikTok, Instagram and Facebook, and the page grouped rows by
+that list. X and LinkedIn had connect and callback routes since FILM-714/715
+and a token refresh (KB-15, KB-29), but no card: an X or LinkedIn connection
+was stored and never shown, so it had no Disconnect button. Their connect
+routes also read only `?accountId=`, while the page sends `?account=<slug>`
+(YouTube, TikTok and Meta each repeated the slug lookup inline).
+
+### Reproduced (local stack, `main` at 52ed2ade, dev server, 2026-09-24)
+
+A team seeded with one YouTube, one X and one LinkedIn connection; the
+Platforms page, read by Playwright: `{"youtube":1,"twitter":0,"linkedin":0,"xText":0,"linkedinText":0,"disconnectButtons":1}`. The YouTube row rendered;
+neither the X nor the LinkedIn row, nor any card for them, existed in the DOM.
+
+### Fix
+
+- `PLATFORM_CARDS: Record<PlatformType, …>` — a platform added to the type
+  does not compile until it has a card; the icons are a `Record` too.
+- X and LinkedIn cards, each saying what does not work yet: X publishing
+  needs `media.write`, which is not requested (FILM-1729); LinkedIn is
+  personal profiles only (company connect stores the member URN, FILM-715).
+- `resolveConnectAccount` (`apps/web/lib/platforms/connect-landing.ts`): one
+  account lookup, slug or id, for all five connect routes.
+
+### Acceptance criteria
+
+- [x] The page lists every platform, enforced by the type — `PLATFORM_CARDS`; `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts` (X and LinkedIn cards, each with its limitation), red on `main`
+- [x] Connect from the page reaches the vendor's authorize URL for X and LinkedIn — same spec, a local stand-in receiving our client id, PKCE and scopes; every connect route resolves the account through `resolveConnectAccount` (`apps/web/lib/platforms/__tests__/connect-landing.test.ts`)
+- [x] An existing X or LinkedIn connection renders and disconnects — same spec
+- [ ] Live connect against X and LinkedIn — FILM-1725 Check I, blocked on credentials
+
+---
+
+## KB-87 — A successful TikTok, X or LinkedIn connect lands on the failure page
+
+**Severity:** Medium — every successful TikTok connect (live in the UI) told
+the creator "Something broke on our side … we cannot say whether it was
+saved", after it had been saved. **Found:** KB-25/KB-86's work, 2026-09-24.
+**Fixed — #343.**
+
+The TikTok, X and LinkedIn callbacks ended with
+`NextResponse.redirect(`${state.returnUrl}?success=…`)`, and their connect
+routes default `returnUrl` to the relative `/settings/platforms`. Next refuses
+a relative redirect, so the throw was caught by `catchConnectFailures` and
+reported as `unexpected`. Had it been absolute, `/settings/platforms` is the
+failure landing route, which keeps only a failure from the query — the
+success would still have been dropped.
+
+### Reproduced (2026-09-24)
+
+```
+$ cd apps/web && node -e "const { NextResponse } = require('next/server');
+  NextResponse.redirect('/settings/platforms?success=tiktok_connected')"
+Error: URL is malformed "/settings/platforms?success=tiktok_connected".
+Please use only absolute URLs - https://nextjs.org/docs/messages/middleware-relative-urls
+```
+
+and through the real X callback on `main` (dev server, a local stand-in for
+X answering the authorize, token and user calls): the connection was saved,
+and the browser ended on
+`/home/<slug>/settings/platforms?error=unexpected&platform=twitter` — the
+"Something broke" message.
+
+### Fix
+
+`connectedLanding` and `platformsPageUrl` (`apps/web/lib/platforms/connect-landing.ts`)
+build an absolute URL on the configured origin — the account's
+`/home/<slug>/settings/platforms`, or the landing route for an account with
+no slug — for all five callbacks. YouTube and Meta had built it inline, with
+`'unknown'` as the slug when the lookup failed.
+
+### Acceptance criteria
+
+- [x] No connect or callback route redirects to a string — `apps/web/lib/platforms/__tests__/connect-landing.test.ts` scans all ten routes; seen red on all ten before the fix
+- [x] A successful X connect lands on the account's platforms page with `success=twitter_connected` and the new row — `disconnect-revoke.spec.ts`, production build, red on `main`
+- [ ] TikTok and LinkedIn success landings driven through their real callbacks — same helper, unit-tested; not driven (their token and profile endpoints are not stood in)
 
 ---
 
@@ -3819,6 +3950,9 @@ project and episode pages with an E2E as a signed-out visitor.
 | KB-76 | Any account member, viewers included, could write five canon tables; a personal owner could not; a sequel could name another account's project as parent | #342 |
 | KB-77 | Character-state authorship was forgeable, the append-only logs were granted UPDATE/DELETE/TRUNCATE (and `anon` everything), and a single-episode reset left the logs behind | #342 |
 | KB-63 | `remove_episode_from_threads_touched` had no check and was not granted, so every single-episode reset left stale thread ids | #342 |
+| KB-25, KB-45 | Disconnecting X asked X for nothing (and the unwired code would have revoked only the two-hour token, not the 180-day one); LinkedIn, which offers apps no revoke, was described as "not yet"; and a refused or unreachable revoke looked like success to the creator | #343 |
+| KB-86 | X and LinkedIn had no card on the Platforms page, so their connections could be neither made nor disconnected there | #343 |
+| KB-87 | A successful TikTok, X or LinkedIn connect redirected to a relative URL, which Next refuses, and landed on the failure page | #343 |
 
 ---
 
@@ -3848,7 +3982,7 @@ proved it wrong. Paths abbreviated with `…/studio/` are under
 - An assembled VEO prompt over 2,000 characters cannot be saved: update caps `prompt` at 2000, create allows 8000 — `packages/features/episodes/src/lib/schemas/shot.schema.ts:194`
 - ~~Edit suite: the Inspector says "Coming soon", so speed, fades and keyframes cannot be edited; the Snap toggle is never read; clips on a locked track can be moved and deleted; many edits bypass undo — `packages/features/edit-suite/src/components/inspector/inspector-panel.tsx:37`, `timeline/clip-block.tsx:172`, `timeline/track-row.tsx:303` (PHASE-14, FILM-601, FILM-602)~~ **Resolved by removal:** the Edit Suite is retired (FILM-607).
 - Settings still ask for, and validate against the vendor, Kling/Runway/Hailuo keys (retired) and OpenAI/Claude/Gemini keys that nothing reads — `apps/web/app/home/[account]/settings/_components/api-keys-settings.tsx:55-125`; the project form saves "Default Video Provider" and "Enable Subtitles", which nothing reads — `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:131`, `:705`
-- X and LinkedIn cannot be connected or published from the UI, yet the social-post page tells creators to "Connect one in Settings → Platforms" — `packages/features/publishing/src/components/platform-connections.tsx:90`, `packages/features/publishing/src/lib/constants.ts:45-51`, `apps/web/app/home/[account]/social-posts/[postId]/_components/social-post-detail.tsx:381`
+- X and LinkedIn ~~cannot be connected~~ or published from the UI, yet the social-post page tells creators to "Connect one in Settings → Platforms" — ~~`packages/features/publishing/src/components/platform-connections.tsx:90`~~, `packages/features/publishing/src/lib/constants.ts:45-51`, `apps/web/app/home/[account]/social-posts/[postId]/_components/social-post-detail.tsx:381`. **Connect half resolved by KB-86 (#343):** both have a card with Connect and Disconnect. Publishing remains: the publish screen's platform lists stop at YouTube, Facebook, Instagram and TikTok, and X video needs `media.write` (FILM-1729). The social-post link also points at `/home/<slug>/settings`, not the Platforms page
 
 **Studio data**
 - Shots: soft-deleted rows keep their `sequence_number` under a non-partial unique key, so reorder, close-gap and add-after-delete collide, and the reorder loop ignores the error — `packages/features/episodes/src/lib/server/mutations/shot-actions.ts:425-431`, `:45`, `:125`; `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:331`

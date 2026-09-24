@@ -19,15 +19,15 @@ vi.mock('@kit/next/actions', () => ({
   },
 }));
 
-// Mock @kit/shared/logger
+const logger = vi.hoisted(() => ({
+  info: vi.fn(),
+  error: vi.fn(),
+  warn: vi.fn(),
+  debug: vi.fn(),
+}));
+
 vi.mock('@kit/shared/logger', () => ({
-  getLogger: () =>
-    Promise.resolve({
-      info: vi.fn(),
-      error: vi.fn(),
-      warn: vi.fn(),
-      debug: vi.fn(),
-    }),
+  getLogger: () => Promise.resolve(logger),
 }));
 
 // Mock token-refresh
@@ -443,7 +443,10 @@ describe('Connection Actions', () => {
         error: null,
       });
       mockAdminClient.maybeSingle.mockResolvedValueOnce({
-        data: { access_token_encrypted: 'enc' },
+        data: {
+          access_token_encrypted: 'enc',
+          refresh_token_encrypted: 'enc-refresh',
+        },
         error: null,
       });
       revokers.revokeAtVendor.mockResolvedValueOnce({
@@ -465,12 +468,25 @@ describe('Connection Actions', () => {
 
       expect(result).toEqual({
         ok: true,
-        data: { disconnected: [CONNECTION_ID], alreadyDisconnected: false },
+        data: {
+          disconnected: [CONNECTION_ID],
+          alreadyDisconnected: false,
+          revoke: { status: 'revoked', confirmed: true },
+        },
       });
       expect(revokers.revokeAtVendor).toHaveBeenCalledWith({
         platform: 'youtube',
         access_token_encrypted: 'enc',
+        refresh_token_encrypted: 'enc-refresh',
       });
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'oauth.disconnect',
+          revoke: 'revoked',
+        }),
+        expect.any(String),
+      );
+      expect(logger.warn).not.toHaveBeenCalled();
       expect(mockSupabaseClient.rpc).toHaveBeenCalledWith(
         'disconnect_platform_connection',
         { p_connection_id: CONNECTION_ID },
@@ -481,7 +497,7 @@ describe('Connection Actions', () => {
         'id, platform, disconnected_at',
       );
       expect(mockAdminClient.select).toHaveBeenCalledWith(
-        'access_token_encrypted',
+        'access_token_encrypted, refresh_token_encrypted',
       );
       expect(mockAdminClient.eq).toHaveBeenCalledWith('id', CONNECTION_ID);
     });
@@ -510,11 +526,79 @@ describe('Connection Actions', () => {
 
       expect(result).toEqual({
         ok: true,
-        data: { disconnected: [], alreadyDisconnected: true },
+        data: {
+          disconnected: [],
+          alreadyDisconnected: true,
+          revoke: { status: 'no_token', confirmed: true },
+        },
       });
       expect(revokers.revokeAtVendor).not.toHaveBeenCalled();
       expect(mockAdminClient.maybeSingle).not.toHaveBeenCalled();
     });
+
+    it.each([
+      ['vendor_refused', 400],
+      ['unreachable', undefined],
+      ['not_configured', undefined],
+      ['undecryptable', undefined],
+      ['vendor_offers_none', undefined],
+    ] as const)(
+      'tells the caller, and warns, when the revoke is %s (KB-45)',
+      async (status, httpStatus) => {
+        mockSupabaseClient.maybeSingle.mockResolvedValueOnce({
+          data: {
+            id: CONNECTION_ID,
+            platform: 'twitter',
+            disconnected_at: null,
+          },
+          error: null,
+        });
+        mockAdminClient.maybeSingle.mockResolvedValueOnce({
+          data: {
+            access_token_encrypted: 'enc',
+            refresh_token_encrypted: 'enc-refresh',
+          },
+          error: null,
+        });
+        revokers.revokeAtVendor.mockResolvedValueOnce(
+          httpStatus ? { status, httpStatus } : { status },
+        );
+        mockSupabaseClient.rpc.mockResolvedValueOnce({
+          data: [{ id: CONNECTION_ID, already_disconnected: false }],
+          error: null,
+        });
+
+        const { disconnectPlatformAction } = await import(
+          '../src/server/connection-actions'
+        );
+
+        const result = await disconnectPlatformAction({
+          connectionId: CONNECTION_ID,
+        });
+
+        expect(result).toEqual({
+          ok: true,
+          data: {
+            disconnected: [CONNECTION_ID],
+            alreadyDisconnected: false,
+            revoke: { status, confirmed: false },
+          },
+        });
+        expect(logger.warn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'oauth.disconnect',
+            platform: 'twitter',
+            revoke: status,
+            httpStatus,
+          }),
+          expect.any(String),
+        );
+        expect(logger.info).not.toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'oauth.disconnect' }),
+          expect.any(String),
+        );
+      },
+    );
 
     it('returns a refusal, as a value, for a connection the caller cannot see (KB-6)', async () => {
       mockSupabaseClient.maybeSingle.mockResolvedValueOnce({

@@ -12,6 +12,7 @@ import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { accountIdFromUnverifiedState } from '~/lib/platforms/connect-failure';
+import { connectedLanding } from '~/lib/platforms/connect-landing';
 import {
   CallbackFailure,
   catchConnectFailures,
@@ -242,9 +243,10 @@ async function handleCallback(request: NextRequest) {
     );
   }
 
-  return NextResponse.redirect(
-    `${state.returnUrl}?success=twitter_connected&username=${encodeURIComponent(twitterUser.username || '')}`,
-  );
+  return connectedLanding(request, client, state.accountId, {
+    success: 'twitter_connected',
+    username: twitterUser.username || '',
+  });
 }
 
 export const GET = catchConnectFailures('twitter', handleCallback);

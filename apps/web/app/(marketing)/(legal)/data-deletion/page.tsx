@@ -2,6 +2,8 @@ import Link from 'next/link';
 
 import { Clock, ExternalLink, Mail, Trash2, Unplug, UserX } from 'lucide-react';
 
+import { PLATFORM_ACCESS_SETTINGS } from '@kit/publishing/components/platform-access-settings';
+
 import { SitePageHeader } from '~/(marketing)/_components/site-page-header';
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { withI18n } from '~/lib/i18n/with-i18n';
@@ -15,42 +17,9 @@ export async function generateMetadata() {
   };
 }
 
-const REVOKE_LINKS = [
-  {
-    id: 'google',
-    platform: 'YouTube (Google)',
-    href: 'https://security.google.com/settings/security/permissions',
-    where: 'Google Account → Security → Third-party apps with account access',
-  },
-  {
-    id: 'facebook',
-    platform: 'Facebook',
-    href: 'https://www.facebook.com/settings?tab=applications',
-    where: 'Settings & Privacy → Settings → Apps and Websites',
-  },
-  {
-    id: 'instagram',
-    platform: 'Instagram',
-    href: 'https://www.instagram.com/accounts/manage_access/',
-    where: 'Settings → Apps and websites',
-  },
-  {
-    id: 'x',
-    platform: 'X',
-    href: 'https://x.com/settings/connected_apps',
-    where: 'Settings → Security and account access → Connected apps',
-  },
-  {
-    id: 'linkedin',
-    platform: 'LinkedIn',
-    href: 'https://www.linkedin.com/mypreferences/d/data-sharing-for-permitted-services',
-    where: 'Settings → Data privacy → Permitted services',
-  },
-];
-
 async function DataDeletionPage() {
   const { t } = await createI18nServerInstance();
-  const lastUpdated = 'September 22, 2026';
+  const lastUpdated = 'September 24, 2026';
   const companyName = 'Around AI Limited';
   const productName = 'StoryBook';
   const contactEmail = 'privacy@storybook.digital';
@@ -127,17 +96,19 @@ async function DataDeletionPage() {
                 choose <strong>Disconnect</strong> next to the account.
               </p>
               <ul className="list-disc space-y-2 pl-5">
-                <li>
-                  For YouTube, TikTok, Instagram and Facebook we ask the
+                <li data-test="disconnect-revokes">
+                  For YouTube, TikTok, Instagram, Facebook and X we ask the
                   platform to revoke {productName}&apos;s access, then delete
-                  the access tokens we stored. If the platform cannot be
-                  reached, the tokens are still deleted here; use the links in
-                  section 4 to check that we no longer appear.
+                  the access tokens we stored. If the platform does not confirm
+                  the revoke, the tokens are still deleted here and we tell you
+                  so, with a link to the platform&apos;s settings; use the links
+                  in section 4 to check that we no longer appear.
                 </li>
-                <li>
-                  For X and LinkedIn we delete the stored tokens but do not yet
-                  ask the platform to revoke access. Remove {productName} at the
-                  platform as well, using the links in section 4.
+                <li data-test="disconnect-linkedin">
+                  LinkedIn does not let apps revoke their own access, so for
+                  LinkedIn we delete the stored tokens and you remove{' '}
+                  {productName} at LinkedIn as well, using the link in section
+                  4.
                 </li>
                 <li>
                   From that moment we collect nothing further from that account.
@@ -214,36 +185,36 @@ async function DataDeletionPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                    {REVOKE_LINKS.map((item) => (
+                    {Object.values(PLATFORM_ACCESS_SETTINGS).map((item) => (
                       <tr
                         key={item.id}
                         className="bg-white dark:bg-slate-800/50"
                       >
                         <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">
-                          {item.platform}
+                          {item.label}
                         </td>
-                        <td className="px-4 py-3">
-                          <a
-                            data-test={`revoke-link-${item.id}`}
-                            href={item.href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-indigo-600 hover:underline dark:text-indigo-400"
+                        {item.href ? (
+                          <td className="px-4 py-3">
+                            <a
+                              data-test={`revoke-link-${item.id}`}
+                              href={item.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-indigo-600 hover:underline dark:text-indigo-400"
+                            >
+                              {item.where}
+                            </a>
+                          </td>
+                        ) : (
+                          <td
+                            data-test={`revoke-path-${item.id}`}
+                            className="px-4 py-3"
                           >
                             {item.where}
-                          </a>
-                        </td>
+                          </td>
+                        )}
                       </tr>
                     ))}
-                    <tr className="bg-white dark:bg-slate-800/50">
-                      <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">
-                        TikTok
-                      </td>
-                      <td data-test="revoke-path-tiktok" className="px-4 py-3">
-                        In the TikTok app: Settings and privacy → Security &
-                        permissions → Manage app permissions
-                      </td>
-                    </tr>
                   </tbody>
                 </table>
               </div>

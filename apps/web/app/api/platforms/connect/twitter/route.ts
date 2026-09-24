@@ -10,6 +10,11 @@ import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credent
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import {
+  connectAccountError,
+  resolveConnectAccount,
+} from '~/lib/platforms/connect-landing';
+
 /**
  * Twitter/X OAuth Connect Route
  * Initiates the OAuth 2.0 flow with PKCE by redirecting to Twitter's authorization page
@@ -31,13 +36,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/sign-in', request.url));
   }
 
-  const accountId = request.nextUrl.searchParams.get('accountId');
   const returnUrl =
     request.nextUrl.searchParams.get('returnUrl') || '/settings/platforms';
 
-  if (!accountId) {
-    return NextResponse.json({ error: 'Account ID required' }, { status: 400 });
+  const resolved = await resolveConnectAccount(request, client);
+
+  if ('error' in resolved) {
+    logger.error(
+      { ...ctx, slug: resolved.slug, reason: resolved.error },
+      'Failed to resolve the account to connect',
+    );
+    return connectAccountError(resolved.error);
   }
+
+  const { accountId } = resolved;
 
   // Generate PKCE values
   const codeVerifier = generateCodeVerifier();
@@ -87,6 +99,6 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.redirect(
-    `${TWITTER_OAUTH_CONFIG.authUrl}?${params.toString()}`,
+    new URL(`${TWITTER_OAUTH_CONFIG.authUrl}?${params.toString()}`),
   );
 }

@@ -1,0 +1,75 @@
+{
+  "feature": "KB-25, KB-45, KB-86, KB-87",
+  "mutations": [
+    {
+      "name": "R1 Disconnecting X asks X for nothing again (KB-25)",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/revokers.ts",
+      "find": "  twitter: revokeTwitterAccess,\n",
+      "replace": "  twitter: vendorOffersNone,\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/revokers.test.ts",
+      "pattern": "revokes the refresh token, then the access token"
+    },
+    {
+      "name": "R2 X's refusal of the second revoke is hidden behind the first's success (KB-45)",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/twitter/revoke.ts",
+      "find": "    outcomes.find((outcome) => outcome.status !== 'revoked') ??\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/revokers.test.ts",
+      "pattern": "second call refusing"
+    },
+    {
+      "name": "R3 The refresh token is not passed to the revoke, so X keeps it (KB-25)",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/connection-actions.ts",
+      "find": "    .select('access_token_encrypted, refresh_token_encrypted')\n",
+      "replace": "    .select('access_token_encrypted')\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/connection-actions.test.ts",
+      "pattern": "revokes at the vendor, then disconnects"
+    },
+    {
+      "name": "R4 An unconfirmed revoke is logged as success and not returned (KB-45)",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/connection-actions.ts",
+      "find": "  const confirmed = isRevokeConfirmed(revoke.status);",
+      "replace": "  const confirmed = true;",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/connection-actions.test.ts",
+      "pattern": "tells the caller, and warns"
+    },
+    {
+      "name": "R5 The dialog says X is not revoked, or LinkedIn is (KB-25)",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/components/disconnect-copy.ts",
+      "find": "      : 'platforms:disconnectDialog.revokeUnavailable',",
+      "replace": "      : 'platforms:disconnectDialog.revokeAsks',",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/disconnect-copy.test.ts",
+      "pattern": "tells the truth about LinkedIn"
+    },
+    {
+      "name": "L1 A callback redirects to a relative URL again (KB-87)",
+      "kind": "unit",
+      "file": "apps/web/app/api/platforms/callback/tiktok/route.ts",
+      "find": "  return connectedLanding(request, client, state.accountId, {\n    success: 'tiktok_connected',",
+      "replace": "  return NextResponse.redirect(`${state.returnUrl}?success=tiktok_connected`);\n  return connectedLanding(request, client, state.accountId, {\n    success: 'tiktok_connected',",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/connect-landing.test.ts",
+      "pattern": "callback/tiktok"
+    },
+    {
+      "name": "L2 A connect route stops resolving the page's account slug (KB-86)",
+      "kind": "unit",
+      "file": "apps/web/lib/platforms/connect-landing.ts",
+      "find": "  const slug = request.nextUrl.searchParams.get('account');",
+      "replace": "  const slug = null as string | null;",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/connect-landing.test.ts",
+      "pattern": "resolves the slug the settings page sends"
+    }
+  ]
+}

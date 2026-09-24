@@ -12,9 +12,11 @@ import {
   Facebook,
   Globe,
   Instagram,
+  Linkedin,
   Loader2,
   Plus,
   RefreshCw,
+  Twitter,
   Unplug,
   Youtube,
 } from 'lucide-react';
@@ -69,6 +71,10 @@ import type {
   PlatformType,
 } from '../types';
 import { disconnectCopyFor } from './disconnect-copy';
+import {
+  PLATFORM_ACCESS_SETTINGS,
+  type PlatformAccessSettings,
+} from './platform-access-settings';
 import { YouTubeAudienceSetting } from './youtube-audience-setting';
 
 const TikTokIcon = ({ className }: { className?: string }) => (
@@ -91,40 +97,62 @@ const LANGUAGE_NAMES: Record<string, string> = {
   bn: 'Bengali',
 };
 
-const PLATFORMS: PlatformConfig[] = [
-  {
-    id: 'youtube',
+/**
+ * Every platform a connection can be made to. A `Record`, so a platform added
+ * to `PlatformType` does not compile until it has a card here: X and LinkedIn
+ * had connect routes and no card, so their connections could be neither made
+ * nor disconnected from this page (KB-86).
+ */
+const PLATFORM_CARDS: Record<PlatformType, Omit<PlatformConfig, 'id'>> = {
+  youtube: {
     name: 'YouTube',
     color: 'text-red-500',
     description: 'Publish to YouTube channels',
     scopes: ['Upload videos', 'Manage playlists', 'View analytics'],
     multiAccount: true,
   },
-  {
-    id: 'tiktok',
+  tiktok: {
     name: 'TikTok',
     color: 'text-black dark:text-white',
     description: 'Publish to TikTok',
     scopes: ['Post videos', 'View insights'],
     multiAccount: false,
   },
-  {
-    id: 'instagram',
+  instagram: {
     name: 'Instagram',
     color: 'text-pink-500',
     description: 'Publish Reels to Instagram Business',
     scopes: ['Post Reels', 'View insights'],
     multiAccount: true,
   },
-  {
-    id: 'facebook',
+  facebook: {
     name: 'Facebook',
     color: 'text-blue-600',
     description: 'Publish to Facebook Pages',
     scopes: ['Post videos', 'Manage pages', 'View insights'],
     multiAccount: true,
   },
-];
+  twitter: {
+    name: 'X',
+    color: 'text-black dark:text-white',
+    description: 'Connect an X account',
+    scopes: ['Read and write posts', 'Read your profile', 'Stay connected'],
+    multiAccount: true,
+    limitationKey: 'platforms:limitation.twitter',
+  },
+  linkedin: {
+    name: 'LinkedIn',
+    color: 'text-sky-700',
+    description: 'Connect your LinkedIn profile',
+    scopes: ['Sign in with LinkedIn', 'Post as you'],
+    multiAccount: false,
+    limitationKey: 'platforms:limitation.linkedin',
+  },
+};
+
+const PLATFORMS: PlatformConfig[] = Object.entries(PLATFORM_CARDS).map(
+  ([id, card]) => ({ id: id as PlatformType, ...card }),
+);
 
 interface PlatformConnectionsProps {
   accountSlug: string;
@@ -203,7 +231,7 @@ function PlatformCard({
   const Icon = getPlatformIcon(platform.id);
 
   return (
-    <Card>
+    <Card data-test={`platform-card-${platform.id}`}>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -211,11 +239,20 @@ function PlatformCard({
             <div>
               <CardTitle className="text-lg">{platform.name}</CardTitle>
               <CardDescription>{platform.description}</CardDescription>
+              {platform.limitationKey && (
+                <p
+                  className="mt-1 text-xs text-amber-700 dark:text-amber-400"
+                  data-test={`platform-limitation-${platform.id}`}
+                >
+                  <Trans i18nKey={platform.limitationKey} />
+                </p>
+              )}
             </div>
           </div>
           <Button
             variant="outline"
             onClick={() => initiateOAuth(platform.id, accountSlug)}
+            data-test={`connect-platform-${platform.id}`}
           >
             <Plus className="mr-2 h-4 w-4" />
             <Trans
@@ -564,9 +601,48 @@ function VendorDataPurgeLine({
 }
 
 /**
+ * The disconnect went through, but the platform did not confirm it revoked
+ * our access — it refused, could not be reached, or (LinkedIn) offers apps no
+ * way to. Points the creator at the platform's own settings (KB-45).
+ */
+function RevokeUnconfirmedMessage({
+  accountName,
+  platformName,
+  settings,
+}: {
+  accountName: string;
+  platformName: string;
+  settings: PlatformAccessSettings;
+}) {
+  return (
+    <span data-test="disconnect-revoke-unconfirmed">
+      <Trans
+        i18nKey="platforms:disconnectToast.revokeUnconfirmed"
+        values={{ accountName, platform: platformName }}
+      />{' '}
+      {settings.href ? (
+        <a
+          data-test="disconnect-revoke-settings-link"
+          href={settings.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline"
+        >
+          {settings.where}
+        </a>
+      ) : (
+        <span data-test="disconnect-revoke-settings-path">
+          {settings.where}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
  * Says what disconnecting does on this platform, before it is done. Every
  * sentence is chosen by `disconnectCopyFor`, whose flags are held to the
- * code's behaviour by `disconnect-copy.test.ts`.
+ * code's behaviour by `revokers.test.ts`.
  */
 function DisconnectDialog({
   connection,
@@ -605,6 +681,19 @@ function DisconnectDialog({
             defaults="{accountName} was already disconnected."
             values={names}
           />,
+        );
+        return;
+      }
+
+      if (!result.revoke.confirmed) {
+        // Stays until dismissed: the creator has something left to do (KB-45).
+        toast.warning(
+          <RevokeUnconfirmedMessage
+            accountName={connection.accountName}
+            platformName={platform.name}
+            settings={PLATFORM_ACCESS_SETTINGS[connection.platform]}
+          />,
+          { duration: Infinity, closeButton: true },
         );
         return;
       }
@@ -890,19 +979,20 @@ function ConnectionStatusBadge({ status }: { status: ConnectionStatus }) {
   );
 }
 
+const PLATFORM_ICONS: Record<
+  PlatformType,
+  (props: { className?: string }) => React.ReactNode
+> = {
+  youtube: Youtube,
+  tiktok: TikTokIcon,
+  instagram: Instagram,
+  facebook: Facebook,
+  twitter: Twitter,
+  linkedin: Linkedin,
+};
+
 function getPlatformIcon(platform: PlatformType) {
-  switch (platform) {
-    case 'youtube':
-      return Youtube;
-    case 'tiktok':
-      return TikTokIcon;
-    case 'instagram':
-      return Instagram;
-    case 'facebook':
-      return Facebook;
-    default:
-      return Youtube;
-  }
+  return PLATFORM_ICONS[platform];
 }
 
 function initiateOAuth(platform: PlatformType, accountSlug: string) {

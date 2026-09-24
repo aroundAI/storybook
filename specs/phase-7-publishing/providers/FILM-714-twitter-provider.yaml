@@ -4,7 +4,7 @@ phase: 7
 phase_name: "Publishing"
 category: provider
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-24"
 effort: M
 dependencies:
   - spec_id: "FILM-708"
@@ -47,7 +47,7 @@ provider:
 acceptance_criteria:
   - text: "OAuth 2.0 connection flow works"
     met: false
-    reason: "unverified — `apps/web/app/api/platforms/connect/twitter/route.ts` and `apps/web/app/api/platforms/callback/twitter/route.ts` exist; never run: no X credentials (FILM-1729 §2). Refresh is fixed by KB-15 (#326): `packages/features/publishing/src/lib/token-refresh.ts:405`, tested at `packages/features/publishing/__tests__/token-refresh.test.ts:568`"
+    reason: "unverified against X — no X credentials (FILM-1729 §2); FILM-1725 Check I. Against a local stand-in for X the whole flow now runs through the production build: Connect on the Platforms page (KB-86), X's authorize page, the real callback's token exchange and user lookup, and a landing on the platforms page with the new row (KB-87 — it used to land on the failure page); reconnecting re-attaches the same row; Disconnect revokes both tokens (KB-25) — `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`. Refresh is fixed by KB-15 (#326): `packages/features/publishing/__tests__/token-refresh.test.ts:568`"
   - text: "Video upload with chunked transfer"
     met: false
     reason: "not met — FILM-1729: `media.write` is never requested, so X refuses the upload (403); chunking itself is tested (`packages/features/publishing/__tests__/twitter-provider.test.ts:95`)"
@@ -79,8 +79,8 @@ test_plan:
       reason: "not met — no test found"
   integration:
     - text: "Test OAuth flow with mock API"
-      met: false
-      reason: "not met — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)"
+      met: true
+      evidence: "`apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts` — connect, callback and disconnect against a local stand-in for X (KB-86, KB-87, KB-25); failure branches in `apps/e2e/tests/platform-connections/connect-failure.spec.ts`"
     - text: "Test video upload process"
       met: true
       evidence: "`packages/features/publishing/__tests__/twitter-provider.test.ts:95`"
@@ -90,8 +90,8 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "OAuth 2.0 connection flow works (unverified)"
-    reason: "Never run against X: no credentials are held (FILM-1729 §2), so connect and callback have only their failure branches tested. Token refresh, the other half of this item, is fixed by KB-15 (#326; `packages/features/publishing/__tests__/token-refresh.test.ts:568`)"
-    closed_by: "owner"
+    reason: "Never run against X: no credentials are held (FILM-1729 §2). The success path runs against a local stand-in for X (KB-86/KB-87, #343); one live connect is FILM-1725 Check I. Token refresh is fixed by KB-15 (#326)"
+    closed_by: "FILM-1725"
   - criterion: "Video upload with chunked transfer"
     reason: "Chunking is built and tested, but `media.write` is never requested, so X refuses the upload with 403. Nothing on the publish screen sends a video to X either: its platform lists stop at YouTube, Facebook, Instagram and TikTok (`packages/features/publishing/src/lib/constants.ts:45`)"
     closed_by: "FILM-1729"

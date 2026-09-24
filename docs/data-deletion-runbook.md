@@ -117,6 +117,12 @@ select c.platform_account_name, c.disconnected_at, v.completed_at, v.last_error
 A row with no `completed_at` a day after the disconnect means the job is
 failing: `last_error` says why.
 
+Whether the platform confirmed the revoke is in the `oauth.disconnect` log
+line: `revoke` and `httpStatus`, at `warn` when it did not (KB-45). The
+creator was shown the same, with a link to remove access at the platform. A
+LinkedIn disconnect is always `vendor_offers_none`: LinkedIn gives apps no
+revoke, so the creator removes access there (KB-25).
+
 ### D. Revoked at Google, or the YouTube token can no longer be refreshed — within 30 days
 
 The hourly sync fails for that connection. Disconnect it in the app if it is

@@ -203,6 +203,8 @@ export async function seedYouTubeConnection(
     platformAccountId?: string;
     /** A stored token, so a disconnect has something to wipe (KB-22). */
     accessTokenEncrypted?: string;
+    /** A stored refresh token, which X's revoke also revokes (KB-25). */
+    refreshTokenEncrypted?: string;
   } = {},
 ): Promise<string> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/platform_connections`, {
@@ -229,6 +231,9 @@ export async function seedYouTubeConnection(
         : {}),
       ...(options.accessTokenEncrypted
         ? { access_token_encrypted: options.accessTokenEncrypted }
+        : {}),
+      ...(options.refreshTokenEncrypted
+        ? { refresh_token_encrypted: options.refreshTokenEncrypted }
         : {}),
     }),
   });

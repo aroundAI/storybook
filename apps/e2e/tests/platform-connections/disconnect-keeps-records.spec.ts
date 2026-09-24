@@ -1,5 +1,5 @@
 import { Page, expect, test } from '@playwright/test';
-import { randomUUID, webcrypto } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { type Server, createServer } from 'node:http';
 
@@ -10,6 +10,7 @@ import {
   seedVideoDim,
   seedVideoMetrics,
 } from '../utils/clickhouse';
+import { encryptLikeTheApp } from '../utils/crypto';
 import {
   SeededTeam,
   deleteRows,
@@ -671,23 +672,4 @@ async function withYouTubeAppCredentials(run: () => Promise<void>) {
   } finally {
     await deleteRows('oauth_app_credentials', 'platform=eq.youtube');
   }
-}
-
-/** `@kit/shared/crypto`'s format: base64(IV ‖ AES-256-GCM ciphertext+tag). */
-async function encryptLikeTheApp(plaintext: string) {
-  const key = await webcrypto.subtle.importKey(
-    'raw',
-    Buffer.from(process.env.ENCRYPTION_KEY ?? '', 'base64'),
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt'],
-  );
-  const iv = webcrypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = await webcrypto.subtle.encrypt(
-    { name: 'AES-GCM', iv, tagLength: 128 },
-    key,
-    new TextEncoder().encode(plaintext),
-  );
-
-  return Buffer.concat([iv, new Uint8Array(ciphertext)]).toString('base64');
 }

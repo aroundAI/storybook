@@ -10,6 +10,7 @@ import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { accountIdFromUnverifiedState } from '~/lib/platforms/connect-failure';
+import { connectedLanding } from '~/lib/platforms/connect-landing';
 import {
   CallbackFailure,
   catchConnectFailures,
@@ -210,9 +211,10 @@ async function handleCallback(request: NextRequest) {
     );
   }
 
-  return NextResponse.redirect(
-    `${state.returnUrl}?success=linkedin_connected&profile=${encodeURIComponent(profile.name || '')}`,
-  );
+  return connectedLanding(request, client, state.accountId, {
+    success: 'linkedin_connected',
+    profile: profile.name || '',
+  });
 }
 
 export const GET = catchConnectFailures('linkedin', handleCallback);

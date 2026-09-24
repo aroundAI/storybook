@@ -8,6 +8,11 @@ import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credent
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import {
+  connectAccountError,
+  resolveConnectAccount,
+} from '~/lib/platforms/connect-landing';
+
 /**
  * YouTube OAuth Connect Route
  * Initiates the OAuth flow by redirecting to Google's consent screen
@@ -29,33 +34,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/sign-in', request.url));
   }
 
-  // Support both accountId (UUID) and account (slug)
-  let accountId = request.nextUrl.searchParams.get('accountId');
-  const accountSlug = request.nextUrl.searchParams.get('account');
   const returnUrl =
     request.nextUrl.searchParams.get('returnUrl') || '/settings/platforms';
 
-  // If we got a slug instead of UUID, resolve it
-  if (!accountId && accountSlug) {
-    const { data: account, error: accountError } = await client
-      .from('accounts')
-      .select('id')
-      .eq('slug', accountSlug)
-      .single();
+  const resolved = await resolveConnectAccount(request, client);
 
-    if (accountError || !account) {
-      logger.error(
-        { ...ctx, slug: accountSlug, error: accountError },
-        'Failed to resolve account slug',
-      );
-      return NextResponse.json({ error: 'Account not found' }, { status: 404 });
-    }
-    accountId = account.id;
+  if ('error' in resolved) {
+    logger.error(
+      { ...ctx, slug: resolved.slug, reason: resolved.error },
+      'Failed to resolve the account to connect',
+    );
+    return connectAccountError(resolved.error);
   }
 
-  if (!accountId) {
-    return NextResponse.json({ error: 'Account ID required' }, { status: 400 });
-  }
+  const { accountId } = resolved;
 
   // Get global OAuth credentials (configured by super admin)
   const credentials = await getOAuthAppCredentials('youtube');
@@ -113,6 +105,6 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.redirect(
-    `${YOUTUBE_OAUTH_CONFIG.authUrl}?${params.toString()}`,
+    new URL(`${YOUTUBE_OAUTH_CONFIG.authUrl}?${params.toString()}`),
   );
 }
