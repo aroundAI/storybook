@@ -472,8 +472,8 @@ Retired 2026-09-23 (FILM-607). The only open work is FILM-608, dropping the kept
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-1001 | [canon-tables](./phase-10-canon-management/database/FILM-1001-canon-tables.yaml) | 🟡 PARTIAL | L | FILM-101 |
-| FILM-1002 | [canon-rls](./phase-10-canon-management/database/FILM-1002-canon-rls.yaml) | 🟡 PARTIAL | S | FILM-1001 |
+| FILM-1001 | [canon-tables](./phase-10-canon-management/database/FILM-1001-canon-tables.yaml) | ✅ DONE | L | FILM-101 |
+| FILM-1002 | [canon-rls](./phase-10-canon-management/database/FILM-1002-canon-rls.yaml) | ✅ DONE | S | FILM-1001 |
 | FILM-1003 | [continuity-validator](./phase-10-canon-management/lib/FILM-1003-continuity-validator.yaml) | 🟡 PARTIAL | L | FILM-1001 |
 | FILM-1004 | [memory-context-builder](./phase-10-canon-management/lib/FILM-1004-memory-context-builder.yaml) | 🟡 PARTIAL | M | FILM-1001 |
 | FILM-1005 | [canon-actions](./phase-10-canon-management/server/FILM-1005-canon-actions.yaml) | 🟡 PARTIAL | M | FILM-1003, FILM-1004 |
@@ -701,7 +701,7 @@ reason when not.
 | 7. Publishing | 16 | 0 | 7 | 0 | 3 | 6 |
 | 8. Analytics | 10 | 0 | 7 | 0 | 0 | 3 |
 | 9. Integration | 6 | 0 | 2 | 0 | 3 | 1 |
-| 10. Canon Mgmt | 7 | 0 | 6 | 0 | 1 | 0 |
+| 10. Canon Mgmt | 7 | 0 | 4 | 0 | 1 | 2 |
 | 11. Canon Integ | 22 | 0 | 17 | 0 | 1 | 4 |
 | 12. Scale | 2 | 0 | 0 | 0 | 0 | 2 |
 | 13. Hook Opt | 2 | 0 | 0 | 0 | 2 | 0 |
@@ -712,7 +712,7 @@ reason when not.
 | 18. Vendor Sandbox | 5 | 4 | 0 | 0 | 0 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **231** | **26** | **83** | **2** | **49** | **71** |
+| **TOTAL** | **231** | **26** | **81** | **2** | **49** | **73** |
 
 No column for In Progress: no PR is open.
 
@@ -722,7 +722,7 @@ No column for In Progress: no PR is open.
 |-------|-------|------|---------|---------|------------------|
 | MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 92 | 29 | 31 | 31 | 1 |
 | Post-MVP (Ph 6–9) | 40 | 11 | 16 | 12 | 1 |
-| Canon (Ph 10–11) | 29 | 4 | 23 | 2 | 0 |
+| Canon (Ph 10–11) | 29 | 6 | 21 | 2 | 0 |
 | Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |
 | Edit Suite v2 (Ph 14) | 1 | 0 | 0 | 1 | 0 |
 | Deep Analytics (Ph 15) | 11 | 5 | 5 | 1 | 0 |

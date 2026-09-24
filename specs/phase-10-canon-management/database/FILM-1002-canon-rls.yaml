@@ -3,8 +3,8 @@ title: "Canon Management RLS Policies"
 phase: 10
 phase_name: "Canon Management"
 category: database_table
-status: PARTIAL
-audited: "2026-09-23"
+status: DONE
+audited: "2026-09-24"
 effort: S
 dependencies:
   - spec_id: "FILM-1001"
@@ -27,17 +27,17 @@ acceptance_criteria:
     met: true
     evidence: "`apps/web/supabase/migrations/20260923075604_kb17-immutable-events-immutable.sql`: `immutable_events` grants `authenticated` SELECT, INSERT and DELETE only and `anon` nothing (KB-17; pinned by `table_privs_are` in `apps/web/supabase/tests/database/immutable-events-immutable.test.sql`)"
   - text: "Append-only tables restricted to SELECT/INSERT"
-    met: false
-    reason: "not met — DELETE granted on both (`apps/web/supabase/migrations/20260607183439_grant_canon_delete_permissions.sql:6`); only the missing DELETE policy still blocks it (KB-77)"
+    met: true
+    evidence: "apps/web/supabase/migrations/20260924075728_kb76-77-63-canon-write-scope.sql:345 — `authenticated` holds SELECT and INSERT only on `character_states` and `state_deltas`, `anon` nothing (KB-77); pinned by `table_privs_are` in apps/web/supabase/tests/database/canon-write-scope.test.sql:330"
   - text: "Policies use existing `has_role_on_account` function"
     met: true
     evidence: "apps/web/supabase/migrations/20260128225704_canon_management.sql:235. `immutable_events` moved to the owner's rules of 2026-09-23 (`has_account_access` for reads, `can_write_project` for writes) in `apps/web/supabase/migrations/20260923075604_kb17-immutable-events-immutable.sql`, because `has_role_on_account` excludes personal-account owners and includes project viewers"
   - text: "No cross-project data leakage possible"
-    met: false
-    reason: "partly verified — `immutable_events` is proven by pgTAP (`apps/web/supabase/tests/database/immutable-events-immutable.test.sql`, I1 and I7: an outsider reads and deletes nothing); the other five tables have no cross-account test"
+    met: true
+    evidence: "apps/web/supabase/tests/database/canon-write-scope.test.sql:170 — for all seven other canon tables an outsider reads nothing and cannot insert, and no row can point at another account's episode, character or sequel parent (X, :225); `immutable_events` in `apps/web/supabase/tests/database/immutable-events-immutable.test.sql` (KB-17)"
   - text: "Attack vector analysis completed and all vectors mitigated"
-    met: false
-    reason: "not met — `immutable_events` state modification is closed by KB-17 (`apps/web/supabase/migrations/20260923075604_kb17-immutable-events-immutable.sql`: no UPDATE by any role, author pinned, writers only; `apps/web/supabase/tests/database/immutable-events-immutable.test.sql`), and project_id injection via `commit_canon_changes` by KB-27 (`apps/web/supabase/migrations/20260923044106_kb27-canon-write-scope.sql`). Still open: any account member, viewers included, writes threads, world states, summaries, act bridges and sequel contexts (KB-76), and character-state authorship is forgeable (KB-77)"
+    met: true
+    evidence: "apps/web/supabase/migrations/20260924075728_kb76-77-63-canon-write-scope.sql:60 — every canon table's writes follow `can_write_project` with a `WITH CHECK` (KB-76), character-state authorship is pinned (:297, KB-77), and the logs cannot be changed or deleted by clients (:339); `immutable_events` by KB-17 (`apps/web/supabase/migrations/20260923075604_kb17-immutable-events-immutable.sql`) and `commit_canon_changes` by KB-27 (`apps/web/supabase/migrations/20260923044106_kb27-canon-write-scope.sql`); proven by apps/web/supabase/tests/database/canon-write-scope.test.sql"
   - text: "Test cases documented for security validation"
     met: true
     evidence: "FILM-1002 \"Test Cases\" section (kept in notes)"
@@ -45,19 +45,10 @@ test_plan:
   unit: []
   integration: []
   e2e: []
-remaining:
-  - criterion: "Append-only tables restricted to SELECT/INSERT"
-    reason: "`20260607183439_grant_canon_delete_permissions.sql` granted DELETE on `character_states` and `state_deltas`; RLS alone now blocks deletes"
-    closed_by: "KB-77"
-  - criterion: "All attack vectors mitigated"
-    reason: "Five canon tables take writes from any account member through `FOR ALL` policies with no `WITH CHECK` (KB-76); character-state authorship is forgeable (KB-77). (`immutable_events` was closed by KB-17, `commit_canon_changes` by KB-27.)"
-    closed_by: "KB-76"
-  - criterion: "No cross-project data leakage possible"
-    reason: "Only `immutable_events` has a pgTAP cross-account test"
-    closed_by: "KB-76"
 open_questions: []
 notes: |
   Priority (source frontmatter): high
+  2026-09-24 (KB-76, KB-77, KB-63): the policy SQL and access matrix kept below are the original design, not the live rules. Every canon table now reads on `has_account_access` and writes on `can_write_project`, one policy per verb with `WITH CHECK`; see `apps/web/supabase/migrations/20260924075728_kb76-77-63-canon-write-scope.sql` and FILM-CC-04 KB-77 "Fixed".
   This spec covers six tables in one category block: table_name lists them, and column, index and foreign-key names are qualified as table.column. This spec defines policies and grants only, so columns, indexes and foreign_keys are empty; the policy SQL is kept below.
   The acceptance criterion "Test cases documented for security validation" cited line 313 of the source Markdown (its "Test Cases" heading); that section is kept verbatim below.
 

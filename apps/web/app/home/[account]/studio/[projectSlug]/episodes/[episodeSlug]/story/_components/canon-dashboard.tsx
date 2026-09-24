@@ -139,6 +139,7 @@ export function CanonDashboard({
           <TabsTrigger
             value="threads"
             className="flex items-center gap-1.5 py-1.5 text-xs"
+            data-test="canon-threads-tab"
           >
             <GitBranch className="h-3 w-3 shrink-0" />
             Threads
@@ -255,6 +256,7 @@ export function CanonDashboard({
                 <div
                   key={thread.id}
                   className="flex items-start gap-2.5 rounded-lg border border-border/60 bg-card/60 p-2.5"
+                  data-test="canon-thread"
                 >
                   <GitBranch className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
                   <div className="min-w-0 flex-1">

@@ -9,7 +9,7 @@ import { z } from 'zod';
 
 import type { NarrativeThreadType } from '@kit/episodes';
 import { createNarrativeThreadAction } from '@kit/episodes/server';
-import { refusalMessage } from '@kit/next/action-result';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -123,14 +123,16 @@ export function AddThreadDialog({
           ? data.promises.split('\n').filter((p) => p.trim())
           : [];
 
-        const result = await createNarrativeThreadAction({
-          projectId,
-          threadName: data.threadName,
-          threadType: data.threadType,
-          description: data.description,
-          openedAt: episodeId,
-          promises,
-        });
+        const result = await unwrap(
+          createNarrativeThreadAction({
+            projectId,
+            threadName: data.threadName,
+            threadType: data.threadType,
+            description: data.description,
+            openedAt: episodeId,
+            promises,
+          }),
+        );
 
         if (result) {
           toast.success('Narrative thread created successfully');
@@ -149,7 +151,7 @@ export function AddThreadDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" data-test="canon-add-thread">
           <Plus className="mr-1 h-3 w-3" />
           Add Thread
         </Button>
@@ -177,6 +179,7 @@ export function AddThreadDialog({
                   <FormControl>
                     <Input
                       placeholder="e.g., The Missing Artifact, John's Redemption"
+                      data-test="canon-thread-name"
                       {...field}
                     />
                   </FormControl>
@@ -228,6 +231,7 @@ export function AddThreadDialog({
                     <Textarea
                       placeholder="Describe the thread and its significance..."
                       className="min-h-[80px]"
+                      data-test="canon-thread-description"
                       {...field}
                     />
                   </FormControl>
@@ -266,7 +270,11 @@ export function AddThreadDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending}>
+              <Button
+                type="submit"
+                disabled={isPending}
+                data-test="canon-thread-submit"
+              >
                 {isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

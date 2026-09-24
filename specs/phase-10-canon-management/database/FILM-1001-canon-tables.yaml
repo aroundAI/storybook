@@ -3,8 +3,8 @@ title: "Canon Management Database Tables"
 phase: 10
 phase_name: "Canon Management"
 category: database_table
-status: PARTIAL
-audited: "2026-09-23"
+status: DONE
+audited: "2026-09-24"
 effort: L
 dependencies:
   - spec_id: "FILM-101"
@@ -443,8 +443,8 @@ acceptance_criteria:
     met: true
     evidence: "apps/web/supabase/migrations/20260128225704_canon_management.sql:45"
   - text: "RLS policies applied and tested"
-    met: false
-    reason: "not met — `immutable_events` is covered by `apps/web/supabase/tests/database/immutable-events-immutable.test.sql` (KB-17: reads, inserts, deletes, and no updates by any role); the other five canon tables have no pgTAP test of an access rule, and their policies let any account member write (KB-76)"
+    met: true
+    evidence: "apps/web/supabase/tests/database/canon-write-scope.test.sql:170 — reads, inserts, updates, deletes and privileges for every role on the other canon tables (KB-76/77, policies in apps/web/supabase/migrations/20260924075728_kb76-77-63-canon-write-scope.sql); `immutable_events` in `apps/web/supabase/tests/database/immutable-events-immutable.test.sql` (KB-17)"
   - text: "TypeScript types generated: `pnpm supabase:web:typegen`"
     met: true
     evidence: "packages/supabase/src/database.types.ts:2851"
@@ -455,10 +455,6 @@ test_plan:
   unit: []
   integration: []
   e2e: []
-remaining:
-  - criterion: "RLS policies applied and tested"
-    reason: "`immutable_events` is tested (KB-17). `narrative_threads`, `world_states`, `episode_summaries` and the other canon tables have no pgTAP test of an access rule, and a project viewer can write them"
-    closed_by: "KB-76"
 open_questions: []
 notes: |
   Priority (source frontmatter): high

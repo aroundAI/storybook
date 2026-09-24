@@ -1,0 +1,125 @@
+{
+  "feature": "FILM-CC-04 KB-76, KB-77, KB-63",
+  "mutations": [
+    {
+      "name": "KB-76 thread insert back on account membership (viewers write)",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/canon-write-scope.test.sql",
+      "sql": "drop policy narrative_threads_insert on public.narrative_threads; create policy narrative_threads_insert on public.narrative_threads for insert to authenticated with check (exists (select 1 from public.projects p where p.id = narrative_threads.project_id and public.has_role_on_account(p.account_id)));"
+    },
+    {
+      "name": "KB-76 world-state update without WITH CHECK (a row can be moved to another project's episode)",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/canon-write-scope.test.sql",
+      "sql": "drop policy world_states_update on public.world_states; create policy world_states_update on public.world_states for update to authenticated using (public.can_write_project(project_id));"
+    },
+    {
+      "name": "KB-76 summary writes on account membership",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/canon-write-scope.test.sql",
+      "sql": "drop policy episode_summaries_insert on public.episode_summaries; create policy episode_summaries_insert on public.episode_summaries for insert to authenticated with check (exists (select 1 from public.episodes e join public.projects p on p.id = e.project_id where e.id = episode_summaries.episode_id and public.has_account_access(p.account_id)));"
+    },
+    {
+      "name": "KB-76 act-bridge delete on account membership",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/canon-write-scope.test.sql",
+      "sql": "drop policy act_context_bridges_delete on public.act_context_bridges; create policy act_context_bridges_delete on public.act_context_bridges for delete to authenticated using (exists (select 1 from public.episodes e join public.projects p on p.id = e.project_id where e.id = act_context_bridges.episode_id and public.has_account_access(p.account_id)));"
+    },
+    {
+      "name": "KB-76 sequel context may name a parent the writer cannot read",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/canon-write-scope.test.sql",
+      "sql": "drop policy sequel_parent_contexts_insert on public.sequel_parent_contexts; create policy sequel_parent_contexts_insert on public.sequel_parent_contexts for insert to authenticated with check (public.can_write_project(sequel_project_id));"
+    },
+    {
+      "name": "KB-76 reads back on has_role_on_account (personal owners locked out)",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/canon-write-scope.test.sql",
+      "sql": "drop policy narrative_threads_read on public.narrative_threads; create policy narrative_threads_read on public.narrative_threads for select to authenticated using (exists (select 1 from public.projects p where p.id = narrative_threads.project_id and public.has_role_on_account(p.account_id)));"
+    },
+    {
+      "name": "KB-76 thread DELETE granted back to authenticated",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/canon-write-scope.test.sql",
+      "sql": "grant delete on public.narrative_threads to authenticated;"
+    },
+    {
+      "name": "KB-77 character-state insert does not pin the author",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/canon-write-scope.test.sql",
+      "sql": "drop policy character_states_insert on public.character_states; create policy character_states_insert on public.character_states for insert to authenticated with check (exists (select 1 from public.assets a join public.episodes e on e.project_id = a.project_id where a.id = character_states.character_id and e.id = character_states.episode_id and public.can_write_project(a.project_id)));"
+    },
+    {
+      "name": "KB-77 character-state insert does not check the episode is the character's project",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/canon-write-scope.test.sql",
+      "sql": "drop policy character_states_insert on public.character_states; create policy character_states_insert on public.character_states for insert to authenticated with check (created_by = (select auth.uid()) and exists (select 1 from public.assets a where a.id = character_states.character_id and public.can_write_project(a.project_id)));"
+    },
+    {
+      "name": "KB-77 state-delta insert on account membership",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/canon-write-scope.test.sql",
+      "sql": "drop policy state_deltas_insert on public.state_deltas; create policy state_deltas_insert on public.state_deltas for insert to authenticated with check (exists (select 1 from public.episodes e join public.projects p on p.id = e.project_id where e.id = state_deltas.episode_id and public.has_role_on_account(p.account_id)));"
+    },
+    {
+      "name": "KB-77 DELETE granted back on the append-only log",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/canon-write-scope.test.sql",
+      "sql": "grant delete on public.state_deltas to authenticated;"
+    },
+    {
+      "name": "KB-77 anon privileges back on the canon tables",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/canon-write-scope.test.sql",
+      "sql": "grant select on public.character_states to anon;"
+    },
+    {
+      "name": "KB-63 remove_episode_from_threads_touched without its check",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/canon-write-scope.test.sql",
+      "sql": "create or replace function public.remove_episode_from_threads_touched(p_episode_id uuid, p_project_id uuid) returns void language plpgsql security definer set search_path = '' as $$ begin update public.narrative_threads set episodes_touched = array_remove(episodes_touched, p_episode_id), updated_at = now() where project_id = p_project_id and p_episode_id = any(episodes_touched); end; $$;"
+    },
+    {
+      "name": "KB-76 class guard: a FOR ALL policy without WITH CHECK",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/policy-shape.test.sql",
+      "sql": "create policy kb76_for_all_back on public.world_states for all to authenticated using (public.can_write_project(project_id));"
+    },
+    {
+      "name": "KB-77 reset skips the write check (a viewer's reset reaches the bulk reset)",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/actions.ts",
+      "find": "  if (!canWrite || !target.accountId) {",
+      "replace": "  if (!target.accountId) {",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/episode-reset-scope.test.ts"
+    },
+    {
+      "name": "KB-77 reset treats a bulk reset that reset nothing as success",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/actions.ts",
+      "find": "    parsed.data.errors.length > 0 ||\n    parsed.data.reset_count !== 1",
+      "replace": "    parsed.data.errors.length > 0",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/episode-reset-scope.test.ts"
+    },
+    {
+      "name": "KB-76 Add Thread throws the RLS refusal instead of returning it",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/canon-actions.ts",
+      "find": "    if (error?.code === INSUFFICIENT_PRIVILEGE) {\n      throw new ActionRefusal(CANON_WRITE_REFUSAL);\n    }\n\n    if (error) {\n      console.error('Error creating narrative thread:', error);",
+      "replace": "    if (error) {\n      console.error('Error creating narrative thread:', error);",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/canon-write-scope-actions.test.ts"
+    },
+    {
+      "name": "KB-77 character state inserted without its author",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/canon-actions.ts",
+      "find": "        previous_state_id: previousState?.id ?? null,\n        created_by: user.id,\n",
+      "replace": "        previous_state_id: previousState?.id ?? null,\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/canon-write-scope-actions.test.ts"
+    }
+  ]
+}
