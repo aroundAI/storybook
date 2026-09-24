@@ -186,6 +186,56 @@ describe('buildYouTubeDailyRows', () => {
       extra_metrics: '{"retention":true}',
     });
   });
+
+  // KB-50. This writer and the Reporting ingest share one ReplacingMergeTree
+  // key, and the later row replaces the whole row — so engaged views survive
+  // only if this writer carries them too. Null, never 0, where YouTube did
+  // not report them.
+  describe('engaged views', () => {
+    const day = (date: string, engagedViews?: number | null) => ({
+      date,
+      views: 10,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      estimatedMinutesWatched: 0,
+      averageViewDuration: 0,
+      subscribersGained: 0,
+      engagedViews,
+    });
+
+    const build = (dailyData: ReturnType<typeof day>[]) =>
+      buildYouTubeDailyRows({
+        projectId: '550e8400-e29b-41d4-a716-446655440000',
+        videoId: 'publish-1',
+        dailyData,
+        extraMetricsJson: '{}',
+      }).map((r) => [r.metric_date, r.engaged_views]);
+
+    it('carries the reported figure', () => {
+      expect(build([day('2026-09-20', 330)])).toEqual([['2026-09-20', 330]]);
+    });
+
+    it('keeps a reported zero as zero', () => {
+      expect(build([day('2026-09-20', 0)])).toEqual([['2026-09-20', 0]]);
+    });
+
+    it('is null when the day has no reported figure', () => {
+      expect(
+        build([day('2026-09-20', null), day('2026-09-21', undefined)]),
+      ).toEqual([
+        ['2026-09-20', null],
+        ['2026-09-21', null],
+      ]);
+    });
+
+    it('is null before the metric existed (2025-04-24), whatever the API says', () => {
+      expect(build([day('2025-04-23', 7), day('2025-04-24', 9)])).toEqual([
+        ['2025-04-23', null],
+        ['2025-04-24', 9],
+      ]);
+    });
+  });
 });
 
 describe('buildRetentionPoints / buildAudienceRows', () => {

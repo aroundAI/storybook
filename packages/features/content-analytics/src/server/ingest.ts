@@ -7,7 +7,7 @@ import type {
   VideoAudienceRow,
   VideoMetric,
 } from '@kit/clickhouse';
-import { formatDateStr } from '@kit/clickhouse';
+import { VIEW_DEFINITIONS, formatDateStr } from '@kit/clickhouse';
 
 import type { InstagramInsightsResult } from '../providers/instagram/types';
 import type { TikTokAnalyticsResult } from '../providers/tiktok/types';
@@ -107,6 +107,26 @@ export function latestDataDate(
 }
 
 /**
+ * The first day YouTube reports engaged views, from the view-definition
+ * registry (FILM-1722) so the date lives in one place. A figure for an
+ * earlier day is not the metric, whatever the API returns for it.
+ */
+const ENGAGED_VIEWS_FROM = (() => {
+  const definition = VIEW_DEFINITIONS.find(
+    (entry) => entry.id === 'youtube.engagedViews',
+  );
+  if (!definition?.effectiveFrom) {
+    throw new Error('view-definitions has no dated youtube.engagedViews entry');
+  }
+  return definition.effectiveFrom;
+})();
+
+function engagedViewsFor(day: YouTubeDailyMetrics): number | null {
+  if (day.date < ENGAGED_VIEWS_FROM) return null;
+  return day.engagedViews ?? null;
+}
+
+/**
  * Map YouTube per-day metrics to daily ClickHouse rows. The raw provider
  * payload (retention, traffic sources, …) is attached to the latest day's
  * row only — it is a lifetime aggregate and duplicating it per day would
@@ -136,6 +156,9 @@ export function buildYouTubeDailyRows(input: {
     subscribers_gained: day.subscribersGained,
     metric_source: input.metricSource ?? ('analytics_api' as const),
     avg_view_duration_seconds: day.averageViewDuration,
+    // Always set, null included: the Reporting ingest writes this key too,
+    // and an omitted field would erase its figure (KB-50).
+    engaged_views: engagedViewsFor(day),
     extra_metrics: day.date === latest ? input.extraMetricsJson : '{}',
   }));
 }

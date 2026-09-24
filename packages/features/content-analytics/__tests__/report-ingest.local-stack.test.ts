@@ -331,7 +331,7 @@ describe.skipIf(!process.env.REPORT_INGEST_LOCAL_STACK)(
 
       const metrics = await rows(
         'video_metrics',
-        'toString(views) AS views, toString(watch_time_seconds) AS watch, metric_source',
+        'toString(views) AS views, toString(watch_time_seconds) AS watch, toString(engaged_views) AS engaged, metric_source',
       );
       const reach = await rows(
         'video_reach_daily',
@@ -346,7 +346,12 @@ describe.skipIf(!process.env.REPORT_INGEST_LOCAL_STACK)(
       console.table({ metrics, reach, traffic });
 
       expect(metrics).toEqual([
-        { views: '150', watch: '900', metric_source: 'reporting_api' },
+        {
+          views: '150',
+          watch: '900',
+          engaged: '135', // KB-50: parsed, and now stored
+          metric_source: 'reporting_api',
+        },
       ]);
       expect(reach).toEqual([{ impressions: '4000', ctr: 0.04 }]);
       expect(traffic.map((row) => `${row.source}:${row.views}`).sort()).toEqual(

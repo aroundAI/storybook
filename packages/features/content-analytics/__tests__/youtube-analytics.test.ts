@@ -227,6 +227,82 @@ describe('YouTubeAnalyticsProvider', () => {
     });
   });
 
+  // KB-50. Engaged views travel in their own query, like revenue: a refusal
+  // of that one metric must cost that one metric, not the day's views.
+  describe('daily engaged views', () => {
+    const CORE_DAY = [400, 20, 5, 2, 30, 60, 3];
+
+    function answerDaily(engaged: () => Promise<unknown>) {
+      mockReportsQuery.mockImplementation(
+        ({ metrics, dimensions }: { metrics: string; dimensions?: string }) => {
+          if (metrics === 'engagedViews') return engaged();
+          if (dimensions === 'day') {
+            return Promise.resolve({
+              data: {
+                rows: [
+                  ['2026-09-20', ...CORE_DAY],
+                  ['2026-09-21', ...CORE_DAY],
+                ],
+              },
+            });
+          }
+          return Promise.resolve({ data: { rows: [] } });
+        },
+      );
+    }
+
+    const from = new Date('2026-09-20');
+    const to = new Date('2026-09-21');
+
+    it('asks for engagedViews by day in a query of its own, and merges it by date', async () => {
+      answerDaily(() =>
+        Promise.resolve({ data: { rows: [['2026-09-20', 330]] } }),
+      );
+
+      const daily = await provider.getDailyMetrics('vid', from, to);
+
+      const engagedCalls = mockReportsQuery.mock.calls
+        .map(([params]) => params as { metrics: string; dimensions?: string })
+        .filter((params) => params.metrics.includes('engagedViews'));
+
+      expect(engagedCalls).toEqual([
+        expect.objectContaining({
+          metrics: 'engagedViews',
+          dimensions: 'day',
+          filters: 'video==vid',
+        }),
+      ]);
+      expect(daily.map((d) => [d.date, d.views, d.engagedViews])).toEqual([
+        ['2026-09-20', 400, 330],
+        ['2026-09-21', 400, null], // not in YouTube's answer: not reported
+      ]);
+    });
+
+    it('keeps the daily views when the engagedViews query is refused', async () => {
+      answerDaily(() => Promise.reject(new Error('Bad Request')));
+
+      const daily = await provider.getDailyMetrics('vid', from, to);
+
+      expect(daily.map((d) => [d.date, d.views, d.engagedViews])).toEqual([
+        ['2026-09-20', 400, null],
+        ['2026-09-21', 400, null],
+      ]);
+    });
+
+    it('keeps the whole sync when the engagedViews query is refused', async () => {
+      answerDaily(() => Promise.reject(new Error('Bad Request')));
+
+      const result = await provider.getVideoAnalytics({
+        videoId: 'vid',
+        startDate: from,
+        endDate: to,
+      });
+
+      expect(result.dailyData).toHaveLength(2);
+      expect(result.dailyData.every((d) => d.engagedViews === null)).toBe(true);
+    });
+  });
+
   // FILM-1710
   describe('getVideoDurations', () => {
     it('reads contentDetails.duration, keyed by video id', async () => {
@@ -341,16 +417,13 @@ describe('YouTubeAnalyticsProvider', () => {
 
   describe('error handling', () => {
     it('should handle API errors gracefully for retention data', async () => {
-      // First few calls succeed, retention call fails
-      mockReportsQuery
-        .mockResolvedValueOnce({
-          data: { rows: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]] },
-        }) // totals
-        .mockResolvedValueOnce({ data: { rows: [] } }) // daily
-        .mockRejectedValueOnce(new Error('API Error')) // retention - fails
-        .mockResolvedValueOnce({ data: { rows: [] } }) // demographics
-        .mockResolvedValueOnce({ data: { rows: [] } }) // traffic
-        .mockResolvedValueOnce({ data: { rows: [] } }); // geography
+      // Only the retention query fails. Answered by what is asked, not by
+      // call order, which shifts whenever a query is added.
+      mockReportsQuery.mockImplementation(({ metrics }: { metrics: string }) =>
+        metrics === 'audienceWatchRatio'
+          ? Promise.reject(new Error('API Error'))
+          : Promise.resolve({ data: { rows: [] } }),
+      );
 
       const result = await provider.getVideoAnalytics({
         videoId: 'test-video-id',

@@ -13,7 +13,11 @@ export interface BasicReportRow {
   date: string; // YYYY-MM-DD
   youtubeVideoId: string;
   views: number;
-  engagedViews: number;
+  /**
+   * Null when the report has no `engaged_views` column — versions before
+   * 2025-06-24. Absent is "not reported", not zero (KB-50).
+   */
+  engagedViews: number | null;
   likes: number;
   dislikes: number;
   comments: number;
@@ -171,7 +175,7 @@ export function parseChannelBasicReport(csv: string): BasicReportRow[] {
       date,
       youtubeVideoId: videoId,
       views: 0,
-      engagedViews: 0,
+      engagedViews: engagedIdx < 0 ? null : 0,
       likes: 0,
       dislikes: 0,
       comments: 0,
@@ -188,7 +192,9 @@ export function parseChannelBasicReport(csv: string): BasicReportRow[] {
     const views = numberAt(row, viewsIdx);
 
     existing.views += views;
-    existing.engagedViews += numberAt(row, engagedIdx);
+    if (existing.engagedViews !== null) {
+      existing.engagedViews += numberAt(row, engagedIdx);
+    }
     existing.likes += numberAt(row, likesIdx);
     existing.dislikes += numberAt(row, dislikesIdx);
     existing.comments += numberAt(row, commentsIdx);

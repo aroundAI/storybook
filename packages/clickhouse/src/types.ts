@@ -57,6 +57,13 @@ export interface VideoMetric {
   /** Per-day average view percentage 0-100 (0 when unknown). */
   avg_view_percentage?: number;
   dislikes?: number;
+  /**
+   * YouTube engaged views: the view-counting methodology before 2026-08-27,
+   * continuous across that change (migration 012, KB-50). **Null means not
+   * reported** — never zero. Both YouTube writers must set it, because the
+   * later row replaces the whole row; omitting it erases the other's figure.
+   */
+  engaged_views?: number | null;
   extra_metrics: string;
 }
 

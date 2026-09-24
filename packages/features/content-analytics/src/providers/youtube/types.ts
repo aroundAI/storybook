@@ -121,6 +121,11 @@ export interface YouTubeDailyMetrics {
   estimatedMinutesWatched: number;
   averageViewDuration: number;
   subscribersGained: number;
+  /**
+   * Engaged views, from their own query (KB-50). Null when YouTube did not
+   * report the day or that query failed — never zero for "unknown".
+   */
+  engagedViews?: number | null;
 }
 
 /**

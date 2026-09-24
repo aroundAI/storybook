@@ -248,6 +248,30 @@ beforeEach(() => {
   vendor.downloads = [];
 });
 
+describe('runReportingIngestJob — engaged views (KB-50)', () => {
+  // They were parsed, then left off the matched row: only the residual kept
+  // them. YouTube's `views` changed meaning on 2026-08-27; engaged views are
+  // the series that did not.
+  it('stores a matched video’s engaged views in video_metrics', async () => {
+    deliver(
+      'channel_basic_a3',
+      fixture('channel_basic_a3'),
+      '2026-09-12T01:00:00Z',
+    );
+
+    await runReportingIngestJob();
+
+    expect(writers.insertVideoMetrics).toHaveBeenCalledWith([
+      expect.objectContaining({
+        video_id: PUBLISH_A,
+        metric_source: 'reporting_api',
+        views: 150,
+        engaged_views: 135, // 90 + 45
+      }),
+    ]);
+  });
+});
+
 describe('runReportingIngestJob — the channel residual', () => {
   it('writes the reach residual to channel_reach_daily and never over channel_daily', async () => {
     // Core first, reach second: the order they usually arrive in, and the
