@@ -2813,19 +2813,75 @@ writing `project_members` role on the payload's project (the rule
 
 ## KB-50 — `channel_basic_a3` engaged views are parsed, then dropped
 
-**Found:** FILM-1504 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
-**Open.**
+**Severity:** Medium — the one YouTube view series that is continuous across
+the 2026-08-27 redefinition of `views` (FILM-1722, FILM-1713) was never stored.
+**Found:** FILM-1504 (2026-09-23). **Fixed** in #348 (see *Fixed*).
 
-`channel_basic_a3` engaged views are parsed and then dropped; keeping them needs a nullable `video_metrics` column.
+`parseChannelBasicReport` summed `engaged_views`, and the Reporting ingest
+built the matched `video_metrics` row without it
+(`report-ingest.ts`, matched branch); only the channel residual kept it.
+`video_metrics` had no column, and the hourly Analytics-API sync never asked
+YouTube for `engagedViews` at all.
+
+**The filed fix would not have worked.** It proposed a nullable column that
+only the Reporting ingest fills. Both writers write the same
+`ReplacingMergeTree` key, and the later row replaces the whole row. Measured on
+local ClickHouse 24.8 (a scratch clone of `video_metrics` plus the column): the
+Reporting row for a day, then the hourly sync's row for the same day, with the
+fields `buildYouTubeDailyRows` sends:
+
+```
+metric_source  views  engaged_views  dislikes  subscribers_lost  avg_view_percentage
+reporting_api  400    330            2         1                 45.5     <- Reporting row
+analytics_api  401    \N             0         0                 0        <- after the sync rewrote the day
+```
+
+The sync rewrites each day for about three days after the report lands
+(`computeYouTubeWindow`, window from `last_data_date − 3 d`), so every Reporting
+row is overwritten in steady state. The same run is KB-94.
+
+**Fix (owner decision D1 = B):** ClickHouse migration 012 adds
+`video_metrics.engaged_views Nullable(UInt64)`, with no default. **Both** writers
+fill it. The Reporting ingest takes it from the CSV. The Analytics-API sync and
+the backfill take it from YouTube's `engagedViews` metric, in a query of its own
+that never throws, so a refusal costs this one metric and not the day's views.
+NULL means not reported: a day before 2025-04-24 (the registry's
+`youtube.engagedViews.effectiveFrom`), a report version without the column (the
+parser used to read that as 0), a failed query, or another platform.
+
+- [x] Matched rows store engaged views — `packages/features/content-analytics/__tests__/report-ingest-run.test.ts` ("stores a matched video’s engaged views"), and on the real stack `report-ingest.local-stack.test.ts` (`engaged: '135'`)
+- [x] Either write order keeps the figure; unreported stays NULL — `packages/clickhouse/scripts/verify-queries.ts` ("engaged views survive the other video_metrics writer (KB-50)"), red on `main` (no column), green after 012
+- [x] Never 0 for "not reported" — `csv-parsers.test.ts` (no column → null), `ingest.test.ts` (before 2025-04-24 → null; missing → null; a reported 0 stays 0)
+- [x] A refused `engagedViews` query leaves the sync whole — `youtube-analytics.test.ts` ("daily engaged views")
+- [ ] The figure checked against YouTube Studio on a real channel — the owner, with FILM-1504's open criterion at the FILM-1503 cutover
 
 ---
 
 ## KB-51 — `youtube_report_jobs` RLS has no pgTAP test
 
-**Found:** FILM-1504 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
-**Open.**
+**Severity:** Low — no hole found in the policy; one dormant grant.
+**Found:** FILM-1504 (2026-09-23). **Fixed** in #348 (see *Fixed*).
 
-The row-level security on `youtube_report_jobs` has no pgTAP test.
+No file under `tests/database/` tested the table's policy or grants; the two
+that mention it insert rows as `postgres`. Reading the live grants on the local
+database also showed that `anon` held every privilege — `SELECT, INSERT,
+UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER` — because
+`20260827095855_youtube-report-jobs.sql` revoked from `authenticated` and
+`service_role` only. Row-level security does not govern TRUNCATE. What keeps it
+unreachable today is that `anon` has no USAGE on schema `public` (revoked in
+`20221215192558_schema.sql`); KB-88 proposes restoring that USAGE for public
+share pages, and then this grant is live. KB-85 is the class.
+
+**Fix:** `20260924141816_kb51-youtube-report-jobs-anon.sql` revokes all from
+`anon` (mirrored into `schemas/66-youtube-report-jobs.sql`), and
+`tests/database/youtube-report-jobs-rls.test.sql` (18 cases) pins the policy
+and grants. The anon cases grant schema USAGE inside the test's own rolled-back
+transaction, so they test the table grant rather than the schema barrier.
+
+- [x] Policy shape, and grants per role (`anon` none, `authenticated` SELECT, `service_role` read/write)
+- [x] A team member, the team owner and a personal owner read their own connections' jobs; an outsider and another account read none
+- [x] No signed-in write, own account included — the watermark cannot be moved from a session
+- [x] Red on `main`: 4 of 18 failed — the anon privilege list, anon read and anon TRUNCATE (with schema USAGE), and the TRUNCATE emptied every account's jobs. Widening the read policy to `using (true)` fails the two isolation cases
 
 ---
 
@@ -4019,6 +4075,39 @@ no slug — for all five callbacks. YouTube and Meta had built it inline, with
 
 ---
 
+## KB-94 — The Analytics-API sync overwrites Reporting-only `video_metrics` columns with zeros
+
+**Severity:** Medium — `dislikes`, `subscribers_lost` and
+`avg_view_percentage` for YouTube videos read 0 in steady state.
+**Found:** KB-50's investigation, 2026-09-24 (it was a lead from the
+2026-09-23 audit). **Reproduced.** **Open.**
+
+Two writers share one `ReplacingMergeTree(inserted_at)` key in
+`video_metrics`: the Reporting ingest (`channel_basic_a3`, every 6 h, sets all
+columns) and the hourly Analytics-API sync, whose `buildYouTubeDailyRows`
+(`packages/features/content-analytics/src/server/ingest.ts`) does not send
+`dislikes`, `subscribers_lost` or `avg_view_percentage`, so they take their
+`DEFAULT 0`. The later row replaces the whole row. The sync re-fetches from
+`last_data_date − 3 d` (`computeYouTubeWindow`), and the report for a day lands
+about two days after it, so the sync's row lands last for every day.
+
+Measured on local ClickHouse 24.8, a scratch clone of `video_metrics`:
+
+```
+metric_source  views  dislikes  subscribers_lost  avg_view_percentage
+reporting_api  400    2         1                 45.5    <- the Reporting row
+analytics_api  401    0         0                 0       <- after the sync rewrote the day
+```
+
+**Not fixed with KB-50.** `engaged_views` escaped it only because both
+writers now send it. The fix needs a design choice per column: the sync
+requests these three metrics too (the totals query already asks for all three),
+or a day with a `reporting_api` row is not rewritten by the sync, or a
+source-priority version. Restatement within the window has to keep working
+either way.
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
@@ -4074,6 +4163,7 @@ no slug — for all five callbacks. YouTube and Meta had built it inline, with
 | KB-87 | A successful TikTok, X or LinkedIn connect redirected to a relative URL, which Next refuses, and landed on the failure page | #343 |
 | KB-48 | Personal-account owners could not use their own fact links, audio cues, shot transitions or audio assets; any writer could link another tenant's fact into their episode, which the worker then read into the story (R7); a re-link was refused (R8); cues on season-less episodes were hidden (R9) | #344 |
 | KB-71 | Season outlines never loaded a documentary's facts (a field nothing wrote), and would have loaded disputed and retracted ones, unsanitised; `canon.contentType` was a second, dead content-type field | #344 |
+| KB-50, KB-51 | YouTube engaged views were parsed, then dropped (and would have been erased by the hourly sync had only the report stored them); `youtube_report_jobs` had no RLS test, and `anon` held every privilege on it | #348 |
 
 ---
 
@@ -4088,8 +4178,8 @@ proved it wrong. Paths abbreviated with `…/studio/` are under
 `apps/web/app/home/[account]/studio/[projectSlug]/`.
 
 **Analytics correctness**
-- `channel_daily`: the reach and basic report branches write rows on one ReplacingMergeTree key, each zeroing the other's columns, so whichever lands later zeroes that day's residual watch time (a YPP input) or impressions — `packages/features/content-analytics/src/server/reporting/report-ingest.ts:349`, `:403`; `packages/clickhouse/src/migrations/003_reach_and_traffic.ts:56`
-- The Analytics-API sync re-fetches three days and overwrites Reporting-API-only columns (`subscribers_lost`, `dislikes`, `avg_view_percentage`) with zeros — `packages/features/content-analytics/src/server/ingest.ts:81`, `:124`
+- ~~`channel_daily`: the reach and basic report branches write rows on one ReplacingMergeTree key, each zeroing the other's columns, so whichever lands later zeroes that day's residual watch time (a YPP input) or impressions — `packages/features/content-analytics/src/server/reporting/report-ingest.ts:349`, `:403`; `packages/clickhouse/src/migrations/003_reach_and_traffic.ts:56`~~ **Fixed by #312**, re-verified 2026-09-24 on local ClickHouse 24.8: the old shape (one `channel_daily` row carrying both families) read 0 s watch time after core then reach; on `main` (reach in `channel_reach_daily`, migration 011) it reads 1,800 s and 4,000 impressions. Guarded by `verify-queries.ts` (FILM-1504 assertion)
+- ~~The Analytics-API sync re-fetches three days and overwrites Reporting-API-only columns (`subscribers_lost`, `dislikes`, `avg_view_percentage`) with zeros — `packages/features/content-analytics/src/server/ingest.ts:81`, `:124`~~ **Reproduced: KB-94**
 - The scheduled raw CSV repeats the period's total impressions on every daily row, and CTR/AVD are period rates repeated per day — `apps/web/app/api/reports/scheduled/route.ts:517-519` (FILM-1601)
 - Instagram's never-requested `follows` is stored as `subscribers_gained = 0` — `packages/features/content-analytics/src/server/analytics-sync-cron.ts:915` (FILM-803; FILM-1712 covers the class)
 - Audience breakdowns mix fetches: `argMax` per key keeps a country or OS missing from the latest fetch at its old value — `packages/clickhouse/src/queries-detail.ts:246`
