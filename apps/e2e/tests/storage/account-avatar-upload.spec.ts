@@ -85,7 +85,9 @@ test.describe('Account pictures (KB-53)', () => {
   test('a user sets their picture, then replaces it', async ({ page }) => {
     await signInAs(page, user);
     await page.goto('/home/settings');
-    await expect(page.getByText('Upload a Profile Picture')).toBeVisible();
+    await expect(
+      page.getByText('Upload a Profile Picture').first(),
+    ).toBeVisible();
 
     const stored = new RegExp(`/account_image/${user.userId}\\.png\\?v=\\d+$`);
 
@@ -132,7 +134,9 @@ test.describe('Account pictures (KB-53)', () => {
   test('a team owner sets the team picture', async ({ page }) => {
     await signInAs(page, team);
     await page.goto(`/home/${team.slug}/settings`);
-    await expect(page.getByText('Upload a Profile Picture')).toBeVisible();
+    await expect(
+      page.getByText('Upload a Profile Picture').first(),
+    ).toBeVisible();
 
     const url = await choosePicture(page, team.accountId, png(VIOLET), null);
 

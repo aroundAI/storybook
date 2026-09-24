@@ -197,7 +197,8 @@ test.describe('Episode thumbnails (KB-54)', () => {
       `/home/${team.slug}/studio/${project.slug}/episodes/${episode.slug}/publish`,
     );
 
-    const input = page.locator('#thumbnail-input-full-en');
+    // The screen can render a language's card twice (same input id).
+    const input = page.locator('#thumbnail-input-full-en').first();
     await expect(input).toBeAttached();
 
     const thumbnailUrl = async () => {
@@ -237,6 +238,7 @@ test.describe('Episode thumbnails (KB-54)', () => {
     if (evidence) {
       await page
         .locator('label[for="thumbnail-input-full-en"]')
+        .first()
         .scrollIntoViewIfNeeded();
       await page.screenshot({ path: `${OUT}/kb54-03-thumbnail-replaced.png` });
     }
