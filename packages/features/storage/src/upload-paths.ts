@@ -97,7 +97,11 @@ export function accountImagePath(accountId: string, contentType: string) {
   return `${accountId}.${ext}`;
 }
 
-export function projectCoverPath(projectId: string, ext: string, now = Date.now()) {
+export function projectCoverPath(
+  projectId: string,
+  ext: string,
+  now = Date.now(),
+) {
   return `projects/${projectId}/assets/covers/cover-${now}.${ext}`;
 }
 

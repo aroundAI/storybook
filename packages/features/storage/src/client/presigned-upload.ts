@@ -6,7 +6,6 @@
  *
  * This module is designed to be used in client-side code across all packages.
  */
-
 import {
   ACCOUNT_IMAGE_BUCKET,
   PROJECT_ASSETS_BUCKET,
@@ -81,7 +80,9 @@ export async function requestPresignedUpload(
       throw new UploadRefusal(reason);
     }
 
-    throw new Error(reason || `Failed to get presigned URL (${response.status})`);
+    throw new Error(
+      reason || `Failed to get presigned URL (${response.status})`,
+    );
   }
 
   return data;

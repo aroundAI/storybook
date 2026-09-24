@@ -10,6 +10,11 @@ import {
   getProjectIntrosAction,
   uploadProjectIntroAction,
 } from '@kit/episodes/server';
+import { UploadRefusal } from '@kit/storage/client';
+import {
+  PROJECT_ASSETS_BUCKET,
+  projectIntroPath,
+} from '@kit/storage/upload-paths';
 import { Button } from '@kit/ui/button';
 import {
   Card,
@@ -29,11 +34,6 @@ import {
 } from '@kit/ui/dialog';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
-import { UploadRefusal } from '@kit/storage/client';
-import {
-  PROJECT_ASSETS_BUCKET,
-  projectIntroPath,
-} from '@kit/storage/upload-paths';
 import { toast } from '@kit/ui/sonner';
 
 import { uploadWithPresignedUrl } from '~/lib/presigned-upload';

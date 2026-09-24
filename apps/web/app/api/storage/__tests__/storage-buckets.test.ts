@@ -37,12 +37,15 @@ const SKIP_DIRS = new Set([
 /**
  * Shapes in which a bucket name reaches storage as a string literal. The
  * adapter's own methods take (bucket, path, …); Supabase's client takes
- * `.storage.from(bucket)`; the browser helper takes (file, bucket, path).
+ * `.storage.from(bucket)`; the browser helper takes (file, bucket, path);
+ * the KB-54 delete helpers take (storage, bucket, url).
  */
 const BUCKET_LITERALS = [
   /\.storage\s*\.from\(\s*['"]([^'"]+)['"]/g,
   /\.(?:upload|getSignedUploadUrl|delete|read|exists|getPublicUrl)\(\s*['"]([^'"]+)['"]\s*,/g,
   /uploadWithPresignedUrl\(\s*[^,()]+,\s*['"]([^'"]+)['"]/g,
+  // KB-54's helpers take (storage, bucket, url, …)
+  /\b(?:deleteOwnedObject|storageKeyFromPublicUrl)\(\s*[^,()]+,\s*['"]([^'"]+)['"]/g,
   /\b[A-Z_]*BUCKET[A-Z_]*\s*=\s*['"]([^'"]+)['"]/g,
 ];
 

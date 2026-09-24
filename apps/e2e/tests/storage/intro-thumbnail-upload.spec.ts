@@ -1,7 +1,6 @@
+import { type Locator, type Page, expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-
-import { type Locator, type Page, expect, test } from '@playwright/test';
 
 import {
   type SeededProject,
@@ -216,9 +215,7 @@ test.describe('Episode thumbnails (KB-54)', () => {
           mimeType: 'image/png',
           buffer,
         });
-        await expect
-          .poll(thumbnailUrl, { timeout: 5_000 })
-          .not.toBe(previous);
+        await expect.poll(thumbnailUrl, { timeout: 5_000 }).not.toBe(previous);
       }).toPass({ timeout: 30_000 });
 
       return (await thumbnailUrl())!;
@@ -238,6 +235,9 @@ test.describe('Episode thumbnails (KB-54)', () => {
     expect(await storageObjectExists('project-assets', firstKey)).toBe(false);
 
     if (evidence) {
+      await page
+        .locator('label[for="thumbnail-input-full-en"]')
+        .scrollIntoViewIfNeeded();
       await page.screenshot({ path: `${OUT}/kb54-03-thumbnail-replaced.png` });
     }
   });

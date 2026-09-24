@@ -53,8 +53,11 @@ export async function uploadShotVideo(
   projectId: string,
   shotId: string,
 ): Promise<PresignedUploadResult> {
-  const path = shotVideoPath(projectId, shotId, fileExtension(file.name, 'mp4'));
+  const path = shotVideoPath(
+    projectId,
+    shotId,
+    fileExtension(file.name, 'mp4'),
+  );
 
   return uploadWithPresignedUrl(file, PROJECT_ASSETS_BUCKET, path);
 }
-

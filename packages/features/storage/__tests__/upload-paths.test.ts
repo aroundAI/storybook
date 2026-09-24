@@ -61,9 +61,9 @@ describe('the paths the broken uploaders built are still refused', () => {
   });
 
   it('the pre-KB-53 avatar path', () => {
-    expect(
-      isUploadPath('account_image', `${ACCOUNT}/avatar-${NOW}.png`),
-    ).toBe(false);
+    expect(isUploadPath('account_image', `${ACCOUNT}/avatar-${NOW}.png`)).toBe(
+      false,
+    );
   });
 });
 

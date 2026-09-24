@@ -87,9 +87,7 @@ test.describe('Account pictures (KB-53)', () => {
     await page.goto('/home/settings');
     await expect(page.getByText('Upload a Profile Picture')).toBeVisible();
 
-    const stored = new RegExp(
-      `/account_image/${user.userId}\\.png\\?v=\\d+$`,
-    );
+    const stored = new RegExp(`/account_image/${user.userId}\\.png\\?v=\\d+$`);
 
     const first = await choosePicture(page, user.userId, png(TEAL), null);
 
@@ -97,9 +95,9 @@ test.describe('Account pictures (KB-53)', () => {
     await expect(
       page.getByText('Profile successfully updated').first(),
     ).toBeVisible();
-    expect(await storageObjectExists('account_image', `${user.userId}.png`)).toBe(
-      true,
-    );
+    expect(
+      await storageObjectExists('account_image', `${user.userId}.png`),
+    ).toBe(true);
 
     const firstBody = await page.request.get(first);
     expect(firstBody.status()).toBe(200);
