@@ -267,6 +267,13 @@ with any file Prettier would change, so an unformatted push is a red build.
   formatting (a reordered Tailwind class list). Formatted first, its lines
   already match `main`'s, and most of those conflicts disappear. If a
   rebase still stops on conflicts, resolve them, then run it again.
+- **A rebase that only resolves a docs conflict doesn't re-run the suite.**
+  When a push leaves the PR's code patch identical (same `git patch-id` over
+  non-docs paths) and the previous head's run passed, 🔎 Changes reuses that
+  verdict: heavy jobs skip and 📚 Docs checks runs
+  (`scripts/ci/code-patch-unchanged.sh`). Touch any code line in the same
+  push and the full suite runs. The PR's code on top of the *new* main is
+  then first fully tested by the push-to-`main` run.
 - **Use the script, not a bare `npx prettier`.** The script runs each
   package's own `format` with the shared config; a one-off run from one
   directory is how formatting used to differ by which file a run started

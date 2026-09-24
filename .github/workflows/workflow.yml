@@ -25,10 +25,17 @@ jobs:
     # a failed or blank classification runs the full suite. Editing this
     # file or the classifier is itself code, so a change to the rule always
     # runs the full suite.
+    #
+    # Second fast path: a push to a PR that leaves the PR's code exactly as
+    # it was, after a run that passed. The usual case is a rebase that
+    # resolves a conflict in a shared spec file. See the "Reuse" step below.
     timeout-minutes: 5
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     outputs:
-      code: ${{ steps.classify.outputs.code }}
+      code: ${{ steps.reuse.outputs.code || steps.classify.outputs.code }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -57,6 +64,59 @@ jobs:
           result=$(printf '%s\n' "$files" | bash scripts/ci/docs-only.sh)
           echo "Result: $result"
           echo "$result" >> "$GITHUB_OUTPUT"
+
+      # A push that changed only prose since a green run keeps that run's
+      # verdict for the code: typically a rebase whose one conflict was a row
+      # appended to specs/cross-cutting/FILM-CC-04-known-bugs.md. It applies
+      # only when all three hold, and anything else runs the full suite:
+      #   1. the previous head can be fetched;
+      #   2. the PR's code patch (its diff from the merge-base, non-docs paths
+      #      only, compared by patch-id) is identical before and after
+      #      (scripts/ci/code-patch-unchanged.sh, table test beside it);
+      #   3. this workflow's run on the previous head concluded `success`, so
+      #      a failed or cancelled run is never inherited.
+      # Then code=false and 📚 Docs checks runs in place of the heavy jobs,
+      # exactly as on the docs-only path. Accepted risk: after an update from
+      # main, the PR's code on top of the new main is first fully tested by
+      # the push-to-main run, which this step never touches.
+      - name: Reuse the previous run when only docs changed since it
+        id: reuse
+        if: ${{ steps.classify.outputs.code == 'true' && github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PREV: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          WORKFLOW: ${{ github.workflow }}
+        run: |
+          git fetch --no-tags --quiet origin "$PREV" 2>/dev/null || true
+          verdict=$(bash scripts/ci/code-patch-unchanged.sh "$PREV" "$HEAD_SHA" "$BASE")
+          echo "$verdict"
+          if ! printf '%s\n' "$verdict" | grep -qx 'unchanged=true'; then
+            echo "Code changed, or could not tell: running the full suite."
+            exit 0
+          fi
+          if ! runs=$(gh api "repos/$REPO/actions/runs?head_sha=$PREV&event=pull_request&per_page=50"); then
+            echo "Could not read the previous run: running the full suite."
+            exit 0
+          fi
+          last=$(printf '%s' "$runs" | jq -r --arg wf "$WORKFLOW" \
+            '[.workflow_runs[] | select(.name == $wf)] | sort_by(.created_at) | last // empty
+             | "\(.conclusion) \(.html_url)"')
+          conclusion=${last%% *}
+          url=${last#* }
+          echo "Previous run on $PREV: ${last:-none}"
+          if [ "$conclusion" != success ]; then
+            echo "The previous run did not pass: running the full suite."
+            exit 0
+          fi
+          echo "code=false" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Code unchanged since a green run"
+            echo "The PR's code patch is identical to $PREV, whose run passed: $url"
+            echo "Heavy jobs are skipped; 📚 Docs checks runs in their place."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   typescript:
     name: ʦ TypeScript
@@ -362,6 +422,9 @@ jobs:
       - name: Docs-only classifier - table test
         run: bash scripts/ci/docs-only.test.sh
 
+      - name: Unchanged-code classifier - table test
+        run: bash scripts/ci/code-patch-unchanged.test.sh
+
       # One list, shared with both deploy workflows: scripts/test-units.sh.
       - name: Run Unit Tests
         run: bash scripts/test-units.sh
@@ -495,6 +558,9 @@ jobs:
 
       - name: Docs-only classifier - table test
         run: bash scripts/ci/docs-only.test.sh
+
+      - name: Unchanged-code classifier - table test
+        run: bash scripts/ci/code-patch-unchanged.test.sh
 
       - name: Spec records guard (KB-80)
         run: pnpm --filter @kit/shared exec vitest run __tests__/spec-closed-by-drift.test.ts
