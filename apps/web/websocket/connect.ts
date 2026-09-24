@@ -42,6 +42,7 @@ export const handler = async (
   });
 
   const connectionId = event.requestContext.connectionId;
+  const kb34Guard: number = connectionId; // KB-34 CI demo: must fail ʦ TypeScript
   const connectedAt = new Date().toISOString();
 
   try {
