@@ -69,7 +69,7 @@ import {
   queryViewsForVideos,
   queryWatchWindowTotals,
 } from '../src/server';
-import type { AnalyticsPlatform } from '../src/types';
+import type { AnalyticsPlatform, VideoMetric } from '../src/types';
 
 const PROJECT = '550e8400-e29b-41d4-a716-446655440000';
 const ACCOUNT = '550e8400-e29b-41d4-a716-446655440000';
@@ -581,6 +581,17 @@ async function assertions() {
         .toISOString()
         .slice(0, 10);
 
+      // The day moves with the clock, so a run on an earlier day left a row
+      // this 30-day window still sums: on a reused server the watch time read
+      // 3600, not 1800. Start from nothing.
+      for (const table of ['channel_daily', 'channel_reach_daily']) {
+        await getClickHouseClient().command({
+          query: `ALTER TABLE ${table} DELETE WHERE connection_id = {connection:UUID}`,
+          query_params: { connection },
+          clickhouse_settings: { mutations_sync: '2' },
+        });
+      }
+
       await insertChannelDaily([
         {
           connection_id: connection,
@@ -633,6 +644,88 @@ async function assertions() {
       if (got !== want) throw new Error(`expected ${want}, got ${got}`);
 
       return { watch: watch.watchTimeSeconds };
+    },
+  );
+
+  await step(
+    'assert: engaged views survive the other video_metrics writer (KB-50)',
+    async () => {
+      // The Reporting ingest and the hourly Analytics-API sync write the same
+      // (video, day) key, and ReplacingMergeTree keeps the later row whole.
+      // A column only one of them filled read NULL after the other's next
+      // write — measured on a scratch table before this fix. Both orders,
+      // and a day YouTube did not report, which must stay NULL rather than 0.
+      //
+      // `inserted_at` is set per row, through the writer: it is the version
+      // and is second-resolution here, so two writes inside one second tie.
+      const client = getClickHouseClient();
+      const project = '50505050-5050-4050-8050-505050505050';
+      const base = Math.floor(Date.now() / 1000);
+      const at = (offset: number) =>
+        new Date((base + offset) * 1000)
+          .toISOString()
+          .slice(0, 19)
+          .replace('T', ' ');
+      const row = (
+        video: string,
+        source: 'reporting_api' | 'analytics_api',
+        engaged: number | null,
+        offset: number,
+      ): VideoMetric & { inserted_at: string } => ({
+        project_id: project,
+        video_id: video,
+        platform: 'youtube',
+        metric_date: '2026-09-20',
+        views: 400,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        saves: 0,
+        watch_time_seconds: 0,
+        revenue_cents: 0,
+        subscribers_gained: 0,
+        metric_source: source,
+        engaged_views: engaged,
+        extra_metrics: '{}',
+        inserted_at: at(offset),
+      });
+
+      await client.command({
+        query: `ALTER TABLE video_metrics DELETE WHERE project_id = {project:UUID}`,
+        query_params: { project },
+        clickhouse_settings: { mutations_sync: '2' },
+      });
+
+      for (const values of [
+        [row('report-then-sync', 'reporting_api', 330, 0)],
+        [row('report-then-sync', 'analytics_api', 331, 1)],
+        [row('sync-then-report', 'analytics_api', 331, 0)],
+        [row('sync-then-report', 'reporting_api', 330, 1)],
+        [row('not-reported', 'analytics_api', null, 0)],
+      ]) {
+        await insertVideoMetrics(values);
+      }
+
+      const result = await client.query({
+        query: `
+          SELECT video_id, engaged_views
+          FROM video_metrics FINAL
+          WHERE project_id = {project:UUID}
+          ORDER BY video_id`,
+        query_params: { project },
+        format: 'JSONEachRow',
+      });
+
+      const got = JSON.stringify(await result.json());
+      const want = JSON.stringify([
+        { video_id: 'not-reported', engaged_views: null },
+        { video_id: 'report-then-sync', engaged_views: '331' },
+        { video_id: 'sync-then-report', engaged_views: '330' },
+      ]);
+
+      if (got !== want) throw new Error(`expected ${want}, got ${got}`);
+
+      return 'both write orders keep a figure; unreported stays null';
     },
   );
 

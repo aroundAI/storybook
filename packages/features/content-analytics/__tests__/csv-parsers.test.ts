@@ -199,6 +199,26 @@ describe('report fixtures', () => {
       });
     });
 
+    // Report versions before 2025-06-24 have no engaged_views column
+    // (docs/platform-capability-reference.md). Absent is "not reported",
+    // and a 0 here would be stored as a measurement (KB-50).
+    it('reads engaged views as null when the report has no such column', () => {
+      const [header, ...body] = fixture('channel_basic_a3').trim().split('\n');
+      const drop = header!.split(',').indexOf('engaged_views');
+      const without = (line: string) =>
+        line
+          .split(',')
+          .filter((_, i) => i !== drop)
+          .join(',');
+      const older = parseChannelBasicReport(
+        [header!, ...body].map(without).join('\n'),
+      );
+
+      expect(older).toHaveLength(2);
+      expect(older.every((r) => r.engagedViews === null)).toBe(true);
+      expect(older.find((r) => r.youtubeVideoId === 'vidX')!.views).toBe(400);
+    });
+
     it('view-weights the average duration and percentage', () => {
       // (4.1 × 300 + 5.7 × 100) / 400
       expect(vidX.avgViewDurationSeconds).toBeCloseTo(4.5, 9);

@@ -569,6 +569,7 @@ async function ingestReportCsv(
         avg_view_duration_seconds: row.avgViewDurationSeconds,
         avg_view_percentage: row.avgViewPercentage,
         dislikes: row.dislikes,
+        engaged_views: row.engagedViews,
         extra_metrics: '{}',
       });
     } else {
@@ -581,7 +582,7 @@ async function ingestReportCsv(
       accumulateChannelDaily(channelRows, connection.id, row.date, {
         views: row.views,
         watch_time_seconds: row.watchTimeSeconds,
-        engaged_views: row.engagedViews,
+        engaged_views: row.engagedViews ?? 0,
         subscribers_gained: row.subscribersGained,
         subscribers_lost: row.subscribersLost,
       });

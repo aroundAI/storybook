@@ -32,6 +32,8 @@ alter table public.youtube_report_jobs enable row level security;
 revoke all on public.youtube_report_jobs from authenticated, service_role;
 grant select on public.youtube_report_jobs to authenticated;
 grant select, insert, update, delete on public.youtube_report_jobs to service_role;
+-- anon kept Supabase's default grant of everything until KB-51.
+revoke all on public.youtube_report_jobs from anon;
 
 create policy "youtube_report_jobs_read" on public.youtube_report_jobs for select
   to authenticated using (

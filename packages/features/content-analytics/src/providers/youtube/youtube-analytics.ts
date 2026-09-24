@@ -2,6 +2,7 @@ import 'server-only';
 
 import { google } from 'googleapis';
 
+import { getLogger } from '@kit/shared/logger';
 import { vendorUrl } from '@kit/shared/vendors';
 
 import {
@@ -301,16 +302,19 @@ export class YouTubeAnalyticsProvider {
     startDate: string,
     endDate: string,
   ): Promise<YouTubeDailyMetrics[]> {
-    const response = await this.youtubeAnalytics.reports.query({
-      ids: 'channel==MINE',
-      startDate,
-      endDate,
-      metrics:
-        'views,likes,comments,shares,estimatedMinutesWatched,averageViewDuration,subscribersGained',
-      dimensions: 'day',
-      filters: `video==${videoId}`,
-      sort: 'day',
-    });
+    const [response, engaged] = await Promise.all([
+      this.youtubeAnalytics.reports.query({
+        ids: 'channel==MINE',
+        startDate,
+        endDate,
+        metrics:
+          'views,likes,comments,shares,estimatedMinutesWatched,averageViewDuration,subscribersGained',
+        dimensions: 'day',
+        filters: `video==${videoId}`,
+        sort: 'day',
+      }),
+      this.fetchDailyEngagedViews(videoId, startDate, endDate),
+    ]);
 
     return ((response.data.rows as Array<[string, ...number[]]>) ?? []).map(
       (row) => ({
@@ -322,8 +326,54 @@ export class YouTubeAnalyticsProvider {
         estimatedMinutesWatched: row[5] ?? 0,
         averageViewDuration: row[6] ?? 0,
         subscribersGained: row[7] ?? 0,
+        engagedViews: engaged?.get(row[0]) ?? null,
       }),
     );
+  }
+
+  /**
+   * Engaged views by day (KB-50), in a query of their own like revenue.
+   *
+   * Never throws. A refusal of this one metric must cost this one metric:
+   * inside the core query it would fail the day's views and, through
+   * `getVideoAnalytics`' Promise.all, the whole sync of the video. On
+   * failure every day reads null — not reported — and the next sync retries.
+   */
+  private async fetchDailyEngagedViews(
+    videoId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<Map<string, number> | null> {
+    try {
+      const response = await this.youtubeAnalytics.reports.query({
+        ids: 'channel==MINE',
+        startDate,
+        endDate,
+        metrics: 'engagedViews',
+        dimensions: 'day',
+        filters: `video==${videoId}`,
+        sort: 'day',
+      });
+
+      const rows = (response.data.rows as Array<[string, number]>) ?? [];
+
+      return new Map(
+        rows
+          .filter(([, value]) => Number.isFinite(value))
+          .map(([date, value]) => [date, value]),
+      );
+    } catch (error) {
+      const logger = await getLogger();
+      logger.warn(
+        {
+          name: 'youtube-analytics.engaged-views',
+          videoId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        'engagedViews query failed; stored as not reported',
+      );
+      return null;
+    }
   }
 
   /**
