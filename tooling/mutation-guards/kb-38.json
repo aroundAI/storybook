@@ -54,8 +54,8 @@
     {
       "name": "C1 shared helper declares no real size",
       "file": "packages/features/storage/src/client/presigned-upload.ts",
-      "find": "    contentType: file.type,\n    size: file.size,\n",
-      "replace": "    contentType: file.type,\n    size: 0,\n",
+      "find": "    contentType: options.contentType ?? file.type,\n    size: file.size,\n",
+      "replace": "    contentType: options.contentType ?? file.type,\n    size: 0,\n",
       "kind": "unit",
       "cwd": "apps/web",
       "test": "app/api/storage/presign/__tests__/presign-client.test.ts",

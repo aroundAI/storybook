@@ -1,0 +1,113 @@
+{
+  "feature": "KB-73, KB-79",
+  "mutations": [
+    {
+      "name": "KB-73/79 U1 save action takes any caller's project",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/audio-asset-actions.ts",
+      "find": "    if (!(await authorizeProjectTarget(client, data.projectId))) {\n      refuse('not_writable', 'Project not found');",
+      "replace": "    if (!(await authorizeProjectTarget({ from: client.from.bind(client), rpc: async () => ({ data: true, error: null }) }, data.projectId))) {\n      refuse('not_writable', 'Project not found');",
+      "cwd": "apps/web",
+      "test": "app/api/storage/__tests__/audio-asset-upload.test.ts",
+      "pattern": "cannot write the project"
+    },
+    {
+      "name": "KB-73/79 U2 save action takes a key outside the project's audio folder",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/audio-asset-actions.ts",
+      "find": "    if (!isAudioLibraryPath(data.projectId, data.path)) {",
+      "replace": "    if (!data.path) {",
+      "cwd": "apps/web",
+      "test": "app/api/storage/__tests__/audio-asset-upload.test.ts",
+      "pattern": "refuses a key in"
+    },
+    {
+      "name": "KB-73/79 U3 save action records a key with no stored file",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/audio-asset-actions.ts",
+      "find": "    if (!(await storage.exists(bucket, data.path))) {",
+      "replace": "    if (!bucket) {",
+      "cwd": "apps/web",
+      "test": "app/api/storage/__tests__/audio-asset-upload.test.ts",
+      "pattern": "never stored"
+    },
+    {
+      "name": "KB-73/79 U4 a retried save inserts a second row",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/audio-asset-actions.ts",
+      "find": "    if (existing?.[0]) {",
+      "replace": "    if (existing?.[0] && false) {",
+      "cwd": "apps/web",
+      "test": "app/api/storage/__tests__/audio-asset-upload.test.ts",
+      "pattern": "saved twice"
+    },
+    {
+      "name": "KB-73/79 U5 an unrecorded upload is left in storage",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/audio-asset-actions.ts",
+      "find": "      await storage.delete(bucket, data.path).catch(",
+      "replace": "      await Promise.resolve().catch(",
+      "cwd": "apps/web",
+      "test": "app/api/storage/__tests__/audio-asset-upload.test.ts",
+      "pattern": "cannot be saved"
+    },
+    {
+      "name": "KB-73/79 U6 the library path accepts any project's folder",
+      "kind": "unit",
+      "file": "packages/features/storage/src/upload-paths.ts",
+      "find": "    `^projects/${projectId}/assets/audio/",
+      "replace": "    `^projects/[0-9a-f-]+/assets/audio/",
+      "cwd": "apps/web",
+      "test": "app/api/storage/__tests__/audio-library-paths.test.ts",
+      "pattern": "another project"
+    },
+    {
+      "name": "KB-73/79 U7 the helper declares the browser's type, not the one it is given",
+      "kind": "unit",
+      "file": "packages/features/storage/src/client/presigned-upload.ts",
+      "find": "    contentType: options.contentType ?? file.type,",
+      "replace": "    contentType: file.type,",
+      "cwd": "apps/web",
+      "test": "app/api/storage/presign/__tests__/presign-client.test.ts",
+      "pattern": "KB-73"
+    },
+    {
+      "name": "KB-73/79 L1 Upload drawn only in the empty state (KB-79)",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/audio-asset-grid.tsx",
+      "find": "          {onUpload && (\n            <Button\n              variant=\"outline\"",
+      "replace": "          {false && onUpload && (\n            <Button\n              variant=\"outline\"",
+      "cwd": "apps/web",
+      "test": "app/home/[account]/studio/[projectSlug]/audio-library/_components/__tests__/audio-library-client.test.tsx",
+      "pattern": "already holds an asset"
+    },
+    {
+      "name": "KB-73/79 L2 the list is held from the first render and ignores the server's (KB-79)",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/audio-library-client.tsx",
+      "edits": [
+        {
+          "find": "  const serverIds = new Set(initialAssets.map((asset) => asset.id));",
+          "replace": "  const [firstAssets] = useState(initialAssets);\n  const serverIds = new Set(firstAssets.map((asset) => asset.id));"
+        },
+        {
+          "find": "    ...initialAssets,\n  ].filter(",
+          "replace": "    ...firstAssets,\n  ].filter("
+        }
+      ],
+      "cwd": "apps/web",
+      "test": "app/home/[account]/studio/[projectSlug]/audio-library/_components/__tests__/audio-library-client.test.tsx",
+      "pattern": "follows the server list"
+    },
+    {
+      "name": "KB-73/79 L3 an upload is not shown until the server list catches up (KB-79)",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/audio-library-client.tsx",
+      "find": "    setState((prev) => ({ ...prev, added: [asset, ...prev.added] }));",
+      "replace": "    void asset;",
+      "cwd": "apps/web",
+      "test": "app/home/[account]/studio/[projectSlug]/audio-library/_components/__tests__/audio-library-client.test.tsx",
+      "pattern": "as soon as the dialog reports it"
+    }
+  ]
+}

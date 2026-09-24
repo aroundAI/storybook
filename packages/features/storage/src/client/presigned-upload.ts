@@ -99,18 +99,22 @@ export async function requestPresignedUpload(
  * @param file - File to upload
  * @param bucket - Storage bucket name
  * @param path - File path within bucket
+ * @param options.contentType - The type to declare, when the browser's name
+ *   for it is not one the bucket takes (`audio/x-m4a` for `audio/mp4`). The
+ *   PUT sends it too, from the returned headers. Defaults to `file.type`.
  * @returns Upload result with URL and path
  */
 export async function uploadWithPresignedUrl(
   file: File,
   bucket: string,
   path: string,
+  options: { contentType?: string } = {},
 ): Promise<PresignedUploadResult> {
   // Step 1: Get presigned URL from our API
   const presigned = await requestPresignedUpload({
     bucket,
     path,
-    contentType: file.type,
+    contentType: options.contentType ?? file.type,
     size: file.size,
     expiresIn: 900, // 15 minutes
   });

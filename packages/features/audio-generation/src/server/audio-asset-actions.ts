@@ -14,7 +14,12 @@ import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
 import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
-import { STORAGE_BUCKETS, isAudioLibraryType } from '@kit/storage/buckets';
+import { STORAGE_BUCKETS } from '@kit/storage/buckets';
+import {
+  AUDIO_LIBRARY_UPLOAD_TYPES,
+  type AudioLibraryUploadType,
+  isAudioLibraryPath,
+} from '@kit/storage/upload-paths';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -452,17 +457,6 @@ const GenerateSfxSchema = z.object({
   duration: z.number().min(1).max(22).default(5),
 });
 
-const UploadAudioSchema = z.object({
-  projectId: z.string().uuid(),
-  audioType: z.enum(['music', 'sfx']),
-  name: z.string().min(1).max(100),
-  fileUrl: z.string().url(),
-  filePath: z.string().optional(),
-  durationSeconds: z.number().positive().optional(),
-  fileSizeBytes: z.number().int().positive().optional(),
-  metadata: z.record(z.unknown()).optional(),
-});
-
 /**
  * Generate music using ElevenLabs Music API
  * Creates asset record, generates audio, uploads to storage, updates record
@@ -731,13 +725,48 @@ export const generateSfxAssetAction = enhanceAction(
   { schema: GenerateSfxSchema },
 );
 
+// =============================================================================
+// Uploaded files (KB-73)
+// =============================================================================
+
+const CreateUploadedAudioAssetSchema = z.object({
+  projectId: z.string().uuid(),
+  audioType: z.enum(['music', 'sfx']),
+  name: z.string().trim().min(1).max(100),
+  /** The key the browser PUT the file to, through the presign route */
+  path: z.string().min(1).max(200),
+  contentType: z.string().min(1).max(100),
+  fileSizeBytes: z.number().int().positive(),
+});
+
+const ASSET_COLUMNS = `
+  id, asset_id, project_id, audio_type, prompt_hash, prompt,
+  name, file_url, file_path, duration_seconds, file_size_bytes,
+  provider, provider_job_id, status, metadata,
+  usage_count, last_used_at, created_at, updated_at
+`;
+
 /**
- * Upload an audio file as an asset
+ * Record a file the browser has already stored, as a library asset.
+ *
+ * The file never passes through here: the dialog PUTs it to storage through
+ * the presign route, which signs only for project writers (KB-28) and binds
+ * the type and length (KB-38). Sending it as base64 in this body capped
+ * uploads at Next's 1 MB action limit, and the old action wrote it with the
+ * admin client before checking the project (KB-57, audio leg).
+ *
+ * So this takes a key, not a URL, and records it only if the caller writes
+ * the project, the key is in that project's own audio folder, and the object
+ * is there. The URL is built here from the key.
  */
-export const uploadAudioAssetAction = enhanceAction(
+const createUploadedAudioAsset = enhanceAction(
   async (data): Promise<AudioAsset> => {
     const logger = await getLogger();
-    const ctx = { name: 'audioAsset.upload', projectId: data.projectId };
+    const ctx = {
+      name: 'audioAsset.createUploaded',
+      projectId: data.projectId,
+      path: data.path,
+    };
 
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
@@ -746,10 +775,48 @@ export const uploadAudioAssetAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    logger.info({ ...ctx, name: data.name }, 'Creating uploaded audio asset');
+    const refuse = (reason: string, message: string): never => {
+      logger.warn({ ...ctx, userId: user.id, reason }, 'Upload not recorded');
+      throw new ActionRefusal(message);
+    };
 
-    // Create the asset with uploaded source
-    const promptHash = hashPrompt(normalizePrompt(data.name));
+    if (
+      !AUDIO_LIBRARY_UPLOAD_TYPES.includes(
+        data.contentType as AudioLibraryUploadType,
+      )
+    ) {
+      refuse('type', "This file type isn't supported.");
+    }
+
+    if (!(await authorizeProjectTarget(client, data.projectId))) {
+      refuse('not_writable', 'Project not found');
+    }
+
+    if (!isAudioLibraryPath(data.projectId, data.path)) {
+      refuse('foreign_path', 'Upload not found');
+    }
+
+    const bucket = STORAGE_BUCKETS.projectAssets;
+    const { getStorageAdapter } = await import('@kit/storage');
+    const storage = getStorageAdapter(getSupabaseServerAdminClient());
+
+    if (!(await storage.exists(bucket, data.path))) {
+      refuse('missing_object', 'Upload not found');
+    }
+
+    // The same upload saved twice (a retried request) is one asset
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existing } = await (client as any)
+      .from('audio_assets')
+      .select(ASSET_COLUMNS)
+      .eq('project_id', data.projectId)
+      .eq('file_path', data.path)
+      .is('deleted_at', null)
+      .limit(1);
+
+    if (existing?.[0]) {
+      return mapRowToAudioAsset(existing[0]);
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: row, error } = await (client as any)
@@ -757,106 +824,42 @@ export const uploadAudioAssetAction = enhanceAction(
       .insert({
         project_id: data.projectId,
         audio_type: data.audioType,
-        prompt_hash: promptHash,
+        prompt_hash: hashPrompt(normalizePrompt(data.name)),
         prompt: data.name, // For uploads, name is the "prompt"
         name: data.name,
-        file_url: data.fileUrl,
-        file_path: data.filePath,
-        duration_seconds: data.durationSeconds,
+        file_url: storage.getPublicUrl(bucket, data.path),
+        file_path: data.path,
         file_size_bytes: data.fileSizeBytes,
         provider: 'upload',
+        source: 'uploaded',
         status: 'completed',
-        metadata: { ...data.metadata, source: 'uploaded' },
+        metadata: { source: 'uploaded', contentType: data.contentType },
       })
       .select()
       .single();
 
     if (error || !row) {
       logger.error({ ...ctx, error }, 'Failed to create uploaded audio asset');
-      throw new Error('Failed to create audio asset');
+
+      // Nothing will point at the file; it is in this project's own folder,
+      // checked above, so removing it touches nothing else
+      await storage.delete(bucket, data.path).catch((deleteError: unknown) => {
+        logger.error(
+          { ...ctx, error: deleteError },
+          'Failed to delete an unrecorded upload',
+        );
+      });
+
+      throw new ActionRefusal("Couldn't save this upload.");
     }
 
     logger.info({ ...ctx, assetId: row.id }, 'Uploaded audio asset created');
 
     return mapRowToAudioAsset(row);
   },
-  { schema: UploadAudioSchema },
+  { schema: CreateUploadedAudioAssetSchema },
 );
 
-// =============================================================================
-// Upload File Action (for client components)
-// =============================================================================
-
-const UploadAudioFileSchema = z.object({
-  projectId: z.string().uuid(),
-  audioType: z.enum(['music', 'sfx']),
-  name: z.string().min(1).max(100),
-  fileBase64: z.string().min(1),
-  fileName: z.string().min(1),
-  contentType: z.string().min(1),
-  fileSizeBytes: z.number().int().positive(),
-});
-
-/**
- * Upload an audio file as an asset (accepts base64 data)
- * Use this from client components instead of directly accessing storage
- */
-const uploadAudioFileAndCreateAsset = enhanceAction(
-  async (data): Promise<AudioAsset> => {
-    const logger = await getLogger();
-    const ctx = { name: 'audioAsset.uploadFile', projectId: data.projectId };
-
-    const client = getSupabaseServerClient();
-    const { data: user, error: authError } = await requireUser(client);
-
-    if (authError || !user) {
-      throw new Error('Authentication required');
-    }
-
-    // Stored on a public domain with this Content-Type, so only audio.
-    if (!isAudioLibraryType(data.contentType)) {
-      throw new ActionRefusal("This file type isn't supported.");
-    }
-
-    logger.info(
-      { ...ctx, name: data.name, size: data.fileSizeBytes },
-      'Uploading audio file',
-    );
-
-    // Convert base64 to Buffer
-    const buffer = Buffer.from(data.fileBase64, 'base64');
-
-    // Upload to storage
-    const { getStorageAdapter } = await import('@kit/storage');
-    const storage = getStorageAdapter(getSupabaseServerAdminClient());
-
-    const filePath = `${data.audioType}/${Date.now()}-${data.fileName.replace(/\s+/g, '_')}`;
-
-    const uploadResult = await storage.upload(
-      STORAGE_BUCKETS.audioAssets,
-      filePath,
-      buffer,
-      { contentType: data.contentType },
-    );
-
-    logger.info(
-      { ...ctx, url: uploadResult.url },
-      'File uploaded, creating asset record',
-    );
-
-    // Create the asset record
-    return uploadAudioAssetAction({
-      projectId: data.projectId,
-      audioType: data.audioType,
-      name: data.name,
-      fileUrl: uploadResult.url,
-      filePath,
-      fileSizeBytes: data.fileSizeBytes,
-    });
-  },
-  { schema: UploadAudioFileSchema },
-);
-
-export const uploadAudioFileAndCreateAssetAction = returnRefusals(
-  uploadAudioFileAndCreateAsset,
+export const createUploadedAudioAssetAction = returnRefusals(
+  createUploadedAudioAsset,
 );

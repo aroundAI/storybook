@@ -2838,7 +2838,12 @@ CSV and PDF (it had stored `text/html`).
 ## KB-57 — Audio, report and shorts upload paths have no storage-level project check on R2
 
 **Found:** KB-28 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
-**Open.**
+**Open** for reports; the shorts path was removed by KB-55 (#332).
+**Audio library leg fixed** in #350 (KB-73): reproduced 2026-09-24 — any
+signed-in user's call stored a file in the public `audio-assets` prefix,
+with the admin client, before the project was checked. The library now
+uploads through the presign route (project writers only) and records only a
+key inside its own project's folder.
 
 The audio, report and shorts upload paths have no storage-level project check on R2.
 
@@ -3112,10 +3117,52 @@ every canon string at the tool boundary, as sources are.
 
 ## KB-73 — The audio library sends files as base64 in a server-action body
 
-**Found:** KB-55 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
-**Open.**
+> **Fixed (2026-09-24), #350.** The dialog uploads straight to storage
+> through the presign route and a small action records the key; no file
+> bytes cross a server action. Design and reproduction:
+> `specs/plans/KB-73-79-83-edd.md`.
 
-The audio library sends base64 in a server-action body, and `next.config` sets no `bodySizeLimit` (1 MB default) while the dialog allows 50 MB. Unverified.
+**Severity:** Medium — the library could not take a typical track.
+**Found:** KB-55 (2026-09-23). **Reproduced** 2026-09-24 (audio-lib).
+
+The dialog read the file into base64 and sent it as a server-action argument
+(`upload-audio-dialog.tsx:118-139`). Next refuses an action body over 1 MB
+(`bodySizeLimit` is unset), so anything over about 750 KB failed, while the
+dialog promised 50 MB; a Lambda would refuse 6 MB regardless.
+
+### Reproduced (dev server, local stack, the real dialog, 2026-09-24)
+
+| Upload | Result |
+|---|---|
+| 2 MB MP3, team owner | Dialog: "Failed to upload audio"; no row. Server: `Error: Body exceeded 1 MB limit.`, `POST …/audio-library 500` |
+| 512-byte MP3, **another account's project id** substituted in the action POST | `POST …/storage/v1/object/audio-assets/music/…-planted.mp3 200`, **then** the `audio_assets` insert refused (42501). The file stayed: the action wrote storage with the admin client, at a key naming no project, before any project check (KB-57's audio leg) |
+
+### Fix
+
+- The dialog builds `projects/{projectId}/assets/audio/<ts>-<rand>.<ext>`
+  (`audioLibraryUploadPath` in `@kit/storage/upload-paths`) and PUTs the file
+  through `uploadWithPresignedUrl`. The presign route already accepts that
+  path shape, the audio types and 50 MB, and checks `can_write_project_storage`
+  (KB-28) and signs type and length on R2 (KB-38): no bucket, path shape or
+  MIME type was added. Browser names such as `audio/x-m4a` are declared as
+  the listed `audio/mp4` (`audioLibraryUploadType`).
+- `createUploadedAudioAssetAction` takes a key, not bytes or a URL. It refuses
+  a caller who cannot write the project (`authorizeProjectTarget`), a key
+  outside that project's audio folder, and a key with no stored object; it
+  builds the URL from the key, returns the existing row for a repeated save,
+  and deletes the file if the row cannot be saved. Uploads are now recorded
+  with `source = 'uploaded'` (they were `'generated'`).
+- Removed: `uploadAudioFileAndCreateAssetAction` and `uploadAudioAssetAction`
+  (which accepted any URL and had no other caller).
+- The dialog shows the presign route's own refusal ("You do not have
+  permission to upload to this project", "File is 60 MB; …").
+
+### Acceptance criteria
+
+- [x] A 2 MB file uploads through the real dialog, on a dev server and a production build (`apps/e2e/tests/storage/media-storage.spec.ts`, "the owner uploads two tracks in a row, one of 2 MB")
+- [x] No file bytes in a server action: the dialog reads none and no `@kit/audio-generation` action schema carries them (`apps/web/app/api/storage/__tests__/audio-library-no-action-bytes.test.ts`, red on the old dialog)
+- [x] A project outsider's upload stores nothing (E2E "a stranger's upload aimed at another account's project stores nothing"; unit `audio-asset-upload.test.ts`)
+- [x] Each check in the save action seen red with it removed (`tooling/mutation-guards/kb-73-79.json`, U1–U7)
 
 ---
 
@@ -3275,11 +3322,16 @@ the continuity validator, which may be what the owner wants.
 
 ## KB-79 — The audio library can take only one upload
 
+> **Fixed (2026-09-24), #350**, with KB-73. The header always offers
+> Upload, and the list follows the server's props, with an upload shown as
+> soon as the dialog returns it.
+
 **Severity:** Low — the first upload works; every later one has no way in.
 **Found:** KB-55, reproduced by driving the page (Playwright, dev server,
 2026-09-23; screenshot of the library after one upload:
 `$SP/kb55/verify/evidence-green/kb55-02-library-after-upload.png`, attached to
-the KB-55 PR). **Open.**
+the KB-55 PR). Reproduced again 2026-09-24: after one upload,
+`getByRole('button', { name: 'Upload' })` counts 0.
 
 - The **Upload** button is rendered only in the empty state
   (`apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/audio-asset-grid.tsx:142`).
@@ -3296,9 +3348,9 @@ and reloads; it cannot assert the second submission until this is fixed.
 
 ### Acceptance criteria
 
-- [ ] An Upload control is available when the library is not empty
-- [ ] A new upload appears in the list without a reload
-- [ ] The E2E drives two uploads in a row and sees both
+- [x] An Upload control is available when the library is not empty (`audio-asset-grid.tsx`, `data-test="audio-library-upload"`; `audio-library-client.test.tsx`, red on the old grid)
+- [x] A new upload appears in the list without a reload (`audio-library-client.tsx`; unit, and the E2E asserts each card before any reload)
+- [x] The E2E drives two uploads in a row and sees both (`media-storage.spec.ts`; mutation guards L1–L3)
 
 ---
 
@@ -3446,6 +3498,31 @@ anything else as a value.
 
 ---
 
+## KB-95 — The audio library's Delete hides the card and deletes nothing
+
+**Severity:** Low — the user is told something false; nothing is lost.
+**Found:** KB-79 (2026-09-24). **Reproduced** 2026-09-24 (Playwright, dev
+server): an asset seeded in a project, Delete chosen from its card menu. The
+card disappears; the row's `deleted_at` stays `null`; after a reload the
+card is back. **Open.**
+
+`AudioLibraryClient.handleDelete` only hides the id locally
+(`apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/audio-library-client.tsx`,
+`// TODO: Call delete action`). There is no delete action for `audio_assets`.
+
+### Proposed fix
+
+A soft-delete action gated by `can_write_project`, which also removes an
+uploaded file from its own folder (`isAudioLibraryPath`), with a
+confirmation dialog; or remove the menu item until it exists.
+
+### Acceptance criteria
+
+- [ ] After Delete and a reload, the asset is gone and its row is soft-deleted (E2E, red first)
+- [ ] A project viewer cannot delete
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
@@ -3488,6 +3565,9 @@ anything else as a value.
 | KB-47 (part) | The voice queue: its three producers sent jobs the service-role worker ran on the named account's key; they now authorise, and the queue requires the target. The publish queue is still open | #337 |
 | KB-30 | Every YouTube upload declared "not made for kids" and category 22, which nobody chose, on all four upload paths; each channel's audience and category are now the creator's answer, asked for on the first publish | #341 |
 | KB-39, KB-53, KB-54 | No intro video and no avatar could ever be uploaded (paths the presign route refuses; the avatar bucket was not signed and its policy raised on the file name); replaced intros and thumbnails left their old files, and fixing that naively would have let a writer delete another project's files | #340 |
+| KB-73 | The audio library sent files as base64 in a server-action body, so anything over ~750 KB failed; it now uploads straight to storage through the presign route | #350 |
+| KB-79 | The audio library took one upload: Upload was drawn only in the empty state, and a new asset showed only after a reload | #350 |
+| KB-57 (part) | The audio library stored any signed-in user's file with the admin client, at a key naming no project, before checking the project | #350 |
 
 ---
 
