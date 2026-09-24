@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
+import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { STORAGE_BUCKETS, isAudioLibraryType } from '@kit/storage/buckets';
 import { requireUser } from '@kit/supabase/require-user';
@@ -480,6 +481,16 @@ export const generateMusicAssetAction = enhanceAction(
 
     logger.info({ ...ctx, prompt: data.prompt }, 'Starting music generation');
 
+    // Spending the project's key needs write access: a teammate who can only
+    // read the project can read the key row too (KB-46)
+    if (!(await authorizeProjectTarget(client, data.projectId))) {
+      logger.warn(
+        { ...ctx, userId: user.id, reason: 'not_writable' },
+        'Music generation refused',
+      );
+      throw new ActionRefusal('Project not found');
+    }
+
     // Check for existing asset with same prompt (deduplication)
     const { asset, isNew } = await findOrCreateAudioAsset({
       projectId: data.projectId,
@@ -608,6 +619,16 @@ export const generateSfxAssetAction = enhanceAction(
     }
 
     logger.info({ ...ctx, prompt: data.prompt }, 'Starting SFX generation');
+
+    // Spending the project's key needs write access: a teammate who can only
+    // read the project can read the key row too (KB-46)
+    if (!(await authorizeProjectTarget(client, data.projectId))) {
+      logger.warn(
+        { ...ctx, userId: user.id, reason: 'not_writable' },
+        'SFX generation refused',
+      );
+      throw new ActionRefusal('Project not found');
+    }
 
     // Check for existing asset with same prompt
     const { asset, isNew } = await findOrCreateAudioAsset({

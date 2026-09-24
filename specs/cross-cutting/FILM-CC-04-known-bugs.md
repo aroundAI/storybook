@@ -2442,40 +2442,92 @@ LinkedIn have no revoke at all — KB-25.
 
 ## KB-46 — Voice preview spends a public episode owner's ElevenLabs key
 
-**Severity:** High if confirmed — any signed-in user spends another account's
-vendor credit. **Found:** by reading, during KB-31 (2026-09-23). **Not
-reproduced.** **Open.**
+**Severity:** Medium, not the recorded High. A stranger could not spend the key,
+but **a teammate who can only read a project could**. **Found:** by reading,
+during KB-31 (2026-09-23). **Reproduced** 2026-09-24 against the local DB (one
+transaction per role, rolled back). **Fixed** in #PR_NUMBER, together with the voice part
+of KB-47 and every other synchronous ElevenLabs spend in `@kit/audio-generation`.
 
-`generateVoiceFromTextAction`
-(`packages/features/audio-generation/src/server/voice-actions.ts:627`)
-authorises by reading the episode through the user's client. The public-sharing
-policy on `episodes` returns the row for **every signed-in user** when the
-project is public or unlisted, so the read proves nothing. The action then
-loads that account's ElevenLabs key and budget and generates audio with it.
-The same "readable is not writable" shape KB-31 fixed for LLM jobs.
+The entry as first written was **half wrong**. The preview action does authorise
+by reading the episode through the user's client, and a public episode is
+readable by everyone. But the key is read through the user's client too, and
+`external_api_keys` RLS returns nothing to a stranger. The action stopped at
+"ElevenLabs API key not configured" before calling the vendor. Had the key read
+passed, the `generation_jobs` insert would have refused (42501). **Two
+unrelated policies were doing the authorisation by accident.** Inside a team
+they do nothing: every role on the account reads the key row, project viewers
+included.
 
-**Proposed fix:** authorise with `can_write_project` on the episode's project,
-as `@kit/prompt-engine/llm-job-target` does, before reading the key.
+| Step, in the action's order | owner | stranger, public project | teammate, no project role | project viewer |
+|---|---|---|---|---|
+| episode readable | 1 | **1** | 1 | 1 |
+| dialogue line readable | 1 | 0 | **1** | **1** |
+| `external_api_keys` row readable (user client) | 1 | **0** | 1 | 1 |
+| `can_write_project` | true | false | false | false |
+| `generation_jobs` insert (preview, sync line) | passes RLS | 42501 | 42501 | 42501 |
+| `dialogue_lines` update | 1 row | 0 rows | **0 rows, no error** | **0 rows, no error** |
+| `batch_generation_jobs` insert | ok | 42501 | **ok** | **ok** |
+
+**Where a non-writer did spend the key** (all nine sites, fixed):
+
+- **The voice queue** (KB-47's voice part): `generateDialogueVoiceAsyncAction`,
+  `batchGenerateDialogueAction`, `retryFailedDialogueAction`. The line's status
+  update matched 0 rows unchecked, then the job was queued, and the voice
+  worker (service-role key) decrypted the payload account's key, called
+  ElevenLabs and wrote the audio onto the line. The retry also billed whatever
+  account the batch-job row named.
+- **Synchronous spends by a teammate who can only read**: timeline SFX
+  (`sfx-actions.ts`), timeline music (`elevenlabs-music-actions.ts`), library
+  music and library SFX (`audio-asset-actions.ts`). In the unit harness each one
+  generated for a project the caller could not write to.
+- **Preview and the sync line**: blocked for everyone who could not write, but
+  only by the `generation_jobs` policy. They now ask explicitly.
+
+**Fix:** every one asks `can_write_project` as the caller, through KB-31's
+`authorizeEpisodeTarget` / `authorizeProjectTarget`, before the key is read or
+anything is written. A refusal is "not found". `queueVoiceJob` and
+`queueVoiceJobs` now require that target: the account is stamped from it, and a
+job for any other episode throws before sending. A future voice producer cannot
+compile without authorising.
+
+**Swept and left as they are:** `startVoiceCloneAction` has the same shape
+(its `voice_consent` insert allows any account member), but nothing in `apps/`
+imports it, so no action id exists for it. Lip sync and the provider factory's
+`createAccount*Provider` have no callers. The ElevenLabs connection actions
+(models, test, account info) are free vendor reads. The settings key list
+shows members the last four characters only.
+
+### Acceptance criteria
+
+- [x] Unit, red first: all five voice actions refuse a line or episode the caller can read but not write, before the key, any write or any SQS send. Red on `main` 7 of 11 (`packages/features/audio-generation/__tests__/voice-authorization.test.ts`)
+- [x] Unit, red first: the four SFX and music actions refuse a project the caller cannot write to, before the asset row, the key or the vendor. Red on `main` 4 of 8 (`__tests__/audio-spend-authorization.test.ts`)
+- [x] Voice jobs are billed to the authorised episode's account, and a job naming another episode throws (`voice-queue-helper.ts` `voiceMessageForTarget`)
+- [x] Mutation guards `tooling/mutation-guards/kb-46.json`, 11 of 11 RED
 
 ---
 
 ## KB-47 — The voice, publish and render queues were not surveyed for caller-supplied ids
 
-**Severity:** unknown until surveyed; High if any worker trusts a payload id
-the way the LLM worker did. **Found:** KB-31 (2026-09-23) surveyed only
-`queueLlmJob`. **Not reproduced.** **Open.**
+**Severity:** High if any worker trusts a payload id the way the LLM worker did.
+**Found:** KB-31 (2026-09-23) surveyed only `queueLlmJob`. **Voice part fixed**
+in #PR_NUMBER (KB-46). **Publish part open.**
 
 These producers send SQS messages to workers that run on the service-role key,
 and were not checked for an authorising read before the send:
 
-- `packages/features/audio-generation/src/server/voice-queue-helper.ts:90`
-- `packages/features/publishing/src/server/publish-actions.ts:960`, `:1039`
+- ~~`packages/features/audio-generation/src/server/voice-queue-helper.ts:90`~~ **Fixed
+  (KB-46, #PR_NUMBER).** Reproduced: a project viewer or a teammate with no
+  project role could queue voice for a line they cannot edit, on the team's key.
+  The worker writes the audio. All three producers now authorise with
+  `can_write_project`, and the queue requires the target.
+- `packages/features/publishing/src/server/publish-actions.ts:960`, `:1039`: **open, not surveyed**
 - ~~`packages/features/edit-suite/src/server/render-actions.ts:146`, `:226`~~ — removed with the
   Edit Suite (FILM-607, #329). It authorised by account membership, and an
   RLS update matching no row still sent the SQS message (KB-32's report)
 
-**Proposed fix:** list each producer with the read that authorises its target,
-as KB-31 did; give each queue a typed target like `queueLlmJob`'s.
+**Proposed fix (publish):** list each producer with the read that authorises its
+target, as KB-31 did; give the queue a typed target like `queueLlmJob`'s and
+`queueVoiceJob`'s.
 
 ---
 
@@ -3190,6 +3242,59 @@ Spec `evidence` and `reason` citations name a `path:line`, and nothing checks th
 
 ---
 
+## KB-83 — Voice spend is never counted against the monthly budget
+
+**Severity:** Medium: the budget cap cannot stop spending it never sees.
+**Found:** KB-46 (2026-09-24); **reproduced** against the local DB: every role,
+the owner included, gets 42501 calling `increment_account_usage`. **Open.**
+
+`increment_account_usage` is granted to `service_role` only
+(`apps/web/supabase/migrations/20251211090557_add-account-budget-tracking.sql:53`).
+The preview and single-line voice actions call it with the user's client
+(`voice-actions.ts`, then `voice-queries.ts` `incrementAccountUsage`), which
+logs the 42501 and carries on. So their spend never reaches the account's usage
+total, and `check_account_budget` keeps answering yes.
+
+### Proposed fix
+
+Call it with the admin client after the action has authorised the target
+(KB-46's `can_write_project` check now runs first), or grant it to
+`authenticated` behind an access check inside the function. Either way, add a
+pgTAP case for who may call it.
+
+### Acceptance criteria
+
+- [ ] A completed preview raises the account's recorded usage; a unit or pgTAP test red on `main`
+
+---
+
+## KB-84 — Every role on an account reads its vendor keys' ciphertext
+
+**Severity:** Low while the encryption key stays server-side; the same shape as
+KB-43 for platform tokens. **Found:** KB-46 (2026-09-24); **reproduced**
+against the local DB: a team member with no project role and a project viewer
+each read the account's `external_api_keys` row, `encrypted_key` included.
+**Open.**
+
+`external_api_keys_read` is `has_account_access(account_id)`, and
+`authenticated` holds SELECT on every column. Any member can fetch every
+provider's encrypted key through PostgREST. The app itself reads the column
+only to decrypt server-side, or to show the last four characters.
+
+### Proposed fix
+
+Revoke column SELECT on `encrypted_key` from `authenticated`. Read it with the
+service role, after an explicit access check, in the key helpers
+(`project-audio-settings.ts`, `voice-profile-actions.ts`,
+`voice-clone-actions.ts`, `config-loader.ts`, `elevenlabs-connection.actions.ts`,
+the settings key list). Add a pgTAP test listing the columns a member may read.
+
+### Acceptance criteria
+
+- [ ] pgTAP: a member selecting `encrypted_key` is refused; the other columns still read
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
@@ -3228,6 +3333,8 @@ Spec `evidence` and `reason` citations name a `path:line`, and nothing checks th
 | KB-75 | The Unit Tests job's mutation guards outgrew its timeout, so it was cancelled on `main` and on PRs; the unit guards now run sharded | #324 |
 | KB-80 | Specs kept open items waiting on fixed bugs and finished specs (FILM-305, FILM-502, FILM-503 on KB-14); a guard now fails any `closed_by` that names finished work | #328 |
 | KB-82 | KB-75 had no record, INDEX linked the spikes to files that no longer exist, and FILM-1728 said the lambdas were untyped | this batch-records PR (`docs/batch-records-2026-09-23`) |
+| KB-46 | A teammate who could only read a project spent its ElevenLabs key: voice, SFX and music generation authorised by a readable row, not `can_write_project`. The public-project stranger in the original entry was blocked, by accident | #PR_NUMBER |
+| KB-47 (part) | The voice queue: its three producers sent jobs the service-role worker ran on the named account's key; they now authorise, and the queue requires the target. The publish queue is still open | #PR_NUMBER |
 
 ---
 

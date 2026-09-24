@@ -3,8 +3,8 @@ title: "Retire the Edit Suite"
 phase: 6
 phase_name: "Edit Suite"
 category: feature
-status: PARTIAL
-audited: "2026-09-23"
+status: DONE
+audited: "2026-09-24"
 effort: M
 dependencies:
   - spec_id: "KB-28"
@@ -52,12 +52,8 @@ acceptance_criteria:
     met: true
     evidence: "Types regenerated (only the five functions leave); typecheck, lint, unit, full pgTAP and a sandboxed `build:test` green; the build's route and server-reference manifests have no `edit-suite` entry"
   - text: "FILM-601 and FILM-602 RETIRED with a `retirement:` block; PHASE-14 marked retired; KB-32, KB-40, KB-62, KB-64, KB-65, KB-67, KB-68 and KB-69 resolved by removal; KB-47's render producer struck; INDEX.md rows and counts updated"
-    met: false
-    reason: "all but one: KB-47's entry exists only on #315 (KB-31), so its render-producer bullet cannot be struck here. The shared-record edits themselves (FILM-CC-04, INDEX.md) are in the lead's batch records PR"
-remaining:
-  - criterion: "KB-47's render-producer bullet struck"
-    reason: "KB-47's entry is added by #315 (KB-31), not yet merged; strike `render-actions.ts` from it after that PR merges"
-    closed_by: "KB-47"
+    met: true
+    evidence: "The retirements, KB resolutions and INDEX counts are in the lead's batch records PR (#335). KB-47's render-producer bullet is struck in `specs/cross-cutting/FILM-CC-04-known-bugs.md` (the `render-actions.ts` line, marked removed with FILM-607, #329); confirmed during KB-46, 2026-09-24"
 open_questions: []
 feature:
   database:

@@ -9,6 +9,7 @@
 import { z } from 'zod';
 
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
+import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -125,6 +126,22 @@ export const generateSfxAction = enhanceAction(
       maxRequests: 10,
       windowMs: 60_000,
     });
+
+    // Spending the project's key needs write access: a teammate who can only
+    // read the project can read the key row too (KB-46)
+    if (!(await authorizeProjectTarget(client, data.projectId))) {
+      logger.warn(
+        { ...ctx, userId: user.id, reason: 'not_writable' },
+        'SFX generation refused',
+      );
+      return {
+        assetId: '',
+        prompt: data.prompt,
+        status: 'failed',
+        error: 'Project not found',
+        wasReused: false,
+      };
+    }
 
     // 1. Check if asset exists (deduplication)
     const { asset, isNew } = await findOrCreateAudioAsset({
