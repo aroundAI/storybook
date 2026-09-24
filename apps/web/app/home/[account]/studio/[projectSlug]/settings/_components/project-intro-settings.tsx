@@ -10,6 +10,7 @@ import {
   getProjectIntrosAction,
   uploadProjectIntroAction,
 } from '@kit/episodes/server';
+import { refusalMessage } from '@kit/next/action-result';
 import { UploadRefusal } from '@kit/storage/client';
 import {
   PROJECT_ASSETS_BUCKET,
@@ -385,18 +386,31 @@ function AddIntroDialog({
 
       if (duration > 60) {
         toast.error('Intro video should be 60 seconds or less');
-        setIsUploading(false);
         return;
       }
 
       setUploadProgress(20);
 
-      // 2. Upload the file straight to storage via a presigned URL
-      const uploadResult = await uploadWithPresignedUrl(
-        selectedFile,
-        PROJECT_ASSETS_BUCKET,
-        projectIntroPath(projectId, language, selectedFile.type),
-      );
+      // 2. Upload the file straight to storage via a presigned URL. Its
+      // refusals are the presign route's own words, not a server action's.
+      let videoUrl: string;
+
+      try {
+        const uploadResult = await uploadWithPresignedUrl(
+          selectedFile,
+          PROJECT_ASSETS_BUCKET,
+          projectIntroPath(projectId, language, selectedFile.type),
+        );
+        videoUrl = uploadResult.url;
+      } catch (error) {
+        console.error('Upload failed:', error);
+        toast.error(
+          error instanceof UploadRefusal
+            ? error.message
+            : 'Failed to upload intro video',
+        );
+        return;
+      }
 
       setUploadProgress(70);
 
@@ -405,7 +419,7 @@ function AddIntroDialog({
         projectId,
         language: language.toLowerCase(),
         languageLabel: languageLabel.trim() || undefined,
-        videoUrl: uploadResult.url,
+        videoUrl,
         durationSeconds: duration,
         fileName: selectedFile.name,
         fileSizeBytes: selectedFile.size,
@@ -425,12 +439,8 @@ function AddIntroDialog({
         toast.error(result.error || 'Failed to save intro');
       }
     } catch (error) {
-      console.error('Upload failed:', error);
-      toast.error(
-        error instanceof UploadRefusal
-          ? error.message
-          : 'Failed to upload intro video',
-      );
+      console.error('Saving the intro failed:', error);
+      toast.error(refusalMessage(error, 'Failed to save intro'));
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
