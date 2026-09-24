@@ -107,6 +107,9 @@ test.describe('Account pictures (KB-53)', () => {
 
     if (evidence) {
       await page.reload();
+      await expect(
+        page.getByText('Upload a Profile Picture').first(),
+      ).toBeVisible();
       await expect(page.locator(`img[src="${first}"]`).first()).toBeVisible();
       await page.screenshot({ path: `${OUT}/kb53-01-avatar-first-upload.png` });
     }
@@ -152,6 +155,9 @@ test.describe('Account pictures (KB-53)', () => {
 
     if (evidence) {
       await page.reload();
+      await expect(
+        page.getByText('Upload a Profile Picture').first(),
+      ).toBeVisible();
       await expect(page.locator(`img[src="${url}"]`).first()).toBeVisible();
       await page.screenshot({ path: `${OUT}/kb53-03-team-picture.png` });
     }
