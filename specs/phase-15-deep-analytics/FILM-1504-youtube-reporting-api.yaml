@@ -4,7 +4,7 @@ phase: 15
 phase_name: "Deep Analytics Discipline"
 category: feature
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-24"
 effort: L
 dependencies:
   - spec_id: "FILM-1501"
@@ -40,7 +40,7 @@ acceptance_criteria:
     reason: "unverified — a manual check against YouTube Studio on a real channel, by the owner after the FILM-1503 cutover. It also settles the CTR unit: Google's definition says both 'percentage' and 'clicks divided by impressions'; the ingest assumes a ratio and refuses any report with a CTR above 1"
 remaining:
   - criterion: "One video/day cross-checked against YouTube Studio"
-    reason: "Needs a real channel's reports and Studio side by side, which only the owner can do, and only once production ClickHouse exists (FILM-1503 cutover). Everything else is verified against fixtures, the local stack and the production bundle"
+    reason: "Needs a real channel's reports and Studio side by side, which only the owner can do, and only once production ClickHouse exists (FILM-1503 cutover). Check engaged views on the same video/day, and that `engaged_views` is mostly non-null there (a high null share means the sync's `engagedViews` query is refused — FILM-CC-04 KB-50). Everything else is verified against fixtures, the local stack and the production bundle"
     closed_by: "owner"
 open_questions: []
 feature:
@@ -52,7 +52,8 @@ feature:
       - "channel_daily"
       - "channel_reach_daily"
       - "video_metrics"
-    columns_added: []
+    columns_added:
+      - "video_metrics.engaged_views"
   queries: []
   actions:
     - name: "runReportingIngestJob"
@@ -91,12 +92,21 @@ notes: |
     `createTime`s (the job-creation backfill), and a failed save is reported.
   - **CTR unit guard.** A reach report with any CTR above 1 is refused and
     logged, watermark held, until the unit is confirmed against a real report.
-  - **Follow-up, not done here:** engaged views for *matched* videos. The
-    core report carries them and they are parsed, then dropped;
-    `video_metrics` has no column, and adding one needs to be nullable —
-    the hourly Analytics-API sync does not write it, so `DEFAULT 0` would be
-    a default read as a measurement.
-  - **Deploy order:** ClickHouse migration 011 before the app.
+  - **Engaged views for matched videos (KB-50, 2026-09-24).** They were
+    parsed, then dropped. ClickHouse migration 012 adds
+    `video_metrics.engaged_views Nullable(UInt64)`, filled by **both**
+    writers: the Reporting ingest from the CSV, and the Analytics-API sync and
+    backfill from `engagedViews` in a query of its own. A column only the
+    report filled would read NULL: the sync rewrites each day after the report
+    lands and the later row replaces the whole row (measured; KB-94 is the same
+    clobber for `dislikes`, `subscribers_lost`, `avg_view_percentage`). NULL
+    means not reported: before 2025-04-24, a report version without the
+    column, a refused query. Guarded by `verify-queries.ts` (both write
+    orders) and the local-stack test.
+  - **Report-job RLS (KB-51, 2026-09-24).** `youtube_report_jobs` has a pgTAP
+    test (`youtube-report-jobs-rls.test.sql`), and `anon` no longer holds
+    Supabase's default grant on it.
+  - **Deploy order:** ClickHouse migrations 011 and 012 before the app.
 
   ## 1. Overview
 
