@@ -444,7 +444,7 @@ acceptance_criteria:
     evidence: "apps/web/supabase/migrations/20260128225704_canon_management.sql:45"
   - text: "RLS policies applied and tested"
     met: true
-    evidence: "apps/web/supabase/tests/database/canon-write-scope.test.sql:170 — reads, inserts, updates, deletes and privileges for every role on the other canon tables (KB-76/77, policies in apps/web/supabase/migrations/20260924075728_kb76-77-63-canon-write-scope.sql); `immutable_events` in `apps/web/supabase/tests/database/immutable-events-immutable.test.sql` (KB-17)"
+    evidence: "apps/web/supabase/tests/database/canon-write-scope.test.sql:170 — reads, inserts, updates, deletes and privileges for every role on the other canon tables (KB-76/77, policies in apps/web/supabase/migrations/20260924181028_kb76-77-63-canon-write-scope.sql); `immutable_events` in `apps/web/supabase/tests/database/immutable-events-immutable.test.sql` (KB-17)"
   - text: "TypeScript types generated: `pnpm supabase:web:typegen`"
     met: true
     evidence: "packages/supabase/src/database.types.ts:2851"

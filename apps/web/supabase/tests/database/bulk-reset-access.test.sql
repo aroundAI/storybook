@@ -2,7 +2,7 @@ begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
 -- KB-27 (sibling). A fixed plan, so a truncated run fails as a plan mismatch.
-select plan(16);
+select plan(20);
 
 -- bulk_reset_episodes_to_stage is SECURITY DEFINER and deletes story,
 -- screenplay, shots, audio and canon. Before KB-27 it checked only that the
@@ -20,6 +20,13 @@ select plan(16);
 --       soft-deleted with a canon event.
 --   S   kb27b_solo's personal project, episode F with a canon event.
 --   kb27b_stranger has only a personal account.
+--
+-- E1 also has a shot, which only the screenplay/storyboard branch deletes
+-- without touching canon: B7 is the case where nothing but this function's
+-- own write check stands between a non-writer and the delete (KB-76/77 made
+-- remove_episode_from_threads_touched check its caller too, so the draft and
+-- story branches now fail twice over, and B5 alone cannot tell which check
+-- refused).
 --
 -- Each call's result is stashed with set_config and read back as postgres.
 
@@ -63,6 +70,9 @@ values
   ('27280000-0000-4000-8000-000000000001', 'death', 'e1:canon', '27280000-0000-4000-8000-000000000002', 1, 1, 'E1 canon'),
   ('27280000-0000-4000-8000-000000000001', 'death', 'e2:canon', '27280000-0000-4000-8000-000000000003', 1, 2, 'E2 canon'),
   ('27280000-0000-4000-8000-000000000005', 'death', 'f:canon', '27280000-0000-4000-8000-000000000006', 1, 1, 'F canon');
+
+insert into public.shots (id, episode_id, sequence_number, prompt)
+values ('27280000-0000-4000-8000-000000000007', '27280000-0000-4000-8000-000000000002', 1, 'E1 shot');
 
 create or replace function pg_temp.result() returns jsonb language sql as $$
   select current_setting('kb27.result')::jsonb;
@@ -110,7 +120,22 @@ select set_config('kb27.result', public.bulk_reset_episodes_to_stage(
 
 set local role postgres;
 select is(jsonb_array_length(pg_temp.result()->'errors'), 1, 'B5: a role on the account without a project row is refused');
+select is(pg_temp.result()->'errors'->0->>'error', 'You cannot reset 1 of these episodes',
+          'B5: by the reset''s own write check, before anything is deleted');
 select is(pg_temp.events('e1:canon'), 1::bigint, 'B5: the canon event survives');
+
+-- ==================================
+-- B7: the same team member, to a stage that deletes shots and no canon
+-- ==================================
+select makerkit.authenticate_as('kb27b_teammate');
+select set_config('kb27.result', public.bulk_reset_episodes_to_stage(
+  array['27280000-0000-4000-8000-000000000002']::uuid[], 'storyboard', '27280000-0000-4000-8000-00000000000a')::text, true);
+
+set local role postgres;
+select is(pg_temp.result()->>'reset_count', '0', 'B7: a role on the account without a project row resets nothing to storyboard');
+select is((select count(*) from public.shots where id = '27280000-0000-4000-8000-000000000007'), 1::bigint,
+          'B7: the episode''s shot survives');
+select isnt(pg_temp.e1_story(), null, 'B7: and its story');
 
 -- ==================================
 -- B6: a project writer naming a different account than the episode's
