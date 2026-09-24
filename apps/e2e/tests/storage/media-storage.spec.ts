@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { type Page, type Route, expect, test } from '@playwright/test';
 
 import {
   type SeededProject,
@@ -9,6 +9,7 @@ import {
   seedTeamAccount,
   seedUser,
   storageObjectExists,
+  storageObjectsUnder,
   storageUploadAs,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
@@ -19,19 +20,65 @@ import { signInAs } from '../utils/session';
  *
  * Runs against the local Supabase stack (STORAGE_PROVIDER=supabase), which is
  * where these failed: every audio upload ended in "Bucket not found", and the
- * audio library could not even build its storage adapter. The R2 key layout
- * is asserted in apps/web/app/api/storage/__tests__/audio-asset-upload.test.ts.
+ * audio library could not even build its storage adapter.
+ *
+ * KB-73 / KB-79: the library now uploads straight to `project-assets` through
+ * the presign route and records the key with a small action; the R2 key
+ * layout and that action's checks are asserted in
+ * apps/web/app/api/storage/__tests__/audio-asset-upload.test.ts.
  */
 
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
 const evidence = Boolean(process.env.CAPTURE_EVIDENCE);
 
 /** An MPEG frame header; the Storage API checks the declared type, not bytes. */
-const MP3 = Buffer.concat([
-  Buffer.from('ID3'),
-  Buffer.from([0x03, 0, 0, 0, 0, 0, 0]),
-  Buffer.alloc(512, 0xff),
-]);
+const mp3 = (bytes: number) =>
+  Buffer.concat([
+    Buffer.from('ID3'),
+    Buffer.from([0x03, 0, 0, 0, 0, 0, 0]),
+    Buffer.alloc(bytes - 10, 0xff),
+  ]);
+
+const MP3 = mp3(522);
+
+/**
+ * Upload one file through the real dialog, opened from the library header.
+ * `expectClosed` is false when the upload is meant to be refused.
+ */
+async function uploadThroughDialog(
+  page: Page,
+  track: { name: string; file: string; bytes: Buffer },
+  expectClosed = true,
+  screenshot?: string,
+) {
+  await page.locator('[data-test="audio-library-upload"]').click();
+
+  const submit = page.locator('[data-test="audio-upload-submit"]');
+
+  // As in the KB-28 spec: on a production build the file input can be
+  // live before React attaches onChange. Choosing again is harmless until
+  // the handler has run, which is what enables the submit button.
+  await expect(async () => {
+    await page.locator('[data-test="audio-upload-file"]').setInputFiles({
+      name: track.file,
+      mimeType: 'audio/mpeg',
+      buffer: track.bytes,
+    });
+    await expect(submit).toBeEnabled({ timeout: 1_000 });
+  }).toPass();
+
+  await page.locator('[data-test="audio-upload-name"]').fill(track.name);
+
+  if (evidence && screenshot) {
+    await page.screenshot({ path: `${OUT}/${screenshot}` });
+  }
+
+  await submit.click();
+
+  if (expectClosed) {
+    await expect(submit).toBeHidden();
+  }
+}
 
 let team: SeededTeam;
 let project: SeededProject;
@@ -46,74 +93,144 @@ test.beforeAll(async () => {
 });
 
 test.describe('Media and report storage (KB-55, KB-56)', () => {
-  test('the owner uploads a track to the audio library, and it plays', async ({
+  // KB-73 / KB-79: the first file is 2 MB, over the 1 MB server-action
+  // limit the base64 upload hit; the second is uploaded straight after, with
+  // no reload, because the library could take only one upload and showed a
+  // new one only after a reload.
+  test('the owner uploads two tracks in a row, one of 2 MB, and both show and play without a reload', async ({
     page,
   }) => {
     await signInAs(page, team);
     await page.goto(`/home/${team.slug}/studio/${project.slug}/audio-library`);
 
-    await page.getByRole('button', { name: 'Upload', exact: true }).click();
+    const stamp = Date.now();
+    const tracks = [
+      {
+        name: `Opening theme ${stamp}`,
+        file: 'opening theme.mp3',
+        bytes: mp3(2 * 1024 * 1024),
+      },
+      { name: `Door creak ${stamp}`, file: 'door creak.mp3', bytes: MP3 },
+    ];
 
-    const submit = page.locator('[data-test="audio-upload-submit"]');
-    const name = `Opening theme ${Date.now()}`;
+    for (const [index, track] of tracks.entries()) {
+      await uploadThroughDialog(
+        page,
+        track,
+        true,
+        index === 0 ? 'kb73-00-dialog-2mb-file.png' : undefined,
+      );
 
-    // As in the KB-28 spec: on a production build the file input can be
-    // live before React attaches onChange. Choosing again is harmless until
-    // the handler has run, which is what enables the submit button.
-    await expect(async () => {
-      await page.locator('[data-test="audio-upload-file"]').setInputFiles({
-        name: 'opening theme.mp3',
-        mimeType: 'audio/mpeg',
-        buffer: MP3,
-      });
-      await expect(submit).toBeEnabled({ timeout: 1_000 });
-    }).toPass();
+      // No reload: the card is drawn from what the save returned
+      await expect(
+        page.locator('[data-test="audio-asset-card"]', { hasText: track.name }),
+      ).toBeVisible();
 
-    await page.locator('[data-test="audio-upload-name"]').fill(name);
-
-    if (evidence) {
-      await page.screenshot({ path: `${OUT}/kb55-01-upload-dialog.png` });
+      if (evidence) {
+        await page.screenshot({
+          path: `${OUT}/kb73-0${index + 1}-library-after-upload-${index + 1}.png`,
+        });
+      }
     }
 
-    await submit.click();
+    for (const track of tracks) {
+      const [asset] = await readRows<{
+        file_url: string;
+        file_path: string;
+        file_size_bytes: number;
+        status: string;
+        source: string;
+      }>(
+        'audio_assets',
+        `project_id=eq.${project.id}&name=eq.${encodeURIComponent(track.name)}&select=file_url,file_path,file_size_bytes,status,source`,
+      );
 
-    await expect(submit).toBeHidden();
-    await expect(page.locator('[data-test="audio-upload-error"]')).toHaveCount(
-      0,
-    );
+      expect(asset, `the row for ${track.name}`).toBeTruthy();
+      expect(asset!.status).toBe('completed');
+      expect(asset!.source).toBe('uploaded');
+      expect(asset!.file_size_bytes).toBe(track.bytes.length);
+      expect(asset!.file_path).toMatch(
+        new RegExp(
+          `^projects/${project.id}/assets/audio/\\d+-[0-9a-f]{8}\\.mp3$`,
+        ),
+      );
+      expect(asset!.file_url).toContain(
+        `/object/public/project-assets/${asset!.file_path}`,
+      );
+      expect(
+        await storageObjectExists('project-assets', asset!.file_path),
+      ).toBe(true);
 
-    const [asset] = await readRows<{
-      file_url: string;
-      file_path: string;
-      status: string;
-    }>(
-      'audio_assets',
-      `project_id=eq.${project.id}&name=eq.${encodeURIComponent(name)}&select=file_url,file_path,status`,
-    );
+      const file = await page.request.get(asset!.file_url);
+      expect(file.status()).toBe(200);
+      expect(file.headers()['content-type']).toBe('audio/mpeg');
+      expect(Number(file.headers()['content-length'])).toBe(track.bytes.length);
+    }
 
-    expect(asset, 'the asset row was written').toBeTruthy();
-    expect(asset!.status).toBe('completed');
-    expect(asset!.file_url).toContain('/object/public/audio-assets/music/');
-    expect(await storageObjectExists('audio-assets', asset!.file_path)).toBe(
-      true,
-    );
-
-    const file = await page.request.get(asset!.file_url);
-    expect(file.status()).toBe(200);
-    expect(file.headers()['content-type']).toBe('audio/mpeg');
-
-    // One upload, then a reload: the library cannot take a second upload
-    // (no Upload button once it is not empty) and does not show a new asset
-    // until a reload. That is KB-79; drive the second submission here once
-    // it is fixed.
     await page.reload();
-    await expect(page.getByText(name)).toBeVisible();
+    for (const track of tracks) {
+      await expect(page.getByText(track.name)).toBeVisible();
+    }
+  });
+
+  // KB-57, audio leg: the old action stored a stranger's file with the admin
+  // client, at a key naming no project, before the row was refused.
+  test("a stranger's upload aimed at another account's project stores nothing", async ({
+    page,
+  }) => {
+    // A writer on their own team's project, and no member of the victim's
+    const outsider = await seedTeamAccount({ emailPrefix: 'kb73-outsider' });
+    const own = await seedProject(outsider, { name: 'KB-73 outsider' });
+    const presigned: number[] = [];
+
+    // Every request the dialog sends names the victim's project instead
+    const retarget = async (route: Route) => {
+      const body = (route.request().postData() ?? '')
+        .split(own.id)
+        .join(project.id);
+      const response = await route.fetch({ postData: body });
+      if (route.request().url().includes('/api/storage/presign')) {
+        presigned.push(response.status());
+      }
+      await route.fulfill({ response });
+    };
+
+    await page.route('**/api/storage/presign', retarget);
+    await page.route('**/audio-library', (route) =>
+      route.request().method() === 'POST' ? retarget(route) : route.continue(),
+    );
+
+    await signInAs(page, outsider);
+    await page.goto(`/home/${outsider.slug}/studio/${own.slug}/audio-library`);
+
+    const name = `Planted ${Date.now()}`;
+    await uploadThroughDialog(
+      page,
+      { name, file: 'planted.mp3', bytes: MP3 },
+      false,
+    );
+
+    await expect(
+      page.locator('[data-test="audio-upload-error"]'),
+    ).toContainText('You do not have permission to upload to this project');
+    expect(presigned).toEqual([403]);
 
     if (evidence) {
-      await page.screenshot({
-        path: `${OUT}/kb55-02-library-after-upload.png`,
-      });
+      await page.screenshot({ path: `${OUT}/kb73-03-outsider-refused.png` });
     }
+
+    expect(
+      await storageObjectsUnder(
+        'project-assets',
+        `projects/${project.id}/assets/audio`,
+      ),
+    ).toEqual([]);
+    expect(
+      await readRows(
+        'audio_assets',
+        `project_id=eq.${project.id}&name=eq.${encodeURIComponent(name)}&select=id`,
+      ),
+    ).toEqual([]);
   });
 
   test('audio buckets: project writers only, audio types only', async () => {

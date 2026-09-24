@@ -4,14 +4,23 @@
  * UploadAudioDialog Component
  *
  * Dialog for uploading audio files (music or SFX) to the library.
+ *
+ * The file goes straight to storage through the presign route, and a small
+ * action records it (KB-73). It used to travel as base64 in a server-action
+ * body, which Next caps at 1 MB.
  */
 import { useCallback, useRef, useState } from 'react';
 import { useTransition } from 'react';
 
 import { FileAudio, Loader2, Music, Upload, Volume2, X } from 'lucide-react';
 
+import { createUploadedAudioAssetAction } from '@kit/audio-generation/server';
 import { refusalMessage, unwrap } from '@kit/next/action-result';
-import { AUDIO_LIBRARY_TYPES } from '@kit/storage/buckets';
+import { uploadWithPresignedUrl } from '@kit/storage/client';
+import {
+  audioLibraryUploadPath,
+  audioLibraryUploadType,
+} from '@kit/storage/upload-paths';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -26,14 +35,15 @@ import { Label } from '@kit/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@kit/ui/tabs';
 import { cn } from '@kit/ui/utils';
 
+import type { AudioAsset } from './audio-asset-card';
+
 interface UploadAudioDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
-  onSuccess?: () => void;
+  onSuccess?: (asset: AudioAsset) => void;
 }
 
-const ACCEPTED_TYPES: readonly string[] = AUDIO_LIBRARY_TYPES;
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 export function UploadAudioDialog({
@@ -51,7 +61,7 @@ export function UploadAudioDialog({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const validateFile = (f: File): string | null => {
-    if (!ACCEPTED_TYPES.includes(f.type)) {
+    if (!audioLibraryUploadType(f.type, f.name)) {
       return 'Invalid file type. Please upload MP3, WAV, or M4A.';
     }
     if (f.size > MAX_FILE_SIZE) {
@@ -113,40 +123,78 @@ export function UploadAudioDialog({
       return;
     }
 
+    const contentType = audioLibraryUploadType(file.type, file.name);
+
+    if (!contentType) {
+      setError('Invalid file type. Please upload MP3, WAV, or M4A.');
+      return;
+    }
+
     setError(null);
     startTransition(async () => {
       try {
-        // Convert file to base64
-        const arrayBuffer = await file.arrayBuffer();
-        const base64 = Buffer.from(arrayBuffer).toString('base64');
+        const path = audioLibraryUploadPath(projectId, contentType);
 
-        // Call server action that handles upload + asset creation
-        const { uploadAudioFileAndCreateAssetAction } = await import(
-          '@kit/audio-generation/server'
-        );
+        // The presign route's refusals are written for the user ("You do not
+        // have permission…", "File is 60 MB…"); show them as they are
+        try {
+          await uploadWithPresignedUrl(file, 'project-assets', path, {
+            contentType,
+          });
+        } catch (uploadError) {
+          setError(
+            uploadError instanceof Error
+              ? uploadError.message
+              : 'Failed to upload audio',
+          );
+          return;
+        }
 
-        await unwrap(
-          uploadAudioFileAndCreateAssetAction({
+        const asset = await unwrap(
+          createUploadedAudioAssetAction({
             projectId,
             audioType,
             name: name.trim(),
-            fileBase64: base64,
-            fileName: file.name,
-            contentType: file.type,
+            path,
+            contentType,
             fileSizeBytes: file.size,
           }),
         );
 
+        reset();
         onOpenChange(false);
-        onSuccess?.();
-
-        // Reset form
-        setFile(null);
-        setName('');
+        onSuccess?.({
+          id: asset.id,
+          name: asset.name,
+          audioType: asset.audioType,
+          prompt: asset.prompt,
+          fileUrl: asset.fileUrl,
+          durationSeconds: asset.durationSeconds,
+          status: asset.status,
+          usageCount: asset.usageCount,
+          createdAt: asset.createdAt,
+          source: 'uploaded',
+        });
       } catch (err) {
         setError(refusalMessage(err, 'Failed to upload audio'));
       }
     });
+  };
+
+  // A cleared input is what lets the same file be chosen again: the browser
+  // fires no change event for a value the input already holds
+  const reset = () => {
+    setFile(null);
+    setName('');
+    setError(null);
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+  };
+
+  const handleOpenChange = (next: boolean) => {
+    if (!next && !isPending) reset();
+    onOpenChange(next);
   };
 
   const handleRemoveFile = () => {
@@ -158,7 +206,7 @@ export function UploadAudioDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -272,7 +320,7 @@ export function UploadAudioDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>
           <Button

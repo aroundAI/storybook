@@ -136,3 +136,92 @@ export function shotVideoPath(
 export function fileExtension(name: string, fallback: string) {
   return name.includes('.') ? name.split('.').pop() || fallback : fallback;
 }
+
+/**
+ * What the audio library stores (KB-73), and the extension each is kept
+ * under. Only types `project-assets` already takes, so the library does not
+ * widen KB-28's list.
+ */
+const AUDIO_LIBRARY_EXTENSION = {
+  'audio/mpeg': 'mp3',
+  'audio/wav': 'wav',
+  'audio/mp4': 'm4a',
+} as const;
+
+export type AudioLibraryUploadType = keyof typeof AUDIO_LIBRARY_EXTENSION;
+
+export const AUDIO_LIBRARY_UPLOAD_TYPES = Object.keys(
+  AUDIO_LIBRARY_EXTENSION,
+) as AudioLibraryUploadType[];
+
+/** The names browsers give these files, as the type the upload declares */
+const AUDIO_TYPE_ALIASES: Record<string, AudioLibraryUploadType> = {
+  'audio/mpeg': 'audio/mpeg',
+  'audio/mp3': 'audio/mpeg',
+  'audio/wav': 'audio/wav',
+  'audio/x-wav': 'audio/wav',
+  'audio/wave': 'audio/wav',
+  'audio/vnd.wave': 'audio/wav',
+  'audio/mp4': 'audio/mp4',
+  'audio/x-m4a': 'audio/mp4',
+  'audio/m4a': 'audio/mp4',
+};
+
+const AUDIO_EXTENSION_TYPE: Record<string, AudioLibraryUploadType> = {
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+  m4a: 'audio/mp4',
+};
+
+/**
+ * The type an audio-library upload declares, or `null` when the library does
+ * not take the file. A browser that gives no type is judged by the extension;
+ * one that names another type is taken at its word.
+ */
+export function audioLibraryUploadType(
+  type: string,
+  fileName: string,
+): AudioLibraryUploadType | null {
+  if (type) {
+    return AUDIO_TYPE_ALIASES[type.toLowerCase()] ?? null;
+  }
+
+  const ext = fileName.includes('.')
+    ? fileName.split('.').pop()!.toLowerCase()
+    : '';
+
+  return AUDIO_EXTENSION_TYPE[ext] ?? null;
+}
+
+/**
+ * An audio-library upload (KB-73). No user text in the key: the name the
+ * user gives is kept on the row. The random part keeps two uploads in the
+ * same millisecond apart.
+ */
+export function audioLibraryUploadPath(
+  projectId: string,
+  contentType: AudioLibraryUploadType,
+  now = Date.now(),
+  id = globalThis.crypto.randomUUID().slice(0, 8),
+) {
+  const ext = AUDIO_LIBRARY_EXTENSION[contentType];
+
+  return `projects/${projectId}/assets/audio/${now}-${id}.${ext}`;
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Whether `path` is an audio-library upload in `projectId`'s own folder, the
+ * only key the save action will record for that project.
+ */
+export function isAudioLibraryPath(projectId: string, path: string): boolean {
+  if (!UUID.test(projectId)) return false;
+
+  const rule = new RegExp(
+    `^projects/${projectId}/assets/audio/\\d+-[0-9a-f]{8}\\.(?:mp3|wav|m4a)$`,
+    'i',
+  );
+
+  return rule.test(path) && isUploadPath(PROJECT_ASSETS_BUCKET, path);
+}

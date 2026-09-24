@@ -881,3 +881,32 @@ export async function storageObjectExists(
 
   return response.status === 200;
 }
+
+/** The object names directly under `prefix`, listed with the service role. */
+export async function storageObjectsUnder(
+  bucket: string,
+  prefix: string,
+): Promise<string[]> {
+  const response = await fetch(
+    `${SUPABASE_URL}/storage/v1/object/list/${bucket}`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prefix, limit: 1000 }),
+    },
+  );
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(
+      `list ${bucket}/${prefix} failed (${response.status}): ${text}`,
+    );
+  }
+
+  return (JSON.parse(text) as { name: string }[]).map((object) => object.name);
+}

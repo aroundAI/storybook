@@ -26,17 +26,33 @@ export function AudioLibraryClient({
   initialAssets,
 }: AudioLibraryClientProps) {
   const router = useRouter();
-  const [isGenerateOpen, setIsGenerateOpen] = useState(false);
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
-  const [assets, setAssets] = useState(initialAssets);
+  const [state, setState] = useState<{
+    dialog: 'generate' | 'upload' | null;
+    /** Uploaded here, shown before the server list catches up */
+    added: AudioAsset[];
+    /** Hidden here; nothing deletes them yet */
+    hidden: string[];
+  }>({ dialog: null, added: [], hidden: [] });
+
+  // The server list is the source of truth, so `router.refresh()` shows what
+  // it brings. Holding the list in state from `initialAssets` ignored every
+  // later render, so a new asset appeared only after a reload (KB-79).
+  const serverIds = new Set(initialAssets.map((asset) => asset.id));
+  const assets = [
+    ...state.added.filter((asset) => !serverIds.has(asset.id)),
+    ...initialAssets,
+  ].filter((asset) => !state.hidden.includes(asset.id));
+
+  const setDialog = (dialog: 'generate' | 'upload' | null) =>
+    setState((prev) => ({ ...prev, dialog }));
 
   const handleDelete = async (assetId: string) => {
     // TODO: Call delete action
-    setAssets((prev) => prev.filter((a) => a.id !== assetId));
+    setState((prev) => ({ ...prev, hidden: [...prev.hidden, assetId] }));
   };
 
-  const handleSuccess = () => {
-    // Refresh page to get new assets
+  const handleUploaded = (asset: AudioAsset) => {
+    setState((prev) => ({ ...prev, added: [asset, ...prev.added] }));
     router.refresh();
   };
 
@@ -45,22 +61,22 @@ export function AudioLibraryClient({
       <AudioAssetGrid
         assets={assets}
         onDelete={handleDelete}
-        onGenerate={() => setIsGenerateOpen(true)}
-        onUpload={() => setIsUploadOpen(true)}
+        onGenerate={() => setDialog('generate')}
+        onUpload={() => setDialog('upload')}
       />
 
       <GenerateAudioDialog
-        open={isGenerateOpen}
-        onOpenChange={setIsGenerateOpen}
+        open={state.dialog === 'generate'}
+        onOpenChange={(open) => setDialog(open ? 'generate' : null)}
         projectId={projectId}
-        onSuccess={handleSuccess}
+        onSuccess={() => router.refresh()}
       />
 
       <UploadAudioDialog
-        open={isUploadOpen}
-        onOpenChange={setIsUploadOpen}
+        open={state.dialog === 'upload'}
+        onOpenChange={(open) => setDialog(open ? 'upload' : null)}
         projectId={projectId}
-        onSuccess={handleSuccess}
+        onSuccess={handleUploaded}
       />
     </>
   );

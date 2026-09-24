@@ -182,6 +182,26 @@ export default defineConfig({
         __dirname,
         '../../packages/ui/src/shadcn/button.tsx',
       ),
+      '@kit/ui/badge': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/badge.tsx',
+      ),
+      '@kit/ui/card': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/card.tsx',
+      ),
+      '@kit/ui/dropdown-menu': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/dropdown-menu.tsx',
+      ),
+      '@kit/ui/input': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/input.tsx',
+      ),
+      '@kit/ui/tabs': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/tabs.tsx',
+      ),
       '@kit/ui/trans': path.resolve(
         __dirname,
         '../../packages/ui/src/makerkit/trans.tsx',

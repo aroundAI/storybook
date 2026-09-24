@@ -92,6 +92,7 @@ export function AudioAssetCard({
 
   return (
     <Card
+      data-test="audio-asset-card"
       className={cn(
         'group relative overflow-hidden transition-all hover:shadow-md',
         isSelectable && 'cursor-pointer hover:ring-2 hover:ring-primary/50',

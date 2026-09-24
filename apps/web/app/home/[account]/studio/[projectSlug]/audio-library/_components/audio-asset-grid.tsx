@@ -7,7 +7,14 @@
  */
 import { useState } from 'react';
 
-import { Loader2, Music, Search, Sparkles, Volume2 } from 'lucide-react';
+import {
+  Loader2,
+  Music,
+  Search,
+  Sparkles,
+  Upload,
+  Volume2,
+} from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
@@ -97,6 +104,17 @@ export function AudioAssetGrid({
               className="pl-8"
             />
           </div>
+          {onUpload && (
+            <Button
+              variant="outline"
+              onClick={onUpload}
+              className="gap-1.5"
+              data-test="audio-library-upload"
+            >
+              <Upload className="h-4 w-4" />
+              Upload
+            </Button>
+          )}
           {onGenerate && (
             <Button onClick={onGenerate} className="gap-1.5">
               <Sparkles className="h-4 w-4" />

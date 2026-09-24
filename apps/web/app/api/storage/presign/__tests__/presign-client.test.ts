@@ -116,4 +116,28 @@ describe('@kit/storage/client', () => {
     });
     expect(result).toEqual({ url: signed.publicUrl, path: PATH });
   });
+  it("uploadWithPresignedUrl declares the type it is given in place of the browser's name for it (KB-73)", async () => {
+    const file = new File([new Uint8Array(900)], 'take.m4a', {
+      type: 'audio/x-m4a',
+    });
+
+    fetchMock
+      .mockResolvedValueOnce(
+        json({ ...signed, headers: { 'Content-Type': 'audio/mp4' } }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+    await uploadWithPresignedUrl(file, 'project-assets', PATH, {
+      contentType: 'audio/mp4',
+    });
+
+    expect(presignBody()).toMatchObject({
+      contentType: 'audio/mp4',
+      size: 900,
+    });
+
+    const [, putInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(putInit.body).toBe(file);
+    expect(putInit.headers).toEqual({ 'Content-Type': 'audio/mp4' });
+  });
 });
