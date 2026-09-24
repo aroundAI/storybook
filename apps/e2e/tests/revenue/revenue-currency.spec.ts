@@ -292,6 +292,14 @@ test.describe('The projection counts an entry saved today, east of UTC (KB-24)',
     await signInAs(page, team);
     await page.clock.setFixedTime(now > tenUtc ? now : tenUtc);
     await revenue.goToRevenue(team.slug);
+
+    // A reload first: the date travels on every load, not just the first.
+    // It is also what exposed a race in the page object — under a fixed
+    // clock after a reload, the currency Select takes ~180ms to close and
+    // hand focus back, and a calendar opened before then is dismissed by
+    // that focus change. `chooseCurrency` now waits for it.
+    await page.reload();
+    await expect(revenue.tiles('total').first()).toBeVisible();
     await revenue.openTab('manual');
 
     await form.chooseCurrency('EUR - Euro');
