@@ -39,11 +39,31 @@ test.describe('Data deletion instructions', () => {
       page.locator('[data-test="revoke-link-google"]'),
     ).toHaveAttribute('href', GOOGLE_PERMISSIONS);
 
-    for (const vendor of ['facebook', 'instagram']) {
+    for (const vendor of ['facebook', 'instagram', 'x', 'linkedin']) {
       await expect(
         page.locator(`[data-test="revoke-link-${vendor}"]`),
       ).toHaveAttribute('href', /^https:\/\//);
     }
+
+    await expect(
+      page.locator('[data-test="revoke-path-tiktok"]'),
+    ).toContainText('Manage app permissions');
+  });
+
+  test('says which platforms we ask to revoke, and that LinkedIn offers no way (KB-25)', async ({
+    page,
+  }) => {
+    await page.goto('/data-deletion');
+
+    await expect(
+      page.locator('[data-test="disconnect-revokes"]'),
+    ).toContainText('For YouTube, TikTok, Instagram, Facebook and X we ask');
+    await expect(
+      page.locator('[data-test="disconnect-linkedin"]'),
+    ).toContainText('LinkedIn does not let apps revoke their own access');
+    await expect(page.locator('[data-test="data-deletion-page"]')).not.toContainText(
+      'do not yet',
+    );
   });
 
   test('the footer links to it, and the link resolves', async ({

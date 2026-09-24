@@ -19,6 +19,7 @@ import { UpdateYouTubeChannelSettingsSchema } from '../lib/schemas/youtube-decla
 import { ensureValidToken } from '../lib/token-refresh';
 import type { Platform } from '../lib/types';
 import { resolveAnalyticsAccess } from '../oauth/analytics-scopes';
+import { isRevokeConfirmed } from '../oauth/revoke-request';
 import { revokeAtVendor } from '../oauth/revokers';
 import type { ConnectionStatus, PlatformType } from '../types';
 import { resolveFollowerCounts } from './follower-counts';
@@ -125,14 +126,16 @@ const CONNECTION_NOT_FOUND =
   'That connection no longer exists, or you do not have access to it.';
 
 /**
- * The stored access token, for the vendor revoke. Members may not read token
+ * The stored tokens, for the vendor revoke. Members may not read token
  * columns (KB-43), so this uses the admin client — call it only after the
- * member's own client has found the row, which is the access check.
+ * member's own client has found the row, which is the access check. Both
+ * tokens: X's revoke takes the 180-day refresh token as well as the access
+ * token (KB-25).
  */
-async function readAccessToken(connectionId: string) {
+async function readConnectionTokens(connectionId: string) {
   const { data, error } = await getSupabaseServerAdminClient()
     .from('platform_connections')
-    .select('access_token_encrypted')
+    .select('access_token_encrypted, refresh_token_encrypted')
     .eq('id', connectionId)
     .maybeSingle();
 
@@ -140,14 +143,19 @@ async function readAccessToken(connectionId: string) {
     throw new Error(`Failed to read connection token: ${error.message}`);
   }
 
-  return data?.access_token_encrypted ?? null;
+  return {
+    access_token_encrypted: data?.access_token_encrypted ?? null,
+    refresh_token_encrypted: data?.refresh_token_encrypted ?? null,
+  };
 }
 
 /**
  * Disconnects a platform connection (KB-22).
  *
  * Asks the platform to revoke our access, then disconnects the row with
- * `disconnect_platform_connection`: tokens wiped, row kept. It never deletes
+ * `disconnect_platform_connection`: tokens wiped, row kept. Returns whether
+ * the platform confirmed the revoke, so the dialog can tell the creator to
+ * check at the platform when it did not (KB-45). It never deletes
  * the row — that used to cascade into the channel's publishes and everything
  * a person had attached to them. The platform is the stored one, not one the
  * caller names.
@@ -178,7 +186,7 @@ export const disconnectPlatformAction = returnRefusals(
         ? ({ status: 'no_token' } as const)
         : await revokeAtVendor({
             platform,
-            access_token_encrypted: await readAccessToken(connection.id),
+            ...(await readConnectionTokens(connection.id)),
           });
 
       const { data: rows, error } = await client.rpc(
@@ -198,7 +206,11 @@ export const disconnectPlatformAction = returnRefusals(
         .filter((row) => !row.already_disconnected)
         .map((row) => row.id);
 
-      logger.info(
+      const confirmed = isRevokeConfirmed(revoke.status);
+
+      // A revoke the platform did not confirm is a warning: the creator is
+      // told to check at the platform, and an operator can find it (KB-45).
+      logger[confirmed ? 'info' : 'warn'](
         {
           name: 'oauth.disconnect',
           connectionId,
@@ -207,7 +219,9 @@ export const disconnectPlatformAction = returnRefusals(
           httpStatus: 'httpStatus' in revoke ? revoke.httpStatus : undefined,
           disconnected,
         },
-        'Platform connection disconnected',
+        confirmed
+          ? 'Platform connection disconnected'
+          : 'Platform connection disconnected; revoke not confirmed by the platform',
       );
 
       revalidatePath(`/home/[account]/settings`, 'page');
@@ -215,6 +229,7 @@ export const disconnectPlatformAction = returnRefusals(
       return {
         disconnected,
         alreadyDisconnected: disconnected.length === 0,
+        revoke: { status: revoke.status, confirmed },
       };
     },
     {

@@ -2,8 +2,9 @@ import 'server-only';
 
 /**
  * What asking a platform to revoke our access came to. Logged on every
- * disconnect; never shown to the user, who is told what the dialog promised
- * (see `disconnect-copy.ts`) whatever the platform answered.
+ * disconnect, and returned to the dialog: anything but a confirmed revoke
+ * gets the creator a warning that links to the platform's own settings
+ * (KB-45).
  */
 export type RevokeStatus =
   /** The platform answered 2xx. */
@@ -18,16 +19,35 @@ export type RevokeStatus =
   | 'undecryptable'
   /** The app's own client credentials for the platform are missing. */
   | 'not_configured'
-  /** This platform has no revoke call yet (X and LinkedIn — KB-25). */
-  | 'not_implemented';
+  /**
+   * The platform gives apps no way to revoke their own access (LinkedIn —
+   * KB-25). There is deliberately no "not yet" status: every platform either
+   * revokes or records that its vendor offers nothing to call.
+   */
+  | 'vendor_offers_none';
 
 export interface RevokeOutcome {
   status: RevokeStatus;
   httpStatus?: number;
 }
 
-/** A platform's revoke call, given the decrypted access token. */
-export type Revoker = (accessToken: string) => Promise<RevokeOutcome>;
+/**
+ * Whether the platform confirmed it holds no usable grant for us: it said so,
+ * or we held no token to begin with. Anything else, the creator is told to
+ * check at the platform.
+ */
+export function isRevokeConfirmed(status: RevokeStatus): boolean {
+  return status === 'revoked' || status === 'no_token';
+}
+
+/** The decrypted tokens a connection holds. */
+export interface RevokeTokens {
+  accessToken: string;
+  refreshToken: string | null;
+}
+
+/** A platform's revoke call. */
+export type Revoker = (tokens: RevokeTokens) => Promise<RevokeOutcome>;
 
 /**
  * Long enough for a slow vendor, short enough that a hung one cannot hold the

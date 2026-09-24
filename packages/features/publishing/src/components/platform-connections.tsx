@@ -69,6 +69,10 @@ import type {
   PlatformType,
 } from '../types';
 import { disconnectCopyFor } from './disconnect-copy';
+import {
+  PLATFORM_ACCESS_SETTINGS,
+  type PlatformAccessSettings,
+} from './platform-access-settings';
 import { YouTubeAudienceSetting } from './youtube-audience-setting';
 
 const TikTokIcon = ({ className }: { className?: string }) => (
@@ -564,9 +568,48 @@ function VendorDataPurgeLine({
 }
 
 /**
+ * The disconnect went through, but the platform did not confirm it revoked
+ * our access — it refused, could not be reached, or (LinkedIn) offers apps no
+ * way to. Points the creator at the platform's own settings (KB-45).
+ */
+function RevokeUnconfirmedMessage({
+  accountName,
+  platformName,
+  settings,
+}: {
+  accountName: string;
+  platformName: string;
+  settings: PlatformAccessSettings;
+}) {
+  return (
+    <span data-test="disconnect-revoke-unconfirmed">
+      <Trans
+        i18nKey="platforms:disconnectToast.revokeUnconfirmed"
+        values={{ accountName, platform: platformName }}
+      />{' '}
+      {settings.href ? (
+        <a
+          data-test="disconnect-revoke-settings-link"
+          href={settings.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline"
+        >
+          {settings.where}
+        </a>
+      ) : (
+        <span data-test="disconnect-revoke-settings-path">
+          {settings.where}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
  * Says what disconnecting does on this platform, before it is done. Every
  * sentence is chosen by `disconnectCopyFor`, whose flags are held to the
- * code's behaviour by `disconnect-copy.test.ts`.
+ * code's behaviour by `revokers.test.ts`.
  */
 function DisconnectDialog({
   connection,
@@ -605,6 +648,19 @@ function DisconnectDialog({
             defaults="{accountName} was already disconnected."
             values={names}
           />,
+        );
+        return;
+      }
+
+      if (!result.revoke.confirmed) {
+        // Stays until dismissed: the creator has something left to do (KB-45).
+        toast.warning(
+          <RevokeUnconfirmedMessage
+            accountName={connection.accountName}
+            platformName={platform.name}
+            settings={PLATFORM_ACCESS_SETTINGS[connection.platform]}
+          />,
+          { duration: Infinity, closeButton: true },
         );
         return;
       }

@@ -30,6 +30,7 @@
     "./providers/linkedin": "./src/providers/linkedin/index.ts",
     "./components/linkedin-composer": "./src/components/linkedin-composer.tsx",
     "./components/platform-connections": "./src/components/platform-connections.tsx",
+    "./components/platform-access-settings": "./src/components/platform-access-settings.ts",
     "./components/upload-only-mode": "./src/components/upload-only-mode.tsx",
     "./components/youtube-audience-dialog": "./src/components/youtube-audience-dialog.tsx",
     "./server/connection-actions": "./src/server/connection-actions.ts",

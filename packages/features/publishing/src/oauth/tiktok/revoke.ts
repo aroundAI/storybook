@@ -1,7 +1,11 @@
 import 'server-only';
 
 import { getOAuthAppCredentials } from '../../server/oauth-app-credentials';
-import { type RevokeOutcome, requestRevocation } from '../revoke-request';
+import {
+  type RevokeOutcome,
+  type RevokeTokens,
+  requestRevocation,
+} from '../revoke-request';
 import { TIKTOK_OAUTH_CONFIG } from './config';
 
 /**
@@ -9,9 +13,9 @@ import { TIKTOK_OAUTH_CONFIG } from './config';
  * client key and secret — from the same resolver connect and refresh use
  * (KB-29), so all three agree on which app the token belongs to.
  */
-export async function revokeTikTokAccess(
-  accessToken: string,
-): Promise<RevokeOutcome> {
+export async function revokeTikTokAccess({
+  accessToken,
+}: RevokeTokens): Promise<RevokeOutcome> {
   const app = await getOAuthAppCredentials('tiktok');
 
   if (!app) {
