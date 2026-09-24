@@ -92,7 +92,7 @@ notes: |
     `createTime`s (the job-creation backfill), and a failed save is reported.
   - **CTR unit guard.** A reach report with any CTR above 1 is refused and
     logged, watermark held, until the unit is confirmed against a real report.
-  - **Engaged views for matched videos (KB-50, 2026-09-24).** They were
+  - **Engaged views for matched videos (KB-50, #348, 2026-09-24).** They were
     parsed, then dropped. ClickHouse migration 012 adds
     `video_metrics.engaged_views Nullable(UInt64)`, filled by **both**
     writers: the Reporting ingest from the CSV, and the Analytics-API sync and
@@ -103,7 +103,7 @@ notes: |
     means not reported: before 2025-04-24, a report version without the
     column, a refused query. Guarded by `verify-queries.ts` (both write
     orders) and the local-stack test.
-  - **Report-job RLS (KB-51, 2026-09-24).** `youtube_report_jobs` has a pgTAP
+  - **Report-job RLS (KB-51, #348, 2026-09-24).** `youtube_report_jobs` has a pgTAP
     test (`youtube-report-jobs-rls.test.sql`), and `anon` no longer holds
     Supabase's default grant on it.
   - **Deploy order:** ClickHouse migrations 011 and 012 before the app.
