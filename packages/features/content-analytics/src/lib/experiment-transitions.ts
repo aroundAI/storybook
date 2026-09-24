@@ -24,9 +24,30 @@ const FROZEN_AFTER_START = [
   'expectedOutcome',
 ] as const;
 
+/**
+ * The fields the edit form locks for a change in this state. The same list
+ * `assertEditable` refuses, so the form never offers what the action (and
+ * the table) would turn down.
+ */
+export function frozenFields(status: string): readonly string[] {
+  return status === 'planned' ? [] : FROZEN_AFTER_START;
+}
+
+/**
+ * Whether each move is open, for the page's buttons. Each is the boolean
+ * twin of the assert the action runs, so a button is shown exactly when the
+ * action would accept it.
+ */
+export const canStart = (status: string) => status === 'planned';
+export const canConclude = (status: string) => status === 'running';
+export const canAbandon = (status: string) =>
+  status === 'planned' || status === 'running';
+export const canDelete = (status: string) =>
+  status === 'planned' || status === 'abandoned';
+
 /** Starting again would overwrite the baseline and the start date. */
 export function assertCanStart(status: string): void {
-  if (status !== 'planned') {
+  if (!canStart(status)) {
     throw new ActionRefusal(
       `Only a planned change can be started; this one is ${status}.`,
     );
@@ -38,7 +59,7 @@ export function assertCanConclude(
   startedAt: string | null,
   endedAt: string,
 ): void {
-  if (status !== 'running') {
+  if (!canConclude(status)) {
     throw new ActionRefusal(
       `Only a running change can be concluded; this one is ${status}.`,
     );
@@ -61,20 +82,33 @@ export function assertCanConclude(
  * "inconclusive"; an abandoned one has nothing left to abandon.
  */
 export function assertCanAbandon(status: string): void {
-  if (status !== 'planned' && status !== 'running') {
+  if (!canAbandon(status)) {
     throw new ActionRefusal(
       `Only a planned or running change can be abandoned; this one is ${status}.`,
     );
   }
 }
 
+/**
+ * Deleting is for a change logged by mistake (KB-7; the owner decided the
+ * scope on 2026-09-24). A running change is abandoned first, which stops it
+ * and keeps its record; a concluded change is the record the log exists to
+ * keep. The table's delete policy holds the same rule.
+ */
+export function assertCanDelete(status: string): void {
+  if (canDelete(status)) return;
+
+  throw new ActionRefusal(
+    status === 'running'
+      ? 'Only a planned or abandoned change can be deleted; this one is running. Abandon it first to stop it and keep its record.'
+      : `Only a planned or abandoned change can be deleted; this one is ${status}.`,
+  );
+}
+
 /** Refuses an edit to a frozen field once the change has started. */
 export function assertEditable(status: string, fields: string[]): void {
-  if (status === 'planned') return;
-
-  const frozen = fields.filter((field) =>
-    (FROZEN_AFTER_START as readonly string[]).includes(field),
-  );
+  const locked = frozenFields(status);
+  const frozen = fields.filter((field) => locked.includes(field));
 
   if (frozen.length > 0) {
     throw new ActionRefusal(

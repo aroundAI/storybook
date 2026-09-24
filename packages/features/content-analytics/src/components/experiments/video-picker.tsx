@@ -29,8 +29,13 @@ export interface LinkableVideo {
 interface VideoPickerProps
   extends Pick<
     React.ComponentPropsWithoutRef<'button'>,
-    'id' | 'aria-describedby' | 'aria-invalid'
+    'id' | 'aria-describedby' | 'aria-invalid' | 'disabled'
   > {
+  /**
+   * Videos already linked, so an edit shows them as selected even when they
+   * are not among the current search's results (KB-7).
+   */
+  initialVideos?: LinkableVideo[];
   /** The current search's results, at most one page */
   videos: LinkableVideo[];
   /** More videos match than were returned: ask for a narrower search */
@@ -70,6 +75,7 @@ export function VideoPicker({
   max,
   isLoading = false,
   isError = false,
+  initialVideos = [],
   ...triggerProps
 }: VideoPickerProps) {
   const [open, setOpen] = useState(false);
@@ -77,7 +83,9 @@ export function VideoPicker({
   // found them. A ref: it is a cache, and changing it should not re-render.
   const seen = useRef(new Map<string, LinkableVideo>());
 
-  for (const video of videos) seen.current.set(video.id, video);
+  for (const video of [...initialVideos, ...videos]) {
+    seen.current.set(video.id, video);
+  }
 
   if (isLoading) {
     return <Skeleton className={'h-9 w-full'} />;

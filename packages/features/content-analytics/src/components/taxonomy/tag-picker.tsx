@@ -6,11 +6,20 @@ import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@kit/ui/popover';
 import { ScrollArea } from '@kit/ui/scroll-area';
+import { Skeleton } from '@kit/ui/skeleton';
 import { cn } from '@kit/ui/utils';
 
 import type { ContentTag } from './tag-manager';
 
-interface TagPickerProps {
+/**
+ * `id` and aria attributes go to the trigger, so `FormControl` can tie it to
+ * its label and error message (as the video picker does).
+ */
+interface TagPickerProps
+  extends Pick<
+    React.ComponentPropsWithoutRef<'button'>,
+    'id' | 'aria-describedby' | 'aria-invalid'
+  > {
   /** The full account vocabulary to choose from */
   tags: ContentTag[];
   /** Currently selected tag ids */
@@ -21,6 +30,11 @@ interface TagPickerProps {
   placeholder?: string;
   /** Disables interaction while a save is in flight */
   disabled?: boolean;
+  isLoading?: boolean;
+  /** The vocabulary could not be read: say so, never "no tags". */
+  isError?: boolean;
+  /** Said when the account has no tags yet */
+  emptyText?: string;
 }
 
 const DIMENSION_LABELS: Record<string, string> = {
@@ -39,7 +53,26 @@ export function TagPicker({
   onChange,
   placeholder = 'Add tags',
   disabled = false,
+  isLoading = false,
+  isError = false,
+  emptyText = 'No tags defined yet.',
+  ...triggerProps
 }: TagPickerProps) {
+  if (isLoading) {
+    return <Skeleton className={'h-8 w-40'} />;
+  }
+
+  if (isError) {
+    return (
+      <p
+        className={'text-sm text-muted-foreground'}
+        data-test={'tag-picker-error'}
+      >
+        Tags could not be loaded.
+      </p>
+    );
+  }
+
   const selected = new Set(selectedTagIds);
 
   const grouped = tags.reduce<Record<string, ContentTag[]>>((acc, tag) => {
@@ -67,6 +100,7 @@ export function TagPicker({
           disabled={disabled}
           className={'h-8 gap-2'}
           data-test={'tag-picker-trigger'}
+          {...triggerProps}
         >
           <TagIcon className={'h-3.5 w-3.5'} />
           {selectedTags.length > 0 ? (
@@ -91,8 +125,11 @@ export function TagPicker({
       <PopoverContent className={'w-64 p-0'} align={'start'}>
         <ScrollArea className={'max-h-72'}>
           {tags.length === 0 ? (
-            <p className={'p-4 text-sm text-muted-foreground'}>
-              No tags defined yet.
+            <p
+              className={'p-4 text-sm text-muted-foreground'}
+              data-test={'tag-picker-empty'}
+            >
+              {emptyText}
             </p>
           ) : (
             <div className={'flex flex-col gap-3 p-3'}>
@@ -111,6 +148,8 @@ export function TagPicker({
                       key={tag.id}
                       type={'button'}
                       onClick={() => toggle(tag.id)}
+                      aria-pressed={selected.has(tag.id)}
+                      data-test={`tag-picker-option-${tag.id}`}
                       className={cn(
                         'flex items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-accent',
                         selected.has(tag.id) && 'font-medium',

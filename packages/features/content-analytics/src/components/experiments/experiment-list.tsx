@@ -26,6 +26,12 @@ interface ExperimentListProps {
   onSelect?: (experimentId: string) => void;
   /** Loading state */
   isLoading?: boolean;
+  /**
+   * The status the list is filtered to. An empty filtered list is not an
+   * empty log, and must not say "No changes logged yet".
+   */
+  statusFilter?: string;
+  onClearFilter?: () => void;
 }
 
 const STATUS_VARIANTS: Record<
@@ -54,9 +60,32 @@ export function ExperimentList({
   experiments,
   onSelect,
   isLoading = false,
+  statusFilter,
+  onClearFilter,
 }: ExperimentListProps) {
   if (isLoading) {
     return <ExperimentListSkeleton />;
+  }
+
+  if (experiments.length === 0 && statusFilter) {
+    return (
+      <div
+        className={'flex flex-col items-center gap-2 py-12 text-center'}
+        data-test={'experiment-list-filtered-empty'}
+      >
+        <p className={'text-sm font-medium'}>No {statusFilter} changes</p>
+        {onClearFilter ? (
+          <button
+            type={'button'}
+            className={'text-sm underline underline-offset-4'}
+            onClick={onClearFilter}
+            data-test={'experiment-list-show-all'}
+          >
+            Show all changes
+          </button>
+        ) : null}
+      </div>
+    );
   }
 
   if (experiments.length === 0) {

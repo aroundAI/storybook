@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -26,6 +28,7 @@ import {
 import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
 
+import { frozenFields } from '../../lib/experiment-transitions';
 import {
   BAKED_IN_CATEGORIES,
   BAKED_IN_NOTE,
@@ -41,9 +44,15 @@ import {
 } from '../../lib/watched-metrics';
 import type { ChannelRef } from '../../server/channels';
 import { ChannelFilter } from '../deep-dive/channel-filter';
+import type { ContentTag } from '../taxonomy/tag-manager';
+import { TagPicker } from '../taxonomy/tag-picker';
 import { type LinkableVideo, VideoPicker } from './video-picker';
 
 type CreateExperimentValues = z.infer<typeof CreateExperimentSchema>;
+
+/** Said beside every field a started change can no longer change. */
+export const FROZEN_NOTE =
+  'Fixed once the change started: the baseline was measured over the metric, window and videos, and the hypothesis and expectation were recorded before the result.';
 
 /** The schema caps linked videos at this; the picker enforces the same. */
 const MAX_LINKED_VIDEOS = 200;
@@ -70,10 +79,26 @@ interface ExperimentFormProps {
   onVideoSearchChange: (search: string) => void;
   videosLoading?: boolean;
   videosError?: boolean;
+  /** The account's tag vocabulary, for linking tags */
+  tags: ContentTag[];
+  tagsLoading?: boolean;
+  tagsError?: boolean;
   /** Persists the experiment */
   onSubmit: (values: CreateExperimentValues) => Promise<void>;
   /** Called after a successful save */
   onSuccess?: () => void;
+  /**
+   * `edit` fills the form from a stored change (KB-7). The parent mounts a
+   * fresh form per change (a `key`), so one change's values can never be
+   * shown, or saved, as another's.
+   */
+  mode?: 'create' | 'edit';
+  initialValues?: CreateExperimentValues;
+  /** The change's linked videos, so they show as selected (edit) */
+  initialVideos?: LinkableVideo[];
+  /** The change's status (edit): decides which fields are locked */
+  status?: string;
+  onCancel?: () => void;
 }
 
 /**
@@ -123,26 +148,43 @@ export function ExperimentForm({
   onVideoSearchChange,
   videosLoading = false,
   videosError = false,
+  tags,
+  tagsLoading = false,
+  tagsError = false,
   onSubmit,
   onSuccess,
+  mode = 'create',
+  initialValues,
+  initialVideos,
+  status = 'planned',
+  onCancel,
 }: ExperimentFormProps) {
+  const editing = mode === 'edit';
   const form = useForm({
     resolver: zodResolver(CreateExperimentSchema),
-    defaultValues: emptyValues(accountId, projectId),
+    defaultValues: initialValues ?? emptyValues(accountId, projectId),
   });
 
   const isSubmitting = form.formState.isSubmitting;
+  // The same list the action refuses and the table freezes: one rule.
+  const locked = frozenFields(editing ? status : 'planned');
+  const isLocked = (field: string) => locked.includes(field);
+
+  // A refusal stays on screen after its toast has gone.
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleSubmit = form.handleSubmit(async (values) => {
+    setSaveError(null);
     try {
       await onSubmit(values);
-      toast.success('Change logged');
-      form.reset(emptyValues(accountId, projectId));
+      toast.success(editing ? 'Change saved' : 'Change logged');
+      if (!editing) form.reset(emptyValues(accountId, projectId));
       onSuccess?.();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Could not save the change',
-      );
+      const message =
+        error instanceof Error ? error.message : 'Could not save the change';
+      setSaveError(message);
+      toast.error(message);
     }
   });
 
@@ -151,8 +193,18 @@ export function ExperimentForm({
       <form
         onSubmit={handleSubmit}
         className={'flex flex-col gap-4'}
-        data-test={'experiment-form'}
+        data-test={editing ? 'experiment-edit-form' : 'experiment-form'}
       >
+        {locked.length > 0 ? (
+          <p
+            id={'experiment-frozen-note'}
+            className={'rounded-md border p-3 text-xs text-muted-foreground'}
+            data-test={'experiment-frozen-note'}
+          >
+            {FROZEN_NOTE}
+          </p>
+        ) : null}
+
         <FormField
           control={form.control}
           name={'title'}
@@ -243,13 +295,21 @@ export function ExperimentForm({
               <FormItem>
                 <FormLabel>Metric you are watching (optional)</FormLabel>
                 <Select
+                  disabled={isLocked('metricWatched')}
                   value={field.value ?? NONE}
                   onValueChange={(next) =>
                     field.onChange(next === NONE ? undefined : next)
                   }
                 >
                   <FormControl>
-                    <SelectTrigger data-test={'experiment-metric'}>
+                    <SelectTrigger
+                      data-test={'experiment-metric'}
+                      aria-describedby={
+                        isLocked('metricWatched')
+                          ? 'experiment-frozen-note'
+                          : undefined
+                      }
+                    >
                       <SelectValue />
                     </SelectTrigger>
                   </FormControl>
@@ -294,6 +354,8 @@ export function ExperimentForm({
                   picker's trigger (it forwards id and aria attributes). */}
               <FormControl>
                 <VideoPicker
+                  disabled={isLocked('publishIds')}
+                  initialVideos={initialVideos}
                   videos={videos}
                   hasMore={videosHaveMore}
                   search={videoSearch}
@@ -350,6 +412,7 @@ export function ExperimentForm({
                     inputMode={'numeric'}
                     min={1}
                     max={365}
+                    disabled={isLocked('reviewWindowDays')}
                     data-test={'experiment-review-window'}
                     name={field.name}
                     ref={field.ref}
@@ -388,6 +451,8 @@ export function ExperimentForm({
                   placeholder={
                     'A face gets more clicks than text on these videos'
                   }
+                  disabled={isLocked('hypothesis')}
+                  data-test={'experiment-hypothesis'}
                   {...field}
                 />
               </FormControl>
@@ -406,6 +471,8 @@ export function ExperimentForm({
                 <Textarea
                   rows={2}
                   placeholder={'Click-through rate up by a point; views follow'}
+                  disabled={isLocked('expectedOutcome')}
+                  data-test={'experiment-expected'}
                   {...field}
                 />
               </FormControl>
@@ -432,17 +499,65 @@ export function ExperimentForm({
           )}
         />
 
-        <Button
-          type={'submit'}
-          disabled={isSubmitting}
-          className={'self-start'}
-          data-test={'experiment-submit'}
-        >
-          {isSubmitting ? (
-            <Loader2 className={'mr-2 h-4 w-4 animate-spin'} />
+        <FormField
+          control={form.control}
+          name={'tagIds'}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tags (optional)</FormLabel>
+              <div data-test={'experiment-tags'}>
+                <FormControl>
+                  <TagPicker
+                    tags={tags}
+                    selectedTagIds={field.value ?? []}
+                    onChange={field.onChange}
+                    isLoading={tagsLoading}
+                    isError={tagsError}
+                    emptyText={
+                      'No tags yet. Create them on the Tags page, then link them here.'
+                    }
+                  />
+                </FormControl>
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {saveError ? (
+          <p
+            className={'text-sm text-destructive'}
+            role={'alert'}
+            data-test={'experiment-form-error'}
+          >
+            {saveError}
+          </p>
+        ) : null}
+
+        <div className={'flex flex-wrap gap-2'}>
+          <Button
+            type={'submit'}
+            // An edit that changes nothing has nothing to save.
+            disabled={isSubmitting || (editing && !form.formState.isDirty)}
+            data-test={editing ? 'experiment-edit-save' : 'experiment-submit'}
+          >
+            {isSubmitting ? (
+              <Loader2 className={'mr-2 h-4 w-4 animate-spin'} />
+            ) : null}
+            {editing ? 'Save' : 'Log change'}
+          </Button>
+          {onCancel ? (
+            <Button
+              type={'button'}
+              variant={'outline'}
+              onClick={onCancel}
+              disabled={isSubmitting}
+              data-test={'experiment-edit-cancel'}
+            >
+              Cancel
+            </Button>
           ) : null}
-          Log change
-        </Button>
+        </div>
       </form>
     </Form>
   );

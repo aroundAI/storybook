@@ -46,6 +46,9 @@
     "./lib/ypp-targets": "./src/lib/ypp-targets.ts",
     "./lib/watched-metrics": "./src/lib/watched-metrics.ts",
     "./lib/action-result": "./src/lib/action-result.ts",
+    "./lib/experiment-edit": "./src/lib/experiment-edit.ts",
+    "./lib/experiment-transitions": "./src/lib/experiment-transitions.ts",
+    "./lib/schemas/experiment": "./src/lib/schemas/experiment.schema.ts",
     "./lib/local-date": "./src/lib/local-date.ts",
     "./lib/query-state": "./src/lib/query-state.ts"
   },

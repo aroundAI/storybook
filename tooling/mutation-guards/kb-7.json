@@ -1,0 +1,29 @@
+{
+  "feature": "FILM-CC-04 KB-7, KB-8, KB-93 (Change log management)",
+  "mutations": [
+    {
+      "name": "KB-93 tag link policy back to experiment access only",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/experiment-tags-account-rls.test.sql",
+      "sql": "alter policy experiment_tags_create on public.experiment_tags with check (exists (select 1 from public.analytics_experiments e where e.id = experiment_id and public.has_account_access(e.account_id)));"
+    },
+    {
+      "name": "KB-7 delete allowed in every state again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/analytics-experiments-rls.test.sql",
+      "sql": "alter policy analytics_experiments_delete on public.analytics_experiments using (public.has_account_access(account_id));"
+    },
+    {
+      "name": "FILM-1610 isolation: read policy opened to everyone",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/analytics-experiments-rls.test.sql",
+      "sql": "alter policy analytics_experiments_read on public.analytics_experiments using (true);"
+    },
+    {
+      "name": "FILM-1610 isolation: update policy opened to everyone",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/analytics-experiments-rls.test.sql",
+      "sql": "alter policy analytics_experiments_read on public.analytics_experiments using (true); alter policy analytics_experiments_update on public.analytics_experiments using (true);"
+    }
+  ]
+}

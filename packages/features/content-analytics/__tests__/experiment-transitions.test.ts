@@ -3,9 +3,27 @@ import { describe, expect, it } from 'vitest';
 import {
   assertCanAbandon,
   assertCanConclude,
+  assertCanDelete,
   assertCanStart,
   assertEditable,
+  canAbandon,
+  canConclude,
+  canDelete,
+  canStart,
+  frozenFields,
 } from '../src/lib/experiment-transitions';
+
+const STATUSES = ['planned', 'running', 'concluded', 'abandoned'];
+
+/** Whether an assert passes, so a button rule can be compared with it. */
+const passes = (assert: () => void) => {
+  try {
+    assert();
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 describe('assertCanStart', () => {
   it('starts only a planned experiment', () => {
@@ -100,6 +118,47 @@ describe('assertCanAbandon', () => {
       expect(() => assertCanAbandon(status)).toThrow(
         /only a planned or running change/i,
       );
+    }
+  });
+});
+
+describe('assertCanDelete (KB-7, owner decision 2026-09-24)', () => {
+  it('deletes only a planned or abandoned change', () => {
+    expect(() => assertCanDelete('planned')).not.toThrow();
+    expect(() => assertCanDelete('abandoned')).not.toThrow();
+
+    // A running change is abandoned first; a concluded one is the record.
+    expect(() => assertCanDelete('running')).toThrow(/abandon it first/i);
+    expect(() => assertCanDelete('concluded')).toThrow(
+      /only a planned or abandoned change/i,
+    );
+  });
+});
+
+describe('the page and the action share one rule per move (KB-7)', () => {
+  it('shows a button exactly when the action would accept it', () => {
+    for (const status of STATUSES) {
+      expect(canStart(status)).toBe(passes(() => assertCanStart(status)));
+      expect(canAbandon(status)).toBe(passes(() => assertCanAbandon(status)));
+      expect(canDelete(status)).toBe(passes(() => assertCanDelete(status)));
+      expect(canConclude(status)).toBe(status === 'running');
+    }
+  });
+
+  it('locks in the form exactly the fields the action refuses', () => {
+    expect(frozenFields('planned')).toEqual([]);
+
+    for (const status of ['running', 'concluded', 'abandoned']) {
+      const frozen = frozenFields(status);
+      expect(frozen.length).toBeGreaterThan(0);
+
+      for (const field of frozen) {
+        expect(() => assertEditable(status, [field])).toThrow(field);
+      }
+      for (const field of ['title', 'changeDescription', 'category', 'notes', 'connectionId', 'tagIds']) {
+        expect(frozen).not.toContain(field);
+        expect(() => assertEditable(status, [field])).not.toThrow();
+      }
     }
   });
 });

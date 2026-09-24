@@ -15,6 +15,7 @@ import { assertCallerToday } from '../lib/caller-date';
 import {
   assertCanAbandon,
   assertCanConclude,
+  assertCanDelete,
   assertCanStart,
   assertEditable,
 } from '../lib/experiment-transitions';
@@ -36,7 +37,9 @@ import {
   type WatchedValue,
   baselineWindow,
   daysBetween,
+  isWatchedMetricKey,
   resultWindow,
+  WATCHED_METRICS,
 } from '../lib/watched-metrics';
 import { resolveWatchedMetric } from './watched-metric-snapshot';
 import { withRefusals } from './with-refusals';
@@ -64,6 +67,12 @@ export interface ExperimentSnapshot {
   watched?: WatchedValue | null;
   /** Result snapshots only: the days that actually elapsed, start to end. */
   resultAfterDays?: number;
+  /**
+   * Result snapshots only (KB-8): the baseline's window measured again at
+   * conclusion, when the days that had not arrived at the start have. Kept
+   * beside the start's baseline, never in place of it.
+   */
+  baselineRemeasured?: WatchedValue;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -545,6 +554,22 @@ export const concludeExperimentAction = withRefusals(
       // experiment is labelled 74.
       result.resultAfterDays = daysBetween(startedAt, ended);
 
+      // KB-8. Platform data arrives days late, so the start's baseline
+      // usually lacks its last days. Measured again now, over the same
+      // window, it has them. Stored with the result — written once, by this
+      // step — so the start's baseline is never rewritten. The owner decided
+      // (2026-09-24) that the page shows both and compares against neither.
+      const metric = context.metric_watched;
+      if (metric && isWatchedMetricKey(metric) && WATCHED_METRICS[metric].windowed) {
+        result.baselineRemeasured = await resolveWatchedMetric({
+          metric,
+          accountId: context.account_id,
+          publishIds: linked.map((publish) => publish.id),
+          publishedAt: linked.map((publish) => publish.publishedAt),
+          window: baselineWindow(startedAt, context.review_window_days),
+        });
+      }
+
       await updateIfStatus(
         client,
         experimentId,
@@ -788,10 +813,17 @@ export const deleteExperimentAction = withRefusals(
     async ({ experimentId }) => {
       const client = getSupabaseServerClient();
 
+      const context = await readSnapshotContext(client, experimentId);
+      assertCanDelete(context.status);
+
+      // The status condition is on the delete itself, as for the lifecycle
+      // writes: a change started in another tab since the read is not
+      // deleted. The table's policy refuses it too.
       const { data: deleted, error } = await client
         .from('analytics_experiments')
         .delete()
         .eq('id', experimentId)
+        .in('status', ['planned', 'abandoned'])
         .select('id');
 
       if (error) {
@@ -801,7 +833,7 @@ export const deleteExperimentAction = withRefusals(
       // As with an update: a refused delete removes nothing and says nothing.
       if (!deleted || deleted.length === 0) {
         throw new ActionRefusal(
-          'Nothing was deleted: the change was not found, or you cannot delete it.',
+          'Nothing was deleted: the change was not found, was started since you opened it, or you cannot delete it. Reload and try again.',
         );
       }
 
