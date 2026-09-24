@@ -633,6 +633,7 @@ dollar sponsorship for the same scope on the same day are one slot, and the
 second entry replaces the first (the form's standing note says a save for
 the same date and category replaces the last one). That is a
 limit on what can be recorded, not a wrong sum.
+| KB-43, KB-44 | Any account member could read a connection's encrypted OAuth tokens through PostgREST. `anon` held every privilege on `platform_connections`. `anon` and `authenticated` held TRUNCATE, TRIGGER and REFERENCES on up to 75 public tables | #338 |
 
 ---
 
@@ -3513,7 +3514,6 @@ Spec `evidence` and `reason` citations name a `path:line`, and nothing checks th
 ---
 
 ## KB-83 — Voice spend is never counted against the monthly budget
-## KB-85 — `anon` holds read and write grants on 72 public tables
 
 **Severity:** Medium: the budget cap cannot stop spending it never sees.
 **Found:** KB-46 (2026-09-24); **reproduced** against the local DB: every role,
@@ -3627,20 +3627,23 @@ confirmation dialog; or remove the menu item until it exists.
 
 - [ ] After Delete and a reload, the asset is gone and its row is soft-deleted (E2E, red first)
 - [ ] A project viewer cannot delete
-## KB-85 — `anon` holds read and write grants on 74 public tables
-**Severity:** Low — not reachable today. **Found:** KB-44 (#PR), 2026-09-24,
+
+---
+
+## KB-85 — `anon` holds read and write grants on 72 public tables
+
 **Severity:** Low — not reachable today. **Found:** KB-44 (#338), 2026-09-24,
 from `information_schema.role_table_grants`. **Open.**
-After KB-44, `anon` still holds SELECT, INSERT, UPDATE and DELETE on 74 of
-the 86 public tables: Supabase's default grants, never revoked. Two layers
 
 After KB-44, `anon` still holds SELECT, INSERT, UPDATE and DELETE on 72 of
 the 86 public tables (counted after this migration, 2026-09-24): Supabase's default grants, never revoked. Two layers
 stop them, and both are easy to lose:
+
 - the schema-level `USAGE` revoke (`20221215192558_schema.sql:27`). Probed
   2026-09-24: `GET /rest/v1/platform_connections` with the anon key returns
   `401 permission denied for schema public`;
 - RLS, whose policies mostly name `authenticated`.
+
 Re-granting `USAGE`, or one `{public}` policy with a loose predicate, would
 expose whatever that table's grants allow. KB-52 saw the same on
 `llm_usage_analytics`.
@@ -3660,12 +3663,19 @@ different branches' databases; count again when this is worked.
 Anonymous reads are legitimate on three tables: `accounts`, `projects`
 and `episodes` have `{anon,authenticated}` SELECT policies for public pages.
 `audio_cues` and `verified_facts` have `{public}` policies (KB-52's area).
+
+### Proposed fix
+
 Revoke SELECT, INSERT, UPDATE and DELETE from `anon` on every public table
 except the three above (SELECT only on those). Change the default privileges
 to match. Add a pgTAP allowlist of what `anon` may hold. Check the public
 project and episode pages with an E2E as a signed-out visitor.
+
+### Acceptance criteria
+
 - [ ] pgTAP: `anon`'s grants in `public` equal an explicit allowlist
 - [ ] A signed-out visitor still sees a public project and episode (E2E)
+
 
 ---
 
@@ -3715,7 +3725,6 @@ project and episode pages with an E2E as a signed-out visitor.
 | KB-79 | The audio library took one upload: Upload was drawn only in the empty state, and a new asset showed only after a reload | #350 |
 | KB-57 (part) | The audio library stored any signed-in user's file with the admin client, at a key naming no project, before checking the project | #350 |
 | KB-78 | Regenerating a story deleted every canon row of the episode, including events and threads a person had added; it now replaces only what generation made (`narrative_threads.auto_generated`). Whether explicit resets should keep hand-added canon is open | #347 |
-| KB-43, KB-44 | Any account member could read a connection's encrypted OAuth tokens through PostgREST. `anon` held every privilege on `platform_connections`. `anon` and `authenticated` held TRUNCATE, TRIGGER and REFERENCES on up to 75 public tables | #338 |
 
 ---
 
