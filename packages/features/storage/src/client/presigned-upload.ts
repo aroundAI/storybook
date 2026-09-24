@@ -6,6 +6,24 @@
  *
  * This module is designed to be used in client-side code across all packages.
  */
+import {
+  ACCOUNT_IMAGE_BUCKET,
+  PROJECT_ASSETS_BUCKET,
+  accountImagePath,
+  fileExtension,
+  projectCoverPath,
+} from '../upload-paths';
+
+/**
+ * The presign route refused the upload, and said why (bucket, path, type,
+ * size or permission). Its message is written for the person uploading.
+ */
+export class UploadRefusal extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'UploadRefusal';
+  }
+}
 
 interface PresignedUploadResult {
   url: string;
@@ -56,9 +74,14 @@ export async function requestPresignedUpload(
     | { error?: string };
 
   if (!response.ok || !('uploadUrl' in data)) {
+    const reason = 'error' in data ? data.error : undefined;
+
+    if (reason && response.status >= 400 && response.status < 500) {
+      throw new UploadRefusal(reason);
+    }
+
     throw new Error(
-      ('error' in data && data.error) ||
-        `Failed to get presigned URL (${response.status})`,
+      reason || `Failed to get presigned URL (${response.status})`,
     );
   }
 
@@ -113,23 +136,24 @@ export async function uploadWithPresignedUrl(
 }
 
 /**
- * Upload an avatar/profile image
+ * Upload an account's picture (KB-53)
+ *
+ * Stored at `account_image/<accountId>.<ext>` — the name the bucket's policy
+ * reads as the owning account — so each upload replaces the last. The URL
+ * returned carries a version query, so the new picture is not served from a
+ * cache of the old one.
  *
  * @param file - Image file
  * @param accountId - Account ID (user or team)
- * @param bucket - Bucket name (default: 'account_image')
- * @returns Upload result
  */
 export async function uploadAvatar(
   file: File,
   accountId: string,
-  bucket: string = 'account_image',
 ): Promise<PresignedUploadResult> {
-  const ext = file.name.split('.').pop() || 'jpg';
-  const timestamp = Date.now();
-  const path = `${accountId}/avatar-${timestamp}.${ext}`;
+  const path = accountImagePath(accountId, file.type);
+  const result = await uploadWithPresignedUrl(file, ACCOUNT_IMAGE_BUCKET, path);
 
-  return uploadWithPresignedUrl(file, bucket, path);
+  return { ...result, url: `${result.url}?v=${Date.now()}` };
 }
 
 /**
@@ -143,9 +167,7 @@ export async function uploadProjectCover(
   file: File,
   projectId: string,
 ): Promise<PresignedUploadResult> {
-  const ext = file.name.split('.').pop() || 'jpg';
-  const timestamp = Date.now();
-  const path = `projects/${projectId}/assets/covers/cover-${timestamp}.${ext}`;
+  const path = projectCoverPath(projectId, fileExtension(file.name, 'jpg'));
 
-  return uploadWithPresignedUrl(file, 'project-assets', path);
+  return uploadWithPresignedUrl(file, PROJECT_ASSETS_BUCKET, path);
 }

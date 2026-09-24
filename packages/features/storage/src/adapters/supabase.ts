@@ -55,13 +55,14 @@ export class SupabaseStorageAdapter implements StorageAdapter {
   async getSignedUploadUrl(
     bucket: string,
     path: string,
-    { contentType, expiresIn = 3600 }: SignedUploadRequest,
+    { contentType, expiresIn = 3600, upsert }: SignedUploadRequest,
   ): Promise<SignedUploadResult> {
     // The URL binds neither type nor length; the bucket's allowed_mime_types
     // and file_size_limit apply when the PUT arrives (KB-28).
-    const { data, error } = await this.client.storage
-      .from(bucket)
-      .createSignedUploadUrl(path);
+    const bucketApi = this.client.storage.from(bucket);
+    const { data, error } = upsert
+      ? await bucketApi.createSignedUploadUrl(path, { upsert: true })
+      : await bucketApi.createSignedUploadUrl(path);
 
     if (error || !data) {
       throw new Error(`Failed to create signed upload URL: ${error?.message}`);

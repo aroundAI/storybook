@@ -2259,10 +2259,37 @@ upload and is refused a larger one or another type.
 
 ## KB-39 — The project intro upload is rejected by the presign route's path pattern
 
-**Found:** KB-28 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
-**Open.**
+**Severity:** High for the feature — no intro video could ever be uploaded,
+so episode intros did not exist. **Found:** KB-28 (2026-09-23).
+**Reproduced** 2026-09-24 on `main` 52ed2ade. **Fixed** in #340, with KB-53
+and KB-54. Plan: `specs/plans/KB-39-53-54-edd.md`.
 
-The project intro upload is rejected by the presign route's path pattern.
+The intro dialog (`…/studio/settings/_components/project-intro-settings.tsx:385`)
+built `projects/<P>/intros/<lang>-<ts>.mp4`. The presign route admits
+`projects/<P>/assets/<type>/<file>`, `projects/<P>/shots/<S>/<type>/<file>`
+and `episodes/<E>/<type>/<file>`, so every intro was refused with 400
+"Invalid storage path format" before any permission check. The pattern taken
+from the route refuses the dialog's path; the pre-#313 regex refused it too
+(`git show 403bbc13`), so no intro has ever been stored. The dialog's error
+toast said only "Failed to upload intro video".
+
+**Fix.** The route's rule is unchanged: KB-28's pattern still applies, byte
+for byte. What changed is where paths come from. The builders and the route's
+per-bucket rules now live in one module,
+`packages/features/storage/src/upload-paths.ts`, and a test binds every builder
+to the rule of the bucket it uploads to (`upload-paths.test.ts`). The intro is
+stored at `projects/<P>/assets/intros/<lang>-<ts>.<ext>`: the language is made
+safe for a path segment, and the extension follows the MIME type rather than
+always being `.mp4`. A refusal from the route now reaches the dialog's toast
+as written (`UploadRefusal`), for example "Content type not allowed:
+video/x-matroska". The unused `uploadImage` helper, which built a path the
+route also refuses (`projects/<id>/<category>/…`), is deleted.
+
+### Acceptance criteria
+
+- [x] A project writer adds an intro through the settings dialog and it is stored under `projects/<P>/assets/intros/` (E2E `apps/e2e/tests/storage/intro-thumbnail-upload.spec.ts`; red on `main`'s dialog)
+- [x] Every path builder produces a path its bucket's rule admits, and the old intro path is still refused (`packages/features/storage/__tests__/upload-paths.test.ts`)
+- [x] The route's refusal text reaches the user (E2E: an `.mkv` shows "Content type not allowed: video/x-matroska")
 
 ---
 
@@ -2660,19 +2687,89 @@ through GoTrue, with no memberships in any account, and signed in for a JWT.
 
 ## KB-53 — Avatar upload is broken
 
-**Found:** KB-28 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
-**Open.**
+**Severity:** Medium: no one could set a profile or team picture.
+**Found:** KB-28 (2026-09-23). **Reproduced** 2026-09-24 on `main` 52ed2ade.
+**Fixed** in #340.
 
-Avatar upload is broken on `main`: the presign path and the `account_image` filename check disagree.
+Three separate refusals, any one of them enough:
+
+1. The presign route signed only `project-assets` (`ALLOWED_BUCKETS`), so
+   `account_image` got a 400 "Bucket not allowed". `route.test.ts` asserted
+   that refusal.
+2. `uploadAvatar` built `<accountId>/avatar-<ts>.<ext>`, which the route's
+   path pattern also refuses.
+3. The bucket's policy reads the **file name** as the owning account's id
+   (`kit.get_storage_filename_as_uuid`). On the live local database,
+   `select kit.get_storage_filename_as_uuid('<uuid>/avatar-1727000000000.png')`
+   raises `invalid input syntax for type uuid: "avatar-1727000000000"`, so
+   on Supabase the insert errored instead of being decided.
+
+The bucket also had no size or type limit.
+
+**Fix** (migration `20260924080133_kb53-account-image-writes.sql`):
+- **Path.** An avatar lives at `account_image/<accountId>.<ext>`, the name the
+  policy already expects. Each upload replaces the last. The URL written to
+  `accounts.picture_url` carries `?v=<ts>`, so a cached copy of the old picture
+  is not shown.
+- **One rule.** `public.can_write_account_image(path)` is the policy's WITH
+  CHECK as a function: the file name's account is the caller, or the caller
+  has `settings.manage` on it. A malformed name returns false instead of
+  raising. The policy and the presign route both call it, which matters
+  because on R2 no policy runs. The policy's USING is unchanged.
+- **Route.** The route signs `account_image` only for that exact
+  `<uuid>.<png|jpg|webp|gif>` shape, the four image types, at most 10 MB, and
+  only if the rule says yes. Upload URLs may overwrite on this bucket only
+  (Supabase `upsert`); `project-assets` URLs still may not.
+- **Bucket.** `account_image` gets a 10 MB limit and the four image types,
+  bound to `UPLOAD_CONSTRAINTS.image` by `account-image-bucket.test.ts`.
+
+Removing a picture clears `picture_url` and keeps the file (unchanged, owner
+decision 2026-09-24), and the avatar error toast stays the generic one.
+
+### Acceptance criteria
+
+- [x] A user sets and then replaces their picture, and a team owner sets the team's, through settings (E2E `apps/e2e/tests/storage/account-avatar-upload.spec.ts`)
+- [x] Nobody may write another account's picture, through the route or around it (E2E; `route.test.ts` on both providers)
+- [x] The rule is one function, used by the policy and the route; a malformed name is refused, not an error (pgTAP `account-image-storage-rls.test.sql`)
+- [x] The bucket's limits are the route's (`account-image-bucket.test.ts`, pgTAP)
 
 ---
 
 ## KB-54 — Intro and thumbnail replacement deletes compute the wrong object key
 
-**Found:** KB-28 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
-**Open.**
+**Severity:** Low as filed: files were orphaned, and a deleted intro stayed
+public at its old URL. It turned out larger: fixed as filed, it would have
+opened a cross-tenant delete (below). **Found:** KB-28 (2026-09-23).
+**Reproduced** 2026-09-24 on `main` 52ed2ade. **Fixed** in #340.
 
-The best-effort deletes of an old intro or thumbnail compute the wrong object key, so they delete nothing.
+`intro-actions.ts:134,266` and `thumbnail-actions.ts:183,320` turned the
+stored URL into a key with `new URL(u).pathname.split('/').slice(-2)`. That
+yields `intros/en-1.mp4` for
+`…/project-assets/projects/<P>/intros/en-1.mp4`, and `thumbnails/en-1.png` for
+an R2 `…/project-assets/episodes/<E>/thumbnails/en-1.png`, so no delete removed
+anything.
+
+**What fixing only the key would have allowed.** Two things:
+- *A cross-tenant delete.* `videoUrl` and `thumbnailUrl` come from the client
+  (see KB-90), and on R2 the adapter deletes with the app's own credentials.
+  A writer of project A could save an intro URL naming a file of project B,
+  then press Replace or Delete, and B's file would go.
+- *Data loss.* The old file was deleted **before** the row was saved, so a
+  failed save would leave the row pointing at a deleted file.
+
+**Fix.** `storageKeyFromPublicUrl` reads the key against the adapter's own
+`getPublicUrl(bucket, '')` prefix, which is exact on every provider, and
+returns null for any URL the adapter did not issue. `deleteOwnedObject`
+deletes only a key under the row's own folder (`projects/<P>/` for intros,
+`episodes/<E>/` for thumbnails). On a replace, the old file is deleted only
+after the new row is saved. All four sites use the shared helper.
+
+### Acceptance criteria
+
+- [x] Replacing an intro deletes the old file; deleting an intro deletes its file (E2E `intro-thumbnail-upload.spec.ts`; unit `replacement-deletes.test.ts`, 9 cases, all red on `main`)
+- [x] Replacing a thumbnail on the publish screen deletes the old file (E2E, same spec)
+- [x] A URL naming another project's or episode's file is never deleted (unit)
+- [x] A failed save keeps the old file (unit)
 
 ---
 
@@ -3310,6 +3407,45 @@ the settings key list). Add a pgTAP test listing the columns a member may read.
 
 ---
 
+## KB-89 — Episode thumbnails cannot be deleted in the app: their settings panel is rendered nowhere
+
+**Severity:** Low. **Found:** KB-54 (2026-09-24). **Reproduced** by search on
+`main` 52ed2ade: `EpisodeThumbnailSettings`
+(`…/studio/episodes/[episodeSlug]/_components/episode-thumbnail-settings.tsx:57`)
+is imported by no file in `apps/` or `packages/`. So
+`deleteEpisodeThumbnailAction` has no caller, and neither do the panel's
+set-default or per-language add. The publish screen (`publish-screen.tsx:260`)
+can upload and replace a thumbnail per language, but nothing lets a creator
+remove one.
+
+**Open.** Either render the panel (where?) or remove it and give the publish
+screen's thumbnail slot a remove action; that is a product decision.
+
+---
+
+## KB-90 — The intro and thumbnail actions save any URL as the file
+
+**Severity:** Low. The storage side is contained by KB-54's fix (a delete
+only touches the row's own folder), but a writer can make an intro or
+thumbnail point anywhere. **Found:** KB-54 (2026-09-24). **Reproduced**
+2026-09-24 against the real actions with a fake database (the
+`replacement-deletes.test.ts` harness): `uploadProjectIntroAction` with
+`videoUrl: 'https://attacker.example/page.html'` and
+`uploadEpisodeThumbnailAction` with another project's cover URL both
+returned `success: true` and saved that URL.
+
+The schemas accept any URL (`intro-actions.ts` `videoUrl: z.string().url()`,
+`thumbnail-actions.ts` `thumbnailUrl: z.string().url()`). The render step
+that stitches intros, and the publish step that sends thumbnails to the
+platforms, would fetch whatever is saved there.
+
+**Open.** Proposed: accept only a URL for which
+`storageKeyFromPublicUrl(storage, 'project-assets', url)` returns a key
+under the row's own folder (the same check KB-54's deletes use), and refuse
+anything else as a value.
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
@@ -3351,6 +3487,7 @@ the settings key list). Add a pgTAP test listing the columns a member may read.
 | KB-46 | A teammate who could only read a project spent its ElevenLabs key: voice, SFX and music generation authorised by a readable row, not `can_write_project`. The public-project stranger in the original entry was blocked, by accident | #337 |
 | KB-47 (part) | The voice queue: its three producers sent jobs the service-role worker ran on the named account's key; they now authorise, and the queue requires the target. The publish queue is still open | #337 |
 | KB-30 | Every YouTube upload declared "not made for kids" and category 22, which nobody chose, on all four upload paths; each channel's audience and category are now the creator's answer, asked for on the first publish | #341 |
+| KB-39, KB-53, KB-54 | No intro video and no avatar could ever be uploaded (paths the presign route refuses; the avatar bucket was not signed and its policy raised on the file name); replaced intros and thumbnails left their old files, and fixing that naively would have let a writer delete another project's files | #340 |
 
 ---
 

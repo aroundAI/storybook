@@ -166,6 +166,10 @@ export default defineConfig({
         __dirname,
         '../../packages/features/storage/src/client.ts',
       ),
+      '@kit/storage/upload-paths': path.resolve(
+        __dirname,
+        '../../packages/features/storage/src/upload-paths.ts',
+      ),
       '@kit/storage': path.resolve(
         __dirname,
         '../../packages/features/storage/src/index.ts',

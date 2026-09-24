@@ -9,7 +9,11 @@ import { z } from 'zod';
 import { enhanceAction } from '@kit/next/actions';
 import { canPerformProjectAction } from '@kit/projects/queries';
 import { getLogger } from '@kit/shared/logger';
-import { getStorageAdapter } from '@kit/storage';
+import {
+  type StorageAdapter,
+  deleteOwnedObject,
+  getStorageAdapter,
+} from '@kit/storage';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -72,6 +76,38 @@ export interface ProjectIntro {
   updatedAt: string;
 }
 
+/**
+ * Best-effort delete of an intro's stored file. Only a file inside this
+ * project's folder: the URL came from the client, and on R2 the delete runs
+ * with the app's own credentials (KB-54).
+ */
+async function removeIntroFile(
+  storage: StorageAdapter,
+  videoUrl: string,
+  projectId: string,
+  ctx: Record<string, unknown>,
+) {
+  const logger = await getLogger();
+  const result = await deleteOwnedObject(
+    storage,
+    'project-assets',
+    videoUrl,
+    `projects/${projectId}/`,
+  );
+
+  if (result.deleted) {
+    logger.info(
+      { ...ctx, key: result.key },
+      'Deleted intro video from storage',
+    );
+  } else {
+    logger.warn(
+      { ...ctx, videoUrl, reason: result.reason, error: result.error },
+      'Intro video left in storage',
+    );
+  }
+}
+
 // ============================================================================
 // Upload Project Intro Action
 // ============================================================================
@@ -122,27 +158,6 @@ export const uploadProjectIntroAction = enhanceAction(
         .eq('language', data.language)
         .single();
 
-      // If replacing existing intro, optionally delete old file from storage
-      if (
-        existingIntro?.video_url &&
-        existingIntro.video_url !== data.videoUrl
-      ) {
-        try {
-          const storage = getStorageAdapter(client);
-          // Extract path from URL and delete
-          const urlPath = new URL(existingIntro.video_url).pathname;
-          const storagePath = urlPath.split('/').slice(-2).join('/');
-          await storage.delete('project-assets', storagePath);
-          logger.info(ctx, 'Deleted old intro video from storage');
-        } catch (deleteError) {
-          // Log but don't fail - old file cleanup is best-effort
-          logger.warn(
-            { ...ctx, error: deleteError },
-            'Failed to delete old intro video',
-          );
-        }
-      }
-
       // Upsert intro record
       const introData = {
         project_id: data.projectId,
@@ -173,6 +188,20 @@ export const uploadProjectIntroAction = enhanceAction(
 
       if (!intro) {
         throw new Error('Failed to save intro: no data returned');
+      }
+
+      // Only once the row points at the new file: had the save failed, the
+      // row would still point at the old one (KB-54).
+      if (
+        existingIntro?.video_url &&
+        existingIntro.video_url !== data.videoUrl
+      ) {
+        await removeIntroFile(
+          getStorageAdapter(client),
+          existingIntro.video_url,
+          data.projectId,
+          ctx,
+        );
       }
 
       logger.info(ctx, 'Project intro uploaded successfully');
@@ -258,20 +287,13 @@ export const deleteProjectIntroAction = enhanceAction(
         throw new Error('Intro not found');
       }
 
-      // Delete from storage
       if (intro.video_url) {
-        try {
-          const storage = getStorageAdapter(client);
-          const urlPath = new URL(intro.video_url).pathname;
-          const storagePath = urlPath.split('/').slice(-2).join('/');
-          await storage.delete('project-assets', storagePath);
-          logger.info(ctx, 'Deleted intro video from storage');
-        } catch (deleteError) {
-          logger.warn(
-            { ...ctx, error: deleteError },
-            'Failed to delete intro video from storage',
-          );
-        }
+        await removeIntroFile(
+          getStorageAdapter(client),
+          intro.video_url,
+          data.projectId,
+          ctx,
+        );
       }
 
       // Delete from database

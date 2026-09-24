@@ -5572,6 +5572,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      can_write_account_image: { Args: { path: string }; Returns: boolean }
       can_write_project: {
         Args: { target_project_id: string }
         Returns: boolean

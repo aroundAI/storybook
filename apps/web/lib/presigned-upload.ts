@@ -7,6 +7,12 @@
  * sending a request the route has since stopped accepting (KB-38).
  */
 import { uploadWithPresignedUrl } from '@kit/storage/client';
+import {
+  PROJECT_ASSETS_BUCKET,
+  fileExtension,
+  publishVideoPath,
+  shotVideoPath,
+} from '@kit/storage/upload-paths';
 
 export { uploadWithPresignedUrl };
 
@@ -25,12 +31,13 @@ export async function uploadPublishVideo(
   episodeId: string,
   language: string,
 ): Promise<PresignedUploadResult> {
-  const ext = file.name.split('.').pop() || 'mp4';
-  const timestamp = Date.now();
-  const filename = `${language}-${timestamp}.${ext}`;
-  const path = `episodes/${episodeId}/videos/${filename}`;
+  const path = publishVideoPath(
+    episodeId,
+    language,
+    fileExtension(file.name, 'mp4'),
+  );
 
-  return uploadWithPresignedUrl(file, 'project-assets', path);
+  return uploadWithPresignedUrl(file, PROJECT_ASSETS_BUCKET, path);
 }
 
 /**
@@ -46,31 +53,11 @@ export async function uploadShotVideo(
   projectId: string,
   shotId: string,
 ): Promise<PresignedUploadResult> {
-  const ext = file.name.split('.').pop() || 'mp4';
-  const timestamp = Date.now();
-  const filename = `shot-${shotId}-${timestamp}.${ext}`;
-  const path = `projects/${projectId}/shots/${shotId}/video/${filename}`;
+  const path = shotVideoPath(
+    projectId,
+    shotId,
+    fileExtension(file.name, 'mp4'),
+  );
 
-  return uploadWithPresignedUrl(file, 'project-assets', path);
-}
-
-/**
- * Upload an image file (thumbnails, frames, etc.)
- *
- * @param file - Image file
- * @param projectId - Project ID
- * @param category - Image category (e.g., 'thumbnails', 'frames')
- * @returns Upload result
- */
-export async function uploadImage(
-  file: File,
-  projectId: string,
-  category: string,
-): Promise<PresignedUploadResult> {
-  const ext = file.name.split('.').pop() || 'jpg';
-  const timestamp = Date.now();
-  const filename = `${category}-${timestamp}.${ext}`;
-  const path = `projects/${projectId}/${category}/${filename}`;
-
-  return uploadWithPresignedUrl(file, 'project-assets', path);
+  return uploadWithPresignedUrl(file, PROJECT_ASSETS_BUCKET, path);
 }
