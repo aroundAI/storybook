@@ -177,6 +177,11 @@ test.describe('Connecting and disconnecting, and what the platform is asked (KB-
     'Needs the local vendor sandbox (KB25_SANDBOX_PORT, ENCRYPTION_KEY)',
   );
 
+  // One stand-in on one port, which the server was started pointing at: the
+  // tests share it, so they run in order in one worker. Not `serial` — one
+  // failure must not skip the rest.
+  test.describe.configure({ mode: 'default' });
+
   let vendor: Awaited<ReturnType<typeof startStandIn>>;
 
   test.beforeAll(async () => {
