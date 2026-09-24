@@ -25,10 +25,10 @@ acceptance_criteria:
     evidence: "gate `apps/e2e/tests/tags/tag-medians.spec.ts:29`; per-tag grouping `packages/clickhouse/__tests__/queries-advanced.test.ts:1015`"
   - text: "Content table shows tags and supports bulk tagging of selected rows"
     met: false
-    reason: "not met — `content-table.tsx` has no tags or selection; `ContentTable`, `TagPicker`, `bulkTagPublishesAction` have no caller"
+    reason: "not met — `content-table.tsx` has no tags or selection; `ContentTable` and `bulkTagPublishesAction` have no caller (`TagPicker`'s only caller is the Change log form, which tags changes, not publishes — KB-7)"
 remaining:
   - criterion: "Content table shows tags and bulk-tags selected rows"
-    reason: "Never wired. `packages/features/content-analytics/src/components/content-table.tsx` has no tags column and no row selection, and nothing renders `ContentTable`. `TagPicker`, `setPublishTagsAction` and `bulkTagPublishesAction` are exported but nothing calls them (`git log -S` finds no caller, ever). The only tag UI is vocabulary management (`apps/web/app/home/[account]/studio/analytics/tags/`), so no publish can be tagged in the product and tag medians cannot reach their 30-video gate"
+    reason: "Never wired. `packages/features/content-analytics/src/components/content-table.tsx` has no tags column and no row selection, and nothing renders `ContentTable`. `setPublishTagsAction` and `bulkTagPublishesAction` are exported but nothing calls them (`git log -S` finds no caller, ever); `TagPicker` is used since KB-7 (2026-09-24), but only to tag Change log entries, not publishes. The only tag UI is vocabulary management (`apps/web/app/home/[account]/studio/analytics/tags/`), so no publish can be tagged in the product and tag medians cannot reach their 30-video gate"
     closed_by: "unassigned"
 open_questions: []
 feature:

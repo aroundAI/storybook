@@ -3,8 +3,8 @@ title: "Analytics Experiment Log"
 phase: 15
 phase_name: "Deep Analytics Discipline"
 category: feature
-status: PARTIAL
-audited: "2026-09-23"
+status: RETIRED
+audited: "2026-09-24"
 effort: M
 dependencies:
   - spec_id: "FILM-1502"
@@ -13,24 +13,22 @@ summary: >
   The playbook: "Keep a manual log alongside the analytics: what you tried, what you expected, what happened. Studio tells you what the numbers did but not what you changed." This spec adds a structured experiment log with **auto-captured metric snapshots** at start and conclusion, linked to publishes and taxonomy tags. Data model follows the `social_posts` pattern (`40-social-posts.sql`).
 acceptance_criteria:
   - text: "Full lifecycle works: create → link publishes/tags → start (baseline captured) → conclude (results captured, actual_outcome required)"
-    met: false
-    reason: "not met — tags cannot be linked (form always sends `tagIds: []`, `experiment-form.tsx:101`); the rest passes `apps/e2e/tests/experiments/experiments.spec.ts:224`"
   - text: "Metric deltas render on the detail view"
-    met: true
-    evidence: "baseline and result of the watched metric (FILM-1610): `apps/e2e/tests/experiments/experiments-evidence.spec.ts:198`, `:237`"
   - text: "RLS: second account's user cannot read or modify"
-    met: false
-    reason: "unverified — policies at `apps/web/supabase/migrations/20260827103738_analytics-experiments.sql:81`; pgTAP covers only an outsider linking (`experiment-publishes-account-rls.test.sql:89`)"
   - text: "Experiments appear newest-first with filter by status"
-    met: false
-    reason: "not met — newest-first holds (`experiment-actions.ts:736`); the page has no status filter and never passes `status`"
-remaining:
-  - criterion: "Link tags to an experiment"
-    reason: "The server accepts `tagIds` (`packages/features/content-analytics/src/server/experiment-actions.ts:324`), but the form always sends `tagIds: []` (`packages/features/content-analytics/src/components/experiments/experiment-form.tsx:101`) and `TagPicker` has never had a caller. The same missing tag UI leaves FILM-1507 open"
-    closed_by: "unassigned"
-  - criterion: "Filter experiments by status"
-    reason: "`listExperimentsAction` accepts `status` (`experiment-actions.ts:733`), but the page calls it with `{ accountId }` only (`apps/web/app/home/[account]/studio/analytics/experiments/_components/experiments-client.tsx:79`) and renders no filter. It never had one. FILM-1610's \"Due for review\" list is a different question"
-    closed_by: "unassigned"
+retirement:
+  commit: "4b79839b"
+  date: "2026-09-24"
+  what_happened: >
+    **Retired 2026-09-24: folded into FILM-1610** (owner decision). FILM-1610
+    grew this log into the Change log and had already taken over its tables,
+    actions and page; the three items left open here — linking tags, the
+    status filter, and a pgTAP proof that another account's user cannot read
+    or change an entry — are FILM-1610 criteria now, met in the same PR as
+    FILM-CC-04 KB-7, KB-8 and KB-93. The lifecycle and metric-delta criteria
+    were already met there. Nothing was removed; one spec describes the
+    feature instead of two.
+  replacement: "FILM-1610"
 open_questions: []
 feature:
   database:

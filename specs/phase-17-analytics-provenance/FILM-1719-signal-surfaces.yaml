@@ -55,7 +55,7 @@ acceptance_criteria:
   - text: "Claim strength is distinguishable in the wording"
     met: false
     reason: "not yet implemented — spec status is DRAFT, unaudited"
-  - text: "A causal claim renders only beside its experiment"
+  - text: "A causal claim renders only beside the concluded Change log entry (FILM-1610) or concluded channel experiment (FILM-1724) that backs it, and says which kind"
     met: false
     reason: "not yet implemented — spec status is DRAFT, unaudited"
   - text: "All depths are keyboard-reachable and present in the DOM for browser find"
@@ -155,8 +155,9 @@ notes: |
   reading carefully: `observed` — "Videos tagged identity had 1.7x typical
   transmission"; `controlled_association` — "Among comparable videos,
   identity is associated with 1.7x"; `causal` — "Changing the framing
-  increased transmission" — and only ever beside the experiment that
-  established it.
+  increased transmission" — and only ever beside the concluded Change log
+  entry (FILM-1610) or concluded channel experiment (FILM-1724) that
+  established it, saying which kind it is (owner, 2026-09-24).
 
   A UI that renders all three identically destroys the distinction the
   whole genome spec was built to preserve.

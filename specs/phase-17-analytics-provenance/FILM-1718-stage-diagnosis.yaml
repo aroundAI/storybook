@@ -132,7 +132,8 @@ notes: |
 
   So diagnosis describes what was measured and points at where to look.
   Hypothesis belongs to the creative-insight layer above it, and causation
-  belongs only to an experiment.
+  belongs only to a concluded Change log entry (FILM-1610) or a concluded channel experiment (FILM-1724) — and a causal claim names which
+  kind backs it (owner, 2026-09-24).
 
   ```
   measurement -> diagnosis -> hypothesis

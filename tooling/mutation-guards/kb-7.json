@@ -129,6 +129,15 @@
       "replace": "  if (experiments.length === 0 && statusFilter && false) {",
       "spec": "tests/experiments/experiments-manage.spec.ts",
       "grep": "says when none match"
+    },
+    {
+      "name": "KB-7 E2E a refused action no longer re-reads the change",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/analytics/experiments/_components/experiments-client.tsx",
+      "find": "      void Promise.all([refresh(), detailQuery.refetch()]);\n",
+      "replace": "",
+      "spec": "tests/experiments/experiments-manage.spec.ts",
+      "grep": "says why, and keeps it"
     }
   ]
 }

@@ -4,7 +4,7 @@ phase: 16
 phase_name: "Workbook Parity"
 category: feature
 status: DONE
-audited: "2026-09-23"
+audited: "2026-09-24"
 effort: M
 dependencies:
   - spec_id: "FILM-1602"
@@ -119,6 +119,30 @@ acceptance_criteria:
   - text: "Both notes are bounded at 5,000 characters by the table, not only by zod"
     met: true
     evidence: null
+  - text: "A change can be edited, abandoned and deleted through the page; a second edit saves its own values, and fields the baseline measured are locked once started (KB-7)"
+    met: true
+    evidence: "apps/e2e/tests/experiments/experiments-manage.spec.ts:138, :227, :301, :365"
+  - text: "A change is deleted only while planned or abandoned — by the table, the action and the page (KB-7, owner decision 2026-09-24)"
+    met: true
+    evidence: "apps/web/supabase/tests/database/analytics-experiments-rls.test.sql:101; packages/features/content-analytics/src/server/experiment-actions.ts:821; apps/e2e/tests/experiments/experiments-manage.spec.ts:393"
+  - text: "A refused edit or delete shows its own wording on a production build, and the dialog re-reads the change"
+    met: true
+    evidence: "apps/e2e/tests/experiments/experiments-manage.spec.ts:274, :427 (30 passed on a build:test server, 2026-09-24)"
+  - text: "At conclusion the baseline window is measured again and kept beside the start's baseline; both are shown with their days of data and no comparison between them (KB-8, owner decision 2026-09-24)"
+    met: true
+    evidence: "packages/features/content-analytics/src/server/experiment-actions.ts:568; apps/e2e/tests/experiments/experiments-manage-evidence.spec.ts:176 (6.0% on 2 of 30 days, then 4.5% on 3 of 30, against local ClickHouse)"
+  - text: "Tags can be linked on create and edit; the second change logged links only its own tags (moved from FILM-1509)"
+    met: true
+    evidence: "apps/e2e/tests/experiments/experiments-manage.spec.ts:526, :138"
+  - text: "A tag from another account cannot be linked, by a user in both accounts (KB-93, pgTAP)"
+    met: true
+    evidence: "apps/web/supabase/tests/database/experiment-tags-account-rls.test.sql:57"
+  - text: "Changes can be filtered by status; the filter survives a reload and an empty filter does not claim an empty log (moved from FILM-1509)"
+    met: true
+    evidence: "apps/e2e/tests/experiments/experiments-manage.spec.ts:468"
+  - text: "A user outside the account cannot read, add, update or delete its changes (moved from FILM-1509, pgTAP)"
+    met: true
+    evidence: "apps/web/supabase/tests/database/analytics-experiments-rls.test.sql:41"
 open_questions: []
 feature:
   database:
@@ -161,6 +185,10 @@ feature:
       file: "packages/features/content-analytics/src/components/experiments/experiment-detail.tsx"
     - component: "VideoPicker"
       file: "packages/features/content-analytics/src/components/experiments/video-picker.tsx"
+    - component: "Edit / Abandon / Delete in the change dialog, status filter (KB-7; FILM-1509 folded in)"
+      file: "apps/web/app/home/[account]/studio/analytics/experiments/_components/experiments-client.tsx"
+    - component: "ExperimentForm edit mode and tags"
+      file: "packages/features/content-analytics/src/components/experiments/experiment-form.tsx"
   provider_integration: null
 notes: |
   ## 1. Overview
@@ -489,7 +517,7 @@ notes: |
   - **The expectation is fixed once started** (table and action). The form
     promised "hindsight cannot rewrite it"; a member could.
   - **A write that changed nothing is not reported as done** (update and
-    delete, which no page calls yet).
+    delete; the page calls both since KB-7, 2026-09-24).
   - **Assistive technology hears which videos are linked**; the picker is as
     wide as its field (a Tailwind 4 syntax change had made it ~996px wider);
     dates are the user's calendar days.
@@ -499,6 +527,44 @@ notes: |
     sign-in check, which redirects properly — for every action under
     `/home`.
   - **Failures are logged with the ids they concerned.**
+
+  ### 5b. Managing a change, and FILM-1509 folded in (2026-09-24)
+
+  **FILM-1509 is retired into this spec** (owner decision). Its three open
+  items — linking tags, filtering by status, and proving another account's
+  user cannot read or change an entry — are criteria here, met by the same
+  PR as KB-7, KB-8 and KB-93.
+
+  - **Edit, Abandon, Delete** (KB-7). Edit reuses the log form in an edit
+    mode, mounted per change so one change's values can never be shown or
+    saved as another's, and sends only what changed (`toUpdatePayload`),
+    because the action refuses a frozen field it is sent at all once the
+    change has started. The form locks exactly `frozenFields(status)`, the
+    list `assertEditable` refuses. Buttons show from `canStart`,
+    `canConclude`, `canAbandon`, `canDelete` — the boolean twins of the
+    asserts, so a button is shown exactly when the action would accept it.
+  - **Delete only while planned or abandoned** (owner, 2026-09-24). A running
+    change is abandoned first; a concluded one is the record. The table's
+    delete policy, the action (a refusal returned as a value) and the page
+    (the button hidden) hold the same rule.
+  - **A refusal re-reads the change.** Found by the browser test: after
+    "this one is running", the dialog kept offering the planned change's
+    Start and Delete.
+  - **The baseline is measured again at conclusion** (KB-8, owner): stored
+    as `result_metrics.baselineRemeasured`, so the conclusion — which the
+    lifecycle trigger already lets write the result once — writes it, and
+    the start's baseline is never rewritten. The page shows both, labelled,
+    each with its days of data, and compares against neither. The result
+    window's own late days stay disclosed, not re-measured.
+  - **Tags** (moved from FILM-1509): the picker on create and edit; the
+    table now refuses another account's tag (KB-93). Tags stay editable in
+    every state — they describe a change, they are not what was measured.
+  - **Status filter** (moved from FILM-1509): kept in the URL, so a reload
+    or Back keeps it; a filter that matches nothing says so instead of "No
+    changes logged yet".
+
+  The lifecycle guard, the freeze trigger and the link policies are
+  unchanged; the two policy changes only narrow.
 
   ## 6. Implementation Map
 
