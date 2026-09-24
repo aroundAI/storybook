@@ -108,22 +108,12 @@ export async function processSeasonOutline(
 
   const existingCharacters =
     characters.length > 0
-      ? characters
-          .map(
-            (c) =>
-              `- ${c.name}: ${c.description || ''}`,
-          )
-          .join('\n')
+      ? characters.map((c) => `- ${c.name}: ${c.description || ''}`).join('\n')
       : 'No characters defined yet.';
 
   const existingLocations =
     locations.length > 0
-      ? locations
-          .map(
-            (l) =>
-              `- ${l.name}: ${l.description || ''}`,
-          )
-          .join('\n')
+      ? locations.map((l) => `- ${l.name}: ${l.description || ''}`).join('\n')
       : 'No locations defined yet.';
 
   // KB-71: the type is `metadata.projectType`, read the one way every other

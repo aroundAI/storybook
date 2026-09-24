@@ -109,9 +109,7 @@ export async function processTranslateDialogue(
     .eq('language', data.targetLanguage);
 
   const existingSourceIds = new Set(
-    (existing || []).map(
-      (e) => e.source_dialogue_id,
-    ),
+    (existing || []).map((e) => e.source_dialogue_id),
   );
 
   const linesToTranslate = lines.filter((l) => !existingSourceIds.has(l.id));

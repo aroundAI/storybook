@@ -12,11 +12,11 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
-import type { Database } from '@kit/supabase/database';
-
 import type { StandardUnit } from '@aws-sdk/client-cloudwatch';
 import type { SQSEvent, SQSRecord } from 'aws-lambda';
 import ws from 'ws';
+
+import type { Database } from '@kit/supabase/database';
 
 // Email job data structure
 interface EmailJob {

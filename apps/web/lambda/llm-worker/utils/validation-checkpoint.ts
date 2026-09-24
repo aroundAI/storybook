@@ -9,13 +9,12 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { Database } from '@kit/supabase/database';
-
 import {
   validatePlotSkeleton,
   validateSceneBlocks,
 } from '@kit/episodes/lib/canon/continuity-validator';
 import { buildMemoryContext } from '@kit/episodes/lib/canon/memory-context-builder';
+import type { Database } from '@kit/supabase/database';
 
 // Re-export types consumers need
 export type EnforcementLevel = 'strict' | 'flexible';

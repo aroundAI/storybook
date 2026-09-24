@@ -1,11 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { Database } from '@kit/supabase/database';
-
 import { z } from 'zod';
 
 import { resolveProjectType } from '@kit/episodes/lib';
 import type { ProjectType } from '@kit/film-studio-schemas/project';
+import type { Database } from '@kit/supabase/database';
 
 /** StoryData interface for episode story content */
 export interface StoryData {

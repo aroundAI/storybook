@@ -129,7 +129,10 @@ export async function getEpisodeMetadataByProject(
 /**
  * Get a single episode by ID (excluding soft-deleted)
  */
-export async function getEpisode(episodeId: string, supabase: SupabaseClient<Database>) {
+export async function getEpisode(
+  episodeId: string,
+  supabase: SupabaseClient<Database>,
+) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('episodes')
@@ -296,7 +299,10 @@ export async function getShotsByEpisode(
 /**
  * Get a single shot by ID
  */
-export async function getShot(shotId: string, supabase: SupabaseClient<Database>) {
+export async function getShot(
+  shotId: string,
+  supabase: SupabaseClient<Database>,
+) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('shots')

@@ -10,9 +10,9 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { Database } from '@kit/supabase/database';
-
 import { z } from 'zod';
+
+import type { Database } from '@kit/supabase/database';
 
 import {
   markJobCompleted,

@@ -10,12 +10,11 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
-import type { Database } from '@kit/supabase/database';
-
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import ws from 'ws';
 
 import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
+import type { Database } from '@kit/supabase/database';
 
 const sqsClient = new SQSClient({});
 

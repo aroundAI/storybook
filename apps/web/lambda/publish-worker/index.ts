@@ -12,8 +12,6 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
-import type { Database } from '@kit/supabase/database';
-
 import {
   ApiGatewayManagementApiClient,
   PostToConnectionCommand,
@@ -35,6 +33,7 @@ import type {
 } from '@kit/publishing/lib/job-types';
 import type { YouTubeChannelDeclaration } from '@kit/publishing/lib/youtube-declaration';
 import { LINKEDIN_REST_VERSION, vendorUrl } from '@kit/shared/vendors';
+import type { Database } from '@kit/supabase/database';
 
 import { mergeFailureMetadata } from './failure-metadata';
 import { checkConnectionToken } from './token';

@@ -8,11 +8,10 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { Database } from '@kit/supabase/database';
-
 import { z } from 'zod';
 
 import { vendorUrl } from '@kit/shared/vendors';
+import type { Database } from '@kit/supabase/database';
 
 import { uploadToR2 } from '../llm-worker/utils/r2-storage';
 

@@ -6,9 +6,9 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { Database } from '@kit/supabase/database';
-
 import { z } from 'zod';
+
+import type { Database } from '@kit/supabase/database';
 
 import { uploadToR2 } from '../utils/r2-storage';
 

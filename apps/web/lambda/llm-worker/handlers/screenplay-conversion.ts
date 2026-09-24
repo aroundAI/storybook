@@ -8,9 +8,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { Database, Json } from '@kit/supabase/database';
-
 import type { ScreenplayScene } from '@kit/episodes/agent/screenplay-orchestrator';
+import type { Database, Json } from '@kit/supabase/database';
 
 import {
   markJobCompleted,

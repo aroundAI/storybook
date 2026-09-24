@@ -12,8 +12,6 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
-import type { Database } from '@kit/supabase/database';
-
 import {
   ApiGatewayManagementApiClient,
   PostToConnectionCommand,
@@ -26,6 +24,8 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import type { SQSBatchResponse, SQSEvent } from 'aws-lambda';
 import ws from 'ws';
+
+import type { Database } from '@kit/supabase/database';
 
 // Initialize DynamoDB client
 const ddbClient = new DynamoDBClient({});

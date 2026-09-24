@@ -9,9 +9,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { Database, Json } from '@kit/supabase/database';
-
 import type { ReelSceneAnalysis } from '@kit/episodes/agent/shot-orchestrator';
+import type { Database, Json } from '@kit/supabase/database';
 
 import {
   markJobCompleted,

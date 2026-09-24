@@ -1,8 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { Database } from '@kit/supabase/database';
-
 import { isWithinRefreshWindow } from '@kit/publishing/lib/token-expiry';
+import type { Database } from '@kit/supabase/database';
 
 import { decrypt } from './crypto';
 

@@ -16,9 +16,11 @@ const failure = {
 
 describe('mergeFailureMetadata', () => {
   it('keeps the existing object metadata and adds the failure', () => {
-    expect(mergeFailureMetadata({ tags: ['a'], retries: 1 }, failure)).toEqual(
-      { tags: ['a'], retries: 1, ...failure },
-    );
+    expect(mergeFailureMetadata({ tags: ['a'], retries: 1 }, failure)).toEqual({
+      tags: ['a'],
+      retries: 1,
+      ...failure,
+    });
   });
 
   it('starts from an empty object when there is no metadata', () => {
