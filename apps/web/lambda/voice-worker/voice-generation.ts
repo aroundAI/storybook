@@ -226,11 +226,12 @@ export async function processDialogueVoiceGeneration(
     const estimatedDuration = Math.max(1, Math.ceil((wordCount / 150) * 60));
 
     // 8. Prepare metadata
+    const costCents = Math.ceil(data.text.length * 0.03); // ~$0.30 per 1k chars
     const metadata = {
       provider: 'elevenlabs',
       voiceId: data.voiceId,
       settings: data.voiceSettings,
-      costCents: Math.ceil(data.text.length * 0.03), // ~$0.30 per 1k chars
+      costCents,
       durationSeconds: estimatedDuration,
       generatedAt: new Date().toISOString(),
       characterCount: data.text.length,
@@ -245,6 +246,21 @@ export async function processDialogueVoiceGeneration(
         generation_metadata: metadata,
       })
       .eq('id', data.dialogueLineId);
+
+    // 10. Count the spend against the account's monthly usage (KB-83). The
+    // payload's account was authorised when the job was queued (KB-46/47).
+    // A failed count is logged; the line is already generated and paid for.
+    const { error: usageError } = await supabase.rpc(
+      'increment_account_usage',
+      { p_account_id: data.accountId, p_amount_cents: costCents },
+    );
+
+    if (usageError) {
+      console.error(
+        `[Dialogue Voice Gen] Failed to record spend for ${data.dialogueLineId}:`,
+        usageError.message,
+      );
+    }
 
     console.log(
       `[Dialogue Voice Gen] Completed dialogue line ${data.dialogueLineId}, audio: ${audioUrl}`,

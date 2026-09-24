@@ -185,7 +185,9 @@ begin
     if current_user in('authenticated', 'anon') then
 	if new.id <> old.id or new.is_personal_account <>
 	    old.is_personal_account or new.primary_owner_user_id <>
-	    old.primary_owner_user_id or new.email <> old.email then
+	    old.primary_owner_user_id or new.email <> old.email
+	    -- KB-83: usage moves only through increment_account_usage
+	    or new.current_usage_cents is distinct from old.current_usage_cents then
             raise exception 'You do not have permission to update this field';
 
         end if;

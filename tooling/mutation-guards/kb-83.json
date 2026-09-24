@@ -1,0 +1,53 @@
+{
+  "feature": "KB-83",
+  "mutations": [
+    {
+      "name": "KB-83 P1 the owner may rewrite usage directly",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-usage.test.sql",
+      "sql": "create or replace function kit.protect_account_fields () returns trigger language plpgsql set search_path = '' as $f$ begin if current_user in ('authenticated', 'anon') then if new.id <> old.id or new.is_personal_account <> old.is_personal_account or new.primary_owner_user_id <> old.primary_owner_user_id or new.email <> old.email then raise exception 'You do not have permission to update this field'; end if; end if; return new; end $f$;"
+    },
+    {
+      "name": "KB-83 P2 the increment takes a negative amount",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-usage.test.sql",
+      "sql": "create or replace function public.increment_account_usage(p_account_id uuid, p_amount_cents integer) returns table (new_usage_cents integer, budget_cents integer, is_over_budget boolean) language plpgsql security definer set search_path = '' as $f$ declare v_new_usage integer; v_budget integer; begin update public.accounts set current_usage_cents = current_usage_cents + p_amount_cents, updated_at = now() where id = p_account_id returning current_usage_cents, monthly_budget_cents into v_new_usage, v_budget; if not found then raise exception 'Account not found: %', p_account_id; end if; return query select v_new_usage, v_budget, case when v_budget is null then false else v_new_usage > v_budget end; end; $f$;"
+    },
+    {
+      "name": "KB-83 P3 the increment granted to authenticated",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-usage.test.sql",
+      "sql": "grant execute on function public.increment_account_usage(uuid, integer) to authenticated;"
+    },
+    {
+      "name": "KB-83 S1 recorded with the caller's client, which is refused",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/voice-queries.ts",
+      "find": "  const { error } = await getSupabaseServerAdminClient().rpc(",
+      "replace": "  const { error } = await (await import('@kit/supabase/server-client')).getSupabaseServerClient().rpc(",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/voice-spend.test.ts",
+      "pattern": "voice spend is counted"
+    },
+    {
+      "name": "KB-83 S2 a zero or negative amount is sent",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/voice-queries.ts",
+      "find": "  if (!Number.isFinite(amountCents) || amountCents <= 0) {",
+      "replace": "  if (Number.isNaN(amountCents)) {",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/voice-spend.test.ts",
+      "pattern": "records nothing for"
+    },
+    {
+      "name": "KB-83 W1 the voice worker does not count its spend",
+      "kind": "unit",
+      "file": "apps/web/lambda/voice-worker/voice-generation.ts",
+      "find": "    const { error: usageError } = await supabase.rpc(\n      'increment_account_usage',\n      { p_account_id: data.accountId, p_amount_cents: costCents },\n    );",
+      "replace": "    const usageError = null as null | { message: string };",
+      "cwd": "apps/web",
+      "test": "lambda/voice-worker/__tests__/voice-spend.test.ts",
+      "pattern": "KB-83"
+    }
+  ]
+}

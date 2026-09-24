@@ -1,5 +1,8 @@
 import 'server-only';
 
+import type { LlmJobTarget } from '@kit/prompt-engine/llm-job-target';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+
 import {
   DEFAULT_VOICE_SETTINGS,
   ELEVENLABS as _ELEVENLABS,
@@ -76,23 +79,32 @@ export async function checkAccountBudget(
 }
 
 /**
- * Increment account usage after successful generation
+ * Add a completed generation's cost to its account's monthly usage (KB-83).
+ *
+ * `increment_account_usage` is the service role's alone, so this uses the
+ * server's client. It is called with the caller's own client no longer: that
+ * was refused (42501) on every call, and the spend never counted. Taking an
+ * `LlmJobTarget` means only an account the action has authorised can be
+ * charged, never one a request names. A failure is logged and does not fail
+ * the generation it follows.
  */
-export async function incrementAccountUsage(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
-  accountId: string,
+export async function recordVoiceSpend(
+  target: LlmJobTarget,
   amountCents: number,
 ): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (client as any).rpc('increment_account_usage', {
-    p_account_id: accountId,
-    p_amount_cents: amountCents,
-  });
+  if (!Number.isFinite(amountCents) || amountCents <= 0) {
+    return;
+  }
+
+  const { error } = await getSupabaseServerAdminClient().rpc(
+    'increment_account_usage',
+    {
+      p_account_id: target.accountId,
+      p_amount_cents: Math.ceil(amountCents),
+    },
+  );
 
   if (error) {
-    // Log the error but don't fail the generation
-    // Cost tracking is important but shouldn't block user operations
-    console.error('Failed to increment account usage:', error.message);
+    console.error('Failed to record voice spend:', error.message);
   }
 }
