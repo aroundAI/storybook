@@ -31,6 +31,9 @@ export interface PlatformConnection {
   updatedAt: string;
   accountSlug: string;
   language?: string; // Target language for this channel (en, hi, es, etc.)
+  /** KB-30: the channel's YouTube audience and category; null = not declared yet. */
+  youtubeMadeForKids?: boolean | null;
+  youtubeCategoryId?: string | null;
   /** Null for a platform with no analytics requirement (LinkedIn). */
   analyticsAccess?: AnalyticsAccess | null;
 }

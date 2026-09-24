@@ -23,14 +23,19 @@ import {
 } from '../lib/schemas/publish.schema';
 import type { Platform, PublishResult } from '../lib/types';
 import { validateContentUrl } from '../lib/url-validation';
+import {
+  type YouTubeChannelDeclaration,
+  type YouTubeDeclaration,
+  YouTubeDeclarationMissing,
+  resolveYouTubeDeclaration,
+} from '../lib/youtube-declaration';
 import { FacebookProvider } from '../providers/facebook';
 import { InstagramProvider } from '../providers/instagram';
 import { LinkedInProvider } from '../providers/linkedin';
 import { TikTokProvider } from '../providers/tiktok';
 import { TwitterProvider } from '../providers/twitter';
-// Import providers
-import { YouTubeProvider } from '../providers/youtube';
 import { getAccessToken } from './connection-tokens';
+import { uploadToYouTube } from './youtube-upload';
 
 // Initialize SQS client
 const sqsClient = new SQSClient({
@@ -67,6 +72,73 @@ function getTunnelUrl(url: string): string {
   }
 
   return url;
+}
+
+type PublishPlatformInput = z.infer<
+  typeof PublishToAllSchema
+>['platforms'][number];
+
+function refusalFor(channelNames: string[]) {
+  const names = channelNames.map((name) => `“${name}”`).join(', ');
+
+  return `Choose whether ${names} is made for kids, and its category, before publishing to YouTube. You can set this in Settings → Platforms.`;
+}
+
+/**
+ * KB-30. The audience and category each YouTube upload will declare, by index
+ * into `platforms` — from the request, else the channel's own answer. Refuses
+ * the whole request, naming every undeclared channel, before anything is
+ * written: there is no value this falls back to.
+ */
+async function declareYouTubeUploads(platforms: PublishPlatformInput[]) {
+  const declared = new Map<number, YouTubeDeclaration>();
+  const connectionIds = [
+    ...new Set(
+      platforms
+        .filter((platform) => platform.platform === 'youtube')
+        .map((platform) => platform.connectionId),
+    ),
+  ];
+
+  if (connectionIds.length === 0) return declared;
+
+  const { data: channels, error } = await getSupabaseServerClient()
+    .from('platform_connections')
+    .select(
+      'id, platform_account_name, youtube_made_for_kids, youtube_category_id',
+    )
+    .in('id', connectionIds);
+
+  if (error) {
+    throw new Error('Could not read the YouTube channels being published to');
+  }
+
+  const undeclared = new Set<string>();
+
+  platforms.forEach((platform, index) => {
+    if (platform.platform !== 'youtube') return;
+
+    const channel =
+      channels?.find((row) => row.id === platform.connectionId) ?? null;
+
+    try {
+      declared.set(
+        index,
+        resolveYouTubeDeclaration(platform.platformSpecific, channel),
+      );
+    } catch (resolveError) {
+      if (!(resolveError instanceof YouTubeDeclarationMissing)) {
+        throw resolveError;
+      }
+      undeclared.add(channel?.platform_account_name ?? 'this YouTube channel');
+    }
+  });
+
+  if (undeclared.size > 0) {
+    throw new ActionRefusal(refusalFor([...undeclared]));
+  }
+
+  return declared;
 }
 
 /**
@@ -121,9 +193,18 @@ const publishToAllHandler = enhanceAction(
       );
     }
 
+    // KB-30: every YouTube upload declares an audience and a category the
+    // creator chose. Resolve them all before anything is written, so a
+    // publish nobody declared leaves no row behind.
+    const declared = await declareYouTubeUploads(platforms);
+
     // Publish to all platforms in parallel
     const results = await Promise.allSettled(
-      platforms.map(async (platform) => {
+      platforms.map(async (platform, index) => {
+        const platformSpecific: Record<string, unknown> = {
+          ...platform.platformSpecific,
+          ...declared.get(index),
+        };
         const platformCtx = { ...ctx, platform: platform.platform };
 
         try {
@@ -176,7 +257,7 @@ const publishToAllHandler = enhanceAction(
               status: useServerScheduling ? 'scheduled' : 'publishing',
               scheduled_at: platform.scheduledAt ?? null,
               metadata: {
-                ...JSON.parse(JSON.stringify(platform.platformSpecific)),
+                ...JSON.parse(JSON.stringify(platformSpecific)),
                 shortsGroupId: platform.shortsGroupId,
                 createdBy: _user.id,
               },
@@ -286,8 +367,9 @@ const publishToAllHandler = enhanceAction(
                 ? new Date(platform.scheduledAt)
                 : undefined,
               isShort: isShortsPreferred,
-              platformSpecific: platform.platformSpecific,
+              platformSpecific,
             },
+            null,
           );
 
           // Update publish record with success
@@ -351,7 +433,7 @@ const publishToAllHandler = enhanceAction(
                 status: 'failed',
                 metadata: JSON.parse(
                   JSON.stringify({
-                    ...platform.platformSpecific,
+                    ...platformSpecific,
                     error: errorMessage,
                   }),
                 ),
@@ -510,12 +592,36 @@ const retryPublish = enhanceAction(
     // Get connection
     const { data: connection } = await client
       .from('platform_connections')
-      .select('platform_account_id')
+      .select(
+        'platform_account_id, platform_account_name, youtube_made_for_kids, youtube_category_id',
+      )
       .eq('id', publish.platform_connection_id)
       .single();
 
     if (!connection) {
       throw new ActionRefusal('Platform connection not found');
+    }
+
+    // KB-30: a row scheduled before the audience was asked for carries no
+    // snapshot, so the channel answers; with neither, the retry is refused
+    // before anything changes, and the message says where to declare it.
+    const metadata = (publish.metadata ?? {}) as Record<string, unknown>;
+    let platformSpecific = metadata;
+
+    if (publish.platform === 'youtube') {
+      try {
+        platformSpecific = {
+          ...metadata,
+          ...resolveYouTubeDeclaration(metadata, connection),
+        };
+      } catch (error) {
+        if (error instanceof YouTubeDeclarationMissing) {
+          throw new ActionRefusal(
+            refusalFor([connection.platform_account_name ?? 'this channel']),
+          );
+        }
+        throw error;
+      }
     }
 
     // Update status to publishing
@@ -535,14 +641,16 @@ const retryPublish = enhanceAction(
           description: publish.description ?? '',
           tags: publish.tags ?? [],
           thumbnailUrl: publish.thumbnail_url ?? episode.thumbnail_url,
-          platformSpecific: (publish.metadata ?? {}) as Record<string, unknown>,
+          platformSpecific,
         },
+        connection,
       );
 
       await client
         .from('publishes')
         .update({
           status: 'published',
+          metadata: JSON.parse(JSON.stringify(platformSpecific)),
           platform_content_id: uploadResult.contentId,
           platform_url: uploadResult.url,
           published_at: new Date().toISOString(),
@@ -625,13 +733,16 @@ async function uploadToPlatform(
     isShort?: boolean;
     platformSpecific: Record<string, unknown>;
   },
+  channel: YouTubeChannelDeclaration | null,
 ): Promise<{ contentId: string; url: string }> {
   switch (platform) {
     case 'youtube':
-      return uploadToYouTube(accessToken, {
-        ...options,
-        isShort: options.isShort ?? false,
-      });
+      // Always public: scheduling is handled server-side by the cron job.
+      return uploadToYouTube(
+        accessToken,
+        { ...options, privacy: 'public' },
+        channel,
+      );
     case 'tiktok':
       return uploadToTikTok(accessToken, options);
     case 'instagram':
@@ -645,50 +756,6 @@ async function uploadToPlatform(
     default:
       throw new Error(`Unsupported platform: ${platform}`);
   }
-}
-
-async function uploadToYouTube(
-  accessToken: string,
-  options: {
-    videoUrl: string;
-    title: string;
-    description: string;
-    tags: string[];
-    thumbnailUrl?: string | null;
-    scheduledAt?: Date;
-    isShort?: boolean;
-    platformSpecific: Record<string, unknown>;
-  },
-): Promise<{ contentId: string; url: string }> {
-  const provider = new YouTubeProvider(accessToken);
-
-  // For YouTube Shorts, add #Shorts hashtag to title and description
-  let title = options.title;
-  let description = options.description;
-  if (options.isShort) {
-    if (!title.toLowerCase().includes('#shorts')) {
-      title = `${title} #Shorts`;
-    }
-    if (!description.toLowerCase().includes('#shorts')) {
-      description = `${description}\n\n#Shorts`;
-    }
-  }
-
-  const result = await provider.uploadVideo({
-    videoPath: options.videoUrl,
-    title,
-    description,
-    tags: options.tags,
-    categoryId: (options.platformSpecific.categoryId as string) ?? '22',
-    // Always public - scheduling is handled server-side by cron job
-    privacy: 'public',
-    madeForKids: (options.platformSpecific.madeForKids as boolean) ?? false,
-    thumbnailPath: options.thumbnailUrl ?? undefined,
-    playlistIds: options.platformSpecific.playlistIds as string[] | undefined,
-    // publishAt removed - cron job handles scheduling
-  });
-
-  return { contentId: result.videoId, url: result.videoUrl ?? '' };
 }
 
 async function uploadToTikTok(

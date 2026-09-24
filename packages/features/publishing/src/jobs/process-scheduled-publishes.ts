@@ -5,12 +5,13 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 
 import { ensureValidToken } from '../lib/token-refresh';
 import type { Platform } from '../lib/types';
+import type { YouTubeChannelDeclaration } from '../lib/youtube-declaration';
 import { FacebookProvider } from '../providers/facebook';
 import { InstagramProvider } from '../providers/instagram';
 import { LinkedInProvider } from '../providers/linkedin';
 import { TikTokProvider } from '../providers/tiktok';
 import { TwitterProvider } from '../providers/twitter';
-import { YouTubeProvider } from '../providers/youtube';
+import { uploadToYouTube } from '../server/youtube-upload';
 
 /**
  * Result of the scheduled publish processing job
@@ -229,7 +230,9 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       // Get platform account ID
       const { data: connection, error: connError } = await client
         .from('platform_connections')
-        .select('platform_account_id')
+        .select(
+          'platform_account_id, youtube_made_for_kids, youtube_category_id',
+        )
         .eq('id', publish.platform_connection_id)
         .single();
 
@@ -360,7 +363,7 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       const uploadResult = await uploadToPlatform(
         publish.platform as Platform,
         tokenResult.accessToken,
-        connection.platform_account_id ?? '',
+        connection,
         {
           videoUrl: videoUrl,
           title: publish.title ?? '',
@@ -442,7 +445,9 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
 async function uploadToPlatform(
   platform: Platform,
   accessToken: string,
-  accountId: string,
+  connection: {
+    platform_account_id: string | null;
+  } & YouTubeChannelDeclaration,
   options: {
     videoUrl: string;
     title: string;
@@ -452,9 +457,23 @@ async function uploadToPlatform(
     platformSpecific: Record<string, unknown>;
   },
 ): Promise<{ contentId: string; url: string }> {
+  const accountId = connection.platform_account_id ?? '';
+
   switch (platform) {
     case 'youtube':
-      return uploadToYouTube(accessToken, options);
+      return uploadToYouTube(
+        accessToken,
+        {
+          ...options,
+          privacy:
+            (options.platformSpecific.privacy as
+              | 'private'
+              | 'unlisted'
+              | 'public'
+              | undefined) ?? 'private',
+        },
+        connection,
+      );
     case 'tiktok':
       return uploadToTikTok(accessToken, options);
     case 'instagram':
@@ -468,34 +487,6 @@ async function uploadToPlatform(
     default:
       throw new Error(`Unsupported platform: ${platform}`);
   }
-}
-
-async function uploadToYouTube(
-  accessToken: string,
-  options: {
-    videoUrl: string;
-    title: string;
-    description: string;
-    tags: string[];
-    thumbnailUrl?: string | null;
-    platformSpecific: Record<string, unknown>;
-  },
-): Promise<{ contentId: string; url: string }> {
-  const provider = new YouTubeProvider(accessToken);
-  const result = await provider.uploadVideo({
-    videoPath: options.videoUrl,
-    title: options.title,
-    description: options.description,
-    tags: options.tags,
-    categoryId: (options.platformSpecific.categoryId as string) ?? '22',
-    privacy:
-      (options.platformSpecific.privacy as 'private' | 'unlisted' | 'public') ??
-      'private',
-    madeForKids: (options.platformSpecific.madeForKids as boolean) ?? false,
-    thumbnailPath: options.thumbnailUrl ?? undefined,
-  });
-
-  return { contentId: result.videoId, url: result.videoUrl ?? '' };
 }
 
 async function uploadToTikTok(

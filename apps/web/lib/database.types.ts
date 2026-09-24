@@ -3624,6 +3624,8 @@ export type Database = {
           scopes: string[] | null
           token_expires_at: string | null
           updated_at: string
+          youtube_category_id: string | null
+          youtube_made_for_kids: boolean | null
         }
         Insert: {
           access_token_encrypted?: string | null
@@ -3641,6 +3643,8 @@ export type Database = {
           scopes?: string[] | null
           token_expires_at?: string | null
           updated_at?: string
+          youtube_category_id?: string | null
+          youtube_made_for_kids?: boolean | null
         }
         Update: {
           access_token_encrypted?: string | null
@@ -3658,6 +3662,8 @@ export type Database = {
           scopes?: string[] | null
           token_expires_at?: string | null
           updated_at?: string
+          youtube_category_id?: string | null
+          youtube_made_for_kids?: boolean | null
         }
         Relationships: [
           {

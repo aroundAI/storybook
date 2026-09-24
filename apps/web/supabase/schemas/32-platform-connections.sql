@@ -23,6 +23,10 @@ CREATE TABLE IF NOT EXISTS public.platform_connections (
   is_active BOOLEAN DEFAULT TRUE NOT NULL,
   -- KB-22: set when disconnected in the app; tokens wiped, row kept.
   disconnected_at TIMESTAMPTZ,
+  -- KB-30: the creator's audience and category for a YouTube channel. NULL
+  -- means not declared, and the app asks; there is deliberately no default.
+  youtube_made_for_kids BOOLEAN,
+  youtube_category_id TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
 
@@ -38,6 +42,13 @@ CREATE TABLE IF NOT EXISTS public.platform_connections (
   -- the channel. Adds no meaningful cost: (id, account_id) is unique wherever
   -- id already is.
   CONSTRAINT platform_connections_id_account_key UNIQUE (id, account_id),
+  CONSTRAINT platform_connections_youtube_settings_only_youtube CHECK (
+    platform = 'youtube'
+    OR (youtube_made_for_kids IS NULL AND youtube_category_id IS NULL)
+  ),
+  CONSTRAINT platform_connections_youtube_category_numeric CHECK (
+    youtube_category_id IS NULL OR youtube_category_id ~ '^[0-9]{1,3}$'
+  ),
   -- A disconnected row holds no credential (KB-22).
   CONSTRAINT platform_connections_disconnected_holds_no_token CHECK (
     disconnected_at IS NULL

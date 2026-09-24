@@ -83,7 +83,7 @@ export function PublishSettingsSidebar({
               onChange={(e) =>
                 onMetadataChange({ ...metadata, tags: e.target.value })
               }
-              placeholder="animation, kids, story"
+              placeholder="episode, series, topic"
             />
             <p className="mt-1 text-xs text-gray-500">Comma-separated</p>
           </div>
@@ -149,6 +149,9 @@ export function PublishSettingsSidebar({
                   </div>
                 </div>
               ))}
+              <UndeclaredYouTubeNote
+                channels={Object.values(channelsByLanguage).flat()}
+              />
               <Button
                 variant="outline"
                 size="sm"
@@ -164,5 +167,35 @@ export function PublishSettingsSidebar({
         </CardContent>
       </Card>
     </>
+  );
+}
+
+/**
+ * KB-30: a YouTube channel with no declared audience is asked about on the
+ * next publish; say so here, before the question appears.
+ */
+function UndeclaredYouTubeNote({
+  channels,
+}: {
+  channels: PlatformConnection[];
+}) {
+  const undeclared = channels.filter(
+    (channel) =>
+      channel.platform === 'youtube' &&
+      (typeof channel.youtubeMadeForKids !== 'boolean' ||
+        !channel.youtubeCategoryId),
+  );
+
+  if (undeclared.length === 0) return null;
+
+  return (
+    <p
+      className="text-xs text-amber-700 dark:text-amber-400"
+      data-test="youtube-audience-not-set"
+    >
+      Audience not set for{' '}
+      {undeclared.map((channel) => channel.platformAccountName).join(', ')}.
+      You&apos;ll be asked who it&apos;s for when you publish.
+    </p>
   );
 }

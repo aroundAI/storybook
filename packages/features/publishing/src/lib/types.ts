@@ -59,6 +59,9 @@ export interface PlatformConnection {
   followerCountRoundingStep?: number;
   scopes?: string[] | null;
   language: string; // Target language for this channel (en, hi, es, pt)
+  /** KB-30: the channel's YouTube audience and category; null = not declared yet. */
+  youtubeMadeForKids?: boolean | null;
+  youtubeCategoryId?: string | null;
   // Unified fields for compatibility with Settings page
   status?: ConnectionStatus;
   errorMessage?: string;

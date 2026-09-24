@@ -14,6 +14,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { PlatformConnection as DBPlatformConnection } from '../lib/database-types';
 import { GetConnectedPlatformsSchema } from '../lib/schemas/publish.schema';
+import { UpdateYouTubeChannelSettingsSchema } from '../lib/schemas/youtube-declaration.schema';
 import { ensureValidToken } from '../lib/token-refresh';
 import type { Platform } from '../lib/types';
 import { resolveAnalyticsAccess } from '../oauth/analytics-scopes';
@@ -39,6 +40,7 @@ export const getConnectionsAction = enhanceAction(
         `
         id, account_id, platform, platform_account_id, platform_account_name,
         is_active, token_expires_at, scopes, metadata, language,
+        youtube_made_for_kids, youtube_category_id,
         disconnected_at, created_at, updated_at
       `,
       )
@@ -97,6 +99,8 @@ export const getConnectionsAction = enhanceAction(
           updatedAt: conn.updated_at,
           accountSlug: '', // Will be set by the caller
           language: connWithLanguage.language ?? 'en',
+          youtubeMadeForKids: conn.youtube_made_for_kids ?? null,
+          youtubeCategoryId: conn.youtube_category_id ?? null,
           // Unified fields for Publish Page compatibility
           isActive: conn.is_active,
           tokenValid: status === 'active',
@@ -299,6 +303,51 @@ export const updateConnectionLanguageAction = enhanceAction(
 );
 
 /**
+ * Records a YouTube channel's audience and category (KB-30): the creator's
+ * declaration, sent with every upload to that channel. Written through the
+ * user's client, so the account's own policy decides who may set it.
+ */
+const updateYouTubeChannelSettings = enhanceAction(
+  async ({ connectionId, madeForKids, categoryId }) => {
+    const client = getSupabaseServerClient();
+
+    const { data, error } = await client
+      .from('platform_connections')
+      .update({
+        youtube_made_for_kids: madeForKids,
+        youtube_category_id: categoryId,
+      })
+      .eq('id', connectionId)
+      .eq('platform', 'youtube')
+      .select('id');
+
+    if (error) {
+      throw new Error(`Failed to update the YouTube channel: ${error.message}`);
+    }
+
+    // No row means it is not a YouTube channel this user can change; an
+    // update RLS filtered out is otherwise indistinguishable from a success.
+    if (!data?.length) {
+      throw new ActionRefusal(
+        'This YouTube channel could not be updated. Reload the page and try again.',
+      );
+    }
+
+    revalidatePath(`/home/[account]/settings`, 'page');
+
+    return { connectionId, madeForKids, categoryId };
+  },
+  {
+    schema: UpdateYouTubeChannelSettingsSchema,
+    auth: true,
+  },
+);
+
+export const updateYouTubeChannelSettingsAction = returnRefusals(
+  updateYouTubeChannelSettings,
+);
+
+/**
  * Determines the status of a connection based on its state
  */
 function determineStatus(connection: DBPlatformConnection): ConnectionStatus {
@@ -432,6 +481,7 @@ export const getConnectedPlatformsAction = enhanceAction(
         `
         id, account_id, platform, platform_account_id, platform_account_name,
         is_active, token_expires_at, scopes, metadata, language,
+        youtube_made_for_kids, youtube_category_id,
         created_at, updated_at
       `,
       )
@@ -477,6 +527,8 @@ export const getConnectedPlatformsAction = enhanceAction(
         ...followerCounts.get(conn.id),
         scopes: conn.scopes ?? null,
         language: connWithMetadata.language ?? 'en', // Target language for this channel
+        youtubeMadeForKids: conn.youtube_made_for_kids,
+        youtubeCategoryId: conn.youtube_category_id,
         // Unified fields for Settings Page compatibility
         status,
         errorMessage: metadata?.last_error as string | undefined,

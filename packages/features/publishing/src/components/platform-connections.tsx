@@ -69,6 +69,7 @@ import type {
   PlatformType,
 } from '../types';
 import { disconnectCopyFor } from './disconnect-copy';
+import { YouTubeAudienceSetting } from './youtube-audience-setting';
 
 const TikTokIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -370,6 +371,13 @@ function ConnectionRow({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {connection.platform === 'youtube' && (
+            <YouTubeAudienceSetting
+              connection={connection}
+              accountId={accountId}
+            />
+          )}
+
           {/* Language Selector */}
           <Select
             value={connection.language ?? 'en'}
