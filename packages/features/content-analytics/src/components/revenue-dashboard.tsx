@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Skeleton } from '@kit/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
+import { localToday } from '../lib/local-date';
 import { formatLocalDate } from '../lib/manual-revenue';
 import { currencyLabel, formatCurrencyAmount } from '../lib/money';
 import { isUnavailable } from '../lib/query-state';
@@ -94,14 +95,17 @@ export function RevenueDashboard({
     enabled: !!startDate && !!endDate,
   });
 
-  // Fetch projection — one per currency
+  // Fetch projection — one per currency. Its window ends on this browser's
+  // date (KB-24), the calendar a manual entry is dated in; in the key so the
+  // window moves at local midnight rather than at UTC's.
+  const asOf = localToday();
   const {
     data: projections,
     isLoading: projectionLoading,
     isError: projectionIsError,
   } = useQuery({
-    queryKey: ['revenue-projection', accountId] as const,
-    queryFn: () => getRevenueProjectionAction({ accountId }),
+    queryKey: ['revenue-projection', accountId, asOf] as const,
+    queryFn: () => getRevenueProjectionAction({ accountId, asOf }),
   });
 
   // Fetch time series data

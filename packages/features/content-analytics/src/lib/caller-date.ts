@@ -28,3 +28,38 @@ export function assertCallerToday(date: string, now: Date = new Date()): void {
     );
   }
 }
+
+/**
+ * The caller's "today" when it passes `assertCallerToday`, otherwise the
+ * server's UTC date (KB-24).
+ *
+ * For reads. A write refuses an implausible date, because it would store
+ * it; a read that refused would blank a dashboard tile over a device clock,
+ * so it answers as it did before callers sent a date at all. One rule for
+ * what is plausible, two ways of acting on it.
+ */
+export function callerTodayOr(
+  date: string | undefined,
+  now: Date = new Date(),
+): string {
+  if (date) {
+    try {
+      assertCallerToday(date, now);
+
+      return date;
+    } catch (error) {
+      // Implausible: fall through to the server's own date.
+      if (!(error instanceof ActionRefusal)) throw error;
+    }
+  }
+
+  return now.toISOString().slice(0, 10);
+}
+
+/** `YYYY-MM-DD` shifted by whole days, on the calendar rather than the clock. */
+export function addCalendarDays(date: string, days: number): string {
+  const shifted = new Date(`${date}T00:00:00Z`);
+  shifted.setUTCDate(shifted.getUTCDate() + days);
+
+  return shifted.toISOString().slice(0, 10);
+}

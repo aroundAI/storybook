@@ -259,7 +259,7 @@ export function createRevenueSeriesFold() {
  * confidence, are the days *that currency* has data for: twenty-five days
  * of AdSense do not make one euro invoice a high-confidence forecast.
  */
-export function createRevenueProjectionFold(fifteenDaysAgo: Date) {
+export function createRevenueProjectionFold(secondHalfFrom: string) {
   const parts = createCurrencyPartition(() => ({
     totalRecent: 0,
     firstHalfRevenue: 0,
@@ -274,8 +274,9 @@ export function createRevenueProjectionFold(fifteenDaysAgo: Date) {
       part.totalRecent += revenueCents;
       part.uniqueDates.add(row.record_date);
 
-      // Check if in first half for trend
-      if (new Date(row.record_date) < fifteenDaysAgo) {
+      // First half of the window, for the trend. `YYYY-MM-DD` strings sort
+      // as the calendar does, so this compares days rather than instants.
+      if (row.record_date < secondHalfFrom) {
         part.firstHalfRevenue += revenueCents;
       }
     },

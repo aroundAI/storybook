@@ -129,6 +129,16 @@ export type GenerateRevenueReportInput = z.infer<
  */
 export const GetRevenueProjectionSchema = z.object({
   accountId: z.string().uuid(),
+  /**
+   * The caller's local date (KB-24). A manual entry is dated in the
+   * browser's calendar, so a window ending at the server's UTC date left a
+   * just-saved entry out of the projection for hours each day east of UTC.
+   * Checked on the server; an implausible date falls back to UTC's.
+   */
+  asOf: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 
 export type GetRevenueProjectionInput = z.infer<
@@ -193,6 +203,10 @@ export const DeleteManualRevenueSchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
     category: RevenueCategorySchema.optional(),
+    // Two currencies can share a date and category (KB-23). Omitted, every
+    // currency for the date (and category, if given) goes, as every
+    // category goes when `category` is omitted.
+    currency: z.string().length(3).toUpperCase().optional(),
   })
   .refine((data) => data.publishId ?? data.accountId, {
     message: 'Provide either a publish or an account',
