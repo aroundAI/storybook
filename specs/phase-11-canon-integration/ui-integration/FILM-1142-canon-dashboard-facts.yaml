@@ -4,7 +4,7 @@ phase: 11
 phase_name: "Canon Integration & Content Types"
 category: component
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-24"
 dependencies:
   - spec_id: "FILM-1135"
     note: null
@@ -18,53 +18,29 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "Shows linked facts with source attribution"
-    met: false
-    reason: "no longer true — since 3581f78f the action returns `{ facts, totalCount }`; the panel still expects an array (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/episode-facts-panel.tsx:61`), so it always shows the empty state"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/episode-facts-panel.tsx:50 — reads the action's `{ facts, totalCount }`; driven in `apps/e2e/tests/facts/episode-facts.spec.ts:119` (two links, a reload, three cards with their citations)"
   - text: "Link dialog allows searching and selecting facts"
     met: true
     evidence: null
   - text: "Unlink button removes fact from episode"
-    met: false
-    reason: "no longer true — the button lives on fact cards that never render (same regression, 3581f78f); it also reads the removed `fact_id` (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/episode-facts-panel.tsx:171`)"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/episode-facts-panel.tsx:163 — the fact's id; `apps/e2e/tests/facts/episode-facts.spec.ts:168` unlinks one and reads two rows back; a viewer's unlink is refused in words (`:182`, KB-48)"
   - text: "Used facts show scene reference when available"
     met: false
-    reason: "no longer true — nothing ever writes `episode_facts.scene_reference`; the cards that would show it never render (3581f78f)"
+    reason: "not met — nothing ever writes `episode_facts.scene_reference`; the cards that would show it render again (#344)"
   - text: "Empty state guides to Research library"
     met: true
     evidence: null
   - text: "Facts count shown in tab badge"
-    met: false
-    reason: "no longer true — `onCountChange` runs only inside the never-true `Array.isArray(result)` branch (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/episode-facts-panel.tsx:63`), so the badge stays hidden"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/episode-facts-panel.tsx:51 — `onCountChange(totalCount)`; the badge reads 3 after a reload (`apps/e2e/tests/facts/episode-facts.spec.ts:162`)"
 remaining:
-  - criterion: "Shows linked facts with source attribution"
-    reason: >
-      Regression in 3581f78f (#227, 2026-06-07): `getEpisodeFactsAction`
-      changed from returning the raw rows to `{ facts, totalCount }` with
-      camelCase fields
-      (`packages/features/episodes/src/server/episode-fact-actions.ts:178`).
-      `EpisodeFactsPanel` still requires `Array.isArray(result)` and reads
-      `fact.verified_facts` / `fact.fact_id`
-      (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/episode-facts-panel.tsx:61`,
-      `:135`), so it never stores a fact and always renders "No facts linked"
-      — even after linking succeeds
-    closed_by: "unassigned"
-  - criterion: "Unlink button removes fact from episode"
-    reason: >
-      Same regression: the button is on cards that never render, and it passes
-      `fact.fact_id`, which the new shape lacks
-      (`episode-facts-panel.tsx:171`)
-    closed_by: "unassigned"
   - criterion: "Used facts show scene reference when available"
     reason: >
       No code writes `episode_facts.scene_reference` (no `markFactUsedAction`
-      or equivalent); the display (`episode-facts-panel.tsx:146`) is also
-      behind the regression
-    closed_by: "unassigned"
-  - criterion: "Facts count shown in tab badge"
-    reason: >
-      `onCountChange` is called only inside the `Array.isArray` branch
-      (`episode-facts-panel.tsx:63`), so `factsCount` stays `null` and the
-      badge (`canon-dashboard.tsx:169`) never shows
+      or equivalent). The display renders once one does (the 3581f78f
+      regression was fixed in #344)
     closed_by: "unassigned"
 open_questions: []
 component:

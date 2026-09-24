@@ -125,3 +125,64 @@ describe('canon memory in the LLM Lambda bundle (FILM-1110)', () => {
     expect(run.tables).toContain('immutable_events');
   }, 60_000);
 });
+
+/**
+ * KB-71: the season outline reads the project type through `@kit/episodes/lib`
+ * (a dynamic import, so a module that cannot load in plain Node fails only
+ * when the handler runs). Runs the bundled handler for a documentary until it
+ * has read its facts; the orchestrator after that needs an LLM and may fail.
+ */
+const OUTLINE_RUNNER = `
+const tables = [];
+console.warn = console.error = console.info = console.log = () => {};
+const query = {
+  then: (resolve) => Promise.resolve({ data: [], count: 0, error: null }).then(resolve),
+  single: () => Promise.resolve({
+    data: { id: 'p', name: 'P', metadata: { projectType: 'documentary' } },
+    error: null,
+  }),
+};
+for (const m of ['select', 'eq', 'is', 'order', 'limit']) {
+  query[m] = () => query;
+}
+const client = { from: (table) => { tables.push(table); return query; } };
+
+let error;
+try {
+  const { processSeasonOutline } = await import('./season-outline.mjs');
+  await processSeasonOutline(
+    { projectId: 'p', seasonPremise: 'x', episodeCount: 1, startingNumber: 1, accountId: 'a', userId: 'u' },
+    client,
+  );
+} catch (e) {
+  error = String(e?.message ?? e).split('\\n')[0];
+}
+process.stdout.write(JSON.stringify({ tables, error }));
+`;
+
+describe('season outline in the LLM Lambda bundle (KB-71)', () => {
+  it("loads the project type helpers and reads a documentary project's facts", async () => {
+    await esbuild.build({
+      entryPoints: [path.join(LLM_WORKER, 'handlers/season-outline.ts')],
+      bundle: true,
+      platform: 'node',
+      format: 'esm',
+      target: 'node22',
+      outfile: path.join(outDir, 'season-outline.mjs'),
+      logLevel: 'silent',
+    });
+    writeFileSync(path.join(outDir, 'run-outline.mjs'), OUTLINE_RUNNER);
+
+    const run = JSON.parse(
+      execFileSync(process.execPath, ['run-outline.mjs'], {
+        cwd: outDir,
+        encoding: 'utf8',
+      }),
+    ) as { tables: string[]; error?: string };
+
+    expect(run.error ?? '').not.toMatch(
+      /server-only|Cannot find|is not a function/,
+    );
+    expect(run.tables).toContain('verified_facts');
+  }, 60_000);
+});

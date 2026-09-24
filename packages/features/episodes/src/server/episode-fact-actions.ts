@@ -2,10 +2,14 @@
 
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+import { EPISODE_FACT_REFUSALS } from './episode-fact-refusals';
 
 // =============================================================================
 // SCHEMAS
@@ -31,9 +35,10 @@ const GetEpisodeFactsSchema = z.object({
 
 /**
  * Links multiple facts to an episode via the episode_facts junction table.
- * Uses upsert to gracefully handle facts that are already linked.
+ * A fact that is already linked is skipped (`on conflict do nothing`): the
+ * table has no UPDATE policy, so `do update` would refuse the whole batch.
  */
-export const linkFactsToEpisodeAction = enhanceAction(
+const linkFactsToEpisode = enhanceAction(
   async (data: z.infer<typeof LinkFactsToEpisodeSchema>) => {
     const logger = await getLogger();
     const ctx = { name: 'episodes.linkFactsToEpisode' };
@@ -54,8 +59,15 @@ export const linkFactsToEpisodeAction = enhanceAction(
 
     const { data: upserted, error } = await client
       .from('episode_facts')
-      .upsert(rows, { onConflict: 'episode_id,fact_id' })
+      .upsert(rows, {
+        onConflict: 'episode_id,fact_id',
+        ignoreDuplicates: true,
+      })
       .select('id');
+
+    if (error?.code === '42501') {
+      throw new ActionRefusal(EPISODE_FACT_REFUSALS.link);
+    }
 
     if (error) {
       logger.error({ ...ctx, error }, 'Failed to link facts to episode');
@@ -70,10 +82,13 @@ export const linkFactsToEpisodeAction = enhanceAction(
   },
 );
 
+export const linkFactsToEpisodeAction = returnRefusals(linkFactsToEpisode);
+
 /**
- * Unlinks a single fact from an episode.
+ * Unlinks a single fact from an episode. RLS turns a refused delete into zero
+ * rows, not an error, so a delete that removed nothing is refused here.
  */
-export const unlinkFactFromEpisodeAction = enhanceAction(
+const unlinkFactFromEpisode = enhanceAction(
   async (data: z.infer<typeof UnlinkFactFromEpisodeSchema>) => {
     const logger = await getLogger();
     const ctx = { name: 'episodes.unlinkFactFromEpisode' };
@@ -86,15 +101,20 @@ export const unlinkFactFromEpisodeAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    const { error } = await client
+    const { data: removed, error } = await client
       .from('episode_facts')
       .delete()
       .eq('episode_id', data.episodeId)
-      .eq('fact_id', data.factId);
+      .eq('fact_id', data.factId)
+      .select('id');
 
     if (error) {
       logger.error({ ...ctx, error }, 'Failed to unlink fact from episode');
       throw new Error(`Failed to unlink fact: ${error.message}`);
+    }
+
+    if (!removed?.length) {
+      throw new ActionRefusal(EPISODE_FACT_REFUSALS.unlink);
     }
 
     return { success: true as const };
@@ -103,6 +123,10 @@ export const unlinkFactFromEpisodeAction = enhanceAction(
     auth: true,
     schema: UnlinkFactFromEpisodeSchema,
   },
+);
+
+export const unlinkFactFromEpisodeAction = returnRefusals(
+  unlinkFactFromEpisode,
 );
 
 /**

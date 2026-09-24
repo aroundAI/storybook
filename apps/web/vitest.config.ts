@@ -142,6 +142,18 @@ export default defineConfig({
         __dirname,
         '../../packages/features/episodes/src/lib/server/pdf-extractor.ts',
       ),
+      '@kit/episodes/agent/season-orchestrator': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/agent/season-orchestrator.ts',
+      ),
+      '@kit/episodes/lib': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/lib/index.ts',
+      ),
+      '@kit/film-studio-schemas/project': path.resolve(
+        __dirname,
+        '../../packages/features/film-studio-schemas/src/project.ts',
+      ),
       '@kit/prompt-engine/server': path.resolve(
         __dirname,
         '../../packages/features/prompt-engine/src/lib/server/index.ts',

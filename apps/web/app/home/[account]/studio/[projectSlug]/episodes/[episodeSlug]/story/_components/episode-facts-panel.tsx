@@ -8,6 +8,7 @@ import {
   getEpisodeFactsAction,
   unlinkFactFromEpisodeAction,
 } from '@kit/episodes/server';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Card, CardContent } from '@kit/ui/card';
@@ -21,21 +22,9 @@ interface EpisodeFactsPanelProps {
   onCountChange?: (count: number) => void;
 }
 
-interface EpisodeFact {
-  id: string;
-  fact_id: string;
-  scene_reference: string | null;
-  linked_at: string;
-  verified_facts: {
-    id: string;
-    claim: string;
-    simplified_claim: string | null;
-    source_citation: string | null;
-    verification_status: string;
-    category: string | null;
-    source_type: string;
-  } | null;
-}
+type EpisodeFact = Awaited<
+  ReturnType<typeof getEpisodeFactsAction>
+>['facts'][number];
 
 const STATUS_COLORS: Record<string, string> = {
   verified:
@@ -58,10 +47,8 @@ export function EpisodeFactsPanel({
     startTransition(async () => {
       try {
         const result = await getEpisodeFactsAction({ episodeId });
-        if (Array.isArray(result)) {
-          setFacts(result as EpisodeFact[]);
-          onCountChange?.(result.length);
-        }
+        setFacts(result.facts);
+        onCountChange?.(result.totalCount);
       } catch {
         // Silent — empty state handles it
       }
@@ -75,18 +62,21 @@ export function EpisodeFactsPanel({
   const handleUnlink = (factId: string) => {
     startTransition(async () => {
       try {
-        await unlinkFactFromEpisodeAction({ episodeId, factId });
+        await unwrap(unlinkFactFromEpisodeAction({ episodeId, factId }));
         toast.success('Fact unlinked from episode');
-        loadFacts();
-      } catch {
-        toast.error('Failed to unlink fact');
+      } catch (error) {
+        toast.error(refusalMessage(error, 'Failed to unlink fact'));
       }
+      loadFacts();
     });
   };
 
   if (facts.length === 0 && !isPending) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 text-center">
+      <div
+        className="flex flex-col items-center justify-center py-8 text-center"
+        data-test="episode-facts-empty"
+      >
         <BookOpen className="mb-3 h-8 w-8 text-muted-foreground" />
         <h3 className="text-sm font-medium">No facts linked</h3>
         <p className="mt-1 max-w-xs text-xs text-muted-foreground">
@@ -97,6 +87,7 @@ export function EpisodeFactsPanel({
           className="mt-4"
           size="sm"
           onClick={() => setShowLinkDialog(true)}
+          data-test="episode-facts-link"
         >
           <LinkIcon className="mr-2 h-3 w-3" />
           Link Facts
@@ -115,15 +106,19 @@ export function EpisodeFactsPanel({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-test="episode-facts-panel">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
+        <p
+          className="text-xs text-muted-foreground"
+          data-test="episode-facts-count"
+        >
           {facts.length} fact{facts.length !== 1 ? 's' : ''} linked
         </p>
         <Button
           size="sm"
           variant="outline"
           onClick={() => setShowLinkDialog(true)}
+          data-test="episode-facts-link"
         >
           <LinkIcon className="mr-2 h-3 w-3" />
           Link More
@@ -132,44 +127,43 @@ export function EpisodeFactsPanel({
 
       <div className="max-h-64 space-y-2 overflow-y-auto">
         {facts.map((fact) => {
-          const data = fact.verified_facts;
-          if (!data) return null;
-
           return (
-            <Card key={fact.id} className="group">
+            <Card key={fact.id} className="group" data-test="episode-fact-card">
               <CardContent className="flex items-start gap-3 p-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm leading-snug">
-                    {data.simplified_claim ?? data.claim}
+                    {fact.simplifiedClaim ?? fact.claim}
                   </p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                    {fact.scene_reference && (
+                    {fact.sceneReference && (
                       <Badge
                         variant="outline"
                         className="bg-blue-50 text-[10px] text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
                       >
-                        Scene: {fact.scene_reference}
+                        Scene: {fact.sceneReference}
                       </Badge>
                     )}
-                    {data.source_citation && (
+                    {fact.sourceCitation && (
                       <span className="truncate text-xs text-muted-foreground">
-                        {data.source_citation}
+                        {fact.sourceCitation}
                       </span>
                     )}
                     <Badge
                       variant="outline"
-                      className={`text-[10px] ${STATUS_COLORS[data.verification_status] ?? ''}`}
+                      className={`text-[10px] ${STATUS_COLORS[fact.verificationStatus] ?? ''}`}
                     >
-                      {data.verification_status}
+                      {fact.verificationStatus}
                     </Badge>
                   </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100"
-                  onClick={() => handleUnlink(fact.fact_id)}
+                  className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                  onClick={() => handleUnlink(fact.id)}
                   disabled={isPending}
+                  aria-label="Unlink fact"
+                  data-test="episode-fact-unlink"
                 >
                   <Unlink className="h-3 w-3 text-destructive" />
                 </Button>
@@ -184,7 +178,7 @@ export function EpisodeFactsPanel({
         onOpenChange={setShowLinkDialog}
         episodeId={episodeId}
         projectId={projectId}
-        linkedFactIds={facts.map((f) => f.fact_id)}
+        linkedFactIds={facts.map((f) => f.id)}
         onFactsLinked={loadFacts}
       />
     </div>

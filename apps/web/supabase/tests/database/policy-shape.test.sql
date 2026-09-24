@@ -18,16 +18,13 @@ select plan(8);
 -- world-readable reference data, add it to the allowlist in check 3 with the
 -- reason.
 
--- 1. Every policy names its role. Allowlisted until their owners land:
---    verified_facts (KB-18 rewrites its policies) and audio_cues (KB-27 and
---    KB-48). Their predicates all test auth.uid(), so today the missing TO
---    clause exposes nothing; remove each entry when that ticket merges.
+-- 1. Every policy names its role. KB-48 named the last two, verified_facts
+--    and audio_cues, so nothing is allowlisted.
 select is_empty(
   $$ select tablename || '.' || policyname
        from pg_policies
       where schemaname = 'public'
-        and roles = '{public}'
-        and tablename not in ('verified_facts', 'audio_cues') $$,
+        and roles = '{public}' $$,
   'No policy in public omits its TO clause (a missing TO applies it to every role)'
 );
 

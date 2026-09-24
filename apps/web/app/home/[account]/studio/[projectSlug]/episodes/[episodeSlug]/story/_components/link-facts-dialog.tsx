@@ -9,6 +9,7 @@ import {
   getProjectFactsAction,
   linkFactsToEpisodeAction,
 } from '@kit/episodes/server';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Checkbox } from '@kit/ui/checkbox';
@@ -132,21 +133,18 @@ export function LinkFactsDialog({
 
     startTransition(async () => {
       try {
-        const result = await linkFactsToEpisodeAction({
-          episodeId,
-          factIds: Array.from(selectedIds),
-        });
+        const { linkedCount } = await unwrap(
+          linkFactsToEpisodeAction({
+            episodeId,
+            factIds: Array.from(selectedIds),
+          }),
+        );
 
-        if (result && 'linkedCount' in result) {
-          toast.success(`Linked ${result.linkedCount} fact(s) to episode`);
-        } else {
-          toast.success(`Linked fact(s) to episode`);
-        }
-
+        toast.success(`Linked ${linkedCount} fact(s) to episode`);
         onFactsLinked();
         onOpenChange(false);
-      } catch {
-        toast.error('Failed to link facts');
+      } catch (error) {
+        toast.error(refusalMessage(error, 'Failed to link facts'));
       }
     });
   };
@@ -192,6 +190,7 @@ export function LinkFactsDialog({
               availableFacts.map((fact) => (
                 <label
                   key={fact.id}
+                  data-test="link-fact-option"
                   className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-muted"
                 >
                   <Checkbox
@@ -227,6 +226,7 @@ export function LinkFactsDialog({
           <Button
             onClick={handleLink}
             disabled={isPending || selectedIds.size === 0}
+            data-test="link-facts-submit"
           >
             {isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

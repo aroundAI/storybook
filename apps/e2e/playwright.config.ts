@@ -34,6 +34,7 @@ if (!enableTeamAccountTests) {
   // nothing to do with revenue.
   testIgnore.push('*revenue*.spec.ts');
   testIgnore.push('*fact-verification*.spec.ts');
+  testIgnore.push('*episode-facts*.spec.ts');
 }
 
 /**
