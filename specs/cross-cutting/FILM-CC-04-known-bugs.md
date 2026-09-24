@@ -979,7 +979,7 @@ the owner's decision (D4: fix only `immutable_events` here):
 | Table | Policy | Decision |
 |---|---|---|
 | `immutable_events` | `immutable_events_project_access` | Fixed here |
-| `narrative_threads`, `world_states`, `episode_summaries`, `act_context_bridges`, `sequel_parent_contexts` | `*_project_access` / `episode_summaries_access` | **KB-76**: writes on `has_role_on_account`, so viewers write (reproduced) |
+| `narrative_threads`, `world_states`, `episode_summaries`, `act_context_bridges`, `sequel_parent_contexts` | `*_project_access` / `episode_summaries_access` | **KB-76**: writes on `has_role_on_account`, so viewers write (reproduced). Fixed in #342: one policy per verb |
 | `accounts`, `accounts_memberships`, `invitations`, `notifications`, `order_items`, `orders`, `role_permissions`, `subscription_items`, `subscriptions` | `restrict_mfa_*` | Correct as is: Makerkit's `AS RESTRICTIVE` MFA gates grant nothing, and a restrictive `USING` also constrains the new row |
 | `cron.job`, `cron.job_run_details` | `cron_*_policy` | Owned by the pg_cron extension; out of scope |
 
@@ -3020,10 +3020,25 @@ The "Allow public read of public accounts" policy exposes every column of a publ
 
 ## KB-63 — `remove_episode_from_threads_touched` has no check and is not granted
 
-**Found:** KB-40 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
-**Open.**
+**Found:** KB-40 (2026-09-23). **Filed by the lead from the teammate's report.**
+**Fixed** in #342, with KB-76 and KB-77.
 
 `remove_episode_from_threads_touched` has no access check and is not granted, so a single-episode reset leaves stale thread ids (after KB-27).
+
+**Reproduced** (local database, 2026-09-24): as a project member,
+`select remove_episode_from_threads_touched(E, P)` → `permission denied for
+function`; its ACL is `postgres` and `service_role` only. The single-episode
+resets called it over RPC and logged the failure as "non-fatal", so every
+reset left the episode's id in other threads' `episodes_touched`.
+
+**Fixed (#342):** the single-episode resets now call
+`bulk_reset_episodes_to_stage` (KB-77), which runs this function in definer
+context, so the ids are removed. The function stays ungranted and now checks
+its caller itself (signed in, `can_write_project`, episode in the project;
+one `42501`), so granting it by mistake would not open a write.
+Tests: `canon-write-scope.test.sql` F (5) and B (6), and E2E
+`apps/e2e/tests/canon/canon-write-scope.spec.ts` ("a project member resets
+the episode to Story").
 
 ---
 
@@ -3261,7 +3276,8 @@ exceeded its timeout, so the job was cancelled on `main` and on PRs. #324 shards
 viewer, or a team member with no role on the project, can add, rewrite and
 delete a project's narrative threads, world states, episode summaries, act
 bridges and sequel contexts. **Found:** KB-17's class sweep, 2026-09-23.
-**Open.**
+**Fixed** in #342, with KB-77 and KB-63 — see *Fixed (#342)* at the end
+of KB-77.
 
 Each of these tables has one policy, `FOR ALL … USING
 (has_role_on_account(account))` with no `WITH CHECK`
@@ -3294,15 +3310,15 @@ that is red first, and callers checked for refusals as values (KB-6).
 
 ### Acceptance criteria
 
-- [ ] pgTAP, red first: a viewer and a non-project member cannot insert, update or delete any of the five; a writer can; a personal-account owner can
-- [ ] No `FOR ALL` policy without `WITH CHECK` remains on a canon table
+- [x] pgTAP, red first: a viewer and a non-project member cannot insert, update or delete any of the five; a writer can; a personal-account owner can — `apps/web/supabase/tests/database/canon-write-scope.test.sql` (R, I, U, D)
+- [x] No `FOR ALL` policy without `WITH CHECK` remains on a canon table — and none on any table in `public`: `policy-shape.test.sql` check 5
 
 ---
 
 ## KB-77 — Character-state authorship is forgeable, and the append-only canon logs are granted DELETE
 
 **Severity:** Low–Medium — integrity inside an account. **Found:** KB-17's
-class sweep, 2026-09-23. **Open.**
+class sweep, 2026-09-23. **Fixed** in #342, with KB-76 and KB-63.
 
 - `character_states_insert`
   (`apps/web/supabase/migrations/20260128225704_canon_management.sql:253-261`)
@@ -3342,8 +3358,83 @@ still work or move to the definer bulk-reset path. pgTAP, red first.
 
 ### Acceptance criteria
 
-- [ ] pgTAP, red first: a member cannot insert a character state naming another author; a viewer cannot insert one
-- [ ] `authenticated` holds no UPDATE, DELETE or TRUNCATE on `character_states` or `state_deltas`, and single-episode reset still works (E2E or pgTAP)
+- [x] pgTAP, red first: a member cannot insert a character state naming another author; a viewer cannot insert one — `canon-write-scope.test.sql` A and I
+- [x] `authenticated` holds no UPDATE, DELETE or TRUNCATE on `character_states` or `state_deltas`, and single-episode reset still works (E2E or pgTAP) — `canon-write-scope.test.sql` P and B; E2E `apps/e2e/tests/canon/canon-write-scope.spec.ts`
+
+### Fixed (#342) — KB-76, KB-77 and KB-63
+
+Design: EDD `KB-76-77-63` (owner approval 2026-09-24, including A2 and A3
+below). **Reproduced again first** (local database, 2026-09-24, rolled-back
+transaction, `authenticated` with the user's `sub`): every row of the KB-76
+and KB-77 tables above, plus what the entries did not record —
+
+| Found | Detail |
+|---|---|
+| `anon` held every privilege on all seven tables | TRUNCATE included; `authenticated` the same. RLS and PostgREST kept it unusable |
+| DELETE on threads, world states and summaries | from Supabase's default privileges; the migrations granted only S/I/U |
+| `state_deltas_insert` let viewers write | it was on `has_role_on_account` too |
+| A sequel context could name **another account's** project as its parent | viewer insert, `INSERT 1` |
+| Every single-episode reset, the owner's included, left the episode's character states, state deltas and touched ids behind | the deletes matched no row and were logged as non-fatal |
+| A **viewer's** "Reset to Story" deleted the episode's threads and summary, then failed on the episode update | a partial wipe that ended in an error |
+
+**Rules** (the project-write rule KB-17 and KB-27 use):
+
+| Table | Read | Insert | Update | Delete |
+|---|---|---|---|---|
+| `narrative_threads` | `has_account_access` | `can_write_project`, `opened_at`/`resolved_at` in the project | same, `WITH CHECK` | none (A2) |
+| `world_states` | `has_account_access` | `can_write_project`, episode in the project | same, `WITH CHECK` | none (A2) |
+| `episode_summaries` | via episode | `can_write_project` via episode | same | none (A2) |
+| `act_context_bridges` | via episode | `can_write_project` via episode | same | writers (a cache) |
+| `sequel_parent_contexts` | via sequel | writer of the sequel **and** reader of the parent | same | writers (a cache) |
+| `character_states` | via character | `created_by = auth.uid()`, writer, episode in the character's project | none | none |
+| `state_deltas` | via episode | `can_write_project` via episode | none | none |
+
+`anon` holds nothing on the seven; `authenticated` holds exactly these verbs.
+No client deletes threads, world states, summaries or logs (A2): **resets do,
+inside `bulk_reset_episodes_to_stage`**, which the single-episode actions now
+call with one id (A3) — `resetToStageAction` and `resetEpisodeAction` check
+`can_write_project` first and return "You can't reset this episode." as a
+value. That leaves one definition of what a reset clears instead of three,
+and makes it one transaction. `createNarrativeThreadAction` returns "You
+can't change this project's canon." as a value; `updateCharacterStateAction`
+states its author and no longer ignores a refused state delta.
+
+Migration: `apps/web/supabase/migrations/20260924181028_kb76-77-63-canon-write-scope.sql`.
+
+Tests:
+- `apps/web/supabase/tests/database/canon-write-scope.test.sql`: 155 cases, 72
+  red on `main`.
+- `policy-shape.test.sql` check 5: no permissive `FOR ALL` policy for a client
+  role lacks `WITH CHECK`, anywhere in `public`; red on `main`, listing the
+  five tables.
+- `packages/features/episodes/__tests__/episode-reset-scope.test.ts` and
+  `canon-write-scope-actions.test.ts`: 11 cases, 10 red on `main`.
+- `apps/e2e/tests/canon/canon-write-scope.spec.ts`: viewer and member Add
+  Thread; viewer and member Reset to Story, read back from the database. On
+  `main` three of the four are red (the member's Add Thread passes on both);
+  all four pass on a production build.
+- `tooling/mutation-guards/kb-76.json`: 18 guards (14 pgTAP, 4 unit), all RED;
+  KB-17's and KB-27's 15 pgTAP guards still RED on this branch.
+- **KB-27's guard "bulk reset without the project-write check" stayed green in
+  CI** once this landed. Not a regression: `bulk_reset_episodes_to_stage` is
+  unchanged and still checks `can_write_project`. The test had gone blind.
+  Its one discriminating case (B5, a team member with no project row resets
+  to `draft`) now also fails inside `remove_episode_from_threads_touched`,
+  whose new check raises `42501`, and the reset's catch-all turns that into
+  the same "refused, nothing deleted" result. Measured with the mutation
+  applied: `draft` → `"No access to this project's canon"`, `reset_count 0`;
+  `storyboard` → `reset_count 1`, the shot deleted, because that branch never
+  reaches the canon function. So the reset's own check was the only guard on
+  the shots and audio branch, and no test covered it.
+  `bulk-reset-access.test.sql` now pins B5's refusal to the reset's own
+  message and adds B7 (the same member, `storyboard`: nothing reset, shot and
+  story intact). With those, the guard is RED again, and so is its
+  soft-deleted sibling.
+
+**Deploy window:** the migration runs before the app. Between the two, the
+old app's single-episode reset leaves the episode's threads and summary behind
+as well as its logs (it could no longer delete them directly). Nothing is lost
+and nothing wrong is written; it ends when the app deploys.
 
 ---
 
@@ -3725,6 +3816,9 @@ project and episode pages with an E2E as a signed-out visitor.
 | KB-57 (part) | The audio library stored any signed-in user's file with the admin client, at a key naming no project, before checking the project | #350 |
 | KB-78 | Regenerating a story deleted every canon row of the episode, including events and threads a person had added; it now replaces only what generation made (`narrative_threads.auto_generated`). Whether explicit resets should keep hand-added canon is open | #347 |
 | KB-43, KB-44 | Any account member could read a connection's encrypted OAuth tokens through PostgREST. `anon` held every privilege on `platform_connections`. `anon` and `authenticated` held TRUNCATE, TRIGGER and REFERENCES on up to 75 public tables | #338 |
+| KB-76 | Any account member, viewers included, could write five canon tables; a personal owner could not; a sequel could name another account's project as parent | #342 |
+| KB-77 | Character-state authorship was forgeable, the append-only logs were granted UPDATE/DELETE/TRUNCATE (and `anon` everything), and a single-episode reset left the logs behind | #342 |
+| KB-63 | `remove_episode_from_threads_touched` had no check and was not granted, so every single-episode reset left stale thread ids | #342 |
 
 ---
 
@@ -3761,7 +3855,7 @@ proved it wrong. Paths abbreviated with `…/studio/` are under
 - A deleted asset's name cannot be reused: `unique(project_id, type, name)` counts soft-deleted rows (seasons got the partial-index fix, assets did not) — `20251205125737_film-studio-tables.sql:134`
 - ~~Story generation can drop project facts: a duplicate `verifiedFacts` key lets episode facts, or `undefined`, overwrite them — `apps/web/lambda/llm-worker/handlers/story-generation.ts:323`, `:329` (TS1117, hidden by KB-14)~~ **Resolved by KB-14 (#309), and overstated:** both keys were built from the same rows — the facts linked to this episode through `episode_facts` (`context-builder.ts` `fetchEpisodeFacts` and the linked-facts query) — and differed only in framing ("NON-NEGOTIABLE constraints" vs "use accurately"). No fact was dropped. The later key always won at runtime, so KB-14 removed the earlier one and kept the prompt exactly as it was (owner decision, 2026-09-23).
 - Episode numbers can repeat: `createEpisode` relies on a unique constraint no migration creates — `packages/features/episodes/src/server/actions.ts:67`
-- Resetting an episode leaves canon rows behind: `character_states` and `state_deltas` have no DELETE policy, so the user-client delete removes nothing and raises nothing — `packages/features/episodes/src/server/actions.ts:1227`, `:1241`
+- ~~Resetting an episode leaves canon rows behind: `character_states` and `state_deltas` have no DELETE policy, so the user-client delete removes nothing and raises nothing — `packages/features/episodes/src/server/actions.ts:1227`, `:1241`~~ **Reproduced and fixed** as part of KB-77 (#342): single-episode resets now run in `bulk_reset_episodes_to_stage`.
 - `reel_note` is passed to the shot director and never interpolated into the prompt — `packages/features/prompt-engine/src/prompts/story-generation/scene-shot-generation.json:128`
 - The assets page caches its project lookup for an hour by slug alone, with no account in the key or the query, so another account's same-slug project can be served — `…/studio/assets/page.tsx:79-90`
 - Asset delete fails open: a failed in-use check deletes anyway — `packages/features/assets/src/lib/server/asset.queries.ts:139-143`, and bulk delete goes straight to confirmation — `packages/features/assets/src/components/asset-gallery.tsx:222-224` (FILM-201)
