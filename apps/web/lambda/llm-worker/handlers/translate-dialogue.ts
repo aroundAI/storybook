@@ -9,6 +9,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 interface TranslateDialoguePayload {
   episodeId: string;
   targetLanguage: string;
@@ -54,7 +56,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
 
 export async function processTranslateDialogue(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<TranslateDialogueResult> {
   // SQS payload: cast, not validated (KB-33).
   const data = payload as unknown as TranslateDialoguePayload;
@@ -108,7 +110,7 @@ export async function processTranslateDialogue(
 
   const existingSourceIds = new Set(
     (existing || []).map(
-      (e: { source_dialogue_id: string }) => e.source_dialogue_id,
+      (e) => e.source_dialogue_id,
     ),
   );
 

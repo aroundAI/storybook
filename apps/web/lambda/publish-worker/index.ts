@@ -12,6 +12,8 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 import {
   ApiGatewayManagementApiClient,
   PostToConnectionCommand,
@@ -34,6 +36,7 @@ import type {
 import type { YouTubeChannelDeclaration } from '@kit/publishing/lib/youtube-declaration';
 import { LINKEDIN_REST_VERSION, vendorUrl } from '@kit/shared/vendors';
 
+import { mergeFailureMetadata } from './failure-metadata';
 import { checkConnectionToken } from './token';
 
 // Initialize DynamoDB client
@@ -52,7 +55,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
   );
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
@@ -250,12 +253,11 @@ async function updatePublishStatus(
       .eq('id', publishId)
       .single();
 
-    updateData.metadata = {
-      ...(existing?.metadata || {}),
+    updateData.metadata = mergeFailureMetadata(existing?.metadata, {
       error: data.error,
       errorStack: data.errorStack,
       failedAt: data.failedAt,
-    };
+    });
   }
 
   await supabase.from('publishes').update(updateData).eq('id', publishId);

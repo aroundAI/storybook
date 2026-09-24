@@ -6,6 +6,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 import { z } from 'zod';
 
 import { uploadToR2 } from '../utils/r2-storage';
@@ -86,7 +88,7 @@ async function decrypt(encryptedBase64: string): Promise<string> {
  * Get the account ID for a given project
  */
 async function getProjectAccountId(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   projectId: string,
 ): Promise<string> {
   const { data, error } = await supabase
@@ -106,7 +108,7 @@ async function getProjectAccountId(
  * Get ElevenLabs API key for an account from external_api_keys table
  */
 async function getAccountElevenLabsApiKey(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   accountId: string,
 ): Promise<string> {
   const { data: storedKey, error } = await supabase
@@ -130,7 +132,7 @@ async function getAccountElevenLabsApiKey(
  * Get ElevenLabs API key for a project (looks up accountId first)
  */
 async function getProjectElevenLabsApiKey(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   projectId: string,
 ): Promise<string> {
   const accountId = await getProjectAccountId(supabase, projectId);
@@ -143,7 +145,7 @@ async function getProjectElevenLabsApiKey(
 
 export async function processAudioFileGeneration(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<{ success: boolean; assetId?: string; cueId: string }> {
   const data = AudioFileGenerationPayloadSchema.parse(payload);
 

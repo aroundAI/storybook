@@ -6,6 +6,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 interface TranslationItem {
   id: string;
   contentType: 'full-video' | 'shorts-group';
@@ -38,7 +40,7 @@ interface BatchTranslateResult {
 
 export async function processBatchTranslateMetadata(
   payload: Record<string, unknown>,
-  _supabase: SupabaseClient,
+  _supabase: SupabaseClient<Database>,
 ): Promise<BatchTranslateResult> {
   // SQS payload: cast, not validated (KB-33).
   const data = payload as unknown as BatchTranslatePayload;

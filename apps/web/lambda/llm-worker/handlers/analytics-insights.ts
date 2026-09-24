@@ -6,6 +6,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 interface AnalyticsInsightsPayload {
   projectId: string;
   /** The project's account, stamped by queueLlmJob from its target (KB-31). */
@@ -75,7 +77,7 @@ function calculateChanges(
 
 export async function processAnalyticsInsights(
   payload: Record<string, unknown>,
-  _supabase: SupabaseClient,
+  _supabase: SupabaseClient<Database>,
 ): Promise<InsightsResult> {
   // SQS payload: cast, not validated (KB-33).
   const data = payload as unknown as AnalyticsInsightsPayload;

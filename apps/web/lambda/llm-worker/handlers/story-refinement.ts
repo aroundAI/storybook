@@ -7,6 +7,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database, Json } from '@kit/supabase/database';
+
 import { executeLLMForLambda } from '../llm-utils';
 import {
   buildEpisodeContext,
@@ -53,7 +55,7 @@ interface StoryRefinementResult {
 
 export async function processStoryRefinement(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<StoryRefinementResult> {
   const data = payload as unknown as StoryRefinementPayload;
 
@@ -204,8 +206,8 @@ export async function processStoryRefinement(
     const { data: updatedEpisode, error: updateError } = await supabase
       .from('episodes')
       .update({
-        story_data: updatedStoryData,
-        metadata: updatedMetadata,
+        story_data: updatedStoryData as unknown as Json,
+        metadata: updatedMetadata as unknown as Json,
         updated_at: generatedAt,
       })
       .eq('id', data.episodeId)

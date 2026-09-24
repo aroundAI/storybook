@@ -9,6 +9,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 /** Facts offered to one outline; the prompt asks for every one to be placed. */
 const MAX_OUTLINE_FACTS = 100;
 
@@ -55,7 +57,7 @@ interface SeasonOutlineResult {
 
 export async function processSeasonOutline(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<SeasonOutlineResult> {
   // SQS payload: cast, not validated (KB-33).
   const data = payload as unknown as SeasonOutlinePayload;
@@ -108,7 +110,7 @@ export async function processSeasonOutline(
     characters.length > 0
       ? characters
           .map(
-            (c: { name: string; description?: string }) =>
+            (c) =>
               `- ${c.name}: ${c.description || ''}`,
           )
           .join('\n')
@@ -118,7 +120,7 @@ export async function processSeasonOutline(
     locations.length > 0
       ? locations
           .map(
-            (l: { name: string; description?: string }) =>
+            (l) =>
               `- ${l.name}: ${l.description || ''}`,
           )
           .join('\n')

@@ -9,6 +9,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 import {
   validatePlotSkeleton,
   validateSceneBlocks,
@@ -28,7 +30,7 @@ export interface ValidationCheckpointConfig {
   /** Episode number for the memory context scope */
   episodeNumber: number;
   /** Supabase client for database access */
-  supabase: SupabaseClient;
+  supabase: SupabaseClient<Database>;
 }
 
 export interface ValidationCheckpointResult {

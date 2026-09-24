@@ -7,6 +7,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database, Json } from '@kit/supabase/database';
+
 import { executeLLMForLambda } from '../llm-utils';
 import {
   buildEpisodeContext,
@@ -52,7 +54,7 @@ interface ScreenplayRefinementResult {
 
 export async function processScreenplayRefinement(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<ScreenplayRefinementResult> {
   const data = payload as unknown as ScreenplayRefinementPayload;
 
@@ -194,8 +196,8 @@ export async function processScreenplayRefinement(
     const { data: updatedEpisode, error: updateError } = await supabase
       .from('episodes')
       .update({
-        screenplay_data: updatedScreenplayData,
-        metadata: updatedMetadata,
+        screenplay_data: updatedScreenplayData as Json,
+        metadata: updatedMetadata as unknown as Json,
         updated_at: generatedAt,
       })
       .eq('id', data.episodeId)

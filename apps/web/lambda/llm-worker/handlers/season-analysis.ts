@@ -7,6 +7,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 import { executeLLMForLambda } from '../llm-utils';
 
 interface EpisodeBeat {
@@ -91,7 +93,7 @@ function formatFactsForSeasonPrompt(facts: ExternalFact[]): string {
  */
 export async function processSeasonAnalysis(
   payload: Record<string, unknown>,
-  _supabase: SupabaseClient,
+  _supabase: SupabaseClient<Database>,
 ): Promise<{ success: boolean; data: AnalysisResult }> {
   const { projectId, roadmap, externalFacts } =
     // SQS payload: cast, not validated (KB-33).

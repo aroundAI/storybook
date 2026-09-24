@@ -10,6 +10,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 import { z } from 'zod';
 
 import {
@@ -24,23 +26,17 @@ const AudioCueGenerationPayloadSchema = z.object({
   accountId: z.string(),
 });
 
-interface ShotData {
-  sequence_number: number;
-  scene_number: number;
-  duration_seconds: number;
-  scene_description: string;
-  prompt: string;
-  generation_metadata: {
-    veoPrompt?: {
-      audio?: string;
-    };
-    action?: string;
+/** The part of `shots.generation_metadata` (jsonb) this pipeline reads. */
+interface ShotGenerationMetadata {
+  veoPrompt?: {
+    audio?: string;
   };
+  action?: string;
 }
 
 export async function processAudioCueGeneration(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<{ success: boolean; cuesCreated: number }> {
   const data = AudioCueGenerationPayloadSchema.parse(payload);
   const { episodeId } = data;
@@ -68,17 +64,20 @@ export async function processAudioCueGeneration(
     }
 
     // 2. Prepare shot data for orchestrator
-    const shotsJson = shots.map((s: ShotData) => ({
+    const shotsJson = shots.map((s) => ({
       seq: s.sequence_number,
       duration: s.duration_seconds,
       audioDesc:
-        s.generation_metadata?.veoPrompt?.audio || 'No audio description',
-      action: s.generation_metadata?.action || s.scene_description,
+        (s.generation_metadata as ShotGenerationMetadata | null)?.veoPrompt
+          ?.audio || 'No audio description',
+      action:
+        (s.generation_metadata as ShotGenerationMetadata | null)?.action ||
+        s.scene_description,
     }));
 
     // Calculate total episode duration
     const totalDurationSeconds = shots.reduce(
-      (sum: number, s: ShotData) => sum + s.duration_seconds,
+      (sum, s) => sum + s.duration_seconds,
       0,
     );
 
@@ -129,8 +128,8 @@ export async function processAudioCueGeneration(
     } else {
       // Large episode: batch by scene to stay within token budget
       // Group shots by scene_number, then process each scene independently
-      const shotToSceneMap = new Map<number, number>(
-        shots.map((s: ShotData) => [s.sequence_number, s.scene_number]),
+      const shotToSceneMap = new Map<number, number | null>(
+        shots.map((s) => [s.sequence_number, s.scene_number]),
       );
 
       const sceneGroups = new Map<number, typeof shotsJson>();
@@ -214,8 +213,8 @@ export async function processAudioCueGeneration(
     }
 
     // Create scene map from initial shots fetch
-    const sceneMap = new Map(
-      shots.map((s: ShotData) => [s.sequence_number, s.scene_number]),
+    const sceneMap = new Map<number, number | null>(
+      shots.map((s) => [s.sequence_number, s.scene_number]),
     );
 
     const finalInserts = generatedCues
@@ -257,6 +256,7 @@ export async function processAudioCueGeneration(
     if (finalInserts.length > 0) {
       const { error: insertError } = await supabase
         .from('audio_cues')
+        // @ts-expect-error KB-92: shots.scene_number is nullable, audio_cues.scene_number is NOT NULL; one sceneless shot fails the whole insert
         .insert(finalInserts);
 
       if (insertError) {

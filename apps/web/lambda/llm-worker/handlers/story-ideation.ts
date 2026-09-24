@@ -10,6 +10,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 import {
   buildEpisodeContext,
   formatCharactersForPrompt,
@@ -53,7 +55,7 @@ interface StoryIdeationResult {
 
 export async function processStoryIdeation(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<StoryIdeationResult> {
   // SQS payload: cast, not validated (KB-33).
   const data = payload as unknown as StoryIdeationPayload;

@@ -17,6 +17,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 export interface CommitStoryCanonInput {
   projectId: string;
   episodeId: string;
@@ -28,7 +30,7 @@ export interface CommitStoryCanonInput {
   themes?: string[];
   storyContent?: string;
   createdBy: string;
-  supabase: SupabaseClient;
+  supabase: SupabaseClient<Database>;
 }
 
 /**
@@ -106,7 +108,7 @@ const STORY_GENERATION = 'story_generation';
  */
 export async function cleanupEpisodeCanon(
   episodeId: string,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<void> {
   const deletions = [
     {
@@ -173,7 +175,7 @@ async function commitKeyEvents({
   season: number;
   keyEvents: string[];
   createdBy: string;
-  supabase: SupabaseClient;
+  supabase: SupabaseClient<Database>;
 }) {
   if (!keyEvents.length) return;
 
@@ -207,7 +209,7 @@ async function commitCharacterStates({
   projectId: string;
   episodeId: string;
   characters: Array<{ name: string; role: string; arc: string }>;
-  supabase: SupabaseClient;
+  supabase: SupabaseClient<Database>;
 }) {
   if (!characters.length) return;
 
@@ -267,7 +269,7 @@ async function commitThemesToMetadata({
 }: {
   episodeId: string;
   themes?: string[];
-  supabase: SupabaseClient;
+  supabase: SupabaseClient<Database>;
 }) {
   if (!themes?.length) return;
 
@@ -328,7 +330,7 @@ async function commitNarrativeThreadsViaLLM({
   projectId: string;
   episodeId: string;
   storyContent?: string;
-  supabase: SupabaseClient;
+  supabase: SupabaseClient<Database>;
 }) {
   if (!storyContent || storyContent.length < 100) return;
 

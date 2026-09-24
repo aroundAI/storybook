@@ -12,6 +12,8 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 import {
   ApiGatewayManagementApiClient,
   PostToConnectionCommand,
@@ -68,7 +70,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
   );
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,

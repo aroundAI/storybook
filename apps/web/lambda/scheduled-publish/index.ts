@@ -10,6 +10,8 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import ws from 'ws';
 
@@ -31,7 +33,7 @@ if (!PUBLISH_QUEUE_URL) {
   throw new Error('PUBLISH_QUEUE_URL environment variable not configured');
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,

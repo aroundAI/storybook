@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 import { executeLLMForLambda } from '../llm-utils';
 
 interface AssetCreationPayload {
@@ -72,7 +74,7 @@ function buildScreenplayContext(scenes: ScreenplayScene[]): string {
 
 export async function processAssetCreation(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<AssetCreationResult> {
   // SQS payload: cast, not validated (KB-33).
   const data = payload as unknown as AssetCreationPayload;
