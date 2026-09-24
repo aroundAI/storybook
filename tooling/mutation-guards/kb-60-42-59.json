@@ -1,0 +1,84 @@
+{
+  "feature": "FILM-CC-04 KB-60, KB-42, KB-59",
+  "mutations": [
+    {
+      "name": "KB-60 the all-columns public read policy on accounts is back",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/public-accounts-exposure.test.sql",
+      "sql": "create policy \"Allow public read of public accounts\" on public.accounts for select to anon, authenticated using ((public_profile->>'is_public')::boolean = true);"
+    },
+    {
+      "name": "KB-60 the company page reads accounts again (members only now, so a stranger gets a 404)",
+      "kind": "e2e",
+      "file": "packages/features/public-sharing/src/server/public-queries.ts",
+      "edits": [
+        {
+          "find": "    .from('public_accounts')\n    .select('id, name, slug, picture_url, public_profile')",
+          "replace": "    .from('accounts')\n    .select('id, name, slug, picture_url, public_profile')"
+        }
+      ],
+      "spec": "tests/public-sharing/public-pages.spec.ts",
+      "grep": "company, project and episode pages render"
+    },
+    {
+      "name": "KB-60 the view exposes the email",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/public-accounts-exposure.test.sql",
+      "sql": "create or replace view public.public_accounts with (security_barrier = true) as select id, name, slug, picture_url, public_profile, updated_at, email from public.accounts where not is_personal_account and coalesce((public_profile->>'is_public')::boolean, false);"
+    },
+    {
+      "name": "KB-60 the view includes public personal accounts",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/public-accounts-exposure.test.sql",
+      "sql": "create or replace view public.public_accounts with (security_barrier = true) as select id, name, slug, picture_url, public_profile, updated_at from public.accounts where coalesce((public_profile->>'is_public')::boolean, false);"
+    },
+    {
+      "name": "KB-60 the view is writable by authenticated",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/public-accounts-exposure.test.sql",
+      "sql": "grant update, delete on public.public_accounts to authenticated;"
+    },
+    {
+      "name": "KB-60 the view loses security_barrier",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/public-accounts-exposure.test.sql",
+      "sql": "alter view public.public_accounts reset (security_barrier);"
+    },
+    {
+      "name": "KB-42 check_account_budget checks nothing again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-budget-access.test.sql",
+      "sql": "create or replace function public.check_account_budget(p_account_id uuid, p_estimated_cost_cents integer default 0) returns boolean language plpgsql security definer set search_path = '' as $fn$ declare v_current_usage integer; v_budget integer; begin select current_usage_cents, monthly_budget_cents into v_current_usage, v_budget from public.accounts where id = p_account_id; if not found then raise exception 'Account not found: %', p_account_id; end if; if v_budget is null then return true; end if; return (v_current_usage + p_estimated_cost_cents) <= v_budget; end; $fn$;"
+    },
+    {
+      "name": "KB-42 the role comparison is not coalesced (a NULL role lets a stranger through)",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-budget-access.test.sql",
+      "sql": "create or replace function public.check_account_budget(p_account_id uuid, p_estimated_cost_cents integer default 0) returns boolean language plpgsql security definer set search_path = '' as $fn$ declare v_current_usage integer; v_budget integer; begin if not (public.has_account_access(p_account_id) or (select auth.role()) = 'service_role') then return false; end if; select current_usage_cents, monthly_budget_cents into v_current_usage, v_budget from public.accounts where id = p_account_id; if not found then return false; end if; if v_budget is null then return true; end if; return (v_current_usage + p_estimated_cost_cents) <= v_budget; end; $fn$;"
+    },
+    {
+      "name": "KB-42 the service-role branch is dropped",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-budget-access.test.sql",
+      "sql": "create or replace function public.check_account_budget(p_account_id uuid, p_estimated_cost_cents integer default 0) returns boolean language plpgsql security definer set search_path = '' as $fn$ declare v_current_usage integer; v_budget integer; begin if not public.has_account_access(p_account_id) then return false; end if; select current_usage_cents, monthly_budget_cents into v_current_usage, v_budget from public.accounts where id = p_account_id; if not found then return false; end if; if v_budget is null then return true; end if; return (v_current_usage + p_estimated_cost_cents) <= v_budget; end; $fn$;"
+    },
+    {
+      "name": "KB-59 a public table ships without RLS (readonly_viewer reads it by default privileges)",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/readonly-viewer-reach.test.sql",
+      "sql": "create table public.kb59_probe (id int);"
+    },
+    {
+      "name": "KB-59 a SELECT policy TO public with a constant predicate",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/readonly-viewer-reach.test.sql",
+      "sql": "create policy kb59_probe on public.social_posts for select using (true);"
+    },
+    {
+      "name": "KB-59 a definer function becomes executable by PUBLIC",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/readonly-viewer-reach.test.sql",
+      "sql": "grant execute on function public.increment_account_usage(uuid, integer) to public;"
+    }
+  ]
+}

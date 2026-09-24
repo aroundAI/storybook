@@ -278,6 +278,13 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
 ### 3.1 Public Queries (No Auth)
 
+> **As built (2026-09-24, FILM-CC-04 KB-60):** accounts are read from the
+> `public.public_accounts` view (`id, name, slug, picture_url, public_profile,
+> updated_at` of public team accounts), not from `accounts`, which is readable
+> by members only. The `accounts!inner(...)` embeds below are
+> `public_accounts!inner(...)` in the code. "No Auth" is not true yet: `anon`
+> has no USAGE on schema `public` (KB-88).
+
 **File:** `packages/features/public-sharing/src/server/public-queries.ts`
 
 ```typescript

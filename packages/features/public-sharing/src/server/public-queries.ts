@@ -40,11 +40,15 @@ export type PublicEpisode = Database['public']['Tables']['episodes']['Row'] & {
 /**
  * Get a public company/account by slug.
  * Only returns if the account has public access enabled.
+ *
+ * Every public read of an account goes through the `public_accounts` view:
+ * `accounts` itself is readable by members only (KB-60), and the view
+ * returns just the public fields of public team accounts.
  */
 export async function getPublicCompany(slug: string) {
   const client = getSupabaseServerClient();
   const { data, error } = await client
-    .from('accounts')
+    .from('public_accounts')
     .select('id, name, slug, picture_url, public_profile')
     .eq('slug', slug)
     // We check if public_profile->is_public is true
@@ -70,7 +74,7 @@ export async function getPublicProject(accountId: string, projectSlug: string) {
     .select(
       `
       *,
-      account:accounts!inner(id, name, slug)
+      account:public_accounts!inner(id, name, slug)
     `,
     )
     .eq('account_id', accountId)
@@ -114,7 +118,7 @@ export async function getPublicProjects(
           .select(
             `
       *,
-      account:accounts!inner(id, name, slug)
+      account:public_accounts!inner(id, name, slug)
     `,
           )
           .eq('account_id', accountId)
@@ -163,7 +167,7 @@ export async function getPublicEpisode(
         name,
         public_slug,
         visibility,
-        account:accounts!inner(id, name, slug)
+        account:public_accounts!inner(id, name, slug)
       )
     `,
     )
@@ -215,7 +219,7 @@ export async function getPublicEpisodes(
         name,
         public_slug,
         visibility,
-        account:accounts!inner(id, name, slug)
+        account:public_accounts!inner(id, name, slug)
       )
     `,
           )
@@ -337,7 +341,7 @@ export async function getSitemapData() {
   const accounts = await fetchAllRows(
     (from, to) =>
       client
-        .from('accounts')
+        .from('public_accounts')
         .select('slug, updated_at')
         .eq('public_profile->>is_public', 'true')
         .not('slug', 'is', null)
@@ -355,7 +359,7 @@ export async function getSitemapData() {
           `
         public_slug,
         updated_at,
-        account:accounts!inner(slug)
+        account:public_accounts!inner(slug)
       `,
         )
         .eq('visibility', 'public')
@@ -385,7 +389,7 @@ export async function getSitemapData() {
         updated_at,
         project:projects!inner(
           public_slug,
-          account:accounts!inner(slug)
+          account:public_accounts!inner(slug)
         )
       `,
         )
