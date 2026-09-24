@@ -82,7 +82,10 @@ function sourceFiles(dir: string): string[] {
 }
 
 const files = ROOTS.flatMap((root) => sourceFiles(join(REPO, root))).map(
-  (path) => ({ path: relative(REPO, path), source: readFileSync(path, 'utf8') }),
+  (path) => ({
+    path: relative(REPO, path),
+    source: readFileSync(path, 'utf8'),
+  }),
 );
 
 describe('who touches a connection’s tokens (KB-43)', () => {
@@ -101,7 +104,9 @@ describe('who touches a connection’s tokens (KB-43)', () => {
       selectsTokens(`await client.from('platform_connections').select();`),
     ).toBe(true);
     expect(
-      selectsTokens(`client.from('publishes').select('id, platform_connections(*)')`),
+      selectsTokens(
+        `client.from('publishes').select('id, platform_connections(*)')`,
+      ),
     ).toBe(true);
     expect(
       selectsTokens(`
@@ -131,12 +136,17 @@ describe('who touches a connection’s tokens (KB-43)', () => {
 
   it('only the store-connection helper upserts a connection', () => {
     const offenders = files
-      .filter(({ path, source }) => path !== UPSERT_HELPER && upsertsConnection(source))
+      .filter(
+        ({ path, source }) =>
+          path !== UPSERT_HELPER && upsertsConnection(source),
+      )
       .map(({ path }) => path);
 
     expect(offenders).toEqual([]);
     expect(
-      upsertsConnection(files.find(({ path }) => path === UPSERT_HELPER)!.source),
+      upsertsConnection(
+        files.find(({ path }) => path === UPSERT_HELPER)!.source,
+      ),
     ).toBe(true);
   });
 

@@ -36,17 +36,17 @@ function row(accountId: string, platformAccountId = 'UC-1') {
 }
 
 function userClient(access: Record<string, boolean | Error>) {
-  const rpc = vi.fn(
-    async (_fn: string, args: { p_account_id: string }) => {
-      const answer = access[args.p_account_id] ?? false;
+  const rpc = vi.fn(async (_fn: string, args: { p_account_id: string }) => {
+    const answer = access[args.p_account_id] ?? false;
 
-      return answer instanceof Error
-        ? { data: null, error: answer }
-        : { data: answer, error: null };
-    },
-  );
+    return answer instanceof Error
+      ? { data: null, error: answer }
+      : { data: answer, error: null };
+  });
 
-  return { rpc } as unknown as Parameters<typeof storePlatformConnections>[0] & {
+  return { rpc } as unknown as Parameters<
+    typeof storePlatformConnections
+  >[0] & {
     rpc: typeof rpc;
   };
 }

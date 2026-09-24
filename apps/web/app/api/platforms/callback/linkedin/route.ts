@@ -8,7 +8,6 @@ import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credent
 import { encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { storePlatformConnections } from '~/lib/platforms/store-connection';
 
 import { accountIdFromUnverifiedState } from '~/lib/platforms/connect-failure';
 import {
@@ -17,6 +16,7 @@ import {
   failConnect,
   vendorRefusal,
 } from '~/lib/platforms/fail-connect';
+import { storePlatformConnections } from '~/lib/platforms/store-connection';
 
 /**
  * LinkedIn OAuth Callback Route
@@ -167,26 +167,26 @@ async function handleCallback(request: NextRequest) {
 
   // Store connection
   const { error: insertError } = await storePlatformConnections(client, [
-      {
-        account_id: state.accountId,
-        platform: 'linkedin',
-        platform_account_id: `urn:li:person:${profile.sub}`,
-        platform_account_name: profile.name,
-        access_token_encrypted: encryptedAccessToken,
-        refresh_token_encrypted: encryptedRefreshToken,
-        token_expires_at: new Date(
-          Date.now() + tokens.expires_in * 1000,
-        ).toISOString(),
-        scopes: [...scopes],
-        metadata: {
-          picture: profile.picture,
-          email: profile.email,
-          isCompanyPage: state.isCompanyPage || false,
-        },
-        is_active: true,
-        updated_at: new Date().toISOString(),
+    {
+      account_id: state.accountId,
+      platform: 'linkedin',
+      platform_account_id: `urn:li:person:${profile.sub}`,
+      platform_account_name: profile.name,
+      access_token_encrypted: encryptedAccessToken,
+      refresh_token_encrypted: encryptedRefreshToken,
+      token_expires_at: new Date(
+        Date.now() + tokens.expires_in * 1000,
+      ).toISOString(),
+      scopes: [...scopes],
+      metadata: {
+        picture: profile.picture,
+        email: profile.email,
+        isCompanyPage: state.isCompanyPage || false,
       },
-]);
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    },
+  ]);
 
   if (insertError) {
     return fail({

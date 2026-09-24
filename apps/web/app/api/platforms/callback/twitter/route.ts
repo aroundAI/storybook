@@ -10,7 +10,6 @@ import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credent
 import { encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { storePlatformConnections } from '~/lib/platforms/store-connection';
 
 import { accountIdFromUnverifiedState } from '~/lib/platforms/connect-failure';
 import {
@@ -19,6 +18,7 @@ import {
   failConnect,
   vendorRefusal,
 } from '~/lib/platforms/fail-connect';
+import { storePlatformConnections } from '~/lib/platforms/store-connection';
 
 interface TwitterOAuthMetadata {
   codeVerifier?: string;
@@ -200,25 +200,25 @@ async function handleCallback(request: NextRequest) {
 
   // Store connection
   const { error: insertError } = await storePlatformConnections(client, [
-      {
-        account_id: state.accountId,
-        platform: 'twitter',
-        platform_account_id: twitterUser.id,
-        platform_account_name: twitterUser.username,
-        access_token_encrypted: encryptedAccessToken,
-        refresh_token_encrypted: encryptedRefreshToken,
-        token_expires_at: accessTokenExpiresAt.toISOString(),
-        scopes: parseGrantedScopes(tokens.scope),
-        metadata: {
-          scopes_granted_at: new Date().toISOString(),
-          name: twitterUser.name,
-          profile_image_url: twitterUser.profile_image_url,
-          refresh_expires_at: refreshTokenExpiresAt.toISOString(),
-        },
-        is_active: true,
-        updated_at: new Date().toISOString(),
+    {
+      account_id: state.accountId,
+      platform: 'twitter',
+      platform_account_id: twitterUser.id,
+      platform_account_name: twitterUser.username,
+      access_token_encrypted: encryptedAccessToken,
+      refresh_token_encrypted: encryptedRefreshToken,
+      token_expires_at: accessTokenExpiresAt.toISOString(),
+      scopes: parseGrantedScopes(tokens.scope),
+      metadata: {
+        scopes_granted_at: new Date().toISOString(),
+        name: twitterUser.name,
+        profile_image_url: twitterUser.profile_image_url,
+        refresh_expires_at: refreshTokenExpiresAt.toISOString(),
       },
-]);
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    },
+  ]);
 
   if (insertError) {
     return fail({

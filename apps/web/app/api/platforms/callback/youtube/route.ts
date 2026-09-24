@@ -12,7 +12,6 @@ import { encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { vendorUrl } from '@kit/shared/vendors';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { storePlatformConnections } from '~/lib/platforms/store-connection';
 
 import { accountIdFromUnverifiedState } from '~/lib/platforms/connect-failure';
 import {
@@ -21,6 +20,7 @@ import {
   failConnect,
   vendorRefusal,
 } from '~/lib/platforms/fail-connect';
+import { storePlatformConnections } from '~/lib/platforms/store-connection';
 
 /**
  * YouTube OAuth Callback Route
@@ -239,30 +239,30 @@ async function handleCallback(request: NextRequest) {
 
   // Store connection
   const { error: insertError } = await storePlatformConnections(client, [
-      {
-        account_id: state.accountId,
-        platform: 'youtube',
-        platform_account_id: channel.id,
-        platform_account_name: channel.title,
-        access_token_encrypted: encryptedAccessToken,
-        refresh_token_encrypted: encryptedRefreshToken,
-        token_expires_at: new Date(
-          Date.now() + tokens.expires_in * 1000,
-        ).toISOString(),
-        // What Google granted, not what we asked for: a user can untick a
-        // scope on the consent screen, and the token response says so.
-        scopes: parseGrantedScopes(tokens.scope),
-        metadata: {
-          scopes_granted_at: new Date().toISOString(),
-          thumbnail_url: channel.thumbnailUrl,
-          // No subscriber_count. It was written here and read nowhere — a
-          // level captured once, at a date nobody recorded, then left to
-          // rot. FILM-1607 stores the dated series in ClickHouse instead.
-        },
-        is_active: true,
-        updated_at: new Date().toISOString(),
+    {
+      account_id: state.accountId,
+      platform: 'youtube',
+      platform_account_id: channel.id,
+      platform_account_name: channel.title,
+      access_token_encrypted: encryptedAccessToken,
+      refresh_token_encrypted: encryptedRefreshToken,
+      token_expires_at: new Date(
+        Date.now() + tokens.expires_in * 1000,
+      ).toISOString(),
+      // What Google granted, not what we asked for: a user can untick a
+      // scope on the consent screen, and the token response says so.
+      scopes: parseGrantedScopes(tokens.scope),
+      metadata: {
+        scopes_granted_at: new Date().toISOString(),
+        thumbnail_url: channel.thumbnailUrl,
+        // No subscriber_count. It was written here and read nowhere — a
+        // level captured once, at a date nobody recorded, then left to
+        // rot. FILM-1607 stores the dated series in ClickHouse instead.
       },
-]);
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    },
+  ]);
 
   if (insertError) {
     return fail({

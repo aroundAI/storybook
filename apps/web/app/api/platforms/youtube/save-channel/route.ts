@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { decrypt, encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
 import { storePlatformConnections } from '~/lib/platforms/store-connection';
 
 interface PendingConnection {
@@ -92,28 +93,28 @@ export async function POST(request: NextRequest) {
 
   // Store the connection
   const { error: insertError } = await storePlatformConnections(client, [
-      {
-        account_id: pendingConnection.accountId,
-        platform: 'youtube',
-        platform_account_id: selectedChannel.id,
-        platform_account_name: selectedChannel.title,
-        access_token_encrypted: encryptedAccessToken,
-        refresh_token_encrypted: encryptedRefreshToken,
-        token_expires_at: new Date(
-          Date.now() + pendingConnection.expiresIn * 1000,
-        ).toISOString(),
-        scopes: pendingConnection.grantedScopes ?? [],
-        metadata: {
-          scopes_granted_at: new Date().toISOString(),
-          thumbnail_url: selectedChannel.thumbnailUrl,
-          // No subscriber_count. It was written here and read nowhere — a
-          // level captured once, at a date nobody recorded, then left to
-          // rot. FILM-1607 stores the dated series in ClickHouse instead.
-        },
-        is_active: true,
-        updated_at: new Date().toISOString(),
+    {
+      account_id: pendingConnection.accountId,
+      platform: 'youtube',
+      platform_account_id: selectedChannel.id,
+      platform_account_name: selectedChannel.title,
+      access_token_encrypted: encryptedAccessToken,
+      refresh_token_encrypted: encryptedRefreshToken,
+      token_expires_at: new Date(
+        Date.now() + pendingConnection.expiresIn * 1000,
+      ).toISOString(),
+      scopes: pendingConnection.grantedScopes ?? [],
+      metadata: {
+        scopes_granted_at: new Date().toISOString(),
+        thumbnail_url: selectedChannel.thumbnailUrl,
+        // No subscriber_count. It was written here and read nowhere — a
+        // level captured once, at a date nobody recorded, then left to
+        // rot. FILM-1607 stores the dated series in ClickHouse instead.
       },
-]);
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    },
+  ]);
 
   if (insertError) {
     logger.error({ ...ctx, error: insertError }, 'Failed to store connection');

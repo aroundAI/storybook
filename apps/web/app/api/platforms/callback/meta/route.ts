@@ -6,7 +6,6 @@ import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credent
 import { encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { storePlatformConnections } from '~/lib/platforms/store-connection';
 
 import { accountIdFromUnverifiedState } from '~/lib/platforms/connect-failure';
 import {
@@ -15,6 +14,7 @@ import {
   failConnect,
   vendorRefusal,
 } from '~/lib/platforms/fail-connect';
+import { storePlatformConnections } from '~/lib/platforms/store-connection';
 
 interface FacebookPageResponse {
   id: string;
@@ -320,7 +320,10 @@ async function handleCallback(request: NextRequest) {
 
   // Upsert all connections
   if (connections.length > 0) {
-    const { error: insertError } = await storePlatformConnections(client, connections);
+    const { error: insertError } = await storePlatformConnections(
+      client,
+      connections,
+    );
 
     if (insertError) {
       return fail({
