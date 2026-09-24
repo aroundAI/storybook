@@ -3281,7 +3281,8 @@ still work or move to the definer bulk-reset path. pgTAP, red first.
 ## KB-78 — Regenerating a story deletes canon that was added by hand
 
 **Severity:** Medium — silent data loss inside a project. **Found:** KB-17's
-plan, 2026-09-23. **Open.**
+plan, 2026-09-23. **Fixed** in #347 — see *Fixed (#347)* at the end of this
+entry. One question stays open for the owner (below).
 
 Story generation begins its canon commit with `cleanupEpisodeCanon`
 (`apps/web/lambda/llm-worker/utils/commit-story-canon.ts:104-122`). That
@@ -3315,8 +3316,44 @@ the continuity validator, which may be what the owner wants.
 
 ### Acceptance criteria
 
-- [ ] A test, red first: regenerating a story keeps a hand-added event established in that episode
-- [ ] Auto-generated events are still replaced on regeneration
+- [x] A test, red first: regenerating a story keeps a hand-added event established in that episode — `apps/web/lambda/llm-worker/__tests__/commit-story-canon.test.ts` ("keeps the events a person added to the episode", in CI) and `commit-story-canon.local-stack.test.ts` ("keeps events added by hand…", real PostgREST); both red on `52ed2ade` with the hand events deleted
+- [x] Auto-generated events are still replaced on regeneration — the same tests delete the `auto_generated` event, and "marks the threads it generates, and replaces only those on the next regeneration" runs `commitStoryCanon` twice and finds one generated event, state and thread, not two
+
+### Reproduced again (2026-09-24, before the fix)
+
+The real `cleanupEpisodeCanon`, the local service role, an episode holding no
+other canon: before, `auto` and `manual`; after, *(none)*.
+
+### Fixed (#347)
+
+Owner decision (EDD KB-78, 2026-09-24): regeneration replaces what
+generation made and keeps what a person added; it does not ask.
+
+- `cleanupEpisodeCanon` (`apps/web/lambda/llm-worker/utils/commit-story-canon.ts`)
+  deletes, for the episode, only events with `metadata->>auto_generated =
+  'true'`, character states with `trigger_event = 'story_generation'`, and
+  threads with `auto_generated = true`. Both of the first two markers were on
+  every generated row from the commit that added the file (d5f6dbdc).
+- Threads had no marker: one the lambda opened and one committed on the
+  Publish page are identical row for row. Migration
+  `…_kb78-thread-provenance.sql` adds `narrative_threads.auto_generated
+  boolean not null default false`; the lambda sets it, every other writer
+  omits it. Threads from before the migration are `false` — kept — so
+  regenerating an old episode can leave one duplicate thread.
+- A failed cleanup delete is now logged with its table; before, the result
+  of `Promise.allSettled` over query builders (which never reject) was
+  dropped.
+- pgTAP `narrative-threads-provenance.test.sql` pins the column, its type,
+  `not null` and default.
+
+**Not changed — explicit resets.** `resetEpisodeAction`, reset to stage
+`draft` and `story`, and `bulk_reset_episodes_to_stage` still delete all of
+an episode's canon, hand-added included. They are being reworked under KB-77
+(single-episode resets move onto `bulk_reset_episodes_to_stage`).
+
+**Open question for the owner:** should an explicit reset keep hand-added
+canon, as regeneration now does, or does "reset" mean wipe everything the
+episode holds?
 
 ---
 
@@ -3568,6 +3605,7 @@ confirmation dialog; or remove the menu item until it exists.
 | KB-73 | The audio library sent files as base64 in a server-action body, so anything over ~750 KB failed; it now uploads straight to storage through the presign route | #350 |
 | KB-79 | The audio library took one upload: Upload was drawn only in the empty state, and a new asset showed only after a reload | #350 |
 | KB-57 (part) | The audio library stored any signed-in user's file with the admin client, at a key naming no project, before checking the project | #350 |
+| KB-78 | Regenerating a story deleted every canon row of the episode, including events and threads a person had added; it now replaces only what generation made (`narrative_threads.auto_generated`). Whether explicit resets should keep hand-added canon is open | #347 |
 
 ---
 
@@ -3628,3 +3666,8 @@ proved it wrong. Paths abbreviated with `…/studio/` are under
 - `/sitemap.xml` has two handlers — `apps/web/app/sitemap.ts:13`, `apps/web/app/sitemap.xml/route.ts:16`
 - Two status colours fail WCAG AA 4.5:1 on small badges — `apps/web/styles/shadcn-ui.css:51`, `:55`
 - The live Suno dialogs need `SUNO_API_KEY`, which `sst.config.ts` does not pass to the server (production config not checked, by rule) — `packages/features/audio-generation/src/server/music-actions.ts:83`
+
+**From KB-78 (2026-09-24), read while fixing it, not reproduced**
+- A regenerated story may be generated and checked against the canon it is about to replace: `commitStoryCanon` clears the episode's generated canon only *after* the new story is written (`apps/web/lambda/llm-worker/handlers/story-generation.ts:493`), and the memory builder loads every event of the project (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:149-156`). So the last generation's events for the same episode may feed the continuity context of their own replacement
+- Regenerating re-applies thread *progress* and *resolve* to threads other episodes opened: `version` is bumped again and the resolution is appended to `payoffs` a second time on every regeneration. The KB-78 clear touches only threads the episode opened — `apps/web/lambda/llm-worker/utils/commit-story-canon.ts` (`commitNarrativeThreadsViaLLM`, the `progress` and `resolve` branches)
+- Reset to stage `story` keeps the story and deletes all of its canon, generated and hand-added ("Canon cleanup (same as draft)"), so the story is left with no canon until it is regenerated — `packages/features/episodes/src/server/actions.ts:1987-2023`. canon-rls is moving the single-episode resets onto `bulk_reset_episodes_to_stage` (KB-77); check there
