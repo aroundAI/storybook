@@ -1100,13 +1100,81 @@ export const deleteEpisodeAction = returnRefusals(deleteEpisode);
 // Shot CRUD actions have been moved to lib/server/mutations/shot-actions.ts (FILM-303)
 // Shot list generation has been moved to lib/server/mutations/shot-list-actions.ts (FILM-307)
 
+const RESET_REFUSAL = "You can't reset this episode.";
+
+const BulkResetResultSchema = z.object({
+  reset_count: z.number(),
+  errors: z.array(z.object({ error: z.string() })),
+});
+
+/**
+ * Resets one episode to a stage through bulk_reset_episodes_to_stage, the
+ * one definition of what a reset clears (KB-76/77/63). It runs as definer in
+ * one transaction, checks can_write_project itself, and is the only path
+ * that can clear the append-only canon logs and other threads'
+ * episodes_touched, which clients may not write directly.
+ *
+ * The write check runs first so a non-writer gets a refusal naming the
+ * action, and nothing is deleted.
+ */
+async function resetOneEpisode(
+  target: {
+    episodeId: string;
+    projectId: string;
+    accountId: string | undefined;
+    targetStage: 'draft' | 'story' | 'screenplay' | 'storyboard';
+  },
+  ctx: Record<string, unknown>,
+) {
+  const logger = await getLogger();
+  const client = getSupabaseServerClient();
+
+  const { data: canWrite, error: checkError } = await client.rpc(
+    'can_write_project',
+    { target_project_id: target.projectId },
+  );
+
+  if (checkError) {
+    logger.error({ ...ctx, error: checkError }, 'Failed to check reset access');
+    throw new Error('Failed to reset episode');
+  }
+
+  if (!canWrite || !target.accountId) {
+    throw new ActionRefusal(RESET_REFUSAL);
+  }
+
+  const { data: result, error: resetError } = await client.rpc(
+    'bulk_reset_episodes_to_stage',
+    {
+      p_episode_ids: [target.episodeId],
+      p_target_stage: target.targetStage,
+      p_account_id: target.accountId,
+    },
+  );
+
+  const parsed = BulkResetResultSchema.safeParse(result);
+
+  if (
+    resetError ||
+    !parsed.success ||
+    parsed.data.errors.length > 0 ||
+    parsed.data.reset_count !== 1
+  ) {
+    logger.error(
+      { ...ctx, error: resetError, result },
+      'Episode reset returned errors',
+    );
+    throw new Error('Failed to reset episode');
+  }
+}
+
 /**
  * Reset an episode back to draft state.
  * Clears story_data, screenplay_data, shot_list, deletes all shots rows,
  * and sets status to 'draft'. Intended as an escape hatch for episodes that
  * need to be fully regenerated from scratch.
  */
-export const resetEpisodeAction = enhanceAction(
+const resetEpisode = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = { name: 'episodes.reset', episodeId: data.episodeId };
@@ -1144,199 +1212,15 @@ export const resetEpisodeAction = enhanceAction(
       throw new OptimisticLockError('episode');
     }
 
-    // Hard-delete all shots for this episode
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: shotsError } = await (client as any)
-      .from('shots')
-      .delete()
-      .eq('episode_id', data.episodeId);
-
-    if (shotsError) {
-      logger.error(
-        { ...ctx, error: shotsError },
-        'Failed to delete shots during reset',
-      );
-      throw new Error('Failed to delete shots');
-    }
-
-    // Hard-delete all dialogue lines for this episode
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: dialogueError } = await (client as any)
-      .from('dialogue_lines')
-      .delete()
-      .eq('episode_id', data.episodeId);
-
-    if (dialogueError) {
-      logger.error(
-        { ...ctx, error: dialogueError },
-        'Failed to delete dialogue lines during reset',
-      );
-      throw new Error('Failed to delete dialogue lines');
-    }
-
-    // Hard-delete all audio tracks for this episode
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: audioTracksError } = await (client as any)
-      .from('audio_tracks')
-      .delete()
-      .eq('episode_id', data.episodeId);
-
-    if (audioTracksError) {
-      logger.warn(
-        { ...ctx, error: audioTracksError },
-        'Failed to delete audio tracks during reset (non-fatal)',
-      );
-    }
-
-    // Hard-delete all audio cues for this episode
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: audioCuesError } = await (client as any)
-      .from('audio_cues')
-      .delete()
-      .eq('episode_id', data.episodeId);
-
-    if (audioCuesError) {
-      logger.warn(
-        { ...ctx, error: audioCuesError },
-        'Failed to delete audio cues during reset (non-fatal)',
-      );
-    }
-
-    // ── Canon cleanup ──────────────────────────────────────────────
-    // Delete narrative threads that were opened during this episode's generation
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: threadsError } = await (client as any)
-      .from('narrative_threads')
-      .delete()
-      .eq('opened_at', data.episodeId);
-
-    if (threadsError) {
-      logger.warn(
-        { ...ctx, error: threadsError },
-        'Failed to delete narrative threads during reset (non-fatal)',
-      );
-    }
-
-    // Delete immutable events established in this episode
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: immutableError } = await (client as any)
-      .from('immutable_events')
-      .delete()
-      .eq('established_in', data.episodeId);
-
-    if (immutableError) {
-      logger.warn(
-        { ...ctx, error: immutableError },
-        'Failed to delete immutable events during reset (non-fatal)',
-      );
-    }
-
-    // Delete character states from this episode
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: charStatesError } = await (client as any)
-      .from('character_states')
-      .delete()
-      .eq('episode_id', data.episodeId);
-
-    if (charStatesError) {
-      logger.warn(
-        { ...ctx, error: charStatesError },
-        'Failed to delete character states during reset (non-fatal)',
-      );
-    }
-
-    // Delete state deltas (audit trail) from this episode
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: deltasError } = await (client as any)
-      .from('state_deltas')
-      .delete()
-      .eq('episode_id', data.episodeId);
-
-    if (deltasError) {
-      logger.warn(
-        { ...ctx, error: deltasError },
-        'Failed to delete state deltas during reset (non-fatal)',
-      );
-    }
-
-    // Delete episode summary
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: summaryError } = await (client as any)
-      .from('episode_summaries')
-      .delete()
-      .eq('episode_id', data.episodeId);
-
-    if (summaryError) {
-      logger.warn(
-        { ...ctx, error: summaryError },
-        'Failed to delete episode summary during reset (non-fatal)',
-      );
-    }
-
-    // Clean stale episode references from other threads' episodes_touched arrays
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: touchedError } = await (client as any).rpc(
-      'remove_episode_from_threads_touched',
+    await resetOneEpisode(
       {
-        p_episode_id: data.episodeId,
-        p_project_id: episode.project_id,
+        episodeId: data.episodeId,
+        projectId: episode.project_id,
+        accountId: episode.project?.account_id,
+        targetStage: 'draft',
       },
+      ctx,
     );
-
-    if (touchedError) {
-      logger.warn(
-        { ...ctx, error: touchedError },
-        'Failed to clean episodes_touched during reset (non-fatal)',
-      );
-    }
-    // ── End canon cleanup ──────────────────────────────────────────
-
-    // Cancel all active generation jobs for this episode
-    // Prevents ghost Lambda workers from writing stale data after reset
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: jobsError } = await (client as any)
-      .from('generation_jobs')
-      .update({
-        status: 'failed',
-        error_message: 'Cancelled: Episode was reset to draft',
-        completed_at: new Date().toISOString(),
-      })
-      .eq('reference_id', data.episodeId)
-      .eq('reference_type', 'episode')
-      .in('status', ['queued', 'processing']);
-
-    if (jobsError) {
-      logger.warn(
-        { ...ctx, error: jobsError },
-        'Failed to cancel generation jobs during reset (non-fatal)',
-      );
-    }
-
-    // Reset episode fields back to draft state, verifying version hasn't changed
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: updatedEpisode, error: updateError } = await (client as any)
-      .from('episodes')
-      .update({
-        status: 'draft',
-        story_data: null,
-        screenplay_data: null,
-        shot_list: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', data.episodeId)
-      .eq('version', data.version)
-      .is('deleted_at', null)
-      .select('id')
-      .single();
-
-    if (updateError) {
-      logger.error({ ...ctx, error: updateError }, 'Failed to reset episode');
-      throw new Error('Failed to reset episode');
-    }
-
-    if (!updatedEpisode) {
-      throw new OptimisticLockError('episode');
-    }
 
     // Audit log
     const accountId = episode.project?.account_id;
@@ -1373,6 +1257,8 @@ export const resetEpisodeAction = enhanceAction(
     schema: ResetEpisodeSchema,
   },
 );
+
+export const resetEpisodeAction = returnRefusals(resetEpisode);
 
 /**
  * Surgical reset: rewind an episode to the storyboard stage.
@@ -1758,396 +1644,20 @@ const resetToStageHandler = enhanceAction(
 
     const accountId = episode.project?.account_id;
 
-    // 1. Cancel active generation jobs
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: jobsError } = await (client as any)
-      .from('generation_jobs')
-      .update({
-        status: 'failed',
-        error_message: `Cancelled: Episode was reset to ${data.targetStage}`,
-        completed_at: new Date().toISOString(),
-      })
-      .eq('reference_id', data.episodeId)
-      .eq('reference_type', 'episode')
-      .in('status', ['queued', 'processing']);
+    await resetOneEpisode(
+      {
+        episodeId: data.episodeId,
+        projectId: episode.project_id,
+        accountId,
+        targetStage: data.targetStage,
+      },
+      ctx,
+    );
 
-    if (jobsError) {
-      logger.warn(
-        { ...ctx, error: jobsError },
-        '[Reset to Stage] Failed to cancel generation jobs (non-fatal)',
-      );
-    }
-
-    // 2. Stage-specific cleanup
-    if (data.targetStage === 'draft') {
-      // ── Full reset: clear everything ──
-
-      // Delete shots
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: shotsError } = await (client as any)
-        .from('shots')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (shotsError) {
-        logger.error(
-          { ...ctx, error: shotsError },
-          '[Reset to Stage] Failed to delete shots',
-        );
-        throw new Error('Failed to delete shots');
-      }
-
-      // Delete dialogue lines
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: dialogueError } = await (client as any)
-        .from('dialogue_lines')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (dialogueError) {
-        logger.error(
-          { ...ctx, error: dialogueError },
-          '[Reset to Stage] Failed to delete dialogue lines',
-        );
-        throw new Error('Failed to delete dialogue lines');
-      }
-
-      // Delete audio tracks
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: audioTracksError } = await (client as any)
-        .from('audio_tracks')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (audioTracksError) {
-        logger.warn(
-          { ...ctx, error: audioTracksError },
-          '[Reset to Stage] Failed to delete audio tracks (non-fatal)',
-        );
-      }
-
-      // Delete audio cues
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: audioCuesError } = await (client as any)
-        .from('audio_cues')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (audioCuesError) {
-        logger.warn(
-          { ...ctx, error: audioCuesError },
-          '[Reset to Stage] Failed to delete audio cues (non-fatal)',
-        );
-      }
-
-      // ── Canon cleanup ──
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: threadsError } = await (client as any)
-        .from('narrative_threads')
-        .delete()
-        .eq('opened_at', data.episodeId);
-
-      if (threadsError) {
-        logger.warn(
-          { ...ctx, error: threadsError },
-          '[Reset to Stage] Failed to delete narrative threads (non-fatal)',
-        );
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: immutableError } = await (client as any)
-        .from('immutable_events')
-        .delete()
-        .eq('established_in', data.episodeId);
-
-      if (immutableError) {
-        logger.warn(
-          { ...ctx, error: immutableError },
-          '[Reset to Stage] Failed to delete immutable events (non-fatal)',
-        );
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: charStatesError } = await (client as any)
-        .from('character_states')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (charStatesError) {
-        logger.warn(
-          { ...ctx, error: charStatesError },
-          '[Reset to Stage] Failed to delete character states (non-fatal)',
-        );
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: deltasError } = await (client as any)
-        .from('state_deltas')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (deltasError) {
-        logger.warn(
-          { ...ctx, error: deltasError },
-          '[Reset to Stage] Failed to delete state deltas (non-fatal)',
-        );
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: summaryError } = await (client as any)
-        .from('episode_summaries')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (summaryError) {
-        logger.warn(
-          { ...ctx, error: summaryError },
-          '[Reset to Stage] Failed to delete episode summary (non-fatal)',
-        );
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: touchedError } = await (client as any).rpc(
-        'remove_episode_from_threads_touched',
-        {
-          p_episode_id: data.episodeId,
-          p_project_id: episode.project_id,
-        },
-      );
-
-      if (touchedError) {
-        logger.warn(
-          { ...ctx, error: touchedError },
-          '[Reset to Stage] Failed to clean episodes_touched (non-fatal)',
-        );
-      }
-      // ── End canon cleanup ──
-    } else if (data.targetStage === 'story') {
-      // ── Keep story_data, clear everything after ──
-
-      // Delete shots
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: shotsError } = await (client as any)
-        .from('shots')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (shotsError) {
-        logger.error(
-          { ...ctx, error: shotsError },
-          '[Reset to Stage] Failed to delete shots',
-        );
-        throw new Error('Failed to delete shots');
-      }
-
-      // Delete dialogue lines
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: dialogueError } = await (client as any)
-        .from('dialogue_lines')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (dialogueError) {
-        logger.error(
-          { ...ctx, error: dialogueError },
-          '[Reset to Stage] Failed to delete dialogue lines',
-        );
-        throw new Error('Failed to delete dialogue lines');
-      }
-
-      // Delete audio tracks
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: audioTracksError } = await (client as any)
-        .from('audio_tracks')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (audioTracksError) {
-        logger.warn(
-          { ...ctx, error: audioTracksError },
-          '[Reset to Stage] Failed to delete audio tracks (non-fatal)',
-        );
-      }
-
-      // Delete audio cues
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: audioCuesError } = await (client as any)
-        .from('audio_cues')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (audioCuesError) {
-        logger.warn(
-          { ...ctx, error: audioCuesError },
-          '[Reset to Stage] Failed to delete audio cues (non-fatal)',
-        );
-      }
-
-      // ── Canon cleanup (same as draft) ──
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: threadsError } = await (client as any)
-        .from('narrative_threads')
-        .delete()
-        .eq('opened_at', data.episodeId);
-
-      if (threadsError) {
-        logger.warn(
-          { ...ctx, error: threadsError },
-          '[Reset to Stage] Failed to delete narrative threads (non-fatal)',
-        );
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: immutableError } = await (client as any)
-        .from('immutable_events')
-        .delete()
-        .eq('established_in', data.episodeId);
-
-      if (immutableError) {
-        logger.warn(
-          { ...ctx, error: immutableError },
-          '[Reset to Stage] Failed to delete immutable events (non-fatal)',
-        );
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: charStatesError } = await (client as any)
-        .from('character_states')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (charStatesError) {
-        logger.warn(
-          { ...ctx, error: charStatesError },
-          '[Reset to Stage] Failed to delete character states (non-fatal)',
-        );
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: deltasError } = await (client as any)
-        .from('state_deltas')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (deltasError) {
-        logger.warn(
-          { ...ctx, error: deltasError },
-          '[Reset to Stage] Failed to delete state deltas (non-fatal)',
-        );
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: summaryError } = await (client as any)
-        .from('episode_summaries')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (summaryError) {
-        logger.warn(
-          { ...ctx, error: summaryError },
-          '[Reset to Stage] Failed to delete episode summary (non-fatal)',
-        );
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: touchedError } = await (client as any).rpc(
-        'remove_episode_from_threads_touched',
-        {
-          p_episode_id: data.episodeId,
-          p_project_id: episode.project_id,
-        },
-      );
-
-      if (touchedError) {
-        logger.warn(
-          { ...ctx, error: touchedError },
-          '[Reset to Stage] Failed to clean episodes_touched (non-fatal)',
-        );
-      }
-      // ── End canon cleanup ──
-    } else {
-      // ── screenplay / storyboard: keep story + screenplay + dialogue_lines ──
-
-      // Delete audio cues
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: audioCuesError } = await (client as any)
-        .from('audio_cues')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (audioCuesError) {
-        logger.warn(
-          { ...ctx, error: audioCuesError },
-          '[Reset to Stage] Failed to delete audio cues (non-fatal)',
-        );
-      }
-
-      // Delete audio tracks
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: audioTracksError } = await (client as any)
-        .from('audio_tracks')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (audioTracksError) {
-        logger.warn(
-          { ...ctx, error: audioTracksError },
-          '[Reset to Stage] Failed to delete audio tracks (non-fatal)',
-        );
-      }
-
-      // Delete shots
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: shotsError } = await (client as any)
-        .from('shots')
-        .delete()
-        .eq('episode_id', data.episodeId);
-
-      if (shotsError) {
-        logger.error(
-          { ...ctx, error: shotsError },
-          '[Reset to Stage] Failed to delete shots',
-        );
-        throw new Error('Failed to delete shots');
-      }
-    }
-
-    // 3. Build episode update based on target stage
-    const episodeUpdates: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    };
-
-    if (data.targetStage === 'draft') {
-      episodeUpdates.status = 'draft';
-      episodeUpdates.story_data = null;
-      episodeUpdates.screenplay_data = null;
-      episodeUpdates.shot_list = null;
-    } else if (data.targetStage === 'story') {
-      episodeUpdates.status = 'draft';
-      episodeUpdates.screenplay_data = null;
-      episodeUpdates.shot_list = null;
-    } else {
-      // screenplay or storyboard
-      episodeUpdates.status = 'storyboard';
-      episodeUpdates.shot_list = null;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: updatedEpisode, error: updateError } = await (client as any)
-      .from('episodes')
-      .update(episodeUpdates)
-      .eq('id', data.episodeId)
-      .is('deleted_at', null)
-      .select('id')
-      .single();
-
-    if (updateError || !updatedEpisode) {
-      logger.error(
-        { ...ctx, error: updateError },
-        '[Reset to Stage] Failed to update episode',
-      );
-      throw new Error('Failed to update episode');
-    }
+    const newStatus =
+      data.targetStage === 'draft' || data.targetStage === 'story'
+        ? 'draft'
+        : 'storyboard';
 
     // Audit log
     if (accountId) {
@@ -2161,7 +1671,7 @@ const resetToStageHandler = enhanceAction(
         objectId: episode.id,
         objectName: episode.title,
         before: { status: episode.status },
-        after: { status: episodeUpdates.status },
+        after: { status: newStatus },
         scopes: [
           { type: 'account', id: accountId },
           { type: 'project', id: episode.project_id },

@@ -178,7 +178,10 @@ export function QuickActionsMenu({
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="text-amber-600 focus:text-amber-600 dark:text-amber-500 dark:focus:text-amber-500">
+            <DropdownMenuSubTrigger
+              data-test="episode-reset-menu"
+              className="text-amber-600 focus:text-amber-600 dark:text-amber-500 dark:focus:text-amber-500"
+            >
               <RotateCcw className="mr-2 h-4 w-4" />
               Reset to...
             </DropdownMenuSubTrigger>
@@ -201,6 +204,7 @@ export function QuickActionsMenu({
                     resetTargetStage: 'story',
                   }))
                 }
+                data-test="episode-reset-story"
               >
                 Reset to Story
                 <span className="ml-auto text-xs text-muted-foreground">
@@ -300,6 +304,7 @@ export function QuickActionsMenu({
             <AlertDialogAction
               onClick={handleReset}
               disabled={state.isResetting}
+              data-test="episode-reset-confirm"
               className="bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700"
             >
               {state.isResetting && (

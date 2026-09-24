@@ -345,8 +345,8 @@ export const deleteImmutableEventAction = returnRefusals(deleteImmutableEvent);
 /**
  * Updates a character's state (append-only).
  */
-export const updateCharacterStateAction = enhanceAction(
-  async (data: UpdateCharacterStateInput) => {
+const updateCharacterState = enhanceAction(
+  async (data: UpdateCharacterStateInput, user) => {
     const client = getSupabaseServerClient();
 
     // Get previous state for audit chain
@@ -370,9 +370,14 @@ export const updateCharacterStateAction = enhanceAction(
         cost: data.cost ?? null,
         new_constraints: data.newConstraints ?? null,
         previous_state_id: previousState?.id ?? null,
+        created_by: user.id,
       })
       .select()
       .single();
+
+    if (error?.code === INSUFFICIENT_PRIVILEGE) {
+      throw new ActionRefusal(CANON_WRITE_REFUSAL);
+    }
 
     if (error) {
       console.error('Error updating character state:', error);
@@ -380,7 +385,7 @@ export const updateCharacterStateAction = enhanceAction(
     }
 
     // Record state delta for audit trail (FILM-1005)
-    await client.from('state_deltas').insert({
+    const { error: deltaError } = await client.from('state_deltas').insert({
       episode_id: data.episodeId,
       entity_type: 'character',
       entity_id: data.characterId,
@@ -388,6 +393,11 @@ export const updateCharacterStateAction = enhanceAction(
       after_state: data.stateValue as Json,
       change_reason: data.triggerEvent,
     });
+
+    if (deltaError) {
+      console.error('Error recording state delta:', deltaError);
+      throw new Error(`Failed to record state delta: ${deltaError.message}`);
+    }
 
     revalidatePath(
       `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
@@ -400,6 +410,8 @@ export const updateCharacterStateAction = enhanceAction(
     schema: UpdateCharacterStateSchema,
   },
 );
+
+export const updateCharacterStateAction = returnRefusals(updateCharacterState);
 
 /**
  * Gets character states for a specific character.
@@ -506,7 +518,7 @@ export const getProjectCharacterStatesAction = enhanceAction(
 /**
  * Creates a new narrative thread.
  */
-export const createNarrativeThreadAction = enhanceAction(
+const createNarrativeThread = enhanceAction(
   async (data: CreateNarrativeThreadInput) => {
     const client = getSupabaseServerClient();
 
@@ -524,6 +536,10 @@ export const createNarrativeThreadAction = enhanceAction(
       .select()
       .single();
 
+    if (error?.code === INSUFFICIENT_PRIVILEGE) {
+      throw new ActionRefusal(CANON_WRITE_REFUSAL);
+    }
+
     if (error) {
       console.error('Error creating narrative thread:', error);
       throw new Error(`Failed to create narrative thread: ${error.message}`);
@@ -539,6 +555,10 @@ export const createNarrativeThreadAction = enhanceAction(
   {
     schema: CreateNarrativeThreadSchema,
   },
+);
+
+export const createNarrativeThreadAction = returnRefusals(
+  createNarrativeThread,
 );
 
 /**

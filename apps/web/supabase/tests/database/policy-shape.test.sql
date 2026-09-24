@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(7);
+select plan(8);
 
 -- KB-52's class guard. The defect was one policy written with no FOR and no
 -- TO clause and a constant-true expression: it read like a service-role
@@ -53,6 +53,23 @@ select is_empty(
         and qual = 'true'
         and tablename not in ('config', 'roles', 'role_permissions', 'external_content') $$,
   'Only config, roles, role_permissions and external_content have a SELECT policy using (true) for a client role'
+);
+
+-- 5. KB-76's class guard. A permissive FOR ALL policy with only USING lets
+--    whoever passes USING write any row it can see, with nothing checked
+--    about what the row becomes; five canon tables were written that way and
+--    let project viewers write canon. Write one policy per verb, each write
+--    with its own WITH CHECK. (Restrictive policies grant nothing, so
+--    Makerkit's restrict_mfa_* gates are not this shape.)
+select is_empty(
+  $$ select tablename || '.' || policyname
+       from pg_policies
+      where schemaname = 'public'
+        and cmd = 'ALL'
+        and permissive = 'PERMISSIVE'
+        and (roles && array['public', 'anon', 'authenticated']::name[])
+        and with_check is null $$,
+  'No permissive FOR ALL policy for public, anon or authenticated lacks WITH CHECK'
 );
 
 -- 4. KB-52 moved five tables' policies from TO public to TO authenticated,
