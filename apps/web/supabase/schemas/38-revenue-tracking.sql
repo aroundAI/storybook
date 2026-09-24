@@ -67,7 +67,7 @@ comment on column public.revenue_records.breakdown is 'JSONB with detailed reven
 -- skip-guard, the action's synced-refusal, and a manual `other` entry
 -- blocking a publish's platform revenue for good.
 --
--- Currency joined the key in KB-23 (20260924074209): two currencies are
+-- Currency joined the key in KB-23 (20260924222142): two currencies are
 -- separate money (KB-12), so a €50 and a $100 sponsorship on one day both
 -- stand. `nulls not distinct` keeps two currency-less rows a duplicate.
 create unique index if not exists idx_revenue_records_unique_scope
