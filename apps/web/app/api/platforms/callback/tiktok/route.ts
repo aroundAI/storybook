@@ -11,6 +11,7 @@ import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { accountIdFromUnverifiedState } from '~/lib/platforms/connect-failure';
+import { connectedLanding } from '~/lib/platforms/connect-landing';
 import {
   CallbackFailure,
   catchConnectFailures,
@@ -232,9 +233,10 @@ async function handleCallback(request: NextRequest) {
     );
   }
 
-  return NextResponse.redirect(
-    `${state.returnUrl}?success=tiktok_connected&username=${encodeURIComponent(tiktokUser.display_name || '')}`,
-  );
+  return connectedLanding(request, client, state.accountId, {
+    success: 'tiktok_connected',
+    username: tiktokUser.display_name || '',
+  });
 }
 
 export const GET = catchConnectFailures('tiktok', handleCallback);

@@ -22,6 +22,10 @@
     "scheduled_one": "{{count}} scheduled post on this channel won't go out unless you reconnect before its time.",
     "scheduled_other": "{{count}} scheduled posts on this channel won't go out unless you reconnect before their time."
   },
+  "limitation": {
+    "twitter": "Publishing to X doesn't work yet: X accepts video uploads only with a permission (media.write) that we don't request yet.",
+    "linkedin": "Personal profiles only. Connecting a company page isn't supported yet."
+  },
   "disconnected": {
     "since": "Disconnected on {{date}}. Your records from this channel are kept.",
     "statisticsDeleted": "Statistics collected from {{platform}} were deleted on {{date}}.",

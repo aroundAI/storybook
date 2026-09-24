@@ -4,42 +4,35 @@ import { mkdirSync } from 'node:fs';
 import { type Server, createServer } from 'node:http';
 
 import { encryptLikeTheApp } from '../utils/crypto';
-import {
-  SeededTeam,
-  seedTeamAccount,
-  seedYouTubeConnection,
-} from '../utils/seed';
+import { seedTeamAccount, seedYouTubeConnection } from '../utils/seed';
 import { signInAs } from '../utils/session';
 
 /**
- * KB-25 and KB-45. Disconnecting X used to ask X for nothing: the refresh
- * token stayed valid at X for up to 180 days. LinkedIn offers apps no revoke
- * at all, and the dialog said "not yet" as though it were coming. And
- * whatever a platform answered, the creator saw the same green toast.
+ * KB-45. Whatever a platform answered a disconnect's revoke with, the creator
+ * saw the same green "Disconnected" toast. A refusal is now a warning that
+ * stays until dismissed and links to the platform's own settings.
  *
- * A local listener stands in for X (FILM-1801's `VENDOR_URL_X_API`), so what
- * is checked is the request the production build sends and what the creator
- * is shown for X's answer. It needs a server started for it:
+ * Driven through YouTube, whose rows the Platforms page lists (X and LinkedIn
+ * rows are not rendered there at all — see KB-25). X's two-token revoke and
+ * LinkedIn's no-revoke are proven against a local listener in
+ * `packages/features/publishing/__tests__/revokers.test.ts`.
  *
- *   KB25_X_SANDBOX_PORT=4125 ENCRYPTION_KEY=<the server's>
- *   VENDOR_SANDBOX=1 VENDOR_URL_X_API=http://127.0.0.1:4125
- *   TWITTER_CLIENT_ID=kb25-client TWITTER_CLIENT_SECRET=kb25-secret
+ * A local listener stands in for Google's token host (FILM-1801's
+ * `VENDOR_URL_GOOGLE_TOKEN`), so what is checked is the request the production
+ * build sends and what the creator is shown for Google's answer. It needs a
+ * server started for it:
+ *
+ *   KB25_SANDBOX_PORT=4125 ENCRYPTION_KEY=<the server's>
+ *   VENDOR_SANDBOX=1 VENDOR_URL_GOOGLE_TOKEN=http://127.0.0.1:4125
  *
  * in the server's environment (`NODE_ENV=test next start`), and the port and
  * key in this run's. CI's E2E job has none of these, so this file skips there.
- * The live revoke at X waits on credentials: FILM-1725 Check I.
  */
 
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
-const SANDBOX_PORT = process.env.KB25_X_SANDBOX_PORT;
-const X_BASIC = `Basic ${Buffer.from('kb25-client:kb25-secret').toString('base64')}`;
-
-interface Seen {
-  method: string;
-  path: string;
-  authorization?: string;
-  body: string;
-}
+const SANDBOX_PORT = process.env.KB25_SANDBOX_PORT;
+const GOOGLE_PERMISSIONS =
+  'https://security.google.com/settings/security/permissions';
 
 async function capture(page: Page, name: string) {
   if (!process.env.CAPTURE_EVIDENCE) return;
@@ -50,27 +43,23 @@ async function capture(page: Page, name: string) {
       .getAnimations()
       .every((animation) => animation.playState !== 'running'),
   );
-  await page.screenshot({ path: `${OUT}/kb-25-${name}.png` });
+  await page.screenshot({ path: `${OUT}/kb-45-${name}.png` });
 }
 
-async function startXStandIn(port: number) {
-  const seen: Seen[] = [];
+/** Google's revoke endpoint, answering with whatever `stand.status` says. */
+async function startGoogleStandIn(port: number) {
+  const seen: string[] = [];
   const stand = { status: 200 };
 
   const server: Server = createServer((request, response) => {
-    let body = '';
+    const url = new URL(request.url ?? '/', 'http://stand-in');
 
-    request.on('data', (chunk) => (body += chunk));
+    seen.push(`${request.method} ${url.pathname}${url.search}`);
+    request.resume();
     request.on('end', () => {
-      seen.push({
-        method: request.method ?? '',
-        path: new URL(request.url ?? '/', 'http://stand-in').pathname,
-        authorization: request.headers.authorization,
-        body,
-      });
       response.statusCode = stand.status;
       response.setHeader('content-type', 'application/json');
-      response.end(stand.status === 200 ? '{"revoked":true}' : '{}');
+      response.end(stand.status === 200 ? '{}' : '{"error":"invalid_token"}');
     });
   });
 
@@ -83,28 +72,13 @@ async function startXStandIn(port: number) {
   };
 }
 
-async function seedConnection(
-  team: SeededTeam,
-  platform: 'twitter' | 'linkedin',
-  name: string,
-) {
-  const id = randomUUID().slice(0, 8);
-
-  return seedYouTubeConnection(team.accountId, name, {
-    platform,
-    platformAccountId: `kb25-${platform}-${id}`,
-    accessTokenEncrypted: await encryptLikeTheApp(`${platform}-access-${id}`),
-    refreshTokenEncrypted: await encryptLikeTheApp(`${platform}-refresh-${id}`),
-  }).then((connectionId) => ({ connectionId, id }));
-}
-
 function row(page: Page, connectionId: string) {
   return page.locator(
     `[data-test="connection-row"][data-connection-id="${connectionId}"]`,
   );
 }
 
-async function openDisconnect(page: Page, connectionId: string) {
+async function confirmDisconnect(page: Page, connectionId: string) {
   await row(page, connectionId)
     .locator('[data-test="disconnect-connection"]')
     .click();
@@ -112,149 +86,83 @@ async function openDisconnect(page: Page, connectionId: string) {
   const dialog = page.locator('[data-test="disconnect-dialog"]');
 
   await expect(dialog).toBeVisible();
-
-  return dialog;
+  await dialog.locator('[data-test="confirm-disconnect"]').click();
+  await expect(row(page, connectionId)).toHaveAttribute(
+    'data-status',
+    'disconnected',
+  );
 }
 
-test.describe('Disconnecting asks the platform to revoke, and says when it did not (KB-25, KB-45)', () => {
-  test.skip(
-    !SANDBOX_PORT || !process.env.ENCRYPTION_KEY,
-    'Needs the local X sandbox (KB25_X_SANDBOX_PORT, ENCRYPTION_KEY)',
-  );
-
-  let x: Awaited<ReturnType<typeof startXStandIn>>;
-
-  test.beforeAll(async () => {
-    x = await startXStandIn(Number(SANDBOX_PORT));
-  });
-
-  test.afterAll(async () => {
-    await x?.close();
-  });
-
-  test.beforeEach(() => {
-    x.seen.length = 0;
-    x.stand.status = 200;
-  });
-
-  test('X: both tokens are revoked at X; a refusal the second time is shown, not hidden', async ({
+test.describe('A revoke the platform did not confirm is shown, not hidden (KB-45)', () => {
+  test('Google refuses: a warning that stays and links to Google; Google agrees: the green toast', async ({
     page,
   }) => {
-    const team = await seedTeamAccount({ emailPrefix: 'kb25' });
-    const first = await seedConnection(team, 'twitter', 'Acme on X');
-    const second = await seedConnection(team, 'twitter', 'Acme Two on X');
-
-    await signInAs(page, team);
-    await page.goto(`/home/${team.slug}/settings/platforms`);
-
-    // First submission: X agrees.
-    const dialog = await openDisconnect(page, first.connectionId);
-
-    await expect(
-      dialog.locator('[data-test="disconnect-access"]'),
-    ).toContainText('to revoke our access.');
-    await expect(dialog).not.toContainText('yet');
-    await capture(page, '01-x-dialog');
-
-    await dialog.locator('[data-test="confirm-disconnect"]').click();
-    await expect(row(page, first.connectionId)).toHaveAttribute(
-      'data-status',
-      'disconnected',
-    );
-    await expect(
-      page.getByText('Disconnected Acme on X. Your records are kept.'),
-    ).toBeVisible();
-    await expect(
-      page.locator('[data-test="disconnect-revoke-unconfirmed"]'),
-    ).toHaveCount(0);
-    await capture(page, '02-x-revoked-toast');
-
-    expect(x.seen).toEqual([
-      {
-        method: 'POST',
-        path: '/2/oauth2/revoke',
-        authorization: X_BASIC,
-        body: `token=twitter-refresh-${first.id}`,
-      },
-      {
-        method: 'POST',
-        path: '/2/oauth2/revoke',
-        authorization: X_BASIC,
-        body: `token=twitter-access-${first.id}`,
-      },
-    ]);
-
-    // Second submission: X refuses. The disconnect still happens, and the
-    // creator is told to check at X instead of being shown success.
-    x.seen.length = 0;
-    x.stand.status = 400;
-
-    await (await openDisconnect(page, second.connectionId))
-      .locator('[data-test="confirm-disconnect"]')
-      .click();
-    await expect(row(page, second.connectionId)).toHaveAttribute(
-      'data-status',
-      'disconnected',
+    test.skip(
+      !SANDBOX_PORT || !process.env.ENCRYPTION_KEY,
+      'Needs the local Google sandbox (KB25_SANDBOX_PORT, ENCRYPTION_KEY)',
     );
 
-    const warning = page.locator('[data-test="disconnect-revoke-unconfirmed"]');
+    const google = await startGoogleStandIn(Number(SANDBOX_PORT));
 
-    await expect(warning).toContainText(
-      "Disconnected Acme Two on X. X (Twitter) didn't confirm it removed our access",
-    );
-    await expect(
-      warning.locator('[data-test="disconnect-revoke-settings-link"]'),
-    ).toHaveAttribute('href', 'https://x.com/settings/connected_apps');
-    await expect(
-      page.getByText('Disconnected Acme Two on X. Your records are kept.'),
-    ).toHaveCount(0);
-    // It stays until dismissed: the creator has something left to do.
-    await expect(
-      page
-        .locator('[data-sonner-toast]')
-        .filter({ has: warning })
-        .locator('[data-close-button]'),
-    ).toBeVisible();
-    expect(x.seen.map((request) => request.body)).toEqual([
-      `token=twitter-refresh-${second.id}`,
-      `token=twitter-access-${second.id}`,
-    ]);
-    await capture(page, '03-x-refused-warning');
-  });
+    try {
+      const team = await seedTeamAccount({ emailPrefix: 'kb45' });
+      const suffix = randomUUID().slice(0, 8);
+      const refused = await seedYouTubeConnection(team.accountId, 'Acme TV', {
+        platformAccountId: `UC-kb45-refused-${suffix}`,
+        accessTokenEncrypted: await encryptLikeTheApp(`kb45-refused-${suffix}`),
+      });
+      const agreed = await seedYouTubeConnection(team.accountId, 'Acme Two', {
+        platformAccountId: `UC-kb45-agreed-${suffix}`,
+        accessTokenEncrypted: await encryptLikeTheApp(`kb45-agreed-${suffix}`),
+      });
 
-  test('LinkedIn: the dialog says LinkedIn offers no revoke, nothing is sent, and the creator is pointed at LinkedIn', async ({
-    page,
-  }) => {
-    const team = await seedTeamAccount({ emailPrefix: 'kb25li' });
-    const linkedin = await seedConnection(team, 'linkedin', 'Acme on LinkedIn');
+      await signInAs(page, team);
+      await page.goto(`/home/${team.slug}/settings/platforms`);
 
-    await signInAs(page, team);
-    await page.goto(`/home/${team.slug}/settings/platforms`);
+      // First submission: Google answers 400.
+      google.stand.status = 400;
+      await confirmDisconnect(page, refused);
 
-    const dialog = await openDisconnect(page, linkedin.connectionId);
+      const warning = page.locator(
+        '[data-test="disconnect-revoke-unconfirmed"]',
+      );
 
-    await expect(
-      dialog.locator('[data-test="disconnect-access"]'),
-    ).toContainText(
-      "LinkedIn doesn't let apps revoke their own access, so remove our access in LinkedIn's settings too.",
-    );
-    await capture(page, '04-linkedin-dialog');
+      await expect(warning).toContainText(
+        "Disconnected Acme TV. YouTube didn't confirm it removed our access",
+      );
+      await expect(
+        warning.locator('[data-test="disconnect-revoke-settings-link"]'),
+      ).toHaveAttribute('href', GOOGLE_PERMISSIONS);
+      await expect(
+        page.getByText('Disconnected Acme TV. Your records are kept.'),
+      ).toHaveCount(0);
+      // It stays until dismissed: the creator has something left to do.
+      const toast = page.locator('[data-sonner-toast]').filter({ has: warning });
 
-    await dialog.locator('[data-test="confirm-disconnect"]').click();
-    await expect(row(page, linkedin.connectionId)).toHaveAttribute(
-      'data-status',
-      'disconnected',
-    );
+      await expect(toast.locator('[data-close-button]')).toBeVisible();
+      expect(google.seen).toEqual([
+        `POST /revoke?token=kb45-refused-${suffix}`,
+      ]);
+      await capture(page, '01-refused-warning');
 
-    const warning = page.locator('[data-test="disconnect-revoke-unconfirmed"]');
+      await toast.locator('[data-close-button]').click();
+      await expect(warning).toHaveCount(0);
 
-    await expect(
-      warning.locator('[data-test="disconnect-revoke-settings-link"]'),
-    ).toHaveAttribute(
-      'href',
-      'https://www.linkedin.com/mypreferences/d/data-sharing-for-permitted-services',
-    );
-    expect(x.seen).toEqual([]);
-    await capture(page, '05-linkedin-warning');
+      // Second submission: Google agrees, and the creator is told only that.
+      google.stand.status = 200;
+      await confirmDisconnect(page, agreed);
+
+      await expect(
+        page.getByText('Disconnected Acme Two. Your records are kept.'),
+      ).toBeVisible();
+      await expect(warning).toHaveCount(0);
+      expect(google.seen).toEqual([
+        `POST /revoke?token=kb45-refused-${suffix}`,
+        `POST /revoke?token=kb45-agreed-${suffix}`,
+      ]);
+      await capture(page, '02-revoked-success');
+    } finally {
+      await google.close();
+    }
   });
 });

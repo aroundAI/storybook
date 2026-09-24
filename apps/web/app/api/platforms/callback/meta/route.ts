@@ -8,6 +8,7 @@ import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { accountIdFromUnverifiedState } from '~/lib/platforms/connect-failure';
+import { connectedLanding } from '~/lib/platforms/connect-landing';
 import {
   CallbackFailure,
   catchConnectFailures,
@@ -347,22 +348,16 @@ async function handleCallback(request: NextRequest) {
     );
   }
 
-  // Get account slug for redirect
-  const { data: accountData } = await client
-    .from('accounts')
-    .select('slug')
-    .eq('id', state.accountId)
-    .single();
-  const accountSlug = accountData?.slug || 'unknown';
-
   const connectedCount = connections.length;
   const platformNames = connections
     .map((c) => c.platform_account_name)
     .join(', ');
 
-  return NextResponse.redirect(
-    `${appUrl}/home/${accountSlug}/settings/platforms?success=meta_connected&count=${connectedCount}&accounts=${encodeURIComponent(platformNames)}`,
-  );
+  return connectedLanding(request, client, state.accountId, {
+    success: 'meta_connected',
+    count: String(connectedCount),
+    accounts: platformNames,
+  });
 }
 
 export const GET = catchConnectFailures('meta', handleCallback);

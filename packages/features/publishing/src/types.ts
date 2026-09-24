@@ -48,4 +48,6 @@ export interface PlatformConfig {
   scopes: string[];
   multiAccount: boolean;
   color: string;
+  /** What does not work yet on this platform, said on its card. */
+  limitationKey?: string;
 }

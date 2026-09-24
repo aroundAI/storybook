@@ -8,6 +8,11 @@ import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credent
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import {
+  connectAccountError,
+  resolveConnectAccount,
+} from '~/lib/platforms/connect-landing';
+
 /**
  * LinkedIn OAuth Connect Route
  * Initiates the OAuth flow by redirecting to LinkedIn's consent screen
@@ -30,14 +35,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/sign-in', request.url));
   }
 
-  const accountId = request.nextUrl.searchParams.get('accountId');
   const returnUrl =
     request.nextUrl.searchParams.get('returnUrl') || '/settings/platforms';
   const isCompanyPage = request.nextUrl.searchParams.get('type') === 'company';
 
-  if (!accountId) {
-    return NextResponse.json({ error: 'Account ID required' }, { status: 400 });
+  const resolved = await resolveConnectAccount(request, client);
+
+  if ('error' in resolved) {
+    logger.error(
+      { ...ctx, slug: resolved.slug, reason: resolved.error },
+      'Failed to resolve the account to connect',
+    );
+    return connectAccountError(resolved.error);
   }
+
+  const { accountId } = resolved;
 
   // Generate state with nonce for CSRF protection
   const nonce = crypto.randomUUID();
@@ -94,6 +106,6 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.redirect(
-    `${LINKEDIN_OAUTH_CONFIG.authUrl}?${params.toString()}`,
+    new URL(`${LINKEDIN_OAUTH_CONFIG.authUrl}?${params.toString()}`),
   );
 }

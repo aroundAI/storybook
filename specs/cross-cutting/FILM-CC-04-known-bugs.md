@@ -1497,9 +1497,43 @@ window alone.
 The token stays valid at X / LinkedIn until it expires on its own (X refresh
 tokens: 180 days by our own config). **Found:** KB-20's drafting (#294),
 2026-09-22, while writing down what disconnect does; re-read on `main` by the
-coordinator. **Open.**
+coordinator. **Fixed — #PR (X revokes both tokens; LinkedIn, which offers
+apps no revoke, is said so). Design: EDD `KB-25-45`.**
 
-`connection-actions.ts:130-133`:
+> **As fixed (2026-09-24).** By the time this was worked, KB-22 (#317) had
+> already replaced the `switch` below: every platform goes through
+> `revokeAtVendor` and `REVOKERS: Record<PlatformType, Revoker>`, with X and
+> LinkedIn mapped to `notImplemented`. Reproduced on `main` at 52ed2ade:
+> `revokers.test.ts` "calls nobody for X and LinkedIn yet" passed — zero
+> requests for either.
+>
+> - **X** now sends `POST /2/oauth2/revoke` twice, as a confidential client
+>   (Basic app auth, form body `token=` and nothing else — the example under
+>   "POST oauth2/revoke - Revoke Token" at
+>   docs.x.com/fundamentals/authentication/oauth-2-0/user-access-token, read
+>   2026-09-24). **The refresh token first**: the unwired code revoked only the
+>   two-hour access token, and X documents that a revoke "invalidates an
+>   access token or refresh token" without saying one takes the other.
+>   `revoked` only if X confirmed both; both are always attempted.
+> - **LinkedIn documents no revoke endpoint**, so the proposed fix below could
+>   not be built as written. Checked 2026-09-24: every page under
+>   learn.microsoft.com's LinkedIn `shared/authentication` contents — the
+>   3-legged flow (only `/oauth/v2/authorization` and `/oauth/v2/accessToken`),
+>   native PKCE, programmatic refresh tokens, client credentials, and token
+>   introspection, whose `/oauth/v2/introspectToken` reports
+>   `status: revoked` but revokes nothing. **Owner decision (2026-09-24):**
+>   no undocumented endpoint is called; the dialog, the unconfirmed-revoke
+>   warning (KB-45) and the data-deletion page say LinkedIn doesn't let apps
+>   revoke their own access and link to LinkedIn's Permitted services page.
+>   `RevokeStatus` lost `not_implemented` and gained `vendor_offers_none`, so
+>   "not yet" can no longer be expressed.
+> - **Not reachable from the UI:** the Platforms page renders only YouTube,
+>   TikTok, Instagram and Facebook rows, so an X or LinkedIn connection
+>   cannot be disconnected there at all — **KB-83**. The X path is proven at
+>   the action and against a local listener; the live revoke waits on
+>   credentials (FILM-1725 Check I).
+
+`connection-actions.ts:130-133` (on `main` before KB-22):
 
 ```ts
 case 'twitter':
@@ -1523,7 +1557,8 @@ that should not need to exist.
 - Route `'twitter'` through the existing `disconnectTwitterAction`; add a
   LinkedIn revoke (LinkedIn documents token revocation on its OAuth 2.0
   pages — cite before writing). Design it together with KB-22, which changes
-  what `deleteConnection` itself does.
+  what `deleteConnection` itself does. *(As fixed: LinkedIn documents none —
+  see the note above.)*
 - **Fix the class:** the switch is the shape of the bug — a platform that
   lands in `default`, or in a bare `deleteConnection`, silently skips revocation.
   Make the per-platform disconnect a required member of the provider
@@ -1534,10 +1569,11 @@ that should not need to exist.
 
 ### Acceptance criteria
 
-- [ ] Disconnecting X calls X's revoke endpoint; LinkedIn calls LinkedIn's — unit-tested against a local listener, red first
-- [ ] No platform can reach `deleteConnection` without a revoke step — enforced by the type, not the switch
-- [ ] #294's "we do not yet ask the platform to revoke" sentence removed once true
-- [ ] Live revoke on X and LinkedIn — FILM-1725, blocked on credentials
+- [x] Disconnecting X calls X's revoke endpoint — unit-tested against a local listener, red first — `packages/features/publishing/__tests__/revokers.test.ts` "X (KB-25)": both tokens, refresh first, Basic auth, body `token=` only; a refusal on either call reported with its status; no call without app credentials. Seen red on `main` with `not_implemented` and zero requests
+- [x] ~~LinkedIn calls LinkedIn's~~ **Amended (owner, 2026-09-24):** LinkedIn documents no revoke endpoint for apps (pages listed above), so none is called; LinkedIn is recorded as `vendor_offers_none` and the creator is sent to LinkedIn's settings — `revokers.test.ts` "calls nobody for LinkedIn, which offers apps no revoke"; `disconnect-copy.test.ts`
+- [x] No platform can reach a disconnect without a revoke step — enforced by the type, not the switch — `REVOKERS: Record<PlatformType, Revoker>` (KB-22, #317); KB-25 removed the `not_implemented` status, so every entry either revokes or declares the vendor offers none (`src/oauth/revoke-request.ts`)
+- [x] #294's "we do not yet ask the platform to revoke" sentence removed once true — data-deletion page §2 (`disconnect-revokes`, `disconnect-linkedin`), asserted by `apps/e2e/tests/legal/data-deletion.spec.ts`; the dialog's `revokeNotYet` key is gone and `disconnect-copy.test.ts` fails on any "not yet"
+- [ ] Live revoke on X — FILM-1725 Check I, blocked on credentials (FILM-1729)
 
 ---
 
@@ -2522,8 +2558,8 @@ are KB-85.
 ## KB-45 — Vendor revoke calls ignore the HTTP response
 
 **Severity:** Low — a failed revoke looked exactly like a successful one, in
-the logs and to the user. **Found:** KB-22's planning, 2026-09-23. **Fixed in
-part by KB-22 PR A (#317).**
+the logs and to the user. **Found:** KB-22's planning, 2026-09-23. **Fixed —
+part by KB-22 PR A (#317), the rest by #PR (with KB-25).**
 
 Every disconnect `await`ed `fetch(revokeUrl…)` and never read the response
 (`oauth/{youtube,tiktok,meta,twitter}/disconnect.ts` on `main` before
@@ -2533,15 +2569,23 @@ KB-22), so Google answering 400 was indistinguishable from 200. KB-22's
 action logs the outcome with the HTTP status for YouTube, TikTok and Meta —
 unit-tested against a local listener, seen red with the status ignored (#317).
 
-**Still open:** a refused or unreachable revoke is only a log line. The
-creator is not told, and no operator alert fires; the data-deletion page's
-advice to check at the platform (section 4) is the only mitigation. X and
-LinkedIn have no revoke at all — KB-25.
+**Still open (before #PR):** a refused or unreachable revoke was only a log
+line. The creator saw the same green "Disconnected" toast either way.
+
+> **Fixed (2026-09-24), #PR. Owner decision:** surface it to the creator, not
+> as an operator alert. `disconnectPlatformAction` returns
+> `revoke: { status, confirmed }` (`confirmed` = `revoked` or `no_token`), and
+> logs an unconfirmed one at `warn` instead of `info`. The dialog then shows a
+> warning toast that stays until dismissed, naming the platform and linking to
+> its own "connected apps" page — the same list the data-deletion page uses
+> (`src/components/platform-access-settings.ts`). Covers every platform:
+> refused, unreachable, app credentials missing, token unreadable, and
+> LinkedIn's no-revoke. No column records it (owner: toast only).
 
 ### Acceptance criteria
 
 - [x] The revoke response is read and logged, with its status — KB-22 PR A (#317)
-- [ ] A refused or unreachable revoke is surfaced (to the creator, or as an operator alert) — owner to decide which
+- [x] A refused or unreachable revoke is surfaced — **to the creator** (owner decision, 2026-09-24): `connection-actions.test.ts` "tells the caller, and warns, when the revoke is …" (five statuses; seen red with no `revoke` field and `info` logging); `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts` against the production build, a stand-in for Google answering 400 then 200 — warning with Google's link that stays until closed, then the green toast; seen red on `main`'s code; screenshots in #PR
 
 ---
 

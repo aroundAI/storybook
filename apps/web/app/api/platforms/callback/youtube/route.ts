@@ -14,6 +14,7 @@ import { vendorUrl } from '@kit/shared/vendors';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { accountIdFromUnverifiedState } from '~/lib/platforms/connect-failure';
+import { connectedLanding, platformsPageUrl } from '~/lib/platforms/connect-landing';
 import {
   CallbackFailure,
   catchConnectFailures,
@@ -190,14 +191,6 @@ async function handleCallback(request: NextRequest) {
     });
   }
 
-  // Get account slug for redirect
-  const { data: accountData } = await client
-    .from('accounts')
-    .select('slug')
-    .eq('id', state.accountId)
-    .single();
-  const accountSlug = accountData?.slug || 'unknown';
-
   // If multiple channels, store tokens in cookie and redirect to channel picker
   if (channels.length > 1) {
     const pendingConnection = {
@@ -215,7 +208,12 @@ async function handleCallback(request: NextRequest) {
     const encryptedPending = await encrypt(JSON.stringify(pendingConnection));
 
     const response = NextResponse.redirect(
-      `${appUrl}/home/${accountSlug}/settings/platforms/youtube/select-channel`,
+      await platformsPageUrl(
+        request,
+        client,
+        state.accountId,
+        '/youtube/select-channel',
+      ),
     );
 
     response.cookies.set('youtube_pending_connection', encryptedPending, {
@@ -286,9 +284,10 @@ async function handleCallback(request: NextRequest) {
     );
   }
 
-  return NextResponse.redirect(
-    `${appUrl}/home/${accountSlug}/settings/platforms?success=youtube_connected&channel=${encodeURIComponent(channel.title)}`,
-  );
+  return connectedLanding(request, client, state.accountId, {
+    success: 'youtube_connected',
+    channel: channel.title,
+  });
 }
 
 export const GET = catchConnectFailures('youtube', handleCallback);
