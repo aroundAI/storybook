@@ -345,7 +345,10 @@ const createEpisodeWithContext = enhanceAction(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: factLinkError } = await (client as any)
         .from('episode_facts')
-        .upsert(factLinkRows, { onConflict: 'episode_id,fact_id' });
+        .upsert(factLinkRows, {
+          onConflict: 'episode_id,fact_id',
+          ignoreDuplicates: true,
+        });
 
       if (factLinkError) {
         logger.warn(
