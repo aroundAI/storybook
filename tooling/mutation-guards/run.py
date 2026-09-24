@@ -28,6 +28,7 @@ import glob
 import json
 import os
 import shutil
+import re
 import subprocess
 import sys
 import time
@@ -137,6 +138,42 @@ def pgtap_setup_files():
     return sorted(glob.glob(os.path.join(PGTAP_DIR, '00000-*.sql')))
 
 
+# The CLI runs pg_prove in a throwaway container. On GitHub's runners Docker
+# sometimes fails to remove that container after pg_prove has finished
+# ("Error waiting for container: unable to remove filesystem ... exit 125"),
+# and the CLI then exits 1 whatever the tests said. Seen on #350, on a
+# different guard each run: a false NOT GREEN on the real code, and on the
+# mutated run a false RED, which is worse.
+DOCKER_TEARDOWN = re.compile(
+    r'Error waiting for container|unable to remove filesystem')
+PG_PROVE_RESULT = re.compile(r'^Result: (PASS|FAIL)\s*$', re.MULTILINE)
+
+
+def pgtap_outcome(code, output):
+    """The pgTAP verdict, or None when a teardown error left no verdict.
+
+    A clean exit is taken as is. After a teardown error, pg_prove's own
+    `Result:` line is the verdict; without one, the run is unknown.
+    """
+    if not DOCKER_TEARDOWN.search(output):
+        return code
+    result = PG_PROVE_RESULT.findall(output)
+    if not result:
+        return None
+    return 0 if result[-1] == 'PASS' else 1
+
+
+def run_pgtap(path, attempts=3):
+    for _ in range(attempts):
+        code, output = run(
+            supabase_cli() + ['test', 'db', *pgtap_setup_files(), path],
+            os.path.join(ROOT, 'apps/web'))
+        outcome = pgtap_outcome(code, output)
+        if outcome is not None:
+            return outcome, output
+    return code, output
+
+
 def run_pgtap_mutation(entry):
     """Runs a pgTAP file with SQL applied first, inside its own transaction.
 
@@ -146,9 +183,7 @@ def run_pgtap_mutation(entry):
     test_path = os.path.join(ROOT, entry['test'])
     source = open(test_path).read()
 
-    code, output = run(
-        supabase_cli() + ['test', 'db', *pgtap_setup_files(), test_path],
-        os.path.join(ROOT, 'apps/web'))
+    code, output = run_pgtap(test_path)
     if code != 0:
         return 'NOT GREEN', output
 
@@ -161,9 +196,7 @@ def run_pgtap_mutation(entry):
     with open(temp, 'w') as handle:
         handle.write(mutated)
     try:
-        code, output = run(
-            supabase_cli() + ['test', 'db', *pgtap_setup_files(), temp],
-            os.path.join(ROOT, 'apps/web'))
+        code, output = run_pgtap(temp)
         return ('RED' if code != 0 else 'STAYED GREEN'), output
     finally:
         os.remove(temp)
@@ -198,6 +231,20 @@ def self_test(base_env):
     reported as STAYED GREEN. If it came back RED, the runner would be
     counting any failure — a broken command, a missing tool — as a guard
     doing its job."""
+    teardown = ('time="…" level=error msg="Error waiting for container: '
+                'unable to remove filesystem for a84d…: directory not empty"\n'
+                'error running container: exit 125\n')
+    for label, got, want in [
+        ('clean pass', pgtap_outcome(0, 'Result: PASS\n'), 0),
+        ('clean fail', pgtap_outcome(1, 'Result: FAIL\n'), 1),
+        ('teardown after PASS', pgtap_outcome(1, 'Result: PASS\n' + teardown), 0),
+        ('teardown after FAIL', pgtap_outcome(1, 'Result: FAIL\n' + teardown), 1),
+        ('teardown, no verdict', pgtap_outcome(1, teardown), None),
+    ]:
+        if got != want:
+            print(f'SELF-TEST FAILED: pgtap_outcome {label}: {got!r}, expected {want!r}')
+            return 1
+
     toothless = {
         'name': 'self-test: a no-op mutation',
         'kind': 'unit',
