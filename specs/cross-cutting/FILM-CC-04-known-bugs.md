@@ -2408,7 +2408,7 @@ for "no such account" as for "not yours".
 
 **Severity:** Low — ciphertext, not tokens, and only to people already in the
 account; but more than a member needs. **Found:** KB-22's planning,
-2026-09-23, from the live catalog. **Open.**
+2026-09-23, from the live catalog. **Fixed** in #338.
 
 `platform_connections_read` is `using (has_account_access(account_id))` with
 no column restriction, and `authenticated` holds `SELECT` on the whole table,
@@ -2427,7 +2427,52 @@ explicit access check.
 
 ### Acceptance criteria
 
-- [ ] pgTAP: a member selecting either token column is refused; selecting the other columns still works
+- [x] pgTAP: a member selecting either token column is refused; selecting the other columns still works — `apps/web/supabase/tests/database/platform-connection-token-grants.test.sql` (tests 1–5; 12 of its 16 assertions failed on `main`)
+
+### Fixed (#338)
+
+Reproduced again 2026-09-24: as `member@storybook.dev`, `select
+access_token_encrypted, refresh_token_encrypted` returned `enc-access |
+enc-refresh`.
+
+**The proposed fix alone would have broken connecting and disconnecting.**
+Measured in a rolled-back transaction with only the column revoke applied:
+every OAuth callback's upsert failed with `permission denied` (`ON CONFLICT
+DO UPDATE` reads the token columns back through `EXCLUDED`, which needs
+SELECT on them), and so did `disconnect_platform_connection` (`select pc.*`).
+The entry had named only the disconnect read.
+
+`apps/web/supabase/migrations/20260924074525_kb43-44-connection-token-grants.sql`:
+
+- `authenticated` loses table SELECT and gets it back on every column except
+  the two tokens. The pgTAP rule is "every column but the tokens", so a column
+  added later fails the test until someone grants it (or decides not to).
+- `disconnect_platform_connection` selects the six columns it uses into a
+  record. Still security invoker; body and grants otherwise unchanged.
+
+Code:
+
+- The five OAuth callbacks and YouTube `save-channel` store connections
+  through `apps/web/lib/platforms/store-connection.ts`. It asks
+  `has_account_access` on the user's own client for every account the rows
+  name, then upserts with the admin client. The check matters: `account_id`
+  comes from the `state` query parameter, which the browser supplies, and
+  the RLS insert check was the only thing stopping a cross-account write.
+- Disconnect reads `id, platform, disconnected_at` on the member's client
+  (the access check), then the token on the admin client, for the vendor revoke.
+- `syncRevenueFromPlatformAction` no longer selects a token it never used.
+- `packages/features/publishing/__tests__/connection-token-access.test.ts`
+  fails any other file that upserts a connection, or selects a token
+  column or `*` outside three admin-client files.
+
+Token refresh, the publish worker, and the analytics and report crons use
+the service role. Its grants are unchanged, and the pgTAP test asserts that.
+
+**Deploy order:** ship the app code with this migration, or before it. On the
+old callbacks, connecting a platform fails with `storage_failed`.
+
+Same shape, not fixed here: KB-84 (members can read
+`external_api_keys.encrypted_key`).
 
 ---
 
@@ -2436,7 +2481,7 @@ explicit access check.
 **Severity:** Low — not reachable through PostgREST, which has no TRUNCATE;
 but row-level security does not apply to TRUNCATE, so any other path that
 runs SQL as `anon` could empty the table. **Found:** KB-22's planning,
-2026-09-23 (`information_schema.role_table_grants`). **Open.**
+2026-09-23 (`information_schema.role_table_grants`). **Fixed** in #338.
 
 `anon` holds `TRUNCATE, REFERENCES, TRIGGER, INSERT, SELECT, UPDATE, DELETE`
 on `public.platform_connections` — Supabase's default grant, never revoked for
@@ -2452,7 +2497,25 @@ listing the grants `anon` is allowed.
 
 ### Acceptance criteria
 
-- [ ] `anon` holds no privilege on `platform_connections`; a pgTAP test asserts the grant list
+- [x] `anon` holds no privilege on `platform_connections`; a pgTAP test asserts the grant list — `platform-connection-token-grants.test.sql` tests 9–11
+
+### Fixed (#338)
+
+Counted 2026-09-24: `anon` held TRUNCATE, TRIGGER and REFERENCES on 75
+public tables and `authenticated` on 29. PostgREST cannot issue any of the
+three, no function or app code uses them, and TRUNCATE skips RLS. The
+migration that fixes KB-43 also:
+
+- revokes every privilege on `platform_connections` from `anon`;
+- revokes TRUNCATE, TRIGGER and REFERENCES from `anon` and `authenticated`
+  on every table in `public`;
+- changes postgres's default privileges in `public` so tables created later
+  do not get those three.
+
+The pgTAP guard checks every relation in `public`, the default-privilege
+entry, and a table created during the test. The ordinary grants are
+unchanged: RLS governs those. `anon`'s ordinary grants on the other tables
+are KB-85.
 
 ---
 
@@ -2919,6 +2982,12 @@ which FILM-607 is retiring.
 `apps/web/supabase/migrations/20260205114500_create_readonly_viewer.sql` creates a LOGIN role with a password committed in the repo, and grants it SELECT on all public tables. Potentially Critical; the owner must check production.
 
 **Owner decision (2026-09-23):** it is a test user. The owner declined a drop migration: do not drop or alter `myfriends` / `readonly_viewer`.
+
+**Data point (KB-43, 2026-09-24):** `readonly_viewer` holds table SELECT on
+`platform_connections`, token columns included, but has no BYPASSRLS. Every
+policy there is `to authenticated`, so `set role myfriends` sees 0
+connection rows (and 0 `accounts`). It is not a way around KB-43. Nothing
+was changed.
 
 ---
 
@@ -3560,6 +3629,55 @@ confirmation dialog; or remove the menu item until it exists.
 
 ---
 
+## KB-85 — `anon` holds read and write grants on 72 public tables
+
+**Severity:** Low — not reachable today. **Found:** KB-44 (#338), 2026-09-24,
+from `information_schema.role_table_grants`. **Open.**
+
+After KB-44, `anon` still holds SELECT, INSERT, UPDATE and DELETE on 72 of
+the 86 public tables (counted after this migration, 2026-09-24): Supabase's default grants, never revoked. Two layers
+stop them, and both are easy to lose:
+
+- the schema-level `USAGE` revoke (`20221215192558_schema.sql:27`). Probed
+  2026-09-24: `GET /rest/v1/platform_connections` with the anon key returns
+  `401 permission denied for schema public`;
+- RLS, whose policies mostly name `authenticated`.
+
+Re-granting `USAGE`, or one `{public}` policy with a loose predicate, would
+expose whatever that table's grants allow. KB-52 saw the same on
+`llm_usage_analytics`.
+
+**Second count (the KB-51 teammate, #348, 2026-09-24, `has_table_privilege`
+on its own branch's database):** `anon` holds INSERT on 73 of 86 public
+tables, and all 86 have RLS on. As `anon`, `select from
+public.youtube_report_jobs` fails with `permission denied for schema
+public`, so every one of these grants is dormant until `USAGE` comes back
+(KB-88). With `USAGE` granted inside a rolled-back transaction, `anon`'s
+TRUNCATE emptied `youtube_report_jobs` for every account. #338 has since
+revoked TRUNCATE, TRIGGER and REFERENCES from `anon` and `authenticated` on
+every public table, which closes that path. SELECT, INSERT, UPDATE and DELETE
+remain, and RLS governs them. The two counts (72 and 73) were taken on
+different branches' databases; count again when this is worked.
+
+Anonymous reads are legitimate on three tables: `accounts`, `projects`
+and `episodes` have `{anon,authenticated}` SELECT policies for public pages.
+`audio_cues` and `verified_facts` have `{public}` policies (KB-52's area).
+
+### Proposed fix
+
+Revoke SELECT, INSERT, UPDATE and DELETE from `anon` on every public table
+except the three above (SELECT only on those). Change the default privileges
+to match. Add a pgTAP allowlist of what `anon` may hold. Check the public
+project and episode pages with an E2E as a signed-out visitor.
+
+### Acceptance criteria
+
+- [ ] pgTAP: `anon`'s grants in `public` equal an explicit allowlist
+- [ ] A signed-out visitor still sees a public project and episode (E2E)
+
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
@@ -3606,6 +3724,7 @@ confirmation dialog; or remove the menu item until it exists.
 | KB-79 | The audio library took one upload: Upload was drawn only in the empty state, and a new asset showed only after a reload | #350 |
 | KB-57 (part) | The audio library stored any signed-in user's file with the admin client, at a key naming no project, before checking the project | #350 |
 | KB-78 | Regenerating a story deleted every canon row of the episode, including events and threads a person had added; it now replaces only what generation made (`narrative_threads.auto_generated`). Whether explicit resets should keep hand-added canon is open | #347 |
+| KB-43, KB-44 | Any account member could read a connection's encrypted OAuth tokens through PostgREST. `anon` held every privilege on `platform_connections`. `anon` and `authenticated` held TRUNCATE, TRIGGER and REFERENCES on up to 75 public tables | #338 |
 
 ---
 

@@ -17,6 +17,7 @@ import {
   failConnect,
   vendorRefusal,
 } from '~/lib/platforms/fail-connect';
+import { storePlatformConnections } from '~/lib/platforms/store-connection';
 
 interface TikTokOAuthMetadata {
   codeVerifier?: string;
@@ -186,39 +187,34 @@ async function handleCallback(request: NextRequest) {
   const encryptedRefreshToken = await encrypt(tokens.refresh_token);
 
   // Store connection
-  const { error: insertError } = await client
-    .from('platform_connections')
-    .upsert(
-      {
-        account_id: state.accountId,
-        platform: 'tiktok',
-        platform_account_id: tiktokUser.open_id,
-        platform_account_name: tiktokUser.display_name,
-        access_token_encrypted: encryptedAccessToken,
-        refresh_token_encrypted: encryptedRefreshToken,
-        token_expires_at: accessTokenExpiresAt.toISOString(),
-        // No fallback to the scopes we requested: that records a grant
-        // nobody confirmed, and the analytics gate would believe it.
-        scopes: parseGrantedScopes(tokens.scope),
-        metadata: {
-          scopes_granted_at: new Date().toISOString(),
-          union_id: tiktokUser.union_id,
-          avatar_url: tiktokUser.avatar_url,
-          refresh_expires_at: refreshTokenExpiresAt.toISOString(),
-        },
-        is_active: true,
-        updated_at: new Date().toISOString(),
+  const { error: insertError } = await storePlatformConnections(client, [
+    {
+      account_id: state.accountId,
+      platform: 'tiktok',
+      platform_account_id: tiktokUser.open_id,
+      platform_account_name: tiktokUser.display_name,
+      access_token_encrypted: encryptedAccessToken,
+      refresh_token_encrypted: encryptedRefreshToken,
+      token_expires_at: accessTokenExpiresAt.toISOString(),
+      // No fallback to the scopes we requested: that records a grant
+      // nobody confirmed, and the analytics gate would believe it.
+      scopes: parseGrantedScopes(tokens.scope),
+      metadata: {
+        scopes_granted_at: new Date().toISOString(),
+        union_id: tiktokUser.union_id,
+        avatar_url: tiktokUser.avatar_url,
+        refresh_expires_at: refreshTokenExpiresAt.toISOString(),
       },
-      {
-        onConflict: 'account_id,platform,platform_account_id',
-      },
-    );
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    },
+  ]);
 
   if (insertError) {
     return fail({
       code: 'storage_failed',
-      branch: 'connection_upsert',
-      cause: insertError,
+      branch: insertError.branch,
+      cause: insertError.cause,
     });
   }
 

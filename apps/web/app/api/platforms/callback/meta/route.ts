@@ -14,6 +14,7 @@ import {
   failConnect,
   vendorRefusal,
 } from '~/lib/platforms/fail-connect';
+import { storePlatformConnections } from '~/lib/platforms/store-connection';
 
 interface FacebookPageResponse {
   id: string;
@@ -319,17 +320,16 @@ async function handleCallback(request: NextRequest) {
 
   // Upsert all connections
   if (connections.length > 0) {
-    const { error: insertError } = await client
-      .from('platform_connections')
-      .upsert(connections, {
-        onConflict: 'account_id,platform,platform_account_id',
-      });
+    const { error: insertError } = await storePlatformConnections(
+      client,
+      connections,
+    );
 
     if (insertError) {
       return fail({
         code: 'storage_failed',
-        branch: 'connection_upsert',
-        cause: insertError,
+        branch: insertError.branch,
+        cause: insertError.cause,
       });
     }
   }

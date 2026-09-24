@@ -80,6 +80,21 @@ vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => mockSupabaseClient,
 }));
 
+// KB-43: members may not read token columns, so the disconnect's token read
+// goes through the admin client — and only after the member's read found the row.
+const mockAdminClient = {
+  from: vi.fn(() => mockAdminClient),
+  select: vi.fn(() => mockAdminClient),
+  eq: vi.fn(() => mockAdminClient),
+  maybeSingle: vi.fn(
+    (): Promise<QueryResult> => Promise.resolve({ data: null, error: null }),
+  ),
+};
+
+vi.mock('@kit/supabase/server-admin-client', () => ({
+  getSupabaseServerAdminClient: () => mockAdminClient,
+}));
+
 const clickhouse = vi.hoisted(() => ({
   queryLatestSubscriberLevels: vi.fn(),
 }));
@@ -423,9 +438,12 @@ describe('Connection Actions', () => {
         data: {
           id: CONNECTION_ID,
           platform: 'youtube',
-          access_token_encrypted: 'enc',
           disconnected_at: null,
         },
+        error: null,
+      });
+      mockAdminClient.maybeSingle.mockResolvedValueOnce({
+        data: { access_token_encrypted: 'enc' },
         error: null,
       });
       revokers.revokeAtVendor.mockResolvedValueOnce({
@@ -458,6 +476,14 @@ describe('Connection Actions', () => {
         { p_connection_id: CONNECTION_ID },
       );
       expect(mockSupabaseClient.delete).not.toHaveBeenCalled();
+      // The member's client never names a token column.
+      expect(mockSupabaseClient.select).toHaveBeenCalledWith(
+        'id, platform, disconnected_at',
+      );
+      expect(mockAdminClient.select).toHaveBeenCalledWith(
+        'access_token_encrypted',
+      );
+      expect(mockAdminClient.eq).toHaveBeenCalledWith('id', CONNECTION_ID);
     });
 
     it('does not ask the vendor again for a connection already disconnected', async () => {
@@ -465,7 +491,6 @@ describe('Connection Actions', () => {
         data: {
           id: CONNECTION_ID,
           platform: 'tiktok',
-          access_token_encrypted: null,
           disconnected_at: '2026-09-23T00:00:00Z',
         },
         error: null,
@@ -488,6 +513,7 @@ describe('Connection Actions', () => {
         data: { disconnected: [], alreadyDisconnected: true },
       });
       expect(revokers.revokeAtVendor).not.toHaveBeenCalled();
+      expect(mockAdminClient.maybeSingle).not.toHaveBeenCalled();
     });
 
     it('returns a refusal, as a value, for a connection the caller cannot see (KB-6)', async () => {
@@ -510,6 +536,8 @@ describe('Connection Actions', () => {
           'That connection no longer exists, or you do not have access to it.',
       });
       expect(mockSupabaseClient.rpc).not.toHaveBeenCalled();
+      // No access, no admin read.
+      expect(mockAdminClient.maybeSingle).not.toHaveBeenCalled();
     });
   });
 });

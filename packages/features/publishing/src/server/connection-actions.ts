@@ -10,6 +10,7 @@ import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { PlatformConnection as DBPlatformConnection } from '../lib/database-types';
@@ -124,6 +125,25 @@ const CONNECTION_NOT_FOUND =
   'That connection no longer exists, or you do not have access to it.';
 
 /**
+ * The stored access token, for the vendor revoke. Members may not read token
+ * columns (KB-43), so this uses the admin client — call it only after the
+ * member's own client has found the row, which is the access check.
+ */
+async function readAccessToken(connectionId: string) {
+  const { data, error } = await getSupabaseServerAdminClient()
+    .from('platform_connections')
+    .select('access_token_encrypted')
+    .eq('id', connectionId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to read connection token: ${error.message}`);
+  }
+
+  return data?.access_token_encrypted ?? null;
+}
+
+/**
  * Disconnects a platform connection (KB-22).
  *
  * Asks the platform to revoke our access, then disconnects the row with
@@ -140,7 +160,7 @@ export const disconnectPlatformAction = returnRefusals(
 
       const { data: connection, error: readError } = await client
         .from('platform_connections')
-        .select('id, platform, access_token_encrypted, disconnected_at')
+        .select('id, platform, disconnected_at')
         .eq('id', connectionId)
         .maybeSingle();
 
@@ -158,7 +178,7 @@ export const disconnectPlatformAction = returnRefusals(
         ? ({ status: 'no_token' } as const)
         : await revokeAtVendor({
             platform,
-            access_token_encrypted: connection.access_token_encrypted,
+            access_token_encrypted: await readAccessToken(connection.id),
           });
 
       const { data: rows, error } = await client.rpc(

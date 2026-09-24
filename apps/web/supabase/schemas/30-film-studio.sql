@@ -658,7 +658,11 @@ grant select, insert, update, delete on table public.seasons to authenticated;
 grant select, insert, update, delete on table public.episodes to authenticated;
 grant select, insert, update, delete on table public.assets to authenticated;
 grant select, insert, update, delete on table public.generation_jobs to authenticated;
-grant select, insert, update, delete on table public.platform_connections to authenticated;
+-- KB-43: members read every column but the tokens; see 32-platform-connections.sql.
+grant insert, update, delete on table public.platform_connections to authenticated;
+grant select (id, account_id, platform, platform_account_id, platform_account_name,
+  token_expires_at, scopes, is_active, created_at, updated_at, language, metadata,
+  disconnected_at) on table public.platform_connections to authenticated;
 grant select, insert, update, delete on table public.shared_resources to authenticated;
 grant select, insert, update, delete on table public.external_api_keys to authenticated;
 grant select, insert, update, delete on table public.shots to authenticated;

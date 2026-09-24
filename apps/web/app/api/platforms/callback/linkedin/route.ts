@@ -16,6 +16,7 @@ import {
   failConnect,
   vendorRefusal,
 } from '~/lib/platforms/fail-connect';
+import { storePlatformConnections } from '~/lib/platforms/store-connection';
 
 /**
  * LinkedIn OAuth Callback Route
@@ -165,38 +166,33 @@ async function handleCallback(request: NextRequest) {
     : LINKEDIN_OAUTH_CONFIG.scopes.personal;
 
   // Store connection
-  const { error: insertError } = await client
-    .from('platform_connections')
-    .upsert(
-      {
-        account_id: state.accountId,
-        platform: 'linkedin',
-        platform_account_id: `urn:li:person:${profile.sub}`,
-        platform_account_name: profile.name,
-        access_token_encrypted: encryptedAccessToken,
-        refresh_token_encrypted: encryptedRefreshToken,
-        token_expires_at: new Date(
-          Date.now() + tokens.expires_in * 1000,
-        ).toISOString(),
-        scopes: [...scopes],
-        metadata: {
-          picture: profile.picture,
-          email: profile.email,
-          isCompanyPage: state.isCompanyPage || false,
-        },
-        is_active: true,
-        updated_at: new Date().toISOString(),
+  const { error: insertError } = await storePlatformConnections(client, [
+    {
+      account_id: state.accountId,
+      platform: 'linkedin',
+      platform_account_id: `urn:li:person:${profile.sub}`,
+      platform_account_name: profile.name,
+      access_token_encrypted: encryptedAccessToken,
+      refresh_token_encrypted: encryptedRefreshToken,
+      token_expires_at: new Date(
+        Date.now() + tokens.expires_in * 1000,
+      ).toISOString(),
+      scopes: [...scopes],
+      metadata: {
+        picture: profile.picture,
+        email: profile.email,
+        isCompanyPage: state.isCompanyPage || false,
       },
-      {
-        onConflict: 'account_id,platform,platform_account_id',
-      },
-    );
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    },
+  ]);
 
   if (insertError) {
     return fail({
       code: 'storage_failed',
-      branch: 'connection_upsert',
-      cause: insertError,
+      branch: insertError.branch,
+      cause: insertError.cause,
     });
   }
 
