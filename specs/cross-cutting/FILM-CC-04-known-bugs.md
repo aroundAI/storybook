@@ -2445,7 +2445,7 @@ LinkedIn have no revoke at all — KB-25.
 **Severity:** Medium, not the recorded High. A stranger could not spend the key,
 but **a teammate who can only read a project could**. **Found:** by reading,
 during KB-31 (2026-09-23). **Reproduced** 2026-09-24 against the local DB (one
-transaction per role, rolled back). **Fixed** in #PR_NUMBER, together with the voice part
+transaction per role, rolled back). **Fixed** in #337, together with the voice part
 of KB-47 and every other synchronous ElevenLabs spend in `@kit/audio-generation`.
 
 The entry as first written was **half wrong**. The preview action does authorise
@@ -2510,13 +2510,13 @@ shows members the last four characters only.
 
 **Severity:** High if any worker trusts a payload id the way the LLM worker did.
 **Found:** KB-31 (2026-09-23) surveyed only `queueLlmJob`. **Voice part fixed**
-in #PR_NUMBER (KB-46). **Publish part open.**
+in #337 (KB-46). **Publish part open.**
 
 These producers send SQS messages to workers that run on the service-role key,
 and were not checked for an authorising read before the send:
 
 - ~~`packages/features/audio-generation/src/server/voice-queue-helper.ts:90`~~ **Fixed
-  (KB-46, #PR_NUMBER).** Reproduced: a project viewer or a teammate with no
+  (KB-46, #337).** Reproduced: a project viewer or a teammate with no
   project role could queue voice for a line they cannot edit, on the team's key.
   The worker writes the audio. All three producers now authorise with
   `can_write_project`, and the queue requires the target.
@@ -3333,8 +3333,8 @@ the settings key list). Add a pgTAP test listing the columns a member may read.
 | KB-75 | The Unit Tests job's mutation guards outgrew its timeout, so it was cancelled on `main` and on PRs; the unit guards now run sharded | #324 |
 | KB-80 | Specs kept open items waiting on fixed bugs and finished specs (FILM-305, FILM-502, FILM-503 on KB-14); a guard now fails any `closed_by` that names finished work | #328 |
 | KB-82 | KB-75 had no record, INDEX linked the spikes to files that no longer exist, and FILM-1728 said the lambdas were untyped | this batch-records PR (`docs/batch-records-2026-09-23`) |
-| KB-46 | A teammate who could only read a project spent its ElevenLabs key: voice, SFX and music generation authorised by a readable row, not `can_write_project`. The public-project stranger in the original entry was blocked, by accident | #PR_NUMBER |
-| KB-47 (part) | The voice queue: its three producers sent jobs the service-role worker ran on the named account's key; they now authorise, and the queue requires the target. The publish queue is still open | #PR_NUMBER |
+| KB-46 | A teammate who could only read a project spent its ElevenLabs key: voice, SFX and music generation authorised by a readable row, not `can_write_project`. The public-project stranger in the original entry was blocked, by accident | #337 |
+| KB-47 (part) | The voice queue: its three producers sent jobs the service-role worker ran on the named account's key; they now authorise, and the queue requires the target. The publish queue is still open | #337 |
 
 ---
 
