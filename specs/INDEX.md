@@ -466,7 +466,7 @@ Retired 2026-09-23 (FILM-607). The only open work is FILM-608, dropping the kept
 | FILM-903 | [generation-status-panel](./phase-9-integration/components/FILM-903-generation-status-panel.yaml) | 🗑️ RETIRED (5f44d0e1) | M | FILM-411 |
 | FILM-904 | [api-keys-page](./phase-9-integration/settings/FILM-904-api-keys-page.yaml) | ✅ DONE | M | FILM-101n |
 | FILM-905 | [generation-settings](./phase-9-integration/settings/FILM-905-generation-settings.yaml) | 🗑️ RETIRED (5f44d0e1) | M | - |
-| FILM-906 | [platform-connections](./phase-9-integration/settings/FILM-906-platform-connections.yaml) | 🟡 PARTIAL | M | FILM-706 |
+| FILM-906 | [platform-connections](./phase-9-integration/settings/FILM-906-platform-connections.yaml) | ✅ DONE | M | FILM-706 |
 
 ### Phase 10: Canon Management (7 specs)
 
@@ -700,7 +700,7 @@ reason when not.
 | 6. Edit Suite | 8 | 1 | 0 | 0 | 6 | 1 |
 | 7. Publishing | 16 | 0 | 7 | 0 | 3 | 6 |
 | 8. Analytics | 10 | 0 | 7 | 0 | 0 | 3 |
-| 9. Integration | 6 | 0 | 2 | 0 | 3 | 1 |
+| 9. Integration | 6 | 0 | 1 | 0 | 3 | 2 |
 | 10. Canon Mgmt | 7 | 0 | 4 | 0 | 1 | 2 |
 | 11. Canon Integ | 22 | 0 | 17 | 0 | 1 | 4 |
 | 12. Scale | 2 | 0 | 0 | 0 | 0 | 2 |
@@ -712,7 +712,7 @@ reason when not.
 | 18. Vendor Sandbox | 5 | 4 | 0 | 0 | 0 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **231** | **26** | **81** | **2** | **49** | **73** |
+| **TOTAL** | **231** | **26** | **80** | **2** | **49** | **74** |
 
 No column for In Progress: no PR is open.
 
@@ -721,7 +721,7 @@ No column for In Progress: no PR is open.
 | Scope | Total | Done | Partial | Retired | Draft / Deferred |
 |-------|-------|------|---------|---------|------------------|
 | MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 92 | 29 | 31 | 31 | 1 |
-| Post-MVP (Ph 6–9) | 40 | 11 | 16 | 12 | 1 |
+| Post-MVP (Ph 6–9) | 40 | 12 | 15 | 12 | 1 |
 | Canon (Ph 10–11) | 29 | 6 | 21 | 2 | 0 |
 | Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |
 | Edit Suite v2 (Ph 14) | 1 | 0 | 0 | 1 | 0 |
