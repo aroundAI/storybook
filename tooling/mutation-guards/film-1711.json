@@ -165,8 +165,8 @@
       "name": "D4 A callback records the scopes it asked for as the grant",
       "kind": "unit",
       "file": "apps/web/app/api/platforms/callback/tiktok/route.ts",
-      "find": "        scopes: parseGrantedScopes(tokens.scope),",
-      "replace": "        scopes: [...TIKTOK_OAUTH_CONFIG.scopes],",
+      "find": "      scopes: parseGrantedScopes(tokens.scope),",
+      "replace": "      scopes: [...TIKTOK_OAUTH_CONFIG.scopes],",
       "cwd": "packages/features/publishing",
       "test": "__tests__/analytics-scopes.test.ts",
       "pattern": "callback/tiktok"

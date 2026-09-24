@@ -633,7 +633,6 @@ dollar sponsorship for the same scope on the same day are one slot, and the
 second entry replaces the first (the form's standing note says a save for
 the same date and category replaces the last one). That is a
 limit on what can be recorded, not a wrong sum.
-| KB-43, KB-44 | Any account member could read a connection's encrypted OAuth tokens through PostgREST. `anon` held every privilege on `platform_connections`. `anon` and `authenticated` held TRUNCATE, TRIGGER and REFERENCES on up to 75 public tables | #338 |
 
 ---
 
@@ -3725,6 +3724,7 @@ project and episode pages with an E2E as a signed-out visitor.
 | KB-79 | The audio library took one upload: Upload was drawn only in the empty state, and a new asset showed only after a reload | #350 |
 | KB-57 (part) | The audio library stored any signed-in user's file with the admin client, at a key naming no project, before checking the project | #350 |
 | KB-78 | Regenerating a story deleted every canon row of the episode, including events and threads a person had added; it now replaces only what generation made (`narrative_threads.auto_generated`). Whether explicit resets should keep hand-added canon is open | #347 |
+| KB-43, KB-44 | Any account member could read a connection's encrypted OAuth tokens through PostgREST. `anon` held every privilege on `platform_connections`. `anon` and `authenticated` held TRUNCATE, TRIGGER and REFERENCES on up to 75 public tables | #338 |
 
 ---
 
