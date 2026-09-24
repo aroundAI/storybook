@@ -25,8 +25,8 @@
       "name": "R3 The refresh token is not passed to the revoke, so X keeps it (KB-25)",
       "kind": "unit",
       "file": "packages/features/publishing/src/server/connection-actions.ts",
-      "find": "            refresh_token_encrypted: connection.refresh_token_encrypted,\n",
-      "replace": "            refresh_token_encrypted: null,\n",
+      "find": "    .select('access_token_encrypted, refresh_token_encrypted')\n",
+      "replace": "    .select('access_token_encrypted')\n",
       "cwd": "packages/features/publishing",
       "test": "__tests__/connection-actions.test.ts",
       "pattern": "revokes at the vendor, then disconnects"
