@@ -758,7 +758,7 @@ export const syncRevenueFromPlatformAction = enhanceAction(
 
     const { data: connection, error: connectionError } = await client
       .from('platform_connections')
-      .select('access_token_encrypted, is_active')
+      .select('is_active')
       .eq('id', publish.platform_connection_id)
       .single();
 

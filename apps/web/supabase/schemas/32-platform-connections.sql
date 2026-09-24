@@ -123,11 +123,21 @@ CREATE TRIGGER platform_connections_refuse_delete
   BEFORE DELETE ON public.platform_connections
   FOR EACH ROW EXECUTE FUNCTION public.platform_connections_refuse_delete();
 -- public.disconnect_platform_connection(p_connection_id uuid)
---   returns table (id uuid, already_disconnected boolean), security invoker
+--   returns table (id uuid, already_disconnected boolean), security invoker;
+--   reads named columns, never pc.* (KB-43; body in the KB-43/44 migration)
 
--- Grant permissions
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.platform_connections TO authenticated;
+-- Grant permissions. Members read every column but the tokens (KB-43): the
+-- OAuth callbacks write through the admin client after has_account_access,
+-- and anon holds nothing (KB-44). Source of truth:
+-- migrations/20260924074525_kb43-44-connection-token-grants.sql.
+GRANT INSERT, UPDATE, DELETE ON public.platform_connections TO authenticated;
+GRANT SELECT (
+  id, account_id, platform, platform_account_id, platform_account_name,
+  token_expires_at, scopes, is_active, created_at, updated_at,
+  language, metadata, disconnected_at
+) ON public.platform_connections TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.platform_connections TO service_role;
+REVOKE ALL ON public.platform_connections FROM anon;
 
 -- Comment on table
 COMMENT ON TABLE public.platform_connections IS 'OAuth connections to publishing platforms (YouTube, TikTok, etc.)';

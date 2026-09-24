@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { decrypt, encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { storePlatformConnections } from '~/lib/platforms/store-connection';
 
 interface PendingConnection {
   accountId: string;
@@ -90,9 +91,7 @@ export async function POST(request: NextRequest) {
     : null;
 
   // Store the connection
-  const { error: insertError } = await client
-    .from('platform_connections')
-    .upsert(
+  const { error: insertError } = await storePlatformConnections(client, [
       {
         account_id: pendingConnection.accountId,
         platform: 'youtube',
@@ -114,10 +113,7 @@ export async function POST(request: NextRequest) {
         is_active: true,
         updated_at: new Date().toISOString(),
       },
-      {
-        onConflict: 'account_id,platform,platform_account_id',
-      },
-    );
+]);
 
   if (insertError) {
     logger.error({ ...ctx, error: insertError }, 'Failed to store connection');

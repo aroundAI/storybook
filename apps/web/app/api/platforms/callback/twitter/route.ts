@@ -10,6 +10,7 @@ import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credent
 import { encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { storePlatformConnections } from '~/lib/platforms/store-connection';
 
 import { accountIdFromUnverifiedState } from '~/lib/platforms/connect-failure';
 import {
@@ -198,9 +199,7 @@ async function handleCallback(request: NextRequest) {
     : null;
 
   // Store connection
-  const { error: insertError } = await client
-    .from('platform_connections')
-    .upsert(
+  const { error: insertError } = await storePlatformConnections(client, [
       {
         account_id: state.accountId,
         platform: 'twitter',
@@ -219,16 +218,13 @@ async function handleCallback(request: NextRequest) {
         is_active: true,
         updated_at: new Date().toISOString(),
       },
-      {
-        onConflict: 'account_id,platform,platform_account_id',
-      },
-    );
+]);
 
   if (insertError) {
     return fail({
       code: 'storage_failed',
-      branch: 'connection_upsert',
-      cause: insertError,
+      branch: insertError.branch,
+      cause: insertError.cause,
     });
   }
 
