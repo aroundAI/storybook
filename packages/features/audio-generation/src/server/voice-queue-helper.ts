@@ -6,6 +6,8 @@ import {
   SendMessageCommand,
 } from '@aws-sdk/client-sqs';
 
+import type { LlmJobTarget } from '@kit/prompt-engine/llm-job-target';
+
 // Initialize SQS client
 const sqs = new SQSClient({});
 
@@ -52,18 +54,46 @@ export interface VoiceJobMessage {
 }
 
 /**
- * Queue a single voice generation job
+ * A voice job as its producer describes it. The account is not part of it:
+ * it comes from the target (KB-46, KB-47).
+ */
+export type VoiceJob = Omit<VoiceJobMessage, 'accountId'>;
+
+/**
+ * The message as sent: billed to the target's account, and only for the
+ * target's episode.
  *
- * @param params - Voice job parameters
- * @returns Promise that resolves when message is queued
+ * The voice worker runs on the service-role key. It decrypts the message's
+ * account's ElevenLabs key and writes audio onto the message's line, so the
+ * target — from `authorizeEpisodeTarget`, which asks `can_write_project` as
+ * the caller — is the only check between a caller and what it spends and
+ * writes. A job naming a different episode is a programming error, thrown
+ * before anything is sent.
+ */
+export function voiceMessageForTarget(
+  target: LlmJobTarget,
+  job: VoiceJob,
+): VoiceJobMessage {
+  if (!target.episodeId || job.episodeId !== target.episodeId) {
+    throw new Error(
+      `Voice job for episode ${job.episodeId} does not match its authorised target`,
+    );
+  }
+
+  return { ...job, accountId: target.accountId };
+}
+
+/**
+ * Queue a single voice generation job
  *
  * @example
  * ```typescript
- * await queueVoiceJob({
+ * const target = await authorizeEpisodeTarget(client, episodeId);
+ * if (!target) throw new ActionRefusal('Dialogue line not found');
+ * await queueVoiceJob(target, {
  *   dialogueLineId: 'uuid',
  *   batchJobId: null,
- *   episodeId: 'uuid',
- *   accountId: 'uuid',
+ *   episodeId,
  *   voiceId: 'voice-id',
  *   ttsModel: 'eleven_multilingual_v2',
  *   voiceSettings: { stability: 0.5, similarityBoost: 0.75 },
@@ -73,7 +103,11 @@ export interface VoiceJobMessage {
  * });
  * ```
  */
-export async function queueVoiceJob(params: VoiceJobMessage): Promise<void> {
+export async function queueVoiceJob(
+  target: LlmJobTarget,
+  job: VoiceJob,
+): Promise<void> {
+  const params = voiceMessageForTarget(target, job);
   const queueUrl = getVoiceQueueUrl();
 
   if (!queueUrl) {
@@ -106,10 +140,17 @@ export async function queueVoiceJob(params: VoiceJobMessage): Promise<void> {
  * SQS SendMessageBatch supports up to 10 messages per request.
  * This function automatically chunks jobs into groups of 10.
  *
- * @param jobs - Array of voice job parameters
+ * Every job must be for the target's episode.
+ *
+ * @param target - The authorised episode, from `authorizeEpisodeTarget`
+ * @param voiceJobs - Array of voice job parameters
  * @returns Promise that resolves when all messages are queued
  */
-export async function queueVoiceJobs(jobs: VoiceJobMessage[]): Promise<void> {
+export async function queueVoiceJobs(
+  target: LlmJobTarget,
+  voiceJobs: VoiceJob[],
+): Promise<void> {
+  const jobs = voiceJobs.map((job) => voiceMessageForTarget(target, job));
   const queueUrl = getVoiceQueueUrl();
 
   if (!queueUrl) {

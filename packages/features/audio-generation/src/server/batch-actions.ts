@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
+import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -37,18 +38,6 @@ import { queueVoiceJobs } from './voice-queue-helper';
 // (batch_generation_jobs, dialogue_lines, episodes) are not yet in the generated
 // database types. The database schema will be aligned in a future update.
 // RLS policies enforce project-level authorization.
-
-/**
- * Film studio database response types for type-safe access to nested data
- */
-interface EpisodeResponse {
-  id: string;
-  project_id: string;
-  projects: {
-    id: string;
-    account_id: string;
-  };
-}
 
 interface DialogueLineForBatch {
   id: string;
@@ -175,26 +164,21 @@ const batchGenerateDialogue = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // 1. Fetch episode with account context
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: episode, error: episodeError } = await (client as any)
-      .from('episodes')
-      .select('id, project_id, projects!inner(id, account_id)')
-      .eq('id', data.episodeId)
-      .single();
+    // 1. The episode, as one the caller can write to. The voice worker spends
+    // its account's key and writes its lines with the service role, so a
+    // reader — a project viewer, or anyone on a public project — must not
+    // queue it (KB-47)
+    const target = await authorizeEpisodeTarget(client, data.episodeId);
 
-    if (episodeError || !episode) {
-      logger.error({ ...ctx, error: episodeError }, 'Episode not found');
+    if (!target?.projectId) {
+      logger.warn(
+        { ...ctx, userId: user.id, reason: 'not_writable' },
+        'Batch voice generation refused',
+      );
       throw new ActionRefusal('Episode not found');
     }
 
-    const episodeData = episode as EpisodeResponse;
-    const accountId = episodeData.projects?.account_id;
-    const projectId = episodeData.project_id;
-
-    if (!accountId) {
-      throw new Error('Could not determine account for episode');
-    }
+    const { accountId, projectId } = target;
 
     // 2. Fetch dialogue lines for episode
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -325,7 +309,6 @@ const batchGenerateDialogue = enhanceAction(
         dialogueLineId: line.id,
         batchJobId: job.id,
         episodeId: data.episodeId,
-        accountId,
         voiceId: assignment?.voiceId ?? '',
         ttsModel,
         voiceSettings: {
@@ -341,7 +324,7 @@ const batchGenerateDialogue = enhanceAction(
       };
     });
 
-    await queueVoiceJobs(voiceJobs);
+    await queueVoiceJobs(target, voiceJobs);
 
     logger.info(
       { ...ctx, batchJobId: job.id, queuedCount: voiceJobs.length },
@@ -512,6 +495,19 @@ export const retryFailedDialogueAction = enhanceAction(
 
     const jobData = job as BatchJobResponse;
 
+    // A batch job is readable by every member of its account; retrying it
+    // spends the key and writes lines, so it needs write access to the
+    // episode, and is billed to the episode's account (KB-47)
+    const target = await authorizeEpisodeTarget(client, jobData.episode_id);
+
+    if (!target?.projectId) {
+      logger.warn(
+        { ...ctx, userId: user.id, reason: 'not_writable' },
+        'Batch voice retry refused',
+      );
+      throw new Error('Batch job not found');
+    }
+
     if (jobData.failed_lines === 0) {
       throw new Error('No failed lines to retry');
     }
@@ -537,17 +533,8 @@ export const retryFailedDialogueAction = enhanceAction(
       'Found failed lines to retry',
     );
 
-    // 3. Get the episode's project ID for TTS model
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: episode } = await (client as any)
-      .from('episodes')
-      .select('project_id')
-      .eq('id', jobData.episode_id)
-      .single();
-
-    const ttsModel = episode?.project_id
-      ? await getProjectTTSModelForBatch(episode.project_id as string)
-      : 'eleven_multilingual_v2';
+    // 3. TTS model for the episode's project
+    const ttsModel = await getProjectTTSModelForBatch(target.projectId);
 
     // 4. Reset job status for retry (reset failed count, preserve completed)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -573,7 +560,6 @@ export const retryFailedDialogueAction = enhanceAction(
         dialogueLineId: line.id,
         batchJobId: jobData.id,
         episodeId: jobData.episode_id,
-        accountId: jobData.account_id,
         voiceId: assignment?.voiceId ?? '',
         ttsModel,
         voiceSettings: {
@@ -589,7 +575,7 @@ export const retryFailedDialogueAction = enhanceAction(
       };
     });
 
-    await queueVoiceJobs(voiceJobs);
+    await queueVoiceJobs(target, voiceJobs);
 
     logger.info(
       { ...ctx, queuedCount: voiceJobs.length },

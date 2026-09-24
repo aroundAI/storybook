@@ -418,7 +418,7 @@ Retired 2026-09-23 (FILM-607). The only open work is FILM-608, dropping the kept
 | FILM-604 | [auto-stitch](./phase-6-edit-suite/lib/FILM-604-auto-stitch.yaml) | 🗑️ RETIRED (b7f7cb53) | L | FILM-601 |
 | FILM-605 | [auto-captions](./phase-6-edit-suite/components/FILM-605-auto-captions.yaml) | 🗑️ RETIRED (5f44d0e1) | L | FILM-601 |
 | FILM-606 | [transitions-library](./phase-6-edit-suite/components/FILM-606-transitions-library.yaml) | 🗑️ RETIRED (5f44d0e1) | M | FILM-601 |
-| FILM-607 | [retire-edit-suite](./phase-6-edit-suite/FILM-607-retire-edit-suite.yaml) | 🟡 PARTIAL | M | KB-28, KB-27 for coordination only |
+| FILM-607 | [retire-edit-suite](./phase-6-edit-suite/FILM-607-retire-edit-suite.yaml) | ✅ DONE | M | KB-28, KB-27 for coordination only |
 | FILM-608 | [drop-edit-suite-tables](./phase-6-edit-suite/FILM-608-drop-edit-suite-tables.yaml) | DRAFT | S | FILM-607 |
 
 ### Phase 7: Publishing (16 specs)
@@ -697,7 +697,7 @@ reason when not.
 | 3. Episodes | 14 | 0 | 7 | 0 | 3 | 4 |
 | 4. Video Gen | 14 | 0 | 2 | 0 | 12 | 0 |
 | 5. Audio Gen | 16 | 1 | 6 | 0 | 6 | 3 |
-| 6. Edit Suite | 8 | 1 | 1 | 0 | 6 | 0 |
+| 6. Edit Suite | 8 | 1 | 0 | 0 | 6 | 1 |
 | 7. Publishing | 16 | 0 | 7 | 0 | 3 | 6 |
 | 8. Analytics | 10 | 0 | 7 | 0 | 0 | 3 |
 | 9. Integration | 6 | 0 | 2 | 0 | 3 | 1 |
@@ -712,7 +712,7 @@ reason when not.
 | 18. Vendor Sandbox | 5 | 4 | 0 | 0 | 0 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **231** | **26** | **84** | **2** | **49** | **70** |
+| **TOTAL** | **231** | **26** | **83** | **2** | **49** | **71** |
 
 No column for In Progress: no PR is open.
 
@@ -721,7 +721,7 @@ No column for In Progress: no PR is open.
 | Scope | Total | Done | Partial | Retired | Draft / Deferred |
 |-------|-------|------|---------|---------|------------------|
 | MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 92 | 29 | 31 | 31 | 1 |
-| Post-MVP (Ph 6–9) | 40 | 10 | 17 | 12 | 1 |
+| Post-MVP (Ph 6–9) | 40 | 11 | 16 | 12 | 1 |
 | Canon (Ph 10–11) | 29 | 4 | 23 | 2 | 0 |
 | Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |
 | Edit Suite v2 (Ph 14) | 1 | 0 | 0 | 1 | 0 |

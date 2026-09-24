@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
+import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { getStorageAdapter } from '@kit/storage';
 import { requireUser } from '@kit/supabase/require-user';
@@ -61,14 +62,6 @@ interface DialogueLineResponse {
       id: string;
       account_id: string;
     };
-  };
-}
-
-interface EpisodeResponse {
-  id: string;
-  project_id: string;
-  projects: {
-    account_id: string;
   };
 }
 
@@ -144,14 +137,20 @@ const generateDialogueVoice = enhanceAction(
 
     // Type-safe access to nested response data
     const dialogueData = dialogueLine as DialogueLineResponse;
-    const accountId = dialogueData.episodes?.projects?.account_id;
-    const projectId = dialogueData.episodes?.project_id;
     const episodeId = dialogueData.episode_id;
 
-    if (!accountId || !projectId) {
-      logger.error(ctx, 'Could not determine account for dialogue line');
-      throw new Error('Could not determine account for dialogue line');
+    // Reading the line is not writing it: a project viewer can read it (KB-46)
+    const target = await authorizeEpisodeTarget(client, episodeId);
+
+    if (!target?.projectId) {
+      logger.warn(
+        { ...ctx, userId: user.id, reason: 'not_writable' },
+        'Voice generation refused',
+      );
+      throw new ActionRefusal('Dialogue line not found');
     }
+
+    const { accountId, projectId } = target;
 
     // 2. Check if already generated (unless overwrite requested)
     const overwriteExisting = data.overwriteExisting ?? false;
@@ -498,17 +497,25 @@ export const generateDialogueVoiceAsyncAction = enhanceAction(
     }
 
     const dialogueData = dialogueLine as DialogueLineResponse;
-    const accountId = dialogueData.episodes?.projects?.account_id;
-    const projectId = dialogueData.episodes?.project_id;
     const episodeId = dialogueData.episode_id;
 
-    if (!accountId || !projectId) {
+    // The voice worker spends the target account's key and writes the line
+    // with the service role, so a reader must not queue it (KB-46, KB-47)
+    const target = await authorizeEpisodeTarget(client, episodeId);
+
+    if (!target?.projectId) {
+      logger.warn(
+        { ...ctx, userId: user.id, reason: 'not_writable' },
+        'Voice generation refused',
+      );
       return {
         success: false,
         status: 'failed',
-        error: 'Could not determine account for dialogue line',
+        error: 'Dialogue line not found',
       };
     }
+
+    const projectId = target.projectId;
 
     // Validate text is not empty
     const dialogueText = dialogueData.text?.trim();
@@ -555,11 +562,10 @@ export const generateDialogueVoiceAsyncAction = enhanceAction(
         '@kit/audio-generation/server/voice-queue-helper'
       );
 
-      await queueVoiceJob({
+      await queueVoiceJob(target, {
         dialogueLineId: data.dialogueLineId,
         batchJobId: null, // single-line generation, no batch tracking
         episodeId,
-        accountId,
         voiceId,
         ttsModel,
         voiceSettings: {
@@ -632,28 +638,20 @@ const generateVoiceFromText = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // 1. Fetch episode to get account context
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: episode, error: episodeError } = await (client as any)
-      .from('episodes')
-      .select('id, project_id, projects!inner(account_id)')
-      .eq('id', data.episodeId)
-      .single();
+    // 1. The episode, as one the caller can write to. A public or unlisted
+    // episode is readable by every signed-in user; reading it must not spend
+    // its owner's key (KB-46)
+    const target = await authorizeEpisodeTarget(client, data.episodeId);
 
-    if (episodeError || !episode) {
-      logger.error({ ...ctx, error: episodeError }, 'Episode not found');
+    if (!target?.projectId) {
+      logger.warn(
+        { ...ctx, userId: user.id, reason: 'not_writable' },
+        'Voice preview refused',
+      );
       throw new ActionRefusal('Episode not found');
     }
 
-    // Type-safe access to nested response data
-    const episodeData = episode as EpisodeResponse;
-    const accountId = episodeData.projects?.account_id;
-    const projectId = episodeData.project_id;
-
-    if (!accountId) {
-      logger.error(ctx, 'Could not determine account for episode');
-      throw new Error('Could not determine account for episode');
-    }
+    const { accountId, projectId } = target;
 
     // 2. Get API key from stored external_api_keys
     const apiKey = await getAccountElevenLabsApiKey(accountId);

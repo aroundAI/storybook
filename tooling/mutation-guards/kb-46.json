@@ -1,0 +1,115 @@
+{
+  "feature": "KB-46",
+  "mutations": [
+    {
+      "name": "V1 voice preview authorised by a readable episode",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/voice-actions.ts",
+      "find": "const target = await authorizeEpisodeTarget(client, data.episodeId);",
+      "replace": "const target = await authorizeEpisodeTarget({ from: client.from.bind(client), rpc: async () => ({ data: true, error: null }) }, data.episodeId);",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/voice-authorization.test.ts",
+      "pattern": "before reading its key"
+    },
+    {
+      "name": "V2 one-line voice (sync) authorised by a readable line",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/voice-actions.ts",
+      "find": "a project viewer can read it (KB-46)\n    const target = await authorizeEpisodeTarget(client, episodeId);",
+      "replace": "a project viewer can read it (KB-46)\n    const target = await authorizeEpisodeTarget({ from: client.from.bind(client), rpc: async () => ({ data: true, error: null }) }, episodeId);",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/voice-authorization.test.ts",
+      "pattern": "before its key or status"
+    },
+    {
+      "name": "V3 one-line voice (queue) authorised by a readable line",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/voice-actions.ts",
+      "find": "a reader must not queue it (KB-46, KB-47)\n    const target = await authorizeEpisodeTarget(client, episodeId);",
+      "replace": "a reader must not queue it (KB-46, KB-47)\n    const target = await authorizeEpisodeTarget({ from: client.from.bind(client), rpc: async () => ({ data: true, error: null }) }, episodeId);",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/voice-authorization.test.ts",
+      "pattern": "readable line the caller cannot write to, and queues nothing"
+    },
+    {
+      "name": "V4 batch voice authorised by a readable episode",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/batch-actions.ts",
+      "find": "const target = await authorizeEpisodeTarget(client, data.episodeId);",
+      "replace": "const target = await authorizeEpisodeTarget({ from: client.from.bind(client), rpc: async () => ({ data: true, error: null }) }, data.episodeId);",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/voice-authorization.test.ts",
+      "pattern": "readable episode the caller cannot write to, and queues nothing"
+    },
+    {
+      "name": "V5 batch retry authorised by a readable job",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/batch-actions.ts",
+      "find": "authorizeEpisodeTarget(client, jobData.episode_id)",
+      "replace": "authorizeEpisodeTarget({ from: client.from.bind(client), rpc: async () => ({ data: true, error: null }) }, jobData.episode_id)",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/voice-authorization.test.ts",
+      "pattern": "batch on an episode"
+    },
+    {
+      "name": "V6 a voice job may name an episode other than its target's",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/voice-queue-helper.ts",
+      "find": "if (!target.episodeId || job.episodeId !== target.episodeId) {",
+      "replace": "if (false) {",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/voice-authorization.test.ts",
+      "pattern": "voiceMessageForTarget"
+    },
+    {
+      "name": "V7 a voice job billed to an account other than its target's",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/voice-queue-helper.ts",
+      "find": "return { ...job, accountId: target.accountId };",
+      "replace": "return { ...job, accountId: job.userId };",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/voice-authorization.test.ts",
+      "pattern": "billed to its account"
+    },
+    {
+      "name": "P1 timeline SFX spends the key of a readable project",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/sfx-actions.ts",
+      "find": "if (!(await authorizeProjectTarget(client, data.projectId))) {",
+      "replace": "if (!(await authorizeProjectTarget({ from: client.from.bind(client), rpc: async () => ({ data: true, error: null }) }, data.projectId))) {",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/audio-spend-authorization.test.ts",
+      "pattern": "timeline SFX"
+    },
+    {
+      "name": "P2 timeline music spends the key of a readable project",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/elevenlabs-music-actions.ts",
+      "find": "if (!(await authorizeProjectTarget(client, data.projectId))) {",
+      "replace": "if (!(await authorizeProjectTarget({ from: client.from.bind(client), rpc: async () => ({ data: true, error: null }) }, data.projectId))) {",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/audio-spend-authorization.test.ts",
+      "pattern": "timeline music"
+    },
+    {
+      "name": "P3 library music spends the key of a readable project",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/audio-asset-actions.ts",
+      "find": "'Starting music generation');\n\n    // Spending the project's key needs write access: a teammate who can only\n    // read the project can read the key row too (KB-46)\n    if (!(await authorizeProjectTarget(client, data.projectId))) {",
+      "replace": "'Starting music generation');\n\n    // Spending the project's key needs write access: a teammate who can only\n    // read the project can read the key row too (KB-46)\n    if (!(await authorizeProjectTarget({ from: client.from.bind(client), rpc: async () => ({ data: true, error: null }) }, data.projectId))) {",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/audio-spend-authorization.test.ts",
+      "pattern": "generateMusicAssetAction"
+    },
+    {
+      "name": "P4 library SFX spends the key of a readable project",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/audio-asset-actions.ts",
+      "find": "'Starting SFX generation');\n\n    // Spending the project's key needs write access: a teammate who can only\n    // read the project can read the key row too (KB-46)\n    if (!(await authorizeProjectTarget(client, data.projectId))) {",
+      "replace": "'Starting SFX generation');\n\n    // Spending the project's key needs write access: a teammate who can only\n    // read the project can read the key row too (KB-46)\n    if (!(await authorizeProjectTarget({ from: client.from.bind(client), rpc: async () => ({ data: true, error: null }) }, data.projectId))) {",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/audio-spend-authorization.test.ts",
+      "pattern": "generateSfxAssetAction"
+    }
+  ]
+}
