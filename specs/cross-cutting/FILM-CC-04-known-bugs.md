@@ -2685,7 +2685,9 @@ target, as KB-31 did; give the queue a typed target like `queueLlmJob`'s and
 ## KB-48 — `audio_cues` and `episode_facts` policies leave out personal-account owners
 
 **Severity:** Medium — a personal account's owner cannot use their own data.
-**Found:** KB-31 (2026-09-23). **Open.**
+Raised to **High** by R7 below, a cross-tenant read. **Found:** KB-31
+(2026-09-23). **Fixed** in #344 — see *Fixed (#344)* at the end of this
+entry.
 
 - `episode_facts` — **reproduced**: the policies test `accounts_memberships`
   only, and a personal account's owner has no membership row, so A's own
@@ -2701,6 +2703,92 @@ target, as KB-31 did; give the queue a typed target like `queueLlmJob`'s and
 **Proposed fix:** use the owner-or-role rule the other studio tables use
 (`primary_owner_user_id = auth.uid()` for personal accounts, or
 `has_account_access`), with a pgTAP case per table for a personal owner.
+
+### Reproduced (local database, 2026-09-24, in a rolled-back transaction)
+
+As `authenticated`, via `makerkit.authenticate_as`. P owns a personal
+account and created its project, so `project_members` holds P as `owner`.
+
+| # | Who | Statement | Result |
+|---|---|---|---|
+| R1 | P | `select` own `episodes`, `verified_facts` | rows returned (control) |
+| R2 | P | `select` own `audio_cues` | **0 rows** (1 seeded) |
+| R3 | P | `select` own `audio_assets` | **0 rows** (1 seeded) |
+| R4–R6 | P | `insert` into `episode_facts`, `audio_cues`, `audio_assets` on own project | **42501** each |
+| R7 | T, a team project owner | link **another tenant's** fact — which T cannot `select` — to T's episode | **accepted** |
+| R8 | T | the same link again, `on conflict … do update` (what `.upsert()` sends) | **42501 (USING expression)** — no UPDATE policy |
+| R9 | T | `select audio_cues` on an episode with `season_id is null` | **0 rows** |
+
+Three defects the entry did not name:
+
+- **R7 — a cross-tenant read.** The INSERT check tested the *episode's*
+  account and never the fact's project; `fact_id` met only its foreign key.
+  The LLM worker reads `episode_facts → verified_facts` on the service role
+  (`apps/web/lambda/llm-worker/utils/context-builder.ts:318`, `:434`), so
+  another tenant's claim, citation and category went into this user's
+  generated story. It needs the fact's UUID, which is not guessable but is
+  not a secret either.
+- **R8.** `linkFactsToEpisodeAction` and `createEpisode` both `.upsert()`
+  links, and `episode_facts` has no UPDATE policy, so any batch holding one
+  already-linked fact was refused whole — for every user. The Facts tab made
+  it likely: it never listed linked facts (FILM-1142), so the link dialog
+  offered them again.
+- **R9.** `audio_cues` found the project through `episodes → seasons`, and
+  `episodes.season_id` is nullable: a cue on an episode with no season was
+  hidden from everyone but the service role.
+
+And one KB-18 leftover: `policy-shape.test.sql` still allowlisted
+`verified_facts` (and `audio_cues`) for a missing `TO` clause "until KB-18
+lands"; KB-18 merged without removing it.
+
+### Fixed (#344)
+
+- **The rules.** `20260924075347_kb48-studio-owner-access.sql` gives all four
+  tables their siblings' rules: read with `has_account_access` on the
+  project's account (the personal owner, or a role on the account — as
+  `episodes_read` and `shots_read`), write with `can_write_project` (owner,
+  admin or member — KB-28's rule, the owner's decision for KB-27). Delete
+  keeps its parity with insert, as before.
+- **What it newly refuses:** writes by a project viewer, or by an account
+  member who is not on the project — the KB-27 rule applied to four more
+  tables.
+- **R7:** a link needs the fact and the episode in the same project. The
+  migration counts pre-existing cross-project links in a `raise notice` and
+  deletes none (lead's decision). A freshly seeded local database has none;
+  production's count is unknown here.
+- **R8:** both callers send `ignoreDuplicates: true` (`on conflict do
+  nothing`), which needs no UPDATE policy. A refused link or an unlink that
+  removed nothing comes back as a sentence (KB-6), not "Failed to link facts".
+- **R9:** `audio_cues` reaches the project through `episodes.project_id`.
+- Every policy on the four tables and on `verified_facts` names `TO
+  authenticated`; the `policy-shape.test.sql` allowlist is empty.
+
+The personal owner's path is proven at the database, which is where the
+defect was. It cannot be driven in the UI: the studio pages load their
+workspace by team slug (`loadTeamWorkspace(account)`) and a personal account
+has none (0 of the 5 personal accounts in the local seed have a slug), so the
+E2E drives the same panel as a team owner. **Lead, not filed:** if personal
+owners are meant to use the studio, that routing is the larger gap.
+
+**Sibling sweep (lead, not reproduced per table).** `pg_policies` after this
+migration still lists 57 policies on 25 tables whose predicate tests
+`accounts_memberships` or `has_role_on_account` with no personal-owner or
+`project_members` branch — among them the canon tables (`character_states`,
+`state_deltas`, `narrative_threads`, `world_states`, `episode_summaries`,
+`act_context_bridges`, `sequel_parent_contexts`), `shorts`,
+`short_publications`, `lip_sync_jobs`, `fact_extraction_jobs`,
+`batch_generation_jobs`, `episode_publishing_configs`,
+`project_publishing_configs`, `scheduled_reports` and `social_posts`. Some are
+Makerkit's own and correct as they are (`*_read_self` on billing); the rest
+likely repeat KB-48 for personal owners, which matters only once personal
+owners can reach the studio.
+
+### Acceptance criteria
+
+- [x] pgTAP, red first, per table for a personal owner: `studio-owner-access.test.sql` — plus team member, viewer, off-project account member and stranger on every verb, R7, R8 and R9
+- [x] The same-project rule for fact links (R7), red first
+- [x] A re-link is a no-op (R8), in pgTAP and in the actions' unit test
+- [x] `policy-shape.test.sql` has no allowlist
 
 ---
 
@@ -3173,7 +3261,8 @@ store every upload in Supabase Storage and log nothing.
 
 **Severity:** Medium — a factual season is outlined without the facts it is
 supposed to distribute across episodes, silently. **Found:** FILM-1110,
-2026-09-23; recorded by FILM-1111. **Open.**
+2026-09-23; recorded by FILM-1111. **Fixed** in #344 — see *Fixed
+(#344)* at the end of this entry.
 
 `apps/web/lambda/llm-worker/handlers/season-outline.ts:125` decides whether to
 load `verified_facts` from `projects.metadata.contentType`
@@ -3203,10 +3292,40 @@ Read the type with `resolveProjectType(projectMetadata)` and test
 `getContentTypeConfig(type).requiresFacts`; then retire or map
 `canon.contentType` (FILM-1143 owns the season dialog's use of it).
 
+### Fixed (#344)
+
+Reproduced again before the fix by the handler test
+(`apps/web/lambda/llm-worker/__tests__/season-outline-facts.test.ts`): 6 of 9
+red — a documentary, educational or news project received no facts, and a
+project carrying only the dead `metadata.contentType` did.
+
+The same forty lines had three more defects, fixed with it:
+
+1. facts of **every** status were loaded — `disputed` and `retracted` too —
+   under the heading "VERIFIED FACTS … Every fact MUST appear";
+2. claims went to the model without `sanitizeForPrompt`, which every other
+   fact path uses (FILM-1111, KB-72);
+3. `limit(100)` with no order, so which 100 was arbitrary and the cut silent.
+
+- **The handler** decides with
+  `getContentTypeConfig(resolveProjectType(metadata).projectType).requiresFacts`
+  — documentary, educational and **news** (news is new: its config already
+  required facts). It passes only `verified` facts (owner decision,
+  2026-09-24), ordered by `created_at, id`, sanitised, and logs how many it
+  loaded out of how many exist.
+- **One field.** `metadata.projectType` is authoritative. Nothing reads
+  `metadata.contentType` any more. `canon.contentType` is gone from
+  `CanonSettings` and from both settings actions' schemas, so no save writes
+  it; the Canon form's "Content Type" select is replaced by the project's
+  type, read-only (owner decision Q1 = A). The worker's episode context
+  (`context-builder.ts`) now reads the type through `resolveProjectType` too.
+- **The season dialog** has a fourth, local `contentType` that is never set;
+  that is FILM-1143's to fix, now against a field the worker reads.
+
 ### Acceptance criteria
 
-- [ ] A documentary project's season outline receives its verified facts (test on the handler's fact branch)
-- [ ] One content-type field is authoritative; the other two are removed or derived from it
+- [x] A documentary project's season outline receives its verified facts (test on the handler's fact branch) — `season-outline-facts.test.ts`, red first; the bundled handler loads and reads `verified_facts` in plain Node (`canon-bundle.test.ts`)
+- [x] One content-type field is authoritative; the other two are removed or derived from it — `metadata.contentType` unread, `canon.contentType` unwritten, Canon form shows `projectType` (`apps/e2e/tests/canon/canon-content-type.spec.ts`)
 
 ---
 
@@ -3953,6 +4072,8 @@ no slug — for all five callbacks. YouTube and Meta had built it inline, with
 | KB-25, KB-45 | Disconnecting X asked X for nothing (and the unwired code would have revoked only the two-hour token, not the 180-day one); LinkedIn, which offers apps no revoke, was described as "not yet"; and a refused or unreachable revoke looked like success to the creator | #343 |
 | KB-86 | X and LinkedIn had no card on the Platforms page, so their connections could be neither made nor disconnected there | #343 |
 | KB-87 | A successful TikTok, X or LinkedIn connect redirected to a relative URL, which Next refuses, and landed on the failure page | #343 |
+| KB-48 | Personal-account owners could not use their own fact links, audio cues, shot transitions or audio assets; any writer could link another tenant's fact into their episode, which the worker then read into the story (R7); a re-link was refused (R8); cues on season-less episodes were hidden (R9) | #344 |
+| KB-71 | Season outlines never loaded a documentary's facts (a field nothing wrote), and would have loaded disputed and retracted ones, unsanitised; `canon.contentType` was a second, dead content-type field | #344 |
 
 ---
 
