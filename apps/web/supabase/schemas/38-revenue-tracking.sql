@@ -61,18 +61,23 @@ comment on column public.revenue_records.breakdown is 'JSONB with detailed reven
 
 -- Uniqueness includes category: YouTube writes separate ads and premium
 -- rows for the same publish and day
--- One row per scope, date, category and source. A synced figure and a
+-- One row per scope, date, category, source and currency. A synced figure and a
 -- hand-entered one are different money: they coexist and sum, and neither
 -- can overwrite the other. Adding `source` is what removed the sync's
 -- skip-guard, the action's synced-refusal, and a manual `other` entry
 -- blocking a publish's platform revenue for good.
+--
+-- Currency joined the key in KB-23 (20260924074209): two currencies are
+-- separate money (KB-12), so a €50 and a $100 sponsorship on one day both
+-- stand. `nulls not distinct` keeps two currency-less rows a duplicate.
 create unique index if not exists idx_revenue_records_unique_scope
   on public.revenue_records (
     coalesce(publish_id, account_id),
     record_date,
     category,
-    source
-  );
+    source,
+    currency
+  ) nulls not distinct;
 
 -- Indexes for revenue queries
 create index if not exists idx_revenue_records_publish_date on public.revenue_records(publish_id, record_date desc);
