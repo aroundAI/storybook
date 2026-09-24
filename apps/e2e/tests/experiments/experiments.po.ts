@@ -92,6 +92,63 @@ export class ExperimentsPageObject {
     await this.field('experiment-submit').click();
   }
 
+  /** Links a tag in the create or edit form (KB-7 / FILM-1610). */
+  async linkTag(tagId: string, scope = this.form()) {
+    await scope
+      .locator('[data-test="experiment-tags"] [data-test="tag-picker-trigger"]')
+      .click();
+    await this.page.locator(`[data-test="tag-picker-option-${tagId}"]`).click();
+    await this.page.keyboard.press('Escape');
+  }
+
+  /** Opens a change's dialog from the list. */
+  async open(experimentId: string) {
+    await this.page
+      .locator(`[data-test="experiment-row-${experimentId}"]:visible`)
+      .click();
+    await expect(this.dialogButton('experiment-edit')).toBeVisible();
+  }
+
+  dialogButton(testId: string) {
+    return this.page.locator(`[role="dialog"] [data-test="${testId}"]`);
+  }
+
+  /** The edit form inside the change dialog. */
+  editForm() {
+    return this.page.locator('[data-test="experiment-edit-form"]');
+  }
+
+  editField(testId: string) {
+    return this.editForm().locator(`[data-test="${testId}"]`);
+  }
+
+  async edit(experimentId: string) {
+    await this.open(experimentId);
+    await this.dialogButton('experiment-edit').click();
+    await expect(this.editForm()).toBeVisible();
+  }
+
+  async saveEdit() {
+    await this.editField('experiment-edit-save').click();
+    await expect(this.page.getByText('Change saved')).toBeVisible();
+    // The dialog returns to the change's detail once the save lands.
+    await expect(this.dialogButton('experiment-edit')).toBeVisible();
+  }
+
+  async closeDialog() {
+    await this.page.keyboard.press('Escape');
+    await expect(this.page.locator('[role="dialog"]')).toHaveCount(0);
+  }
+
+  /** The browser's own calendar day, which the page records dates in. */
+  localToday() {
+    return this.page.evaluate(() => {
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    });
+  }
+
   /** Waits for the save to land: the form resets its title when it does. */
   async submitAndWaitForReset() {
     await this.submit();

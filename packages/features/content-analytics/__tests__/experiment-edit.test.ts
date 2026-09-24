@@ -7,7 +7,9 @@ import {
 } from '../src/lib/experiment-edit';
 
 /** A stored change as getExperimentAction returns it. */
-function stored(overrides: Partial<EditableExperiment> = {}): EditableExperiment {
+function stored(
+  overrides: Partial<EditableExperiment> = {},
+): EditableExperiment {
   return {
     id: 'e1',
     account_id: 'a1',
@@ -23,10 +25,21 @@ function stored(overrides: Partial<EditableExperiment> = {}): EditableExperiment
     connection_id: 'c1',
     status: 'planned',
     publishes: [
-      { publish_id: 'p1', publishes: { title: 'One', platform: 'youtube', published_at: null } },
-      { publish_id: 'p2', publishes: { title: 'Two', platform: 'youtube', published_at: null } },
+      {
+        publish_id: 'p1',
+        publishes: { title: 'One', platform: 'youtube', published_at: null },
+      },
+      {
+        publish_id: 'p2',
+        publishes: { title: 'Two', platform: 'youtube', published_at: null },
+      },
     ],
-    tags: [{ tag_id: 't1', content_tags: { dimension: 'topic', slug: 'x', label: 'X' } }],
+    tags: [
+      {
+        tag_id: 't1',
+        content_tags: { dimension: 'topic', slug: 'x', label: 'X' },
+      },
+    ],
     ...overrides,
   };
 }
@@ -52,7 +65,10 @@ describe('toFormValues', () => {
 
   it('shows a stored value the form no longer offers as none, so it cannot block a save', () => {
     const values = toFormValues(
-      stored({ category: 'retired-category', metric_watched: 'retired_metric' }),
+      stored({
+        category: 'retired-category',
+        metric_watched: 'retired_metric',
+      }),
     );
 
     expect(values.category).toBeUndefined();
@@ -65,7 +81,10 @@ describe('toUpdatePayload', () => {
     const initial = toFormValues(stored());
 
     expect(
-      toUpdatePayload('e1', 'planned', initial, { ...initial, title: 'Faces, round two' }),
+      toUpdatePayload('e1', 'planned', initial, {
+        ...initial,
+        title: 'Faces, round two',
+      }),
     ).toEqual({ experimentId: 'e1', title: 'Faces, round two' });
   });
 

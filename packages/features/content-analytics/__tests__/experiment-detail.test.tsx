@@ -205,7 +205,10 @@ describe('ExperimentDetail — coverage (C2, C3)', () => {
 
 describe('ExperimentDetail — the baseline measured twice (KB-8, owner decision)', () => {
   const partial = (value: number, days: number): WatchedValue => ({
-    ...(measured('ctr', value) as Extract<WatchedValue, { status: 'measured' }>),
+    ...(measured('ctr', value) as Extract<
+      WatchedValue,
+      { status: 'measured' }
+    >),
     window: { start: '2026-05-02', end: '2026-06-30' },
     daysWithData: days,
     windowDays: 60,
@@ -274,7 +277,9 @@ describe('ExperimentDetail — the baseline measured twice (KB-8, owner decision
     );
 
     expect(
-      document.querySelector('[data-test="experiment-watched-baseline-remeasured"]'),
+      document.querySelector(
+        '[data-test="experiment-watched-baseline-remeasured"]',
+      ),
     ).toBeNull();
   });
 });
@@ -285,8 +290,18 @@ describe('ExperimentDetail — tags (FILM-1509 remaining, now FILM-1610)', () =>
       <ExperimentDetail
         experiment={experiment({
           tags: [
-            { tag_id: 't1', content_tags: { dimension: 'topic', slug: 'a', label: 'Cooking' } },
-            { tag_id: 't2', content_tags: { dimension: 'format', slug: 'b', label: 'Tutorial' } },
+            {
+              tag_id: 't1',
+              content_tags: { dimension: 'topic', slug: 'a', label: 'Cooking' },
+            },
+            {
+              tag_id: 't2',
+              content_tags: {
+                dimension: 'format',
+                slug: 'b',
+                label: 'Tutorial',
+              },
+            },
           ],
         })}
       />,

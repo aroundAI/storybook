@@ -34,12 +34,12 @@ import {
 } from '../lib/schemas/experiment.schema';
 import {
   type DateWindow,
+  WATCHED_METRICS,
   type WatchedValue,
   baselineWindow,
   daysBetween,
   isWatchedMetricKey,
   resultWindow,
-  WATCHED_METRICS,
 } from '../lib/watched-metrics';
 import { resolveWatchedMetric } from './watched-metric-snapshot';
 import { withRefusals } from './with-refusals';
@@ -560,7 +560,11 @@ export const concludeExperimentAction = withRefusals(
       // step — so the start's baseline is never rewritten. The owner decided
       // (2026-09-24) that the page shows both and compares against neither.
       const metric = context.metric_watched;
-      if (metric && isWatchedMetricKey(metric) && WATCHED_METRICS[metric].windowed) {
+      if (
+        metric &&
+        isWatchedMetricKey(metric) &&
+        WATCHED_METRICS[metric].windowed
+      ) {
         result.baselineRemeasured = await resolveWatchedMetric({
           metric,
           accountId: context.account_id,

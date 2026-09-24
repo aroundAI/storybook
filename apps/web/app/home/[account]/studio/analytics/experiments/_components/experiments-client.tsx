@@ -148,8 +148,7 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
 
   const listQuery = useQuery({
     queryKey: ['experiments', accountId, statusFilter ?? ALL],
-    queryFn: () =>
-      listExperimentsAction({ accountId, status: statusFilter }),
+    queryFn: () => listExperimentsAction({ accountId, status: statusFilter }),
   });
 
   const tagsQuery = useQuery({
@@ -238,6 +237,10 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
         error instanceof Error ? error.message : 'The action did not complete';
       toast.error(message);
       setAction({ pending: false, error: message });
+      // A refusal usually means the change moved on elsewhere (started in
+      // another tab, say). Read it again, so the dialog shows where it is
+      // now instead of offering moves for the state it left.
+      void Promise.all([refresh(), detailQuery.refetch()]);
       return false;
     } finally {
       inFlight.current = false;
@@ -302,7 +305,9 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
             <Select
               value={statusFilter ?? ALL}
               onValueChange={(next) =>
-                setStatusFilter(next === ALL ? undefined : (next as ExperimentStatus))
+                setStatusFilter(
+                  next === ALL ? undefined : (next as ExperimentStatus),
+                )
               }
             >
               <SelectTrigger
@@ -313,7 +318,10 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL} data-test={'experiment-status-option-all'}>
+                <SelectItem
+                  value={ALL}
+                  data-test={'experiment-status-option-all'}
+                >
                   All
                 </SelectItem>
                 {ExperimentStatusSchema.options.map((status) => (

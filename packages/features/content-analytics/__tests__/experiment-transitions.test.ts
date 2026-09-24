@@ -155,7 +155,14 @@ describe('the page and the action share one rule per move (KB-7)', () => {
       for (const field of frozen) {
         expect(() => assertEditable(status, [field])).toThrow(field);
       }
-      for (const field of ['title', 'changeDescription', 'category', 'notes', 'connectionId', 'tagIds']) {
+      for (const field of [
+        'title',
+        'changeDescription',
+        'category',
+        'notes',
+        'connectionId',
+        'tagIds',
+      ]) {
         expect(frozen).not.toContain(field);
         expect(() => assertEditable(status, [field])).not.toThrow();
       }
