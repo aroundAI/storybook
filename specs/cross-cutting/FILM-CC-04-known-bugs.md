@@ -3513,6 +3513,7 @@ Spec `evidence` and `reason` citations name a `path:line`, and nothing checks th
 ---
 
 ## KB-83 — Voice spend is never counted against the monthly budget
+## KB-85 — `anon` holds read and write grants on 72 public tables
 
 **Severity:** Medium: the budget cap cannot stop spending it never sees.
 **Found:** KB-46 (2026-09-24); **reproduced** against the local DB: every role,
@@ -3632,6 +3633,9 @@ confirmation dialog; or remove the menu item until it exists.
 from `information_schema.role_table_grants`. **Open.**
 After KB-44, `anon` still holds SELECT, INSERT, UPDATE and DELETE on 74 of
 the 86 public tables: Supabase's default grants, never revoked. Two layers
+
+After KB-44, `anon` still holds SELECT, INSERT, UPDATE and DELETE on 72 of
+the 86 public tables (counted after this migration, 2026-09-24): Supabase's default grants, never revoked. Two layers
 stop them, and both are easy to lose:
 - the schema-level `USAGE` revoke (`20221215192558_schema.sql:27`). Probed
   2026-09-24: `GET /rest/v1/platform_connections` with the anon key returns
