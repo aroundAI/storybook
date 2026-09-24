@@ -55,6 +55,13 @@ export interface SignedUploadRequest {
   contentLength: number;
   /** URL expiration in seconds (default: 3600) */
   expiresIn?: number;
+  /**
+   * Whether the upload may replace an existing object at the key (KB-53:
+   * avatars live at one fixed key per account). On Supabase an upload URL
+   * refuses an existing key unless this is set; an R2/B2 PUT always
+   * replaces, so they ignore it.
+   */
+  upsert?: boolean;
 }
 
 /**

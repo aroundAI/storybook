@@ -62,8 +62,10 @@ vi.mock('@kit/supabase/server-client', () => {
       from: () => readable,
       storage: {
         from: (bucket: string) => ({
-          createSignedUploadUrl: (path: string) =>
-            mockCreateSignedUploadUrl(bucket, path),
+          createSignedUploadUrl: (path: string, options?: unknown) =>
+            options === undefined
+              ? mockCreateSignedUploadUrl(bucket, path)
+              : mockCreateSignedUploadUrl(bucket, path, options),
           getPublicUrl: (path: string) => ({
             data: { publicUrl: `https://storage.test/${bucket}/${path}` },
           }),
@@ -292,7 +294,7 @@ describe('POST /api/storage/presign — R2 provider', () => {
   it('refuses an unlisted bucket before the R2 signer is reached', async () => {
     asWriter(true);
 
-    const res = await presign({ ...coverUpload, bucket: 'account_image' });
+    const res = await presign({ ...coverUpload, bucket: 'reports' });
 
     expect(res.status).toBe(400);
     expect(signR2).not.toHaveBeenCalled();
@@ -412,3 +414,184 @@ describe('POST /api/storage/presign — R2 provider', () => {
     },
   );
 });
+
+/**
+ * KB-39: the intro dialog built `projects/<P>/intros/…`, which the path rule
+ * refuses, so no intro ever uploaded. It now builds a path under `assets/`,
+ * which the unchanged project-assets rule accepts.
+ *
+ * KB-53: avatars go to `account_image/<accountId>.<ext>` — the name the
+ * bucket's policy keys on. The route admits exactly that shape, only image
+ * types, and only for an account the caller may manage, asked through the
+ * same SQL rule the policy uses. Overwriting is allowed on this bucket only.
+ */
+describe.each(['supabase', 'r2'])(
+  'POST /api/storage/presign — intros and avatars (%s)',
+  (provider) => {
+    const ACCOUNT = '11111111-5300-4000-8000-000000000009';
+    const avatar = {
+      bucket: 'account_image',
+      path: `${ACCOUNT}.png`,
+      contentType: 'image/png',
+      size: 204_800,
+    };
+    let signR2: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      if (provider === 'r2') {
+        process.env.STORAGE_PROVIDER = 'r2';
+        process.env.R2_ACCOUNT_ID = 'test-account';
+        process.env.R2_ACCESS_KEY_ID = 'test-key';
+        process.env.R2_SECRET_ACCESS_KEY = 'test-secret';
+        process.env.R2_BUCKET_NAME = 'test-bucket';
+        process.env.R2_PUBLIC_URL = 'https://r2.test';
+      } else {
+        delete process.env.STORAGE_PROVIDER;
+      }
+
+      signR2 = vi
+        .spyOn(R2StorageAdapter.prototype, 'getSignedUploadUrl')
+        .mockImplementation(async (_bucket, _path, request) => ({
+          uploadUrl: 'https://r2.test/signed',
+          publicUrl: 'https://r2.test/public',
+          expiresIn: 900,
+          headers: { 'Content-Type': request.contentType },
+        }));
+    });
+
+    const signer = () =>
+      provider === 'r2' ? signR2 : mockCreateSignedUploadUrl;
+
+    it('signs the intro path the dialog builds, for a project writer', async () => {
+      asWriter(true);
+      const path = `projects/${PROJECT}/assets/intros/en-1790000000000.mp4`;
+
+      const res = await presign({
+        bucket: 'project-assets',
+        path,
+        contentType: 'video/mp4',
+        size: 2_000_000,
+      });
+
+      expect(res.status).toBe(200);
+      expect(mockRpc).toHaveBeenCalledWith('can_write_project_storage', {
+        path,
+      });
+    });
+
+    it('still refuses the intro path the dialog used to build', async () => {
+      asWriter(true);
+
+      const res = await presign({
+        bucket: 'project-assets',
+        path: `projects/${PROJECT}/intros/en-1790000000000.mp4`,
+        contentType: 'video/mp4',
+        size: 2_000_000,
+      });
+
+      expect(res.status).toBe(400);
+      expect(signer()).not.toHaveBeenCalled();
+    });
+
+    it('signs an avatar for an account the caller may manage, asking the account rule', async () => {
+      asWriter(true);
+
+      const res = await presign(avatar);
+
+      expect(res.status).toBe(200);
+      expect(mockRpc).toHaveBeenCalledWith('can_write_account_image', {
+        path: avatar.path,
+      });
+      expect(mockRpc).not.toHaveBeenCalledWith(
+        'can_write_project_storage',
+        expect.anything(),
+      );
+
+      if (provider === 'r2') {
+        expect(signR2).toHaveBeenCalledWith('account_image', avatar.path, {
+          contentType: 'image/png',
+          contentLength: avatar.size,
+          expiresIn: 900,
+          upsert: true,
+        });
+      } else {
+        expect(mockCreateSignedUploadUrl).toHaveBeenCalledWith(
+          'account_image',
+          avatar.path,
+          { upsert: true },
+        );
+      }
+    });
+
+    it('never asks to overwrite on project-assets', async () => {
+      asWriter(true);
+
+      await presign(coverUpload);
+
+      if (provider === 'r2') {
+        expect(signR2.mock.calls[0]![2]).not.toHaveProperty('upsert');
+      } else {
+        expect(mockCreateSignedUploadUrl).toHaveBeenCalledWith(
+          'project-assets',
+          coverUpload.path,
+        );
+      }
+    });
+
+    it('refuses an avatar for an account the caller may not manage', async () => {
+      asWriter(false);
+
+      const res = await presign(avatar);
+
+      expect(res.status).toBe(403);
+      expect(signer()).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['the old avatar path', `${ACCOUNT}/avatar-1790000000000.png`],
+      ['a project path', coverUpload.path],
+      ['a folder', `${ACCOUNT}/${ACCOUNT}.png`],
+      ['a non-uuid name', 'me.png'],
+    ])('refuses %s in account_image', async (_label, path) => {
+      asWriter(true);
+
+      const res = await presign({ ...avatar, path });
+
+      expect(res.status).toBe(400);
+      expect(signer()).not.toHaveBeenCalled();
+    });
+
+    it('refuses an avatar-shaped path in project-assets', async () => {
+      asWriter(true);
+
+      const res = await presign({ ...avatar, bucket: 'project-assets' });
+
+      expect(res.status).toBe(400);
+      expect(signer()).not.toHaveBeenCalled();
+    });
+
+    it.each(['video/mp4', 'audio/mpeg', 'text/html', 'image/svg+xml'])(
+      'refuses %s as an avatar',
+      async (contentType) => {
+        asWriter(true);
+
+        const res = await presign({ ...avatar, contentType });
+
+        expect(res.status).toBe(400);
+        expect(signer()).not.toHaveBeenCalled();
+      },
+    );
+
+    it('caps an avatar at the image limit', async () => {
+      asWriter(true);
+
+      const res = await presign({
+        ...avatar,
+        size: UPLOAD_CONSTRAINTS.image.maxSize + 1,
+      });
+
+      expect(res.status).toBe(400);
+      expect(signer()).not.toHaveBeenCalled();
+    });
+  },
+);

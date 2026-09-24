@@ -10,6 +10,7 @@ export {
   uploadWithPresignedUrl,
   uploadAvatar,
   uploadProjectCover,
+  UploadRefusal,
 } from './client/presigned-upload';
 export type {
   PresignRequest,

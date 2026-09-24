@@ -37,6 +37,8 @@ select results_eq(
        ('public.bulk_reset_episodes_to_stage'),
        -- predicate about the caller
        ('public.can_edit_project'),
+       -- the file name's account is the caller, or has_permission settings.manage on it (KB-53)
+       ('public.can_write_account_image'),
        -- predicate about the caller: the project-write rule (KB-28)
        ('public.can_write_project'),
        -- can_write_project of the path's project (KB-28)

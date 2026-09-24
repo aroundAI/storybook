@@ -43,6 +43,11 @@ import {
   unpublishAction,
 } from '@kit/publishing/server';
 import { Button } from '@kit/ui/button';
+import {
+  PROJECT_ASSETS_BUCKET,
+  episodeThumbnailPath,
+  fileExtension,
+} from '@kit/storage/upload-paths';
 import { useLlmJob, useLlmWebSocket } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 
@@ -273,13 +278,10 @@ export function PublishScreen({
 
     try {
       // Upload to R2 via presigned URL
-      const ext = file.name.split('.').pop() || 'jpg';
-      const timestamp = Date.now();
-      const path = `episodes/${episode.id}/thumbnails/${lang}-${timestamp}.${ext}`;
       const uploadResult = await uploadWithPresignedUrl(
         file,
-        'project-assets',
-        path,
+        PROJECT_ASSETS_BUCKET,
+        episodeThumbnailPath(episode.id, lang, fileExtension(file.name, 'jpg')),
       );
 
       // Save to episode_thumbnails table

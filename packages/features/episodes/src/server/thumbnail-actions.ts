@@ -6,7 +6,11 @@ import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
-import { getStorageAdapter } from '@kit/storage';
+import {
+  type StorageAdapter,
+  deleteOwnedObject,
+  getStorageAdapter,
+} from '@kit/storage';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -124,6 +128,35 @@ async function canEditEpisode(episodeId: string): Promise<boolean> {
   );
 }
 
+/**
+ * Best-effort delete of a thumbnail's stored file. Only a file inside this
+ * episode's folder: the URL came from the client, and on R2 the delete runs
+ * with the app's own credentials (KB-54).
+ */
+async function removeThumbnailFile(
+  storage: StorageAdapter,
+  thumbnailUrl: string,
+  episodeId: string,
+  ctx: Record<string, unknown>,
+) {
+  const logger = await getLogger();
+  const result = await deleteOwnedObject(
+    storage,
+    'project-assets',
+    thumbnailUrl,
+    `episodes/${episodeId}/`,
+  );
+
+  if (result.deleted) {
+    logger.info({ ...ctx, key: result.key }, 'Deleted thumbnail from storage');
+  } else {
+    logger.warn(
+      { ...ctx, thumbnailUrl, reason: result.reason, error: result.error },
+      'Thumbnail left in storage',
+    );
+  }
+}
+
 // ============================================================================
 // Upload Episode Thumbnail Action
 // ============================================================================
@@ -172,25 +205,6 @@ export const uploadEpisodeThumbnailAction = enhanceAction(
         .eq('language', data.language)
         .single();
 
-      // If replacing, delete old file from storage
-      if (
-        existingThumbnail?.thumbnail_url &&
-        existingThumbnail.thumbnail_url !== data.thumbnailUrl
-      ) {
-        try {
-          const storage = getStorageAdapter(client);
-          const urlPath = new URL(existingThumbnail.thumbnail_url).pathname;
-          const storagePath = urlPath.split('/').slice(-2).join('/');
-          await storage.delete('project-assets', storagePath);
-          logger.info(ctx, 'Deleted old thumbnail from storage');
-        } catch (deleteError) {
-          logger.warn(
-            { ...ctx, error: deleteError },
-            'Failed to delete old thumbnail',
-          );
-        }
-      }
-
       // If setting this as default, unset other defaults first
       if (data.isDefault) {
         await client
@@ -233,6 +247,19 @@ export const uploadEpisodeThumbnailAction = enhanceAction(
 
       if (!thumbnail) {
         throw new Error('Failed to save thumbnail: no data returned');
+      }
+
+      // Only once the row points at the new file (KB-54)
+      if (
+        existingThumbnail?.thumbnail_url &&
+        existingThumbnail.thumbnail_url !== data.thumbnailUrl
+      ) {
+        await removeThumbnailFile(
+          getStorageAdapter(client),
+          existingThumbnail.thumbnail_url,
+          data.episodeId,
+          ctx,
+        );
       }
 
       logger.info(ctx, 'Episode thumbnail uploaded successfully');
@@ -312,20 +339,13 @@ export const deleteEpisodeThumbnailAction = enhanceAction(
         throw new Error('Thumbnail not found');
       }
 
-      // Delete from storage
       if (thumbnail.thumbnail_url) {
-        try {
-          const storage = getStorageAdapter(client);
-          const urlPath = new URL(thumbnail.thumbnail_url).pathname;
-          const storagePath = urlPath.split('/').slice(-2).join('/');
-          await storage.delete('project-assets', storagePath);
-          logger.info(ctx, 'Deleted thumbnail from storage');
-        } catch (deleteError) {
-          logger.warn(
-            { ...ctx, error: deleteError },
-            'Failed to delete thumbnail from storage',
-          );
-        }
+        await removeThumbnailFile(
+          getStorageAdapter(client),
+          thumbnail.thumbnail_url,
+          data.episodeId,
+          ctx,
+        );
       }
 
       // Delete from database

@@ -29,6 +29,11 @@ import {
 } from '@kit/ui/dialog';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
+import { UploadRefusal } from '@kit/storage/client';
+import {
+  PROJECT_ASSETS_BUCKET,
+  projectIntroPath,
+} from '@kit/storage/upload-paths';
 import { toast } from '@kit/ui/sonner';
 
 import { uploadWithPresignedUrl } from '~/lib/presigned-upload';
@@ -118,7 +123,7 @@ export function ProjectIntroSettings({ projectId }: ProjectIntroSettingsProps) {
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="outline" data-test="intro-add">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Language
               </Button>
@@ -216,7 +221,11 @@ function IntroCard({
   };
 
   return (
-    <div className="flex items-center gap-4 rounded-lg border p-4">
+    <div
+      className="flex items-center gap-4 rounded-lg border p-4"
+      data-test="intro-card"
+      data-language={intro.language}
+    >
       {/* Preview Thumbnail */}
       <div className="relative h-20 w-32 flex-shrink-0 overflow-hidden rounded bg-muted">
         {intro.thumbnailUrl ? (
@@ -263,7 +272,7 @@ function IntroCard({
           onOpenChange={setIsReplaceDialogOpen}
         >
           <DialogTrigger asChild>
-            <Button size="sm" variant="outline">
+            <Button size="sm" variant="outline" data-test="intro-replace">
               <Upload className="mr-2 h-4 w-4" />
               Replace
             </Button>
@@ -285,6 +294,8 @@ function IntroCard({
           variant="ghost"
           onClick={handleDelete}
           disabled={isDeleting}
+          data-test="intro-delete"
+          aria-label={`Delete ${intro.languageLabel || intro.language} intro`}
           className="text-destructive hover:text-destructive"
         >
           {isDeleting ? (
@@ -380,14 +391,11 @@ function AddIntroDialog({
 
       setUploadProgress(20);
 
-      // 2. Upload file to R2 via presigned URL
-      const timestamp = Date.now();
-      const storagePath = `projects/${projectId}/intros/${language.toLowerCase()}-${timestamp}.mp4`;
-
+      // 2. Upload the file straight to storage via a presigned URL
       const uploadResult = await uploadWithPresignedUrl(
         selectedFile,
-        'project-assets',
-        storagePath,
+        PROJECT_ASSETS_BUCKET,
+        projectIntroPath(projectId, language, selectedFile.type),
       );
 
       setUploadProgress(70);
@@ -418,7 +426,11 @@ function AddIntroDialog({
       }
     } catch (error) {
       console.error('Upload failed:', error);
-      toast.error('Failed to upload intro video');
+      toast.error(
+        error instanceof UploadRefusal
+          ? error.message
+          : 'Failed to upload intro video',
+      );
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
@@ -445,6 +457,7 @@ function AddIntroDialog({
             <Label htmlFor="language">Language Code</Label>
             <Input
               id="language"
+              data-test="intro-language"
               placeholder="e.g., en, hi, es, it"
               value={language}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -478,6 +491,7 @@ function AddIntroDialog({
             <div className="flex items-center gap-2">
               <Input
                 id="video"
+                data-test="intro-file"
                 type="file"
                 accept="video/*"
                 onChange={handleFileChange}
@@ -522,6 +536,7 @@ function AddIntroDialog({
           </Button>
           <Button
             type="submit"
+            data-test="intro-submit"
             disabled={isUploading || !selectedFile || !language}
           >
             {isUploading ? (
