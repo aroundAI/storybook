@@ -4,7 +4,7 @@ phase: 11
 phase_name: "Canon Integration & Content Types"
 category: feature
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-24"
 effort: M
 dependencies: []
 summary: >
@@ -17,7 +17,7 @@ acceptance_criteria:
     evidence: null
   - text: "RLS policies protect project-level access"
     met: false
-    reason: "unverified — policies exist (`apps/web/supabase/migrations/20260211100000_create_verified_facts.sql:104`); no pgTAP test asserts cross-project isolation"
+    reason: "partly — tenant isolation is now asserted (a stranger reads no fact of another tenant, `apps/web/supabase/tests/database/studio-owner-access.test.sql:278`; writes and reviews in `verified-facts-review.test.sql`), and every policy names `TO authenticated` (KB-48, `apps/web/supabase/migrations/20260924075347_kb48-studio-owner-access.sql:234`). But reads are account-scoped, not project-scoped: an account member reads the facts of every project in the account (`studio-owner-access.test.sql`, 'setup: the project member can read a fact of another project in the account')"
   - text: "TypeScript types exported from @kit/episodes"
     met: true
     evidence: null
@@ -34,6 +34,14 @@ acceptance_criteria:
     met: true
     evidence: null
 remaining:
+  - criterion: "RLS policies protect project-level access"
+    reason: >
+      Tenant isolation is asserted in pgTAP (KB-48, #344). Reads are scoped
+      to the account, as they are for episodes and shots, so a member of the
+      account who is not on a project still reads its facts. Whether facts
+      should be project-private is a product decision, not a defect: the
+      criterion's wording and the sibling tables disagree
+    closed_by: "owner"
   - criterion: "Full-text search index works for claim matching"
     reason: >
       The index is on `to_tsvector('english', claim || ' ' ||

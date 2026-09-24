@@ -494,7 +494,7 @@ Retired 2026-09-23 (FILM-607). The only open work is FILM-608, dropping the kept
 | FILM-1111 | [Content Type Configs](./phase-11-canon-integration/content-types/FILM-1111-content-type-configs.yaml) | ✅ DONE | M | #176, #325 | FILM-1110 |
 | FILM-1112 | [Act Context Bridge](./phase-11-canon-integration/content-types/FILM-1112-act-context-bridge.yaml) | 🟡 PARTIAL | L | #177 | FILM-1110 |
 | FILM-1113 | [Sequel System](./phase-11-canon-integration/content-types/FILM-1113-sequel-system.yaml) | 🟡 PARTIAL | M | #177 | FILM-1110 |
-| FILM-1120 | [Verified Facts Table](./phase-11-canon-integration/fact-management/FILM-1120-verified-facts-table.yaml) | 🟡 PARTIAL | M | #178 | - |
+| FILM-1120 | [Verified Facts Table](./phase-11-canon-integration/fact-management/FILM-1120-verified-facts-table.yaml) | 🟡 PARTIAL | M | #178, #344 | - |
 | FILM-1121 | [Fact Management UI](./phase-11-canon-integration/fact-management/FILM-1121-fact-management-ui.yaml) | 🟡 PARTIAL | L | #185 | FILM-1120 |
 | FILM-1122 | [Researcher Role Prompt](./phase-11-canon-integration/fact-management/FILM-1122-researcher-role.yaml) | 🟡 PARTIAL | M | #178 | FILM-304 |
 | FILM-1123 | [Fact-Checker Role Prompt](./phase-11-canon-integration/fact-management/FILM-1123-fact-checker-role.yaml) | 🟡 PARTIAL | M | #178 | FILM-304 |
@@ -506,7 +506,7 @@ Retired 2026-09-23 (FILM-607). The only open work is FILM-608, dropping the kept
 | FILM-1135 | [External Context Provider](./phase-11-canon-integration/providers/FILM-1135-external-context-provider.yaml) | 🟡 PARTIAL | L | #181 | - |
 | FILM-1140 | [Research Hub UI](./phase-11-canon-integration/ui-integration/FILM-1140-research-hub-ui.yaml) | 🟡 PARTIAL | L | — | FILM-1120 |
 | FILM-1141 | [Fact Source Upload](./phase-11-canon-integration/ui-integration/FILM-1141-fact-source-upload.yaml) | 🟡 PARTIAL | M | — | FILM-1140 |
-| FILM-1142 | [Canon Dashboard Facts Tab](./phase-11-canon-integration/ui-integration/FILM-1142-canon-dashboard-facts.yaml) | 🟡 PARTIAL | M | — | FILM-1140 |
+| FILM-1142 | [Canon Dashboard Facts Tab](./phase-11-canon-integration/ui-integration/FILM-1142-canon-dashboard-facts.yaml) | 🟡 PARTIAL | M | #344 | FILM-1140 |
 | FILM-1143 | [Generate Season Integration](./phase-11-canon-integration/ui-integration/FILM-1143-generate-season-integration.yaml) | 🟡 PARTIAL | M | — | FILM-1120, FILM-1122 |
 
 ### Phase 12: Scale & Network Strategy (2 specs)
