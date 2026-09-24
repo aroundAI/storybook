@@ -4,7 +4,7 @@ phase: 8
 phase_name: "Analytics"
 category: component
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-24"
 effort: L
 dependencies:
   - spec_id: "FILM-805"
@@ -42,8 +42,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "Manual revenue entries can be created and edited"
-    met: false
-    reason: "no longer true — an entry in a second currency for the same day, scope and category replaces the first: KB-23"
+    met: true
+    evidence: "`apps/e2e/tests/revenue/revenue-currency.spec.ts:199` — a € and a $ entry on one day both kept after a reload, and a same-currency save replaces (KB-23, #345)"
   - text: "Revenue summary displays total, daily average, and RPM"
     met: true
     evidence: null
@@ -55,7 +55,7 @@ acceptance_criteria:
     evidence: null
   - text: "Monthly/yearly projections are calculated with confidence levels"
     met: true
-    evidence: null
+    evidence: "`packages/features/content-analytics/src/server/revenue-actions.ts:484` — the window ends on the caller's date (KB-24, #345); `apps/e2e/tests/revenue/revenue-currency.spec.ts:279`"
   - text: "Revenue reports can be generated and exported"
     met: false
     reason: "no longer true — `generateRevenueReportAction` stores a `revenue_reports` row, writes no file, and nothing calls it (since e84ba285) — `packages/features/content-analytics/src/server/revenue-actions.ts:611`"
@@ -107,11 +107,14 @@ test_plan:
     - text: "Test RLS policies"
       met: true
       evidence: "`apps/web/supabase/tests/database/revenue-records-rls.test.sql:8` (`revenue_records` only)"
-  e2e: []
+  e2e:
+    - text: "Two currencies on one day, scope and category both persist; the second submission and a reload are asserted"
+      met: true
+      evidence: "`apps/e2e/tests/revenue/revenue-currency.spec.ts:199`"
+    - text: "An entry saved today appears in the projection east of UTC"
+      met: true
+      evidence: "`apps/e2e/tests/revenue/revenue-currency.spec.ts:279`"
 remaining:
-  - criterion: "Manual revenue entries can be created and edited"
-    reason: "Currency is not in `revenue_records`' unique key or the action's lookup, so a second currency on the same day, scope and category silently replaces the first"
-    closed_by: "KB-23"
   - criterion: "Revenue reports can be generated and exported"
     reason: "`generateRevenueReportAction` (`revenue-actions.ts:611`) inserts a `revenue_reports` summary row with a `file_format` label but produces no file, and no UI calls it. The general Export Reports (FILM-809) takes revenue from ClickHouse `revenue_cents`, which every writer sets to `0` (KB-16, *Remaining*)"
     closed_by: "unassigned"

@@ -46,7 +46,11 @@ import {
   parseAmountToCents,
   parseLocalDate,
 } from '../lib/manual-revenue';
-import { MANUAL_ENTRY_CATEGORIES } from '../lib/revenue-mix';
+import { currencySymbol } from '../lib/money';
+import {
+  MANUAL_ENTRY_CATEGORIES,
+  REVENUE_CATEGORY_LABEL,
+} from '../lib/revenue-mix';
 import { AddManualRevenueSchema } from '../lib/schemas/revenue.schema';
 import { addManualRevenueAction } from '../server/revenue-actions';
 // Type-only, so nothing server-side is pulled into the client bundle. The
@@ -80,13 +84,13 @@ const REFUSAL_MESSAGE: Record<
   string
 > = {
   not_yours:
-    'An entry already exists for this date and category, and only the person who added it, or an account owner, can change it. Ask one of them, or use a different category.',
+    'An entry already exists for this date, category and currency, and only the person who added it, or an account owner, can change it. Ask one of them, or use a different category.',
   project_role:
-    'An entry already exists for this date and category, and only someone with access to this video’s project can change it.',
+    'An entry already exists for this date, category and currency, and only someone with access to this video’s project can change it.',
   no_access:
     'You do not have access to record revenue here. Ask an account owner, or someone on this video’s project.',
   conflict:
-    'Someone just saved an entry for this date and category. Your figure was not recorded — check with them before entering it again.',
+    'Someone just saved an entry for this date, category and currency. Your figure was not recorded — check with them before entering it again.',
 };
 
 export function ManualRevenueForm({
@@ -107,6 +111,12 @@ export function ManualRevenueForm({
   });
 
   const isSubmitting = form.formState.isSubmitting;
+
+  // The amount field names the currency it is in. It said "Amount (USD)",
+  // with a `$`, whatever was selected — so a euro entry was typed beside a
+  // dollar sign.
+  const selectedCurrency = form.watch('currency') || 'USD';
+  const symbol = currencySymbol(selectedCurrency);
 
   async function onSubmit(data: z.infer<typeof AddManualRevenueSchema>) {
     try {
@@ -132,7 +142,13 @@ export function ManualRevenueForm({
         return;
       }
 
-      toast.success('Revenue entry added successfully');
+      // A correction says so (KB-23): "added" over a replaced figure reads
+      // as two entries where there is one.
+      toast.success(
+        result.replaced
+          ? `Revenue entry updated — this replaced the earlier ${result.record.currency} ${(REVENUE_CATEGORY_LABEL[data.category] ?? data.category).toLowerCase()} figure for ${data.date}`
+          : 'Revenue entry added successfully',
+      );
       form.reset(manualRevenueDefaults(accountId));
       setAmountText('');
       onSuccess?.();
@@ -310,11 +326,14 @@ export function ManualRevenueForm({
                 name="revenueCents"
                 render={() => (
                   <FormItem>
-                    <FormLabel>Amount (USD)</FormLabel>
+                    <FormLabel>Amount ({selectedCurrency})</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <span className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">
-                          $
+                        <span
+                          className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+                          data-test="revenue-amount-symbol"
+                        >
+                          {symbol}
                         </span>
                         {/*
                           text + inputMode, not type="number": a number
@@ -328,14 +347,16 @@ export function ManualRevenueForm({
                           type="text"
                           inputMode="decimal"
                           placeholder="0.00"
-                          className="pl-7"
+                          className={symbol.length > 1 ? 'pl-11' : 'pl-7'}
                           data-test="revenue-amount-input"
                           value={amountText}
                           onChange={(e) => handleAmountChange(e.target.value)}
                         />
                       </div>
                     </FormControl>
-                    <FormDescription>Revenue amount in dollars</FormDescription>
+                    <FormDescription>
+                      Revenue amount in {selectedCurrency}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -393,9 +414,10 @@ export function ManualRevenueForm({
                   </Select>
                   <FormDescription>
                     Tracked so the revenue mix — ads falling as a share of the
-                    total — stays measurable. One entry per date and category:
-                    saving again for the same pair <strong>replaces</strong> the
-                    earlier amount rather than adding to it.
+                    total — stays measurable. One entry per date, category and
+                    currency: saving again for the same three{' '}
+                    <strong>replaces</strong> the earlier amount rather than
+                    adding to it. A different currency is kept beside it.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { assertCallerToday } from '../src/lib/caller-date';
+import {
+  addCalendarDays,
+  assertCallerToday,
+  callerTodayOr,
+} from '../src/lib/caller-date';
 
 /**
  * FILM-1610 review 4, G6: the dates an experiment is started and ended on
@@ -43,5 +47,27 @@ describe('assertCallerToday', () => {
     expect(() => assertCallerToday('2026-13-01', NOW)).toThrow(
       'not a calendar date',
     );
+  });
+});
+
+describe('callerTodayOr (KB-24)', () => {
+  it("takes the caller's date when it could be today somewhere", () => {
+    expect(callerTodayOr('2026-09-20', new Date('2026-09-19T23:00:00Z'))).toBe(
+      '2026-09-20',
+    );
+  });
+
+  it("falls back to the server's UTC date rather than refusing a read", () => {
+    expect(callerTodayOr('2026-09-25', NOW)).toBe('2026-09-19');
+    expect(callerTodayOr('2026-02-31', NOW)).toBe('2026-09-19');
+    expect(callerTodayOr(undefined, NOW)).toBe('2026-09-19');
+  });
+});
+
+describe('addCalendarDays', () => {
+  it('moves across month and year ends on the calendar', () => {
+    expect(addCalendarDays('2026-09-25', -30)).toBe('2026-08-26');
+    expect(addCalendarDays('2026-03-01', -1)).toBe('2026-02-28');
+    expect(addCalendarDays('2026-12-31', 1)).toBe('2027-01-01');
   });
 });

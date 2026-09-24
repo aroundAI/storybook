@@ -233,7 +233,7 @@ describe('createRevenueSeriesFold', () => {
 
 describe('createRevenueProjectionFold', () => {
   it('projects each currency from its own days of data', () => {
-    const fold = createRevenueProjectionFold(new Date('2026-09-05'));
+    const fold = createRevenueProjectionFold('2026-09-05');
 
     fold.add({
       record_date: '2026-09-10',

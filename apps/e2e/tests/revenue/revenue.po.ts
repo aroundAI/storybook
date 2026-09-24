@@ -1,4 +1,4 @@
-import { Page, expect } from '@playwright/test';
+import { Locator, Page, expect } from '@playwright/test';
 
 import { AuthPageObject } from '../authentication/auth.po';
 import { seedTeamAccount } from '../utils/seed';
@@ -105,6 +105,11 @@ export class RevenuePageObject {
     return this.page.locator('[data-test="revenue-date-trigger"]');
   }
 
+  /** The currency sign in front of the amount field. */
+  amountSymbol() {
+    return this.page.locator('[data-test="revenue-amount-symbol"]');
+  }
+
   submitButton() {
     return this.page.locator('[data-test="revenue-submit"]');
   }
@@ -115,13 +120,29 @@ export class RevenuePageObject {
 
   /** Radix renders options in a portal, so they are selected by role. */
   async chooseCategory(label: string) {
-    await this.categoryTrigger().click();
-    await this.page.getByRole('option', { name: label, exact: true }).click();
+    await this.chooseOption(this.categoryTrigger(), label);
   }
 
   async chooseCurrency(label: string) {
-    await this.currencyTrigger().click();
+    await this.chooseOption(this.currencyTrigger(), label);
+  }
+
+  /**
+   * Picks an option and returns only once the Select has *finished*
+   * closing — listbox gone, focus back on its trigger.
+   *
+   * Clicking the option starts the close; handing focus back is its last
+   * step, and it can land after the next interaction has begun. Measured
+   * after a reload under `page.clock.setFixedTime`: 179ms, against 16ms
+   * otherwise. A calendar opened inside that gap is dismissed by the focus
+   * change — its day cell reads "not stable", then "detached" — which is how
+   * the KB-23/24 evidence spec timed out on its third date pick.
+   */
+  private async chooseOption(trigger: Locator, label: string) {
+    await trigger.click();
     await this.page.getByRole('option', { name: label, exact: true }).click();
+    await expect(this.page.getByRole('listbox')).toBeHidden();
+    await expect(trigger).toBeFocused();
   }
 
   /**

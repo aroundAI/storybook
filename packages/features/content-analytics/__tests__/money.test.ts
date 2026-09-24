@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createCurrencyPartition,
+  currencySymbol,
   foldMoney,
   formatCurrencyAmount,
   formatMoney,
@@ -154,5 +155,21 @@ describe('AddManualRevenueSchema', () => {
     });
 
     expect(parsed.currency).toBe('EUR');
+  });
+});
+
+describe('currencySymbol', () => {
+  it('prints each form currency with the sign its amounts carry', () => {
+    expect(['USD', 'EUR', 'GBP', 'CAD', 'AUD'].map(currencySymbol)).toEqual([
+      '$',
+      '€',
+      '£',
+      'CA$',
+      'A$',
+    ]);
+  });
+
+  it('falls back to the code for one Intl does not accept', () => {
+    expect(currencySymbol('??')).toBe('??');
   });
 });

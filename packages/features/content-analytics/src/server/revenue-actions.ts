@@ -7,6 +7,7 @@ import { enhanceAction } from '@kit/next/actions';
 import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { addCalendarDays, callerTodayOr } from '../lib/caller-date';
 import {
   createRevenueProjectionFold,
   createRevenueSeriesFold,
@@ -154,7 +155,7 @@ export const getRevenueSummaryAction = enhanceAction(
  * as opposed to being blocked by an entry that already exists. Reached on a
  * date with no entry, where the other two cannot apply.
  *
- * `conflict` — an entry for this date and category appeared between this
+ * `conflict` — an entry for this date, category and currency appeared between this
  * call's lookup and its insert. Two members, or one person in two tabs
  * (`isSubmitting` only guards a single mount): both lookups miss, both
  * insert, and the loser hits `idx_revenue_records_unique_scope` with 23505.
@@ -166,7 +167,12 @@ export const getRevenueSummaryAction = enhanceAction(
  * platform figure occupies a different row and is never in the way.
  */
 export type AddManualRevenueResult =
-  | { ok: true; record: RevenueRecord }
+  /**
+   * `replaced`: an entry for this scope, date, category and currency already
+   * existed and now holds this figure. Said to the user, because "added"
+   * over a correction reads as two figures where there is one.
+   */
+  | { ok: true; replaced: boolean; record: RevenueRecord }
   | {
       ok: false;
       reason: 'project_role' | 'not_yours' | 'no_access' | 'conflict';
@@ -202,17 +208,27 @@ export const addManualRevenueAction = enhanceAction(
       platform = publish.platform;
     }
 
+    // One value for the lookup and the write, so the two cannot disagree
+    // about which currency this entry is in. The schema already upper-cases
+    // and defaults it; this is what gets stored.
+    const entryCurrency = currency || 'USD';
+
     // The unique index is on coalesce(publish_id, account_id) and cannot be
     // named as an onConflict target, so replace any existing row explicitly.
     // Scoped to the manual slot, because `source` is part of the unique key
     // now: a synced figure for this date and category lives in its own row
     // and is none of this action's business.
+    //
+    // And to this currency (KB-23). Currency is in the key too: a €50 and a
+    // $100 sponsorship on one day are two figures, and this lookup used to
+    // find the euro row and overwrite it with the dollars.
     const existingQuery = client
       .from('revenue_records')
       .select('id')
       .eq('record_date', date)
       .eq('category', category)
-      .eq('source', 'manual');
+      .eq('source', 'manual')
+      .eq('currency', entryCurrency);
 
     const { data: existing, error: existingError } = await (
       publishId
@@ -249,7 +265,7 @@ export const addManualRevenueAction = enhanceAction(
       platform,
       record_date: date,
       revenue_cents: revenueCents,
-      currency: currency || 'USD',
+      currency: entryCurrency,
       source: 'manual' as const,
       category,
       metadata: notes ? { notes } : {},
@@ -313,6 +329,7 @@ export const addManualRevenueAction = enhanceAction(
 
     return {
       ok: true,
+      replaced: Boolean(existing),
       record: {
         id: record.id,
         publishId: record.publish_id ?? '',
@@ -357,7 +374,7 @@ export type DeleteManualRevenueResult =
 export const deleteManualRevenueAction = enhanceAction(
   async function (data): Promise<DeleteManualRevenueResult> {
     const client = getSupabaseServerClient();
-    const { publishId, accountId, date, category } = data;
+    const { publishId, accountId, date, category, currency } = data;
 
     // What the caller can *see*. Reading is open to any member, so this
     // says whether there was anything to delete — which the delete itself
@@ -388,6 +405,13 @@ export const deleteManualRevenueAction = enhanceAction(
     if (category) {
       visible = visible.eq('category', category);
       query = query.eq('category', category);
+    }
+
+    // Two currencies can share a date and category since KB-23; without
+    // this, deleting one entry took the other with it.
+    if (currency) {
+      visible = visible.eq('currency', currency);
+      query = query.eq('currency', currency);
     }
 
     const { data: matched, error: matchError } = await visible;
@@ -449,23 +473,24 @@ export const deleteManualRevenueAction = enhanceAction(
 export const getRevenueProjectionAction = enhanceAction(
   async function (data): Promise<RevenueProjection[]> {
     const client = getSupabaseServerClient();
-    const { accountId } = data;
+    const { accountId, asOf } = data;
 
-    // Get last 30 days of revenue
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const fifteenDaysAgo = new Date();
-    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+    // The window ends on the caller's own date (KB-24). A manual entry is
+    // dated in the browser's calendar; ending at the server's UTC date left
+    // a just-saved entry out of the projection from local midnight until
+    // UTC's — 00:00 to 05:30 in India. Calendar arithmetic throughout: the
+    // trend split used to be "now minus 15 days" as an instant, so which
+    // half a day fell in depended on the hour the server ran.
+    const end = callerTodayOr(asOf);
 
     // One projection per currency (KB-12), streamed in a single pass.
-    const fold = createRevenueProjectionFold(fifteenDaysAgo);
+    const fold = createRevenueProjectionFold(addCalendarDays(end, -15));
 
     await forEachAccountRevenueRow(
       client,
       accountId,
-      thirtyDaysAgo.toISOString().split('T')[0]!,
-      new Date().toISOString().split('T')[0]!,
+      addCalendarDays(end, -30),
+      end,
       (row) => fold.add(row),
     );
 

@@ -188,3 +188,20 @@ export function formatMoney(
 export function currencyLabel(currency: string | null): string {
   return currency ?? 'Currency not recorded';
 }
+
+/**
+ * The sign a currency's amounts are printed with — `$`, `€`, `CA$` — by the
+ * same `Intl` rules `formatCurrencyAmount` uses, so the form's prefix and the
+ * dashboard's figures agree. The code itself for one `Intl` does not know.
+ */
+export function currencySymbol(currency: string): string {
+  try {
+    return (
+      new Intl.NumberFormat('en-US', { style: 'currency', currency })
+        .formatToParts(0)
+        .find((part) => part.type === 'currency')?.value ?? currency
+    );
+  } catch {
+    return currency;
+  }
+}
