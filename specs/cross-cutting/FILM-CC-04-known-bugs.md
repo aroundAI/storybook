@@ -1418,7 +1418,29 @@ is about.
 
 **Severity:** Medium — silent loss of a figure the creator typed, and it only
 became reachable in practice once revenue was made per-currency (KB-12, #293).
-**Found:** KB-12 fix (#293), 2026-09-22, noted as out of scope. **Open.**
+**Found:** KB-12 fix (#293), 2026-09-22, noted as out of scope. **Fixed —
+#345** (2026-09-24). Design: the KB-23/24 EDD, summarised in the PR.
+
+> **Reproduced before the fix (2026-09-24, local Supabase, rolled back):** a
+> EUR row and then a USD row on one scope, date, category and source — the
+> second insert failed `23505` on `idx_revenue_records_unique_scope`. Through
+> the action the €50 was not refused but overwritten, because the lookup
+> found it; the unit guard shows exactly that (`[{ currency: 'USD' }]` where
+> two rows were expected).
+>
+> **What changed.** Migration `20260924222142_kb23-revenue-currency-key.sql`
+> upper-cases stored codes (to `currencyKey`'s fold key) and rebuilds the index
+> as `(scope, record_date, category, source, currency) nulls not distinct`.
+> `addManualRevenueAction` looks up by currency too and returns `replaced`;
+> the form says "updated — this replaced the earlier EUR sponsorship figure"
+> for a correction, and its refusals and help text name currency.
+> **Same class, not in the original entry:** `deleteManualRevenueAction` had
+> no currency filter either, so once two currencies could coexist, deleting
+> one would have taken both; it now takes an optional `currency`
+> (`revenue-actions.ts:414`; nothing in the UI calls it today). **Adjacent,
+> approved into the same PR:** the amount field read "Amount (USD)", with a
+> fixed `$` and "in dollars", whatever currency was selected — it now follows
+> the selection (`manual-revenue-form.tsx:329`).
 
 `revenue_records` is unique on
 
@@ -1454,9 +1476,9 @@ form.** The reproduction is two saves and a reload.
 
 ### Acceptance criteria
 
-- [ ] Two manual entries differing only in currency coexist — pgTAP and E2E, red first
-- [ ] Same scope/date/category/**currency** still replaces, not duplicates
-- [ ] Types regenerated, not hand-edited; screenshots of the form after the second save
+- [x] Two manual entries differing only in currency coexist — pgTAP and E2E, red first — `apps/web/supabase/tests/database/revenue-records-currency-key.test.sql` (red: 2 of 6 failed, `23505` on the dollar insert); `apps/e2e/tests/revenue/revenue-currency.spec.ts:199` (€50 then $100, both after the second save and after a reload, and in the table); unit `revenue-manual-actions.test.ts:161`
+- [x] Same scope/date/category/**currency** still replaces, not duplicates — pgTAP case 3; E2E third submission (€60 replaces €50, "updated" toast, $100 untouched); unit `revenue-manual-actions.test.ts:176`
+- [x] Types regenerated, not hand-edited; screenshots of the form after the second save — `pnpm supabase:web:typegen` produced no diff (an index is not in the generated types); screenshots in the PR
 
 ---
 
@@ -1464,7 +1486,20 @@ form.** The reproduction is two saves and a reload.
 
 **Severity:** Low — a wrong-looking `0` for a few hours a day, east of UTC;
 nothing is stored wrongly. **Found:** KB-12 fix (#293), 2026-09-22; measured by
-that teammate at 03:30 IST. **Not re-run by the coordinator. Open.**
+that teammate at 03:30 IST. **Fixed — #345** (2026-09-24).
+
+> **Confirmed before the fix** by the two formulas the code used, at 03:30 IST
+> (22:00 UTC): the form dates an entry `2026-09-25`, the projection window
+> ended `2026-09-24`. **What changed:** the dashboard sends `asOf:
+> localToday()` (and keys the query on it); `getRevenueProjectionAction`
+> takes it through `callerTodayOr` (`lib/caller-date.ts:41`) — FILM-1610's
+> ±1-day rule, falling back to the server's UTC date for a read rather than
+> refusing — and builds the window with calendar arithmetic
+> (`revenue-actions.ts:484`). **Also found:** the trend's first/second-half
+> split was "now minus 15 days" as an *instant*, so which half a day fell in
+> depended on the hour the server ran — at 01:00 UTC a two-day series read
+> −50 where it is +50. It is now a date comparison
+> (`revenue-manual-actions.test.ts:250`, red first).
 
 `getRevenueProjectionAction`'s window ends at the **server's UTC today**; a
 manual revenue entry is dated the **browser's local today**. Between local
@@ -1486,8 +1521,21 @@ window alone.
 
 ### Acceptance criteria
 
-- [ ] With the browser clock set east of UTC and the server at UTC just before midnight, an entry saved "today" appears in the projection — Playwright with a fixed clock, red first
-- [ ] Every server-side "today" used as an analytics window boundary is listed, each fixed or justified
+- [x] With the browser clock set east of UTC and the server at UTC just before midnight, an entry saved "today" appears in the projection — Playwright with a fixed clock, red first — `apps/e2e/tests/revenue/revenue-currency.spec.ts:279`. Playwright cannot move the Next server's clock, so the equivalent condition is made from the browser: `Pacific/Kiritimati` (UTC+14) with the browser clock at or after 10:00 UTC, so the entry is dated the server's UTC date + 1 — asserted on the stored row, so the test cannot pass vacuously. Red before the fix: `€0`. The spec reloads before its entry. Local CI on #345 found a race in the page object that a reload under `page.clock.setFixedTime` exposes: the currency Select took ~179ms (vs ~16ms) to close and return focus, and a calendar opened in that gap was dismissed ("not stable", then "detached"). It is not a product or time-zone defect — it reproduced in UTC with a fixed clock and not east of UTC with a real one. `chooseOption` in `revenue.po.ts` now waits for the Select to finish closing; the reloading spec was red without that and green with it
+- [x] Every server-side "today" used as an analytics window boundary is listed, each fixed or justified — below
+
+| Site | Justification |
+|---|---|
+| `revenue-actions.ts` `getRevenueProjectionAction` | **Fixed** here |
+| `revenue-actions.ts` `getRevenueSummaryAction` previous period | Built from the caller's own `startDate`/`endDate`; no server clock |
+| `experiment-actions.ts` `today()` | Fallback only; every UI caller sends its local date (FILM-1610) |
+| `revenue-alerts.ts` `since`/`today` | Runs in the sync cron; no user, no user clock |
+| `analytics-sync-cron.ts` snapshot/`beforeDate`, `subscriber-snapshot.ts` | Server jobs stamping their own run date |
+| `account-dashboard-actions.ts` default `endDate`; `deep-dive-actions.ts` `to ?? new Date()`; `language-analytics.ts` default `endDate` | Windows over ClickHouse rows the sync dates with `formatDateStr` (`toISOString`, UTC) — the boundary and the data share one clock, and a later local end could only add a day no row has yet |
+| `report-actions.ts` `calculateDateRange` presets | Scheduled reports run server-side with no user present |
+| client `deep-dive/ypp-progress-card.tsx` UTC "today" | Not a server boundary; compared against a UTC-dated subscriber snapshot, the same clock |
+
+No site needed a new KB.
 
 ---
 
@@ -4164,6 +4212,8 @@ either way.
 | KB-48 | Personal-account owners could not use their own fact links, audio cues, shot transitions or audio assets; any writer could link another tenant's fact into their episode, which the worker then read into the story (R7); a re-link was refused (R8); cues on season-less episodes were hidden (R9) | #344 |
 | KB-71 | Season outlines never loaded a documentary's facts (a field nothing wrote), and would have loaded disputed and retracted ones, unsanitised; `canon.contentType` was a second, dead content-type field | #344 |
 | KB-50, KB-51 | YouTube engaged views were parsed, then dropped (and would have been erased by the hourly sync had only the report stored them); `youtube_report_jobs` had no RLS test, and `anon` held every privilege on it | #348 |
+| KB-23 | A second currency for the same day, scope and category overwrote the first; deleting one would have taken both | #345 |
+| KB-24 | The revenue projection ended at the server's UTC date while entries are dated in the browser's, so east of UTC a just-saved figure projected to 0; its trend split moved with the server's hour | #345 |
 
 ---
 
