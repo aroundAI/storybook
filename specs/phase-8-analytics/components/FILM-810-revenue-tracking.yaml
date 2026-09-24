@@ -43,7 +43,7 @@ acceptance_criteria:
     evidence: null
   - text: "Manual revenue entries can be created and edited"
     met: true
-    evidence: "`apps/e2e/tests/revenue/revenue-currency.spec.ts:199` — a € and a $ entry on one day both kept after a reload, and a same-currency save replaces (KB-23, #PR)"
+    evidence: "`apps/e2e/tests/revenue/revenue-currency.spec.ts:199` — a € and a $ entry on one day both kept after a reload, and a same-currency save replaces (KB-23, #345)"
   - text: "Revenue summary displays total, daily average, and RPM"
     met: true
     evidence: null
@@ -55,7 +55,7 @@ acceptance_criteria:
     evidence: null
   - text: "Monthly/yearly projections are calculated with confidence levels"
     met: true
-    evidence: "`packages/features/content-analytics/src/server/revenue-actions.ts:484` — the window ends on the caller's date (KB-24, #PR); `apps/e2e/tests/revenue/revenue-currency.spec.ts:279`"
+    evidence: "`packages/features/content-analytics/src/server/revenue-actions.ts:484` — the window ends on the caller's date (KB-24, #345); `apps/e2e/tests/revenue/revenue-currency.spec.ts:279`"
   - text: "Revenue reports can be generated and exported"
     met: false
     reason: "no longer true — `generateRevenueReportAction` stores a `revenue_reports` row, writes no file, and nothing calls it (since e84ba285) — `packages/features/content-analytics/src/server/revenue-actions.ts:611`"
