@@ -9,6 +9,9 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+/** Facts offered to one outline; the prompt asks for every one to be placed. */
+const MAX_OUTLINE_FACTS = 100;
+
 interface SeasonOutlinePayload {
   projectId: string;
   seasonId?: string;
@@ -121,20 +124,30 @@ export async function processSeasonOutline(
           .join('\n')
       : 'No locations defined yet.';
 
-  // Fetch verified facts for documentary/educational projects
-  const contentType = projectMetadata.contentType as string | undefined;
+  // KB-71: the type is `metadata.projectType`, read the one way every other
+  // reader does. Only `verified` facts go in (owner decision, 2026-09-24).
+  const { getContentTypeConfig, resolveProjectType, sanitizeForPrompt } =
+    await import('@kit/episodes/lib');
+  const { projectType } = resolveProjectType(project?.metadata);
   let verifiedFactsFormatted = '';
 
-  if (
-    contentType === 'documentary' ||
-    contentType === 'educational' ||
-    contentType === 'factual'
-  ) {
-    const { data: factsData, error: factsError } = await supabase
-      .from('verified_facts')
-      .select('id, claim, source_citation, category')
-      .eq('project_id', data.projectId)
-      .limit(100);
+  if (getContentTypeConfig(projectType).requiresFacts) {
+    const [{ data: factsData, error: factsError }, { count: verifiedCount }] =
+      await Promise.all([
+        supabase
+          .from('verified_facts')
+          .select('id, claim, source_citation, category')
+          .eq('project_id', data.projectId)
+          .eq('verification_status', 'verified')
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
+          .limit(MAX_OUTLINE_FACTS),
+        supabase
+          .from('verified_facts')
+          .select('id', { count: 'exact', head: true })
+          .eq('project_id', data.projectId)
+          .eq('verification_status', 'verified'),
+      ]);
 
     if (factsError) {
       console.error(
@@ -143,23 +156,30 @@ export async function processSeasonOutline(
       );
     }
 
-    if (factsData && factsData.length > 0) {
-      const factLines = factsData
+    const facts = factsData ?? [];
+
+    if (facts.length > 0) {
+      const factLines = facts
         .map((f) => {
           const source = f.source_citation
-            ? ` | Source: ${f.source_citation}`
+            ? ` | Source: ${sanitizeForPrompt(f.source_citation)}`
             : '';
-          const category = f.category ? ` | Category: ${f.category}` : '';
-          return `FACT [${f.id}]: ${f.claim}${source}${category}`;
+          const category = f.category
+            ? ` | Category: ${sanitizeForPrompt(f.category)}`
+            : '';
+          return `FACT [${f.id}]: ${sanitizeForPrompt(f.claim)}${source}${category}`;
         })
         .join('\n');
 
-      verifiedFactsFormatted = `## VERIFIED FACTS — assign each to an episode\n\n${factLines}\n\nTotal: ${factsData.length} facts. Every fact MUST appear in at least one episode's fact_ids array.`;
-
-      console.log(
-        `[Season Outline] Loaded ${factsData.length} verified facts for factual project`,
-      );
+      verifiedFactsFormatted = `## VERIFIED FACTS — assign each to an episode\n\n${factLines}\n\nTotal: ${facts.length} facts. Every fact MUST appear in at least one episode's fact_ids array.`;
     }
+
+    console.log(
+      `[Season Outline] projectType=${projectType} loaded=${facts.length} verified=${verifiedCount ?? 'unknown'}` +
+        ((verifiedCount ?? 0) > facts.length
+          ? ` (truncated to ${MAX_OUTLINE_FACTS})`
+          : ''),
+    );
   }
 
   // Run the Season Orchestrator

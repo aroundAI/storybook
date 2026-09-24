@@ -432,7 +432,6 @@ export interface CanonSettings {
   /** Absent on settings saved before FILM-1110. */
   memoryHorizonMode?: MemoryHorizonMode;
   enforcement: 'flexible' | 'strict';
-  contentType: 'series' | 'movie' | 'factual' | 'news';
 }
 
 export const DEFAULT_CANON_SETTINGS: CanonSettings = {
@@ -441,7 +440,6 @@ export const DEFAULT_CANON_SETTINGS: CanonSettings = {
   memoryHorizon: null,
   memoryHorizonMode: 'automatic',
   enforcement: 'flexible',
-  contentType: 'series',
 };
 
 // =============================================================================

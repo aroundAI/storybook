@@ -891,7 +891,6 @@ export const updateCanonSettingsAction = enhanceAction(
           .max(MAX_MEMORY_HORIZON)
           .optional(),
         enforcement: z.enum(['flexible', 'strict']).optional(),
-        contentType: z.enum(['series', 'movie', 'factual', 'news']).optional(),
       }),
     }),
   },

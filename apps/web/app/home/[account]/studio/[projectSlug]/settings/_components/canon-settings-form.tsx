@@ -63,7 +63,6 @@ const CanonSettingsSchema = z.object({
     .max(MAX_MEMORY_HORIZON)
     .nullable(),
   enforcement: z.enum(['flexible', 'strict']),
-  contentType: z.enum(['series', 'movie', 'factual', 'news']),
 });
 
 type CanonSettingsFormData = z.infer<typeof CanonSettingsSchema>;
@@ -93,7 +92,6 @@ export function CanonSettingsForm({
       roleSeparation: settings.roleSeparation,
       memoryHorizon: savedMemoryHorizonOverride(currentSettings) ?? null,
       enforcement: settings.enforcement,
-      contentType: settings.contentType,
     },
   });
 
@@ -174,43 +172,21 @@ export function CanonSettingsForm({
                   Advanced Configuration
                 </Label>
 
-                {/* Content Type */}
-                <FormField
-                  control={form.control}
-                  name="contentType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Content Type</FormLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select content type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="series">
-                            Series (Multi-episode)
-                          </SelectItem>
-                          <SelectItem value="movie">
-                            Movie (Single narrative)
-                          </SelectItem>
-                          <SelectItem value="factual">
-                            Factual / Documentary
-                          </SelectItem>
-                          <SelectItem value="news">
-                            News / Current Events
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Affects how strictly canon rules are applied
-                      </FormDescription>
-                    </FormItem>
-                  )}
-                />
+                {/* Content type: the project's, set when it was created (KB-71) */}
+                <div className="space-y-1">
+                  <Label>Content Type</Label>
+                  <p
+                    className="text-sm"
+                    data-test="canon-settings-project-type"
+                  >
+                    {PROJECT_TYPE_LABELS[projectType]}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    The project&apos;s type, chosen when it was created. It sets
+                    the automatic memory horizon and whether generation uses
+                    verified facts.
+                  </p>
+                </div>
 
                 {/* Enforcement Level */}
                 <FormField

@@ -21,7 +21,6 @@ const UpdateCanonSettingsSchema = z.object({
       .max(MAX_MEMORY_HORIZON)
       .nullable(),
     enforcement: z.enum(['flexible', 'strict']),
-    contentType: z.enum(['series', 'movie', 'factual', 'news']),
   }),
 });
 

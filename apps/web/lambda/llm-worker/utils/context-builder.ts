@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { z } from 'zod';
 
+import { resolveProjectType } from '@kit/episodes/lib';
 import type { ProjectType } from '@kit/film-studio-schemas/project';
 
 /** StoryData interface for episode story content */
@@ -381,7 +382,7 @@ export async function buildEpisodeContext(
     aestheticStyle: projectMetadata.projectAestheticStyle ?? undefined,
 
     // Genre-aware pipeline
-    projectType: projectMetadata.projectType,
+    projectType: resolveProjectType(episode.project?.metadata).projectType,
     verifiedFacts,
 
     // Recurring story elements (with backward compat for single element)
