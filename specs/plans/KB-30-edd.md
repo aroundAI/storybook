@@ -3,7 +3,7 @@
 - **Ticket:** KB-30 in `specs/cross-cutting/FILM-CC-04-known-bugs.md:1923`
 - **Branch:** `fix/kb-30-youtube-made-for-kids` (from `origin/main` @ `52ed2ade`)
 - **Teammate:** yt-kids (NN=07, dev server port 3107)
-- **Status:** Approved and built (#KB30PR).
+- **Status:** Approved and built (#341).
 - **Owner decisions (2026-09-24):** Q1 — per YouTube channel. Q2 — no default; the first publish to
   each channel asks for the audience **and** the category in one required dialog, nothing pre-selected.
   Members' access to `platform_connections` is moving to column-level grants (KB-43/44), so the two

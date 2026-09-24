@@ -74,7 +74,7 @@ retirement:
     schedules through `ScheduleReleasePanel` (`publish-screen.tsx:1431`) and takes one thumbnail per
     language (`video-card.tsx:88`). It has no per-platform settings, character counters or
     validation. Every YouTube upload used to go out as category 22, not made for kids, which
-    nobody had chosen (KB-30); since KB-30 (#KB30PR) each YouTube channel's audience and
+    nobody had chosen (KB-30); since KB-30 (#341) each YouTube channel's audience and
     category are the creator's declaration, asked for on the first publish to it
     (`publish/_components/use-youtube-audience-gate.tsx`) and changeable in Settings → Platforms.
     Kept as a record; not outstanding work.

@@ -1922,7 +1922,7 @@ active past its first hour.
 
 ## KB-30 — Every YouTube upload declares "not made for kids", with no way to change it
 
-> **Fixed (2026-09-24), #KB30PR.** Reproduced first: the lambda handler, run
+> **Fixed (2026-09-24), #341.** Reproduced first: the lambda handler, run
 > against a local stand-in for YouTube with empty metadata, sent
 > `"categoryId":"22"` and `"selfDeclaredMadeForKids":false`. It was bigger
 > than recorded — **four** upload sites defaulted, not two: the in-app cron
@@ -1941,7 +1941,7 @@ active past its first hour.
 requires each upload's audience to be declared (COPPA), and for a channel
 whose content is made for children a wrong declaration is the creator's
 liability. **Found:** the spec audit of FILM-710 (2026-09-23); confirmed by
-the coordinator by reading. **Fixed** in #KB30PR.
+the coordinator by reading. **Fixed** in #341.
 
 The live publish screen builds YouTube payloads with `platformSpecific: {}` —
 only Facebook gets a value (`{ isReel: true }`) —
@@ -3350,7 +3350,7 @@ the settings key list). Add a pgTAP test listing the columns a member may read.
 | KB-82 | KB-75 had no record, INDEX linked the spikes to files that no longer exist, and FILM-1728 said the lambdas were untyped | this batch-records PR (`docs/batch-records-2026-09-23`) |
 | KB-46 | A teammate who could only read a project spent its ElevenLabs key: voice, SFX and music generation authorised by a readable row, not `can_write_project`. The public-project stranger in the original entry was blocked, by accident | #337 |
 | KB-47 (part) | The voice queue: its three producers sent jobs the service-role worker ran on the named account's key; they now authorise, and the queue requires the target. The publish queue is still open | #337 |
-| KB-30 | Every YouTube upload declared "not made for kids" and category 22, which nobody chose, on all four upload paths; each channel's audience and category are now the creator's answer, asked for on the first publish | #KB30PR |
+| KB-30 | Every YouTube upload declared "not made for kids" and category 22, which nobody chose, on all four upload paths; each channel's audience and category are now the creator's answer, asked for on the first publish | #341 |
 
 ---
 
