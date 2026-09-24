@@ -2261,7 +2261,7 @@ upload and is refused a larger one or another type.
 
 **Severity:** High for the feature — no intro video could ever be uploaded,
 so episode intros did not exist. **Found:** KB-28 (2026-09-23).
-**Reproduced** 2026-09-24 on `main` 52ed2ade. **Fixed** in #PRNUM, with KB-53
+**Reproduced** 2026-09-24 on `main` 52ed2ade. **Fixed** in #340, with KB-53
 and KB-54. Plan: `specs/plans/KB-39-53-54-edd.md`.
 
 The intro dialog (`…/studio/settings/_components/project-intro-settings.tsx:385`)
@@ -2689,7 +2689,7 @@ through GoTrue, with no memberships in any account, and signed in for a JWT.
 
 **Severity:** Medium: no one could set a profile or team picture.
 **Found:** KB-28 (2026-09-23). **Reproduced** 2026-09-24 on `main` 52ed2ade.
-**Fixed** in #PRNUM.
+**Fixed** in #340.
 
 Three separate refusals, any one of them enough:
 
@@ -2740,7 +2740,7 @@ decision 2026-09-24), and the avatar error toast stays the generic one.
 **Severity:** Low as filed: files were orphaned, and a deleted intro stayed
 public at its old URL. It turned out larger: fixed as filed, it would have
 opened a cross-tenant delete (below). **Found:** KB-28 (2026-09-23).
-**Reproduced** 2026-09-24 on `main` 52ed2ade. **Fixed** in #PRNUM.
+**Reproduced** 2026-09-24 on `main` 52ed2ade. **Fixed** in #340.
 
 `intro-actions.ts:134,266` and `thumbnail-actions.ts:183,320` turned the
 stored URL into a key with `new URL(u).pathname.split('/').slice(-2)`. That
@@ -3487,7 +3487,7 @@ anything else as a value.
 | KB-46 | A teammate who could only read a project spent its ElevenLabs key: voice, SFX and music generation authorised by a readable row, not `can_write_project`. The public-project stranger in the original entry was blocked, by accident | #337 |
 | KB-47 (part) | The voice queue: its three producers sent jobs the service-role worker ran on the named account's key; they now authorise, and the queue requires the target. The publish queue is still open | #337 |
 | KB-30 | Every YouTube upload declared "not made for kids" and category 22, which nobody chose, on all four upload paths; each channel's audience and category are now the creator's answer, asked for on the first publish | #341 |
-| KB-39, KB-53, KB-54 | No intro video and no avatar could ever be uploaded (paths the presign route refuses; the avatar bucket was not signed and its policy raised on the file name); replaced intros and thumbnails left their old files, and fixing that naively would have let a writer delete another project's files | #PRNUM |
+| KB-39, KB-53, KB-54 | No intro video and no avatar could ever be uploaded (paths the presign route refuses; the avatar bucket was not signed and its policy raised on the file name); replaced intros and thumbnails left their old files, and fixing that naively would have let a writer delete another project's files | #340 |
 
 ---
 
