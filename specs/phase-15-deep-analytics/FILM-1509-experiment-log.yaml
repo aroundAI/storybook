@@ -17,7 +17,7 @@ acceptance_criteria:
   - text: "RLS: second account's user cannot read or modify"
   - text: "Experiments appear newest-first with filter by status"
 retirement:
-  commit: "4b79839b"
+  commit: "28fba0ca"
   date: "2026-09-24"
   what_happened: >
     **Retired 2026-09-24: folded into FILM-1610** (owner decision). FILM-1610
