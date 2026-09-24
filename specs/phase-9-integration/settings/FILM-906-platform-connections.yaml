@@ -3,8 +3,8 @@ title: "Platform Connections"
 phase: 9
 phase_name: "Integration"
 category: page
-status: PARTIAL
-audited: "2026-09-23"
+status: DONE
+audited: "2026-09-24"
 effort: M
 dependencies:
   - spec_id: "FILM-705"
@@ -25,9 +25,9 @@ page:
     - "TeamAccountLayoutPageHeader"
     - "PageBody"
 acceptance_criteria:
-  - text: "Lists all supported platforms (YouTube, TikTok, Instagram, Facebook)"
-    met: false
-    reason: "no longer true — X and LinkedIn (FILM-714/715) have connect routes but no card here, the only connect UI — `packages/features/publishing/src/components/platform-connections.tsx:90`"
+  - text: "Lists all supported platforms (YouTube, TikTok, Instagram, Facebook, X, LinkedIn)"
+    met: true
+    evidence: "`packages/features/publishing/src/components/platform-connections.tsx:105` — `PLATFORM_CARDS: Record<PlatformType, …>`, so a platform without a card does not compile (KB-86, #PR); X and LinkedIn cards, connect and disconnect driven in `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`"
   - text: "Shows connected accounts per platform"
     met: true
     evidence: null
@@ -105,10 +105,6 @@ test_plan:
     - text: "Dark mode styling works correctly"
       met: false
       reason: "unverified — visual; needs a dark-mode screenshot (the `dark:` classes are present)"
-remaining:
-  - criterion: "Lists all supported platforms"
-    reason: "`PLATFORMS` (`platform-connections.tsx:90-120`) has YouTube, TikTok, Instagram and Facebook. X and LinkedIn have had connect and callback routes since FILM-714/715 (`apps/web/app/api/platforms/connect/{twitter,linkedin}`), but nothing in the UI links to them, and an X or LinkedIn connection would not be shown here to disconnect. The social-posts screen tells a creator with no LinkedIn account to \"Connect one in Settings → Platforms\" (`social-post-detail.tsx:381`), which cannot be done"
-    closed_by: "unassigned"
 open_questions: []
 notes: |-
   ## Metadata
@@ -118,7 +114,7 @@ notes: |-
   - **Effort:** M (4-8 hours)
   - **Dependencies:** FILM-705-707 (OAuth flows)
   - **Blocks:** FILM-708 (Publish Hub)
-  - **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ COMPLETE)
+  - **Status:** ✅ DONE (2026-09-24: X and LinkedIn listed, KB-86; audit 2026-09-23 had it PARTIAL)
   - **PR:** [#74](https://github.com/aroundAI/storybook/pull/74)
   - **Commits:** `79201ef`, `d041997`
 
@@ -188,14 +184,19 @@ notes: |-
   ├── Transform: DB rows → PlatformConnection interface
   └── Output: PlatformConnection[]
 
-  disconnectPlatformAction
-  ├── Input: { connectionId, platform }
-  ├── Switch on platform:
-  │   ├── youtube → disconnectYouTubeAction (revokes at Google)
-  │   ├── tiktok → disconnectTikTokAction (revokes at TikTok)
-  │   ├── instagram/facebook → disconnectMetaAction (revokes at Meta)
-  │   └── twitter/linkedin → deleteConnection (DB delete only)
-  └── Output: { success: true }
+  disconnectPlatformAction  (KB-22, KB-25, KB-45)
+  ├── Input: { connectionId }  — the platform is the stored one, never the caller's
+  ├── Read: platform_connections (RLS) — platform, both encrypted tokens, disconnected_at
+  ├── revokeAtVendor → REVOKERS[platform]  (Record<PlatformType, Revoker>)
+  │   ├── youtube → Google /revoke
+  │   ├── tiktok → TikTok /v2/oauth/revoke/
+  │   ├── instagram/facebook → Meta DELETE /me/permissions
+  │   ├── twitter → X /2/oauth2/revoke, refresh token then access token
+  │   └── linkedin → none: LinkedIn offers apps no revoke (vendor_offers_none)
+  ├── RPC disconnect_platform_connection — tokens wiped, row kept
+  ├── Log oauth.disconnect — info if the revoke was confirmed, warn if not
+  └── Output: { disconnected, alreadyDisconnected, revoke: { status, confirmed } }
+      — unconfirmed → a warning toast that stays, linking to the platform's settings
 
   refreshConnectionAction
   ├── Input: { connectionId }

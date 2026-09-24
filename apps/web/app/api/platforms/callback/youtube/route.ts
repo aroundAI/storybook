@@ -14,7 +14,10 @@ import { vendorUrl } from '@kit/shared/vendors';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { accountIdFromUnverifiedState } from '~/lib/platforms/connect-failure';
-import { connectedLanding, platformsPageUrl } from '~/lib/platforms/connect-landing';
+import {
+  connectedLanding,
+  platformsPageUrl,
+} from '~/lib/platforms/connect-landing';
 import {
   CallbackFailure,
   catchConnectFailures,

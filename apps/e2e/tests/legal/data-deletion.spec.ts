@@ -61,9 +61,9 @@ test.describe('Data deletion instructions', () => {
     await expect(
       page.locator('[data-test="disconnect-linkedin"]'),
     ).toContainText('LinkedIn does not let apps revoke their own access');
-    await expect(page.locator('[data-test="data-deletion-page"]')).not.toContainText(
-      'do not yet',
-    );
+    await expect(
+      page.locator('[data-test="data-deletion-page"]'),
+    ).not.toContainText('do not yet');
   });
 
   test('the footer links to it, and the link resolves', async ({

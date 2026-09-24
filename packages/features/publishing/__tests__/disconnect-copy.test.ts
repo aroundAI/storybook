@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -46,12 +45,15 @@ describe('disconnectCopyFor (KB-25)', () => {
     );
   });
 
-  it.each(platforms)('%s: every sentence it picks exists in English', (platform) => {
-    const copy = disconnectCopyFor(platform);
+  it.each(platforms)(
+    '%s: every sentence it picks exists in English',
+    (platform) => {
+      const copy = disconnectCopyFor(platform);
 
-    expect(lookup(copy.revokeKey)).toEqual(expect.any(String));
-    expect(lookup(copy.vendorDataKey)).toEqual(expect.any(String));
-  });
+      expect(lookup(copy.revokeKey)).toEqual(expect.any(String));
+      expect(lookup(copy.vendorDataKey)).toEqual(expect.any(String));
+    },
+  );
 
   it('says nothing is merely "not yet" done', () => {
     expect(JSON.stringify(locale)).not.toMatch(/don't yet|do not yet/i);

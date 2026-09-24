@@ -49,6 +49,9 @@ acceptance_criteria:
   - text: "Check H run for TikTok and Instagram, with the date recorded"
     met: false
     reason: "not run — needs the two vendor reviews in docs/vendor-review-status.md, or a sandbox app (TikTok) and a role account (Meta)"
+  - text: "Check I run: one live connect and disconnect on X and on LinkedIn, with X's revoke answers and the refresh afterwards recorded"
+    met: false
+    reason: "not run — no X or LinkedIn app credentials or test accounts (FILM-1729); KB-25/KB-86 proved the requests against a local stand-in only"
   - text: "docs/platform-capability-reference.md open-questions table no longer lists either check, and every row it does list still names an owner"
     met: false
     reason: "not yet — depends on Checks A and B closing"
@@ -259,6 +262,27 @@ notes: |
   | Why it did not run | Needs the two vendor reviews in docs/vendor-review-status.md, or a sandbox app (TikTok) and a role account (Meta) |
   | Cost to settle | One sync each. Folds in Checks B and C, which need the same tokens |
   | Blocks | FILM-1711 §7; FILM-1712's estimate |
+
+  ### Check I — do X and LinkedIn connect, and does X's revoke take both tokens?
+
+  Added 2026-09-24 by KB-25, KB-45, KB-86 and KB-87. The Platforms page now
+  connects and disconnects X and LinkedIn, and disconnecting X sends
+  `POST https://api.x.com/2/oauth2/revoke` twice — refresh token, then access
+  token — as a confidential client (Basic app auth, body `token=` only, per
+  the "POST oauth2/revoke" example at
+  docs.x.com/fundamentals/authentication/oauth-2-0/user-access-token).
+  LinkedIn documents no revoke for apps, so none is sent and the creator is
+  sent to LinkedIn's Permitted services page. All of it was driven against a
+  local stand-in (`apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`);
+  none against the real vendors.
+
+  | | |
+  |---|---|
+  | Question | (1) Does X accept our connect, and our revoke request as sent? (2) Does it answer 2xx to the second call after the first — or does revoking the refresh token kill the access token, so the second call is refused and every X disconnect shows a false warning? (3) After both, does a refresh with the old refresh token fail? (4) Does LinkedIn connect for a personal profile, and after the creator removes StoryBook at LinkedIn, does `POST /oauth/v2/introspectToken` report `status: revoked`? |
+  | Status today | Inferred from X's and LinkedIn's documentation only |
+  | Why it did not run | No X or LinkedIn app credentials or test accounts (FILM-1729) |
+  | Cost to settle | One test account per vendor: connect, disconnect, read the `oauth.disconnect` log line's `revoke` and `httpStatus`, try one refresh |
+  | Blocks | Nothing outright. If (2) answers "refused", treat a 4xx on the second call after a 2xx on the first as revoked — in `packages/features/publishing/src/oauth/twitter/revoke.ts` — with a test; not before, because it would hide a real refusal |
 
   ## 4. What is not deferred
 

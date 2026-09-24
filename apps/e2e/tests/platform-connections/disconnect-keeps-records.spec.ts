@@ -10,6 +10,7 @@ import {
   seedVideoDim,
   seedVideoMetrics,
 } from '../utils/clickhouse';
+import { encryptLikeTheApp } from '../utils/crypto';
 import {
   SeededTeam,
   deleteRows,
@@ -23,7 +24,6 @@ import {
   serviceRoleAuth,
   updateRows,
 } from '../utils/seed';
-import { encryptLikeTheApp } from '../utils/crypto';
 import { signInAs } from '../utils/session';
 
 /**

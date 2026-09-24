@@ -2,12 +2,14 @@ import 'server-only';
 
 import { NextRequest, NextResponse } from 'next/server';
 
-import type { getSupabaseServerClient } from '@kit/supabase/server-client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+import type { Database } from '@kit/supabase/database';
 
 import { CONNECT_FAILURE_LANDING } from './connect-failure';
 import { appOrigin } from './fail-connect';
 
-type Client = ReturnType<typeof getSupabaseServerClient>;
+type Client = SupabaseClient<Database>;
 
 /**
  * The account a connect route connects to, from `?accountId=<uuid>` or

@@ -4,7 +4,7 @@ phase: 7
 phase_name: "Publishing"
 category: provider
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-24"
 effort: M
 dependencies:
   - spec_id: "FILM-708"
@@ -56,10 +56,10 @@ provider:
 acceptance_criteria:
   - text: "OAuth 2.0 connection flow works for personal accounts"
     met: false
-    reason: "unverified — success path never run or tested (failure branches only: `apps/e2e/tests/platform-connections/connect-failure.spec.ts`). Refresh is fixed by KB-29: it uses the env app connect uses (`packages/features/publishing/__tests__/token-refresh.test.ts:410`)"
+    reason: "unverified — the Platforms page now has a LinkedIn card (KB-86, #PR), and Connect is driven as far as LinkedIn's consent screen (a local stand-in, with our client id and the personal scopes — `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`); the callback's success path is not driven, and no live connect has run (FILM-1725 Check I). Refresh is fixed by KB-29 (`packages/features/publishing/__tests__/token-refresh.test.ts:410`)"
   - text: "OAuth 2.0 connection flow works for company pages"
     met: false
-    reason: "no longer true — company connect stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:174`); no organization is chosen; no UI offers `type=company`"
+    reason: "no longer true — company connect stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:174`); no organization is chosen; no UI offers `type=company`, and the LinkedIn card says personal profiles only (KB-86)"
   - text: "Video upload with proper initialization and finalization"
     met: true
     evidence: null
@@ -92,7 +92,7 @@ test_plan:
   integration:
     - text: "Test OAuth flow with mock API"
       met: false
-      reason: "not met — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)"
+      reason: "part — the connect half reaches a stand-in consent screen (`apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`); the callback's success path is not driven. Failure branches: `apps/e2e/tests/platform-connections/connect-failure.spec.ts`"
     - text: "Test video upload initialization"
       met: false
       reason: "not met — no test found"
@@ -105,7 +105,7 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "OAuth 2.0 connection flow works for personal accounts (unverified)"
-    reason: "The success path has never been run or tested. (Refresh, which could never find credentials, is fixed by KB-29: `packages/features/publishing/__tests__/token-refresh.test.ts:410`)"
+    reason: "Connect is reachable from the Platforms page and driven to a stand-in consent screen (KB-86, #PR); the callback's success path has never been run, and there is no live connect (FILM-1725 Check I). Refresh is fixed by KB-29"
     closed_by: "unassigned"
   - criterion: "OAuth 2.0 connection flow works for company pages"
     reason: "Company connect still stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:174`); `getOrganizations` has no caller and no UI passes `type=company`. Organization publishing never existed (`urn:li:organization` appears nowhere in history)"

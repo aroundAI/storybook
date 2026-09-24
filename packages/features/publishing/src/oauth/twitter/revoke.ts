@@ -10,7 +10,7 @@ import { TWITTER_OAUTH_CONFIG, xClientAuthorization } from './config';
 
 /**
  * Revokes our grant at X (KB-25), as a confidential client:
- * `POST https://api.x.com/2/oauth2/revoke`, form-encoded, Basic app auth and
+ * `POST /2/oauth2/revoke` on X's API host, form-encoded, Basic app auth and
  * `token=` — exactly the confidential-client example under "POST
  * oauth2/revoke - Revoke Token" at
  * https://docs.x.com/fundamentals/authentication/oauth-2-0/user-access-token

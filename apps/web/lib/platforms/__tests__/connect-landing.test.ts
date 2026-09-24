@@ -85,7 +85,10 @@ describe('resolveConnectAccount (KB-86)', () => {
     const { client, eq } = clientWith({ id: ACCOUNT_ID });
 
     expect(
-      await resolveConnectAccount(request('http://x.test/c?account=acme'), client),
+      await resolveConnectAccount(
+        request('http://x.test/c?account=acme'),
+        client,
+      ),
     ).toEqual({ accountId: ACCOUNT_ID });
     expect(eq).toHaveBeenCalledWith('slug', 'acme');
   });

@@ -17,7 +17,6 @@ export async function generateMetadata() {
   };
 }
 
-
 async function DataDeletionPage() {
   const { t } = await createI18nServerInstance();
   const lastUpdated = 'September 24, 2026';
@@ -102,8 +101,8 @@ async function DataDeletionPage() {
                   platform to revoke {productName}&apos;s access, then delete
                   the access tokens we stored. If the platform does not confirm
                   the revoke, the tokens are still deleted here and we tell you
-                  so, with a link to the platform&apos;s settings; use the
-                  links in section 4 to check that we no longer appear.
+                  so, with a link to the platform&apos;s settings; use the links
+                  in section 4 to check that we no longer appear.
                 </li>
                 <li data-test="disconnect-linkedin">
                   LinkedIn does not let apps revoke their own access, so for

@@ -480,7 +480,10 @@ describe('Connection Actions', () => {
         refresh_token_encrypted: 'enc-refresh',
       });
       expect(logger.info).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'oauth.disconnect', revoke: 'revoked' }),
+        expect.objectContaining({
+          name: 'oauth.disconnect',
+          revoke: 'revoked',
+        }),
         expect.any(String),
       );
       expect(logger.warn).not.toHaveBeenCalled();
