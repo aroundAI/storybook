@@ -2408,7 +2408,7 @@ for "no such account" as for "not yours".
 
 **Severity:** Low — ciphertext, not tokens, and only to people already in the
 account; but more than a member needs. **Found:** KB-22's planning,
-2026-09-23, from the live catalog. **Fixed** in #PR.
+2026-09-23, from the live catalog. **Fixed** in #338.
 
 `platform_connections_read` is `using (has_account_access(account_id))` with
 no column restriction, and `authenticated` holds `SELECT` on the whole table,
@@ -2429,7 +2429,7 @@ explicit access check.
 
 - [x] pgTAP: a member selecting either token column is refused; selecting the other columns still works — `apps/web/supabase/tests/database/platform-connection-token-grants.test.sql` (tests 1–5; 12 of its 16 assertions failed on `main`)
 
-### Fixed (#PR)
+### Fixed (#338)
 
 Reproduced again 2026-09-24: as `member@storybook.dev`, `select
 access_token_encrypted, refresh_token_encrypted` returned `enc-access |
@@ -2481,7 +2481,7 @@ Same shape, not fixed here: KB-84 (members can read
 **Severity:** Low — not reachable through PostgREST, which has no TRUNCATE;
 but row-level security does not apply to TRUNCATE, so any other path that
 runs SQL as `anon` could empty the table. **Found:** KB-22's planning,
-2026-09-23 (`information_schema.role_table_grants`). **Fixed** in #PR.
+2026-09-23 (`information_schema.role_table_grants`). **Fixed** in #338.
 
 `anon` holds `TRUNCATE, REFERENCES, TRIGGER, INSERT, SELECT, UPDATE, DELETE`
 on `public.platform_connections` — Supabase's default grant, never revoked for
@@ -2499,7 +2499,7 @@ listing the grants `anon` is allowed.
 
 - [x] `anon` holds no privilege on `platform_connections`; a pgTAP test asserts the grant list — `platform-connection-token-grants.test.sql` tests 9–11
 
-### Fixed (#PR)
+### Fixed (#338)
 
 Counted 2026-09-24: `anon` held TRUNCATE, TRIGGER and REFERENCES on 75
 public tables and `authenticated` on 29. PostgREST cannot issue any of the
@@ -3628,6 +3628,7 @@ confirmation dialog; or remove the menu item until it exists.
 - [ ] A project viewer cannot delete
 ## KB-85 — `anon` holds read and write grants on 74 public tables
 **Severity:** Low — not reachable today. **Found:** KB-44 (#PR), 2026-09-24,
+**Severity:** Low — not reachable today. **Found:** KB-44 (#338), 2026-09-24,
 from `information_schema.role_table_grants`. **Open.**
 After KB-44, `anon` still holds SELECT, INSERT, UPDATE and DELETE on 74 of
 the 86 public tables: Supabase's default grants, never revoked. Two layers
@@ -3697,7 +3698,7 @@ project and episode pages with an E2E as a signed-out visitor.
 | KB-79 | The audio library took one upload: Upload was drawn only in the empty state, and a new asset showed only after a reload | #350 |
 | KB-57 (part) | The audio library stored any signed-in user's file with the admin client, at a key naming no project, before checking the project | #350 |
 | KB-78 | Regenerating a story deleted every canon row of the episode, including events and threads a person had added; it now replaces only what generation made (`narrative_threads.auto_generated`). Whether explicit resets should keep hand-added canon is open | #347 |
-| KB-43, KB-44 | Any account member could read a connection's encrypted OAuth tokens through PostgREST. `anon` held every privilege on `platform_connections`. `anon` and `authenticated` held TRUNCATE, TRIGGER and REFERENCES on up to 75 public tables | #PR |
+| KB-43, KB-44 | Any account member could read a connection's encrypted OAuth tokens through PostgREST. `anon` held every privilege on `platform_connections`. `anon` and `authenticated` held TRUNCATE, TRIGGER and REFERENCES on up to 75 public tables | #338 |
 
 ---
 
