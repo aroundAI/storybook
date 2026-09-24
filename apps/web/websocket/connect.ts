@@ -18,11 +18,6 @@ const TABLE_NAME = process.env.CONNECTIONS_TABLE_NAME || '';
 const MAX_CONNECTIONS_PER_USER = 5; // Maximum concurrent connections per user
 
 /**
- * WebSocket $connect handler
- * Called when a client connects to the WebSocket API
- * Requires authentication via JWT token in Authorization header or query string
- */
-/**
  * API Gateway delivers the upgrade request's headers and query string on
  * `$connect`; `@types/aws-lambda`'s websocket event does not declare them.
  */
@@ -31,6 +26,11 @@ export type WebsocketConnectEvent = APIGatewayProxyWebsocketEventV2 & {
   queryStringParameters?: Record<string, string | undefined>;
 };
 
+/**
+ * WebSocket $connect handler
+ * Called when a client connects to the WebSocket API
+ * Requires authentication via JWT token in Authorization header or query string
+ */
 export const handler = async (
   event: WebsocketConnectEvent,
 ): Promise<APIGatewayProxyStructuredResultV2> => {
@@ -42,7 +42,6 @@ export const handler = async (
   });
 
   const connectionId = event.requestContext.connectionId;
-  const kb34Guard: number = connectionId; // KB-34 CI demo: must fail ʦ TypeScript
   const connectedAt = new Date().toISOString();
 
   try {
