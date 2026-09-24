@@ -45,8 +45,8 @@
       "name": "U5 The dialog promises a revoke the code does not make",
       "kind": "unit",
       "file": "packages/features/publishing/src/components/disconnect-copy.ts",
-      "find": "  twitter: false,\n  linkedin: false,\n};\n\n/**\n * Whether the statistics",
-      "replace": "  twitter: true,\n  linkedin: false,\n};\n\n/**\n * Whether the statistics",
+      "find": "  twitter: true,\n  linkedin: false,\n};\n\n/**\n * Whether the statistics",
+      "replace": "  twitter: true,\n  linkedin: true,\n};\n\n/**\n * Whether the statistics",
       "cwd": "packages/features/publishing",
       "test": "__tests__/revokers.test.ts",
       "pattern": "agree about revocation"
