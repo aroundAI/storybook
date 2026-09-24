@@ -55,16 +55,23 @@ test.describe('Canon settings — content type (KB-71)', () => {
     await canon.setHorizon(7);
     await canon.save();
 
-    const [row] = await readRows<{
-      metadata: { projectType?: string; canon?: Record<string, unknown> };
-    }>('projects', `id=eq.${project.id}&select=metadata`);
+    // The first save's toast can still be on screen, so wait for the row
+    // itself rather than trusting the second toast.
+    const savedCanon = async () => {
+      const [row] = await readRows<{
+        metadata: { projectType?: string; canon?: Record<string, unknown> };
+      }>('projects', `id=eq.${project.id}&select=metadata`);
+      return row?.metadata;
+    };
 
-    expect(row?.metadata.projectType).toBe('documentary');
-    expect(row?.metadata.canon).toMatchObject({
-      enabled: true,
-      memoryHorizon: 7,
-    });
-    expect(row?.metadata.canon).not.toHaveProperty('contentType');
+    await expect
+      .poll(async () => (await savedCanon())?.canon?.memoryHorizon)
+      .toBe(7);
+
+    const saved = await savedCanon();
+    expect(saved?.projectType).toBe('documentary');
+    expect(saved?.canon).toMatchObject({ enabled: true, memoryHorizon: 7 });
+    expect(saved?.canon).not.toHaveProperty('contentType');
 
     await canon.open(team, project);
     await expect(type).toHaveText('Documentary');
