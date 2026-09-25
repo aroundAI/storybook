@@ -255,6 +255,46 @@ try {
   `apps/e2e/tests/refusals/action-refusals.spec.ts`. "An error is visible"
   passes on the generic sentence too.
 
+### A delete or update that RLS refused reports success (KB-61) ⚠️
+
+**RLS does not raise on a write it filters out.** A DELETE or UPDATE whose
+`USING` clause matches no row comes back as `{ data: [], error: null }` —
+exactly what a write that worked returns. Checking `error` alone reports
+"Deleted" for a delete that removed nothing, and runs whatever follows it: a
+file removed from storage, a cascade, an audit entry.
+
+A write whose success the user is told about selects what it changed and
+passes it to `requireAffectedRows`, before anything that depends on it:
+
+```typescript
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+
+const { data: deleted, error } = await client
+  .from('social_posts')
+  .delete()
+  .eq('id', postId)
+  .select('id');
+
+if (error) throw new Error(`Failed to delete social post: ${error.message}`);
+
+requireAffectedRows(
+  deleted,
+  "The post wasn't deleted: it's already gone, or you can't delete it. Reload the page.",
+);
+```
+
+- It throws an `ActionRefusal`, so the action is wrapped in `returnRefusals`
+  and read with `unwrap` as above.
+- **It fails closed:** without `.select()` the data is `null`, which is
+  refused too, so a forgotten `.select()` fails every time rather than
+  passing every time.
+- **Row first, then side effects.** Delete the file, cascade, or write the
+  audit entry only after the row write is confirmed.
+- `__tests__/kb61-unchecked-deletes.test.ts` fails on any `.delete()` or
+  `.update({ deleted_at })` without a `.select()`. The exceptions (service
+  role, cleanup nobody sees, replace-sets, cascades) are listed there with
+  their reason.
+
 ### Server Actions with Error Handling
 
 ```typescript

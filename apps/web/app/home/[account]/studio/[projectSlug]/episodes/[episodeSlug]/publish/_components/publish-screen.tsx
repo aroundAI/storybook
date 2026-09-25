@@ -56,6 +56,10 @@ import {
   uploadWithPresignedUrl,
 } from '~/lib/presigned-upload';
 
+import {
+  EpisodeThumbnailSettings,
+  MAX_THUMBNAIL_BYTES,
+} from '../../_components/episode-thumbnail-settings';
 import { DeleteAllDialog } from './delete-all-dialog';
 import { EpisodeSummaryGenerator } from './episode-summary-generator';
 import { FullVideosSection } from './full-videos-section';
@@ -232,10 +236,12 @@ export function PublishScreen({
     tags: '',
   });
 
-  // Episode thumbnails state (per-language thumbnails)
+  // Episode thumbnails (per language). One list for the video slots and the
+  // thumbnails panel, so the two always agree on which is current (KB-89).
   const [episodeThumbnails, setEpisodeThumbnails] = useState<
     EpisodeThumbnail[]
   >([]);
+  const [thumbnailsLoaded, setThumbnailsLoaded] = useState(false);
 
   // Fetch episode thumbnails on mount
   useEffect(() => {
@@ -246,6 +252,7 @@ export function PublishScreen({
       if (result.success && result.thumbnails) {
         setEpisodeThumbnails(result.thumbnails);
       }
+      setThumbnailsLoaded(true);
     };
     void fetchThumbnails();
   }, [episode.id]);
@@ -265,8 +272,7 @@ export function PublishScreen({
   // Handle thumbnail upload for a specific language
   const handleThumbnailUpload = async (lang: string, file: File) => {
     // Validate file size (YouTube limit is 2MB)
-    const MAX_THUMBNAIL_SIZE = 2 * 1024 * 1024; // 2MB
-    if (file.size > MAX_THUMBNAIL_SIZE) {
+    if (file.size > MAX_THUMBNAIL_BYTES) {
       toast.error(
         `Thumbnail must be under 2MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB`,
       );
@@ -1439,6 +1445,13 @@ export function PublishScreen({
               onOpenUploadDialog={handleOpenUploadDialog}
               onRemoveVideo={handleRemoveVideo}
               onThumbnailUpload={handleThumbnailUpload}
+            />
+
+            {/* Per-language thumbnails: add, replace, set default, remove */}
+            <EpisodeThumbnailSettings
+              episodeId={episode.id}
+              thumbnails={thumbnailsLoaded ? episodeThumbnails : null}
+              onThumbnailsChange={setEpisodeThumbnails}
             />
 
             {/* Shorts Section - Grouped */}

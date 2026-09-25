@@ -340,8 +340,14 @@ describe('saving an intro or thumbnail from somewhere else (KB-90)', () => {
 
   it.each([
     ['another host', 'https://attacker.example/page.html'],
-    ["another project's intro", url(`projects/${OTHER_PROJECT}/assets/intros/en-1.mp4`)],
-    ['this project, not an intro', url(`projects/${PROJECT}/assets/covers/cover-1.png`)],
+    [
+      "another project's intro",
+      url(`projects/${OTHER_PROJECT}/assets/intros/en-1.mp4`),
+    ],
+    [
+      'this project, not an intro',
+      url(`projects/${PROJECT}/assets/covers/cover-1.png`),
+    ],
   ])('refuses an intro from %s, and saves nothing', async (_, videoUrl) => {
     const result = await uploadProjectIntroAction({
       projectId: PROJECT,
@@ -369,19 +375,25 @@ describe('saving an intro or thumbnail from somewhere else (KB-90)', () => {
 
   it.each([
     ['another host', 'https://attacker.example/x.png'],
-    ["another project's cover", url(`projects/${OTHER_PROJECT}/assets/covers/cover-1.png`)],
+    [
+      "another project's cover",
+      url(`projects/${OTHER_PROJECT}/assets/covers/cover-1.png`),
+    ],
     ['another episode', url(`episodes/${OTHER_PROJECT}/thumbnails/en-1.png`)],
     ["this episode's videos", url(`episodes/${EPISODE}/videos/en-1.mp4`)],
-  ])('refuses a thumbnail from %s, and saves nothing', async (_, thumbnailUrl) => {
-    const result = await uploadEpisodeThumbnailAction({
-      episodeId: EPISODE,
-      language: 'en',
-      thumbnailUrl,
-    });
+  ])(
+    'refuses a thumbnail from %s, and saves nothing',
+    async (_, thumbnailUrl) => {
+      const result = await uploadEpisodeThumbnailAction({
+        episodeId: EPISODE,
+        language: 'en',
+        thumbnailUrl,
+      });
 
-    expect(result).toEqual(refused);
-    expect(state.log).toEqual([]);
-  });
+      expect(result).toEqual(refused);
+      expect(state.log).toEqual([]);
+    },
+  );
 
   it('saves an upload from its own folder, cache-busting query and all', async () => {
     const intro = await uploadProjectIntroAction({

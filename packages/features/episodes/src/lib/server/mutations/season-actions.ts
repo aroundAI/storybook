@@ -378,9 +378,7 @@ const deleteSeason = enhanceAction(
 
       // Soft delete season
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: deletedSeason, error: seasonError } = await (
-        client as any
-      )
+      const { data: deletedSeason, error: seasonError } = await (client as any)
         .from('seasons')
         .update({ deleted_at: now })
         .eq('id', data.seasonId)

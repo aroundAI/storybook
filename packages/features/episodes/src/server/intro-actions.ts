@@ -317,7 +317,7 @@ export const deleteProjectIntroAction = enhanceAction(
         .single();
 
       if (fetchError || !intro) {
-        throw new Error('Intro not found');
+        throw new ActionRefusal(INTRO_THUMBNAIL_REFUSALS.introNotDeleted);
       }
 
       // The row first: a delete the table's policy refuses removes no row,

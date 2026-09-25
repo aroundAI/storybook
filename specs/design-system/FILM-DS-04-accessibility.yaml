@@ -116,7 +116,7 @@ remaining:
     reason: >
       A hand-rolled overlay has no `role="dialog"`, focus trap or Escape (a second, the
       Edit Suite export dialog, was retired with FILM-607):
-      `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx:887`
+      `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx:894`
     closed_by: "unassigned"
   - criterion: "Skip links allow bypassing navigation"
     reason: "No skip link exists in `apps/web`"

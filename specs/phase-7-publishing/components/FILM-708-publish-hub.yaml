@@ -68,19 +68,19 @@ component:
 acceptance_criteria:
   - text: "Shows all connected platforms with toggle"
     met: false
-    reason: "retired — replaced by language routing: each video goes to every connected channel of its language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1085`)"
+    reason: "retired — replaced by language routing: each video goes to every connected channel of its language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1091`)"
   - text: "Unconnected platforms show \"Connect\" action"
     met: false
     reason: "retired — connecting moved to Settings › Platforms, linked from the screen (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:129`, `:160`)"
   - text: "Metadata can be customized per platform"
     met: false
-    reason: "retired — one title/description/tags set for every channel (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:52`), translated per language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:940`)"
+    reason: "retired — one title/description/tags set for every channel (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:52`), translated per language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:946`)"
   - text: "Thumbnail preview works"
     met: true
     evidence: null
   - text: "Scheduling works for supported platforms"
     met: false
-    reason: "unverified — panel → `scheduled` rows → cron → publish-worker (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:823`, `sst.config.ts:1435`); no test drives a due publish"
+    reason: "unverified — panel → `scheduled` rows → cron → publish-worker (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:829`, `sst.config.ts:1435`); no test drives a due publish"
   - text: "Publish triggers all selected platforms"
     met: true
     evidence: null

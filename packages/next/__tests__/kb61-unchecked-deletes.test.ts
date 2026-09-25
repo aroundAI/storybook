@@ -20,7 +20,7 @@ const CLEANUP = 'cleanup whose outcome is not shown to anyone';
 const REPLACE =
   'clears a set before re-inserting it; "nothing to clear" is a success';
 const CASCADE =
-  "a child of a parent whose own write is checked; no children is a success";
+  'a child of a parent whose own write is checked; no children is a success';
 
 const KNOWN: Record<string, [number, string]> = {
   // Service role / admin client
@@ -49,8 +49,10 @@ const KNOWN: Record<string, [number, string]> = {
   // One-time OAuth state, consumed by the callback
   'apps/web/app/api/platforms/callback/linkedin/route.ts | oauth_states | delete':
     [1, CLEANUP],
-  'apps/web/app/api/platforms/callback/meta/route.ts | oauth_states | delete':
-    [1, CLEANUP],
+  'apps/web/app/api/platforms/callback/meta/route.ts | oauth_states | delete': [
+    1,
+    CLEANUP,
+  ],
   'apps/web/app/api/platforms/callback/tiktok/route.ts | oauth_states | delete':
     [1, CLEANUP],
   'apps/web/app/api/platforms/callback/twitter/route.ts | oauth_states | delete':
@@ -125,7 +127,8 @@ function sourceFiles(directory: string): string[] {
       return SKIPPED.has(entry.name) ? [] : sourceFiles(path);
     }
 
-    return /\.tsx?$/.test(entry.name) && !/\.(test|spec)\.tsx?$/.test(entry.name)
+    return /\.tsx?$/.test(entry.name) &&
+      !/\.(test|spec)\.tsx?$/.test(entry.name)
       ? [path]
       : [];
   });
@@ -197,9 +200,9 @@ describe('findUncheckedDeletes', () => {
   });
 
   it('ignores a Set or Map delete', () => {
-    expect(findUncheckedDeletes(`next.delete(id);\nparams.delete('a');`)).toEqual(
-      [],
-    );
+    expect(
+      findUncheckedDeletes(`next.delete(id);\nparams.delete('a');`),
+    ).toEqual([]);
   });
 
   it('finds a counted delete with no .select()', () => {

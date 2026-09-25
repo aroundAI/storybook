@@ -93,8 +93,11 @@ const deleteLanguageTranslation = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: deleted, error, count } = await (client as any)
+    const {
+      data: deleted,
+      error,
+      count,
+    } = await client
       .from('dialogue_lines')
       .delete({ count: 'exact' })
       .eq('episode_id', data.episodeId)

@@ -46,7 +46,7 @@ acceptance_criteria:
     reason: "not met — no continuity sidebar in the screenplay route; `ContinuitySidebar` never existed (`git log -S` finds nothing)"
   - text: "Publish extracts and confirms canon changes"
     met: false
-    reason: "unverified — generator mounted (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1421`); no E2E drives extract then commit"
+    reason: "unverified — generator mounted (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1427`); no E2E drives extract then commit"
   - text: "All components work on desktop (1280px+)"
     met: false
     reason: "unverified — visual; needs a browser check at 1280px, none recorded"
