@@ -75,7 +75,7 @@ test_plan:
       reason: "not met — no test found"
     - text: "Test deep linking to episode tabs"
       met: true
-      evidence: "`apps/e2e/tests/refusals/refusals.po.ts:209` (a direct `goto` to `audio-studio`; incidental, no tab-state assertion)"
+      evidence: "`apps/e2e/tests/refusals/refusals.po.ts:200` (a direct `goto` to `audio-studio`; incidental, no tab-state assertion)"
   e2e: []
 remaining:
   - criterion: "Active state correctly highlights current route"
