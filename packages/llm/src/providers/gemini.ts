@@ -9,6 +9,8 @@
  */
 import { GoogleGenAI } from '@google/genai';
 
+import { vendorUrl } from '@kit/shared/vendors';
+
 import { calculateTokenCost, getModelPricing } from '../pricing';
 import type {
   ChatCompletionRequest,
@@ -54,15 +56,23 @@ export class GeminiClient implements LLMClient {
 
     this.config = config;
 
+    // Both branches pass httpOptions.baseUrl, so the SDK never reads
+    // GOOGLE_GEMINI_BASE_URL or GOOGLE_VERTEX_BASE_URL (FILM-1805).
     if (config.vertexai && config.apiKey) {
-      // Vertex AI Express: Cloud Console API key routed through Vertex AI
+      // Vertex AI Express: Cloud Console API key routed through Vertex AI.
+      // An explicit key makes the SDK drop project and location, so Express
+      // always calls the global endpoint - 'gemini-vertex' in VENDORS.
       this.client = new GoogleGenAI({
         vertexai: true,
         apiKey: config.apiKey,
+        httpOptions: { baseUrl: vendorUrl('gemini-vertex') },
       });
     } else if (config.apiKey) {
       // Developer API: AI Studio or unrestricted Cloud Console key
-      this.client = new GoogleGenAI({ apiKey: config.apiKey });
+      this.client = new GoogleGenAI({
+        apiKey: config.apiKey,
+        httpOptions: { baseUrl: vendorUrl('gemini') },
+      });
     } else {
       throw new LLMError(
         'Gemini requires an API key. Set GEMINI_API_KEY or GOOGLE_API_KEY.',

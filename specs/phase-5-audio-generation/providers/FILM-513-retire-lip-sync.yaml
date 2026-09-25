@@ -148,7 +148,7 @@ notes: |
 
   ### 4.4 The resolver entry (needs FILM-1801)
 
-  `packages/shared/src/vendors/resolver.ts:47` on the FILM-1801 branch declares
+  `packages/shared/src/vendors/resolver.ts:54` on the FILM-1801 branch declares
   `synclabs: 'https://api.synclabs.so'`. Once the provider is gone that entry is
   an unused vendor, and `vendor-api-versions.test.ts:132` derives its host rules
   from `VENDORS`, so **remove the entry and the last `api.synclabs.so` literal

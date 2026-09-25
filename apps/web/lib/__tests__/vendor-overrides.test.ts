@@ -41,6 +41,25 @@ describe('reportIgnoredVendorOverrides', () => {
     expect(error).not.toHaveBeenCalled();
   });
 
+  it('logs a set LLM SDK base-URL variable by name only, even with the sandbox on (FILM-1805)', async () => {
+    const ignored = await reportIgnoredVendorOverrides({
+      NODE_ENV: 'development',
+      VENDOR_SANDBOX: '1',
+      VENDOR_URL_GEMINI: 'http://127.0.0.1:4112',
+      OPENAI_BASE_URL: 'https://proxy.example.com/v1',
+      GOOGLE_GEMINI_BASE_URL: 'https://proxy.example.com',
+    });
+
+    expect(ignored).toEqual(['GOOGLE_GEMINI_BASE_URL', 'OPENAI_BASE_URL']);
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error.mock.calls[0]?.[0]).toEqual({
+      name: 'vendor-overrides',
+      ignored: ['GOOGLE_GEMINI_BASE_URL', 'OPENAI_BASE_URL'],
+    });
+    expect(error.mock.calls[0]?.[1]).toContain('SDK base-URL variable');
+    expect(JSON.stringify(error.mock.calls)).not.toContain('proxy.example');
+  });
+
   it('says nothing about an override that is being honoured', async () => {
     await reportIgnoredVendorOverrides({
       NODE_ENV: 'development',

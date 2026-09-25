@@ -8,6 +8,8 @@
  */
 import OpenAI from 'openai';
 
+import { vendorUrl } from '@kit/shared/vendors';
+
 import { calculateTokenCost, getModelPricing } from '../pricing';
 import type {
   ChatCompletionRequest,
@@ -37,8 +39,10 @@ export class OpenAIClient implements LLMClient {
     }
 
     this.config = config;
+    // An explicit baseURL, so the SDK never reads OPENAI_BASE_URL (FILM-1805).
     this.client = new OpenAI({
       apiKey: config.apiKey,
+      baseURL: `${vendorUrl('openai')}/v1`,
     });
   }
 

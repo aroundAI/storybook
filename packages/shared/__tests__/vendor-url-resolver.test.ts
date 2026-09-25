@@ -241,6 +241,24 @@ describe('ignoredVendorOverrides', () => {
     expect(ignoredVendorOverrides(env)).toEqual(['VENDOR_URL_TIKTOCK']);
   });
 
+  it('names every LLM SDK base-URL variable that is set, in any environment (FILM-1805)', () => {
+    const set = {
+      ANTHROPIC_BASE_URL: 'https://proxy.example.com',
+      GOOGLE_GEMINI_BASE_URL: 'https://proxy.example.com',
+      GOOGLE_VERTEX_BASE_URL: 'https://proxy.example.com',
+      OPENAI_BASE_URL: 'https://proxy.example.com/v1',
+    };
+
+    for (const env of [{ NODE_ENV: 'production' }, DEV]) {
+      expect(ignoredVendorOverrides({ ...env, ...set })).toEqual([
+        'ANTHROPIC_BASE_URL',
+        'GOOGLE_GEMINI_BASE_URL',
+        'GOOGLE_VERTEX_BASE_URL',
+        'OPENAI_BASE_URL',
+      ]);
+    }
+  });
+
   it('is empty when nothing is set', () => {
     expect(ignoredVendorOverrides({ NODE_ENV: 'production' })).toEqual([]);
   });

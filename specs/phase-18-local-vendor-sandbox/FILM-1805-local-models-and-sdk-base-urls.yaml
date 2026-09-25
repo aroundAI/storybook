@@ -3,7 +3,7 @@ title: "Local Models (Ollama) and the SDKs' Own Base-URL Overrides"
 phase: 18
 phase_name: "Local Vendor Sandbox"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: M
 dependencies:
   - spec_id: "FILM-1801"
@@ -24,20 +24,20 @@ summary: >
   zero-cost local testing (Half B).
 acceptance_criteria:
   - text: "(Half A) anthropic (and the Vertex decision per §3.2) in VENDORS"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/shared/src/vendors/resolver.ts — anthropic, and gemini-vertex: Express is called with an API key, which makes @google/genai drop project and location, so it is always the global https://aiplatform.googleapis.com (§10)"
   - text: "(Half A) OpenAI, Whisper, Anthropic, Gemini (both branches) construct with an explicit base URL from the resolver"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/llm/src/providers/openai.ts, transcription.ts, providers/anthropic.ts, providers/gemini.ts (developer and Vertex branches)"
   - text: "(Half A) Per SDK: env var set to a local listener under production settings → 0 requests arrive; sandbox on + VENDOR_URL_* → request arrives"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/llm/__tests__/sdk-base-urls.test.ts — the real SDKs through our providers, 5 clients × 2 cases; all 10 red on main (listener received the SDK-variable request; VENDOR_URL_* ignored)"
   - text: "(Half A) Guard red on main naming the four sites, green after; film-1805.json"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/llm/__tests__/sdk-base-url-guard.test.ts — red on main naming openai.ts:40, transcription.ts:92, anthropic.ts:41, gemini.ts:59 and :65; tooling/mutation-guards/film-1805.json, all 9 RED"
   - text: "(Half A) ignoredVendorOverrides() names a set SDK variable at startup, by name only"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "SDK_BASE_URL_VARIABLES in resolver.ts; apps/web/lib/vendor-overrides.ts logs them by name; vendor-url-resolver.test.ts and vendor-overrides.test.ts"
   - text: "(Half B) local defaults to http://localhost:11434/v1 and an owner-confirmed Ollama model; \"Claude Code API\" wording gone"
     met: false
     reason: "not yet implemented — DRAFT"
@@ -59,6 +59,28 @@ acceptance_criteria:
   - text: "(Half B) §4.4's command in README.md and packages/llm/CLAUDE.md; §6 documents updated"
     met: false
     reason: "not yet implemented — DRAFT"
+remaining:
+  - criterion: "(Half B) local defaults to http://localhost:11434/v1 and an owner-confirmed Ollama model"
+    reason: "Half B not started; Half A shipped alone (FILM-1803 needed only the SDK base URLs)"
+    closed_by: "unassigned"
+  - criterion: "(Half B) local refuses outside dev/test with a message naming VENDOR_SANDBOX=1; LOCAL_API_URL validated"
+    reason: "Half B not started; Half A shipped alone (FILM-1803 needed only the SDK base URLs)"
+    closed_by: "unassigned"
+  - criterion: "(Half B) LLM_FORCE_PROVIDER=local routes the executor, the Lambda copy and the agent runner through local under the gate"
+    reason: "Half B not started; Half A shipped alone (FILM-1803 needed only the SDK base URLs)"
+    closed_by: "unassigned"
+  - criterion: "(Half B) baseUrl reaches the local client from the executor's explicit config"
+    reason: "Half B not started; Half A shipped alone (FILM-1803 needed only the SDK base URLs)"
+    closed_by: "unassigned"
+  - criterion: "(Half B) A prompt file without provider/model is a validation error"
+    reason: "Half B not started; Half A shipped alone (FILM-1803 needed only the SDK base URLs)"
+    closed_by: "unassigned"
+  - criterion: "(Half B) One real prompt validated end to end against Ollama"
+    reason: "Half B not started; Half A shipped alone (FILM-1803 needed only the SDK base URLs)"
+    closed_by: "unassigned"
+  - criterion: "(Half B) §4.4's command documented; §6 documents updated"
+    reason: "Half B not started; Half A shipped alone (FILM-1803 needed only the SDK base URLs)"
+    closed_by: "unassigned"
 open_questions: []
 notes: |
   ## 1. Why this exists
@@ -324,6 +346,29 @@ notes: |
   not satisfy a prompt's schema. That is information — the point of having a
   real-model mode — and must not be "fixed" by relaxing the executor's
   validation for local.
+  ## 10. Half A as shipped (2026-09-25)
+
+  Half A shipped on its own, ahead of Half B, because FILM-1803's sandbox
+  needs the Gemini client to follow VENDOR_URL_GEMINI.
+
+  - VENDORS gains anthropic (https://api.anthropic.com) and gemini-vertex
+    (https://aiplatform.googleapis.com). §3.2 is decided by the SDK itself:
+    our Vertex branch always passes an API key (Express mode), and
+    @google/genai then clears project and location, so the regional
+    template never applies. The host is a constant origin and fits VENDORS.
+  - Every construction passes a base URL from vendorUrl(): OpenAI chat and
+    Whisper (`${vendorUrl('openai')}/v1`), Anthropic (vendorUrl('anthropic')),
+    Gemini developer API and Vertex (httpOptions.baseUrl).
+  - SDK_BASE_URL_VARIABLES (ANTHROPIC_BASE_URL, GOOGLE_GEMINI_BASE_URL,
+    GOOGLE_VERTEX_BASE_URL, OPENAI_BASE_URL) are reported by
+    ignoredVendorOverrides() in every environment, and logged at server start
+    by name on a line of their own.
+  - The guard also fails on any process.env read of a *_BASE_URL name outside
+    the resolver. SYNCLABS_BASE_URL is tolerated by name until FILM-513
+    deletes lip-sync. LOCAL_API_URL is not a *_BASE_URL name and belongs to
+    Half B.
+  - Not covered: @google/genai also reads GEMINI_NEXT_GEN_API_BASE_URL, but
+    only for its Interactions client, which nothing here constructs.
 feature:
   database: null
   queries: []

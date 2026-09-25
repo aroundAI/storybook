@@ -9,6 +9,8 @@
  */
 import Anthropic from '@anthropic-ai/sdk';
 
+import { vendorUrl } from '@kit/shared/vendors';
+
 import { calculateTokenCost, getModelPricing } from '../pricing';
 import type {
   ChatCompletionRequest,
@@ -38,8 +40,10 @@ export class AnthropicClient implements LLMClient {
     }
 
     this.config = config;
+    // An explicit baseURL, so the SDK never reads ANTHROPIC_BASE_URL (FILM-1805).
     this.client = new Anthropic({
       apiKey: config.apiKey,
+      baseURL: vendorUrl('anthropic'),
     });
   }
 
