@@ -241,6 +241,8 @@ test.describe('A failed connect — the branches that share one helper', () => {
     await expect(
       failure(page).locator('[data-test="connect-failure-title"]'),
     ).toHaveText('LinkedIn was not connected');
+    // The create-team dialog waits: opened over the message, it hides it.
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     await captureIfAsked(page, 'kb99-01-no-team');
 
     await failure(page)

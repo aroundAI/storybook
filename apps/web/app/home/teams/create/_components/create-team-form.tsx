@@ -14,8 +14,13 @@ import {
   CardTitle,
 } from '@kit/ui/card';
 
-export function CreateTeamPrompt() {
-  const [isDialogOpen, setIsDialogOpen] = useState(true);
+/**
+ * Opens the create-team dialog straight away, unless the page has something to
+ * say first: a failed platform connect lands here for someone with no team
+ * (KB-99), and a modal over that message would hide it.
+ */
+export function CreateTeamPrompt({ openOnLoad = true }: { openOnLoad?: boolean }) {
+  const [isDialogOpen, setIsDialogOpen] = useState(openOnLoad);
 
   return (
     <>
