@@ -87,7 +87,12 @@ export async function processStoryRefinement(
     }
 
     // 2. Build episode context
-    const episodeContext = await buildEpisodeContext(data.episodeId, supabase);
+    const episodeContext = await buildEpisodeContext(data.episodeId, supabase, {
+      semanticContext: true,
+      semanticQuery: [episode.title, storyData.episodeSummary]
+        .filter((part): part is string => typeof part === 'string' && !!part)
+        .join('\n'),
+    });
 
     const charactersContext = formatCharactersForPrompt(
       episodeContext.characters,

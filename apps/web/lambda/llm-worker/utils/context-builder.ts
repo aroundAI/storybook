@@ -2,9 +2,19 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { z } from 'zod';
 
-import { resolveProjectType } from '@kit/episodes/lib';
+import {
+  effectiveMemoryHorizon,
+  resolveProjectType,
+  sanitizeForPrompt,
+} from '@kit/episodes/lib';
 import type { ProjectType } from '@kit/film-studio-schemas/project';
 import type { Database } from '@kit/supabase/database';
+
+import {
+  type PreviousEpisode,
+  fetchPreviousEpisodes,
+} from './previous-episodes';
+import { createVoyageEmbedder } from './voyage-embedder';
 
 /** StoryData interface for episode story content */
 export interface StoryData {
@@ -103,14 +113,9 @@ export interface EpisodeContext {
   seasonDirectionNotes?: string;
   seasonTheme?: string;
 
-  // Continuity (previous episodes) - SCORE Framework
-  previousEpisodes: Array<{
-    number: number;
-    title: string;
-    summary: string;
-    sentimentScore?: number;
-    keyEvents?: string[];
-  }>;
+  // Continuity (previous episodes) - SCORE Framework. The memory horizon's
+  // window: the most recent, then related earlier ones (KB-35)
+  previousEpisodes: PreviousEpisode[];
 
   // Project constraints
   genre: string;
@@ -166,6 +171,11 @@ export interface EpisodeContext {
 export async function buildEpisodeContext(
   episodeId: string,
   supabase: SupabaseClient<Database>,
+  options: {
+    /** Add earlier episodes similar to `semanticQuery` (KB-35) */
+    semanticContext?: boolean;
+    semanticQuery?: string;
+  } = {},
 ): Promise<EpisodeContext> {
   const client = supabase;
 
@@ -305,13 +315,25 @@ export async function buildEpisodeContext(
   // 5. Fetch verified facts linked to this episode (for factual content types)
   const verifiedFacts = await fetchEpisodeFacts(episodeId, client);
 
-  // 6. Fetch previous episodes. Sequential only: semantic search never ran
-  // in the worker (KB-35).
-  const previousEpisodes = await fetchSequentialEpisodes(
-    episode.season_id,
-    episode.number,
-    supabase,
-  );
+  // 6. Fetch previous episodes: the memory horizon's window (KB-35)
+  const previousEpisodes = episode.project?.id
+    ? await fetchPreviousEpisodes(supabase, {
+        projectId: episode.project.id,
+        currentNumber: episode.number,
+        horizon: effectiveMemoryHorizon(episode.project.metadata).memoryHorizon,
+        projectType: resolveProjectType(episode.project.metadata).projectType,
+        semantic: options.semanticContext
+          ? {
+              embedder: createVoyageEmbedder({
+                apiKey: process.env.VOYAGE_API_KEY,
+              }),
+              query:
+                options.semanticQuery ??
+                [episode.title, episode.description].filter(Boolean).join('\n'),
+            }
+          : undefined,
+      })
+    : [];
 
   // 6. Fetch linked verified facts for this episode
   let episodeFacts: EpisodeContext['episodeFacts'] = [];
@@ -682,54 +704,6 @@ export async function fetchLocationsByIds(
 }
 
 /**
- * Build a plot-focused summary from story data
- * Uses SCORE episodeSummary field (required for new episodes)
- */
-function buildPlotSummary(storyData: StoryData | null): string {
-  if (!storyData?.episodeSummary) return '';
-  return storyData.episodeSummary;
-}
-
-/**
- * Fetch previous episodes in sequential order
- */
-async function fetchSequentialEpisodes(
-  seasonId: string | null,
-  currentNumber: number,
-  supabase: SupabaseClient<Database>,
-): Promise<EpisodeContext['previousEpisodes']> {
-  if (!seasonId) return [];
-
-  const client = supabase;
-
-  const { data, error } = await client
-    .from('episodes')
-    .select('number, title, story_data')
-    .eq('season_id', seasonId)
-    .lt('number', currentNumber)
-    .not('story_data->fullStory', 'is', null)
-    .is('deleted_at', null)
-    .order('number', { ascending: false })
-    .limit(3);
-
-  if (error) {
-    throw new Error(`Failed to fetch previous episodes: ${error.message}`);
-  }
-
-  return (data ?? []).map((ep) => {
-    const storyData = ep.story_data as StoryData | null;
-
-    return {
-      number: ep.number,
-      title: ep.title,
-      summary: buildPlotSummary(storyData),
-      sentimentScore: storyData?.sentimentScore,
-      keyEvents: storyData?.keyEvents,
-    };
-  });
-}
-
-/**
  * Format characters for prompt injection with locked identity enforcement.
  * Uses a strong "LOCKED" framing to prevent LLMs from drifting gender, age, or personality.
  */
@@ -829,11 +803,13 @@ export function formatPreviousEpisodesForPrompt(
   return `**Previous Episodes (for continuity)**:
 ${episodes
   .map((ep) => {
-    let entry = `- Episode ${ep.number}: "${ep.title}"
-  Plot: ${ep.summary}`;
+    // Episode text is project text: sanitised before the prompt (KB-101)
+    const label = ep.relation === 'related' ? ' (related earlier episode)' : '';
+    let entry = `- Episode ${ep.number}${label}: "${sanitizeForPrompt(ep.title)}"
+  Plot: ${sanitizeForPrompt(ep.summary)}`;
 
     if (ep.keyEvents && ep.keyEvents.length > 0) {
-      entry += `\n  Key Events: ${ep.keyEvents.join('; ')}`;
+      entry += `\n  Key Events: ${ep.keyEvents.map(sanitizeForPrompt).join('; ')}`;
     }
 
     return entry;

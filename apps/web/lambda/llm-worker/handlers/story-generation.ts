@@ -246,7 +246,10 @@ export async function processStoryGeneration(
 
   try {
     // 1. Build rich context using shared context-builder
-    const episodeContext = await buildEpisodeContext(data.episodeId, supabase);
+    const episodeContext = await buildEpisodeContext(data.episodeId, supabase, {
+      semanticContext: true,
+      semanticQuery: [data.title, data.logline].filter(Boolean).join('\n'),
+    });
 
     const contentStyle = (data.contentStyle ??
       'dialogue-heavy') as ContentStyle;
