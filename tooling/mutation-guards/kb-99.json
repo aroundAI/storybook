@@ -1,0 +1,42 @@
+{
+  "feature": "KB-99, KB-100",
+  "mutations": [
+    {
+      "name": "U1 Personal accounts default on again",
+      "kind": "unit",
+      "file": "apps/web/config/feature-flags.config.ts",
+      "find": "    process.env.NEXT_PUBLIC_ENABLE_PERSONAL_ACCOUNTS,\n    false,",
+      "replace": "    process.env.NEXT_PUBLIC_ENABLE_PERSONAL_ACCOUNTS,\n    true,",
+      "cwd": "apps/web",
+      "test": "config/__tests__/feature-flags-parity.test.ts"
+    },
+    {
+      "name": "U2 An unplaced connect failure falls back to /home, which drops it",
+      "kind": "unit",
+      "file": "apps/web/lib/platforms/connect-failure.ts",
+      "find": "  return hasTeams ? NO_CHOSEN_TEAM_FAILURE_PATH : NO_TEAM_FAILURE_PATH;",
+      "replace": "  return '/home';",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/connect-failure.test.ts",
+      "pattern": "never falls back to /home"
+    },
+    {
+      "name": "E2 Someone with no team is sent to profile settings, not create-team",
+      "kind": "e2e",
+      "file": "apps/web/app/settings/platforms/route.ts",
+      "find": "      (teams ?? []).length > 0,",
+      "replace": "      true,",
+      "spec": "tests/platform-connections/connect-failure.spec.ts",
+      "grep": "no team lands on create-team"
+    },
+    {
+      "name": "E1 The user menu loses Profile settings",
+      "kind": "e2e",
+      "file": "packages/features/accounts/src/components/personal-account-dropdown.tsx",
+      "find": "            data-test={'account-dropdown-settings'}\n",
+      "replace": "",
+      "spec": "tests/account/profile-settings.spec.ts",
+      "grep": "opens Profile settings from the user menu"
+    }
+  ]
+}
