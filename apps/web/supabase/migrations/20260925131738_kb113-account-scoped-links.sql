@@ -27,6 +27,10 @@
 -- account stays allowed. Every change narrows; USING clauses are unchanged.
 -- Owner rule (2026-09-25): migrations may be written; production is
 -- migrated by the owner.
+--
+-- Decided by the owner on 2026-09-25: block cross-account moves. The
+-- freezes on projects and analytics_experiments, and the episode and
+-- publish move guards, go beyond the ticket's two columns and stay as built.
 
 -- ----------------------------------
 -- Helpers: the same shape as connection_in_account and tag_in_account
