@@ -35,7 +35,7 @@ acceptance_criteria:
     evidence: "every-prompt.test.ts — ajv against the prompt's own schema, through both executors"
   - text: "Each of the 9 schema-less prompts has a template, and its output parses through the app's path"
     met: true
-    evidence: "apps/vendor-sandbox/src/llm/generate/templates.ts; every-prompt.test.ts runs all nine through the executor that uses them since KB-106 (#366) and KB-107 were fixed"
+    evidence: "apps/vendor-sandbox/src/llm/generate/templates.ts; every-prompt.test.ts runs all nine through the executor that uses them since KB-106 (#366) and KB-107 (#369) were fixed"
   - text: "An unrecognised prompt is answered and logged as unrecognised, never silently"
     met: true
     evidence: "apps/vendor-sandbox/__tests__/coverage.test.ts — 200 '{}', ledger identified: unrecognised, a warning starting UNRECOGNISED PROMPT"
