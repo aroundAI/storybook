@@ -46,8 +46,8 @@ acceptance_criteria:
     met: true
     evidence: "apps/vendor-sandbox/__tests__/orchestrators.test.ts — ideation, story (plain, documentary, movie), screenplay, season, shot, audio cues and translation, run for real with the sandbox as the model; the tool failures inside them are KB-116's, listed in KNOWN_TOOL_FAILURES (KB-115's are fixed). The two agents with no caller are listed in coverage.test.ts"
   - text: "Audio responses are valid files of roughly the requested duration"
-    met: false
-    reason: "not yet — the ElevenLabs stand-in is a later PR"
+    met: true
+    evidence: "apps/vendor-sandbox/__tests__/audio.test.ts — the app's own ElevenLabs voice and sound-effect providers against the stand-in; each MP3's duration, measured from its frames, is within 2% of what was asked (speech: about 150 words a minute)"
   - text: "(Restated 2026-09-25) Embeddings get no stand-in, because nothing in the app calls an embeddings or transcription API"
     met: true
     evidence: "2026-09-25: the exports of packages/features/embeddings/src/voyage-client.ts, audio-generation/src/lib/audio-embedding.ts and packages/llm/src/transcription.ts have no callers outside their own modules (§3)"
@@ -60,9 +60,6 @@ acceptance_criteria:
 remaining:
   - criterion: "With local.env loaded, no inline AI action a user can trigger reaches a real AI vendor"
     reason: "local-env.sh wiring and the live run with an egress guard"
-    closed_by: "FILM-1803"
-  - criterion: "Audio responses are valid files of roughly the requested duration"
-    reason: "ElevenLabs stand-in not built yet"
     closed_by: "FILM-1803"
 open_questions: []
 notes: |
@@ -79,7 +76,7 @@ notes: |
   | 4100 | Control API, ledger and status page (FILM-1802 §6) | — |
   | 4110 | OpenAI: GET /v1/models only, the settings page's key check | VENDOR_URL_OPENAI |
   | 4112 | Gemini: generateContent, streamGenerateContent, models list | VENDOR_URL_GEMINI (FILM-1805 Half A, #360) |
-  | 4113 | ElevenLabs: text to speech, voices, account, models, music, sound effects | VENDOR_URL_ELEVENLABS |
+  | 4113 | ElevenLabs: text to speech (plain and streamed), voices, account, models, music (`POST /v1/music`), sound effects | VENDOR_URL_ELEVENLABS |
 
   Every address is reached through FILM-1801's gate (NODE_ENV development or
   test, VENDOR_SANDBOX=1, not a Lambda, a local address). No SDK's own
@@ -164,6 +161,13 @@ notes: |
   | Voice cloning | VoiceCloningEditor is mounted nowhere | None |
   | Sync Labs | Retired by FILM-513 | None |
   | Suno | Being removed from the product (owner, 2026-09-25) | None |
+
+  Audio. Every response is a valid MP3 (silent MPEG-1 Layer III frames) of
+  the length the request implies: speech at about 150 words a minute, music
+  and sound effects at the requested duration. Only paths ElevenLabs' API
+  reference documents are served. The app's music provider calls
+  `/v1/music/compose`, which the reference does not list, so it gets the
+  vendor's 404 here. That is a lead, not a KB, until a real call settles it.
 
   ## 4. Inline or enqueued, per studio stage
 
