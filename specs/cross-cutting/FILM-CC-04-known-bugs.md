@@ -2207,9 +2207,25 @@ marker records that it is unvalidated.
 
 ## KB-34 — The WebSocket handlers are not typechecked
 
+> **Fixed (2026-09-24), #339.** `apps/web/websocket/tsconfig.json` runs as the
+> third part of `web`'s `typecheck` script (`tsc --noEmit && … -p lambda/… &&
+> … -p websocket/tsconfig.json`), so `pnpm typecheck` and CI's ʦ TypeScript
+> job include it: KB-14's mechanism, unchanged. All 133 errors, reproduced
+> again on `main` at 52ed2ade, were type-level: the `$connect` event's
+> `headers` / `queryStringParameters` are declared on a local
+> `WebsocketConnectEvent` (API Gateway sends them; `@types/aws-lambda` omits
+> them); the three handlers are typed as the async functions they are, which
+> cleared the tests' 103; `send-to-user` narrows on the validated message;
+> `ws` takes the lambdas' cast. `jose` did not resolve from `apps/web` at all.
+> It is now a devDependency pinned at **6.2.12**, which does not change what
+> deploys: SST's `nodejs.install` writes `"jose": "*"` into the function's
+> `package.json` whatever the app declares (seen in a local build artifact,
+> which installed 6.2.10 on 2026-08-31, and `@aws-sdk/*` got `"*"` too despite
+> `^3.913.0` in `apps/web`), so each deploy takes npm's latest, 6.2.12 today.
+> Typing the `$default` handler's client found **KB-91**.
+
 **Severity:** Medium — the same gap KB-14 closed for `lambda/`, on the code
 that authenticates every realtime connection. **Found:** KB-14, 2026-09-23.
-**Open.**
 
 `apps/web/websocket/` (the SST handlers `connect`, `disconnect`, `default`,
 plus `utils/` and tests — 10 files) is included by no tsconfig.
@@ -2233,9 +2249,9 @@ Mirror KB-14: `apps/web/websocket/tsconfig.json`, a third command in `web`'s
 
 ### Acceptance criteria
 
-- [ ] `tsc --listFilesOnly` under CI's typecheck lists the websocket files
-- [ ] Zero type errors under `apps/web/websocket/`, each fixed or explained
-- [ ] A type error introduced in a handler fails CI — demonstrated, then reverted
+- [x] `tsc --listFilesOnly` under CI's typecheck lists the websocket files — `tsc -p websocket/tsconfig.json --listFilesOnly` lists all 10
+- [x] Zero type errors under `apps/web/websocket/`, each fixed or explained — 133 → 0; one `@ts-expect-error KB-91` line, which fails with TS2578 once KB-91 is fixed
+- [x] A type error introduced in a handler fails CI — demonstrated, then reverted (PR #339, CI run links there)
 
 ---
 
@@ -3384,10 +3400,54 @@ The server render ignored `start_ms` gaps (so audio drifted), transitions, keyfr
 
 ## KB-66 — Five lambdas build untyped Supabase clients
 
-**Found:** KB-32 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
-**Open.**
+> **Fixed (2026-09-24), #339.** All six worker clients (these five and the
+> WebSocket `$default` handler's) are `createClient<Database>`, and every
+> handler that takes a client takes `SupabaseClient<Database>` (29 files). An
+> ESLint rule on `lambda/**` and `websocket/**` refuses a bare
+> `SupabaseClient` or `createClient()`, which `tsc` cannot, since an
+> `any`-schema client is valid TypeScript.
 
-Five lambdas build untyped Supabase clients (about 130 `.from()` calls), so column drift is invisible to `tsc`.
+**Found:** KB-32 (2026-09-23), filed by the lead from the teammate's report.
+**Reproduced** 2026-09-24 (`main` at 52ed2ade), and larger than filed.
+
+`email-worker`, `llm-worker`, `publish-worker`, `scheduled-publish` and
+`voice-worker` built `createClient(url, key)` with no schema. But the fix is
+not only those five lines. Every handler took a bare `SupabaseClient`, whose
+schema generic defaults to `any`, so their 129 `.from()` and 2 `.rpc()`
+calls were unchecked even if the client passed in had been typed.
+
+**What typing found.** With the clients and the 29 files typed, the lambda
+pass reports **29 errors, and none is an unknown table, column or RPC**. The
+workers' queries matched the schema. The errors were `jsonb` values typed as
+`Record<string, unknown>` or interfaces, `jsonb` reads used as numbers, and
+hand-written row types that claimed `NOT NULL` for nullable columns. All were
+fixed at the type level (the bundles are the same code, compared with esbuild), except:
+- **KB-92**: `audio_cues.scene_number` is `NOT NULL` and `shots.scene_number`
+  is not, so one sceneless shot fails the episode's whole cue insert. Filed,
+  with a `@ts-expect-error KB-92` line at the insert.
+- `publishes.metadata` was spread into the failure record without checking it
+  is an object; an array or string became `"0"`, `"1"`, … keys. Guarded, with
+  `lambda/publish-worker/__tests__/failure-metadata.test.ts` (red first).
+
+The same typing on the WebSocket `$default` handler found **KB-91**, an RPC
+no migration creates.
+
+**What typing does not catch** (postgrest-js 1.21, measured): a filter on a
+column the table lacks (`.eq('episode_uuid', …)` compiles, because filters
+accept embedded paths), and an unknown key beside known ones in `insert` or
+`update` (their values are inferred as a generic constrained to the table's
+row, so extra keys pass). Tables, RPCs, selected columns, value types and
+required insert keys are checked.
+
+**Demonstrated.** `.select('status, removed_at')` with a read of `removed_at`
+in `story-generation.ts`: on `main`'s untyped file `tsc` exits 0; typed, it
+fails with `column 'removed_at' does not exist on 'episodes'`.
+
+### Acceptance criteria
+
+- [x] The five lambdas' clients, and every client parameter under `lambda/`, carry `Database` — `grep` finds no bare `SupabaseClient` or `createClient(`; the ESLint rule enforces it
+- [x] Each error typing surfaces is fixed or filed — 29: 28 fixed at the type level and the metadata spread guarded; correcting the audio-cue row type then exposed KB-92, filed
+- [x] A query naming a column the table lacks fails `pnpm typecheck` — demonstrated above, red here and green on `main`
 
 ---
 
@@ -4364,6 +4424,74 @@ policy permits them.
 
 ---
 
+## KB-91 — WebSocket `send-to-user` calls an RPC that no migration creates
+
+**Severity:** Low. It fails closed, and no client sends `send-to-user` today
+(the workers reach users through the management API directly). But any user
+messaging another would always be refused. **Found:** KB-34, 2026-09-24, when
+the `$default` handler's client was typed.
+
+`canUserMessageUser` (`apps/web/websocket/default.ts`) authorizes
+`send-to-user` with `supabase.rpc('check_shared_team_membership', …)`. The
+function is defined only in `apps/web/supabase/schemas/16-websocket-functions.sql`
+(ae655703, 2025-10-16). `schemas/` builds nothing: the database is built from
+`migrations/`, and no migration creates it.
+
+**Reproduced:** `git grep check_shared_team_membership` finds the schema file
+and the handler, and no migration. The generated `Database` types, built from
+the migrations, lack it, so the typed call is TS2345. On the local database (175 migrations applied, latest `20260924075728`), `select count(*) from pg_proc where proname = 'check_shared_team_membership'` is **0**. The handler
+treats the RPC's error as "not authorized", so every `send-to-user` between two
+different users answers "Unauthorized: You can only message users in your team".
+
+### Proposed fix
+
+A migration that creates the function as the schema file has it (a
+`SECURITY DEFINER` over `accounts_memberships`, executable by `service_role`
+only), with a pgTAP test. Or remove `send-to-user` if nothing will use it.
+Either way, delete the `@ts-expect-error KB-91` line in `default.ts`, which
+then fails with TS2578.
+
+### Acceptance criteria
+
+- [ ] Two users who share a team account can `send-to-user`; two who do not are refused (pgTAP for the function, unit test for the handler)
+- [ ] No `@ts-expect-error KB-91` remains
+
+---
+
+## KB-92 — Audio cue generation fails for the whole episode when a shot has no scene number
+
+**Severity:** Low, latent: whether any path writes such a shot today is not
+established. **Found:** KB-66, 2026-09-24, when the worker's client was typed.
+
+`shots.scene_number` is nullable on purpose ("optional, as shots may be
+generated without scene info", `20251209061319_add-missing-shots-columns.sql:9`).
+`audio_cues.scene_number` is `integer NOT NULL` (`20260101071824_add_audio_assets.sql:60`).
+`processAudioCueGeneration` (`apps/web/lambda/llm-worker/handlers/audio-cue-generation.ts`)
+copies each cue's start shot's `scene_number` into the cue and inserts all
+cues in one statement. So one cue that starts on a sceneless shot fails the
+episode's entire cue insert, and the job with it. The handler's own row type
+claimed `scene_number: number`, which hid this until the client was typed.
+The studio orchestrator (`packages/features/episodes/src/agent/orchestrator.ts`)
+spreads unvalidated shot objects into its insert, so it is one path that could
+write such a shot.
+
+**Reproduced:** under the typed client, the insert is TS2769
+(`number | null` is not assignable to `number`). On the local database, in a rolled-back transaction, inserting an `audio_cues` row with `scene_number` null fails: `null value in column "scene_number" of relation "audio_cues" violates not-null constraint`. The handler inserts every cue in one statement, so that one row fails them all.
+
+### Proposed fix
+
+Decide what a cue on a sceneless shot belongs to: skip it with a warning, or
+give it the batching's own fallback scene (`?? 0`, which the scene-batch path
+already uses), and make `shots.scene_number` required if nothing should lack
+it. Then delete the `@ts-expect-error KB-92` line.
+
+### Acceptance criteria
+
+- [ ] A unit test, red first: an episode with one sceneless shot still gets its other cues
+- [ ] No `@ts-expect-error KB-92` remains
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
@@ -4424,6 +4552,8 @@ policy permits them.
 | KB-24 | The revenue projection ended at the server's UTC date while entries are dated in the browser's, so east of UTC a just-saved figure projected to 0; its trend split moved with the server's hour | #345 |
 | KB-83 | Voice spend was never counted (the RPC refused the caller's client, and the voice worker never called it), and an account's owner could set its usage to any value directly; usage now moves only through the server | #351 |
 | KB-60, KB-42 | Any signed-in user could read every column of a public account (its email, owner, budget and usage), and ask any account's budget status or whether an id existed; public pages now read a six-column view, and the budget check answers members only. KB-59's test login is guarded, not changed (owner decision) | #346 |
+| KB-34 | The WebSocket handlers, which authenticate every realtime connection, were in no tsconfig; 133 type errors, none a defect, and an RPC no migration creates (KB-91) | #339 |
+| KB-66 | The workers' Supabase clients were untyped, so no query was checked against the schema; typed, they matched it, apart from an audio-cue insert (KB-92) and an unguarded metadata spread | #339 |
 
 ---
 
@@ -4493,3 +4623,5 @@ proved it wrong. Paths abbreviated with `…/studio/` are under
 - `net.http_delete` has a NULL ACL, so PUBLIC can execute it, and `net` grants USAGE to PUBLIC. Any role with a direct SQL login, such as KB-59's `myfriends`, can have the database send outbound HTTP DELETE requests. PostgREST does not expose `net`, so only direct logins reach it. Measured locally (pg_net 0.20.4) from the catalog, not called. Production's ACL may differ and has not been checked
 - The voice budget check fails open: any RPC error is logged at warn and the generation proceeds — `packages/features/audio-generation/src/server/voice-queries.ts:67-72`. KB-42 made the RPC return `false` to strangers rather than raise, so its own refusal cannot take this path
 - The public-read policies on `projects` and `episodes` (`20260108120000_public_sharing_rls.sql`) expose every column of a public or unlisted row to any signed-in user, not only what the public pages render. Among them: `projects.created_by`/`updated_by` (user ids), `audio_settings`, `metadata`; `episodes.story_data`, `screenplay_data`, `shot_list`, `metadata`, `viral_quality`, `master_video_asset_id`, and `deleted_at` (soft-deleted episodes of a public project stay readable). `select * from projects where visibility = 'unlisted'` also lists every "link-only" project. The KB-60 shape (a view with the public columns) would fit both; the pages select `*` today, so they need narrowing with it
+**Untyped Supabase clients outside the workers** (found by KB-66, 2026-09-24; counted, not triaged)
+- KB-66's pattern, a bare `SupabaseClient` whose schema is `any`, is also in 25 annotations under `packages/`: `features/content-analytics/src/server/` ×8 (`analytics-sync-cron.ts`, `asset-duration-sync.ts`, `backfill/youtube-backfill.ts`, `channels.ts`, `dim-sync.ts`, `experiment-actions.ts`, `reporting/report-ingest.ts`, `revenue-alerts.ts`), `features/audio-generation/src/server/core/` ×8 (`audio-asset-core.ts`, `elevenlabs-music-core.ts`, `sfx-core.ts`), `supabase/src/` ×5 (`auth-callback.service.ts`, `check-requires-mfa.ts`, `require-user.ts`: auth-only, and legitimately schema-agnostic), `ui/` ×3 and `llm/src/analytics.ts`. `apps/web/scripts/seed-local-analytics.ts:163` has an untyped `createClient`. The ones that run `.from()` are unchecked against the schema, as the workers were. KB-66's ESLint rule covers only `lambda/**` and `websocket/**`; widening it is the fix once these are typed
