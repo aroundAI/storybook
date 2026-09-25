@@ -5,6 +5,12 @@ import { controlHandler } from './control';
 import { listen, urlOf } from './http';
 import type { Quality } from './llm/generate/context';
 import { drawSeed } from './rng';
+import {
+  SOCIAL_ORIGINS,
+  type SocialOrigin,
+  socialHandler,
+} from './social/server';
+import { SocialState } from './social/state';
 import { SandboxState } from './state';
 import { elevenLabsHandler } from './vendors/elevenlabs';
 import { geminiHandler } from './vendors/gemini';
@@ -12,10 +18,15 @@ import { openAiHandler } from './vendors/openai';
 
 /**
  * Default ports (FILM-1803 §1). One process, one origin per vendor, as in
- * production. FILM-1802 adds 4101–4105 for the social platforms.
+ * production. 4101–4105 are FILM-1802's social platforms.
  */
 export const DEFAULT_PORTS = {
   control: 4100,
+  meta: SOCIAL_ORIGINS.meta.port,
+  tiktok: SOCIAL_ORIGINS.tiktok.port,
+  google: SOCIAL_ORIGINS.google.port,
+  x: SOCIAL_ORIGINS.x.port,
+  linkedin: SOCIAL_ORIGINS.linkedin.port,
   openai: 4110,
   gemini: 4112,
   elevenlabs: 4113,
@@ -26,12 +37,17 @@ export type PortName = keyof typeof DEFAULT_PORTS;
 export interface SandboxOptions {
   seed?: number;
   quality?: Quality;
+  /** Simulated seconds per real second for social growth (FILM-1802 §4). */
+  speed?: number;
+  /** The social sandbox's clock; tests pass one they can move. */
+  now?: () => number;
   /** `0` for any free port (tests). */
   ports?: Partial<Record<PortName, number>>;
 }
 
 export interface Sandbox {
   state: SandboxState;
+  social: SocialState;
   servers: Record<PortName, http.Server>;
   urls: Record<PortName, string>;
   close(): Promise<void>;
@@ -43,6 +59,11 @@ export async function createSandbox(
   const state = new SandboxState({
     seed: options.seed ?? drawSeed(),
     quality: options.quality,
+  });
+  const social = new SocialState({
+    seed: state.seed,
+    speed: options.speed,
+    now: options.now,
   });
   const ports = { ...DEFAULT_PORTS, ...options.ports };
   const servers = {} as Record<PortName, http.Server>;
@@ -62,8 +83,14 @@ export async function createSandbox(
       elevenLabsHandler(state, () => urlOf(servers.elevenlabs)),
       ports.elevenlabs,
     );
+    for (const origin of Object.keys(SOCIAL_ORIGINS) as SocialOrigin[]) {
+      servers[origin] = await listen(
+        socialHandler(origin, state, social),
+        ports[origin],
+      );
+    }
     servers.control = await listen(
-      controlHandler(state, boundPorts),
+      controlHandler(state, boundPorts, social),
       ports.control,
     );
   } catch (error) {
@@ -79,6 +106,7 @@ export async function createSandbox(
 
   return {
     state,
+    social,
     servers,
     urls,
     close: async () => {

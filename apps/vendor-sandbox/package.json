@@ -7,6 +7,7 @@
   "scripts": {
     "clean": "git clean -xdf .turbo node_modules",
     "start": "tsx src/main.ts",
+    "seed-credentials": "tsx --conditions=react-server src/social/seed-credentials.ts",
     "format": "prettier --check \"**/*.{ts,tsx,json}\"",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

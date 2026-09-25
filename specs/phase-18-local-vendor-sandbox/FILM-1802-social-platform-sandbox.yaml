@@ -23,44 +23,44 @@ summary: >
   on the first sync against this sandbox.
 acceptance_criteria:
   - text: "local-env.sh up starts the sandbox, and local.env points every social vendor at it"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "scripts/local-env.sh:151 (start_sandbox, FILM-1803); scripts/lib/vendor-sandbox-env.d/social.sh:9 prints every social VENDOR_URL_* into the rewritten block (apps/vendor-sandbox/__tests__/social-setup.test.ts)"
   - text: "A user can connect each of the five platforms through the real connect and callback routes, with no real credentials"
     met: false
-    reason: "not yet implemented — DRAFT"
+    reason: "not yet implemented: the OAuth endpoints arrive per platform in PRs B–E; PR A seeds the sandbox clients (apps/vendor-sandbox/src/social/seed-credentials.ts)"
   - text: "Token refresh and disconnect work through the real code paths"
     met: false
-    reason: "not yet implemented — DRAFT"
-  - text: "Publishing through the app creates a sandbox object, and the next analytics sync reports on it"
+    reason: "not yet implemented: the token model is in PR A (apps/vendor-sandbox/src/social/state.ts), the endpoints in PRs B–E"
+  - text: "Publishing through the app creates a sandbox object, and the next analytics sync reports on it — for YouTube, TikTok and Instagram; for Facebook, X and LinkedIn, which have no analytics sync (FILM-1720, FILM-1727), publishing creates the object and its status or permalink call returns it"
     met: false
-    reason: "not yet implemented — DRAFT"
-  - text: "Every response field is documented in the capability reference for that endpoint — enforced by a test that parses the index"
+    reason: "not yet implemented: PRs B–E"
+  - text: "Every response field the app reads is documented for that endpoint in the capability reference's field index, and every envelope field it ignores cites the vendor's documentation page — enforced by a test that parses the index"
     met: false
-    reason: "not yet implemented — DRAFT"
+    reason: "the harness is in PR A (apps/vendor-sandbox/src/social/fields.ts, __tests__/social-fidelity.test.ts); each vendor PR registers its endpoints"
   - text: "Every behaviour in §3's table has a sandbox test"
     met: false
-    reason: "not yet implemented — DRAFT"
+    reason: "not yet implemented: PRs B–E"
   - text: "A missing scope returns the vendor's authorisation error, not data"
     met: false
-    reason: "not yet implemented — DRAFT"
+    reason: "the scope model is in PR A (SocialState.checkToken); each vendor's error shape is in PRs B–E"
   - text: "Two runs produce different data; the same SANDBOX_SEED reproduces a run"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "apps/vendor-sandbox/__tests__/social-state.test.ts:65"
   - text: "Cumulative totals never decrease, and daily series sum to totals, at any SANDBOX_SPEED"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "apps/vendor-sandbox/__tests__/social-growth.test.ts:64"
   - text: "The ledger records every request and response"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "apps/vendor-sandbox/src/social/server.ts:126 (every social call, filterable by vendor and object, credentials redacted)"
   - text: "The sandbox binds to loopback and is never part of a production build or deploy"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "apps/vendor-sandbox/src/http.ts:8; apps/vendor-sandbox/__tests__/social-boundaries.test.ts:37"
   - text: "No generated name matches a placeholder pattern (test, seed, example, sample, dummy, lorem, foo, or a trailing counter) — enforced by a test over a large sample of runs"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "apps/vendor-sandbox/__tests__/social-realism.test.ts:31"
   - text: "No generated figure is a round sentinel, and each object's figures are mutually consistent"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "apps/vendor-sandbox/__tests__/social-realism.test.ts:97"
 open_questions: []
 notes: |
   ## 1. Overview
@@ -93,32 +93,43 @@ notes: |
   | 4105 | LinkedIn: API v2, OAuth, userinfo | linkedin-api, linkedin-oauth |
 
   Lifecycle. ./scripts/local-env.sh up starts it beside Supabase and ClickHouse,
-  the way it already starts the ClickHouse container, and status / down include
-  it. deployment/config/local.env gains VENDOR_SANDBOX=1 and one
-  VENDOR_URL_* line per resolver name. As with ClickHouse today, the app only uses
-  the sandbox when started with that file in its environment; a plain pnpm dev
-  still behaves like production.
+  and status / down include it (scripts/lib/vendor-sandbox.sh, FILM-1803). As
+  with ClickHouse today, the app only uses the sandbox when started with
+  local.env in its environment; a plain pnpm dev still behaves like production.
 
-  deployment/config is a git submodule (aroundAI/storybook-deployment-config,
-  private), so the local.env lines land as a PR in that repository plus a
-  submodule bump here, not as part of this one. CI does not check the submodule out:
-  anything CI needs from these settings goes in the workflow's own env:, not in
-  local.env.
+  Corrected 2026-09-25: local.env is not committed to the deployment-config
+  submodule. local-env.sh generates it when it is absent and never rewrites an
+  existing one, so the sandbox's settings live in a generated block between
+  "# >>> vendor-sandbox (FILM-1803)" and "# <<< vendor-sandbox", which
+  `local-env.sh up` rewrites on every run without touching the rest of the file
+  (the lead's decision). This spec's lines come from
+  scripts/lib/vendor-sandbox-env.d/social.sh: one VENDOR_URL_* per social
+  resolver name and the fake TikTok, X and LinkedIn clients, beside FILM-1803's
+  VENDOR_SANDBOX=1 and ENCRYPTION_KEY. CI does not read local.env: sandbox E2E
+  flows run locally and in local CI lane B only, gated behind an env flag as the
+  evidence specs are (the lead's decision, 2026-09-25).
 
   OAuth app credentials for local use are seeded, not entered: the sandbox
-  accepts one fixed client id and secret per platform, and the local seed writes
+  accepts one fixed client id and secret per platform
+  (apps/vendor-sandbox/src/social/credentials.ts), and `local-env.sh up` writes
   them where the app reads them — the oauth_app_credentials table for YouTube and
-  Meta, TIKTOK_CLIENT_* / TWITTER_CLIENT_* / LINKEDIN_CLIENT_* for the rest,
-  and account_oauth_apps for refresh. ENCRYPTION_KEY is added to local.env,
-  because tokens are stored encrypted.
+  Meta (encrypted with the local ENCRYPTION_KEY by the app's own encrypt), and
+  TIKTOK_CLIENT_* / TWITTER_CLIENT_* / LINKEDIN_CLIENT_* in the block for the
+  rest. Token refresh reads the same credentials (KB-29), so account_oauth_apps
+  is not needed.
 
   ## 3. Fidelity
 
-  The rule: the sandbox may only serve a field that
-  docs/platform-capability-reference.md's field index documents for that
-  endpoint. A test parses the index — as platform-field-names.test.ts does, never
-  restating it — and fails if any response template names an undocumented field or
-  serves a documented field on the wrong endpoint.
+  The rule (the lead's ruling, 2026-09-25): a field the app reads may be served
+  only if docs/platform-capability-reference.md's field index documents it for
+  that endpoint; an envelope field the app ignores (token_type, paging, a request
+  id) must cite the vendor page that documents it. A test parses the index —
+  through platform-field-names.test.ts's own parser, never restating it — and
+  fails if a registered endpoint reads an undocumented field, reads a field
+  documented only for another endpoint, or cites a non-vendor page. Fields the
+  app reads that the index lacks today (token, publish and status responses) are
+  added to the capability reference, with a fetched source URL, by the vendor PR
+  that serves them.
 
   Documented behaviour the sandbox must reproduce, each with a sandbox test:
 
@@ -219,6 +230,14 @@ notes: |
   - TikTok's Business API and X Enterprise — no app, so no client to exercise;
     the sandbox serves their tier errors only.
   - Webhooks from vendors — none are consumed today.
+  - The publish queue — scheduled publish, unpublish, an episode's publish
+    delete, and apps/web/lambda/publish-worker's handlers reach the vendors only
+    through SQS, so they run locally once FILM-1806's queue does; that is
+    FILM-1806's acceptance criterion, not this spec's (the lead's decision,
+    2026-09-25).
+  - Analytics for Facebook, X and LinkedIn — the app syncs none (FILM-1720,
+    FILM-1727), so there is no call site to serve; their acceptance is that
+    publishing creates the object and its status or permalink call returns it.
 
   ## 10. Verification
 

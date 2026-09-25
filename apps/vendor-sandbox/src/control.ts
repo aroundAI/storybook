@@ -1,5 +1,6 @@
 import { type Handler, parseJson, sendJson } from './http';
 import { drawSeed } from './rng';
+import type { SocialState } from './social/state';
 import type { FailureRule, SandboxState } from './state';
 
 /**
@@ -50,6 +51,7 @@ ${state.unplaced.size > 0 ? `<p>String fields with no corpus rule: ${[...state.u
 export function controlHandler(
   state: SandboxState,
   ports: () => Record<string, number>,
+  social?: SocialState,
 ): Handler {
   return (req, res, body) => {
     const url = new URL(req.url ?? '/', 'http://sandbox.localhost');
@@ -71,6 +73,7 @@ export function controlHandler(
         seed: state.seed,
         entries: state.ledger.list({
           vendor: url.searchParams.get('vendor') ?? undefined,
+          object: url.searchParams.get('object') ?? undefined,
           sinceId: since === null ? undefined : Number(since),
         }),
       });
@@ -88,6 +91,7 @@ export function controlHandler(
         unrecognised: state.unrecognised,
         agentToolFailures: state.agentToolFailures,
         unplaced: [...state.unplaced],
+        ...(social ? { social: social.summary() } : {}),
       });
       return;
     }
@@ -100,6 +104,7 @@ export function controlHandler(
           ? requested
           : drawSeed();
       state.reset(seed);
+      social?.reset(seed);
       console.log(`[sandbox] reset; seed ${seed}`);
       sendJson(res, 200, { seed });
       return;

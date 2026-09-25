@@ -101,5 +101,5 @@ gha-creds-*.json
 # local CI state (LOCAL-CI.md)
 .local-ci/
 
-# Vendor sandbox runtime state (FILM-1803): pid, log
+# Vendor sandbox runtime state (FILM-1803): pid, log; FILM-1802's SANDBOX_PERSIST state.json
 .sandbox/
