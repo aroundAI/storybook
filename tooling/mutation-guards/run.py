@@ -20,6 +20,9 @@ Outcomes per entry:
                 the entry with it, or the guard is guarding nothing
   NOT GREEN     the guard fails even without the mutation, so a failure under
                 the mutation would prove nothing
+  AMBIGUOUS     a `find` matches more than once (or an edit names another
+                file), so the mutation might not break what the guard tests;
+                checked before any test runs
 
 Any outcome other than RED fails the run. See README.md.
 """
@@ -67,6 +70,38 @@ def edits_of(entry):
     return [{'find': entry['find'], 'replace': entry['replace']}]
 
 
+def find_problems(entry, source):
+    """Why an entry's edits cannot name exactly one place, or [] if they can.
+
+    Each `find` is counted in the text as the earlier edits leave it, which is
+    what the mutation sees. A `find` that matches more than once is refused
+    rather than applied to its first match: after a rebase the first match
+    can be another copy of the same line, and the guard then breaks code its
+    test never reads (#350). A per-edit `file` is refused too — the runner
+    applies every edit to the entry's own `file`, so one naming another file
+    would silently mutate the wrong one.
+    """
+    problems = []
+    text = source
+    for index, edit in enumerate(edits_of(entry)):
+        if edit.get('file', entry['file']) != entry['file']:
+            problems.append(f'edit {index}: names file {edit["file"]}, but every '
+                            f'edit applies to {entry["file"]}')
+            continue
+        count = text.count(edit['find'])
+        if count > 1:
+            lines, start = [], 0
+            for _ in range(count):
+                at = text.index(edit['find'], start)
+                lines.append(text.count('\n', 0, at) + 1)
+                start = at + 1
+            problems.append(f'edit {index}: `find` matches {count} times in '
+                            f'{entry["file"]} (lines {", ".join(map(str, lines))}); '
+                            'extend it until it names one place')
+        text = text.replace(edit['find'], edit['replace'], 1)
+    return problems
+
+
 def guard_command(entry, base_env):
     kind = entry['kind']
     env = dict(base_env)
@@ -95,6 +130,10 @@ def guard_command(entry, base_env):
 def run_code_mutation(entry, base_env):
     path = os.path.join(ROOT, entry['file'])
     source = open(path).read()
+
+    problems = find_problems(entry, source)
+    if problems:
+        return 'AMBIGUOUS', '\n'.join(problems)
 
     # Baseline: the guard must pass on the real code, or its failure under
     # the mutation would be counted as detection when it is not.
@@ -245,6 +284,36 @@ def self_test(base_env):
             print(f'SELF-TEST FAILED: pgtap_outcome {label}: {got!r}, expected {want!r}')
             return 1
 
+    source = 'a = 1\nb = 2\na = 3\n'
+    for label, entry, want in [
+        ('unique find', {'file': 'x', 'find': 'b = 2', 'replace': 'b = 0'}, 0),
+        ('find twice', {'file': 'x', 'find': 'a = ', 'replace': 'a = 0'}, 1),
+        ('ambiguous only after an earlier edit',
+         {'file': 'x', 'edits': [{'find': 'b = 2', 'replace': 'a = 2'},
+                                 {'find': 'a = 2', 'replace': 'a = 9'}]}, 0),
+        ('second find ambiguous after the first edit',
+         {'file': 'x', 'edits': [{'find': 'b = 2', 'replace': 'a = 3'},
+                                 {'find': 'a = 3', 'replace': 'a = 9'}]}, 1),
+        ('edit names another file',
+         {'file': 'x', 'edits': [{'file': 'y', 'find': 'b = 2', 'replace': ''}]}, 1),
+    ]:
+        got = len(find_problems(entry, source))
+        if got != want:
+            print(f'SELF-TEST FAILED: find_problems {label}: {got} problems, expected {want}')
+            return 1
+
+    # Every real entry, statically: CI runs --self-test in one job, while the
+    # entries themselves are split across shards and kinds.
+    ambiguous = []
+    for entry in load_entries():
+        if 'file' in entry:
+            problems = find_problems(entry, open(os.path.join(ROOT, entry['file'])).read())
+            ambiguous += [f'{entry["feature"]}: {entry["name"]}: {p}' for p in problems]
+    if ambiguous:
+        print('SELF-TEST FAILED: entries whose mutation does not name one place:',
+              *ambiguous, sep='\n  ')
+        return 1
+
     toothless = {
         'name': 'self-test: a no-op mutation',
         'kind': 'unit',
@@ -330,6 +399,8 @@ def main():
         elif status == 'NOT GREEN':
             print('The guard fails on the real code. Tail of its output:')
             print(output[-1500:])
+        elif status == 'AMBIGUOUS':
+            print(output)
         else:
             print(f'Target text not found in {entry.get("file")}. Update the entry.')
 

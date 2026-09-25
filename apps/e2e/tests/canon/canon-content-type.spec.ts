@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { readRows, updateRows } from '../utils/seed';
+import { byTest } from '../utils/visible';
 import { CanonSettingsPageObject } from './canon-settings.po';
 
 /**
@@ -32,9 +33,7 @@ test.describe('Canon settings — content type (KB-71)', () => {
     await canon.open(team, project);
     await canon.enableCanon();
 
-    const type = page
-      .locator('[data-test="canon-settings-project-type"]')
-      .filter({ visible: true });
+    const type = byTest(page, 'canon-settings-project-type');
     await expect(type).toHaveText('Documentary');
     await expect(
       page

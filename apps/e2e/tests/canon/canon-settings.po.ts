@@ -9,6 +9,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { visible } from '../utils/visible';
 
 /**
  * The Canon settings form on a project's Settings page (FILM-1110).
@@ -44,15 +45,9 @@ export class CanonSettingsPageObject {
     await expect(this.enabledSwitch()).toBeVisible();
   }
 
-  /**
-   * Visible matches only. While the settings page streams in, React holds
-   * the finished form in a hidden container for a moment before swapping it
-   * into place, so a bare `[data-test=…]` briefly matches twice and
-   * Playwright's strict mode fails at once instead of retrying. A user only
-   * ever sees one form; so do these locators.
-   */
+  /** Visible matches only — see `utils/visible.ts`. */
   private visible(selector: string) {
-    return this.page.locator(selector).filter({ visible: true });
+    return visible(this.page, selector);
   }
 
   enabledSwitch() {
