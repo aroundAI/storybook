@@ -148,3 +148,40 @@ describe('view definitions trace to the capability reference', () => {
     expect(everyName.filter((name) => /thru_?play/i.test(name))).toEqual([]);
   });
 });
+
+describe('view-definition aliases trace to the capability reference (FILM-1722)', () => {
+  const withAliases = VIEW_DEFINITIONS.flatMap((entry) =>
+    entry.availability === 'organic'
+      ? (entry.aliases ?? []).map(
+          (alias) => [entry.id, entry.field, alias] as const,
+        )
+      : [],
+  );
+
+  it('has at least the Instagram Media-node spelling', () => {
+    expect(withAliases).toContainEqual([
+      'instagram.total_views',
+      'total_views',
+      'total_views_count',
+    ]);
+  });
+
+  it.each(withAliases)(
+    '%s: %s and its alias %s are named as one number on one line',
+    (_, field, alias) => {
+      const everyName = [...DOCUMENTED.values()].flatMap((names) => [...names]);
+      expect(everyName, `${alias} is in no field block`).toContain(alias);
+
+      const statesBoth = doc
+        .split('\n')
+        .some(
+          (line) =>
+            line.includes(`\`${alias}\``) && line.includes(`\`${field}\``),
+        );
+      expect(
+        statesBoth,
+        `no line in ${REFERENCE} names ${alias} with ${field}`,
+      ).toBe(true);
+    },
+  );
+});

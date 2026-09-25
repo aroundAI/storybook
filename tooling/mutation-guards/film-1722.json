@@ -1,0 +1,55 @@
+{
+  "feature": "FILM-1722",
+  "mutations": [
+    {
+      "name": "VD1 Instagram total_views_count no longer resolves",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/view-definitions.ts",
+      "find": "    aliases: ['total_views_count'],\n",
+      "replace": "",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/view-definitions.test.ts",
+      "pattern": "field aliases"
+    },
+    {
+      "name": "VD2 The field lookup ignores aliases",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/view-definitions.ts",
+      "find": "(entry.field === field || (entry.aliases ?? []).includes(field))",
+      "replace": "entry.field === field",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/view-definitions.test.ts",
+      "pattern": "field aliases"
+    },
+    {
+      "name": "VD3 engaged_views offered over dates it does not cover",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/view-definitions.ts",
+      "find": "  if (continuousAlternative?.coversRange && column) {",
+      "replace": "  if (continuousAlternative && column) {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/view-definitions.test.ts",
+      "pattern": "does not cover"
+    },
+    {
+      "name": "VD4 A continuous alternative is read though it is not stored",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/view-definitions.ts",
+      "find": "  'youtube.engagedViews': 'engaged_views',\n",
+      "replace": "",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/view-definitions.test.ts",
+      "pattern": "which it covers"
+    },
+    {
+      "name": "VD5 A comparable range reads the wrong column",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/view-definitions.ts",
+      "find": "      column: 'views',\n      definitions: definitionsOf(comparability.definition),",
+      "replace": "      column: 'engaged_views',\n      definitions: definitionsOf(comparability.definition),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/view-definitions.test.ts",
+      "pattern": "one definition"
+    }
+  ]
+}
