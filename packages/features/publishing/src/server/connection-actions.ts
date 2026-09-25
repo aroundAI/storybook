@@ -275,25 +275,48 @@ const RefreshSchema = z.object({
 });
 
 /**
- * Refreshes a platform connection token
+ * Force-refreshes a platform connection's token (the Refresh button).
+ *
+ * `ensureValidToken` reads and writes the connection with the admin client,
+ * and a refresh the vendor refuses deactivates it (an X refresh also rotates
+ * its refresh token). So the caller's own client must find the row first,
+ * which is the access check (RLS `has_account_access`), as for disconnect
+ * (KB-127).
  */
-export const refreshConnectionAction = enhanceAction(
-  async ({ connectionId }) => {
-    // Force refresh to handle cases where token is valid in DB but revoked on provider
-    const result = await ensureValidToken(connectionId, true);
+export const refreshConnectionAction = returnRefusals(
+  enhanceAction(
+    async ({ connectionId }) => {
+      const { data: connection, error: readError } =
+        await getSupabaseServerClient()
+          .from('platform_connections')
+          .select('id')
+          .eq('id', connectionId)
+          .maybeSingle();
 
-    if (!result.valid) {
-      throw new Error(result.error ?? 'Failed to refresh token');
-    }
+      if (readError) {
+        throw new Error(`Failed to read connection: ${readError.message}`);
+      }
 
-    revalidatePath(`/home/[account]/settings`, 'page');
+      if (!connection) {
+        throw new ActionRefusal(CONNECTION_NOT_FOUND);
+      }
 
-    return { success: true };
-  },
-  {
-    schema: RefreshSchema,
-    auth: true,
-  },
+      // Force refresh to handle cases where token is valid in DB but revoked on provider
+      const result = await ensureValidToken(connection.id, true);
+
+      if (!result.valid) {
+        throw new Error(result.error ?? 'Failed to refresh token');
+      }
+
+      revalidatePath(`/home/[account]/settings`, 'page');
+
+      return { success: true };
+    },
+    {
+      schema: RefreshSchema,
+      auth: true,
+    },
+  ),
 );
 
 const UpdateLanguageSchema = z.object({

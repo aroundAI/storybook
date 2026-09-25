@@ -331,15 +331,21 @@ function ConnectionRow({
   const queryClient = useQueryClient();
 
   const refreshMutation = useMutation({
-    mutationFn: () => refreshConnectionAction({ connectionId: connection.id }),
+    mutationFn: () =>
+      unwrap(refreshConnectionAction({ connectionId: connection.id })),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['platform-connections', accountId],
       });
       toast.success('Token refreshed successfully');
     },
-    onError: () => {
-      toast.error('Failed to refresh token. Please try reconnecting.');
+    onError: (error) => {
+      toast.error(
+        refusalMessage(
+          error,
+          'Failed to refresh token. Please try reconnecting.',
+        ),
+      );
     },
   });
 
@@ -455,6 +461,8 @@ function ConnectionRow({
               onClick={() => refreshMutation.mutate()}
               disabled={refreshMutation.isPending}
               title="Refresh token"
+              aria-label={`Refresh ${connection.accountName}`}
+              data-test="refresh-connection"
             >
               <RefreshCw
                 className={`h-4 w-4 ${refreshMutation.isPending ? 'animate-spin' : ''}`}

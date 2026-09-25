@@ -624,4 +624,62 @@ describe('Connection Actions', () => {
       expect(mockAdminClient.maybeSingle).not.toHaveBeenCalled();
     });
   });
+
+  /**
+   * KB-127. The Refresh button forces `ensureValidToken(id, true)`, which reads
+   * and writes the connection through the admin client. A refresh the vendor
+   * refuses deactivates the connection, and an X refresh rotates its refresh
+   * token. So the caller must be shown to reach the connection first, through
+   * their own client, which is what RLS (`has_account_access`) decides, as
+   * disconnect does.
+   */
+  describe('refreshConnectionAction (KB-127)', () => {
+    const CONNECTION_ID = '11111111-2222-4333-8444-555555555555';
+
+    it('refuses, as a value, a connection the caller cannot see, and refreshes nothing', async () => {
+      mockSupabaseClient.maybeSingle.mockResolvedValueOnce({
+        data: null,
+        error: null,
+      });
+
+      const { refreshConnectionAction } = await import(
+        '../src/server/connection-actions'
+      );
+      const { ensureValidToken } = await import('../src/lib/token-refresh');
+
+      const result = await refreshConnectionAction({
+        connectionId: CONNECTION_ID,
+      });
+
+      expect(result).toEqual({
+        ok: false,
+        error:
+          'That connection no longer exists, or you do not have access to it.',
+      });
+      expect(ensureValidToken).not.toHaveBeenCalled();
+    });
+
+    it('force-refreshes a connection the caller can see, checked through their own client', async () => {
+      mockSupabaseClient.maybeSingle.mockResolvedValueOnce({
+        data: { id: CONNECTION_ID },
+        error: null,
+      });
+
+      const { refreshConnectionAction } = await import(
+        '../src/server/connection-actions'
+      );
+      const { ensureValidToken } = await import('../src/lib/token-refresh');
+
+      const result = await refreshConnectionAction({
+        connectionId: CONNECTION_ID,
+      });
+
+      expect(result).toEqual({ ok: true, data: { success: true } });
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith(
+        'platform_connections',
+      );
+      expect(mockSupabaseClient.eq).toHaveBeenCalledWith('id', CONNECTION_ID);
+      expect(ensureValidToken).toHaveBeenCalledWith(CONNECTION_ID, true);
+    });
+  });
 });
