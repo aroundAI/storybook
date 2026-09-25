@@ -38,6 +38,22 @@ function formatBucket(bucket: string): string {
 type MedianMode = 'cohort_views_to_date' | 'views_in_period';
 
 /**
+ * A bucket's month in words, for a sentence. The axis's "Sep 26" reads as
+ * the 26th of September once it is inside one.
+ */
+function monthInWords(bucket: string): string {
+  const date = new Date(bucket);
+
+  return Number.isNaN(date.getTime())
+    ? bucket
+    : date.toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'UTC',
+      });
+}
+
+/**
  * The card's claim: the newest bucket's median, and how it compares with
  * the bucket before. The median is the headline because the mean is
  * hostage to one outlier: a single viral video makes a flat channel look
@@ -67,14 +83,14 @@ export function medianViewsClaim(
       : null;
   const subject =
     mode === 'cohort_views_to_date'
-      ? `Median views to date for videos uploaded in ${formatBucket(latest.bucket)}`
-      : `Median views per video accrued in ${formatBucket(latest.bucket)}`;
+      ? `Median views to date for videos uploaded in ${monthInWords(latest.bucket)}`
+      : `Median views per video accrued in ${monthInWords(latest.bucket)}`;
   const comparison =
     change === null || previous === null
       ? ''
       : change === 0
-        ? `, level with ${formatBucket(previous.bucket)}`
-        : `, ${change > 0 ? 'up' : 'down'} ${Math.abs(change)}% on ${formatBucket(previous.bucket)}`;
+        ? `, level with ${monthInWords(previous.bucket)}`
+        : `, ${change > 0 ? 'up' : 'down'} ${Math.abs(change)}% on ${monthInWords(previous.bucket)}`;
 
   return {
     figure: formatViews(latest.medianViews),

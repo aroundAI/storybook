@@ -224,10 +224,10 @@ describe('the invariants are in the type', () => {
       />,
       // @ts-expect-error a card declares what it shows
       <AnalyticsCard key={'family'} title={'x'} claim={claim} />,
-      // @ts-expect-error nor a family the matrix does not know
       <AnalyticsCard
         key={'bad'}
         title={'x'}
+        // @ts-expect-error nor a family the matrix does not know
         metricFamily={'likes'}
         claim={claim}
       />,
@@ -245,20 +245,20 @@ describe('the invariants are in the type', () => {
         // @ts-expect-error a figure always comes with its sentence
         claim={{ figure: '1' }}
       />,
-      // @ts-expect-error no card is emphasised by painting it
       <AnalyticsCard
         key={'paint'}
         title={'x'}
         metricFamily={'engagement'}
         claim={claim}
+        // @ts-expect-error no card is emphasised by painting it
         variant={'gradient'}
       />,
-      // @ts-expect-error no caller escapes the height by class
       <AnalyticsCard
         key={'height'}
         title={'x'}
         metricFamily={'engagement'}
         claim={claim}
+        // @ts-expect-error no caller escapes the height by class
         className={'h-auto'}
       />,
       <AnalyticsCard

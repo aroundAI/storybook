@@ -33,7 +33,7 @@ import { signInAs } from '../utils/session';
  * | Platform Split           | both videos on YouTube                   | 100%   |
  * | Gender                   | 60/40 on 1,000 views, 20/80 on 3,000     | 70% (women: 400 + 2,400 of 4,000) |
  * | Top Regions              | IN 300 + 2,700 of 4,000 country views    | 75%    |
- * | Median views per video   | two videos, same month: 1,000 and 3,000  | 2.0K   |
+ * | Median views per video   | two videos, same month: 1,000 and 3,000  | 3.0K — `quantileExact(0.5)` takes the upper middle of an even count, not the average of the two |
  * | Browse + Suggested share | last full week: 700 of 1,000             | 70%    |
  * | Where views came from    | the same rows over the window            | 70%    |
  */
@@ -44,7 +44,7 @@ const EXPECTED = {
   'Platform Split': '100%',
   Gender: '70%',
   'Top Regions': '75%',
-  'Median views per video': '2.0K',
+  'Median views per video': '3.0K',
   'Browse + Suggested share': '70%',
   'Where views came from': '70%',
 } as const;
@@ -180,6 +180,11 @@ test.describe('FILM-1706 card shell — evidence', () => {
       await expect(
         page.locator('[data-test="overview-views"] [data-test="card-figure"]'),
       ).toHaveText(EXPECTED['Total Views']);
+      // The audience read lands after the page: wait for it, or Gender is
+      // not on the page yet when the cards are read.
+      await expect(
+        page.locator('[data-test="overview-gender"] [data-test="card-figure"]'),
+      ).toHaveText(EXPECTED.Gender);
 
       measured[`overview-${theme}`] = await readCards(page);
       await page.screenshot({ path: `${OUT}/film-1706-overview-${theme}.png` });

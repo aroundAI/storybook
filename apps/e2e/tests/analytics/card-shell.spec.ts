@@ -190,7 +190,10 @@ test.describe('Analytics card shell (FILM-1706)', () => {
     expect(marks.some(({ trigger }) => trigger)).toBe(true);
   });
 
-  test('a figure keeps its width when its digits change', async ({ page }) => {
+  test('a figure keeps its width when its digits change', async ({
+    browser,
+    baseURL,
+  }) => {
     // Same digit count, narrowest and widest digit: with proportional
     // figures "1,111" is visibly narrower than "8,888", and a refetch that
     // moves between them shifts everything beside it.
@@ -213,6 +216,11 @@ test.describe('Analytics card shell (FILM-1706)', () => {
         recordDate: daysAgo(5),
         category: 'ads',
       });
+      // A fresh context each time: the second sign-in would otherwise land
+      // on an already signed-in session with no form to fill.
+      const context = await browser.newContext({ baseURL });
+      const page = await context.newPage();
+
       await signInAs(page, team);
       await new OverviewPageObject(page).goToOverview({
         team,
@@ -237,6 +245,8 @@ test.describe('Analytics card shell (FILM-1706)', () => {
           return range.getBoundingClientRect().width;
         }),
       );
+
+      await context.close();
     }
 
     expect(Math.abs(widths[0]! - widths[1]!)).toBeLessThan(0.5);

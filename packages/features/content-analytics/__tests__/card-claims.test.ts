@@ -228,6 +228,14 @@ describe('card claims', () => {
     expect(figure('traffic breakdown')).toBe('75%'); // Browse 3 of 4
   });
 
+  it('names a month in words, not as an axis label', () => {
+    const claim = CLAIMS.find(([name]) => name === 'median')?.[1];
+
+    expect(claim === 'loading' ? '' : claim?.sentence).toBe(
+      'Median views to date for videos uploaded in August 2026.',
+    );
+  });
+
   it('names no single winner when two tie', () => {
     const sentence = (name: string) => {
       const claim = CLAIMS.find(([entry]) => entry === name)?.[1];
